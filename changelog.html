@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Troop 79 Website &mdash; Changelog</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;700;900&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --nws-green:      #88ac3e;
+      --nws-teal-dark:  #064347;
+      --nws-forest:     #5a6e3c;
+      --nws-gold:       #ddb027;
+      --nws-teal:       #418c7d;
+      --nws-rust:       #a95b28;
+      --nws-gray-dark:  #4b4b4b;
+      --nws-gray-med:   #7e7e7e;
+      --nws-pale-green: #e1e6d2;
+      --nws-pale-sage:  #d7e1d7;
+      --nws-gray-light: #e6e6e6;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Montserrat', Arial, sans-serif;
+      font-size: 14px;
+      color: var(--nws-gray-dark);
+      background: var(--nws-pale-green);
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      background: var(--nws-teal-dark);
+      padding: 48px 80px;
+      color: #fff;
+    }
+    .header-inner { max-width: 860px; margin: 0 auto; }
+    .header-eyebrow {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.55);
+      margin-bottom: 10px;
+    }
+    .header h1 {
+      font-size: 36px;
+      font-weight: 500;
+      line-height: 1.2;
+      margin-bottom: 8px;
+    }
+    .header-sub {
+      font-size: 14px;
+      font-weight: 300;
+      color: rgba(255,255,255,.7);
+    }
+
+    /* ── GREY STRIPE ── */
+    .grey-stripe {
+      background: var(--nws-gray-light);
+      padding: 14px 80px;
+    }
+    .grey-stripe-inner {
+      max-width: 860px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .grey-stripe p {
+      font-size: 12px;
+      color: var(--nws-gray-med);
+      font-weight: 400;
+    }
+    .grey-stripe strong { color: var(--nws-gray-dark); font-weight: 600; }
+
+    /* ── PAGE BODY ── */
+    .page-body {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 48px 80px 80px;
+    }
+
+    /* ── RELEASE BLOCK ── */
+    .release {
+      margin-bottom: 48px;
+    }
+    .release-header {
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+      border-bottom: 2px solid var(--nws-green);
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+    .release-version {
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--nws-teal-dark);
+    }
+    .release-date {
+      font-size: 13px;
+      color: var(--nws-gray-med);
+      font-weight: 400;
+    }
+    .release-label {
+      margin-left: auto;
+    }
+
+    /* ── BADGES ── */
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      color: #fff;
+    }
+    .badge-new     { background: var(--nws-teal-dark); }
+    .badge-feature { background: var(--nws-green); }
+    .badge-polish  { background: var(--nws-gold); color: #fff; }
+    .badge-decision { background: var(--nws-teal); }
+
+    /* ── CHANGE LIST ── */
+    .change-group {
+      margin-bottom: 24px;
+    }
+    .change-group-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--nws-teal-dark);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 10px;
+    }
+    .change-list {
+      list-style: none;
+    }
+    .change-list li {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      font-family: 'Libre Baskerville', 'Times New Roman', serif;
+      font-size: 14px;
+      line-height: 1.65;
+      color: var(--nws-gray-dark);
+      padding: 6px 0;
+      border-bottom: 1px solid var(--nws-gray-light);
+    }
+    .change-list li:last-child { border-bottom: none; }
+    .change-list li::before {
+      content: '–';
+      color: var(--nws-green);
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .change-note {
+      font-size: 12px;
+      color: var(--nws-gray-med);
+      font-family: 'Montserrat', Arial, sans-serif;
+      font-weight: 400;
+      display: block;
+      margin-top: 2px;
+    }
+
+    /* ── DECISIONS BLOCK ── */
+    .decisions {
+      background: #fff;
+      border: 1px solid var(--nws-gray-light);
+      border-top: 3px solid var(--nws-teal);
+      padding: 20px 24px;
+      margin-bottom: 24px;
+    }
+    .decisions h4 {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--nws-teal);
+      margin-bottom: 12px;
+    }
+    .decision-list { list-style: none; }
+    .decision-list li {
+      font-family: 'Libre Baskerville', 'Times New Roman', serif;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--nws-gray-dark);
+      padding: 5px 0;
+      border-bottom: 1px solid var(--nws-gray-light);
+      display: flex;
+      gap: 10px;
+      align-items: baseline;
+    }
+    .decision-list li:last-child { border-bottom: none; }
+    .decision-list li::before {
+      content: '›';
+      color: var(--nws-teal);
+      font-size: 16px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .decision-status {
+      font-family: 'Montserrat', Arial, sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 1px;
+      flex-shrink: 0;
+    }
+    .status-approved  { background: var(--nws-pale-sage); color: var(--nws-forest); }
+    .status-deferred  { background: #fff3cd; color: #856404; }
+    .status-open      { background: #f8d7da; color: #721c24; }
+
+    /* ── OPEN ITEMS ── */
+    .open-items {
+      background: #fff;
+      border: 1px solid var(--nws-gray-light);
+      border-top: 3px solid var(--nws-gold);
+      padding: 20px 24px;
+      margin-bottom: 24px;
+    }
+    .open-items h4 {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--nws-gold);
+      margin-bottom: 12px;
+    }
+
+    /* ── PHASE ROADMAP ── */
+    .roadmap {
+      background: var(--nws-teal-dark);
+      color: #fff;
+      padding: 20px 24px;
+      margin-bottom: 48px;
+    }
+    .roadmap h4 {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.5);
+      margin-bottom: 14px;
+    }
+    .roadmap-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    .roadmap-phase { }
+    .roadmap-phase .phase-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--nws-green);
+      margin-bottom: 6px;
+    }
+    .roadmap-phase .phase-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+    .roadmap-phase ul {
+      list-style: none;
+      font-size: 12px;
+      color: rgba(255,255,255,.65);
+      line-height: 1.7;
+    }
+    .roadmap-phase ul li::before {
+      content: '· ';
+      color: var(--nws-green);
+    }
+    .phase-current .phase-label { color: var(--nws-gold); }
+    .phase-current .phase-title { color: var(--nws-gold); }
+
+    /* ── FOOTER ── */
+    .site-footer {
+      background: var(--nws-gray-light);
+      border-top: 1px solid #ccc;
+      padding: 16px 80px;
+    }
+    .site-footer p {
+      max-width: 860px;
+      margin: 0 auto;
+      font-size: 13px;
+      color: var(--nws-gray-med);
+    }
+
+    @media (max-width: 700px) {
+      .header, .grey-stripe, .page-body, .site-footer { padding-left: 20px; padding-right: 20px; }
+      .roadmap-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-inner">
+      <p class="header-eyebrow">Scout Troop 79 &mdash; Milwaukee, WI</p>
+      <h1>Website Changelog</h1>
+      <p class="header-sub">Prototype progress, design decisions, and open items</p>
+    </div>
+  </div>
+
+  <!-- GREY STRIPE -->
+  <div class="grey-stripe">
+    <div class="grey-stripe-inner">
+      <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Prototyping &mdash; Phase 1</strong></p>
+      <p>Last updated: <strong>April 2, 2026</strong></p>
+    </div>
+  </div>
+
+  <!-- PAGE BODY -->
+  <div class="page-body">
+
+    <!-- PHASE ROADMAP -->
+    <div class="roadmap">
+      <h4>Project Roadmap</h4>
+      <div class="roadmap-grid">
+        <div class="roadmap-phase phase-current">
+          <p class="phase-label">Phase 1 &mdash; Current</p>
+          <p class="phase-title">Prototype</p>
+          <ul>
+            <li>Home &amp; News Feed</li>
+            <li>This Week&rsquo;s Meeting</li>
+            <li>News Archive</li>
+            <li>Events &amp; Calendar</li>
+            <li>Event Registration</li>
+            <li>Resource Library</li>
+            <li>About &amp; Join</li>
+          </ul>
+        </div>
+        <div class="roadmap-phase">
+          <p class="phase-label">Phase 2 &mdash; Deferred</p>
+          <p class="phase-title">Authentication</p>
+          <ul>
+            <li>Members Login</li>
+            <li>Private advancement view</li>
+            <li>Role-based access</li>
+          </ul>
+        </div>
+        <div class="roadmap-phase">
+          <p class="phase-label">Phase 3 &mdash; Deferred</p>
+          <p class="phase-title">Advancement Tracker</p>
+          <ul>
+            <li>Google Sheets integration</li>
+            <li>Public masked-name view</li>
+            <li>Private real-name view</li>
+            <li>Rank &amp; merit badge data</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v0.2 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v0.2</span>
+        <span class="release-date">April 2, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Polish</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">UI Refinements</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>&ldquo;More This Week&rdquo; story cards</strong> now render with full visual separation &mdash; white background, 1px border on all sides, 3px top accent border (turns forest green on hover), and 18px gaps between cards.
+              <span class="change-note">Previous: flush grid with 1px hairline dividers only. Cards now read as distinct, hoverable units.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Navigation:</strong> Added &ldquo;This Week&rsquo;s Meeting&rdquo; as the second nav item, between Home and News Archive.
+              <span class="change-note">Reflects the troop&rsquo;s primary weekly use case &mdash; quick access to meeting agendas.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Tertiary story list:</strong> Replaced sequential numbers with small filled forest-green dot bullets.
+              <span class="change-note">Numbers implied ranking/priority, which was not the intent. Dots provide visual rhythm without false hierarchy.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v0.1 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v0.1</span>
+        <span class="release-date">April 2, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Home / News Feed Prototype</p>
+        <ul class="change-list">
+          <li>Utility bar with date, location, and Members Login link</li>
+          <li>Warm cream masthead &mdash; logo left, &ldquo;Scout Troop 79&rdquo; wordmark center, tagline right. Light treatment, not dark bar.</li>
+          <li>Sticky navigation with hover and active states</li>
+          <li>&ldquo;This Week in Troop 79&rdquo; section header with week label and date stamp</li>
+          <li>Hero story with gradient placeholder image, category tag, headline, byline, summary, Read More link</li>
+          <li>Sidebar: upcoming events with date blocks, quick links list, advancement tracker teaser panel</li>
+          <li>3-column secondary story grid with category tags, headlines, summaries</li>
+          <li>Tertiary story list with 5 additional news items</li>
+          <li>Footer in navy with logo, navigation columns, contact links, copyright</li>
+          <li>Responsive breakpoints: 768px tablet, 375px mobile with hamburger navigation</li>
+          <li>WCAG 2.1 AA: semantic HTML, ARIA labels, keyboard navigation, focus states</li>
+        </ul>
+      </div>
+
+      <!-- Design Decisions -->
+      <div class="decisions">
+        <h4>Design Decisions &mdash; Approved This Session</h4>
+        <ul class="decision-list">
+          <li>
+            <span class="decision-status status-approved">Approved</span>
+            <span><strong>Visual reference:</strong> New York Times homepage layout &mdash; editorial grid, dominant hero, weekly rotation cadence</span>
+          </li>
+          <li>
+            <span class="decision-status status-approved">Approved</span>
+            <span><strong>Masthead treatment:</strong> Warm, light cream background with navy accents. Logo left-aligned. Not a dark header bar.</span>
+          </li>
+          <li>
+            <span class="decision-status status-approved">Approved</span>
+            <span><strong>Color palette:</strong> Deep navy (#1e3a4a) from logo as primary; forest green (#3d5a3e), warm bark (#8b6914), cream (#faf6ef), newsprint (#f4efe6)</span>
+          </li>
+          <li>
+            <span class="decision-status status-approved">Approved</span>
+            <span><strong>Typography:</strong> Playfair Display (headlines), Lora (body), Open Sans (UI/labels)</span>
+          </li>
+          <li>
+            <span class="decision-status status-approved">Approved</span>
+            <span><strong>CMS:</strong> WordPress on managed hosting (SiteGround or WP Engine, ~$15&ndash;30/month). Multiple editors via role-based access.</span>
+          </li>
+          <li>
+            <span class="decision-status status-deferred">Deferred</span>
+            <span><strong>Authentication:</strong> Members login and private advancement view deferred to Phase 2</span>
+          </li>
+          <li>
+            <span class="decision-status status-deferred">Deferred</span>
+            <span><strong>Advancement Tracker:</strong> Google Sheets integration deferred to Phase 3. User will share spreadsheet when closer.</span>
+          </li>
+          <li>
+            <span class="decision-status status-approved">Approved</span>
+            <span><strong>Payment:</strong> Venmo and PayPal links only &mdash; no payment gateway required</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Open Items -->
+      <div class="open-items">
+        <h4>Open Items</h4>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Real photography:</strong> Scout event photos needed to replace gradient placeholders in story cards and hero image.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Advancement prototype:</strong> User has an existing advancement tracker prototype to share. Needed before building the Advancement Dashboard screen.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Remaining screens:</strong> This Week&rsquo;s Meeting, News Archive, Events &amp; Calendar, Event Registration, Resource Library, and About &amp; Join are not yet prototyped.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div><!-- /release v0.1 -->
+
+  </div><!-- /page-body -->
+
+  <!-- FOOTER -->
+  <div class="site-footer">
+    <p>Scout Troop 79 Website &mdash; Internal Prototype Changelog &nbsp;&middot;&nbsp; Generated April 2, 2026</p>
+  </div>
+
+</body>
+</html>
