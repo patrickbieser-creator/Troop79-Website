@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calendar &mdash; Scout Troop 79</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── TOKENS ──────────────────────────────────────────────── */
+    :root {
+      --navy:           #1e3a4a;
+      --navy-mid:       #2a4f63;
+      --navy-light:     #3a6478;
+      --forest:         #3d5a3e;
+      --forest-light:   #527554;
+      --khaki:          #c4a882;
+      --khaki-light:    #ddd0bb;
+      --bark:           #8b6914;
+      --bark-light:     #a98020;
+      --cream:          #faf6ef;
+      --newsprint:      #f4efe6;
+      --warm-white:     #ffffff;
+      --text-head:      #1a1a1a;
+      --text-body:      #363636;
+      --text-meta:      #787060;
+      --border-light:   #e2d9cc;
+      --border-mid:     #c8bfaf;
+      --shadow-card:    0 1px 4px rgba(30,58,74,.08), 0 2px 12px rgba(30,58,74,.06);
+      --shadow-hover:   0 4px 20px rgba(30,58,74,.14);
+      --transition:     .18s ease;
+
+      /* Event type colors */
+      --clr-meeting:      #1e3a4a;
+      --clr-no-meeting:   #a0978a;
+      --clr-campout:      #3d5a3e;
+      --clr-high-adv:     #2d6a4f;
+      --clr-summer-camp:  #527554;
+      --clr-service:      #6a5d3a;
+      --clr-outing:       #4a6741;
+      --clr-fundraiser:   #8b6914;
+      --clr-court:        #5a3d6a;
+      --clr-committee:    #4c5c6a;
+    }
+
+    /* ─── RESET ───────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; scroll-behavior: smooth; }
+    body {
+      font-family: 'Lora', Georgia, serif;
+      background: var(--newsprint);
+      color: var(--text-body);
+      min-height: 100vh;
+    }
+    a { text-decoration: none; color: inherit; }
+
+    /* ─── UTILITY BAR ─────────────────────────────────────────── */
+    .utility-bar {
+      background: var(--newsprint);
+      border-bottom: 1px solid var(--border-light);
+      padding: 6px 0;
+    }
+    .utility-inner {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .utility-bar span, .utility-bar a {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 11px;
+      color: var(--text-meta);
+      letter-spacing: .03em;
+    }
+    .utility-bar a:hover { color: var(--forest); }
+    .utility-date { font-weight: 600; }
+    .utility-links { display: flex; gap: 16px; }
+    .utility-login {
+      font-weight: 600;
+      color: var(--navy) !important;
+      border: 1px solid var(--border-mid);
+      padding: 3px 10px;
+      border-radius: 2px;
+      transition: background var(--transition), color var(--transition);
+    }
+    .utility-login:hover {
+      background: var(--navy) !important;
+      color: var(--warm-white) !important;
+      border-color: var(--navy);
+    }
+
+    /* ─── MASTHEAD ────────────────────────────────────────────── */
+    .masthead {
+      background: var(--cream);
+      border-bottom: 2px solid var(--border-mid);
+      padding: 18px 0 14px;
+    }
+    .masthead-inner {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .masthead-logo img {
+      height: 72px;
+      width: auto;
+      flex-shrink: 0;
+    }
+    .masthead-wordmark { flex: 1; }
+    .masthead-wordmark .site-name {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 38px;
+      font-weight: 700;
+      color: var(--navy);
+      letter-spacing: -.01em;
+      line-height: 1.1;
+    }
+    .masthead-wordmark .site-sub {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--text-meta);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      margin-top: 3px;
+    }
+    .masthead-rule {
+      width: 1px;
+      height: 52px;
+      background: var(--border-mid);
+      flex-shrink: 0;
+    }
+    .masthead-tagline {
+      font-family: 'Lora', Georgia, serif;
+      font-style: italic;
+      font-size: 13px;
+      color: var(--text-meta);
+      max-width: 180px;
+      line-height: 1.5;
+    }
+
+    /* ─── NAVIGATION ──────────────────────────────────────────── */
+    .main-nav {
+      background: var(--warm-white);
+      border-bottom: 1px solid var(--border-light);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 1px 6px rgba(0,0,0,.06);
+    }
+    .nav-inner {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-links {
+      display: flex;
+      list-style: none;
+      gap: 0;
+    }
+    .nav-links li a {
+      display: block;
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-head);
+      padding: 14px 16px;
+      border-bottom: 3px solid transparent;
+      transition: color var(--transition), border-color var(--transition);
+      letter-spacing: .02em;
+    }
+    .nav-links li a:hover {
+      color: var(--forest);
+      border-bottom-color: var(--forest);
+    }
+    .nav-links li a.active {
+      color: var(--navy);
+      border-bottom-color: var(--navy);
+    }
+    .nav-search {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .nav-search input {
+      border: 1px solid var(--border-mid);
+      border-radius: 2px;
+      padding: 6px 10px;
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 12px;
+      color: var(--text-body);
+      background: var(--newsprint);
+      width: 160px;
+      outline: none;
+      transition: border-color var(--transition), width var(--transition);
+    }
+    .nav-search input:focus { border-color: var(--navy); width: 200px; }
+    .nav-search input::placeholder { color: var(--text-meta); }
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      cursor: pointer;
+      padding: 14px 0;
+      background: none;
+      border: none;
+    }
+    .hamburger span {
+      display: block;
+      width: 24px;
+      height: 2px;
+      background: var(--text-head);
+      border-radius: 2px;
+      transition: transform var(--transition), opacity var(--transition);
+    }
+
+    /* ─── PAGE HEADER ─────────────────────────────────────────── */
+    .page-header {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 32px 24px 0;
+    }
+    .page-header h1 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--text-head);
+      letter-spacing: -.01em;
+      margin-bottom: 6px;
+    }
+    .page-header-meta {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .page-header-meta span {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 12px;
+      color: var(--text-meta);
+    }
+    .subscribe-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--warm-white);
+      background: var(--forest);
+      padding: 6px 14px;
+      border-radius: 2px;
+      border: none;
+      cursor: pointer;
+      transition: background var(--transition);
+    }
+    .subscribe-btn:hover { background: var(--forest-light); }
+    .subscribe-btn svg { width: 14px; height: 14px; fill: currentColor; }
+    .page-header-rule {
+      height: 2px;
+      background: var(--border-mid);
+    }
+
+    /* ─── CALENDAR LAYOUT ─────────────────────────────────────── */
+    .calendar-container {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 24px 60px;
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 0;
+    }
+    .calendar-main {
+      padding: 24px 28px 24px 0;
+      border-right: 1px solid var(--border-light);
+    }
+    .calendar-sidebar {
+      padding: 24px 0 24px 28px;
+    }
+
+    /* ─── MONTH GROUP ─────────────────────────────────────────── */
+    .month-group {
+      margin-bottom: 32px;
+    }
+    .month-label {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--navy);
+      border-bottom: 2px solid var(--navy);
+      padding-bottom: 6px;
+      margin-bottom: 0;
+    }
+
+    /* ─── EVENT ROW ───────────────────────────────────────────── */
+    .event-row {
+      display: grid;
+      grid-template-columns: 64px 1fr;
+      gap: 0;
+      border-bottom: 1px solid var(--border-light);
+      transition: background var(--transition);
+    }
+    .event-row:hover { background: rgba(250,246,239,.6); }
+
+    .event-row--no-meeting { opacity: .55; }
+    .event-row--highlight {
+      background: rgba(61,90,62,.04);
+      border-left: 3px solid var(--forest);
+      margin-left: -3px;
+    }
+
+    .event-date-col {
+      padding: 14px 12px 14px 0;
+      text-align: right;
+      border-right: 1px solid var(--border-light);
+    }
+    .event-date-num {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-head);
+      line-height: 1;
+    }
+    .event-date-day {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-meta);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-top: 2px;
+    }
+    .event-date-range {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 10px;
+      color: var(--text-meta);
+      margin-top: 1px;
+    }
+
+    .event-detail-col {
+      padding: 14px 0 14px 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .event-type-pip {
+      flex-shrink: 0;
+      width: 4px;
+      min-height: 28px;
+      border-radius: 2px;
+      margin-top: 1px;
+    }
+
+    .event-detail-text { flex: 1; }
+
+    .event-type-label {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    .event-detail-title {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-head);
+      line-height: 1.35;
+    }
+    .event-detail-desc {
+      font-family: 'Lora', Georgia, serif;
+      font-size: 13px;
+      color: var(--text-meta);
+      line-height: 1.5;
+      margin-top: 2px;
+    }
+
+    /* ─── TYPE COLOR CLASSES ──────────────────────────────────── */
+    .type-troop-meeting .event-type-pip    { background: var(--clr-meeting); }
+    .type-troop-meeting .event-type-label  { color: var(--clr-meeting); }
+
+    .type-no-meeting .event-type-pip       { background: var(--clr-no-meeting); }
+    .type-no-meeting .event-type-label     { color: var(--clr-no-meeting); }
+
+    .type-campout .event-type-pip          { background: var(--clr-campout); }
+    .type-campout .event-type-label        { color: var(--clr-campout); }
+
+    .type-high-adventure .event-type-pip   { background: var(--clr-high-adv); }
+    .type-high-adventure .event-type-label { color: var(--clr-high-adv); }
+
+    .type-summer-camp .event-type-pip      { background: var(--clr-summer-camp); }
+    .type-summer-camp .event-type-label    { color: var(--clr-summer-camp); }
+
+    .type-service-project .event-type-pip  { background: var(--clr-service); }
+    .type-service-project .event-type-label{ color: var(--clr-service); }
+
+    .type-outing .event-type-pip           { background: var(--clr-outing); }
+    .type-outing .event-type-label         { color: var(--clr-outing); }
+
+    .type-fundraiser .event-type-pip       { background: var(--clr-fundraiser); }
+    .type-fundraiser .event-type-label     { color: var(--clr-fundraiser); }
+
+    .type-court-of-honor .event-type-pip   { background: var(--clr-court); }
+    .type-court-of-honor .event-type-label { color: var(--clr-court); }
+
+    .type-committee .event-type-pip        { background: var(--clr-committee); }
+    .type-committee .event-type-label      { color: var(--clr-committee); }
+
+    /* ─── SIDEBAR ─────────────────────────────────────────────── */
+    .sidebar-module { margin-bottom: 28px; }
+    .sidebar-module-title {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--navy);
+      border-bottom: 2px solid var(--navy);
+      padding-bottom: 6px;
+      margin-bottom: 14px;
+    }
+
+    /* Legend */
+    .legend-list { list-style: none; }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 0;
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 12px;
+      color: var(--text-body);
+    }
+    .legend-pip {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    /* Next up card */
+    .next-up-card {
+      background: var(--navy);
+      color: #fff;
+      padding: 18px;
+      border-radius: 2px;
+    }
+    .next-up-card h4 {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      opacity: .6;
+      margin-bottom: 10px;
+    }
+    .next-up-date {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.15;
+      margin-bottom: 4px;
+    }
+    .next-up-title {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      opacity: .95;
+    }
+    .next-up-desc {
+      font-family: 'Lora', Georgia, serif;
+      font-size: 13px;
+      opacity: .7;
+      line-height: 1.5;
+    }
+    .next-up-details {
+      list-style: none;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255,255,255,.15);
+    }
+    .next-up-details li {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 12px;
+      color: rgba(255,255,255,.7);
+      padding: 3px 0;
+      display: flex;
+      gap: 6px;
+    }
+    .next-up-details li strong {
+      color: rgba(255,255,255,.9);
+      font-weight: 600;
+      min-width: 70px;
+    }
+
+    /* iCal info */
+    .ical-info {
+      background: var(--warm-white);
+      border: 1px solid var(--border-light);
+      border-top: 3px solid var(--forest);
+      padding: 16px;
+      border-radius: 2px;
+    }
+    .ical-info h4 {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-head);
+      margin-bottom: 6px;
+    }
+    .ical-info p {
+      font-family: 'Lora', Georgia, serif;
+      font-size: 13px;
+      color: var(--text-meta);
+      line-height: 1.5;
+      margin-bottom: 10px;
+    }
+
+    /* ─── FOOTER ──────────────────────────────────────────────── */
+    .site-footer {
+      background: var(--navy);
+      color: rgba(255,255,255,.75);
+      padding: 40px 0 20px;
+      margin-top: 40px;
+    }
+    .footer-inner {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 1fr;
+      gap: 40px;
+      margin-bottom: 32px;
+    }
+    .footer-logo-block img {
+      height: 56px;
+      margin-bottom: 12px;
+      opacity: .9;
+    }
+    .footer-logo-block p {
+      font-family: 'Lora', Georgia, serif;
+      font-size: 13px;
+      line-height: 1.6;
+      color: rgba(255,255,255,.6);
+    }
+    .footer-col h4 {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.5);
+      margin-bottom: 14px;
+    }
+    .footer-col ul { list-style: none; }
+    .footer-col ul li {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+    .footer-col ul li a {
+      color: rgba(255,255,255,.7);
+      transition: color var(--transition);
+    }
+    .footer-col ul li a:hover { color: #fff; }
+    .footer-bottom {
+      border-top: 1px solid rgba(255,255,255,.15);
+      padding-top: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .footer-bottom p {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 11px;
+      color: rgba(255,255,255,.4);
+    }
+    .footer-bottom a {
+      color: rgba(255,255,255,.5);
+      transition: color var(--transition);
+    }
+    .footer-bottom a:hover { color: rgba(255,255,255,.9); }
+
+    /* ─── RESPONSIVE — TABLET ─────────────────────────────────── */
+    @media (max-width: 900px) {
+      .calendar-container {
+        grid-template-columns: 1fr;
+      }
+      .calendar-main {
+        padding-right: 0;
+        border-right: none;
+      }
+      .calendar-sidebar {
+        padding-left: 0;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+      .footer-grid { grid-template-columns: 1fr 1fr; }
+      .footer-logo-block { grid-column: 1 / -1; }
+    }
+
+    /* ─── RESPONSIVE — MOBILE ─────────────────────────────────── */
+    @media (max-width: 600px) {
+      .utility-links { display: none; }
+      .masthead-rule, .masthead-tagline { display: none; }
+      .masthead-wordmark .site-name { font-size: 26px; }
+      .masthead-logo img { height: 52px; }
+      .nav-links { display: none; }
+      .nav-links.open {
+        display: flex;
+        flex-direction: column;
+        position: absolute;
+        top: 45px;
+        left: 0;
+        right: 0;
+        background: var(--warm-white);
+        box-shadow: 0 6px 20px rgba(0,0,0,.12);
+        z-index: 200;
+        padding: 8px 0;
+      }
+      .nav-links.open li a {
+        padding: 12px 24px;
+        border-bottom: 1px solid var(--border-light);
+        border-bottom-color: var(--border-light) !important;
+      }
+      .hamburger { display: flex; }
+      .nav-search { display: none; }
+      .main-nav .nav-inner { position: relative; }
+      .page-header h1 { font-size: 28px; }
+      .calendar-sidebar { grid-template-columns: 1fr; }
+      .event-row { grid-template-columns: 52px 1fr; }
+      .event-date-num { font-size: 20px; }
+      .event-detail-title { font-size: 13px; }
+      .footer-grid { grid-template-columns: 1fr; gap: 24px; }
+      .footer-bottom { flex-direction: column; gap: 8px; text-align: center; }
+    }
+
+    /* Focus styles */
+    a:focus-visible {
+      outline: 2px solid var(--forest);
+      outline-offset: 2px;
+      border-radius: 1px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── UTILITY BAR ──────────────────────────────────────────── -->
+  <div class="utility-bar" role="banner">
+    <div class="utility-inner">
+      <span class="utility-date" id="utilityDate"></span>
+      <div class="utility-links">
+        <a href="#">Milwaukee, WI</a>
+        <a href="#">Weather: 54&deg;F Partly Cloudy</a>
+        <a href="admin/meeting-editor.html" class="utility-login">Members Login</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MASTHEAD ─────────────────────────────────────────────── -->
+  <header class="masthead" role="banner">
+    <div class="masthead-inner">
+      <div class="masthead-logo">
+        <a href="index.html" aria-label="Troop 79 Home">
+          <img src="assets/images/troop-79-logo.png" alt="Scout Troop 79 &mdash; Milwaukee, WI" />
+        </a>
+      </div>
+      <div class="masthead-wordmark">
+        <h1 class="site-name"><a href="index.html">Scout Troop 79</a></h1>
+        <p class="site-sub">Milwaukee, Wisconsin &nbsp;&middot;&nbsp; Est. 2022</p>
+      </div>
+      <div class="masthead-rule" aria-hidden="true"></div>
+      <p class="masthead-tagline">Prepared. Courageous.<br>Ready for anything.</p>
+    </div>
+  </header>
+
+  <!-- ── NAVIGATION ───────────────────────────────────────────── -->
+  <nav class="main-nav" role="navigation" aria-label="Main navigation">
+    <div class="nav-inner">
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="meeting.html">Meeting</a></li>
+        <li><a href="#">News Archive</a></li>
+        <li><a href="calendar.html" class="active" aria-current="page">Events</a></li>
+        <li><a href="#">Resources</a></li>
+        <li><a href="#">Advancement</a></li>
+        <li><a href="#">About &amp; Join</a></li>
+      </ul>
+      <div class="nav-search">
+        <label for="siteSearch" class="sr-only">Search</label>
+        <input type="search" id="siteSearch" placeholder="Search Troop 79&hellip;" aria-label="Search" />
+      </div>
+      <button class="hamburger" id="hamburger" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ── PAGE HEADER ──────────────────────────────────────────── -->
+  <div class="page-header">
+    <h1>Troop 79 Calendar</h1>
+    <div class="page-header-meta">
+      <span id="calUpdated"></span>
+      <span>&middot;</span>
+      <span>Source: Troop 79 Bugle</span>
+      <button class="subscribe-btn" id="subscribeBtn" aria-label="Subscribe to calendar feed">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg>
+        Subscribe to Calendar
+      </button>
+    </div>
+    <div class="page-header-rule"></div>
+  </div>
+
+  <!-- ── CALENDAR + SIDEBAR ───────────────────────────────────── -->
+  <div class="calendar-container">
+
+    <!-- Main Calendar -->
+    <div class="calendar-main" id="calendarMain">
+      <!-- Rendered by JS -->
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="calendar-sidebar">
+
+      <!-- Next Up -->
+      <div class="sidebar-module" id="nextUpModule">
+        <!-- Rendered by JS -->
+      </div>
+
+      <!-- Legend -->
+      <div class="sidebar-module">
+        <h3 class="sidebar-module-title">Event Types</h3>
+        <ul class="legend-list">
+          <li class="legend-item"><span class="legend-pip" style="background:var(--clr-meeting)"></span> Troop Meeting</li>
+          <li class="legend-item"><span class="legend-pip" style="background:var(--clr-campout)"></span> Campout</li>
+          <li class="legend-item"><span class="legend-pip" style="background:var(--clr-high-adv)"></span> High Adventure</li>
+          <li class="legend-item"><span class="legend-pip" style="background:var(--clr-summer-camp)"></span> Summer Camp</li>
+          <li class="legend-item"><span class="legend-pip" style="background:var(--clr-service)"></span> Service Project</li>
+          <li class="legend-item"><span class="legend-pip" style="background:var(--clr-outing)"></span> Outing</li>
+          <li class="legend-item"><span class="legend-pip" style="background:var(--clr-fundraiser)"></span> Fundraiser</li>
+          <li class="legend-item"><span class="legend-pip" style="background:var(--clr-court)"></span> Court of Honor</li>
+          <li class="legend-item"><span class="legend-pip" style="background:var(--clr-no-meeting)"></span> No Meeting</li>
+        </ul>
+      </div>
+
+      <!-- iCal Subscribe -->
+      <div class="sidebar-module">
+        <div class="ical-info">
+          <h4>Sync Your Calendar</h4>
+          <p>Subscribe to the Bugle Calendar to automatically sync Troop 79 events with Google Calendar, Apple Calendar, or Outlook.</p>
+          <button class="subscribe-btn" id="subscribeBtn2">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:14px;height:14px;fill:currentColor"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg>
+            Subscribe
+          </button>
+        </div>
+      </div>
+
+    </aside>
+  </div>
+
+  <!-- ── FOOTER ────────────────────────────────────────────────── -->
+  <footer class="site-footer" role="contentinfo">
+    <div class="footer-inner">
+      <div class="footer-grid">
+        <div class="footer-logo-block">
+          <img src="assets/images/troop-79-logo.png" alt="Troop 79 Scout Logo" />
+          <p>Scout Troop 79 is a family troop serving scouts and families in Milwaukee, Wisconsin. We are chartered through Scouts America and welcome boys and girls of all backgrounds.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Navigate</h4>
+          <ul>
+            <li><a href="index.html">Home &amp; News</a></li>
+            <li><a href="#">News Archive</a></li>
+            <li><a href="calendar.html">Events &amp; Calendar</a></li>
+            <li><a href="#">Resource Library</a></li>
+            <li><a href="#">Advancement Tracker</a></li>
+            <li><a href="#">About &amp; Join</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Contact</h4>
+          <ul>
+            <li><a href="#">Scoutmaster Patrick Bieser</a></li>
+            <li><a href="#">Committee Chair</a></li>
+            <li><a href="#">New Member Inquiry</a></li>
+            <li><a href="admin/meeting-editor.html">Members Login</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 Scout Troop 79 &nbsp;&middot;&nbsp; Milwaukee, Wisconsin &nbsp;&middot;&nbsp; Scouts America</p>
+        <p><a href="#">Privacy</a> &nbsp;&middot;&nbsp; <a href="#">Accessibility</a> &nbsp;&middot;&nbsp; <a href="#">Sitemap</a></p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ── SCRIPTS ───────────────────────────────────────────────── -->
+  <script>
+    // ── Utility date ──
+    const now = new Date();
+    const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    document.getElementById('utilityDate').textContent = now.toLocaleDateString('en-US', opts);
+
+    // ── Type to CSS class map ──
+    const typeClassMap = {
+      'Troop Meeting':    'type-troop-meeting',
+      'No Meeting':       'type-no-meeting',
+      'Campout':          'type-campout',
+      'High Adventure':   'type-high-adventure',
+      'Summer Camp':      'type-summer-camp',
+      'Service Project':  'type-service-project',
+      'Outing':           'type-outing',
+      'Fundraiser':       'type-fundraiser',
+      'Court of Honor':   'type-court-of-honor',
+      'Committee Meeting':'type-committee',
+    };
+
+    const MONTHS = ['January','February','March','April','May','June',
+                    'July','August','September','October','November','December'];
+    const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+    function parseDate(str) {
+      const [y,m,d] = str.split('-').map(Number);
+      return new Date(y, m-1, d);
+    }
+
+    function formatDateRange(evt) {
+      const d = parseDate(evt.date);
+      if (!evt.endDate) return null;
+      const e = parseDate(evt.endDate);
+      const sm = MONTHS[d.getMonth()].slice(0,3);
+      const em = MONTHS[e.getMonth()].slice(0,3);
+      if (sm === em) return `${sm} ${d.getDate()}\u2013${e.getDate()}`;
+      return `${sm} ${d.getDate()} \u2013 ${em} ${e.getDate()}`;
+    }
+
+    // ── Load and render ──
+    fetch('data/calendar.json')
+      .then(r => r.json())
+      .then(data => {
+        // Updated label
+        const ud = parseDate(data.lastUpdated);
+        document.getElementById('calUpdated').textContent =
+          `Updated ${MONTHS[ud.getMonth()]} ${ud.getDate()}, ${ud.getFullYear()}`;
+
+        // Group by month
+        const grouped = {};
+        data.events.forEach(evt => {
+          const d = parseDate(evt.date);
+          const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+          if (!grouped[key]) grouped[key] = { label: `${MONTHS[d.getMonth()]} ${d.getFullYear()}`, events: [] };
+          grouped[key].events.push(evt);
+        });
+
+        // Render calendar
+        const container = document.getElementById('calendarMain');
+        container.innerHTML = '';
+
+        Object.keys(grouped).sort().forEach(key => {
+          const group = grouped[key];
+          const section = document.createElement('div');
+          section.className = 'month-group';
+
+          const label = document.createElement('h2');
+          label.className = 'month-label';
+          label.textContent = group.label;
+          section.appendChild(label);
+
+          group.events.forEach(evt => {
+            const d = parseDate(evt.date);
+            const typeClass = typeClassMap[evt.type] || 'type-troop-meeting';
+            const isNoMeeting = evt.type === 'No Meeting';
+            const isHighlight = ['Campout','High Adventure','Summer Camp','Court of Honor'].includes(evt.type);
+
+            const row = document.createElement('div');
+            row.className = 'event-row ' + typeClass;
+            if (isNoMeeting) row.classList.add('event-row--no-meeting');
+            if (isHighlight) row.classList.add('event-row--highlight');
+
+            // Date column
+            const dateCol = document.createElement('div');
+            dateCol.className = 'event-date-col';
+
+            const dateNum = document.createElement('div');
+            dateNum.className = 'event-date-num';
+            dateNum.textContent = d.getDate();
+            dateCol.appendChild(dateNum);
+
+            const dateDay = document.createElement('div');
+            dateDay.className = 'event-date-day';
+            dateDay.textContent = evt.dayNote || DAYS[d.getDay()];
+            dateCol.appendChild(dateDay);
+
+            if (evt.endDate) {
+              const range = document.createElement('div');
+              range.className = 'event-date-range';
+              range.textContent = formatDateRange(evt);
+              dateCol.appendChild(range);
+            }
+
+            row.appendChild(dateCol);
+
+            // Detail column
+            const detailCol = document.createElement('div');
+            detailCol.className = 'event-detail-col';
+
+            const pip = document.createElement('div');
+            pip.className = 'event-type-pip';
+            detailCol.appendChild(pip);
+
+            const textBlock = document.createElement('div');
+            textBlock.className = 'event-detail-text';
+
+            const typeLabel = document.createElement('div');
+            typeLabel.className = 'event-type-label';
+            typeLabel.textContent = evt.type;
+            textBlock.appendChild(typeLabel);
+
+            const title = document.createElement('div');
+            title.className = 'event-detail-title';
+            title.textContent = evt.title !== evt.type ? evt.title : '';
+            if (evt.title === evt.type) title.style.display = 'none';
+            textBlock.appendChild(title);
+
+            if (evt.description) {
+              const desc = document.createElement('div');
+              desc.className = 'event-detail-desc';
+              desc.textContent = evt.description;
+              textBlock.appendChild(desc);
+            }
+
+            detailCol.appendChild(textBlock);
+            row.appendChild(detailCol);
+
+            section.appendChild(row);
+          });
+
+          container.appendChild(section);
+        });
+
+        // ── Next Up card ──
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const upcoming = data.events
+          .filter(e => e.type !== 'No Meeting' && parseDate(e.date) >= today)
+          .sort((a,b) => parseDate(a.date) - parseDate(b.date));
+
+        const nextUpEl = document.getElementById('nextUpModule');
+        if (upcoming.length > 0) {
+          const next = upcoming[0];
+          const nd = parseDate(next.date);
+          nextUpEl.innerHTML = `
+            <div class="next-up-card">
+              <h4>Next Up</h4>
+              <div class="next-up-date">${MONTHS[nd.getMonth()]} ${nd.getDate()}</div>
+              <div class="next-up-title">${next.title}</div>
+              <div class="next-up-desc">${next.description || ''}</div>
+              <ul class="next-up-details">
+                <li><strong>Day</strong> ${DAYS[nd.getDay()]}${next.endDate ? ' \u2013 ' + DAYS[parseDate(next.endDate).getDay()] : ''}</li>
+                <li><strong>Type</strong> ${next.type}</li>
+                ${next.type === 'Troop Meeting' ? '<li><strong>Time</strong> 4:00 \u2013 5:30 PM</li><li><strong>Location</strong> Northwoods, 1572 E Capitol Dr</li>' : ''}
+              </ul>
+            </div>`;
+        }
+      })
+      .catch(err => {
+        console.error('Failed to load calendar:', err);
+        document.getElementById('calendarMain').innerHTML =
+          '<p style="padding:24px;color:var(--text-meta)">Calendar data could not be loaded.</p>';
+      });
+
+    // ── Mobile nav ──
+    const hamburger = document.getElementById('hamburger');
+    const navLinks  = document.getElementById('navLinks');
+    hamburger.addEventListener('click', () => {
+      const isOpen = navLinks.classList.toggle('open');
+      hamburger.setAttribute('aria-expanded', isOpen);
+    });
+    navLinks.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', () => {
+        navLinks.classList.remove('open');
+        hamburger.setAttribute('aria-expanded', 'false');
+      });
+    });
+    document.addEventListener('click', (e) => {
+      if (!hamburger.contains(e.target) && !navLinks.contains(e.target)) {
+        navLinks.classList.remove('open');
+        hamburger.setAttribute('aria-expanded', 'false');
+      }
+    });
+  </script>
+
+</body>
+</html>

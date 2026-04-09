@@ -317,7 +317,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Prototyping &mdash; Phase 1</strong></p>
-      <p>Last updated: <strong>April 2, 2026</strong></p>
+      <p>Last updated: <strong>April 9, 2026</strong></p>
     </div>
   </div>
 
@@ -360,6 +360,228 @@
             <li>Rank &amp; merit badge data</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v0.5 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v0.5</span>
+        <span class="release-date">April 9, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Meeting Archive &amp; Multi-Meeting Editor</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Multi-meeting archive:</strong> The editor now manages an ongoing record of every meeting in a single <code>meetings.json</code> array, replacing the single-meeting <code>meeting.json</code> format.
+              <span class="change-note">All meetings persist in localStorage between sessions and are exported together as one file.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Meetings dashboard:</strong> The editor opens to a table of all meetings (sorted newest first) with date, type badge, agenda summary, and per-row actions: Edit, Copy, Preview, Delete.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Copy meeting:</strong> Duplicates any past meeting and auto-bumps the date forward 7 days &mdash; designed for the weekly workflow of creating next Sunday&rsquo;s meeting from last week&rsquo;s template.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Preview any meeting:</strong> Preview button on each row opens the public meeting page with that specific meeting&rsquo;s data, regardless of date.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Public meeting page updated:</strong> <code>meeting.html</code> now loads from <code>meetings.json</code> (array), picks the next upcoming meeting automatically, and supports <code>?date=YYYY-MM-DD</code> to view any specific past meeting.
+              <span class="change-note">Backwards-compatible with legacy single-meeting format.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Sample data:</strong> <code>data/meetings.json</code> seeded with 3 meetings from the March 8, 15, and 22 Bugle issues.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v0.4 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v0.4</span>
+        <span class="release-date">April 9, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">This Week&rsquo;s Meeting Page</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>New page: <code>meeting.html</code></strong> &mdash; public-facing meeting display answering &ldquo;What&rsquo;s happening this Sunday?&rdquo; for parents and scouts.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>At-a-Glance card:</strong> Large date, time, color-coded uniform badge (navy = Class A, forest = Class B), Google Maps link for location, snack and patrol assignments, duty roster link.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Agenda timeline:</strong> Vertical timeline with time column and parallel track detection &mdash; when younger and older scout activities share the same time slot, they render side-by-side. Stacks on mobile.
+              <span class="change-note">Track badges: Open Advancement (forest), Merit Badge (bark), Event Prep (navy), Special (khaki). Scout names shown as first name + last initial.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Pre-meeting section:</strong> Conditional rendering with bark accent border for early advancement sessions and PLC meetings.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>No-meeting state:</strong> Full page replacement with centered notice, reason, and next meeting date.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Stale data detection:</strong> Automatic banner when the meeting date has passed.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Meeting Data Editor</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>New admin tool: <code>admin/meeting-editor.html</code></strong> &mdash; form-based editor for creating and editing meeting JSON data. Accessible from &ldquo;Members Login&rdquo; on all pages.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>6 collapsible form sections:</strong> Meeting Details (with no-meeting toggle), Pre-Meeting Activities, Agenda (dynamic items with scouts/requirements sub-lists and reorder), Announcements, Looking Ahead, Bugle Settings.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Actions:</strong> Save Draft, Load File, Preview (opens meeting page in new tab), Copy JSON, Download JSON. Autosave every 30 seconds.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Shared admin infrastructure:</strong> <code>editor-shared.css</code> and <code>editor-shared.js</code> provide reusable styles and utilities (file I/O, dynamic lists, localStorage drafts, toasts, collapsibles, login gate) for future editors.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="decisions">
+        <h4>Design Decisions &mdash; This Session</h4>
+        <ul class="decision-list">
+          <li>
+            <span class="decision-status status-approved">Approved</span>
+            <span><strong>Scout name format:</strong> First name + last initial (e.g., &ldquo;Finn P.&rdquo;) for public display. Full names deferred to Phase 2 authentication.</span>
+          </li>
+          <li>
+            <span class="decision-status status-approved">Approved</span>
+            <span><strong>Duty roster:</strong> Public. Linked on the meeting page.</span>
+          </li>
+          <li>
+            <span class="decision-status status-approved">Approved</span>
+            <span><strong>Patrol names:</strong> Fire Quacker, Shooting Star, Screaming Eagles, Buff Burritos. Defined as config arrays in the editor JS.</span>
+          </li>
+          <li>
+            <span class="decision-status status-approved">Approved</span>
+            <span><strong>Track categories:</strong> Open Advancement, Merit Badge, Event Prep, Special.</span>
+          </li>
+          <li>
+            <span class="decision-status status-approved">Approved</span>
+            <span><strong>Deployment:</strong> Vercel (static hosting with Git-based deploy). Editor exports JSON for commit/push workflow.</span>
+          </li>
+          <li>
+            <span class="decision-status status-approved">Approved</span>
+            <span><strong>Long-term vision:</strong> Reverse the workflow &mdash; publish to the website first, then auto-generate the Bugle email from the website data. Data model designed to be rich enough for future Bugle generation.</span>
+          </li>
+          <li>
+            <span class="decision-status status-approved">Approved</span>
+            <span><strong>Multi-meeting archive:</strong> All meetings stored in a single <code>meetings.json</code> array. Copy-from-previous workflow for weekly meeting creation.</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v0.3 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v0.3</span>
+        <span class="release-date">April 9, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Events &amp; Calendar Page</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>New page: <code>calendar.html</code></strong> &mdash; full calendar view with events grouped by month, matching the site&rsquo;s NYT-style editorial design.
+              <span class="change-note">Events are color-coded by type (9 categories), with dimmed &ldquo;No Meeting&rdquo; rows and highlighted multi-day events (campouts, high adventure, summer camp).</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Structured data: <code>data/calendar.json</code></strong> &mdash; 24 events from March through September 2026, sourced from the Troop 79 Bugle (March 21, 2026 issue).
+              <span class="change-note">Each event stores: date, optional end date, day note (for non-Sunday events), event type, title, and description. Designed for easy manual updates or future API integration.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Calendar sidebar</strong> with &ldquo;Next Up&rdquo; card (auto-selects next upcoming event), event type legend, and iCal subscribe prompt.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Homepage sidebar events</strong> now dynamically populated from <code>calendar.json</code>, showing the next 4 upcoming non-cancelled events.
+              <span class="change-note">Previously used hardcoded placeholder events. Events nav link now points to <code>calendar.html</code>.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Content Source Analysis</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Analyzed 3 recent Troop 79 Bugle emails (March 7, 15, 21) to identify consistent content patterns for the calendar, meeting agenda, and advancement sections.
+              <span class="change-note">Patterns documented and used to define data models for the calendar (this release) and meeting page (upcoming).</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Decisions -->
+      <div class="decisions">
+        <h4>Design Decisions &mdash; This Session</h4>
+        <ul class="decision-list">
+          <li>
+            <span class="decision-status status-approved">Approved</span>
+            <span><strong>Data source:</strong> Troop 79 Bugle email newsletter is the canonical source for calendar events, meeting agendas, and advancement updates.</span>
+          </li>
+          <li>
+            <span class="decision-status status-approved">Approved</span>
+            <span><strong>Calendar data format:</strong> JSON file (<code>data/calendar.json</code>) with flat event array, grouped by month at render time. Supports single-day and multi-day events.</span>
+          </li>
+          <li>
+            <span class="decision-status status-approved">Approved</span>
+            <span><strong>Event type taxonomy:</strong> 9 types &mdash; Troop Meeting, Campout, High Adventure, Summer Camp, Service Project, Outing, Fundraiser, Court of Honor, No Meeting.</span>
+          </li>
+        </ul>
       </div>
     </div>
 
@@ -476,7 +698,7 @@
           </li>
           <li>
             <span>
-              <strong>Remaining screens:</strong> This Week&rsquo;s Meeting, News Archive, Events &amp; Calendar, Event Registration, Resource Library, and About &amp; Join are not yet prototyped.
+              <strong>Remaining screens:</strong> News Archive, Event Registration, Resource Library, and About &amp; Join are not yet prototyped.
             </span>
           </li>
         </ul>
@@ -487,7 +709,7 @@
 
   <!-- FOOTER -->
   <div class="site-footer">
-    <p>Scout Troop 79 Website &mdash; Internal Prototype Changelog &nbsp;&middot;&nbsp; Generated April 2, 2026</p>
+    <p>Scout Troop 79 Website &mdash; Internal Prototype Changelog &nbsp;&middot;&nbsp; Generated April 9, 2026</p>
   </div>
 
 </body>

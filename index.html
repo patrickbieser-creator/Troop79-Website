@@ -827,7 +827,7 @@
       <div class="utility-links">
         <a href="#">Milwaukee, WI</a>
         <a href="#">Weather: 54°F Partly Cloudy</a>
-        <a href="#" class="utility-login">Members Login</a>
+        <a href="admin/meeting-editor.html" class="utility-login">Members Login</a>
       </div>
     </div>
   </div>
@@ -853,10 +853,10 @@
   <nav class="main-nav" role="navigation" aria-label="Main navigation">
     <div class="nav-inner">
       <ul class="nav-links" id="navLinks">
-        <li><a href="#" class="active" aria-current="page">Home</a></li>
-        <li><a href="#">This Week's Meeting</a></li>
+        <li><a href="index.html" class="active" aria-current="page">Home</a></li>
+        <li><a href="meeting.html">Meeting</a></li>
         <li><a href="#">News Archive</a></li>
-        <li><a href="#">Events</a></li>
+        <li><a href="calendar.html">Events</a></li>
         <li><a href="#">Resources</a></li>
         <li><a href="#">Advancement</a></li>
         <li><a href="#">About &amp; Join</a></li>
@@ -905,39 +905,10 @@
         <!-- Upcoming Events -->
         <div class="sidebar-module">
           <h3 class="sidebar-module-title">Upcoming Events</h3>
-          <ul class="event-list">
-            <li class="event-item">
-              <div class="event-date-block" aria-label="April 8">
-                <div class="e-month">Apr</div>
-                <div class="e-day">8</div>
-              </div>
-              <div class="event-info">
-                <p class="event-title"><a href="#">Weekly Troop Meeting</a></p>
-                <p class="event-meta">6:30&ndash;8:00 PM &middot; Scout Hut</p>
-              </div>
-            </li>
-            <li class="event-item">
-              <div class="event-date-block" aria-label="April 15">
-                <div class="e-month">Apr</div>
-                <div class="e-day">15</div>
-              </div>
-              <div class="event-info">
-                <p class="event-title"><a href="#">New Scout Orientation</a></p>
-                <p class="event-meta">6:00 PM &middot; Scout Hut</p>
-              </div>
-            </li>
-            <li class="event-item">
-              <div class="event-date-block" aria-label="April 18">
-                <div class="e-month">Apr</div>
-                <div class="e-day">18</div>
-              </div>
-              <div class="event-info">
-                <p class="event-title"><a href="#">Spring Campout &mdash; Sign Up Open</a></p>
-                <p class="event-meta">Fri&ndash;Sun &middot; Blue Mound State Park</p>
-              </div>
-            </li>
+          <ul class="event-list" id="sidebarEvents">
+            <!-- Populated by JS from calendar data -->
           </ul>
-          <a href="#" class="view-all-link">View full calendar &rarr;</a>
+          <a href="calendar.html" class="view-all-link">View full calendar &rarr;</a>
         </div>
 
         <!-- Quick Links -->
@@ -1136,6 +1107,45 @@
         this.setAttribute('aria-current', 'page');
       });
     });
+
+    // ── Sidebar events from calendar data ──
+    (function loadSidebarEvents() {
+      const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      fetch('data/calendar.json')
+        .then(r => r.json())
+        .then(data => {
+          const today = new Date();
+          today.setHours(0,0,0,0);
+          const upcoming = data.events
+            .filter(e => {
+              const d = new Date(e.date + 'T00:00:00');
+              return d >= today && e.type !== 'No Meeting';
+            })
+            .sort((a,b) => new Date(a.date) - new Date(b.date))
+            .slice(0, 4);
+
+          const list = document.getElementById('sidebarEvents');
+          if (!list || upcoming.length === 0) return;
+          list.innerHTML = '';
+
+          upcoming.forEach(evt => {
+            const d = new Date(evt.date + 'T00:00:00');
+            const li = document.createElement('li');
+            li.className = 'event-item';
+            li.innerHTML = `
+              <div class="event-date-block" aria-label="${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}">
+                <div class="e-month">${MONTHS_SHORT[d.getMonth()]}</div>
+                <div class="e-day">${d.getDate()}</div>
+              </div>
+              <div class="event-info">
+                <p class="event-title"><a href="calendar.html">${evt.title}</a></p>
+                <p class="event-meta">${evt.description || ''}</p>
+              </div>`;
+            list.appendChild(li);
+          });
+        })
+        .catch(() => {});
+    })();
   </script>
 
 </body>

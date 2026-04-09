@@ -1,0 +1,80 @@
+{
+  "meta": {
+    "lastUpdated": "2026-03-20T18:30:00",
+    "updatedBy": "Patrick B.",
+    "source": "Troop 79 Bugle - March 21, 2026"
+  },
+  "meeting": {
+    "date": "2026-03-22",
+    "time": "4:00 - 5:30 PM",
+    "uniform": "Class B",
+    "location": "Northwoods",
+    "locationAddress": "1572 E Capitol Drive, Milwaukee, WI",
+    "snack": "Popcorn",
+    "flagCeremony": "Fire Quacker",
+    "cleanup": "Screaming Eagles",
+    "dutyRosterUrl": "#"
+  },
+  "preMeeting": [
+    {
+      "title": "Early Advancement Extra",
+      "time": "1:30 PM",
+      "description": "Patrick will be at Northwoods starting at 1:30 to work with any scout, 8th grade or above, who would like to catch-up on 2nd Class or 1st Class requirements. Text Patrick (414-915-6423) if you plan to arrive early.",
+      "contact": { "name": "Patrick", "phone": "414-915-6423" }
+    }
+  ],
+  "agenda": [
+    {
+      "time": "4:00",
+      "title": "Flag Ceremony and Messages",
+      "description": "Opening flag ceremony and weekly announcements.",
+      "track": null,
+      "leader": null
+    },
+    {
+      "time": "4:10",
+      "title": "Patrol Meetings",
+      "description": "Patrol members will meet with their patrol leader to discuss and vote on the project the Troop will build as part of the upcoming Woodworking Merit Badge. The PLs will report the votes to the SPL.",
+      "track": null,
+      "leader": "Patrol Leaders"
+    },
+    {
+      "time": "4:20",
+      "title": "Troop Project",
+      "description": "The troop will head up to the 3rd floor to spend 15 minutes getting the room ready for Woodworking MB in April. There are tarps to fold and some stuff to move.",
+      "track": null,
+      "leader": null
+    },
+    {
+      "time": "4:40",
+      "title": "Tot'n Chip / Open Advancement",
+      "description": "Scouts who have not yet attended Summer Camp will earn their Tot'n Chip Award so they are ready to participate in Woodworking Merit Badge. Scouts not doing Tot'n Chip will work on Tenderfoot, 2nd Class and 1st Class requirements.",
+      "track": "Open Advancement",
+      "leader": null,
+      "scouts": []
+    },
+    {
+      "time": "4:40",
+      "title": "Citizenship in the World",
+      "description": "Older scouts completed requirement 6 with Nina Bendre last week. These scouts will report on their progress on requirement 7.",
+      "track": "Merit Badge",
+      "leader": "Nina Bendre",
+      "scouts": ["Anjali S.", "Finn P.", "Hazel S.", "Henry E.", "Jack P.", "Maya Lynn S.", "Ronnie K."],
+      "requirements": [
+        {
+          "id": "7",
+          "text": "Do Two of The Following: (a) Visit the Web site of the U.S. State Department. (b) Visit the Web site of an international news organization or foreign government. (c) Visit with a student or Scout from another country. (d) Attend a world Scout jamboree. (e) Participate in or attend an international event in your area.",
+          "source": "Citizenship in the World MB, Requirement 7"
+        }
+      ],
+      "resourceUrl": "#"
+    }
+  ],
+  "announcements": [],
+  "lookAhead": [
+    { "date": "2026-03-29", "title": "No Troop Meeting", "note": "Spring Break MPS" },
+    { "date": "2026-04-05", "title": "No Troop Meeting", "note": "Easter Sunday" },
+    { "date": "2026-04-12", "title": "Troop Meeting", "note": "Wood Working MB - Part I" }
+  ],
+  "noMeeting": null
+}

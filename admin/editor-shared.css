@@ -1,0 +1,956 @@
+/* ─── EDITOR SHARED STYLES ─────────────────────────────────
+   Reusable admin-tool styles for Troop 79 editors.
+   Design: clean, dense, professional — Open Sans, navy accent.
+   ──────────────────────────────────────────────────────────── */
+
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&display=swap');
+
+/* ─── TOKENS ─────────────────────────────────────────────── */
+:root {
+  --admin-navy:        #1e3a4a;
+  --admin-navy-light:  #2a5068;
+  --admin-navy-hover:  #163040;
+  --admin-forest:      #3d7a4a;
+  --admin-forest-dark: #2e6038;
+  --admin-danger:      #c0392b;
+  --admin-danger-hover:#a93226;
+  --admin-warning:     #d4a017;
+  --admin-info:        #2980b9;
+  --admin-bg:          #f5f6f8;
+  --admin-white:       #ffffff;
+  --admin-gray-50:     #fafbfc;
+  --admin-gray-100:    #f0f1f3;
+  --admin-gray-200:    #e2e4e8;
+  --admin-gray-300:    #cdd1d6;
+  --admin-gray-400:    #9ba1aa;
+  --admin-gray-500:    #6d7580;
+  --admin-gray-700:    #3a3f47;
+  --admin-gray-900:    #1a1d21;
+  --admin-radius:      4px;
+  --admin-radius-sm:   3px;
+  --admin-shadow-sm:   0 1px 3px rgba(0,0,0,.08);
+  --admin-shadow-md:   0 2px 8px rgba(0,0,0,.1);
+  --admin-shadow-lg:   0 4px 16px rgba(0,0,0,.12);
+  --admin-transition:  .15s ease;
+  --admin-font:        'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ─── RESET ──────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; }
+body {
+  font-family: var(--admin-font);
+  background: var(--admin-bg);
+  color: var(--admin-gray-700);
+  min-height: 100vh;
+  line-height: 1.5;
+}
+
+/* ─── ADMIN HEADER ───────────────────────────────────────── */
+.admin-header {
+  background: var(--admin-navy);
+  color: #fff;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+  position: sticky;
+  top: 0;
+  z-index: 500;
+  box-shadow: 0 2px 6px rgba(0,0,0,.15);
+}
+.admin-header-title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: .01em;
+  white-space: nowrap;
+}
+.admin-header-title span {
+  font-weight: 400;
+  opacity: .7;
+  margin: 0 6px;
+}
+.admin-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.admin-header-actions a,
+.admin-header-actions button {
+  font-family: var(--admin-font);
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255,255,255,.75);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+  transition: color var(--admin-transition);
+}
+.admin-header-actions a:hover,
+.admin-header-actions button:hover {
+  color: #fff;
+}
+
+/* ─── WORKFLOW BANNER ────────────────────────────────────── */
+.workflow-banner {
+  background: #eef4f8;
+  border-bottom: 1px solid var(--admin-gray-200);
+  padding: 10px 24px;
+  font-size: 12px;
+  color: var(--admin-gray-500);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.workflow-banner svg {
+  width: 14px;
+  height: 14px;
+  fill: var(--admin-info);
+  flex-shrink: 0;
+}
+.workflow-banner strong {
+  color: var(--admin-gray-700);
+  font-weight: 600;
+}
+
+/* ─── DRAFT BANNER ───────────────────────────────────────── */
+.draft-banner {
+  display: none;
+  background: #fef9e7;
+  border-bottom: 1px solid #f0e2a0;
+  padding: 12px 24px;
+  font-size: 13px;
+  color: var(--admin-gray-700);
+  align-items: center;
+  gap: 12px;
+}
+.draft-banner.visible {
+  display: flex;
+}
+.draft-banner svg {
+  width: 16px;
+  height: 16px;
+  fill: var(--admin-warning);
+  flex-shrink: 0;
+}
+.draft-banner-text {
+  flex: 1;
+}
+.draft-banner-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ─── FORM CONTAINER ─────────────────────────────────────── */
+.editor-body {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px 24px 100px;
+}
+
+/* ─── FORM SECTIONS (collapsible) ────────────────────────── */
+.form-section {
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  margin-bottom: 16px;
+  box-shadow: var(--admin-shadow-sm);
+}
+.form-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid transparent;
+  transition: background var(--admin-transition);
+}
+.form-section-header:hover {
+  background: var(--admin-gray-50);
+}
+.form-section.open .form-section-header {
+  border-bottom-color: var(--admin-gray-200);
+}
+.form-section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--admin-navy);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.form-section-title .section-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--admin-navy);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.form-section-chevron {
+  width: 18px;
+  height: 18px;
+  fill: var(--admin-gray-400);
+  transition: transform .2s ease;
+  flex-shrink: 0;
+}
+.form-section.open .form-section-chevron {
+  transform: rotate(180deg);
+}
+.form-section-body {
+  display: none;
+  padding: 20px;
+}
+.form-section.open .form-section-body {
+  display: block;
+}
+
+/* ─── FORM GROUP ─────────────────────────────────────────── */
+.form-group {
+  margin-bottom: 14px;
+}
+.form-group:last-child {
+  margin-bottom: 0;
+}
+.form-group label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--admin-gray-700);
+  margin-bottom: 4px;
+  letter-spacing: .01em;
+}
+.form-group label .optional {
+  font-weight: 400;
+  color: var(--admin-gray-400);
+  font-style: italic;
+  margin-left: 4px;
+}
+.form-group label .note {
+  font-weight: 400;
+  color: var(--admin-gray-400);
+  font-size: 11px;
+  display: block;
+  margin-top: 1px;
+}
+
+/* ─── FORM ROW (horizontal groups) ───────────────────────── */
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.form-row:last-child {
+  margin-bottom: 0;
+}
+.form-row .form-group {
+  margin-bottom: 0;
+}
+
+/* ─── INPUTS ─────────────────────────────────────────────── */
+input[type="text"],
+input[type="date"],
+input[type="url"],
+input[type="tel"],
+input[type="password"],
+input[type="email"],
+select,
+textarea {
+  width: 100%;
+  font-family: var(--admin-font);
+  font-size: 13px;
+  color: var(--admin-gray-900);
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  padding: 7px 10px;
+  outline: none;
+  transition: border-color var(--admin-transition), box-shadow var(--admin-transition);
+}
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--admin-navy-light);
+  box-shadow: 0 0 0 3px rgba(30,58,74,.1);
+}
+input::placeholder,
+textarea::placeholder {
+  color: var(--admin-gray-400);
+}
+textarea {
+  resize: vertical;
+  min-height: 60px;
+  line-height: 1.5;
+}
+select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239ba1aa'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+
+/* ─── CHECKBOX / TOGGLE ──────────────────────────────────── */
+.toggle-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.toggle-switch {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+}
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: var(--admin-gray-300);
+  border-radius: 11px;
+  cursor: pointer;
+  transition: background var(--admin-transition);
+}
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  transition: transform var(--admin-transition);
+}
+.toggle-switch input:checked + .toggle-slider {
+  background: var(--admin-danger);
+}
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(18px);
+}
+.toggle-switch input:focus-visible + .toggle-slider {
+  outline: 2px solid var(--admin-navy);
+  outline-offset: 2px;
+}
+.toggle-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--admin-gray-700);
+  cursor: pointer;
+}
+
+/* ─── LIST ITEM (dynamic list entry) ─────────────────────── */
+.list-item {
+  background: var(--admin-gray-50);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  padding: 16px;
+  margin-bottom: 12px;
+  position: relative;
+}
+.list-item:last-child {
+  margin-bottom: 0;
+}
+.list-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--admin-gray-200);
+}
+.list-item-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--admin-navy);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.list-item-controls {
+  display: flex;
+  gap: 4px;
+}
+.list-item-controls button {
+  font-family: var(--admin-font);
+  font-size: 11px;
+  padding: 3px 8px;
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-white);
+  color: var(--admin-gray-500);
+  cursor: pointer;
+  transition: all var(--admin-transition);
+  line-height: 1.4;
+}
+.list-item-controls button:hover {
+  background: var(--admin-gray-100);
+  color: var(--admin-gray-700);
+}
+.list-item-controls .btn-remove-item {
+  color: var(--admin-danger);
+  border-color: #e8c4c0;
+}
+.list-item-controls .btn-remove-item:hover {
+  background: #fdf0ef;
+  border-color: var(--admin-danger);
+}
+
+/* ─── SUB-LIST (nested dynamic list) ─────────────────────── */
+.sub-list {
+  margin-top: 8px;
+}
+.sub-list-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--admin-gray-500);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: 6px;
+}
+.sub-list-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sub-list-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.sub-list-row input,
+.sub-list-row textarea {
+  flex: 1;
+}
+.sub-list-row .btn-remove-sub {
+  font-family: var(--admin-font);
+  font-size: 16px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius-sm);
+  background: none;
+  color: var(--admin-gray-400);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--admin-transition);
+  line-height: 1;
+  padding: 0;
+}
+.sub-list-row .btn-remove-sub:hover {
+  color: var(--admin-danger);
+  border-color: var(--admin-danger);
+  background: #fdf0ef;
+}
+.btn-add-sub {
+  font-family: var(--admin-font);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--admin-navy);
+  background: none;
+  border: 1px dashed var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  padding: 4px 10px;
+  cursor: pointer;
+  margin-top: 6px;
+  transition: all var(--admin-transition);
+}
+.btn-add-sub:hover {
+  border-color: var(--admin-navy);
+  background: #f0f4f7;
+}
+
+/* Sub-list for requirements (multi-field rows) */
+.sub-list-req-row {
+  display: grid;
+  grid-template-columns: 70px 1fr;
+  gap: 6px;
+  align-items: start;
+  padding: 8px;
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius-sm);
+  position: relative;
+}
+.sub-list-req-row .req-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sub-list-req-row .btn-remove-sub {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+
+/* ─── BUTTONS ────────────────────────────────────────────── */
+.btn {
+  font-family: var(--admin-font);
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--admin-radius);
+  padding: 8px 16px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all var(--admin-transition);
+  white-space: nowrap;
+  line-height: 1.4;
+}
+.btn svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+.btn:focus-visible {
+  outline: 2px solid var(--admin-navy);
+  outline-offset: 2px;
+}
+.btn-primary {
+  background: var(--admin-navy);
+  color: #fff;
+}
+.btn-primary:hover {
+  background: var(--admin-navy-hover);
+}
+.btn-secondary {
+  background: var(--admin-white);
+  color: var(--admin-gray-700);
+  border: 1px solid var(--admin-gray-300);
+}
+.btn-secondary:hover {
+  background: var(--admin-gray-100);
+  border-color: var(--admin-gray-400);
+}
+.btn-success {
+  background: var(--admin-forest);
+  color: #fff;
+}
+.btn-success:hover {
+  background: var(--admin-forest-dark);
+}
+.btn-danger {
+  background: var(--admin-white);
+  color: var(--admin-danger);
+  border: 1px solid #e8c4c0;
+}
+.btn-danger:hover {
+  background: #fdf0ef;
+  border-color: var(--admin-danger);
+}
+.btn-sm {
+  font-size: 12px;
+  padding: 5px 12px;
+}
+
+/* Add item button (full-width dashed) */
+.btn-add-item {
+  font-family: var(--admin-font);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--admin-navy);
+  background: none;
+  border: 2px dashed var(--admin-gray-300);
+  border-radius: var(--admin-radius);
+  padding: 10px;
+  width: 100%;
+  cursor: pointer;
+  margin-top: 12px;
+  transition: all var(--admin-transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.btn-add-item:hover {
+  border-color: var(--admin-navy);
+  background: #f0f4f7;
+}
+
+/* ─── ACTIONS BAR (sticky bottom) ────────────────────────── */
+.actions-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--admin-white);
+  border-top: 1px solid var(--admin-gray-200);
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  z-index: 400;
+  box-shadow: 0 -2px 8px rgba(0,0,0,.06);
+}
+.actions-bar-inner {
+  max-width: 960px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.actions-bar-spacer {
+  flex: 1;
+}
+.autosave-status {
+  font-size: 11px;
+  color: var(--admin-gray-400);
+  white-space: nowrap;
+}
+.autosave-status.saved {
+  color: var(--admin-forest);
+}
+
+/* Hidden file input */
+.file-input-hidden {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+/* ─── TOAST NOTIFICATIONS ────────────────────────────────── */
+.toast-container {
+  position: fixed;
+  bottom: 70px;
+  right: 24px;
+  z-index: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+.toast {
+  font-family: var(--admin-font);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: var(--admin-radius);
+  color: #fff;
+  box-shadow: var(--admin-shadow-lg);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity .25s ease, transform .25s ease;
+  pointer-events: auto;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+.toast.success { background: var(--admin-forest); }
+.toast.error { background: var(--admin-danger); }
+.toast.info { background: var(--admin-navy); }
+
+/* ─── LOGIN OVERLAY ──────────────────────────────────────── */
+.login-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--admin-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.login-overlay.hidden {
+  display: none;
+}
+.login-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: var(--admin-navy);
+  height: 48px;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+}
+.login-header-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+}
+.login-card {
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow-lg);
+  padding: 36px 32px 28px;
+  width: 100%;
+  max-width: 380px;
+}
+.login-card h2 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--admin-navy);
+  margin-bottom: 4px;
+}
+.login-card p {
+  font-size: 13px;
+  color: var(--admin-gray-500);
+  margin-bottom: 20px;
+}
+.login-card .form-group {
+  margin-bottom: 14px;
+}
+.login-card .btn-primary {
+  width: 100%;
+  justify-content: center;
+  padding: 10px;
+  margin-top: 4px;
+}
+.login-error {
+  display: none;
+  font-size: 12px;
+  color: var(--admin-danger);
+  margin-top: 8px;
+}
+
+/* ─── NO MEETING FIELDS TOGGLE ───────────────────────────── */
+.meeting-fields { }
+.no-meeting-fields { display: none; }
+.no-meeting-active .meeting-fields { display: none; }
+.no-meeting-active .no-meeting-fields { display: block; }
+
+/* ─── RESPONSIVE ─────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .admin-header {
+    padding: 0 16px;
+  }
+  .editor-body {
+    padding: 16px 12px 100px;
+  }
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  .actions-bar {
+    padding: 10px 12px;
+  }
+  .actions-bar-inner {
+    justify-content: center;
+  }
+  .actions-bar .btn {
+    font-size: 12px;
+    padding: 7px 12px;
+  }
+  .autosave-status {
+    width: 100%;
+    text-align: center;
+    order: -1;
+  }
+  .list-item {
+    padding: 12px;
+  }
+  .sub-list-req-row {
+    grid-template-columns: 1fr;
+  }
+  .workflow-banner {
+    padding: 10px 16px;
+  }
+}
+
+/* ─── FOCUS STYLES ───────────────────────────────────────── */
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--admin-navy);
+  outline-offset: 2px;
+}
+
+/* ─── MEETINGS LIST VIEW ────────────────────────────────── */
+.list-view {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 24px 80px;
+}
+.list-view.hidden { display: none; }
+.editor-body.hidden { display: none; }
+.actions-bar.hidden { display: none; }
+
+.list-view-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.list-view-header h2 {
+  font-family: 'Open Sans', Arial, sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--admin-gray-800);
+}
+.btn-new-meeting {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Open Sans', Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--admin-forest);
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background .15s;
+}
+.btn-new-meeting:hover { background: var(--admin-forest-dark); }
+.btn-new-meeting svg { width: 16px; height: 16px; fill: currentColor; }
+
+.meetings-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.meetings-table thead th {
+  font-family: 'Open Sans', Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--admin-gray-500);
+  background: var(--admin-gray-100);
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 2px solid var(--admin-gray-200);
+}
+.meetings-table tbody tr {
+  border-bottom: 1px solid var(--admin-gray-100);
+  transition: background .1s;
+}
+.meetings-table tbody tr:last-child { border-bottom: none; }
+.meetings-table tbody tr:hover { background: #f0f4f8; }
+.meetings-table tbody td {
+  font-family: 'Open Sans', Arial, sans-serif;
+  font-size: 13px;
+  color: var(--admin-gray-700);
+  padding: 12px 14px;
+  vertical-align: middle;
+}
+.meetings-table .mtg-date {
+  font-weight: 700;
+  color: var(--admin-gray-800);
+  white-space: nowrap;
+}
+.meetings-table .mtg-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.mtg-badge-meeting { background: #e3f0e8; color: #2d6a3e; }
+.mtg-badge-no-meeting { background: #f0ecec; color: #888; }
+.meetings-table .mtg-desc {
+  color: var(--admin-gray-500);
+  font-size: 12px;
+  margin-top: 2px;
+}
+.meetings-table .mtg-actions {
+  white-space: nowrap;
+  text-align: right;
+}
+.meetings-table .mtg-actions button {
+  font-family: 'Open Sans', Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--admin-gray-200);
+  background: var(--admin-white);
+  color: var(--admin-gray-700);
+  padding: 5px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  margin-left: 4px;
+  transition: background .1s, color .1s, border-color .1s;
+}
+.meetings-table .mtg-actions button:hover {
+  background: var(--admin-navy);
+  color: #fff;
+  border-color: var(--admin-navy);
+}
+.meetings-table .mtg-actions button.btn-delete:hover {
+  background: var(--admin-danger);
+  border-color: var(--admin-danger);
+}
+.meetings-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--admin-gray-500);
+  font-family: 'Open Sans', Arial, sans-serif;
+  font-size: 14px;
+}
+
+/* Back button in edit view */
+.back-to-list {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Open Sans', Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--admin-navy);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 12px 24px;
+  transition: color .15s;
+}
+.back-to-list:hover { color: var(--admin-navy-light); }
+.back-to-list svg { width: 16px; height: 16px; fill: currentColor; }
+
+/* Edit view header showing which meeting */
+.edit-context-bar {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.edit-context-label {
+  font-family: 'Open Sans', Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--admin-gray-700);
+}
+.edit-context-label strong {
+  color: var(--admin-navy);
+}
+
+/* ─── PRINT: hide admin chrome ───────────────────────────── */
+@media print {
+  .admin-header, .actions-bar, .workflow-banner, .draft-banner, .toast-container, .list-view { display: none; }
+  .editor-body { padding-bottom: 0; }
+}
