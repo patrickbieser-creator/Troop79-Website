@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Advancement &mdash; Scout Troop 79</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --navy:           #1e3a4a;
+      --navy-mid:       #2a4f63;
+      --navy-light:     #3a6478;
+      --forest:         #3d5a3e;
+      --forest-light:   #527554;
+      --khaki:          #c4a882;
+      --khaki-light:    #ddd0bb;
+      --bark:           #8b6914;
+      --bark-light:     #a98020;
+      --cream:          #faf6ef;
+      --newsprint:      #f4efe6;
+      --warm-white:     #ffffff;
+      --text-head:      #1a1a1a;
+      --text-body:      #363636;
+      --text-meta:      #787060;
+      --border-light:   #e2d9cc;
+      --border-mid:     #c8bfaf;
+      --shadow-card:    0 1px 4px rgba(30,58,74,.08), 0 2px 12px rgba(30,58,74,.06);
+      --shadow-hover:   0 4px 20px rgba(30,58,74,.14);
+      --transition:     .18s ease;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; scroll-behavior: smooth; }
+    body {
+      font-family: 'Lora', Georgia, serif;
+      background: var(--newsprint);
+      color: var(--text-body);
+      min-height: 100vh;
+    }
+    a { text-decoration: none; color: inherit; }
+    img { display: block; max-width: 100%; }
+
+    /* ─── UTILITY + MASTHEAD + NAV (shared shell) ──────────── */
+    .utility-bar {
+      background: var(--newsprint);
+      border-bottom: 1px solid var(--border-light);
+      padding: 6px 0;
+    }
+    .utility-inner {
+      max-width: 1180px; margin: 0 auto; padding: 0 24px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .utility-bar span, .utility-bar a {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 11px; color: var(--text-meta); letter-spacing: .03em;
+    }
+    .utility-bar a:hover { color: var(--forest); }
+    .utility-date { font-weight: 600; }
+    .utility-links { display: flex; gap: 16px; }
+    .utility-login {
+      font-weight: 600; color: var(--navy) !important;
+      border: 1px solid var(--border-mid);
+      padding: 3px 10px; border-radius: 2px;
+      transition: background var(--transition), color var(--transition);
+    }
+    .utility-login:hover {
+      background: var(--navy) !important; color: var(--warm-white) !important;
+      border-color: var(--navy);
+    }
+
+    .masthead {
+      background: var(--cream);
+      border-bottom: 2px solid var(--border-mid);
+      padding: 18px 0 14px;
+    }
+    .masthead-inner {
+      max-width: 1180px; margin: 0 auto; padding: 0 24px;
+      display: flex; align-items: center; gap: 20px;
+    }
+    .masthead-logo img { height: 72px; width: auto; flex-shrink: 0; }
+    .masthead-wordmark { flex: 1; }
+    .masthead-wordmark .site-name {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 38px; font-weight: 700; color: var(--navy);
+      letter-spacing: -.01em; line-height: 1.1;
+    }
+    .masthead-wordmark .site-sub {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 12px; font-weight: 400; color: var(--text-meta);
+      letter-spacing: .12em; text-transform: uppercase; margin-top: 3px;
+    }
+    .masthead-rule { width: 1px; height: 52px; background: var(--border-mid); flex-shrink: 0; }
+    .masthead-tagline {
+      font-family: 'Lora', Georgia, serif; font-style: italic;
+      font-size: 13px; color: var(--text-meta);
+      max-width: 180px; line-height: 1.5;
+    }
+
+    .main-nav {
+      background: var(--warm-white);
+      border-bottom: 1px solid var(--border-light);
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 1px 6px rgba(0,0,0,.06);
+    }
+    .nav-inner {
+      max-width: 1180px; margin: 0 auto; padding: 0 24px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .nav-links { display: flex; list-style: none; gap: 0; }
+    .nav-links li a {
+      display: block; font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 13px; font-weight: 600; color: var(--text-head);
+      padding: 14px 16px; border-bottom: 3px solid transparent;
+      transition: color var(--transition), border-color var(--transition);
+      letter-spacing: .02em;
+    }
+    .nav-links li a:hover { color: var(--forest); border-bottom-color: var(--forest); }
+    .nav-links li a.active { color: var(--navy); border-bottom-color: var(--navy); }
+    .nav-search { display: flex; align-items: center; gap: 8px; }
+    .nav-search input {
+      border: 1px solid var(--border-mid); border-radius: 2px;
+      padding: 6px 10px; font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 12px; color: var(--text-body); background: var(--newsprint);
+      width: 160px; outline: none;
+      transition: border-color var(--transition), width var(--transition);
+    }
+    .nav-search input:focus { border-color: var(--navy); width: 200px; }
+    .hamburger {
+      display: none; flex-direction: column; gap: 5px;
+      cursor: pointer; padding: 14px 0; background: none; border: none;
+    }
+    .hamburger span {
+      display: block; width: 24px; height: 2px;
+      background: var(--text-head); border-radius: 2px;
+    }
+
+    /* ─── PAGE HEADER ──────────────────────────────────────── */
+    .page-header {
+      max-width: 1180px; margin: 0 auto; padding: 32px 24px 0;
+    }
+    .page-header h1 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 36px; font-weight: 700; color: var(--text-head);
+      letter-spacing: -.01em; margin-bottom: 6px;
+    }
+    .page-header-lede {
+      font-family: 'Lora', Georgia, serif; font-size: 16px;
+      color: var(--text-body); line-height: 1.6;
+      max-width: 760px; margin-bottom: 20px;
+    }
+    .page-header-rule { height: 2px; background: var(--border-mid); }
+
+    /* ─── MAIN ───────────────────────────────────────────────── */
+    main {
+      max-width: 1180px; margin: 0 auto; padding: 0 24px 60px;
+    }
+
+    /* ─── TROOP-WIDE STATS STRIP ───────────────────────────── */
+    .stats-strip {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0;
+      background: var(--cream);
+      border: 1px solid var(--border-mid);
+      margin: 24px 0 36px;
+    }
+    .stat {
+      padding: 18px 16px;
+      border-right: 1px solid var(--border-light);
+      text-align: center;
+    }
+    .stat:last-child { border-right: none; }
+    .stat-num {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 30px; font-weight: 700;
+      color: var(--navy); line-height: 1;
+    }
+    .stat-label {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 10px; font-weight: 700; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--text-meta);
+      margin-top: 6px;
+    }
+
+    /* ─── SECTION DIVIDER ──────────────────────────────────── */
+    .section-divider {
+      display: flex; align-items: center; gap: 12px;
+      margin: 28px 0 16px;
+    }
+    .section-divider .div-label {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 11px; font-weight: 700; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--navy);
+      white-space: nowrap; border-left: 3px solid var(--forest);
+      padding-left: 8px;
+    }
+    .section-divider .div-rule {
+      flex: 1; height: 1px; background: var(--border-light);
+    }
+
+    /* ─── TOOLBAR ─────────────────────────────────────────── */
+    .toolbar {
+      display: flex; flex-wrap: wrap;
+      gap: 10px; align-items: center;
+      margin-bottom: 14px;
+    }
+    .toolbar input, .toolbar select {
+      border: 1px solid var(--border-mid); border-radius: 2px;
+      padding: 7px 10px; font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 13px; color: var(--text-body); background: var(--warm-white);
+      outline: none; min-height: 34px;
+    }
+    .toolbar input:focus, .toolbar select:focus { border-color: var(--navy); }
+    .toolbar input[type="search"] { width: 240px; }
+    .toolbar .toolbar-spacer { flex: 1; }
+    .toolbar .toolbar-meta {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 12px; color: var(--text-meta);
+    }
+
+    /* ─── ROSTER TABLE ─────────────────────────────────────── */
+    .roster-wrap {
+      background: var(--warm-white);
+      border: 1px solid var(--border-light);
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+    }
+    table.roster {
+      width: 100%; border-collapse: collapse;
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 13px;
+    }
+    table.roster th {
+      background: var(--cream);
+      border-bottom: 2px solid var(--border-mid);
+      padding: 11px 14px;
+      text-align: left;
+      font-size: 11px; font-weight: 700;
+      letter-spacing: .1em; text-transform: uppercase;
+      color: var(--navy);
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    table.roster th:hover { background: var(--khaki-light); }
+    table.roster th.sort-asc::after  { content: ' ▲'; font-size: 9px; opacity: .7; }
+    table.roster th.sort-desc::after { content: ' ▼'; font-size: 9px; opacity: .7; }
+    table.roster td {
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--border-light);
+      color: var(--text-body);
+      vertical-align: middle;
+    }
+    table.roster tbody tr {
+      cursor: pointer;
+      transition: background var(--transition);
+    }
+    table.roster tbody tr:hover { background: var(--newsprint); }
+    table.roster tbody tr:last-child td { border-bottom: none; }
+    .scout-name {
+      font-family: 'Lora', Georgia, serif;
+      font-size: 15px; font-weight: 600;
+      color: var(--text-head);
+    }
+    .scout-name a:hover { color: var(--navy); }
+    .scout-patrol {
+      font-size: 11px; color: var(--text-meta);
+      letter-spacing: .04em; margin-top: 2px;
+    }
+    .rank-pill {
+      display: inline-flex; align-items: center;
+      padding: 3px 9px; border-radius: 2px;
+      font-size: 11px; font-weight: 700;
+      letter-spacing: .04em; color: var(--warm-white);
+      white-space: nowrap;
+    }
+    .rank-scout        { background: #7a7068; }
+    .rank-tenderfoot   { background: var(--bark); }
+    .rank-second-class { background: var(--forest); }
+    .rank-first-class  { background: var(--navy); }
+    .rank-star         { background: var(--bark-light); }
+    .rank-life         { background: var(--forest-light); }
+    .rank-eagle        { background: linear-gradient(135deg, var(--navy), var(--bark)); }
+    .num-cell { text-align: right; font-variant-numeric: tabular-nums; }
+    .last-activity { color: var(--text-meta); font-size: 12px; max-width: 280px; }
+    .drill-link {
+      font-weight: 700; color: var(--forest);
+      font-size: 12px; letter-spacing: .04em;
+      text-transform: uppercase; white-space: nowrap;
+    }
+    .drill-link:hover { color: var(--navy); }
+
+    /* ─── EMPTY ROW ────────────────────────────────────────── */
+    .empty-row td {
+      text-align: center; padding: 40px 14px;
+      color: var(--text-meta);
+      font-style: italic;
+    }
+
+    /* ─── RANK MILESTONES PANEL ────────────────────────────── */
+    .rank-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 0;
+      background: var(--warm-white);
+      border: 1px solid var(--border-light);
+      box-shadow: var(--shadow-card);
+      margin-bottom: 24px;
+    }
+    .rank-tile {
+      padding: 14px 10px;
+      text-align: center;
+      border-right: 1px solid var(--border-light);
+    }
+    .rank-tile:last-child { border-right: none; }
+    .rank-tile-name {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 10px; font-weight: 700;
+      letter-spacing: .12em; text-transform: uppercase;
+      color: var(--text-meta);
+      margin-bottom: 8px;
+    }
+    .rank-tile-count {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 26px; font-weight: 700;
+      color: var(--navy); line-height: 1;
+    }
+    .rank-tile-sub {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 10px; color: var(--text-meta);
+      margin-top: 4px; letter-spacing: .04em;
+    }
+
+    /* ─── CTA BAND ─────────────────────────────────────────── */
+    .leader-cta {
+      background: var(--navy);
+      color: var(--warm-white);
+      padding: 22px 24px;
+      margin-top: 32px;
+      border-radius: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .leader-cta h3 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 22px; font-weight: 700; margin-bottom: 4px;
+    }
+    .leader-cta p {
+      font-family: 'Lora', Georgia, serif;
+      font-size: 14px; line-height: 1.5;
+      opacity: .85; max-width: 560px;
+    }
+    .leader-cta a {
+      background: var(--forest);
+      color: var(--warm-white);
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 12px; font-weight: 700;
+      letter-spacing: .08em; text-transform: uppercase;
+      padding: 12px 20px; border-radius: 2px;
+      transition: background var(--transition);
+      white-space: nowrap;
+    }
+    .leader-cta a:hover { background: var(--forest-light); }
+
+    /* ─── FOOTER ──────────────────────────────────────────── */
+    .site-footer {
+      background: var(--navy);
+      color: rgba(255,255,255,.75);
+      padding: 40px 0 20px;
+      margin-top: 40px;
+    }
+    .footer-inner { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+    .footer-grid {
+      display: grid; grid-template-columns: 1.5fr 1fr 1fr;
+      gap: 40px; margin-bottom: 32px;
+    }
+    .footer-logo-block img { height: 56px; margin-bottom: 12px; opacity: .9; }
+    .footer-logo-block p {
+      font-family: 'Lora', Georgia, serif;
+      font-size: 13px; line-height: 1.6; color: rgba(255,255,255,.6);
+    }
+    .footer-col h4 {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 10px; font-weight: 700; letter-spacing: .14em;
+      text-transform: uppercase; color: rgba(255,255,255,.5); margin-bottom: 14px;
+    }
+    .footer-col ul { list-style: none; }
+    .footer-col ul li {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 13px; margin-bottom: 8px;
+    }
+    .footer-col ul li a { color: rgba(255,255,255,.7); transition: color var(--transition); }
+    .footer-col ul li a:hover { color: #fff; }
+    .footer-bottom {
+      border-top: 1px solid rgba(255,255,255,.15);
+      padding-top: 16px; display: flex;
+      justify-content: space-between; align-items: center;
+    }
+    .footer-bottom p {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 11px; color: rgba(255,255,255,.4);
+    }
+    .footer-bottom a { color: rgba(255,255,255,.5); transition: color var(--transition); }
+    .footer-bottom a:hover { color: rgba(255,255,255,.9); }
+
+    /* ─── SKELETON ────────────────────────────────────────── */
+    @keyframes shimmer {
+      0%   { background-position: -600px 0; }
+      100% { background-position: 600px 0; }
+    }
+    .skeleton {
+      background: linear-gradient(90deg, #ede8e0 25%, #f5f0e8 50%, #ede8e0 75%);
+      background-size: 600px 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: 2px;
+      height: 12px;
+    }
+
+    /* ─── RESPONSIVE ──────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .stats-strip   { grid-template-columns: repeat(2, 1fr); }
+      .stat { border-bottom: 1px solid var(--border-light); }
+      .rank-grid     { grid-template-columns: repeat(4, 1fr); }
+      .footer-grid   { grid-template-columns: 1fr 1fr; }
+      .footer-logo-block { grid-column: 1 / -1; }
+    }
+    @media (max-width: 600px) {
+      .utility-links { display: none; }
+      .masthead-rule, .masthead-tagline { display: none; }
+      .masthead-wordmark .site-name { font-size: 26px; }
+      .masthead-logo img { height: 52px; }
+      .nav-links { display: none; }
+      .nav-links.open {
+        display: flex; flex-direction: column;
+        position: absolute; top: 45px; left: 0; right: 0;
+        background: var(--warm-white);
+        box-shadow: 0 6px 20px rgba(0,0,0,.12);
+        z-index: 200; padding: 8px 0;
+      }
+      .nav-links.open li a {
+        padding: 12px 24px;
+        border-bottom: 1px solid var(--border-light);
+        border-bottom-color: var(--border-light) !important;
+      }
+      .hamburger { display: flex; }
+      .nav-search { display: none; }
+      .main-nav .nav-inner { position: relative; }
+      .stats-strip { grid-template-columns: 1fr 1fr; }
+      .rank-grid   { grid-template-columns: repeat(2, 1fr); }
+      table.roster th:nth-child(4),
+      table.roster td:nth-child(4),
+      table.roster th:nth-child(5),
+      table.roster td:nth-child(5) { display: none; }
+      .page-header h1 { font-size: 28px; }
+      .footer-grid { grid-template-columns: 1fr; gap: 24px; }
+      .footer-bottom { flex-direction: column; gap: 8px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── UTILITY BAR ────────────────────────────────────────── -->
+  <div class="utility-bar">
+    <div class="utility-inner">
+      <span class="utility-date" id="utilityDate">&nbsp;</span>
+      <div class="utility-links">
+        <a href="#">Milwaukee, WI</a>
+        <a href="#">Weather: 54&deg;F Partly Cloudy</a>
+        <a href="admin/advancement-leader.html" class="utility-login">Members Login</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MASTHEAD ──────────────────────────────────────────── -->
+  <header class="masthead">
+    <div class="masthead-inner">
+      <div class="masthead-logo">
+        <a href="index.html" aria-label="Troop 79 Home">
+          <img src="assets/images/troop-79-logo.png" alt="Scout Troop 79 — Milwaukee, WI" />
+        </a>
+      </div>
+      <div class="masthead-wordmark">
+        <h1 class="site-name"><a href="index.html">Scout Troop 79</a></h1>
+        <p class="site-sub">Milwaukee, Wisconsin &nbsp;&middot;&nbsp; Est. 2022</p>
+      </div>
+      <div class="masthead-rule" aria-hidden="true"></div>
+      <p class="masthead-tagline">Prepared. Courageous.<br>Ready for anything.</p>
+    </div>
+  </header>
+
+  <!-- ── NAVIGATION ────────────────────────────────────────── -->
+  <nav class="main-nav" aria-label="Main navigation">
+    <div class="nav-inner">
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="meeting.html">Meeting</a></li>
+        <li><a href="#">News Archive</a></li>
+        <li><a href="calendar.html">Events</a></li>
+        <li><a href="#">Resources</a></li>
+        <li><a href="advancement.html" class="active" aria-current="page">Advancement</a></li>
+        <li><a href="#">About &amp; Join</a></li>
+      </ul>
+      <div class="nav-search">
+        <input type="search" placeholder="Search Troop 79…" aria-label="Search" />
+      </div>
+      <button class="hamburger" id="hamburger" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ── PAGE HEADER ──────────────────────────────────────── -->
+  <div class="page-header">
+    <h1>Advancement Tracker</h1>
+    <p class="page-header-lede">
+      Every Troop 79 scout&rsquo;s rank progress, merit badges, leadership, service hours, and camping nights &mdash; the same record their parents, scoutmasters, and Boards of Review use.
+      Tap any scout to open their full Clipboard report.
+    </p>
+    <div class="page-header-rule"></div>
+  </div>
+
+  <main>
+
+    <!-- ── TROOP-WIDE STATS ──────────────────────────────── -->
+    <div class="stats-strip" id="statsStrip" aria-label="Troop-wide statistics">
+      <div class="stat"><div class="stat-num" id="statScouts">—</div><div class="stat-label">Active Scouts</div></div>
+      <div class="stat"><div class="stat-num" id="statMb">—</div><div class="stat-label">Merit Badges Earned</div></div>
+      <div class="stat"><div class="stat-num" id="statNights">—</div><div class="stat-label">Nights of Camping</div></div>
+      <div class="stat"><div class="stat-num" id="statService">—</div><div class="stat-label">Service Hours</div></div>
+      <div class="stat"><div class="stat-num" id="statEagle">—</div><div class="stat-label">Eagle-Required MBs</div></div>
+    </div>
+
+    <!-- ── RANK DISTRIBUTION ─────────────────────────────── -->
+    <div class="section-divider">
+      <span class="div-label">Current Rank Distribution</span>
+      <span class="div-rule" aria-hidden="true"></span>
+    </div>
+    <div class="rank-grid" id="rankGrid" aria-label="Rank distribution"></div>
+
+    <!-- ── ROSTER ──────────────────────────────────────────── -->
+    <div class="section-divider">
+      <span class="div-label">Troop Roster</span>
+      <span class="div-rule" aria-hidden="true"></span>
+    </div>
+
+    <div class="toolbar">
+      <input type="search" id="filterInput" placeholder="Filter by name or patrol…" aria-label="Filter scouts" />
+      <select id="rankFilter" aria-label="Filter by rank">
+        <option value="">All ranks</option>
+        <option value="scout">Scout</option>
+        <option value="tenderfoot">Tenderfoot</option>
+        <option value="second-class">Second Class</option>
+        <option value="first-class">First Class</option>
+        <option value="star">Star</option>
+        <option value="life">Life</option>
+        <option value="eagle">Eagle</option>
+      </select>
+      <select id="patrolFilter" aria-label="Filter by patrol">
+        <option value="">All patrols</option>
+      </select>
+      <div class="toolbar-spacer"></div>
+      <span class="toolbar-meta" id="rosterMeta"></span>
+    </div>
+
+    <div class="roster-wrap">
+      <table class="roster" id="rosterTable">
+        <thead>
+          <tr>
+            <th data-sort="name">Scout</th>
+            <th data-sort="rank">Current Rank</th>
+            <th data-sort="mb" class="num-cell">Merit Badges</th>
+            <th data-sort="nights" class="num-cell">Nights</th>
+            <th data-sort="service" class="num-cell">Svc Hrs</th>
+            <th>Last Activity</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="rosterBody">
+          <tr><td colspan="7"><div class="skeleton" style="height:18px;margin:14px 0;"></div><div class="skeleton" style="height:18px;margin:14px 0;"></div><div class="skeleton" style="height:18px;margin:14px 0;"></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ── LEADER CTA ─────────────────────────────────────── -->
+    <div class="leader-cta">
+      <div>
+        <h3>For Advancement Chairs &amp; Adult Leaders</h3>
+        <p>Bulk entry, event roster check-ins, Court of Honor prep, Scoutbook export, and the universal ledger live in the Leader Workspace. Sign in to use them.</p>
+      </div>
+      <a href="admin/advancement-leader.html">Open Leader Workspace &rarr;</a>
+    </div>
+
+  </main>
+
+  <!-- ── FOOTER ────────────────────────────────────────────── -->
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-grid">
+        <div class="footer-logo-block">
+          <img src="assets/images/troop-79-logo.png" alt="Troop 79 Scout Logo" />
+          <p>Scout Troop 79 is a family troop serving scouts and families in Milwaukee, Wisconsin. We are chartered through Scouts America and welcome boys and girls of all backgrounds.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Navigate</h4>
+          <ul>
+            <li><a href="index.html">Home &amp; News</a></li>
+            <li><a href="#">News Archive</a></li>
+            <li><a href="calendar.html">Events &amp; Calendar</a></li>
+            <li><a href="#">Resource Library</a></li>
+            <li><a href="advancement.html">Advancement Tracker</a></li>
+            <li><a href="#">About &amp; Join</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Contact</h4>
+          <ul>
+            <li><a href="#">Scoutmaster Patrick Bieser</a></li>
+            <li><a href="#">Committee Chair</a></li>
+            <li><a href="#">New Member Inquiry</a></li>
+            <li><a href="admin/advancement-leader.html">Members Login</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 Scout Troop 79 &nbsp;&middot;&nbsp; Milwaukee, Wisconsin &nbsp;&middot;&nbsp; Scouts America</p>
+        <p><a href="#">Privacy</a> &nbsp;&middot;&nbsp; <a href="#">Accessibility</a> &nbsp;&middot;&nbsp; <a href="#">Sitemap</a></p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Utility date
+    (function() {
+      const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      document.getElementById('utilityDate').textContent = new Date().toLocaleDateString('en-US', opts);
+    })();
+
+    // Hamburger
+    document.getElementById('hamburger').addEventListener('click', function() {
+      const open = document.getElementById('navLinks').classList.toggle('open');
+      this.setAttribute('aria-expanded', open);
+    });
+
+    // ── Roster ──
+    const RANK_LABELS = {
+      'scout':'Scout','tenderfoot':'Tenderfoot','second-class':'Second Class',
+      'first-class':'First Class','star':'Star','life':'Life','eagle':'Eagle'
+    };
+    const RANK_ORDER = ['scout','tenderfoot','second-class','first-class','star','life','eagle'];
+
+    let scouts = [];
+    let advancement = {};
+    let currentSort = { key: 'rank', dir: 'desc' };
+
+    fetch('data/advancement.json')
+      .then(r => r.json())
+      .then(data => {
+        scouts = data.scouts.filter(s => s.active);
+        advancement = data.advancement;
+        renderStats();
+        renderRankGrid();
+        populatePatrolFilter();
+        renderRoster();
+      })
+      .catch(err => {
+        document.getElementById('rosterBody').innerHTML =
+          '<tr class="empty-row"><td colspan="7">Could not load advancement data. Try again later.</td></tr>';
+        console.error(err);
+      });
+
+    function renderStats() {
+      let mb = 0, eagle = 0, nights = 0, service = 0;
+      scouts.forEach(s => {
+        const adv = advancement[s.id];
+        if (!adv) return;
+        mb      += adv.summary.meritBadgeCount      || 0;
+        eagle   += adv.summary.eagleMeritBadgeCount || 0;
+        nights  += adv.summary.campingNights        || 0;
+        service += adv.summary.serviceHours         || 0;
+      });
+      document.getElementById('statScouts').textContent  = scouts.length;
+      document.getElementById('statMb').textContent      = mb;
+      document.getElementById('statNights').textContent  = nights;
+      document.getElementById('statService').textContent = service;
+      document.getElementById('statEagle').textContent   = eagle;
+    }
+
+    function renderRankGrid() {
+      const counts = {};
+      RANK_ORDER.forEach(r => counts[r] = 0);
+      scouts.forEach(s => { if (counts[s.currentRank] !== undefined) counts[s.currentRank]++; });
+      const grid = document.getElementById('rankGrid');
+      grid.innerHTML = RANK_ORDER.map(r => `
+        <div class="rank-tile">
+          <div class="rank-tile-name">${RANK_LABELS[r]}</div>
+          <div class="rank-tile-count">${counts[r]}</div>
+          <div class="rank-tile-sub">${counts[r] === 1 ? 'scout' : 'scouts'}</div>
+        </div>
+      `).join('');
+    }
+
+    function populatePatrolFilter() {
+      const patrols = [...new Set(scouts.map(s => s.patrol))].filter(Boolean).sort();
+      const sel = document.getElementById('patrolFilter');
+      patrols.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p; opt.textContent = p + ' Patrol';
+        sel.appendChild(opt);
+      });
+    }
+
+    function renderRoster() {
+      const filter = document.getElementById('filterInput').value.trim().toLowerCase();
+      const rankFilter = document.getElementById('rankFilter').value;
+      const patrolFilter = document.getElementById('patrolFilter').value;
+
+      let rows = scouts.filter(s => {
+        if (rankFilter && s.currentRank !== rankFilter) return false;
+        if (patrolFilter && s.patrol !== patrolFilter) return false;
+        if (filter) {
+          const hay = (s.displayName + ' ' + (s.patrol || '')).toLowerCase();
+          if (!hay.includes(filter)) return false;
+        }
+        return true;
+      });
+
+      rows.sort((a, b) => {
+        const advA = advancement[a.id]?.summary || {};
+        const advB = advancement[b.id]?.summary || {};
+        let valA, valB;
+        switch (currentSort.key) {
+          case 'name':    valA = a.displayName.toLowerCase(); valB = b.displayName.toLowerCase(); break;
+          case 'rank':    valA = RANK_ORDER.indexOf(a.currentRank); valB = RANK_ORDER.indexOf(b.currentRank); break;
+          case 'mb':      valA = advA.meritBadgeCount || 0; valB = advB.meritBadgeCount || 0; break;
+          case 'nights':  valA = advA.campingNights   || 0; valB = advB.campingNights   || 0; break;
+          case 'service': valA = advA.serviceHours    || 0; valB = advB.serviceHours    || 0; break;
+          default: return 0;
+        }
+        if (valA < valB) return currentSort.dir === 'asc' ? -1 : 1;
+        if (valA > valB) return currentSort.dir === 'asc' ?  1 : -1;
+        return 0;
+      });
+
+      const tbody = document.getElementById('rosterBody');
+      if (rows.length === 0) {
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="7">No scouts match the current filters.</td></tr>';
+      } else {
+        tbody.innerHTML = rows.map(s => {
+          const adv = advancement[s.id]?.summary || {};
+          const rankClass = 'rank-' + s.currentRank;
+          return `
+            <tr data-id="${s.id}">
+              <td>
+                <div class="scout-name"><a href="advancement-scout.html?id=${s.id}">${s.displayName}</a></div>
+                <div class="scout-patrol">${s.patrol || ''} Patrol</div>
+              </td>
+              <td><span class="rank-pill ${rankClass}">${RANK_LABELS[s.currentRank]}</span></td>
+              <td class="num-cell">${adv.meritBadgeCount || 0}${adv.eagleMeritBadgeCount ? ` <span style="color:var(--text-meta);font-size:11px;">(${adv.eagleMeritBadgeCount}★)</span>` : ''}</td>
+              <td class="num-cell">${adv.campingNights || 0}</td>
+              <td class="num-cell">${adv.serviceHours || 0}</td>
+              <td class="last-activity">${s.lastActivity || '—'}</td>
+              <td><a href="advancement-scout.html?id=${s.id}" class="drill-link">View Clipboard →</a></td>
+            </tr>
+          `;
+        }).join('');
+      }
+      document.getElementById('rosterMeta').textContent =
+        rows.length === scouts.length
+          ? `${rows.length} scouts`
+          : `${rows.length} of ${scouts.length} scouts`;
+      updateSortHeaders();
+    }
+
+    function updateSortHeaders() {
+      document.querySelectorAll('table.roster th[data-sort]').forEach(th => {
+        th.classList.remove('sort-asc','sort-desc');
+        if (th.dataset.sort === currentSort.key) {
+          th.classList.add(currentSort.dir === 'asc' ? 'sort-asc' : 'sort-desc');
+        }
+      });
+    }
+
+    document.querySelectorAll('table.roster th[data-sort]').forEach(th => {
+      th.addEventListener('click', () => {
+        const key = th.dataset.sort;
+        if (currentSort.key === key) {
+          currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+          currentSort.key = key;
+          currentSort.dir = (key === 'name' ? 'asc' : 'desc');
+        }
+        renderRoster();
+      });
+    });
+
+    document.getElementById('filterInput').addEventListener('input', renderRoster);
+    document.getElementById('rankFilter').addEventListener('change', renderRoster);
+    document.getElementById('patrolFilter').addEventListener('change', renderRoster);
+
+    // Row click drills into scout
+    document.getElementById('rosterBody').addEventListener('click', (e) => {
+      if (e.target.tagName === 'A') return;
+      const tr = e.target.closest('tr[data-id]');
+      if (tr) window.location.href = 'advancement-scout.html?id=' + tr.dataset.id;
+    });
+  </script>
+</body>
+</html>

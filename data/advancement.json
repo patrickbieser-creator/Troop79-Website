@@ -1,0 +1,1097 @@
+{
+  "_meta": {
+    "generated": "2026-04-12",
+    "note": "Prototype data for Troop 79 Advancement system. Maya Sankpal-Tatera's record is taken from her real Clipboard PDF; other scouts are illustrative.",
+    "source": "Clipboard for - Maya Sankpal-Tatera.pdf + Troop 79 Advancement Spreadsheet"
+  },
+
+  "leaders": [
+    { "code": "PB",    "name": "Patrick Bieser",   "role": "Scoutmaster / Advancement Chair" },
+    { "code": "MS",    "name": "Mike Smith",       "role": "Assistant Scoutmaster" },
+    { "code": "JP",    "name": "Jamie Parent",     "role": "Committee Chair" },
+    { "code": "PP",    "name": "Paul Park",        "role": "Assistant Scoutmaster" },
+    { "code": "JT",    "name": "Janet Tatera",     "role": "Merit Badge Counselor" },
+    { "code": "BV",    "name": "Brian Voss",       "role": "Merit Badge Counselor" },
+    { "code": "KM",    "name": "Karen Marsh",      "role": "Merit Badge Counselor" },
+    { "code": "MB",    "name": "Marcus Bell",      "role": "Assistant Scoutmaster" },
+    { "code": "T61",   "name": "Troop 61 Counselor", "role": "External counselor (former troop)" },
+    { "code": "T118",  "name": "Troop 118 Counselor", "role": "External counselor" },
+    { "code": "Camp",  "name": "Camp Staff",       "role": "Summer camp staff" },
+    { "code": "Clinic","name": "MB Clinic Staff",  "role": "Merit badge clinic" },
+    { "code": "Prior", "name": "Prior Council",    "role": "Prior council records" },
+    { "code": "Lead",  "name": "Leadership Term",  "role": "Leadership position" },
+    { "code": "Project","name": "Service Project", "role": "Service project record" },
+    { "code": "Event", "name": "Troop Event",      "role": "Troop event" },
+    { "code": "Outing","name": "Troop Outing",     "role": "Troop outing" },
+    { "code": "Turner","name": "Turner Climbing",  "role": "Outside provider" }
+  ],
+
+  "ranks": [
+    {
+      "id": "scout",
+      "displayName": "Scout",
+      "color": "#7a7068",
+      "requirements": [
+        { "code": "1a", "label": "Oath Law Motto Slogan" },
+        { "code": "1b", "label": "Scout Spirit" },
+        { "code": "1c", "label": "Sign Salute Handshake" },
+        { "code": "1d", "label": "First Class Badge" },
+        { "code": "1e", "label": "Outdoor Code" },
+        { "code": "1f", "label": "Pledge of Allegiance" },
+        { "code": "2a", "label": "Explain Troop Leadership" },
+        { "code": "2b", "label": "Four Steps of Advancement" },
+        { "code": "2c", "label": "Explain Ranks" },
+        { "code": "2d", "label": "Explain Merit Badges" },
+        { "code": "3a", "label": "Explain Patrols" },
+        { "code": "3b", "label": "Explain Patrol Spirit" },
+        { "code": "4a", "label": "Square Knot, 2 Half, Taut Line" },
+        { "code": "4b", "label": "Care of Rope" },
+        { "code": "5",  "label": "Pocket Knife Safety" },
+        { "code": "6",  "label": "Cyber Chip and Abuse Protection" },
+        { "code": "7",  "label": "Scoutmaster Conference" }
+      ]
+    },
+    {
+      "id": "tenderfoot",
+      "displayName": "Tenderfoot",
+      "color": "#8b6914",
+      "requirements": [
+        { "code": "1a", "label": "Pack for Overnight Campout" },
+        { "code": "1b", "label": "Camp in tent you pitch" },
+        { "code": "1c", "label": "Practice Outdoor Code" },
+        { "code": "2a", "label": "Prepare campout meal" },
+        { "code": "2b", "label": "Cleanup campout meal safely" },
+        { "code": "2c", "label": "Eating as a patrol" },
+        { "code": "3a", "label": "Square Knot use" },
+        { "code": "3b", "label": "Two Half hitch use" },
+        { "code": "3c", "label": "Taut Line hitch use" },
+        { "code": "3d", "label": "Sharpen & care of knife ax saw" },
+        { "code": "4a", "label": "First Aid for Tenderfoot", "subRequirements": [
+          { "label": "First Aid - Simple Cuts" },
+          { "label": "First Aid - Blisters hand/foot" },
+          { "label": "First Aid - Burns/Scalds" },
+          { "label": "First Aid - Bites/Stings/Ticks" },
+          { "label": "First Aid - Snakebite" },
+          { "label": "First Aid - Nosebleed" },
+          { "label": "First Aid - Frostbite/Sunburn" },
+          { "label": "First Aid - Choking" }
+        ]},
+        { "code": "4b", "label": "Poisonous / Hazardous Plants" },
+        { "code": "4c", "label": "Safety on campouts" },
+        { "code": "4d", "label": "Make a First Aid Kit" },
+        { "code": "5a", "label": "Buddy System (Use on outing)" },
+        { "code": "5b", "label": "Getting Lost" },
+        { "code": "5c", "label": "Rules of Safe Hiking" },
+        { "code": "6a", "label": "Fitness (60 Seconds each)", "subRequirements": [
+          { "label": "Pushups" },
+          { "label": "Crunches" },
+          { "label": "Planks" },
+          { "label": "1/4 Mile" }
+        ]},
+        { "code": "6b", "label": "Fitness Plan 30 Days" },
+        { "code": "6c", "label": "Fitness Retest (60 Seconds each)", "subRequirements": [
+          { "label": "Pushups" },
+          { "label": "Crunches" },
+          { "label": "Planks" },
+          { "label": "1/4 Mile" }
+        ]},
+        { "code": "7a", "label": "Flag - display, raise, lower, fold" },
+        { "code": "7b", "label": "1 hour Service Project" },
+        { "code": "8",  "label": "Use Edge to teach Square Knot" },
+        { "code": "9",  "label": "Demonstrate Scout Spirit & Law" },
+        { "code": "10", "label": "Scoutmaster Conference" },
+        { "code": "BoR","label": "Board of Review - Tenderfoot" }
+      ]
+    },
+    {
+      "id": "second-class",
+      "displayName": "Second Class",
+      "color": "#3d5a3e",
+      "requirements": [
+        { "code": "1a", "label": "5 Troop activities (3 campouts)" },
+        { "code": "1b", "label": "Explain Leave No Trace" },
+        { "code": "1c", "label": "Select a patrol site/pitch a tent" },
+        { "code": "2a", "label": "Explain when use fire for cooking" },
+        { "code": "2b", "label": "Prepare tinder, kindling, & fuel" },
+        { "code": "2c", "label": "Make fire" },
+        { "code": "2d", "label": "Backpack stove & propane use" },
+        { "code": "2e", "label": "Plan & cook campout hot breakfast" },
+        { "code": "2f", "label": "Tie - Sheet Bend, explain use" },
+        { "code": "2g", "label": "Tie - Bowline, explain use" },
+        { "code": "3a", "label": "Compass / Orient & Read Map" },
+        { "code": "3b", "label": "5 Mile Compass / 10 Mile Bike" },
+        { "code": "3c", "label": "Hike Hazards discussion" },
+        { "code": "3d", "label": "Finding Directions Day/Night" },
+        { "code": "4",  "label": "Tracks. Sign 10 wild animals" },
+        { "code": "5a", "label": "Safe Swim precautions" },
+        { "code": "5b", "label": "Pass Beginner Swim Test" },
+        { "code": "5c", "label": "Demonstrate Water Rescue" },
+        { "code": "5d", "label": "Dangers of Swimmer Rescue" },
+        { "code": "6a", "label": "First Aid Second Class", "subRequirements": [
+          { "label": "First Aid - Object in eye" },
+          { "label": "First Aid - Animal Bite" },
+          { "label": "First Aid - Puncture Wounds" },
+          { "label": "First Aid - Serious burns" },
+          { "label": "First Aid - Heat Exhaust / Stroke" },
+          { "label": "First Aid - Shock" },
+          { "label": "Dehydrate, Heat St, Hypo, Hyper" }
+        ]},
+        { "code": "6b", "label": "Breathing, stroke, poison, bleed" },
+        { "code": "6c", "label": "Reduce Injuries on Campouts" },
+        { "code": "6d", "label": "Emergency home, wilderness" },
+        { "code": "6e", "label": "Emergency car accident" },
+        { "code": "7a", "label": "Fitness" },
+        { "code": "7b", "label": "Fitness Challenges" },
+        { "code": "7c", "label": "Drugs, Alcohol, Tobacco Talk" },
+        { "code": "8a", "label": "Flag ceremony" },
+        { "code": "8b", "label": "Flag fold / respect" },
+        { "code": "8c", "label": "Budget, plan to earn an item" },
+        { "code": "8d", "label": "Shop for the item" },
+        { "code": "8e", "label": "2 more hours service project(s)" },
+        { "code": "9a", "label": "Explain 3 R's of personal safety" },
+        { "code": "9b", "label": "Bullying/Appropriate responses" },
+        { "code": "10", "label": "Scout Spirit" },
+        { "code": "11", "label": "SM Conference / Scout Law" },
+        { "code": "BoR","label": "Board of Review - Second Class" }
+      ]
+    },
+    {
+      "id": "first-class",
+      "displayName": "First Class",
+      "color": "#1e3a4a",
+      "requirements": [
+        { "code": "1a", "label": "10 total activities / (6 campouts)" },
+        { "code": "1b", "label": "Explain “Tread Lightly”" },
+        { "code": "2a", "label": "Meal plan & cook campout BLD" },
+        { "code": "2b", "label": "From 2a - Budget & Buy for 10" },
+        { "code": "2c", "label": "Pots, pans, utensils needed 2a" },
+        { "code": "2d", "label": "Safe food handling" },
+        { "code": "2e", "label": "Cook BLD & supervise stove/fire" },
+        { "code": "3a", "label": "Discuss lashings" },
+        { "code": "3b", "label": "Tie Timber hitch & Clove hitch" },
+        { "code": "3c", "label": "Demo Three Lashings", "subRequirements": [
+          { "label": "Lashings - Square" },
+          { "label": "Lashings - Diagonal" },
+          { "label": "Lashings - Shear" }
+        ]},
+        { "code": "3d", "label": "Make a camp gadget" },
+        { "code": "4a", "label": "1 Mile Orienteering Course" },
+        { "code": "4b", "label": "Use GPS to Geocache" },
+        { "code": "5a", "label": "Identify 10 native plants" },
+        { "code": "5b", "label": "Weather forecast" },
+        { "code": "5c", "label": "Bad weather - 3 signs" },
+        { "code": "5d", "label": "Extreme Weather risks" },
+        { "code": "6a", "label": "Complete BSA Swim Test" },
+        { "code": "6b", "label": "Precautions for safe trip afloat" },
+        { "code": "6c", "label": "Parts canoe, kayak, boat, paddle" },
+        { "code": "6d", "label": "Proper position in a watercraft" },
+        { "code": "6e", "label": "Show aquatic line rescue 30'" },
+        { "code": "7a", "label": "First Aid - First Class", "subRequirements": [
+          { "label": "First Aid bandages sprained ankle" },
+          { "label": "First Aid - Bandages head injury" },
+          { "label": "First Aid - Bandages upper arm" },
+          { "label": "First Aid - Bandages collarbone" }
+        ]},
+        { "code": "7b", "label": "Transport Injured" },
+        { "code": "7c", "label": "Heart attack signs / CPR" },
+        { "code": "7d", "label": "Utility services, hazards at home" },
+        { "code": "7e", "label": "Emergency plan for home" },
+        { "code": "7f", "label": "How to obtain potable water" },
+        { "code": "8a", "label": "Fitness (30 Days)" },
+        { "code": "8b", "label": "Fitness Goals" },
+        { "code": "9a", "label": "Discuss rights & duties with official" },
+        { "code": "9b", "label": "Investigate environmental Issue" },
+        { "code": "9c", "label": "Track waste / make reduce plan" },
+        { "code": "9d", "label": "3 more hours of service project(s)" },
+        { "code": "10", "label": "Tell a friend about scouts" },
+        { "code": "11", "label": "Scout Spirit" },
+        { "code": "12", "label": "SM Conference / Scout Law" },
+        { "code": "BoR","label": "Board of Review - First Class" }
+      ]
+    },
+    {
+      "id": "star",
+      "displayName": "Star",
+      "color": "#8b6914",
+      "requirements": [
+        { "code": "1",  "label": "Active Four Months as 1st Class" },
+        { "code": "2",  "label": "Scout Spirit" },
+        { "code": "3",  "label": "Six Merit Badges (4 Eagle-required)" },
+        { "code": "4",  "label": "Six Hours of Service" },
+        { "code": "5",  "label": "Position of Responsibility" },
+        { "code": "6",  "label": "Cyber Chip for Grade" },
+        { "code": "7",  "label": "Scoutmaster's Conference" },
+        { "code": "BoR","label": "Board of Review - Star" }
+      ]
+    },
+    {
+      "id": "life",
+      "displayName": "Life",
+      "color": "#527554",
+      "requirements": [
+        { "code": "1",  "label": "Active Six Months as Star" },
+        { "code": "2",  "label": "Scout Spirit" },
+        { "code": "3",  "label": "Five More Merit Badges (3 Eagle-required)" },
+        { "code": "4",  "label": "Six More Hours of Service" },
+        { "code": "5",  "label": "Position of Responsibility" },
+        { "code": "6",  "label": "Troop Instructor" },
+        { "code": "7",  "label": "Scoutmaster's Conference" },
+        { "code": "BoR","label": "Board of Review - Life" }
+      ]
+    },
+    {
+      "id": "eagle",
+      "displayName": "Eagle",
+      "color": "#1e3a4a",
+      "requirements": [
+        { "code": "1",  "label": "Active Six Months as Life" },
+        { "code": "2",  "label": "Scout Spirit" },
+        { "code": "3",  "label": "Seven More Merit Badges (3 Eagle-required, 21 total)" },
+        { "code": "4",  "label": "Position of Responsibility" },
+        { "code": "5",  "label": "Eagle Service Project" },
+        { "code": "6",  "label": "Scoutmaster's Conference" },
+        { "code": "BoR","label": "Board of Review - Eagle" }
+      ]
+    }
+  ],
+
+  "meritBadgeCatalog": [
+    { "id": "personal-fitness",      "name": "Personal Fitness",       "eagle": true,  "scoutbookId": "33" },
+    { "id": "swimming",              "name": "Swimming",                "eagle": true,  "scoutbookId": "60" },
+    { "id": "environmental-science", "name": "Environmental Science",   "eagle": true,  "scoutbookId": "23" },
+    { "id": "citizenship-community", "name": "Citizenship in The Community","eagle": true,  "scoutbookId": "13" },
+    { "id": "citizenship-nation",    "name": "Citizenship in The Nation","eagle": true,  "scoutbookId": "14" },
+    { "id": "citizenship-world",     "name": "Citizenship in The World", "eagle": true,  "scoutbookId": "15" },
+    { "id": "citizenship-society",   "name": "Citizenship in Society",  "eagle": true,  "scoutbookId": "133" },
+    { "id": "communication",         "name": "Communication",           "eagle": true,  "scoutbookId": "16" },
+    { "id": "cooking",               "name": "Cooking",                 "eagle": true,  "scoutbookId": "20" },
+    { "id": "personal-management",   "name": "Personal Management",     "eagle": true,  "scoutbookId": "82" },
+    { "id": "family-life",           "name": "Family Life",             "eagle": true,  "scoutbookId": "78" },
+    { "id": "lifesaving",            "name": "Lifesaving",              "eagle": true,  "scoutbookId": "44" },
+    { "id": "camping",               "name": "Camping",                 "eagle": true,  "scoutbookId": "10" },
+    { "id": "first-aid",             "name": "First Aid",               "eagle": true,  "scoutbookId": "27" },
+    { "id": "insect-study",          "name": "Insect Study",            "eagle": false, "scoutbookId": "40" },
+    { "id": "aviation",              "name": "Aviation",                "eagle": false, "scoutbookId": "8"  },
+    { "id": "electricity",           "name": "Electricity",             "eagle": false, "scoutbookId": "22" },
+    { "id": "game-design",           "name": "Game Design",             "eagle": false, "scoutbookId": "115" },
+    { "id": "robotics",              "name": "Robotics",                "eagle": false, "scoutbookId": "108" },
+    { "id": "archery",               "name": "Archery",                 "eagle": false, "scoutbookId": "6"  },
+    { "id": "signs-signals-codes",   "name": "Signals Signs and Codes", "eagle": false, "scoutbookId": "112" },
+    { "id": "leatherwork",           "name": "Leatherwork",             "eagle": false, "scoutbookId": "43" },
+    { "id": "nature",                "name": "Nature",                  "eagle": false, "scoutbookId": "58" },
+    { "id": "canoeing",              "name": "Canoeing",                "eagle": false, "scoutbookId": "11" },
+    { "id": "fingerprinting",        "name": "Fingerprinting",          "eagle": false, "scoutbookId": "26" },
+    { "id": "small-boat-sailing",    "name": "Small-Boat Sailing",      "eagle": false, "scoutbookId": "113" },
+    { "id": "nuclear-science",       "name": "Nuclear Science",         "eagle": false, "scoutbookId": "61" },
+    { "id": "climbing",              "name": "Climbing",                "eagle": false, "scoutbookId": "17" },
+    { "id": "art",                   "name": "Art",                     "eagle": false, "scoutbookId": "5"  },
+    { "id": "weather",               "name": "Weather",                 "eagle": false, "scoutbookId": "126" },
+    { "id": "fishing",               "name": "Fishing",                 "eagle": false, "scoutbookId": "25" }
+  ],
+
+  "activityTypes": [
+    { "id": "troop-meeting",    "label": "Troop Meeting" },
+    { "id": "campout",          "label": "Campout" },
+    { "id": "service-project",  "label": "Service Project" },
+    { "id": "fundraiser",       "label": "Fundraiser" },
+    { "id": "hike",             "label": "Hike" },
+    { "id": "mb-clinic",        "label": "Merit Badge Clinic" },
+    { "id": "plc",              "label": "Patrol Leaders Council" },
+    { "id": "summer-camp",      "label": "Summer Camp" },
+    { "id": "special-event",    "label": "Special Event" }
+  ],
+
+  "scouts": [
+    {
+      "id": "maya",
+      "firstName": "Maya",
+      "lastName": "Sankpal-Tatera",
+      "displayName": "Maya Sankpal-Tatera",
+      "patrol": "Hawk",
+      "currentRank": "life",
+      "bsaMemberId": "14275791",
+      "active": true,
+      "joinedDate": "2020-04-09",
+      "lastActivity": "Summer Camp Ma-Ka July '25"
+    },
+    {
+      "id": "alex",
+      "firstName": "Alex",
+      "lastName": "Sankpal-Tatera",
+      "displayName": "Alex Sankpal-Tatera",
+      "patrol": "Wolf",
+      "currentRank": "second-class",
+      "bsaMemberId": "14275792",
+      "active": true,
+      "joinedDate": "2023-09-12",
+      "lastActivity": "Troop Meeting Apr 1"
+    },
+    {
+      "id": "avery",
+      "firstName": "Avery",
+      "lastName": "Jackson",
+      "displayName": "Avery Jackson",
+      "patrol": "Raven",
+      "currentRank": "scout",
+      "bsaMemberId": null,
+      "active": true,
+      "joinedDate": "2025-09-15",
+      "lastActivity": "Klondike Derby Feb '26"
+    },
+    {
+      "id": "sam",
+      "firstName": "Sam",
+      "lastName": "Rivera",
+      "displayName": "Sam Rivera",
+      "patrol": "Hawk",
+      "currentRank": "first-class",
+      "bsaMemberId": "14275842",
+      "active": true,
+      "joinedDate": "2022-09-08",
+      "lastActivity": "Wisconsin River Canoe May '24"
+    },
+    {
+      "id": "riley",
+      "firstName": "Riley",
+      "lastName": "Morgan",
+      "displayName": "Riley Morgan",
+      "patrol": "Wolf",
+      "currentRank": "star",
+      "bsaMemberId": "14275801",
+      "active": true,
+      "joinedDate": "2021-09-10",
+      "lastActivity": "Summer Camp Ma-Ka July '25"
+    },
+    {
+      "id": "taylor",
+      "firstName": "Taylor",
+      "lastName": "Nguyen",
+      "displayName": "Taylor Nguyen",
+      "patrol": "Raven",
+      "currentRank": "tenderfoot",
+      "bsaMemberId": "14275819",
+      "active": true,
+      "joinedDate": "2024-09-04",
+      "lastActivity": "Winter Camp Jan '26"
+    },
+    {
+      "id": "jordan",
+      "firstName": "Jordan",
+      "lastName": "Lee",
+      "displayName": "Jordan Lee",
+      "patrol": "Hawk",
+      "currentRank": "life",
+      "bsaMemberId": "14275777",
+      "active": true,
+      "joinedDate": "2020-09-12",
+      "lastActivity": "Eagle Project Planning"
+    },
+    {
+      "id": "casey",
+      "firstName": "Casey",
+      "lastName": "Brennan",
+      "displayName": "Casey Brennan",
+      "patrol": "Wolf",
+      "currentRank": "first-class",
+      "bsaMemberId": "14275888",
+      "active": true,
+      "joinedDate": "2023-04-22",
+      "lastActivity": "Summer Camp Ma-Ka July '25"
+    },
+    {
+      "id": "morgan-h",
+      "firstName": "Morgan",
+      "lastName": "Hughes",
+      "displayName": "Morgan Hughes",
+      "patrol": "Raven",
+      "currentRank": "second-class",
+      "bsaMemberId": null,
+      "active": true,
+      "joinedDate": "2024-04-15",
+      "lastActivity": "Winter Camp Jan '26"
+    }
+  ],
+
+  "parents": [
+    { "id": "parent-tatera", "displayName": "Priya Sankpal-Tatera", "email": "priya.tatera@example.com", "scoutIds": ["maya","alex"] },
+    { "id": "parent-jackson","displayName": "Marcus Jackson",       "email": "mjackson@example.com",      "scoutIds": ["avery"] },
+    { "id": "parent-rivera", "displayName": "Lupe Rivera",          "email": "lrivera@example.com",       "scoutIds": ["sam"] },
+    { "id": "parent-morgan", "displayName": "Erica Morgan",         "email": "emorgan@example.com",       "scoutIds": ["riley"] }
+  ],
+
+  "advancement": {
+    "maya": {
+      "scoutId": "maya",
+      "summary": {
+        "currentRank": "Life",
+        "campingNights": 30,
+        "serviceHours": 14,
+        "meritBadgeCount": 24,
+        "eagleMeritBadgeCount": 12,
+        "hikingMiles": 47,
+        "activityCount": 22,
+        "rankAwards": [
+          { "rank": "tenderfoot",   "date": "2022-06-01" },
+          { "rank": "second-class", "date": "2023-10-24" },
+          { "rank": "first-class",  "date": "2024-08-01" },
+          { "rank": "star",         "date": "2024-12-15" },
+          { "rank": "life",         "date": "2025-06-15" }
+        ]
+      },
+      "ranks": {
+        "scout": [
+          { "code": "1a", "label": "Oath Law Motto Slogan",          "date": "2021-04-09", "by": "PB" },
+          { "code": "1b", "label": "Scout Spirit",                   "date": "2021-04-09", "by": "PB" },
+          { "code": "1c", "label": "Sign Salute Handshake",          "date": "2021-04-09", "by": "PB" },
+          { "code": "1d", "label": "First Class Badge",              "date": "2021-04-09", "by": "PB" },
+          { "code": "1e", "label": "Outdoor Code",                   "date": "2021-04-09", "by": "PB" },
+          { "code": "1f", "label": "Pledge of Allegiance",           "date": "2021-04-09", "by": "PB" },
+          { "code": "2a", "label": "Explain Troop Leadership",       "date": "2021-04-09", "by": "PB" },
+          { "code": "2b", "label": "Four Steps of Advancement",      "date": "2021-04-09", "by": "PB" },
+          { "code": "2c", "label": "Explain Ranks",                  "date": "2021-04-09", "by": "PB" },
+          { "code": "2d", "label": "Explain Merit Badges",           "date": "2021-04-09", "by": "PB" },
+          { "code": "3a", "label": "Explain Patrols",                "date": "2021-04-09", "by": "PB" },
+          { "code": "3b", "label": "Explain Patrol Spirit",          "date": "2021-04-09", "by": "PB" },
+          { "code": "4a", "label": "Square Knot, 2 Half, Taut Line", "date": "2022-07-09", "by": "PB" },
+          { "code": "4b", "label": "Care of Rope",                   "date": "2022-09-01", "by": "PB" },
+          { "code": "5",  "label": "Pocket Knife Safety",            "date": "2022-09-15", "by": "PB" },
+          { "code": "6",  "label": "Cyber Chip and Abuse Protection","date": "2022-09-15", "by": "PB" },
+          { "code": "7",  "label": "Scoutmaster Conference",         "date": "2022-09-15", "by": "PB" }
+        ],
+        "tenderfoot": [
+          { "code": "1a", "label": "Pack for Overnight Campout",     "date": "2020-10-16", "by": "PB" },
+          { "code": "1b", "label": "Camp in tent you pitch",         "date": "2022-07-23", "by": "PB" },
+          { "code": "1c", "label": "Practice Outdoor Code",          "date": "2022-07-23", "by": "PB" },
+          { "code": "2a", "label": "Prepare campout meal",           "date": "2022-07-23", "by": "PB" },
+          { "code": "2b", "label": "Cleanup campout meal safely",    "date": "2022-07-23", "by": "PB" },
+          { "code": "2c", "label": "Eating as a patrol",             "date": "2022-07-23", "by": "PB" },
+          { "code": "3a", "label": "Square Knot use",                "date": "2021-01-15", "by": "PB" },
+          { "code": "3b", "label": "Two Half hitch use",             "date": "2021-01-15", "by": "PB" },
+          { "code": "3c", "label": "Taut Line hitch use",            "date": "2021-01-15", "by": "PB" },
+          { "code": "3d", "label": "Sharpen & care of knife ax saw", "date": "2022-09-15", "by": "JP" },
+          { "code": "4a", "label": "First Aid for Tenderfoot",       "date": "2021-02-18", "by": "PB" },
+          { "code": "",   "label": "First Aid - Simple Cuts",        "date": "2021-02-18", "by": "PB", "sub": true },
+          { "code": "",   "label": "First Aid - Blisters hand/foot", "date": "2021-02-18", "by": "PB", "sub": true },
+          { "code": "",   "label": "First Aid - Burns/Scalds",       "date": "2021-02-18", "by": "PB", "sub": true },
+          { "code": "",   "label": "First Aid - Bites/Stings/Ticks", "date": "2021-02-18", "by": "PB", "sub": true },
+          { "code": "",   "label": "First Aid - Snakebite",          "date": "2021-02-18", "by": "PB", "sub": true },
+          { "code": "",   "label": "First Aid - Nosebleed",          "date": "2021-02-18", "by": "PB", "sub": true },
+          { "code": "",   "label": "First Aid - Frostbite/Sunburn",  "date": "2021-02-18", "by": "PB", "sub": true },
+          { "code": "",   "label": "First Aid - Choking",            "date": "2021-02-18", "by": "PB", "sub": true },
+          { "code": "4b", "label": "Poisonous / Hazardous Plants",   "date": "2021-04-02", "by": "PB" },
+          { "code": "4c", "label": "Safety on campouts",             "date": "2023-02-19", "by": "PB" },
+          { "code": "4d", "label": "Make a First Aid Kit",           "date": "2023-02-25", "by": "PB" },
+          { "code": "5a", "label": "Buddy System (Use on outing)",   "date": "2020-06-02", "by": "PB" },
+          { "code": "5b", "label": "Getting Lost",                   "date": "2020-06-02", "by": "PB" },
+          { "code": "5c", "label": "Rules of Safe Hiking",           "date": "2020-06-02", "by": "PB" },
+          { "code": "6a", "label": "Fitness (60 Seconds each)",      "date": "2021-09-15", "by": "PB" },
+          { "code": "6b", "label": "Fitness Plan 30 Days",           "date": "2021-09-15", "by": "PB" },
+          { "code": "6c", "label": "Fitness Retest",                 "date": "2021-10-15", "by": "PB" },
+          { "code": "7a", "label": "Flag - display, raise, lower, fold","date": "2020-06-01","by":"PB" },
+          { "code": "7b", "label": "1 hour Service Project",         "date": "2022-10-20", "by": "JP" },
+          { "code": "8",  "label": "Use Edge to teach Square Knot",  "date": "2020-06-01", "by": "PB" },
+          { "code": "9",  "label": "Demonstrate Scout Spirit & Law", "date": "2020-06-01", "by": "PB" },
+          { "code": "10", "label": "Scoutmaster Conference",         "date": "2020-06-01", "by": "PB" },
+          { "code": "BoR","label": "Board of Review - Tenderfoot",   "date": "2020-06-01", "by": "PB" }
+        ],
+        "second-class": [
+          { "code": "1a", "label": "5 Troop activities (3 campouts)","date": "2020-09-01", "by": "PB" },
+          { "code": "1b", "label": "Explain Leave No Trace",         "date": "2020-09-01", "by": "PB" },
+          { "code": "1c", "label": "Select a patrol site/pitch a tent","date": "2020-09-01","by":"PB" },
+          { "code": "2a", "label": "Explain when use fire for cooking","date": "2020-10-02", "by": "T61" },
+          { "code": "2b", "label": "Prepare tinder, kindling, & fuel","date": "2023-09-10", "by": "PB" },
+          { "code": "2c", "label": "Make fire",                      "date": "2023-09-10", "by": "PB" },
+          { "code": "2d", "label": "Backpack stove & propane use",   "date": "2023-08-20", "by": "PB" },
+          { "code": "2e", "label": "Plan & cook campout hot breakfast","date": "2023-01-15", "by": "MS" },
+          { "code": "2f", "label": "Tie - Sheet Bend, explain use",  "date": "2023-10-28", "by": "PB" },
+          { "code": "2g", "label": "Tie - Bowline, explain use",     "date": "2023-08-20", "by": "PB" },
+          { "code": "3a", "label": "Compass / Orient & Read Map",    "date": "2022-01-15", "by": "MS" },
+          { "code": "3b", "label": "5 Mile Compass / 10 Mile Bike",  "date": "2021-04-15", "by": "PB" },
+          { "code": "3c", "label": "Hike Hazards discussion",        "date": "2021-04-15", "by": "PB" },
+          { "code": "3d", "label": "Finding Directions Day/Night",   "date": "2023-08-20", "by": "PB" },
+          { "code": "4",  "label": "Tracks. Sign 10 wild animals",   "date": "2021-05-15", "by": "PB" },
+          { "code": "5a", "label": "Safe Swim precautions",          "date": "2022-07-25", "by": "PB" },
+          { "code": "5b", "label": "Pass Beginner Swim Test",        "date": "2022-07-25", "by": "Camp" },
+          { "code": "5c", "label": "Demonstrate Water Rescue",       "date": "2023-07-25", "by": "Camp" },
+          { "code": "5d", "label": "Dangers of Swimmer Rescue",      "date": "2023-07-25", "by": "Camp" },
+          { "code": "6a", "label": "First Aid Second Class",         "date": "2021-03-20", "by": "PB" },
+          { "code": "",   "label": "First Aid - Object in eye",      "date": "2021-03-20", "by": "PB", "sub": true },
+          { "code": "",   "label": "First Aid - Animal Bite",        "date": "2021-03-20", "by": "PB", "sub": true },
+          { "code": "",   "label": "First Aid - Puncture Wounds",    "date": "2021-03-20", "by": "PB", "sub": true },
+          { "code": "",   "label": "First Aid - Serious burns",      "date": "2021-03-20", "by": "PB", "sub": true },
+          { "code": "",   "label": "First Aid - Heat Exhaust / Stroke","date":"2021-03-20","by":"PB","sub":true },
+          { "code": "",   "label": "First Aid - Shock",              "date": "2021-03-20", "by": "PB", "sub": true },
+          { "code": "",   "label": "Dehydrate, Heat St, Hypo, Hyper","date": "2021-03-20", "by": "PB", "sub": true },
+          { "code": "6b", "label": "Breathing, stroke, poison, bleed","date": "2021-05-20", "by": "PB" },
+          { "code": "6c", "label": "Reduce Injuries on Campouts",    "date": "2021-03-20", "by": "PB" },
+          { "code": "6d", "label": "Emergency home, wilderness",     "date": "2021-03-20", "by": "PB" },
+          { "code": "6e", "label": "Emergency car accident",         "date": "2021-03-20", "by": "PB" },
+          { "code": "7a", "label": "Fitness",                        "date": "2021-04-15", "by": "PB" },
+          { "code": "7b", "label": "Fitness Challenges",             "date": "2021-04-15", "by": "PB" },
+          { "code": "7c", "label": "Drugs, Alcohol, Tobacco Talk",   "date": "2021-04-15", "by": "PB" },
+          { "code": "8a", "label": "Flag ceremony",                  "date": "2021-06-05", "by": "PB" },
+          { "code": "8b", "label": "Flag fold / respect",            "date": "2021-06-05", "by": "PB" },
+          { "code": "8c", "label": "Budget, plan to earn an item",   "date": "2021-06-05", "by": "PB" },
+          { "code": "8d", "label": "Shop for the item",              "date": "2021-06-05", "by": "PB" },
+          { "code": "8e", "label": "2 more hours service project(s)","date": "2023-10-20", "by": "MS" },
+          { "code": "9a", "label": "Explain 3 R's of personal safety","date": "2020-01-15", "by": "PB" },
+          { "code": "9b", "label": "Bullying/Appropriate responses", "date": "2020-01-15", "by": "PB" },
+          { "code": "10", "label": "Scout Spirit",                   "date": "2021-01-15", "by": "PB" },
+          { "code": "11", "label": "SM Conference / Scout Law",      "date": "2023-10-24", "by": "JP" },
+          { "code": "BoR","label": "Board of Review - Second Class", "date": "2023-10-24", "by": "JP" }
+        ],
+        "first-class": [
+          { "code": "1a", "label": "10 total activities / (6 campouts)","date": "2024-01-01", "by": "PB" },
+          { "code": "1b", "label": "Explain “Tread Lightly”","date": "2023-06-25", "by": "PB" },
+          { "code": "2a", "label": "Meal plan & cook campout BLD",   "date": "2023-06-25", "by": "PB" },
+          { "code": "2b", "label": "From 2a - Budget & Buy for 10",  "date": "2024-02-14", "by": "PB" },
+          { "code": "2c", "label": "Pots, pans, utensils needed 2a", "date": "2023-05-01", "by": "PB" },
+          { "code": "2d", "label": "Safe food handling",             "date": "2023-06-25", "by": "PB" },
+          { "code": "2e", "label": "Cook BLD & supervise stove/fire","date": "2023-06-25", "by": "PB" },
+          { "code": "3a", "label": "Discuss lashings",               "date": "2023-06-25", "by": "PB" },
+          { "code": "3b", "label": "Tie Timber hitch & Clove hitch", "date": "2023-06-25", "by": "PB" },
+          { "code": "3c", "label": "Demo Three Lashings",            "date": "2023-06-25", "by": "PB" },
+          { "code": "",   "label": "Lashings - Square",              "date": "2023-06-25", "by": "PB", "sub": true },
+          { "code": "",   "label": "Lashings - Diagonal",            "date": "2023-06-25", "by": "PB", "sub": true },
+          { "code": "",   "label": "Lashings - Shear",               "date": "2023-06-25", "by": "PB", "sub": true },
+          { "code": "3d", "label": "Make a camp gadget",             "date": "2024-01-21", "by": "PB" },
+          { "code": "4a", "label": "1 Mile Orienteering Course",     "date": "2021-09-01", "by": "PB" },
+          { "code": "4b", "label": "Use GPS to Geocache",            "date": "2022-07-29", "by": "PB" },
+          { "code": "5a", "label": "Identify 10 native plants",      "date": "2024-06-23", "by": "Prior" },
+          { "code": "5b", "label": "Weather forecast",               "date": "2023-12-11", "by": "PP" },
+          { "code": "5c", "label": "Bad weather - 3 signs",          "date": "2023-12-11", "by": "PP" },
+          { "code": "5d", "label": "Extreme Weather risks",          "date": "2023-12-11", "by": "PP" },
+          { "code": "6a", "label": "Complete BSA Swim Test",         "date": "2022-07-25", "by": "PB" },
+          { "code": "6b", "label": "Precautions for safe trip afloat","date": "2020-05-14", "by": "PB" },
+          { "code": "6c", "label": "Parts canoe, kayak, boat, paddle","date": "2021-05-15", "by": "PB" },
+          { "code": "6d", "label": "Proper position in a watercraft","date": "2020-05-10", "by": "PB" },
+          { "code": "6e", "label": "Show aquatic line rescue 30'",   "date": "2023-06-25", "by": "Camp" },
+          { "code": "7a", "label": "First Aid - First Class",        "date": "2021-06-04", "by": "PB" },
+          { "code": "",   "label": "First Aid bandages sprained ankle","date":"2021-06-04","by":"PB","sub":true },
+          { "code": "",   "label": "First Aid - Bandages head injury","date":"2021-06-04","by":"PB","sub":true },
+          { "code": "",   "label": "First Aid - Bandages upper arm",  "date":"2021-06-04","by":"PB","sub":true },
+          { "code": "",   "label": "First Aid - Bandages collarbone", "date":"2021-06-04","by":"PB","sub":true },
+          { "code": "7b", "label": "Transport Injured",              "date": "2024-03-03", "by": "PB" },
+          { "code": "7c", "label": "Heart attack signs / CPR",       "date": "2021-06-04", "by": "PB" },
+          { "code": "7d", "label": "Utility services, hazards at home","date": "2024-06-30", "by": "MB" },
+          { "code": "7e", "label": "Emergency plan for home",        "date": "2024-06-30", "by": "MB" },
+          { "code": "7f", "label": "How to obtain potable water",    "date": "2024-06-30", "by": "MB" },
+          { "code": "8a", "label": "Fitness (30 Days)",              "date": "2024-03-03", "by": "PB" },
+          { "code": "8b", "label": "Fitness Goals",                  "date": "2024-03-03", "by": "PB" },
+          { "code": "9a", "label": "Discuss rights & duties with official","date":"2021-10-05","by":"PB" },
+          { "code": "9b", "label": "Investigate environmental Issue","date": "2024-08-15", "by": "PB" },
+          { "code": "9c", "label": "Track waste / make reduce plan", "date": "2024-08-15", "by": "PB" },
+          { "code": "9d", "label": "3 more hours of service project(s)","date": "2024-08-15","by": "PB" },
+          { "code": "10", "label": "Tell a friend about scouts",     "date": "2024-08-15", "by": "PB" },
+          { "code": "11", "label": "Scout Spirit",                   "date": "2024-08-15", "by": "PB" },
+          { "code": "12", "label": "SM Conference / Scout Law",      "date": "2024-08-15", "by": "PB" },
+          { "code": "BoR","label": "Board of Review - First Class",  "date": "2024-08-01", "by": "PB" }
+        ],
+        "star": [
+          { "code": "1",  "label": "Active Four Months as 1st Class","date": "2024-12-15", "by": "PB" },
+          { "code": "2",  "label": "Scout Spirit",                   "date": "2024-12-15", "by": "PB" },
+          { "code": "4",  "label": "Six Hours of Service",           "date": "2024-12-15", "by": "PB" },
+          { "code": "5",  "label": "Position of Responsibility",     "date": "2024-12-15", "by": "PB" },
+          { "code": "6",  "label": "Cyber Chip for Grade",           "date": "2024-12-15", "by": "PB" },
+          { "code": "7",  "label": "Scoutmaster's Conference",       "date": "2024-12-15", "by": "PB" },
+          { "code": "BoR","label": "Board of Review - Star",         "date": "2024-12-15", "by": "PB" }
+        ],
+        "life": [
+          { "code": "1",  "label": "Active Six Months as Star",      "date": "2025-06-15", "by": "MS" },
+          { "code": "2",  "label": "Scout Spirit",                   "date": "2025-06-15", "by": "MS" },
+          { "code": "4",  "label": "Six More Hours of Service",      "date": "2025-06-15", "by": "MS" },
+          { "code": "5",  "label": "Position of Responsibility",     "date": "2025-05-15", "by": "MS" },
+          { "code": "6",  "label": "Troop Instructor",               "date": "2025-05-31", "by": "MS" },
+          { "code": "7",  "label": "Scoutmaster's Conference",       "date": "2025-06-15", "by": "MS" },
+          { "code": "BoR","label": "Board of Review - Life",         "date": "2025-06-15", "by": "MS" }
+        ],
+        "eagle": [
+          { "code": "3",  "label": "Seven More Merit Badges",        "date": "2025-02-16", "by": "PB", "note": "In progress (3 of 7 Eagle MBs earned)" }
+        ]
+      },
+      "meritBadges": [
+        { "name": "Insect Study",              "date": "2020-07-15", "by": "PB" },
+        { "name": "Personal Fitness",          "date": "2021-04-01", "by": "T118", "eagle": true },
+        { "name": "Aviation",                  "date": "2021-04-15", "by": "T61" },
+        { "name": "Electricity",               "date": "2021-10-01", "by": "T61" },
+        { "name": "Game Design",               "date": "2022-02-01", "by": "T61" },
+        { "name": "Robotics",                  "date": "2022-02-01", "by": "T61" },
+        { "name": "Archery",                   "date": "2022-08-15", "by": "JP" },
+        { "name": "Signals Signs and Codes",   "date": "2023-07-25", "by": "Camp" },
+        { "name": "Leatherwork",               "date": "2023-07-25", "by": "Camp" },
+        { "name": "Nature",                    "date": "2023-07-25", "by": "Camp" },
+        { "name": "Swimming",                  "date": "2023-07-25", "by": "Camp", "eagle": true },
+        { "name": "Canoeing",                  "date": "2023-07-25", "by": "Camp" },
+        { "name": "Fingerprinting",            "date": "2023-07-25", "by": "Camp" },
+        { "name": "Environmental Science",     "date": "2023-07-25", "by": "Camp", "eagle": true },
+        { "name": "Small-Boat Sailing",        "date": "2023-07-25", "by": "Camp" },
+        { "name": "Nuclear Science",           "date": "2023-12-02", "by": "Clinic" },
+        { "name": "Climbing",                  "date": "2024-04-06", "by": "Turner" },
+        { "name": "Citizenship in The Community","date": "2024-07-01", "by": "PP", "eagle": true },
+        { "name": "Art",                       "date": "2024-07-28", "by": "Camp" },
+        { "name": "Lifesaving",                "date": "2024-07-28", "by": "Camp", "eagle": true },
+        { "name": "Family Life",               "date": "2024-08-31", "by": "JT", "eagle": true },
+        { "name": "Communication",             "date": "2025-01-15", "by": "BV", "eagle": true },
+        { "name": "Citizenship in Society",    "date": "2025-03-29", "by": "KM", "eagle": true },
+        { "name": "Camping",                   "date": "2025-08-11", "by": "PB", "eagle": true },
+        { "name": "Citizenship in The Nation", "date": "2025-08-24", "by": "JP", "eagle": true }
+      ],
+      "activities": [
+        { "title": "Governor Dodge May '21",       "type": "Camp",   "date": "2021-05-15", "notes": "(T61)" },
+        { "title": "Devils Lake Oct '21",          "type": "Camp",   "date": "2021-10-12", "notes": "(T61)" },
+        { "title": "Winter Camp IMR Feb '22",      "type": "Camp",   "date": "2022-02-11", "notes": "(T61)" },
+        { "title": "Jag Lake July '22",            "type": "Camp",   "date": "2022-07-22", "notes": "(T61)" },
+        { "title": "Governor Dodge Oct '22",       "type": "Camp",   "date": "2022-10-16" },
+        { "title": "Skiing Lapham March '23",      "type": "Outing", "date": "2023-03-05" },
+        { "title": "Wyalusing May '23",            "type": "Camp",   "date": "2023-05-15" },
+        { "title": "Pancake Breakfast June '23",   "type": "Event",  "date": "2023-06-10" },
+        { "title": "Summer Camp Ma-Ka July '23",   "type": "Camp",   "date": "2023-07-25" },
+        { "title": "Devils Lake Oct '23",          "type": "Camp",   "date": "2023-10-06" },
+        { "title": "Winter Camp Jan '24",          "type": "Camp",   "date": "2024-01-25" },
+        { "title": "Pancake Breakfast April '24",  "type": "Event",  "date": "2024-04-12" },
+        { "title": "Wisconsin River Canoe May '24","type": "Camp",   "date": "2024-05-15" },
+        { "title": "Summer Camp Ma-Ka July '24",   "type": "Camp",   "date": "2024-07-25" },
+        { "title": "Kohler Andrea Oct '24",        "type": "Camp",   "date": "2024-10-12" },
+        { "title": "Winter Camp Jan '25",          "type": "Camp",   "date": "2025-01-11" },
+        { "title": "Pancake Breakfast '25",        "type": "Event",  "date": "2025-05-10" },
+        { "title": "Elroy Sparta May '25",         "type": "Camp",   "date": "2025-05-16" },
+        { "title": "Summer Camp Ma-Ka July '25",   "type": "Camp",   "date": "2025-07-28" }
+      ],
+      "leadership": [
+        { "position": "Senior Patrol Leader", "startDate": "2023-08-01", "endDate": "2024-01-27" },
+        { "position": "Senior Patrol Leader", "startDate": "2024-01-28", "endDate": "2024-07-31" }
+      ],
+      "serviceProjects": [
+        { "title": "OLT Cleanup May '23",     "date": "2023-05-05", "hours": 3 },
+        { "title": "Pumpkin Pavilion Oct '23","date": "2023-10-20", "hours": 4 },
+        { "title": "OLT Cleanup May '24",     "date": "2024-05-05", "hours": 3 },
+        { "title": "OLT Cleanup April '25",   "date": "2025-04-27", "hours": 4 }
+      ]
+    },
+
+    "alex": {
+      "scoutId": "alex",
+      "summary": {
+        "currentRank": "Second Class",
+        "campingNights": 12,
+        "serviceHours": 4,
+        "meritBadgeCount": 6,
+        "eagleMeritBadgeCount": 1,
+        "hikingMiles": 9,
+        "activityCount": 8,
+        "rankAwards": [
+          { "rank": "scout",        "date": "2023-11-04" },
+          { "rank": "tenderfoot",   "date": "2024-04-18" },
+          { "rank": "second-class", "date": "2025-02-22" }
+        ]
+      },
+      "ranks": {
+        "scout":        [{ "code":"all","label":"All Scout requirements","date":"2023-11-04","by":"PB" }],
+        "tenderfoot":   [{ "code":"all","label":"All Tenderfoot requirements","date":"2024-04-18","by":"PB" }],
+        "second-class": [{ "code":"all","label":"All Second Class requirements","date":"2025-02-22","by":"PB" }],
+        "first-class":  [
+          { "code":"2c", "label":"Pots, pans, utensils needed 2a", "date":"2026-03-15", "by":"PB" },
+          { "code":"3a", "label":"Discuss lashings", "date":"2026-03-22", "by":"MS" }
+        ]
+      },
+      "meritBadges": [
+        { "name": "Swimming",       "date": "2024-07-25", "by": "Camp", "eagle": true },
+        { "name": "Fingerprinting", "date": "2024-07-25", "by": "Camp" },
+        { "name": "Leatherwork",    "date": "2024-07-25", "by": "Camp" },
+        { "name": "Nature",         "date": "2024-07-25", "by": "Camp" },
+        { "name": "Art",            "date": "2025-07-28", "by": "Camp" },
+        { "name": "Game Design",    "date": "2025-09-12", "by": "T61" }
+      ],
+      "activities": [
+        { "title": "Summer Camp Ma-Ka July '24", "type": "Camp", "date": "2024-07-25" },
+        { "title": "Winter Camp Jan '25",        "type": "Camp", "date": "2025-01-11" },
+        { "title": "Pancake Breakfast '25",      "type": "Event","date": "2025-05-10" },
+        { "title": "Summer Camp Ma-Ka July '25", "type": "Camp", "date": "2025-07-28" },
+        { "title": "Klondike Derby Feb '26",     "type": "Camp", "date": "2026-02-07" },
+        { "title": "Winter Camp Jan '26",        "type": "Camp", "date": "2026-01-17" }
+      ],
+      "leadership": [
+        { "position": "Patrol Scribe", "startDate": "2025-09-01", "endDate": null }
+      ],
+      "serviceProjects": [
+        { "title": "Park Cleanup Sep '24", "date": "2024-09-14", "hours": 2 },
+        { "title": "Pumpkin Pavilion '25", "date": "2025-10-18", "hours": 2 }
+      ]
+    },
+
+    "avery": {
+      "scoutId": "avery",
+      "summary": {
+        "currentRank": "Scout",
+        "campingNights": 4,
+        "serviceHours": 2,
+        "meritBadgeCount": 0,
+        "eagleMeritBadgeCount": 0,
+        "hikingMiles": 3,
+        "activityCount": 5,
+        "rankAwards": []
+      },
+      "ranks": {
+        "scout": [
+          { "code":"1a", "label":"Oath Law Motto Slogan", "date":"2025-10-02", "by":"PB" },
+          { "code":"1b", "label":"Scout Spirit",          "date":"2025-10-02", "by":"PB" },
+          { "code":"1c", "label":"Sign Salute Handshake", "date":"2025-10-02", "by":"PB" },
+          { "code":"4a", "label":"Square Knot, 2 Half, Taut Line", "date":"2025-11-12", "by":"PB" },
+          { "code":"5",  "label":"Pocket Knife Safety",   "date":"2026-01-22", "by":"PB" }
+        ],
+        "tenderfoot": [
+          { "code":"7a", "label":"Flag - display, raise, lower, fold", "date":"2026-02-14", "by":"JP" }
+        ]
+      },
+      "meritBadges": [],
+      "activities": [
+        { "title": "Winter Camp Jan '26",    "type":"Camp", "date":"2026-01-17" },
+        { "title": "Klondike Derby Feb '26", "type":"Camp", "date":"2026-02-07" }
+      ],
+      "leadership": [],
+      "serviceProjects": [
+        { "title": "Pumpkin Pavilion '25", "date":"2025-10-18", "hours": 2 }
+      ]
+    },
+
+    "sam": {
+      "scoutId": "sam",
+      "summary": {
+        "currentRank": "First Class",
+        "campingNights": 22,
+        "serviceHours": 9,
+        "meritBadgeCount": 12,
+        "eagleMeritBadgeCount": 3,
+        "hikingMiles": 28,
+        "activityCount": 15,
+        "rankAwards": [
+          { "rank": "scout",        "date": "2022-11-20" },
+          { "rank": "tenderfoot",   "date": "2023-04-10" },
+          { "rank": "second-class", "date": "2023-12-04" },
+          { "rank": "first-class",  "date": "2024-09-18" }
+        ]
+      },
+      "ranks": {
+        "scout":        [{ "code":"all","label":"All Scout requirements","date":"2022-11-20","by":"PB" }],
+        "tenderfoot":   [{ "code":"all","label":"All Tenderfoot requirements","date":"2023-04-10","by":"PB" }],
+        "second-class": [{ "code":"all","label":"All Second Class requirements","date":"2023-12-04","by":"PB" }],
+        "first-class":  [{ "code":"all","label":"All First Class requirements","date":"2024-09-18","by":"PB" }],
+        "star": [
+          { "code":"1", "label":"Active Four Months as 1st Class", "date":"2025-01-18", "by":"PB" },
+          { "code":"5", "label":"Position of Responsibility",     "date":"2026-01-10", "by":"PB" },
+          { "code":"4", "label":"Six Hours of Service",           "date":"2025-12-15", "by":"PB" }
+        ]
+      },
+      "meritBadges": [
+        { "name": "Swimming",              "date": "2023-07-25", "by": "Camp", "eagle": true },
+        { "name": "Environmental Science", "date": "2023-07-25", "by": "Camp", "eagle": true },
+        { "name": "Cooking",               "date": "2024-08-12", "by": "PB",   "eagle": true },
+        { "name": "Canoeing",              "date": "2023-07-25", "by": "Camp" },
+        { "name": "Leatherwork",           "date": "2023-07-25", "by": "Camp" },
+        { "name": "Nature",                "date": "2023-07-25", "by": "Camp" },
+        { "name": "Fingerprinting",        "date": "2023-07-25", "by": "Camp" },
+        { "name": "Robotics",              "date": "2024-02-08", "by": "T61" },
+        { "name": "Game Design",           "date": "2024-02-08", "by": "T61" },
+        { "name": "Climbing",              "date": "2024-04-06", "by": "Turner" },
+        { "name": "Art",                   "date": "2024-07-28", "by": "Camp" },
+        { "name": "Weather",               "date": "2025-04-14", "by": "PP" }
+      ],
+      "activities": [
+        { "title": "Summer Camp Ma-Ka July '23", "type":"Camp", "date":"2023-07-25" },
+        { "title": "Winter Camp Jan '24",        "type":"Camp", "date":"2024-01-25" },
+        { "title": "Wisconsin River Canoe May '24","type":"Camp", "date":"2024-05-15" },
+        { "title": "Summer Camp Ma-Ka July '24", "type":"Camp", "date":"2024-07-25" },
+        { "title": "Winter Camp Jan '25",        "type":"Camp", "date":"2025-01-11" },
+        { "title": "Summer Camp Ma-Ka July '25", "type":"Camp", "date":"2025-07-28" }
+      ],
+      "leadership": [
+        { "position": "Patrol Leader", "startDate": "2025-02-01", "endDate": "2025-08-01" },
+        { "position": "Assistant Senior Patrol Leader", "startDate": "2025-08-01", "endDate": null }
+      ],
+      "serviceProjects": [
+        { "title": "OLT Cleanup April '25", "date":"2025-04-27", "hours": 3 },
+        { "title": "Pumpkin Pavilion '25",  "date":"2025-10-18", "hours": 4 }
+      ]
+    },
+
+    "riley": {
+      "scoutId": "riley",
+      "summary": {
+        "currentRank": "Star",
+        "campingNights": 26,
+        "serviceHours": 11,
+        "meritBadgeCount": 18,
+        "eagleMeritBadgeCount": 5,
+        "hikingMiles": 32,
+        "activityCount": 18,
+        "rankAwards": [
+          { "rank": "scout",        "date": "2022-04-12" },
+          { "rank": "tenderfoot",   "date": "2022-11-04" },
+          { "rank": "second-class", "date": "2023-06-20" },
+          { "rank": "first-class",  "date": "2024-03-08" },
+          { "rank": "star",         "date": "2025-04-22" }
+        ]
+      },
+      "ranks": {
+        "scout":        [{ "code":"all","label":"All Scout requirements","date":"2022-04-12","by":"PB" }],
+        "tenderfoot":   [{ "code":"all","label":"All Tenderfoot requirements","date":"2022-11-04","by":"PB" }],
+        "second-class": [{ "code":"all","label":"All Second Class requirements","date":"2023-06-20","by":"PB" }],
+        "first-class":  [{ "code":"all","label":"All First Class requirements","date":"2024-03-08","by":"PB" }],
+        "star":         [{ "code":"all","label":"All Star requirements","date":"2025-04-22","by":"MS" }],
+        "life": [
+          { "code":"5", "label":"Position of Responsibility", "date":"2025-09-01", "by":"PB" },
+          { "code":"4", "label":"Six More Hours of Service",  "date":"2026-02-14", "by":"PB" }
+        ]
+      },
+      "meritBadges": [
+        { "name": "Personal Fitness",          "date": "2022-06-15", "by": "PB",   "eagle": true },
+        { "name": "Swimming",                  "date": "2023-07-25", "by": "Camp", "eagle": true },
+        { "name": "Environmental Science",     "date": "2023-07-25", "by": "Camp", "eagle": true },
+        { "name": "Communication",             "date": "2025-01-15", "by": "BV",   "eagle": true },
+        { "name": "Family Life",               "date": "2025-04-18", "by": "JT",   "eagle": true }
+      ],
+      "activities": [],
+      "leadership": [
+        { "position": "Patrol Leader",           "startDate": "2024-08-01", "endDate": "2025-02-01" },
+        { "position": "Senior Patrol Leader",    "startDate": "2025-08-01", "endDate": null }
+      ],
+      "serviceProjects": [
+        { "title": "OLT Cleanup April '25", "date":"2025-04-27", "hours": 3 },
+        { "title": "Pumpkin Pavilion '25",  "date":"2025-10-18", "hours": 4 },
+        { "title": "Food Pantry Drive '26", "date":"2026-02-08", "hours": 4 }
+      ]
+    },
+
+    "taylor": {
+      "scoutId": "taylor",
+      "summary": {
+        "currentRank": "Tenderfoot",
+        "campingNights": 6,
+        "serviceHours": 2,
+        "meritBadgeCount": 1,
+        "eagleMeritBadgeCount": 0,
+        "hikingMiles": 4,
+        "activityCount": 6,
+        "rankAwards": [
+          { "rank": "scout",      "date": "2024-12-08" },
+          { "rank": "tenderfoot", "date": "2025-06-12" }
+        ]
+      },
+      "ranks": {
+        "scout":      [{ "code":"all","label":"All Scout requirements","date":"2024-12-08","by":"PB" }],
+        "tenderfoot": [{ "code":"all","label":"All Tenderfoot requirements","date":"2025-06-12","by":"PB" }],
+        "second-class": [
+          { "code":"3a", "label":"Compass / Orient & Read Map", "date":"2026-03-22", "by":"MS" },
+          { "code":"5a", "label":"Safe Swim precautions",       "date":"2026-02-19", "by":"PB" }
+        ]
+      },
+      "meritBadges": [
+        { "name": "Fishing", "date": "2025-07-28", "by": "Camp" }
+      ],
+      "activities": [],
+      "leadership": [],
+      "serviceProjects": []
+    },
+
+    "jordan": {
+      "scoutId": "jordan",
+      "summary": {
+        "currentRank": "Life",
+        "campingNights": 34,
+        "serviceHours": 18,
+        "meritBadgeCount": 21,
+        "eagleMeritBadgeCount": 8,
+        "hikingMiles": 51,
+        "activityCount": 24,
+        "rankAwards": [
+          { "rank": "scout",        "date": "2021-04-20" },
+          { "rank": "tenderfoot",   "date": "2021-11-12" },
+          { "rank": "second-class", "date": "2022-08-04" },
+          { "rank": "first-class",  "date": "2023-05-22" },
+          { "rank": "star",         "date": "2024-01-10" },
+          { "rank": "life",         "date": "2025-02-04" }
+        ]
+      },
+      "ranks": {
+        "scout":        [{ "code":"all","label":"All Scout requirements","date":"2021-04-20","by":"PB" }],
+        "tenderfoot":   [{ "code":"all","label":"All Tenderfoot requirements","date":"2021-11-12","by":"PB" }],
+        "second-class": [{ "code":"all","label":"All Second Class requirements","date":"2022-08-04","by":"PB" }],
+        "first-class":  [{ "code":"all","label":"All First Class requirements","date":"2023-05-22","by":"PB" }],
+        "star":         [{ "code":"all","label":"All Star requirements","date":"2024-01-10","by":"PB" }],
+        "life":         [{ "code":"all","label":"All Life requirements","date":"2025-02-04","by":"MS" }],
+        "eagle": [
+          { "code":"5", "label":"Eagle Service Project (planning)", "date":"2026-03-10", "by":"PB", "note":"Project proposal submitted; awaiting district approval" }
+        ]
+      },
+      "meritBadges": [
+        { "name": "Personal Fitness",      "date": "2022-08-04", "by": "T118","eagle": true },
+        { "name": "Camping",               "date": "2024-08-15", "by": "PB",  "eagle": true },
+        { "name": "Cooking",               "date": "2024-09-22", "by": "MS",  "eagle": true },
+        { "name": "First Aid",             "date": "2023-06-20", "by": "PB",  "eagle": true },
+        { "name": "Citizenship in The Community", "date": "2024-07-01", "by":"PP","eagle":true },
+        { "name": "Citizenship in The Nation",    "date": "2024-11-12", "by":"JP","eagle":true },
+        { "name": "Citizenship in The World",     "date": "2025-03-08", "by":"BV","eagle":true },
+        { "name": "Communication",         "date": "2025-01-15", "by": "BV",  "eagle": true }
+      ],
+      "activities": [],
+      "leadership": [
+        { "position": "Senior Patrol Leader", "startDate": "2024-02-01", "endDate": "2024-08-01" },
+        { "position": "Junior Assistant SM",  "startDate": "2025-08-01", "endDate": null }
+      ],
+      "serviceProjects": [
+        { "title": "Trail Restoration Sep '24", "date":"2024-09-21", "hours": 6 },
+        { "title": "Food Pantry Drive '25",     "date":"2025-02-08", "hours": 4 },
+        { "title": "OLT Cleanup April '25",     "date":"2025-04-27", "hours": 4 },
+        { "title": "Pumpkin Pavilion '25",      "date":"2025-10-18", "hours": 4 }
+      ]
+    },
+
+    "casey": {
+      "scoutId": "casey",
+      "summary": {
+        "currentRank": "First Class",
+        "campingNights": 17,
+        "serviceHours": 6,
+        "meritBadgeCount": 9,
+        "eagleMeritBadgeCount": 2,
+        "hikingMiles": 19,
+        "activityCount": 12,
+        "rankAwards": [
+          { "rank": "scout",        "date": "2023-08-18" },
+          { "rank": "tenderfoot",   "date": "2024-01-14" },
+          { "rank": "second-class", "date": "2024-09-02" },
+          { "rank": "first-class",  "date": "2025-09-12" }
+        ]
+      },
+      "ranks": {
+        "scout":        [{ "code":"all","label":"All Scout requirements","date":"2023-08-18","by":"PB" }],
+        "tenderfoot":   [{ "code":"all","label":"All Tenderfoot requirements","date":"2024-01-14","by":"PB" }],
+        "second-class": [{ "code":"all","label":"All Second Class requirements","date":"2024-09-02","by":"PB" }],
+        "first-class":  [{ "code":"all","label":"All First Class requirements","date":"2025-09-12","by":"PB" }]
+      },
+      "meritBadges": [
+        { "name": "Swimming",       "date": "2024-07-25", "by": "Camp", "eagle": true },
+        { "name": "Environmental Science", "date": "2024-07-25", "by": "Camp", "eagle": true },
+        { "name": "Canoeing",       "date": "2024-07-25", "by": "Camp" },
+        { "name": "Leatherwork",    "date": "2024-07-25", "by": "Camp" },
+        { "name": "Fingerprinting", "date": "2024-07-25", "by": "Camp" }
+      ],
+      "activities": [],
+      "leadership": [
+        { "position": "Patrol Quartermaster", "startDate": "2025-08-01", "endDate": null }
+      ],
+      "serviceProjects": [
+        { "title": "OLT Cleanup April '25", "date":"2025-04-27", "hours": 3 }
+      ]
+    },
+
+    "morgan-h": {
+      "scoutId": "morgan-h",
+      "summary": {
+        "currentRank": "Second Class",
+        "campingNights": 9,
+        "serviceHours": 3,
+        "meritBadgeCount": 3,
+        "eagleMeritBadgeCount": 0,
+        "hikingMiles": 6,
+        "activityCount": 7,
+        "rankAwards": [
+          { "rank": "scout",        "date": "2024-08-12" },
+          { "rank": "tenderfoot",   "date": "2025-02-04" },
+          { "rank": "second-class", "date": "2025-11-18" }
+        ]
+      },
+      "ranks": {
+        "scout":        [{ "code":"all","label":"All Scout requirements","date":"2024-08-12","by":"PB" }],
+        "tenderfoot":   [{ "code":"all","label":"All Tenderfoot requirements","date":"2025-02-04","by":"PB" }],
+        "second-class": [{ "code":"all","label":"All Second Class requirements","date":"2025-11-18","by":"MS" }]
+      },
+      "meritBadges": [
+        { "name": "Nature",         "date": "2025-07-28", "by": "Camp" },
+        { "name": "Fingerprinting", "date": "2025-07-28", "by": "Camp" },
+        { "name": "Art",            "date": "2025-07-28", "by": "Camp" }
+      ],
+      "activities": [],
+      "leadership": [],
+      "serviceProjects": [
+        { "title": "Pumpkin Pavilion '25", "date":"2025-10-18", "hours": 3 }
+      ]
+    }
+  },
+
+  "ledgerRecent": [
+    { "id": 1001, "date": "2026-04-05", "scoutId": "maya",     "type": "merit_badge_requirement", "code": "Cook-4b",        "label": "Cooking MB requirement 4b",     "by": "PB", "qty": 1, "unit": "complete", "enteredBy": "PB", "enteredAt": "2026-04-06" },
+    { "id": 1002, "date": "2026-04-04", "scoutId": "taylor",   "type": "rank_requirement",        "code": "SC-3a",          "label": "Second Class 3a - Compass",     "by": "MS", "qty": 1, "unit": "complete", "enteredBy": "MS", "enteredAt": "2026-04-04" },
+    { "id": 1003, "date": "2026-04-02", "scoutId": "alex",     "type": "rank_requirement",        "code": "FC-3a",          "label": "First Class 3a - Discuss lashings","by":"MS","qty":1,"unit":"complete","enteredBy":"MS","enteredAt":"2026-04-02" },
+    { "id": 1004, "date": "2026-04-01", "scoutId": "avery",    "type": "attendance",              "code": "Meeting",        "label": "Troop Meeting Apr 1",           "by": "PB", "qty": 1, "unit": "meeting",  "enteredBy": "PB", "enteredAt": "2026-04-01" },
+    { "id": 1005, "date": "2026-03-29", "scoutId": "riley",    "type": "service_hours",           "code": "Service",        "label": "Library Garden Cleanup",        "by": "JP", "qty": 4, "unit": "hours",    "enteredBy": "JP", "enteredAt": "2026-03-30" },
+    { "id": 1006, "date": "2026-03-21", "scoutId": "sam",      "type": "leadership",              "code": "ASPL",           "label": "Assistant SPL term renewed",    "by": "PB", "qty": 1, "unit": "term",     "enteredBy": "PB", "enteredAt": "2026-03-22" },
+    { "id": 1007, "date": "2026-02-14", "scoutId": "jordan",   "type": "merit_badge_award",       "code": "MB-Communication","label":"Communication merit badge",     "by": "BV", "qty": 1, "unit": "award",    "enteredBy": "PB", "enteredAt": "2026-02-15" },
+    { "id": 1008, "date": "2026-02-07", "scoutId": "casey",    "type": "attendance",              "code": "Camp",           "label": "Klondike Derby Feb '26",        "by": "Camp","qty":1,"unit":"event",    "enteredBy": "PB", "enteredAt": "2026-02-08" },
+    { "id": 1009, "date": "2026-01-17", "scoutId": "morgan-h", "type": "camping_nights",          "code": "WinterCamp",     "label": "Winter Camp Jan '26",           "by": "PB", "qty": 2, "unit": "nights",   "enteredBy": "PB", "enteredAt": "2026-01-18" },
+    { "id": 1010, "date": "2025-08-24", "scoutId": "maya",     "type": "merit_badge_award",       "code": "MB-CitNation",   "label": "Citizenship in The Nation",     "by": "JP", "qty": 1, "unit": "award",    "enteredBy": "PB", "enteredAt": "2025-08-25" }
+  ],
+
+  "cohHistory": [
+    {
+      "id": "coh-2025-11",
+      "title": "Fall 2025 Court of Honor",
+      "date": "2025-11-09",
+      "recognitions": 38,
+      "rankAwards": 4,
+      "meritBadges": 19,
+      "notes": "Held at Brookfield East. Three new First Class scouts."
+    },
+    {
+      "id": "coh-2025-05",
+      "title": "Spring 2025 Court of Honor",
+      "date": "2025-05-04",
+      "recognitions": 41,
+      "rankAwards": 6,
+      "meritBadges": 22,
+      "notes": "Combined with Pancake Breakfast fundraiser."
+    }
+  ],
+
+  "cohCandidates": {
+    "cohDate": "2026-05-17",
+    "sincePreviousCoh": "2025-11-09",
+    "items": [
+      { "scoutId": "maya",     "award": "Camping Merit Badge",       "date": "2025-08-11", "type": "Merit Badge", "include": true },
+      { "scoutId": "maya",     "award": "Citizenship in The Nation", "date": "2025-08-24", "type": "Merit Badge", "include": true },
+      { "scoutId": "avery",    "award": "Scout Rank",                "date": "2026-02-14", "type": "Rank",        "include": true },
+      { "scoutId": "alex",     "award": "Second Class Rank",         "date": "2025-02-22", "type": "Rank",        "include": false, "note": "Awarded at prior COH" },
+      { "scoutId": "casey",    "award": "First Class Rank",          "date": "2025-09-12", "type": "Rank",        "include": true },
+      { "scoutId": "morgan-h", "award": "Second Class Rank",         "date": "2025-11-18", "type": "Rank",        "include": true },
+      { "scoutId": "sam",      "award": "Cooking Merit Badge",       "date": "2025-08-12", "type": "Merit Badge", "include": true },
+      { "scoutId": "jordan",   "award": "Communication Merit Badge", "date": "2025-01-15", "type": "Merit Badge", "include": true },
+      { "scoutId": "jordan",   "award": "Citizenship in The World",  "date": "2025-03-08", "type": "Merit Badge", "include": true },
+      { "scoutId": "riley",    "award": "Family Life Merit Badge",   "date": "2025-04-18", "type": "Merit Badge", "include": true },
+      { "scoutId": "sam",      "award": "Assistant SPL Term",        "date": "2025-08-01", "type": "Leadership",  "include": true }
+    ]
+  },
+
+  "lookups": {
+    "internalRequirementCodes": [
+      { "code": "Cook-4b",       "label": "Cooking MB requirement 4b",      "officialMapping": "Cooking 4b",        "scoutbookId": "33" },
+      { "code": "TF-FA-Burns",   "label": "First Aid - Burns/Scalds",       "officialMapping": "Tenderfoot 4a",     "scoutbookId": "" },
+      { "code": "TF-FA-Cuts",    "label": "First Aid - Simple Cuts",        "officialMapping": "Tenderfoot 4a",     "scoutbookId": "" },
+      { "code": "TF-Fit-1",      "label": "Fitness 60s - Pushups",          "officialMapping": "Tenderfoot 6a",     "scoutbookId": "" },
+      { "code": "FC-Lash-Square","label": "Lashings - Square",              "officialMapping": "First Class 3c",    "scoutbookId": "" },
+      { "code": "FC-Lash-Diag",  "label": "Lashings - Diagonal",            "officialMapping": "First Class 3c",    "scoutbookId": "" },
+      { "code": "FC-Lash-Shear", "label": "Lashings - Shear",               "officialMapping": "First Class 3c",    "scoutbookId": "" },
+      { "code": "SC-3a",         "label": "Compass / Orient & Read Map",    "officialMapping": "Second Class 3a",   "scoutbookId": "" },
+      { "code": "FC-3a",         "label": "Discuss lashings",               "officialMapping": "First Class 3a",    "scoutbookId": "" }
+    ]
+  },
+
+  "scoutbookExportPreview": [
+    { "status": "Ready",          "memberId": "14275791", "firstName": "Maya",    "lastName": "Tatera",  "advancementType": "meritbadge", "advancementId": "33",  "dateCompleted": "2025-08-11" },
+    { "status": "Ready",          "memberId": "14275791", "firstName": "Maya",    "lastName": "Tatera",  "advancementType": "meritbadge", "advancementId": "14",  "dateCompleted": "2025-08-24" },
+    { "status": "Ready",          "memberId": "14275842", "firstName": "Sam",     "lastName": "Rivera",  "advancementType": "meritbadge", "advancementId": "20",  "dateCompleted": "2024-08-12" },
+    { "status": "Ready",          "memberId": "14275777", "firstName": "Jordan",  "lastName": "Lee",     "advancementType": "meritbadge", "advancementId": "16",  "dateCompleted": "2025-01-15" },
+    { "status": "Missing BSA ID", "memberId": "",         "firstName": "Avery",   "lastName": "Jackson", "advancementType": "rank",       "advancementId": "1",   "dateCompleted": "2026-02-14" },
+    { "status": "Missing BSA ID", "memberId": "",         "firstName": "Morgan",  "lastName": "Hughes",  "advancementType": "rank",       "advancementId": "3",   "dateCompleted": "2025-11-18" },
+    { "status": "Ready",          "memberId": "14275888", "firstName": "Casey",   "lastName": "Brennan", "advancementType": "rank",       "advancementId": "4",   "dateCompleted": "2025-09-12" }
+  ]
+}

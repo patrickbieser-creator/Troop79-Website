@@ -235,6 +235,62 @@
       margin-bottom: 12px;
     }
 
+    /* ── DEV NOTE (run the prototype) ── */
+    .dev-note {
+      background: #fff;
+      border: 1px solid var(--nws-gray-light);
+      border-top: 3px solid var(--nws-rust);
+      padding: 20px 24px;
+      margin-bottom: 24px;
+    }
+    .dev-note h4 {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--nws-rust);
+      margin-bottom: 12px;
+    }
+    .dev-note p {
+      font-family: 'Libre Baskerville', 'Times New Roman', serif;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--nws-gray-dark);
+      margin-bottom: 10px;
+    }
+    .dev-note p:last-child { margin-bottom: 0; }
+    .dev-note code,
+    .dev-note pre {
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 12px;
+      background: #f4f1ea;
+      border: 1px solid var(--nws-gray-light);
+      color: var(--nws-teal-dark);
+    }
+    .dev-note code { padding: 2px 6px; }
+    .dev-note pre {
+      padding: 10px 14px;
+      margin: 8px 0 12px;
+      overflow-x: auto;
+    }
+    .dev-note ul {
+      list-style: none;
+      margin: 0;
+    }
+    .dev-note ul li {
+      font-family: 'Libre Baskerville', 'Times New Roman', serif;
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--nws-gray-dark);
+    }
+    .dev-note ul li::before {
+      content: '· ';
+      color: var(--nws-rust);
+      font-weight: 700;
+    }
+    .dev-note a { color: var(--nws-teal-dark); text-decoration: none; border-bottom: 1px solid var(--nws-gray-light); }
+    .dev-note a:hover { border-bottom-color: var(--nws-teal-dark); }
+
     /* ── PHASE ROADMAP ── */
     .roadmap {
       background: var(--nws-teal-dark);
@@ -255,7 +311,6 @@
       grid-template-columns: repeat(3, 1fr);
       gap: 16px;
     }
-    .roadmap-phase { }
     .roadmap-phase .phase-label {
       font-size: 10px;
       font-weight: 700;
@@ -317,12 +372,32 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Prototyping &mdash; Phase 1</strong></p>
-      <p>Last updated: <strong>April 9, 2026</strong></p>
+      <p>Last updated: <strong>May 25, 2026</strong></p>
     </div>
   </div>
 
   <!-- PAGE BODY -->
   <div class="page-body">
+
+    <!-- DEV NOTE: how to run the prototype locally -->
+    <div class="dev-note">
+      <h4>Running the Prototype Locally</h4>
+      <p>The site is plain static HTML &mdash; no build step. Serve the project root with Python&rsquo;s built-in HTTP server:</p>
+      <pre>cd D:\Projects\Troop79-Website
+python -m http.server 8000</pre>
+      <p>Then open any of these in a browser:</p>
+      <ul>
+        <li><a href="http://localhost:8000/">http://localhost:8000/</a> &mdash; Home / News Feed</li>
+        <li><a href="http://localhost:8000/calendar.html">http://localhost:8000/calendar.html</a> &mdash; Events &amp; Calendar</li>
+        <li><a href="http://localhost:8000/meeting.html">http://localhost:8000/meeting.html</a> &mdash; This Week&rsquo;s Meeting</li>
+        <li><a href="http://localhost:8000/advancement.html">http://localhost:8000/advancement.html</a> &mdash; Advancement (troop roster)</li>
+        <li><a href="http://localhost:8000/advancement-scout.html?id=maya">http://localhost:8000/advancement-scout.html?id=maya</a> &mdash; Scout Clipboard (drill-down)</li>
+        <li><a href="http://localhost:8000/admin/meeting-editor.html">http://localhost:8000/admin/meeting-editor.html</a> &mdash; Meeting Editor (admin)</li>
+        <li><a href="http://localhost:8000/admin/advancement-leader.html">http://localhost:8000/admin/advancement-leader.html</a> &mdash; Advancement Leader Workspace (admin)</li>
+        <li><a href="http://localhost:8000/changelog.html">http://localhost:8000/changelog.html</a> &mdash; This changelog</li>
+      </ul>
+      <p>Stop the server with <code>Ctrl+C</code>. Port can be any free number &mdash; <code>8000</code> is just convention. If <code>python</code> isn&rsquo;t on PATH, <code>npx serve .</code> works too (Node 24+ installed).</p>
+    </div>
 
     <!-- PHASE ROADMAP -->
     <div class="roadmap">
@@ -350,16 +425,168 @@
             <li>Role-based access</li>
           </ul>
         </div>
-        <div class="roadmap-phase">
-          <p class="phase-label">Phase 3 &mdash; Deferred</p>
+        <div class="roadmap-phase phase-current">
+          <p class="phase-label">Phase 3 &mdash; Prototype Landed</p>
           <p class="phase-title">Advancement Tracker</p>
           <ul>
-            <li>Google Sheets integration</li>
-            <li>Public masked-name view</li>
-            <li>Private real-name view</li>
-            <li>Rank &amp; merit badge data</li>
+            <li>Troop roster + per-scout Clipboard</li>
+            <li>Leader Workspace (ledger, fast entry, COH, export)</li>
+            <li>Sourced from <code>data/advancement.json</code></li>
+            <li>Real DB + auth: deferred to Phase 4</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v0.7 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v0.7</span>
+        <span class="release-date">May 25, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Universal Ledger &mdash; Built for Scale</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Pagination:</strong> 100 entries per page by default, with a selector for 50&thinsp;/&thinsp;100&thinsp;/&thinsp;250&thinsp;/&thinsp;500&thinsp;/&thinsp;1000. Pager controls (First, Prev, Next, Last) plus a jump-to-page input and a &ldquo;Showing X&ndash;Y of Z&rdquo; counter. Only the visible page is rendered to the DOM, so the table stays responsive at tens of thousands of entries.
+              <span class="change-note">Measured on a 5,010-entry prototype: filter keystroke responds in ~5&thinsp;ms; jump-to-last-page in ~1&thinsp;ms. At 50K entries the table is still snappy in a single browser tab; past that we&rsquo;d move filter/sort/paging to the server.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Sortable columns:</strong> click any column header (Date, Scout, Type, Code, Description, Signed Off, Qty, Unit, Entered) to toggle ascending/descending. Active column shows an arrow indicator. Date/Entered/Qty default to descending; text columns default to ascending. Qty sorts numerically; Date sorts on the ISO string so months order correctly.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Archive (lifecycle) and Delete (erroneous) are now distinct row actions:</strong>
+              <ul style="margin-top:6px;margin-bottom:0;">
+                <li><strong>Archive</strong> &mdash; one-click, restorable. For entries that are still valid but no longer belong in the active view (e.g. scout aged out, periodic cleanup).</li>
+                <li><strong>Delete</strong> &mdash; soft-delete that requires a typed reason. For erroneous entries (duplicate, wrong scout, typo). The reason is stored on the entry and shown on hover.</li>
+              </ul>
+              <span class="change-note">Both retain audit metadata (<code>archivedAt</code>/<code>archivedBy</code> or <code>deletedAt</code>/<code>deletedBy</code>/<code>deletedReason</code>) and are recoverable via the new &ldquo;Show hidden rows&rdquo; toolbar toggle. Archived rows render greyed-out and striped; deleted rows additionally show strikethrough with a red marker.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Bulk archive by scout (aged-out workflow):</strong> the Lookups &amp; Admin screen now has a per-scout <code>Mark aged-out</code> button. Confirms the action, then archives <em>all</em> of that scout&rsquo;s ledger entries in one pass with <code>archivedReason: scout_aged_out</code> and flips <code>scout.active = false</code>. A <code>Reactivate &amp; restore</code> button reverses it, restoring only the entries archived for that reason &mdash; entries archived manually stay archived.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Dashboard counts reflect active entries only:</strong> the sidebar badge and the &ldquo;Ledger Entries&rdquo; stat now exclude archived and deleted rows. Recent Activity on the dashboard skips them too.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Prototype Seed Data</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Client-side scale generator:</strong> <code>advancement-leader.js</code> now synthesizes ~5,000 deterministic ledger entries on load (seeded LCG, repeatable across reloads) so pagination, sorting, and archive can be exercised at realistic volume without bloating <code>data/advancement.json</code>.
+              <span class="change-note">Clearly marked <code>PROTOTYPE SEED</code> in the code &mdash; remove the single <code>generateSeedLedger(5000)</code> call (and the function itself) when wiring real data.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v0.6 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v0.6</span>
+        <span class="release-date">May 24, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Advancement Section &mdash; Public Pages</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>New page: <code>advancement.html</code></strong> &mdash; troop-wide Advancement landing. Stats strip (active scouts, MBs earned, camping nights, service hours, Eagle MBs), rank-distribution grid, and a sortable/filterable roster of every active scout with rank, MB count, nights, and last activity.
+              <span class="change-note">Sort by any column, filter by name/patrol/rank. Click a row to drill into the scout&rsquo;s Clipboard.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>New page: <code>advancement-scout.html?id=&lt;scout_id&gt;</code></strong> &mdash; per-scout dashboard recreating the existing Clipboard PDF as a live page. Rank-progression timeline, 6-metric summary, three-column dense rank grid (Scout → Life), Merit Badges (Eagle vs Other), Activities, Leadership, and Service Projects.
+              <span class="change-note">Maya Sankpal-Tatera&rsquo;s record is fully encoded from her actual Clipboard PDF (~155 rank-requirement rows across 7 rank sections, plus 25 merit badges, 19 activities, 2 SPL terms, 4 service projects). Other scouts are illustrative stubs. <code>Print PDF</code> button strips chrome for hand-out copies at Boards of Review.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Existing nav wired up:</strong> The previously-stub Advancement nav item on Home, Meeting, Calendar, and the Home sidebar Advancement Tracker teaser now all link to <code>advancement.html</code>.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Leader Workspace (Admin)</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>New admin app: <code>admin/advancement-leader.html</code></strong> &mdash; behind the existing login overlay. A single-page workspace with sub-nav for Dashboard, Fast Entry, Event Roster, Universal Ledger, Court of Honor, Scoutbook Export, and Lookups &amp; Admin.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Fast Entry &mdash; two equivalent workflows:</strong> scout-first (one scout, multiple requirements) and requirement-first bulk entry (one requirement, many scouts, checkbox grid). Both write into the in-memory ledger and surface a toast confirming the count.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Event Roster Entry:</strong> pick an activity, apply per-row attendance, camping nights, hiking miles, service hours, and free-text requirement codes. &ldquo;Apply Defaults to All&rdquo; cascades event-level defaults to attending scouts.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Universal Ledger:</strong> filterable table of every entry. Soft-delete with confirmation (the prototype shows the audit-preservation behavior).
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Court of Honor Prep:</strong> COH metadata + candidate list since the previous COH. Toggle per-row include, see summary chips (recognitions / ranks / merit badges / leadership terms) update live, and view recent COH history.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Scoutbook Export:</strong> pipe-delimited CSV preview (<code>MemberID|FirstName|MiddleName|LastName|AdvancementType|AdvancementID|Version|DateCompleted|DateApproved|DateAwarded</code>), with Copy and Download. Rows missing a BSA Member ID are flagged and excluded.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Lookups &amp; Admin:</strong> editable views of internal requirement codes, scouts &amp; BSA IDs, adult-leader signoff initials, and the merit badge catalog.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Data &amp; Architecture</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>New data file: <code>data/advancement.json</code></strong> &mdash; ledger-driven schema following the GiaChiPT spec. Contains rank taxonomy with sub-requirements (first aid subtasks, fitness sub-steps, lashings), merit badge catalog with Eagle flags and Scoutbook IDs, leader signoff registry, 9 scouts (Maya at full fidelity), and pre-built COH candidates + Scoutbook export preview.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Internal taxonomy preserved:</strong> requirement records keep Troop 79&rsquo;s compact internal codes alongside the official BSA mappings &mdash; the official hierarchy never overrides the operational tracking structure.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Prototype constraints:</strong> All mutations (fast entry, roster save, COH inclusion, soft delete) are in-memory only. No persistence layer yet &mdash; Supabase + Next.js per the spec is the production target.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

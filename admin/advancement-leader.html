@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Advancement Leader Workspace &mdash; Troop 79 Admin</title>
+  <link rel="stylesheet" href="editor-shared.css" />
+  <style>
+    /* ─── LEADER WORKSPACE-SPECIFIC STYLES ──────────────────── */
+    body { background: var(--admin-bg); }
+
+    /* Workspace shell layout */
+    .workspace {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      min-height: calc(100vh - 48px);
+    }
+    .ws-nav {
+      background: var(--admin-white);
+      border-right: 1px solid var(--admin-gray-200);
+      padding: 16px 12px;
+      position: sticky;
+      top: 48px;
+      height: calc(100vh - 48px);
+      overflow-y: auto;
+    }
+    .ws-nav-section {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--admin-gray-500);
+      padding: 14px 12px 6px;
+    }
+    .ws-nav-section:first-child { padding-top: 0; }
+    .ws-nav-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      width: 100%;
+      border: 0;
+      background: transparent;
+      text-align: left;
+      padding: 9px 12px;
+      border-radius: var(--admin-radius);
+      color: var(--admin-gray-700);
+      cursor: pointer;
+      margin-bottom: 2px;
+      font-family: var(--admin-font);
+      font-size: 13px;
+      font-weight: 600;
+      transition: background var(--admin-transition), color var(--admin-transition);
+    }
+    .ws-nav-btn:hover { background: var(--admin-gray-100); color: var(--admin-navy); }
+    .ws-nav-btn.active {
+      background: var(--admin-navy);
+      color: #fff;
+    }
+    .ws-nav-btn .badge {
+      background: var(--admin-gray-200);
+      color: var(--admin-gray-700);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 999px;
+      letter-spacing: .04em;
+    }
+    .ws-nav-btn.active .badge {
+      background: rgba(255,255,255,.18);
+      color: #fff;
+    }
+
+    .ws-main {
+      padding: 22px 28px 40px;
+      overflow: auto;
+    }
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* Page title + actions */
+    .ws-page-title {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--admin-gray-200);
+    }
+    .ws-page-title h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--admin-navy);
+      margin: 0 0 4px;
+    }
+    .ws-page-title p {
+      font-size: 13px;
+      color: var(--admin-gray-500);
+      margin: 0;
+      max-width: 700px;
+      line-height: 1.5;
+    }
+    .ws-actions {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    /* Buttons */
+    .ws-btn {
+      font-family: var(--admin-font);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 8px 14px;
+      border-radius: var(--admin-radius);
+      border: 1px solid var(--admin-gray-300);
+      background: var(--admin-white);
+      color: var(--admin-gray-700);
+      cursor: pointer;
+      transition: all var(--admin-transition);
+      white-space: nowrap;
+    }
+    .ws-btn:hover { border-color: var(--admin-navy); color: var(--admin-navy); }
+    .ws-btn.primary {
+      background: var(--admin-navy);
+      color: #fff;
+      border-color: var(--admin-navy);
+    }
+    .ws-btn.primary:hover { background: var(--admin-navy-hover); }
+    .ws-btn.success {
+      background: var(--admin-forest);
+      color: #fff;
+      border-color: var(--admin-forest);
+    }
+    .ws-btn.success:hover { background: var(--admin-forest-dark); }
+    .ws-btn.danger {
+      background: var(--admin-danger);
+      color: #fff;
+      border-color: var(--admin-danger);
+    }
+    .ws-btn.danger:hover { background: var(--admin-danger-hover); }
+    .ws-btn.small { padding: 5px 9px; font-size: 11px; }
+
+    /* Stats cards */
+    .ws-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .ws-stat {
+      background: var(--admin-white);
+      border: 1px solid var(--admin-gray-200);
+      border-radius: var(--admin-radius);
+      padding: 14px 16px;
+      box-shadow: var(--admin-shadow-sm);
+    }
+    .ws-stat-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--admin-gray-500);
+    }
+    .ws-stat-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--admin-navy);
+      margin-top: 6px;
+      line-height: 1;
+    }
+    .ws-stat-sub {
+      font-size: 11px;
+      color: var(--admin-gray-500);
+      margin-top: 4px;
+    }
+
+    /* Card */
+    .ws-card {
+      background: var(--admin-white);
+      border: 1px solid var(--admin-gray-200);
+      border-radius: var(--admin-radius);
+      padding: 16px 18px;
+      box-shadow: var(--admin-shadow-sm);
+      margin-bottom: 14px;
+    }
+    .ws-card h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--admin-navy);
+      margin: 0 0 12px;
+    }
+
+    /* Two-column layout */
+    .ws-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    /* Inputs */
+    .ws-field { display: block; margin-bottom: 10px; }
+    .ws-field-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      color: var(--admin-gray-700);
+      margin-bottom: 4px;
+    }
+    .ws-input, .ws-select, .ws-textarea {
+      width: 100%;
+      border: 1px solid var(--admin-gray-300);
+      border-radius: var(--admin-radius);
+      padding: 8px 10px;
+      font-family: var(--admin-font);
+      font-size: 13px;
+      color: var(--admin-gray-700);
+      background: var(--admin-white);
+      outline: none;
+      transition: border-color var(--admin-transition);
+    }
+    .ws-input:focus, .ws-select:focus, .ws-textarea:focus {
+      border-color: var(--admin-navy);
+    }
+    .ws-textarea { min-height: 72px; resize: vertical; }
+
+    /* Tables */
+    .ws-table-wrap {
+      background: var(--admin-white);
+      border: 1px solid var(--admin-gray-200);
+      border-radius: var(--admin-radius);
+      box-shadow: var(--admin-shadow-sm);
+      overflow: hidden;
+    }
+    .ws-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .ws-table th {
+      background: var(--admin-gray-100);
+      border-bottom: 2px solid var(--admin-gray-200);
+      padding: 9px 12px;
+      text-align: left;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--admin-gray-700);
+      white-space: nowrap;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .ws-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--admin-gray-100);
+      vertical-align: middle;
+      color: var(--admin-gray-700);
+    }
+    .ws-table tbody tr:hover { background: var(--admin-gray-50); }
+    .ws-table tbody tr:last-child td { border-bottom: none; }
+    .ws-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .ws-table .mono { font-family: ui-monospace, 'Courier New', monospace; font-size: 12px; }
+    .ws-table .actions {
+      display: flex; gap: 4px; justify-content: flex-end;
+    }
+
+    /* Sortable column headers */
+    .ws-table th.sortable {
+      cursor: pointer;
+      user-select: none;
+      padding-right: 22px;
+      position: sticky; top: 0;
+    }
+    .ws-table th.sortable:hover { background: var(--admin-gray-200); }
+    .ws-table th.sortable::after {
+      content: '';
+      position: absolute;
+      right: 8px; top: 50%;
+      width: 0; height: 0;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      opacity: .25;
+      border-top: 5px solid var(--admin-gray-500);
+      margin-top: -2px;
+    }
+    .ws-table th.sortable.sort-asc::after {
+      border-top: 0;
+      border-bottom: 5px solid var(--admin-navy);
+      opacity: 1;
+      margin-top: -2px;
+    }
+    .ws-table th.sortable.sort-desc::after {
+      border-top: 5px solid var(--admin-navy);
+      border-bottom: 0;
+      opacity: 1;
+    }
+
+    /* Archived ledger rows */
+    .ws-table tbody tr.archived td {
+      color: var(--admin-gray-500);
+      background: repeating-linear-gradient(
+        135deg,
+        transparent 0 6px,
+        rgba(0,0,0,.018) 6px 12px
+      );
+    }
+    .ws-table tbody tr.archived td:first-child { border-left: 3px solid var(--admin-gray-300); }
+    .ws-table tbody tr.archived .tag { opacity: .65; }
+
+    /* Deleted ledger rows (soft-delete with reason) */
+    .ws-table tbody tr.deleted td {
+      color: var(--admin-gray-500);
+      text-decoration: line-through;
+      text-decoration-color: rgba(180, 35, 24, .35);
+      background: repeating-linear-gradient(
+        135deg,
+        transparent 0 6px,
+        rgba(180, 35, 24, .035) 6px 12px
+      );
+    }
+    .ws-table tbody tr.deleted td:first-child { border-left: 3px solid var(--admin-danger); }
+    .ws-table tbody tr.deleted .tag { opacity: .55; }
+    .ws-table tbody tr.deleted .archive-tag,
+    .ws-table tbody tr.deleted td { text-decoration: none; }
+    .ws-table tbody tr.deleted td:not(:first-child):not(:last-child) > * {
+      text-decoration: line-through;
+      text-decoration-color: rgba(180, 35, 24, .4);
+    }
+
+    .archive-tag {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 1px 6px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      background: var(--admin-gray-200);
+      color: var(--admin-gray-700);
+      border-radius: 999px;
+      vertical-align: middle;
+      text-decoration: none;
+    }
+    .archive-tag.delete-tag {
+      background: #fff0f0;
+      color: var(--admin-danger);
+    }
+
+    /* Toolbar inline checkbox */
+    .ws-toolbar-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--admin-gray-700);
+      cursor: pointer;
+      padding: 6px 10px;
+      border: 1px solid var(--admin-gray-300);
+      border-radius: var(--admin-radius);
+      background: var(--admin-white);
+    }
+    .ws-toolbar-toggle input { margin: 0; transform: scale(1.1); cursor: pointer; }
+
+    /* Pager bar */
+    .ws-pager {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 10px 4px 2px;
+      font-size: 12px;
+      color: var(--admin-gray-700);
+    }
+    .ws-pager .pager-spacer { flex: 1; }
+    .ws-pager .pager-info {
+      color: var(--admin-gray-500);
+      font-variant-numeric: tabular-nums;
+    }
+    .ws-pager button {
+      font-family: var(--admin-font);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border: 1px solid var(--admin-gray-300);
+      background: var(--admin-white);
+      color: var(--admin-gray-700);
+      border-radius: var(--admin-radius);
+      cursor: pointer;
+      min-width: 32px;
+    }
+    .ws-pager button:hover:not(:disabled) {
+      border-color: var(--admin-navy);
+      color: var(--admin-navy);
+    }
+    .ws-pager button:disabled {
+      opacity: .4;
+      cursor: not-allowed;
+    }
+    .ws-pager .pager-current {
+      font-weight: 700;
+      color: var(--admin-navy);
+      padding: 0 4px;
+    }
+    .ws-pager select {
+      border: 1px solid var(--admin-gray-300);
+      border-radius: var(--admin-radius);
+      padding: 4px 6px;
+      font-size: 12px;
+      font-family: var(--admin-font);
+      background: var(--admin-white);
+    }
+    .ws-pager input.pager-jump {
+      width: 56px;
+      padding: 4px 6px;
+      border: 1px solid var(--admin-gray-300);
+      border-radius: var(--admin-radius);
+      font-size: 12px;
+      font-family: var(--admin-font);
+      text-align: center;
+    }
+
+    /* Tag / status pill */
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      background: #e5f2eb;
+      color: var(--admin-forest);
+      white-space: nowrap;
+    }
+    .tag.warn   { background: #fff7df; color: #8a5a00; }
+    .tag.blue   { background: #edf4ff; color: #175cd3; }
+    .tag.danger { background: #fff0f0; color: #b42318; }
+    .tag.gray   { background: var(--admin-gray-100); color: var(--admin-gray-500); }
+
+    /* Toolbar */
+    .ws-toolbar {
+      display: flex; flex-wrap: wrap;
+      gap: 8px; align-items: center;
+      margin-bottom: 12px;
+    }
+    .ws-toolbar input, .ws-toolbar select {
+      border: 1px solid var(--admin-gray-300);
+      border-radius: var(--admin-radius);
+      padding: 7px 10px;
+      font-family: var(--admin-font);
+      font-size: 12px;
+      color: var(--admin-gray-700);
+      background: var(--admin-white);
+      outline: none;
+    }
+    .ws-toolbar input[type="search"] { min-width: 220px; }
+    .ws-toolbar-spacer { flex: 1; }
+
+    /* Scout selector grid */
+    .scout-checkbox-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(140px, 1fr));
+      gap: 4px;
+      max-height: 280px;
+      overflow-y: auto;
+      padding-right: 4px;
+      border: 1px solid var(--admin-gray-200);
+      border-radius: var(--admin-radius);
+      padding: 6px;
+      background: var(--admin-gray-50);
+    }
+    .scout-check {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: var(--admin-radius-sm);
+      background: var(--admin-white);
+      border: 1px solid transparent;
+      font-size: 12px;
+      cursor: pointer;
+      transition: border-color var(--admin-transition);
+    }
+    .scout-check:hover { border-color: var(--admin-gray-300); }
+    .scout-check input[type="checkbox"]:checked + .name { color: var(--admin-navy); font-weight: 600; }
+    .scout-check .name { flex: 1; }
+    .scout-check .rk {
+      font-size: 10px;
+      color: var(--admin-gray-500);
+      padding: 1px 6px;
+      background: var(--admin-gray-100);
+      border-radius: 999px;
+      letter-spacing: .04em;
+    }
+
+    /* Code preview */
+    .code-preview {
+      background: #1d2733;
+      color: #d6e3ef;
+      font-family: ui-monospace, 'Courier New', monospace;
+      font-size: 12px;
+      padding: 12px 16px;
+      border-radius: var(--admin-radius);
+      overflow-x: auto;
+      white-space: pre;
+      line-height: 1.55;
+      margin-top: 12px;
+    }
+
+    /* Event roster row inputs */
+    .ws-table input[type="number"],
+    .ws-table input[type="text"] {
+      width: 100%;
+      border: 1px solid transparent;
+      background: transparent;
+      padding: 4px 6px;
+      font-family: var(--admin-font);
+      font-size: 12px;
+      border-radius: var(--admin-radius-sm);
+    }
+    .ws-table input:focus {
+      border-color: var(--admin-navy);
+      background: var(--admin-white);
+      outline: none;
+    }
+    .ws-table .narrow-num { width: 60px !important; text-align: right; }
+    .ws-table input[type="checkbox"] { transform: scale(1.1); cursor: pointer; }
+
+    /* Help/info note */
+    .ws-note {
+      background: #eef4f8;
+      border: 1px solid #cbd9e4;
+      border-left: 3px solid var(--admin-info);
+      padding: 10px 14px;
+      font-size: 12px;
+      color: var(--admin-gray-700);
+      border-radius: var(--admin-radius);
+      margin-bottom: 14px;
+      line-height: 1.5;
+    }
+    .ws-note strong { color: var(--admin-navy); }
+
+    /* Toast */
+    .ws-toast {
+      position: fixed;
+      bottom: 24px; right: 24px;
+      background: var(--admin-navy);
+      color: #fff;
+      padding: 12px 18px;
+      border-radius: var(--admin-radius);
+      box-shadow: var(--admin-shadow-lg);
+      font-size: 13px;
+      font-weight: 600;
+      z-index: 1000;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity var(--admin-transition), transform var(--admin-transition);
+      pointer-events: none;
+    }
+    .ws-toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .ws-toast.success { background: var(--admin-forest); }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .workspace { grid-template-columns: 1fr; }
+      .ws-nav {
+        position: relative; top: auto;
+        height: auto;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 4px;
+        border-right: none;
+        border-bottom: 1px solid var(--admin-gray-200);
+      }
+      .ws-nav-section { display: none; }
+      .ws-stats { grid-template-columns: 1fr 1fr; }
+      .ws-grid-2 { grid-template-columns: 1fr; }
+      .scout-checkbox-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── LOGIN OVERLAY (reuses meeting-editor pattern) ──────── -->
+  <div class="login-overlay" id="loginOverlay">
+    <div class="login-header">
+      <div class="login-header-title">Troop 79 Admin</div>
+    </div>
+    <div class="login-card">
+      <h2>Advancement Leader Sign In</h2>
+      <p>Use any username/password — this prototype accepts anything non-empty.</p>
+      <form id="loginForm" novalidate>
+        <div class="form-group">
+          <label for="loginUser">Username</label>
+          <input type="text" id="loginUser" autocomplete="username" placeholder="e.g. pbieser" />
+        </div>
+        <div class="form-group">
+          <label for="loginPass">Password</label>
+          <input type="password" id="loginPass" autocomplete="current-password" placeholder="any password" />
+        </div>
+        <button type="submit" class="btn btn-primary">Sign In</button>
+        <div class="login-error" id="loginError" role="alert"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── ADMIN HEADER ───────────────────────────────────────── -->
+  <header class="admin-header">
+    <div class="admin-header-title">
+      Troop 79 <span>—</span> Advancement Leader Workspace
+    </div>
+    <div class="admin-header-actions">
+      <a href="../advancement.html" style="color:rgba(255,255,255,.75);text-decoration:none;font-size:12px;font-weight:600;">← Public Site</a>
+      <a href="meeting-editor.html" style="color:rgba(255,255,255,.75);text-decoration:none;font-size:12px;font-weight:600;">Meeting Editor</a>
+      <button type="button" id="btnSignOut">Sign Out</button>
+    </div>
+  </header>
+
+  <!-- ── WORKSPACE ─────────────────────────────────────────── -->
+  <div class="workspace" id="workspace" style="display:none;">
+
+    <!-- Sub-nav -->
+    <nav class="ws-nav">
+      <div class="ws-nav-section">Overview</div>
+      <button class="ws-nav-btn active" data-screen="dashboard">Dashboard</button>
+
+      <div class="ws-nav-section">Entry</div>
+      <button class="ws-nav-btn" data-screen="fast-entry">Fast Entry</button>
+      <button class="ws-nav-btn" data-screen="event-roster">Event Roster</button>
+
+      <div class="ws-nav-section">Records</div>
+      <button class="ws-nav-btn" data-screen="ledger">Universal Ledger <span class="badge" id="ledgerCount">0</span></button>
+      <button class="ws-nav-btn" data-screen="coh">Court of Honor</button>
+
+      <div class="ws-nav-section">Output</div>
+      <button class="ws-nav-btn" data-screen="export">Scoutbook Export</button>
+
+      <div class="ws-nav-section">Setup</div>
+      <button class="ws-nav-btn" data-screen="admin">Lookups &amp; Admin</button>
+    </nav>
+
+    <main class="ws-main">
+
+      <!-- ─── DASHBOARD ─────────────────────────────────────── -->
+      <section id="dashboard" class="screen active">
+        <div class="ws-page-title">
+          <div>
+            <h1>Leader Dashboard</h1>
+            <p>Operational overview for the advancement chair. Numbers update from the universal ledger.</p>
+          </div>
+          <div class="ws-actions">
+            <button class="ws-btn" data-jump="ledger">View Ledger</button>
+            <button class="ws-btn primary" data-jump="fast-entry">+ New Ledger Entry</button>
+          </div>
+        </div>
+
+        <div class="ws-stats">
+          <div class="ws-stat">
+            <div class="ws-stat-label">Active Scouts</div>
+            <div class="ws-stat-value" id="dashScouts">—</div>
+            <div class="ws-stat-sub">across all patrols</div>
+          </div>
+          <div class="ws-stat">
+            <div class="ws-stat-label">Ledger Entries</div>
+            <div class="ws-stat-value" id="dashLedger">—</div>
+            <div class="ws-stat-sub">recent activity captured</div>
+          </div>
+          <div class="ws-stat">
+            <div class="ws-stat-label">COH Candidates</div>
+            <div class="ws-stat-value" id="dashCoh">—</div>
+            <div class="ws-stat-sub">since previous COH</div>
+          </div>
+          <div class="ws-stat">
+            <div class="ws-stat-label">Missing BSA IDs</div>
+            <div class="ws-stat-value" id="dashMissing">—</div>
+            <div class="ws-stat-sub">blocks Scoutbook export</div>
+          </div>
+        </div>
+
+        <div class="ws-grid-2">
+          <div class="ws-card">
+            <h3>Recent Ledger Activity</h3>
+            <div class="ws-table-wrap" style="box-shadow:none;border:none;">
+              <table class="ws-table">
+                <thead>
+                  <tr><th>Date</th><th>Scout</th><th>Entry</th><th>By</th></tr>
+                </thead>
+                <tbody id="dashLedgerBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="ws-card">
+            <h3>Likely Ready for Review</h3>
+            <div class="ws-note" style="margin-bottom:10px;">
+              <strong>Note:</strong> Ranks are never auto-awarded. These are scouts who&rsquo;ve checked most boxes for the next rank — verify with the official requirement list before scheduling a BoR.
+            </div>
+            <table class="ws-table">
+              <thead><tr><th>Scout</th><th>Likely Rank</th><th>Suggested Action</th></tr></thead>
+              <tbody id="dashLikelyBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── FAST ENTRY ────────────────────────────────────── -->
+      <section id="fast-entry" class="screen">
+        <div class="ws-page-title">
+          <div>
+            <h1>Fast Entry</h1>
+            <p>Two equivalent workflows. Use scout-first when one scout knocked out several requirements; use requirement-first when one requirement was completed by many scouts at the same activity.</p>
+          </div>
+        </div>
+
+        <div class="ws-grid-2">
+          <!-- Scout-first -->
+          <div class="ws-card">
+            <h3>Scout-First Entry</h3>
+            <label class="ws-field">
+              <span class="ws-field-label">Scout</span>
+              <select class="ws-select" id="scoutFirstSel"></select>
+            </label>
+            <label class="ws-field">
+              <span class="ws-field-label">Date Completed</span>
+              <input type="date" class="ws-input" id="scoutFirstDate" />
+            </label>
+            <label class="ws-field">
+              <span class="ws-field-label">Signed Off By</span>
+              <select class="ws-select" id="scoutFirstBy"></select>
+            </label>
+            <label class="ws-field">
+              <span class="ws-field-label">Requirements (comma-separated codes)</span>
+              <input type="text" class="ws-input" id="scoutFirstReqs" placeholder="e.g. TF-3d, SC-2c, Cook-4b" />
+            </label>
+            <label class="ws-field">
+              <span class="ws-field-label">Notes (optional)</span>
+              <textarea class="ws-textarea" id="scoutFirstNotes" placeholder="Anything BoR or counselors should know"></textarea>
+            </label>
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;">
+              <button class="ws-btn" type="button" id="scoutFirstClear">Clear</button>
+              <button class="ws-btn primary" type="button" id="scoutFirstSave">Save Entries</button>
+            </div>
+          </div>
+
+          <!-- Requirement-first bulk -->
+          <div class="ws-card">
+            <h3>Requirement-First Bulk Entry</h3>
+            <label class="ws-field">
+              <span class="ws-field-label">Requirement / Ledger Code</span>
+              <input type="text" class="ws-input" id="reqFirstCode" value="Cook-4b" />
+            </label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <label class="ws-field">
+                <span class="ws-field-label">Date Completed</span>
+                <input type="date" class="ws-input" id="reqFirstDate" />
+              </label>
+              <label class="ws-field">
+                <span class="ws-field-label">Signed Off By</span>
+                <select class="ws-select" id="reqFirstBy"></select>
+              </label>
+            </div>
+            <div class="ws-field">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;">
+                <span class="ws-field-label">Scouts <span style="color:var(--admin-gray-500);font-weight:400;" id="reqFirstSelCount">(0 selected)</span></span>
+                <button class="ws-btn small" type="button" id="reqFirstSelectAll">Select all</button>
+              </div>
+              <div class="scout-checkbox-grid" id="reqFirstScoutGrid"></div>
+            </div>
+            <label class="ws-field">
+              <span class="ws-field-label">Notes (optional)</span>
+              <textarea class="ws-textarea" id="reqFirstNotes" placeholder="Completed at Cooking MB clinic, etc."></textarea>
+            </label>
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;">
+              <button class="ws-btn" type="button" id="reqFirstClear">Clear</button>
+              <button class="ws-btn primary" type="button" id="reqFirstSave">Create <span id="reqFirstBtnCount">0</span> Ledger Entries</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── EVENT ROSTER ──────────────────────────────────── -->
+      <section id="event-roster" class="screen">
+        <div class="ws-page-title">
+          <div>
+            <h1>Event Roster Entry</h1>
+            <p>Pick an activity, mark who attended, and apply attendance plus per-scout camping nights, hiking miles, service hours, and any rank/MB requirements completed.</p>
+          </div>
+        </div>
+
+        <div class="ws-card">
+          <div style="display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr 1fr auto;gap:10px;align-items:end;">
+            <label class="ws-field" style="margin-bottom:0;">
+              <span class="ws-field-label">Activity</span>
+              <select class="ws-select" id="rosterActivity">
+                <option value="winter-jan26">Winter Camp Jan '26</option>
+                <option value="klondike-feb26">Klondike Derby Feb '26</option>
+                <option value="meeting-apr01">Troop Meeting Apr 1, 2026</option>
+                <option value="olt-apr25">OLT Cleanup April '25</option>
+                <option value="summer-jul25">Summer Camp Ma-Ka July '25</option>
+              </select>
+            </label>
+            <label class="ws-field" style="margin-bottom:0;">
+              <span class="ws-field-label">Activity Type</span>
+              <select class="ws-select" id="rosterType">
+                <option>Campout</option>
+                <option>Meeting</option>
+                <option>Service Project</option>
+                <option>Hike</option>
+                <option>Merit Badge Clinic</option>
+                <option>Special Event</option>
+              </select>
+            </label>
+            <label class="ws-field" style="margin-bottom:0;">
+              <span class="ws-field-label">Camping Nights</span>
+              <input type="number" class="ws-input" id="rosterNights" value="2" min="0" />
+            </label>
+            <label class="ws-field" style="margin-bottom:0;">
+              <span class="ws-field-label">Hiking Miles</span>
+              <input type="number" class="ws-input" id="rosterMiles" value="0" min="0" />
+            </label>
+            <label class="ws-field" style="margin-bottom:0;">
+              <span class="ws-field-label">Default Service Hours</span>
+              <input type="number" class="ws-input" id="rosterHours" value="0" min="0" />
+            </label>
+            <button class="ws-btn primary" type="button" id="rosterApplyDefaults">Apply Defaults to All</button>
+          </div>
+        </div>
+
+        <div class="ws-toolbar">
+          <input type="search" id="rosterFilter" placeholder="Filter scouts…" />
+          <button class="ws-btn small" type="button" id="rosterCheckAll">Check all</button>
+          <button class="ws-btn small" type="button" id="rosterUncheckAll">Uncheck all</button>
+          <div class="ws-toolbar-spacer"></div>
+          <span style="font-size:12px;color:var(--admin-gray-500);" id="rosterAttCount">0 attending</span>
+          <button class="ws-btn success" type="button" id="rosterSave">Save Attendance &amp; Metrics</button>
+        </div>
+
+        <div class="ws-table-wrap">
+          <table class="ws-table">
+            <thead>
+              <tr>
+                <th style="width:40px;text-align:center;">Att.</th>
+                <th>Scout</th>
+                <th>Patrol</th>
+                <th>Rank</th>
+                <th style="width:80px;text-align:right;">Nights</th>
+                <th style="width:80px;text-align:right;">Miles</th>
+                <th style="width:80px;text-align:right;">Svc Hrs</th>
+                <th>Requirements Completed</th>
+              </tr>
+            </thead>
+            <tbody id="rosterBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ─── LEDGER ────────────────────────────────────────── -->
+      <section id="ledger" class="screen">
+        <div class="ws-page-title">
+          <div>
+            <h1>Universal Ledger</h1>
+            <p>Sole source of truth. Every advancement, attendance, service hour, and recognition starts here. <strong>Archive</strong> hides lifecycle entries (e.g. scout aged-out). <strong>Delete</strong> removes erroneous entries with a recorded reason. Both are soft &mdash; recoverable from the &ldquo;Show hidden rows&rdquo; toggle.</p>
+          </div>
+          <div class="ws-actions">
+            <button class="ws-btn" data-jump="fast-entry">+ Fast Entry</button>
+          </div>
+        </div>
+
+        <div class="ws-toolbar">
+          <input type="search" id="ledgerFilter" placeholder="Search code, scout, label…" />
+          <select id="ledgerTypeFilter">
+            <option value="">All ledger types</option>
+            <option value="rank_requirement">Rank requirement</option>
+            <option value="merit_badge_requirement">MB requirement</option>
+            <option value="merit_badge_award">MB award</option>
+            <option value="attendance">Attendance</option>
+            <option value="service_hours">Service hours</option>
+            <option value="camping_nights">Camping nights</option>
+            <option value="leadership">Leadership</option>
+          </select>
+          <label class="ws-toolbar-toggle" title="Reveal entries that were archived (lifecycle) or soft-deleted (erroneous). Both are restorable.">
+            <input type="checkbox" id="ledgerShowArchived" />
+            Show hidden rows
+          </label>
+          <div class="ws-toolbar-spacer"></div>
+          <span style="font-size:12px;color:var(--admin-gray-500);" id="ledgerMeta"></span>
+        </div>
+
+        <div class="ws-table-wrap">
+          <table class="ws-table" id="ledgerTable">
+            <thead>
+              <tr>
+                <th class="sortable" data-sort="date">Date</th>
+                <th class="sortable" data-sort="scout">Scout</th>
+                <th class="sortable" data-sort="type">Type</th>
+                <th class="sortable" data-sort="code">Code</th>
+                <th class="sortable" data-sort="label">Description</th>
+                <th class="sortable" data-sort="by">Signed Off</th>
+                <th class="sortable num" data-sort="qty">Qty</th>
+                <th class="sortable" data-sort="unit">Unit</th>
+                <th class="sortable" data-sort="enteredAt">Entered</th>
+                <th style="text-align:right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="ledgerBody"></tbody>
+          </table>
+        </div>
+
+        <div class="ws-pager" id="ledgerPager"></div>
+      </section>
+
+      <!-- ─── COURT OF HONOR ────────────────────────────────── -->
+      <section id="coh" class="screen">
+        <div class="ws-page-title">
+          <div>
+            <h1>Court of Honor Prep</h1>
+            <p>Build the next COH&rsquo;s award list from everything earned since the previous COH. COH history is preserved permanently.</p>
+          </div>
+          <div class="ws-actions">
+            <button class="ws-btn" type="button" id="cohPrint">Print Award List</button>
+            <button class="ws-btn primary" type="button" id="cohCreate">Create Court of Honor</button>
+          </div>
+        </div>
+
+        <div class="ws-grid-2">
+          <div class="ws-card">
+            <h3>Next Court of Honor</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <label class="ws-field" style="margin-bottom:0;">
+                <span class="ws-field-label">COH Date</span>
+                <input type="date" class="ws-input" id="cohDate" />
+              </label>
+              <label class="ws-field" style="margin-bottom:0;">
+                <span class="ws-field-label">Since Previous COH</span>
+                <input type="date" class="ws-input" id="cohSince" />
+              </label>
+            </div>
+            <label class="ws-field" style="margin-top:10px;">
+              <span class="ws-field-label">Title</span>
+              <input type="text" class="ws-input" id="cohTitle" value="Spring 2026 Court of Honor" />
+            </label>
+            <label class="ws-field">
+              <span class="ws-field-label">Notes</span>
+              <textarea class="ws-textarea" id="cohNotes" placeholder="Venue, special honors, guest speakers…"></textarea>
+            </label>
+          </div>
+          <div class="ws-card">
+            <h3>Summary</h3>
+            <div id="cohSummary" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;"></div>
+            <h3 style="margin-top:14px;">Recent COH History</h3>
+            <table class="ws-table" style="font-size:12px;">
+              <thead><tr><th>Date</th><th>Title</th><th class="num">Recognitions</th></tr></thead>
+              <tbody id="cohHistoryBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="ws-card" style="margin-top:14px;">
+          <h3>Candidate Recognitions (since previous COH)</h3>
+          <div class="ws-table-wrap" style="box-shadow:none;border:none;">
+            <table class="ws-table">
+              <thead>
+                <tr>
+                  <th style="width:50px;text-align:center;">Include</th>
+                  <th>Scout</th>
+                  <th>Award</th>
+                  <th>Date Earned</th>
+                  <th>Type</th>
+                  <th>Note</th>
+                </tr>
+              </thead>
+              <tbody id="cohCandidatesBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── SCOUTBOOK EXPORT ──────────────────────────────── -->
+      <section id="export" class="screen">
+        <div class="ws-page-title">
+          <div>
+            <h1>Scoutbook Export</h1>
+            <p>Generate the pipe-delimited CSV Scoutbook accepts. Uses BSA Member IDs from each scout&rsquo;s record and Advancement IDs from the lookup tables. Rows missing a BSA ID are flagged and excluded.</p>
+          </div>
+          <div class="ws-actions">
+            <button class="ws-btn" type="button" id="exportCopy">Copy CSV</button>
+            <button class="ws-btn success" type="button" id="exportDownload">Download CSV</button>
+          </div>
+        </div>
+
+        <div class="ws-note">
+          <strong>Export rule:</strong> Internal <code>scout_id</code> is the system identity. The nullable <code>bsa_member_id</code> is used <em>only</em> for Scoutbook output. Rows without a BSA Member ID stay in the system but are excluded from the CSV and flagged here for follow-up.
+        </div>
+
+        <div class="ws-table-wrap">
+          <table class="ws-table">
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>MemberID</th>
+                <th>First</th>
+                <th>Last</th>
+                <th>AdvancementType</th>
+                <th>AdvancementID</th>
+                <th>DateCompleted</th>
+              </tr>
+            </thead>
+            <tbody id="exportBody"></tbody>
+          </table>
+        </div>
+
+        <h3 style="margin-top:18px;font-size:13px;color:var(--admin-navy);">CSV Preview</h3>
+        <div class="code-preview" id="exportCsvPreview"></div>
+      </section>
+
+      <!-- ─── LOOKUPS & ADMIN ───────────────────────────────── -->
+      <section id="admin" class="screen">
+        <div class="ws-page-title">
+          <div>
+            <h1>Lookups &amp; Admin</h1>
+            <p>The editable Troop 79 taxonomy. Internal codes, Scoutbook ID mappings, leader signoff initials, and scout BSA IDs all live here.</p>
+          </div>
+        </div>
+
+        <div class="ws-grid-2">
+          <div class="ws-card">
+            <h3>Internal Requirement Codes</h3>
+            <p style="font-size:12px;color:var(--admin-gray-500);margin-top:-6px;margin-bottom:10px;">
+              Troop 79&rsquo;s extended taxonomy. Compact internal codes map to official BSA mappings and (when applicable) Scoutbook advancement IDs.
+            </p>
+            <div class="ws-table-wrap" style="box-shadow:none;border:none;">
+              <table class="ws-table">
+                <thead><tr><th>Internal Code</th><th>Display Label</th><th>Official Mapping</th><th>Scoutbook ID</th></tr></thead>
+                <tbody id="lookupCodesBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="ws-card">
+            <h3>Scouts &amp; BSA IDs</h3>
+            <p style="font-size:12px;color:var(--admin-gray-500);margin-top:-6px;margin-bottom:10px;">
+              Internal <code>scout_id</code> is permanent. BSA Member ID is optional and only required for Scoutbook export. Aging out a scout archives all their ledger entries — restorable.
+            </p>
+            <div class="ws-table-wrap" style="box-shadow:none;border:none;">
+              <table class="ws-table">
+                <thead><tr><th>Scout</th><th>Internal ID</th><th>BSA Member ID</th><th>Status</th><th style="text-align:right;">Actions</th></tr></thead>
+                <tbody id="lookupScoutsBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="ws-grid-2" style="margin-top:14px;">
+          <div class="ws-card">
+            <h3>Adult Leaders (signoff initials)</h3>
+            <div class="ws-table-wrap" style="box-shadow:none;border:none;">
+              <table class="ws-table">
+                <thead><tr><th>Initials</th><th>Name</th><th>Role</th></tr></thead>
+                <tbody id="lookupLeadersBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="ws-card">
+            <h3>Merit Badge Catalog</h3>
+            <div class="ws-table-wrap" style="box-shadow:none;border:none;">
+              <table class="ws-table">
+                <thead><tr><th>Name</th><th>Eagle?</th><th>Scoutbook ID</th></tr></thead>
+                <tbody id="lookupMbBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ── TOAST ─────────────────────────────────────────────── -->
+  <div class="ws-toast" id="wsToast"></div>
+
+  <script src="editor-shared.js"></script>
+  <script src="advancement-leader.js"></script>
+</body>
+</html>
