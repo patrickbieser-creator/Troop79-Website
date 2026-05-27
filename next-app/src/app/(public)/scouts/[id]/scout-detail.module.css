@@ -1,0 +1,471 @@
+/* Styles for the per-scout Clipboard at /scouts/[id].
+   Ported from advancement-scout.html — see prototype for visual reference. */
+
+.scoutHeader {
+  max-width: 1180px;
+  margin: 16px auto 0;
+  padding: 0 24px 16px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 24px;
+  align-items: flex-end;
+  border-bottom: 2px solid var(--border-mid);
+}
+.scoutId {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--forest);
+  border-left: 3px solid var(--forest);
+  padding-left: 8px;
+  margin-bottom: 8px;
+}
+.scoutNameBig {
+  font-family: var(--font-display);
+  font-size: 44px;
+  font-weight: 700;
+  color: var(--text-head);
+  letter-spacing: -.01em;
+  line-height: 1.05;
+}
+.scoutMeta {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--text-meta);
+  margin-top: 8px;
+}
+.scoutMeta strong {
+  color: var(--text-body);
+  font-weight: 600;
+}
+.metaSep {
+  margin: 0 8px;
+  color: var(--border-mid);
+}
+.noBsa {
+  color: var(--bark);
+}
+.scoutActions { display: flex; gap: 8px; }
+.btnAction {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 9px 14px;
+  border-radius: 2px;
+  border: 1px solid var(--border-mid);
+  background: var(--warm-white);
+  color: var(--text-head);
+  cursor: pointer;
+  transition: all .18s ease;
+}
+.btnAction:hover {
+  border-color: var(--navy);
+  color: var(--navy);
+}
+.btnPrimary {
+  background: var(--navy);
+  color: var(--warm-white);
+  border-color: var(--navy);
+}
+.btnPrimary:hover { background: var(--navy-mid); color: var(--warm-white); }
+
+.main { max-width: 1180px; margin: 0 auto; padding: 0 24px 60px; }
+
+/* Metrics strip */
+.metricsStrip {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0;
+  background: var(--cream);
+  border: 1px solid var(--border-mid);
+  margin: 24px 0 28px;
+}
+.metric {
+  padding: 16px 12px;
+  border-right: 1px solid var(--border-light);
+  text-align: center;
+}
+.metric:last-child { border-right: none; }
+.metricLabel {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-meta);
+  margin-bottom: 6px;
+}
+.metricValue {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--navy);
+  line-height: 1;
+}
+.metricSub {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: var(--text-meta);
+  margin-top: 4px;
+}
+
+/* Rank timeline */
+.rankTimeline {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 32px;
+}
+.rankStep {
+  background: var(--warm-white);
+  border: 1px solid var(--border-light);
+  padding: 12px 8px;
+  text-align: center;
+  position: relative;
+  border-top: 4px solid var(--border-mid);
+}
+.earned {
+  border-top-color: var(--forest);
+  background: #f6f9f3;
+}
+.current {
+  border-top-color: var(--navy);
+  background: var(--cream);
+  box-shadow: 0 4px 12px rgba(30,58,74,.12);
+}
+.unattempted {
+  background: var(--newsprint);
+}
+.rankStepName {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-head);
+}
+.unattempted .rankStepName { color: var(--border-mid); }
+.rankStepDate {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: var(--text-meta);
+  margin-top: 4px;
+}
+.pin {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--forest);
+  color: var(--warm-white);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,.15);
+}
+.current .pin { background: var(--navy); }
+
+/* Section divider */
+.sectionDivider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 14px;
+}
+.divLabel {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--navy);
+  white-space: nowrap;
+  border-left: 3px solid var(--forest);
+  padding-left: 8px;
+}
+.divRule { flex: 1; height: 1px; background: var(--border-light); }
+.divMeta {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--text-meta);
+  letter-spacing: .04em;
+}
+
+/* Clipboard (dense report) */
+.clipboard {
+  background: var(--warm-white);
+  border: 1px solid #6b6357;
+  box-shadow: var(--shadow-card);
+  padding: 16px;
+  margin-bottom: 28px;
+}
+.clipboardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 2px solid var(--text-head);
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+  font-family: var(--font-ui);
+}
+.chName {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-head);
+}
+.chDate {
+  font-size: 13px;
+  color: var(--text-meta);
+  font-variant-numeric: tabular-nums;
+}
+.rankColumns {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  border: 1px solid #999;
+  border-bottom: 0;
+}
+.rankBlock {
+  border-right: 1px solid #aaa;
+  border-bottom: 1px solid #aaa;
+  min-height: 200px;
+}
+.rankBlock:nth-child(3n) { border-right: none; }
+.rankBlockTitle {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-head);
+  text-align: center;
+  text-decoration: underline;
+  background: #f0ebe0;
+  padding: 6px 4px;
+  border-bottom: 1px solid #aaa;
+}
+.miniRow {
+  display: grid;
+  grid-template-columns: 60px 32px 1fr;
+  gap: 4px;
+  padding: 3px 6px;
+  border-bottom: 1px solid #efeae0;
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+  line-height: 1.3;
+  color: var(--text-body);
+}
+.miniRow > span:first-child {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-meta);
+}
+.miniRow > span:nth-child(2) {
+  color: var(--forest);
+  font-weight: 600;
+}
+/* One-line truncation for the requirement label cell. Full text shown via
+   the wrapper's title attribute. */
+.miniRowLabel {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.miniRowUnearned {
+  color: var(--border-mid);
+}
+.reqCode {
+  font-weight: 700;
+  color: var(--text-head);
+  margin-right: 4px;
+}
+.bor {
+  background: #f0ebe0;
+  font-weight: 700;
+  color: var(--text-head);
+}
+.miniEmpty {
+  font-style: italic;
+  color: var(--text-meta);
+  padding: 8px 12px;
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+}
+
+/* Two-column panels */
+.twoCol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 28px;
+}
+.panel {
+  background: var(--warm-white);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-card);
+  padding: 16px;
+}
+.panelTitle {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-head);
+  margin-bottom: 4px;
+}
+.panelMeta {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--text-meta);
+  letter-spacing: .04em;
+  margin-bottom: 10px;
+}
+.panelSectionTitle {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--forest);
+  margin: 12px 0 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-light);
+}
+.panelSectionTitle:first-child { margin-top: 0; }
+.mbRow,
+.actRow {
+  display: grid;
+  gap: 4px;
+  padding: 3px 0;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  line-height: 1.4;
+  border-bottom: 1px dotted var(--border-light);
+}
+/* MB rows: col 2 is the leader's initials (e.g. "MS", "PB") — narrow. */
+.mbRow {
+  grid-template-columns: 64px 32px 1fr;
+}
+/* Activity rows: col 2 is the activity TYPE (Camping/Event/Hike) — widened
+   so longer words don't overflow into the title column. */
+.actRow {
+  grid-template-columns: 64px 70px 1fr;
+}
+.mbRow > span:first-child,
+.actRow > span:first-child {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-meta);
+}
+.mbRow > span:nth-child(2),
+.actRow > span:nth-child(2) {
+  color: var(--forest);
+  font-weight: 600;
+}
+.mbName { color: var(--text-body); }
+.mbRow.mbEagle .mbName::after {
+  content: ' \2605';
+  color: var(--bark);
+  font-weight: 700;
+}
+.leadershipRow,
+.serviceRow {
+  display: grid;
+  grid-template-columns: 110px 1fr auto;
+  gap: 8px;
+  padding: 5px 0;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  border-bottom: 1px dotted var(--border-light);
+}
+.dateRange,
+.dateCell {
+  color: var(--text-meta);
+  font-variant-numeric: tabular-nums;
+}
+.hoursCell {
+  color: var(--forest);
+  font-weight: 700;
+}
+.tagCurrent {
+  color: var(--forest);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.tagPast {
+  color: var(--text-meta);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.emptyLine {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-meta);
+  padding: 6px 0;
+}
+.legend {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: var(--text-meta);
+  margin-top: 14px;
+  letter-spacing: .04em;
+}
+.legendStar {
+  color: var(--bark);
+  font-weight: 700;
+}
+
+.notFound {
+  padding: 60px 24px;
+  text-align: center;
+  color: var(--text-meta);
+  font-family: var(--font-body);
+}
+.notFound a {
+  color: var(--forest);
+  font-weight: 600;
+}
+
+@media print {
+  .scoutActions,
+  .printHide { display: none !important; }
+  .clipboard {
+    box-shadow: none;
+    border: 1px solid #555;
+    page-break-inside: avoid;
+  }
+  .rankTimeline,
+  .metricsStrip { page-break-inside: avoid; }
+  .twoCol { page-break-inside: auto; }
+  .panel {
+    page-break-inside: avoid;
+    box-shadow: none;
+  }
+  .main { padding-bottom: 0; }
+}
+
+@media (max-width: 900px) {
+  .scoutHeader { grid-template-columns: 1fr; }
+  .scoutActions { justify-content: flex-start; flex-wrap: wrap; }
+  .metricsStrip { grid-template-columns: repeat(3, 1fr); }
+  .metric { border-bottom: 1px solid var(--border-light); }
+  .rankTimeline { grid-template-columns: repeat(4, 1fr); }
+  .rankColumns { grid-template-columns: 1fr; }
+  .rankBlock {
+    border-right: none;
+    border-bottom: 1px solid #aaa;
+  }
+  .twoCol { grid-template-columns: 1fr; }
+}

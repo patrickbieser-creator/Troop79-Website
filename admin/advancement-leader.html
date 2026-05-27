@@ -498,6 +498,861 @@
       border-radius: 999px;
       letter-spacing: .04em;
     }
+    /* Scout grid completion states (Requirement-First view) */
+    .scout-check.completed {
+      background: #e8f4ec;
+      border-color: #b8d8c4;
+    }
+    .scout-check.pending {
+      background: #eef4f8;
+      border-color: var(--admin-navy);
+      border-style: dashed;
+    }
+    .scout-check input[type="checkbox"] { accent-color: var(--admin-gray-500); }
+    .scout-check.completed input[type="checkbox"] { accent-color: var(--admin-forest); }
+    .scout-check.pending input[type="checkbox"] { accent-color: var(--admin-navy); }
+    .scout-check .done-badge {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--admin-forest);
+      background: #d9ecdf;
+      padding: 2px 7px;
+      border-radius: 999px;
+      letter-spacing: .02em;
+      white-space: nowrap;
+      margin-left: 4px;
+    }
+    .scout-check.pending .done-badge {
+      color: var(--admin-navy);
+      background: #d6e3f0;
+      font-style: italic;
+    }
+
+    /* ─── REQUIREMENT PICKER ──────────────────────────────── */
+    .req-picker {
+      border: 1px solid var(--admin-gray-300);
+      border-radius: var(--admin-radius);
+      background: var(--admin-white);
+      overflow: hidden;
+    }
+    .req-picker-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2px;
+      padding: 6px 6px 0;
+      background: var(--admin-gray-100);
+      border-bottom: 1px solid var(--admin-gray-200);
+    }
+    .req-picker-tab {
+      border: 0;
+      background: transparent;
+      font-family: var(--admin-font);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      color: var(--admin-gray-700);
+      padding: 7px 10px;
+      border-radius: var(--admin-radius) var(--admin-radius) 0 0;
+      cursor: pointer;
+      position: relative;
+      top: 1px;
+      border: 1px solid transparent;
+      border-bottom: none;
+      white-space: nowrap;
+    }
+    .req-picker-tab.tab-divider {
+      pointer-events: none;
+      color: var(--admin-gray-300);
+      padding: 7px 2px;
+    }
+    .req-picker-tab:hover { color: var(--admin-navy); }
+    .req-picker-tab.active {
+      background: var(--admin-white);
+      color: var(--admin-navy);
+      border-color: var(--admin-gray-200);
+    }
+    .req-picker-search-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--admin-gray-100);
+    }
+    .req-picker-search {
+      flex: 1;
+      border: 1px solid var(--admin-gray-300);
+      border-radius: var(--admin-radius);
+      padding: 6px 10px;
+      font-family: var(--admin-font);
+      font-size: 12px;
+      color: var(--admin-gray-700);
+      outline: none;
+    }
+    .req-picker-search:focus { border-color: var(--admin-navy); }
+    .req-picker-context {
+      font-size: 11px;
+      color: var(--admin-gray-500);
+      white-space: nowrap;
+    }
+    .req-picker-back {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--admin-navy);
+      background: transparent;
+      border: 1px solid var(--admin-gray-300);
+      border-radius: var(--admin-radius);
+      padding: 4px 8px;
+      cursor: pointer;
+    }
+    .req-picker-back:hover { background: var(--admin-gray-100); }
+
+    .req-picker-list {
+      max-height: 260px;
+      overflow-y: auto;
+      padding: 4px 6px;
+    }
+    .req-picker-empty {
+      padding: 22px 10px;
+      text-align: center;
+      color: var(--admin-gray-500);
+      font-size: 12px;
+      font-style: italic;
+    }
+    .req-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: var(--admin-radius-sm);
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--admin-gray-700);
+      line-height: 1.4;
+    }
+    .req-row:hover { background: var(--admin-gray-100); }
+    .req-row.selected { background: #e8f0f7; }
+    /* Three-state visual: empty / pending (newly checked) / completed (in ledger) */
+    .req-row.pending {
+      background: #eef4f8;
+      border: 1px dashed var(--admin-navy);
+      padding-top: 5px; padding-bottom: 5px;
+    }
+    .req-row.completed {
+      background: #e8f4ec;
+    }
+    .req-row input[type="checkbox"],
+    .req-row input[type="radio"] {
+      margin: 2px 0 0;
+      transform: scale(1.05);
+      cursor: pointer;
+      flex-shrink: 0;
+      accent-color: var(--admin-gray-500);
+    }
+    .req-row.pending input[type="checkbox"] {
+      accent-color: var(--admin-navy);
+    }
+    .req-row.completed input[type="checkbox"] {
+      accent-color: var(--admin-forest);
+    }
+    .req-completion-date {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--admin-forest);
+      background: #d9ecdf;
+      padding: 2px 7px;
+      border-radius: 999px;
+      letter-spacing: .02em;
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .req-row.pending .req-completion-date {
+      color: var(--admin-navy);
+      background: #d6e3f0;
+      font-style: italic;
+    }
+    .req-picker-summary {
+      font-size: 11px;
+      color: var(--admin-gray-700);
+      padding: 8px 12px;
+      background: #fafbfc;
+      border-bottom: 1px solid var(--admin-gray-100);
+      display: flex;
+      gap: 14px;
+      align-items: center;
+    }
+    .req-picker-summary .ps-dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      margin-right: 5px;
+      vertical-align: -1px;
+    }
+    .req-picker-summary .ps-completed .ps-dot { background: var(--admin-forest); }
+    .req-picker-summary .ps-pending .ps-dot { background: var(--admin-navy); }
+    .req-picker-summary strong { color: var(--admin-navy); }
+    .req-row .req-code {
+      font-family: ui-monospace, 'Courier New', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--admin-gray-500);
+      background: var(--admin-gray-100);
+      padding: 1px 6px;
+      border-radius: 999px;
+      flex-shrink: 0;
+      min-width: 38px;
+      text-align: center;
+      margin-top: 1px;
+    }
+    .req-row.selected .req-code {
+      background: var(--admin-navy);
+      color: #fff;
+    }
+    .req-row .req-label { flex: 1; }
+    .req-row .req-rank-tag {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--admin-gray-500);
+      background: var(--admin-gray-100);
+      padding: 1px 6px;
+      border-radius: 999px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .req-row .req-expand {
+      border: 0;
+      background: transparent;
+      color: var(--admin-gray-500);
+      font-size: 10px;
+      cursor: pointer;
+      padding: 0 4px;
+      flex-shrink: 0;
+    }
+    .req-row .req-expand:hover { color: var(--admin-navy); }
+
+    .req-subrows {
+      margin-left: 28px;
+      border-left: 2px solid var(--admin-gray-200);
+      padding-left: 6px;
+      margin-bottom: 4px;
+    }
+
+    /* Non-clickable group header inside the MB requirement tree */
+    .req-group-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 8px 4px;
+      font-size: 12px;
+      color: var(--admin-navy);
+      font-weight: 700;
+      border-bottom: 1px dashed var(--admin-gray-200);
+      margin-top: 6px;
+    }
+    .req-group-header .req-group-code {
+      font-family: ui-monospace, 'Courier New', monospace;
+      font-size: 11px;
+      background: var(--admin-navy);
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 999px;
+      flex-shrink: 0;
+    }
+    .req-group-header .req-group-label { flex: 1; }
+    .req-group-header .req-rule-tag {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: #8a5a00;
+      background: #fff7df;
+      padding: 2px 8px;
+      border-radius: 999px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .req-mb-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: var(--admin-radius-sm);
+      font-size: 12px;
+      color: var(--admin-gray-700);
+    }
+    .req-mb-row:hover { background: var(--admin-gray-100); }
+    .req-mb-row .mb-name { flex: 1; font-weight: 600; }
+    .req-mb-row .mb-eagle {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #8a5a00;
+      background: #fff7df;
+      padding: 1px 6px;
+      border-radius: 999px;
+    }
+    .req-mb-row .mb-open {
+      border: 1px solid var(--admin-gray-300);
+      background: var(--admin-white);
+      color: var(--admin-navy);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: var(--admin-radius);
+      cursor: pointer;
+    }
+    .req-mb-row .mb-open:hover { border-color: var(--admin-navy); }
+
+    .req-mb-detail {
+      padding: 8px 10px 4px;
+    }
+    .req-mb-detail-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed var(--admin-gray-200);
+    }
+    .req-mb-detail-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--admin-navy);
+    }
+    .req-mb-quick {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+    .req-mb-quick label {
+      font-size: 11px;
+      color: var(--admin-gray-500);
+      font-weight: 600;
+    }
+    .req-mb-quick input {
+      width: 70px;
+      border: 1px solid var(--admin-gray-300);
+      border-radius: var(--admin-radius);
+      padding: 4px 8px;
+      font-size: 12px;
+      font-family: ui-monospace, 'Courier New', monospace;
+    }
+    .req-mb-quick button {
+      border: 1px solid var(--admin-gray-300);
+      background: var(--admin-white);
+      color: var(--admin-navy);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: var(--admin-radius);
+      cursor: pointer;
+    }
+    .req-mb-quick button:hover { border-color: var(--admin-navy); }
+    .req-mb-quick button.primary {
+      background: var(--admin-navy);
+      color: #fff;
+      border-color: var(--admin-navy);
+    }
+    .req-mb-quick button.primary:hover { background: var(--admin-navy-hover); }
+    .req-mb-quick .req-mb-hint {
+      font-size: 10px;
+      color: var(--admin-gray-500);
+      font-style: italic;
+    }
+
+    /* ─── ENTRY FORMS for Service / Events / Leadership tabs ──── */
+    .req-entry-form {
+      padding: 10px 12px;
+      background: #fafbfc;
+      border-bottom: 1px solid var(--admin-gray-100);
+      display: grid;
+      gap: 8px;
+    }
+    .req-entry-form .row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .req-entry-form input,
+    .req-entry-form select {
+      border: 1px solid var(--admin-gray-300);
+      border-radius: var(--admin-radius);
+      padding: 6px 9px;
+      font-family: var(--admin-font);
+      font-size: 12px;
+      color: var(--admin-gray-700);
+      background: var(--admin-white);
+      outline: none;
+      flex: 1;
+      min-width: 80px;
+    }
+    .req-entry-form input:focus,
+    .req-entry-form select:focus { border-color: var(--admin-navy); }
+    .req-entry-form input.narrow { flex: 0 0 70px; min-width: 70px; }
+    .req-entry-form input[type="date"] { flex: 0 0 130px; min-width: 130px; }
+    .req-entry-form button.add-btn {
+      background: var(--admin-navy);
+      color: #fff;
+      border: 1px solid var(--admin-navy);
+      font-family: var(--admin-font);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 7px 12px;
+      border-radius: var(--admin-radius);
+      cursor: pointer;
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+    .req-entry-form button.add-btn:hover { background: var(--admin-navy-hover); }
+    .req-entry-form label.fld {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--admin-gray-500);
+      margin-right: 4px;
+    }
+
+    .req-history-section {
+      padding: 8px 12px 4px;
+    }
+    .req-history-heading {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--admin-gray-500);
+      padding: 4px 0;
+    }
+    .req-history-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: var(--admin-radius-sm);
+      font-size: 12px;
+      color: var(--admin-gray-700);
+      background: #e8f4ec;
+      margin-bottom: 3px;
+      cursor: pointer;
+    }
+    .req-history-row.pending {
+      background: #eef4f8;
+      border: 1px dashed var(--admin-navy);
+    }
+    .req-history-row:hover { filter: brightness(.97); }
+    .req-history-row .h-date {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--admin-forest);
+      background: #d9ecdf;
+      padding: 2px 7px;
+      border-radius: 999px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .req-history-row.pending .h-date {
+      color: var(--admin-navy);
+      background: #d6e3f0;
+      font-style: italic;
+    }
+    .req-history-row .h-qty {
+      font-weight: 700;
+      color: var(--admin-navy);
+      flex-shrink: 0;
+    }
+    .req-history-row .h-label { flex: 1; }
+    .req-history-row .h-by {
+      font-size: 10px;
+      color: var(--admin-gray-500);
+      flex-shrink: 0;
+    }
+    .req-history-row .h-remove {
+      border: 0;
+      background: transparent;
+      color: var(--admin-gray-500);
+      font-size: 14px;
+      cursor: pointer;
+      padding: 0 4px;
+      flex-shrink: 0;
+    }
+    .req-history-row .h-remove:hover { color: var(--admin-danger); }
+    .req-history-empty {
+      padding: 16px 10px;
+      text-align: center;
+      color: var(--admin-gray-500);
+      font-size: 11px;
+      font-style: italic;
+    }
+
+    /* ─── MB Progress catalog + detail ───────────────────── */
+    .mb-catalog-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 10px;
+    }
+    .mb-catalog-card {
+      background: var(--admin-white);
+      border: 1px solid var(--admin-gray-200);
+      border-radius: var(--admin-radius);
+      padding: 12px 14px;
+      box-shadow: var(--admin-shadow-sm);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: border-color var(--admin-transition), transform var(--admin-transition);
+    }
+    .mb-catalog-card:hover {
+      border-color: var(--admin-navy);
+      transform: translateY(-1px);
+    }
+    .mb-catalog-card .mb-name {
+      font-weight: 700;
+      color: var(--admin-navy);
+      font-size: 13px;
+      line-height: 1.3;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 6px;
+    }
+    .mb-catalog-card .mb-eagle {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #8a5a00;
+      background: #fff7df;
+      padding: 1px 6px;
+      border-radius: 999px;
+      flex-shrink: 0;
+    }
+    .mb-catalog-card .mb-counts {
+      display: flex;
+      gap: 12px;
+      font-size: 11px;
+      margin-top: 4px;
+    }
+    .mb-catalog-card .mb-count {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .mb-catalog-card .mb-count strong {
+      font-size: 18px;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .mb-catalog-card .mb-count.completed strong { color: var(--admin-forest); }
+    .mb-catalog-card .mb-count.partial strong   { color: var(--admin-navy); }
+    .mb-catalog-card .mb-count.none strong      { color: var(--admin-gray-300); }
+    .mb-catalog-card .mb-count span {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--admin-gray-500);
+    }
+    .mb-catalog-card.has-progress { border-color: #b8d8c4; background: #fafdfb; }
+    .mb-catalog-card.empty-state .mb-counts { opacity: .55; }
+
+    /* Detail grid */
+    .mb-grid-wrap {
+      overflow: auto;
+      max-height: 70vh;
+      border: 1px solid var(--admin-gray-200);
+      border-radius: var(--admin-radius);
+    }
+    .mb-grid {
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 12px;
+    }
+    .mb-grid th,
+    .mb-grid td {
+      border-right: 1px solid var(--admin-gray-100);
+      padding: 6px 8px;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+    .mb-grid th:first-child,
+    .mb-grid td:first-child {
+      position: sticky;
+      left: 0;
+      background: var(--admin-white);
+      z-index: 2;
+      min-width: 180px;
+      border-right: 2px solid var(--admin-gray-200);
+    }
+    .mb-grid thead th {
+      background: var(--admin-gray-100);
+      font-size: 10px;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: var(--admin-gray-700);
+      padding: 7px 8px;
+      position: sticky;
+      top: 0;
+      z-index: 3;
+    }
+    .mb-grid thead th:first-child { z-index: 4; }
+    /* Group header row above the leaf-code columns. Each group spans its leaves. */
+    .mb-grid thead th.group-col {
+      background: #eef4f8;
+      color: var(--admin-navy);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: none;
+      padding: 8px 6px;
+      text-align: center;
+      border-bottom: 2px solid var(--admin-navy);
+      border-right: 1px solid var(--admin-gray-200);
+    }
+    .mb-grid thead th.group-col .group-rule {
+      display: inline-block;
+      margin-left: 8px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: #8a5a00;
+      background: #fff7df;
+      padding: 1px 6px;
+      border-radius: 999px;
+      vertical-align: 1px;
+    }
+    .mb-grid thead th.req-col {
+      min-width: 44px;
+      padding: 8px 4px;
+      text-align: center;
+      font-size: 12px;
+      letter-spacing: 0;
+      text-transform: none;
+      font-weight: 700;
+      background: var(--admin-gray-100);
+      color: var(--admin-navy);
+      font-family: ui-monospace, 'Courier New', monospace;
+    }
+    .mb-grid thead th.req-col.group-start { border-left: 2px solid var(--admin-navy); }
+    .mb-grid thead th.award-col {
+      background: #fff7df;
+      color: #8a5a00;
+      min-width: 56px;
+      padding: 8px 6px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      border-left: 2px solid var(--bark, #8a5a00);
+    }
+    .mb-grid tbody tr:hover td { background: #fafbfc; }
+    .mb-grid tbody tr:hover td:first-child { background: #f3f5f7; }
+    .mb-grid .mb-cell {
+      width: 44px;
+      text-align: center;
+      cursor: pointer;
+      color: var(--admin-gray-300);
+      font-size: 18px;
+      line-height: 1;
+      font-weight: 700;
+    }
+    .mb-grid .mb-cell.group-start { border-left: 2px solid var(--admin-navy); }
+    .mb-grid .mb-cell.award { border-left: 2px solid var(--bark, #8a5a00); }
+    .mb-grid .mb-cell.done {
+      background: #e8f4ec;
+      color: var(--admin-forest);
+    }
+    .mb-grid .mb-cell:hover {
+      outline: 2px solid var(--admin-navy);
+      outline-offset: -2px;
+    }
+    .mb-grid .mb-cell.award {
+      background: #fff7df;
+      color: #8a5a00;
+    }
+    .mb-grid .mb-cell.award.done {
+      background: #f5d76a;
+      color: #5a3a00;
+    }
+    .mb-grid td.scout-name {
+      font-weight: 600;
+      color: var(--admin-gray-700);
+    }
+    .mb-grid td.scout-name .rk {
+      font-size: 9px;
+      color: var(--admin-gray-500);
+      padding: 1px 5px;
+      background: var(--admin-gray-100);
+      border-radius: 999px;
+      letter-spacing: .04em;
+      margin-left: 6px;
+      font-weight: 700;
+    }
+    .mb-extern-link {
+      display: inline-flex;
+      align-items: center;
+      font-family: var(--admin-font);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--admin-navy);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+    }
+    .mb-extern-link:hover {
+      color: var(--admin-navy-hover);
+      border-bottom-color: var(--admin-navy);
+    }
+
+    .mb-reqs-list { display: grid; gap: 4px; }
+    .mb-req-parent {
+      padding: 8px 12px 6px;
+      border-left: 3px solid var(--admin-navy);
+      background: #fafbfc;
+      border-radius: 0 var(--admin-radius) var(--admin-radius) 0;
+      margin-bottom: 4px;
+    }
+    .mb-req-parent .mb-req-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-weight: 700;
+      color: var(--admin-navy);
+      font-size: 14px;
+    }
+    .mb-req-parent .mb-req-children {
+      margin-top: 6px;
+      display: grid;
+      gap: 3px;
+    }
+    .mb-req-leaf {
+      padding: 4px 0 4px 8px;
+      font-size: 13px;
+      color: var(--admin-gray-700);
+      line-height: 1.4;
+    }
+    .mb-req-leaf .req-code-tag {
+      font-family: ui-monospace, monospace;
+      background: var(--admin-navy);
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      margin-right: 6px;
+    }
+    .mb-req-parent .mb-req-head .req-code-tag {
+      font-family: ui-monospace, monospace;
+      background: var(--admin-navy);
+      color: #fff;
+      padding: 2px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+    }
+    .mb-req-rule-tag {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: #8a5a00;
+      background: #fff7df;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+    /* Block-level optionality callout for the requirements list. More
+       readable than the inline pill — parents/scouts notice it at a glance. */
+    .mb-req-note {
+      font-style: italic;
+      font-weight: 600;
+      color: #8a5a00;
+      background: #fff7df;
+      border-left: 3px solid #c79a2e;
+      padding: 6px 12px;
+      margin: 6px 0 6px 0;
+      font-size: 13px;
+      border-radius: 0 var(--admin-radius) var(--admin-radius) 0;
+    }
+    .mb-req-note::before {
+      content: 'Note: ';
+      font-style: normal;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      font-size: 10px;
+      margin-right: 6px;
+      vertical-align: 1px;
+    }
+    .mb-reqs-empty {
+      padding: 22px 12px;
+      text-align: center;
+      color: var(--admin-gray-500);
+      font-style: italic;
+      font-size: 12px;
+    }
+
+    /* ─── ROSTER inline-expand reqs row ───────────────────── */
+    .roster-reqs-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--admin-font);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border: 1px solid var(--admin-gray-300);
+      background: var(--admin-white);
+      color: var(--admin-gray-700);
+      border-radius: var(--admin-radius);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .roster-reqs-toggle:hover { border-color: var(--admin-navy); color: var(--admin-navy); }
+    .roster-reqs-toggle.has-pending {
+      background: #eef4f8;
+      border-color: var(--admin-navy);
+      color: var(--admin-navy);
+    }
+    .roster-reqs-toggle .reqs-count {
+      background: var(--admin-navy);
+      color: #fff;
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 999px;
+    }
+    .roster-reqs-toggle .caret {
+      display: inline-block;
+      transition: transform var(--admin-transition);
+      font-size: 9px;
+      color: var(--admin-gray-500);
+    }
+    .roster-reqs-toggle.open .caret { transform: rotate(180deg); }
+
+    tr.roster-reqs-row > td {
+      background: #fafbfc;
+      padding: 10px 14px;
+      border-top: 0;
+      border-bottom: 1px solid var(--admin-gray-200);
+    }
+    tr.roster-reqs-row .roster-picker-mount {
+      max-width: 720px;
+    }
+    tr.roster-reqs-row .reqs-row-header {
+      font-size: 11px;
+      color: var(--admin-gray-500);
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    tr.roster-reqs-row .reqs-row-header strong { color: var(--admin-navy); }
 
     /* Code preview */
     .code-preview {
@@ -639,6 +1494,7 @@
 
       <div class="ws-nav-section">Records</div>
       <button class="ws-nav-btn" data-screen="ledger">Universal Ledger <span class="badge" id="ledgerCount">0</span></button>
+      <button class="ws-nav-btn" data-screen="mb-progress">MB Progress</button>
       <button class="ws-nav-btn" data-screen="coh">Court of Honor</button>
 
       <div class="ws-nav-section">Output</div>
@@ -737,10 +1593,10 @@
               <span class="ws-field-label">Signed Off By</span>
               <select class="ws-select" id="scoutFirstBy"></select>
             </label>
-            <label class="ws-field">
-              <span class="ws-field-label">Requirements (comma-separated codes)</span>
-              <input type="text" class="ws-input" id="scoutFirstReqs" placeholder="e.g. TF-3d, SC-2c, Cook-4b" />
-            </label>
+            <div class="ws-field">
+              <span class="ws-field-label">Requirements</span>
+              <div id="scoutFirstPicker"></div>
+            </div>
             <label class="ws-field">
               <span class="ws-field-label">Notes (optional)</span>
               <textarea class="ws-textarea" id="scoutFirstNotes" placeholder="Anything BoR or counselors should know"></textarea>
@@ -752,12 +1608,12 @@
           </div>
 
           <!-- Requirement-first bulk -->
-          <div class="ws-card">
+          <div class="ws-card" id="reqFirstCard">
             <h3>Requirement-First Bulk Entry</h3>
-            <label class="ws-field">
-              <span class="ws-field-label">Requirement / Ledger Code</span>
-              <input type="text" class="ws-input" id="reqFirstCode" value="Cook-4b" />
-            </label>
+            <div class="ws-field">
+              <span class="ws-field-label">Requirement</span>
+              <div id="reqFirstPicker"></div>
+            </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
               <label class="ws-field">
                 <span class="ws-field-label">Date Completed</span>
@@ -783,6 +1639,33 @@
               <button class="ws-btn" type="button" id="reqFirstClear">Clear</button>
               <button class="ws-btn primary" type="button" id="reqFirstSave">Create <span id="reqFirstBtnCount">0</span> Ledger Entries</button>
             </div>
+          </div>
+        </div>
+
+        <!-- Audit Tape — today's entries from the universal ledger, newest first -->
+        <div class="ws-card" id="fastEntryTapeCard" style="margin-top:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;">
+            <h3 style="margin:0;">Today&rsquo;s Audit Tape <span id="fastEntryTapeDate" style="font-weight:400;color:var(--admin-gray-500);font-size:12px;"></span></h3>
+            <span id="fastEntryTapeMeta" style="font-size:11px;color:var(--admin-gray-500);"></span>
+          </div>
+          <div class="ws-table-wrap" style="box-shadow:none;border:1px solid var(--admin-gray-200);max-height:340px;overflow:auto;">
+            <table class="ws-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Scout</th>
+                  <th>Type</th>
+                  <th>Code</th>
+                  <th>Description</th>
+                  <th>Signed Off</th>
+                  <th class="num">Qty</th>
+                  <th>Unit</th>
+                  <th>Entered</th>
+                  <th style="text-align:right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="fastEntryTapeBody"></tbody>
+            </table>
           </div>
         </div>
       </section>
@@ -916,6 +1799,54 @@
         </div>
 
         <div class="ws-pager" id="ledgerPager"></div>
+      </section>
+
+      <!-- ─── MERIT BADGE PROGRESS ──────────────────────────── -->
+      <section id="mb-progress" class="screen">
+        <!-- Catalog view -->
+        <div id="mbProgressCatalog">
+          <div class="ws-page-title">
+            <div>
+              <h1>Merit Badge Progress</h1>
+              <p>Every merit badge with current troop progress. Click a badge to see which scouts have completed which requirements.</p>
+            </div>
+            <div class="ws-actions">
+              <input type="search" class="ws-input" id="mbCatalogFilter" placeholder="Filter badges&hellip;" style="max-width:240px;" />
+            </div>
+          </div>
+          <div class="mb-catalog-grid" id="mbCatalogGrid"></div>
+        </div>
+
+        <!-- Detail view -->
+        <div id="mbProgressDetail" style="display:none;">
+          <div class="ws-page-title">
+            <div>
+              <button class="ws-btn" type="button" id="mbDetailBack" style="margin-bottom:8px;">&larr; All Merit Badges</button>
+              <h1 id="mbDetailTitle">&nbsp;</h1>
+              <p id="mbDetailSubtitle">&nbsp;</p>
+            </div>
+          </div>
+
+          <div class="ws-stats" id="mbDetailStats" style="grid-template-columns:repeat(4,1fr);"></div>
+
+          <div class="ws-card">
+            <h3>Scout Progress Grid</h3>
+            <p style="font-size:12px;color:var(--admin-gray-500);margin-top:-6px;margin-bottom:10px;">
+              Rows are scouts who have started this badge. Click any cell to sign off (opens Fast Entry pre&shy;filled). <span style="color:var(--admin-forest);">&#9632;</span> = completed, <span style="color:var(--admin-gray-300);">&#9633;</span> = not yet.
+            </p>
+            <div class="mb-grid-wrap">
+              <table class="ws-table mb-grid" id="mbGridTable">
+                <thead id="mbGridHead"></thead>
+                <tbody id="mbGridBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="ws-card" id="mbReqsCard">
+            <h3>Requirements <span id="mbReqsSource" style="font-weight:400;color:var(--admin-gray-500);font-size:12px;"></span></h3>
+            <div id="mbReqsList"></div>
+          </div>
+        </div>
       </section>
 
       <!-- ─── COURT OF HONOR ────────────────────────────────── -->
@@ -1088,6 +2019,8 @@
   <div class="ws-toast" id="wsToast"></div>
 
   <script src="editor-shared.js"></script>
-  <script src="advancement-leader.js"></script>
+  <!-- Dev-only cache buster: ensures prototype JS edits show up without a hard reload.
+       Strip the inline script + add a versioned URL when packaging for production. -->
+  <script>document.write('<scr' + 'ipt src="advancement-leader.js?t=' + Date.now() + '"><\/scr' + 'ipt>');</script>
 </body>
 </html>

@@ -1,0 +1,180 @@
+/* Admin workspace chrome — port of admin/editor-shared.css :root tokens
+   plus the prototype's left-sidebar layout. Scoped to /admin/* routes
+   so the public site keeps its NYT-style editorial palette. */
+
+.adminRoot {
+  --admin-navy:        #1e3a4a;
+  --admin-navy-light:  #2a5068;
+  --admin-navy-hover:  #163040;
+  --admin-forest:      #3d7a4a;
+  --admin-forest-dark: #2e6038;
+  --admin-danger:      #c0392b;
+  --admin-danger-hover:#a93226;
+  --admin-warning:     #d4a017;
+  --admin-bg:          #f5f6f8;
+  --admin-white:       #ffffff;
+  --admin-gray-50:     #fafbfc;
+  --admin-gray-100:    #f0f1f3;
+  --admin-gray-200:    #e2e4e8;
+  --admin-gray-300:    #cdd1d6;
+  --admin-gray-400:    #9ba1aa;
+  --admin-gray-500:    #6d7580;
+  --admin-gray-700:    #3a3f47;
+  --admin-gray-900:    #1a1d21;
+  --admin-radius:      4px;
+  --admin-radius-sm:   3px;
+  --admin-shadow-sm:   0 1px 3px rgba(0,0,0,.08);
+  --admin-shadow-md:   0 2px 8px rgba(0,0,0,.1);
+
+  background: var(--admin-bg);
+  color: var(--admin-gray-900);
+  font-family: var(--font-ui), Arial, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Top bar */
+.topBar {
+  background: var(--admin-navy);
+  color: var(--admin-white);
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  border-bottom: 1px solid var(--admin-navy-hover);
+}
+.topBarBrand {
+  font-weight: 700;
+  letter-spacing: .06em;
+  font-size: 13px;
+}
+.topBarRight {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.topBarUser {
+  color: rgba(255,255,255,.7);
+  font-size: 12px;
+}
+.topBarLink,
+.topBarBtn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,.25);
+  color: var(--admin-white);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  padding: 5px 12px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background .15s ease;
+}
+.topBarLink:hover,
+.topBarBtn:hover {
+  background: rgba(255,255,255,.12);
+}
+
+/* Workspace shell: sidebar + main */
+.workspace {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Sub-nav sidebar */
+.subNav {
+  background: var(--admin-white);
+  border-right: 1px solid var(--admin-gray-200);
+  padding: 18px 0;
+  overflow-y: auto;
+}
+.subNavSection {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--admin-gray-500);
+  padding: 14px 18px 6px;
+  margin-top: 10px;
+}
+.subNavSection:first-child { margin-top: 0; }
+.subNavBtn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--admin-gray-700);
+  padding: 9px 18px;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: background .15s ease, color .15s ease;
+}
+.subNavBtn:hover {
+  background: var(--admin-gray-100);
+  color: var(--admin-navy);
+}
+.subNavBtnActive {
+  background: var(--admin-navy);
+  color: var(--admin-white);
+  border-left-color: var(--admin-warning);
+}
+.subNavBtnActive:hover {
+  background: var(--admin-navy);
+  color: var(--admin-white);
+}
+.subNavBtnDisabled {
+  color: var(--admin-gray-400);
+  cursor: not-allowed;
+  font-weight: 500;
+}
+.subNavBtnDisabled:hover {
+  background: transparent;
+  color: var(--admin-gray-400);
+}
+.soonTag {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  background: var(--admin-gray-200);
+  color: var(--admin-gray-500);
+  padding: 1px 6px;
+  border-radius: 8px;
+  margin-left: 6px;
+  text-transform: uppercase;
+}
+
+/* Main content area */
+.main {
+  padding: 28px 32px;
+  overflow-y: auto;
+}
+
+@media (max-width: 800px) {
+  .workspace { grid-template-columns: 1fr; }
+  .subNav {
+    display: flex;
+    flex-wrap: wrap;
+    border-right: none;
+    border-bottom: 1px solid var(--admin-gray-200);
+    padding: 8px;
+  }
+  .subNavSection { display: none; }
+  .subNavBtn {
+    width: auto;
+    padding: 7px 12px;
+    border-left: none;
+    border-radius: 3px;
+  }
+  .subNavBtnActive { border-left: none; }
+}

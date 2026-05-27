@@ -1,0 +1,429 @@
+.pageTitle {
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--admin-gray-200);
+  padding-bottom: 14px;
+}
+.pageTitle h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--admin-navy);
+  margin-bottom: 4px;
+}
+.pageTitle p {
+  font-size: 13px;
+  color: var(--admin-gray-500);
+  max-width: 720px;
+  line-height: 1.5;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+@media (max-width: 900px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+.card {
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  padding: 16px;
+  box-shadow: var(--admin-shadow-sm);
+}
+.card h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--admin-navy);
+  margin-bottom: 2px;
+}
+.cardSub {
+  font-size: 12px;
+  color: var(--admin-gray-500);
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.table th,
+.table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--admin-gray-100);
+  text-align: left;
+  vertical-align: top;
+}
+.table th {
+  background: var(--admin-gray-50);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--admin-gray-700);
+}
+.table tr:last-child td { border-bottom: none; }
+.codeCell {
+  font-family: 'Menlo', 'Consolas', monospace;
+  font-size: 11.5px;
+  color: var(--admin-gray-700);
+  white-space: nowrap;
+}
+.tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  padding: 1px 7px;
+  border-radius: 8px;
+  background: var(--admin-gray-100);
+  color: var(--admin-gray-700);
+}
+.tagRank        { background: #e0e7ef; color: var(--admin-navy); }
+.tagMb          { background: #e3eee5; color: var(--admin-forest); }
+.tagEagle       { background: #fdf3d6; color: #8b6914; }
+.tagActive      { background: #e3eee5; color: var(--admin-forest); }
+.tagInactive    { background: var(--admin-gray-100); color: var(--admin-gray-500); }
+.muted { color: var(--admin-gray-400); font-style: italic; }
+.summary {
+  font-size: 11px;
+  color: var(--admin-gray-500);
+  margin-top: 8px;
+}
+.subText {
+  display: block;
+  font-size: 11px;
+  color: var(--admin-gray-500);
+}
+
+/* Card-level toolbar (Add button at the top of each editable card) */
+.cardActions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+.addBtn {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  background: var(--admin-forest);
+  color: var(--admin-white);
+  border: 1px solid var(--admin-forest);
+  padding: 6px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.addBtn:hover { background: var(--admin-forest-dark); }
+
+/* Row action buttons */
+.editBtn {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-300);
+  color: var(--admin-gray-700);
+  padding: 3px 9px;
+  border-radius: 3px;
+  cursor: pointer;
+  margin-left: 4px;
+}
+.editBtn:hover {
+  border-color: var(--admin-navy);
+  color: var(--admin-navy);
+}
+.editBtn:disabled { opacity: .5; cursor: not-allowed; }
+.dangerBtn {
+  color: var(--admin-danger);
+  border-color: #e8c4c0;
+}
+.dangerBtn:hover {
+  background: #fdf0ef;
+  border-color: var(--admin-danger);
+  color: var(--admin-danger);
+}
+.rowError {
+  display: block;
+  font-size: 11px;
+  color: var(--admin-danger);
+  margin-top: 2px;
+}
+
+/* Edit dialog (shared shape with the Ledger edit dialog) */
+.editDialog {
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  box-shadow: var(--admin-shadow-md);
+  width: 92vw;
+  max-width: 580px;
+  background: var(--admin-white);
+}
+.editDialogLarge { max-width: 720px; max-height: 90vh; overflow: hidden; }
+.editDialogLarge .editDialogInner {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.editDialog::backdrop {
+  background: rgba(0, 0, 0, 0.42);
+}
+.editDialogInner {
+  padding: 22px 26px 18px;
+  font-family: inherit;
+}
+.editDialogHeader {
+  border-bottom: 1px solid var(--admin-gray-200);
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+.editDialogHeader h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--admin-navy);
+  margin-bottom: 4px;
+}
+.editDialogHeader p {
+  font-size: 12px;
+  color: var(--admin-gray-500);
+  line-height: 1.4;
+}
+.editGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 14px;
+}
+.editField {
+  display: block;
+}
+.editFieldFull {
+  display: block;
+  grid-column: 1 / -1;
+}
+.editLabel {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--admin-gray-500);
+  margin-bottom: 4px;
+}
+.editInput {
+  width: 100%;
+  border: 1px solid var(--admin-gray-300);
+  border-radius: 3px;
+  padding: 7px 9px;
+  font-family: inherit;
+  font-size: 13px;
+  background: var(--admin-white);
+  color: var(--admin-gray-900);
+  outline: none;
+}
+.editInput:focus { border-color: var(--admin-navy); }
+.editInput:disabled {
+  background: var(--admin-gray-100);
+  color: var(--admin-gray-500);
+  cursor: not-allowed;
+}
+.editInputMono {
+  font-family: 'Menlo', 'Consolas', monospace;
+  font-size: 12.5px;
+}
+.toggleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--admin-gray-900);
+  cursor: pointer;
+  user-select: none;
+}
+.statusRadioRow {
+  display: flex;
+  gap: 18px;
+  margin-bottom: 4px;
+}
+.statusRadio {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--admin-gray-900);
+  cursor: pointer;
+  user-select: none;
+}
+.helpText {
+  font-size: 11px;
+  color: var(--admin-gray-500);
+  line-height: 1.45;
+  margin-top: 6px;
+}
+
+/* Form sections (Identity / Contact / Parents / Status) */
+.editSection {
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px dashed var(--admin-gray-200);
+}
+.editSection:last-of-type { border-bottom: none; }
+.editSectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+}
+.editSectionHeader h4 {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--admin-navy);
+}
+
+/* Tiny grid for State+ZIP side-by-side */
+.editTinyGrid {
+  display: grid;
+  grid-template-columns: 70px 1fr;
+  gap: 8px;
+}
+
+/* Read-only computed value */
+.readOnlyValue {
+  padding: 7px 9px;
+  border: 1px dashed var(--admin-gray-300);
+  border-radius: 3px;
+  background: var(--admin-gray-50);
+  font-size: 13px;
+  color: var(--admin-gray-700);
+}
+
+/* Parent subform row */
+.parentRow {
+  background: var(--admin-gray-50);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: 3px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+.parentRowHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.parentRowLabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--admin-gray-500);
+}
+
+/* Contact column in the leaders table */
+.contactCell {
+  font-size: 12px;
+  color: var(--admin-gray-700);
+}
+.contactItem {
+  display: block;
+  white-space: nowrap;
+}
+
+/* Requirement tree editor */
+.reqTree {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.reqTreeBranch { display: flex; flex-direction: column; gap: 4px; }
+.reqTreeRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: var(--admin-gray-50);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: 3px;
+}
+.reqCodeInput { width: 90px; flex-shrink: 0; }
+.reqLabelInput { flex: 1; }
+.reqRuleInput { width: 80px; flex-shrink: 0; }
+.reqNInput { width: 50px; flex-shrink: 0; }
+.reqRowControls {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.reqIconBtn {
+  font-family: inherit;
+  font-size: 11px;
+  width: 24px;
+  height: 28px;
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--admin-gray-700);
+  padding: 0;
+  line-height: 1;
+}
+.reqIconBtn:hover {
+  border-color: var(--admin-navy);
+  color: var(--admin-navy);
+}
+.reqIconBtn:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
+.editEmpty {
+  padding: 16px;
+  text-align: center;
+  font-style: italic;
+  font-size: 12px;
+  color: var(--admin-gray-500);
+}
+.editError {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: #fdf0ef;
+  border: 1px solid #e8c4c0;
+  color: var(--admin-danger);
+  border-radius: 3px;
+  font-size: 12px;
+}
+.editActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid var(--admin-gray-200);
+}
+.editSaveBtn {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  background: var(--admin-navy);
+  color: var(--admin-white);
+  border: 1px solid var(--admin-navy);
+  padding: 6px 14px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.editSaveBtn:hover { background: var(--admin-navy-hover); }
+.editSaveBtn:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 560px) {
+  .editGrid { grid-template-columns: 1fr; }
+  .editFieldFull { grid-column: auto; }
+}

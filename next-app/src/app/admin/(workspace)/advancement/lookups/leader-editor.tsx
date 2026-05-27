@@ -1,0 +1,345 @@
+'use client';
+
+import { useEffect, useRef, useState, useTransition } from 'react';
+import { createLeader, deleteLeader, updateLeader } from './actions';
+import styles from './lookups.module.css';
+
+export interface LeaderRow {
+  code: string;
+  name: string;
+  role: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  phone: string | null;
+  email: string | null;
+  health_form_date: string | null;
+}
+
+interface Props {
+  rows: LeaderRow[];
+}
+
+export function LeaderEditor({ rows }: Props) {
+  const [openFor, setOpenFor] = useState<LeaderRow | 'new' | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [busyCode, setBusyCode] = useState<string | null>(null);
+  const [rowErr, setRowErr] = useState<{ code: string; msg: string } | null>(null);
+  const [, startTransition] = useTransition();
+
+  useEffect(() => {
+    const dlg = dialogRef.current;
+    if (!dlg) return;
+    if (openFor && !dlg.open) dlg.showModal();
+    if (!openFor && dlg.open) dlg.close();
+  }, [openFor]);
+
+  function onDelete(code: string) {
+    if (
+      !window.confirm(
+        `Delete leader "${code}"? Only allowed when no ledger rows reference this signer.`
+      )
+    ) {
+      return;
+    }
+    setBusyCode(code);
+    setRowErr(null);
+    const fd = new FormData();
+    fd.set('code', code);
+    startTransition(async () => {
+      const res = await deleteLeader(fd);
+      setBusyCode(null);
+      if (!res.ok) {
+        setRowErr({ code, msg: res.error ?? 'Delete failed' });
+      }
+    });
+  }
+
+  return (
+    <>
+      <div className={styles.cardActions}>
+        <button
+          type="button"
+          className={styles.addBtn}
+          onClick={() => setOpenFor('new')}
+        >
+          + Add Leader
+        </button>
+      </div>
+      <table className={styles.table}>
+        <thead>
+          <tr>
+            <th>Initials</th>
+            <th>Name</th>
+            <th>Role</th>
+            <th>Contact</th>
+            <th style={{ textAlign: 'right' }}>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((l) => (
+            <tr key={l.code}>
+              <td className={styles.codeCell}>{l.code}</td>
+              <td>
+                {l.name}
+                {rowErr?.code === l.code && (
+                  <span className={styles.rowError}>{rowErr.msg}</span>
+                )}
+              </td>
+              <td>{l.role ?? <span className={styles.muted}>—</span>}</td>
+              <td className={styles.contactCell}>
+                {l.phone && <span className={styles.contactItem}>{l.phone}</span>}
+                {l.email && <span className={styles.contactItem}>{l.email}</span>}
+                {!l.phone && !l.email && <span className={styles.muted}>—</span>}
+              </td>
+              <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                <button
+                  type="button"
+                  className={styles.editBtn}
+                  onClick={() => setOpenFor(l)}
+                  disabled={busyCode === l.code}
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.editBtn} ${styles.dangerBtn}`}
+                  onClick={() => onDelete(l.code)}
+                  disabled={busyCode === l.code}
+                >
+                  {busyCode === l.code ? '…' : 'Delete'}
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <dialog
+        ref={dialogRef}
+        className={`${styles.editDialog} ${styles.editDialogLarge}`}
+        onClose={() => setOpenFor(null)}
+        onClick={(e) => {
+          if (e.target === dialogRef.current) setOpenFor(null);
+        }}
+      >
+        {openFor && (
+          <LeaderForm
+            row={openFor === 'new' ? null : openFor}
+            onClose={() => setOpenFor(null)}
+          />
+        )}
+      </dialog>
+    </>
+  );
+}
+
+function LeaderForm({
+  row,
+  onClose
+}: {
+  row: LeaderRow | null;
+  onClose: () => void;
+}) {
+  const isNew = row === null;
+  const [code, setCode] = useState(row?.code ?? '');
+  const [name, setName] = useState(row?.name ?? '');
+  const [role, setRole] = useState(row?.role ?? '');
+  const [addr1, setAddr1] = useState(row?.address_line1 ?? '');
+  const [addr2, setAddr2] = useState(row?.address_line2 ?? '');
+  const [city, setCity] = useState(row?.city ?? '');
+  const [stateAbbr, setStateAbbr] = useState(row?.state ?? '');
+  const [zip, setZip] = useState(row?.zip ?? '');
+  const [phone, setPhone] = useState(row?.phone ?? '');
+  const [email, setEmail] = useState(row?.email ?? '');
+  const [healthFormDate, setHealthFormDate] = useState(row?.health_form_date ?? '');
+  const [err, setErr] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  function submit() {
+    setErr(null);
+    const fd = new FormData();
+    fd.set('code', code);
+    fd.set('name', name);
+    fd.set('role', role);
+    fd.set('address_line1', addr1);
+    fd.set('address_line2', addr2);
+    fd.set('city', city);
+    fd.set('state', stateAbbr);
+    fd.set('zip', zip);
+    fd.set('phone', phone);
+    fd.set('email', email);
+    fd.set('health_form_date', healthFormDate);
+    startTransition(async () => {
+      const res = isNew ? await createLeader(fd) : await updateLeader(fd);
+      if (!res.ok) {
+        setErr(res.error ?? 'Save failed');
+        return;
+      }
+      onClose();
+    });
+  }
+
+  return (
+    <div className={styles.editDialogInner}>
+      <div className={styles.editDialogHeader}>
+        <h3>{isNew ? 'Add Leader' : `Edit ${row?.code} — ${row?.name}`}</h3>
+        <p>
+          Initials are how the leader appears in every ledger sign-off. Keep
+          them short and unique. Contact info is optional but helps the
+          Advancement Chair reach out about clinics + signoffs.
+        </p>
+      </div>
+
+      <div className={styles.editSection}>
+        <div className={styles.editSectionHeader}>
+          <h4>Identity</h4>
+        </div>
+        <div className={styles.editGrid}>
+          <label className={styles.editField}>
+            <span className={styles.editLabel}>Initials / Code</span>
+            <input
+              type="text"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              className={`${styles.editInput} ${styles.editInputMono}`}
+              placeholder="e.g. PB"
+              disabled={!isNew}
+              required
+            />
+          </label>
+          <label className={styles.editField}>
+            <span className={styles.editLabel}>Name</span>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className={styles.editInput}
+              required
+            />
+          </label>
+          <label className={styles.editFieldFull}>
+            <span className={styles.editLabel}>Role (optional)</span>
+            <input
+              type="text"
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              className={styles.editInput}
+              placeholder="e.g. Assistant Scoutmaster, Merit Badge Counselor"
+            />
+          </label>
+        </div>
+      </div>
+
+      <div className={styles.editSection}>
+        <div className={styles.editSectionHeader}>
+          <h4>Contact</h4>
+        </div>
+        <div className={styles.editGrid}>
+          <label className={styles.editFieldFull}>
+            <span className={styles.editLabel}>Address Line 1</span>
+            <input
+              type="text"
+              value={addr1}
+              onChange={(e) => setAddr1(e.target.value)}
+              className={styles.editInput}
+            />
+          </label>
+          <label className={styles.editFieldFull}>
+            <span className={styles.editLabel}>Address Line 2</span>
+            <input
+              type="text"
+              value={addr2}
+              onChange={(e) => setAddr2(e.target.value)}
+              className={styles.editInput}
+              placeholder="Apt / unit (optional)"
+            />
+          </label>
+          <label className={styles.editField}>
+            <span className={styles.editLabel}>City</span>
+            <input
+              type="text"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              className={styles.editInput}
+            />
+          </label>
+          <div className={styles.editTinyGrid}>
+            <label>
+              <span className={styles.editLabel}>State</span>
+              <input
+                type="text"
+                value={stateAbbr}
+                onChange={(e) => setStateAbbr(e.target.value)}
+                className={styles.editInput}
+                maxLength={2}
+                placeholder="WI"
+              />
+            </label>
+            <label>
+              <span className={styles.editLabel}>ZIP</span>
+              <input
+                type="text"
+                value={zip}
+                onChange={(e) => setZip(e.target.value)}
+                className={styles.editInput}
+                placeholder="53202"
+              />
+            </label>
+          </div>
+          <label className={styles.editField}>
+            <span className={styles.editLabel}>Phone</span>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className={styles.editInput}
+              placeholder="(414) 555-1234"
+            />
+          </label>
+          <label className={styles.editField}>
+            <span className={styles.editLabel}>Email</span>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className={styles.editInput}
+            />
+          </label>
+          <label className={styles.editField}>
+            <span className={styles.editLabel}>Health Form Date</span>
+            <input
+              type="date"
+              value={healthFormDate}
+              onChange={(e) => setHealthFormDate(e.target.value)}
+              className={styles.editInput}
+            />
+          </label>
+        </div>
+      </div>
+
+      {err && <div className={styles.editError}>{err}</div>}
+
+      <div className={styles.editActions}>
+        <button
+          type="button"
+          className={styles.editBtn}
+          onClick={onClose}
+          disabled={isPending}
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          className={styles.editSaveBtn}
+          onClick={submit}
+          disabled={isPending || !code.trim() || !name.trim()}
+        >
+          {isPending ? 'Saving…' : isNew ? 'Create Leader' : 'Save changes'}
+        </button>
+      </div>
+    </div>
+  );
+}

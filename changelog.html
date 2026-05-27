@@ -392,6 +392,7 @@ python -m http.server 8000</pre>
         <li><a href="http://localhost:8000/meeting.html">http://localhost:8000/meeting.html</a> &mdash; This Week&rsquo;s Meeting</li>
         <li><a href="http://localhost:8000/advancement.html">http://localhost:8000/advancement.html</a> &mdash; Advancement (troop roster)</li>
         <li><a href="http://localhost:8000/advancement-scout.html?id=maya">http://localhost:8000/advancement-scout.html?id=maya</a> &mdash; Scout Clipboard (drill-down)</li>
+        <li><a href="http://localhost:8000/merit-badges.html">http://localhost:8000/merit-badges.html</a> &mdash; Merit Badge Progress (public catalog)</li>
         <li><a href="http://localhost:8000/admin/meeting-editor.html">http://localhost:8000/admin/meeting-editor.html</a> &mdash; Meeting Editor (admin)</li>
         <li><a href="http://localhost:8000/admin/advancement-leader.html">http://localhost:8000/admin/advancement-leader.html</a> &mdash; Advancement Leader Workspace (admin)</li>
         <li><a href="http://localhost:8000/changelog.html">http://localhost:8000/changelog.html</a> &mdash; This changelog</li>
@@ -430,11 +431,938 @@ python -m http.server 8000</pre>
           <p class="phase-title">Advancement Tracker</p>
           <ul>
             <li>Troop roster + per-scout Clipboard</li>
-            <li>Leader Workspace (ledger, fast entry, COH, export)</li>
+            <li>Leader Workspace (ledger, fast entry, picker, COH, export)</li>
+            <li>MB Progress (public + admin) with hierarchical reqs</li>
             <li>Sourced from <code>data/advancement.json</code></li>
-            <li>Real DB + auth: deferred to Phase 4</li>
+            <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v0.15 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v0.15</span>
+        <span class="release-date">May 27, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Fast Entry &mdash; Deep Tree + Smart Save</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              The requirement picker now renders the <strong>full requirement hierarchy</strong> &mdash; including nested leaves like Cooking <code>2a.1</code> under <code>2a</code> &mdash; with proper indentation, optionality indicators (<em>all of</em> / <em>any of</em> / <em>n of</em>), and live satisfaction counts on parent rows. Scout rank tabs come first in tab order; the MB Award row sits at the top of every MB sub-tab; selected items collect in a pending bar at the top of the picker.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Smart Select All</strong> on MB tabs picks <em>exactly</em> the required number of leaves under each optional parent (e.g. &ldquo;3 of&rdquo; nodes get 3 selected, not all 6) and leaves already-completed reqs untouched. The button is intentionally absent on rank and free-form tabs.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Award gating</strong> blocks saving an MB Award or rank award when the underlying requirements aren&rsquo;t satisfied &mdash; enforced both in the UI (Save disabled with an explanatory inline message naming the first failing parent) and on the server (<code>validateAwardRows</code> short-circuits <code>addLedgerEntries</code> with a clear error). Pending selections in the current save count toward the threshold so you can sign off the last req and award the badge in one click.
+            </span>
+          </li>
+          <li>
+            <span>
+              The save button now shows <strong><code>Save (N)</code></strong> with the live count of pending entries, so leaders can sanity-check before committing a bulk save.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Events, Service, and Leadership tabs grew history panels</strong> &mdash; the picker now loads the scout&rsquo;s last 30 free-form entries on each side and renders them as two-row cards (date+by header / label+qty body) with an undo (&times;) per row. Same soft-delete pipeline as the rest of Fast Entry.
+            </span>
+          </li>
+          <li>
+            <span>
+              The <strong>Events tab</strong> gained per-row quantity inputs for <strong>Nights</strong>, <strong>Miles</strong>, and <strong>Hours</strong>, and the <strong>Service tab</strong> gained a <strong>Hours</strong> input &mdash; both override the troop&rsquo;s default <code>qty=2</code> convention when a leader knows the real number. Defaults still hold when nothing is typed.
+            </span>
+          </li>
+          <li>
+            <span>
+              The <strong>Today&rsquo;s Audit Tape</strong> filter switched to local-day bounds on <code>entered_at</code> (not the achievement <code>date</code>), so &ldquo;today&rdquo; means &ldquo;what I entered today&rdquo; even when sign-offs are back-dated.
+              <span class="change-note">Earlier in the session this was briefly flipped to filter by <code>date</code> in response to a stray 7/25/23 row; user clarified the correct semantics &mdash; entered-today, not achieved-today &mdash; and it&rsquo;s now locked.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">MB Progress &mdash; Admin Drill-In</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              New admin pages: <strong><code>/admin/advancement/mb-progress</code></strong> (catalog grid of every MB, color-strip indicating in-progress vs earned counts) and <strong><code>/admin/advancement/mb-progress/[mbId]</code></strong> (Scout &times; leaf-requirement matrix). The detail view sticky-scrolls Scout column + top header, groups leaves under their parent codes (e.g. <code>2</code> spans <code>2a, 2b, 2c</code>), and surfaces the registered counselor list at the top.
+            </span>
+          </li>
+          <li>
+            <span>
+              Completed cells render <strong>green &#9632;</strong> on the troop&rsquo;s admin-forest, empty cells show a gray &#9633;. The Award column on the right shows a prominent <strong>&#9733;</strong> on warm yellow when the full badge is awarded (sized to be unmistakable but the row height stays compact via <code>line-height: 1</code>). Cells are display-only &mdash; sign-offs go through Fast Entry.
+              <span class="change-note">Earlier in the session the grid cells were live <code>&lt;Link&gt;</code>s deep-linking to Fast Entry with <code>?scout=&hellip;&amp;mb=&hellip;&amp;req=&hellip;</code> prefill. The deep-link <em>handler</em> in Fast Entry remains (so the prefill keeps working for any future entry point), but the grid itself is now passive per user feedback.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              The sidebar entry for <strong>MB Progress</strong> moved out of &ldquo;Soon&rdquo; and into the active section. <strong>Court of Honor</strong>, <strong>Event Roster</strong>, and <strong>Scoutbook Export</strong> are the only remaining Soon items.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">MB Requirements Editor (Lookups)</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              The Merit Badge card in Lookups gained a full <strong>Requirements editor</strong> &mdash; nested rows with code + label + optionality fields, &#9650;/&#9660; reorder controls within each level, and a per-row delete (&times;). Children are edited inline by clicking into a parent; depth is unlimited so codes like <code>2a.1</code> are first-class.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Code-rename guard</strong>: the Save action collects every rename pair, checks whether any <code>ledger_entries.code</code> still references the old code under <code>&lt;mb_id&gt;-&lt;old&gt;</code>, and refuses the save with the offending codes named when matches exist. Add / delete / reorder are unaffected &mdash; only rename is gated. Prevents silently orphaning historical sign-offs.
+            </span>
+          </li>
+          <li>
+            <span>
+              Save runs a <strong>replace-then-insert</strong> recursive write: the whole MB&rsquo;s requirement tree is reseeded from the form payload, preserving parent_id links via temporary client-side IDs that are translated into real DB UUIDs as the recursion walks each level.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Spreadsheet &amp; Screenshot Imports</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>First Aid MB clipboard-style xlsx</strong> &mdash; new importer parsed 329 ledger rows + 55 catalog rows from the per-scout clipboard layout the troop uses outside Scoutbook. Self-documenting label parsing reads the requirement text directly from the sheet, so future clipboard sheets for other MBs reuse the same path.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Cooking matrix screenshot</strong> &mdash; one-shot import of a sign-off matrix with a 7/25/25 completion date; 288 ledger rows inserted (Anita and Louise excluded per request). The import surfaced 9 cooking codes (<code>2d, 2e, 5e&ndash;5h, 6d&ndash;6f</code>) that exist in the ledger but not the catalog &mdash; a known gap now addressable via the new MB Requirements editor above.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v0.14 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v0.14</span>
+        <span class="release-date">May 26, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Lookups &amp; Admin &mdash; Full Editors</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Scouts card</strong> grew an editor with four sections: Identity, Contact, Parents / Guardians, Status. <strong>+ Add Scout</strong> button at the top of the card; per-row <strong>Edit</strong> opens a modal. Adds scout demographic fields (address line 1/2, city, state, zip, phone, email, health-form date) directly on <code>scouts</code>.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Parents / Guardians subform</strong> &mdash; multiple parents per scout with name, relationship (Mom/Dad/Guardian/&hellip;), phone, email, and a <strong>&ldquo;Same address as scout&rdquo;</strong> toggle that collapses the parent&rsquo;s address fields when on. Backed by a new <code>scout_parents</code> table. Replace-on-save: each edit wipes &amp; re-inserts the scout&rsquo;s parents.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Leaders card</strong> grew a similar editor with Identity and Contact sections (address, phone, email, health-form date). New Contact column in the Lookups Leaders table summarizes phone + email. Add / Edit / Delete all work; Delete refuses when ledger rows still reference the code (with the count surfaced inline).
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Merit Badge card</strong> grew a Counselors section. Pick one or more leaders from a sortable list with &#9650;/&#9660; reorder controls and a Remove button; the order persists in the new <code>merit_badge_counselors</code> table and is intentionally surfaced for re-use in future editors (e.g. when a scout&rsquo;s requirement signoff page wants to list the counselor pool for that badge).
+              <span class="change-note">New reusable <code>&lt;SortableList&gt;</code> Client Component lives at <code>src/app/admin/(workspace)/_components/sortable-list.tsx</code> &mdash; a generic ordered-list picker with up/down/remove + an Add dropdown of available items. Pluggable into any future editor that needs an explicit display order.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Current Rank &mdash; Derived, Not Editable</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>New DB trigger</strong> <code>ledger_rank_award_refresh</code> keeps <code>scouts.current_rank</code> automatically in sync with the highest <code>rank_award</code> ledger entry for that scout (among non-archived, non-deleted rows). Fires on every <code>ledger_entries</code> insert/update/delete where <code>kind = 'rank_award'</code>. Backed by the SQL function <code>recompute_scout_current_rank(scout_id)</code>.
+              <span class="change-note">Migration: <code>20260528000100_demographics_parents_counselors.sql</code>.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              The scout edit dialog renders <strong>Current Rank as a read-only pill</strong>, no longer an editable dropdown. The Server Action ignores any <code>current_rank</code> field on the form. Awarding a rank is purely a ledger event &mdash; insert/restore a <code>rank_award</code> row through Fast Entry and the trigger does the rest.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Inactive Scouts &mdash; Reason Required</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              New column <code>scouts.inactive_reason</code> with five canonical values: <code>dropped_out</code>, <code>transferred</code>, <code>moved_away</code>, <code>aged_out</code>, <code>other</code>. Two CHECK constraints enforce the value whitelist and the &ldquo;reason required iff inactive&rdquo; rule.
+              <span class="change-note">Migration: <code>20260528000000_scout_inactive_reason.sql</code>.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              Scout editor&rsquo;s Status section is now <strong>Active / Inactive radio buttons</strong>. Picking Inactive reveals a Reason dropdown; Save is blocked until a reason is chosen.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Inactive scouts disappear from every roster, picker, and dashboard stat</strong> &mdash; the public <code>/advancement</code> roster, the admin Dashboard&rsquo;s Active Scouts count, the Fast Entry scout dropdown, and the Likely-Ready-for-Review heuristic. They remain on the Lookups Scouts list (with the human-readable reason as a sub-line) and remain visible by name in the Universal Ledger for their historical entries.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Leader Name Correction Sweep</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              The seeded <code>leaders</code> table had placeholder names from the prototype (Mike Smith, Marcus Bell, etc.) that didn&rsquo;t match the spreadsheet&rsquo;s <code>CounselorApprovedBy</code> column. <strong>16 leader names corrected, 19 missing leaders inserted</strong> based on the spreadsheet&rsquo;s real attribution counts.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Notable corrections</strong>: MS &rarr; Mindy Stollenwerk (532 rows), JP &rarr; Jason Porter (328 rows), MB &rarr; Mike Black (73 rows), BV &rarr; Becky Vest (70 rows), PP &rarr; Paul Pasquesi (108 rows). KM &rarr; Kevin Malloy and Turner &rarr; Turner Hall. Per-user confirmation captured for the MB / MBa split (Mike Black is MB; Mike Babby is MBa).
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Junk sign-off codes cleaned up in the ledger</strong>: <code>HpOrse</code> (19 rows) &rarr; Clinic, <code>JM</code> (2) &rarr; KM, <code>Lisa Pieper</code> (3) &rarr; LMP, <code>??</code> (1) &rarr; BV. Dropped to null: <code>?</code>, <code>Family</code>, <code>KTB</code>, <code>RP</code>, <code>Service</code> (14 rows total). MC kept as Mark Carrol.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong><code>data/advancement.json</code></strong> updated so future <code>npm run seed</code> agrees with the DB; importer&rsquo;s new <code>BY_REMAP</code> table + <code>normalizeBy()</code> helper apply the same remapping at row-build time so a fresh spreadsheet re-import produces clean data.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Fast Entry Save Validation</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Save button in both Scout-First and Requirement-First cards is now <strong>disabled when Date or Signed-Off By is empty</strong>, with a hover tooltip indicating which field is missing. Server Action validation already existed; the UI gate prevents the round-trip + inline error.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v0.13 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v0.13</span>
+        <span class="release-date">May 26, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Fast Entry &mdash; Real Write Path Into the Ledger</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>/admin/advancement/fast-entry</strong> &mdash; two equivalent workflows backed by a shared <strong>11-tab requirement picker</strong>: Scout, Tenderfoot, Second Class, First Class, Star, Life, Eagle, Merit Badges (with drill-in), and free-form Service / Events / Leadership tabs for ad-hoc entries.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Scout-First card</strong> &mdash; pick a scout, the picker preloads that scout&rsquo;s completion overlay (green check + date + leader badges on items they already have). Multi-select pending items, hit Save Entries, all rows insert in one batch. Picker refreshes in place to flip pending &rarr; completed.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Requirement-First Bulk</strong> &mdash; pick one item from the picker, multi-select scouts via a checkbox grid (Select all / Clear all), hit Create N Ledger Entries.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Three-state checkboxes</strong>: empty / pending (dashed navy) / completed (solid green with date + by badges). Clicking an already-completed item prompts for a reason and soft-deletes the entry via <code>undoCompletion</code> &mdash; recoverable from the Universal Ledger&rsquo;s Show Hidden toggle.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Today&rsquo;s Audit Tape</strong> below the cards &mdash; sticky-header table of every ledger row whose <code>entered_at</code> falls in today&rsquo;s window. Reuses the InfoCell &ldquo;(i) bubble&rdquo; popup pattern for full requirement text.
+              <span class="change-note">Server Actions: <code>addLedgerEntries</code> (batch insert), <code>loadScoutCompletion</code> (per-scout overlay), <code>undoCompletion</code> (soft-delete). All gated by the leader-session cookie; <code>revalidatePath</code> sweeps fast-entry + ledger + dashboard so changes propagate immediately.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Universal Ledger &mdash; Edit, Short Labels, Search Fixes</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Edit action</strong> on every active row. Opens a modal with 9 editable fields (Date, Scout, Kind, Code, Description, Signed Off By, Qty, Unit, Notes). Scout + Kind + Leader are dropdowns; the &ldquo;by&rdquo; dropdown preserves non-catalog signers (Camp / Clinic / etc.) as a &ldquo;(custom)&rdquo; option. Audit columns (<code>entered_*</code>, <code>archived_*</code>, <code>deleted_*</code>) are intentionally read-only.
+              <span class="change-note">New Server Action <code>updateLedgerEntry</code> with server-side field validation. Revalidates ledger + fast-entry + dashboard.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Short descriptions in the Description column</strong>, matching the Clipboard format. Rank requirements show the catalog&rsquo;s curated short label (&ldquo;Pack for Overnight Campout&rdquo; instead of &ldquo;1a. Present yourself&hellip;&rdquo;), rank awards show &ldquo;Board of Review &mdash; Star,&rdquo; MB awards show the badge name. Each cell has a clickable <strong>(i) bubble</strong> that opens a native <code>&lt;dialog&gt;</code> with the full original text.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Search by scout name now actually finds scouts.</strong> The loader pre-resolves which scout IDs match the query (since <code>ledger_entries.scout_id</code> holds slugs like A01, not display names) and ORs them into the ledger filter alongside the column matches. Typing &ldquo;maya&rdquo; finds all 230 of her rows.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Debounce bug fix</strong>: keystrokes no longer get overwritten while the server re-renders. The toolbar now tracks input focus and suppresses the URL&rarr;state resync while you&rsquo;re actively typing; debounce bumped from 250&nbsp;ms to 450&nbsp;ms.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>White-space: nowrap</strong> applied to Date / Scout / Type / Code / By / Entered columns so long names like &ldquo;Maya Sankpal-Tatera&rdquo; don&rsquo;t wrap. Table overflow-scrolls horizontally on narrow viewports.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Leader Dashboard</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>/admin/advancement/dashboard</strong> is now the default admin landing. Four-stat strip (Active Scouts, total Ledger Entries, COH Candidates since last COH, Missing BSA IDs with warning highlight).
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Recent Ledger Activity</strong> card &mdash; top 10 rows by <code>entered_at</code>, with the same short-label dispatcher and scout-link pattern as the Universal Ledger.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Likely Ready for Review</strong> card &mdash; per-scout heuristic surfacing anyone &ge;60% complete on their next rank&rsquo;s top-level requirements. Progress bar + completion ratio (e.g. &ldquo;5/7&rdquo;) + suggested action; &ldquo;Schedule BoR&rdquo; callout when the BoR is the only thing left. Reminder note that ranks are never auto-awarded.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Per-Scout Clipboard Refinements</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Every catalog requirement is shown</strong>, not just earned ones. Earned rows display date + leader; unearned rows are faded gray with blanks. Catalog short label is the display; the original ledger text is available via the row&rsquo;s <code>title</code> attribute (hover tooltip).
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Board of Review rows populated</strong> on the Clipboard. The picker&rsquo;s overlay map now indexes both <code>rank_requirement</code> AND <code>rank_award</code> ledger entries, re-keying rank awards as <code>&lt;rank&gt;-BoR</code> so they match the catalog&rsquo;s synthetic BoR requirement row.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Grid row separators</strong> &mdash; a bottom border on each rank block so the BoR row&rsquo;s tan background doesn&rsquo;t visually merge into the next grid row&rsquo;s column-title background.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Activities panel column 2 widened</strong> from 32px to 70px so &ldquo;Camping&rdquo; / &ldquo;Event&rdquo; type labels stop crashing into event titles.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v0.12 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v0.12</span>
+        <span class="release-date">May 26, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Real Production Data &mdash; Spreadsheet Import</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>One-shot importer</strong> at <code>next-app/scripts/import-spreadsheet.ts</code> (npm run import-spreadsheet). Ingests the troop&rsquo;s historical &ldquo;Universal Ledger&rdquo; xlsx &mdash; 5,729 rows &times; 27 columns spanning Jan 2020 to May 2026. Dry-run by default; <code>--apply</code> mutates.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>47 active scouts</strong> imported, replacing the 9 sample seed scouts. SID (A01, B07, &hellip;) becomes <code>scouts.id</code>; <code>current_rank</code> is inferred from each scout&rsquo;s highest <code>rank_award</code> row.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>5,727 ledger rows</strong> imported (2 unmatched orphans &mdash; Kevin Barry, William Porter &mdash; logged to <code>skipped-rows.csv</code>). Kind distribution: 4,701 rank_requirement, 405 merit_badge_award, 363 camping_nights (qty=2 each &mdash; per troop convention, every Activity is a 2-night campout), 120 service_hours (qty=2 each), 96 rank_award, 31 leadership, 11 award.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>16 typo fixes</strong> hard-coded in the importer: Xavier Juhemich (12 rows) &rarr; D01 Xavier Juchemich, Damian Nickolaus/Nicolaus (3 rows) &rarr; C07 Damian Nikolaus, Anjali Sankpal-Tetera (1 row) &rarr; A02 Sankpal-Tatera.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Merit badge catalog expanded</strong> from 32 &rarr; 64 entries. 62 of 64 have <code>scoutbook_id</code> populated from the spreadsheet&rsquo;s AdvancementID column. Five slug aliases applied (<code>citizenship-in-X</code> &rarr; <code>citizenship-X</code>, <code>signs-signals</code> &rarr; <code>signs-signals-codes</code>); Wood Carving added alongside Woodwork (different BSA badges, both kept).
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Schema migration <code>20260527000000_ledger_kind_additions.sql</code></strong> adds <code>rank_award</code> and <code>award</code> to the <code>ledger_kind</code> enum. <code>rank_award</code> for the 96 rank-earned rows; <code>award</code> for small recognitions (Firem&rsquo;n Chit, Totin&rsquo; Chip, Mile Swim BSA, Stand Up Paddleboarding).
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Prototype Seed Retired</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong><code>npm run seed</code> is now taxonomy-only.</strong> Truncates only the requirement trees (rank_requirements, merit_badge_requirements) and upserts the stable reference tables (leaders, activity_types, ranks). Does NOT touch <code>scouts</code>, <code>ledger_entries</code>, or <code>coh_history</code> &mdash; so the spreadsheet import&rsquo;s real data survives a re-seed.
+              <span class="change-note">Merit badges are upserted carefully: only <code>name</code> + <code>eagle</code> get refreshed from the JSON, never <code>scoutbook_id</code> or link URLs (which the importer + hand-edits may have populated).</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Bring-up sequence updated</strong>: <code>supabase start</code> &rarr; <code>db reset</code> &rarr; <code>npm run seed</code> (taxonomy) &rarr; <code>npm run import-spreadsheet -- --xlsx="&hellip;" --apply</code>. After that, daily <code>npm run dev</code>.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Two malformed MB award codes fixed in source</strong>: <code>MB-Communication</code> &rarr; <code>MB:communication</code>, <code>MB-CitNation</code> &rarr; <code>MB:citizenship-nation</code> in <code>data/advancement.json</code> so the <code>scout_summary</code> view counts them.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v0.11 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v0.11</span>
+        <span class="release-date">May 26, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Admin Workspace &mdash; Slice 1 (Login, Ledger, Lookups)</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Stub leader login</strong> at <code>/admin/login</code> &mdash; any non-empty username + any password sets an HMAC-signed session cookie (<code>t79_leader_session</code>, signed via <code>LEADER_SESSION_SECRET</code>). Designed to swap out for real Supabase Auth later without touching admin pages. Logout button in the top bar.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Next 16 <code>proxy.ts</code></strong> (the renamed-from-<code>middleware.ts</code> file convention) gates every <code>/admin/:path*</code> request, redirecting unauthenticated requests to <code>/admin/login?next=&hellip;</code> so the original target is preserved.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Admin workspace shell</strong>: navy top bar with brand + signed-in user + Public Site link + Logout, sidebar sub-nav with 8 sections (Dashboard, Fast Entry, Event Roster, Universal Ledger, MB Progress, Court of Honor, Scoutbook Export, Lookups &amp; Admin). Disabled tabs render a faint &ldquo;Soon&rdquo; tag.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Universal Ledger</strong> at <code>/admin/advancement/ledger</code> &mdash; URL-state filtering (<code>?q=&kind=&hidden=&sort=&dir=&page=</code>), 50 rows/page server pagination, sortable column headers (links that flip dir), kind filter dropdown (all 10 enum values), &ldquo;Show hidden rows&rdquo; toggle that swaps <code>ledger_active</code> &harr; <code>ledger_entries</code>. Per-row Archive (reason optional) and Delete (reason required) via Server Actions; Restore button appears when a hidden row is visible.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Lookups &amp; Admin</strong> at <code>/admin/advancement/lookups</code> &mdash; four read-only reference cards: Internal Requirement Codes (top-level rank + MB rows), Scouts &amp; BSA IDs, Adult Leaders (signoff initials), Merit Badge Catalog.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Schema migration <code>20260526000000_scout_summary_view.sql</code></strong> adds a per-scout aggregate view (mb_count, eagle_mb_count, camping_nights, service_hours, last_activity_date) so list pages compute counts without scanning the ledger.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Architecture &mdash; Route Groups + Layout Split</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Public routes moved under <code>src/app/(public)/</code></strong>: the public layout adds SiteNav + SiteFooter; admin pages skip it and get their own workspace chrome. Root layout (<code>src/app/layout.tsx</code>) is bare html/body.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Site shell completed</strong>: utility bar (date + Members Login), masthead with logo + tagline, sticky nav with <code>aria-current="page"</code> active state (via a Client island that reads <code>usePathname</code>), navy footer with three columns.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Type-check workaround for Next 16</strong>: Turbopack generates a buggy <code>.next/dev/types/validator.ts</code> for routes inside route groups containing dynamic segments. <code>tsconfig.json</code> excludes <code>.next/dev/</code>; the build&rsquo;s <code>.next/types/</code> is correct and still type-checked.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v0.10 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v0.10</span>
+        <span class="release-date">May 26, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Public Production Site &mdash; /advancement + /scouts/[id]</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>/advancement</strong> &mdash; troop-wide roster Server Component. Page header, 5-stat strip (Active Scouts, Merit Badges Earned, Nights of Camping, Service Hours, Eagle-Required MBs), 7-tile rank distribution grid, MB Progress CTA card linking to /merit-badges, sortable + filterable roster table.
+              <span class="change-note">Roster interactivity (search by name/patrol, rank + patrol dropdowns, sortable column headers, row-click drill, count meta) lives in a Client island so the first paint is server-rendered and bookmarkable.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>/scouts/[id]</strong> &mdash; per-scout Clipboard. Header with Print PDF + &larr; All Scouts buttons, 6-metric strip (Current Rank, Merit Badges, Camping Nights, Service Hours, Hiking Miles, Leadership), 7-step rank progression timeline. The <strong>Clipboard 3-col grid</strong> renders every rank&rsquo;s top-level requirements from the catalog &mdash; not just earned ones &mdash; with date + leader on completed rows and blank cells (faded gray) on unearned. Below: Merit Badges + Activities panels, then Leadership + Service Projects panels.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Print-PDF support</strong>: <code>@media print</code> rules hide the action buttons and avoid page breaks inside the Clipboard / metrics strip / panels.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v0.9.1 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v0.9.1</span>
+        <span class="release-date">May 26, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Polish</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Local Dev Bring-Up &mdash; First Successful Boot</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>End-to-end verified</strong> on this machine: Docker Desktop &rarr; <code>supabase start</code> &rarr; schema migrated &rarr; seeded from prototype JSON &rarr; <code>/merit-badges</code> renders against Supabase. The procedure below is what actually worked; <code>README.md</code> in <code>next-app/</code> still has the abbreviated version.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Step-by-Step Procedure</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>1. Start Docker Desktop</strong> and wait for the whale icon to stop animating. Supabase CLI uses Docker for the local Postgres + PostgREST + Auth + Studio stack &mdash; nothing happens until Docker is ready.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>2. From <code>next-app/</code>, run <code>npx supabase start</code>.</strong> First boot pulls ~1.5&nbsp;GB of container images (postgres, gotrue, postgrest, studio, kong, edge-runtime, &hellip;) &mdash; takes 5&ndash;15&nbsp;minutes on first run, &lt;30&nbsp;seconds thereafter. Subsequent boots are fast because images are cached.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>3. Capture the keys with <code>npx supabase status -o env</code>.</strong> Easier than copy/pasting from the multi-panel ASCII art the start command prints. The <code>-o env</code> flag emits them as <code>KEY="value"</code> pairs.
+              <span class="change-note">Note: newer Supabase CLI also prints <code>PUBLISHABLE_KEY</code> + <code>SECRET_KEY</code> (the new naming). For now we use the legacy <code>ANON_KEY</code> + <code>SERVICE_ROLE_KEY</code> &mdash; both formats work, <code>@supabase/ssr</code> accepts either.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>4. Create <code>next-app/.env.local</code></strong> with three lines:
+              <code>NEXT_PUBLIC_SUPABASE_URL</code> (the API URL, typically <code>http://127.0.0.1:54321</code>), <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> (the long JWT-shaped anon key), and <code>SUPABASE_SERVICE_ROLE_KEY</code> (the long service-role JWT). The file is already in <code>.gitignore</code>. Template lives at <code>.env.example</code>.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>5. Apply the schema with <code>npx supabase db reset</code>.</strong> The first <code>supabase start</code> on an empty volume sometimes does not auto-apply migrations &mdash; symptom is <code>Could not find the table 'public.ledger_entries'</code> on the next step. <code>db reset</code> wipes &amp; recreates with the migration applied. Safe to repeat any time you want a clean DB.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>6. Seed from prototype JSON: <code>npm run seed</code>.</strong> Reads <code>../data/advancement.json</code> and inserts 18 leaders, 9 activity types, 7 ranks, 171 rank requirements, 32 merit badges, 89 MB requirements, 9 scouts, 52 ledger entries, 2 COH history rows. Idempotent &mdash; truncates first.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>7. Start the dev server: <code>npm run dev</code>.</strong> Open <code>http://localhost:3000/merit-badges</code>. Supabase Studio (DB browser) lives at <code>http://127.0.0.1:54323</code> &mdash; use it to verify rows after seeding.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Fix: Seed Script Now Reads <code>.env.local</code></p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong><code>npm run seed</code> changed</strong> from <code>tsx scripts/seed.ts</code> to <code>tsx --env-file=.env.local scripts/seed.ts</code>. <code>tsx</code> does not auto-load <code>.env*</code> files the way <code>next dev</code> does, so the seed script was reading <code>process.env.SUPABASE_SERVICE_ROLE_KEY</code> as <code>undefined</code> even with the key correctly written to <code>.env.local</code>. Node&rsquo;s built-in <code>--env-file</code> flag (Node 20+) is the cleanest fix &mdash; no <code>dotenv</code> dependency needed.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Recovery Recipes</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>&ldquo;Container name already in use&rdquo; error</strong> when running <code>supabase start</code> &rarr; a previous container is stopped but not removed. Fix: <code>npx supabase stop --no-backup</code>, then <code>npx supabase start</code> again. The <code>--no-backup</code> flag avoids prompting about the volume.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>&ldquo;Could not find the table&rdquo;</strong> on seed/dev &rarr; migration didn&rsquo;t apply. Fix: <code>npx supabase db reset</code>. Re-run <code>npm run seed</code> afterwards.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Need to wipe and start fresh:</strong> <code>npx supabase db reset</code> for schema-only reset (preserves containers); <code>npx supabase stop</code> then <code>start</code> for full teardown.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Keys rotated or forgotten:</strong> <code>npx supabase status -o env</code> any time &mdash; the local keys are deterministic per project and do not change between boots unless you delete the volume.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">What This Confirms</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              The v0.9 foundation runs as designed: the schema migration applies cleanly, the seed populates every table including the recursive requirement trees, the SSR Supabase client connects through cookies, and the <code>/merit-badges</code> Server Component renders real Postgres data through RLS-enabled queries. Ready to start porting the next features (Home, Calendar, Meeting, the Leader Workspace) against the live DB.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v0.9 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v0.9</span>
+        <span class="release-date">May 25, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Production Port Begins &mdash; <code>next-app/</code></p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Next.js 16 + Supabase + TypeScript + Tailwind 4</strong> scaffolded into a sibling folder, <code>next-app/</code>. The static prototype at the repo root is untouched and remains the design reference &mdash; the two run side-by-side on different ports during the port.
+              <span class="change-note">Stack confirmed earlier this session: Vercel hosts the Next.js app under the existing Vercel account, Supabase hosts DB + auth as a separate service. Local dev uses Supabase CLI in Docker; cloud signup happens when ready for deploy.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Database Schema (Supabase Migration)</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Initial migration</strong> at <code>next-app/supabase/migrations/20260525000000_initial_schema.sql</code> covering every table the prototype touched: <code>leaders</code>, <code>activity_types</code>, <code>ranks</code>, <code>merit_badges</code>, <code>scouts</code>, <code>coh_history</code>, two self-referential requirement trees (<code>rank_requirements</code>, <code>merit_badge_requirements</code>), and the single ledger table.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Single <code>ledger_entries</code> table</strong> per the data-model decision &mdash; not split by kind. <code>kind</code> is a Postgres enum (<code>rank_requirement</code> / <code>merit_badge_requirement</code> / <code>merit_badge_award</code> / <code>attendance</code> / <code>service_hours</code> / <code>camping_nights</code> / <code>hiking_miles</code> / <code>leadership</code>). Soft-delete (with required reason via CHECK constraint) and archive columns live on the row. Partial index on (scout_id, date desc) WHERE archived_at IS NULL AND deleted_at IS NULL backs the active-rows filter every screen uses.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Recursive requirement trees</strong> via <code>parent_id</code> self-reference on both rank and MB requirement tables. <code>complete_rule</code> (<code>all</code> / <code>any</code> / <code>n-of</code>) + <code>complete_n</code> encode the optionality we surfaced in v0.8&rsquo;s &ldquo;Do any 2 of the following&rdquo; notes.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong><code>scouts.auth_user_id</code></strong> is a nullable 1-1 FK to <code>auth.users</code> &mdash; the shared scout+parents login per the auth decision. Leaders will be a separate role (Phase 4).
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Two views</strong>: <code>ledger_active</code> (the default-filtered ledger) and <code>mb_progress</code> (per-scout-per-MB completion rollup so the catalog page computes counts without loading the full ledger).
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>RLS enabled on every table</strong> with placeholder policies: anonymous reads allowed (so the public catalog works pre-auth), authenticated writes allowed. Intentionally loose for now &mdash; Phase 4 tightens to &ldquo;scout sees own / leader sees all&rdquo;.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Seed Script</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong><code>scripts/seed.ts</code></strong> reads the prototype&rsquo;s <code>data/advancement.json</code> and populates every table end-to-end, including depth-first inserts for the recursive requirement trees so <code>parent_id</code> links resolve correctly. Idempotent &mdash; truncates before inserting.
+              <span class="change-note">Run via <code>npm run seed</code> from <code>next-app/</code>. Requires <code>SUPABASE_SERVICE_ROLE_KEY</code> in <code>.env.local</code> (bypasses RLS).</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Supabase Clients (SSR Pattern)</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong><code>src/lib/supabase/server.ts</code></strong> &mdash; per-request <code>createClient()</code> that reads/writes the session cookie so RLS sees the right user. Also exports <code>createAdminClient()</code> for service-role tasks (seed, cron). Uses <code>@supabase/ssr</code>.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong><code>src/lib/supabase/client.ts</code></strong> &mdash; <code>createBrowserClient()</code> for Client Components only. Most pages should stay server-rendered.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Hand-maintained TS row types</strong> in <code>types.ts</code>. Replace with <code>supabase gen types typescript --local</code> output when the schema settles.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Proof-of-Concept Feature: Public <code>/merit-badges</code></p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Catalog</strong> (<code>src/app/merit-badges/page.tsx</code>) &mdash; Server Component. Queries <code>merit_badges</code> + <code>mb_progress</code> + active scout count in parallel; renders the same card grid as the prototype, completed/in-progress/not-started per badge, with Eagle tag.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Detail</strong> (<code>src/app/merit-badges/[mbId]/page.tsx</code>) &mdash; Server Component. Loads MB + requirement rows + filtered ledger entries + active scouts in parallel. Builds the requirement tree, flattens to leaves, computes group spans, renders the two-row sticky-header grid with horizontal leaf codes + scouts &times; leaves cells + AWARD column. Below the grid: full hierarchical requirement list with the &ldquo;Note: Do any 2 of the following&rdquo; amber callouts.
+              <span class="change-note">External BSA + workbook links at the top via the same URL helpers ported from the prototype.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong><code>src/lib/mb-helpers.ts</code></strong> &mdash; shared <code>buildReqTree</code>, <code>flattenLeaves</code>, <code>topLevelCodeOf</code>, <code>optionalityLabel</code>/<code>optionalityNote</code>, and <code>bsaPageUrl</code>/<code>workbookUrl</code> URL derivation. Direct port of the prototype&rsquo;s inline logic.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Next.js 16 conventions honored:</strong> <code>params</code> is awaited as a <code>Promise</code> in dynamic routes; pages using <code>cookies()</code> are correctly marked dynamic by the framework; <code>next build</code> passes clean with the static <code>/</code> placeholder + two dynamic routes for <code>/merit-badges</code>.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Handoff &amp; What&rsquo;s Next</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong><code>next-app/README.md</code></strong> walks through local dev (Docker + <code>supabase start</code> + <code>seed</code> + <code>dev</code>), pushing migrations to cloud Supabase, and deploying to Vercel (new project alongside the OMG one).
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Not yet ported:</strong> Home, Calendar, Meeting, Advancement roster, per-scout Clipboard, the entire Leader Workspace (Fast Entry + picker, Event Roster, Universal Ledger, MB Progress admin side, COH, Scoutbook Export, Lookups), Meeting Editor, Auth + middleware-protected admin routes, tightened RLS. Foundation is generic enough that any of these can be added without touching the DB layer.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v0.8 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v0.8</span>
+        <span class="release-date">May 25, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Fast Entry &mdash; Tabbed Requirement Picker</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Removed the comma-separated codes field</strong> in both Scout-First and Requirement-First Bulk Entry. Replaced with a tabbed picker covering every rank (Tenderfoot, 2nd Class, 1st Class, Star, Life, Eagle, Scout), all 32 Merit Badges, plus Service, Events, and Leadership.
+              <span class="change-note">Leaders no longer need to memorize <code>TF-3d</code> or <code>SC-2c</code> &mdash; they pick the requirement by label. The picker writes the same code into the ledger that the old field accepted.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Three-state row visuals:</strong> empty (clear box), pending (dashed navy outline + &ldquo;Pending&rdquo; badge, newly checked but not yet saved), completed (solid green + date badge like &ldquo;Done 5/12/26 &middot; PB&rdquo;, drawn from the live ledger).
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Click a completed row &rarr; confirm-before-undo:</strong> prompts for a removal reason, then soft-deletes the underlying ledger entry. Recoverable from the Universal Ledger&rsquo;s &ldquo;Show hidden rows&rdquo; toggle. Matches the existing soft-delete convention.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Save flow refreshes in place:</strong> after clicking Save Entries, the picker stays on whatever tab (and MB drill-in) you were on, pending rows flip to green-with-date, and the form clears for the next entry. No bounce back to the Tenderfoot tab.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Requirement-First Bulk grid is completion-aware:</strong> when a requirement is picked, the scout grid below shows a colored date badge next to each scout who&rsquo;s already completed it. Save only writes entries for newly-checked scouts; clicking an already-completed scout fires the confirm-and-soft-delete flow.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Service, Events &amp; Leadership Entry</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Three new picker tabs</strong> handle entry types that aren&rsquo;t fixed-catalog requirements: <strong>Service</strong> (description + hours), <strong>Events</strong> (activity type + date + nights + miles + hours + optional note), <strong>Leadership</strong> (position dropdown of 14 troop roles + start date + months).
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>One Event add &rarr; up to 4 ledger entries:</strong> filling in nights, miles, and service hours alongside attendance produces one <code>attendance</code> + one <code>camping_nights</code> + one <code>hiking_miles</code> + one <code>service_hours</code> entry, each with the correct <code>qty</code>/<code>unit</code>.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Scout history feed</strong> on each tab shows the selected scout&rsquo;s past entries of that type (most recent 30), with an &times; button to soft-delete with reason.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Today&rsquo;s Audit Tape</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>New section under Fast Entry</strong> showing every entry made today, newest first, in the same row format as the Universal Ledger (Date, Scout, Type tag, Code, Description, Signed Off, Qty, Unit, Entered, Actions). Updates instantly on every save and on every soft-delete from anywhere in the workspace.
+              <span class="change-note">Shared row template + action wiring with the Universal Ledger so the two views can&rsquo;t drift apart visually or behaviorally.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Event Roster &mdash; Inline Requirements Picker</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Replaced the &ldquo;Requirements Completed&rdquo; free-text cell</strong> with a per-row toggle button (&ldquo;+ Add reqs&rdquo;) that expands a sub-row containing a scout-aware picker. Service / Events / Leadership tabs are hidden in this context (the roster itself is the event).
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Per-scout pending state survives row filters.</strong> Type into the scout filter, expand a row, pick requirements, clear the filter &mdash; the picks remain queued. Save Attendance &amp; Metrics writes attendance + per-row nights/miles/hours + each scout&rsquo;s queued reqs as ledger entries.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Merit Badge Progress &mdash; Admin + Public</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>New admin screen and new public page (<code>merit-badges.html</code>)</strong> showing all 32 merit badges with current troop progress &mdash; completed / in progress / not started counts per badge, with the same numbers visible to leaders and to families.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Drill-in detail:</strong> stats strip + sticky-header scout-by-requirement grid + full requirement hierarchy below. Only scouts who&rsquo;ve started the badge appear as grid rows. Two-row header groups leaf columns under their parent (e.g. &ldquo;Req 1&rdquo; spans 1a&ndash;1e). All column codes display horizontally with a thicker navy left border at each group start.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Admin grid cells deep-link into Fast Entry:</strong> click any cell &rarr; jumps to Fast Entry with the scout selected, MBs tab opened, the badge drilled-in, and that specific requirement primed as pending. URL hash carries the prefill (<code>#prefill?scout=&hellip;&amp;mb=&hellip;&amp;req=&hellip;</code>).
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>External links at the top of every detail page:</strong> &ldquo;Official BSA page &uarr;&rdquo; (<code>https://www.scouting.org/merit-badges/&lt;id&gt;/</code>) and &ldquo;Workbook (PDF) &uarr;&rdquo; (<code>https://usscouts.org/usscouts/mb/worksheets/&lt;Name&gt;.pdf</code>). Catalog can override either via optional <code>bsaPageUrl</code> / <code>workbookUrl</code> fields for badges whose URL doesn&rsquo;t match the derived pattern.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Hierarchical Merit-Badge Requirements</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Replaced flat <code>subRequirements</code> with recursive <code>children</code>.</strong> Codes are explicit and match real BSA shape: <code>1a</code>, <code>1b</code>, <code>2a.1</code>, <code>2a.2</code>, etc. Parents may have grandchildren (Cooking 2a is a parent with 5 numbered sub-reqs).
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Optionality fields:</strong> <code>complete: "all"|"any"|"n-of"</code> with <code>completeN: number</code>. Surfaced two ways:
+              <ul style="margin-top:6px;margin-bottom:0;">
+                <li><strong>Short pill</strong> in grid headers and picker group headers: &ldquo;Complete any 2&rdquo;, &ldquo;Complete any one&rdquo;.</li>
+                <li><strong>Block-level callout</strong> in the requirements list, amber-on-cream with a &ldquo;Note: Do any 2 of the following&rdquo; phrasing &mdash; scannable for parents and scouts reviewing what&rsquo;s required.</li>
+              </ul>
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Three badges authored end-to-end:</strong> Cooking (29 leaves; all parents &ldquo;complete all&rdquo;), Camping (24 leaves; req 9 is &ldquo;do any 2 of 5&rdquo;), Woodwork (16 leaves; req 4 joinery is &ldquo;do any one of 3&rdquo;). Other 29 catalog MBs fall back to a generic 1&ndash;9 + freeform req# input in the picker.
+              <span class="change-note">Wording is paraphrased for the prototype &mdash; replace with exact pamphlet text before going live, and re-check on every BSA annual update.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Production Stack Decided</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Next.js + Supabase</strong> confirmed as the production target. WordPress recommendation retired. Rationale: the advancement workspace is heavily relational and React-shaped; the prototype&rsquo;s data model ports nearly 1:1 to Supabase tables. The tradeoff is that volunteer content editing (news, events, About page) needs custom editors rather than wp-admin &mdash; an acceptable cost when Patrick is the long-term technical owner.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Schema decisions captured:</strong>
+              <ul style="margin-top:6px;margin-bottom:0;">
+                <li>Single <code>ledger_entries</code> table discriminated by <code>kind</code>. Not split into per-kind tables.</li>
+                <li>Scouts and parents share one Supabase auth account per scout; leaders are a separate role. RLS by <code>auth.uid()</code>.</li>
+                <li>Merit badge requirement data sourced from the official BSA pamphlets &mdash; prototype data is illustrative until replaced.</li>
+              </ul>
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Misc Fixes &amp; Polish</p>
+        <ul class="change-list">
+          <li><span>Added <strong>Woodwork merit badge</strong> to the catalog (Scoutbook ID 129) &mdash; catalog now 32 MBs.</span></li>
+          <li><span>Hand-extended <code>data/advancement.json</code>&rsquo;s <code>ledgerRecent</code> with 42 realistic MB-progress entries across Cooking / Camping / Woodwork so the public catalog shows non-zero counts on first load.</span></li>
+          <li><span>Seed generator now adds 12 &ldquo;today&rsquo;s activity&rdquo; entries so the Fast Entry audit tape is non-empty on first display.</span></li>
+          <li><span>Cache-buster on the <code>advancement-leader.js</code> script tag so prototype iterations show up without manual hard-reload (strip for production).</span></li>
+          <li><span>Top-level requirements without children now render as parent-style headings instead of being mistakenly indented as leaf items (Camping req 4, Cooking req 7).</span></li>
+          <li><span>Grid column codes display horizontally (no more sideways text) at 12&ndash;13px in a monospace pill with a thicker navy border at each parent group&rsquo;s first column.</span></li>
+          <li><span>Optionality phrasing shortened on the grid pill: <em>&ldquo;Complete any 2 of these&rdquo;</em> &rarr; <em>&ldquo;Complete any 2&rdquo;</em>. Full phrasing kept on the block-level note.</span></li>
+        </ul>
       </div>
     </div>
 

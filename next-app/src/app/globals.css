@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+/* Troop 79 brand tokens — port of the prototype's NYT-style editorial palette.
+   Used by the public pages. The admin workspace uses its own admin- prefixed
+   palette (see admin/layout.tsx when we build that screen). */
+:root {
+  --navy:           #1e3a4a;
+  --navy-mid:       #2a4f63;
+  --navy-light:     #3a6478;
+  --navy-hover:     #163040;
+  --forest:         #3d5a3e;
+  --forest-light:   #527554;
+  --khaki:          #c4a882;
+  --khaki-light:   #ddd0bb;
+  --bark:           #8b6914;
+  --bark-light:     #a98020;
+  --cream:          #faf6ef;
+  --newsprint:      #f4efe6;
+  --warm-white:     #ffffff;
+  --text-head:      #1a1a1a;
+  --text-body:      #363636;
+  --text-meta:      #787060;
+  --border-light:   #e2d9cc;
+  --border-mid:     #c8bfaf;
+  --shadow-card:    0 1px 4px rgba(30,58,74,.08), 0 2px 12px rgba(30,58,74,.06);
+  --shadow-hover:   0 4px 20px rgba(30,58,74,.14);
+}
+
+@theme inline {
+  --color-background: var(--newsprint);
+  --color-foreground: var(--text-body);
+  --color-navy:        var(--navy);
+  --color-forest:      var(--forest);
+  --color-cream:       var(--cream);
+  --color-newsprint:   var(--newsprint);
+  --color-bark:        var(--bark);
+  --font-display:      'Playfair Display', Georgia, serif;
+  --font-body:         'Lora', Georgia, serif;
+  --font-ui:           'Open Sans', Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--newsprint);
+  color: var(--text-body);
+  font-family: 'Lora', Georgia, serif;
+  min-height: 100vh;
+}
+
+a { text-decoration: none; color: inherit; }
+img { display: block; max-width: 100%; }

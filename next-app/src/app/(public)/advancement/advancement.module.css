@@ -1,0 +1,338 @@
+/* Styles for the /advancement page. Ported from the prototype's
+   advancement.html so the visual continuity is preserved. Tokens live in
+   globals.css; everything page-specific is scoped here. */
+
+.pageHeader {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 32px 24px 0;
+}
+.pageHeader h1 {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--text-head);
+  letter-spacing: -.01em;
+  margin-bottom: 6px;
+}
+.pageHeaderLede {
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: var(--text-body);
+  line-height: 1.6;
+  max-width: 760px;
+  margin-bottom: 20px;
+}
+.pageHeaderRule { height: 2px; background: var(--border-mid); }
+
+.main {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 24px 60px;
+}
+
+/* ── Stats strip ───────────────────────────────────── */
+.statsStrip {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0;
+  background: var(--cream);
+  border: 1px solid var(--border-mid);
+  margin: 24px 0 36px;
+}
+.stat {
+  padding: 18px 16px;
+  border-right: 1px solid var(--border-light);
+  text-align: center;
+}
+.stat:last-child { border-right: none; }
+.statNum {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--navy);
+  line-height: 1;
+}
+.statLabel {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-meta);
+  margin-top: 6px;
+}
+
+/* ── Section divider ───────────────────────────────── */
+.sectionDivider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 28px 0 16px;
+}
+.divLabel {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--navy);
+  white-space: nowrap;
+  border-left: 3px solid var(--forest);
+  padding-left: 8px;
+}
+.divRule { flex: 1; height: 1px; background: var(--border-light); }
+
+/* ── Rank distribution grid ────────────────────────── */
+.rankGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0;
+  background: var(--warm-white);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-card);
+  margin-bottom: 24px;
+}
+.rankTile {
+  padding: 14px 10px;
+  text-align: center;
+  border-right: 1px solid var(--border-light);
+}
+.rankTile:last-child { border-right: none; }
+.rankTileName {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-meta);
+  margin-bottom: 8px;
+}
+.rankTileCount {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--navy);
+  line-height: 1;
+}
+.rankTileSub {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: var(--text-meta);
+  margin-top: 4px;
+  letter-spacing: .04em;
+}
+
+/* ── MB Progress CTA card ──────────────────────────── */
+.mbCta {
+  display: block;
+  background: var(--warm-white);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-card);
+  padding: 20px 24px;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.mbCta:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-hover);
+}
+.mbCtaInner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.mbCtaTitle {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 4px;
+}
+.mbCtaLede {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-body);
+}
+.mbCtaPill {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--navy);
+  padding: 10px 20px;
+  border: 1px solid var(--navy);
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+/* ── Toolbar (filter/sort) ─────────────────────────── */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.toolbar input,
+.toolbar select {
+  border: 1px solid var(--border-mid);
+  border-radius: 2px;
+  padding: 7px 10px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--text-body);
+  background: var(--warm-white);
+  outline: none;
+  min-height: 34px;
+}
+.toolbar input:focus,
+.toolbar select:focus { border-color: var(--navy); }
+.toolbar input[type='search'] { width: 240px; }
+.toolbarSpacer { flex: 1; }
+.toolbarMeta {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-meta);
+}
+
+/* ── Roster table ──────────────────────────────────── */
+.rosterWrap {
+  background: var(--warm-white);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+.roster {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-ui);
+  font-size: 13px;
+}
+.roster th {
+  background: var(--cream);
+  border-bottom: 2px solid var(--border-mid);
+  padding: 11px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--navy);
+  cursor: pointer;
+  user-select: none;
+}
+.roster th:hover { background: var(--khaki-light); }
+.sortAsc::after  { content: ' ▲'; font-size: 9px; opacity: .7; }
+.sortDesc::after { content: ' ▼'; font-size: 9px; opacity: .7; }
+.roster td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-body);
+  vertical-align: middle;
+}
+.roster tbody tr {
+  cursor: pointer;
+  transition: background .18s ease;
+}
+.roster tbody tr:hover { background: var(--newsprint); }
+.roster tbody tr:last-child td { border-bottom: none; }
+.scoutName {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-head);
+}
+.scoutName a:hover { color: var(--navy); }
+.scoutPatrol {
+  font-size: 11px;
+  color: var(--text-meta);
+  margin-top: 2px;
+}
+.rankPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  color: var(--warm-white);
+  white-space: nowrap;
+}
+.rankScout        { background: #7a7068; }
+.rankTenderfoot   { background: var(--bark); }
+.rankSecondClass  { background: var(--forest); }
+.rankFirstClass   { background: var(--navy); }
+.rankStar         { background: var(--bark-light); }
+.rankLife         { background: var(--forest-light); }
+.rankEagle        { background: linear-gradient(135deg, var(--navy), var(--bark)); }
+.numCell { text-align: right; font-variant-numeric: tabular-nums; }
+.lastActivity {
+  color: var(--text-meta);
+  font-size: 12px;
+  max-width: 280px;
+}
+.drillLink {
+  font-weight: 700;
+  color: var(--forest);
+  font-size: 12px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.drillLink:hover { color: var(--navy); }
+.emptyRow td {
+  text-align: center;
+  padding: 40px 14px;
+  color: var(--text-meta);
+  font-style: italic;
+}
+
+/* ── Leader CTA ────────────────────────────────────── */
+.leaderCta {
+  background: var(--navy);
+  color: var(--warm-white);
+  padding: 22px 24px;
+  margin-top: 32px;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.leaderCta h3 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.leaderCta p {
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  opacity: .85;
+  max-width: 560px;
+}
+.leaderCtaLink {
+  background: var(--forest);
+  color: var(--warm-white);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 12px 20px;
+  border-radius: 2px;
+  transition: background .18s ease;
+  white-space: nowrap;
+}
+.leaderCtaLink:hover { background: var(--forest-light); }
+
+@media (max-width: 720px) {
+  .statsStrip { grid-template-columns: repeat(2, 1fr); }
+  .rankGrid   { grid-template-columns: repeat(4, 1fr); }
+}

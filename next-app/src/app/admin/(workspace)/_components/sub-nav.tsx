@@ -1,0 +1,102 @@
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import styles from '../admin.module.css';
+
+interface NavItem {
+  label: string;
+  href?: string;
+  matchPath?: string;
+  disabled?: boolean;
+}
+
+const SECTIONS: { title: string; items: NavItem[] }[] = [
+  {
+    title: 'Overview',
+    items: [
+      {
+        label: 'Dashboard',
+        href: '/admin/advancement/dashboard',
+        matchPath: '/admin/advancement/dashboard'
+      }
+    ]
+  },
+  {
+    title: 'Entry',
+    items: [
+      {
+        label: 'Fast Entry',
+        href: '/admin/advancement/fast-entry',
+        matchPath: '/admin/advancement/fast-entry'
+      },
+      { label: 'Event Roster', disabled: true }
+    ]
+  },
+  {
+    title: 'Records',
+    items: [
+      {
+        label: 'Universal Ledger',
+        href: '/admin/advancement/ledger',
+        matchPath: '/admin/advancement/ledger'
+      },
+      {
+        label: 'MB Progress',
+        href: '/admin/advancement/mb-progress',
+        matchPath: '/admin/advancement/mb-progress'
+      },
+      { label: 'Court of Honor', disabled: true }
+    ]
+  },
+  {
+    title: 'Output',
+    items: [{ label: 'Scoutbook Export', disabled: true }]
+  },
+  {
+    title: 'Setup',
+    items: [
+      {
+        label: 'Lookups & Admin',
+        href: '/admin/advancement/lookups',
+        matchPath: '/admin/advancement/lookups'
+      }
+    ]
+  }
+];
+
+export function SubNav() {
+  const pathname = usePathname();
+  return (
+    <nav className={styles.subNav} aria-label="Leader Workspace navigation">
+      {SECTIONS.map((section) => (
+        <div key={section.title}>
+          <div className={styles.subNavSection}>{section.title}</div>
+          {section.items.map((item) =>
+            item.disabled ? (
+              <button
+                key={item.label}
+                type="button"
+                className={`${styles.subNavBtn} ${styles.subNavBtnDisabled}`}
+                disabled
+              >
+                {item.label}
+                <span className={styles.soonTag}>Soon</span>
+              </button>
+            ) : (
+              <Link
+                key={item.label}
+                href={item.href!}
+                className={`${styles.subNavBtn} ${
+                  pathname.startsWith(item.matchPath!) ? styles.subNavBtnActive : ''
+                }`}
+              >
+                {item.label}
+              </Link>
+            )
+          )}
+        </div>
+      ))}
+    </nav>
+  );
+}

@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Merit Badge Progress &mdash; Scout Troop 79</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --navy:           #1e3a4a;
+      --navy-mid:       #2a4f63;
+      --forest:         #3d5a3e;
+      --forest-light:   #527554;
+      --khaki:          #c4a882;
+      --khaki-light:    #ddd0bb;
+      --bark:           #8b6914;
+      --cream:          #faf6ef;
+      --newsprint:      #f4efe6;
+      --warm-white:     #ffffff;
+      --text-head:      #1a1a1a;
+      --text-body:      #363636;
+      --text-meta:      #787060;
+      --border-light:   #e2d9cc;
+      --border-mid:     #c8bfaf;
+      --shadow-card:    0 1px 4px rgba(30,58,74,.08), 0 2px 12px rgba(30,58,74,.06);
+      --shadow-hover:   0 4px 20px rgba(30,58,74,.14);
+      --transition:     .18s ease;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; scroll-behavior: smooth; }
+    body {
+      font-family: 'Lora', Georgia, serif;
+      background: var(--newsprint);
+      color: var(--text-body);
+      min-height: 100vh;
+    }
+    a { text-decoration: none; color: inherit; }
+    img { display: block; max-width: 100%; }
+
+    /* Masthead + nav (shared shell with the rest of the site) */
+    .masthead {
+      background: var(--cream);
+      border-bottom: 2px solid var(--border-mid);
+      padding: 18px 0 14px;
+    }
+    .masthead-inner {
+      max-width: 1180px; margin: 0 auto; padding: 0 24px;
+      display: flex; align-items: center; gap: 20px;
+    }
+    .masthead-logo img { height: 72px; width: auto; flex-shrink: 0; }
+    .masthead-wordmark { flex: 1; }
+    .masthead-wordmark .site-name {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 38px; font-weight: 700; color: var(--navy);
+      letter-spacing: -.01em; line-height: 1.1;
+    }
+    .masthead-wordmark .site-sub {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 12px; font-weight: 400; color: var(--text-meta);
+      letter-spacing: .12em; text-transform: uppercase; margin-top: 3px;
+    }
+    .masthead-rule { width: 1px; height: 52px; background: var(--border-mid); flex-shrink: 0; }
+    .masthead-tagline {
+      font-family: 'Lora', Georgia, serif; font-style: italic;
+      font-size: 13px; color: var(--text-meta);
+      max-width: 180px; line-height: 1.5;
+    }
+    .main-nav {
+      background: var(--warm-white);
+      border-bottom: 1px solid var(--border-light);
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 1px 6px rgba(0,0,0,.06);
+    }
+    .nav-inner {
+      max-width: 1180px; margin: 0 auto; padding: 0 24px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .nav-links { display: flex; list-style: none; gap: 0; }
+    .nav-links li a {
+      display: block; font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 13px; font-weight: 600; color: var(--text-head);
+      padding: 14px 16px; border-bottom: 3px solid transparent;
+      transition: color var(--transition), border-color var(--transition);
+      letter-spacing: .02em;
+    }
+    .nav-links li a:hover { color: var(--forest); border-bottom-color: var(--forest); }
+    .nav-links li a.active { color: var(--navy); border-bottom-color: var(--navy); }
+
+    /* Page header */
+    .page-header {
+      max-width: 1180px; margin: 0 auto; padding: 32px 24px 0;
+    }
+    .page-header h1 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 36px; font-weight: 700; color: var(--text-head);
+      letter-spacing: -.01em; margin-bottom: 6px;
+    }
+    .page-header-lede {
+      font-family: 'Lora', Georgia, serif; font-size: 16px;
+      color: var(--text-body); line-height: 1.6;
+      max-width: 760px; margin-bottom: 20px;
+    }
+    .page-header-rule { height: 2px; background: var(--border-mid); }
+    .back-link {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 12px; font-weight: 600;
+      color: var(--navy); margin-bottom: 8px;
+      letter-spacing: .04em; text-transform: uppercase;
+    }
+    .back-link:hover { color: var(--forest); }
+    .mb-external-links {
+      display: flex; gap: 16px; flex-wrap: wrap;
+      margin-top: 14px;
+    }
+    .mb-extern-link {
+      display: inline-flex; align-items: center;
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 12px; font-weight: 700;
+      letter-spacing: .04em; text-transform: uppercase;
+      color: var(--navy);
+      padding: 8px 16px;
+      border: 1px solid var(--navy);
+      border-radius: 2px;
+      transition: background var(--transition), color var(--transition);
+    }
+    .mb-extern-link:hover {
+      background: var(--navy);
+      color: var(--warm-white);
+    }
+
+    main { max-width: 1180px; margin: 0 auto; padding: 24px 24px 60px; }
+
+    /* Catalog cards */
+    .mb-catalog-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 14px;
+    }
+    .mb-catalog-card {
+      background: var(--warm-white);
+      border: 1px solid var(--border-light);
+      box-shadow: var(--shadow-card);
+      padding: 16px 18px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+    }
+    .mb-catalog-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-hover);
+      border-color: var(--navy);
+    }
+    .mb-card-head {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+    }
+    .mb-card-name {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 18px; font-weight: 700; color: var(--navy);
+      line-height: 1.25;
+    }
+    .mb-eagle-tag {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 9px; font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--bark);
+      background: #f6e7c4; padding: 2px 7px; border-radius: 999px;
+      flex-shrink: 0;
+    }
+    .mb-card-counts {
+      display: flex; gap: 14px; padding-top: 8px;
+      border-top: 1px dashed var(--border-light);
+    }
+    .mb-count {
+      display: flex; flex-direction: column; align-items: flex-start;
+      font-family: 'Open Sans', Arial, sans-serif;
+    }
+    .mb-count strong {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 24px; font-weight: 700; line-height: 1;
+    }
+    .mb-count span {
+      font-size: 9px; font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--text-meta);
+      margin-top: 4px;
+    }
+    .mb-count.completed strong { color: var(--forest); }
+    .mb-count.partial   strong { color: var(--navy); }
+    .mb-count.none      strong { color: var(--border-mid); }
+    .mb-catalog-card.has-progress { border-left: 4px solid var(--forest-light); }
+
+    .catalog-toolbar {
+      display: flex; gap: 12px; align-items: center;
+      margin-bottom: 18px; flex-wrap: wrap;
+    }
+    .catalog-toolbar input {
+      flex: 1; min-width: 200px; max-width: 320px;
+      border: 1px solid var(--border-mid); border-radius: 2px;
+      padding: 8px 12px; font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 13px; color: var(--text-body); background: var(--warm-white);
+      outline: none; transition: border-color var(--transition);
+    }
+    .catalog-toolbar input:focus { border-color: var(--navy); }
+    .catalog-toolbar .total-meta {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 12px; color: var(--text-meta);
+    }
+
+    /* Detail stats */
+    .stats-strip {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 0; background: var(--warm-white);
+      border: 1px solid var(--border-light); box-shadow: var(--shadow-card);
+      margin-bottom: 22px;
+    }
+    .stat {
+      padding: 18px 20px; text-align: center;
+      border-right: 1px solid var(--border-light);
+    }
+    .stat:last-child { border-right: none; }
+    .stat-num {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 32px; font-weight: 700; color: var(--navy);
+      line-height: 1;
+    }
+    .stat-label {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 10px; font-weight: 700; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--text-meta);
+      margin-top: 6px;
+    }
+    .stat.completed .stat-num { color: var(--forest); }
+
+    /* Detail grid */
+    .section-divider {
+      display: flex; align-items: center; gap: 12px;
+      margin: 28px 0 12px;
+    }
+    .div-label {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 11px; font-weight: 700; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--text-meta);
+    }
+    .div-rule { flex: 1; height: 1px; background: var(--border-mid); }
+
+    .mb-detail-grid-wrap {
+      overflow: auto; max-height: 70vh;
+      border: 1px solid var(--border-light);
+      background: var(--warm-white);
+      box-shadow: var(--shadow-card);
+    }
+    table.mb-detail-grid {
+      border-collapse: separate; border-spacing: 0;
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 12px;
+      width: max-content;
+    }
+    .mb-detail-grid th, .mb-detail-grid td {
+      padding: 6px 8px; border-right: 1px solid var(--border-light);
+      white-space: nowrap; vertical-align: middle;
+    }
+    .mb-detail-grid th { background: var(--cream); }
+    .mb-detail-grid th:first-child, .mb-detail-grid td:first-child {
+      position: sticky; left: 0; background: var(--warm-white);
+      z-index: 2; min-width: 200px;
+      border-right: 2px solid var(--border-mid);
+    }
+    .mb-detail-grid thead th:first-child { background: var(--cream); z-index: 4; }
+    .mb-detail-grid thead th {
+      position: sticky; top: 0; z-index: 3;
+      font-size: 10px; letter-spacing: .04em; text-transform: uppercase;
+      color: var(--text-meta);
+    }
+    /* Group header row spans the leaf-code columns. */
+    .mb-detail-grid th.group-col {
+      background: var(--cream);
+      color: var(--navy);
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 12px; font-weight: 700;
+      letter-spacing: .02em; text-transform: none;
+      padding: 10px 8px; text-align: center;
+      border-bottom: 2px solid var(--navy);
+      border-right: 1px solid var(--border-light);
+    }
+    .mb-detail-grid th.group-col .group-rule {
+      display: inline-block;
+      margin-left: 8px;
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 9px; font-weight: 700;
+      letter-spacing: .06em; text-transform: uppercase;
+      color: var(--bark);
+      background: #f6e7c4;
+      padding: 2px 8px; border-radius: 999px;
+      vertical-align: 1px;
+    }
+    .mb-detail-grid th.req-col {
+      min-width: 46px;
+      padding: 8px 4px;
+      text-align: center;
+      font-family: ui-monospace, 'Courier New', monospace;
+      font-size: 12px; font-weight: 700;
+      letter-spacing: 0; text-transform: none;
+      background: var(--newsprint);
+      color: var(--navy);
+    }
+    .mb-detail-grid th.req-col.group-start { border-left: 2px solid var(--navy); }
+    .mb-detail-grid th.award-col {
+      min-width: 60px;
+      padding: 10px 8px;
+      background: #f6e7c4; color: var(--bark);
+      text-align: center;
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 12px; font-weight: 800;
+      letter-spacing: .04em;
+      border-left: 2px solid var(--bark);
+    }
+    .mb-detail-grid tbody tr:hover td { background: #faf6ef; }
+    .mb-detail-grid tbody tr:hover td:first-child { background: #f0ebe1; }
+    .mb-detail-grid td.cell {
+      width: 46px; text-align: center;
+      color: var(--border-mid); font-size: 18px;
+      line-height: 1; font-weight: 700;
+    }
+    .mb-detail-grid td.cell.group-start { border-left: 2px solid var(--navy); }
+    .mb-detail-grid td.cell.done {
+      background: #e8f4ec;
+      color: var(--forest);
+    }
+    .mb-detail-grid td.cell.award { color: var(--bark); }
+    .mb-detail-grid td.cell.award.done {
+      background: #f5d76a; color: #5a3a00;
+    }
+    .mb-detail-grid td.scout-cell {
+      font-family: 'Lora', Georgia, serif;
+      font-size: 13px; font-weight: 600;
+      color: var(--text-head);
+    }
+    .mb-detail-grid td.scout-cell a:hover { color: var(--forest); }
+    .mb-detail-grid td.scout-cell .rk {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 9px; letter-spacing: .04em; color: var(--text-meta);
+      padding: 1px 6px; background: var(--newsprint);
+      border-radius: 999px; margin-left: 8px; font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    /* Requirements list */
+    .reqs-card {
+      background: var(--warm-white);
+      border: 1px solid var(--border-light);
+      box-shadow: var(--shadow-card);
+      padding: 20px 22px;
+    }
+    .reqs-source {
+      font-family: 'Lora', Georgia, serif;
+      font-size: 12px; font-style: italic; color: var(--text-meta);
+      margin-bottom: 14px; padding-bottom: 12px;
+      border-bottom: 1px dashed var(--border-light);
+    }
+    .req-parent {
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .req-parent:last-child { border-bottom: none; }
+    .req-parent .req-head {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 16px; font-weight: 700; color: var(--navy);
+      margin-bottom: 6px;
+    }
+    .req-parent .req-children {
+      margin-top: 6px;
+      display: grid; gap: 4px;
+    }
+    .req-leaf {
+      font-family: 'Lora', Georgia, serif;
+      font-size: 14px; color: var(--text-body);
+      line-height: 1.5;
+      padding: 3px 0 3px 12px;
+    }
+    .req-tag {
+      font-family: ui-monospace, monospace;
+      background: var(--navy); color: var(--warm-white);
+      padding: 2px 8px; border-radius: 999px;
+      font-size: 11px; font-weight: 700;
+    }
+    .req-leaf .req-tag { margin-right: 8px; font-size: 11px; }
+    .req-parent .req-head .req-tag { font-size: 12px; padding: 3px 10px; }
+    .req-rule-tag {
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-size: 10px; font-weight: 700;
+      letter-spacing: .04em; text-transform: uppercase;
+      color: var(--bark);
+      background: #f6e7c4;
+      padding: 2px 9px;
+      border-radius: 999px;
+    }
+    /* Block-level optionality callout — surfaces 'Do any 2 of the following'
+       prominently for parents/scouts reviewing the requirements. */
+    .req-note {
+      font-family: 'Lora', Georgia, serif;
+      font-style: italic;
+      font-weight: 600;
+      color: var(--bark);
+      background: #f6e7c4;
+      border-left: 3px solid #c79a2e;
+      padding: 8px 14px;
+      margin: 8px 0 4px;
+      font-size: 14px;
+      line-height: 1.5;
+      border-radius: 0 2px 2px 0;
+    }
+    .req-note::before {
+      content: 'Note: ';
+      font-family: 'Open Sans', Arial, sans-serif;
+      font-style: normal;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      font-size: 10px;
+      margin-right: 6px;
+      vertical-align: 2px;
+    }
+    .reqs-empty {
+      font-family: 'Lora', Georgia, serif;
+      font-style: italic; color: var(--text-meta);
+      text-align: center; padding: 24px 12px;
+    }
+
+    .empty-state {
+      text-align: center; padding: 40px 20px;
+      color: var(--text-meta); font-style: italic;
+    }
+
+    @media (max-width: 800px) {
+      .stats-strip { grid-template-columns: 1fr 1fr; }
+      .stat { border-bottom: 1px solid var(--border-light); }
+      .stat:nth-last-child(-n+2) { border-bottom: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="masthead">
+    <div class="masthead-inner">
+      <div class="masthead-logo">
+        <a href="index.html" aria-label="Troop 79 Home">
+          <img src="assets/images/troop-79-logo.png" alt="Scout Troop 79 — Milwaukee, WI" />
+        </a>
+      </div>
+      <div class="masthead-wordmark">
+        <h1 class="site-name"><a href="index.html">Scout Troop 79</a></h1>
+        <p class="site-sub">Milwaukee, Wisconsin &nbsp;&middot;&nbsp; Est. 2022</p>
+      </div>
+      <div class="masthead-rule" aria-hidden="true"></div>
+      <p class="masthead-tagline">Prepared. Courageous.<br>Ready for anything.</p>
+    </div>
+  </header>
+
+  <nav class="main-nav" aria-label="Main navigation">
+    <div class="nav-inner">
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="meeting.html">Meeting</a></li>
+        <li><a href="#">News Archive</a></li>
+        <li><a href="calendar.html">Events</a></li>
+        <li><a href="#">Resources</a></li>
+        <li><a href="advancement.html" class="active" aria-current="page">Advancement</a></li>
+        <li><a href="#">About &amp; Join</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Catalog view -->
+  <div id="catalogView">
+    <div class="page-header">
+      <h1>Merit Badge Progress</h1>
+      <p class="page-header-lede">
+        Live progress across every merit badge in the Troop 79 program &mdash; how many scouts have earned each badge, how many are in the middle of one, and which requirements each scout has signed off. Tap any badge to see the details.
+      </p>
+      <div class="page-header-rule"></div>
+    </div>
+    <main>
+      <div class="catalog-toolbar">
+        <input type="search" id="catalogFilter" placeholder="Filter badges by name&hellip;" aria-label="Filter merit badges" />
+        <span class="total-meta" id="catalogMeta"></span>
+      </div>
+      <div class="mb-catalog-grid" id="catalogGrid"></div>
+    </main>
+  </div>
+
+  <!-- Detail view -->
+  <div id="detailView" style="display:none;">
+    <div class="page-header">
+      <a href="#" class="back-link" id="backLink">&larr; All Merit Badges</a>
+      <h1 id="detailTitle">&nbsp;</h1>
+      <p class="page-header-lede" id="detailLede">&nbsp;</p>
+      <div class="page-header-rule"></div>
+    </div>
+    <main>
+      <div class="stats-strip" id="detailStats"></div>
+
+      <div class="section-divider">
+        <span class="div-label">Scout Progress</span>
+        <span class="div-rule" aria-hidden="true"></span>
+      </div>
+      <div class="mb-detail-grid-wrap" id="detailGridWrap"></div>
+
+      <div class="section-divider">
+        <span class="div-label">Requirements</span>
+        <span class="div-rule" aria-hidden="true"></span>
+      </div>
+      <div class="reqs-card">
+        <div class="reqs-source" id="reqsSource"></div>
+        <div id="reqsList"></div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+  (function() {
+    'use strict';
+    const RANK_LABELS = {
+      'scout':'Scout','tenderfoot':'Tenderfoot','second-class':'Second Class',
+      'first-class':'First Class','star':'Star','life':'Life','eagle':'Eagle'
+    };
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+        ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])
+      );
+    }
+
+    // Hierarchical requirement helpers — mirror the admin-side picker so the
+    // public catalog/detail and the leader workspace agree on shape and codes.
+    function optionalityLabel(node) {
+      if (!node || !node.complete) return '';
+      if (node.complete === 'all') return '';
+      if (node.complete === 'any') return 'Complete any one';
+      if (node.complete === 'n-of') return `Complete any ${node.completeN || 1}`;
+      return '';
+    }
+    function optionalityNote(node) {
+      if (!node || !node.complete) return '';
+      if (node.complete === 'all') return '';
+      if (node.complete === 'any') return 'Do any one of the following';
+      if (node.complete === 'n-of') return `Do any ${node.completeN || 1} of the following`;
+      return '';
+    }
+    // External link URL helpers (BSA official page + usscouts.org workbook).
+    // Catalog entry may override via `bsaPageUrl` / `workbookUrl`; otherwise
+    // we derive a best-guess URL from the canonical patterns.
+    function bsaPageUrlFor(mb) {
+      return mb.bsaPageUrl || `https://www.scouting.org/merit-badges/${encodeURIComponent(mb.id)}/`;
+    }
+    function workbookUrlFor(mb) {
+      if (mb.workbookUrl) return mb.workbookUrl;
+      const slug = (mb.name || '').replace(/&/g, 'and').replace(/[^A-Za-z]/g, '');
+      return `https://usscouts.org/usscouts/mb/worksheets/${slug}.pdf`;
+    }
+
+    function flattenMbLeaves(reqs) {
+      const out = [];
+      function walk(n) {
+        if (!n.children || !n.children.length) out.push(n);
+        else n.children.forEach(walk);
+      }
+      (reqs || []).forEach(walk);
+      return out;
+    }
+    function topLevelOf(reqs, leafCode) {
+      function check(node, top) {
+        if (node.code === leafCode) return top;
+        if (!node.children) return null;
+        for (const c of node.children) {
+          const r = check(c, top);
+          if (r) return r;
+        }
+        return null;
+      }
+      for (const top of reqs || []) {
+        const r = check(top, top.code);
+        if (r) return r;
+      }
+      return null;
+    }
+    function renderRequirementsTree(nodes, depth) {
+      depth = depth || 0;
+      return nodes.map(node => {
+        const hasChildren = !!(node.children && node.children.length);
+        const note = optionalityNote(node);
+        const indent = depth * 20;
+        // Top-level reqs render as parent-style headings even when they have
+        // no children. Only depth > 0 childless nodes render as leaves.
+        if (!hasChildren && depth > 0) {
+          return `<div class="req-leaf" style="margin-left:${indent}px;">
+            <span class="req-tag">${esc(node.code)}</span>${esc(node.label || '')}
+          </div>`;
+        }
+        return `<div class="req-parent" style="margin-left:${indent}px;">
+          <div class="req-head">
+            <span class="req-tag">${esc(node.code)}</span>${esc(node.label || '')}
+          </div>
+          ${note ? `<div class="req-note">${esc(note)}</div>` : ''}
+          ${hasChildren ? `<div class="req-children">${renderRequirementsTree(node.children, depth + 1)}</div>` : ''}
+        </div>`;
+      }).join('');
+    }
+
+    let DATA = null;
+
+    fetch('data/advancement.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(r => r.json())
+      .then(data => {
+        DATA = data;
+        route();
+        window.addEventListener('hashchange', route);
+      })
+      .catch(err => {
+        console.error('Failed to load advancement data', err);
+        document.getElementById('catalogGrid').innerHTML =
+          '<div class="empty-state">Could not load advancement data. Please try again.</div>';
+      });
+
+    function route() {
+      const params = parseHash();
+      const mbId = params.get('mb');
+      if (mbId) {
+        const mb = (DATA.meritBadgeCatalog || []).find(m => m.id === mbId);
+        if (mb) {
+          showDetail(mb);
+          return;
+        }
+      }
+      showCatalog();
+    }
+    function parseHash() {
+      const h = window.location.hash || '';
+      if (!h.startsWith('#')) return new URLSearchParams();
+      const q = h.indexOf('?');
+      return new URLSearchParams(q > -1 ? h.slice(q + 1) : '');
+    }
+
+    function buildProgress(mbId) {
+      const awardCode = 'MB:' + mbId;
+      const reqPrefix = mbId + '-';
+      const byScout = {};
+      const all = (DATA.ledgerRecent || []).slice();
+      // The seed entries also live on the admin in-memory ledger; on the public
+      // site we only have ledgerRecent — but for the prototype, that's enough
+      // to demonstrate the shape. When wired to Supabase, this becomes a query.
+      all.forEach(l => {
+        if (l.archivedAt || l.deletedAt) return;
+        let reqCode = null, isAward = false;
+        if (l.code === awardCode) {
+          isAward = true;
+        } else if (typeof l.code === 'string' && l.code.startsWith(reqPrefix)) {
+          reqCode = l.code.slice(reqPrefix.length);
+        } else {
+          return;
+        }
+        const slot = byScout[l.scoutId] || (byScout[l.scoutId] = { award: false, reqCodes: new Set() });
+        if (isAward) slot.award = true;
+        if (reqCode) slot.reqCodes.add(reqCode);
+      });
+      const started = Object.keys(byScout).filter(id => {
+        const s = (DATA.scouts || []).find(s => s.id === id);
+        return s && s.active;
+      });
+      return { byScout, started };
+    }
+
+    function activeScouts() { return (DATA.scouts || []).filter(s => s.active); }
+
+    function showCatalog() {
+      document.getElementById('catalogView').style.display = '';
+      document.getElementById('detailView').style.display = 'none';
+      renderCatalog();
+      const filter = document.getElementById('catalogFilter');
+      filter.oninput = renderCatalog;
+    }
+
+    function renderCatalog() {
+      const q = (document.getElementById('catalogFilter').value || '').trim().toLowerCase();
+      const cards = (DATA.meritBadgeCatalog || [])
+        .filter(mb => !q || mb.name.toLowerCase().includes(q))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      const totalActive = activeScouts().length;
+      document.getElementById('catalogMeta').textContent =
+        `${cards.length} ${cards.length === 1 ? 'badge' : 'badges'} · ${totalActive} active scouts`;
+
+      const grid = document.getElementById('catalogGrid');
+      grid.innerHTML = cards.map(mb => {
+        const progress = buildProgress(mb.id);
+        const completedCount = progress.started.filter(id => progress.byScout[id].award).length;
+        const partialCount = progress.started.length - completedCount;
+        const notStarted = totalActive - progress.started.length;
+        const hasProgress = progress.started.length > 0;
+        return `<a href="#?mb=${esc(mb.id)}" class="mb-catalog-card${hasProgress ? ' has-progress' : ''}">
+          <div class="mb-card-head">
+            <div class="mb-card-name">${esc(mb.name)}</div>
+            ${mb.eagle ? '<span class="mb-eagle-tag">Eagle</span>' : ''}
+          </div>
+          <div class="mb-card-counts">
+            <div class="mb-count completed"><strong>${completedCount}</strong><span>Earned</span></div>
+            <div class="mb-count partial"><strong>${partialCount}</strong><span>In Progress</span></div>
+            <div class="mb-count none"><strong>${notStarted}</strong><span>Not Started</span></div>
+          </div>
+        </a>`;
+      }).join('');
+    }
+
+    function showDetail(mb) {
+      document.getElementById('catalogView').style.display = 'none';
+      document.getElementById('detailView').style.display = '';
+      document.getElementById('backLink').onclick = (e) => {
+        e.preventDefault();
+        window.location.hash = '';
+      };
+      document.getElementById('detailTitle').innerHTML =
+        esc(mb.name) + (mb.eagle ? ' <span class="mb-eagle-tag" style="vertical-align:6px;margin-left:8px;">Eagle</span>' : '');
+      const ledeText = mb.eagle
+        ? 'Eagle-required merit badge — completed and in-progress work shown below, scout-by-scout, requirement-by-requirement.'
+        : 'Elective merit badge — completed and in-progress work shown below, scout-by-scout, requirement-by-requirement.';
+      document.getElementById('detailLede').innerHTML = `
+        ${esc(ledeText)}
+        <div class="mb-external-links">
+          <a href="${esc(bsaPageUrlFor(mb))}" target="_blank" rel="noopener" class="mb-extern-link">Official BSA page ↗</a>
+          <a href="${esc(workbookUrlFor(mb))}" target="_blank" rel="noopener" class="mb-extern-link">Workbook (PDF) ↗</a>
+        </div>
+      `;
+
+      const progress = buildProgress(mb.id);
+      const started = progress.started
+        .map(id => (DATA.scouts || []).find(s => s.id === id))
+        .filter(Boolean)
+        .sort((a, b) => a.displayName.localeCompare(b.displayName));
+      const completedCount = started.filter(s => progress.byScout[s.id].award).length;
+      const partialCount = started.length - completedCount;
+      const totalActive = activeScouts().length;
+      const notStarted = totalActive - started.length;
+
+      document.getElementById('detailStats').innerHTML = `
+        <div class="stat completed"><div class="stat-num">${completedCount}</div><div class="stat-label">Earned</div></div>
+        <div class="stat"><div class="stat-num">${partialCount}</div><div class="stat-label">In Progress</div></div>
+        <div class="stat"><div class="stat-num">${notStarted}</div><div class="stat-label">Not Started</div></div>
+        <div class="stat"><div class="stat-num">${totalActive}</div><div class="stat-label">Active Scouts</div></div>
+      `;
+
+      const authoredReqs = (DATA.meritBadgeRequirements || {})[mb.id];
+      const leaves = authoredReqs ? flattenMbLeaves(authoredReqs) : [];
+
+      // Build top-level groups so the header row reads
+      //   [Scout]  Req 1: Health and safety  |  Req 2: Nutrition  | …
+      //   [Scout]    1a 1b 1c 1d 1e          |   2a.1 2a.2 …      |
+      const groups = [];
+      if (authoredReqs) {
+        for (const top of authoredReqs) {
+          const myLeaves = leaves.filter(l => topLevelOf(authoredReqs, l.code) === top.code);
+          if (myLeaves.length > 0) groups.push({ top, leaves: myLeaves });
+        }
+      }
+      const groupStartCodes = new Set(groups.map(g => g.leaves[0].code));
+
+      const wrap = document.getElementById('detailGridWrap');
+      if (started.length === 0) {
+        wrap.innerHTML = `<div class="empty-state">No scouts have started this merit badge yet.</div>`;
+      } else {
+        const groupRow = `<tr>
+          <th rowspan="2">Scout</th>
+          ${groups.map(g => {
+            const rule = optionalityLabel(g.top);
+            return `<th class="group-col" colspan="${g.leaves.length}" title="Req ${esc(g.top.code)} — ${esc(g.top.label || '')}">Req ${esc(g.top.code)}${rule ? `<span class="group-rule">${esc(rule)}</span>` : ''}</th>`;
+          }).join('')}
+          <th class="award-col" rowspan="2" title="Full merit badge earned">AWARD</th>
+        </tr>`;
+        const leafRow = `<tr>${leaves.map(l => `<th class="req-col${groupStartCodes.has(l.code) ? ' group-start' : ''}" title="${esc(l.code)} — ${esc(l.label || '')}">${esc(l.code)}</th>`).join('')}</tr>`;
+        wrap.innerHTML = `<table class="mb-detail-grid">
+          <thead>${groupRow}${leafRow}</thead>
+          <tbody>
+            ${started.map(s => {
+              const slot = progress.byScout[s.id];
+              const cells = leaves.map(l => {
+                const done = slot.reqCodes.has(l.code);
+                return `<td class="cell${done ? ' done' : ''}${groupStartCodes.has(l.code) ? ' group-start' : ''}" title="${esc(s.displayName)} — ${esc(l.code)} — ${esc(l.label || '')}">${done ? '■' : '□'}</td>`;
+              }).join('');
+              const awardCell = `<td class="cell award${slot.award ? ' done' : ''}" title="${esc(s.displayName)} — ${slot.award ? 'badge earned' : 'not yet awarded'}">${slot.award ? '★' : '☆'}</td>`;
+              return `<tr>
+                <td class="scout-cell"><a href="advancement-scout.html?id=${esc(s.id)}">${esc(s.displayName)}</a><span class="rk">${esc(RANK_LABELS[s.currentRank] || s.currentRank)}</span></td>
+                ${cells}
+                ${awardCell}
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>`;
+      }
+
+      const reqsSource = document.getElementById('reqsSource');
+      const reqsList = document.getElementById('reqsList');
+      if (authoredReqs) {
+        reqsSource.textContent = 'From the official BSA merit badge pamphlet — wording is paraphrased in this prototype. Confirm against the current pamphlet for sign-off.';
+        reqsList.innerHTML = renderRequirementsTree(authoredReqs);
+      } else {
+        reqsSource.textContent = '';
+        reqsList.innerHTML = `<div class="reqs-empty">Official requirement list not yet authored for this badge in the prototype. Cooking, Camping, and Woodwork have full lists.</div>`;
+      }
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  })();
+  </script>
+</body>
+</html>
