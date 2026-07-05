@@ -389,6 +389,199 @@
   color: var(--admin-danger);
 }
 
+/* Row selection + bulk actions */
+.checkboxCol {
+  width: 34px;
+  text-align: center;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+.checkboxCol input {
+  cursor: pointer;
+  width: 15px;
+  height: 15px;
+}
+.selectedRow {
+  background: #eef3f8 !important;
+}
+
+.bulkBar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 9px 14px;
+  background: var(--admin-navy);
+  color: var(--admin-white);
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow-md);
+}
+.bulkBarCount {
+  font-size: 13px;
+  margin-right: 6px;
+}
+.bulkBarCount strong {
+  font-size: 15px;
+}
+.bulkBarSpacer {
+  flex: 1;
+}
+.bulkBarBtn {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  color: var(--admin-white);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  padding: 5px 12px;
+  border-radius: var(--admin-radius-sm);
+  cursor: pointer;
+  transition: background .15s ease;
+}
+.bulkBarBtn:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+.bulkBarBtn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+.bulkBarBtnDanger {
+  background: rgba(192, 57, 43, 0.85);
+  border-color: rgba(255, 255, 255, 0.45);
+}
+.bulkBarBtnDanger:hover {
+  background: var(--admin-danger);
+}
+
+/* Bulk-edit modal */
+.bulkDialog {
+  max-width: 640px;
+  max-height: 90vh;
+  overflow: hidden;
+}
+.bulkDialog .editDialogInner {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.bulkFields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bulkField {
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius-sm);
+  padding: 10px 12px;
+  background: var(--admin-gray-50);
+}
+.bulkFieldOn {
+  background: #eef3f8;
+  border-color: #cbdcea;
+}
+.bulkFieldHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.bulkToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--admin-gray-700);
+  cursor: pointer;
+  user-select: none;
+  min-width: 120px;
+  flex-shrink: 0;
+}
+.bulkToggle input {
+  cursor: pointer;
+}
+.bulkAgreement {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  min-width: 0;
+}
+.bulkAllSame {
+  color: var(--admin-gray-500);
+}
+.bulkAllSame strong {
+  color: var(--admin-gray-900);
+}
+.bulkMixedWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.bulkMixedTag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--admin-danger);
+  background: #fdece9;
+  border: 1px solid #f1cbc4;
+  padding: 1px 7px;
+  border-radius: 8px;
+}
+.bulkChip {
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--admin-gray-900);
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: 12px;
+  padding: 2px 9px;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.bulkChip:hover {
+  border-color: var(--admin-navy);
+  background: #eef3f8;
+}
+.bulkChip em {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--admin-gray-500);
+  margin-left: 2px;
+}
+.bulkFieldInput {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--admin-gray-200);
+}
+.bulkSetLabel {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--admin-navy);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.bulkFieldInput .editInput {
+  flex: 1;
+}
+.bulkFieldInput .editTextarea {
+  min-height: 44px;
+}
+
 .pager {
   display: flex;
   align-items: center;

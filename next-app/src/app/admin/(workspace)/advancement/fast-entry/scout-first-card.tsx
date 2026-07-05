@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { addLedgerEntries, loadScoutCompletion, loadScoutHistory } from './actions';
 import { RequirementPicker, type HistoryRow } from './picker';
+import { MbFocusModal } from './mb-focus-modal';
 import {
   mbAwardItem,
   mbReqItem,
@@ -44,6 +45,7 @@ export function ScoutFirstCard({ scouts, leaders, catalog }: Props) {
   }>({ service: [], events: [], leadership: [] });
   const [status, setStatus] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
   const [loadingCompletion, setLoadingCompletion] = useState(false);
+  const [openMbId, setOpenMbId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   // Prefill from URL: ?scout=A01&mb=cooking&req=2a (from MB Progress cells) or
@@ -123,6 +125,42 @@ export function ScoutFirstCard({ scouts, leaders, catalog }: Props) {
       return next;
     });
     router.refresh();
+  }
+
+  // Open the MB focus modal (Scout-First only). Requires a scout first so the
+  // modal can show completion state + gate the award.
+  function openMb(mbId: string) {
+    if (!scoutId) {
+      setStatus({ kind: 'err', msg: 'Pick a scout first.' });
+      return;
+    }
+    setStatus(null);
+    setOpenMbId(mbId);
+  }
+
+  // The modal saved a badge's requirements directly. Apply the same optimistic
+  // overlay update + server reconciliation the inline Save uses. Closing is the
+  // modal's call (so "Save & keep going" can leave it open).
+  function onMbModalSaved(items: PickerItem[], savedDate: string, savedBy: string) {
+    setCompletion((prev) => {
+      const next = new Map(prev);
+      for (const s of items) {
+        next.set(s.key, { entryId: -1, date: savedDate, by: savedBy, code: s.code });
+      }
+      return next;
+    });
+    setStatus({
+      kind: 'ok',
+      msg: `Saved ${items.length} entr${items.length === 1 ? 'y' : 'ies'}.`
+    });
+    router.refresh();
+    loadScoutCompletion(scoutId).then((rows) => {
+      const map: CompletionMap = new Map();
+      for (const r of rows) {
+        map.set(r.key, { entryId: r.entryId, date: r.date, by: r.by, code: r.code });
+      }
+      setCompletion(map);
+    });
   }
 
   function clear() {
@@ -261,7 +299,7 @@ export function ScoutFirstCard({ scouts, leaders, catalog }: Props) {
         </label>
       </div>
 
-      <div className={styles.field}>
+      <div className={`${styles.field} ${styles.reqFieldFill}`}>
         <span className={styles.fieldLabel}>
           Requirements{' '}
           {scoutId && loadingCompletion && (
@@ -287,9 +325,24 @@ export function ScoutFirstCard({ scouts, leaders, catalog }: Props) {
             }));
             router.refresh();
           }}
+          onOpenMb={openMb}
           multi
         />
       </div>
+
+      <MbFocusModal
+        key={openMbId ?? 'closed'}
+        mb={catalog.mbs.find((m) => m.id === openMbId) ?? null}
+        scoutId={scoutId}
+        scoutName={scouts.find((s) => s.id === scoutId)?.display_name ?? ''}
+        leaders={leaders}
+        defaultDate={date}
+        defaultBy={by}
+        completion={completion}
+        onClose={() => setOpenMbId(null)}
+        onCompletionRemoved={onCompletionRemoved}
+        onSaved={onMbModalSaved}
+      />
 
       <label className={styles.field}>
         <span className={styles.fieldLabel}>Notes (optional)</span>

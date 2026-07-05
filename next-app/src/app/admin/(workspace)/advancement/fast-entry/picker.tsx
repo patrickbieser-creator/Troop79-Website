@@ -3,6 +3,11 @@
 import { useMemo, useState, useTransition } from 'react';
 import { undoCompletion } from './actions';
 import {
+  createEvent,
+  createLeadershipPosition,
+  createServiceProject
+} from '../lookups/actions';
+import {
   itemKey,
   mbAwardItem,
   mbReqItem,
@@ -43,6 +48,9 @@ interface Props {
   multi?: boolean;
   /** Hide Service/Events/Leadership tabs when only catalog reqs make sense. */
   showFreeTabs?: boolean;
+  /** When provided, clicking a merit badge in the catalog opens it in a modal
+   *  (Scout-First) instead of drilling in inline. */
+  onOpenMb?: (mbId: string) => void;
   /** Optional history for the Service/Events/Leadership tabs. Scout-First
    *  card supplies this when a scout is selected. */
   history?: {
@@ -68,6 +76,7 @@ export function RequirementPicker({
   onCompletionRemoved,
   multi = true,
   showFreeTabs = true,
+  onOpenMb,
   history,
   onHistoryRemoved
 }: Props) {
@@ -147,6 +156,14 @@ export function RequirementPicker({
   const inMbDetail = activeTab === 'merit-badges' && !!activeMbId;
   const inMbCatalog = activeTab === 'merit-badges' && !activeMbId;
   const activeRank = catalog.ranks.find((r) => r.id === activeTab);
+
+  // Bottom detailed list intentionally omits rank requirements / awards — for
+  // those the filled checkbox + the top "N pending" breadcrumb are enough. Only
+  // free-form items (Service / Events / Leadership) stay, since they can't be
+  // toggled off from their row and need the inline remove (×).
+  const removablePending = selections.filter(
+    (s) => s.kind !== 'rank_requirement' && s.kind !== 'rank_award'
+  );
 
   return (
     <div className={styles.picker}>
@@ -231,12 +248,12 @@ export function RequirementPicker({
           <MbCatalogGrid
             mbs={catalog.mbs}
             search={search}
-            onPick={setActiveMbId}
+            onPick={(id) => (onOpenMb ? onOpenMb(id) : setActiveMbId(id))}
           />
         )}
 
-        {/* MB drill-in */}
-        {inMbDetail && activeMbId && (
+        {/* MB drill-in (inline — only when not using the modal flow) */}
+        {!onOpenMb && inMbDetail && activeMbId && (
           <MbDetailPanel
             mb={catalog.mbs.find((m) => m.id === activeMbId)!}
             search={search}
@@ -252,21 +269,26 @@ export function RequirementPicker({
         {/* Free-form */}
         {freeTab?.id === 'events' && (
           <>
-            <EventsTab onAdd={(items) => onSelectionsChange([...selections, ...items])} />
+            <EventsTab
+              events={catalog.events}
+              onAdd={(items) => onSelectionsChange([...selections, ...items])}
+            />
             <HistoryPanel rows={history?.events ?? []} onUndo={onHistoryRemoved} />
           </>
         )}
         {freeTab?.id === 'service' && (
           <>
-            <ServiceTab onAdd={(item) => onSelectionsChange([...selections, item])} />
+            <ServiceTab
+              projects={catalog.serviceProjects}
+              onAdd={(item) => onSelectionsChange([...selections, item])}
+            />
             <HistoryPanel rows={history?.service ?? []} onUndo={onHistoryRemoved} />
           </>
         )}
         {freeTab?.id === 'leadership' && (
           <>
-            <FreeFormTab
-              kind="leadership"
-              placeholder="Patrol Leader"
+            <LeadershipTab
+              positions={catalog.leadershipPositions}
               onAdd={(item) => onSelectionsChange([...selections, item])}
             />
             <HistoryPanel rows={history?.leadership ?? []} onUndo={onHistoryRemoved} />
@@ -274,10 +296,11 @@ export function RequirementPicker({
         )}
       </div>
 
-      {/* Detailed pending list at bottom (Scout-First only) */}
-      {multi && selections.length > 0 && (
+      {/* Detailed pending list at bottom (Scout-First only) — free-form items
+          only; rank requirements/awards are excluded to cut clutter. */}
+      {multi && removablePending.length > 0 && (
         <div className={styles.selectedList}>
-          {selections.map((s) => (
+          {removablePending.map((s) => (
             <div key={s.key} className={styles.selectedItem}>
               <span>
                 <span className={styles.selectedCode}>{s.code}</span> {s.label}
@@ -369,6 +392,104 @@ function targetN(node: ReqTreeNode): number {
   if (node.complete_rule === 'any') return 1;
   if (node.complete_rule === 'n-of') return node.complete_n ?? node.children.length;
   return node.children.length; // all
+}
+
+// ── Shared MB selection helpers (used by inline drill-in + focus modal) ─────
+
+/** All collapse keys for a merit badge's parent (group) nodes, keyed the same
+ *  way as the tree renderer (itemKey.mbReq(mbId, code)). Used to drive
+ *  "Collapse all" / "Expand all". */
+export function collectMbGroupKeys(
+  mb: CatalogPayload['mbs'][number]
+): string[] {
+  const out: string[] = [];
+  function walk(nodes: ReqTreeNode[]) {
+    for (const n of nodes) {
+      if (n.children.length > 0) {
+        out.push(itemKey.mbReq(mb.id, n.code));
+        walk(n.children);
+      }
+    }
+  }
+  walk(mb.requirements);
+  return out;
+}
+
+/** True if any of this MB's requirement leaves are currently pending. */
+export function mbHasPending(
+  mb: CatalogPayload['mbs'][number],
+  selections: PickerItem[]
+): boolean {
+  return selections.some(
+    (s) => s.kind === 'merit_badge_requirement' && s.code.startsWith(`${mb.id}-`)
+  );
+}
+
+/**
+ * "Select all" for a merit badge: walk the tree and top off each parent to its
+ * target N (counting completed + already-pending toward the target). Returns a
+ * new selections array that includes everything already selected plus the
+ * newly-needed leaves. Pure — safe to call from any host.
+ */
+export function computeMbSmartSelect(
+  mb: CatalogPayload['mbs'][number],
+  completion: CompletionMap,
+  selections: PickerItem[]
+): PickerItem[] {
+  const keyFor = (code: string) => itemKey.mbReq(mb.id, code);
+  const newSelections = [...selections];
+  function addItem(node: ReqTreeNode) {
+    const key = keyFor(node.code);
+    // If completed or already pending, skip.
+    if (completion.has(key)) return;
+    if (newSelections.some((s) => s.key === key)) return;
+    newSelections.push(mbReqItem(mb.id, mb.name, node.code, node.label));
+  }
+  function walk(node: ReqTreeNode) {
+    if (node.children.length === 0) {
+      // Bare leaf at this level — automatically required (the parent above
+      // already governs how many leaves to take).
+      return;
+    }
+    const target = targetN(node);
+    const allLeaves = node.children;
+    const sat = allLeaves.filter((c) => isNodeSatisfied(c, keyFor, completion));
+    const pendingChildren = allLeaves.filter((c) =>
+      c.children.length === 0
+        ? newSelections.some((s) => s.key === keyFor(c.code))
+        : false
+    );
+    const have = sat.length + pendingChildren.length;
+    let need = Math.max(0, target - have);
+    for (const child of allLeaves) {
+      if (need <= 0) break;
+      if (isNodeSatisfied(child, keyFor, completion)) continue;
+      if (child.children.length === 0) {
+        // Leaf — add it directly.
+        addItem(child);
+        need--;
+      } else {
+        // Sub-parent — recurse so its own rule is satisfied, then count it.
+        walk(child);
+        need--;
+      }
+    }
+    // If parent itself wraps children that recurse further, recurse on
+    // any remaining children (so we don't miss deeper requirements).
+    for (const child of allLeaves) {
+      if (child.children.length > 0) walk(child);
+    }
+  }
+  // Treat the MB's top-level reqs as an `all` group: every top-level parent
+  // must be satisfied. So walk them all.
+  for (const top of mb.requirements) {
+    if (top.children.length === 0) {
+      addItem(top);
+    } else {
+      walk(top);
+    }
+  }
+  return newSelections;
 }
 
 // ── Rank panel ────────────────────────────────────────────────────────────
@@ -493,61 +614,7 @@ function MbDetailPanel({
       );
       return;
     }
-    // Smart select: walk the tree and top off each parent to its target N
-    // (counting completed + already-pending toward the target).
-    const newSelections = [...selections];
-    function addItem(node: ReqTreeNode) {
-      const key = keyFor(node.code);
-      // If completed or already pending, skip.
-      if (completion.has(key)) return;
-      if (newSelections.some((s) => s.key === key)) return;
-      newSelections.push(mbReqItem(mb.id, mb.name, node.code, node.label));
-    }
-    function walk(node: ReqTreeNode) {
-      if (node.children.length === 0) {
-        // Bare leaf at this level — automatically required (the parent above
-        // already governs how many leaves to take).
-        return;
-      }
-      const target = targetN(node);
-      const allLeaves = node.children;
-      const sat = allLeaves.filter((c) => isNodeSatisfied(c, keyFor, completion));
-      const pendingChildren = allLeaves.filter((c) =>
-        c.children.length === 0
-          ? newSelections.some((s) => s.key === keyFor(c.code))
-          : false
-      );
-      const have = sat.length + pendingChildren.length;
-      let need = Math.max(0, target - have);
-      for (const child of allLeaves) {
-        if (need <= 0) break;
-        if (isNodeSatisfied(child, keyFor, completion)) continue;
-        if (child.children.length === 0) {
-          // Leaf — add it directly.
-          addItem(child);
-          need--;
-        } else {
-          // Sub-parent — recurse so its own rule is satisfied, then count it.
-          walk(child);
-          need--;
-        }
-      }
-      // If parent itself wraps children that recurse further, recurse on
-      // any remaining children (so we don't miss deeper requirements).
-      for (const child of allLeaves) {
-        if (child.children.length > 0) walk(child);
-      }
-    }
-    // Treat the MB's top-level reqs as an `all` group: every top-level parent
-    // must be satisfied. So walk them all.
-    for (const top of mb.requirements) {
-      if (top.children.length === 0) {
-        addItem(top);
-      } else {
-        walk(top);
-      }
-    }
-    onSelectionsChange(newSelections);
+    onSelectionsChange(computeMbSmartSelect(mb, completion, selections));
   }
 
   return (
@@ -606,14 +673,16 @@ function MbDetailPanel({
 
 // ── Recursive tree renderer (shared by rank panel + MB detail) ─────────────
 
-function ReqTreeRender({
+export function ReqTreeRender({
   nodes,
   keyForCode,
   depth,
   search,
   completion,
   statusFor,
-  onLeafClick
+  onLeafClick,
+  collapsedKeys,
+  onToggleCollapse
 }: {
   nodes: ReqTreeNode[];
   keyForCode: (code: string) => string;
@@ -622,6 +691,10 @@ function ReqTreeRender({
   completion: CompletionMap;
   statusFor: (item: PickerItem) => 'empty' | 'pending' | 'completed';
   onLeafClick: (node: ReqTreeNode) => void;
+  /** When provided (modal), parent groups become collapsible. Keyed by the
+   *  node's picker key (keyForCode(node.code)). Omitted on inline pickers. */
+  collapsedKeys?: Set<string>;
+  onToggleCollapse?: (key: string) => void;
 }) {
   const filtered = nodes.filter((n) => nodeMatchesSearch(n, search));
   if (filtered.length === 0) {
@@ -639,6 +712,8 @@ function ReqTreeRender({
           completion={completion}
           statusFor={statusFor}
           onLeafClick={onLeafClick}
+          collapsedKeys={collapsedKeys}
+          onToggleCollapse={onToggleCollapse}
         />
       ))}
     </>
@@ -661,7 +736,9 @@ function NodeRender({
   search,
   completion,
   statusFor,
-  onLeafClick
+  onLeafClick,
+  collapsedKeys,
+  onToggleCollapse
 }: {
   node: ReqTreeNode;
   keyForCode: (code: string) => string;
@@ -670,6 +747,8 @@ function NodeRender({
   completion: CompletionMap;
   statusFor: (item: PickerItem) => 'empty' | 'pending' | 'completed';
   onLeafClick: (node: ReqTreeNode) => void;
+  collapsedKeys?: Set<string>;
+  onToggleCollapse?: (key: string) => void;
 }) {
   const hasChildren = node.children.length > 0;
   const indent = depth * 18;
@@ -678,12 +757,34 @@ function NodeRender({
     const satCount = countDirectSat(node, keyForCode, completion);
     const optLabel = optionalityLabel(node);
     const satisfied = satCount >= target;
+    const nodeKey = keyForCode(node.code);
+    const collapsible = !!onToggleCollapse;
+    // A search query forces groups open so matches stay visible.
+    const isCollapsed = collapsible && !search && !!collapsedKeys?.has(nodeKey);
     return (
       <>
         <div
-          className={styles.parentHeader}
+          className={`${styles.parentHeader} ${collapsible ? styles.parentHeaderClickable : ''}`.trim()}
           style={{ paddingLeft: 8 + indent }}
+          onClick={collapsible ? () => onToggleCollapse!(nodeKey) : undefined}
+          role={collapsible ? 'button' : undefined}
+          tabIndex={collapsible ? 0 : undefined}
+          onKeyDown={
+            collapsible
+              ? (e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onToggleCollapse!(nodeKey);
+                  }
+                }
+              : undefined
+          }
         >
+          {collapsible && (
+            <span className={styles.collapseChevron} aria-hidden="true">
+              {isCollapsed ? '▸' : '▾'}
+            </span>
+          )}
           <span className={styles.parentCode}>{node.code}</span>
           <span className={styles.parentLabel}>{node.label}</span>
           {optLabel && <span className={styles.optPill}>{optLabel}</span>}
@@ -694,15 +795,19 @@ function NodeRender({
             {satisfied && ' ✓'}
           </span>
         </div>
-        <ReqTreeRender
-          nodes={node.children}
-          keyForCode={keyForCode}
-          depth={depth + 1}
-          search={search}
-          completion={completion}
-          statusFor={statusFor}
-          onLeafClick={onLeafClick}
-        />
+        {!isCollapsed && (
+          <ReqTreeRender
+            nodes={node.children}
+            keyForCode={keyForCode}
+            depth={depth + 1}
+            search={search}
+            completion={completion}
+            statusFor={statusFor}
+            onLeafClick={onLeafClick}
+            collapsedKeys={collapsedKeys}
+            onToggleCollapse={onToggleCollapse}
+          />
+        )}
       </>
     );
   }
@@ -739,7 +844,7 @@ function NodeRender({
   );
 }
 
-function ItemRow({
+export function ItemRow({
   status,
   completion,
   codeDisplay,
@@ -794,79 +899,98 @@ function ItemRow({
 }
 
 /**
- * Inline form for Service / Events / Leadership tabs — adds an ad-hoc
- * PickerItem to selections. (History panel comes in F4.)
+ * Leadership tab — pick a position from the lookup (or add a new one). Name
+ * only; leadership rows carry no quantity (unit 'term', qty defaults to 1).
  */
-function FreeFormTab({
-  kind,
-  placeholder,
+function LeadershipTab({
+  positions,
   onAdd
 }: {
-  kind: 'service_hours' | 'attendance' | 'leadership';
-  placeholder: string;
+  positions: { id: number; name: string }[];
   onAdd: (item: PickerItem) => void;
 }) {
-  const [label, setLabel] = useState('');
-  const [code, setCode] = useState('');
+  const [selected, setSelected] = useState('');
+  const [newName, setNewName] = useState('');
+  const [localNames, setLocalNames] = useState<string[]>([]);
+  const [, startTransition] = useTransition();
+
+  const names = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of positions) set.add(p.name);
+    for (const n of localNames) set.add(n);
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [positions, localNames]);
+
+  const isNew = selected === NEW_EVENT;
+  const resolvedName = (isNew ? newName : selected).trim();
 
   function add() {
-    const lbl = label.trim();
+    const lbl = resolvedName;
     if (!lbl) return;
-    const c = code.trim() || autoCode(lbl);
-    const prefix =
-      kind === 'service_hours' ? 'SP:' : kind === 'attendance' ? 'EV:' : 'LE:';
-    const finalCode = c.startsWith(prefix) ? c : `${prefix}${c}`;
+    if (isNew && !names.includes(lbl)) {
+      setLocalNames((prev) => [...prev, lbl]);
+      const fd = new FormData();
+      fd.set('name', lbl);
+      startTransition(() => {
+        createLeadershipPosition(fd);
+      });
+    }
+    const codeBase = autoCode(lbl);
+    const code = codeBase.startsWith('LE:') ? codeBase : `LE:${codeBase}`;
     onAdd({
-      key: `${kind}:${finalCode}`,
-      kind,
-      code: finalCode,
+      key: `leadership:${code}`,
+      kind: 'leadership',
+      code,
       label: lbl,
-      unit: kind === 'service_hours' ? 'hours' : kind === 'attendance' ? 'event' : 'term'
+      unit: 'term'
     });
-    setLabel('');
-    setCode('');
+    setSelected(isNew ? NEW_EVENT : '');
+    setNewName('');
   }
 
   return (
     <div className={styles.freeForm}>
       <p className={styles.freeFormHelp}>
-        Add an ad-hoc{' '}
-        {kind === 'service_hours'
-          ? 'service project'
-          : kind === 'attendance'
-            ? 'event'
-            : 'leadership term'}
-        . Type the title and hit Add — it appears in the pending list and
-        saves when you hit Save.
+        Pick a leadership position from the list (or add a new one). It appears
+        in the pending list and saves when you hit Save.
       </p>
       <label className={styles.field} style={{ marginBottom: 4 }}>
-        <span className={styles.fieldLabel}>Title</span>
-        <input
-          type="text"
-          className={styles.input}
-          placeholder={placeholder}
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-        />
+        <span className={styles.fieldLabel}>Position</span>
+        <select
+          className={styles.select}
+          value={selected}
+          onChange={(e) => setSelected(e.target.value)}
+        >
+          <option value="">— Select a position —</option>
+          {names.map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+          <option value={NEW_EVENT}>+ New position…</option>
+        </select>
       </label>
-      <label className={styles.field} style={{ marginBottom: 4 }}>
-        <span className={styles.fieldLabel}>Code (optional)</span>
-        <input
-          type="text"
-          className={styles.input}
-          placeholder={`auto-derived from title if blank`}
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-        />
-      </label>
+      {isNew && (
+        <label className={styles.field} style={{ marginBottom: 4 }}>
+          <span className={styles.fieldLabel}>New position name</span>
+          <input
+            type="text"
+            className={styles.input}
+            placeholder="Patrol Leader"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            autoFocus
+          />
+        </label>
+      )}
       <div>
         <button
           type="button"
           className={styles.btn}
           onClick={add}
-          disabled={!label.trim()}
+          disabled={!resolvedName}
         >
-          + Add
+          + Add Leadership
         </button>
       </div>
     </div>
@@ -878,15 +1002,48 @@ function FreeFormTab({
  * creates a separate pending row of the matching kind, so a 2-night campout
  * with a 3-mile hike becomes two rows in the ledger.
  */
-function EventsTab({ onAdd }: { onAdd: (items: PickerItem[]) => void }) {
-  const [title, setTitle] = useState('');
+const NEW_EVENT = '__new__';
+
+function EventsTab({
+  events,
+  onAdd
+}: {
+  events: { id: number; name: string }[];
+  onAdd: (items: PickerItem[]) => void;
+}) {
+  const [selected, setSelected] = useState('');
+  const [newName, setNewName] = useState('');
+  // Events created inline this session (so the dropdown updates before the
+  // server catalog reloads on the next refresh).
+  const [localEvents, setLocalEvents] = useState<string[]>([]);
   const [nights, setNights] = useState('');
   const [miles, setMiles] = useState('');
   const [hours, setHours] = useState('');
+  const [, startTransition] = useTransition();
+
+  const names = useMemo(() => {
+    const set = new Set<string>();
+    for (const e of events) set.add(e.name);
+    for (const n of localEvents) set.add(n);
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [events, localEvents]);
+
+  const isNew = selected === NEW_EVENT;
+  const resolvedName = (isNew ? newName : selected).trim();
 
   function add() {
-    const lbl = title.trim();
+    const lbl = resolvedName;
     if (!lbl) return;
+    // Persist a brand-new event name to the lookup (best-effort) and remember
+    // it locally so it's immediately reusable in the dropdown.
+    if (isNew && !names.includes(lbl)) {
+      setLocalEvents((prev) => [...prev, lbl]);
+      const fd = new FormData();
+      fd.set('name', lbl);
+      startTransition(() => {
+        createEvent(fd);
+      });
+    }
     const codeBase = autoCode(lbl);
     const slugWithPrefix = (p: string) => (codeBase.startsWith(p) ? codeBase : `${p}${codeBase}`);
     const items: PickerItem[] = [];
@@ -936,7 +1093,8 @@ function EventsTab({ onAdd }: { onAdd: (items: PickerItem[]) => void }) {
       });
     }
     onAdd(items);
-    setTitle('');
+    setSelected(isNew ? NEW_EVENT : '');
+    setNewName('');
     setNights('');
     setMiles('');
     setHours('');
@@ -945,21 +1103,40 @@ function EventsTab({ onAdd }: { onAdd: (items: PickerItem[]) => void }) {
   return (
     <div className={styles.freeForm}>
       <p className={styles.freeFormHelp}>
-        Add a troop event. Fill in any of Nights, Miles, or Hours — each non-zero
-        value creates a separate ledger row (e.g. a 2-night campout with 3 miles
-        of hiking → 2 rows). Title-only with no numbers creates a plain
-        attendance row.
+        Pick an event from the list (or add a new one). Fill in any of Nights,
+        Miles, or Hours — each non-zero value creates a separate ledger row (e.g.
+        a 2-night campout with 3 miles of hiking → 2 rows). No numbers creates a
+        plain attendance row.
       </p>
       <label className={styles.field} style={{ marginBottom: 4 }}>
-        <span className={styles.fieldLabel}>Event title</span>
-        <input
-          type="text"
-          className={styles.input}
-          placeholder="Spring Campout Greenbush '26"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
+        <span className={styles.fieldLabel}>Event</span>
+        <select
+          className={styles.select}
+          value={selected}
+          onChange={(e) => setSelected(e.target.value)}
+        >
+          <option value="">— Select an event —</option>
+          {names.map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+          <option value={NEW_EVENT}>+ New event…</option>
+        </select>
       </label>
+      {isNew && (
+        <label className={styles.field} style={{ marginBottom: 4 }}>
+          <span className={styles.fieldLabel}>New event name</span>
+          <input
+            type="text"
+            className={styles.input}
+            placeholder="Spring Campout Greenbush '26"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            autoFocus
+          />
+        </label>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
         <label className={styles.field} style={{ marginBottom: 4 }}>
           <span className={styles.fieldLabel}>Nights</span>
@@ -1003,7 +1180,7 @@ function EventsTab({ onAdd }: { onAdd: (items: PickerItem[]) => void }) {
           type="button"
           className={styles.btn}
           onClick={add}
-          disabled={!title.trim()}
+          disabled={!resolvedName}
         >
           + Add Event
         </button>
@@ -1012,14 +1189,41 @@ function EventsTab({ onAdd }: { onAdd: (items: PickerItem[]) => void }) {
   );
 }
 
-/** Service tab — title + Hours. One service_hours row per add. */
-function ServiceTab({ onAdd }: { onAdd: (item: PickerItem) => void }) {
-  const [title, setTitle] = useState('');
+/** Service tab — pick a project from the lookup (or add a new one) + Hours. */
+function ServiceTab({
+  projects,
+  onAdd
+}: {
+  projects: { id: number; name: string }[];
+  onAdd: (item: PickerItem) => void;
+}) {
+  const [selected, setSelected] = useState('');
+  const [newName, setNewName] = useState('');
+  const [localNames, setLocalNames] = useState<string[]>([]);
   const [hours, setHours] = useState('2');
+  const [, startTransition] = useTransition();
+
+  const names = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of projects) set.add(p.name);
+    for (const n of localNames) set.add(n);
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [projects, localNames]);
+
+  const isNew = selected === NEW_EVENT;
+  const resolvedName = (isNew ? newName : selected).trim();
 
   function add() {
-    const lbl = title.trim();
+    const lbl = resolvedName;
     if (!lbl) return;
+    if (isNew && !names.includes(lbl)) {
+      setLocalNames((prev) => [...prev, lbl]);
+      const fd = new FormData();
+      fd.set('name', lbl);
+      startTransition(() => {
+        createServiceProject(fd);
+      });
+    }
     const codeBase = autoCode(lbl);
     const code = codeBase.startsWith('SP:') ? codeBase : `SP:${codeBase}`;
     const hQty = Number(hours);
@@ -1031,26 +1235,46 @@ function ServiceTab({ onAdd }: { onAdd: (item: PickerItem) => void }) {
       unit: 'hours',
       qty: Number.isFinite(hQty) && hQty > 0 ? hQty : 2
     });
-    setTitle('');
+    setSelected(isNew ? NEW_EVENT : '');
+    setNewName('');
     setHours('2');
   }
 
   return (
     <div className={styles.freeForm}>
       <p className={styles.freeFormHelp}>
-        Add a service project. Hours defaults to 2 per troop convention; adjust
-        for actual time.
+        Pick a service project from the list (or add a new one). Hours defaults
+        to 2 per troop convention; adjust for actual time.
       </p>
       <label className={styles.field} style={{ marginBottom: 4 }}>
-        <span className={styles.fieldLabel}>Project title</span>
-        <input
-          type="text"
-          className={styles.input}
-          placeholder="OLT Cleanup Apr '26"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
+        <span className={styles.fieldLabel}>Service project</span>
+        <select
+          className={styles.select}
+          value={selected}
+          onChange={(e) => setSelected(e.target.value)}
+        >
+          <option value="">— Select a project —</option>
+          {names.map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+          <option value={NEW_EVENT}>+ New project…</option>
+        </select>
       </label>
+      {isNew && (
+        <label className={styles.field} style={{ marginBottom: 4 }}>
+          <span className={styles.fieldLabel}>New project name</span>
+          <input
+            type="text"
+            className={styles.input}
+            placeholder="OLT Cleanup Apr '26"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            autoFocus
+          />
+        </label>
+      )}
       <label className={styles.field} style={{ marginBottom: 4 }}>
         <span className={styles.fieldLabel}>Hours</span>
         <input
@@ -1067,7 +1291,7 @@ function ServiceTab({ onAdd }: { onAdd: (item: PickerItem) => void }) {
           type="button"
           className={styles.btn}
           onClick={add}
-          disabled={!title.trim()}
+          disabled={!resolvedName}
         >
           + Add Service
         </button>

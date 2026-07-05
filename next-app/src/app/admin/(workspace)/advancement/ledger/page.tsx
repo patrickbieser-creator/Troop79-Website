@@ -18,8 +18,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import type { LedgerEntry, LedgerKind, Scout } from '@/lib/supabase/types';
 import { LedgerToolbar } from './ledger-toolbar';
-import { RowActions } from './row-actions';
-import { InfoCell } from './info-cell';
+import { LedgerTable } from './ledger-table';
 import styles from './ledger.module.css';
 
 const PAGE_SIZE = 50;
@@ -39,31 +38,6 @@ interface SearchParams {
   dir?: string;
   page?: string;
 }
-
-const KIND_LABEL: Record<LedgerKind, string> = {
-  rank_requirement: 'Rank req',
-  rank_award: 'Rank award',
-  merit_badge_requirement: 'MB req',
-  merit_badge_award: 'MB award',
-  attendance: 'Attendance',
-  service_hours: 'Service',
-  camping_nights: 'Camping',
-  hiking_miles: 'Hiking',
-  leadership: 'Leadership',
-  award: 'Award'
-};
-const KIND_CLASS: Record<LedgerKind, string> = {
-  rank_requirement: styles.kindRankReq,
-  rank_award: styles.kindRankReq,
-  merit_badge_requirement: styles.kindMbReq,
-  merit_badge_award: styles.kindMbAward,
-  attendance: styles.kindAttendance,
-  service_hours: styles.kindService,
-  camping_nights: styles.kindCamping,
-  hiking_miles: styles.kindHiking,
-  leadership: styles.kindLeadership,
-  award: styles.kindMbAward
-};
 
 const SORT_TO_COLUMN: Record<SortKey, string> = {
   date: 'date',
@@ -232,23 +206,6 @@ export default async function LedgerPage({
   const pageStart = total === 0 ? 0 : (parsed.page - 1) * PAGE_SIZE + 1;
   const pageEnd = Math.min(parsed.page * PAGE_SIZE, total);
 
-  const sortLink = (key: SortKey, label: string) => {
-    const isActive = parsed.sort === key;
-    const nextDir = isActive && parsed.dir === 'desc' ? 'asc' : 'desc';
-    const cls = isActive
-      ? parsed.dir === 'asc'
-        ? styles.sortAsc
-        : styles.sortDesc
-      : '';
-    return (
-      <th key={key} className={cls}>
-        <Link href={urlWith(raw, { sort: key, dir: nextDir, page: '1' })}>
-          {label}
-        </Link>
-      </th>
-    );
-  };
-
   return (
     <>
       <div className={styles.pageTitle}>
@@ -273,78 +230,14 @@ export default async function LedgerPage({
         dir={parsed.dir}
       />
 
-      <div className={styles.tableWrap}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              {sortLink('date', 'Date')}
-              {sortLink('scout', 'Scout')}
-              {sortLink('kind', 'Type')}
-              {sortLink('code', 'Code')}
-              <th>Description</th>
-              <th>Signed Off</th>
-              {sortLink('qty', 'Qty')}
-              <th>Unit</th>
-              {sortLink('entered', 'Entered')}
-              <th style={{ textAlign: 'right' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <tr>
-                <td colSpan={10} className={styles.empty}>
-                  {parsed.q || parsed.kind
-                    ? 'No rows match the current filters.'
-                    : 'No ledger entries yet.'}
-                </td>
-              </tr>
-            ) : (
-              rows.map((r) => {
-                const isArchived = !!r.archived_at;
-                const isDeleted = !!r.deleted_at;
-                const rowCls = isDeleted
-                  ? styles.deletedRow
-                  : isArchived
-                    ? styles.archivedRow
-                    : '';
-                const hiddenNote = isDeleted
-                  ? `deleted: ${r.deleted_reason ?? ''}`
-                  : isArchived
-                    ? `archived: ${r.archived_reason ?? ''}`
-                    : null;
-                return (
-                  <tr key={r.id} className={rowCls}>
-                    <td className={styles.nowrap}>{r.date ?? '—'}</td>
-                    <td className={styles.nowrap}>{r.scoutName}</td>
-                    <td className={styles.nowrap}>
-                      <span className={`${styles.kindPill} ${KIND_CLASS[r.kind]}`}>
-                        {KIND_LABEL[r.kind]}
-                      </span>
-                    </td>
-                    <td className={`${styles.codeCell} ${styles.nowrap}`}>{r.code}</td>
-                    <td>
-                      <InfoCell short={r.shortLabel} full={r.label} notes={hiddenNote} />
-                    </td>
-                    <td className={styles.nowrap}>{r.by ?? ''}</td>
-                    <td className={styles.numCell}>{r.qty}</td>
-                    <td className={styles.nowrap}>{r.unit}</td>
-                    <td className={styles.nowrap}>
-                      {r.entered_at ? r.entered_at.slice(0, 10) : ''}
-                    </td>
-                    <td className={styles.actionsCell}>
-                      <RowActions
-                        row={r}
-                        scouts={scouts}
-                        leaders={leaders}
-                      />
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+      <LedgerTable
+        rows={rows}
+        scouts={scouts}
+        leaders={leaders}
+        sp={raw}
+        sort={parsed.sort}
+        dir={parsed.dir}
+      />
 
       <div className={styles.pager}>
         <Link

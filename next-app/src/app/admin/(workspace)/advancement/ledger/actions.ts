@@ -139,6 +139,157 @@ export async function updateLedgerEntry(formData: FormData): Promise<UpdateResul
   return { ok: true };
 }
 
+interface BulkResult {
+  ok: boolean;
+  updated: number;
+  error?: string;
+}
+
+function parseIds(formData: FormData): number[] {
+  let ids: unknown;
+  try {
+    ids = JSON.parse(String(formData.get('ids') ?? '[]'));
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(ids)) return [];
+  return ids.map((n) => Number(n)).filter((n) => Number.isFinite(n) && n > 0);
+}
+
+/**
+ * Bulk-edits the SAFE fields (date, scout_id, by, qty, unit, notes) across many
+ * selected rows at once. Only the fields present in `patch` are written, so the
+ * caller can change just the signer or just the date and leave everything else
+ * per-row untouched. Kind, Code, and Description are intentionally NOT bulk-
+ * editable — those stay one-row-at-a-time to avoid clobbering row-specific data.
+ */
+export async function bulkUpdateLedgerEntries(formData: FormData): Promise<BulkResult> {
+  try {
+    await ensureLeader();
+  } catch {
+    return { ok: false, updated: 0, error: 'Not authenticated' };
+  }
+
+  const ids = parseIds(formData);
+  if (ids.length === 0) return { ok: false, updated: 0, error: 'No rows selected' };
+
+  let patchRaw: Record<string, unknown>;
+  try {
+    patchRaw = JSON.parse(String(formData.get('patch') ?? '{}')) as Record<string, unknown>;
+  } catch {
+    return { ok: false, updated: 0, error: 'Malformed patch' };
+  }
+
+  // Whitelist + validate each present field. Unknown keys (kind, code, label)
+  // are ignored so they can never be bulk-written.
+  const patch: Record<string, unknown> = {};
+  if ('date' in patchRaw) {
+    const date = String(patchRaw.date ?? '').trim();
+    if (!date) return { ok: false, updated: 0, error: 'Date cannot be blank' };
+    patch.date = date;
+  }
+  if ('scout_id' in patchRaw) {
+    const scoutId = String(patchRaw.scout_id ?? '').trim();
+    if (!scoutId) return { ok: false, updated: 0, error: 'Scout cannot be blank' };
+    patch.scout_id = scoutId;
+  }
+  if ('by' in patchRaw) {
+    patch.by = String(patchRaw.by ?? '').trim() || null;
+  }
+  if ('qty' in patchRaw) {
+    const qty = Number(patchRaw.qty);
+    if (!Number.isFinite(qty) || qty < 0) {
+      return { ok: false, updated: 0, error: 'Qty must be a non-negative number' };
+    }
+    patch.qty = qty;
+  }
+  if ('unit' in patchRaw) {
+    patch.unit = String(patchRaw.unit ?? '').trim() || 'complete';
+  }
+  if ('notes' in patchRaw) {
+    patch.notes = String(patchRaw.notes ?? '').trim() || null;
+  }
+
+  if (Object.keys(patch).length === 0) {
+    return { ok: false, updated: 0, error: 'No fields to change' };
+  }
+
+  const supabase = createAdminClient();
+  const { error, count } = await supabase
+    .from('ledger_entries')
+    .update(patch, { count: 'exact' })
+    .in('id', ids);
+  if (error) return { ok: false, updated: 0, error: error.message };
+
+  revalidatePath('/admin/advancement/ledger');
+  revalidatePath('/admin/advancement/fast-entry');
+  revalidatePath('/admin/advancement/dashboard');
+  return { ok: true, updated: count ?? ids.length };
+}
+
+/** Bulk archive — soft, reason optional (matches the single-row action). */
+export async function bulkArchiveLedgerEntries(formData: FormData): Promise<BulkResult> {
+  try {
+    await ensureLeader();
+  } catch {
+    return { ok: false, updated: 0, error: 'Not authenticated' };
+  }
+  const ids = parseIds(formData);
+  if (ids.length === 0) return { ok: false, updated: 0, error: 'No rows selected' };
+  const reason = String(formData.get('reason') ?? '').trim() || null;
+
+  const supabase = createAdminClient();
+  const { error, count } = await supabase
+    .from('ledger_entries')
+    .update(
+      {
+        archived_at: new Date().toISOString(),
+        archived_by: await leaderInitials(),
+        archived_reason: reason
+      },
+      { count: 'exact' }
+    )
+    .in('id', ids);
+  if (error) return { ok: false, updated: 0, error: error.message };
+
+  revalidatePath('/admin/advancement/ledger');
+  revalidatePath('/admin/advancement/fast-entry');
+  revalidatePath('/admin/advancement/dashboard');
+  return { ok: true, updated: count ?? ids.length };
+}
+
+/** Bulk delete — soft, reason REQUIRED (matches the single-row action). */
+export async function bulkDeleteLedgerEntries(formData: FormData): Promise<BulkResult> {
+  try {
+    await ensureLeader();
+  } catch {
+    return { ok: false, updated: 0, error: 'Not authenticated' };
+  }
+  const ids = parseIds(formData);
+  if (ids.length === 0) return { ok: false, updated: 0, error: 'No rows selected' };
+  const reason = String(formData.get('reason') ?? '').trim();
+  if (!reason) return { ok: false, updated: 0, error: 'A reason is required to delete.' };
+
+  const supabase = createAdminClient();
+  const { error, count } = await supabase
+    .from('ledger_entries')
+    .update(
+      {
+        deleted_at: new Date().toISOString(),
+        deleted_by: await leaderInitials(),
+        deleted_reason: reason
+      },
+      { count: 'exact' }
+    )
+    .in('id', ids);
+  if (error) return { ok: false, updated: 0, error: error.message };
+
+  revalidatePath('/admin/advancement/ledger');
+  revalidatePath('/admin/advancement/fast-entry');
+  revalidatePath('/admin/advancement/dashboard');
+  return { ok: true, updated: count ?? ids.length };
+}
+
 export async function restoreLedgerEntry(formData: FormData): Promise<void> {
   await ensureLeader();
   const id = Number(formData.get('id'));

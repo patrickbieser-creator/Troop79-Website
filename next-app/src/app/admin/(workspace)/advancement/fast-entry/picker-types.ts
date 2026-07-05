@@ -24,6 +24,10 @@ export interface CatalogPayload {
     eagle: boolean;
     requirements: ReqTreeNode[];
   }[];
+  /** Name lookups for the free-form tab pull-downs. */
+  events: { id: number; name: string }[];
+  serviceProjects: { id: number; name: string }[];
+  leadershipPositions: { id: number; name: string }[];
 }
 
 /** A single selectable item. Stable `key` identifies it across renders. */

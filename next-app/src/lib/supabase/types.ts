@@ -152,3 +152,9 @@ export interface Rank {
   color: string | null;
   sort_order: number;
 }
+
+export interface Event {
+  id: number;
+  name: string;
+  created_at?: string;
+}

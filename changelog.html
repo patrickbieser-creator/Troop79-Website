@@ -290,6 +290,33 @@
     }
     .dev-note a { color: var(--nws-teal-dark); text-decoration: none; border-bottom: 1px solid var(--nws-gray-light); }
     .dev-note a:hover { border-bottom-color: var(--nws-teal-dark); }
+    /* Green-accented variant = the live production app (vs. rust = static prototype) */
+    .dev-note--app { border-top-color: var(--nws-green); margin-bottom: 12px; }
+    .dev-note--app h4 { color: var(--nws-forest); }
+    .dev-note--app a:hover { border-bottom-color: var(--nws-green); }
+    /* "where the files live" callout inside a dev-note */
+    .dev-note .note-loc {
+      font-family: 'Montserrat', Arial, sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .04em;
+      color: var(--nws-gray-med);
+      background: #f4f1ea;
+      border-left: 3px solid var(--nws-gray-light);
+      padding: 8px 12px;
+      margin-bottom: 12px;
+    }
+    .dev-note--app .note-loc { border-left-color: var(--nws-green); }
+    .dev-note .note-loc code { border: none; background: none; padding: 0; font-weight: 700; }
+    .dev-note .note-sub {
+      font-family: 'Montserrat', Arial, sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--nws-gray-med);
+      margin: 16px 0 6px;
+    }
 
     /* ── PHASE ROADMAP ── */
     .roadmap {
@@ -379,12 +406,42 @@
   <!-- PAGE BODY -->
   <div class="page-body">
 
-    <!-- DEV NOTE: how to run the prototype locally -->
+    <!-- DEV NOTE: two codebases live in this repo — the live app and the static prototype -->
+
+    <!-- 1) THE LIVE PRODUCTION APP (Next.js + Supabase, database-backed) -->
+    <div class="dev-note dev-note--app">
+      <h4>Running the Production App (Next.js + Supabase)</h4>
+      <p class="note-loc">Files live in <code>D:\Projects\Troop79-Website\next-app\</code> &mdash; the real, database-backed application you are actively building. This is <em>not</em> the static prototype below.</p>
+      <p>The app talks to a local Supabase database that runs inside Docker containers. Data (scouts, ledger, merit badges) persists in Docker volumes between sessions &mdash; starting up does <strong>not</strong> reseed or wipe it.</p>
+
+      <p class="note-sub">Everyday startup &mdash; resuming work</p>
+      <ul>
+        <li><strong>1. Start Docker Desktop</strong> and wait until it reports <em>running</em> (whale icon steady in the tray). The Supabase database can&rsquo;t come up until Docker&rsquo;s engine is ready.</li>
+        <li><strong>2.</strong> In a terminal: <code>cd D:\Projects\Troop79-Website\next-app</code></li>
+        <li><strong>3.</strong> <code>npx supabase start</code> &mdash; boots the Postgres + API containers (~15&ndash;30&nbsp;s when images are already cached). Your existing data is still there.</li>
+        <li><strong>4.</strong> <code>npm run dev</code> &mdash; starts the Next.js dev server.</li>
+      </ul>
+      <p>Then open in a browser:</p>
+      <ul>
+        <li><a href="http://localhost:3000/">http://localhost:3000/</a> &mdash; the live app (public site)</li>
+        <li><a href="http://localhost:3000/admin">http://localhost:3000/admin</a> &mdash; Leader Workspace / admin (requires leader login)</li>
+        <li><a href="http://127.0.0.1:54323">http://127.0.0.1:54323</a> &mdash; <strong>Supabase Studio</strong>: browse &amp; query the active database directly (verify rows, run SQL)</li>
+      </ul>
+
+      <p class="note-sub">Shutting down</p>
+      <p><code>Ctrl+C</code> stops the dev server. <code>npx supabase stop</code> stops the database containers &mdash; data is preserved on the volume. Quitting Docker Desktop stops everything.</p>
+
+      <p class="note-sub">First-time setup or a clean database</p>
+      <p>Only needed on a fresh machine or when you want to start the DB over. Keys: <code>npx supabase status -o env</code> and paste the output into <code>next-app\.env.local</code>. Schema + data: <code>npx supabase db reset</code> (applies migrations, wipes to empty), then <code>npm run seed</code> (reference taxonomy: leaders, ranks, merit-badge catalog &mdash; <em>not</em> scouts/ledger), then <code>npm run import-spreadsheet -- --xlsx="&hellip;" --apply</code> to load scouts + ledger. A plain everyday startup skips all of this.</p>
+    </div>
+
+    <!-- 2) THE STATIC PROTOTYPE (design reference only, no database) -->
     <div class="dev-note">
-      <h4>Running the Prototype Locally</h4>
-      <p>The site is plain static HTML &mdash; no build step. Serve the project root with Python&rsquo;s built-in HTTP server:</p>
+      <h4>Running the Static Prototype (design reference)</h4>
+      <p class="note-loc">Files live at the <strong>repo root</strong> <code>D:\Projects\Troop79-Website\</code> (the <code>*.html</code> files &amp; <code>admin\</code> folder) &mdash; plain static HTML, <em>no build step, no database</em>. Kept as the visual design reference; the production app above has caught up on most screens.</p>
+      <p>Serve the project root with Python&rsquo;s built-in HTTP server:</p>
       <pre>cd D:\Projects\Troop79-Website
-python -m http.server 8000</pre>
+py -m http.server 8000</pre>
       <p>Then open any of these in a browser:</p>
       <ul>
         <li><a href="http://localhost:8000/">http://localhost:8000/</a> &mdash; Home / News Feed</li>
@@ -397,7 +454,7 @@ python -m http.server 8000</pre>
         <li><a href="http://localhost:8000/admin/advancement-leader.html">http://localhost:8000/admin/advancement-leader.html</a> &mdash; Advancement Leader Workspace (admin)</li>
         <li><a href="http://localhost:8000/changelog.html">http://localhost:8000/changelog.html</a> &mdash; This changelog</li>
       </ul>
-      <p>Stop the server with <code>Ctrl+C</code>. Port can be any free number &mdash; <code>8000</code> is just convention. If <code>python</code> isn&rsquo;t on PATH, <code>npx serve .</code> works too (Node 24+ installed).</p>
+      <p>Stop the server with <code>Ctrl+C</code>. Port can be any free number &mdash; <code>8000</code> is just convention. On this machine use <code>py</code> (the Python launcher); a bare <code>python</code> is currently shadowed by a Microsoft Store stub. <code>npx serve .</code> works too (Node 24+ installed).</p>
     </div>
 
     <!-- PHASE ROADMAP -->
@@ -437,6 +494,106 @@ python -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v0.16 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v0.16</span>
+        <span class="release-date">July 4, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Fast Entry &mdash; Merit Badge Focus Modal</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Signing off several merit-badge requirements at once used to clutter the narrow Scout-First card. Picking a badge now opens a <strong>wide two-pane focus modal</strong> scoped to that one badge and scout: the requirement tree on the left, a live <strong>Selected (N)</strong> tally on the right, with <strong>Date</strong> and <strong>Signed-Off By</strong> in the header. Ranks, Service, Events, and Leadership still enter inline &mdash; only MB entry uses the modal.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Direct save</strong>: the modal commits that badge&rsquo;s ticked requirements straight to the ledger, then the card&rsquo;s green-check overlay and Today&rsquo;s Audit Tape update. The &#9733; <strong>award row is gated inline</strong> &mdash; disabled with a live &ldquo;<em>N of M requirement groups met</em>&rdquo; readout until the badge is actually completable (completed + ticked reqs both count).
+            </span>
+          </li>
+          <li>
+            <span>
+              Requirement groups are <strong>collapsible</strong> (with Collapse&nbsp;all / Expand&nbsp;all), a filter box narrows long trees, and <strong>Save&nbsp;&amp;&nbsp;keep&nbsp;going</strong> sits beside <strong>Save&nbsp;&amp;&nbsp;Close</strong> so you can sign off reqs, watch the award unblock, and mark it earned without reopening. <kbd>&#8984;/Ctrl&nbsp;+&nbsp;Enter</kbd> saves; the modal goes full-screen on a phone.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Fast Entry &mdash; Roomier Picker, Less Clutter</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              The Scout-First requirements area was capped at a fixed 420&nbsp;px, leaving a lot of empty space on large monitors. It now <strong>grows to fill the available viewport height</strong> across every tab (Scout &rarr; Eagle, Merit Badges, Events, Leadership&hellip;), self-scaling to the screen while the audit tape keeps its ~10-row height.
+            </span>
+          </li>
+          <li>
+            <span>
+              Checking off a <strong>rank requirement</strong> no longer echoes a confirmation line in the pending list underneath &mdash; the filled checkbox plus the &ldquo;N&nbsp;pending&rdquo; breadcrumb above the tabs are enough. The detailed list is kept only for <strong>Service / Events / Leadership</strong> items, which can&rsquo;t be un-added from their row and still need the inline remove (&times;).
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Universal Ledger &mdash; Bulk Edit</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Rows now have <strong>checkboxes</strong> (plus a select-all header). Selecting one or more reveals a bar with <strong>Bulk edit</strong>, <strong>Archive</strong>, and <strong>Delete</strong> (Delete takes one shared reason). Only active rows are selectable; hidden rows keep their Restore action.
+            </span>
+          </li>
+          <li>
+            <span>
+              The bulk-edit modal shows, per field, whether the selection <strong>agrees or is Mixed</strong> &mdash; a Mixed field lists its distinct values with counts (e.g. <code>PB&nbsp;&times;4 &middot; PN&nbsp;&times;1</code>), so a mis-keyed signer, date, or scout jumps out. <strong>Click a value to normalize every selected row to it</strong> in one click. Only fields you toggle on get written, applied in a single update.
+              <span class="change-note">Bulk-editable fields are the safe set &mdash; Date, Scout, Signed-Off By, Qty, Unit, Notes. Kind, Code, and Description stay one row at a time so structural fields can&rsquo;t be clobbered across a batch.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Requirement-First &mdash; Bulk M&times;N + Confirmation</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Requirement-First now assigns <strong>multiple requirements to multiple scouts at once</strong> &mdash; the requirement picker is multi-select and saving creates the full matrix (every requirement &times; every scout). The button shows the true total, e.g. <strong><code>Save (12)</code></strong> for 3 requirements &times; 4 scouts. Award rows are still gated per scout on the server, so an ineligible scout rejects the batch with a clear message.
+            </span>
+          </li>
+          <li>
+            <span>
+              Because a bulk assignment can create a lot of rows, <strong>Save opens a confirmation modal first</strong> &mdash; it summarizes &ldquo;<em>N requirements &times; M scouts = X entries</em>&rdquo;, lists exactly which requirements and which scouts, and only commits when you click <strong>Add&nbsp;X&nbsp;entries</strong>. Errors surface inside the modal so nothing is lost.
+            </span>
+          </li>
+          <li>
+            <span>
+              The card also <strong>expands to use the window height</strong> like Scout-First &mdash; the requirement picker and the scout grid both grow, so far more of the roster is visible at once on a big monitor.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Name Lookups &mdash; Events, Service Projects, Leadership</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Three new lookup tables (<code>events</code>, <code>service_projects</code>, <code>leadership_positions</code>) drive the Fast Entry <strong>Events, Service, and Leadership pull-downs</strong> &mdash; names are picked from a list instead of free-typed, ending duplicate spellings (the ledger already had a &ldquo;Spring Cam<em>out</em>&rdquo;). Hours (service) and Nights / Miles / Hours (events) are still entered per data-entry; leadership is name-only. Each table was <strong>seeded from the distinct names already in the ledger</strong> &mdash; 27 events, 12 service projects, 6 leadership positions.
+            </span>
+          </li>
+          <li>
+            <span>
+              Every pull-down ends with <strong>&ldquo;+ New&hellip;&rdquo;</strong> &mdash; typing a name uses it for the entry and saves it to the lookup for next time, so Fast Entry stays self-sufficient. <strong>Lookups &amp; Admin</strong> gained three cards (Events, Service Projects, Leadership Positions) to add / rename / remove names, all driven by one shared editor. Removing a name only affects the picker &mdash; the lookups aren&rsquo;t foreign keys, so historical ledger rows keep their recorded name.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

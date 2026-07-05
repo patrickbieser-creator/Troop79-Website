@@ -11,6 +11,18 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { LeaderEditor, type LeaderRow } from './leader-editor';
 import { ScoutEditor, type ScoutRow, type ParentRow } from './scout-editor';
 import { MbEditor, type MbRow, type CounselorRow, type EditReqNode } from './mb-editor';
+import { NameLookupEditor, type NameRow } from './name-lookup-editor';
+import {
+  createEvent,
+  updateEvent,
+  deleteEvent,
+  createServiceProject,
+  updateServiceProject,
+  deleteServiceProject,
+  createLeadershipPosition,
+  updateLeadershipPosition,
+  deleteLeadershipPosition
+} from './actions';
 import styles from './lookups.module.css';
 
 interface MbReqRowFull {
@@ -73,7 +85,10 @@ async function loadLookups() {
     ranksRes,
     rankReqsRes,
     mbReqsRes,
-    mbReqsFullRes
+    mbReqsFullRes,
+    eventsRes,
+    serviceProjectsRes,
+    leadershipPositionsRes
   ] = await Promise.all([
     supabase.from('leaders').select('*').order('code'),
     supabase
@@ -107,7 +122,10 @@ async function loadLookups() {
       .from('merit_badge_requirements')
       .select('id, mb_id, parent_id, code, label, complete_rule, complete_n, sort_order')
       .order('mb_id')
-      .order('sort_order')
+      .order('sort_order'),
+    supabase.from('events').select('id, name').order('name'),
+    supabase.from('service_projects').select('id, name').order('name'),
+    supabase.from('leadership_positions').select('id, name').order('name')
   ]);
 
   // Group parents by scout
@@ -177,13 +195,27 @@ async function loadLookups() {
     counselorsByMb,
     mbReqTrees,
     ranks: ranks.map((r) => ({ id: r.id, display_name: r.display_name })),
-    reqs
+    reqs,
+    events: (eventsRes.data ?? []) as NameRow[],
+    serviceProjects: (serviceProjectsRes.data ?? []) as NameRow[],
+    leadershipPositions: (leadershipPositionsRes.data ?? []) as NameRow[]
   };
 }
 
 export default async function LookupsPage() {
-  const { leaders, scouts, parentsByScout, mbs, counselorsByMb, mbReqTrees, ranks, reqs } =
-    await loadLookups();
+  const {
+    leaders,
+    scouts,
+    parentsByScout,
+    mbs,
+    counselorsByMb,
+    mbReqTrees,
+    ranks,
+    reqs,
+    events,
+    serviceProjects,
+    leadershipPositions
+  } = await loadLookups();
   const leadersLite = leaders.map((l) => ({ code: l.code, name: l.name }));
 
   return (
@@ -257,6 +289,49 @@ export default async function LookupsPage() {
               later slice.
             </p>
           )}
+        </Card>
+      </div>
+
+      <div className={styles.grid}>
+        <Card
+          title="Events"
+          sub={`${events.length} events · drives the Events tab pull-down in Fast Entry · not a foreign key, so removing one only affects the picker`}
+        >
+          <NameLookupEditor
+            rows={events}
+            noun="Event"
+            onCreate={createEvent}
+            onUpdate={updateEvent}
+            onDelete={deleteEvent}
+          />
+        </Card>
+
+        <Card
+          title="Service Projects"
+          sub={`${serviceProjects.length} projects · drives the Service tab pull-down · hours entered per data-entry`}
+        >
+          <NameLookupEditor
+            rows={serviceProjects}
+            noun="Service Project"
+            onCreate={createServiceProject}
+            onUpdate={updateServiceProject}
+            onDelete={deleteServiceProject}
+          />
+        </Card>
+      </div>
+
+      <div className={styles.grid}>
+        <Card
+          title="Leadership Positions"
+          sub={`${leadershipPositions.length} positions · drives the Leadership tab pull-down`}
+        >
+          <NameLookupEditor
+            rows={leadershipPositions}
+            noun="Leadership Position"
+            onCreate={createLeadershipPosition}
+            onUpdate={updateLeadershipPosition}
+            onDelete={deleteLeadershipPosition}
+          />
         </Card>
       </div>
     </>

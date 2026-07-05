@@ -20,9 +20,26 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
+  /* Each card sizes to its own content. */
+  align-items: start;
+}
+
+/* Requirement-First uses available height like Scout-First: the picker and the
+   scout grid get viewport-relative heights (each scrolls internally) so a big
+   monitor is put to use instead of leaving whitespace. Tune the 1050px lower to
+   make them taller, higher to make them shorter. */
+.reqFirstFlexField .picker {
+  height: clamp(260px, calc(100vh - 1050px), 900px);
+  max-height: none;
+}
+.reqFirstFlexField .scoutGrid {
+  max-height: clamp(180px, calc(100vh - 1050px), 900px);
 }
 @media (max-width: 1100px) {
   .twoCol { grid-template-columns: 1fr; }
+  /* Single-column: modest fixed sizes instead of viewport-fill. */
+  .reqFirstFlexField .picker { height: auto; max-height: 420px; }
+  .reqFirstFlexField .scoutGrid { max-height: 220px; }
 }
 
 .card {
@@ -136,6 +153,22 @@
   max-height: 420px;
   display: flex;
   flex-direction: column;
+}
+
+/*
+ * Scout-First "fill the screen" picker. The picker area grows to consume the
+ * available viewport height instead of capping at 420px, so on a big monitor
+ * every tab (Scout, Tenderfoot, Merit Badges, Events, …) gets a tall data-entry
+ * area. The subtracted amount is the reserved height for everything else on the
+ * page — the top bar, page title, the fields above/below the picker, and the
+ * ~10-row audit tape at the bottom — so the audit tape stays visible without
+ * scrolling. Self-scales to any screen height; clamps keep it sane on small or
+ * very large displays.
+ *   ↳ Want the entry area TALLER? Lower the 900px. SHORTER? Raise it.
+ */
+.reqFieldFill .picker {
+  height: clamp(320px, calc(100vh - 900px), 1600px);
+  max-height: none;
 }
 .pickerTabs {
   display: flex;
@@ -619,6 +652,333 @@
   color: var(--admin-gray-500);
   font-style: italic;
   font-size: 12px;
+}
+
+/* ── MB Focus Modal (Scout-First merit-badge entry) ── */
+.mbModal {
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  box-shadow: var(--admin-shadow-md);
+  width: 96vw;
+  max-width: 940px;
+  max-height: 88vh;
+  overflow: hidden;
+  background: var(--admin-white);
+  color: var(--admin-gray-900);
+}
+.mbModal::backdrop {
+  background: rgba(0, 0, 0, 0.42);
+}
+.mbModalInner {
+  display: flex;
+  flex-direction: column;
+  max-height: 88vh;
+  padding: 18px 22px 16px;
+}
+.mbModalHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--admin-gray-200);
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+}
+.mbModalTitle {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+.mbModalBadge {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--admin-navy);
+}
+.mbModalScout {
+  font-size: 13px;
+  color: var(--admin-gray-500);
+}
+.mbModalClose {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--admin-gray-300);
+  border-radius: 4px;
+  background: var(--admin-white);
+  color: var(--admin-gray-700);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.mbModalClose:hover {
+  border-color: var(--admin-danger);
+  color: var(--admin-danger);
+}
+.mbModalMeta {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.mbModalMeta .field {
+  margin-bottom: 0;
+}
+.mbModalPanes {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
+}
+.mbModalTreeCol,
+.mbModalSelectedCol {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.mbModalTreeTools {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.mbModalSearch {
+  flex: 1;
+  border: 1px solid var(--admin-gray-300);
+  border-radius: 3px;
+  padding: 6px 9px;
+  font-family: inherit;
+  font-size: 12.5px;
+  outline: none;
+}
+.mbModalSearch:focus {
+  border-color: var(--admin-navy);
+}
+.mbModalTreeScroll {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid var(--admin-gray-200);
+  border-radius: 4px;
+  padding: 6px 4px;
+  min-height: 240px;
+}
+.mbModalSelectedHead {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--admin-gray-500);
+  margin-bottom: 6px;
+}
+.mbModalProgress {
+  font-size: 11.5px;
+  color: var(--admin-gray-600, var(--admin-gray-700));
+  background: var(--admin-gray-50);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: 4px;
+  padding: 6px 9px;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+.mbModalSelectedScroll {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px dashed var(--admin-gray-200);
+  border-radius: 4px;
+  padding: 4px 8px;
+  min-height: 0;
+}
+.mbModalSelectedEmpty {
+  padding: 20px 12px;
+  text-align: center;
+  font-style: italic;
+  font-size: 12px;
+  color: var(--admin-gray-400);
+  line-height: 1.5;
+}
+.mbSelRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 2px;
+  border-bottom: 1px dotted var(--admin-gray-100);
+  font-size: 12.5px;
+}
+.mbSelRow:last-child {
+  border-bottom: none;
+}
+.mbSelLabel {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--admin-gray-900);
+}
+.mbModalToolBtn {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--admin-gray-700);
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-300);
+  padding: 4px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.mbModalToolBtn:hover {
+  border-color: var(--admin-navy);
+  color: var(--admin-navy);
+}
+.mbModalFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  border-top: 1px solid var(--admin-gray-200);
+  padding-top: 12px;
+  margin-top: 14px;
+}
+.mbModalHint {
+  margin-right: auto;
+  font-size: 11px;
+  color: var(--admin-gray-400);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Collapsible group header (only in the focus modal) */
+.parentHeaderClickable {
+  cursor: pointer;
+  user-select: none;
+}
+.parentHeaderClickable:hover {
+  background: var(--admin-gray-50);
+}
+.collapseChevron {
+  flex-shrink: 0;
+  width: 14px;
+  font-size: 10px;
+  color: var(--admin-gray-500);
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .mbModal {
+    width: 100vw;
+    max-width: 100vw;
+    max-height: 100vh;
+    height: 100dvh;
+    border-radius: 0;
+  }
+  .mbModalInner {
+    max-height: 100dvh;
+    height: 100dvh;
+  }
+  .mbModalPanes {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+  .mbModalMeta {
+    grid-template-columns: 1fr 1fr;
+  }
+  .mbModalTreeScroll {
+    min-height: 200px;
+  }
+  /* Keep the save actions reachable without scrolling on a phone. */
+  .mbModalFooter {
+    position: sticky;
+    bottom: 0;
+    background: var(--admin-white);
+    margin-top: 8px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .mbModalHint {
+    display: none;
+  }
+}
+
+/* ── Requirement-First confirmation modal ── */
+.confirmDialog {
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  box-shadow: var(--admin-shadow-md);
+  width: 92vw;
+  max-width: 580px;
+  background: var(--admin-white);
+  color: var(--admin-gray-900);
+}
+.confirmDialog::backdrop {
+  background: rgba(0, 0, 0, 0.42);
+}
+.confirmInner {
+  padding: 20px 24px 16px;
+  font-family: inherit;
+}
+.confirmHeader {
+  border-bottom: 1px solid var(--admin-gray-200);
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+}
+.confirmHeader h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--admin-navy);
+  margin-bottom: 4px;
+}
+.confirmHeader p {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--admin-gray-700);
+}
+.confirmLists {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.confirmList {
+  border: 1px solid var(--admin-gray-200);
+  border-radius: 4px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+.confirmListHead {
+  position: sticky;
+  top: 0;
+  background: var(--admin-gray-50);
+  border-bottom: 1px solid var(--admin-gray-200);
+  padding: 6px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--admin-gray-500);
+}
+.confirmListRow {
+  padding: 4px 10px;
+  font-size: 12.5px;
+  color: var(--admin-gray-900);
+  border-bottom: 1px dotted var(--admin-gray-100);
+}
+.confirmListRow:last-child {
+  border-bottom: none;
+}
+.confirmFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  border-top: 1px solid var(--admin-gray-200);
+  padding-top: 12px;
+  margin-top: 16px;
+}
+
+@media (max-width: 560px) {
+  .confirmLists {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Status banner */

@@ -419,6 +419,169 @@ function collectRenames(
   return acc;
 }
 
+// ── Events (lookup for the Fast Entry Events tab) ───────────────────────────
+
+/**
+ * Creates an event name. Idempotent: a duplicate name is treated as success
+ * (the event already exists, which is the caller's goal — this lets the Fast
+ * Entry "+ New event" flow fire-and-forget without error handling).
+ */
+export async function createEvent(formData: FormData): Promise<Result> {
+  try {
+    await ensureLeader();
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  const name = String(formData.get('name') ?? '').trim();
+  if (!name) return { ok: false, error: 'Event name is required' };
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.from('events').insert({ name });
+  if (error) {
+    if (error.code === '23505' || error.message.includes('duplicate key')) {
+      return { ok: true }; // already exists — fine
+    }
+    return { ok: false, error: error.message };
+  }
+  revalidateAll();
+  return { ok: true };
+}
+
+export async function updateEvent(formData: FormData): Promise<Result> {
+  try {
+    await ensureLeader();
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  const id = Number(formData.get('id'));
+  const name = String(formData.get('name') ?? '').trim();
+  if (!Number.isFinite(id) || id <= 0) return { ok: false, error: 'Invalid event id' };
+  if (!name) return { ok: false, error: 'Event name is required' };
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.from('events').update({ name }).eq('id', id);
+  if (error) {
+    if (error.code === '23505' || error.message.includes('duplicate key')) {
+      return { ok: false, error: `An event named "${name}" already exists.` };
+    }
+    return { ok: false, error: error.message };
+  }
+  revalidateAll();
+  return { ok: true };
+}
+
+/**
+ * Removes an event from the lookup. Safe: events aren't a foreign key for the
+ * ledger, so existing entries keep their recorded label — this only drops the
+ * name from the Fast Entry pull-down.
+ */
+export async function deleteEvent(formData: FormData): Promise<Result> {
+  try {
+    await ensureLeader();
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  const id = Number(formData.get('id'));
+  if (!Number.isFinite(id) || id <= 0) return { ok: false, error: 'Invalid event id' };
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.from('events').delete().eq('id', id);
+  if (error) return { ok: false, error: error.message };
+  revalidateAll();
+  return { ok: true };
+}
+
+// ── Service projects + Leadership positions (name-only lookups) ─────────────
+//
+// Same idempotent create / rename / delete shape as events, shared across both
+// tables via helpers. Neither is a foreign key for the ledger.
+
+async function insertNamedLookup(
+  table: 'service_projects' | 'leadership_positions',
+  formData: FormData
+): Promise<Result> {
+  try {
+    await ensureLeader();
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  const name = String(formData.get('name') ?? '').trim();
+  if (!name) return { ok: false, error: 'Name is required' };
+  const supabase = createAdminClient();
+  const { error } = await supabase.from(table).insert({ name });
+  if (error) {
+    if (error.code === '23505' || error.message.includes('duplicate key')) {
+      return { ok: true }; // already exists — fine
+    }
+    return { ok: false, error: error.message };
+  }
+  revalidateAll();
+  return { ok: true };
+}
+
+async function updateNamedLookup(
+  table: 'service_projects' | 'leadership_positions',
+  formData: FormData
+): Promise<Result> {
+  try {
+    await ensureLeader();
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  const id = Number(formData.get('id'));
+  const name = String(formData.get('name') ?? '').trim();
+  if (!Number.isFinite(id) || id <= 0) return { ok: false, error: 'Invalid id' };
+  if (!name) return { ok: false, error: 'Name is required' };
+  const supabase = createAdminClient();
+  const { error } = await supabase.from(table).update({ name }).eq('id', id);
+  if (error) {
+    if (error.code === '23505' || error.message.includes('duplicate key')) {
+      return { ok: false, error: `"${name}" already exists.` };
+    }
+    return { ok: false, error: error.message };
+  }
+  revalidateAll();
+  return { ok: true };
+}
+
+async function deleteNamedLookup(
+  table: 'service_projects' | 'leadership_positions',
+  formData: FormData
+): Promise<Result> {
+  try {
+    await ensureLeader();
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  const id = Number(formData.get('id'));
+  if (!Number.isFinite(id) || id <= 0) return { ok: false, error: 'Invalid id' };
+  const supabase = createAdminClient();
+  const { error } = await supabase.from(table).delete().eq('id', id);
+  if (error) return { ok: false, error: error.message };
+  revalidateAll();
+  return { ok: true };
+}
+
+export async function createServiceProject(formData: FormData): Promise<Result> {
+  return insertNamedLookup('service_projects', formData);
+}
+export async function updateServiceProject(formData: FormData): Promise<Result> {
+  return updateNamedLookup('service_projects', formData);
+}
+export async function deleteServiceProject(formData: FormData): Promise<Result> {
+  return deleteNamedLookup('service_projects', formData);
+}
+
+export async function createLeadershipPosition(formData: FormData): Promise<Result> {
+  return insertNamedLookup('leadership_positions', formData);
+}
+export async function updateLeadershipPosition(formData: FormData): Promise<Result> {
+  return updateNamedLookup('leadership_positions', formData);
+}
+export async function deleteLeadershipPosition(formData: FormData): Promise<Result> {
+  return deleteNamedLookup('leadership_positions', formData);
+}
+
 async function insertReqTree(
   supabase: ReturnType<typeof createAdminClient>,
   mbId: string,
