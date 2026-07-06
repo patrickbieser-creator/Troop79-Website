@@ -12,6 +12,7 @@ import { LeaderEditor, type LeaderRow } from './leader-editor';
 import { ScoutEditor, type ScoutRow, type ParentRow } from './scout-editor';
 import { MbEditor, type MbRow, type CounselorRow, type EditReqNode } from './mb-editor';
 import { NameLookupEditor, type NameRow } from './name-lookup-editor';
+import { EventEditor, type EventRow } from './event-editor';
 import {
   createEvent,
   updateEvent,
@@ -123,7 +124,7 @@ async function loadLookups() {
       .select('id, mb_id, parent_id, code, label, complete_rule, complete_n, sort_order')
       .order('mb_id')
       .order('sort_order'),
-    supabase.from('events').select('id, name').order('name'),
+    supabase.from('events').select('id, name, default_kind').order('name'),
     supabase.from('service_projects').select('id, name').order('name'),
     supabase.from('leadership_positions').select('id, name').order('name')
   ]);
@@ -196,7 +197,7 @@ async function loadLookups() {
     mbReqTrees,
     ranks: ranks.map((r) => ({ id: r.id, display_name: r.display_name })),
     reqs,
-    events: (eventsRes.data ?? []) as NameRow[],
+    events: (eventsRes.data ?? []) as EventRow[],
     serviceProjects: (serviceProjectsRes.data ?? []) as NameRow[],
     leadershipPositions: (leadershipPositionsRes.data ?? []) as NameRow[]
   };
@@ -295,11 +296,10 @@ export default async function LookupsPage() {
       <div className={styles.grid}>
         <Card
           title="Events"
-          sub={`${events.length} events · drives the Events tab pull-down in Fast Entry · not a foreign key, so removing one only affects the picker`}
+          sub={`${events.length} events · each classified as a Campout, Hike, Day Outing, or Fundraiser so Fast Entry never has to ask twice · drives the Events tab pull-down · not a foreign key, so removing one only affects the picker`}
         >
-          <NameLookupEditor
+          <EventEditor
             rows={events}
-            noun="Event"
             onCreate={createEvent}
             onUpdate={updateEvent}
             onDelete={deleteEvent}

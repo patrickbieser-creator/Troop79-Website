@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>News &amp; Events CMS — Prototype Index — Scout Troop 79</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/news-cms.css" />
+</head>
+<body>
+
+  <div class="proto-banner">
+    <div class="proto-banner-inner">
+      <p><strong>Prototype</strong> Hand-rolled News &amp; Events publishing system &mdash; wireframe-fidelity comps for stakeholder review, not a working app.</p>
+      <a href="../../index.html">&larr; Back to live site prototype</a>
+    </div>
+  </div>
+
+  <header class="masthead" role="banner">
+    <div class="masthead-inner">
+      <div class="masthead-logo">
+        <img src="../../assets/images/troop-79-logo.png" alt="Scout Troop 79 &mdash; Milwaukee, WI" />
+      </div>
+      <div class="masthead-wordmark">
+        <h1 class="site-name">Scout Troop 79</h1>
+        <p class="site-sub">Milwaukee, Wisconsin &nbsp;&middot;&nbsp; Est. 2022</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="hub-page">
+    <span class="section-label">Design Comps</span>
+    <h1>News &amp; Events CMS</h1>
+    <p class="hub-intro">Five clickable comps validating the visual direction and authoring UX for a hand-rolled news/events system &mdash; scouts draft articles through per-type templates, leaders review and publish. Built at wireframe fidelity using the site's real design tokens, not the final production code.</p>
+    <p>Placeholder content throughout is scouting-flavored but fictional. Each page carries its own judgment-call notes as HTML comments near the closing <code>&lt;/body&gt;</code> tag.</p>
+
+    <div class="hub-grid">
+
+      <a class="hub-card" href="template-news.html" style="display:block;">
+        <span class="hub-card-kicker">Article Detail &middot; News Type</span>
+        <h3>News Template</h3>
+        <p>Full <code>/news/[slug]</code> page for a News article: hero, headline, and a flexible body demonstrating a heading, paragraphs, a single captioned image, an uploaded photo gallery grid, a <strong>Gallery Link card</strong> (link-out to an external Google Photos album, shown side by side with the uploaded grid), a markdown table, and a responsive video embed.</p>
+        <span class="hub-card-link">Open template &rarr;</span>
+      </a>
+
+      <a class="hub-card" href="template-event.html" style="display:block;">
+        <span class="hub-card-kicker">Article Detail &middot; Event Type</span>
+        <h3>Event Template</h3>
+        <p>Same flexible body, plus a date/time/location panel below the headline. Includes a live toggle to compare the with-Register-button state against the no-registration-link state.</p>
+        <span class="hub-card-link">Open template &rarr;</span>
+      </a>
+
+      <a class="hub-card" href="template-recognition.html" style="display:block;">
+        <span class="hub-card-kicker">Article Detail &middot; Recognition Type</span>
+        <h3>Recognition Template</h3>
+        <p>Built around a Gallery Link centerpiece &mdash; a link-out card to the troop's external Google Photos album, since Court of Honor photo sets realistically live there, not in an in-house upload &mdash; plus a mocked-up (clearly-flagged optional/future) achievement list mapping scout name to rank or badge earned.</p>
+        <span class="hub-card-link">Open template &rarr;</span>
+      </a>
+
+      <a class="hub-card is-wide" href="editor-event.html" style="display:block;">
+        <span class="hub-card-kicker">Authoring UX &middot; Split-View</span>
+        <h3>Event Editor (Write Here, See It There)</h3>
+        <p>Two-pane authoring mockup: a form on the left (title, excerpt, type picker, date/time/location, a markdown body with insert-image/gallery/<strong>gallery link</strong>/video toolbar buttons and a syntax cheat-sheet) drives a genuinely live-rendered preview on the right, styled exactly like the Event template. Insert Gallery Link prompts for a Google Photos/Facebook URL and auto-detects the source label. Validates the "no rich-text editor &mdash; markdown plus structured fields plus live preview" approach.</p>
+        <span class="hub-card-link">Open editor &rarr;</span>
+      </a>
+
+      <a class="hub-card is-wide" href="media-picker.html" style="display:block;">
+        <span class="hub-card-kicker">Component &middot; Modal</span>
+        <h3>Media Picker (Bunny CDN)</h3>
+        <p>Upload New (drag-and-drop, with seeded success/error states) and Browse Existing (searchable, filterable thumbnail grid with single- or multi-select for galleries) &mdash; including a deliberate edge case where an existing photo is missing alt text.</p>
+        <span class="hub-card-link">Open component &rarr;</span>
+      </a>
+
+    </div>
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <div class="footer-inner">
+      <div class="footer-bottom" style="border-top:none;padding-top:0;">
+        <p>&copy; 2026 Scout Troop 79 &nbsp;&middot;&nbsp; Milwaukee, Wisconsin &mdash; Prototype build, not for public use</p>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

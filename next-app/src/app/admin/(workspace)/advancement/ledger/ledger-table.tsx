@@ -31,10 +31,11 @@ const KIND_LABEL: Record<LedgerKind, string> = {
   rank_award: 'Rank award',
   merit_badge_requirement: 'MB req',
   merit_badge_award: 'MB award',
-  attendance: 'Attendance',
   service_hours: 'Service',
-  camping_nights: 'Camping',
-  hiking_miles: 'Hiking',
+  camping_nights: 'Campout',
+  hiking_miles: 'Hike',
+  day_outing: 'Day Outing',
+  fundraiser: 'Fundraiser',
   leadership: 'Leadership',
   award: 'Award'
 };
@@ -43,10 +44,11 @@ const KIND_CLASS: Record<LedgerKind, string> = {
   rank_award: styles.kindRankReq,
   merit_badge_requirement: styles.kindMbReq,
   merit_badge_award: styles.kindMbAward,
-  attendance: styles.kindAttendance,
   service_hours: styles.kindService,
   camping_nights: styles.kindCamping,
   hiking_miles: styles.kindHiking,
+  day_outing: styles.kindDayOuting,
+  fundraiser: styles.kindFundraiser,
   leadership: styles.kindLeadership,
   award: styles.kindMbAward
 };

@@ -46,7 +46,27 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         href: '/admin/advancement/mb-progress',
         matchPath: '/admin/advancement/mb-progress'
       },
+      {
+        label: 'Audits',
+        href: '/admin/advancement/audits',
+        matchPath: '/admin/advancement/audits'
+      },
       { label: 'Court of Honor', disabled: true }
+    ]
+  },
+  {
+    title: 'News & Events',
+    items: [
+      {
+        label: 'Articles',
+        href: '/admin/news/articles',
+        matchPath: '/admin/news/articles'
+      },
+      {
+        label: 'Tags',
+        href: '/admin/news/tags',
+        matchPath: '/admin/news/tags'
+      }
     ]
   },
   {

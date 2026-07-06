@@ -13,11 +13,19 @@
 const COOKIE_NAME = 't79_leader_session';
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 days
 
+export type SessionRole = 'leader' | 'scout';
+
 export interface LeaderSession {
   /** Username they typed at login (e.g. 'pbieser'). Used for display only. */
   leader: string;
   /** Issued-at timestamp, ms since epoch. */
   iat: number;
+  /**
+   * 'leader' | 'scout'. Missing on cookies issued before this field existed —
+   * verifySession() defaults those to 'leader' so already-signed-in leaders
+   * aren't logged out.
+   */
+  role: SessionRole;
 }
 
 function getSecret(): string {
@@ -88,9 +96,12 @@ export async function verifySession(token: string | undefined): Promise<LeaderSe
   if (!(await hmacVerify(payload, signature))) return null;
   try {
     const json = new TextDecoder().decode(b64UrlDecode(payload));
-    const parsed = JSON.parse(json) as LeaderSession;
+    const parsed = JSON.parse(json) as Partial<LeaderSession>;
     if (typeof parsed.leader !== 'string' || typeof parsed.iat !== 'number') return null;
-    return parsed;
+    // Cookies signed before `role` existed default to 'leader' (their only
+    // possible role at the time) so existing sessions keep working.
+    const role: SessionRole = parsed.role === 'scout' ? 'scout' : 'leader';
+    return { leader: parsed.leader, iat: parsed.iat, role };
   } catch {
     return null;
   }

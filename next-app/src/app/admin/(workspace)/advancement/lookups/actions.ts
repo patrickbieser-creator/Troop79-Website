@@ -4,6 +4,18 @@ import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
 import { createAdminClient } from '@/lib/supabase/server';
+import type { LedgerKind } from '@/lib/supabase/types';
+
+/** The event-tab kinds an event can be classified as — Day Outing/Fundraiser
+ *  have no natural quantity of their own, Camping/Hiking are implied by
+ *  Nights/Miles but still get a stored default so the Type never needs
+ *  re-picking for a recurring event. */
+const VALID_EVENT_KINDS: ReadonlySet<LedgerKind> = new Set<LedgerKind>([
+  'camping_nights',
+  'hiking_miles',
+  'day_outing',
+  'fundraiser'
+]);
 
 /**
  * Lookups & Admin write paths. Same pattern as the ledger actions: leader
@@ -422,9 +434,12 @@ function collectRenames(
 // ── Events (lookup for the Fast Entry Events tab) ───────────────────────────
 
 /**
- * Creates an event name. Idempotent: a duplicate name is treated as success
- * (the event already exists, which is the caller's goal — this lets the Fast
- * Entry "+ New event" flow fire-and-forget without error handling).
+ * Creates an event, classified with a default_kind (Campout, Hike, Day
+ * Outing, Fundraiser, ...) so Fast Entry can resolve the ledger kind
+ * automatically every time this named event is picked again. Idempotent: a
+ * duplicate name is treated as success (the event already exists, which is
+ * the caller's goal — this lets the Fast Entry "+ New event" flow
+ * fire-and-forget without error handling).
  */
 export async function createEvent(formData: FormData): Promise<Result> {
   try {
@@ -434,9 +449,14 @@ export async function createEvent(formData: FormData): Promise<Result> {
   }
   const name = String(formData.get('name') ?? '').trim();
   if (!name) return { ok: false, error: 'Event name is required' };
+  const defaultKindRaw = String(formData.get('default_kind') ?? '').trim();
+  if (defaultKindRaw && !VALID_EVENT_KINDS.has(defaultKindRaw as LedgerKind)) {
+    return { ok: false, error: 'Invalid event type' };
+  }
+  const defaultKind = defaultKindRaw || null;
 
   const supabase = createAdminClient();
-  const { error } = await supabase.from('events').insert({ name });
+  const { error } = await supabase.from('events').insert({ name, default_kind: defaultKind });
   if (error) {
     if (error.code === '23505' || error.message.includes('duplicate key')) {
       return { ok: true }; // already exists — fine
@@ -457,9 +477,17 @@ export async function updateEvent(formData: FormData): Promise<Result> {
   const name = String(formData.get('name') ?? '').trim();
   if (!Number.isFinite(id) || id <= 0) return { ok: false, error: 'Invalid event id' };
   if (!name) return { ok: false, error: 'Event name is required' };
+  const defaultKindRaw = String(formData.get('default_kind') ?? '').trim();
+  if (defaultKindRaw && !VALID_EVENT_KINDS.has(defaultKindRaw as LedgerKind)) {
+    return { ok: false, error: 'Invalid event type' };
+  }
+  const defaultKind = defaultKindRaw || null;
 
   const supabase = createAdminClient();
-  const { error } = await supabase.from('events').update({ name }).eq('id', id);
+  const { error } = await supabase
+    .from('events')
+    .update({ name, default_kind: defaultKind })
+    .eq('id', id);
   if (error) {
     if (error.code === '23505' || error.message.includes('duplicate key')) {
       return { ok: false, error: `An event named "${name}" already exists.` };

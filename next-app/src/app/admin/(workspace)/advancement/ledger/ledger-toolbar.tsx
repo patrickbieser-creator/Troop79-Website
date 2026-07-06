@@ -18,10 +18,11 @@ const KIND_OPTIONS: { value: string; label: string }[] = [
   { value: 'rank_award', label: 'Rank award' },
   { value: 'merit_badge_requirement', label: 'MB requirement' },
   { value: 'merit_badge_award', label: 'MB award' },
-  { value: 'attendance', label: 'Attendance' },
   { value: 'service_hours', label: 'Service hours' },
-  { value: 'camping_nights', label: 'Camping nights' },
-  { value: 'hiking_miles', label: 'Hiking miles' },
+  { value: 'camping_nights', label: 'Campout' },
+  { value: 'hiking_miles', label: 'Hike' },
+  { value: 'day_outing', label: 'Day Outing' },
+  { value: 'fundraiser', label: 'Fundraiser' },
   { value: 'leadership', label: 'Leadership' },
   { value: 'award', label: 'Other award' }
 ];

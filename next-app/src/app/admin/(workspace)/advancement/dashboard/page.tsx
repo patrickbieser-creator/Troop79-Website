@@ -9,6 +9,7 @@
 
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { fetchAllRows } from '@/lib/supabase/paginate';
 import type { LedgerEntry, LedgerKind } from '@/lib/supabase/types';
 import styles from './dashboard.module.css';
 
@@ -56,10 +57,11 @@ const KIND_PRETTY: Record<LedgerKind, string> = {
   rank_award: 'Rank',
   merit_badge_requirement: 'MB req',
   merit_badge_award: 'MB',
-  attendance: 'Event',
   service_hours: 'Service',
-  camping_nights: 'Camping',
+  camping_nights: 'Campout',
   hiking_miles: 'Hike',
+  day_outing: 'Day Outing',
+  fundraiser: 'Fundraiser',
   leadership: 'Leader',
   award: 'Award'
 };
@@ -74,7 +76,7 @@ async function loadDashboard() {
     scoutsRes,
     ranksRes,
     rankReqsRes,
-    rankReqLedgerRes,
+    rankReqLedger,
     mbCatRes,
     recentRes,
     activeLedgerCountRes,
@@ -86,10 +88,15 @@ async function loadDashboard() {
       .from('rank_requirements')
       .select('rank_id, code, label')
       .is('parent_id', null),
-    supabase
-      .from('ledger_active')
-      .select('scout_id, code, kind')
-      .eq('kind', 'rank_requirement'),
+    // Unbounded past the ~1000-row PostgREST cap once the ledger grows —
+    // paginate rather than silently see a partial slice (see lib/supabase/paginate.ts).
+    fetchAllRows<{ scout_id: string; code: string }>((from, to) =>
+      supabase
+        .from('ledger_active')
+        .select('scout_id, code')
+        .eq('kind', 'rank_requirement')
+        .range(from, to)
+    ),
     supabase.from('merit_badges').select('id, name'),
     supabase
       .from('ledger_active')
@@ -108,10 +115,6 @@ async function loadDashboard() {
     rank_id: string;
     code: string;
     label: string;
-  }>;
-  const rankReqLedger = (rankReqLedgerRes.data ?? []) as Array<{
-    scout_id: string;
-    code: string;
   }>;
   const mbMap = new Map<string, string>();
   for (const m of (mbCatRes.data ?? []) as Array<{ id: string; name: string }>) {

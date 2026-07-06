@@ -28,10 +28,11 @@ const KIND_LABEL: Record<LedgerKind, string> = {
   rank_award: 'Rank',
   merit_badge_requirement: 'MB req',
   merit_badge_award: 'MB',
-  attendance: 'Event',
   service_hours: 'Service',
-  camping_nights: 'Camping',
+  camping_nights: 'Campout',
   hiking_miles: 'Hike',
+  day_outing: 'Day Outing',
+  fundraiser: 'Fundraiser',
   leadership: 'Leader',
   award: 'Award'
 };

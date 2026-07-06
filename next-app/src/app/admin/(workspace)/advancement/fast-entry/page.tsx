@@ -78,7 +78,7 @@ async function loadFastEntry(): Promise<{
       .select('id, mb_id, parent_id, code, label, complete_rule, complete_n, sort_order')
       .order('mb_id')
       .order('sort_order'),
-    supabase.from('events').select('id, name').order('name'),
+    supabase.from('events').select('id, name, default_kind').order('name'),
     supabase.from('service_projects').select('id, name').order('name'),
     supabase.from('leadership_positions').select('id, name').order('name'),
     supabase
@@ -123,7 +123,11 @@ async function loadFastEntry(): Promise<{
   const rankReqs = (rankReqsRes.data ?? []) as RankReqRow[];
   const mbs = (mbsRes.data ?? []) as { id: string; name: string; eagle: boolean }[];
   const mbReqs = (mbReqsRes.data ?? []) as MbReqRow[];
-  const events = (eventsRes.data ?? []) as { id: number; name: string }[];
+  const events = (eventsRes.data ?? []) as {
+    id: number;
+    name: string;
+    default_kind: import('@/lib/supabase/types').LedgerKind | null;
+  }[];
   const serviceProjects = (serviceProjectsRes.data ?? []) as { id: number; name: string }[];
   const leadershipPositions = (leadershipPositionsRes.data ?? []) as { id: number; name: string }[];
   const tapeRows = (tapeRes.data ?? []) as LedgerEntry[];

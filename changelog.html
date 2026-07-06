@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Prototyping &mdash; Phase 1</strong></p>
-      <p>Last updated: <strong>May 25, 2026</strong></p>
+      <p>Last updated: <strong>July 6, 2026</strong></p>
     </div>
   </div>
 
@@ -494,6 +494,154 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v0.18 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v0.18</span>
+        <span class="release-date">July 6, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Admin &mdash; Deterministic Audits Section</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              New <strong>Audits</strong> workspace section (replacing the earlier single-purpose Rank Audit page), built to host multiple independent, non-AI checks side by side. Two ship today: <strong>Board of Review done but requirements missing</strong> (a scout has a Board of Review on record for a rank but is missing some of that rank&rsquo;s own requirement rows) and <strong>Activity / Campout thresholds</strong> (a scout has logged enough activities to satisfy Second Class 1a &mdash; 5 activities / 3 campouts &mdash; or First Class 1a &mdash; 10 / 6 &mdash; but doesn&rsquo;t have that requirement signed off yet).
+              <span class="change-note">The two checks are deliberately complementary: BoR-missing is <em>reactive</em> (only catches a gap once the rank is already &ldquo;complete&rdquo;), Activity/Campout is <em>proactive</em> (fires from the ledger alone, regardless of BoR status). A scout can reasonably appear in both for the same gap &mdash; two independent confirmations, not a bug.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              Every finding gets a review card &mdash; a checkbox list of the missing requirements plus date + signing-leader inputs. Approving inserts the missing rows straight into the Universal Ledger; the card disappears on refresh.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Bug fix</strong>: both checks now correctly exclude inactive scouts (a scout who dropped out or moved away no longer shows up as &ldquo;missing&rdquo; a requirement they&rsquo;ll never complete).
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Scout Clipboard &mdash; Bug Fix &amp; New Section</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Fixed a rank-progression display bug</strong>: the Clipboard&rsquo;s rank timeline was showing a scout&rsquo;s highest <em>already-earned</em> rank as &ldquo;in progress&rdquo; instead of earned &mdash; caught when a scout with a completed Tenderfoot Board of Review still showed Tenderfoot as in-progress. Checked every other place the underlying field is used; this was the only spot with the inversion.
+            </span>
+          </li>
+          <li>
+            <span>
+              New <strong>Merit Badges In Progress</strong> accordion at the bottom of the Clipboard &mdash; one expandable section per badge with a requirement signed off but not yet awarded, showing every requirement&rsquo;s complete/open state. Completed requirements get a small <strong>green checkmark</strong> plus bold text; the date completed and who signed it off move to their own right-aligned column so they don&rsquo;t compete with the requirement text for attention.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Merit Badge Tables &mdash; Award Column Polish</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              The <strong>Award column moved to the front</strong> (right after Scout) in every scout &times; requirement grid, public and admin &mdash; the &#9733;/&#9734; earned/not-earned indicator is now the first thing a leader sees per row, not buried past a dozen requirement columns.
+            </span>
+          </li>
+          <li>
+            <span>
+              Fixed an <strong>awkward header-height mismatch</strong> the Award column had picked up (caught from a user screenshot) &mdash; its header now splits into two stacked cells matching the natural two-row height of the neighboring requirement-group headers, instead of a single tall cell leaving unfilled space.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Universal Ledger &amp; Fast Entry &mdash; Event Classification</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Fixed a real miscategorization bug: the annual <strong>Pancake Breakfast fundraiser</strong> &mdash; 55 rows across three years &mdash; had been logged as a 2-night campout, simply because Fast Entry had no way to say &ldquo;this event isn&rsquo;t a campout or a hike.&rdquo; Every event now carries its own <strong>Type</strong> &mdash; Campout, Hike, Day Outing, or Fundraiser &mdash; corrected in place for the 55 affected rows after a dry-run review.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Every named event remembers its Type</strong>, set once in Lookups &amp; Admin (or the first time it&rsquo;s logged) and applied automatically after that. A recurring Fundraiser or Day Outing logs itself with zero extra clicks; a Campout or Hike still asks for Nights/Miles as usual, with Type only stepping in if a particular visit doesn&rsquo;t fit the event&rsquo;s usual pattern. All 28 existing events were classified automatically from their own history &mdash; nothing was left unclassified.
+              <span class="change-note">Design went through three rounds in one sitting: first a separate editable &ldquo;Event Type&rdquo; lookup table alongside the existing ledger type; then Camping/Hiking were recognized as redundant with the existing type field and dropped from it; then the whole separate lookup table was recognized as redundant too and folded directly in &mdash; every event category is now a single, first-class ledger type, with no translation layer in between. The generic &ldquo;Attendance&rdquo; catch-all is gone entirely &mdash; every check-in event resolves to a real category.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              The Universal Ledger&rsquo;s Type column and filter, the Leader Dashboard&rsquo;s recent-activity feed, and the Scout Clipboard&rsquo;s Activities panel all display the corrected categories consistently.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v0.17 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v0.17</span>
+        <span class="release-date">July 6, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Scout Clipboard &mdash; Automatic Eagle / Other Merit Badge Breakdown</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              The Star, Life, and Eagle rank blocks now append a <strong>computed merit-badge breakdown</strong> below the manual checklist &mdash; an &ldquo;Eagle Merit Badges&rdquo; and an &ldquo;Other Merit Badges&rdquo; list, each headed by a live <strong>earned&nbsp;/&nbsp;quota fraction</strong> (e.g. <code>4/4</code>, <code>8/6</code> when a scout has earned more than the minimum). Badges are sorted by award date and bucketed FIFO into Star&rsquo;s quota, then Life&rsquo;s, with every remaining badge &mdash; including overflow past the minimum &mdash; landing in Eagle&rsquo;s column so nothing earned is ever hidden.
+              <span class="change-note">Quotas: Star 4 Eagle-required + 2 other; Life +3 + 2; Eagle +6 + 4 (13 Eagle-required / 21 total, cumulative). The existing manual &ldquo;N Merit Badges&rdquo; checklist row is untouched &mdash; this section is purely additive underneath it.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              Quota slots that aren&rsquo;t filled yet render as <strong>reserved blank lines</strong>, the same way an unearned numbered requirement shows an empty row &mdash; so the space for what&rsquo;s still needed is visible, not just what&rsquo;s already been earned.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Scout Clipboard &mdash; Layout &amp; Styling Cleanup</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Star and Life now stack in one column</strong>, directly beneath each other, with First Class in column&nbsp;1 and Eagle in column&nbsp;3 &mdash; the Clipboard is back to a clean two-row layout instead of Life spilling into a lonely third row under First Class.
+            </span>
+          </li>
+          <li>
+            <span>
+              A fixed gap above Life&rsquo;s checklist bottom-aligns it exactly with First Class and Eagle&rsquo;s columns (verified pixel-for-pixel across scouts with very different histories), and the &ldquo;Life&rdquo; heading picked up a top border to visually close off that gap.
+            </span>
+          </li>
+          <li>
+            <span>
+              The shaded background was removed from every <strong>Board of Review</strong> row and from the new &ldquo;Eagle Merit Badges&rdquo; / &ldquo;Other Merit Badges&rdquo; section labels &mdash; both stay bold, just without the tan highlight.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Fast Entry &mdash; Scout-First Polish</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              The <strong>Scout</strong> picker moved to the top of the Scout-First card, above Requirements &mdash; pick the scout first, then everything else follows. Date Completed, Signed Off By, and Notes stay at the bottom.
+            </span>
+          </li>
+          <li>
+            <span>
+              The <strong>MBs tab</strong> now highlights merit badges the selected scout has <strong>already earned</strong> in green on the catalog grid, so completed badges are obvious at a glance before drilling into a specific one.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

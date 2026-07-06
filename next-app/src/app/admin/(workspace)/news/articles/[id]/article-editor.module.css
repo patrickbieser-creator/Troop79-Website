@@ -1,0 +1,147 @@
+/* Ported from prototypes/news-cms/assets/news-cms.css's EDITOR SPLIT-VIEW
+   section. Uses --admin-* tokens (workspace chrome) for the page header and
+   the prototype's own design tokens (--navy, --forest, --transition, etc.,
+   already in globals.css) for the split-view itself, matching editor-event.html. */
+
+.pageTitle {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  border-bottom: 1px solid var(--admin-gray-200);
+  padding-bottom: 14px;
+  margin-bottom: 16px;
+}
+.pageTitle h1 { font-size: 22px; font-weight: 700; color: var(--admin-navy); margin-bottom: 4px; }
+.pageTitle p { font-size: 13px; color: var(--admin-gray-500); max-width: 640px; line-height: 1.5; }
+.backLink { font-size: 12px; color: var(--admin-gray-500); }
+.backLink:hover { color: var(--admin-navy); }
+
+.editorShell {
+  display: grid;
+  grid-template-columns: 460px 1fr;
+  min-height: 70vh;
+  border: 1px solid var(--border-light);
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--warm-white);
+}
+.editorPane {
+  background: var(--warm-white);
+  border-right: 1px solid var(--border-light);
+  padding: 22px 26px 60px;
+  overflow-y: auto;
+  max-height: calc(100vh - 240px);
+}
+.editorPaneHead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.editorPaneHead h2 {
+  font-family: var(--font-ui); font-size: 11px; font-weight: 700; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--navy); border-bottom: 2px solid var(--navy); padding-bottom: 6px;
+}
+.statusPill {
+  font-family: var(--font-ui); font-size: 10px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; padding: 3px 9px; border-radius: 999px; background: var(--khaki-light); color: var(--bark);
+}
+.statusPillPublished { background: #dcefe0; color: #1e6b3a; }
+
+.field { margin-bottom: 18px; }
+.field label {
+  display: block; font-family: var(--font-ui); font-size: 11px; font-weight: 700;
+  letter-spacing: .05em; text-transform: uppercase; color: var(--text-meta); margin-bottom: 6px;
+}
+.field .hint { font-family: var(--font-ui); font-size: 11px; color: var(--text-meta); margin-top: 5px; font-style: italic; }
+.field input[type='text'],
+.field input[type='datetime-local'],
+.field input[type='url'],
+.field select,
+.field textarea {
+  width: 100%; font-family: var(--font-body); font-size: 14px; color: var(--text-body);
+  border: 1px solid var(--border-mid); border-radius: 2px; padding: 9px 11px; background: var(--newsprint);
+  outline: none; transition: border-color var(--transition), background var(--transition);
+}
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--forest); background: var(--warm-white); }
+.fieldRow { display: flex; gap: 12px; }
+.fieldRow .field { flex: 1; }
+
+.heroPreview {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/9;
+  border-radius: 2px;
+  overflow: hidden;
+  background: repeating-linear-gradient(135deg, var(--newsprint) 0 14px, var(--border-light) 14px 28px);
+  margin-bottom: 8px;
+}
+.chooseBtn {
+  font-family: var(--font-ui); font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--navy); background: var(--newsprint); border: 1px solid var(--border-mid);
+  padding: 7px 12px; border-radius: 2px; cursor: pointer; transition: all var(--transition);
+}
+.chooseBtn:hover { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+.tagPicker { display: flex; gap: 8px; flex-wrap: wrap; }
+.tagChip {
+  font-family: var(--font-ui); font-size: 11px; font-weight: 700; letter-spacing: .05em;
+  text-transform: uppercase; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-mid);
+  background: var(--warm-white); color: var(--text-meta); cursor: pointer; transition: all var(--transition);
+}
+.tagChip:hover { border-color: var(--forest); color: var(--forest); }
+.tagChipSelected { background: var(--forest); border-color: var(--forest); color: #fff; }
+
+.insertToolbar { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+.insertBtn {
+  display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-ui); font-size: 11px;
+  font-weight: 600; color: var(--navy); background: var(--newsprint); border: 1px solid var(--border-mid);
+  padding: 6px 10px; border-radius: 2px; cursor: pointer; transition: all var(--transition);
+}
+.insertBtn:hover { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+.mdTextarea { min-height: 320px; font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 13px; line-height: 1.6; resize: vertical; }
+
+.cheatSheet { margin-top: 10px; border: 1px solid var(--border-light); border-radius: 2px; background: var(--cream); }
+.cheatSheet summary {
+  cursor: pointer; padding: 8px 12px; font-family: var(--font-ui); font-size: 11px; font-weight: 700;
+  letter-spacing: .04em; color: var(--navy); text-transform: uppercase; list-style: none;
+}
+.cheatSheet summary::-webkit-details-marker { display: none; }
+.cheatSheetGrid { padding: 4px 12px 12px; display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 11.5px; }
+.cheatSheetGrid code { background: var(--warm-white); border: 1px solid var(--border-light); padding: 1px 6px; border-radius: 2px; color: var(--forest); white-space: nowrap; }
+.cheatSheetGrid span { font-family: var(--font-ui); color: var(--text-meta); align-self: center; }
+
+/* Inline mini-forms for Insert Gallery Link / Insert Video */
+.inlinePrompt { border: 1px solid var(--border-mid); border-radius: 2px; background: var(--cream); padding: 12px; margin-bottom: 8px; }
+.inlinePrompt .field { margin-bottom: 10px; }
+.inlinePromptActions { display: flex; gap: 8px; justify-content: flex-end; }
+
+.previewPane { background: var(--newsprint); padding: 30px 40px 60px; overflow-y: auto; max-height: calc(100vh - 240px); }
+.previewPaneLabel {
+  max-width: 760px; margin: 0 auto 18px; display: flex; align-items: center; gap: 10px;
+  font-family: var(--font-ui); font-size: 10px; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--text-meta);
+}
+.liveDot { width: 7px; height: 7px; border-radius: 50%; background: var(--forest); box-shadow: 0 0 0 3px rgba(61, 90, 62, .18); }
+.previewSurface { background: var(--warm-white); border: 1px solid var(--border-light); border-radius: 3px; box-shadow: var(--shadow-card); padding: 30px 34px 40px; max-width: 800px; margin: 0 auto; }
+.previewTitle { font-family: var(--font-display); font-size: 26px; font-weight: 700; color: var(--text-head); margin-bottom: 14px; }
+
+.formActions {
+  display: flex; align-items: center; gap: 10px; margin-top: 24px; padding-top: 16px;
+  border-top: 1px solid var(--border-light);
+}
+.btnPrimary, .btnSecondary {
+  font-family: var(--font-ui); font-size: 12px; font-weight: 700; letter-spacing: .05em;
+  text-transform: uppercase; padding: 10px 18px; border-radius: 2px; border: none; cursor: pointer; transition: background var(--transition);
+}
+.btnPrimary { background: var(--forest); color: #fff; }
+.btnPrimary:hover { background: var(--forest-light); }
+.btnPrimary:disabled { background: var(--border-mid); cursor: not-allowed; }
+.btnSecondary { background: transparent; color: var(--navy); border: 1px solid var(--border-mid); }
+.btnSecondary:hover { background: var(--newsprint); }
+.reviewNote { font-size: 12px; color: var(--text-meta); font-style: italic; }
+.formError { color: #b5484d; font-size: 12px; margin-top: 8px; }
+
+@media (max-width: 900px) {
+  .editorShell { grid-template-columns: 1fr; }
+  .editorPane, .previewPane { max-height: none; }
+  .editorPane { border-right: none; border-bottom: 1px solid var(--border-light); }
+  .fieldRow { flex-direction: column; }
+}

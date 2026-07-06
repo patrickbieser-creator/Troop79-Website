@@ -6,14 +6,24 @@
 
 import type { MeritBadgeRequirement } from './supabase/types';
 
-export interface ReqNode extends MeritBadgeRequirement {
-  children: ReqNode[];
+/** Shape every requirement-tree row needs, regardless of table (merit badge
+ *  or rank requirements share this exact column set). */
+interface TreeRow {
+  id: number;
+  parent_id: number | null;
+  sort_order: number;
 }
 
-/** Build a top-level array of nested ReqNodes from a flat row list. */
-export function buildReqTree(rows: MeritBadgeRequirement[]): ReqNode[] {
-  const byId = new Map<number, ReqNode>();
-  const roots: ReqNode[] = [];
+export type ReqNode<T extends TreeRow = MeritBadgeRequirement> = T & {
+  children: ReqNode<T>[];
+};
+
+/** Build a top-level array of nested ReqNodes from a flat row list. Generic
+ *  over any row shape with id/parent_id/sort_order — used for both merit
+ *  badge and rank requirement trees, which share that column set. */
+export function buildReqTree<T extends TreeRow>(rows: T[]): ReqNode<T>[] {
+  const byId = new Map<number, ReqNode<T>>();
+  const roots: ReqNode<T>[] = [];
   // First pass: clone each row into a ReqNode with empty children.
   for (const row of rows) {
     byId.set(row.id, { ...row, children: [] });
@@ -30,12 +40,33 @@ export function buildReqTree(rows: MeritBadgeRequirement[]): ReqNode[] {
     }
   }
   // Sort everything by sort_order at every level.
-  const sort = (nodes: ReqNode[]) => {
+  const sort = (nodes: ReqNode<T>[]) => {
     nodes.sort((a, b) => a.sort_order - b.sort_order);
-    nodes.forEach((n) => sort(n.children));
+    nodes.forEach((n) => sort(n.children as ReqNode<T>[]));
   };
   sort(roots);
   return roots;
+}
+
+/** All/any/n-of business rule, shared by every requirement-tree consumer
+ *  (Fast Entry's picker duplicates this against its own selection state;
+ *  this version is decoupled from any UI state so read-only views like the
+ *  Clipboard can reuse the exact same rule). */
+export function isGroupSatisfied(
+  rule: 'all' | 'any' | 'n-of',
+  completeN: number | null,
+  satisfiedCount: number,
+  totalCount: number
+): boolean {
+  switch (rule) {
+    case 'any':
+      return satisfiedCount >= 1;
+    case 'n-of':
+      return satisfiedCount >= (completeN ?? totalCount);
+    case 'all':
+    default:
+      return satisfiedCount >= totalCount;
+  }
 }
 
 /** Flatten a tree to leaf nodes (no children) in display order. */

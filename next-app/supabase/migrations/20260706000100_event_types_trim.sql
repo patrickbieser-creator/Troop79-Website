@@ -1,0 +1,13 @@
+-- Camping and Hike as separate Event Type tags are 100% redundant with
+-- kind = camping_nights / hiking_miles — those kinds already unambiguously
+-- imply the category (filling in Nights always means "campout"; filling in
+-- Miles always means "hike"), so no other Event Type would ever be correct
+-- for those rows. The Type column already derives "Campout"/"Hike" straight
+-- from `kind` (see ledger-table.tsx et al.) — the event_types lookup stays
+-- reserved for categories that DON'T have a matching kind (Day Outing,
+-- Fundraiser, and whatever gets added later), the ones that disambiguate the
+-- generic `attendance` bucket.
+--
+-- No ledger row has ever been tagged with either (checked live before this
+-- migration was written), so this is a clean, zero-data-loss removal.
+delete from public.event_types where name in ('Camping', 'Hike');

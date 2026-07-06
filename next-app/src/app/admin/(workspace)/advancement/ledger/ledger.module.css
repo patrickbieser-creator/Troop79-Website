@@ -119,9 +119,10 @@
 .kindRankReq        { background: #e0e7ef; color: var(--admin-navy); }
 .kindMbReq          { background: #e3eee5; color: var(--admin-forest); }
 .kindMbAward        { background: #fdf3d6; color: #8b6914; }
-.kindAttendance     { background: #ecdcf3; color: #6a399f; }
 .kindCamping        { background: #d6efef; color: #186e72; }
 .kindHiking         { background: #e0e7ef; color: #2a4f63; }
+.kindDayOuting      { background: #ddeedd; color: #2f6b2f; }
+.kindFundraiser     { background: #fde0e0; color: #a03737; }
 .kindService        { background: #fce6dc; color: #b54d22; }
 .kindLeadership     { background: #fff0d6; color: #946b00; }
 

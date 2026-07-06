@@ -2,17 +2,18 @@
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { LEADER_COOKIE, signSession } from '@/lib/leader-session';
+import { LEADER_COOKIE, signSession, type SessionRole } from '@/lib/leader-session';
 
 /** Accepts any non-empty username + any password. Sets the signed cookie. */
 export async function loginAction(formData: FormData): Promise<void> {
   const username = String(formData.get('username') ?? '').trim();
+  const role: SessionRole = formData.get('role') === 'scout' ? 'scout' : 'leader';
   const next = String(formData.get('next') ?? '/admin/advancement') || '/admin/advancement';
   if (!username) {
     redirect(`/admin/login?error=missing-username&next=${encodeURIComponent(next)}`);
   }
 
-  const token = await signSession({ leader: username, iat: Date.now() });
+  const token = await signSession({ leader: username, iat: Date.now(), role });
   const jar = await cookies();
   jar.set(LEADER_COOKIE.name, token, {
     httpOnly: true,

@@ -1,0 +1,117 @@
+/* Ported verbatim (values, not naming) from prototypes/news-cms/assets/news-cms.css —
+   the ARTICLE BODY / PROSE, GALLERY LINK BLOCK, and content-block sections.
+   Tokens (--navy, --forest, --transition, etc.) live in the app's globals.css,
+   already ported from the same prototype — do not fork them here. Used by
+   both the public article page and the editor's live preview pane, so the
+   two never visually drift apart. */
+
+.articleBody { max-width: 760px; margin: 0 auto 40px; }
+.articleBody > * + * { margin-top: 20px; }
+.articleBody p { font-size: 17px; line-height: 1.8; color: var(--text-body); }
+.articleBody h2 {
+  font-family: var(--font-display); font-size: 26px; font-weight: 700;
+  color: var(--text-head); line-height: 1.3; margin-top: 34px !important; letter-spacing: -.005em;
+}
+.articleBody h3 {
+  font-family: var(--font-ui); font-size: 13px; font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--forest); margin-top: 28px !important;
+}
+.articleBody a { color: var(--forest); border-bottom: 1px solid var(--forest); }
+.articleBody a:hover { color: var(--navy); border-color: var(--navy); }
+.articleBody ul, .articleBody ol { padding-left: 22px; font-size: 17px; line-height: 1.8; }
+.articleBody blockquote {
+  border-left: 3px solid var(--forest); padding-left: 18px; font-style: italic; color: var(--text-meta); font-size: 18px;
+}
+
+/* Single embedded image + caption — native markdown `![alt](url "caption")` */
+.contentFigure { }
+.figImg { width: 100%; aspect-ratio: 16/9.5; border-radius: 2px; overflow: hidden; position: relative; }
+.figImg img { object-fit: cover; }
+.contentFigure figcaption {
+  font-family: var(--font-ui); font-size: 12px; color: var(--text-meta);
+  padding-top: 8px; line-height: 1.5;
+}
+
+/* Embedded gallery block ({{gallery: ...}}) */
+.contentGalleryLabel {
+  font-family: var(--font-ui); font-size: 10px; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--text-meta); margin-bottom: 10px !important;
+}
+.galleryGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.galleryTile { display: block; aspect-ratio: 4/3; border-radius: 2px; overflow: hidden; position: relative; }
+.galleryTile img { width: 100%; height: 100%; object-fit: cover; }
+/* Compound selector so this reliably out-specifies .galleryTile's
+   display:block rather than relying on source order alone — the prototype's
+   single-class equivalent (.gallery-grid a.gallery-more) got this wrong once
+   and the "+N more" tile rendered as dim, unstyled, top-left text instead of
+   a centered navy pill. See prototypes/news-cms/assets/news-cms.css. */
+.galleryTile.galleryMore {
+  display: flex; align-items: center; justify-content: center; background: var(--navy); color: #fff;
+  font-family: var(--font-ui); font-size: 13px; font-weight: 700;
+}
+
+/* Gallery Link block ({{gallerylink: ...}}) — a link-out card for photos
+   hosted externally (Google Photos shared albums, Facebook), NOT an embed —
+   Google Photos has no oEmbed/iframe support and scraping their SPA is
+   fragile, so this reads as an intentional hand-off to the real album
+   rather than a broken embed. Visually it's the homepage .story-card idiom
+   (bordered card, 3px top accent that turns forest on hover). */
+.galleryLinkCard {
+  border: 1px solid var(--border-light); border-top: 3px solid var(--border-mid); border-radius: 2px;
+  background: var(--warm-white); overflow: hidden; transition: box-shadow var(--transition), border-top-color var(--transition);
+  display: block;
+}
+.galleryLinkCard:hover { box-shadow: var(--shadow-hover); border-top-color: var(--forest); }
+.glCover { position: relative; width: 100%; aspect-ratio: 21/9; overflow: hidden; }
+.glCover img { width: 100%; height: 100%; object-fit: cover; }
+.glCover:not(.glCoverEmpty)::after {
+  content: ''; position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 55%, rgba(0, 0, 0, .35) 100%);
+}
+.glCoverEmpty {
+  background: repeating-linear-gradient(135deg, var(--newsprint) 0 14px, var(--border-light) 14px 28px);
+  display: flex; align-items: center; justify-content: center;
+}
+.glCoverEmpty svg { width: 32px; height: 32px; fill: var(--text-meta); opacity: .5; }
+.glBadge {
+  position: absolute; top: 10px; left: 10px; z-index: 1; display: inline-flex; align-items: center; gap: 5px;
+  background: rgba(26, 26, 26, .72); color: #fff; font-family: var(--font-ui); font-size: 10px; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase; padding: 5px 9px; border-radius: 999px;
+}
+.glBody { padding: 14px 18px 18px; }
+.glCaption { font-family: var(--font-body); font-size: 14px; color: var(--text-body); line-height: 1.6; margin-bottom: 12px !important; }
+.glCta {
+  display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-ui); font-size: 12px; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--forest); border-bottom: 1px solid var(--forest); padding-bottom: 1px;
+  transition: color var(--transition), border-color var(--transition);
+}
+.glCta:hover { color: var(--navy); border-color: var(--navy); }
+.glCta svg { width: 12px; height: 12px; fill: currentColor; }
+
+/* Markdown table (native GFM pipe table — no custom token) */
+.contentTableWrap { overflow-x: auto; border: 1px solid var(--border-light); border-radius: 2px; }
+.articleBody :global(table) { width: 100%; border-collapse: collapse; font-family: var(--font-ui); font-size: 13px; min-width: 480px; }
+.articleBody :global(th) {
+  background: var(--navy); color: #fff; text-align: left; font-weight: 700; letter-spacing: .03em;
+  padding: 9px 14px; font-size: 11px; text-transform: uppercase;
+}
+.articleBody :global(td) { padding: 9px 14px; border-top: 1px solid var(--border-light); color: var(--text-body); }
+.articleBody :global(tbody tr:nth-child(even)) { background: var(--newsprint); }
+
+/* Video embed block ({{video: ...}}) */
+.videoEmbed { position: relative; width: 100%; aspect-ratio: 16/9; border-radius: 2px; overflow: hidden; background: var(--navy); }
+.videoFrame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.videoFallback {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  color: rgba(255, 255, 255, .85); font-family: var(--font-ui);
+}
+.playBtn {
+  width: 56px; height: 56px; border-radius: 50%; background: rgba(255, 255, 255, .15);
+  border: 2px solid rgba(255, 255, 255, .7); display: flex; align-items: center; justify-content: center;
+}
+.playBtn::after { content: ''; border-style: solid; border-width: 9px 0 9px 15px; border-color: transparent transparent transparent #fff; margin-left: 3px; }
+.vLabel { font-size: 12px; letter-spacing: .04em; }
+
+@media (max-width: 600px) {
+  .contentTableWrap :global(table) { min-width: 0; font-size: 12px; }
+  .articleBody :global(th), .articleBody :global(td) { padding: 7px 8px; }
+}

@@ -7,6 +7,7 @@
 
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { fetchAllRows } from '@/lib/supabase/paginate';
 import type { MeritBadge, MbProgressRow } from '@/lib/supabase/types';
 import styles from './mb-progress.module.css';
 
@@ -24,13 +25,17 @@ interface CatalogCard {
 
 async function loadCatalog() {
   const supabase = await createClient();
-  const [badgesRes, progressRes, activeCountRes] = await Promise.all([
+  const [badgesRes, progress, activeCountRes] = await Promise.all([
     supabase.from('merit_badges').select('*').order('name'),
-    supabase.from('mb_progress').select('*'),
+    // Unbounded past the ~1000-row PostgREST cap as more scouts start more
+    // badges — paginate (lib/supabase/paginate.ts).
+    fetchAllRows<MbProgressRow>((from, to) =>
+      supabase.from('mb_progress').select('*').range(from, to)
+    ),
     supabase.from('scouts').select('id', { count: 'exact', head: true }).eq('active', true)
   ]);
   const byMb = new Map<string, MbProgressRow[]>();
-  for (const row of (progressRes.data ?? []) as MbProgressRow[]) {
+  for (const row of progress) {
     const list = byMb.get(row.mb_id) ?? [];
     list.push(row);
     byMb.set(row.mb_id, list);

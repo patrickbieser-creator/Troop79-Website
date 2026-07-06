@@ -81,6 +81,39 @@ export default async function LoginPage({
             placeholder="(any password)"
           />
 
+          <label style={{ display: 'block', marginBottom: 14 }}>
+            <span
+              style={{
+                display: 'block',
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '.08em',
+                textTransform: 'uppercase',
+                color: '#3a3f47',
+                marginBottom: 6
+              }}
+            >
+              I am a
+            </span>
+            <select
+              name="role"
+              defaultValue="leader"
+              style={{
+                width: '100%',
+                border: '1px solid #cdd1d6',
+                borderRadius: 4,
+                padding: '9px 11px',
+                fontSize: 14,
+                fontFamily: 'inherit',
+                outline: 'none',
+                background: '#fff'
+              }}
+            >
+              <option value="leader">Leader</option>
+              <option value="scout">Scout</option>
+            </select>
+          </label>
+
           {errMessage && (
             <div
               role="alert"

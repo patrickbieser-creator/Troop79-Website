@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from 'react';
 import { undoCompletion } from './actions';
 import {
   createEvent,
+  updateEvent,
   createLeadershipPosition,
   createServiceProject
 } from '../lookups/actions';
@@ -157,13 +158,24 @@ export function RequirementPicker({
   const inMbCatalog = activeTab === 'merit-badges' && !activeMbId;
   const activeRank = catalog.ranks.find((r) => r.id === activeTab);
 
-  // Bottom detailed list intentionally omits rank requirements / awards — for
-  // those the filled checkbox + the top "N pending" breadcrumb are enough. Only
-  // free-form items (Service / Events / Leadership) stay, since they can't be
-  // toggled off from their row and need the inline remove (×).
-  const removablePending = selections.filter(
-    (s) => s.kind !== 'rank_requirement' && s.kind !== 'rank_award'
-  );
+  // Bottom detailed list only keeps items that can't be toggled off from a
+  // row in the tree and so need the inline remove (×) — i.e. free-form items
+  // (Service / Events / Leadership). Rank requirements/awards always have a
+  // checkbox row; MB requirements/awards have one in the inline drill-in flow
+  // (Requirement-First), but in the modal flow (Scout-First, onOpenMb set) an
+  // MB item can only arrive via URL prefill and the × chip is its sole
+  // per-item remove, so it stays. The top "N pending" breadcrumb covers the
+  // rest.
+  const removablePending = selections.filter((s) => {
+    if (s.kind === 'rank_requirement' || s.kind === 'rank_award') return false;
+    if (
+      !onOpenMb &&
+      (s.kind === 'merit_badge_requirement' || s.kind === 'merit_badge_award')
+    ) {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <div className={styles.picker}>
@@ -248,6 +260,7 @@ export function RequirementPicker({
           <MbCatalogGrid
             mbs={catalog.mbs}
             search={search}
+            completion={completion}
             onPick={(id) => (onOpenMb ? onOpenMb(id) : setActiveMbId(id))}
           />
         )}
@@ -296,8 +309,9 @@ export function RequirementPicker({
         )}
       </div>
 
-      {/* Detailed pending list at bottom (Scout-First only) — free-form items
-          only; rank requirements/awards are excluded to cut clutter. */}
+      {/* Detailed pending list at bottom — items without a toggleable row
+          only (see removablePending above); catalog reqs are excluded to cut
+          clutter. */}
       {multi && removablePending.length > 0 && (
         <div className={styles.selectedList}>
           {removablePending.map((s) => (
@@ -550,26 +564,32 @@ function RankPanel({
 function MbCatalogGrid({
   mbs,
   search,
+  completion,
   onPick
 }: {
   mbs: CatalogPayload['mbs'];
   search: string;
+  completion: CompletionMap;
   onPick: (id: string) => void;
 }) {
   const q = search.trim().toLowerCase();
   const filtered = q ? mbs.filter((m) => m.name.toLowerCase().includes(q)) : mbs;
   return (
     <div className={styles.mbCatalogGrid}>
-      {filtered.map((m) => (
-        <button
-          key={m.id}
-          type="button"
-          className={`${styles.mbCatalogItem} ${m.eagle ? styles.mbCatalogItemEagle : ''}`.trim()}
-          onClick={() => onPick(m.id)}
-        >
-          {m.name}
-        </button>
-      ))}
+      {filtered.map((m) => {
+        const earned = completion.has(itemKey.mbAward(m.id));
+        return (
+          <button
+            key={m.id}
+            type="button"
+            className={`${styles.mbCatalogItem} ${m.eagle ? styles.mbCatalogItemEagle : ''} ${earned ? styles.mbCatalogItemEarned : ''}`.trim()}
+            onClick={() => onPick(m.id)}
+            title={earned ? 'Already earned' : undefined}
+          >
+            {m.name}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -1001,14 +1021,32 @@ function LeadershipTab({
  * Events tab — title + optional Nights / Miles / Hours. Each non-zero number
  * creates a separate pending row of the matching kind, so a 2-night campout
  * with a 3-mile hike becomes two rows in the ledger.
+ *
+ * Every event carries a stored classification (events.default_kind) so a
+ * recurring event never needs its Type re-picked. Campout/Hike still need an
+ * actual Nights/Miles value to mean anything, so their classification is a
+ * hint, not an auto-apply; Day Outing/Fundraiser have no natural quantity, so
+ * a classified one applies automatically with no further input. Picking a
+ * Type for a brand-new or not-yet-classified event heals it for next time.
  */
 const NEW_EVENT = '__new__';
+
+/** Options for the Type selector — offered whenever the event's stored kind
+ *  can't be auto-applied (new, unclassified, or a quantity-kind with no
+ *  quantity given this time). */
+const EVENT_TYPE_OPTIONS: { value: PickerItem['kind']; label: string }[] = [
+  { value: 'camping_nights', label: 'Campout' },
+  { value: 'hiking_miles', label: 'Hike' },
+  { value: 'day_outing', label: 'Day Outing' },
+  { value: 'fundraiser', label: 'Fundraiser' }
+];
+const EVENT_TYPE_LABEL = new Map(EVENT_TYPE_OPTIONS.map((t) => [t.value, t.label]));
 
 function EventsTab({
   events,
   onAdd
 }: {
-  events: { id: number; name: string }[];
+  events: { id: number; name: string; default_kind: PickerItem['kind'] | null }[];
   onAdd: (items: PickerItem[]) => void;
 }) {
   const [selected, setSelected] = useState('');
@@ -1019,6 +1057,7 @@ function EventsTab({
   const [nights, setNights] = useState('');
   const [miles, setMiles] = useState('');
   const [hours, setHours] = useState('');
+  const [eventKind, setEventKind] = useState('');
   const [, startTransition] = useTransition();
 
   const names = useMemo(() => {
@@ -1030,20 +1069,21 @@ function EventsTab({
 
   const isNew = selected === NEW_EVENT;
   const resolvedName = (isNew ? newName : selected).trim();
+  const selectedEvent = !isNew ? events.find((e) => e.name === selected) : undefined;
+  const storedKind = selectedEvent?.default_kind ?? null;
+  // Only Day Outing/Fundraiser can apply blind — Campout/Hike need an actual
+  // Nights/Miles value to mean anything, so they stay a hint, not an auto-fill.
+  const autoKind = storedKind === 'day_outing' || storedKind === 'fundraiser' ? storedKind : null;
+  const showTypePicker = !autoKind;
+  const hasQty = [nights, miles, hours].some((v) => {
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0;
+  });
+  const canSubmit = !!resolvedName && (hasQty || !!autoKind || !!eventKind);
 
   function add() {
     const lbl = resolvedName;
     if (!lbl) return;
-    // Persist a brand-new event name to the lookup (best-effort) and remember
-    // it locally so it's immediately reusable in the dropdown.
-    if (isNew && !names.includes(lbl)) {
-      setLocalEvents((prev) => [...prev, lbl]);
-      const fd = new FormData();
-      fd.set('name', lbl);
-      startTransition(() => {
-        createEvent(fd);
-      });
-    }
     const codeBase = autoCode(lbl);
     const slugWithPrefix = (p: string) => (codeBase.startsWith(p) ? codeBase : `${p}${codeBase}`);
     const items: PickerItem[] = [];
@@ -1080,40 +1120,70 @@ function EventsTab({
         qty: hQty
       });
     }
-    // If no numbers were provided, fall back to a plain attendance row so the
-    // event is still tracked (e.g. a pancake breakfast with no nights/miles).
+    // No numbers given — fall back to a single check-in row. Auto-apply the
+    // event's classification when it's a no-quantity type; otherwise use
+    // whatever Type was picked (the button is disabled until one is).
     if (items.length === 0) {
+      const kind = autoKind ?? (eventKind as PickerItem['kind']);
+      if (!kind) return;
       items.push({
-        key: `attendance:EV:${codeBase}`,
-        kind: 'attendance',
+        key: `${kind}:EV:${codeBase}`,
+        kind,
         code: slugWithPrefix('EV:'),
         label: lbl,
         unit: 'event',
         qty: 1
       });
     }
+
+    // Classify (or heal the classification of) the event for next time — a
+    // brand-new event, or an existing one that had no stored kind yet.
+    const resolvedKindForEvent = items[0]?.kind;
+    if (isNew && !names.includes(lbl)) {
+      setLocalEvents((prev) => [...prev, lbl]);
+      const fd = new FormData();
+      fd.set('name', lbl);
+      fd.set('default_kind', resolvedKindForEvent ?? '');
+      startTransition(() => {
+        createEvent(fd);
+      });
+    } else if (selectedEvent && !storedKind && resolvedKindForEvent) {
+      const fd = new FormData();
+      fd.set('id', String(selectedEvent.id));
+      fd.set('name', selectedEvent.name);
+      fd.set('default_kind', resolvedKindForEvent);
+      startTransition(() => {
+        updateEvent(fd);
+      });
+    }
+
     onAdd(items);
     setSelected(isNew ? NEW_EVENT : '');
     setNewName('');
     setNights('');
     setMiles('');
     setHours('');
+    setEventKind('');
   }
 
   return (
     <div className={styles.freeForm}>
       <p className={styles.freeFormHelp}>
         Pick an event from the list (or add a new one). Fill in any of Nights,
-        Miles, or Hours — each non-zero value creates a separate ledger row (e.g.
-        a 2-night campout with 3 miles of hiking → 2 rows). No numbers creates a
-        plain attendance row.
+        Miles, or Hours — each non-zero value creates a separate ledger row
+        (e.g. a 2-night campout with 3 miles of hiking → 2 rows). Every event
+        remembers its Type, so a recurring Fundraiser or Day Outing logs
+        itself automatically — no numbers, no re-picking.
       </p>
       <label className={styles.field} style={{ marginBottom: 4 }}>
         <span className={styles.fieldLabel}>Event</span>
         <select
           className={styles.select}
           value={selected}
-          onChange={(e) => setSelected(e.target.value)}
+          onChange={(e) => {
+            setSelected(e.target.value);
+            setEventKind('');
+          }}
         >
           <option value="">— Select an event —</option>
           {names.map((n) => (
@@ -1135,6 +1205,32 @@ function EventsTab({
             onChange={(e) => setNewName(e.target.value)}
             autoFocus
           />
+        </label>
+      )}
+      {!isNew && selectedEvent && (
+        <p className={styles.freeFormHelp} style={{ marginTop: -2, marginBottom: 8 }}>
+          {autoKind
+            ? `Classified as ${EVENT_TYPE_LABEL.get(autoKind)} — will log automatically.`
+            : storedKind
+              ? `Classified as ${EVENT_TYPE_LABEL.get(storedKind)} — fill in ${storedKind === 'camping_nights' ? 'Nights' : 'Miles'} below, or pick a Type if this one wasn't.`
+              : 'Not yet classified — pick a Type below (remembered for next time).'}
+        </p>
+      )}
+      {showTypePicker && (
+        <label className={styles.field} style={{ marginBottom: 4 }}>
+          <span className={styles.fieldLabel}>Type</span>
+          <select
+            className={styles.select}
+            value={eventKind}
+            onChange={(e) => setEventKind(e.target.value)}
+          >
+            <option value="">— Select a type —</option>
+            {EVENT_TYPE_OPTIONS.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
         </label>
       )}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
@@ -1180,7 +1276,7 @@ function EventsTab({
           type="button"
           className={styles.btn}
           onClick={add}
-          disabled={!resolvedName}
+          disabled={!canSubmit}
         >
           + Add Event
         </button>

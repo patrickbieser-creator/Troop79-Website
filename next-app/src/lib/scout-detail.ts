@@ -8,15 +8,20 @@ import { createClient } from '@/lib/supabase/server';
 import type {
   LedgerEntry,
   MeritBadge,
+  MeritBadgeRequirement,
   Rank,
   Scout,
   ScoutSummaryRow
 } from '@/lib/supabase/types';
 
 export interface RankReqCatalogRow {
+  id: number;
   rank_id: string;
+  parent_id: number | null;
   code: string;
   label: string;
+  complete_rule: 'all' | 'any' | 'n-of';
+  complete_n: number | null;
   sort_order: number;
 }
 
@@ -30,15 +35,22 @@ export interface ScoutDetail {
     rankAwards: LedgerEntry[];
     meritBadgeAwards: LedgerEntry[];
     meritBadgeRequirements: LedgerEntry[];
-    attendance: LedgerEntry[];
     serviceHours: LedgerEntry[];
     campingNights: LedgerEntry[];
     hikingMiles: LedgerEntry[];
+    dayOuting: LedgerEntry[];
+    fundraiser: LedgerEntry[];
     leadership: LedgerEntry[];
     awards: LedgerEntry[];
   };
   /** mb_id → { name, eagle } lookup */
   mbCatalog: Map<string, { name: string; eagle: boolean }>;
+  /** Requirement catalog rows for merit badges this scout has requirement
+   *  ledger entries for but hasn't been awarded yet (the "in progress" set
+   *  the Clipboard's Merit Badges In Progress section renders). Empty for
+   *  badges with no authored catalog — the page falls back to listing the
+   *  raw ledger rows for those. */
+  mbReqCatalog: MeritBadgeRequirement[];
 }
 
 export async function loadScoutDetail(scoutId: string): Promise<ScoutDetail | null> {
@@ -49,8 +61,7 @@ export async function loadScoutDetail(scoutId: string): Promise<ScoutDetail | nu
     supabase.from('ranks').select('*').order('sort_order'),
     supabase
       .from('rank_requirements')
-      .select('rank_id, code, label, sort_order')
-      .is('parent_id', null)
+      .select('id, rank_id, parent_id, code, label, complete_rule, complete_n, sort_order')
       .order('rank_id')
       .order('sort_order'),
     supabase
@@ -68,10 +79,11 @@ export async function loadScoutDetail(scoutId: string): Promise<ScoutDetail | nu
     rankAwards: [] as LedgerEntry[],
     meritBadgeAwards: [] as LedgerEntry[],
     meritBadgeRequirements: [] as LedgerEntry[],
-    attendance: [] as LedgerEntry[],
     serviceHours: [] as LedgerEntry[],
     campingNights: [] as LedgerEntry[],
     hikingMiles: [] as LedgerEntry[],
+    dayOuting: [] as LedgerEntry[],
+    fundraiser: [] as LedgerEntry[],
     leadership: [] as LedgerEntry[],
     awards: [] as LedgerEntry[]
   };
@@ -89,9 +101,6 @@ export async function loadScoutDetail(scoutId: string): Promise<ScoutDetail | nu
       case 'merit_badge_requirement':
         ledger.meritBadgeRequirements.push(e);
         break;
-      case 'attendance':
-        ledger.attendance.push(e);
-        break;
       case 'service_hours':
         ledger.serviceHours.push(e);
         break;
@@ -100,6 +109,12 @@ export async function loadScoutDetail(scoutId: string): Promise<ScoutDetail | nu
         break;
       case 'hiking_miles':
         ledger.hikingMiles.push(e);
+        break;
+      case 'day_outing':
+        ledger.dayOuting.push(e);
+        break;
+      case 'fundraiser':
+        ledger.fundraiser.push(e);
         break;
       case 'leadership':
         ledger.leadership.push(e);
@@ -115,13 +130,34 @@ export async function loadScoutDetail(scoutId: string): Promise<ScoutDetail | nu
     mbCatalog.set(mb.id, { name: mb.name, eagle: mb.eagle });
   }
 
+  // Merit Badges In Progress = has a requirement ledger row for the badge
+  // but no award row for it yet.
+  const awardedMbIds = new Set(
+    ledger.meritBadgeAwards.map((e) => mbIdFromAwardCode(e.code)).filter((x): x is string => !!x)
+  );
+  const inProgressMbIds = [
+    ...new Set(
+      ledger.meritBadgeRequirements.map((e) => mbIdFromReqCode(e.code)).filter((x): x is string => !!x)
+    )
+  ].filter((id) => !awardedMbIds.has(id));
+
+  let mbReqCatalog: MeritBadgeRequirement[] = [];
+  if (inProgressMbIds.length > 0) {
+    const { data } = await supabase
+      .from('merit_badge_requirements')
+      .select('id, mb_id, parent_id, code, label, complete_rule, complete_n, sort_order')
+      .in('mb_id', inProgressMbIds);
+    mbReqCatalog = (data ?? []) as MeritBadgeRequirement[];
+  }
+
   return {
     scout: scoutRes.data as Scout,
     summary: (summaryRes.data ?? null) as ScoutSummaryRow | null,
     ranks: (ranksRes.data ?? []) as Rank[],
     rankReqs: (rankReqsRes.data ?? []) as RankReqCatalogRow[],
     ledger,
-    mbCatalog
+    mbCatalog,
+    mbReqCatalog
   };
 }
 
@@ -133,7 +169,11 @@ export function mbIdFromAwardCode(code: string): string | null {
   return code.slice(colon + 1);
 }
 export function mbIdFromReqCode(code: string): string | null {
-  const dash = code.indexOf('-');
+  // Split on the LAST dash, not the first — several mb_ids contain internal
+  // dashes (first-aid, citizenship-community, small-boat-sailing,
+  // signs-signals-codes, ...), while requirement codes never do (only dots,
+  // e.g. "4a.1"), so the segment after the final dash is always the reqCode.
+  const dash = code.lastIndexOf('-');
   if (dash < 0) return null;
   return code.slice(0, dash);
 }

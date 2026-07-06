@@ -384,7 +384,7 @@ export async function loadScoutHistory(scoutId: string): Promise<{
       .from('ledger_active')
       .select('id, date, by, code, label, qty, unit, kind')
       .eq('scout_id', scoutId)
-      .in('kind', ['attendance', 'camping_nights', 'hiking_miles'])
+      .in('kind', ['camping_nights', 'hiking_miles', 'day_outing', 'fundraiser'])
       .order('date', { ascending: false, nullsFirst: false })
       .limit(30),
     supabase

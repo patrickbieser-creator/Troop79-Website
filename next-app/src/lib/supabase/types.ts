@@ -8,10 +8,11 @@ export type LedgerKind =
   | 'rank_award'
   | 'merit_badge_requirement'
   | 'merit_badge_award'
-  | 'attendance'
   | 'service_hours'
   | 'camping_nights'
   | 'hiking_miles'
+  | 'day_outing'
+  | 'fundraiser'
   | 'leadership'
   | 'award';
 
@@ -156,5 +157,57 @@ export interface Rank {
 export interface Event {
   id: number;
   name: string;
+  /** Stored classification (Campout, Hike, Day Outing, Fundraiser, ...) so
+   *  Fast Entry can resolve the ledger kind automatically for a recurring
+   *  event instead of asking the leader to re-pick a Type every time. */
+  default_kind: LedgerKind | null;
   created_at?: string;
+}
+
+// ─── News & Events CMS ──────────────────────────────────────────────────────
+
+export type ArticleType = 'news' | 'event' | 'recognition';
+export type ArticleStatus = 'draft' | 'published';
+export type AuthorRole = 'leader' | 'scout';
+
+export interface Media {
+  id: number;
+  bunny_path: string;
+  cdn_url: string;
+  alt_text: string | null;
+  caption: string | null;
+  uploaded_by: string;
+  width: number | null;
+  height: number | null;
+  created_at: string;
+}
+
+export interface Tag {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+export interface Article {
+  id: number;
+  slug: string;
+  title: string;
+  type: ArticleType;
+  excerpt: string | null;
+  hero_media_id: number | null;
+  body: string;
+  status: ArticleStatus;
+  author_name: string;
+  author_role: AuthorRole;
+  published_at: string | null;
+  featured: boolean;
+  featured_order: number | null;
+  archived_at: string | null;
+  archived_by: string | null;
+  event_start: string | null;
+  event_end: string | null;
+  event_location: string | null;
+  event_registration_url: string | null;
+  created_at: string;
+  updated_at: string;
 }

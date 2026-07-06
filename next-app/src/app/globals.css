@@ -24,6 +24,7 @@
   --border-mid:     #c8bfaf;
   --shadow-card:    0 1px 4px rgba(30,58,74,.08), 0 2px 12px rgba(30,58,74,.06);
   --shadow-hover:   0 4px 20px rgba(30,58,74,.14);
+  --transition:     .18s ease;
 }
 
 @theme inline {
@@ -50,3 +51,11 @@ body {
 
 a { text-decoration: none; color: inherit; }
 img { display: block; max-width: 100%; }
+/* Several News CMS components (register button / no-reg note, the media
+   picker overlay) toggle visibility via the `hidden` attribute on elements
+   that ALSO carry an explicit `display` declaration. Author CSS always
+   outranks the browser's built-in `[hidden]{display:none}` rule, so without
+   this override those elements stayed visible even when hidden — caught via
+   browser verification while prototyping the Event template's registration
+   toggle (see prototypes/news-cms/). */
+[hidden] { display: none !important; }

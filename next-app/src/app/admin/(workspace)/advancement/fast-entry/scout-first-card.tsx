@@ -272,33 +272,6 @@ export function ScoutFirstCard({ scouts, leaders, catalog }: Props) {
         </select>
       </label>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>Date Completed</span>
-          <input
-            type="date"
-            className={styles.input}
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
-        </label>
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>Signed Off By</span>
-          <select
-            className={styles.select}
-            value={by}
-            onChange={(e) => setBy(e.target.value)}
-          >
-            <option value="">— Leader —</option>
-            {leaders.map((l) => (
-              <option key={l.code} value={l.code}>
-                {l.code} — {l.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
       <div className={`${styles.field} ${styles.reqFieldFill}`}>
         <span className={styles.fieldLabel}>
           Requirements{' '}
@@ -343,6 +316,33 @@ export function ScoutFirstCard({ scouts, leaders, catalog }: Props) {
         onCompletionRemoved={onCompletionRemoved}
         onSaved={onMbModalSaved}
       />
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Date Completed</span>
+          <input
+            type="date"
+            className={styles.input}
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
+        </label>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Signed Off By</span>
+          <select
+            className={styles.select}
+            value={by}
+            onChange={(e) => setBy(e.target.value)}
+          >
+            <option value="">— Leader —</option>
+            {leaders.map((l) => (
+              <option key={l.code} value={l.code}>
+                {l.code} — {l.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
 
       <label className={styles.field}>
         <span className={styles.fieldLabel}>Notes (optional)</span>

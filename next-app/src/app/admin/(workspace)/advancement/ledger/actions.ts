@@ -11,10 +11,11 @@ const VALID_KINDS: ReadonlySet<LedgerKind> = new Set<LedgerKind>([
   'rank_award',
   'merit_badge_requirement',
   'merit_badge_award',
-  'attendance',
   'service_hours',
   'camping_nights',
   'hiking_miles',
+  'day_outing',
+  'fundraiser',
   'leadership',
   'award'
 ]);
@@ -157,11 +158,12 @@ function parseIds(formData: FormData): number[] {
 }
 
 /**
- * Bulk-edits the SAFE fields (date, scout_id, by, qty, unit, notes) across many
- * selected rows at once. Only the fields present in `patch` are written, so the
- * caller can change just the signer or just the date and leave everything else
- * per-row untouched. Kind, Code, and Description are intentionally NOT bulk-
- * editable — those stay one-row-at-a-time to avoid clobbering row-specific data.
+ * Bulk-edits the SAFE fields (date, scout_id, by, qty, unit, notes) across
+ * many selected rows at once. Only the fields present in `patch` are
+ * written, so the caller can change just the signer or just the date and
+ * leave everything else per-row untouched. Kind, Code, and Description are
+ * intentionally NOT bulk-editable — those stay one-row-at-a-time to avoid
+ * clobbering row-specific data.
  */
 export async function bulkUpdateLedgerEntries(formData: FormData): Promise<BulkResult> {
   try {

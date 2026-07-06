@@ -1,0 +1,162 @@
+/* Articles admin table. Reuses --admin-* tokens from ../../admin.module.css
+   (already loaded globally via the workspace layout) and the same table/
+   toolbar/pager conventions as advancement/ledger/ledger.module.css. */
+
+.pageTitle {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  border-bottom: 1px solid var(--admin-gray-200);
+  padding-bottom: 14px;
+  margin-bottom: 20px;
+}
+.pageTitle h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--admin-navy);
+  margin-bottom: 4px;
+}
+.pageTitle p {
+  font-size: 13px;
+  color: var(--admin-gray-500);
+  max-width: 720px;
+  line-height: 1.5;
+}
+.newBtn {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  background: var(--admin-navy);
+  color: var(--admin-white);
+  border: 1px solid var(--admin-navy);
+  padding: 8px 16px;
+  border-radius: var(--admin-radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.newBtn:hover { background: var(--admin-navy-hover); }
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.input, .select {
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  padding: 7px 10px;
+  font-family: inherit;
+  font-size: 13px;
+  background: var(--admin-white);
+  color: var(--admin-gray-700);
+  min-height: 34px;
+}
+.input:focus, .select:focus { outline: none; border-color: var(--admin-navy); }
+.input[type='search'] { width: 240px; }
+.toggleLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--admin-gray-700);
+  cursor: pointer;
+  user-select: none;
+}
+.spacer { flex: 1; }
+.meta { font-size: 12px; color: var(--admin-gray-500); }
+
+.tableWrap {
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow-sm);
+  overflow-x: auto;
+}
+.table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.table th, .table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--admin-gray-100);
+  text-align: left;
+}
+.table th {
+  background: var(--admin-gray-50);
+  border-bottom: 2px solid var(--admin-gray-200);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--admin-gray-700);
+  white-space: nowrap;
+}
+.nowrap { white-space: nowrap; }
+.titleCell a { color: var(--admin-navy); font-weight: 600; }
+.titleCell a:hover { text-decoration: underline; }
+.tagList { font-size: 12px; color: var(--admin-gray-500); }
+
+.pill {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 8px;
+  background: var(--admin-gray-100);
+  color: var(--admin-gray-700);
+}
+.pillNews        { background: #e0d9c8; color: #6b5423; }
+.pillEvent       { background: #e3eee5; color: var(--admin-forest); }
+.pillRecognition { background: #e0e7ef; color: var(--admin-navy); }
+.pillDraft       { background: var(--admin-gray-100); color: var(--admin-gray-700); }
+.pillPublished   { background: #dcefe0; color: #1e6b3a; }
+.pillArchived    { background: var(--admin-gray-100); color: var(--admin-gray-500); }
+
+.archivedRow { background: var(--admin-gray-50); color: var(--admin-gray-500); font-style: italic; }
+.empty { padding: 36px 16px; text-align: center; color: var(--admin-gray-500); font-style: italic; }
+
+.actionsCell { text-align: right; white-space: nowrap; }
+.actionBtn {
+  background: none;
+  border: 1px solid var(--admin-gray-300);
+  color: var(--admin-gray-700);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--admin-radius-sm);
+  cursor: pointer;
+  margin-left: 6px;
+  transition: all .15s ease;
+}
+.actionBtn:hover { border-color: var(--admin-navy); color: var(--admin-navy); }
+.actionBtn:disabled { opacity: .5; cursor: not-allowed; }
+.actionBtnPrimary { border-color: var(--admin-navy); color: var(--admin-navy); font-weight: 700; }
+.actionBtnDanger { color: var(--admin-danger); border-color: #e8c4c0; }
+.actionBtnDanger:hover { background: #fdf0ef; border-color: var(--admin-danger); color: var(--admin-danger); }
+
+.pager {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--admin-gray-500);
+}
+.pagerBtn {
+  display: inline-block;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  color: var(--admin-gray-700);
+  background: var(--admin-white);
+  cursor: pointer;
+}
+.pagerBtn:hover { border-color: var(--admin-navy); color: var(--admin-navy); }
+.pagerBtnDisabled { pointer-events: none; opacity: .5; }

@@ -240,6 +240,23 @@
   min-height: 200px;
 }
 .rankBlock:nth-child(3n) { border-right: none; }
+/* Star + Life share the middle-bottom grid cell: this wrapper IS the grid
+   item (taking column 2's slot), stacking its two RankBlock children instead
+   of Life spilling into a third row. Its own border-right stands in for the
+   one a lone .rankBlock would carry; each child's border-bottom still
+   separates them and closes out the cell. */
+.rankBlockStack {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #aaa;
+}
+/* The gap standing in for Star's own trailing content before Life starts.
+   First Class's checklist and Star+Life's combined checklist + merit badge
+   quotas are both fixed-length (same catalog, capped quotas), so this fixed
+   value reliably bottom-aligns Life with First Class/Eagle. */
+.rankBlockGapAbove {
+  margin-top: 230px;
+}
 .rankBlockTitle {
   font-family: var(--font-ui);
   font-size: 12px;
@@ -252,6 +269,9 @@
   background: #f0ebe0;
   padding: 6px 4px;
   border-bottom: 1px solid #aaa;
+}
+.rankBlockTitleBordered {
+  border-top: 1px solid #aaa;
 }
 .miniRow {
   display: grid;
@@ -288,10 +308,64 @@
   color: var(--text-head);
   margin-right: 4px;
 }
-.bor {
+/* Indented sub-skill row under a grouped requirement (First Aid, Fitness,
+   Lashings) — same shape as .miniRow, smaller + indented to read as a child
+   of the row above it. */
+.miniSubRow {
+  display: grid;
+  grid-template-columns: 60px 32px 1fr;
+  gap: 4px;
+  padding: 2px 6px 2px 18px;
+  border-bottom: 1px solid #efeae0;
+  font-family: var(--font-ui);
+  font-size: 9.5px;
+  line-height: 1.3;
+  color: var(--text-meta);
+}
+.miniSubRow > span:first-child {
+  font-variant-numeric: tabular-nums;
+}
+.miniSubRow > span:nth-child(2) {
+  color: var(--forest);
+  font-weight: 600;
+}
+/* "x/y" completion badge next to a grouped requirement's code. */
+.reqFraction {
+  margin-left: 6px;
+  padding: 0 4px;
+  font-size: 9px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-meta);
   background: #f0ebe0;
+  border-radius: 3px;
+}
+.bor {
   font-weight: 700;
   color: var(--text-head);
+}
+/* Sub-heading for the computed Eagle/Other merit badge lists that replace
+   the free-text "N Merit Badges" requirement row in Star/Life/Eagle. */
+.miniSectionHeading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-ui);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-head);
+  padding: 3px 6px;
+  border-bottom: 1px solid #efeae0;
+}
+.miniSectionHeadingOpen { color: var(--text-meta); }
+.miniSectionCount {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: normal;
+  background: var(--warm-white);
+  border-radius: 3px;
+  padding: 0 5px;
 }
 .miniEmpty {
   font-style: italic;
@@ -354,8 +428,8 @@
 .mbRow {
   grid-template-columns: 64px 32px 1fr;
 }
-/* Activity rows: col 2 is the activity TYPE (Camping/Event/Hike) — widened
-   so longer words don't overflow into the title column. */
+/* Activity rows: col 2 is the activity TYPE (Campout/Fundraiser/Hike/...) —
+   widened so longer words don't overflow into the title column. */
 .actRow {
   grid-template-columns: 64px 70px 1fr;
 }
@@ -427,6 +501,123 @@
   font-weight: 700;
 }
 
+/* Merit Badges In Progress — accordion */
+.mbAccordion {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 28px;
+}
+.mbDetails {
+  background: var(--warm-white);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-card);
+}
+.mbSummary {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  font-family: var(--font-ui);
+  list-style: none;
+}
+.mbSummary::-webkit-details-marker { display: none; }
+.mbSummary::before {
+  content: '▸';
+  color: var(--forest);
+  margin-right: 8px;
+  font-size: 11px;
+}
+.mbDetails[open] > .mbSummary::before { content: '▾'; }
+.mbSummaryName {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-head);
+}
+.mbEagleStar { color: var(--bark); }
+.mbSummaryProgress {
+  font-size: 11px;
+  color: var(--text-meta);
+  letter-spacing: .04em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.mbTreeWrap {
+  border-top: 1px solid var(--border-light);
+  padding: 10px 16px 14px;
+}
+.mbReqGroup { margin: 8px 0; }
+.mbReqGroupHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-head);
+  margin-bottom: 2px;
+}
+.mbReqNote {
+  font-size: 10px;
+  font-weight: 600;
+  font-style: italic;
+  color: var(--forest);
+}
+.mbReqRow {
+  display: grid;
+  grid-template-columns: 16px 40px 1fr auto;
+  grid-template-areas: "check code label meta";
+  column-gap: 8px;
+  align-items: baseline;
+  padding: 4px 0;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-body);
+  border-bottom: 1px dotted var(--border-light);
+}
+.mbReqRowOpen { color: var(--text-meta); }
+/* Completion checkmark — only rendered when done, but the 16px column stays
+   reserved either way so codes/labels line up across rows. */
+.mbReqCheck {
+  grid-area: check;
+  color: var(--forest);
+  font-weight: 700;
+  text-align: center;
+}
+.mbReqCode {
+  grid-area: code;
+  font-weight: 700;
+  color: var(--forest);
+}
+.mbReqRowOpen .mbReqCode { color: var(--border-mid); }
+.mbReqLabel {
+  grid-area: label;
+  /* Bold by default (the row is complete unless .mbReqRowOpen says
+     otherwise) — the checkmark's twin signal, per the completion-clarity ask. */
+  font-weight: 700;
+  color: var(--text-head);
+}
+.mbReqRowOpen .mbReqLabel {
+  font-weight: 400;
+  color: var(--text-meta);
+}
+.mbReqMeta {
+  grid-area: meta;
+  max-width: 220px;
+  text-align: right;
+  font-size: 10.5px;
+  color: var(--text-meta);
+  font-variant-numeric: tabular-nums;
+}
+.mbReqNotes {
+  font-style: italic;
+  color: var(--text-meta);
+}
+
 .notFound {
   padding: 60px 24px;
   text-align: center;
@@ -454,6 +645,15 @@
     box-shadow: none;
   }
   .main { padding-bottom: 0; }
+  /* Force every accordion section open on print, regardless of what the
+     reader had expanded/collapsed on screen — a printed Clipboard should
+     always show full detail. */
+  .mbDetails > .mbTreeWrap { display: block !important; }
+  .mbSummary::before { display: none; }
+  .mbDetails {
+    box-shadow: none;
+    page-break-inside: avoid;
+  }
 }
 
 @media (max-width: 900px) {
@@ -467,5 +667,6 @@
     border-right: none;
     border-bottom: 1px solid #aaa;
   }
+  .rankBlockStack { border-right: none; }
   .twoCol { grid-template-columns: 1fr; }
 }

@@ -196,12 +196,18 @@
   color: var(--admin-navy);
 }
 .pickerTabActive {
-  background: var(--admin-white);
-  color: var(--admin-navy);
-  border-color: var(--admin-gray-200);
-  border-bottom: 1px solid var(--admin-white);
+  background: var(--admin-navy);
+  color: var(--admin-white);
+  border-color: var(--admin-navy);
+  border-bottom: 1px solid var(--admin-navy);
   position: relative;
   z-index: 1;
+}
+/* Keep the active tab navy on hover — the .pickerTab:hover gray would
+   otherwise win on specificity and make the selected tab flicker. */
+.pickerTabActive:hover {
+  background: var(--admin-navy);
+  color: var(--admin-white);
 }
 .pickerTabDivider {
   width: 1px;
@@ -377,6 +383,17 @@
 .mbCatalogItemEagle::after {
   content: ' ★';
   color: var(--admin-warning);
+}
+/* Already-earned badges get the same green used for completed checkmarks
+   elsewhere in the picker, so "already done" reads at a glance from the grid. */
+.mbCatalogItemEarned {
+  background: var(--admin-forest);
+  border-color: var(--admin-forest);
+  color: var(--admin-white);
+}
+.mbCatalogItemEarned:hover {
+  background: var(--admin-forest);
+  border-color: var(--admin-forest);
 }
 .mbBackBtn {
   font-family: inherit;

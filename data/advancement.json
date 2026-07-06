@@ -265,7 +265,7 @@
       "requirements": [
         { "code": "1",  "label": "Active Six Months as Life" },
         { "code": "2",  "label": "Scout Spirit" },
-        { "code": "3",  "label": "Seven More Merit Badges (3 Eagle-required, 21 total)" },
+        { "code": "3",  "label": "Ten More Merit Badges (6 Eagle-required, 21 total)" },
         { "code": "4",  "label": "Position of Responsibility" },
         { "code": "5",  "label": "Eagle Service Project" },
         { "code": "6",  "label": "Scoutmaster's Conference" },
@@ -311,6 +311,67 @@
 
   "meritBadgeRequirements": {
     "_note": "Illustrative requirement lists for prototype testing. Wording is paraphrased — replace with exact text from the current official BSA pamphlet before going live, and re-check on every BSA annual update. The 'complete' field encodes optionality: 'all' (must complete every child), 'any' (any one child counts), or 'n-of' with completeN.",
+    "citizenship-world": [
+      { "code": "1", "label": "Explain what citizenship in the world means to you and what makes a good world citizen" },
+      { "code": "2", "label": "Explain U.S. citizenship rights/duties/obligations; compare with two other countries" },
+      { "code": "3", "label": "World events and national interest", "complete": "all", "children": [
+        { "code": "3a", "label": "Discuss how national interest and foreign relationships affect a country's security, economy, values, and health (current event)" },
+        { "code": "3b", "label": "Discuss how geography, resources, and climate shape a foreign country's economy and global partnerships" }
+      ]},
+      { "code": "4", "label": "International law, trade, and organizations (do TWO)", "complete": "n-of", "completeN": 2, "children": [
+        { "code": "4a", "label": "Explain international law vs. national law and its role in conflict resolution" },
+        { "code": "4b", "label": "Research a current international trade/finance issue; explain why countries must cooperate" },
+        { "code": "4c", "label": "Select TWO organizations (UN/UNICEF, ICJ, Interpol, WOSM, WHO, Amnesty Intl, IFRC, CARE, EU) and describe their role" }
+      ]},
+      { "code": "5", "label": "Types of government", "complete": "all", "children": [
+        { "code": "5a", "label": "Discuss differences between constitutional and nonconstitutional governments" },
+        { "code": "5b", "label": "Name at least five government types currently in power in the world" },
+        { "code": "5c", "label": "Show on a world map countries using each of those five government types" }
+      ]},
+      { "code": "6", "label": "Diplomacy and international travel", "complete": "all", "children": [
+        { "code": "6a", "label": "Explain how governments are represented abroad and how the U.S. is accredited to international organizations" },
+        { "code": "6b", "label": "Describe the roles of ambassador, consul, Bureau of Global Public Affairs, and the U.S. Commercial Service" },
+        { "code": "6c", "label": "Explain the purpose of a passport and visa for international travel" }
+      ]},
+      { "code": "7", "label": "Global engagement (do TWO)", "complete": "n-of", "completeN": 2, "children": [
+        { "code": "7a", "label": "Explore an issue on the U.S. State Department website" },
+        { "code": "7b", "label": "Find a human rights story recognized in the U.S. but not in another country (foreign news source)" },
+        { "code": "7c", "label": "Visit with a student or Scout from another country; discuss values, holidays, foods, and traditions" },
+        { "code": "7d", "label": "Attend or participate in a WOSM event (Jamboree, Moot, Congress, JOTA/JOTI) or a national/regional Jamboree" },
+        { "code": "7e", "label": "Attend or participate in an international event in your area (festival, concert, play)" }
+      ]}
+    ],
+    "citizenship-nation": [
+      { "code": "1", "label": "Explain what the Constitution is, what it does, its principles, and why it matters" },
+      { "code": "2", "label": "List the Constitution's six purposes from the Preamble and how they affect your family and community" },
+      { "code": "3", "label": "Three branches of government", "complete": "all", "children": [
+        { "code": "3a", "label": "Explain the function of each branch" },
+        { "code": "3b", "label": "Explain why power is divided among the branches" },
+        { "code": "3c", "label": "Explain how each branch checks and balances the others" },
+        { "code": "3d", "label": "Explain how citizens can be involved in each branch" }
+      ]},
+      { "code": "4", "label": "Declaration, Bill of Rights, and national motto", "complete": "all", "children": [
+        { "code": "4a", "label": "Discuss the importance of the Declaration of Independence" },
+        { "code": "4b", "label": "Discuss the importance of the Bill of Rights and the 14th Amendment" },
+        { "code": "4c", "label": "Discuss the importance of E Pluribus Unum" }
+      ]},
+      { "code": "5", "label": "Follow national news for five days; discuss issues and explain how one affects you, family, and community" },
+      { "code": "6", "label": "Study a historically important speech", "complete": "all", "children": [
+        { "code": "6a", "label": "Identify the speech's author" },
+        { "code": "6b", "label": "Explain the historical context" },
+        { "code": "6c", "label": "Explain the difficulties the nation faced that the speech addressed" },
+        { "code": "6d", "label": "Summarize what the author said" },
+        { "code": "6e", "label": "Explain why the speech is important to the nation's history" },
+        { "code": "6f", "label": "Choose a meaningful sentence from the speech and explain why" }
+      ]},
+      { "code": "7", "label": "National sites and civic institutions (do TWO)", "complete": "n-of", "completeN": 2, "children": [
+        { "code": "7a", "label": "Visit a National Historic Landmark or Register site and discuss what you learned" },
+        { "code": "7b", "label": "Tour your state capitol or the U.S. Capitol and discuss its function and history" },
+        { "code": "7c", "label": "Tour a federal facility and explain its function in the community" },
+        { "code": "7d", "label": "Research a U.S. national monument and explain its importance" }
+      ]},
+      { "code": "8", "label": "Name your Congressional representatives; write to one about a national issue and show the correspondence and any response" }
+    ],
     "cooking": [
       { "code": "1", "label": "Health and safety", "complete": "all", "children": [
         { "code": "1a", "label": "Discuss food allergies, intolerances, and dietary/religious needs" },
@@ -356,75 +417,429 @@
       ]},
       { "code": "7", "label": "Food-related careers (discussion)" }
     ],
-    "camping": [
-      { "code": "1", "label": "Outdoor Code and Leave No Trace", "complete": "all", "children": [
-        { "code": "1a", "label": "Recite the Outdoor Code and Leave No Trace principles" },
-        { "code": "1b", "label": "Explain how each principle applies on a campout" }
+    "citizenship-community": [
+      { "code": "1", "label": "Discuss what citizenship in the community means and how to be a good citizen" },
+      { "code": "2", "label": "Community mapping and government", "complete": "all", "children": [
+        { "code": "2a", "label": "Map community landmarks (government, fire/police/hospital, parks, historic); record distances and travel times" },
+        { "code": "2b", "label": "Chart your local or state government; show top offices and elected vs. appointed" }
       ]},
-      { "code": "2", "label": "Equipment", "complete": "all", "children": [
-        { "code": "2a", "label": "List personal and patrol gear for a weekend campout" },
-        { "code": "2b", "label": "Show how to pack a backpack" },
-        { "code": "2c", "label": "Describe care and storage of camping equipment" }
+      { "code": "3", "label": "Attend a public meeting", "complete": "all", "children": [
+        { "code": "3a", "label": "Attend an in-person council, school board, court session, or approved government meeting" },
+        { "code": "3b", "label": "Explain why you agree with one opinion over another on an issue from the meeting" }
       ]},
-      { "code": "3", "label": "Trip planning", "complete": "all", "children": [
-        { "code": "3a", "label": "Write a weekend campout plan (menu, route, budget)" },
-        { "code": "3b", "label": "Describe how to share the plan with parents and leaders" },
-        { "code": "3c", "label": "Discuss emergency procedures and how to respond" }
+      { "code": "4", "label": "Community issue and local government", "complete": "all", "children": [
+        { "code": "4a", "label": "Find which branch of local government is responsible for an issue important to your community" },
+        { "code": "4b", "label": "Interview someone from that branch about the issue and how young people can help" },
+        { "code": "4c", "label": "Share what you learned with your counselor" }
       ]},
-      { "code": "4", "label": "Cooking and food safety in camp" },
-      { "code": "5", "label": "Tools and fire", "complete": "all", "children": [
-        { "code": "5a", "label": "Demonstrate safe use of a knife, saw, and axe" },
-        { "code": "5b", "label": "Build, light, and extinguish a campfire using LNT methods" },
-        { "code": "5c", "label": "Demonstrate safe use of a camp stove" }
+      { "code": "5", "label": "Watch an approved movie about individuals positively affecting a community; discuss" },
+      { "code": "6", "label": "List taxpayer-funded community services and why they matter to your community" },
+      { "code": "7", "label": "Charitable organizations and volunteering", "complete": "all", "children": [
+        { "code": "7a", "label": "Identify three charitable organizations (outside Scouting) that bring your community together" },
+        { "code": "7b", "label": "Research one of the organizations using a variety of resources" },
+        { "code": "7c", "label": "Contact the organization and volunteer at least eight hours; discuss what you learned" }
       ]},
-      { "code": "6", "label": "Camp sanitation and water", "complete": "all", "children": [
-        { "code": "6a", "label": "Describe two methods of water purification" },
-        { "code": "6b", "label": "Explain proper waste disposal at established sites and in the backcountry" }
+      { "code": "8", "label": "Develop and stage a public presentation on your community's history, cultures, features, and challenges" }
+    ],
+    "first-aid": [
+      { "code": "1", "label": "Handling a first aid emergency", "complete": "all", "children": [
+        { "code": "1a", "label": "Explain how to assess and handle a first aid emergency, including scene safety" },
+        { "code": "1b", "label": "Tell how to get emergency medical help from home and from a remote wilderness location" },
+        { "code": "1c", "label": "Demonstrate precautions against infection, including safe disposal of used supplies" },
+        { "code": "1d", "label": "Demonstrate evaluating and managing a patient's airway and breathing" },
+        { "code": "1e", "label": "Demonstrate a thorough examination of an accident victim" },
+        { "code": "1f", "label": "Discuss why shock is an emergency" },
+        { "code": "1g", "label": "Define triage and describe example triage situations" }
       ]},
-      { "code": "7", "label": "Weather and hazards", "complete": "all", "children": [
-        { "code": "7a", "label": "Discuss preparing for cold, hot, and wet weather" },
-        { "code": "7b", "label": "Describe what to do during lightning, flash flooding, or wildfire" }
+      { "code": "2", "label": "Preparing for first aid emergencies", "complete": "all", "children": [
+        { "code": "2a", "label": "Obtain a Scout Annual Health and Medical Record and discuss its importance for first aid" },
+        { "code": "2b", "label": "Assemble a hiking first-aid kit and demo each item; inspect a unit/home/vehicle/camp kit" }
       ]},
-      { "code": "8", "label": "Camping nights", "complete": "all", "children": [
-        { "code": "8a", "label": "Camp a total of at least 20 nights at Scouting activities" },
-        { "code": "8b", "label": "On one campout, sleep in a tent you pitched" },
-        { "code": "8c", "label": "On one campout, sleep without a tent (cowboy camp or under a tarp)" }
+      { "code": "3", "label": "Wounds with no external bleeding (signs, first aid, prevention)", "complete": "all", "children": [
+        { "code": "3a", "label": "Closed wounds (bruise, hematoma)" },
+        { "code": "3b", "label": "Thermal burns or scalds (superficial, partial, and full thickness)" },
+        { "code": "3c", "label": "Chemical burns" },
+        { "code": "3d", "label": "Electrical burns" },
+        { "code": "3e", "label": "Sunburn" },
+        { "code": "3f", "label": "Snow blindness" },
+        { "code": "3g", "label": "Immersion foot, frostnip, frostbite, and ice burns" },
+        { "code": "3h", "label": "Abrasions such as chafing and rope burns" },
+        { "code": "3i", "label": "Blisters on hands, feet, buttocks, and shoulders" },
+        { "code": "3j", "label": "Puncture wounds from splinters, nails, and fish hooks" },
+        { "code": "3k", "label": "Rash from poisonous plants" },
+        { "code": "3l", "label": "Bug bites (chiggers, ticks, mosquitoes, biting gnats)" },
+        { "code": "3m", "label": "Bee stings" },
+        { "code": "3n", "label": "Spider bites" },
+        { "code": "3o", "label": "Scorpion sting" },
+        { "code": "3p", "label": "Bite of a pet, wild mammal, or human" },
+        { "code": "3q", "label": "Bite of a venomous snake" }
       ]},
-      { "code": "9", "label": "On-campout activities", "complete": "n-of", "completeN": 2, "children": [
-        { "code": "9a", "label": "Hike up a mountain or to a viewpoint with 1,000 ft elevation gain" },
-        { "code": "9b", "label": "Backpack at least 4 miles" },
-        { "code": "9c", "label": "Fish from a boat or shore" },
-        { "code": "9d", "label": "Participate in a conservation project of at least three hours" },
-        { "code": "9e", "label": "Help plan and carry out a campfire program" }
+      { "code": "4", "label": "Bleeding wounds (signs, first aid, prevention)", "complete": "all", "children": [
+        { "code": "4a", "label": "Nosebleed" },
+        { "code": "4b", "label": "Open wound with mild or moderate bleeding (scratch, scrape, shallow cut)" },
+        { "code": "4c", "label": "Open wound with severe bleeding, such as a deep cut on an arm or leg" },
+        { "code": "4d", "label": "When to use (and not use) a tourniquet; demonstrate application without tightening" }
+      ]},
+      { "code": "5", "label": "Breathing emergencies (signs, first aid, prevention)", "complete": "all", "children": [
+        { "code": "5a", "label": "Choking" },
+        { "code": "5b", "label": "Asthmatic attack" },
+        { "code": "5c", "label": "Anaphylaxis from insect sting or food/product allergy" },
+        { "code": "5d", "label": "Inhalation injuries" },
+        { "code": "5e", "label": "Altitude sickness" }
+      ]},
+      { "code": "6", "label": "Loss of consciousness (signs, first aid, prevention)", "complete": "all", "children": [
+        { "code": "6a", "label": "Fainting" },
+        { "code": "6b", "label": "Hypoglycemia" },
+        { "code": "6c", "label": "Seizure" },
+        { "code": "6d", "label": "Drug overdose and alcohol poisoning" },
+        { "code": "6e", "label": "Underwater hypoxic blackout" },
+        { "code": "6f", "label": "Cold water shock and drowning" },
+        { "code": "6g", "label": "Lightning strike and electric shock" }
+      ]},
+      { "code": "7", "label": "Heart attack and CPR", "complete": "all", "children": [
+        { "code": "7a", "label": "Explain what a heart attack is" },
+        { "code": "7b", "label": "Describe heart attack symptoms, signs, and first aid" },
+        { "code": "7c", "label": "Describe the conditions required before performing CPR" },
+        { "code": "7d", "label": "Demonstrate proper CPR technique on an approved training device" },
+        { "code": "7e", "label": "Explain the use of an AED" },
+        { "code": "7f", "label": "Demonstrate or simulate proper AED use" },
+        { "code": "7g", "label": "Identify AED locations at public facilities; discuss why those locations" }
+      ]},
+      { "code": "8", "label": "Muscle and bone injuries", "complete": "all", "children": [
+        { "code": "8a", "label": "Explain differences among strains, tears, ruptures, sprains, dislocations, and fractures" },
+        { "code": "8b", "label": "Signs and first aid for muscle strain, muscle tear, and tendon rupture" },
+        { "code": "8c", "label": "Signs and complications of a sprain, fracture, and dislocation" },
+        { "code": "8d", "label": "Demonstrate bandages: arm sling; elastic/cravat wraps for ankle sprain and wrist/hand" },
+        { "code": "8e", "label": "Demonstrate splinting: finger/toe, forearm/wrist, upper leg, lower leg/ankle" }
+      ]},
+      { "code": "9", "label": "Head and spine injuries", "complete": "all", "children": [
+        { "code": "9a", "label": "Signs, complications, and prevention of head, neck, and back injuries" },
+        { "code": "9b", "label": "Signs and first aid for a concussion" },
+        { "code": "9c", "label": "Demonstrate first aid for an open head wound with a triangular or other bandage" },
+        { "code": "9d", "label": "Demonstrate first aid for a suspected neck or back injury" }
+      ]},
+      { "code": "10", "label": "Moving a patient", "complete": "all", "children": [
+        { "code": "10a", "label": "Describe when an injured person should and should not be moved" },
+        { "code": "10b", "label": "Tell how to choose the best method to move a person; demonstrate the methods" },
+        { "code": "10c", "label": "Alone and with a partner, transport a person from a smoke-filled room" },
+        { "code": "10d", "label": "Alone and with a partner, transport a person with a sprained ankle at least 25 yards" },
+        { "code": "10e", "label": "With helpers, improvise a stretcher and move an unconscious person at least 25 yards" }
+      ]},
+      { "code": "11", "label": "Heat- and cold-related conditions (signs, first aid, prevention)", "complete": "all", "children": [
+        { "code": "11a", "label": "Dehydration and over-hydration" },
+        { "code": "11b", "label": "Heat cramps and muscle pain after exertion" },
+        { "code": "11c", "label": "Heat exhaustion" },
+        { "code": "11d", "label": "Heat stroke" },
+        { "code": "11e", "label": "Chest pains associated with cold exposure" },
+        { "code": "11f", "label": "Hypothermia" }
+      ]},
+      { "code": "12", "label": "Mental health conditions", "complete": "all", "children": [
+        { "code": "12a", "label": "Describe reactions to at least three stressful situations" },
+        { "code": "12b", "label": "Describe actions to prepare for and manage stressful situations" },
+        { "code": "12c", "label": "Describe indications someone might be a danger to themselves or others" },
+        { "code": "12d", "label": "Describe actions to take if you suspect someone is a danger to themselves or others" }
+      ]},
+      { "code": "13", "label": "Miscellaneous conditions (signs, first aid, prevention)", "complete": "all", "children": [
+        { "code": "13a", "label": "Object in the eye" },
+        { "code": "13b", "label": "Broken, chipped, loosened, or knocked-out tooth" },
+        { "code": "13c", "label": "Vomiting and diarrhea from food poisoning" },
+        { "code": "13d", "label": "Abdominal pain" },
+        { "code": "13e", "label": "Stroke" }
+      ]},
+      { "code": "14", "label": "Plan and teach a first-aid skill using the EDGE method" },
+      { "code": "15", "label": "EMS careers and community (do ONE)", "complete": "any", "children": [
+        { "code": "15a", "label": "Visit an emergency medical station or training center; discuss what you learned" },
+        { "code": "15b", "label": "Interview an EMS professional about their work and career" },
+        { "code": "15c", "label": "Research three EMS careers, one in depth (training, costs, prospects)" },
+        { "code": "15d", "label": "Explore using EMS skills for a hobby or healthy lifestyle" }
       ]}
+    ],
+    "environmental-science": [
+      { "code": "1", "label": "Explain environmental science in your own words and how science helps understand, conserve, and improve it" },
+      { "code": "2", "label": "Ecology", "complete": "all", "children": [
+        { "code": "2a", "label": "Observe an approved area's ecosystem (sight, sound, smell) over two days" },
+        { "code": "2b", "label": "Note living, nonliving, and formerly-living ecosystem components, interactions, and human impacts" }
+      ]},
+      { "code": "3", "label": "Air Pollution (do ONE)", "complete": "any", "children": [
+        { "code": "3a", "label": "Explain PM sources and effects; test for particulates via an experiment" },
+        { "code": "3b", "label": "Discuss air pollution/transportation links (3 examples); compare two transportation modes" },
+        { "code": "3c", "label": "Research the Clean Air Act: history, goals, progress, impact, and enforcement" }
+      ]},
+      { "code": "4", "label": "Water Pollution (do ONE)", "complete": "any", "children": [
+        { "code": "4a", "label": "Identify community water source, treatment, and disposal; review a water quality report" },
+        { "code": "4b", "label": "Research a local flood- or drought-prone area's history and environmental impacts" },
+        { "code": "4c", "label": "Research the Clean Water Act: history, goals, progress, impact, and enforcement" }
+      ]},
+      { "code": "5", "label": "Land Pollution (do ONE)", "complete": "any", "children": [
+        { "code": "5a", "label": "List pesticides/fertilizers used in an area; discuss benefits and runoff/groundwater impacts" },
+        { "code": "5b", "label": "Explain erosion using a local example; discuss where sediment goes and how to reduce it" },
+        { "code": "5c", "label": "Research a Superfund site's cause, environmental effects, remediation, and current condition" }
+      ]},
+      { "code": "6", "label": "Rare, Threatened, or Endangered Species (do ONE)", "complete": "any", "children": [
+        { "code": "6a", "label": "Research a state endangered species; present a 100-word report with a drawing or photo" },
+        { "code": "6b", "label": "Research a recovered species; present a 100-word report with a drawing or photo" },
+        { "code": "6c", "label": "Visit a habitat-improvement project for a threatened species; report to your troop" }
+      ]},
+      { "code": "7", "label": "Pollution Prevention, Resource Recovery, and Conservation (do ONE)", "complete": "any", "children": [
+        { "code": "7a", "label": "List five resource-conservation methods; practice at least two for one week" },
+        { "code": "7b", "label": "Explain resource recovery; collect 10 Reduce/Reuse/Recycle examples and discuss handling" },
+        { "code": "7c", "label": "Identify five household hazardous-waste items; explain proper storage and disposal" }
+      ]},
+      { "code": "8", "label": "Pollination (do ONE)", "complete": "any", "children": [
+        { "code": "8a", "label": "List five regional pollinators/plants; explain their importance and how Scouts can help" },
+        { "code": "8b", "label": "Observe pollination for an hour; record pollinator-plant pairs and how Scouts can help" },
+        { "code": "8c", "label": "Explain pollination's importance to agriculture; identify four crop-pollinator pairs" }
+      ]},
+      { "code": "9", "label": "Research two invasive species: origin, spread, ecosystem impact, and control methods" },
+      { "code": "10", "label": "Identify environmental-impact topics for a construction project and evaluate alternatives" },
+      { "code": "11", "label": "Identify three environmental-science careers; research one's training and salary prospects" }
+    ],
+    "communication": [
+      { "code": "1", "label": "Communication habits (do ONE)", "complete": "any", "children": [
+        { "code": "1a", "label": "Keep a one-day communication log; discuss what it reveals and how to improve" },
+        { "code": "1b", "label": "Keep a three-day listening journal covering inform, persuade, enjoy, and empathize" },
+        { "code": "1c", "label": "Observe a small group sharing personal stories; report on communication differences" },
+        { "code": "1d", "label": "List communication methods; discuss when each might not be appropriate or effective" }
+      ]},
+      { "code": "2", "label": "Self-presentation and persuasion (do ONE)", "complete": "any", "children": [
+        { "code": "2a", "label": "Create and present a self-description (collage, story, drawing, song, or skit)" },
+        { "code": "2b", "label": "Build a sales plan; persuade your counselor to buy/use/agree; discuss effectiveness" }
+      ]},
+      { "code": "3", "label": "Write and deliver a five-minute speech at a group meeting" },
+      { "code": "4", "label": "Interview someone; prepare a guest-speaker introduction and show how you'd invite them" },
+      { "code": "5", "label": "Attend a public meeting with multiple viewpoints; take notes and write an objective report" },
+      { "code": "6", "label": "Plan and teach a skill with teaching aids; assess whether the person learned it" },
+      { "code": "7", "label": "Written communication (do ONE)", "complete": "any", "children": [
+        { "code": "7a", "label": "Write a letter to the editor of a magazine or newspaper expressing your opinion" },
+        { "code": "7b", "label": "Create a webpage/blog with 3+ entries, a photo/illustration, and a link to another page" },
+        { "code": "7c", "label": "Desktop-publish a newsletter/brochure/flyer with an article and a photo or illustration" }
+      ]},
+      { "code": "8", "label": "Plan a court of honor, campfire, or worship service; get PLC approval and serve as MC" },
+      { "code": "9", "label": "Identify three communication careers; research one's education/training/experience needs" }
+    ],
+    "aviation": [
+      { "code": "1", "label": "Aviation basics and mechanics of flight", "complete": "all", "children": [
+        { "code": "1a", "label": "Define \"aircraft\"; describe three kinds of aircraft and their typical uses" },
+        { "code": "1b", "label": "Overview the evolution of flight; discuss three notable historical milestones" },
+        { "code": "1c", "label": "Explain fixed-wing vs. rotary-wing aircraft and the benefits of each" },
+        { "code": "1d", "label": "Explain how piston, turbine, and jet engines operate" },
+        { "code": "1e", "label": "Using a model aircraft, describe the four forces acting on it in flight" },
+        { "code": "1f", "label": "Explain how an airfoil generates lift, noting Bernoulli's principle" },
+        { "code": "1g", "label": "Identify an aircraft's control surfaces and explain how they control attitude/direction" },
+        { "code": "1h", "label": "Explain the purposes of a single-engine aircraft's flight instruments (attitude, altimeter, airspeed, etc.)" }
+      ]},
+      { "code": "2", "label": "Principles of flight (do ONE)", "complete": "any", "children": [
+        { "code": "2a", "label": "Build a model FPG-9 glider and compete on flight/landing precision with your troop" },
+        { "code": "2b", "label": "Build a rubber-band balsa airplane; fly it 25 feet straight with a smooth landing" },
+        { "code": "2c", "label": "Build a powered model aircraft/drone, get TRUST certified, and fly a successful takeoff/landing" }
+      ]},
+      { "code": "3", "label": "Flight operations (do TWO)", "complete": "n-of", "completeN": 2, "children": [
+        { "code": "3a", "label": "Set and fly headings in a flight simulator with a successful takeoff and landing" },
+        { "code": "3b", "label": "Perform a supervised preflight inspection of an aircraft" },
+        { "code": "3c", "label": "Observe an aircraft maintenance activity; describe its maintenance schedule and requirements" },
+        { "code": "3d", "label": "Read an aeronautical chart; correct a measured course for variation, deviation, and wind drift" },
+        { "code": "3e", "label": "Take a discovery flight; record details and report your impressions" }
+      ]},
+      { "code": "4", "label": "Airport operations (do ONE)", "complete": "any", "children": [
+        { "code": "4a", "label": "Visit an airport; report on facility use, runway numbering, and active-runway determination" },
+        { "code": "4b", "label": "Visit an FAA facility (ATCT, TRACON, ARTCC, or FSDO); report on its operation" },
+        { "code": "4c", "label": "Visit a military aviation facility; report on how it supports defense/civilian activities" },
+        { "code": "4d", "label": "Visit an aviation museum or air show; report on your impressions and takeaways" }
+      ]},
+      { "code": "5", "label": "Personal and professional aviation opportunities", "complete": "all", "children": [
+        { "code": "5a", "label": "Explain the student, recreational, remote, and private pilot certificates" },
+        { "code": "5b", "label": "Describe the benefits of the instrument rating" },
+        { "code": "5c", "label": "Explain the commercial pilot certificate, ATP certificate, and CFI credential" },
+        { "code": "5d", "label": "Identify a local Aviation Exploring Post or Civil Air Patrol unit; learn its activities/requirements" },
+        { "code": "5e", "label": "Identify three aviation careers; research one in depth (training, prospects, salary)" }
+      ]}
+    ],
+    "personal-fitness": [
+      { "code": "1", "label": "Defining personal fitness", "complete": "all", "children": [
+        { "code": "1a", "label": "Describe a physically fit person" },
+        { "code": "1b", "label": "Describe a mentally, emotionally, and socially fit person" },
+        { "code": "1c", "label": "Describe a spiritually fit person" },
+        { "code": "1d", "label": "Explain why it's important to be fit in all these ways" },
+        { "code": "1e", "label": "Discuss how personal fitness relates to the Scout Oath and Law" }
+      ]},
+      { "code": "2", "label": "Monitoring your health", "complete": "all", "children": [
+        { "code": "2a", "label": "Discuss the importance of an annual physical exam and what it covers; note your last exam" },
+        { "code": "2b", "label": "Explain the importance of dental exams and daily oral care; note your last dental exam" }
+      ]},
+      { "code": "3", "label": "Your fitness knowledge and habits", "complete": "all", "children": [
+        { "code": "3a", "label": "Explain your exercise routine, whether it covers all four fitness components, and disease-risk impact" },
+        { "code": "3b", "label": "Discuss harmful substances you avoid and how that affects your risk factors" },
+        { "code": "3c", "label": "Explain vaccine-preventable diseases and your own immunization status" },
+        { "code": "3d", "label": "Discuss how nutrition relates to fitness and whether you eat a balanced diet" },
+        { "code": "3e", "label": "Discuss a healthy weight for you and how you maintain it" },
+        { "code": "3f", "label": "Explain the importance of adequate sleep and whether you get enough" },
+        { "code": "3g", "label": "Discuss quality family/social time and how you contribute to home life" }
+      ]},
+      { "code": "4", "label": "Measures of physical fitness", "complete": "all", "children": [
+        { "code": "4a", "label": "Define a cardiorespiratory measure: timed 1-mile walk/run (or counselor-approved alternate)" },
+        { "code": "4b", "label": "Define two strength/endurance measures: sit-ups/plank, and push-ups/pull-ups (60 sec each)" },
+        { "code": "4c", "label": "Define a flexibility measure (e.g., sit-and-reach or back-scratch test)" }
+      ]},
+      { "code": "5", "label": "Pre-assessment of physical fitness", "complete": "all", "children": [
+        { "code": "5a", "label": "Complete and record the baseline assessments defined in requirement 4" },
+        { "code": "5b", "label": "Identify your strongest/weakest fitness areas; choose one to target for improvement" },
+        { "code": "5c", "label": "Keep a three-day log of what you eat and drink" },
+        { "code": "5d", "label": "Set at least two diet/nutrition improvement goals based on your food log" }
+      ]},
+      { "code": "6", "label": "Plan the 12-week program", "complete": "all", "children": [
+        { "code": "6a", "label": "Include a warm-up: low-intensity movement or stretching before each workout" },
+        { "code": "6b", "label": "Include a cardiorespiratory element: 15-30 minutes, at least three times per week" },
+        { "code": "6c", "label": "Include a muscular strength/endurance element targeting muscles per your improvement goals" },
+        { "code": "6d", "label": "Include a flexibility element (back stretches, trunk rotation, hamstring stretches)" },
+        { "code": "6e", "label": "Include a cool-down: low-intensity movement or stretching after each workout" },
+        { "code": "6f", "label": "Include a plan for achieving your two diet/nutrition improvement goals" }
+      ]},
+      { "code": "7", "label": "Complete the 12-week program", "complete": "all", "children": [
+        { "code": "7a", "label": "Complete and log 12 consecutive weeks of the program (may resume after gaps under two weeks)" },
+        { "code": "7b", "label": "Repeat fitness assessments at weeks 4, 8, and after completion; show improvement over baseline" },
+        { "code": "7c", "label": "Keep 3-day food logs during weeks 8 and 12; show improvement toward your diet goals" },
+        { "code": "7d", "label": "Discuss your results, improvements, and insights with your counselor after completing the program" }
+      ]},
+      { "code": "8", "label": "Future career or lifestyle (do ONE)", "complete": "any", "children": [
+        { "code": "8a", "label": "Research three personal-fitness careers; research one in depth (training, outlook, salary)" },
+        { "code": "8b", "label": "Research how a fitness area could support a hobby or lifestyle; research education/costs/organizations" }
+      ]}
+    ],
+    "personal-management": [
+      { "code": "1", "label": "Family purchase, savings plan, and shopping strategy", "complete": "all", "children": [
+        { "code": "1a", "label": "Choose a major-expense item your family might want to purchase" },
+        { "code": "1b", "label": "Write a family savings plan for the item; discuss it with your counselor, family, and other family needs" },
+        { "code": "1c", "label": "Develop a shopping strategy: determine quality and comparison-shop at least two price sources" }
+      ]},
+      { "code": "2", "label": "13-week budget", "complete": "all", "children": [
+        { "code": "2a", "label": "Prepare a 13-week budget of expected income, expenses, and savings" },
+        { "code": "2b", "label": "Compare expected income vs. expenses; plan to balance a deficit or use a surplus" },
+        { "code": "2c", "label": "Track actual income, expenses, and savings for the same 13 weeks; present results to your counselor" },
+        { "code": "2d", "label": "Compare budget to actual results; discuss with your counselor what you'd do differently" }
+      ]},
+      { "code": "3", "label": "Money concepts (do FIVE)", "complete": "n-of", "completeN": 5, "children": [
+        { "code": "3a", "label": "Emotions you feel when you receive money" },
+        { "code": "3b", "label": "How the amount of money you carry affects your spending habits" },
+        { "code": "3c", "label": "Buyer's remorse: your thoughts on a purchase right away vs. three months later" },
+        { "code": "3d", "label": "How hunger affects your food shopping" },
+        { "code": "3e", "label": "An item you bought after seeing ads for it; did it work as advertised?" },
+        { "code": "3f", "label": "What happens when you put money into a savings account" },
+        { "code": "3g", "label": "Charitable giving: its purpose and your thoughts on it" },
+        { "code": "3h", "label": "What you can do to better manage your money" }
+      ]},
+      { "code": "4", "label": "Saving and investing concepts", "complete": "all", "children": [
+        { "code": "4a", "label": "Differences between saving and investing, and reasons for choosing one" },
+        { "code": "4b", "label": "Return on investment and risk, and how they're related" },
+        { "code": "4c", "label": "Simple interest vs. compound interest" },
+        { "code": "4d", "label": "Diversification in investing" },
+        { "code": "4e", "label": "Why it's important to save and invest for retirement" }
+      ]},
+      { "code": "5", "label": "Types of investments", "complete": "all", "children": [
+        { "code": "5a", "label": "Common stocks" },
+        { "code": "5b", "label": "Mutual funds" },
+        { "code": "5c", "label": "Life insurance" },
+        { "code": "5d", "label": "A certificate of deposit (CD)" },
+        { "code": "5e", "label": "A savings account" },
+        { "code": "5f", "label": "A U.S. savings bond" }
+      ]},
+      { "code": "6", "label": "Types of insurance", "complete": "all", "children": [
+        { "code": "6a", "label": "Automobile insurance" },
+        { "code": "6b", "label": "Health insurance" },
+        { "code": "6c", "label": "Homeowner's/renter's insurance" },
+        { "code": "6d", "label": "Whole life and term life insurance" }
+      ]},
+      { "code": "7", "label": "Loans, credit, and debt", "complete": "all", "children": [
+        { "code": "7a", "label": "What a loan and interest are, and how APR measures a loan's true cost" },
+        { "code": "7b", "label": "Different ways to borrow money" },
+        { "code": "7c", "label": "Charge vs. debit vs. credit cards: costs/pitfalls and why minimum payments are unwise" },
+        { "code": "7d", "label": "Credit reports and how personal responsibility affects yours" },
+        { "code": "7e", "label": "Ways to reduce or eliminate debt" }
+      ]},
+      { "code": "8", "label": "Time management", "complete": "all", "children": [
+        { "code": "8a", "label": "Write a to-do list for the coming week, ranked by importance" },
+        { "code": "8b", "label": "Make a seven-day schedule with set activities and planned times for your to-do tasks" },
+        { "code": "8c", "label": "Follow your one-week schedule; journal when tasks were actually completed vs. planned" },
+        { "code": "8d", "label": "Review your list/schedule/diary with your counselor; discuss what you'd do differently" }
+      ]},
+      { "code": "9", "label": "Project plan", "complete": "all", "children": [
+        { "code": "9a", "label": "Define the project and its goal" },
+        { "code": "9b", "label": "Develop a project timeline from start to completion" },
+        { "code": "9c", "label": "Describe your project" },
+        { "code": "9d", "label": "List needed resources and how each helps achieve your goal" },
+        { "code": "9e", "label": "Develop a budget for your project" }
+      ]},
+      { "code": "10", "label": "Career exploration", "complete": "all", "children": [
+        { "code": "10a", "label": "Choose a post-graduation career; discuss its qualifications, education, skills, and experience" },
+        { "code": "10b", "label": "Explain the career's costs (tuition, supplies, room/board) and how you'd cover them" }
+      ]}
+    ],
+    "camping": [
+      { "code": "1", "label": "Camping hazards, weather, and health and safety", "complete": "all", "children": [
+        { "code": "1a", "label": "Explain likely camping hazards and how to anticipate, prevent, mitigate, and respond to them" },
+        { "code": "1b", "label": "Discuss the importance of weather awareness and how to prepare if weather turns bad" },
+        { "code": "1c", "label": "Show first aid and prevention for common camp injuries/illnesses (hypothermia, frostbite, heat, dehydration, altitude sickness, insect/tick/snake bites, blisters, hyperventilation)" }
+      ]},
+      { "code": "2", "label": "Learn the Leave No Trace principles and Outdoor Code; write a personal/group plan to apply them on your next outing" },
+      { "code": "3", "label": "Make a written overnight trek plan; show your route on a topo map using a compass, GPS receiver, or GPS app" },
+      { "code": "4", "label": "Patrol organization for a campout", "complete": "all", "children": [
+        { "code": "4a", "label": "Make a duty roster with assignments for an actual overnight campout" },
+        { "code": "4b", "label": "Help a patrol or Webelos unit prepare for an actual campout (roster, menu, equipment, planning, camp setup)" }
+      ]},
+      { "code": "5", "label": "Clothing, footwear, and gear essentials", "complete": "all", "children": [
+        { "code": "5a", "label": "Prepare a warm- and cold-weather clothing list for overnight campouts; explain layering" },
+        { "code": "5b", "label": "Discuss footwear choices for different weather and why the right footwear matters" },
+        { "code": "5c", "label": "Explain proper care and storage of camping equipment (clothing, footwear, bedding)" },
+        { "code": "5d", "label": "List the Scout Basic Essentials for any campout and explain why each is needed" },
+        { "code": "5e", "label": "Present yourself and your pack to your Scoutmaster for inspection before an overnight campout" }
+      ]},
+      { "code": "6", "label": "Tents, campsites, packs, and sleeping bags", "complete": "all", "children": [
+        { "code": "6a", "label": "Describe four tent types and their care; pitch a tent with another Scout" },
+        { "code": "6b", "label": "Discuss camp sanitation and why water treatment matters; demonstrate two water treatment methods" },
+        { "code": "6c", "label": "Describe factors for choosing where to pitch a tent" },
+        { "code": "6d", "label": "Compare internal- and external-frame packs" },
+        { "code": "6e", "label": "Discuss sleeping bag types, care, and keeping it dry; make a comfortable ground bed" }
+      ]},
+      { "code": "7", "label": "Prepare for an overnight patrol campout", "complete": "all", "children": [
+        { "code": "7a", "label": "Make a checklist of personal and patrol gear needed" },
+        { "code": "7b", "label": "Pack your gear and share of patrol equipment/food for comfort, weight, balance, and quick access" }
+      ]},
+      { "code": "8", "label": "Camp stoves and menu planning", "complete": "all", "children": [
+        { "code": "8a", "label": "Explain safety procedures for propane and liquid fuel stoves and proper fuel storage" },
+        { "code": "8b", "label": "Discuss advantages and disadvantages of different lightweight cooking stoves" },
+        { "code": "8c", "label": "Prepare a camp menu with recipes and a food list; plan two breakfasts, three lunches, two suppers; discuss food protection" },
+        { "code": "8d", "label": "While camping, cook a breakfast, lunch, and dinner from your planned menu; at least one must be a trail meal on a lightweight stove" }
+      ]},
+      { "code": "9", "label": "Camping experience", "complete": "all", "children": [
+        { "code": "9a", "label": "Camp a total of at least 20 nights at designated Scouting activities/events" },
+        { "code": "9b", "label": "Do TWO: mountain hike (1,000+ ft gain), backpack/snowshoe/ski 4+ miles, bike 15+ miles, water trip 4+ hrs/5+ miles, snow camping, or a 30+ ft rappel" },
+        { "code": "9c", "label": "Perform a conservation project approved by the landowner or land-managing agency" }
+      ]},
+      { "code": "10", "label": "Discuss what earning this badge taught you about health, safety, survival, public health, conservation, and citizenship, and how Scout spirit/Oath/Law apply to camping" }
     ],
     "woodwork": [
       { "code": "1", "label": "Safety", "complete": "all", "children": [
-        { "code": "1a", "label": "Show first-aid for common woodworking injuries" },
-        { "code": "1b", "label": "Describe shop safety practices and PPE (eyewear, dust, hearing)" },
-        { "code": "1c", "label": "Demonstrate safe use of the hand tools you will use" }
+        { "code": "1a", "label": "Explain likely woodworking hazards and how to prevent/mitigate/respond; explain tool safety precautions" },
+        { "code": "1b", "label": "Show first aid for woodworking injuries; explain eye/hearing protection and dust mask use" },
+        { "code": "1c", "label": "Earn the Totin' Chip" }
       ]},
-      { "code": "2", "label": "Wood and grain", "complete": "all", "children": [
-        { "code": "2a", "label": "Identify hardwood and softwood by sample" },
-        { "code": "2b", "label": "Describe how grain direction affects cutting and finishing" }
+      { "code": "2", "label": "Wood and lumber", "complete": "all", "children": [
+        { "code": "2a", "label": "Describe how timber is grown, harvested, milled, and how lumber is cured, seasoned, graded, sized" },
+        { "code": "2b", "label": "Collect and label six kinds of wood; describe qualities and best uses of each" }
       ]},
       { "code": "3", "label": "Tools", "complete": "all", "children": [
-        { "code": "3a", "label": "Identify common woodworking hand tools and their uses" },
-        { "code": "3b", "label": "Show how to sharpen and care for a chisel and a plane iron" },
-        { "code": "3c", "label": "Demonstrate safe use of a coping saw and a backsaw" }
+        { "code": "3a", "label": "Show proper care, use, and storage of your tools and equipment" },
+        { "code": "3b", "label": "Sharpen the cutting edges of two different tools" }
       ]},
-      { "code": "4", "label": "Joinery", "complete": "any", "children": [
-        { "code": "4a", "label": "Cut and fit a butt joint" },
-        { "code": "4b", "label": "Cut and fit a miter joint" },
-        { "code": "4c", "label": "Cut and fit a lap joint" }
+      { "code": "4", "label": "Build something useful with a saw, plane, hammer, brace, and bit, from lumber squared/measured to a working drawing" },
+      { "code": "5", "label": "Design and build your own project; track time spent and material cost" },
+      { "code": "6", "label": "Advanced project (do TWO)", "complete": "n-of", "completeN": 2, "children": [
+        { "code": "6a", "label": "Build a project with beveled or rounded edges from your own working drawings" },
+        { "code": "6b", "label": "Build a project with curved or incised cuttings from your own working drawings" },
+        { "code": "6c", "label": "Build a project with miter, dowel, or mortise-and-tenon joints from your own working drawings" },
+        { "code": "6d", "label": "Build a cabinet, box, or lidded item with inset hinges" },
+        { "code": "6e", "label": "Help make wooden toys for underprivileged children, or an approved woodworking service project for a charity" }
       ]},
-      { "code": "5", "label": "Project — build something useful", "complete": "all", "children": [
-        { "code": "5a", "label": "Choose a project that uses at least two joints from req 4" },
-        { "code": "5b", "label": "Make a materials list and sketch the project" },
-        { "code": "5c", "label": "Build the project to your sketch" },
-        { "code": "5d", "label": "Sand and apply an appropriate finish" }
-      ]},
-      { "code": "6", "label": "Careers — discuss careers using woodworking skills and what training each requires" }
+      { "code": "7", "label": "Talk with a cabinetmaker or finish carpenter about training, careers, work conditions, pay, and unions" }
     ]
   },
 

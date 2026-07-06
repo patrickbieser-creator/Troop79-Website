@@ -20,11 +20,11 @@ import {
   workbookUrl,
   type ReqNode
 } from '@/lib/mb-helpers';
+import { fetchAllRows } from '@/lib/supabase/paginate';
 import type {
   MeritBadge,
   MeritBadgeRequirement,
-  Scout,
-  LedgerEntry
+  Scout
 } from '@/lib/supabase/types';
 
 const RANK_LABELS: Record<string, string> = {
@@ -49,16 +49,21 @@ interface DetailData {
 async function loadDetail(mbId: string): Promise<DetailData | null> {
   const supabase = await createClient();
 
-  const [{ data: mb }, { data: reqRows }, { data: ledgerRows }, { data: scoutRows }, { count: totalActive }] =
+  const [{ data: mb }, { data: reqRows }, ledgerRows, { data: scoutRows }, { count: totalActive }] =
     await Promise.all([
       supabase.from('merit_badges').select('*').eq('id', mbId).maybeSingle(),
       supabase.from('merit_badge_requirements').select('*').eq('mb_id', mbId),
-      supabase
-        .from('ledger_entries')
-        .select('*')
-        .or(`code.like.${mbId}-%,code.eq.MB:${mbId}`)
-        .is('archived_at', null)
-        .is('deleted_at', null),
+      // Unbounded past the ~1000-row PostgREST cap once a badge accumulates
+      // enough history across every scout — paginate (lib/supabase/paginate.ts).
+      fetchAllRows<{ scout_id: string; kind: string; code: string }>((from, to) =>
+        supabase
+          .from('ledger_entries')
+          .select('scout_id, kind, code')
+          .or(`code.like.${mbId}-%,code.eq.MB:${mbId}`)
+          .is('archived_at', null)
+          .is('deleted_at', null)
+          .range(from, to)
+      ),
       supabase.from('scouts').select('*').eq('active', true).order('display_name'),
       supabase.from('scouts').select('id', { count: 'exact', head: true }).eq('active', true)
     ]);
@@ -69,7 +74,7 @@ async function loadDetail(mbId: string): Promise<DetailData | null> {
   const leaves = flattenLeaves(reqTree);
 
   const byScout = new Map<string, { awarded: boolean; codes: Set<string> }>();
-  for (const e of (ledgerRows ?? []) as LedgerEntry[]) {
+  for (const e of ledgerRows) {
     const slot = byScout.get(e.scout_id) ?? { awarded: false, codes: new Set<string>() };
     if (e.kind === 'merit_badge_award' && e.code === `MB:${mbId}`) {
       slot.awarded = true;
@@ -229,6 +234,7 @@ export default async function MeritBadgeDetailPage({
               <thead>
                 <tr>
                   <th rowSpan={2} style={stickyScoutHeadStyle}>Scout</th>
+                  <th style={awardHeadStyle} title="Full merit badge earned">AWARD</th>
                   {groups.map((g) => (
                     <th
                       key={g.topCode}
@@ -240,9 +246,13 @@ export default async function MeritBadgeDetailPage({
                       {optionalityLabel(g.topNode) && <GroupRule rule={optionalityLabel(g.topNode)} />}
                     </th>
                   ))}
-                  <th rowSpan={2} style={awardHeadStyle} title="Full merit badge earned">AWARD</th>
                 </tr>
                 <tr>
+                  {/* Award's row-2 band — same padding/font as leafHeadStyle so
+                      its combined height with the row above matches the
+                      Req-group columns exactly, instead of a rowSpan={2} cell
+                      leaving mismatched blank space against the gold fill. */}
+                  <th style={awardSubHeadStyle} aria-hidden="true" />
                   {leaves.map((l) => (
                     <th
                       key={l.code}
@@ -268,6 +278,12 @@ export default async function MeritBadgeDetailPage({
                         </Link>
                         <span style={rankPillStyle}>{RANK_LABELS[s.current_rank ?? ''] ?? s.current_rank}</span>
                       </td>
+                      <td
+                        title={`${s.display_name} — ${slot.awarded ? 'badge earned' : 'not yet awarded'}`}
+                        style={awardCellStyle(slot.awarded)}
+                      >
+                        {slot.awarded ? '★' : '☆'}
+                      </td>
                       {leaves.map((l) => {
                         const done = slot.codes.has(l.code);
                         return (
@@ -280,12 +296,6 @@ export default async function MeritBadgeDetailPage({
                           </td>
                         );
                       })}
-                      <td
-                        title={`${s.display_name} — ${slot.awarded ? 'badge earned' : 'not yet awarded'}`}
-                        style={awardCellStyle(slot.awarded)}
-                      >
-                        {slot.awarded ? '★' : '☆'}
-                      </td>
                     </tr>
                   );
                 })}
@@ -583,11 +593,14 @@ function leafHeadStyle(groupStart: boolean): React.CSSProperties {
   };
 }
 
+// Sticky immediately right of the Scout column (same left-anchored group, so
+// it stays visible alongside the scout name while the requirement columns
+// scroll underneath) — matches Scout's minWidth for the offset.
 const awardHeadStyle: React.CSSProperties = {
   position: 'sticky',
   top: 0,
-  right: 0,
-  zIndex: 3,
+  left: 200,
+  zIndex: 4,
   minWidth: 60,
   padding: '10px 8px',
   background: '#f6e7c4',
@@ -596,8 +609,22 @@ const awardHeadStyle: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 800,
   letterSpacing: '.04em',
-  borderLeft: '2px solid var(--bark)',
+  borderRight: '2px solid var(--bark)',
   borderBottom: '2px solid var(--navy)'
+};
+
+// Row-2 band under AWARD — same padding/font as leafHeadStyle (no border of
+// its own, matching how the leaf-code row has none either) so the two
+// stacked cells' combined height equals a Req-group column's height exactly.
+const awardSubHeadStyle: React.CSSProperties = {
+  position: 'sticky',
+  top: 0,
+  left: 200,
+  zIndex: 4,
+  minWidth: 60,
+  padding: '8px 4px',
+  background: '#f6e7c4',
+  borderRight: '2px solid var(--bark)'
 };
 
 const stickyScoutCellStyle: React.CSSProperties = {
@@ -643,6 +670,9 @@ function cellStyle(done: boolean, groupStart: boolean): React.CSSProperties {
 
 function awardCellStyle(awarded: boolean): React.CSSProperties {
   return {
+    position: 'sticky',
+    left: 200,
+    zIndex: 2,
     width: 60,
     textAlign: 'center',
     fontSize: 18,
@@ -650,8 +680,10 @@ function awardCellStyle(awarded: boolean): React.CSSProperties {
     fontWeight: 700,
     padding: '6px 8px',
     color: awarded ? '#5a3a00' : 'var(--bark)',
-    background: awarded ? '#f5d76a' : 'transparent',
-    borderLeft: '2px solid var(--bark)',
+    // Sticky cells need an opaque background — "transparent" would let
+    // scrolled-under requirement cells show through.
+    background: awarded ? '#f5d76a' : 'var(--warm-white)',
+    borderRight: '2px solid var(--bark)',
     borderBottom: '1px solid var(--border-light)'
   };
 }

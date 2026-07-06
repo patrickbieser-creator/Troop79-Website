@@ -227,6 +227,7 @@
 .scoutCell {
   position: sticky;
   left: 0;
+  min-width: 200px;
   background: var(--admin-white);
   padding: 5px 10px;
   border-right: 1px solid var(--admin-gray-200);
@@ -235,6 +236,7 @@
   font-size: 12px;
 }
 .scoutCellHead {
+  min-width: 200px;
   z-index: 3;
   background: var(--admin-gray-50);
 }
@@ -269,8 +271,35 @@
   background: var(--admin-white);
   font-weight: 400;
 }
-.cellAward {
+/* Award column — sticky immediately right of Scout (left: 200px matches
+   .scoutCell's min-width) so it stays visible alongside the scout name while
+   the requirement columns scroll underneath. */
+.awardCellHead {
+  position: sticky;
+  left: 200px;
+  z-index: 3;
+  background: var(--admin-gray-50);
+  border-right: 2px solid var(--admin-warning);
   text-align: center;
+}
+/* Row-2 band under Award — matches .codeHeader's padding/font (no unique
+   content) so the two stacked cells' combined height equals a Req-group
+   column's height exactly. */
+.awardSubCellHead {
+  position: sticky;
+  left: 200px;
+  z-index: 2;
+  padding: 5px 6px;
+  background: var(--admin-gray-50);
+  border-right: 2px solid var(--admin-warning);
+  border-bottom: 2px solid var(--admin-gray-200);
+}
+.cellAward {
+  position: sticky;
+  left: 200px;
+  z-index: 1;
+  text-align: center;
+  border-right: 2px solid var(--admin-gray-200);
   border-bottom: 1px solid var(--admin-gray-100);
   padding: 0 4px;
   font-size: 22px;

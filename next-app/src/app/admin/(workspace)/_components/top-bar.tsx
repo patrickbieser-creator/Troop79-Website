@@ -12,7 +12,9 @@ export async function TopBar() {
       <div className={styles.topBarBrand}>Troop 79 Admin</div>
       <div className={styles.topBarRight}>
         {session && (
-          <span className={styles.topBarUser}>Signed in as {session.leader}</span>
+          <span className={styles.topBarUser}>
+            Signed in as {session.leader} ({session.role === 'scout' ? 'Scout' : 'Leader'})
+          </span>
         )}
         <Link href="/" className={styles.topBarLink}>
           ← Public Site

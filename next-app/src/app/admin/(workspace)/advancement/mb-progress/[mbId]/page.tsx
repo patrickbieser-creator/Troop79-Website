@@ -21,11 +21,11 @@ import {
   workbookUrl,
   type ReqNode
 } from '@/lib/mb-helpers';
+import { fetchAllRows } from '@/lib/supabase/paginate';
 import type {
   MeritBadge,
   MeritBadgeRequirement,
-  Scout,
-  LedgerEntry
+  Scout
 } from '@/lib/supabase/types';
 import styles from '../mb-progress.module.css';
 
@@ -58,16 +58,21 @@ export async function generateMetadata({
 
 async function loadDetail(mbId: string) {
   const supabase = await createClient();
-  const [mbRes, reqsRes, ledgerRes, scoutsRes, activeCountRes, counselorsRes, leadersRes] =
+  const [mbRes, reqsRes, ledgerRows, scoutsRes, activeCountRes, counselorsRes, leadersRes] =
     await Promise.all([
       supabase.from('merit_badges').select('*').eq('id', mbId).maybeSingle(),
       supabase.from('merit_badge_requirements').select('*').eq('mb_id', mbId),
-      supabase
-        .from('ledger_entries')
-        .select('*')
-        .or(`code.like.${mbId}-%,code.eq.MB:${mbId}`)
-        .is('archived_at', null)
-        .is('deleted_at', null),
+      // Unbounded past the ~1000-row PostgREST cap once a badge accumulates
+      // enough history across every scout — paginate (lib/supabase/paginate.ts).
+      fetchAllRows<{ scout_id: string; kind: string; code: string }>((from, to) =>
+        supabase
+          .from('ledger_entries')
+          .select('scout_id, kind, code')
+          .or(`code.like.${mbId}-%,code.eq.MB:${mbId}`)
+          .is('archived_at', null)
+          .is('deleted_at', null)
+          .range(from, to)
+      ),
       supabase.from('scouts').select('*').eq('active', true).order('display_name'),
       supabase.from('scouts').select('id', { count: 'exact', head: true }).eq('active', true),
       supabase
@@ -85,7 +90,7 @@ async function loadDetail(mbId: string) {
   const leaves = flattenLeaves(reqTree);
 
   const byScout = new Map<string, { awarded: boolean; codes: Set<string> }>();
-  for (const e of (ledgerRes.data ?? []) as LedgerEntry[]) {
+  for (const e of ledgerRows) {
     const slot = byScout.get(e.scout_id) ?? { awarded: false, codes: new Set<string>() };
     if (e.kind === 'merit_badge_award' && e.code === `MB:${mbId}`) {
       slot.awarded = true;
@@ -233,6 +238,7 @@ export default async function MbProgressDetailPage({
               <thead>
                 <tr className={styles.gridHead}>
                   <th rowSpan={2} className={styles.scoutCellHead}>Scout</th>
+                  <th className={styles.awardCellHead}>Award</th>
                   {groups.map((g) => (
                     <th
                       key={`grp-${g.topCode}`}
@@ -243,9 +249,13 @@ export default async function MbProgressDetailPage({
                       {g.topCode}
                     </th>
                   ))}
-                  <th rowSpan={2}>Award</th>
                 </tr>
                 <tr>
+                  {/* Award's row-2 band — matches .codeHeader's sizing so the
+                      combined height of the two stacked Award cells equals a
+                      Req-group column's height exactly, instead of a
+                      rowSpan={2} cell leaving mismatched blank space. */}
+                  <th className={styles.awardSubCellHead} aria-hidden="true" />
                   {leaves.map((l) => (
                     <th key={`code-${l.code}`} className={styles.codeHeader} title={l.label}>
                       {leafShortCode(l.code)}
@@ -271,6 +281,12 @@ export default async function MbProgressDetailPage({
                           </span>
                         )}
                       </td>
+                      <td
+                        className={`${styles.cellAward} ${slot.awarded ? styles.cellAwarded : styles.cellNotAwarded}`}
+                        title={`${s.display_name} — ${slot.awarded ? 'badge awarded' : 'not yet awarded'}`}
+                      >
+                        {slot.awarded ? '★' : '☆'}
+                      </td>
                       {leaves.map((l) => {
                         const done = slot.codes.has(l.code);
                         return (
@@ -283,12 +299,6 @@ export default async function MbProgressDetailPage({
                           </td>
                         );
                       })}
-                      <td
-                        className={`${styles.cellAward} ${slot.awarded ? styles.cellAwarded : styles.cellNotAwarded}`}
-                        title={`${s.display_name} — ${slot.awarded ? 'badge awarded' : 'not yet awarded'}`}
-                      >
-                        {slot.awarded ? '★' : '☆'}
-                      </td>
                     </tr>
                   );
                 })}

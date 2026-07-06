@@ -1,0 +1,216 @@
+.pageTitle {
+  border-bottom: 1px solid var(--admin-gray-200);
+  padding-bottom: 14px;
+  margin-bottom: 20px;
+}
+.pageTitle h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--admin-navy);
+  margin-bottom: 4px;
+}
+.pageTitle p {
+  font-size: 13px;
+  color: var(--admin-gray-500);
+  max-width: 760px;
+  line-height: 1.6;
+}
+.pageTitle code {
+  font-family: Menlo, Consolas, monospace;
+  font-size: 12px;
+  background: var(--admin-gray-100);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+.section {
+  margin-bottom: 32px;
+}
+.sectionTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--admin-navy);
+  margin-bottom: 4px;
+}
+.sectionDesc {
+  font-size: 12.5px;
+  color: var(--admin-gray-500);
+  max-width: 760px;
+  line-height: 1.6;
+  margin-bottom: 14px;
+}
+
+.empty {
+  padding: 32px;
+  text-align: center;
+  color: var(--admin-forest);
+  font-weight: 600;
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+}
+
+.summary {
+  font-size: 13px;
+  color: var(--admin-gray-700);
+  margin-bottom: 16px;
+}
+.summary strong {
+  color: var(--admin-navy);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card {
+  background: var(--admin-white);
+  border: 1px solid var(--admin-warning);
+  border-left: 4px solid var(--admin-warning);
+  border-radius: var(--admin-radius);
+  padding: 14px 16px;
+  box-shadow: var(--admin-shadow-sm);
+}
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.scoutLink {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--admin-navy);
+  text-decoration: none;
+}
+.scoutLink:hover {
+  text-decoration: underline;
+}
+.rankTag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--admin-gray-700);
+  background: var(--admin-gray-100);
+  border-radius: 8px;
+  padding: 2px 8px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.borContext {
+  font-size: 11.5px;
+  color: var(--admin-gray-500);
+  font-variant-numeric: tabular-nums;
+}
+
+.missingList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  background: var(--admin-gray-50);
+  border-radius: 3px;
+}
+.missingRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--admin-gray-900);
+  cursor: pointer;
+}
+.missingRow input {
+  margin: 0;
+  flex-shrink: 0;
+  align-self: center;
+}
+.missingCode {
+  font-family: Menlo, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--admin-navy);
+  flex-shrink: 0;
+}
+.missingParent {
+  color: var(--admin-gray-500);
+  font-weight: 600;
+}
+
+.fillRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--admin-gray-100);
+  padding-top: 12px;
+}
+.fillField {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--admin-gray-500);
+}
+.fillField input,
+.fillField select {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--admin-gray-300);
+  border-radius: 3px;
+  color: var(--admin-gray-900);
+  background: var(--admin-white);
+}
+.saveBtn {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  padding: 8px 14px;
+  border-radius: 3px;
+  border: 1px solid var(--admin-forest);
+  background: var(--admin-forest);
+  color: var(--admin-white);
+  cursor: pointer;
+}
+.saveBtn:hover:not(:disabled) {
+  background: var(--admin-forest-dark);
+}
+.saveBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.statusOk {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--admin-forest);
+}
+.statusErr {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--admin-danger);
+}
+
+.footnote {
+  margin-top: 24px;
+  font-size: 12px;
+}
+.footnote a {
+  color: var(--admin-gray-500);
+  text-decoration: none;
+}
+.footnote a:hover {
+  color: var(--admin-navy);
+}

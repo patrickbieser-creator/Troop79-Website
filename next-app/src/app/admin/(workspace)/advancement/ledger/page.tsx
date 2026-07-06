@@ -49,10 +49,12 @@ const SORT_TO_COLUMN: Record<SortKey, string> = {
 };
 
 function parseSearch(sp: SearchParams) {
-  const sortRaw = (sp.sort ?? 'date') as SortKey;
+  // Default to "Entered" desc so an unfiltered visit matches the Fast Entry
+  // audit tape's order (most recently keyed-in row first), not completion date.
+  const sortRaw = (sp.sort ?? 'entered') as SortKey;
   const sort: SortKey = (Object.keys(SORT_TO_COLUMN) as SortKey[]).includes(sortRaw)
     ? sortRaw
-    : 'date';
+    : 'entered';
   const dir: 'asc' | 'desc' = sp.dir === 'asc' ? 'asc' : 'desc';
   const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1);
   return {
@@ -212,7 +214,7 @@ export default async function LedgerPage({
         <div>
           <h1>Universal Ledger</h1>
           <p>
-            Sole source of truth. Every advancement, attendance, service hour,
+            Sole source of truth. Every advancement, activity, service hour,
             and recognition starts here. <strong>Archive</strong> hides
             lifecycle entries (e.g. scout aged-out). <strong>Delete</strong>{' '}
             removes erroneous entries with a recorded reason. Both are

@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Media Picker — Scout Troop 79 CMS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/news-cms.css" />
+  <style>
+    .btn-outline {
+      font-family: 'Open Sans', Arial, sans-serif; font-size: 12px; font-weight: 700; letter-spacing: .05em;
+      text-transform: uppercase; padding: 10px 18px; border-radius: 2px; border: 1px solid var(--navy);
+      background: var(--warm-white); color: var(--navy); cursor: pointer; transition: all var(--transition);
+    }
+    .btn-outline:hover { background: var(--navy); color: #fff; }
+  </style>
+</head>
+<body>
+
+  <div class="proto-banner">
+    <div class="proto-banner-inner">
+      <p><strong>Prototype</strong> Media picker modal — sourced from Bunny CDN. Two entry points below simulate how the editor's Insert Image vs. Insert Gallery buttons would open this.</p>
+      <a href="index.html">&larr; Back to prototype index</a>
+    </div>
+  </div>
+
+  <div class="mp-demo-page">
+    <h1>Media Picker</h1>
+    <p>Scouts and leaders pick photos for articles from here &mdash; either uploading something new or browsing what&rsquo;s already on the troop&rsquo;s Bunny CDN library. This page exists only to launch the modal below; in the real app it opens from the editor's Insert Image / Insert Gallery toolbar buttons (see <a href="editor-event.html" style="color:var(--forest);border-bottom:1px solid var(--forest);">editor-event.html</a>).</p>
+    <div class="mp-launch-row">
+      <button class="btn-primary" id="openSingle">Open Picker &mdash; Single Image</button>
+      <button class="btn-outline" id="openMulti">Open Picker &mdash; Gallery (multi-select)</button>
+    </div>
+  </div>
+
+  <!-- ── MODAL ─────────────────────────────────────────────────────── -->
+  <div class="mp-overlay" id="mpOverlay" hidden>
+    <div class="mp-modal" role="dialog" aria-modal="true" aria-labelledby="mpTitle">
+      <div class="mp-modal-head">
+        <h2 id="mpTitle">Select an Image</h2>
+        <button class="mp-close" id="mpClose" aria-label="Close media picker">&times;</button>
+      </div>
+
+      <div class="mp-tabs" role="tablist">
+        <button class="mp-tab is-active" id="tabBrowse" role="tab" aria-selected="true">Browse Existing</button>
+        <button class="mp-tab" id="tabUpload" role="tab" aria-selected="false">Upload New</button>
+      </div>
+
+      <div class="mp-body">
+
+        <!-- BROWSE PANEL -->
+        <div class="mp-panel is-active" id="panelBrowse" role="tabpanel">
+          <div class="mp-browse-bar">
+            <div class="mp-search">
+              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 5L20.49 19l-5-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>
+              <label for="mpSearch" class="sr-only">Search photos</label>
+              <input type="search" id="mpSearch" placeholder="Search by filename or description&hellip;" />
+            </div>
+            <select class="mp-filter-select" id="mpFilter" aria-label="Filter by album">
+              <option value="all">All photos</option>
+              <option value="camporee">Fall Camporee 2026</option>
+              <option value="coh">Court of Honor 2026</option>
+              <option value="campout">Campouts</option>
+            </select>
+          </div>
+
+          <div class="mp-grid" id="mpGrid"><!-- populated by JS --></div>
+
+          <div class="mp-empty" id="mpEmpty" hidden>
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 1 0 16 9.5 6.5 6.5 0 0 0 9.5 3zm0 11A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14zM22 22l-5.6-5.6"/></svg>
+            <p>No photos match &ldquo;<span id="mpEmptyQuery"></span>.&rdquo;<br>Try a different search, or switch to <strong>Upload New</strong>.</p>
+          </div>
+        </div>
+
+        <!-- UPLOAD PANEL -->
+        <div class="mp-panel" id="panelUpload" role="tabpanel">
+          <div class="mp-dropzone" id="dropzone" tabindex="0" role="button" aria-label="Upload photos: click or drag and drop">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+            <strong>Drag photos here, or click to browse</strong>
+            <span class="dz-sub">JPG or PNG, up to 10&nbsp;MB each. Multiple files OK.</span>
+            <input type="file" id="fileInput" accept="image/png, image/jpeg" multiple />
+          </div>
+
+          <div class="mp-upload-list" id="uploadList">
+            <!-- Seeded example states so both success and error are visible without needing a real drop -->
+            <div class="mp-upload-item is-done">
+              <div class="mp-upload-thumb ph-2"></div>
+              <div class="mp-upload-info">
+                <div class="mp-upload-name">camporee-flag-ceremony.jpg</div>
+                <div class="mp-progress-track"><div class="mp-progress-fill" style="width:100%"></div></div>
+                <div class="mp-upload-status">Uploaded &middot; needs alt text before use</div>
+              </div>
+            </div>
+            <div class="mp-upload-item is-error">
+              <div class="mp-upload-thumb" style="background:var(--border-light);display:flex;align-items:center;justify-content:center;color:var(--text-meta);font-size:9px;">HEIC</div>
+              <div class="mp-upload-info">
+                <div class="mp-upload-name">IMG_4092.HEIC</div>
+                <div class="mp-progress-track"><div class="mp-progress-fill" style="width:100%;background:#b5484d;"></div></div>
+                <div class="mp-upload-status">Couldn&rsquo;t upload &mdash; convert to JPG or PNG and try again</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="mp-modal-foot">
+        <span class="mp-selected-count" id="mpSelectedCount"><strong>0</strong> selected</span>
+        <div class="mp-foot-actions">
+          <button class="btn-secondary" id="mpCancel">Cancel</button>
+          <button class="btn-primary" id="mpInsert" disabled>Insert Selected</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── Fake photo library ──────────────────────────────────────────
+    // Deliberately includes one photo with no alt text (photo #6) to
+    // demonstrate the edge case: what happens when an author tries to
+    // use an image the troop never described for screen-reader users.
+    const PHOTOS = [
+      { file: 'camporee-orienteering-1st.jpg', alt: 'Patrol Raven celebrating first place in orienteering', ph: 'ph-1', album: 'camporee' },
+      { file: 'camporee-knot-relay.jpg', alt: 'Patrol Wolf competing in the knot-tying relay', ph: 'ph-2', album: 'camporee' },
+      { file: 'camporee-campfire.jpg', alt: 'Scouts gathered around the closing campfire', ph: 'ph-3', album: 'camporee' },
+      { file: 'coh-eagle-court.jpg', alt: 'Jordan T. and Sam W. receiving their Eagle Scout rank', ph: 'ph-6', album: 'coh' },
+      { file: 'coh-flag-ceremony.jpg', alt: 'Opening flag ceremony at the Spring Court of Honor', ph: 'ph-1', album: 'coh' },
+      { file: 'IMG_20260328_142.jpg', alt: '', ph: 'ph-4', album: 'coh' },
+      { file: 'campout-kettle-moraine-setup.jpg', alt: 'Patrol Hawk setting up tents at Group Camp 3', ph: 'ph-3', album: 'campout' },
+      { file: 'campout-kettle-moraine-hike.jpg', alt: 'Scouts hiking the kettle loop trail', ph: 'ph-5', album: 'campout' },
+      { file: 'campout-dutch-oven.jpg', alt: 'Dutch oven cook-off entries cooling on the picnic table', ph: 'ph-2', album: 'campout' },
+      { file: 'merit-badge-saturday-cooking.jpg', alt: 'Scouts working on the Cooking merit badge', ph: 'ph-4', album: 'all' },
+      { file: 'merit-badge-saturday-robotics.jpg', alt: 'Scouts assembling a robotics kit', ph: 'ph-5', album: 'all' },
+      { file: 'popcorn-fundraiser-table.jpg', alt: 'Popcorn fundraiser table set up outside the meeting hall', ph: 'ph-6', album: 'all' },
+      { file: 'service-hartwell-park-garden.jpg', alt: 'Eagle project volunteers building the reading garden at Hartwell Park', ph: 'ph-3', album: 'all' },
+      { file: 'service-storm-drain-marking.jpg', alt: 'Scouts marking storm drains with Milwaukee Water Works', ph: 'ph-1', album: 'all' },
+      { file: 'troop-meeting-plc.jpg', alt: 'Patrol Leaders Council planning meeting', ph: 'ph-2', album: 'all' },
+    ];
+
+    let mode = 'single'; // 'single' | 'multi'
+    let selected = new Set();
+
+    const overlay = document.getElementById('mpOverlay');
+    const title = document.getElementById('mpTitle');
+    const grid = document.getElementById('mpGrid');
+    const empty = document.getElementById('mpEmpty');
+    const emptyQuery = document.getElementById('mpEmptyQuery');
+    const search = document.getElementById('mpSearch');
+    const filterSel = document.getElementById('mpFilter');
+    const selCount = document.getElementById('mpSelectedCount');
+    const insertBtn = document.getElementById('mpInsert');
+
+    function renderGrid() {
+      const q = search.value.trim().toLowerCase();
+      const albumFilter = filterSel.value;
+      grid.innerHTML = '';
+      const matches = PHOTOS.filter(p => {
+        const matchesQ = !q || p.file.toLowerCase().includes(q) || p.alt.toLowerCase().includes(q);
+        const matchesAlbum = albumFilter === 'all' || p.album === albumFilter || p.album === 'all';
+        return matchesQ && matchesAlbum;
+      });
+
+      if (matches.length === 0) {
+        empty.hidden = false;
+        emptyQuery.textContent = q || '(no match in this album)';
+        return;
+      }
+      empty.hidden = true;
+
+      matches.forEach((p) => {
+        const idx = PHOTOS.indexOf(p);
+        const isSel = selected.has(idx);
+        const btn = document.createElement('div');
+        btn.className = 'mp-thumb ' + p.ph + (isSel ? ' is-selected' : '');
+        btn.setAttribute('tabindex', '0');
+        btn.setAttribute('role', mode === 'multi' ? 'checkbox' : 'radio');
+        btn.setAttribute('aria-checked', isSel ? 'true' : 'false');
+        btn.setAttribute('aria-label', p.file + (p.alt ? ': ' + p.alt : ': missing alt text'));
+        btn.innerHTML = `
+          <span class="mp-thumb-check" aria-hidden="true"></span>
+          <div class="mp-thumb-overlay">
+            <div class="mp-thumb-meta">
+              <span class="fn">${p.file}</span>
+              <span class="alt">${p.alt ? p.alt : '⚠ No alt text yet'}</span>
+            </div>
+          </div>`;
+        const activate = () => selectPhoto(idx);
+        btn.addEventListener('click', activate);
+        btn.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(); } });
+        grid.appendChild(btn);
+      });
+    }
+
+    function selectPhoto(idx) {
+      const p = PHOTOS[idx];
+      // Edge case: block selection of photos with no alt text until one is
+      // supplied — surfaces the accessibility gap at the moment it matters
+      // rather than silently publishing an undescribed image.
+      if (!p.alt) {
+        const supplied = prompt('This photo doesn\'t have alt text yet. Add a short description for screen-reader users before using it:');
+        if (!supplied || !supplied.trim()) return; // cancelled — leave unselected
+        p.alt = supplied.trim();
+      }
+
+      if (mode === 'single') {
+        selected = selected.has(idx) ? new Set() : new Set([idx]);
+      } else {
+        if (selected.has(idx)) selected.delete(idx); else selected.add(idx);
+      }
+      renderGrid();
+      updateFooter();
+    }
+
+    function updateFooter() {
+      const n = selected.size;
+      selCount.innerHTML = `<strong>${n}</strong> selected` + (mode === 'single' && n ? '' : mode === 'single' ? ' (choose 1)' : '');
+      insertBtn.disabled = n === 0;
+    }
+
+    search.addEventListener('input', renderGrid);
+    filterSel.addEventListener('change', renderGrid);
+
+    // ── Tabs ──
+    const tabBrowse = document.getElementById('tabBrowse');
+    const tabUpload = document.getElementById('tabUpload');
+    const panelBrowse = document.getElementById('panelBrowse');
+    const panelUpload = document.getElementById('panelUpload');
+    function setTab(which) {
+      const browseActive = which === 'browse';
+      tabBrowse.classList.toggle('is-active', browseActive);
+      tabUpload.classList.toggle('is-active', !browseActive);
+      tabBrowse.setAttribute('aria-selected', browseActive);
+      tabUpload.setAttribute('aria-selected', !browseActive);
+      panelBrowse.classList.toggle('is-active', browseActive);
+      panelUpload.classList.toggle('is-active', !browseActive);
+    }
+    tabBrowse.addEventListener('click', () => setTab('browse'));
+    tabUpload.addEventListener('click', () => setTab('upload'));
+
+    // ── Dropzone drag states + fake upload ──
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const uploadList = document.getElementById('uploadList');
+    ['dragenter','dragover'].forEach(evt => dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.add('is-dragover'); }));
+    ['dragleave','drop'].forEach(evt => dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.remove('is-dragover'); }));
+    dropzone.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files));
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
+    fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+    function handleFiles(fileList) {
+      Array.from(fileList).forEach(file => {
+        const item = document.createElement('div');
+        item.className = 'mp-upload-item';
+        item.innerHTML = `
+          <div class="mp-upload-thumb ph-5"></div>
+          <div class="mp-upload-info">
+            <div class="mp-upload-name">${file.name}</div>
+            <div class="mp-progress-track"><div class="mp-progress-fill" style="width:0%"></div></div>
+            <div class="mp-upload-status">Uploading&hellip;</div>
+          </div>`;
+        uploadList.prepend(item);
+        const fill = item.querySelector('.mp-progress-fill');
+        const status = item.querySelector('.mp-upload-status');
+        let pct = 0;
+        const iv = setInterval(() => {
+          pct += 18 + Math.random() * 20;
+          if (pct >= 100) {
+            pct = 100;
+            clearInterval(iv);
+            item.classList.add('is-done');
+            status.textContent = 'Uploaded · needs alt text before use';
+          }
+          fill.style.width = pct + '%';
+        }, 220);
+      });
+    }
+
+    // ── Open / close / mode ──
+    function openPicker(m) {
+      mode = m;
+      selected = new Set();
+      title.textContent = m === 'multi' ? 'Select Photos for Gallery' : 'Select an Image';
+      overlay.hidden = false;
+      setTab('browse');
+      renderGrid();
+      updateFooter();
+      document.body.style.overflow = 'hidden';
+    }
+    function closePicker() {
+      overlay.hidden = true;
+      document.body.style.overflow = '';
+    }
+    document.getElementById('openSingle').addEventListener('click', () => openPicker('single'));
+    document.getElementById('openMulti').addEventListener('click', () => openPicker('multi'));
+    document.getElementById('mpClose').addEventListener('click', closePicker);
+    document.getElementById('mpCancel').addEventListener('click', closePicker);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closePicker(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !overlay.hidden) closePicker(); });
+    document.getElementById('mpInsert').addEventListener('click', () => {
+      const files = [...selected].map(i => PHOTOS[i].file).join(', ');
+      alert('Demo only — would insert: ' + files);
+      closePicker();
+    });
+  </script>
+
+  <!--
+    OPEN QUESTIONS / JUDGMENT CALLS (Media picker):
+    - Grid defaults to 5 columns on desktop / 3 on tablet / 2 on mobile.
+      Alternative considered: a denser 6-8 column grid for faster scanning
+      of large albums — went with 5 to keep thumbnails big enough that a
+      scout can actually recognize the photo content at a glance.
+    - Missing-alt-text handling is asserted here as a hard block (can't
+      select until you supply alt text, via a plain prompt() for this
+      demo). Real UX question for the team: should this be enforced at
+      selection time (as shown) or deferred to a "review before publish"
+      checklist so it doesn't slow down a scout mid-flow? Flagging as an
+      open product decision, not just a UI detail.
+    - Upload list shows one seeded success and one seeded error (unsupported
+      HEIC file) so both states are visible without needing a real file
+      drop — dropping/selecting a real file adds a live progress-bar item
+      above them.
+    - Single- vs multi-select is driven by which "Open Picker" button the
+      demo page's two buttons simulate; in production this maps to whether
+      Insert Image or Insert Gallery was clicked in the editor.
+  -->
+
+</body>
+</html>
