@@ -1,0 +1,26 @@
+.page { max-width: 1180px; margin: 0 auto; padding: 28px 24px 60px; }
+.pageTitle { font-family: var(--font-display); font-size: 32px; font-weight: 700; color: var(--text-head); margin-bottom: 6px; }
+.pageSub { font-family: var(--font-body); font-size: 15px; color: var(--text-meta); margin-bottom: 28px; }
+
+.sectionDivider { display: flex; align-items: center; gap: 12px; margin: 32px 0 18px; }
+.sectionDivider .divLabel {
+  font-family: var(--font-ui); font-size: 10px; font-weight: 700; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--navy); white-space: nowrap; border-left: 3px solid var(--forest); padding-left: 8px;
+}
+.sectionDivider .divRule { flex: 1; height: 1px; background: var(--border-light); }
+
+.list { list-style: none; border: 1px solid var(--border-light); background: var(--warm-white); }
+.item { display: flex; gap: 16px; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border-light); }
+.item:last-child { border-bottom: none; }
+.item:hover { background: var(--newsprint); }
+.dateBlock { flex-shrink: 0; background: var(--navy); color: #fff; text-align: center; padding: 6px 10px 8px; border-radius: 2px; min-width: 58px; }
+.dateBlock .eMonth { font-family: var(--font-ui); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
+.dateBlock .eDay { font-family: var(--font-display); font-size: 24px; font-weight: 700; line-height: 1.1; }
+.itemBody { flex: 1; }
+.itemTitle { font-family: var(--font-display); font-size: 17px; font-weight: 700; color: var(--text-head); margin-bottom: 3px; }
+.itemTitle a:hover { color: var(--navy); }
+.itemMeta { font-family: var(--font-ui); font-size: 12px; color: var(--text-meta); }
+.pastItem { opacity: .7; }
+.pastItem .dateBlock { background: var(--border-mid); }
+
+.empty { padding: 40px 20px; text-align: center; color: var(--text-meta); font-family: var(--font-body); font-style: italic; }

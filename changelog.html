@@ -497,6 +497,134 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v0.20 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v0.20</span>
+        <span class="release-date">July 6, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">News &amp; Events CMS &mdash; Public Site</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              The News &amp; Events CMS is now <strong>feature-complete</strong> &mdash; everything drafted and published in the admin side from v0.19 is actually visible to the public. <strong>Home page</strong> (<code>/</code>) replaces the placeholder with the real News Feed: a hero story (the leader-curated Featured post, or the newest article if nothing&rsquo;s pinned), a &ldquo;More This Week&rdquo; grid of the rest, an Upcoming Events sidebar module, and a Browse by Tag module &mdash; the same hero/sidebar/story-grid layout as the original design reference, now driven by real database content instead of static HTML.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Article detail pages</strong> (<code>/news/&lt;slug&gt;</code>) render the full markdown body &mdash; images, galleries, Gallery Link cards, tables, video embeds &mdash; plus the Event date/time/location panel with a Register button (or a graceful &ldquo;no registration required&rdquo; note) for Event-type posts, and social-sharing metadata (<code>og:image</code>/<code>og:description</code>) so links shared to GroupMe or text end up looking right.
+            </span>
+          </li>
+          <li>
+            <span>
+              New <strong>Events</strong> page (<code>/events</code>) lists upcoming events chronologically with past events kept below for reference, and a new <strong>tag archive</strong> (<code>/tags/&lt;tag&gt;</code>) shows every article under a given tag &mdash; both reachable from the home page sidebar.
+            </span>
+          </li>
+          <li>
+            <span>
+              <code>npm run build</code> passes clean with every new route listed in the production build output.
+              <span class="change-note">Still outstanding, and not something buildable without account access: real Bunny CDN credentials for the troop&rsquo;s actual account (upload has only been verified against placeholders), those same credentials added to Vercel at deploy time, and a live phone check &mdash; the automation tool&rsquo;s window-resize call didn&rsquo;t actually change the rendered page width in this environment, so mobile layout is unverified beyond matching the same breakpoints already proven elsewhere on the site.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v0.19 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v0.19</span>
+        <span class="release-date">July 6, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">News &amp; Events CMS &mdash; Architecture Decision</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              The original build spec for a News &amp; Events publishing system assumed a brand-new Payload CMS project with its own Postgres database and deploy pipeline. It wasn&rsquo;t green-field: <code>index.html</code> at the repo root already <em>is</em> the News/Events design reference, and <code>next-app/</code> already has a working Supabase database, a leader-session auth pattern, and an admin workspace to extend. <strong>Decided against Payload</strong> &mdash; the feature is being built directly into the existing Next.js + Supabase stack instead of standing up a second backend to maintain.
+              <span class="change-note">The one real tradeoff: Payload&rsquo;s admin panel generates a polished drag-and-drop rich-text block editor for free. Building that by hand would have been the single biggest chunk of effort in the project &mdash; solved instead by authoring in <strong>markdown</strong> (already a comfortable format) plus a small set of custom content blocks for the few things markdown has no native syntax for.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Media hosting: Bunny CDN</strong>, the troop&rsquo;s existing account, via a server-side upload proxy so the API key never reaches the browser. <strong>Google Photos and Facebook albums are not embedded</strong> &mdash; Google Photos has no supported embed API and scraping its app is fragile, so a new <strong>Gallery Link</strong> content block renders a styled link-out card (cover photo, source badge, &ldquo;View Full Album&rdquo; button) instead of pretending to embed something that can&rsquo;t be embedded.
+            </span>
+          </li>
+          <li>
+            <span>
+              Interactive wireframes for all three article templates (News, Event, Recognition), the split-pane markdown editor, the media picker, and the Gallery Link card were built and browser-verified first, at <code>prototypes/news-cms/</code> &mdash; the same &ldquo;prototype before production&rdquo; process used everywhere else in this project.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Data Model &amp; Auth</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              New tables: <code>articles</code> (one row per News/Event/Recognition post, discriminated by <code>type</code> &mdash; same single-table shape as <code>ledger_entries</code>), <code>media</code> (Bunny-hosted images with required alt text), <code>tags</code>, and the <code>article_tags</code> join table. Archiving an article soft-hides it from the public site without deleting it, matching the ledger&rsquo;s existing archive convention.
+            </span>
+          </li>
+          <li>
+            <span>
+              The stub leader-session cookie now carries a <strong>role</strong> (<code>leader</code> or <code>scout</code>) so &ldquo;scouts draft, leaders publish&rdquo; is actually enforced: a scout can create and edit their own drafts but every publish attempt is rejected server-side; a leader can publish, archive, or delete anything. Existing signed-in sessions default safely to <code>leader</code> so nobody was logged out by the change.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Markdown Body &amp; Content Blocks</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Article bodies are authored in markdown. Standard syntax covers prose, links, lists, images (<code>![alt](url "caption")</code>), and tables &mdash; no custom syntax needed for any of those. Three things markdown has no native construct for get a small custom <code>{{type: ...}}</code> token, inserted automatically by editor toolbar buttons rather than hand-typed: <strong>Gallery</strong> (an inline photo grid), <strong>Gallery Link</strong> (the external-album card), and <strong>Video</strong> (a YouTube/Vimeo embed with a graceful fallback card for unrecognized links).
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Three real rendering bugs</strong> were caught and fixed during browser verification, not just eyeballed: markdown&rsquo;s auto-linking of bare URLs was silently splitting every real gallery/video token so it never matched (fixed by matching against the original source text instead of the parsed fragments); the token parser and the React renderer disagreed on property names, so a matched token would have rendered as an empty box; and a markdown image renders as block-level HTML but is always wrapped in a paragraph tag by the parser, which is invalid nesting and triggered a real hydration error in the browser.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Admin &mdash; Article Authoring</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              New <strong>Articles</strong> table under a &ldquo;News &amp; Events&rdquo; workspace section &mdash; filter by type/status/tag, per-row Publish (leader-only), Archive, and Delete, plus a leader-only Featured toggle for pinning a small set of posts to the top of the future home page.
+            </span>
+          </li>
+          <li>
+            <span>
+              New two-pane article editor, split-screen like the prototype: form fields (title, type, hero image, excerpt, tags, event date/time/location for Event-type posts) on the left, a <strong>live preview</strong> of the actual rendered article on the right, updating as you type. Insert Image / Insert Gallery / Insert Gallery Link / Insert Video toolbar buttons open the media picker and write the right markdown or content-block token at the cursor automatically.
+            </span>
+          </li>
+          <li>
+            <span>
+              New leader-only <strong>Tags</strong> page (add / delete) rounds out the admin side. Ten starter tags are seeded (Advancement, Camping, Service Project, Fundraising, Court of Honor, Merit Badges, Community, High Adventure, Meetings, Recruiting).
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="open-items">
+        <h4>Still to come</h4>
+        <ul class="decision-list">
+          <li><span class="decision-status status-open">Open</span> <span>Public-facing pages &mdash; home/news feed, article detail, events list, tag archive &mdash; not built yet. The admin side above is fully usable but nothing is visible to the public until these ship.</span></li>
+          <li><span class="decision-status status-open">Open</span> <span>Real Bunny CDN credentials haven&rsquo;t been wired in yet, so live photo upload/browse hasn&rsquo;t been tested end-to-end against the troop&rsquo;s actual account &mdash; the code path was verified with placeholders.</span></li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v0.18 -->
     <div class="release">
       <div class="release-header">
