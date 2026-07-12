@@ -40,6 +40,11 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         label: 'Meeting Plan',
         href: '/admin/advancement/meeting-plan',
         matchPath: '/admin/advancement/meeting-plan'
+      },
+      {
+        label: 'Meetings',
+        href: '/admin/advancement/meetings',
+        matchPath: '/admin/advancement/meetings'
       }
     ]
   },

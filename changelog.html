@@ -497,6 +497,42 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.2.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.2.0</span>
+        <span class="release-date">July 12, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Meetings &mdash; Published Agendas, Archive &amp; Plan-to-Agenda Bridge</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              New public <strong>Meetings page</strong> (<code>/meetings</code>) in the prototype&rsquo;s design language: at-a-glance card (date, time, uniform badge, location, snack, flag ceremony, cleanup patrol), a &ldquo;Before the Meeting&rdquo; section, and a timed agenda with track badges, teacher credits, scout lists, and expandable requirement details. The page always lands on the next upcoming published meeting; permalinks (<code>/meetings/2026-07-12</code>) plus a prev/next date strip and a Recent Meetings sidebar turn past meetings into a browsable archive. Past dates get an &ldquo;already happened&rdquo; banner; future dates without an agenda show calendar-backed &ldquo;agenda coming&rdquo; or &ldquo;no meeting this week&rdquo; states instead of 404s.
+            </span>
+          </li>
+          <li>
+            <span>
+              New admin <strong>Meetings editor</strong> (Planning &rarr; Meetings) &mdash; the decision layer on top of the Meeting Plan&rsquo;s suggestions. Leaders set logistics, build the pre-meeting and agenda lists (add / edit / reorder / remove), and flip a meeting between draft and published; nothing is public until published. A <strong>Plan Suggestions tray</strong> shows the engine&rsquo;s candidates for that date &mdash; one click promotes a suggestion into the agenda prefilled with skill, requirement, teacher, and scout roster, all editable afterward. Promotion copies one way; the plan itself is never modified.
+              <span class="change-note">Data model: new <code>meetings</code> + <code>meeting_sessions</code> tables with sessions as first-class rows &mdash; the deliberate groundwork for Phase-3 session signups (scouts and instructors committing to sessions) once per-user auth lands. Contact phone numbers on pre-meeting items are members-only: the public loader strips them server-side, and both tables carry locked-down RLS. The public <code>/meeting-plan</code> page now redirects to <code>/meetings</code>; the plan lives on in the admin workspace.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Media uploads land at the CDN root with readable names.</strong> New photos upload as their slugified filename (<code>rummage-sale-promo-banner.png</code>) instead of a UUID-prefixed file in an <code>articles/</code> subfolder, with automatic <code>-2</code>/<code>-3</code> suffixes on name clashes so nothing is ever silently overwritten &mdash; making the Bunny library text-searchable from the media picker. Also fixed the launch-night sequence gap that caused &ldquo;duplicate key&rdquo; errors on upload: every table&rsquo;s ID sequence was advanced past the restored data (the <code>COPY</code>-based restore didn&rsquo;t move them).
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Leadership copy corrected</strong> across the site, seed data, and production database: Mindy Stollenwerk is Scoutmaster; Patrick Bieser and Jason Porter are Assistant Scoutmasters.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.1.0 -->
     <div class="release">
       <div class="release-header">

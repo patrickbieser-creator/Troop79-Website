@@ -59,12 +59,15 @@ export function SiteFooter() {
             <FooterLink href="/events">Calendar</FooterLink>
             <FooterLink href="/advancement">Advancement Tracker</FooterLink>
             <FooterLink href="/merit-badges">Merit Badges</FooterLink>
-            <FooterLink href="/meeting-plan">This Week&rsquo;s Meeting</FooterLink>
+            <FooterLink href="/meetings">This Week&rsquo;s Meeting</FooterLink>
             <FooterLink href="/about">About the Troop</FooterLink>
           </FooterCol>
           <FooterCol title="Contact">
             <FooterLink href="mailto:bsatroop79bg@gmail.com">
               Scoutmaster Mindy Stollenwerk
+            </FooterLink>
+            <FooterLink href="mailto:bsatroop79bg@gmail.com">
+              Committee Chair Jack Kosmoski
             </FooterLink>
             <FooterLink href="/join">New Member Inquiry</FooterLink>
             <FooterLink href="/admin">Members Login</FooterLink>

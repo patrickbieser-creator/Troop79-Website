@@ -11,31 +11,13 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/server';
+import { nextSunday } from '@/lib/dates';
 import { PlanView, type PublishedPlanRow } from './plan-view';
 import styles from './meeting-plan.module.css';
 
 export const metadata = {
   title: 'Meeting Plan — Troop 79'
 };
-
-/** Local-time yyyy-mm-dd — toISOString() is UTC and shifts the date +1 during
- *  Central-time evenings. */
-function isoDate(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-/** Next Sunday (or today if it's Sunday) — the troop meets on Sundays.
- *  A plan is only good for one meeting: scouts complete advancement every
- *  week, and those completions reshape the next plan. */
-function nextSunday(): string {
-  const d = new Date();
-  const delta = (7 - d.getDay()) % 7;
-  d.setDate(d.getDate() + delta);
-  return isoDate(d);
-}
 
 async function loadData(): Promise<{ published: PublishedPlanRow[] }> {
   const supabase = createAdminClient();

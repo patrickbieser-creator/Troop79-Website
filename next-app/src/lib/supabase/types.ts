@@ -200,6 +200,56 @@ export interface MeetingPlanRow {
   generated_by: string | null;
 }
 
+// ─── Meetings (published agendas) ───────────────────────────────────────────
+
+export type MeetingStatus = 'draft' | 'published';
+export type MeetingSection = 'pre_meeting' | 'agenda';
+
+export interface Meeting {
+  id: number;
+  meeting_date: string;
+  status: MeetingStatus;
+  title: string;
+  time_range: string | null;
+  uniform: string | null;
+  location: string | null;
+  location_address: string | null;
+  snack: string | null;
+  flag_ceremony: string | null;
+  cleanup: string | null;
+  duty_roster_url: string | null;
+  updated_by: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SessionRequirementRef {
+  code: string;
+  label: string;
+}
+
+export interface MeetingSession {
+  id: number;
+  meeting_id: number;
+  section: MeetingSection;
+  sort_order: number;
+  time_label: string | null;
+  title: string;
+  description: string | null;
+  track: string | null;
+  leader_name: string | null;
+  contact_name: string | null;
+  /** NEVER sent to public pages — the public loader strips it (Patrick,
+   *  2026-07-12: contact name public, phone post-login only). */
+  contact_phone: string | null;
+  skill_id: string | null;
+  mb_id: string | null;
+  requirements: SessionRequirementRef[] | null;
+  /** Public display names, e.g. ["Anjali S.", "Finn P."]. */
+  scouts: string[] | null;
+}
+
 // ─── News & Events CMS ──────────────────────────────────────────────────────
 
 export type ArticleType = 'news' | 'event' | 'recognition';

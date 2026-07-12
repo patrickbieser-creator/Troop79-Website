@@ -11,6 +11,15 @@ const nextConfig: NextConfig = {
       ? [{ protocol: 'https', hostname: bunnyHostname }]
       : []
   },
+  async redirects() {
+    return [
+      // The public plan page was superseded by /meetings (the curated
+      // agenda); launch-week bookmarks land on the new page. Plan detail
+      // remains available in the admin workspace. Not permanent, in case
+      // the page ever comes back.
+      { source: '/meeting-plan', destination: '/meetings', permanent: false }
+    ];
+  },
   experimental: {
     serverActions: {
       // Default is too small for photo uploads through the media picker.
