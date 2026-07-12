@@ -6,9 +6,9 @@
   },
 
   "leaders": [
-    { "code": "PB",     "name": "Patrick Bieser",       "role": "Scoutmaster / Advancement Chair" },
-    { "code": "MS",     "name": "Mindy Stollenwerk",    "role": "Assistant Scoutmaster" },
-    { "code": "JP",     "name": "Jason Porter",         "role": "Committee Chair" },
+    { "code": "PB",     "name": "Patrick Bieser",       "role": "Assistant Scoutmaster / Advancement Chair" },
+    { "code": "MS",     "name": "Mindy Stollenwerk",    "role": "Scoutmaster" },
+    { "code": "JP",     "name": "Jason Porter",         "role": "Assistant Scoutmaster" },
     { "code": "PP",     "name": "Paul Pasquesi",        "role": "Assistant Scoutmaster" },
     { "code": "JT",     "name": "Jamie Lynn Tatera",    "role": "Merit Badge Counselor" },
     { "code": "BV",     "name": "Becky Vest",           "role": "Merit Badge Counselor" },

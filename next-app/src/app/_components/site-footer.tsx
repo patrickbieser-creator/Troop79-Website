@@ -62,7 +62,7 @@ export function SiteFooter() {
             <FooterLink href="/meeting">This Week&rsquo;s Meeting</FooterLink>
           </FooterCol>
           <FooterCol title="Contact">
-            <FooterLink href="#">Scoutmaster Patrick Bieser</FooterLink>
+            <FooterLink href="#">Scoutmaster Mindy Stollenwerk</FooterLink>
             <FooterLink href="#">Committee Chair</FooterLink>
             <FooterLink href="#">New Member Inquiry</FooterLink>
             <FooterLink href="/admin">Members Login</FooterLink>
