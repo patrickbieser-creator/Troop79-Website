@@ -59,7 +59,7 @@ export function SiteFooter() {
             <FooterLink href="/events">Calendar</FooterLink>
             <FooterLink href="/advancement">Advancement Tracker</FooterLink>
             <FooterLink href="/merit-badges">Merit Badges</FooterLink>
-            <FooterLink href="/meeting">This Week&rsquo;s Meeting</FooterLink>
+            <FooterLink href="/meeting-plan">This Week&rsquo;s Meeting</FooterLink>
           </FooterCol>
           <FooterCol title="Contact">
             <FooterLink href="#">Scoutmaster Mindy Stollenwerk</FooterLink>
