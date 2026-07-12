@@ -60,11 +60,13 @@ export function SiteFooter() {
             <FooterLink href="/advancement">Advancement Tracker</FooterLink>
             <FooterLink href="/merit-badges">Merit Badges</FooterLink>
             <FooterLink href="/meeting-plan">This Week&rsquo;s Meeting</FooterLink>
+            <FooterLink href="/about">About the Troop</FooterLink>
           </FooterCol>
           <FooterCol title="Contact">
-            <FooterLink href="#">Scoutmaster Mindy Stollenwerk</FooterLink>
-            <FooterLink href="#">Committee Chair</FooterLink>
-            <FooterLink href="#">New Member Inquiry</FooterLink>
+            <FooterLink href="mailto:bsatroop79bg@gmail.com">
+              Scoutmaster Mindy Stollenwerk
+            </FooterLink>
+            <FooterLink href="/join">New Member Inquiry</FooterLink>
             <FooterLink href="/admin">Members Login</FooterLink>
           </FooterCol>
         </div>
@@ -83,7 +85,7 @@ export function SiteFooter() {
           }}
         >
           <p>
-            &copy; {new Date().getFullYear()} Scout Troop 79 &nbsp;&middot;&nbsp;
+            &copy; {new Date().getFullYear()}{' '}Scout Troop 79 &nbsp;&middot;&nbsp;
             Milwaukee, Wisconsin &nbsp;&middot;&nbsp; Scouts America
           </p>
           <p>

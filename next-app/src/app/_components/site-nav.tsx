@@ -155,10 +155,29 @@ export function SiteNav() {
             padding: '0 24px',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between'
+            justifyContent: 'space-between',
+            flexWrap: 'wrap'
           }}
         >
           <NavLinks />
+          <Link
+            href="/join"
+            style={{
+              fontFamily: 'var(--font-ui)',
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: '.06em',
+              textTransform: 'uppercase',
+              background: 'var(--forest)',
+              color: '#fff',
+              padding: '7px 16px',
+              borderRadius: 2,
+              margin: '7px 0',
+              flexShrink: 0
+            }}
+          >
+            Join Troop 79
+          </Link>
         </div>
       </nav>
     </>

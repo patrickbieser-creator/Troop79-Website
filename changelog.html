@@ -497,6 +497,37 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.1.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.1.0</span>
+        <span class="release-date">July 12, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">About &amp; Join Pages</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              New public <strong>About page</strong> (<code>/about</code>) in the editorial house style: headline essay on the family troop, a by-the-numbers strip (founded 2022 &middot; ~30 scouts &middot; 25 families &middot; 10 adult leaders), sections on scout-led teaching, the activity program, and the site&rsquo;s own open advancement tracking, plus an At-a-Glance sidebar with meeting details and leadership contact.
+            </span>
+          </li>
+          <li>
+            <span>
+              New public <strong>Join page</strong> (<code>/join</code>) built around &ldquo;step one: just show up&rdquo; &mdash; four numbered steps (visit a Sunday meeting, say hello, register with Scouts America, jump in), a Who Can Join section, a four-question FAQ, and a When &amp; Where card with a Google Maps link. All inquiry CTAs use the troop inbox <code>bsatroop79bg@gmail.com</code>.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Navigation &amp; footer wiring:</strong> &ldquo;About&rdquo; joins the main nav as the sixth tab and a forest-green <strong>Join Troop 79</strong> button anchors the right end of the nav bar. The footer&rsquo;s dead &ldquo;New Member Inquiry&rdquo; link now points to <code>/join</code>, &ldquo;About the Troop&rdquo; was added to Navigate, and the Scoutmaster entry links to the troop inbox.
+              <span class="change-note">Browser verification surfaced a Next.js 16 JSX quirk &mdash; the space after an inline <code>&lt;Link&gt;</code> is dropped when the following text wraps to the next source line &mdash; fixed with explicit <code>{' '}</code> separators, which also cured the long-standing &ldquo;&copy; 2026Scout Troop 79&rdquo; glue in the footer.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.0.0 -->
     <div class="release">
       <div class="release-header">

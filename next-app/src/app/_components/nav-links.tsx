@@ -5,12 +5,11 @@ import { usePathname } from 'next/navigation';
 
 const LINKS: { href: string; label: string }[] = [
   { href: '/', label: 'Home' },
-  // Interim target: /meetings (this-week view + archive) isn't built yet,
-  // so the tab points at the public meeting plan until it is.
-  { href: '/meeting-plan', label: 'Meetings' },
+  { href: '/meetings', label: 'Meetings' },
   { href: '/events', label: 'Calendar' },
   { href: '/advancement', label: 'Advancement' },
-  { href: '/merit-badges', label: 'Merit Badges' }
+  { href: '/merit-badges', label: 'Merit Badges' },
+  { href: '/about', label: 'About' }
 ];
 
 export function NavLinks() {

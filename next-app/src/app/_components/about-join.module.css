@@ -1,0 +1,266 @@
+/* Shared styles for the static editorial pages: /about and /join.
+   Page shell classes (sectionHeader, mainContent, sidebarModule, …) come from
+   news-cards.module.css — this module only adds the long-form content
+   patterns those pages need. */
+
+/* ── Two-column editorial layout (mirrors heroLayout) ─────────────── */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 0;
+}
+.main {
+  padding: 28px 28px 40px 0;
+  border-right: 1px solid var(--border-light);
+  min-width: 0;
+}
+.sidebar { padding: 28px 0 28px 24px; }
+
+/* ── Headline block ───────────────────────────────────────────────── */
+.pageHeadline {
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -.01em;
+  color: var(--text-head);
+  margin-bottom: 14px;
+}
+.lede {
+  font-family: var(--font-body);
+  font-size: 18px;
+  line-height: 1.6;
+  color: var(--text-body);
+  margin-bottom: 26px;
+  max-width: 62ch;
+}
+
+/* ── By-the-numbers strip ─────────────────────────────────────────── */
+.statStrip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 2px solid var(--border-mid);
+  border-bottom: 2px solid var(--border-mid);
+  margin-bottom: 30px;
+}
+.statCell {
+  text-align: center;
+  padding: 16px 8px 14px;
+  border-left: 1px solid var(--border-light);
+}
+.statCell:first-child { border-left: none; }
+.statNum {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--navy);
+  line-height: 1.1;
+}
+.statLabel {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-meta);
+  margin-top: 4px;
+}
+
+/* ── Long-form prose ──────────────────────────────────────────────── */
+.prose { max-width: 66ch; }
+.prose p {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--text-body);
+  margin-bottom: 14px;
+}
+.prose a {
+  color: var(--forest);
+  border-bottom: 1px solid var(--khaki);
+  transition: color var(--transition), border-color var(--transition);
+}
+.prose a:hover { color: var(--navy); border-color: var(--navy); }
+.proseSection { margin-bottom: 34px; }
+
+/* ── Numbered join steps ──────────────────────────────────────────── */
+.steps { list-style: none; margin: 0; padding: 0; counter-reset: step; }
+.step {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  padding: 24px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.step:first-child { padding-top: 8px; }
+.stepNum {
+  counter-increment: step;
+  flex-shrink: 0;
+  width: 52px;
+  font-family: var(--font-display);
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--forest);
+}
+.stepNum::before { content: counter(step); }
+.stepTitle {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-head);
+  letter-spacing: -.01em;
+  margin-bottom: 6px;
+}
+.stepBody {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text-body);
+  max-width: 60ch;
+}
+.stepBody a {
+  color: var(--forest);
+  border-bottom: 1px solid var(--khaki);
+}
+.stepBody a:hover { color: var(--navy); border-color: var(--navy); }
+
+/* ── Sidebar fact card ────────────────────────────────────────────── */
+.factCard {
+  background: var(--warm-white);
+  border: 1px solid var(--border-light);
+  border-top: 3px solid var(--navy);
+  border-radius: 2px;
+  box-shadow: var(--shadow-card);
+  padding: 16px 18px 6px;
+}
+.factRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.factRow:last-child { border-bottom: none; }
+.factLabel {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-meta);
+  padding-top: 3px;
+  flex-shrink: 0;
+}
+.factValue {
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-head);
+  text-align: right;
+}
+.factValue a { color: var(--forest); border-bottom: 1px solid var(--khaki); }
+.factValue a:hover { color: var(--navy); border-color: var(--navy); }
+.sidebarNote {
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-body);
+}
+.sidebarNote a { color: var(--forest); border-bottom: 1px solid var(--khaki); }
+.sidebarNote a:hover { color: var(--navy); border-color: var(--navy); }
+
+/* ── FAQ ──────────────────────────────────────────────────────────── */
+.faq { margin: 0; }
+.faqItem { padding: 16px 0; border-bottom: 1px solid var(--border-light); }
+.faqItem:first-child { padding-top: 4px; }
+.faqQ {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 6px;
+}
+.faqA {
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-body);
+  max-width: 62ch;
+}
+.faqA a { color: var(--forest); border-bottom: 1px solid var(--khaki); }
+.faqA a:hover { color: var(--navy); border-color: var(--navy); }
+
+/* ── Closing CTA banner ───────────────────────────────────────────── */
+.ctaBanner {
+  background: var(--navy);
+  border-radius: 2px;
+  padding: 36px 32px;
+  text-align: center;
+  margin-top: 40px;
+}
+.ctaHeadline {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--cream);
+  letter-spacing: -.01em;
+  margin-bottom: 8px;
+}
+.ctaSub {
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, .75);
+  max-width: 52ch;
+  margin: 0 auto 20px;
+}
+.ctaButtons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.btnPrimary {
+  display: inline-block;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  background: var(--khaki);
+  color: var(--navy);
+  padding: 11px 22px;
+  border-radius: 2px;
+  transition: background var(--transition);
+}
+.btnPrimary:hover { background: var(--khaki-light); }
+.btnGhost {
+  display: inline-block;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  border: 1px solid rgba(255, 255, 255, .45);
+  color: var(--cream);
+  padding: 10px 22px;
+  border-radius: 2px;
+  transition: border-color var(--transition), background var(--transition);
+}
+.btnGhost:hover { border-color: var(--cream); background: rgba(255, 255, 255, .08); }
+
+/* ── Responsive ───────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .main { border-right: none; border-bottom: 1px solid var(--border-light); padding: 24px 0 32px; }
+  .sidebar { padding: 24px 0; }
+  .pageHeadline { font-size: 32px; }
+}
+@media (max-width: 600px) {
+  .statStrip { grid-template-columns: repeat(2, 1fr); }
+  .statCell:nth-child(3) { border-left: none; }
+  .statCell:nth-child(-n + 2) { border-bottom: 1px solid var(--border-light); }
+  .pageHeadline { font-size: 27px; }
+  .stepNum { width: 40px; font-size: 34px; }
+}
