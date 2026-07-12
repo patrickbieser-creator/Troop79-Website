@@ -13,6 +13,34 @@ function sanitizeFilename(name: string): string {
   return base || 'upload';
 }
 
+/**
+ * Finds an unused path at the Bunny Storage root for this filename's slug,
+ * appending -2, -3, ... on a name clash so a same-named upload never
+ * silently overwrites an existing file. Root-level + slugged (rather than a
+ * uuid-prefixed articles/ subfolder) keeps the CDN text-searchable.
+ */
+async function findAvailablePath(
+  storageHost: string,
+  zone: string,
+  apiKey: string,
+  filename: string
+): Promise<string> {
+  const sanitized = sanitizeFilename(filename);
+  const dot = sanitized.lastIndexOf('.');
+  const stem = dot > 0 ? sanitized.slice(0, dot) : sanitized;
+  const ext = dot > 0 ? sanitized.slice(dot) : '';
+
+  for (let n = 0; n < 50; n++) {
+    const candidate = n === 0 ? sanitized : `${stem}-${n + 1}${ext}`;
+    const res = await fetch(`https://${storageHost}/${zone}/${candidate}`, {
+      method: 'HEAD',
+      headers: { AccessKey: apiKey }
+    });
+    if (res.status === 404) return candidate;
+  }
+  return `${stem}-${crypto.randomUUID().slice(0, 8)}${ext}`;
+}
+
 /** Derives a starter alt text from a filename (e.g. "bwca-crew_after six days.jpg" -> "Bwca crew after six days"). */
 function filenameToAltText(path: string): string {
   const base = (path.split('/').pop() ?? path).replace(/\.[a-z0-9]+$/i, '');
@@ -62,7 +90,7 @@ export async function uploadMedia(formData: FormData): Promise<UploadResult> {
   const width = Number(formData.get('width')) || null;
   const height = Number(formData.get('height')) || null;
 
-  const path = `articles/${crypto.randomUUID()}-${sanitizeFilename(file.name)}`;
+  const path = await findAvailablePath(storageHost, zone, apiKey, file.name);
   const bytes = new Uint8Array(await file.arrayBuffer());
 
   const uploadRes = await fetch(`https://${storageHost}/${zone}/${path}`, {
