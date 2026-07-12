@@ -398,7 +398,7 @@
   <!-- GREY STRIPE -->
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
-      <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Prototyping &mdash; Phase 1</strong></p>
+      <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
       <p>Last updated: <strong>July 11, 2026</strong></p>
     </div>
   </div>
@@ -494,6 +494,32 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.0.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.0.0</span>
+        <span class="release-date">July 11, 2026</span>
+        <span class="release-label"><span class="badge badge-new">Live</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Live to the World &mdash; Vercel + Hosted Supabase</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              The Troop 79 website is <strong>live in production</strong> at <code>troop79-website.vercel.app</code>. The app deploys automatically from GitHub (<code>main</code> branch, root directory <code>next-app</code>) to Vercel, backed by a hosted Supabase project (East US). All 17 schema migrations pushed cleanly, and the full dataset &mdash; <strong>48 scouts, 8,035 ledger entries</strong>, the merit badge and rank catalogs with venue/skill curation, News CMS content, the calendar, the teaching roster, and the published Meeting Plan for Sunday July 12 &mdash; was migrated from the local database and verified table-by-table (24 tables, exact row-count match, sequences reset).
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Production security verified against the live API</strong>: replaying attacker queries with the public anon key returns zero rows from every PII table (scouts, parents, leaders, ledger, COH history) and only published articles and meeting plans; the shared-password login gate is live with a fresh session secret. Added an <code>/admin</code> index redirect to the workspace after the first live login surfaced a 404 on the bare path.
+              <span class="change-note">Operational shift: the hosted database is now the source of truth &mdash; the local Docker copy is a frozen dev snapshot. Code deploys on every push to <code>main</code>; schema changes go up via <code>supabase db push</code>. Still pending: real Bunny CDN credentials (media uploads only), an optional custom domain, and per-user Supabase Auth in Phase 4.</span>
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 
