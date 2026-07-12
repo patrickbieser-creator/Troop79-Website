@@ -3,8 +3,16 @@ import remarkGfm from 'remark-gfm';
 import { Children, isValidElement, type ComponentPropsWithoutRef } from 'react';
 import Image from 'next/image';
 import { remarkArticleBlocks } from './remark-article-blocks';
-import { parseGalleryToken, parseGalleryLinkToken, parseVideoToken } from './tokens';
+import { parseGalleryToken, parseGalleryLinkToken, parseVideoToken, type BlockType } from './tokens';
 import styles from './article-body.module.css';
+
+/** Identifies the exact `{{type: ...}}` source span an edit-in-place click came from. */
+export interface EditableBlockInfo {
+  type: BlockType;
+  raw: string;
+  start: number;
+  end: number;
+}
 
 /**
  * Renders an article's markdown body — native markdown for prose/links/
@@ -13,15 +21,28 @@ import styles from './article-body.module.css';
  * for. No 'use client' here on purpose: this renders identically as a
  * Server Component on the public article page and inside a Client
  * Component (the editor's live preview pane) — same source, same output.
+ *
+ * `onEditBlock` is only ever passed from the editor's live preview (a
+ * Client Component) — when present, gallery/gallerylink/video blocks grow a
+ * small "Edit" button that reports the block's type, parsed args, and
+ * source offsets so the editor can splice an updated token back into the
+ * raw body string. Omit it (as the public article page does) and the
+ * output is identical to before — plain, non-interactive markup.
  */
-export function ArticleBody({ body }: { body: string }) {
+export function ArticleBody({
+  body,
+  onEditBlock
+}: {
+  body: string;
+  onEditBlock?: (info: EditableBlockInfo) => void;
+}) {
   return (
     <div className={styles.articleBody}>
       <Markdown
         remarkPlugins={[remarkGfm, remarkArticleBlocks]}
         components={{
           img: FigureImage,
-          div: ArticleBlockDiv,
+          div: (props) => <ArticleBlockDiv {...props} onEditBlock={onEditBlock} />,
           table: TableWrap,
           p: ParagraphOrFigure
         }}
@@ -71,6 +92,9 @@ function TableWrap({ children }: ComponentPropsWithoutRef<'table'>) {
 type ArticleBlockProps = ComponentPropsWithoutRef<'div'> & {
   'data-block-type'?: string;
   'data-raw'?: string;
+  'data-start'?: string | number;
+  'data-end'?: string | number;
+  onEditBlock?: (info: EditableBlockInfo) => void;
 };
 
 /**
@@ -80,30 +104,51 @@ type ArticleBlockProps = ComponentPropsWithoutRef<'div'> & {
  * override dispatches on that marker and falls through to a plain `<div>`
  * for anything else markdown ever produces.
  */
-function ArticleBlockDiv({ 'data-block-type': blockType, 'data-raw': raw, children, ...rest }: ArticleBlockProps) {
+function ArticleBlockDiv({
+  'data-block-type': blockType,
+  'data-raw': raw,
+  'data-start': start,
+  'data-end': end,
+  onEditBlock,
+  children,
+  ...rest
+}: ArticleBlockProps) {
   if (!blockType || raw === undefined) return <div {...rest}>{children}</div>;
+  const onEdit =
+    onEditBlock && start !== undefined && end !== undefined
+      ? () => onEditBlock({ type: blockType as BlockType, raw, start: Number(start), end: Number(end) })
+      : undefined;
   switch (blockType) {
     case 'gallery':
-      return <GalleryBlock raw={raw} />;
+      return <GalleryBlock raw={raw} onEdit={onEdit} />;
     case 'gallerylink':
-      return <GalleryLinkBlock raw={raw} />;
+      return <GalleryLinkBlock raw={raw} onEdit={onEdit} />;
     case 'video':
-      return <VideoBlock raw={raw} />;
+      return <VideoBlock raw={raw} onEdit={onEdit} />;
     default:
       return null;
   }
 }
 
+function EditBlockButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
+  return (
+    <button type="button" className={styles.blockEditBtn} onClick={onClick}>
+      Edit
+    </button>
+  );
+}
+
 const MAX_GALLERY_TILES = 5;
 
-function GalleryBlock({ raw }: { raw: string }) {
+function GalleryBlock({ raw, onEdit }: { raw: string; onEdit?: () => void }) {
   const images = parseGalleryToken(raw);
   if (images.length === 0) return null;
   const shown = images.slice(0, MAX_GALLERY_TILES);
   const overflow = images.length - shown.length;
 
   return (
-    <div>
+    <div className={onEdit ? styles.blockEditable : undefined}>
+      {onEdit && <EditBlockButton onClick={onEdit} />}
       <div className={styles.contentGalleryLabel}>{images.length} photos</div>
       <div className={styles.galleryGrid}>
         {shown.map((img, i) => (
@@ -119,11 +164,25 @@ function GalleryBlock({ raw }: { raw: string }) {
   );
 }
 
-function GalleryLinkBlock({ raw }: { raw: string }) {
+function GalleryLinkBlock({ raw, onEdit }: { raw: string; onEdit?: () => void }) {
   const { url, caption, coverUrl, source } = parseGalleryLinkToken(raw);
   if (!url) return null;
   return (
-    <a href={url} target="_blank" rel="noopener noreferrer" className={styles.galleryLinkCard}>
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`${styles.galleryLinkCard} ${onEdit ? styles.blockEditable : ''}`}
+    >
+      {onEdit && (
+        <EditBlockButton
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onEdit();
+          }}
+        />
+      )}
       <div className={`${styles.glCover} ${coverUrl ? '' : styles.glCoverEmpty}`}>
         {coverUrl ? (
           <Image src={coverUrl} alt="" fill sizes="760px" />
@@ -147,12 +206,12 @@ function GalleryLinkBlock({ raw }: { raw: string }) {
   );
 }
 
-function VideoBlock({ raw }: { raw: string }) {
+function VideoBlock({ raw, onEdit }: { raw: string; onEdit?: () => void }) {
   const { url, caption, embedUrl } = parseVideoToken(raw);
   if (!url) return null;
   if (embedUrl) {
     return (
-      <div className={styles.videoEmbed}>
+      <div className={`${styles.videoEmbed} ${onEdit ? styles.blockEditable : ''}`}>
         <iframe
           className={styles.videoFrame}
           src={embedUrl}
@@ -160,15 +219,25 @@ function VideoBlock({ raw }: { raw: string }) {
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowFullScreen
         />
+        {onEdit && <EditBlockButton onClick={onEdit} />}
       </div>
     );
   }
   return (
-    <div className={styles.videoEmbed}>
+    <div className={`${styles.videoEmbed} ${onEdit ? styles.blockEditable : ''}`}>
       <a href={url} target="_blank" rel="noopener noreferrer" className={styles.videoFallback}>
         <span className={styles.playBtn} aria-hidden="true" />
         <span className={styles.vLabel}>{caption ?? 'Watch video'}</span>
       </a>
+      {onEdit && (
+        <EditBlockButton
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onEdit();
+          }}
+        />
+      )}
     </div>
   );
 }

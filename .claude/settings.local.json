@@ -1,7 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "Read(//c/Users/pat/.claude/**)"
+      "Read(//c/Users/pat/.claude/**)",
+      "Read(D:/Projects/Project-Agents/personal/**)",
+      "Glob(D:/Projects/Project-Agents/personal/**)"
+    ],
+    "deny": [
+      "Read(D:/Projects/Project-Agents/**)",
+      "Glob(D:/Projects/Project-Agents/**)"
+    ],
+    "additionalDirectories": [
+      "D:/Projects/Project-Agents/personal"
     ]
   }
 }

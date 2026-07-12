@@ -34,6 +34,16 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
     ]
   },
   {
+    title: 'Planning',
+    items: [
+      {
+        label: 'Meeting Plan',
+        href: '/admin/advancement/meeting-plan',
+        matchPath: '/admin/advancement/meeting-plan'
+      }
+    ]
+  },
+  {
     title: 'Records',
     items: [
       {
@@ -66,6 +76,16 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         label: 'Tags',
         href: '/admin/news/tags',
         matchPath: '/admin/news/tags'
+      },
+      {
+        label: 'Media Manager',
+        href: '/admin/news/media-manager',
+        matchPath: '/admin/news/media-manager'
+      },
+      {
+        label: 'Calendar',
+        href: '/admin/news/calendar',
+        matchPath: '/admin/news/calendar'
       }
     ]
   },
@@ -80,6 +100,11 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         label: 'Lookups & Admin',
         href: '/admin/advancement/lookups',
         matchPath: '/admin/advancement/lookups'
+      },
+      {
+        label: 'Utilities',
+        href: '/admin/utilities',
+        matchPath: '/admin/utilities'
       }
     ]
   }

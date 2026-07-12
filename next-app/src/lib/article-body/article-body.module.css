@@ -115,3 +115,17 @@
   .contentTableWrap :global(table) { min-width: 0; font-size: 12px; }
   .articleBody :global(th), .articleBody :global(td) { padding: 7px 8px; }
 }
+
+/* Edit-in-place affordance — only rendered when ArticleBody is given an
+   onEditBlock callback (the editor's live preview); never on the public
+   article page. */
+.blockEditable { position: relative; }
+.blockEditBtn {
+  position: absolute; top: 8px; right: 8px; z-index: 2;
+  font-family: var(--font-ui); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  background: rgba(26, 26, 26, .78); color: #fff; border: none; border-radius: 3px; padding: 5px 10px; cursor: pointer;
+  opacity: 0; transition: opacity var(--transition), background var(--transition);
+}
+.blockEditable:hover .blockEditBtn,
+.blockEditBtn:focus-visible { opacity: 1; }
+.blockEditBtn:hover { background: var(--forest); }

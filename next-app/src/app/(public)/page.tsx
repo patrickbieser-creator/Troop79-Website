@@ -38,10 +38,10 @@ export default async function Home({
             <div className={styles.heroLayout}>
               <article className={styles.heroStory}>
                 {hero.heroMedia && (
-                  <div className={styles.storyImg}>
+                  <Link href={`/news/${hero.slug}`} className={styles.storyImg}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={hero.heroMedia.cdn_url} alt={hero.heroMedia.alt_text ?? ''} />
-                  </div>
+                  </Link>
                 )}
                 <span className={`${styles.catTag} ${catClass(hero.type)}`}>{articleTypeLabel(hero.type)}</span>
                 <h2 className={styles.heroHeadline}>

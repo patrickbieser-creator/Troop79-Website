@@ -1,0 +1,273 @@
+.pageHeader {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 36px 24px 0;
+}
+.pageHeader h1 {
+  font-family: var(--font-display, 'Playfair Display', Georgia, serif);
+  font-size: 38px;
+  font-weight: 900;
+  color: var(--text-head);
+  line-height: 1.1;
+}
+.pageHeaderLede {
+  max-width: 720px;
+  margin-top: 10px;
+  font-size: 16px;
+  color: var(--text-body);
+  line-height: 1.6;
+}
+.pageHeaderRule {
+  border-bottom: 2px solid var(--navy);
+  margin-top: 20px;
+}
+.meetingMeta {
+  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-size: 13px;
+  color: var(--text-meta);
+  margin-top: 8px;
+}
+.meetingMeta strong {
+  color: var(--forest);
+}
+
+.main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 8px 24px 72px;
+}
+
+.empty {
+  margin-top: 32px;
+  padding: 48px 24px;
+  text-align: center;
+  background: var(--warm-white);
+  border: 1px solid var(--border-light);
+  border-radius: 2px;
+  color: var(--text-meta);
+  font-style: italic;
+}
+
+.sectionDivider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 36px 0 16px;
+}
+.divLabel {
+  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--forest);
+  white-space: nowrap;
+}
+.divRule {
+  flex: 1;
+  border-bottom: 1px solid var(--border-mid, #c8bfaf);
+}
+
+/* ── tiers + session cards ── */
+.tierHead {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 26px 0 12px;
+}
+.tierHead h2 {
+  font-family: var(--font-display, 'Playfair Display', Georgia, serif);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-head);
+}
+.tierNote {
+  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-size: 12px;
+  color: var(--text-meta);
+}
+.sessionGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 16px;
+}
+.sessionCard {
+  background: var(--warm-white);
+  border: 1px solid var(--border-light);
+  border-top: 3px solid var(--khaki, #c4a882);
+  border-radius: 2px;
+  box-shadow: 0 1px 4px rgba(30, 58, 74, .08);
+  padding: 16px 18px 14px;
+  display: flex;
+  flex-direction: column;
+}
+.sessionNum {
+  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-meta);
+  margin-bottom: 5px;
+}
+.reqCode {
+  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--bark);
+}
+.sessionCard h3 {
+  font-family: var(--font-display, 'Playfair Display', Georgia, serif);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-head);
+  line-height: 1.25;
+  margin: 2px 0 8px;
+}
+.tagRow {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.tag {
+  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 2px;
+}
+.tagYouth {
+  background: #f5eeda;
+  color: var(--bark);
+}
+.tagAdult {
+  background: var(--navy);
+  color: #fff;
+}
+.tagEagle {
+  background: var(--warm-white);
+  border: 1px solid var(--navy);
+  color: var(--navy);
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.chip {
+  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-size: 12px;
+  background: var(--cream);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 3px 10px;
+  color: var(--text-body);
+}
+.teachSlot {
+  margin-top: auto;
+  background: var(--cream);
+  border: 1px solid var(--border-light);
+  border-radius: 2px;
+  padding: 9px 12px;
+  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-size: 12.5px;
+}
+.teachLabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-meta);
+  display: block;
+  margin-bottom: 3px;
+}
+.teacher {
+  font-weight: 600;
+  color: var(--text-head);
+}
+.teachMeta {
+  color: var(--text-meta);
+}
+
+/* ── by-scout table ── */
+.tableWrap {
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--warm-white);
+  box-shadow: 0 1px 4px rgba(30, 58, 74, .08);
+  font-size: 14px;
+}
+.table th {
+  background: var(--navy);
+  color: #fff;
+  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  text-align: left;
+  padding: 10px 14px;
+}
+.table td {
+  border: 1px solid var(--border-light);
+  padding: 11px 14px;
+  vertical-align: top;
+}
+.table tbody tr:nth-child(even) {
+  background: var(--cream);
+}
+.scoutName {
+  font-weight: 600;
+  color: var(--text-head);
+  white-space: nowrap;
+}
+.patrol {
+  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-size: 11.5px;
+  color: var(--text-meta);
+}
+.suggestion {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin-bottom: 5px;
+}
+.suggestion:last-child {
+  margin-bottom: 0;
+}
+.sCode {
+  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--bark);
+  white-space: nowrap;
+}
+.sRef {
+  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--forest);
+  white-space: nowrap;
+}
+.needsOuting {
+  color: var(--text-meta);
+  font-size: 13px;
+}
+
+.footnote {
+  margin-top: 28px;
+  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-size: 12.5px;
+  color: var(--text-meta);
+  font-style: italic;
+  max-width: 720px;
+}

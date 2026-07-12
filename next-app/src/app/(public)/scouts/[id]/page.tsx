@@ -26,6 +26,7 @@ import {
   type ReqNode
 } from '@/lib/mb-helpers';
 import type { LedgerEntry, MeritBadgeRequirement } from '@/lib/supabase/types';
+import { publicScoutName } from '@/lib/scout-name';
 import { PrintButton } from './print-button';
 import styles from './scout-detail.module.css';
 
@@ -37,7 +38,7 @@ export async function generateMetadata({
   const { id } = await params;
   const detail = await loadScoutDetail(id);
   if (!detail) return { title: 'Scout not found — Scout Troop 79' };
-  return { title: `${detail.scout.display_name} — Advancement — Scout Troop 79` };
+  return { title: `${publicScoutName(detail.scout)} — Advancement — Scout Troop 79` };
 }
 
 export default async function ScoutClipboardPage({
@@ -103,7 +104,7 @@ function ScoutHeader({ detail }: { detail: ScoutDetail }) {
     <div className={styles.scoutHeader}>
       <div>
         <div className={styles.scoutId}>Scout Clipboard</div>
-        <div className={styles.scoutNameBig}>{scout.display_name}</div>
+        <div className={styles.scoutNameBig}>{publicScoutName(scout)}</div>
         <div className={styles.scoutMeta}>
           {metaParts.map((node, i) => (
             <span key={i}>
@@ -356,7 +357,7 @@ function Clipboard({ detail }: { detail: ScoutDetail }) {
       />
       <div className={styles.clipboard}>
         <div className={styles.clipboardHeader}>
-          <span className={styles.chName}>{detail.scout.display_name}</span>
+          <span className={styles.chName}>{publicScoutName(detail.scout)}</span>
           <span className={styles.chDate}>{todayShort}</span>
         </div>
         <div className={styles.rankColumns}>

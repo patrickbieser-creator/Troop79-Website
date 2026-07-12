@@ -164,6 +164,42 @@ export interface Event {
   created_at?: string;
 }
 
+// ─── Meeting Plan ───────────────────────────────────────────────────────────
+
+export type ReqVenue = 'meeting' | 'outing' | 'either';
+
+export interface Skill {
+  id: string;
+  name: string;
+  /** Whether an authorized older scout (Star+) may teach this skill. Adult-
+   *  instruction skills per the Guide to Safe Scouting stay false. */
+  youth_teachable: boolean;
+  sort_order: number;
+}
+
+export interface LeaderSkill {
+  leader_code: string;
+  skill_id: string;
+}
+
+export interface ScoutInstructor {
+  scout_id: string;
+  skill_id: string;
+  authorized_by: string | null;
+  authorized_at: string;
+}
+
+export interface MeetingPlanRow {
+  id: number;
+  meeting_date: string;
+  title: string;
+  status: 'draft' | 'published';
+  /** MeetingPlanPayload snapshot (see lib/meeting-plan-types.ts). */
+  payload: unknown;
+  generated_at: string;
+  generated_by: string | null;
+}
+
 // ─── News & Events CMS ──────────────────────────────────────────────────────
 
 export type ArticleType = 'news' | 'event' | 'recognition';
@@ -186,6 +222,36 @@ export interface Tag {
   id: number;
   name: string;
   slug: string;
+}
+
+export type CalendarCategory =
+  | 'Troop Meeting'
+  | 'No Meeting'
+  | 'Campout'
+  | 'High Adventure'
+  | 'Summer Camp'
+  | 'Service Project'
+  | 'Outing'
+  | 'Fundraiser'
+  | 'Court of Honor'
+  | 'Committee Meeting'
+  | 'Ceremony';
+
+export interface CalendarEntry {
+  id: number;
+  entry_date: string;
+  end_date: string | null;
+  day_note: string | null;
+  category: CalendarCategory;
+  title: string;
+  description: string | null;
+  location: string | null;
+  /** "HH:MM:SS", nullable — not every entry has a known time of day. */
+  start_time: string | null;
+  end_time: string | null;
+  article_id: number | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Article {

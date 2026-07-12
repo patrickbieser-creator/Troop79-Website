@@ -639,3 +639,182 @@ async function insertReqTree(
     }
   }
 }
+
+// ── Skills & teaching (Meeting Plan) ──────────────────────────────────────
+
+function slugifySkillId(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+export async function createSkill(formData: FormData): Promise<Result> {
+  try {
+    await ensureLeader();
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  const name = String(formData.get('name') ?? '').trim();
+  if (!name) return { ok: false, error: 'Skill name is required' };
+  const id = slugifySkillId(name);
+  if (!id) return { ok: false, error: 'Skill name must contain letters' };
+  const youthTeachable = String(formData.get('youth_teachable') ?? '') === 'true';
+
+  const supabase = createAdminClient();
+  const { data: maxRow } = await supabase
+    .from('skills')
+    .select('sort_order')
+    .order('sort_order', { ascending: false })
+    .limit(1);
+  const sortOrder = ((maxRow?.[0]?.sort_order as number | undefined) ?? 0) + 10;
+  const { error } = await supabase
+    .from('skills')
+    .insert({ id, name, youth_teachable: youthTeachable, sort_order: sortOrder });
+  if (error) {
+    if (error.code === '23505' || error.message.includes('duplicate key')) {
+      return { ok: false, error: 'That skill already exists' };
+    }
+    return { ok: false, error: error.message };
+  }
+  revalidateAll();
+  revalidatePath('/admin/advancement/meeting-plan');
+  return { ok: true };
+}
+
+export async function updateSkill(formData: FormData): Promise<Result> {
+  try {
+    await ensureLeader();
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  const id = String(formData.get('id') ?? '').trim();
+  const name = String(formData.get('name') ?? '').trim();
+  if (!id || !name) return { ok: false, error: 'Skill id and name are required' };
+  const youthTeachable = String(formData.get('youth_teachable') ?? '') === 'true';
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from('skills')
+    .update({ name, youth_teachable: youthTeachable })
+    .eq('id', id);
+  if (error) return { ok: false, error: error.message };
+  revalidateAll();
+  revalidatePath('/admin/advancement/meeting-plan');
+  return { ok: true };
+}
+
+export async function deleteSkill(formData: FormData): Promise<Result> {
+  try {
+    await ensureLeader();
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  const id = String(formData.get('id') ?? '').trim();
+  if (!id) return { ok: false, error: 'Missing skill id' };
+
+  const supabase = createAdminClient();
+  // rank_requirements.skill_id has no ON DELETE rule, so clear references
+  // first (leader_skills / scout_instructors cascade on their own).
+  const { error: reqErr } = await supabase
+    .from('rank_requirements')
+    .update({ skill_id: null })
+    .eq('skill_id', id);
+  if (reqErr) return { ok: false, error: reqErr.message };
+  const { error } = await supabase.from('skills').delete().eq('id', id);
+  if (error) return { ok: false, error: error.message };
+  revalidateAll();
+  revalidatePath('/admin/advancement/meeting-plan');
+  return { ok: true };
+}
+
+function readSkillIds(formData: FormData): string[] | null {
+  try {
+    const arr = JSON.parse(String(formData.get('skill_ids') ?? '[]')) as unknown;
+    if (!Array.isArray(arr)) return null;
+    return arr.filter((s): s is string => typeof s === 'string' && s.trim() !== '');
+  } catch {
+    return null;
+  }
+}
+
+/** Replace a leader's full skill set (delete + insert). */
+export async function setLeaderSkills(formData: FormData): Promise<Result> {
+  try {
+    await ensureLeader();
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  const leaderCode = String(formData.get('leader_code') ?? '').trim();
+  const skillIds = readSkillIds(formData);
+  if (!leaderCode || skillIds === null) return { ok: false, error: 'Malformed payload' };
+
+  const supabase = createAdminClient();
+  const { error: delErr } = await supabase
+    .from('leader_skills')
+    .delete()
+    .eq('leader_code', leaderCode);
+  if (delErr) return { ok: false, error: delErr.message };
+  if (skillIds.length > 0) {
+    const { error } = await supabase
+      .from('leader_skills')
+      .insert(skillIds.map((skill_id) => ({ leader_code: leaderCode, skill_id })));
+    if (error) return { ok: false, error: error.message };
+  }
+  revalidatePath('/admin/advancement/lookups');
+  revalidatePath('/admin/advancement/meeting-plan');
+  return { ok: true };
+}
+
+/** Replace a scout instructor's authorized skill set (delete + insert). */
+export async function setScoutInstructorSkills(formData: FormData): Promise<Result> {
+  const session = await (async () => {
+    try {
+      return await ensureLeader();
+    } catch {
+      return null;
+    }
+  })();
+  if (!session) return { ok: false, error: 'Not authenticated' };
+
+  const scoutId = String(formData.get('scout_id') ?? '').trim();
+  const skillIds = readSkillIds(formData);
+  if (!scoutId || skillIds === null) return { ok: false, error: 'Malformed payload' };
+
+  const supabase = createAdminClient();
+
+  // Guard: only youth-teachable skills can be authorized.
+  if (skillIds.length > 0) {
+    const { data: skillRows, error: skillErr } = await supabase
+      .from('skills')
+      .select('id, youth_teachable')
+      .in('id', skillIds);
+    if (skillErr) return { ok: false, error: skillErr.message };
+    const bad = skillIds.filter(
+      (id) => !(skillRows ?? []).some((s) => s.id === id && s.youth_teachable)
+    );
+    if (bad.length > 0) {
+      return { ok: false, error: `Not youth-teachable: ${bad.join(', ')}` };
+    }
+  }
+
+  const { error: delErr } = await supabase
+    .from('scout_instructors')
+    .delete()
+    .eq('scout_id', scoutId);
+  if (delErr) return { ok: false, error: delErr.message };
+  if (skillIds.length > 0) {
+    const { error } = await supabase.from('scout_instructors').insert(
+      skillIds.map((skill_id) => ({
+        scout_id: scoutId,
+        skill_id,
+        authorized_by: session.leader ?? null
+      }))
+    );
+    if (error) return { ok: false, error: error.message };
+  }
+  revalidatePath('/admin/advancement/lookups');
+  revalidatePath('/admin/advancement/meeting-plan');
+  return { ok: true };
+}

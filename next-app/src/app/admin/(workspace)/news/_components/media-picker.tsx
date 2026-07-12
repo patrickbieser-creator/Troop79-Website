@@ -15,6 +15,13 @@ interface MediaPickerProps {
   mode: 'single' | 'multi';
   onClose: () => void;
   onInsert: (media: Media[]) => void;
+  /**
+   * Pre-seeds the selection when reopening the picker to edit an existing
+   * gallery block. Best-effort: items not among the current search results
+   * still count toward the selection and get included on Insert, but won't
+   * visually highlight in the grid until a search brings them into view.
+   */
+  initialSelected?: Media[];
 }
 
 type Tab = 'browse' | 'upload';
@@ -45,12 +52,14 @@ function readImageDimensions(file: File): Promise<{ width: number; height: numbe
   });
 }
 
-export function MediaPicker({ mode, onClose, onInsert }: MediaPickerProps) {
+export function MediaPicker({ mode, onClose, onInsert, initialSelected }: MediaPickerProps) {
   const [tab, setTab] = useState<Tab>('browse');
   const [search, setSearch] = useState('');
   const [media, setMedia] = useState<Media[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState<Map<number, Media>>(new Map());
+  const [selected, setSelected] = useState<Map<number, Media>>(
+    () => new Map((initialSelected ?? []).map((m) => [m.id, m]))
+  );
   const [altPromptId, setAltPromptId] = useState<number | null>(null);
   const [altPromptValue, setAltPromptValue] = useState('');
   const [pending, setPending] = useState<PendingUpload[]>([]);

@@ -21,6 +21,7 @@ import {
   type ReqNode
 } from '@/lib/mb-helpers';
 import { fetchAllRows } from '@/lib/supabase/paginate';
+import { publicScoutName } from '@/lib/scout-name';
 import type {
   MeritBadge,
   MeritBadgeRequirement,
@@ -267,6 +268,7 @@ export default async function MeritBadgeDetailPage({
               <tbody>
                 {startedScouts.map((s) => {
                   const slot = byScout.get(s.id)!;
+                  const name = publicScoutName(s);
                   return (
                     <tr key={s.id}>
                       <td style={stickyScoutCellStyle}>
@@ -274,12 +276,12 @@ export default async function MeritBadgeDetailPage({
                           href={`/advancement/${s.id}`}
                           style={{ color: 'var(--text-head)', fontWeight: 600 }}
                         >
-                          {s.display_name}
+                          {name}
                         </Link>
                         <span style={rankPillStyle}>{RANK_LABELS[s.current_rank ?? ''] ?? s.current_rank}</span>
                       </td>
                       <td
-                        title={`${s.display_name} — ${slot.awarded ? 'badge earned' : 'not yet awarded'}`}
+                        title={`${name} — ${slot.awarded ? 'badge earned' : 'not yet awarded'}`}
                         style={awardCellStyle(slot.awarded)}
                       >
                         {slot.awarded ? '★' : '☆'}
@@ -289,7 +291,7 @@ export default async function MeritBadgeDetailPage({
                         return (
                           <td
                             key={l.code}
-                            title={`${s.display_name} — ${l.code} — ${l.label}`}
+                            title={`${name} — ${l.code} — ${l.label}`}
                             style={cellStyle(done, groupStartCodes.has(l.code))}
                           >
                             {done ? '■' : '□'}

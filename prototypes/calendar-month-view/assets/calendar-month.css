@@ -1,0 +1,315 @@
+/* ════════════════════════════════════════════════════════════════════
+   CALENDAR MONTH-VIEW PROTOTYPE — stylesheet
+   Tokens copied verbatim from next-app/src/app/globals.css +
+   events.module.css so this prototype matches production exactly.
+   Do not fork the palette here — if a new token is needed, add it once
+   at the top and reuse it everywhere.
+   ════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --navy:           #1e3a4a;
+  --navy-mid:       #2a4f63;
+  --navy-light:     #3a6478;
+  --navy-hover:     #163040;
+  --forest:         #3d5a3e;
+  --forest-light:   #527554;
+  --khaki:          #c4a882;
+  --khaki-light:    #ddd0bb;
+  --bark:           #8b6914;
+  --bark-light:     #a98020;
+  --cream:          #faf6ef;
+  --newsprint:      #f4efe6;
+  --warm-white:     #ffffff;
+  --text-head:      #1a1a1a;
+  --text-body:      #363636;
+  --text-meta:      #787060;
+  --border-light:   #e2d9cc;
+  --border-mid:     #c8bfaf;
+  --shadow-card:    0 1px 4px rgba(30,58,74,.08), 0 2px 12px rgba(30,58,74,.06);
+  --shadow-hover:   0 4px 20px rgba(30,58,74,.14);
+  --transition:     .18s ease;
+
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body:    'Lora', Georgia, serif;
+  --font-ui:      'Open Sans', Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--newsprint);
+  color: var(--text-body);
+  font-family: var(--font-body);
+  min-height: 100vh;
+}
+a { text-decoration: none; color: inherit; }
+button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+
+/* ─── Prototype banner (matches prototypes/news-cms convention) ────── */
+.proto-banner { background: var(--navy); color: #dce6ec; font-family: var(--font-ui); font-size: 12.5px; }
+.proto-banner-inner { max-width: 1180px; margin: 0 auto; padding: 8px 24px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.proto-banner strong { color: #fff; text-transform: uppercase; letter-spacing: .08em; }
+.proto-banner a { color: #dce6ec; text-decoration: underline; text-underline-offset: 2px; }
+.proto-banner a:hover { color: #fff; }
+
+/* ─── Page shell ─────────────────────────────────────────────────── */
+.page { max-width: 1180px; margin: 0 auto; padding: 28px 24px 60px; }
+.pageTitle { font-family: var(--font-display); font-size: 32px; font-weight: 700; color: var(--text-head); margin-bottom: 6px; }
+.pageSub { font-family: var(--font-body); font-size: 15px; color: var(--text-meta); margin-bottom: 22px; max-width: 720px; }
+
+/* ─── Controls row: view toggle + placeholder for parallel work ────── */
+.controlsRow {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  gap: 12px; margin-bottom: 20px;
+}
+.viewToggle {
+  display: inline-flex; border: 1px solid var(--border-mid); border-radius: 3px; overflow: hidden;
+  background: var(--warm-white); flex-shrink: 0;
+}
+.viewToggleBtn {
+  font-family: var(--font-ui); font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--text-meta); padding: 8px 18px; transition: background var(--transition), color var(--transition);
+  border-right: 1px solid var(--border-mid);
+}
+.viewToggleBtn:last-child { border-right: none; }
+.viewToggleBtn:hover { color: var(--navy); background: var(--newsprint); }
+.viewToggleBtn.isActive { background: var(--navy); color: #fff; }
+.viewToggleBtn.isActive:hover { background: var(--navy); color: #fff; }
+.viewToggleBtn:focus-visible { outline: 2px solid var(--forest); outline-offset: -2px; }
+
+.placeholderControls {
+  flex: 1; min-width: 240px; border: 1px dashed var(--border-mid); border-radius: 3px;
+  padding: 8px 14px; display: flex; align-items: center; gap: 8px;
+}
+.placeholderControls .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border-mid); flex-shrink: 0; }
+.placeholderNote {
+  font-family: var(--font-ui); font-size: 11px; font-style: italic; color: var(--text-meta);
+}
+
+/* ─── Category legend (existing production element, static) ────────── */
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 4px 0 22px; }
+.legendItem { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-ui); font-size: 11px; color: var(--text-meta); }
+.legendPip { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+/* ─── Shared section divider (list view) ────────────────────────────── */
+.sectionDivider { display: flex; align-items: center; gap: 12px; margin: 32px 0 18px; }
+.sectionDivider .divLabel {
+  font-family: var(--font-ui); font-size: 10px; font-weight: 700; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--navy); white-space: nowrap; border-left: 3px solid var(--forest); padding-left: 8px;
+}
+.sectionDivider .divRule { flex: 1; height: 1px; background: var(--border-light); }
+
+/* ─── List view (ported from events.module.css for toggle parity) ──── */
+.list { list-style: none; border: 1px solid var(--border-light); background: var(--warm-white); }
+.item { display: flex; gap: 16px; align-items: flex-start; padding: 16px 20px; border-bottom: 1px solid var(--border-light); }
+.item:last-child { border-bottom: none; }
+.item:hover { background: var(--newsprint); }
+.dateBlock { flex-shrink: 0; background: var(--navy); color: #fff; text-align: center; padding: 6px 10px 8px; border-radius: 2px; min-width: 58px; }
+.dateBlock .eMonth { font-family: var(--font-ui); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
+.dateBlock .eDay { font-family: var(--font-display); font-size: 24px; font-weight: 700; line-height: 1.1; }
+.itemBody { flex: 1; }
+.itemTitle { font-family: var(--font-display); font-size: 17px; font-weight: 700; color: var(--text-head); margin-bottom: 3px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dayNote {
+  font-family: var(--font-ui); font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--text-meta); background: var(--newsprint); border: 1px solid var(--border-light); border-radius: 999px; padding: 2px 8px;
+}
+.itemCategory { font-family: var(--font-ui); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 4px; }
+.itemMeta { font-family: var(--font-ui); font-size: 12px; color: var(--text-meta); }
+.itemDesc { font-family: var(--font-body); font-size: 13px; color: var(--text-body); margin-top: 4px; }
+.pastItem { opacity: .7; }
+.pastItem .dateBlock { background: var(--border-mid); }
+.empty { padding: 40px 20px; text-align: center; color: var(--text-meta); font-family: var(--font-body); font-style: italic; }
+
+/* ════════════════════════════════════════════════════════════════════
+   MONTH GRID VIEW
+   ════════════════════════════════════════════════════════════════════ */
+
+.monthCard {
+  border: 1px solid var(--border-light);
+  background: var(--warm-white);
+  border-radius: 2px;
+}
+
+/* Month header: Prev/Today/Next + month/year label */
+.monthHeader {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 16px 20px; border-bottom: 1px solid var(--border-light);
+}
+.monthHeaderTitle {
+  font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--text-head);
+  min-width: 220px; text-align: center;
+}
+.monthNav { display: flex; align-items: center; gap: 6px; }
+.monthNavBtn {
+  width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border-mid); border-radius: 2px; color: var(--navy);
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+.monthNavBtn:hover { background: var(--newsprint); border-color: var(--forest); color: var(--forest); }
+.monthNavBtn:focus-visible { outline: 2px solid var(--forest); outline-offset: 1px; }
+.monthNavBtn svg { width: 16px; height: 16px; fill: currentColor; }
+.todayBtn {
+  font-family: var(--font-ui); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--navy); border: 1px solid var(--border-mid); border-radius: 2px; padding: 7px 12px;
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
+}
+.todayBtn:hover { background: var(--newsprint); border-color: var(--forest); color: var(--forest); }
+.todayBtn:focus-visible { outline: 2px solid var(--forest); outline-offset: 1px; }
+
+/* Weekday header */
+.weekdayRow {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  border-bottom: 1px solid var(--border-light); background: var(--newsprint);
+}
+.weekdayCell {
+  font-family: var(--font-ui); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text-meta); text-align: center; padding: 8px 4px;
+}
+
+/* The grid is built from divs with ARIA grid/row/gridcell roles rather than
+   a literal <table> — each week is a position:relative wrapper containing a
+   7-column cells grid PLUS an absolutely-positioned span-bar overlay grid
+   (see calendar-month.js renderMonth() for why: a <td> forced to
+   position:absolute silently drops out of table column layout). */
+#monthGridBody .weekRow { position: relative; }
+#monthGridBody .weekRow .cellsGrid { display: grid; grid-template-columns: repeat(7, 1fr); }
+
+.cellsGrid .dayCell {
+  border-right: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+}
+.cellsGrid .dayCell:first-child { border-left: 1px solid var(--border-light); }
+#monthGridBody .weekRow:first-child .dayCell { border-top: 1px solid var(--border-light); }
+
+.dayCell {
+  /* --lane-count is set on the parent .weekRow (in JS), per week, based on
+     how many multi-day span "lanes" that week needs — it inherits down to
+     every cell + chip list in the row so the whole row grows uniformly,
+     the same way Google/Outlook calendars grow a week row that has
+     overlapping multi-day bars. */
+  width: 100%; height: 100%; min-height: calc(96px + var(--lane-count, 0) * 22px);
+  text-align: left; display: block; cursor: pointer;
+  padding: 6px 6px 4px; position: relative;
+  transition: background var(--transition);
+}
+.dayCell:hover { background: var(--newsprint); }
+.dayCell:focus-visible { outline: 2px solid var(--forest); outline-offset: -2px; z-index: 2; }
+
+.dayCell.isOutside { background: var(--newsprint); }
+.dayCell.isOutside .dayNum { color: var(--border-mid); }
+.dayCell.isOutside:hover { background: #ece5d6; }
+
+.dayCell.isSelected { background: rgba(61,90,62,.07); box-shadow: inset 0 0 0 2px var(--forest); z-index: 1; }
+
+.dayNumRow { display: flex; align-items: center; justify-content: flex-start; margin-bottom: 4px; }
+.dayNum {
+  font-family: var(--font-ui); font-size: 12px; font-weight: 600; color: var(--text-body);
+  width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;
+}
+.dayCell.isToday .dayNum { background: var(--navy); color: #fff; font-weight: 700; }
+
+/* Single-day event chips inside a cell — pushed down to clear this row's
+   reserved span-lane space (see --lane-count note on .dayCell above). */
+.chipList { display: flex; flex-direction: column; gap: 2px; margin-top: calc(var(--lane-count, 0) * 22px); }
+.chip {
+  display: flex; align-items: center; gap: 5px; width: 100%;
+  border-left: 3px solid transparent; border-radius: 1px; padding: 2px 5px 2px 4px;
+  font-family: var(--font-ui); font-size: 10.5px; font-weight: 600; color: var(--text-head);
+  text-align: left; overflow: hidden; transition: filter var(--transition);
+}
+.chip:hover { filter: brightness(0.97); }
+.chip:focus-visible { outline: 2px solid var(--forest); outline-offset: 1px; }
+.chipDot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.chipTitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chipMore {
+  font-family: var(--font-ui); font-size: 10px; font-weight: 700; color: var(--text-meta);
+  padding: 2px 5px; text-align: left;
+}
+.chipMore:hover { color: var(--navy); text-decoration: underline; }
+
+/* Multi-day span overlay — sits above the cells grid within a week row */
+.spansLayer {
+  position: absolute; inset: 0; top: 28px; display: grid; grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: 19px; row-gap: 3px; padding: 0 2px; pointer-events: none;
+}
+.spanBar {
+  pointer-events: auto; position: relative; display: flex; align-items: center; gap: 3px;
+  border-top: 1.5px solid transparent; border-bottom: 1.5px solid transparent;
+  border-radius: 3px; padding: 0 6px; height: 19px;
+  font-family: var(--font-ui); font-size: 10.5px; font-weight: 700; color: var(--text-head);
+  overflow: hidden; white-space: nowrap;
+}
+.spanBar.capStart { border-left: 1.5px solid; border-top-left-radius: 9px; border-bottom-left-radius: 9px; padding-left: 8px; }
+.spanBar.capEnd { border-right: 1.5px solid; border-top-right-radius: 9px; border-bottom-right-radius: 9px; }
+.spanBar:not(.capStart) { padding-left: 4px; }
+.spanChevron { flex-shrink: 0; font-size: 10px; opacity: .65; }
+.spanTitle { overflow: hidden; text-overflow: ellipsis; }
+.spanBar:focus-visible { outline: 2px solid var(--forest); outline-offset: 1px; }
+
+/* ─── Selected Day panel ─────────────────────────────────────────────── */
+.dayPanel {
+  margin-top: 18px; border: 1px solid var(--border-light); border-top: 3px solid var(--forest);
+  background: var(--warm-white); border-radius: 2px; padding: 20px 24px;
+  scroll-margin-top: 16px;
+}
+.dayPanelHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.dayPanelDate { font-family: var(--font-display); font-size: 19px; font-weight: 700; color: var(--text-head); }
+.dayPanelClose {
+  flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text-meta); transition: background var(--transition), color var(--transition);
+}
+.dayPanelClose:hover { background: var(--newsprint); color: var(--navy); }
+.dayPanelClose:focus-visible { outline: 2px solid var(--forest); }
+
+.dayPanelIdle { font-family: var(--font-body); font-style: italic; color: var(--text-meta); font-size: 14px; padding: 6px 0 2px; }
+.dayPanelEmpty { font-family: var(--font-body); color: var(--text-meta); font-size: 14px; padding: 4px 0 2px; }
+
+.dayEventList { display: flex; flex-direction: column; gap: 12px; }
+.dayEventCard {
+  border-left: 3px solid var(--border-mid); background: var(--newsprint); border-radius: 2px; padding: 12px 14px;
+  transition: box-shadow var(--transition);
+}
+.dayEventCard.isHighlighted { box-shadow: 0 0 0 2px var(--forest) inset; }
+.dayEventCardTitle { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--text-head); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dayEventCardCat { font-family: var(--font-ui); font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin: 3px 0 6px; }
+.dayEventCardMeta { font-family: var(--font-ui); font-size: 12.5px; color: var(--text-meta); display: flex; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 4px; }
+.dayEventCardMeta span { display: inline-flex; align-items: center; gap: 5px; }
+.dayEventCardDesc { font-family: var(--font-body); font-size: 13px; color: var(--text-body); line-height: 1.55; margin-top: 4px; }
+
+/* ─── Responsive: ≤768px keeps rich chips, only shrinks spacing ─────── */
+@media (max-width: 900px) {
+  .monthHeaderTitle { min-width: 0; font-size: 19px; }
+  .dayCell { min-height: calc(84px + var(--lane-count, 0) * 22px); }
+}
+
+/* ─── Responsive: <600px — condensed grid, dots only, no in-cell text ─ */
+@media (max-width: 600px) {
+  .page { padding: 20px 14px 48px; }
+  .pageTitle { font-size: 26px; }
+  .controlsRow { gap: 10px; }
+  .placeholderControls { min-width: 0; width: 100%; order: 3; }
+  .monthHeaderTitle { font-size: 16px; }
+  .monthNavBtn { width: 28px; height: 28px; }
+  .weekdayCell { font-size: 9px; padding: 6px 2px; }
+
+  .dayCell { min-height: calc(58px + var(--lane-count, 0) * 8px); padding: 4px 3px 3px; }
+  .dayNum { width: 19px; height: 19px; font-size: 11px; }
+
+  /* Hide chip text + spans text; show colored dots + a count only */
+  .chipList { flex-direction: row; flex-wrap: wrap; gap: 3px; margin-top: calc(2px + var(--lane-count, 0) * 8px); }
+  .chip { width: auto; padding: 0; border-left: none; }
+  .chip .chipTitle { display: none; }
+  .chip .chipDot { width: 7px; height: 7px; }
+  .chipMore { padding: 0; font-size: 9px; }
+
+  .spansLayer { top: 22px; grid-auto-rows: 6px; row-gap: 2px; padding: 0 1px; }
+  .spanBar { height: 6px; padding: 0; border-radius: 3px; }
+  .spanBar.capStart, .spanBar.capEnd { padding: 0; }
+  .spanTitle, .spanChevron { display: none; }
+
+  .dayPanel { padding: 16px 16px; }
+  .dayEventCardMeta { flex-direction: column; gap: 2px; }
+}
+
+/* Focus visibility fallback */
+a:focus-visible, button:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }

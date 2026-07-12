@@ -19,7 +19,7 @@
 .heroLayout { display: grid; grid-template-columns: 1fr 300px; gap: 0; border-bottom: 1px solid var(--border-light); margin-bottom: 28px; }
 
 .heroStory { padding: 24px 28px 24px 0; border-right: 1px solid var(--border-light); }
-.storyImg { width: 100%; aspect-ratio: 16/7; border-radius: 2px; margin-bottom: 16px; position: relative; overflow: hidden; background: var(--border-light); }
+.storyImg { display: block; width: 100%; aspect-ratio: 16/7; border-radius: 2px; margin-bottom: 16px; position: relative; overflow: hidden; background: var(--border-light); }
 .storyImg img { width: 100%; height: 100%; object-fit: cover; }
 
 .catTag {

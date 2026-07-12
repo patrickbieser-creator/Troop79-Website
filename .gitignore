@@ -1,0 +1,6 @@
+# Claude Code — agent and user-specific files
+PROJECT.user.md
+.claude/settings.local.json
+.claude/agents/
+.claude-project
+Agents/

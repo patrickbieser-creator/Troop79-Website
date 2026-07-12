@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Prototyping &mdash; Phase 1</strong></p>
-      <p>Last updated: <strong>July 6, 2026</strong></p>
+      <p>Last updated: <strong>July 11, 2026</strong></p>
     </div>
   </div>
 
@@ -424,7 +424,7 @@
       <p>Then open in a browser:</p>
       <ul>
         <li><a href="http://localhost:3000/">http://localhost:3000/</a> &mdash; the live app (public site)</li>
-        <li><a href="http://localhost:3000/admin">http://localhost:3000/admin</a> &mdash; Leader Workspace / admin (requires leader login)</li>
+        <li><a href="http://localhost:3000/admin/advancement/dashboard">http://localhost:3000/admin/advancement/dashboard</a> &mdash; Leader Workspace / admin (requires leader login)</li>
         <li><a href="http://127.0.0.1:54323">http://127.0.0.1:54323</a> &mdash; <strong>Supabase Studio</strong>: browse &amp; query the active database directly (verify rows, run SQL)</li>
       </ul>
 
@@ -494,6 +494,42 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v0.21 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v0.21</span>
+        <span class="release-date">July 11, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Meeting Plan &mdash; Suggested Advancement (Phase 1)</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              New <strong>Meeting Plan generator</strong> (Admin &rarr; Planning): pick a meeting date (defaults to next Sunday) and generate, on demand, what every active scout could work on <em>at that meeting</em> &mdash; straight from the advancement ledger, using the same requirement-tree satisfaction logic as Fast Entry. Up to <strong>three suggestions per scout</strong>, preferring requirements shared with other scouts; sub-requirements (like the Tenderfoot 6c fitness retest items) roll up into a single suggestion because they&rsquo;re taught together. Campout-only requirements &mdash; tagged with a new <code>venue</code> field that encodes the BSA requirement text&rsquo;s own &ldquo;does not include troop or patrol meetings&rdquo; wording &mdash; never appear as meeting suggestions but stay visible in a &ldquo;waiting on a campout&rdquo; column so nothing falls off the radar.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Group sessions</strong> cluster scouts who need the same requirement, organized under BSA&rsquo;s three skills-instruction tracks (New / Experienced / Older Scouts), capped at <strong>eight scouts</strong> with automatic patrol-preserving splits. Older scouts also get <strong>merit badge sessions</strong>, Eagle-required badges first, with counselors pulled from the existing counselor assignments. Scoutmaster conferences are only suggested once a scout has completed <strong>95% of the rank</strong> &mdash; the regenerated plan correctly shrank the conference group from ten scouts to the two who were actually ready.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Teacher matching</strong> via a new skills taxonomy (13 skills, managed in Lookups &amp; Admin alongside new Leader Skills and Scout Instructors cards): requirements map to skills, skills map to the adults who can teach them, and skills flagged youth-teachable can also be taught by authorized Star-and-above <strong>scout instructors</strong> (blanket per-skill authorization). First Aid, Woods Tools, Fire Safety, and Aquatics are locked to adults per the Guide to Safe Scouting and render an &ldquo;Adults only&rdquo; tag.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Publish to Site</strong> stores a one-snapshot-per-date plan that the new public <strong>/meeting-plan</strong> page renders in the site&rsquo;s editorial style &mdash; scouts shown as first name + last initial &mdash; with a graceful empty state on weeks with no plan (themed merit-badge nights, campout prep). Verified end-to-end in the browser against live data: generate, publish, public render, and removal all confirmed, then the test publish was cleaned out.
+              <span class="change-note">Also fixed along the way: a UTC date-shift bug that made &ldquo;today&rdquo; and the default meeting date jump a day forward during Central-time evenings, on both the admin and public pages. Schema shipped as migration <code>20260711000000_meeting_plan_skills.sql</code> (skills, leader_skills, scout_instructors, meeting_plans, venue/skill curation of the full rank catalog) plus an editable leader-skills seed drafted from counselor assignments and roles.</span>
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

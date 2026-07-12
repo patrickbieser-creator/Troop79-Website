@@ -7,7 +7,10 @@ import styles from './advancement.module.css';
 
 export interface RosterRow {
   id: string;
+  /** Full name — search/sort only, never rendered on this public page. */
   displayName: string;
+  /** "First L." — what actually shows on screen. */
+  publicName: string;
   patrol: string | null;
   currentRank: string | null;
   currentRankLabel: string;
@@ -188,7 +191,7 @@ export function RosterTable({ rows, rankOptions, patrols }: Props) {
                 <tr key={r.id} onClick={(e) => onRowClick(e, r.id)}>
                   <td>
                     <div className={styles.scoutName}>
-                      <Link href={`/scouts/${r.id}`}>{r.displayName}</Link>
+                      <Link href={`/scouts/${r.id}`}>{r.publicName}</Link>
                     </div>
                     <div className={styles.scoutPatrol}>
                       {r.patrol ? `${r.patrol} Patrol` : ''}

@@ -56,7 +56,7 @@ export function SiteFooter() {
           </div>
           <FooterCol title="Navigate">
             <FooterLink href="/">Home &amp; News</FooterLink>
-            <FooterLink href="/calendar">Events &amp; Calendar</FooterLink>
+            <FooterLink href="/events">Calendar</FooterLink>
             <FooterLink href="/advancement">Advancement Tracker</FooterLink>
             <FooterLink href="/merit-badges">Merit Badges</FooterLink>
             <FooterLink href="/meeting">This Week&rsquo;s Meeting</FooterLink>

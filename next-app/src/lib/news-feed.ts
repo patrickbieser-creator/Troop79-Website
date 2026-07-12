@@ -106,29 +106,6 @@ export async function loadArticlesByTag(slug: string, page: number) {
   return { tag: tag as Tag, rows, totalPages };
 }
 
-export async function loadEvents() {
-  const supabase = await createClient();
-  const nowIso = new Date().toISOString();
-  const [{ data: upcoming }, { data: past }] = await Promise.all([
-    supabase
-      .from('articles_public')
-      .select(CARD_SELECT)
-      .eq('type', 'event')
-      .gte('event_start', nowIso)
-      .order('event_start', { ascending: true }),
-    supabase
-      .from('articles_public')
-      .select(CARD_SELECT)
-      .eq('type', 'event')
-      .lt('event_start', nowIso)
-      .order('event_start', { ascending: false })
-  ]);
-  return {
-    upcoming: ((upcoming ?? []) as RawArticleRow[]).map(toCard),
-    past: ((past ?? []) as RawArticleRow[]).map(toCard)
-  };
-}
-
 export function articleTypeLabel(type: Article['type']): string {
   if (type === 'news') return 'News';
   if (type === 'event') return 'Events';

@@ -12,6 +12,7 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import type { Scout, ScoutSummaryRow, Rank } from '@/lib/supabase/types';
+import { publicScoutName } from '@/lib/scout-name';
 import styles from './advancement.module.css';
 import { RosterTable, type RosterRow } from './roster-table';
 
@@ -150,6 +151,7 @@ function buildRosterRows(data: AdvancementData): RosterRow[] {
     return {
       id: s.id,
       displayName: s.display_name,
+      publicName: publicScoutName(s),
       patrol: s.patrol,
       currentRank: s.current_rank,
       currentRankLabel: rank?.label ?? '—',

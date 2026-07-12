@@ -1,6 +1,8 @@
 .page { max-width: 1180px; margin: 0 auto; padding: 28px 24px 60px; }
+
+.pageHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
 .pageTitle { font-family: var(--font-display); font-size: 32px; font-weight: 700; color: var(--text-head); margin-bottom: 6px; }
-.pageSub { font-family: var(--font-body); font-size: 15px; color: var(--text-meta); margin-bottom: 28px; }
+.pageSub { font-family: var(--font-body); font-size: 15px; color: var(--text-meta); max-width: 640px; }
 
 .sectionDivider { display: flex; align-items: center; gap: 12px; margin: 32px 0 18px; }
 .sectionDivider .divLabel {
@@ -10,17 +12,89 @@
 .sectionDivider .divRule { flex: 1; height: 1px; background: var(--border-light); }
 
 .list { list-style: none; border: 1px solid var(--border-light); background: var(--warm-white); }
-.item { display: flex; gap: 16px; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border-light); }
+.item { display: flex; gap: 16px; align-items: flex-start; padding: 16px 20px; border-bottom: 1px solid var(--border-light); }
 .item:last-child { border-bottom: none; }
 .item:hover { background: var(--newsprint); }
 .dateBlock { flex-shrink: 0; background: var(--navy); color: #fff; text-align: center; padding: 6px 10px 8px; border-radius: 2px; min-width: 58px; }
 .dateBlock .eMonth { font-family: var(--font-ui); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
 .dateBlock .eDay { font-family: var(--font-display); font-size: 24px; font-weight: 700; line-height: 1.1; }
 .itemBody { flex: 1; }
-.itemTitle { font-family: var(--font-display); font-size: 17px; font-weight: 700; color: var(--text-head); margin-bottom: 3px; }
+.itemTitle { font-family: var(--font-display); font-size: 17px; font-weight: 700; color: var(--text-head); margin-bottom: 3px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .itemTitle a:hover { color: var(--navy); }
+.dayNote {
+  font-family: var(--font-ui); font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--text-meta); background: var(--newsprint); border: 1px solid var(--border-light); border-radius: 999px; padding: 2px 8px;
+}
+.itemCategory { font-family: var(--font-ui); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 4px; }
 .itemMeta { font-family: var(--font-ui); font-size: 12px; color: var(--text-meta); }
+.itemDesc { font-family: var(--font-body); font-size: 13px; color: var(--text-body); margin-top: 4px; }
 .pastItem { opacity: .7; }
 .pastItem .dateBlock { background: var(--border-mid); }
 
 .empty { padding: 40px 20px; text-align: center; color: var(--text-meta); font-family: var(--font-body); font-style: italic; }
+
+/* Category filter chips (replaces the old static legend) */
+.filterBar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.filterChip {
+  display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-ui); font-size: 11px; font-weight: 600;
+  color: var(--text-meta); background: var(--warm-white); border: 1px solid var(--border-mid); border-radius: 999px;
+  padding: 5px 12px 5px 8px; cursor: pointer; transition: background var(--transition), border-color var(--transition), color var(--transition);
+}
+.filterChip:hover { border-color: var(--forest); color: var(--text-head); }
+.filterChipActive { color: #fff; }
+.filterPip { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.filterClear {
+  font-family: var(--font-ui); font-size: 11px; font-weight: 700; letter-spacing: .02em; text-decoration: underline;
+  color: var(--text-meta); background: none; border: none; cursor: pointer; padding: 5px 4px;
+}
+.filterClear:hover { color: var(--navy); }
+
+/* Subscribe to Calendar — a small toggle button that reveals a compact dropdown panel, instead of an always-visible card */
+.subscribeWrap { position: relative; flex-shrink: 0; }
+.subscribeToggle {
+  display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-ui); font-size: 12.5px; font-weight: 700;
+  letter-spacing: .02em; color: var(--navy); background: var(--warm-white); border: 1px solid var(--border-mid);
+  border-radius: 2px; padding: 9px 14px; cursor: pointer; transition: background var(--transition), border-color var(--transition);
+  margin-top: 4px;
+}
+.subscribeToggle:hover, .subscribeToggle[aria-expanded='true'] { background: var(--cream); border-color: var(--forest); color: var(--forest); }
+.subscribeToggle svg:first-child { width: 14px; height: 14px; fill: currentColor; }
+.subscribeChevron { width: 12px; height: 12px; fill: currentColor; transition: transform var(--transition); }
+
+.subscribePanel {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; width: 320px;
+  background: var(--warm-white); border: 1px solid var(--border-light); border-top: 3px solid var(--forest);
+  border-radius: 2px; box-shadow: var(--shadow-hover); padding: 16px;
+}
+.subscribePanelHint { font-family: var(--font-body); font-size: 12.5px; color: var(--text-meta); line-height: 1.5; margin-bottom: 12px; }
+
+.subscribeGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.subscribeBtn {
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  font-family: var(--font-ui); font-size: 12px; font-weight: 700; letter-spacing: .01em;
+  color: var(--navy); background: var(--newsprint); border: 1px solid var(--border-mid); border-radius: 2px;
+  padding: 9px 8px; transition: background var(--transition), border-color var(--transition);
+}
+.subscribeBtn:hover { background: var(--cream); border-color: var(--forest); color: var(--forest); }
+
+.subscribeDirect {
+  display: flex; align-items: center; gap: 8px;
+  padding-top: 12px; border-top: 1px solid var(--border-light);
+}
+.subscribeUrl {
+  flex: 1; min-width: 0; font-family: 'Menlo', 'Consolas', monospace; font-size: 11px; color: var(--text-body);
+  background: var(--newsprint); border: 1px solid var(--border-light); border-radius: 2px; padding: 6px 8px;
+  overflow-x: auto; white-space: nowrap;
+}
+.subscribeCopyBtn {
+  font-family: var(--font-ui); font-size: 11px; font-weight: 700; letter-spacing: .03em;
+  color: #fff; background: var(--forest); border: none; border-radius: 2px; padding: 7px 12px; cursor: pointer;
+  transition: background var(--transition); white-space: nowrap; flex-shrink: 0;
+}
+.subscribeCopyBtn:hover { background: var(--forest-light); }
+
+@media (max-width: 640px) {
+  .pageHead { flex-direction: column; }
+  .subscribeWrap { align-self: flex-start; }
+  .subscribePanel { right: auto; left: 0; width: min(320px, 84vw); }
+}

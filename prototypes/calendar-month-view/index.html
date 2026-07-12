@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calendar — Month View Prototype — Scout Troop 79</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/calendar-month.css" />
+</head>
+<body>
+
+  <div class="proto-banner">
+    <div class="proto-banner-inner">
+      <p><strong>Prototype</strong> Month-grid alternative view for the public Calendar page — design exploration, not production code.</p>
+      <a href="../../index.html">&larr; Back to live site prototype</a>
+    </div>
+  </div>
+
+  <main class="page">
+    <h1 class="pageTitle">Calendar</h1>
+    <p class="pageSub">
+      Everything on the Troop 79 calendar — meetings, campouts, service projects, and more.
+      Switch between a flat chronological list and a traditional month grid.
+    </p>
+
+    <div class="controlsRow">
+      <div class="viewToggle" role="tablist" aria-label="Calendar view">
+        <button type="button" id="tabList" class="viewToggleBtn isActive" role="tab" aria-selected="true" aria-controls="listView" tabindex="0">List</button>
+        <button type="button" id="tabMonth" class="viewToggleBtn" role="tab" aria-selected="false" aria-controls="monthView" tabindex="-1">Month</button>
+      </div>
+
+      <!-- Filter chips + the compact "Subscribe to Calendar" button are being
+           built in parallel by another workstream — intentionally not
+           reproduced here. This placeholder just reserves their spot in the
+           controls row so the List/Month toggle's real-world position is
+           accurate. See the judgment-call notes near </body>. -->
+      <div class="placeholderControls" aria-hidden="true">
+        <span class="dot"></span>
+        <span class="placeholderNote">Filter chips + Subscribe button render here (built separately, not shown in this prototype)</span>
+      </div>
+    </div>
+
+    <div class="legend" id="legend"></div>
+
+    <!-- ── LIST VIEW ─────────────────────────────────────────────────── -->
+    <section id="listView" role="tabpanel" aria-labelledby="tabList">
+      <div class="sectionDivider">
+        <span class="divLabel">Upcoming</span>
+        <span class="divRule" aria-hidden="true"></span>
+      </div>
+      <ul class="list" id="listUpcoming"></ul>
+
+      <div id="listPastSection">
+        <div class="sectionDivider">
+          <span class="divLabel">Past</span>
+          <span class="divRule" aria-hidden="true"></span>
+        </div>
+        <ul class="list" id="listPast"></ul>
+      </div>
+    </section>
+
+    <!-- ── MONTH VIEW ────────────────────────────────────────────────── -->
+    <section id="monthView" role="tabpanel" aria-labelledby="tabMonth" hidden>
+      <div class="monthCard">
+        <div class="monthHeader">
+          <div class="monthNav">
+            <button type="button" class="monthNavBtn" id="prevMonthBtn" aria-label="Previous month">
+              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+            </button>
+            <button type="button" class="monthNavBtn" id="nextMonthBtn" aria-label="Next month">
+              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12z"/></svg>
+            </button>
+          </div>
+          <h2 class="monthHeaderTitle" id="monthHeaderTitle">Month Year</h2>
+          <button type="button" class="todayBtn" id="todayBtn">Today</button>
+        </div>
+
+        <!-- Decorative only — each gridcell below already states its full
+             weekday name in its own aria-label (see formatFullDate() in
+             calendar-month.js), so this row is hidden from AT rather than
+             marked up as orphaned row/columnheader roles outside the grid. -->
+        <div class="weekdayRow" aria-hidden="true">
+          <span class="weekdayCell">Sun</span>
+          <span class="weekdayCell">Mon</span>
+          <span class="weekdayCell">Tue</span>
+          <span class="weekdayCell">Wed</span>
+          <span class="weekdayCell">Thu</span>
+          <span class="weekdayCell">Fri</span>
+          <span class="weekdayCell">Sat</span>
+        </div>
+
+        <div class="monthGridWrap" role="grid" aria-labelledby="monthHeaderTitle">
+          <div id="monthGridBody" role="rowgroup"></div>
+        </div>
+      </div>
+
+      <div class="dayPanel" id="dayPanel" aria-live="polite">
+        <div class="dayPanelHeader">
+          <h2 class="dayPanelDate" id="dayPanelDate">No day selected</h2>
+          <button type="button" class="dayPanelClose" id="dayPanelClose" aria-label="Clear selected day" hidden>&times;</button>
+        </div>
+        <div id="dayPanelBody"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="assets/sample-data.js"></script>
+  <script src="assets/calendar-month.js"></script>
+
+  <!--
+    OPEN QUESTIONS / JUDGMENT CALLS (Calendar Month-View prototype):
+
+    1. DAY-DETAIL PATTERN — chose a persistent "Selected Day" panel docked
+       below the grid (updates in place, page scrolls it into view on
+       mobile) over a popover or a modal bottom sheet. Reasoning: popovers
+       anchored to a day cell clip or reflow awkwardly at the grid's edges
+       (right edge on desktop, every edge on a narrow phone grid), and a
+       true modal/bottom-sheet adds focus-trap + backdrop complexity for
+       something that isn't a destructive or multi-step action. The docked
+       panel behaves identically at 375/768/1280 with no anchor-positioning
+       edge cases. Tradeoff: it's one extra scroll/glance away from the grid
+       rather than appearing right where you clicked. Worth a client gut-check
+       against a popover if the extra scroll feels like friction in review.
+
+    2. DEFAULT PANEL STATE — on load, the panel shows an idle prompt ("Select
+       a day…") rather than auto-selecting today or the next upcoming event.
+       Rejected auto-select because it implies today has something scheduled
+       when it may not, and because the List view has no equivalent
+       "pre-focused" concept today — flagging as a real open question rather
+       than guessing; production's old calendar.html prototype DID have a
+       "Next Up" card that auto-populated, so there's precedent either way.
+
+    3. CHIP CONTRAST — the production list view's date block
+       (events.module.css .dateBlock) puts white text directly on the raw
+       category color, which is a solid ~4.5:1+ contrast for the darker
+       categories but likely FAILS WCAG AA for the lighter ones (No Meeting
+       #a0978a, and probably Ceremony #a04a3d / Fundraiser #8b6914) at the
+       10px month-abbreviation size. This prototype deliberately does NOT
+       repeat that pattern: every chip and span bar here uses a light tint of
+       the category color as the background with the category's full hex as
+       a border/dot accent, and dark body text throughout — so contrast holds
+       for all 11 categories regardless of how light or dark the category hex
+       is. Flagging the existing list-view issue as a separate, pre-existing
+       finding worth a real accessibility pass, not something introduced here.
+
+    4. FIXED "TODAY" — this file hardcodes DEMO_TODAY_ISO ('2026-07-11')
+       instead of using the real system clock, purely so the Upcoming/Past
+       split and the "Today" grid marker read sensibly no matter when a
+       reviewer actually opens this file. Production should obviously use the
+       real date.
+
+    5. MULTI-WEEK LANE STABILITY — the multi-day span lane (vertical "track")
+       a long event occupies is recomputed independently for each visible
+       week row. For any single event that spans 3+ week rows in one month
+       (nothing in Troop 79's real calendar realistically runs that long —
+       even the longest sample event, the Boundary Waters trip, only spans
+       two week rows) its lane could theoretically shift row-to-row if a
+       shorter event's lane frees up. Cosmetic only, and out of scope to fix
+       for a prototype, but a production implementation should compute lane
+       assignment once per event across the whole visible grid, not per row.
+
+    6. OUT-OF-MONTH DAYS ARE CLICKABLE — clicking a grayed leading/trailing
+       day navigates the grid to that adjacent month and selects it (rather
+       than being inert, or silently doing nothing). This seemed like the
+       more useful default — you clearly intended to look at that date — but
+       it's a judgment call; some calendar UIs deliberately make outside days
+       inert to keep "this month" visually authoritative.
+
+    7. MOBILE BREAKPOINT — collapsed to a single breakpoint at 600px: at/above
+       768px the grid keeps in-cell chip titles and span-bar labels; below
+       600px chips condense to color dots only (max 3 + "+N"), span bars lose
+       their labels, and all detail work moves to the day panel. Rejected a
+       three-tier responsive scheme (desktop/tablet/phone) as over-engineering
+       for a calendar this size — but if the real data set gets much busier
+       (multiple concurrent troops, more categories), a tablet-specific tier
+       may be worth revisiting.
+
+    8. CAP LIMIT PER CELL — each day cell shows at most 2 single-day chips
+       before collapsing to "+N more" (tap to open the day panel). Picked 2
+       (not 3) so the grid's row height stays close to uniform across a
+       typical month; the one deliberately busy sample day (Aug 22, 3 events)
+       exercises this. A production build should sanity-check this against
+       real historical data for the busiest actual day Troop 79 has had.
+  -->
+
+</body>
+</html>

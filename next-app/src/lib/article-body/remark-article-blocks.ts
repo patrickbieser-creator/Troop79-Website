@@ -29,7 +29,15 @@ export function remarkArticleBlocks() {
       node.children = [];
       node.data = {
         hName: 'div',
-        hProperties: { 'data-block-type': match.type, 'data-raw': match.raw }
+        hProperties: {
+          'data-block-type': match.type,
+          'data-raw': match.raw,
+          // Source offsets of the whole `{{type: ...}}` paragraph — lets the
+          // editor splice an updated token back into the raw body string
+          // when a block is edited in place (see ArticleBody's onEditBlock).
+          'data-start': node.position.start.offset,
+          'data-end': node.position.end.offset
+        }
       };
     });
   };

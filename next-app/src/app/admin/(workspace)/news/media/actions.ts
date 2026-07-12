@@ -6,10 +6,20 @@ import type { Media } from '@/lib/supabase/types';
 
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 const MAX_BYTES = 12 * 1024 * 1024; // 12MB — leaves headroom under the 15mb server-action body limit
+const SYNCABLE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
 
 function sanitizeFilename(name: string): string {
   const base = name.trim().toLowerCase().replace(/[^a-z0-9.\-]+/g, '-');
   return base || 'upload';
+}
+
+/** Derives a starter alt text from a filename (e.g. "bwca-crew_after six days.jpg" -> "Bwca crew after six days"). */
+function filenameToAltText(path: string): string {
+  const base = (path.split('/').pop() ?? path).replace(/\.[a-z0-9]+$/i, '');
+  // Strip a leading UUID (app-uploaded files are named `${uuid}-${original name}`).
+  const withoutUuid = base.replace(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-/i, '');
+  const words = withoutUuid.replace(/[-_]+/g, ' ').trim();
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : 'Untitled photo';
 }
 
 interface UploadResult {
@@ -25,6 +35,10 @@ export async function uploadMedia(formData: FormData): Promise<UploadResult> {
   const zone = process.env.BUNNY_STORAGE_ZONE;
   const apiKey = process.env.BUNNY_STORAGE_API_KEY;
   const pullZoneHost = process.env.BUNNY_PULL_ZONE_HOSTNAME;
+  // Storage Zones only accept requests at their own region's endpoint (e.g.
+  // ny.storage.bunnycdn.com) — the default host below only works for zones
+  // whose primary region is the default (Falkenstein, DE).
+  const storageHost = process.env.BUNNY_STORAGE_HOSTNAME || 'storage.bunnycdn.com';
   if (!zone || !apiKey || !pullZoneHost) {
     return {
       ok: false,
@@ -51,7 +65,7 @@ export async function uploadMedia(formData: FormData): Promise<UploadResult> {
   const path = `articles/${crypto.randomUUID()}-${sanitizeFilename(file.name)}`;
   const bytes = new Uint8Array(await file.arrayBuffer());
 
-  const uploadRes = await fetch(`https://storage.bunnycdn.com/${zone}/${path}`, {
+  const uploadRes = await fetch(`https://${storageHost}/${zone}/${path}`, {
     method: 'PUT',
     headers: { AccessKey: apiKey, 'Content-Type': 'application/octet-stream' },
     body: bytes
@@ -118,4 +132,91 @@ export async function setMediaAltText(
   const { error } = await supabase.from('media').update({ alt_text: trimmed }).eq('id', id);
   if (error) return { ok: false, error: error.message };
   return { ok: true };
+}
+
+interface BunnyStorageEntry {
+  ObjectName: string;
+  IsDirectory: boolean;
+}
+
+/** Recursively lists every file path in a Bunny Storage Zone below `prefix` (e.g. '' for the zone root). */
+async function listBunnyPaths(
+  storageHost: string,
+  zone: string,
+  apiKey: string,
+  prefix: string
+): Promise<string[]> {
+  const res = await fetch(`https://${storageHost}/${zone}/${prefix}`, {
+    headers: { AccessKey: apiKey, Accept: 'application/json' }
+  });
+  if (!res.ok) throw new Error(`Bunny list failed (${res.status}) for /${prefix}`);
+  const entries: BunnyStorageEntry[] = await res.json();
+
+  const paths: string[] = [];
+  for (const entry of entries) {
+    const path = `${prefix}${entry.ObjectName}`;
+    if (entry.IsDirectory) {
+      paths.push(...(await listBunnyPaths(storageHost, zone, apiKey, `${path}/`)));
+    } else {
+      paths.push(path);
+    }
+  }
+  return paths;
+}
+
+interface SyncResult {
+  ok: boolean;
+  error?: string;
+  added?: number;
+  alreadyIndexed?: number;
+}
+
+/**
+ * Scans the whole Bunny Storage Zone and adds a `media` row for any image
+ * file that doesn't have one yet — covers photos already sitting in Bunny
+ * (e.g. bulk-uploaded before the News CMS existed) as well as anything
+ * added outside this app since the last sync. Safe to re-run any time;
+ * already-indexed paths are skipped.
+ */
+export async function syncBunnyLibrary(): Promise<SyncResult> {
+  const session = await requireRole(['leader', 'scout']);
+
+  const zone = process.env.BUNNY_STORAGE_ZONE;
+  const apiKey = process.env.BUNNY_STORAGE_API_KEY;
+  const pullZoneHost = process.env.BUNNY_PULL_ZONE_HOSTNAME;
+  const storageHost = process.env.BUNNY_STORAGE_HOSTNAME || 'storage.bunnycdn.com';
+  if (!zone || !apiKey || !pullZoneHost) {
+    return { ok: false, error: 'Bunny CDN is not configured yet. See .env.example.' };
+  }
+
+  let allPaths: string[];
+  try {
+    allPaths = await listBunnyPaths(storageHost, zone, apiKey, '');
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Failed to list Bunny storage.' };
+  }
+  const imagePaths = allPaths.filter((p) => SYNCABLE_EXTENSIONS.has(p.slice(p.lastIndexOf('.')).toLowerCase()));
+
+  const supabase = createAdminClient();
+  const { data: existing, error: existingError } = await supabase.from('media').select('bunny_path');
+  if (existingError) return { ok: false, error: existingError.message };
+  const indexed = new Set((existing ?? []).map((r) => r.bunny_path as string));
+
+  const newPaths = imagePaths.filter((p) => !indexed.has(p));
+  if (newPaths.length === 0) {
+    return { ok: true, added: 0, alreadyIndexed: imagePaths.length };
+  }
+
+  const { error: insertError } = await supabase.from('media').insert(
+    newPaths.map((path) => ({
+      bunny_path: path,
+      cdn_url: `https://${pullZoneHost}/${path}`,
+      alt_text: filenameToAltText(path),
+      caption: null,
+      uploaded_by: session.leader
+    }))
+  );
+  if (insertError) return { ok: false, error: insertError.message };
+
+  return { ok: true, added: newPaths.length, alreadyIndexed: imagePaths.length - newPaths.length };
 }

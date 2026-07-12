@@ -19,7 +19,7 @@
 
 .editorShell {
   display: grid;
-  grid-template-columns: 460px 1fr;
+  grid-template-columns: 560px 1fr;
   min-height: 70vh;
   border: 1px solid var(--border-light);
   border-radius: 3px;
@@ -60,8 +60,8 @@
   outline: none; transition: border-color var(--transition), background var(--transition);
 }
 .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--forest); background: var(--warm-white); }
-.fieldRow { display: flex; gap: 12px; }
-.fieldRow .field { flex: 1; }
+.fieldRow { display: flex; gap: 12px; flex-wrap: wrap; }
+.fieldRow .field { flex: 1; min-width: 200px; }
 
 .heroPreview {
   position: relative;
@@ -139,7 +139,7 @@
 .reviewNote { font-size: 12px; color: var(--text-meta); font-style: italic; }
 .formError { color: #b5484d; font-size: 12px; margin-top: 8px; }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
   .editorShell { grid-template-columns: 1fr; }
   .editorPane, .previewPane { max-height: none; }
   .editorPane { border-right: none; border-bottom: 1px solid var(--border-light); }

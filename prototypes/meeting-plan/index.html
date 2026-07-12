@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meeting Plan &mdash; Prototype &mdash; Scout Troop 79</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --navy: #1e3a4a;
+      --navy-mid: #2e5468;
+      --navy-light: #eaf0f3;
+      --forest: #3d5a3e;
+      --forest-light: #e9efe9;
+      --bark: #8b6914;
+      --bark-light: #f5eeda;
+      --khaki: #c4a882;
+      --khaki-light: #f3ecdf;
+      --cream: #faf6ef;
+      --newsprint: #f4efe6;
+      --warm-white: #ffffff;
+      --text-head: #1a1a1a;
+      --text-body: #363636;
+      --text-meta: #787060;
+      --border-light: #e2d9cc;
+      --border-mid: #c8bfaf;
+      --shadow-card: 0 1px 4px rgba(30,58,74,.08), 0 2px 12px rgba(30,58,74,.06);
+      --shadow-hover: 0 4px 20px rgba(30,58,74,.14);
+      --transition: .18s ease;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: var(--newsprint); color: var(--text-body); font-family: 'Lora', Georgia, serif; font-size: 15px; line-height: 1.6; }
+    img { max-width: 100%; }
+
+    /* ---------- Prototype banner ---------- */
+    .proto-banner { background: var(--navy); color: #dce6ec; font-family: 'Open Sans', Arial, sans-serif; font-size: 12.5px; }
+    .proto-banner-inner { max-width: 1280px; margin: 0 auto; padding: 8px 24px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .proto-banner strong { color: #fff; text-transform: uppercase; letter-spacing: .08em; }
+    .proto-banner a { color: var(--khaki); text-decoration: none; }
+    .proto-banner a:hover { text-decoration: underline; }
+
+    /* ---------- Masthead ---------- */
+    .masthead { background: var(--cream); border-bottom: 2px solid var(--navy); }
+    .masthead-inner { max-width: 1280px; margin: 0 auto; padding: 18px 24px; display: flex; align-items: center; gap: 20px; }
+    .masthead-logo img { height: 64px; display: block; }
+    .masthead-wordmark { border-left: 1px solid var(--border-mid); padding-left: 20px; }
+    .site-name { font-family: 'Playfair Display', Georgia, serif; font-size: 34px; font-weight: 700; color: var(--text-head); line-height: 1.1; }
+    .site-sub { font-style: italic; color: var(--text-meta); font-size: 14px; }
+
+    /* ---------- Page header ---------- */
+    .page-wrap { max-width: 1280px; margin: 0 auto; padding: 28px 24px 72px; }
+    .section-label { display: inline-block; font-family: 'Open Sans', Arial, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--forest); border-bottom: 2px solid var(--forest); padding-bottom: 3px; margin-bottom: 10px; }
+    .page-title-row { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+    h1.page-title { font-family: 'Playfair Display', Georgia, serif; font-size: 40px; font-weight: 900; color: var(--text-head); line-height: 1.1; }
+    .meeting-picker { font-family: 'Open Sans', Arial, sans-serif; font-size: 13px; color: var(--text-meta); display: flex; align-items: center; gap: 10px; }
+    .meeting-picker select { font-family: 'Open Sans', Arial, sans-serif; font-size: 13px; padding: 7px 10px; border: 1px solid var(--border-mid); border-radius: 2px; background: var(--warm-white); color: var(--text-head); }
+    .btn-generate { font-family: 'Open Sans', Arial, sans-serif; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 8px 16px; background: var(--forest); color: #fff; border: none; border-radius: 2px; cursor: pointer; transition: var(--transition); }
+    .btn-generate:hover { background: var(--navy); }
+    .page-intro { max-width: 760px; margin-top: 10px; color: var(--text-body); font-size: 16px; }
+
+    .stat-strip { display: flex; gap: 0; margin: 26px 0 8px; background: var(--warm-white); border: 1px solid var(--border-light); border-top: 3px solid var(--forest); box-shadow: var(--shadow-card); border-radius: 2px; overflow: hidden; flex-wrap: wrap; }
+    .stat { flex: 1 1 150px; padding: 16px 20px; border-right: 1px solid var(--border-light); min-width: 150px; }
+    .stat:last-child { border-right: none; }
+    .stat .num { font-family: 'Playfair Display', Georgia, serif; font-size: 30px; font-weight: 700; color: var(--navy); line-height: 1; }
+    .stat .lbl { font-family: 'Open Sans', Arial, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-meta); margin-top: 5px; }
+
+    /* ---------- Tabs ---------- */
+    .tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--navy); margin: 30px 0 26px; flex-wrap: wrap; }
+    .tab-btn { font-family: 'Open Sans', Arial, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 11px 22px; background: var(--cream); border: 1px solid var(--border-mid); border-bottom: none; border-radius: 2px 2px 0 0; color: var(--text-meta); cursor: pointer; transition: var(--transition); }
+    .tab-btn:hover { color: var(--navy); }
+    .tab-btn.active { background: var(--navy); border-color: var(--navy); color: #fff; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ---------- Tier headers ---------- */
+    .tier-head { display: flex; align-items: baseline; gap: 14px; margin: 34px 0 14px; }
+    .tier-head:first-child { margin-top: 0; }
+    .tier-head h2 { font-family: 'Playfair Display', Georgia, serif; font-size: 24px; font-weight: 700; color: var(--text-head); }
+    .tier-head .tier-note { font-family: 'Open Sans', Arial, sans-serif; font-size: 12px; color: var(--text-meta); }
+    .tier-rule { flex: 1; border-bottom: 1px solid var(--border-mid); transform: translateY(-6px); }
+
+    /* ---------- Session cards ---------- */
+    .session-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 18px; }
+    .session-card { background: var(--warm-white); border: 1px solid var(--border-light); border-top: 3px solid var(--khaki); border-radius: 2px; box-shadow: var(--shadow-card); padding: 18px 20px 16px; transition: var(--transition); display: flex; flex-direction: column; }
+    .session-card:hover { box-shadow: var(--shadow-hover); border-top-color: var(--forest); }
+    .session-num { font-family: 'Open Sans', Arial, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--text-meta); margin-bottom: 6px; }
+    .req-code { font-family: 'Open Sans', Arial, sans-serif; font-weight: 700; font-size: 12px; color: var(--bark); text-transform: uppercase; letter-spacing: .06em; }
+    .session-card h3 { font-family: 'Playfair Display', Georgia, serif; font-size: 20px; font-weight: 700; color: var(--text-head); line-height: 1.25; margin: 2px 0 10px; }
+    .tag-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+    .cat-tag { font-family: 'Open Sans', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 3px 8px; border-radius: 2px; display: inline-block; }
+    .tag-skill { background: var(--navy-light); color: var(--navy); }
+    .tag-venue { background: var(--forest-light); color: var(--forest); }
+    .tag-youth { background: var(--bark-light); color: var(--bark); }
+    .tag-adult { background: var(--navy); color: #fff; }
+    .tag-eagle { background: var(--warm-white); border: 1px solid var(--navy); color: var(--navy); }
+
+    .scout-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+    .chip { font-family: 'Open Sans', Arial, sans-serif; font-size: 12px; background: var(--cream); border: 1px solid var(--border-light); border-radius: 12px; padding: 3px 10px 3px 6px; display: inline-flex; align-items: center; gap: 6px; color: var(--text-body); }
+    .rank-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+    .rk-scout { background: var(--khaki); }
+    .rk-tender { background: var(--bark); }
+    .rk-second { background: #6d8a6e; }
+    .rk-first { background: var(--forest); }
+    .rk-star { background: var(--navy-mid); }
+    .rk-life { background: var(--navy); }
+
+    .teach-slot { margin-top: auto; background: var(--cream); border: 1px solid var(--border-light); border-radius: 2px; padding: 10px 12px; font-family: 'Open Sans', Arial, sans-serif; font-size: 12.5px; }
+    .teach-slot .teach-label { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-meta); display: block; margin-bottom: 4px; }
+    .teach-slot .teacher { font-weight: 600; color: var(--text-head); }
+    .teach-slot .cert { color: var(--forest); font-size: 11.5px; }
+    .teach-slot .assist { color: var(--text-meta); }
+    .synergy { margin-top: 10px; border-left: 3px solid var(--bark); background: var(--bark-light); padding: 8px 12px; font-size: 13px; font-style: italic; color: #6b5410; }
+
+    /* ---------- By-scout table ---------- */
+    .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; font-family: 'Open Sans', Arial, sans-serif; }
+    .toolbar input[type="search"], .toolbar select { font-family: 'Open Sans', Arial, sans-serif; font-size: 13px; padding: 8px 10px; border: 1px solid var(--border-mid); border-radius: 2px; background: var(--warm-white); }
+    .toolbar input[type="search"] { width: 220px; }
+    .toolbar .count { font-size: 12.5px; color: var(--text-meta); margin-left: auto; }
+    table.plan-table { width: 100%; border-collapse: collapse; background: var(--warm-white); box-shadow: var(--shadow-card); font-size: 14px; }
+    .plan-table th { background: var(--navy); color: #fff; font-family: 'Open Sans', Arial, sans-serif; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; text-align: left; padding: 10px 14px; }
+    .plan-table td { border: 1px solid var(--border-light); padding: 12px 14px; vertical-align: top; }
+    .plan-table tbody tr:nth-child(even) { background: var(--cream); }
+    .scout-name { font-family: 'Lora', Georgia, serif; font-weight: 600; color: var(--text-head); white-space: nowrap; }
+    .patrol { font-family: 'Open Sans', Arial, sans-serif; font-size: 11.5px; color: var(--text-meta); }
+    .rank-pill { font-family: 'Open Sans', Arial, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #fff; border-radius: 2px; padding: 2px 8px; white-space: nowrap; }
+    .suggestion { display: flex; gap: 8px; align-items: baseline; margin-bottom: 6px; }
+    .suggestion:last-child { margin-bottom: 0; }
+    .suggestion .s-code { font-family: 'Open Sans', Arial, sans-serif; font-size: 11px; font-weight: 700; color: var(--bark); white-space: nowrap; }
+    .suggestion .s-ref { font-family: 'Open Sans', Arial, sans-serif; font-size: 11px; color: var(--forest); white-space: nowrap; text-decoration: none; border-bottom: 1px dotted var(--forest); }
+    .suggestion .s-ref:hover { border-bottom-style: solid; }
+    .needs-outing { color: var(--text-meta); font-size: 13px; }
+    .needs-outing .s-code { color: var(--border-mid); }
+    .outing-note { font-family: 'Open Sans', Arial, sans-serif; font-size: 11px; color: var(--text-meta); font-style: italic; }
+    .all-caught-up { font-style: italic; color: var(--text-meta); }
+
+    /* ---------- Teaching roster ---------- */
+    .roster-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
+    @media (max-width: 900px) { .roster-cols { grid-template-columns: 1fr; } .session-grid { grid-template-columns: 1fr; } }
+    .roster-panel { background: var(--warm-white); border: 1px solid var(--border-light); border-top: 3px solid var(--navy); border-radius: 2px; box-shadow: var(--shadow-card); padding: 20px 22px; }
+    .roster-panel.youth { border-top-color: var(--bark); }
+    .roster-panel h2 { font-family: 'Playfair Display', Georgia, serif; font-size: 22px; font-weight: 700; color: var(--text-head); margin-bottom: 4px; }
+    .roster-panel .sub { font-family: 'Open Sans', Arial, sans-serif; font-size: 12.5px; color: var(--text-meta); margin-bottom: 14px; }
+    .leader-row { display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border-light); flex-wrap: wrap; }
+    .leader-row:last-child { border-bottom: none; }
+    .leader-id .nm { font-weight: 600; color: var(--text-head); }
+    .leader-id .rl { font-family: 'Open Sans', Arial, sans-serif; font-size: 11.5px; color: var(--text-meta); }
+    .skill-chips { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; max-width: 55%; }
+    .tonight { font-family: 'Open Sans', Arial, sans-serif; font-size: 11px; font-weight: 700; color: var(--forest); }
+    .gss-note { margin-top: 14px; border-left: 3px solid var(--navy); background: var(--navy-light); padding: 10px 14px; font-size: 13px; color: var(--navy); }
+    .future-panel { margin-top: 26px; border: 2px dashed var(--border-mid); border-radius: 2px; background: var(--cream); padding: 20px 22px; }
+    .future-panel h2 { font-family: 'Playfair Display', Georgia, serif; font-size: 20px; color: var(--text-meta); margin-bottom: 4px; }
+    .future-panel .phase-tag { font-family: 'Open Sans', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; background: var(--khaki); color: #fff; padding: 3px 8px; border-radius: 2px; }
+    .request-row { display: flex; gap: 10px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--border-light); font-size: 13.5px; flex-wrap: wrap; }
+    .request-row:last-child { border-bottom: none; }
+    .request-row .when { font-family: 'Open Sans', Arial, sans-serif; font-size: 11px; color: var(--text-meta); margin-left: auto; }
+
+    /* ---------- Footer ---------- */
+    .site-footer { background: var(--cream); border-top: 2px solid var(--navy); margin-top: 40px; }
+    .footer-inner { max-width: 1280px; margin: 0 auto; padding: 20px 24px; font-family: 'Open Sans', Arial, sans-serif; font-size: 12px; color: var(--text-meta); }
+  </style>
+</head>
+<body>
+
+  <div class="proto-banner">
+    <div class="proto-banner-inner">
+      <p><strong>Prototype</strong>&nbsp; Weekly Meeting Plan &mdash; suggested advancement per scout &amp; group. All names and data are fictional; layout uses the site's real design tokens.</p>
+      <a href="../../index.html">&larr; Back to live site prototype</a>
+    </div>
+  </div>
+
+  <header class="masthead" role="banner">
+    <div class="masthead-inner">
+      <div class="masthead-logo">
+        <img src="../../assets/images/troop-79-logo.png" alt="Scout Troop 79 &mdash; Milwaukee, WI" />
+      </div>
+      <div class="masthead-wordmark">
+        <h1 class="site-name">Scout Troop 79</h1>
+        <p class="site-sub">Milwaukee, Wisconsin &nbsp;&middot;&nbsp; Est. 2022</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-wrap">
+    <span class="section-label">Advancement &middot; Planning</span>
+    <div class="page-title-row">
+      <h1 class="page-title">This Week&rsquo;s Meeting Plan</h1>
+      <div class="meeting-picker">
+        <label for="mtg">Meeting (from events calendar):</label>
+        <select id="mtg">
+          <option selected>Tue, Jul 14 &mdash; Troop Meeting</option>
+          <option>Tue, Jul 21 &mdash; MB Night: Cooking (themed)</option>
+          <option>Tue, Jul 28 &mdash; Campout Prep: Devil&rsquo;s Lake</option>
+          <option>Tue, Aug 4 &mdash; Troop Meeting</option>
+        </select>
+        <button class="btn-generate" type="button">Generate Plan</button>
+      </div>
+    </div>
+    <p class="page-intro">Generated <em>on demand</em> from the advancement ledger for a meeting you pick off the events calendar: what each scout could work on that night, grouped into patrol-sized sessions with a qualified teacher. Themed merit-badge nights and campout-prep meetings simply skip generation. Campout-only requirements stay visible but are set aside for the next outing.</p>
+
+    <div class="stat-strip">
+      <div class="stat"><div class="num">23</div><div class="lbl">Scouts with suggestions</div></div>
+      <div class="stat"><div class="num">9</div><div class="lbl">Group sessions</div></div>
+      <div class="stat"><div class="num">5</div><div class="lbl">Adult teachers matched</div></div>
+      <div class="stat"><div class="num">3</div><div class="lbl">Scout instructors</div></div>
+      <div class="stat"><div class="num">11</div><div class="lbl">Items waiting on a campout</div></div>
+    </div>
+
+    <div class="tabs" role="tablist">
+      <button class="tab-btn active" data-tab="groups" role="tab">Group Sessions</button>
+      <button class="tab-btn" data-tab="scouts" role="tab">By Scout</button>
+      <button class="tab-btn" data-tab="roster" role="tab">Teaching Roster</button>
+    </div>
+
+    <!-- ============ TAB 1: GROUP SESSIONS ============ -->
+    <section id="tab-groups" class="tab-panel active">
+
+      <div class="tier-head">
+        <h2>New Scouts</h2>
+        <span class="tier-note">working toward Scout &amp; Tenderfoot &mdash; BSA skills-instruction track 1</span>
+        <span class="tier-rule"></span>
+      </div>
+      <div class="session-grid">
+
+        <article class="session-card">
+          <span class="session-num">Session 1 &middot; Group A</span>
+          <span class="req-code">Tenderfoot 3a&ndash;3c</span>
+          <h3>Knots: square knot, two half hitches, taut-line hitch</h3>
+          <div class="tag-row">
+            <span class="cat-tag tag-youth">Older scout may teach</span>
+          </div>
+          <div class="scout-chips">
+            <span class="chip"><span class="rank-dot rk-scout"></span>Mason T.</span>
+            <span class="chip"><span class="rank-dot rk-scout"></span>Julian P.</span>
+            <span class="chip"><span class="rank-dot rk-scout"></span>Theo B.</span>
+            <span class="chip"><span class="rank-dot rk-tender"></span>Aiden R.</span>
+            <span class="chip"><span class="rank-dot rk-scout"></span>Grant W.</span>
+            <span class="chip"><span class="rank-dot rk-scout"></span>Leo M.</span>
+          </div>
+          <div class="teach-slot">
+            <span class="teach-label">Teaching</span>
+            <span class="teacher">Marcus D. (Life, Instructor)</span> &nbsp;<span class="assist">&middot; adult on hand: Mr. Kowalski</span>
+          </div>
+          <div class="synergy">Teaching this session also fulfills Marcus&rsquo;s own <strong>Life req 6</strong> (use EDGE to teach a younger scout).</div>
+        </article>
+
+        <article class="session-card">
+          <span class="session-num">Session 1 &middot; Group B <em style="font-weight:400;text-transform:none;letter-spacing:0;">&mdash; split: 11 scouts need this, cap is 8</em></span>
+          <span class="req-code">Tenderfoot 3a&ndash;3c</span>
+          <h3>Knots: square knot, two half hitches, taut-line hitch</h3>
+          <div class="tag-row">
+            <span class="cat-tag tag-youth">Older scout may teach</span>
+          </div>
+          <div class="scout-chips">
+            <span class="chip"><span class="rank-dot rk-scout"></span>Wyatt H.</span>
+            <span class="chip"><span class="rank-dot rk-scout"></span>Sam O.</span>
+            <span class="chip"><span class="rank-dot rk-tender"></span>Miles C.</span>
+            <span class="chip"><span class="rank-dot rk-scout"></span>Beckett F.</span>
+            <span class="chip"><span class="rank-dot rk-scout"></span>Ezra L.</span>
+          </div>
+          <div class="teach-slot">
+            <span class="teach-label">Teaching</span>
+            <span class="teacher">Owen K. (Star, Instructor)</span> &nbsp;<span class="assist">&middot; adult on hand: Mr. Kowalski</span>
+          </div>
+        </article>
+
+        <article class="session-card">
+          <span class="session-num">Session 2</span>
+          <span class="req-code">Tenderfoot 4a&ndash;4b</span>
+          <h3>First aid basics: cuts, scrapes, bites &amp; stings, blisters</h3>
+          <div class="tag-row">
+            <span class="cat-tag tag-adult">Adults only</span>
+          </div>
+          <div class="scout-chips">
+            <span class="chip"><span class="rank-dot rk-scout"></span>Mason T.</span>
+            <span class="chip"><span class="rank-dot rk-tender"></span>Aiden R.</span>
+            <span class="chip"><span class="rank-dot rk-scout"></span>Theo B.</span>
+            <span class="chip"><span class="rank-dot rk-scout"></span>Wyatt H.</span>
+            <span class="chip"><span class="rank-dot rk-tender"></span>Miles C.</span>
+            <span class="chip"><span class="rank-dot rk-scout"></span>Leo M.</span>
+          </div>
+          <div class="teach-slot">
+            <span class="teach-label">Teaching</span>
+            <span class="teacher">Mrs. Foley</span> <span class="cert">&middot; Wilderness First Aid, exp. 03/2027</span>
+          </div>
+        </article>
+
+      </div>
+
+      <div class="tier-head">
+        <h2>Experienced Scouts</h2>
+        <span class="tier-note">working toward Second &amp; First Class &mdash; track 2</span>
+        <span class="tier-rule"></span>
+      </div>
+      <div class="session-grid">
+
+        <article class="session-card">
+          <span class="session-num">Session 3</span>
+          <span class="req-code">Second Class 2a&ndash;2c</span>
+          <h3>Woods tools: knife, saw &amp; ax care (Totin&rsquo; Chip)</h3>
+          <div class="tag-row">
+            <span class="cat-tag tag-adult">Adult sign-off</span>
+          </div>
+          <div class="scout-chips">
+            <span class="chip"><span class="rank-dot rk-tender"></span>Caleb N.</span>
+            <span class="chip"><span class="rank-dot rk-tender"></span>Finn S.</span>
+            <span class="chip"><span class="rank-dot rk-second"></span>Jonah V.</span>
+            <span class="chip"><span class="rank-dot rk-tender"></span>Ryder G.</span>
+            <span class="chip"><span class="rank-dot rk-tender"></span>Declan A.</span>
+            <span class="chip"><span class="rank-dot rk-tender"></span>Nolan E.</span>
+            <span class="chip"><span class="rank-dot rk-tender"></span>Coop&nbsp;J.</span>
+          </div>
+          <div class="teach-slot">
+            <span class="teach-label">Teaching</span>
+            <span class="teacher">Mr. Delgado</span> <span class="assist">&middot; assisted by Owen K. (Star) &mdash; demo only, sign-off stays with adult</span>
+          </div>
+        </article>
+
+        <article class="session-card">
+          <span class="session-num">Session 4</span>
+          <span class="req-code">First Class 3a&ndash;3d</span>
+          <h3>Lashings: square, shear, diagonal &mdash; build a camp gadget</h3>
+          <div class="tag-row">
+            <span class="cat-tag tag-youth">Older scout may teach</span>
+          </div>
+          <div class="scout-chips">
+            <span class="chip"><span class="rank-dot rk-second"></span>Jonah V.</span>
+            <span class="chip"><span class="rank-dot rk-second"></span>Bennett K.</span>
+            <span class="chip"><span class="rank-dot rk-second"></span>Micah D.</span>
+            <span class="chip"><span class="rank-dot rk-second"></span>Ellis R.</span>
+          </div>
+          <div class="teach-slot">
+            <span class="teach-label">Teaching</span>
+            <span class="teacher">Tyler B. (Life, Instructor)</span> &nbsp;<span class="assist">&middot; adult on hand: Mrs. Hartman</span>
+          </div>
+        </article>
+
+        <article class="session-card">
+          <span class="session-num">Session 5</span>
+          <span class="req-code">Second Class 6a&ndash;6c</span>
+          <h3>First aid: hurry cases, shock &amp; emergency response</h3>
+          <div class="tag-row">
+            <span class="cat-tag tag-adult">Adults only</span>
+          </div>
+          <div class="scout-chips">
+            <span class="chip"><span class="rank-dot rk-tender"></span>Caleb N.</span>
+            <span class="chip"><span class="rank-dot rk-tender"></span>Finn S.</span>
+            <span class="chip"><span class="rank-dot rk-tender"></span>Ryder G.</span>
+            <span class="chip"><span class="rank-dot rk-tender"></span>Declan A.</span>
+            <span class="chip"><span class="rank-dot rk-tender"></span>Nolan E.</span>
+          </div>
+          <div class="teach-slot">
+            <span class="teach-label">Teaching</span>
+            <span class="teacher">Mrs. Foley</span> <span class="cert">&middot; Wilderness First Aid</span> <span class="assist">&middot; runs after Session 2 &mdash; same teacher, staggered blocks</span>
+          </div>
+        </article>
+
+        <article class="session-card">
+          <span class="session-num">Session 6</span>
+          <span class="req-code">First Class 9a&ndash;9b</span>
+          <h3>Meal planning: budget &amp; menu for a weekend campout</h3>
+          <div class="tag-row">
+            <span class="cat-tag tag-youth">Older scout may teach</span>
+          </div>
+          <div class="scout-chips">
+            <span class="chip"><span class="rank-dot rk-second"></span>Bennett K.</span>
+            <span class="chip"><span class="rank-dot rk-second"></span>Micah D.</span>
+            <span class="chip"><span class="rank-dot rk-second"></span>Ellis R.</span>
+          </div>
+          <div class="teach-slot">
+            <span class="teach-label">Teaching</span>
+            <span class="teacher">Mr. Yang</span> <span class="assist">&middot; plans feed directly into the Aug 8 Devil&rsquo;s Lake campout (cooking reqs done there)</span>
+          </div>
+        </article>
+
+      </div>
+
+      <div class="tier-head">
+        <h2>Older Scouts</h2>
+        <span class="tier-note">Star &amp; Life &mdash; track 3: leadership, teaching, merit badges</span>
+        <span class="tier-rule"></span>
+      </div>
+      <div class="session-grid">
+
+        <article class="session-card">
+          <span class="session-num">Session 7</span>
+          <span class="req-code">Star 6 / Life 6</span>
+          <h3>EDGE teaching: lead a skill session for younger scouts</h3>
+          <div class="scout-chips">
+            <span class="chip"><span class="rank-dot rk-life"></span>Marcus D. &mdash; teaches Session 1A</span>
+            <span class="chip"><span class="rank-dot rk-star"></span>Owen K. &mdash; teaches Session 1B</span>
+            <span class="chip"><span class="rank-dot rk-life"></span>Tyler B. &mdash; teaches Session 4</span>
+          </div>
+          <div class="teach-slot">
+            <span class="teach-label">Coaching</span>
+            <span class="teacher">Scoutmaster Hartman</span> <span class="assist">&middot; observes &amp; signs off the EDGE requirement after the session</span>
+          </div>
+          <div class="synergy">The planner pairs older scouts&rsquo; <em>teaching</em> requirements with younger scouts&rsquo; <em>learning</em> needs &mdash; one session advances both.</div>
+        </article>
+
+        <article class="session-card">
+          <span class="session-num">Session 8 &middot; Merit Badge</span>
+          <span class="req-code">Citizenship in the Community &middot; Reqs 2, 3 &amp; 8</span>
+          <h3>Map your community &amp; present on a local issue</h3>
+          <div class="tag-row">
+            <span class="cat-tag tag-eagle">&#9733; Eagle-required</span>
+          </div>
+          <div class="scout-chips">
+            <span class="chip"><span class="rank-dot rk-life"></span>Marcus D.</span>
+            <span class="chip"><span class="rank-dot rk-star"></span>Owen K.</span>
+          </div>
+          <div class="teach-slot">
+            <span class="teach-label">Counselor</span>
+            <span class="teacher">Mr. Delgado</span> <span class="assist">&middot; registered MB counselor &middot; second half of meeting, after the skills block</span>
+          </div>
+        </article>
+
+        <article class="session-card">
+          <span class="session-num">Session 9 &middot; Merit Badge</span>
+          <span class="req-code">Personal Management &middot; Reqs 2a&ndash;2b</span>
+          <h3>Kick off the 13-week budget &amp; savings log</h3>
+          <div class="tag-row">
+            <span class="cat-tag tag-eagle">&#9733; Eagle-required</span>
+          </div>
+          <div class="scout-chips">
+            <span class="chip"><span class="rank-dot rk-life"></span>Tyler B.</span>
+            <span class="chip"><span class="rank-dot rk-star"></span>Drew H.</span>
+          </div>
+          <div class="teach-slot">
+            <span class="teach-label">Counselor</span>
+            <span class="teacher">Mrs. Ruiz</span> <span class="assist">&middot; registered MB counselor &middot; starting tonight puts the 13-week log on track for the fall Court of Honor</span>
+          </div>
+          <div class="synergy">Older scouts get merit badge suggestions with <strong>Eagle-required badges first</strong> &mdash; drawn from badges already in progress or with a registered troop counselor.</div>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- ============ TAB 2: BY SCOUT ============ -->
+    <section id="tab-scouts" class="tab-panel">
+      <div class="toolbar">
+        <input type="search" placeholder="Search scouts&hellip;" />
+        <select><option>All ranks</option><option>Scout</option><option>Tenderfoot</option><option>Second Class</option><option>First Class</option><option>Star</option><option>Life</option></select>
+        <select><option>All patrols</option><option>Hawks</option><option>Wolves</option><option>Foxes</option></select>
+        <span class="count">Showing 12 of 23 scouts with suggestions</span>
+      </div>
+
+      <table class="plan-table">
+        <thead>
+          <tr>
+            <th style="width:16%;">Scout</th>
+            <th style="width:12%;">Rank</th>
+            <th>Suggested this meeting <span style="font-weight:400;text-transform:none;">(max 3)</span></th>
+            <th style="width:26%;">Waiting on a campout</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="scout-name">Mason Turner</span><br /><span class="patrol">Hawks</span></td>
+            <td><span class="rank-pill" style="background:var(--khaki);">Scout</span></td>
+            <td>
+              <div class="suggestion"><span class="s-code">TF 3a&ndash;3c</span> Square knot, two half hitches, taut-line <a class="s-ref" href="#">Session 1A</a></div>
+              <div class="suggestion"><span class="s-code">TF 4a&ndash;4b</span> First aid basics <a class="s-ref" href="#">Session 2</a></div>
+              <div class="suggestion"><span class="s-code">TF 6a</span> Fitness baseline test</div>
+            </td>
+            <td class="needs-outing"><span class="s-code">TF 1a&ndash;1c</span> Overnight campout, tent pitch &amp; camp job<br /><span class="outing-note">next chance: Devil&rsquo;s Lake, Aug 8&ndash;10</span></td>
+          </tr>
+          <tr>
+            <td><span class="scout-name">Aiden Reyes</span><br /><span class="patrol">Hawks</span></td>
+            <td><span class="rank-pill" style="background:var(--bark);">Tenderfoot</span></td>
+            <td>
+              <div class="suggestion"><span class="s-code">TF 3a&ndash;3c</span> Knots (finishing 3c) <a class="s-ref" href="#">Session 1A</a></div>
+              <div class="suggestion"><span class="s-code">TF 4a&ndash;4b</span> First aid basics <a class="s-ref" href="#">Session 2</a></div>
+            </td>
+            <td class="needs-outing"><span class="s-code">2C 1a</span> 5 outdoor activities (2 of 5 done)<br /><span class="outing-note">2 campout nights logged &middot; needs 3 more activities</span></td>
+          </tr>
+          <tr>
+            <td><span class="scout-name">Caleb Novak</span><br /><span class="patrol">Wolves</span></td>
+            <td><span class="rank-pill" style="background:var(--bark);">Tenderfoot</span></td>
+            <td>
+              <div class="suggestion"><span class="s-code">2C 2a&ndash;2c</span> Woods tools / Totin&rsquo; Chip <a class="s-ref" href="#">Session 3</a></div>
+              <div class="suggestion"><span class="s-code">2C 6a&ndash;6c</span> Hurry cases &amp; shock <a class="s-ref" href="#">Session 5</a></div>
+              <div class="suggestion"><span class="s-code">2C 8a</span> Flag ceremony participation</div>
+            </td>
+            <td class="needs-outing"><span class="s-code">2C 2g</span> Cook a meal over a camp stove<br /><span class="outing-note">next chance: Devil&rsquo;s Lake, Aug 8&ndash;10</span></td>
+          </tr>
+          <tr>
+            <td><span class="scout-name">Jonah Vasquez</span><br /><span class="patrol">Wolves</span></td>
+            <td><span class="rank-pill" style="background:#6d8a6e;">Second Class</span></td>
+            <td>
+              <div class="suggestion"><span class="s-code">1C 3a&ndash;3d</span> Lashings &amp; camp gadget <a class="s-ref" href="#">Session 4</a></div>
+              <div class="suggestion"><span class="s-code">2C 2a&ndash;2c</span> Totin&rsquo; Chip (never earned) <a class="s-ref" href="#">Session 3</a></div>
+              <div class="suggestion"><span class="s-code">1C 5a</span> Identify 10 native plants</div>
+            </td>
+            <td class="needs-outing"><span class="s-code">1C 1a</span> 10 outdoor activities (6 of 10 done)</td>
+          </tr>
+          <tr>
+            <td><span class="scout-name">Bennett Kim</span><br /><span class="patrol">Foxes</span></td>
+            <td><span class="rank-pill" style="background:#6d8a6e;">Second Class</span></td>
+            <td>
+              <div class="suggestion"><span class="s-code">1C 9a&ndash;9b</span> Campout menu &amp; budget <a class="s-ref" href="#">Session 6</a></div>
+              <div class="suggestion"><span class="s-code">1C 3a&ndash;3d</span> Lashings &amp; camp gadget <a class="s-ref" href="#">Session 4</a></div>
+            </td>
+            <td class="needs-outing"><span class="s-code">1C 9c</span> Cook the planned menu on a campout<br /><span class="outing-note">menu from Session 6 carries straight to Aug 8</span></td>
+          </tr>
+          <tr>
+            <td><span class="scout-name">Owen Kaminski</span><br /><span class="patrol">Foxes</span></td>
+            <td><span class="rank-pill" style="background:var(--navy-mid);">Star</span></td>
+            <td>
+              <div class="suggestion"><span class="s-code">Life 6</span> EDGE-teach knots to Group B <a class="s-ref" href="#">Session 1B</a></div>
+              <div class="suggestion"><span class="s-code">MB &#9733;</span> Cit. in the Community reqs 2, 3 &amp; 8 <a class="s-ref" href="#">Session 8</a></div>
+            </td>
+            <td class="needs-outing"><span class="s-code">Camping MB 9a</span> 20 camping nights (14 of 20 logged)</td>
+          </tr>
+          <tr>
+            <td><span class="scout-name">Tyler Brandt</span><br /><span class="patrol">Foxes</span></td>
+            <td><span class="rank-pill" style="background:var(--navy);">Life</span></td>
+            <td>
+              <div class="suggestion"><span class="s-code">Life 6</span> EDGE-teach lashings <a class="s-ref" href="#">Session 4</a></div>
+              <div class="suggestion"><span class="s-code">MB &#9733;</span> Personal Management 2a&ndash;2b &mdash; start budget log <a class="s-ref" href="#">Session 9</a></div>
+            </td>
+            <td class="all-caught-up">All remaining Eagle work is merit badges &amp; project &mdash; nothing waiting on a campout</td>
+          </tr>
+          <tr>
+            <td><span class="scout-name">Grant Willis</span><br /><span class="patrol">Hawks</span></td>
+            <td><span class="rank-pill" style="background:var(--khaki);">Scout</span></td>
+            <td>
+              <div class="suggestion"><span class="s-code">TF 3a&ndash;3c</span> Knots <a class="s-ref" href="#">Session 1A</a></div>
+              <div class="suggestion"><span class="s-code">SC 4a&ndash;4b</span> Square knot demo + pocketknife safety</div>
+            </td>
+            <td class="needs-outing"><span class="s-code">TF 1a&ndash;1c</span> First troop campout</td>
+          </tr>
+          <tr>
+            <td><span class="scout-name">Ellis Romero</span><br /><span class="patrol">Wolves</span></td>
+            <td><span class="rank-pill" style="background:#6d8a6e;">Second Class</span></td>
+            <td>
+              <div class="suggestion"><span class="s-code">1C 3a&ndash;3d</span> Lashings &amp; camp gadget <a class="s-ref" href="#">Session 4</a></div>
+              <div class="suggestion"><span class="s-code">1C 9a&ndash;9b</span> Campout menu &amp; budget <a class="s-ref" href="#">Session 6</a></div>
+              <div class="suggestion"><span class="s-code">1C 6a</span> Bowline &mdash; tie &amp; explain uses</div>
+            </td>
+            <td class="needs-outing"><span class="s-code">1C 4a</span> 5-mile hike with map &amp; compass</td>
+          </tr>
+          <tr>
+            <td><span class="scout-name">Micah Dawson</span><br /><span class="patrol">Foxes</span></td>
+            <td><span class="rank-pill" style="background:#6d8a6e;">Second Class</span></td>
+            <td>
+              <div class="suggestion"><span class="s-code">1C 3a&ndash;3d</span> Lashings &amp; camp gadget <a class="s-ref" href="#">Session 4</a></div>
+              <div class="suggestion"><span class="s-code">1C 9a&ndash;9b</span> Campout menu &amp; budget <a class="s-ref" href="#">Session 6</a></div>
+            </td>
+            <td class="needs-outing"><span class="s-code">1C 4b</span> Navigation in the field</td>
+          </tr>
+          <tr>
+            <td><span class="scout-name">Finn Sorensen</span><br /><span class="patrol">Wolves</span></td>
+            <td><span class="rank-pill" style="background:var(--bark);">Tenderfoot</span></td>
+            <td>
+              <div class="suggestion"><span class="s-code">2C 2a&ndash;2c</span> Woods tools / Totin&rsquo; Chip <a class="s-ref" href="#">Session 3</a></div>
+              <div class="suggestion"><span class="s-code">2C 6a&ndash;6c</span> Hurry cases &amp; shock <a class="s-ref" href="#">Session 5</a></div>
+              <div class="suggestion"><span class="s-code">2C 3a</span> Map symbols &amp; compass parts</div>
+            </td>
+            <td class="needs-outing"><span class="s-code">2C 1b</span> 2 nights camping (1 of 2 done)</td>
+          </tr>
+          <tr>
+            <td><span class="scout-name">Theo Becker</span><br /><span class="patrol">Hawks</span></td>
+            <td><span class="rank-pill" style="background:var(--khaki);">Scout</span></td>
+            <td>
+              <div class="suggestion"><span class="s-code">TF 3a&ndash;3c</span> Knots <a class="s-ref" href="#">Session 1A</a></div>
+              <div class="suggestion"><span class="s-code">TF 4a&ndash;4b</span> First aid basics <a class="s-ref" href="#">Session 2</a></div>
+              <div class="suggestion"><span class="s-code">TF 7a</span> Buddy system &amp; safe hiking rules</div>
+            </td>
+            <td class="needs-outing"><span class="s-code">TF 1a&ndash;1c</span> First troop campout</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ============ TAB 3: TEACHING ROSTER ============ -->
+    <section id="tab-roster" class="tab-panel">
+      <div class="roster-cols">
+
+        <div class="roster-panel">
+          <h2>Adult Leaders</h2>
+          <p class="sub">Matched from the leader skills list &mdash; certifications shown where a skill requires one.</p>
+
+          <div class="leader-row">
+            <div class="leader-id"><div class="nm">Sarah Foley</div><div class="rl">Asst. Scoutmaster &middot; Wilderness First Aid (exp. 03/2027)</div><div class="tonight">Tonight: Sessions 2 &amp; 5</div></div>
+            <div class="skill-chips"><span class="cat-tag tag-skill">First Aid</span><span class="cat-tag tag-skill">Safety</span></div>
+          </div>
+          <div class="leader-row">
+            <div class="leader-id"><div class="nm">Luis Delgado</div><div class="rl">Committee &middot; former camp ranger</div><div class="tonight">Tonight: Session 3</div></div>
+            <div class="skill-chips"><span class="cat-tag tag-skill">Woods Tools</span><span class="cat-tag tag-skill">Fire Safety</span><span class="cat-tag tag-skill">Camping</span></div>
+          </div>
+          <div class="leader-row">
+            <div class="leader-id"><div class="nm">David Yang</div><div class="rl">Asst. Scoutmaster</div><div class="tonight">Tonight: Session 6</div></div>
+            <div class="skill-chips"><span class="cat-tag tag-skill">Cooking</span><span class="cat-tag tag-skill">Navigation</span></div>
+          </div>
+          <div class="leader-row">
+            <div class="leader-id"><div class="nm">Beth Hartman</div><div class="rl">Scoutmaster</div><div class="tonight">Tonight: coaching Session 7</div></div>
+            <div class="skill-chips"><span class="cat-tag tag-skill">Teaching (EDGE)</span><span class="cat-tag tag-skill">Citizenship</span><span class="cat-tag tag-skill">Camping</span></div>
+          </div>
+          <div class="leader-row">
+            <div class="leader-id"><div class="nm">Pete Kowalski</div><div class="rl">Committee</div><div class="tonight">Tonight: adult presence, Sessions 1A/1B</div></div>
+            <div class="skill-chips"><span class="cat-tag tag-skill">Knots &amp; Lashings</span><span class="cat-tag tag-skill">Fitness</span></div>
+          </div>
+          <div class="leader-row">
+            <div class="leader-id"><div class="nm">Angela Ruiz</div><div class="rl">Committee &middot; RN</div><div class="tonight">Not matched tonight &mdash; available as backup</div></div>
+            <div class="skill-chips"><span class="cat-tag tag-skill">First Aid</span><span class="cat-tag tag-skill">Aquatics</span></div>
+          </div>
+
+          <div class="gss-note">First Aid, Woods Tools sign-off, Fire Safety, and Aquatics are <strong>adult-instruction skills</strong> per the Guide to Safe Scouting &mdash; the planner never offers them to scout instructors.</div>
+        </div>
+
+        <div>
+          <div class="roster-panel youth">
+            <h2>Scout Instructors</h2>
+            <p class="sub">Star rank and above, authorized per skill. A scout can only teach a requirement the ledger shows they&rsquo;ve completed.</p>
+
+            <div class="leader-row">
+              <div class="leader-id"><div class="nm">Marcus Diaz</div><div class="rl">Life &middot; Instructor (POR)</div><div class="tonight">Tonight: Session 1A &mdash; counts toward Life 6</div></div>
+              <div class="skill-chips"><span class="cat-tag tag-youth">Knots &amp; Lashings</span><span class="cat-tag tag-youth">Cooking</span></div>
+            </div>
+            <div class="leader-row">
+              <div class="leader-id"><div class="nm">Owen Kaminski</div><div class="rl">Star &middot; Instructor (POR)</div><div class="tonight">Tonight: Session 1B</div></div>
+              <div class="skill-chips"><span class="cat-tag tag-youth">Knots &amp; Lashings</span><span class="cat-tag tag-youth">Navigation</span></div>
+            </div>
+            <div class="leader-row">
+              <div class="leader-id"><div class="nm">Tyler Brandt</div><div class="rl">Life</div><div class="tonight">Tonight: Session 4</div></div>
+              <div class="skill-chips"><span class="cat-tag tag-youth">Knots &amp; Lashings</span><span class="cat-tag tag-youth">Camping</span><span class="cat-tag tag-youth">Teaching (EDGE)</span></div>
+            </div>
+          </div>
+
+          <div class="future-panel">
+            <h2>Scout Requests <span class="phase-tag">Phase 3 preview</span></h2>
+            <p class="sub" style="font-family:'Open Sans',Arial,sans-serif;font-size:12.5px;color:var(--text-meta);margin:4px 0 10px;">Future: scouts log in and request a skill; matched leaders get notified and can volunteer for next week&rsquo;s plan.</p>
+            <div class="request-row"><span class="scout-name">Ellis R.</span> wants to work on <span class="cat-tag tag-skill">Navigation</span> <span class="when">requested 2 days ago &middot; Mr. Yang notified</span></div>
+            <div class="request-row"><span class="scout-name">Finn S.</span> wants to work on <span class="cat-tag tag-skill">First Aid</span> <span class="when">requested 5 days ago &middot; Mrs. Foley, Mrs. Ruiz notified</span></div>
+            <div class="request-row"><span class="scout-name">Owen K.</span> offers to <em>teach</em> <span class="cat-tag tag-youth">Knots &amp; Lashings</span> <span class="when">standing offer &middot; auto-matched weekly</span></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <div class="footer-inner">
+      <p>&copy; 2026 Scout Troop 79 &nbsp;&middot;&nbsp; Milwaukee, Wisconsin &mdash; Prototype build, not for public use. All scout and leader names on this page are fictional.</p>
+    </div>
+  </footer>
+
+  <script>
+    document.querySelectorAll('.tab-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+        document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
+        btn.classList.add('active');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      });
+    });
+  </script>
+
+  <!--
+    JUDGMENT CALLS (for review):
+    1. Requirement-first cards: each group session leads with the requirement code + label
+       (per Patrick's note that "the advancement option should be listed first"), scouts second,
+       teacher slot third. Tier headers (New / Experienced / Older) mirror BSA's official
+       3-track Skills Instruction structure rather than inventing our own grouping.
+    2. The 8-scout cap is shown as an automatic patrol-based split (Session 1 A/B) rather than
+       trimming the list — nobody gets dropped, the group just divides.
+    3. "Waiting on a campout" is a persistent grayed column in the By Scout view instead of
+       being hidden — keeps campout-only requirements from falling off the radar, and links
+       them to the next scheduled outing where known.
+    4. Adult-only skills (First Aid, Totin' Chip sign-off, Fire Safety, Aquatics) carry a navy
+       "Adults only · G2SS" tag; youth-teachable skills carry a bark-colored tag. The
+       distinction is data-driven (skills.youth_teachable), not per-page styling.
+       Per Patrick's 2026-07-11 feedback: skill-area and venue tags are DATA ONLY — they drive
+       grouping and teacher matching but do not render on cards. Only teach-authorization tags
+       ("Older scout may teach" / "Adult sign-off" / "Adults only") and the Eagle-required
+       star are displayed. Capacity tags ("Split by patrol", "7 of 8 seats") also removed
+       per 2nd feedback round — the A/B split note in the session number carries that info.
+       "G2SS" jargon dropped from the adults-only tag; spelled out only in the roster note.
+    4b. Older scouts get merit badge sessions (8 & 9) alongside rank work, with Eagle-required
+       badges preferred (merit_badges.eagle flag) and counselors drawn from the existing
+       merit_badge_counselors table.
+    5. The Life-6/EDGE synergy (older scout teaching = his own requirement) is surfaced as an
+       italic callout on both the session card and Session 7 — this is the feature's best
+       "aha" moment and worth testing for reaction.
+    6. Suggestions cap at 3 per scout; the algorithm prefers requirements shared with others
+       (better groups) over solo items. Solo items still appear (no session link).
+    7. Scout requests / instructor signup shown as a dashed "Phase 3 preview" panel so it
+       reads as roadmap, not commitment.
+    8. Public vs admin: this comp is the ADMIN view. The public weekly list would drop the
+       teaching-roster tab and curation affordances; open question whether public shows full
+       names or first name + last initial.
+  -->
+</body>
+</html>
