@@ -1,11 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { CalendarCategory } from '@/lib/supabase/types';
 import type { CalendarEntryWithSlug } from '@/lib/calendar';
 import { formatCalendarDateParts, formatTimeOfDay, CATEGORY_COLORS } from '@/lib/calendar-shared';
+import { MonthGrid } from './month-grid';
 import styles from './events.module.css';
+
+type View = 'list' | 'month';
 
 function EntryRow({ entry, past }: { entry: CalendarEntryWithSlug; past?: boolean }) {
   const { month, day } = formatCalendarDateParts(entry.entry_date);
@@ -53,6 +56,7 @@ export function CalendarBrowser({
   categories: CalendarCategory[];
 }) {
   const [active, setActive] = useState<Set<CalendarCategory>>(new Set());
+  const [view, setView] = useState<View>('list');
 
   function toggle(cat: CalendarCategory) {
     setActive((prev) => {
@@ -68,8 +72,33 @@ export function CalendarBrowser({
   const filteredUpcoming = apply(upcoming);
   const filteredPast = apply(past);
 
+  const allEntries = useMemo(() => [...upcoming, ...past], [upcoming, past]);
+
   return (
     <>
+      <div className={styles.viewToggleRow}>
+        <div className={styles.viewToggle} role="tablist" aria-label="Calendar view">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={view === 'list'}
+            className={`${styles.viewToggleBtn} ${view === 'list' ? styles.viewToggleBtnActive : ''}`}
+            onClick={() => setView('list')}
+          >
+            List
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={view === 'month'}
+            className={`${styles.viewToggleBtn} ${view === 'month' ? styles.viewToggleBtnActive : ''}`}
+            onClick={() => setView('month')}
+          >
+            Month
+          </button>
+        </div>
+      </div>
+
       <div className={styles.filterBar} role="group" aria-label="Filter by category">
         {categories.map((c) => {
           const isActive = active.has(c);
@@ -95,35 +124,41 @@ export function CalendarBrowser({
         )}
       </div>
 
-      <div className={styles.sectionDivider}>
-        <span className={styles.divLabel}>Upcoming</span>
-        <span className={styles.divRule} aria-hidden="true" />
-      </div>
-      {filteredUpcoming.length === 0 ? (
-        <p className={styles.empty}>
-          {active.size > 0 ? 'No upcoming entries match that filter.' : 'Nothing on the calendar yet.'}
-        </p>
-      ) : (
-        <ul className={styles.list}>
-          {filteredUpcoming.map((entry) => (
-            <EntryRow key={entry.id} entry={entry} />
-          ))}
-        </ul>
-      )}
-
-      {filteredPast.length > 0 && (
-        <>
-          <div className={styles.sectionDivider}>
-            <span className={styles.divLabel}>Past</span>
-            <span className={styles.divRule} aria-hidden="true" />
-          </div>
+      <div style={{ display: view === 'list' ? 'block' : 'none' }}>
+        <div className={styles.sectionDivider}>
+          <span className={styles.divLabel}>Upcoming</span>
+          <span className={styles.divRule} aria-hidden="true" />
+        </div>
+        {filteredUpcoming.length === 0 ? (
+          <p className={styles.empty}>
+            {active.size > 0 ? 'No upcoming entries match that filter.' : 'Nothing on the calendar yet.'}
+          </p>
+        ) : (
           <ul className={styles.list}>
-            {filteredPast.map((entry) => (
-              <EntryRow key={entry.id} entry={entry} past />
+            {filteredUpcoming.map((entry) => (
+              <EntryRow key={entry.id} entry={entry} />
             ))}
           </ul>
-        </>
-      )}
+        )}
+
+        {filteredPast.length > 0 && (
+          <>
+            <div className={styles.sectionDivider}>
+              <span className={styles.divLabel}>Past</span>
+              <span className={styles.divRule} aria-hidden="true" />
+            </div>
+            <ul className={styles.list}>
+              {filteredPast.map((entry) => (
+                <EntryRow key={entry.id} entry={entry} past />
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+
+      <div style={{ display: view === 'month' ? 'block' : 'none' }}>
+        <MonthGrid entries={allEntries} activeCategories={active} isActive={view === 'month'} />
+      </div>
     </>
   );
 }

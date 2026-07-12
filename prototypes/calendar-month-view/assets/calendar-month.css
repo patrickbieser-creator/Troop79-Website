@@ -337,7 +337,7 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
   .spanBar.capStart, .spanBar.capEnd { padding: 0; }
   .spanTitle, .spanChevron { display: none; }
 
-  .dayPanel { padding: 16px 16px; }
+  .dayPopover { padding: 14px 16px; }
   .dayEventCardMeta { flex-direction: column; gap: 2px; }
 }
 

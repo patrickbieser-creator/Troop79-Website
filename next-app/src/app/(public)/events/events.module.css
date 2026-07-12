@@ -98,3 +98,187 @@
   .subscribeWrap { align-self: flex-start; }
   .subscribePanel { right: auto; left: 0; width: min(320px, 84vw); }
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   List / Month view toggle
+   ════════════════════════════════════════════════════════════════════ */
+.viewToggleRow { margin-bottom: 14px; }
+.viewToggle {
+  display: inline-flex; border: 1px solid var(--border-mid); border-radius: 3px; overflow: hidden;
+  background: var(--warm-white);
+}
+.viewToggleBtn {
+  font-family: var(--font-ui); font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--text-meta); padding: 8px 18px; transition: background var(--transition), color var(--transition);
+  border-right: 1px solid var(--border-mid);
+}
+.viewToggleBtn:last-child { border-right: none; }
+.viewToggleBtn:hover { color: var(--navy); background: var(--newsprint); }
+.viewToggleBtnActive, .viewToggleBtnActive:hover { background: var(--navy); color: #fff; }
+
+/* ════════════════════════════════════════════════════════════════════
+   Month grid view
+   ════════════════════════════════════════════════════════════════════ */
+.monthCard { border: 1px solid var(--border-light); background: var(--warm-white); border-radius: 2px; }
+
+.monthHeader {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 16px 20px; border-bottom: 1px solid var(--border-light);
+}
+.monthHeaderTitle { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--text-head); min-width: 220px; text-align: center; }
+.monthNav { display: flex; align-items: center; gap: 6px; }
+.monthNavBtn {
+  width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border-mid); border-radius: 2px; color: var(--navy);
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+.monthNavBtn:hover { background: var(--newsprint); border-color: var(--forest); color: var(--forest); }
+.monthNavBtn svg { width: 16px; height: 16px; fill: currentColor; }
+.todayBtn {
+  font-family: var(--font-ui); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--navy); border: 1px solid var(--border-mid); border-radius: 2px; padding: 7px 12px;
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
+}
+.todayBtn:hover { background: var(--newsprint); border-color: var(--forest); color: var(--forest); }
+
+.weekdayRow { display: grid; grid-template-columns: repeat(7, 1fr); border-bottom: 1px solid var(--border-light); background: var(--newsprint); }
+.weekdayCell {
+  font-family: var(--font-ui); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text-meta); text-align: center; padding: 8px 4px;
+}
+
+/* Div/ARIA-grid rather than a literal <table>: each day cell contains its
+   own nested interactive chip/span-bar buttons, and a <td> forced to
+   position:absolute (for the span overlay below) silently drops out of
+   table column layout. .cellsGrid and .spansLayer are two INDEPENDENTLY
+   computed `repeat(7, 1fr)` grids stacked on top of each other — they only
+   line up pixel-for-pixel if both compute their column tracks over the
+   exact same box width. Deliberately NOT giving .spansLayer any padding of
+   its own for that reason (a horizontal-inset design explored during the
+   prototype phase caused a several-pixel misalignment between span bars
+   and the day columns beneath them); the small visual inset the bars still
+   want comes from margin on .spanBar itself instead. */
+.weekRow { position: relative; }
+.weekRow .cellsGrid { display: grid; grid-template-columns: repeat(7, 1fr); }
+
+.cellsGrid .dayCell { border-right: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light); }
+.cellsGrid .dayCell:first-child { border-left: 1px solid var(--border-light); }
+.monthGridWrap .weekRow:first-child .dayCell { border-top: 1px solid var(--border-light); }
+
+.dayCell {
+  /* --lane-count is set on the parent .weekRow per week, based on how many
+     multi-day span "lanes" that week needs — it cascades to every cell and
+     chip list in the row so the row grows uniformly, matching how a real
+     calendar app grows a week that has overlapping multi-day bars. */
+  width: 100%; height: 100%; min-height: calc(96px + var(--lane-count, 0) * 22px);
+  text-align: left; display: block; cursor: pointer; padding: 6px 6px 4px; position: relative;
+  transition: background var(--transition);
+}
+.dayCell:hover { background: var(--newsprint); }
+.dayCell:focus-visible { outline: 2px solid var(--forest); outline-offset: -2px; z-index: 2; }
+.dayCell.isOutside { background: var(--newsprint); }
+.dayCell.isOutside .dayNum { color: var(--border-mid); }
+.dayCell.isOutside:hover { background: #ece5d6; }
+.dayCell.isSelected { background: rgba(61, 90, 62, .07); box-shadow: inset 0 0 0 2px var(--forest); z-index: 1; }
+
+.dayNumRow { display: flex; align-items: center; justify-content: flex-start; margin-bottom: 4px; }
+.dayNum {
+  font-family: var(--font-ui); font-size: 12px; font-weight: 600; color: var(--text-body);
+  width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;
+}
+.dayCell.isToday .dayNum { background: var(--navy); color: #fff; font-weight: 700; }
+
+.chipList { display: flex; flex-direction: column; gap: 2px; margin-top: calc(var(--lane-count, 0) * 22px); }
+.chip {
+  display: flex; align-items: center; gap: 5px; width: 100%;
+  border-left: 3px solid transparent; border-radius: 1px; padding: 2px 5px 2px 4px;
+  font-family: var(--font-ui); font-size: 10.5px; font-weight: 600; color: var(--text-head);
+  text-align: left; overflow: hidden; transition: filter var(--transition);
+}
+.chip:hover { filter: brightness(0.97); }
+.chipDot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.chipTitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chipMore { font-family: var(--font-ui); font-size: 10px; font-weight: 700; color: var(--text-meta); padding: 2px 5px; text-align: left; }
+.chipMore:hover { color: var(--navy); text-decoration: underline; }
+
+/* Multi-day span overlay — see the alignment note above .weekRow. */
+.spansLayer {
+  position: absolute; inset: 0; top: 28px; display: grid; grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: 19px; row-gap: 3px; pointer-events: none;
+}
+.spanBar {
+  pointer-events: auto; position: relative; display: flex; align-items: center; gap: 3px;
+  margin: 0 2px; border-top: 1.5px solid transparent; border-bottom: 1.5px solid transparent;
+  border-radius: 3px; padding: 0 6px; height: 19px;
+  font-family: var(--font-ui); font-size: 10.5px; font-weight: 700; color: var(--text-head);
+  overflow: hidden; white-space: nowrap;
+}
+.spanBar.capStart { border-left: 1.5px solid; border-top-left-radius: 9px; border-bottom-left-radius: 9px; padding-left: 8px; }
+.spanBar.capEnd { border-right: 1.5px solid; border-top-right-radius: 9px; border-bottom-right-radius: 9px; }
+.spanBar:not(.capStart) { padding-left: 4px; margin-left: 0; }
+.spanBar:not(.capEnd) { margin-right: 0; }
+.spanChevron { flex-shrink: 0; font-size: 10px; opacity: .65; }
+.spanTitle { overflow: hidden; text-overflow: ellipsis; }
+
+/* Day popover — anchored to the clicked day cell; position:fixed so it
+   floats above the grid regardless of scroll, re-anchored by JS on
+   scroll/resize (see month-grid.tsx's positionPopover()). */
+.dayPopover {
+  position: fixed; z-index: 1000; width: 320px; max-width: calc(100vw - 24px);
+  max-height: min(70vh, 520px); overflow-y: auto;
+  border: 1px solid var(--border-light); border-top: 3px solid var(--forest);
+  background: var(--warm-white); border-radius: 3px; box-shadow: var(--shadow-hover); padding: 18px 20px;
+}
+.dayPopoverCaret {
+  position: absolute; top: -6px; width: 11px; height: 11px; background: var(--warm-white);
+  border-left: 1px solid var(--border-light); border-top: 3px solid var(--forest);
+  transform: rotate(45deg); border-radius: 1px 0 0 0;
+}
+.dayPopover.isFlipped .dayPopoverCaret {
+  top: auto; bottom: -6px; border-left: none; border-top: none;
+  border-right: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light); border-radius: 0 0 1px 0;
+}
+.dayPopoverHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.dayPopoverDate { font-family: var(--font-display); font-size: 19px; font-weight: 700; color: var(--text-head); }
+.dayPopoverClose {
+  flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text-meta); transition: background var(--transition), color var(--transition);
+}
+.dayPopoverClose:hover { background: var(--newsprint); color: var(--navy); }
+.dayPopoverEmpty { font-family: var(--font-body); color: var(--text-meta); font-size: 14px; padding: 4px 0 2px; }
+
+.dayEventList { display: flex; flex-direction: column; gap: 12px; }
+.dayEventCard { border-left: 3px solid var(--border-mid); background: var(--newsprint); border-radius: 2px; padding: 12px 14px; transition: box-shadow var(--transition); }
+.dayEventCard.isHighlighted { box-shadow: 0 0 0 2px var(--forest) inset; }
+.dayEventCardTitle { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--text-head); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dayEventCardCat { font-family: var(--font-ui); font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin: 3px 0 6px; }
+.dayEventCardMeta { font-family: var(--font-ui); font-size: 12.5px; color: var(--text-meta); display: flex; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 4px; }
+.dayEventCardMeta span { display: inline-flex; align-items: center; gap: 5px; }
+.dayEventCardDesc { font-family: var(--font-body); font-size: 13px; color: var(--text-body); line-height: 1.55; margin-top: 4px; }
+
+@media (max-width: 900px) {
+  .monthHeaderTitle { min-width: 0; font-size: 19px; }
+  .dayCell { min-height: calc(84px + var(--lane-count, 0) * 22px); }
+}
+
+@media (max-width: 600px) {
+  .monthHeaderTitle { font-size: 16px; }
+  .monthNavBtn { width: 28px; height: 28px; }
+  .weekdayCell { font-size: 9px; padding: 6px 2px; }
+  .dayCell { min-height: calc(58px + var(--lane-count, 0) * 8px); padding: 4px 3px 3px; }
+  .dayNum { width: 19px; height: 19px; font-size: 11px; }
+
+  .chipList { flex-direction: row; flex-wrap: wrap; gap: 3px; margin-top: calc(2px + var(--lane-count, 0) * 8px); }
+  .chip { width: auto; padding: 0; border-left: none; }
+  .chip .chipTitle { display: none; }
+  .chip .chipDot { width: 7px; height: 7px; }
+  .chipMore { padding: 0; font-size: 9px; }
+
+  .spansLayer { top: 22px; grid-auto-rows: 6px; row-gap: 2px; }
+  .spanBar { height: 6px; padding: 0; margin: 0 1px; border-radius: 3px; }
+  .spanBar.capStart, .spanBar.capEnd { padding: 0; }
+  .spanTitle, .spanChevron { display: none; }
+
+  .dayPopover { padding: 14px 16px; }
+  .dayEventCardMeta { flex-direction: column; gap: 2px; }
+}

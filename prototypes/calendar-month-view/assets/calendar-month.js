@@ -219,7 +219,7 @@
       state.monthCursor = addMonths(state.monthCursor, 1);
       renderMonth();
     });
-    els.todayBtn.addEventListener('click', () => selectDate(DEMO_TODAY_ISO, null, true));
+    els.todayBtn.addEventListener('click', () => selectDate(DEMO_TODAY_ISO));
 
     els.dayPopoverClose.addEventListener('click', () => {
       const prevIso = state.selectedDateIso;
@@ -238,12 +238,20 @@
         focusCellIfPresent(prevIso);
       }
     });
+    // Capture phase, deliberately: a bubble-phase listener here would fire
+    // AFTER whatever button was clicked has already run its own handler —
+    // which breaks any click that legitimately OPENS the popover as a side
+    // effect (the Month tab on first visit, the Today button), since by the
+    // time the click bubbles back up to document the popover would already
+    // be open and this listener would immediately close it again. Capture
+    // phase runs before the target's own handler, so it only ever acts on
+    // whatever was open from the PREVIOUS interaction.
     document.addEventListener('click', (e) => {
       if (els.dayPopover.hidden) return;
       if (els.dayPopover.contains(e.target)) return;
       if (e.target.closest && e.target.closest('.dayCell, .chip, .spanBar')) return;
       deselectDay();
-    });
+    }, true);
 
     // The popover is position:fixed and anchored to a specific day cell's
     // on-screen rect, so it has to follow that cell on scroll/resize rather
@@ -441,10 +449,11 @@
 
     syncRovingTabindex();
 
-    // Popover follow-up: this covers the two paths that rebuild the whole
-    // grid out from under an existing selection — adjacent-month day clicks
-    // and the Today button (both go through selectDate(..., forceMonthNav))
-    // — by re-anchoring to the newly-rendered cell for the same iso. Plain
+    // Popover follow-up: this covers every path that rebuilds the whole
+    // grid out from under an existing selection — any selectDate() call
+    // whose iso lands outside the previously-displayed month (a grayed
+    // day cell, a chip, or a span bar on one; also the Today button) — by
+    // re-anchoring to the newly-rendered cell for the same iso. Plain
     // Prev/Next navigation always calls deselectDay() first (see
     // wireControls()), so there's normally nothing to re-anchor there.
     if (state.selectedDateIso) {
@@ -498,7 +507,7 @@
     }
     cell.appendChild(chipList);
 
-    cell.addEventListener('click', () => selectDate(day.iso, null, !day.inMonth));
+    cell.addEventListener('click', () => selectDate(day.iso));
     cell.addEventListener('keydown', (e) => handleCellKeydown(e, day));
 
     return cell;
@@ -546,18 +555,28 @@
   }
 
   /**
-   * Select (and show a popover for) a day.
-   * `forceMonthNav` is used for two distinct callers that both need the
-   * grid rebuilt around a specific iso before the popover can be anchored:
-   * an adjacent-month (grayed) day click, and the Today button.
+   * Select (and show a popover for) a day. Whether this needs to navigate
+   * the grid to a different month is derived from `iso` itself — NOT passed
+   * in by the caller — because a click can land on a day outside the
+   * currently-displayed month through more than one path: clicking a
+   * grayed leading/trailing day cell directly, but ALSO clicking a
+   * multi-day span bar's continuation segment rendered on one of those
+   * grayed cells (e.g. a campout that starts next month, shown trailing
+   * into this month's last row) or a chip on one. Deriving it here instead
+   * of threading a flag through every caller is what makes all of those
+   * paths behave consistently — an earlier version only forced month nav
+   * from the day-cell's own click handler, so clicking a span bar's
+   * continuation on a grayed day showed the right popover content but left
+   * the header on the wrong month. Caught during browser verification.
    */
-  function selectDate(iso, eventId, forceMonthNav) {
+  function selectDate(iso, eventId) {
     state.selectedDateIso = iso;
     state.highlightEventId = eventId || null;
     state.focusedIso = iso;
 
-    if (forceMonthNav) {
-      const d = parseISO(iso);
+    const d = parseISO(iso);
+    const needsMonthNav = d.getFullYear() !== state.monthCursor.getFullYear() || d.getMonth() !== state.monthCursor.getMonth();
+    if (needsMonthNav) {
       state.monthCursor = new Date(d.getFullYear(), d.getMonth(), 1);
       renderMonth(); // full rebuild; its trailing logic re-anchors the popover
       return;
@@ -604,7 +623,7 @@
       case 'Enter':
       case ' ':
         e.preventDefault();
-        selectDate(day.iso, null, !day.inMonth);
+        selectDate(day.iso);
         return;
       default: return;
     }
@@ -624,11 +643,27 @@
      positionPopoverAt() flip/clamp math and the judgment-call notes).
      ══════════════════════════════════════════════════════════════════ */
   function showPopover(cell) {
+    // Guarantee the anchor cell is actually on-screen before measuring its
+    // rect. Without this, an auto-selected or programmatically-selected day
+    // (auto-select-today, the Today button, adjacent-month navigation) that
+    // happens to land in a grid row below the current scroll position would
+    // get positioned/clamped against an off-screen cell rect — producing a
+    // popover that floats disconnected from (and doesn't fully clamp
+    // against) anything actually visible. `behavior: 'auto'` (not
+    // 'smooth') so the scroll completes synchronously and the rect read
+    // immediately after reflects the final, on-screen position. Caught
+    // during browser verification with a short/cramped viewport.
+    cell.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' });
+
     const iso = cell.dataset.iso;
     els.dayPopoverDate.textContent = formatFullDate(iso);
     const dayEvents = visibleEventsOnDate(iso);
     if (!dayEvents.length) {
-      els.dayPopoverBody.innerHTML = state.activeCategories.size > 0
+      // Distinguish "genuinely nothing scheduled" from "something's
+      // scheduled but the active filter is hiding it" rather than always
+      // blaming the filter.
+      const hiddenByFilter = state.activeCategories.size > 0 && eventsOnDate(iso).length > 0;
+      els.dayPopoverBody.innerHTML = hiddenByFilter
         ? '<p class="dayPopoverEmpty">No events match the current filter this day.</p>'
         : '<p class="dayPopoverEmpty">Nothing scheduled this day.</p>';
     } else {

@@ -31,18 +31,22 @@
         <button type="button" id="tabMonth" class="viewToggleBtn" role="tab" aria-selected="false" aria-controls="monthView" tabindex="-1">Month</button>
       </div>
 
-      <!-- Filter chips + the compact "Subscribe to Calendar" button are being
-           built in parallel by another workstream — intentionally not
-           reproduced here. This placeholder just reserves their spot in the
-           controls row so the List/Month toggle's real-world position is
-           accurate. See the judgment-call notes near </body>. -->
+      <!-- The compact "Subscribe to Calendar" button is being built in
+           parallel by another workstream — intentionally not reproduced
+           here. This placeholder just reserves its spot in the controls row
+           so the List/Month toggle's real-world position is accurate. The
+           filter chips below, by contrast, ARE real — ported from
+           calendar-browser.tsx per the client's request. See the
+           judgment-call notes near </body>. -->
       <div class="placeholderControls" aria-hidden="true">
         <span class="dot"></span>
-        <span class="placeholderNote">Filter chips + Subscribe button render here (built separately, not shown in this prototype)</span>
+        <span class="placeholderNote">Subscribe button renders here (built separately, not shown in this prototype)</span>
       </div>
     </div>
 
-    <div class="legend" id="legend"></div>
+    <!-- Functional category filter chips — shared by List and Month; see
+         renderFilterBar()/toggleCategory() in calendar-month.js. -->
+    <div class="filterBar" id="filterBar" role="group" aria-label="Filter by category"></div>
 
     <!-- ── LIST VIEW ─────────────────────────────────────────────────── -->
     <section id="listView" role="tabpanel" aria-labelledby="tabList">
@@ -96,12 +100,17 @@
         </div>
       </div>
 
-      <div class="dayPanel" id="dayPanel" aria-live="polite">
-        <div class="dayPanelHeader">
-          <h2 class="dayPanelDate" id="dayPanelDate">No day selected</h2>
-          <button type="button" class="dayPanelClose" id="dayPanelClose" aria-label="Clear selected day" hidden>&times;</button>
+      <!-- Day popover — anchored to whichever day cell is selected;
+           position:fixed, hidden by default, shown/positioned by JS. A
+           non-modal dialog: the rest of the page stays interactive while
+           it's open (click-outside or Escape dismisses it). -->
+      <div class="dayPopover" id="dayPopover" role="dialog" aria-modal="false" aria-live="polite" aria-labelledby="dayPopoverDate" hidden>
+        <div class="dayPopoverCaret" id="dayPopoverCaret" aria-hidden="true"></div>
+        <div class="dayPopoverHeader">
+          <h2 class="dayPopoverDate" id="dayPopoverDate">No day selected</h2>
+          <button type="button" class="dayPopoverClose" id="dayPopoverClose" aria-label="Close">&times;</button>
         </div>
-        <div id="dayPanelBody"></div>
+        <div id="dayPopoverBody"></div>
       </div>
     </section>
 
@@ -113,27 +122,55 @@
   <!--
     OPEN QUESTIONS / JUDGMENT CALLS (Calendar Month-View prototype):
 
-    1. DAY-DETAIL PATTERN — chose a persistent "Selected Day" panel docked
-       below the grid (updates in place, page scrolls it into view on
-       mobile) over a popover or a modal bottom sheet. Reasoning: popovers
-       anchored to a day cell clip or reflow awkwardly at the grid's edges
-       (right edge on desktop, every edge on a narrow phone grid), and a
-       true modal/bottom-sheet adds focus-trap + backdrop complexity for
-       something that isn't a destructive or multi-step action. The docked
-       panel behaves identically at 375/768/1280 with no anchor-positioning
-       edge cases. Tradeoff: it's one extra scroll/glance away from the grid
-       rather than appearing right where you clicked. Worth a client gut-check
-       against a popover if the extra scroll feels like friction in review.
+    1. DAY-DETAIL PATTERN — RESOLVED per client review: switched from the
+       originally-proposed docked panel to a popover anchored at the clicked
+       day cell (positionPopoverAt() in calendar-month.js). It prefers
+       directly below the cell's left edge, clamps horizontally so it never
+       runs off the left/right edge of the viewport, and flips above the
+       cell when there isn't room below (clamping again, with internal
+       max-height + scroll, in the rare case neither direction fits — e.g. a
+       very tall popover on a short/rotated viewport). It repositions on
+       scroll/resize (rAF-throttled) rather than staying pinned to a stale
+       coordinate, and closes itself if its anchor cell scrolls fully out of
+       the viewport rather than trying to hide-then-later-restore — a
+       deliberate simplification, flagged as the one edge case not fully
+       polished. Verified by hand at 375/768/1280 including cells in the
+       grid's far corners (top-left, top-right, bottom row).
 
-    2. DEFAULT PANEL STATE — on load, the panel shows an idle prompt ("Select
-       a day…") rather than auto-selecting today or the next upcoming event.
-       Rejected auto-select because it implies today has something scheduled
-       when it may not, and because the List view has no equivalent
-       "pre-focused" concept today — flagging as a real open question rather
-       than guessing; production's old calendar.html prototype DID have a
-       "Next Up" card that auto-populated, so there's precedent either way.
+    2. AUTO-SELECT TODAY — RESOLVED: today auto-selects (and its popover
+       auto-shows) the first time the Month tab is actually displayed, IF
+       today falls within the currently-viewed month; otherwise the grid
+       just opens with nothing selected. Deferred until Month view is first
+       shown (rather than at page load, while List is still the active tab)
+       because the day cells have no real layout to anchor a popover against
+       while `#monthView` is `display:none` — attempting it at raw page-load
+       time would have positioned the popover at (0,0). Switching back to
+       List and returning to Month does NOT re-trigger auto-select a second
+       time; it just re-shows whatever was already selected (sticky
+       selection), consistent with how Prev/Next/Today already behave.
 
-    3. CHIP CONTRAST — the production list view's date block
+    3. ADJACENT-MONTH DAY CLICK — RESOLVED: clicking a grayed leading/
+       trailing day navigates the grid to that month and lands with that
+       same day selected + its popover shown, matching Google/Apple
+       Calendar. Plain Prev/Next navigation (the arrow buttons), by
+       contrast, always dismisses any open popover first — navigating by
+       month is treated as "starting fresh," while navigating by clicking a
+       specific day carries the selection forward with you.
+
+    4. FILTER CHIPS — now real (ported from calendar-browser.tsx: same
+       classes, same multi-select + "Clear filter" semantics), and the
+       filter is a SINGLE shared piece of state used by List, Month, and the
+       day popover alike — toggling a chip while in Month view immediately
+       hides matching chips/span bars in the grid and updates the currently-
+       open popover's contents (or its empty state, see below); switching to
+       List keeps the same chips active. Judgment call: if the selected
+       day's popover is open and a filter removes its only event, the
+       popover stays open showing "No events match the current filter this
+       day" rather than auto-closing — consistent with treating selection
+       and filtering as independent, so you don't lose your place on the
+       calendar just because you toggled a chip.
+
+    5. CHIP CONTRAST — the production list view's date block
        (events.module.css .dateBlock) puts white text directly on the raw
        category color, which is a solid ~4.5:1+ contrast for the darker
        categories but likely FAILS WCAG AA for the lighter ones (No Meeting
@@ -146,13 +183,13 @@
        is. Flagging the existing list-view issue as a separate, pre-existing
        finding worth a real accessibility pass, not something introduced here.
 
-    4. FIXED "TODAY" — this file hardcodes DEMO_TODAY_ISO ('2026-07-11')
+    6. FIXED "TODAY" — this file hardcodes DEMO_TODAY_ISO ('2026-07-11')
        instead of using the real system clock, purely so the Upcoming/Past
-       split and the "Today" grid marker read sensibly no matter when a
-       reviewer actually opens this file. Production should obviously use the
-       real date.
+       split, the "Today" grid marker, and the auto-select-on-load behavior
+       all read sensibly no matter when a reviewer actually opens this file.
+       Production should obviously use the real date.
 
-    5. MULTI-WEEK LANE STABILITY — the multi-day span lane (vertical "track")
+    7. MULTI-WEEK LANE STABILITY — the multi-day span lane (vertical "track")
        a long event occupies is recomputed independently for each visible
        week row. For any single event that spans 3+ week rows in one month
        (nothing in Troop 79's real calendar realistically runs that long —
@@ -162,24 +199,19 @@
        for a prototype, but a production implementation should compute lane
        assignment once per event across the whole visible grid, not per row.
 
-    6. OUT-OF-MONTH DAYS ARE CLICKABLE — clicking a grayed leading/trailing
-       day navigates the grid to that adjacent month and selects it (rather
-       than being inert, or silently doing nothing). This seemed like the
-       more useful default — you clearly intended to look at that date — but
-       it's a judgment call; some calendar UIs deliberately make outside days
-       inert to keep "this month" visually authoritative.
-
-    7. MOBILE BREAKPOINT — collapsed to a single breakpoint at 600px: at/above
+    8. MOBILE BREAKPOINT — collapsed to a single breakpoint at 600px: at/above
        768px the grid keeps in-cell chip titles and span-bar labels; below
        600px chips condense to color dots only (max 3 + "+N"), span bars lose
-       their labels, and all detail work moves to the day panel. Rejected a
-       three-tier responsive scheme (desktop/tablet/phone) as over-engineering
-       for a calendar this size — but if the real data set gets much busier
+       their labels, and all detail work moves to the day popover (which
+       already shrinks itself to `calc(100vw - 24px)`, so no extra
+       mobile-specific popover-width rule was needed). Rejected a three-tier
+       responsive scheme (desktop/tablet/phone) as over-engineering for a
+       calendar this size — but if the real data set gets much busier
        (multiple concurrent troops, more categories), a tablet-specific tier
        may be worth revisiting.
 
-    8. CAP LIMIT PER CELL — each day cell shows at most 2 single-day chips
-       before collapsing to "+N more" (tap to open the day panel). Picked 2
+    9. CAP LIMIT PER CELL — each day cell shows at most 2 single-day chips
+       before collapsing to "+N more" (tap to open the day popover). Picked 2
        (not 3) so the grid's row height stays close to uniform across a
        typical month; the one deliberately busy sample day (Aug 22, 3 events)
        exercises this. A production build should sanity-check this against
