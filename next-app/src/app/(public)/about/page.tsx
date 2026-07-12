@@ -166,8 +166,8 @@ export default function AboutPage() {
               <h3 className={shell.sidebarModuleTitle}>Leadership</h3>
               <p className={styles.sidebarNote}>
                 <strong>Mindy Stollenwerk</strong>, Scoutmaster, leads the adult
-                team, supported by a committee of parent volunteers. Reach the
-                troop at{' '}
+                team, and <strong>Jack Kosmoski</strong>, Committee Chair, leads
+                the parent committee behind it. Reach the troop at{' '}
                 <a href="mailto:bsatroop79bg@gmail.com">bsatroop79bg@gmail.com</a>.
               </p>
             </div>
