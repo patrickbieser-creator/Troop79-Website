@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Session Summary — About &amp; Join Pages — Troop79-Website</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;700;900&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --nw-teal: #064347;
+      --nw-green: #88ac3e;
+      --nw-gold: #ddb027;
+      --nw-rust: #a95b28;
+      --nw-gray-dark: #4b4b4b;
+      --nw-gray-med: #7e7e7e;
+      --nw-pale-green: #e1e6d2;
+      --nw-gray-light: #e6e6e6;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Montserrat', Arial, sans-serif; font-size: 14px; color: var(--nw-gray-dark); background: var(--nw-pale-green); }
+    .header { background: var(--nw-teal); padding: 44px 80px; color: #fff; }
+    .header-inner { max-width: 860px; margin: 0 auto; }
+    .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.55); margin-bottom: 10px; }
+    .header h1 { font-size: 32px; font-weight: 500; line-height: 1.2; margin-bottom: 8px; }
+    .header-sub { font-size: 14px; font-weight: 300; color: rgba(255,255,255,.7); }
+    .stripe { background: var(--nw-gray-light); padding: 12px 80px; }
+    .stripe-inner { max-width: 860px; margin: 0 auto; display: flex; justify-content: space-between; font-size: 12px; color: var(--nw-gray-med); }
+    .stripe strong { color: var(--nw-gray-dark); }
+    .body { max-width: 860px; margin: 0 auto; padding: 44px 80px 72px; }
+    h2 { font-size: 17px; font-weight: 700; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); padding-bottom: 8px; margin: 36px 0 16px; }
+    h2:first-child { margin-top: 0; }
+    .metrics { display: flex; gap: 14px; flex-wrap: wrap; }
+    .metric { background: #fff; border: 1px solid var(--nw-gray-light); border-radius: 4px; padding: 14px 20px; min-width: 150px; }
+    .metric .num { font-size: 26px; font-weight: 700; color: var(--nw-teal); line-height: 1.1; }
+    .metric .lbl { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--nw-gray-med); margin-top: 4px; }
+    h3 { font-size: 13.5px; font-weight: 700; color: var(--nw-gray-dark); margin: 18px 0 8px; }
+    ul { margin: 0 0 12px 20px; line-height: 1.65; }
+    li { margin-bottom: 6px; }
+    p { line-height: 1.65; margin-bottom: 12px; }
+    code { font-family: Consolas, Menlo, monospace; font-size: 12px; background: #fff; border: 1px solid var(--nw-gray-light); padding: 1px 5px; border-radius: 3px; }
+    .decision { background: #fff; border: 1px solid var(--nw-gray-light); border-left: 4px solid var(--nw-green); border-radius: 4px; padding: 12px 16px; margin-bottom: 10px; }
+    .decision .id { font-weight: 700; color: var(--nw-teal); }
+    .live { background: var(--nw-teal); color: #fff; border-radius: 4px; padding: 16px 20px; margin-bottom: 20px; }
+    .live a { color: var(--nw-gold); font-weight: 700; text-decoration: none; }
+    .footer { max-width: 860px; margin: 0 auto; padding: 0 80px 48px; font-size: 11px; color: var(--nw-gray-med); }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-inner">
+      <div class="eyebrow">Session Summary &middot; Operator</div>
+      <h1>About &amp; Join Pages (v1.1.0)</h1>
+      <div class="header-sub">Troop79-Website &middot; July 12, 2026 &middot; session closed 3:31 PM CDT</div>
+    </div>
+  </div>
+  <div class="stripe">
+    <div class="stripe-inner">
+      <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Client: <strong>personal</strong></p>
+      <p>Milestone: <strong>v1.1.0 — Live in Production</strong></p>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="live">
+      🤝 <strong>Troop 79 can now recruit online:</strong>
+      <a href="https://troop79-website.vercel.app/join">troop79-website.vercel.app/join</a> —
+      new About &amp; Join pages live, with a &ldquo;Join Troop 79&rdquo; button in the site nav.
+    </div>
+
+    <h2>Key Metrics</h2>
+    <div class="metrics">
+      <div class="metric"><div class="num">2</div><div class="lbl">New public pages</div></div>
+      <div class="metric"><div class="num">2</div><div class="lbl">Commits pushed / deployed</div></div>
+      <div class="metric"><div class="num">9</div><div class="lbl">Files created/changed</div></div>
+      <div class="metric"><div class="num">1</div><div class="lbl">Decision recorded</div></div>
+      <div class="metric"><div class="num">3</div><div class="lbl">Prod bugs prevented/fixed</div></div>
+    </div>
+
+    <h2>What Was Accomplished</h2>
+
+    <h3>About page — <code>/about</code></h3>
+    <ul>
+      <li>Editorial house-style page: &ldquo;A family troop, growing up together&rdquo; headline + lede, by-the-numbers strip (est. 2022 &middot; ~30 scouts &middot; 25 families &middot; 10 leaders), four short essays (Who We Are, Scout-Led Adult-Supported, What We Do, Advancement In the Open — showcasing the live tracker), and an At-a-Glance / Leadership / Come Visit sidebar.</li>
+      <li>Leadership names both real contacts: Scoutmaster Mindy Stollenwerk and Committee Chair Jack Kosmoski, with the troop inbox <code>bsatroop79bg@gmail.com</code>.</li>
+    </ul>
+
+    <h3>Join page — <code>/join</code></h3>
+    <ul>
+      <li>&ldquo;Step one: just show up&rdquo; framing with four numbered steps (visit a Sunday meeting &rarr; say hello &rarr; register with Scouts America &rarr; jump in), Who Can Join, a four-question FAQ that stays honest about costs, and a When &amp; Where card with a Google Maps link for Northwoods, 1572 E Capitol Drive.</li>
+      <li>All content uses verified facts only — meeting time from the Bugle data, no invented fees or program claims.</li>
+    </ul>
+
+    <h3>Navigation, footer &amp; fixes</h3>
+    <ul>
+      <li>&ldquo;About&rdquo; added as the 6th nav tab; forest-green <strong>Join Troop 79</strong> CTA button pinned to the right end of the nav bar. Footer: About/Join links added, &ldquo;New Member Inquiry&rdquo; wired to <code>/join</code>, SM + CC linked to the troop inbox.</li>
+      <li>Browser verification caught a <strong>Next.js 16 JSX gotcha</strong>: the space after an inline element (<code>&lt;/Link&gt;</code>) is dropped when text wraps to the next source line (&ldquo;calendaralways&rdquo;). Fixed with explicit <code>{' '}</code>, swept both pages&rsquo; served HTML clean, and cured the long-standing &ldquo;&copy; 2026Scout Troop 79&rdquo; footer glue. Documented with a curl sweep-check in <code>next-app/AGENTS.md</code>.</li>
+      <li>Session start also set the default Claude Code model to <code>sonnet</code> per org standard.</li>
+    </ul>
+
+    <h2>Decisions</h2>
+    <div class="decision"><span class="id">D-007</span> — About &amp; Join as two separate static pages: <code>/about</code> (story) + <code>/join</code> (how-to), About nav tab + Join CTA button, join path = visit a Sunday meeting + email the troop inbox. Static server components reusing the news-cards shell + a shared <code>about-join.module.css</code>.</div>
+
+    <h2>Next Steps</h2>
+    <ul>
+      <li><strong>Meetings page in flight</strong> (parallel session): public <code>/meetings</code> + admin editor + migration sit uncommitted in the working tree; <code>site-footer.tsx</code> carries the Committee Chair link and ships with it</li>
+      <li>Bunny CDN credentials in Vercel — media uploads remain the only dark feature</li>
+      <li>Custom domain; Phase 4 per-user auth; Meeting Plan Phase 2/3</li>
+    </ul>
+  </div>
+
+  <div class="footer">
+    <p>Generated by Operator &middot; Northwoods agent infrastructure &middot; Troop79-Website session, July 12, 2026</p>
+  </div>
+</body>
+</html>
