@@ -12,7 +12,7 @@
  * only backfills the historical completeness record.
  */
 
-import type { createClient } from '@/lib/supabase/server';
+import type { createAdminClient } from '@/lib/supabase/server';
 import { buildReqTree, isGroupSatisfied, type ReqNode } from '@/lib/mb-helpers';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import type { RankReqCatalogRow } from '@/lib/scout-detail';
@@ -60,7 +60,7 @@ function shortDate(s: string | null): string {
   return `${m}/${d}/${String(y).slice(2)}`;
 }
 
-export async function run(supabase: Awaited<ReturnType<typeof createClient>>): Promise<Finding[]> {
+export async function run(supabase: ReturnType<typeof createAdminClient>): Promise<Finding[]> {
   const [ranksRes, rankReqsRes, rankAwardsRes, rankReqLedgerRows, scoutsRes] = await Promise.all([
     supabase.from('ranks').select('id, display_name').order('sort_order'),
     supabase

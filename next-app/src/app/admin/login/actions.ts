@@ -1,16 +1,44 @@
 'use server';
 
+import { timingSafeEqual } from 'node:crypto';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { LEADER_COOKIE, signSession, type SessionRole } from '@/lib/leader-session';
 
-/** Accepts any non-empty username + any password. Sets the signed cookie. */
+/** Constant-time string compare (length leak is fine for a shared secret). */
+function secretMatches(input: string, secret: string | undefined): boolean {
+  if (!secret) return false;
+  const a = Buffer.from(input);
+  const b = Buffer.from(secret);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
+/**
+ * Shared-password auth: LEADER_PASSWORD grants the leader role,
+ * SCOUT_PASSWORD (optional) grants the scout role. The matched password
+ * determines the role — there is no role picker to talk your way past.
+ * Per-user Supabase Auth remains the Phase 4 replacement for this.
+ */
 export async function loginAction(formData: FormData): Promise<void> {
   const username = String(formData.get('username') ?? '').trim();
-  const role: SessionRole = formData.get('role') === 'scout' ? 'scout' : 'leader';
+  const password = String(formData.get('password') ?? '');
   const next = String(formData.get('next') ?? '/admin/advancement') || '/admin/advancement';
-  if (!username) {
-    redirect(`/admin/login?error=missing-username&next=${encodeURIComponent(next)}`);
+  const back = (error: string) =>
+    redirect(`/admin/login?error=${error}&next=${encodeURIComponent(next)}`);
+
+  if (!username) back('missing-username');
+  if (!password) back('missing-password');
+  if (!process.env.LEADER_PASSWORD) back('not-configured');
+
+  let role: SessionRole;
+  if (secretMatches(password, process.env.LEADER_PASSWORD)) {
+    role = 'leader';
+  } else if (secretMatches(password, process.env.SCOUT_PASSWORD)) {
+    role = 'scout';
+  } else {
+    back('bad-password');
+    return; // unreachable — redirect throws — but keeps TS happy
   }
 
   const token = await signSession({ leader: username, iat: Date.now(), role });

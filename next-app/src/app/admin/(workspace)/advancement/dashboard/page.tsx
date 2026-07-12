@@ -8,7 +8,7 @@
  */
 
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import type { LedgerEntry, LedgerKind } from '@/lib/supabase/types';
 import styles from './dashboard.module.css';
@@ -71,7 +71,7 @@ export const metadata = {
 };
 
 async function loadDashboard() {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const [
     scoutsRes,
     ranksRes,

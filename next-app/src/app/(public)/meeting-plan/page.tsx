@@ -8,7 +8,7 @@
  * why.
  */
 
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import {
   publicName,
   TIER_LABEL,
@@ -36,7 +36,7 @@ function localToday(): string {
 }
 
 async function loadPlan(): Promise<MeetingPlanPayload | null> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const today = localToday();
   const { data, error } = await supabase
     .from('meeting_plans')

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import type { CalendarEntry } from '@/lib/supabase/types';
 
 export { CATEGORY_COLORS, CATEGORIES, formatCalendarDateParts, formatTimeOfDay } from '@/lib/calendar-shared';
@@ -25,7 +25,7 @@ export async function loadCalendarEntries(): Promise<{
   upcoming: CalendarEntryWithSlug[];
   past: CalendarEntryWithSlug[];
 }> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data } = await supabase
     .from('calendar_entries')
     .select(SELECT)
@@ -42,7 +42,7 @@ export async function loadCalendarEntries(): Promise<{
 
 /** Every entry, past and future — feeds the .ics subscription route. */
 export async function loadAllCalendarEntries(): Promise<CalendarEntryWithSlug[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data } = await supabase
     .from('calendar_entries')
     .select(SELECT)

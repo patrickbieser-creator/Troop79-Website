@@ -4,7 +4,7 @@
  * render each panel without re-scanning the array.
  */
 
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import type {
   LedgerEntry,
   MeritBadge,
@@ -54,7 +54,7 @@ export interface ScoutDetail {
 }
 
 export async function loadScoutDetail(scoutId: string): Promise<ScoutDetail | null> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const [scoutRes, summaryRes, ranksRes, rankReqsRes, ledgerRes, mbRes] = await Promise.all([
     supabase.from('scouts').select('*').eq('id', scoutId).maybeSingle(),
     supabase.from('scout_summary').select('*').eq('scout_id', scoutId).maybeSingle(),

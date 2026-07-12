@@ -2,10 +2,13 @@
    CALENDAR MONTH-VIEW PROTOTYPE — app logic (vanilla JS, no build step)
 
    This is a design-exploration prototype, not production code. It stands
-   up its OWN List view (ported from events.module.css) purely so the
-   List⇄Month segmented toggle has something real to switch between —
-   the production List view already exists at
-   next-app/src/app/(public)/events/page.tsx and is not being changed here.
+   up its OWN List view (ported from events.module.css / calendar-browser.tsx)
+   purely so the List⇄Month segmented toggle has something real to switch
+   between — the production List view + filter chips already exist at
+   next-app/src/app/(public)/events/calendar-browser.tsx and are not being
+   changed here. The filter-chip markup/behavior below is ported to match
+   that file exactly (same classes, same multi-select + "Clear filter"
+   semantics) so this prototype and production read as the same component.
    ════════════════════════════════════════════════════════════════════ */
 
 (function () {
@@ -31,9 +34,10 @@
     'No Meeting': '#a0978a'
   };
 
-  // Fixed reference date so the demo (Upcoming/Past split, "Today" marker)
-  // reads sensibly no matter when a stakeholder actually opens this file —
-  // deliberately NOT `new Date()`. See the judgment-call notes near </body>.
+  // Fixed reference date so the demo (Upcoming/Past split, "Today" marker,
+  // auto-selection on load) reads sensibly no matter when a stakeholder
+  // actually opens this file — deliberately NOT `new Date()`. See the
+  // judgment-call notes near </body>.
   const DEMO_TODAY_ISO = '2026-07-11';
 
   const EVENTS = window.CALENDAR_EVENTS || [];
@@ -85,7 +89,7 @@
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   }
 
-  /** All events touching a given day, all-day/undated-time entries first, then by start_time. */
+  /** All events touching a given day, all-day/undated-time entries first, then by start_time. Unfiltered — see visibleEventsOnDate() for the filter-aware version used by all rendering. */
   function eventsOnDate(iso) {
     return EVENTS.filter((e) => e.entry_date <= iso && (e.end_date || e.entry_date) >= iso).sort((a, b) => {
       if (!a.start_time && !b.start_time) return 0;
@@ -93,6 +97,14 @@
       if (!b.start_time) return 1;
       return a.start_time < b.start_time ? -1 : 1;
     });
+  }
+
+  /** True if `e` should be shown given the current category filter (empty selection = show everything, matching calendar-browser.tsx's `active.size === 0 ? list : list.filter(...)`). */
+  function matchesFilter(e) {
+    return state.activeCategories.size === 0 || state.activeCategories.has(e.category);
+  }
+  function visibleEventsOnDate(iso) {
+    return eventsOnDate(iso).filter(matchesFilter);
   }
 
   function addMonths(date, n) { return new Date(date.getFullYear(), date.getMonth() + n, 1); }
@@ -114,10 +126,10 @@
     return weeks;
   }
 
-  /** Lane assignment for multi-day bars touching this week (greedy interval scheduling, recomputed per week — see judgment-call notes for the one known edge case this simplifies away). */
+  /** Lane assignment for multi-day bars touching this week (greedy interval scheduling, recomputed per week — see judgment-call notes for the one known edge case this simplifies away). Filter-aware: a span hidden by the active category filter doesn't reserve a lane. */
   function computeWeekSpans(week) {
     const weekStartIso = week[0].iso, weekEndIso = week[6].iso;
-    const spanning = EVENTS.filter(isMultiDay).filter((e) => e.end_date >= weekStartIso && e.entry_date <= weekEndIso);
+    const spanning = EVENTS.filter(isMultiDay).filter(matchesFilter).filter((e) => e.end_date >= weekStartIso && e.entry_date <= weekEndIso);
     spanning.sort((a, b) => (a.entry_date < b.entry_date ? -1 : 1));
     const laneEndCols = [];
     const placed = [];
@@ -142,7 +154,9 @@
     monthCursor: new Date(2026, 6, 1), // July 2026 — contains DEMO_TODAY_ISO
     selectedDateIso: null,
     highlightEventId: null,
-    focusedIso: DEMO_TODAY_ISO
+    focusedIso: DEMO_TODAY_ISO,
+    activeCategories: new Set(), // shared by List AND Month — empty = no filter
+    todayAutoSelectPending: true // consumed the first time Month view becomes visible
   };
 
   /* ══════════════════════════════════════════════════════════════════
@@ -161,16 +175,17 @@
     els.prevBtn = document.getElementById('prevMonthBtn');
     els.nextBtn = document.getElementById('nextMonthBtn');
     els.todayBtn = document.getElementById('todayBtn');
-    els.dayPanel = document.getElementById('dayPanel');
-    els.dayPanelDate = document.getElementById('dayPanelDate');
-    els.dayPanelBody = document.getElementById('dayPanelBody');
-    els.dayPanelClose = document.getElementById('dayPanelClose');
-    els.legend = document.getElementById('legend');
+    els.dayPopover = document.getElementById('dayPopover');
+    els.dayPopoverDate = document.getElementById('dayPopoverDate');
+    els.dayPopoverBody = document.getElementById('dayPopoverBody');
+    els.dayPopoverClose = document.getElementById('dayPopoverClose');
+    els.dayPopoverCaret = document.getElementById('dayPopoverCaret');
+    els.filterBar = document.getElementById('filterBar');
     els.listUpcoming = document.getElementById('listUpcoming');
     els.listPast = document.getElementById('listPast');
     els.listPastSection = document.getElementById('listPastSection');
 
-    renderLegend();
+    renderFilterBar();
     renderList();
     renderMonth();
     wireControls();
@@ -194,14 +209,70 @@
       });
     });
 
-    els.prevBtn.addEventListener('click', () => { state.monthCursor = addMonths(state.monthCursor, -1); renderMonth(); });
-    els.nextBtn.addEventListener('click', () => { state.monthCursor = addMonths(state.monthCursor, 1); renderMonth(); });
-    els.todayBtn.addEventListener('click', () => {
-      state.monthCursor = new Date(parseISO(DEMO_TODAY_ISO).getFullYear(), parseISO(DEMO_TODAY_ISO).getMonth(), 1);
-      selectDate(DEMO_TODAY_ISO);
+    els.prevBtn.addEventListener('click', () => {
+      deselectDay();
+      state.monthCursor = addMonths(state.monthCursor, -1);
       renderMonth();
     });
-    els.dayPanelClose.addEventListener('click', () => { state.selectedDateIso = null; state.highlightEventId = null; renderDayPanel(); });
+    els.nextBtn.addEventListener('click', () => {
+      deselectDay();
+      state.monthCursor = addMonths(state.monthCursor, 1);
+      renderMonth();
+    });
+    els.todayBtn.addEventListener('click', () => selectDate(DEMO_TODAY_ISO, null, true));
+
+    els.dayPopoverClose.addEventListener('click', () => {
+      const prevIso = state.selectedDateIso;
+      deselectDay();
+      focusCellIfPresent(prevIso);
+    });
+
+    // Non-modal popover conventions: Escape closes it and returns focus to
+    // the day that opened it; a click anywhere else on the page closes it
+    // too (chips/spans/cells are excluded since they have their own
+    // click handlers that re-open/re-anchor the popover instead).
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !els.dayPopover.hidden) {
+        const prevIso = state.selectedDateIso;
+        deselectDay();
+        focusCellIfPresent(prevIso);
+      }
+    });
+    document.addEventListener('click', (e) => {
+      if (els.dayPopover.hidden) return;
+      if (els.dayPopover.contains(e.target)) return;
+      if (e.target.closest && e.target.closest('.dayCell, .chip, .spanBar')) return;
+      deselectDay();
+    });
+
+    // The popover is position:fixed and anchored to a specific day cell's
+    // on-screen rect, so it has to follow that cell on scroll/resize rather
+    // than staying pinned to a now-stale coordinate. Throttled via rAF.
+    let repositionScheduled = false;
+    function scheduleReposition() {
+      if (repositionScheduled) return;
+      repositionScheduled = true;
+      requestAnimationFrame(() => {
+        repositionScheduled = false;
+        if (els.dayPopover.hidden || !state.selectedDateIso) return;
+        const cell = els.monthGridBody.querySelector(`[data-iso="${state.selectedDateIso}"]`);
+        if (!cell) { deselectDay(); return; }
+        const r = cell.getBoundingClientRect();
+        // If its anchor has scrolled entirely out of the viewport, closing
+        // is simpler and more predictable than trying to preserve-and-later
+        //-restore the popover — a known simplification, see judgment notes.
+        if (r.bottom < 0 || r.top > window.innerHeight) { deselectDay(); return; }
+        positionPopoverAt(cell);
+      });
+    }
+    window.addEventListener('scroll', scheduleReposition, { passive: true });
+    window.addEventListener('resize', scheduleReposition);
+  }
+
+  function focusCellIfPresent(iso) {
+    if (!iso) return;
+    const cell = els.monthGridBody.querySelector(`[data-iso="${iso}"]`);
+    if (cell) cell.focus();
   }
 
   function setView(view) {
@@ -215,28 +286,84 @@
     els.tabMonth.setAttribute('aria-selected', String(!isList));
     els.tabList.tabIndex = isList ? 0 : -1;
     els.tabMonth.tabIndex = isList ? -1 : 0;
+
+    if (isList) {
+      // Soft-hide only — position:fixed would otherwise float the popover
+      // over the List view. Selection state is kept so it reappears if the
+      // user switches back to Month (deliberately NOT deselectDay() here).
+      hidePopover();
+      return;
+    }
+
+    if (state.todayAutoSelectPending) {
+      state.todayAutoSelectPending = false;
+      const t = parseISO(DEMO_TODAY_ISO);
+      if (t.getFullYear() === state.monthCursor.getFullYear() && t.getMonth() === state.monthCursor.getMonth()) {
+        selectDate(DEMO_TODAY_ISO);
+        return;
+      }
+    }
+    if (state.selectedDateIso) {
+      const cell = els.monthGridBody.querySelector(`[data-iso="${state.selectedDateIso}"]`);
+      if (cell) showPopover(cell);
+    }
   }
 
   /* ══════════════════════════════════════════════════════════════════
-     LEGEND (existing production element — static, unchanged behavior)
+     FILTER BAR — ported verbatim (classes + multi-select + Clear button)
+     from next-app/src/app/(public)/events/calendar-browser.tsx, so this
+     prototype and production behave identically. Shared by both views:
+     toggling a chip re-renders whichever view(s) are built, and the
+     selection is NOT reset when the List/Month toggle is used.
      ══════════════════════════════════════════════════════════════════ */
-  function renderLegend() {
-    els.legend.innerHTML = CATEGORIES.map((c) => `
-      <span class="legendItem"><span class="legendPip" style="background:${CATEGORY_COLORS[c]}"></span>${c}</span>
-    `).join('');
+  function renderFilterBar() {
+    const chips = CATEGORIES.map((c) => {
+      const isActive = state.activeCategories.has(c);
+      const color = CATEGORY_COLORS[c];
+      return `
+        <button type="button" class="filterChip${isActive ? ' filterChipActive' : ''}" data-cat="${c}"
+          ${isActive ? `style="background:${color};border-color:${color}"` : ''} aria-pressed="${isActive}">
+          <span class="filterPip" style="background:${isActive ? '#fff' : color}"></span>${c}
+        </button>`;
+    }).join('');
+    const clear = state.activeCategories.size > 0
+      ? '<button type="button" class="filterClear" id="filterClearBtn">Clear filter</button>'
+      : '';
+    els.filterBar.innerHTML = chips + clear;
+
+    els.filterBar.querySelectorAll('.filterChip').forEach((btn) => {
+      btn.addEventListener('click', () => toggleCategory(btn.dataset.cat));
+    });
+    const clearBtn = document.getElementById('filterClearBtn');
+    if (clearBtn) clearBtn.addEventListener('click', clearFilter);
+  }
+
+  function toggleCategory(cat) {
+    if (state.activeCategories.has(cat)) state.activeCategories.delete(cat);
+    else state.activeCategories.add(cat);
+    applyFilter();
+  }
+  function clearFilter() {
+    state.activeCategories.clear();
+    applyFilter();
+  }
+  function applyFilter() {
+    renderFilterBar();
+    renderList();
+    renderMonth();
   }
 
   /* ══════════════════════════════════════════════════════════════════
      LIST VIEW (ported layout, for toggle parity — see file header note)
      ══════════════════════════════════════════════════════════════════ */
   function renderList() {
-    const all = [...EVENTS].sort((a, b) => (a.entry_date < b.entry_date ? -1 : 1));
+    const all = EVENTS.filter(matchesFilter).sort((a, b) => (a.entry_date < b.entry_date ? -1 : 1));
     const upcoming = all.filter((e) => (e.end_date || e.entry_date) >= DEMO_TODAY_ISO);
     const past = all.filter((e) => (e.end_date || e.entry_date) < DEMO_TODAY_ISO).reverse();
 
     els.listUpcoming.innerHTML = upcoming.length
       ? upcoming.map((e) => listRow(e, false)).join('')
-      : '<p class="empty">Nothing on the calendar yet.</p>';
+      : `<p class="empty">${state.activeCategories.size > 0 ? 'No upcoming entries match that filter.' : 'Nothing on the calendar yet.'}</p>`;
 
     if (past.length) {
       els.listPastSection.hidden = false;
@@ -313,7 +440,18 @@
     });
 
     syncRovingTabindex();
-    renderDayPanel();
+
+    // Popover follow-up: this covers the two paths that rebuild the whole
+    // grid out from under an existing selection — adjacent-month day clicks
+    // and the Today button (both go through selectDate(..., forceMonthNav))
+    // — by re-anchoring to the newly-rendered cell for the same iso. Plain
+    // Prev/Next navigation always calls deselectDay() first (see
+    // wireControls()), so there's normally nothing to re-anchor there.
+    if (state.selectedDateIso) {
+      const cell = els.monthGridBody.querySelector(`[data-iso="${state.selectedDateIso}"]`);
+      if (cell && state.view === 'month') showPopover(cell);
+      else if (!cell) hidePopover();
+    }
   }
 
   function buildDayCell(day) {
@@ -323,7 +461,7 @@
     // silently mis-parse a button-in-a-button, breaking both). The div gets
     // the same click/keydown wiring a button would via role="gridcell" +
     // tabindex + explicit Enter/Space handling.
-    const dayEvents = eventsOnDate(day.iso);
+    const dayEvents = visibleEventsOnDate(day.iso);
     const singleDay = dayEvents.filter((e) => !isMultiDay(e));
     const isToday = day.iso === DEMO_TODAY_ISO;
     const isSelected = day.iso === state.selectedDateIso;
@@ -400,23 +538,50 @@
     bar.addEventListener('click', (evt) => {
       evt.stopPropagation();
       // Select whichever day of the visible week this bar's cap represents,
-      // preferring the true start date so the panel opens on the day the
+      // preferring the true start date so the popover opens on the day the
       // event actually begins.
       selectDate(p.event.entry_date, p.event.id);
     });
     return bar;
   }
 
-  function selectDate(iso, eventId, isAdjacentMonth) {
-    if (isAdjacentMonth) {
-      const d = parseISO(iso);
-      state.monthCursor = new Date(d.getFullYear(), d.getMonth(), 1);
-    }
+  /**
+   * Select (and show a popover for) a day.
+   * `forceMonthNav` is used for two distinct callers that both need the
+   * grid rebuilt around a specific iso before the popover can be anchored:
+   * an adjacent-month (grayed) day click, and the Today button.
+   */
+  function selectDate(iso, eventId, forceMonthNav) {
     state.selectedDateIso = iso;
     state.highlightEventId = eventId || null;
     state.focusedIso = iso;
-    renderMonth();
-    els.dayPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    if (forceMonthNav) {
+      const d = parseISO(iso);
+      state.monthCursor = new Date(d.getFullYear(), d.getMonth(), 1);
+      renderMonth(); // full rebuild; its trailing logic re-anchors the popover
+      return;
+    }
+
+    updateSelectedCellClasses();
+    const cell = els.monthGridBody.querySelector(`[data-iso="${iso}"]`);
+    if (cell) showPopover(cell);
+  }
+
+  function updateSelectedCellClasses() {
+    els.monthGridBody.querySelectorAll('.dayCell').forEach((c) => {
+      const sel = c.dataset.iso === state.selectedDateIso;
+      c.classList.toggle('isSelected', sel);
+      c.setAttribute('aria-selected', String(sel));
+    });
+  }
+
+  /** Hard close: clears the selection entirely (used by Prev/Next, the close button, Escape, and click-outside). */
+  function deselectDay() {
+    state.selectedDateIso = null;
+    state.highlightEventId = null;
+    updateSelectedCellClasses();
+    hidePopover();
   }
 
   /* ── Roving tabindex (WAI-ARIA APG grid pattern, simplified) ────────── */
@@ -454,27 +619,74 @@
   }
 
   /* ══════════════════════════════════════════════════════════════════
-     SELECTED DAY PANEL
+     DAY POPOVER — anchored to the clicked/selected day cell, with
+     edge-aware clamping so it never renders off-screen (see the
+     positionPopoverAt() flip/clamp math and the judgment-call notes).
      ══════════════════════════════════════════════════════════════════ */
-  function renderDayPanel() {
-    if (!state.selectedDateIso) {
-      els.dayPanelDate.textContent = 'No day selected';
-      els.dayPanelBody.innerHTML = '<p class="dayPanelIdle">Select a day on the calendar to see what’s happening.</p>';
-      els.dayPanelClose.hidden = true;
-      return;
-    }
-    els.dayPanelClose.hidden = false;
-    els.dayPanelDate.textContent = formatFullDate(state.selectedDateIso);
-    const dayEvents = eventsOnDate(state.selectedDateIso);
+  function showPopover(cell) {
+    const iso = cell.dataset.iso;
+    els.dayPopoverDate.textContent = formatFullDate(iso);
+    const dayEvents = visibleEventsOnDate(iso);
     if (!dayEvents.length) {
-      els.dayPanelBody.innerHTML = '<p class="dayPanelEmpty">Nothing scheduled this day.</p>';
-      return;
+      els.dayPopoverBody.innerHTML = state.activeCategories.size > 0
+        ? '<p class="dayPopoverEmpty">No events match the current filter this day.</p>'
+        : '<p class="dayPopoverEmpty">Nothing scheduled this day.</p>';
+    } else {
+      els.dayPopoverBody.innerHTML = `<div class="dayEventList">${dayEvents.map((e) => dayEventCard(e)).join('')}</div>`;
+      if (state.highlightEventId) {
+        const el = els.dayPopoverBody.querySelector(`[data-card-id="${state.highlightEventId}"]`);
+        if (el) el.classList.add('isHighlighted');
+      }
     }
-    els.dayPanelBody.innerHTML = `<div class="dayEventList">${dayEvents.map((e) => dayEventCard(e)).join('')}</div>`;
-    if (state.highlightEventId) {
-      const el = els.dayPanelBody.querySelector(`[data-card-id="${state.highlightEventId}"]`);
-      if (el) el.classList.add('isHighlighted');
+    els.dayPopover.hidden = false;
+    positionPopoverAt(cell);
+    els.dayPopoverClose.focus();
+  }
+
+  function hidePopover() {
+    els.dayPopover.hidden = true;
+  }
+
+  /** Edge-aware anchor: prefers directly below the cell's left edge; clamps
+   *  horizontally to stay on-screen; flips above the cell if there isn't
+   *  room below (and clamps again if there isn't room above either, relying
+   *  on the popover's own max-height + internal scroll as a last resort). */
+  function positionPopoverAt(cell) {
+    const pop = els.dayPopover;
+    const margin = 12, gap = 6;
+    const vw = document.documentElement.clientWidth;
+    const vh = document.documentElement.clientHeight;
+
+    // Measure with visibility:hidden (not display:none) so it still has
+    // real layout dimensions to measure against.
+    pop.style.visibility = 'hidden';
+    pop.style.left = '0px';
+    pop.style.top = '0px';
+    const popRect = pop.getBoundingClientRect();
+    const cellRect = cell.getBoundingClientRect();
+
+    let left = cellRect.left;
+    if (left + popRect.width > vw - margin) left = vw - margin - popRect.width;
+    if (left < margin) left = margin;
+
+    let top = cellRect.bottom + gap;
+    let flipped = false;
+    if (top + popRect.height > vh - margin) {
+      const aboveTop = cellRect.top - gap - popRect.height;
+      if (aboveTop >= margin) { top = aboveTop; flipped = true; }
+      else { top = margin; } // pinned to the top; internal scroll (max-height + overflow-y) covers the rest
     }
+
+    pop.style.left = `${Math.round(left)}px`;
+    pop.style.top = `${Math.round(top)}px`;
+    pop.style.visibility = 'visible';
+    pop.classList.toggle('isFlipped', flipped);
+
+    // Caret points at the cell's horizontal center, clamped so it never
+    // renders outside the popover's own (possibly-shifted) bounds.
+    const cellCenter = cellRect.left + cellRect.width / 2;
+    const caretX = Math.min(Math.max(cellCenter - left, 16), Math.max(popRect.width - 16, 16));
+    els.dayPopoverCaret.style.left = `${Math.round(caretX)}px`;
   }
 
   function dayEventCard(e) {

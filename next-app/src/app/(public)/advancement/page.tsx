@@ -10,7 +10,7 @@
  */
 
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import type { Scout, ScoutSummaryRow, Rank } from '@/lib/supabase/types';
 import { publicScoutName } from '@/lib/scout-name';
 import styles from './advancement.module.css';
@@ -29,7 +29,7 @@ interface AdvancementData {
 }
 
 async function loadData(): Promise<AdvancementData | null> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const [scoutsRes, summaryRes, ranksRes] = await Promise.all([
     supabase.from('scouts').select('*').eq('active', true).order('display_name'),
     supabase.from('scout_summary').select('*'),

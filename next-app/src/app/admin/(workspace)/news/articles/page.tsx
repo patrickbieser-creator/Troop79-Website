@@ -16,7 +16,7 @@
 
 import Link from 'next/link';
 import { cookies } from 'next/headers';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
 import type { Article, ArticleType, ArticleStatus } from '@/lib/supabase/types';
 import { ArticlesToolbar } from './articles-toolbar';
@@ -66,7 +66,7 @@ export interface ArticleRowVM extends Article {
 }
 
 async function loadArticles(parsed: ReturnType<typeof parseSearch>) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   let q = supabase
     .from('articles')

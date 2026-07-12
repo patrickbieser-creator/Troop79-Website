@@ -86,10 +86,24 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
   font-family: var(--font-ui); font-size: 11px; font-style: italic; color: var(--text-meta);
 }
 
-/* ─── Category legend (existing production element, static) ────────── */
-.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 4px 0 22px; }
-.legendItem { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-ui); font-size: 11px; color: var(--text-meta); }
-.legendPip { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+/* ─── Category filter chips — ported verbatim from production's
+   events.module.css (next-app/src/app/(public)/events/), which replaced
+   the old static legend with these. Multi-select; shared by List + Month. */
+.filterBar { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 22px; }
+.filterChip {
+  display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-ui); font-size: 11px; font-weight: 600;
+  color: var(--text-meta); background: var(--warm-white); border: 1px solid var(--border-mid); border-radius: 999px;
+  padding: 5px 12px 5px 8px; cursor: pointer; transition: background var(--transition), border-color var(--transition), color var(--transition);
+}
+.filterChip:hover { border-color: var(--forest); color: var(--text-head); }
+.filterChip:focus-visible { outline: 2px solid var(--forest); outline-offset: 1px; }
+.filterChipActive { color: #fff; }
+.filterPip { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.filterClear {
+  font-family: var(--font-ui); font-size: 11px; font-weight: 700; letter-spacing: .02em; text-decoration: underline;
+  color: var(--text-meta); background: none; border: none; cursor: pointer; padding: 5px 4px;
+}
+.filterClear:hover { color: var(--navy); }
 
 /* ─── Shared section divider (list view) ────────────────────────────── */
 .sectionDivider { display: flex; align-items: center; gap: 12px; margin: 32px 0 18px; }
@@ -246,23 +260,39 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 .spanTitle { overflow: hidden; text-overflow: ellipsis; }
 .spanBar:focus-visible { outline: 2px solid var(--forest); outline-offset: 1px; }
 
-/* ─── Selected Day panel ─────────────────────────────────────────────── */
-.dayPanel {
-  margin-top: 18px; border: 1px solid var(--border-light); border-top: 3px solid var(--forest);
-  background: var(--warm-white); border-radius: 2px; padding: 20px 24px;
-  scroll-margin-top: 16px;
+/* ─── Day popover — anchored to the clicked day cell (see
+   positionPopoverAt() in calendar-month.js for the flip/clamp math that
+   keeps this on-screen at every breakpoint). position:fixed + a high
+   z-index so it floats above the grid regardless of scroll position;
+   JS re-anchors it on scroll/resize. ─────────────────────────────────── */
+.dayPopover {
+  position: fixed; z-index: 1000; width: 320px; max-width: calc(100vw - 24px);
+  max-height: min(70vh, 520px); overflow-y: auto;
+  border: 1px solid var(--border-light); border-top: 3px solid var(--forest);
+  background: var(--warm-white); border-radius: 3px; box-shadow: var(--shadow-hover);
+  padding: 18px 20px;
 }
-.dayPanelHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
-.dayPanelDate { font-family: var(--font-display); font-size: 19px; font-weight: 700; color: var(--text-head); }
-.dayPanelClose {
+.dayPopoverCaret {
+  position: absolute; top: -6px; width: 11px; height: 11px; background: var(--warm-white);
+  border-left: 1px solid var(--border-light); border-top: 3px solid var(--forest);
+  transform: rotate(45deg); border-radius: 1px 0 0 0;
+}
+/* Flipped above the cell: caret moves to the bottom edge and points down. */
+.dayPopover.isFlipped .dayPopoverCaret {
+  top: auto; bottom: -6px;
+  border-left: none; border-top: none; border-right: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light);
+  border-radius: 0 0 1px 0;
+}
+.dayPopoverHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.dayPopoverDate { font-family: var(--font-display); font-size: 19px; font-weight: 700; color: var(--text-head); }
+.dayPopoverClose {
   flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
   color: var(--text-meta); transition: background var(--transition), color var(--transition);
 }
-.dayPanelClose:hover { background: var(--newsprint); color: var(--navy); }
-.dayPanelClose:focus-visible { outline: 2px solid var(--forest); }
+.dayPopoverClose:hover { background: var(--newsprint); color: var(--navy); }
+.dayPopoverClose:focus-visible { outline: 2px solid var(--forest); }
 
-.dayPanelIdle { font-family: var(--font-body); font-style: italic; color: var(--text-meta); font-size: 14px; padding: 6px 0 2px; }
-.dayPanelEmpty { font-family: var(--font-body); color: var(--text-meta); font-size: 14px; padding: 4px 0 2px; }
+.dayPopoverEmpty { font-family: var(--font-body); color: var(--text-meta); font-size: 14px; padding: 4px 0 2px; }
 
 .dayEventList { display: flex; flex-direction: column; gap: 12px; }
 .dayEventCard {

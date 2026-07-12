@@ -497,6 +497,32 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v0.22 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v0.22</span>
+        <span class="release-date">July 11, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Security Hardening for Public Launch</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Real sign-in.</strong> The any-username/any-password stub is gone: the leader password (from a server env var, compared in constant time) opens the full workspace and the scout password opens scout drafting &mdash; the matched password <em>determines</em> the role, so there&rsquo;s no role picker to talk your way past. Wrong passwords get a friendly &ldquo;check with the Scoutmaster&rdquo; error. Per-leader Supabase Auth remains the Phase 4 upgrade.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>The public API key can no longer read family data.</strong> Every page was already server-rendered, so all data loading moved to the server-only service client, and the browser-visible anon key lost read access to <code>scouts</code>, <code>scout_parents</code>, and <code>leaders</code> (addresses, phones, emails, health-form dates), plus <code>ledger_entries</code> and <code>coh_history</code>; <code>articles</code> is now published-only so drafts can&rsquo;t be fetched directly. Verified by replaying an attacker&rsquo;s queries with the anon key: zero rows from every locked table, catalogs and published content still readable.
+              <span class="change-note">Migration <code>20260712020000_public_launch_hardening.sql</code>. Groundwork for the Vercel + hosted Supabase deployment.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v0.21 -->
     <div class="release">
       <div class="release-header">

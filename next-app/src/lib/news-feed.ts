@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import type { Article, Media, Tag } from '@/lib/supabase/types';
 
 const PAGE_SIZE = 10;
@@ -25,7 +25,7 @@ function toCard(row: RawArticleRow): ArticleCard {
 const CARD_SELECT = '*, hero_media:hero_media_id(*), article_tags(tags(*))';
 
 export async function loadHomeFeed(page: number) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const [featuredRes, restCountRes] = await Promise.all([
     supabase
@@ -56,7 +56,7 @@ export async function loadHomeFeed(page: number) {
 }
 
 export async function loadUpcomingEvents(limit = 5) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data } = await supabase
     .from('articles_public')
     .select('*')
@@ -68,13 +68,13 @@ export async function loadUpcomingEvents(limit = 5) {
 }
 
 export async function loadAllTags() {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data } = await supabase.from('tags').select('*').order('name');
   return (data ?? []) as Tag[];
 }
 
 export async function loadArticleBySlug(slug: string): Promise<ArticleCard | null> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('articles_public')
     .select(CARD_SELECT)
@@ -85,7 +85,7 @@ export async function loadArticleBySlug(slug: string): Promise<ArticleCard | nul
 }
 
 export async function loadArticlesByTag(slug: string, page: number) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data: tag } = await supabase.from('tags').select('*').eq('slug', slug).single();
   if (!tag) return { tag: null, rows: [] as ArticleCard[], totalPages: 1 };
 

@@ -15,7 +15,7 @@
  */
 
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import type { LedgerEntry, LedgerKind, Scout } from '@/lib/supabase/types';
 import { LedgerToolbar } from './ledger-toolbar';
 import { LedgerTable } from './ledger-table';
@@ -68,7 +68,7 @@ function parseSearch(sp: SearchParams) {
 }
 
 async function loadLedger(parsed: ReturnType<typeof parseSearch>) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // Fetch reference catalogs once: scouts (for name + name-search), rank
   // requirements (for the short-label lookup matching the Clipboard), ranks

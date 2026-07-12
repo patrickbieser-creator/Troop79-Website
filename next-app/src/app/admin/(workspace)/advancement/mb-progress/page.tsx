@@ -6,7 +6,7 @@
  */
 
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import type { MeritBadge, MbProgressRow } from '@/lib/supabase/types';
 import styles from './mb-progress.module.css';
@@ -24,7 +24,7 @@ interface CatalogCard {
 }
 
 async function loadCatalog() {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const [badgesRes, progress, activeCountRes] = await Promise.all([
     supabase.from('merit_badges').select('*').order('name'),
     // Unbounded past the ~1000-row PostgREST cap as more scouts start more

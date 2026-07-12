@@ -9,7 +9,7 @@
 
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import {
   buildReqTree,
   flattenLeaves,
@@ -48,7 +48,7 @@ interface DetailData {
 }
 
 async function loadDetail(mbId: string): Promise<DetailData | null> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const [{ data: mb }, { data: reqRows }, ledgerRows, { data: scoutRows }, { count: totalActive }] =
     await Promise.all([

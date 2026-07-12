@@ -22,7 +22,7 @@
  * real problem, not a bug.
  */
 
-import type { createClient } from '@/lib/supabase/server';
+import type { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import type { Finding } from '../types';
 
@@ -31,7 +31,7 @@ const THRESHOLDS: { rankId: string; minActivities: number; minCampouts: number }
   { rankId: 'first-class', minActivities: 10, minCampouts: 6 }
 ];
 
-export async function run(supabase: Awaited<ReturnType<typeof createClient>>): Promise<Finding[]> {
+export async function run(supabase: ReturnType<typeof createAdminClient>): Promise<Finding[]> {
   const [campingRows, hikingRows, rankReqsRes, existing1aRows, scoutsRes] = await Promise.all([
     fetchAllRows<{ scout_id: string; code: string }>((from, to) =>
       supabase.from('ledger_active').select('scout_id, code').eq('kind', 'camping_nights').range(from, to)

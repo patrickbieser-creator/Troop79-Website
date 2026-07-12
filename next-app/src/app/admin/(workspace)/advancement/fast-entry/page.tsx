@@ -12,7 +12,7 @@
  * rank_requirements) and seeds the Client cards.
  */
 
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import type { LedgerEntry } from '@/lib/supabase/types';
 import { ScoutFirstCard } from './scout-first-card';
 import { ReqFirstCard } from './req-first-card';
@@ -30,7 +30,7 @@ async function loadFastEntry(): Promise<{
   leaders: { code: string; name: string }[];
   tape: TapeRow[];
 }> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // Today's tape = rows whose `entered_at` falls in today's *local* calendar
   // day. Catches every signoff that was keyed in today, regardless of the

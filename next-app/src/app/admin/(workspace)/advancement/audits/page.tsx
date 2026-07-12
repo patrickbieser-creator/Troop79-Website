@@ -9,7 +9,7 @@
  */
 
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { AuditCard } from './audit-card';
 import type { Finding } from './types';
 import * as borRequirements from './checks/bor-requirements';
@@ -38,7 +38,7 @@ const CHECKS = [
 ] as const;
 
 export default async function AuditsPage() {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const [findingsByCheck, leadersRes] = await Promise.all([
     Promise.all(CHECKS.map((c) => c.run(supabase))),
     supabase.from('leaders').select('code, name').order('code')

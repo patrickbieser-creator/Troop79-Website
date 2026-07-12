@@ -11,7 +11,15 @@ export default async function LoginPage({
 }) {
   const { next, error } = await searchParams;
   const errMessage =
-    error === 'missing-username' ? 'Username is required.' : null;
+    error === 'missing-username'
+      ? 'Name is required.'
+      : error === 'missing-password'
+        ? 'Password is required.'
+        : error === 'bad-password'
+          ? 'That password isn’t right — check with the Scoutmaster.'
+          : error === 'not-configured'
+            ? 'Sign-in isn’t configured on this server (LEADER_PASSWORD is unset).'
+            : null;
 
   return (
     <main
@@ -67,52 +75,19 @@ export default async function LoginPage({
             lineHeight: 1.5
           }}
         >
-          Leader workspace access. Any username and password work in this
-          build &mdash; real authentication is the next slice.
+          Sign in with your name and the troop password. The leader password
+          opens the full workspace; the scout password opens scout drafting.
         </p>
 
         <form action={loginAction}>
           {next && <input type="hidden" name="next" value={next} />}
-          <Field label="Username" name="username" placeholder="e.g. pbieser" />
+          <Field label="Your name" name="username" placeholder="e.g. pbieser" />
           <Field
-            label="Password"
+            label="Troop password"
             name="password"
             type="password"
-            placeholder="(any password)"
+            placeholder=""
           />
-
-          <label style={{ display: 'block', marginBottom: 14 }}>
-            <span
-              style={{
-                display: 'block',
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: '.08em',
-                textTransform: 'uppercase',
-                color: '#3a3f47',
-                marginBottom: 6
-              }}
-            >
-              I am a
-            </span>
-            <select
-              name="role"
-              defaultValue="leader"
-              style={{
-                width: '100%',
-                border: '1px solid #cdd1d6',
-                borderRadius: 4,
-                padding: '9px 11px',
-                fontSize: 14,
-                fontFamily: 'inherit',
-                outline: 'none',
-                background: '#fff'
-              }}
-            >
-              <option value="leader">Leader</option>
-              <option value="scout">Scout</option>
-            </select>
-          </label>
 
           {errMessage && (
             <div

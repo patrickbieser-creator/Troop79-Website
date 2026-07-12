@@ -12,7 +12,7 @@
 
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import {
   buildReqTree,
   flattenLeaves,
@@ -45,7 +45,7 @@ export async function generateMetadata({
   params: Promise<{ mbId: string }>;
 }) {
   const { mbId } = await params;
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data: mb } = await supabase
     .from('merit_badges')
     .select('name')
@@ -57,7 +57,7 @@ export async function generateMetadata({
 }
 
 async function loadDetail(mbId: string) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const [mbRes, reqsRes, ledgerRows, scoutsRes, activeCountRes, counselorsRes, leadersRes] =
     await Promise.all([
       supabase.from('merit_badges').select('*').eq('id', mbId).maybeSingle(),

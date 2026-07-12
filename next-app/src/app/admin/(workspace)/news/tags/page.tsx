@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
 import type { Tag } from '@/lib/supabase/types';
 import { TagsManager } from './tags-manager';
@@ -12,7 +12,7 @@ export default async function TagsPage() {
   if (!session) redirect('/admin/login');
   if (session.role !== 'leader') redirect('/admin/news/articles');
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data: tags } = await supabase.from('tags').select('*').order('name');
 
   return (

@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
 import type { Article, Media, Tag } from '@/lib/supabase/types';
 import { ArticleEditor } from './article-editor';
@@ -11,7 +11,7 @@ export default async function ArticleEditPage({ params }: { params: Promise<{ id
   const session = await verifySession(jar.get(LEADER_COOKIE.name)?.value);
   if (!session) redirect('/admin/login');
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data: tags } = await supabase.from('tags').select('*').order('name');
 
   if (id === 'new') {
