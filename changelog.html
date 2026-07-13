@@ -497,6 +497,32 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.3.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.3.0</span>
+        <span class="release-date">July 12, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Photo Albums</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              New public <strong>Photos page</strong> (<code>/photos</code>, its own nav tab between Calendar and Advancement) &mdash; the troop&rsquo;s ~55 public Google Photos albums, finally browsable in one place. Albums group by year with a Latest Albums strip up top; category and year dropdowns plus search sit at the top right (filters are shareable URLs, e.g. <code>?category=Campout&amp;year=2025</code> for the Bugle). Every card links out to Google Photos in a new tab with a persistent badge saying so; albums without a chosen cover get a &ldquo;79&rdquo; monogram tile.
+            </span>
+          </li>
+          <li>
+            <span>
+              New admin <strong>Photo Albums</strong> page (News &amp; Events section): paste the Google Photos share link, pick a date and category (the same taxonomy as the calendar), optionally add a description, approximate photo count, and a cover chosen from the Bunny media library. Backed by a new <code>photo_albums</code> table &mdash; an index of pointers; the photos themselves stay on Google.
+              <span class="change-note">Designed by Brad from the troop&rsquo;s requirements (prototype in <code>prototypes/photo-albums/</code>), revised per Patrick: dropdowns instead of filter chips, controls top-right. The ~55 historical albums still need entering &mdash; a bulk import from a spreadsheet is a candidate follow-up.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.2.1 -->
     <div class="release">
       <div class="release-header">

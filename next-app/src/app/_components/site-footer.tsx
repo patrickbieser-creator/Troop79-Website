@@ -57,6 +57,7 @@ export function SiteFooter() {
           <FooterCol title="Navigate">
             <FooterLink href="/">Home &amp; News</FooterLink>
             <FooterLink href="/events">Calendar</FooterLink>
+            <FooterLink href="/photos">Photo Albums</FooterLink>
             <FooterLink href="/advancement">Advancement Tracker</FooterLink>
             <FooterLink href="/merit-badges">Merit Badges</FooterLink>
             <FooterLink href="/meetings">This Week&rsquo;s Meeting</FooterLink>

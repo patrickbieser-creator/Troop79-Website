@@ -200,6 +200,23 @@ export interface MeetingPlanRow {
   generated_by: string | null;
 }
 
+// ─── Photo Albums (Google Photos index) ─────────────────────────────────────
+
+export interface PhotoAlbum {
+  id: number;
+  title: string;
+  event_date: string;
+  /** Shares the calendar_entries category vocabulary. */
+  category: CalendarCategory;
+  google_url: string;
+  cover_media_id: number | null;
+  description: string | null;
+  /** Leader-maintained and approximate — shared albums keep growing. */
+  photo_count: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // ─── Meetings (published agendas) ───────────────────────────────────────────
 
 export type MeetingStatus = 'draft' | 'published';

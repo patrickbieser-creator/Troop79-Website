@@ -91,6 +91,11 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         label: 'Calendar',
         href: '/admin/news/calendar',
         matchPath: '/admin/news/calendar'
+      },
+      {
+        label: 'Photo Albums',
+        href: '/admin/news/photo-albums',
+        matchPath: '/admin/news/photo-albums'
       }
     ]
   },

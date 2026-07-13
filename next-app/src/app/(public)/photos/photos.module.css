@@ -1,0 +1,274 @@
+/* Public Photo Albums page — ported from prototypes/photo-albums/index.html
+   (Brad's approved design). Year groups are the spine; category/year chips +
+   search are the lens; every card links out to Google Photos. */
+
+.pageHeader {
+  max-width: 1180px;
+  margin: 24px auto 0;
+  padding: 0 24px 14px;
+  border-bottom: 2px solid var(--border-mid, #c8bfaf);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.pageHeaderText { flex: 1 1 380px; min-width: 0; }
+
+/* Filters + search live top-right of the header (Patrick, 2026-07-12:
+   dropdowns over chips — less clutter). */
+.filterCluster {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex: 0 1 auto;
+}
+.filterControls { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.filterSelect {
+  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-size: 12px; color: var(--text-body);
+  background: var(--warm-white, #fff);
+  border: 1px solid var(--border-mid, #c8bfaf); border-radius: 2px;
+  padding: 7px 10px; outline: none; cursor: pointer;
+  transition: border-color .18s ease;
+}
+.filterSelect:focus { border-color: var(--navy); }
+.sectionLabel {
+  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--forest); border-left: 3px solid var(--forest); padding-left: 8px;
+  display: inline-block; margin-bottom: 10px;
+}
+.pageTitle {
+  font-family: var(--font-display, 'Playfair Display', Georgia, serif);
+  font-size: 34px; font-weight: 700; color: var(--text-head);
+  letter-spacing: -.01em; line-height: 1.15; margin-bottom: 8px;
+}
+.pageDek {
+  font-family: var(--font-body, 'Lora', Georgia, serif);
+  font-size: 15px; line-height: 1.6; color: var(--text-body);
+  max-width: 640px; margin-bottom: 4px;
+}
+.gpNote { color: var(--text-meta); font-style: italic; }
+
+.mainContent { max-width: 1180px; margin: 0 auto; padding: 0 24px 60px; }
+
+/* ── featured strip ── */
+.featuredStrip { margin-top: 22px; }
+.sectionDivider { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.divLabel {
+  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--navy); white-space: nowrap; border-left: 3px solid var(--forest); padding-left: 8px;
+}
+.divRule { flex: 1; height: 1px; background: var(--border-light, #e2d9cc); }
+.featuredGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.featuredGrid .albumCover { aspect-ratio: 16/9; }
+
+.albumCard:focus-visible, .clearBtn:focus-visible, .filterSelect:focus-visible {
+  outline: 2px solid var(--forest); outline-offset: 2px;
+}
+
+.albumSearch { position: relative; flex: 0 1 240px; min-width: 180px; }
+.albumSearch input {
+  width: 100%;
+  border: 1px solid var(--border-mid, #c8bfaf); border-radius: 2px; padding: 7px 30px 7px 12px;
+  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif); font-size: 12px;
+  color: var(--text-body); background: var(--warm-white, #fff); outline: none;
+  transition: border-color .18s ease;
+}
+.albumSearch input:focus { border-color: var(--navy); }
+.albumSearch input::placeholder { color: var(--text-meta); }
+.albumSearch svg {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  width: 13px; height: 13px; fill: var(--text-meta); pointer-events: none;
+}
+.resultsCount {
+  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-size: 11px; color: var(--text-meta); letter-spacing: .03em;
+}
+.resultsCount strong { color: var(--text-body); font-weight: 600; }
+
+/* ── year groups ── */
+.yearGroup { margin-top: 34px; }
+.yearHeading { display: flex; align-items: baseline; gap: 14px; margin-bottom: 16px; }
+.yearHeading h2 {
+  font-family: var(--font-display, 'Playfair Display', Georgia, serif);
+  font-size: 28px; font-weight: 900; color: var(--navy); letter-spacing: -.01em; line-height: 1;
+}
+.yearCount {
+  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-size: 11px; color: var(--text-meta); letter-spacing: .04em;
+}
+.yearRule { flex: 1; height: 1px; background: var(--border-mid, #c8bfaf); align-self: center; }
+
+/* ── album grid + cards ── */
+.albumGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+
+.albumCard {
+  display: flex; flex-direction: column;
+  background: var(--warm-white, #fff);
+  border: 1px solid var(--border-light, #e2d9cc);
+  border-top: 3px solid var(--border-mid, #c8bfaf);
+  border-radius: 2px; overflow: hidden;
+  transition: box-shadow .18s ease, border-top-color .18s ease, transform .18s ease;
+}
+.albumCard:hover {
+  box-shadow: var(--shadow-hover, 0 4px 20px rgba(30, 58, 74, .14));
+  border-top-color: var(--forest);
+  transform: translateY(-2px);
+  position: relative; z-index: 1;
+}
+.albumCard:hover .albumTitle { color: var(--navy); }
+
+.albumCover {
+  position: relative; aspect-ratio: 16/10; overflow: hidden;
+  background: var(--khaki-light, #ddd0bb);
+}
+.albumCover::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(to bottom, transparent 55%, rgba(0, 0, 0, .35) 100%);
+}
+.albumCover img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.noCover { background: linear-gradient(145deg, #ddd0bb 0%, #cbbc9e 100%); }
+.noCover::after { background: none; }
+.monogram {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px;
+}
+.mono79 {
+  font-family: var(--font-display, 'Playfair Display', Georgia, serif);
+  font-size: 44px; font-weight: 900; color: rgba(30, 58, 74, .35); line-height: 1;
+}
+.monoLabel {
+  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-size: 9px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+  color: rgba(30, 58, 74, .4);
+}
+
+.gpBadge {
+  position: absolute; bottom: 8px; right: 8px; z-index: 2;
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-size: 9.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  color: rgba(255, 255, 255, .92); background: rgba(20, 32, 40, .62);
+  padding: 4px 8px; border-radius: 2px;
+  backdrop-filter: blur(2px);
+  transition: background .18s ease;
+}
+.noCover .gpBadge { background: rgba(30, 58, 74, .75); }
+.albumCard:hover .gpBadge { background: var(--navy); }
+.gpBadge svg { width: 10px; height: 10px; fill: currentColor; }
+
+.albumBody { padding: 13px 15px 15px; display: flex; flex-direction: column; flex: 1; }
+.catTag {
+  display: inline-block; align-self: flex-start;
+  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  padding: 3px 7px; margin-bottom: 8px; border-radius: 1px;
+  background: var(--navy); color: #fff;
+}
+.catCampout { background: var(--forest); color: #fff; }
+.catSummerCamp { background: var(--bark, #8b6914); color: #fff; }
+.catHighAdventure { background: var(--navy); color: #fff; }
+.catService { background: var(--forest-light, #527554); color: #fff; }
+.catCoh { background: var(--khaki, #c4a882); color: var(--navy); }
+.catOuting { background: var(--navy-light, #3a6478); color: #fff; }
+.catFundraiser { background: var(--bark-light, #a98020); color: #fff; }
+.catMeeting { background: var(--khaki-light, #ddd0bb); color: var(--navy); }
+
+.albumTitle {
+  font-family: var(--font-display, 'Playfair Display', Georgia, serif);
+  font-size: 17px; font-weight: 700; line-height: 1.3; color: var(--text-head);
+  letter-spacing: -.01em; margin-bottom: 6px;
+  transition: color .18s ease;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.albumDesc {
+  font-family: var(--font-body, 'Lora', Georgia, serif);
+  font-size: 12.5px; line-height: 1.55; color: var(--text-body); margin-bottom: 10px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.albumMeta {
+  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-size: 11px; color: var(--text-meta); letter-spacing: .02em;
+  margin-top: auto;
+  display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+}
+.metaDot { opacity: .6; }
+.metaExt { display: inline-flex; align-items: center; gap: 3px; color: var(--forest); font-weight: 600; }
+.metaExt svg { width: 10px; height: 10px; fill: currentColor; }
+
+/* ── empty states ── */
+.emptyState {
+  text-align: center; padding: 60px 24px;
+  border: 1px dashed var(--border-mid, #c8bfaf); border-radius: 2px;
+  background: var(--cream, #faf6ef); margin-top: 30px;
+}
+.emptyIcon { font-size: 30px; margin-bottom: 10px; opacity: .5; }
+.emptyState h3 {
+  font-family: var(--font-display, 'Playfair Display', Georgia, serif);
+  font-size: 21px; font-weight: 700; color: var(--text-head); margin-bottom: 6px;
+}
+.emptyState p {
+  font-family: var(--font-body, 'Lora', Georgia, serif);
+  font-size: 14px; color: var(--text-meta); margin-bottom: 16px;
+}
+.clearBtn {
+  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  background: var(--forest); color: #fff; border: none;
+  padding: 9px 18px; border-radius: 1px; cursor: pointer;
+  transition: background .18s ease;
+}
+.clearBtn:hover { background: var(--forest-light, #527554); }
+
+/* ── contributor note ── */
+.albumsNote {
+  margin-top: 40px; padding: 16px 18px;
+  background: var(--cream, #faf6ef);
+  border: 1px solid var(--border-light, #e2d9cc); border-left: 3px solid var(--khaki, #c4a882);
+  border-radius: 2px;
+  font-family: var(--font-body, 'Lora', Georgia, serif);
+  font-size: 13px; line-height: 1.65; color: var(--text-body);
+}
+.albumsNote strong { font-family: var(--font-ui, 'Open Sans', Arial, sans-serif); font-size: 12px; }
+
+.srOnly {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+/* ── responsive ── */
+@media (max-width: 900px) {
+  .albumGrid, .featuredGrid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+  .pageTitle { font-size: 26px; }
+  .pageHeader { flex-direction: column; align-items: stretch; }
+  .filterCluster { align-items: stretch; }
+  .filterControls { justify-content: stretch; }
+  .filterSelect { flex: 1 1 auto; }
+  .albumSearch { flex: 1 1 100%; }
+  .resultsCount { text-align: right; }
+  .featuredGrid { grid-template-columns: 1fr; }
+  .albumGrid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .albumBody { padding: 10px 11px 12px; }
+  .albumTitle { font-size: 14px; }
+  .albumDesc { display: none; }
+  .albumMeta { font-size: 10px; }
+  .catTag { font-size: 9px; padding: 2px 6px; }
+  .yearHeading h2 { font-size: 24px; }
+  .gpBadge { font-size: 8.5px; padding: 3px 6px; }
+}
+@media (max-width: 360px) {
+  .albumGrid { gap: 10px; }
+  .albumTitle { font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .albumCard, .filterSelect, .gpBadge, .albumTitle, .clearBtn { transition: none; }
+  .albumCard:hover { transform: none; }
+}
