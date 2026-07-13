@@ -14,6 +14,9 @@ import { AuditCard } from './audit-card';
 import type { Finding } from './types';
 import * as borRequirements from './checks/bor-requirements';
 import * as activityThresholds from './checks/activity-thresholds';
+import * as rankTimeInGrade from './checks/rank-time-in-grade';
+import * as rankMeritBadges from './checks/rank-merit-badges';
+import * as rankPor from './checks/rank-por';
 import styles from './audits.module.css';
 
 export const metadata = {
@@ -34,6 +37,27 @@ const CHECKS = [
     description:
       'A scout has logged enough activities and campouts to satisfy Tenderfoot 1a (1 campout, used as a readiness nudge — the stored requirement is actually a packing skill demo, not a count), Second Class 1a (5 activities, 3 campouts), or First Class 1a (10 activities, 6 campouts), but that requirement isn’t signed off yet. Runs regardless of Board of Review status — a proactive check that can catch the gap before the rank is otherwise complete.',
     run: activityThresholds.run
+  },
+  {
+    id: 'rank-time-in-grade',
+    title: 'Time in Rank',
+    description:
+      'A scout has been active long enough since their prior rank’s Board of Review to satisfy Star 1 (4 months since First Class), Life 1 (6 months since Star), or Eagle 1 (6 months since Life), but that requirement isn’t signed off yet. Purely calendar time from the rank_award date — the app has no leave-of-absence tracking.',
+    run: rankTimeInGrade.run
+  },
+  {
+    id: 'rank-merit-badges',
+    title: 'Star & Life Merit Badge Counts',
+    description:
+      'A scout has earned enough merit badges to satisfy Star 3 (6 total, 4 Eagle-required) or Life 3 (11 total, 7 Eagle-required — "5 more" / "3 more" on top of Star), but that requirement isn’t signed off yet. Counts are cumulative totals across every earned badge, not gated on rank.',
+    run: rankMeritBadges.run
+  },
+  {
+    id: 'rank-por',
+    title: 'Position of Responsibility',
+    description:
+      'A scout has logged a leadership position since earning the prior rank, satisfying Star 5 or Life 5 (Position of Responsibility), but that requirement isn’t signed off yet. Unlike the other checks above, this one requires the prior rank to already be earned — a POR term only counts toward the next rank if it happened on or after that Board of Review.',
+    run: rankPor.run
   }
 ] as const;
 
