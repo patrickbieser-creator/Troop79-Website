@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Session Summary — Attendance, Calendar &amp; Domain — Troop79-Website</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;700;900&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --nw-teal: #064347;
+      --nw-green: #88ac3e;
+      --nw-gold: #ddb027;
+      --nw-gray-dark: #4b4b4b;
+      --nw-gray-med: #7e7e7e;
+      --nw-pale-green: #e1e6d2;
+      --nw-gray-light: #e6e6e6;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Montserrat', Arial, sans-serif; font-size: 14px; color: var(--nw-gray-dark); background: var(--nw-pale-green); }
+    .header { background: var(--nw-teal); padding: 44px 80px; color: #fff; }
+    .header-inner { max-width: 860px; margin: 0 auto; }
+    .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.55); margin-bottom: 10px; }
+    .header h1 { font-size: 32px; font-weight: 500; line-height: 1.2; margin-bottom: 8px; }
+    .header-sub { font-size: 14px; font-weight: 300; color: rgba(255,255,255,.7); }
+    .stripe { background: var(--nw-gray-light); padding: 12px 80px; }
+    .stripe-inner { max-width: 860px; margin: 0 auto; display: flex; justify-content: space-between; font-size: 12px; color: var(--nw-gray-med); }
+    .stripe strong { color: var(--nw-gray-dark); }
+    .body { max-width: 860px; margin: 0 auto; padding: 44px 80px 72px; }
+    h2 { font-size: 17px; font-weight: 700; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); padding-bottom: 8px; margin: 36px 0 16px; }
+    h2:first-child { margin-top: 0; }
+    .metrics { display: flex; gap: 14px; flex-wrap: wrap; }
+    .metric { background: #fff; border: 1px solid var(--nw-gray-light); border-radius: 4px; padding: 14px 20px; min-width: 150px; }
+    .metric .num { font-size: 26px; font-weight: 700; color: var(--nw-teal); line-height: 1.1; }
+    .metric .lbl { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--nw-gray-med); margin-top: 4px; }
+    h3 { font-size: 13.5px; font-weight: 700; color: var(--nw-gray-dark); margin: 18px 0 8px; }
+    ul { margin: 0 0 12px 20px; line-height: 1.65; }
+    li { margin-bottom: 6px; }
+    p { line-height: 1.65; margin-bottom: 12px; }
+    code { font-family: Consolas, Menlo, monospace; font-size: 12px; background: #fff; border: 1px solid var(--nw-gray-light); padding: 1px 5px; border-radius: 3px; }
+    .decision { background: #fff; border: 1px solid var(--nw-gray-light); border-left: 4px solid var(--nw-green); border-radius: 4px; padding: 12px 16px; margin-bottom: 10px; }
+    .decision .id { font-weight: 700; color: var(--nw-teal); }
+    .live { background: var(--nw-teal); color: #fff; border-radius: 4px; padding: 16px 20px; margin-bottom: 20px; }
+    .live a { color: var(--nw-gold); font-weight: 700; text-decoration: none; }
+    .footer { max-width: 860px; margin: 0 auto; padding: 0 80px 48px; font-size: 11px; color: var(--nw-gray-med); }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-inner">
+      <div class="eyebrow">Session Summary &middot; Operator</div>
+      <h1>Meeting Attendance, Calendar Suite &amp; troop-79.com</h1>
+      <div class="header-sub">Troop79-Website &middot; July 12&ndash;13, 2026 &middot; session closed 7:15 AM CDT</div>
+    </div>
+  </div>
+  <div class="stripe">
+    <div class="stripe-inner">
+      <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Client: <strong>personal</strong></p>
+      <p>Milestone: <strong>v1.5.2 — Live at www.troop-79.com</strong></p>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="live">
+      🌐 <strong>The troop has a real address:</strong>
+      <a href="https://www.troop-79.com">www.troop-79.com</a> — domain + DNS on Cloudflare,
+      with three years of meeting attendance history now living in the live system.
+    </div>
+
+    <h2>Key Metrics</h2>
+    <div class="metrics">
+      <div class="metric"><div class="num">5</div><div class="lbl">Releases (v1.3.1–v1.5.2)</div></div>
+      <div class="metric"><div class="num">3</div><div class="lbl">DB migrations to prod</div></div>
+      <div class="metric"><div class="num">1,249</div><div class="lbl">Attendance check-ins imported</div></div>
+      <div class="metric"><div class="num">3</div><div class="lbl">Decisions recorded</div></div>
+      <div class="metric"><div class="num">1</div><div class="lbl">Live prod bug fixed</div></div>
+    </div>
+
+    <h2>What Was Accomplished</h2>
+
+    <h3>Meeting Attendance (v1.4.0)</h3>
+    <ul>
+      <li><strong>Roll Call</strong> per meeting: scout chips by patrol + leader chips, replace-on-save into the ledger (<code>meeting_attendance</code> kind) and a new leader-attendance table whose <code>committed</code> status is pre-built for future meeting-plan teaching signups. Admin-only — the public site provably ignores it.</li>
+      <li><strong>Attendance Report</strong>: per-scout attended / held / percentage over any date range; meetings list gained counts, filters, and pagination.</li>
+      <li><strong>Three years of history imported to production</strong>: 1,277 Google-Form check-in rows → 1,249 matched check-ins across 73 meetings via a tiered first-name matcher (same-date exclusion, per-name rulings, typo/nickname aliases, next-morning straggler folding). Also surfaced and flagged the <code>leaders.is_person</code> data quirk.</li>
+    </ul>
+
+    <h3>Calendar suite (v1.3.1, v1.5.0, v1.5.1)</h3>
+    <ul>
+      <li>Filter chips replaced by a right-aligned category pull-down + search with shareable URLs.</li>
+      <li><strong>CSV import</strong> from the Bugle Google Sheet with a review-before-write dialog: new / changed (per-field diff, Apply/Keep) / unchanged / possible-cancellations. Never deletes; idempotent; verified against the real sheet export.</li>
+      <li><strong>List view redesign</strong> (Brad consultation): month dividers, scannable date | title | time | location columns, Past slimmed, and a real bug fixed — multi-day entries finally honor <code>end_date</code>.</li>
+    </ul>
+
+    <h3>Domain &amp; fixes</h3>
+    <ul>
+      <li><strong>www.troop-79.com live</strong> (Cloudflare registrar + DNS, 1 year). Investigating the &ldquo;update the Vercel env var&rdquo; request exposed that production Subscribe links had shipped <code>localhost:3000</code> since launch — fixed with a canonical-domain code default, no env var needed.</li>
+      <li>About page gained Committee Chair Jack Kosmoski; Photos page dropped its duplicative &ldquo;Latest Albums&rdquo; strip (v1.5.2).</li>
+    </ul>
+
+    <h2>Decisions</h2>
+    <div class="decision"><span class="id">D-008</span> — Meeting attendance data model: ledger kind for scouts (date-coded, no FK), separate leader table with commitment status reserved, counts computed at read, <code>is_person</code> flag, public exclusion.</div>
+    <div class="decision"><span class="id">D-009</span> — Calendar CSV import reconcile model: date+title matching, review-before-write, never deletes, sheet-absent fields never overwritten.</div>
+    <div class="decision"><span class="id">D-010</span> — Canonical site URL defaults in code (www.troop-79.com), not a Vercel env var.</div>
+
+    <h2>Next Steps</h2>
+    <ul>
+      <li>Run the calendar CSV import on production (uncheck category rows where the DB is more precise than the sheet)</li>
+      <li>Bunny CDN credentials in Vercel — media uploads remain the only dark feature</li>
+      <li>Phase 4 per-user auth; Meeting Plan Phase 2/3 (leader-commitment schema already in place)</li>
+      <li>Retitle the ~10 non-Sunday imported draft meetings</li>
+    </ul>
+  </div>
+
+  <div class="footer">
+    <p>Generated by Operator &middot; Northwoods agent infrastructure &middot; Troop79-Website session, July 12&ndash;13, 2026</p>
+  </div>
+</body>
+</html>
