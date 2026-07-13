@@ -94,6 +94,18 @@ what both the script and the JSON mirror consume):
 - Admin pages read the DB per request — a browser refresh shows the new tree;
   no revalidation step is needed for script writes.
 
+## Known state (as of 2026-07-12)
+
+- **The full 64-badge catalog is populated.** The 52 badges beyond the list
+  below were bulk-loaded on 2026-07-12: current scouting.org text harvested
+  from the live browser DOM (fetched HTML serves a placeholder, and the
+  usscouts.org mirror proved stale for some badges — e.g. Chess 2013 vs
+  current), parsed by agents under this skill's rules, validated (1,304
+  nodes, zero ledger collisions), written to prod, and mirrored to
+  advancement.json. Venue stays the default 'either' for the new 52 — the
+  meeting-plan venue curation pass is still a later slice. `indian-lore`
+  carries the renamed American Indian Culture badge's current requirements.
+
 ## Known state (as of 2026-07-05)
 
 - Populated via this skill (condensed + mirrored to advancement.json):
