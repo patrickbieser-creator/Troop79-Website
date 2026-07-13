@@ -10,8 +10,51 @@ import styles from './events.module.css';
 
 type View = 'list' | 'month';
 
+const MONTH_FULL = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+const WEEKDAY_ABBR = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+/** "2026-07-19" → "SUN". Built from numeric parts via Date.UTC — never
+ *  string-parsed (the documented TZ off-by-one). */
+function weekdayAbbr(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return WEEKDAY_ABBR[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+}
+
+/** "2026-07-19" → "July 2026" (string math only). */
+function monthLabel(dateStr: string): string {
+  const [y, m] = dateStr.split('-').map(Number);
+  return `${MONTH_FULL[m - 1]} ${y}`;
+}
+
+/** Groups an already-sorted list into consecutive [month label, entries]
+ *  runs — computed per section AFTER filtering, so an empty month never
+ *  renders a stranded header. */
+function groupByMonth(list: CalendarEntryWithSlug[]): [string, CalendarEntryWithSlug[]][] {
+  const groups: [string, CalendarEntryWithSlug[]][] = [];
+  for (const e of list) {
+    const label = monthLabel(e.entry_date);
+    const last = groups[groups.length - 1];
+    if (last && last[0] === label) last[1].push(e);
+    else groups.push([label, [e]]);
+  }
+  return groups;
+}
+
+function timeCell(entry: CalendarEntryWithSlug): React.ReactNode {
+  if (!entry.start_time) return <span className={styles.metaEmpty}>&mdash;</span>;
+  return (
+    <>
+      {formatTimeOfDay(entry.start_time)}
+      {entry.end_time && <> &ndash; {formatTimeOfDay(entry.end_time)}</>}
+    </>
+  );
+}
+
 function EntryRow({ entry, past }: { entry: CalendarEntryWithSlug; past?: boolean }) {
-  const { month, day } = formatCalendarDateParts(entry.entry_date);
+  const { day } = formatCalendarDateParts(entry.entry_date);
   const color = CATEGORY_COLORS[entry.category];
   const title = entry.articleSlug ? (
     <Link href={`/news/${entry.articleSlug}`}>{entry.title}</Link>
@@ -19,11 +62,30 @@ function EntryRow({ entry, past }: { entry: CalendarEntryWithSlug; past?: boolea
     entry.title
   );
 
+  // Multi-day: same-month spans render as "9–11" in the date block; a span
+  // that crosses months keeps the start day in the block and spells the full
+  // range under the title instead.
+  let dayText = day;
+  let spanNote: string | null = null;
+  if (entry.end_date && entry.end_date !== entry.entry_date) {
+    const startParts = formatCalendarDateParts(entry.entry_date);
+    const endParts = formatCalendarDateParts(entry.end_date);
+    if (entry.end_date.slice(0, 7) === entry.entry_date.slice(0, 7)) {
+      dayText = `${day}–${endParts.day}`;
+    } else {
+      spanNote = `${startParts.month} ${startParts.day} – ${endParts.month} ${endParts.day}`;
+    }
+  }
+
+  const timeStr = entry.start_time
+    ? `${formatTimeOfDay(entry.start_time)}${entry.end_time ? ` – ${formatTimeOfDay(entry.end_time)}` : ''}`
+    : null;
+
   return (
     <li className={`${styles.item} ${past ? styles.pastItem : ''}`}>
       <div className={styles.dateBlock} style={past ? undefined : { background: color }}>
-        <div className={styles.eMonth}>{month}</div>
-        <div className={styles.eDay}>{day}</div>
+        <div className={styles.eWkd}>{weekdayAbbr(entry.entry_date)}</div>
+        <div className={`${styles.eDay} ${dayText.length > 2 ? styles.eDayRange : ''}`}>{dayText}</div>
       </div>
       <div className={styles.itemBody}>
         <p className={styles.itemTitle}>
@@ -32,16 +94,22 @@ function EntryRow({ entry, past }: { entry: CalendarEntryWithSlug; past?: boolea
         </p>
         <p className={styles.itemCategory} style={{ color }}>
           {entry.category}
+          {entry.articleSlug && (
+            <Link href={`/news/${entry.articleSlug}`} className={styles.readStory}>
+              Read the story &rarr;
+            </Link>
+          )}
         </p>
-        {entry.start_time && (
-          <p className={styles.itemMeta}>
-            {formatTimeOfDay(entry.start_time)}
-            {entry.end_time && <> &ndash; {formatTimeOfDay(entry.end_time)}</>}
-          </p>
-        )}
-        {entry.location && <p className={styles.itemMeta}>{entry.location}</p>}
-        {entry.description && <p className={styles.itemDesc}>{entry.description}</p>}
+        {spanNote && <p className={styles.spanNote}>{spanNote}</p>}
+        <p className={styles.mobileMeta}>
+          {[timeStr, entry.location].filter(Boolean).join(' · ') || '—'}
+        </p>
       </div>
+      <div className={styles.colTime}>{timeCell(entry)}</div>
+      <div className={styles.colLoc} title={entry.location ?? undefined}>
+        {entry.location || <span className={styles.metaEmpty}>&mdash;</span>}
+      </div>
+      {!past && entry.description && <p className={styles.itemDesc}>{entry.description}</p>}
     </li>
   );
 }
@@ -204,11 +272,19 @@ export function CalendarBrowser({
             {filtering ? 'No upcoming entries match that filter.' : 'Nothing on the calendar yet.'}
           </p>
         ) : (
-          <ul className={styles.list}>
-            {filteredUpcoming.map((entry) => (
-              <EntryRow key={entry.id} entry={entry} />
-            ))}
-          </ul>
+          groupByMonth(filteredUpcoming).map(([label, items]) => (
+            <section key={`u-${label}`} aria-label={label}>
+              <div className={styles.monthDivider}>
+                <span className={styles.monthLabel}>{label}</span>
+                <span className={styles.monthRule} aria-hidden="true" />
+              </div>
+              <ul className={styles.list}>
+                {items.map((entry) => (
+                  <EntryRow key={entry.id} entry={entry} />
+                ))}
+              </ul>
+            </section>
+          ))
         )}
 
         {filteredPast.length > 0 && (
@@ -217,11 +293,19 @@ export function CalendarBrowser({
               <span className={styles.divLabel}>Past</span>
               <span className={styles.divRule} aria-hidden="true" />
             </div>
-            <ul className={styles.list}>
-              {filteredPast.map((entry) => (
-                <EntryRow key={entry.id} entry={entry} past />
-              ))}
-            </ul>
+            {groupByMonth(filteredPast).map(([label, items]) => (
+              <section key={`p-${label}`} aria-label={`${label} (past)`}>
+                <div className={styles.monthDivider}>
+                  <span className={styles.monthLabel}>{label}</span>
+                  <span className={styles.monthRule} aria-hidden="true" />
+                </div>
+                <ul className={styles.list}>
+                  {items.map((entry) => (
+                    <EntryRow key={entry.id} entry={entry} past />
+                  ))}
+                </ul>
+              </section>
+            ))}
           </>
         )}
       </div>

@@ -11,25 +11,67 @@
 }
 .sectionDivider .divRule { flex: 1; height: 1px; background: var(--border-light); }
 
+/* Month dividers — a lighter wayfinding tier below the Upcoming/Past
+   section dividers (no colored border-left on purpose). */
+.monthDivider { display: flex; align-items: center; gap: 12px; margin: 20px 0 10px; }
+.monthDivider:first-child { margin-top: 4px; }
+.monthLabel {
+  font-family: var(--font-display); font-size: 14px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--navy); white-space: nowrap;
+}
+.monthRule { flex: 1; height: 1px; background: var(--border-light); }
+
 .list { list-style: none; border: 1px solid var(--border-light); background: var(--warm-white); }
-.item { display: flex; gap: 16px; align-items: flex-start; padding: 16px 20px; border-bottom: 1px solid var(--border-light); }
+
+/* Scannable columns: date | title+category | time | location, with an
+   optional full-width description line beneath (grid row 2). Most rows have
+   no description, so they stay one line tall — that's the density win. */
+.item {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) 150px 220px;
+  column-gap: 16px;
+  align-items: start;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border-light);
+}
 .item:last-child { border-bottom: none; }
 .item:hover { background: var(--newsprint); }
-.dateBlock { flex-shrink: 0; background: var(--navy); color: #fff; text-align: center; padding: 6px 10px 8px; border-radius: 2px; min-width: 58px; }
-.dateBlock .eMonth { font-family: var(--font-ui); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
-.dateBlock .eDay { font-family: var(--font-display); font-size: 24px; font-weight: 700; line-height: 1.1; }
-.itemBody { flex: 1; }
-.itemTitle { font-family: var(--font-display); font-size: 17px; font-weight: 700; color: var(--text-head); margin-bottom: 3px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dateBlock { background: var(--navy); color: #fff; text-align: center; padding: 4px 6px 6px; border-radius: 2px; }
+.dateBlock .eWkd { font-family: var(--font-ui); font-size: 9px; font-weight: 700; letter-spacing: .1em; opacity: .8; }
+.dateBlock .eDay { font-family: var(--font-display); font-size: 21px; font-weight: 700; line-height: 1.15; }
+.dateBlock .eDayRange { font-size: 15px; padding-top: 3px; }
+.itemBody { min-width: 0; }
+.itemTitle { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--text-head); margin-bottom: 2px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; line-height: 1.3; }
 .itemTitle a:hover { color: var(--navy); }
 .dayNote {
   font-family: var(--font-ui); font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
   color: var(--text-meta); background: var(--newsprint); border: 1px solid var(--border-light); border-radius: 999px; padding: 2px 8px;
 }
-.itemCategory { font-family: var(--font-ui); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 4px; }
-.itemMeta { font-family: var(--font-ui); font-size: 12px; color: var(--text-meta); }
-.itemDesc { font-family: var(--font-body); font-size: 13px; color: var(--text-body); margin-top: 4px; }
+.itemCategory { font-family: var(--font-ui); font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.readStory { margin-left: 10px; }
+.readStory:hover { text-decoration: underline; }
+.spanNote { font-family: var(--font-ui); font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--text-meta); margin-top: 2px; }
+.colTime { font-family: var(--font-ui); font-size: 12px; color: var(--text-body); padding-top: 4px; white-space: nowrap; }
+.colLoc {
+  font-family: var(--font-ui); font-size: 12px; color: var(--text-meta); padding-top: 4px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.metaEmpty { color: var(--border-mid); }
+.mobileMeta { display: none; }
+.itemDesc { grid-column: 2 / -1; font-family: var(--font-body); font-size: 13px; color: var(--text-body); margin-top: 4px; line-height: 1.5; }
 .pastItem { opacity: .7; }
 .pastItem .dateBlock { background: var(--border-mid); }
+
+@media (max-width: 860px) {
+  .item { grid-template-columns: 60px minmax(0, 1fr) 110px 150px; }
+}
+
+@media (max-width: 640px) {
+  .item { grid-template-columns: 56px minmax(0, 1fr); }
+  .colTime, .colLoc { display: none; }
+  .mobileMeta { display: block; font-family: var(--font-ui); font-size: 12px; color: var(--text-meta); margin-top: 3px; }
+  .itemDesc { grid-column: 2; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+}
 
 .empty { padding: 40px 20px; text-align: center; color: var(--text-meta); font-family: var(--font-body); font-style: italic; }
 
