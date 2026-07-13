@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
-import { createScout, updateScout } from './actions';
+import { createScout, promoteScoutToAdult, updateScout } from './actions';
 import { INACTIVE_REASON_LABEL, type InactiveReason } from '@/lib/supabase/types';
 import { useLookupTable } from './use-lookup-table';
 import styles from './lookups.module.css';
@@ -541,6 +541,46 @@ function ScoutForm({
       {err && <div className={styles.editError}>{err}</div>}
 
       <div className={styles.editActions}>
+        {!isNew && row?.active && (
+          <button
+            type="button"
+            className={styles.editBtn}
+            style={{ marginRight: 'auto' }}
+            disabled={isPending}
+            onClick={() => {
+              if (
+                !window.confirm(
+                  `Promote ${row.display_name} to adult (turned 18)?
+
+` +
+                    `• Scout record becomes Inactive (Aged out) — ledger history and clipboard are preserved
+` +
+                    `• Their sign-off initials become an ADULT leader (created if they don't have initials yet)
+` +
+                    `• They leave scout rosters, Fast Entry, and Meeting Plan suggestions
+
+` +
+                    `Record any outstanding requirement sign-offs (e.g. Eagle BoR) BEFORE promoting.`
+                )
+              ) {
+                return;
+              }
+              setErr(null);
+              const fd = new FormData();
+              fd.set('scout_id', row.id);
+              startTransition(async () => {
+                const res = await promoteScoutToAdult(fd);
+                if (!res.ok) {
+                  setErr(res.error ?? 'Promotion failed');
+                  return;
+                }
+                onClose();
+              });
+            }}
+          >
+            Promote to adult (18+)
+          </button>
+        )}
         <button
           type="button"
           className={styles.editBtn}

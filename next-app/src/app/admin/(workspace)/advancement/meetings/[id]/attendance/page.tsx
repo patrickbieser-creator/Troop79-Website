@@ -37,7 +37,7 @@ export default async function RollCallPage({ params }: { params: Promise<{ id: s
         .select('id, display_name, patrol')
         .eq('active', true)
         .order('display_name'),
-      supabase.from('leaders').select('code, name').eq('is_person', true).order('name'),
+      supabase.from('leaders').select('code, name, scout_id').eq('is_person', true).order('name'),
       supabase
         .from('ledger_active')
         .select('scout_id')
@@ -59,9 +59,11 @@ export default async function RollCallPage({ params }: { params: Promise<{ id: s
     <RollCall
       meeting={meeting as Meeting}
       scouts={(scouts ?? []) as RollCallScout[]}
-      leaders={((leaders ?? []) as { code: string; name: string }[]).map(
-        (l): RollCallLeader => ({ ...l, committed: committed.has(l.code) })
-      )}
+      leaders={((leaders ?? []) as { code: string; name: string; scout_id: string | null }[])
+        // Youth leaders (initials of an ACTIVE scout) are already on the
+        // scout list — listing them here too would double-count them.
+        .filter((l) => !(l.scout_id && (scouts ?? []).some((s) => s.id === l.scout_id)))
+        .map(({ code, name }): RollCallLeader => ({ code, name, committed: committed.has(code) }))}
       initialScoutIds={(scoutRows ?? []).map((r) => r.scout_id as string)}
       initialLeaderCodes={attended}
     />

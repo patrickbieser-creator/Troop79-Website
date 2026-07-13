@@ -66,7 +66,7 @@ export async function loadEngineInput(meetingDate: string, title: string): Promi
         .range(from, to)
     ),
     supabase.from('skills').select('id, name, youth_teachable, sort_order').order('sort_order'),
-    supabase.from('leaders').select('code, name, role'),
+    supabase.from('leaders').select('code, name, role, is_person, scout_id'),
     supabase.from('leader_skills').select('leader_code, skill_id'),
     supabase.from('merit_badge_counselors').select('mb_id, leader_code'),
     supabase.from('scout_instructors').select('scout_id, skill_id')
@@ -87,6 +87,16 @@ export async function loadEngineInput(meetingDate: string, title: string): Promi
     return { ok: false, error: firstError.message };
   }
 
+  // The engine's leader pool is ADULTS: exclude non-person sign-off sources
+  // (Camp, Clinic, ...) and youth leaders — initials linked to an ACTIVE
+  // scout. Once that scout ages out, the same initials rejoin this pool.
+  const activeScoutIds = new Set(((scoutsRes.data ?? []) as { id: string }[]).map((s) => s.id));
+  const adultLeaders = (
+    (leadersRes.data ?? []) as { code: string; name: string; role: string | null; is_person: boolean; scout_id: string | null }[]
+  )
+    .filter((l) => l.is_person && !(l.scout_id && activeScoutIds.has(l.scout_id)))
+    .map(({ code, name, role }) => ({ code, name, role }));
+
   const input: EngineInput = {
     meetingDate,
     title,
@@ -100,7 +110,7 @@ export async function loadEngineInput(meetingDate: string, title: string): Promi
     rankReqLedger: rankReqLedgerRows,
     mbReqLedger: mbReqLedgerRows,
     skills: (skillsRes.data ?? []) as Skill[],
-    leaders: (leadersRes.data ?? []) as EngineInput['leaders'],
+    leaders: adultLeaders as EngineInput['leaders'],
     leaderSkills: (leaderSkillsRes.data ?? []) as EngineInput['leaderSkills'],
     counselors: (counselorsRes.data ?? []) as EngineInput['counselors'],
     scoutInstructors: (scoutInstructorsRes.data ?? []) as EngineInput['scoutInstructors']

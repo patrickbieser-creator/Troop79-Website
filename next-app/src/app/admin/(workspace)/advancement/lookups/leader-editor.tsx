@@ -5,10 +5,14 @@ import { createLeader, deleteLeader, updateLeader } from './actions';
 import { useLookupTable } from './use-lookup-table';
 import styles from './lookups.module.css';
 
+export type LeaderType = 'adult' | 'youth' | 'source';
+
 export interface LeaderRow {
   code: string;
   name: string;
   role: string | null;
+  is_person: boolean;
+  scout_id: string | null;
   address_line1: string | null;
   address_line2: string | null;
   city: string | null;
@@ -21,9 +25,17 @@ export interface LeaderRow {
 
 interface Props {
   rows: LeaderRow[];
+  /** adult | youth (initials of an active scout) | source (Camp, Clinic, …). */
+  typeByCode: Record<string, LeaderType>;
 }
 
-export function LeaderEditor({ rows }: Props) {
+const TYPE_LABEL: Record<LeaderType, string> = {
+  adult: 'Adult',
+  youth: 'Youth',
+  source: 'Source'
+};
+
+export function LeaderEditor({ rows, typeByCode }: Props) {
   const [openFor, setOpenFor] = useState<LeaderRow | 'new' | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [busyCode, setBusyCode] = useState<string | null>(null);
@@ -77,6 +89,7 @@ export function LeaderEditor({ rows }: Props) {
           <tr>
             <th>Initials</th>
             <th>Name</th>
+            <th>Type</th>
             <th>Role</th>
             <th>Contact</th>
             <th style={{ textAlign: 'right' }}>Actions</th>
@@ -91,6 +104,19 @@ export function LeaderEditor({ rows }: Props) {
                 {rowErr?.code === l.code && (
                   <span className={styles.rowError}>{rowErr.msg}</span>
                 )}
+              </td>
+              <td>
+                <span
+                  className={`${styles.tag} ${
+                    typeByCode[l.code] === 'youth'
+                      ? styles.tagMb
+                      : typeByCode[l.code] === 'source'
+                        ? ''
+                        : styles.tagRank
+                  }`}
+                >
+                  {TYPE_LABEL[typeByCode[l.code] ?? 'adult']}
+                </span>
               </td>
               <td>{l.role ?? <span className={styles.muted}>—</span>}</td>
               <td className={styles.contactCell}>

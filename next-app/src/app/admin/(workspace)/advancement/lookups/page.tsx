@@ -257,13 +257,22 @@ export default async function LookupsPage() {
   } = await loadLookups();
   const leadersLite = leaders.map((l) => ({ code: l.code, name: l.name }));
 
-  // Skill-assignment rows (Meeting Plan)
-  const leaderPeople: AssignPerson[] = leaders.map((l) => ({
-    key: l.code,
-    name: l.name,
-    sub: l.role ?? null,
-    skillIds: skillIdsByLeader.get(l.code) ?? []
-  }));
+  // Classify sign-off initials: youth = linked to an ACTIVE scout; aging out
+  // (scout inactive) automatically flips those initials to adult.
+  const activeScoutIds = new Set(scouts.filter((s) => s.active).map((s) => s.id));
+  const leaderType = (l: LeaderRow): 'adult' | 'youth' | 'source' =>
+    !l.is_person ? 'source' : l.scout_id && activeScoutIds.has(l.scout_id) ? 'youth' : 'adult';
+
+  // Skill-assignment rows (Meeting Plan): ADULTS only — the engine schedules
+  // anyone here as an adult teacher, including adults-only skills.
+  const leaderPeople: AssignPerson[] = leaders
+    .filter((l) => leaderType(l) === 'adult')
+    .map((l) => ({
+      key: l.code,
+      name: l.name,
+      sub: l.role ?? null,
+      skillIds: skillIdsByLeader.get(l.code) ?? []
+    }));
   const rankSort = new Map(ranksFull.map((r) => [r.id, r.sort_order]));
   const rankName = new Map(ranksFull.map((r) => [r.id, r.display_name]));
   const starSort = rankSort.get('star') ?? Number.MAX_SAFE_INTEGER;
@@ -301,9 +310,12 @@ export default async function LookupsPage() {
 
         <Card
           title="Sign-off Initials"
-          sub={`${leaders.length} sign-off sources — adult leaders, youth leaders (also on the scout roster, e.g. JPII), and record sources like Camp, Clinic, and Prior Troop`}
+          sub={`${leaders.length} sign-off sources — adult leaders, youth leaders (initials of an active scout), and record sources like Camp, Clinic, and Prior Troop. When a scout ages out, their initials automatically become Adult.`}
         >
-          <LeaderEditor rows={leaders} />
+          <LeaderEditor
+            rows={leaders}
+            typeByCode={Object.fromEntries(leaders.map((l) => [l.code, leaderType(l)]))}
+          />
         </Card>
       </div>
 
@@ -382,7 +394,7 @@ export default async function LookupsPage() {
       <div className={styles.grid}>
         <Card
           title="Leader Skills"
-          sub="What each leader can teach — the Meeting Plan matches these to requirement skills when it fills the Teaching slot. NOTE: this list currently includes youth-leader initials and record sources (Camp, Clinic, …); the Meeting Plan treats anyone here as an adult teacher, so only assign skills to actual adults until the sign-off table distinguishes them."
+          sub="What each ADULT can teach — the Meeting Plan matches these to requirement skills when it fills the Teaching slot. Youth-leader initials and record sources are excluded; scouts teach via Scout Instructors instead."
         >
           <SkillAssignEditor
             people={leaderPeople}

@@ -818,3 +818,72 @@ export async function setScoutInstructorSkills(formData: FormData): Promise<Resu
   revalidatePath('/admin/advancement/meeting-plan');
   return { ok: true };
 }
+
+/**
+ * Promotes a scout who has turned 18 to adult status (Patrick, 2026-07-12).
+ *
+ * One source of truth, no age flag: a youth leader is a `leaders` row whose
+ * scout_id points at an ACTIVE scout. Promotion therefore just (1) marks the
+ * scout inactive with reason 'aged_out' (ledger history and clipboard are
+ * preserved), and (2) ensures a linked leaders row exists so their initials
+ * keep working for sign-offs — which now count as an ADULT everywhere (Leader
+ * Skills picker, Meeting Plan teacher pool, leader Roll Call).
+ *
+ * Caveat surfaced in the UI: Fast Entry lists active scouts only, so record
+ * any outstanding requirement sign-offs (e.g. an Eagle Board of Review still
+ * inside the six-month window) BEFORE promoting, or temporarily re-activate.
+ */
+export async function promoteScoutToAdult(formData: FormData): Promise<Result> {
+  try {
+    await ensureLeader();
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  const scoutId = String(formData.get('scout_id') ?? '').trim();
+  if (!scoutId) return { ok: false, error: 'Missing scout id.' };
+
+  const supabase = createAdminClient();
+  const { data: scout, error: scoutErr } = await supabase
+    .from('scouts')
+    .select('id, display_name, first_name, last_name, active')
+    .eq('id', scoutId)
+    .maybeSingle();
+  if (scoutErr) return { ok: false, error: scoutErr.message };
+  if (!scout) return { ok: false, error: 'Scout not found.' };
+
+  // 1. Age the scout out (idempotent).
+  const { error: updErr } = await supabase
+    .from('scouts')
+    .update({ active: false, inactive_reason: 'aged_out' })
+    .eq('id', scoutId);
+  if (updErr) return { ok: false, error: updErr.message };
+
+  // 2. Ensure a linked leaders row so their initials exist as an adult.
+  const { data: linked } = await supabase
+    .from('leaders')
+    .select('code')
+    .eq('scout_id', scoutId)
+    .maybeSingle();
+  let leaderCode = linked?.code as string | undefined;
+
+  if (!leaderCode) {
+    const base = (
+      (scout.first_name?.[0] ?? '') + (scout.last_name?.[0] ?? '')
+    ).toUpperCase() || scoutId.toUpperCase();
+    const { data: existing } = await supabase.from('leaders').select('code');
+    const taken = new Set((existing ?? []).map((r) => r.code as string));
+    let candidate = base;
+    for (let n = 2; taken.has(candidate); n++) candidate = `${base}${n}`;
+    leaderCode = candidate;
+    const { error: insErr } = await supabase.from('leaders').insert({
+      code: candidate,
+      name: scout.display_name,
+      is_person: true,
+      scout_id: scoutId
+    });
+    if (insErr) return { ok: false, error: insErr.message };
+  }
+
+  revalidateAll();
+  return { ok: true };
+}

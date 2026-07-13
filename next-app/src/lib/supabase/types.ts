@@ -98,6 +98,10 @@ export interface Leader {
   /** false for sign-off *sources* imported from the spreadsheet ("Turner
    *  Hall", "Council Clinic", ...) — Roll Call lists people only. */
   is_person: boolean;
+  /** Set when these initials belong to a scout (youth leader). Youth =
+   *  scout_id set AND that scout is active; once the scout ages out
+   *  (inactive, 'aged_out') the same initials count as an adult. */
+  scout_id: string | null;
   address_line1: string | null;
   address_line2: string | null;
   city: string | null;
