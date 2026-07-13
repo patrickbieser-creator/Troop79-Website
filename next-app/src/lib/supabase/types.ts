@@ -14,7 +14,8 @@ export type LedgerKind =
   | 'day_outing'
   | 'fundraiser'
   | 'leadership'
-  | 'award';
+  | 'award'
+  | 'meeting_attendance';
 
 export interface MeritBadge {
   id: string;
@@ -94,6 +95,9 @@ export interface Leader {
   code: string;
   name: string;
   role: string | null;
+  /** false for sign-off *sources* imported from the spreadsheet ("Turner
+   *  Hall", "Council Clinic", ...) — Roll Call lists people only. */
+  is_person: boolean;
   address_line1: string | null;
   address_line2: string | null;
   city: string | null;
@@ -239,6 +243,20 @@ export interface Meeting {
   archived_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/** Leader-side meeting attendance (scouts live in ledger_entries with
+ *  kind='meeting_attendance', code='MTG:<date>'). status 'committed' is
+ *  reserved for the future meeting-plan signup flow (optionally with the
+ *  skill the leader commits to teach); Roll Call writes 'attended'. */
+export interface MeetingAttendanceLeader {
+  id: number;
+  meeting_date: string;
+  leader_code: string;
+  status: 'committed' | 'attended';
+  skill_id: string | null;
+  note: string | null;
+  created_at: string;
 }
 
 export interface SessionRequirementRef {

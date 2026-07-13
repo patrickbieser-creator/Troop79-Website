@@ -28,8 +28,23 @@ async function loadMeetings(): Promise<Meeting[]> {
   return (data ?? []) as Meeting[];
 }
 
+/** meeting_date → "scouts + leaders" attendance counts (see the
+ *  meeting_attendance_counts view — computed, never stored). */
+async function loadAttendanceCounts(): Promise<Record<string, { scouts: number; leaders: number }>> {
+  const supabase = createAdminClient();
+  const { data } = await supabase.from('meeting_attendance_counts').select('*');
+  const out: Record<string, { scouts: number; leaders: number }> = {};
+  for (const row of data ?? []) {
+    out[row.meeting_date as string] = {
+      scouts: (row.scout_count as number) ?? 0,
+      leaders: (row.leader_count as number) ?? 0
+    };
+  }
+  return out;
+}
+
 export default async function MeetingsAdminPage() {
-  const meetings = await loadMeetings();
+  const [meetings, attendance] = await Promise.all([loadMeetings(), loadAttendanceCounts()]);
 
   return (
     <>
@@ -44,6 +59,7 @@ export default async function MeetingsAdminPage() {
 
       <MeetingsList
         rows={meetings}
+        attendance={attendance}
         defaultDate={nextSunday()}
         onCreate={createMeeting}
         onDelete={deleteMeeting}

@@ -12,6 +12,7 @@
     "import-spreadsheet": "tsx --env-file=.env.local scripts/import-spreadsheet.ts",
     "set-mb-reqs": "tsx --env-file=.env.local scripts/set-mb-requirements.ts",
     "import-ledger-backfill": "tsx --env-file=.env.local scripts/import-ledger-backfill.ts",
+    "import-attendance": "tsx --env-file=.env.local scripts/import-attendance.ts",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "supabase:reset": "supabase db reset"

@@ -497,6 +497,37 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.4.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.4.0</span>
+        <span class="release-date">July 12, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Meeting Attendance</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Roll Call</strong> &mdash; every meeting in the admin Meetings list gains a Roll Call screen: checkbox chips for scouts (grouped by patrol) and adult leaders, All/None shortcuts, an optional &ldquo;recorded by,&rdquo; and replace-on-save semantics (unchecking soft-deletes the ledger row, recoverable via Show Hidden). Scout attendance is a new <code>meeting_attendance</code> ledger kind (code <code>MTG:&lt;date&gt;</code>); leader attendance lives in a new <code>meeting_attendance_leaders</code> table whose <code>committed</code> status is reserved for future meeting-plan teaching signups. Attendance is admin-only &mdash; the public site and the roster&rsquo;s last-activity date ignore it entirely.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Meetings list grows up</strong> &mdash; attendance count column (scouts + leaders, computed from a view, never stored), search, year and status filters, date-sort toggle, and pagination, built for a couple hundred historical meetings. Plus an <strong>Attendance Report</strong>: per-scout attended / held / percentage over any date range, where &ldquo;held&rdquo; counts only meetings with roll call actually taken.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Three years of history imported</strong> &mdash; a Google Forms attendance export (1,277 check-in rows since July 2023) was matched against the roster and loaded as 1,248 check-ins across 73 meetings, auto-created as drafts. The importer (<code>npm run import-attendance</code>) handles first-name-only check-ins with a tiered matcher (exact &rarr; unique first name &rarr; first + last initial), same-date exclusion for shared first names, typo/nickname aliases, next-morning straggler folding, and is fully idempotent.
+              <span class="change-note">Also new: <code>leaders.is_person</code> distinguishes real adults from imported sign-off sources (&ldquo;Turner Hall,&rdquo; &ldquo;Council Clinic&rdquo;), so Roll Call lists people only.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.3.1 -->
     <div class="release">
       <div class="release-header">

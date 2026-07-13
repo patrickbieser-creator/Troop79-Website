@@ -27,7 +27,8 @@ const KIND_OPTIONS: { value: LedgerKind; label: string }[] = [
   { value: 'day_outing', label: 'Day Outing' },
   { value: 'fundraiser', label: 'Fundraiser' },
   { value: 'leadership', label: 'Leadership' },
-  { value: 'award', label: 'Other award' }
+  { value: 'award', label: 'Other award' },
+  { value: 'meeting_attendance', label: 'Meeting attendance' }
 ];
 
 export function RowActions({ row, scouts, leaders }: Props) {

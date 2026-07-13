@@ -63,7 +63,8 @@ const KIND_PRETTY: Record<LedgerKind, string> = {
   day_outing: 'Day Outing',
   fundraiser: 'Fundraiser',
   leadership: 'Leader',
-  award: 'Award'
+  award: 'Award',
+  meeting_attendance: 'Meeting'
 };
 
 export const metadata = {

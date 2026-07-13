@@ -129,6 +129,31 @@
 .candidateAdded { font-size: 10.5px; font-weight: 700; color: var(--admin-forest); }
 .eagleTag { color: #8a6d1a; font-weight: 700; }
 
+/* ── roll call ─────────────────────────────────────────────────────────── */
+
+.rollPatrol { margin-bottom: 12px; }
+.rollPatrol:last-child { margin-bottom: 0; }
+.rollPatrolName {
+  font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--admin-gray-500); margin-bottom: 6px;
+}
+.rollGrid { display: flex; flex-wrap: wrap; gap: 6px; }
+.rollChip {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px;
+  color: var(--admin-gray-700); background: var(--admin-gray-50);
+  border: 1px solid var(--admin-gray-300); border-radius: 14px;
+  padding: 5px 12px; cursor: pointer; user-select: none;
+}
+.rollChip input { accent-color: var(--admin-forest); cursor: pointer; }
+.rollChip:hover { border-color: var(--admin-forest); }
+.rollChipOn {
+  background: #e5efe4; border-color: var(--admin-forest); color: var(--admin-forest); font-weight: 600;
+}
+.rollCommitted {
+  font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: #8a6d1a; background: #f6edd4; border-radius: 8px; padding: 1px 6px;
+}
+
 .editError {
   margin-top: 8px; padding: 8px 12px; background: #fdf0ef; border: 1px solid #e8c4c0;
   color: var(--admin-danger); border-radius: 3px; font-size: 12px;

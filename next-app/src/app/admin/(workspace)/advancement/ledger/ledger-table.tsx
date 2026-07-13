@@ -37,7 +37,8 @@ const KIND_LABEL: Record<LedgerKind, string> = {
   day_outing: 'Day Outing',
   fundraiser: 'Fundraiser',
   leadership: 'Leadership',
-  award: 'Award'
+  award: 'Award',
+  meeting_attendance: 'Meeting'
 };
 const KIND_CLASS: Record<LedgerKind, string> = {
   rank_requirement: styles.kindRankReq,
@@ -50,7 +51,8 @@ const KIND_CLASS: Record<LedgerKind, string> = {
   day_outing: styles.kindDayOuting,
   fundraiser: styles.kindFundraiser,
   leadership: styles.kindLeadership,
-  award: styles.kindMbAward
+  award: styles.kindMbAward,
+  meeting_attendance: styles.kindService
 };
 
 function urlWith(base: SearchParams, overrides: Partial<SearchParams>): string {
