@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Session Summary — Demographics, MB Catalog &amp; Youth Leaders — Troop79-Website</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;700;900&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --nw-teal: #064347;
+      --nw-green: #88ac3e;
+      --nw-gold: #ddb027;
+      --nw-rust: #a95b28;
+      --nw-gray-dark: #4b4b4b;
+      --nw-gray-med: #7e7e7e;
+      --nw-pale-green: #e1e6d2;
+      --nw-gray-light: #e6e6e6;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Montserrat', Arial, sans-serif; font-size: 14px; color: var(--nw-gray-dark); background: var(--nw-pale-green); }
+    .header { background: var(--nw-teal); padding: 44px 80px; color: #fff; }
+    .header-inner { max-width: 860px; margin: 0 auto; }
+    .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.55); margin-bottom: 10px; }
+    .header h1 { font-size: 32px; font-weight: 500; line-height: 1.2; margin-bottom: 8px; }
+    .header-sub { font-size: 14px; font-weight: 300; color: rgba(255,255,255,.7); }
+    .stripe { background: var(--nw-gray-light); padding: 12px 80px; }
+    .stripe-inner { max-width: 860px; margin: 0 auto; display: flex; justify-content: space-between; font-size: 12px; color: var(--nw-gray-med); }
+    .stripe strong { color: var(--nw-gray-dark); }
+    .body { max-width: 860px; margin: 0 auto; padding: 44px 80px 72px; }
+    h2 { font-size: 17px; font-weight: 700; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); padding-bottom: 8px; margin: 36px 0 16px; }
+    h2:first-child { margin-top: 0; }
+    .metrics { display: flex; gap: 14px; flex-wrap: wrap; }
+    .metric { background: #fff; border: 1px solid var(--nw-gray-light); border-radius: 4px; padding: 14px 20px; min-width: 150px; }
+    .metric .num { font-size: 26px; font-weight: 700; color: var(--nw-teal); line-height: 1.1; }
+    .metric .lbl { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--nw-gray-med); margin-top: 4px; }
+    h3 { font-size: 13.5px; font-weight: 700; color: var(--nw-gray-dark); margin: 18px 0 8px; }
+    ul { margin: 0 0 12px 20px; line-height: 1.65; }
+    li { margin-bottom: 6px; }
+    p { line-height: 1.65; margin-bottom: 12px; }
+    code { font-family: Consolas, Menlo, monospace; font-size: 12px; background: #fff; border: 1px solid var(--nw-gray-light); padding: 1px 5px; border-radius: 3px; }
+    .decision { background: #fff; border: 1px solid var(--nw-gray-light); border-left: 4px solid var(--nw-green); border-radius: 4px; padding: 12px 16px; margin-bottom: 10px; }
+    .decision .id { font-weight: 700; color: var(--nw-teal); }
+    .footer { max-width: 860px; margin: 0 auto; padding: 0 80px 48px; font-size: 11px; color: var(--nw-gray-med); }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-inner">
+      <div class="eyebrow">Session Summary &middot; Operator</div>
+      <h1>Demographics, Full MB Catalog &amp; Youth-Leader Promotion</h1>
+      <div class="header-sub">Troop79-Website &middot; July 12&ndash;13, 2026 (session closed 7:35 AM CDT July 13)</div>
+    </div>
+  </div>
+  <div class="stripe">
+    <div class="stripe-inner">
+      <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Client: <strong>personal</strong></p>
+      <p>Milestone: <strong>v1.6 &mdash; live at www.troop-79.com</strong></p>
+    </div>
+  </div>
+
+  <div class="body">
+    <h2>Key Metrics</h2>
+    <div class="metrics">
+      <div class="metric"><div class="num">3</div><div class="lbl">Features shipped</div></div>
+      <div class="metric"><div class="num">52</div><div class="lbl">MB trees loaded</div></div>
+      <div class="metric"><div class="num">1,304</div><div class="lbl">Requirement nodes</div></div>
+      <div class="metric"><div class="num">4</div><div class="lbl">Decisions recorded</div></div>
+      <div class="metric"><div class="num">4</div><div class="lbl">Prod migrations</div></div>
+      <div class="metric"><div class="num">2</div><div class="lbl">Scouts promoted / fixed</div></div>
+    </div>
+
+    <h2>What Was Accomplished</h2>
+
+    <h3>Meetings &amp; Photos features (v1.2&ndash;v1.3, with Brad)</h3>
+    <ul>
+      <li><strong>Meetings:</strong> public <code>/meetings</code> (this-week agenda + browsable archive) and an admin editor whose candidate tray promotes Meeting Plan suggestions into editable agenda sessions &mdash; the plan advises, the leader decides. Contact phones are members-only.</li>
+      <li><strong>Photos:</strong> public <code>/photos</code> index of the troop&rsquo;s Google Photos albums (year groups, dropdown filters + search top-right per Patrick&rsquo;s revision of Brad&rsquo;s prototype, shareable filter URLs) with admin CRUD and media-library covers.</li>
+    </ul>
+
+    <h3>Advancement correctness</h3>
+    <ul>
+      <li><strong>Boards of Review now promote automatically</strong> (DB trigger) &mdash; Hazel Stollenwerk&rsquo;s completed Star BoR was displaying as First Class; the backfill promoted her instantly and no future BoR can be forgotten.</li>
+      <li><strong>All 64 merit badges now have requirement trees.</strong> The 52 missing were harvested from live scouting.org pages (the usscouts.org mirror proved stale &mdash; e.g. Chess 2013 vs current), parsed to the condensed house format by four agents, validated (zero ledger collisions), loaded to prod, and mirrored to <code>advancement.json</code>.</li>
+      <li>Launch-night sequence gap fixed (duplicate-key upload errors); media uploads now land at the CDN root with readable slugified names.</li>
+    </ul>
+
+    <h3>People model: youth leaders, promotion &amp; demographics (v1.6)</h3>
+    <ul>
+      <li><strong>Sign-off initials classified:</strong> <code>leaders.scout_id</code> links the 7 youth-leader codes to their scouts. Youth/adult/source status is derived everywhere &mdash; Jack Porter can no longer appear as an adult teacher, and Roll Call no longer double-counts youths.</li>
+      <li><strong>Promote to adult (18+):</strong> one button ages a scout out and flips their initials to adult across every pool. Maya Sankpal-Tatera (18 on June 2) promoted in production.</li>
+      <li><strong>Demographics:</strong> birthdates (all people), gender/school/grade/swim class (scouts), BSA ID + YPT (adults). Age, grade (Aug-1 rollover from stored class year), and YPT status (2-year cert, 60-day warning) are always derived, never stored. No medical data.</li>
+      <li><strong>Roster report</strong> (Records &rarr; Roster, leader-role only): full scout + adult tables, YPT badges, print button, and a &ldquo;turning 18 soon&rdquo; callout.</li>
+    </ul>
+
+    <h3>Admin quality of life</h3>
+    <ul>
+      <li>Lookups tables: 15-row windowing, per-card Expand to full width, automatic search on 50+ row tables (Requirement Codes went from a hard first-50 cap to 659 searchable).</li>
+      <li>Copy corrections: Mindy Stollenwerk is Scoutmaster; Patrick Bieser and Jason Porter are ASMs &mdash; site, seed data, and prod DB. Invisible-ink BSA IDs on public clipboards (highlight to reveal). Merit Badges tab folded into Advancement.</li>
+    </ul>
+
+    <h2>Decisions</h2>
+    <div class="decision"><span class="id">D-011</span> &mdash; Meetings: the Plan feeds the Agenda; sessions are first-class rows (groundwork for Phase-3 signups).</div>
+    <div class="decision"><span class="id">D-012</span> &mdash; A Board of Review auto-confers the rank award via DB trigger; the award row remains the single promotion signal.</div>
+    <div class="decision"><span class="id">D-013</span> &mdash; Youth leaders derived via <code>leaders.scout_id</code> + scout active status; promotion to adult = aging the scout out.</div>
+    <div class="decision"><span class="id">D-014</span> &mdash; Demographics store facts (birthdate, class year, YPT date); age, grade, and cert status are always derived.</div>
+
+    <h2>Next Steps</h2>
+    <ul>
+      <li>Backfill demographics (Scoutbook CSV import offer stands) and the ~55 historical photo albums.</li>
+      <li>Assign Maya&rsquo;s adult Leader Skills; venue-curate the 52 new MB trees; trim long option-style labels.</li>
+      <li>Bunny CDN credentials in Vercel; production calendar CSV import; Phase 4 per-user auth.</li>
+    </ul>
+  </div>
+
+  <div class="footer">
+    Generated by Operator &middot; Northwoods session tooling &middot; July 13, 2026
+  </div>
+</body>
+</html>
