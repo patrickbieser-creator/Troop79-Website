@@ -8,7 +8,6 @@ const LINKS: { href: string; label: string }[] = [
   { href: '/meetings', label: 'Meetings' },
   { href: '/events', label: 'Calendar' },
   { href: '/advancement', label: 'Advancement' },
-  { href: '/merit-badges', label: 'Merit Badges' },
   { href: '/about', label: 'About' }
 ];
 
