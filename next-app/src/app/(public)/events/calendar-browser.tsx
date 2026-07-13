@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { CalendarCategory } from '@/lib/supabase/types';
 import type { CalendarEntryWithSlug } from '@/lib/calendar';
@@ -46,6 +46,8 @@ function EntryRow({ entry, past }: { entry: CalendarEntryWithSlug; past?: boolea
   );
 }
 
+const NO_CATEGORY_FILTER = new Set<CalendarCategory>();
+
 export function CalendarBrowser({
   upcoming,
   past,
@@ -55,24 +57,62 @@ export function CalendarBrowser({
   past: CalendarEntryWithSlug[];
   categories: CalendarCategory[];
 }) {
-  const [active, setActive] = useState<Set<CalendarCategory>>(new Set());
+  const [category, setCategory] = useState<string>('all');
+  const [query, setQuery] = useState('');
   const [view, setView] = useState<View>('list');
 
-  function toggle(cat: CalendarCategory) {
-    setActive((prev) => {
-      const next = new Set(prev);
-      if (next.has(cat)) next.delete(cat);
-      else next.add(cat);
-      return next;
-    });
-  }
+  // Shareable-link support: hydrate filters from ?category=&q= once on mount
+  // (same pattern as /photos — the page renders without searchParams on the
+  // server, so the URL is only readable here; useSearchParams would force the
+  // whole page behind a Suspense fallback instead).
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    if (!p.get('category') && !p.get('q')) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCategory(p.get('category') ?? 'all');
+    setQuery(p.get('q') ?? '');
+  }, []);
 
-  const apply = (list: CalendarEntryWithSlug[]) =>
-    active.size === 0 ? list : list.filter((e) => active.has(e.category));
-  const filteredUpcoming = apply(upcoming);
-  const filteredPast = apply(past);
+  useEffect(() => {
+    const p = new URLSearchParams();
+    if (category !== 'all') p.set('category', category);
+    if (query) p.set('q', query);
+    const qs = p.toString();
+    window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
+  }, [category, query]);
 
   const allEntries = useMemo(() => [...upcoming, ...past], [upcoming, past]);
+  const counts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const e of allEntries) m.set(e.category, (m.get(e.category) ?? 0) + 1);
+    return m;
+  }, [allEntries]);
+
+  const q = query.trim().toLowerCase();
+  const matches = (e: CalendarEntryWithSlug) => {
+    if (category !== 'all' && e.category !== category) return false;
+    if (q) {
+      const hay = `${e.title} ${e.description ?? ''} ${e.location ?? ''} ${e.category}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  };
+  const filteredUpcoming = upcoming.filter(matches);
+  const filteredPast = past.filter(matches);
+  const filtering = category !== 'all' || q !== '';
+
+  // Month view: the grid hides non-matching entries itself via
+  // activeCategories, so hand it pre-filtered entries and no category set.
+  const monthEntries = useMemo(
+    () => allEntries.filter(matches),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allEntries, category, q]
+  );
+
+  function clearFilters() {
+    setCategory('all');
+    setQuery('');
+  }
 
   return (
     <>
@@ -97,31 +137,61 @@ export function CalendarBrowser({
             Month
           </button>
         </div>
-      </div>
 
-      <div className={styles.filterBar} role="group" aria-label="Filter by category">
-        {categories.map((c) => {
-          const isActive = active.has(c);
-          const color = CATEGORY_COLORS[c];
-          return (
-            <button
-              key={c}
-              type="button"
-              className={`${styles.filterChip} ${isActive ? styles.filterChipActive : ''}`}
-              style={isActive ? { background: color, borderColor: color } : undefined}
-              onClick={() => toggle(c)}
-              aria-pressed={isActive}
+        <div className={styles.filterCluster} role="region" aria-label="Calendar filters">
+          <div className={styles.filterControls}>
+            <label className={styles.srOnly} htmlFor="calCategory">
+              Filter by category
+            </label>
+            <select
+              id="calCategory"
+              className={styles.filterSelect}
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
             >
-              <span className={styles.filterPip} style={{ background: isActive ? '#fff' : color }} />
-              {c}
-            </button>
-          );
-        })}
-        {active.size > 0 && (
-          <button type="button" className={styles.filterClear} onClick={() => setActive(new Set())}>
-            Clear filter
-          </button>
-        )}
+              <option value="all">All Categories ({allEntries.length})</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                  {counts.has(c) ? ` (${counts.get(c)})` : ''}
+                </option>
+              ))}
+            </select>
+            <div className={styles.calSearch}>
+              <label className={styles.srOnly} htmlFor="calSearch">
+                Search the calendar by title, description, or location
+              </label>
+              <input
+                type="search"
+                id="calSearch"
+                placeholder="Search the calendar&hellip;"
+                autoComplete="off"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z" />
+              </svg>
+            </div>
+            {filtering && (
+              <button type="button" className={styles.filterClear} onClick={clearFilters}>
+                Clear
+              </button>
+            )}
+          </div>
+          <p className={styles.resultsCount} aria-live="polite">
+            {filtering ? (
+              <>
+                Showing <strong>{filteredUpcoming.length + filteredPast.length}</strong> of{' '}
+                {allEntries.length} entries
+              </>
+            ) : (
+              <>
+                Showing all <strong>{allEntries.length}</strong> entries
+              </>
+            )}
+          </p>
+        </div>
       </div>
 
       <div style={{ display: view === 'list' ? 'block' : 'none' }}>
@@ -131,7 +201,7 @@ export function CalendarBrowser({
         </div>
         {filteredUpcoming.length === 0 ? (
           <p className={styles.empty}>
-            {active.size > 0 ? 'No upcoming entries match that filter.' : 'Nothing on the calendar yet.'}
+            {filtering ? 'No upcoming entries match that filter.' : 'Nothing on the calendar yet.'}
           </p>
         ) : (
           <ul className={styles.list}>
@@ -157,7 +227,7 @@ export function CalendarBrowser({
       </div>
 
       <div style={{ display: view === 'month' ? 'block' : 'none' }}>
-        <MonthGrid entries={allEntries} activeCategories={active} isActive={view === 'month'} />
+        <MonthGrid entries={monthEntries} activeCategories={NO_CATEGORY_FILTER} isActive={view === 'month'} />
       </div>
     </>
   );
