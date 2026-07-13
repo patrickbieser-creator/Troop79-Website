@@ -56,7 +56,7 @@ export default function AboutPage() {
                   America. We&rsquo;re a <strong>family troop</strong>: siblings
                   scout side by side, parents pitch in, and whole families show
                   up for campouts and service days. Some of our scouts arrived
-                  with years of Cub Scouting behind them; plenty walked in never
+                  with years of Cub Scouting behind them, but plenty walked in never
                   having tied anything more ambitious than a shoelace.
                 </p>
                 <p>
@@ -74,12 +74,12 @@ export default function AboutPage() {
               </div>
               <div className={styles.prose}>
                 <p>
-                  Scouts run their own patrols, plan their own meetings, and —
-                  this is the part that surprises new families — do most of the
-                  teaching. Our older scouts lead the skill instruction at
+                  Scouts are organized into patrols, plan the meetings, and —
+                  this is the part that surprises new families — are deeply involved in doing the
+                  teaching. Older scouts lead skill instruction at
                   meetings, from knots and first aid to cooking and navigation.
                   Adults stay close, mentor, and handle the things that need a
-                  driver&rsquo;s license or a signature.
+                  more experienced hand.
                 </p>
               </div>
             </section>
@@ -94,7 +94,7 @@ export default function AboutPage() {
                   Between Sunday meetings the troop calendar fills with
                   campouts, day outings, service projects, and fundraisers.
                   Scouts work through the ranks — Scout to Eagle — and earn
-                  merit badges along the way, taught by older scouts, troop
+                  merit badges along the way, taught by troop
                   adults, and outside experts. The{' '}
                   <Link href="/events">troop calendar</Link>{' '}
                   always has what&rsquo;s coming next.
@@ -156,7 +156,7 @@ export default function AboutPage() {
                     <br />
                     1572 E Capitol Drive
                     <br />
-                    Milwaukee, WI
+                    Shorewood, WI
                   </span>
                 </div>
               </div>
