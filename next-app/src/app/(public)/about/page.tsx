@@ -61,7 +61,7 @@ export default function AboutPage() {
                 </p>
                 <p>
                   What holds it together is the Sunday meeting — a
-                  ninety-minute stretch of skills, ceremonies, games, and the
+                  ninety-minute stretch of skills, recognition, games, snacks and the
                   occasional controlled chaos that scouting is built on.
                 </p>
               </div>
@@ -75,8 +75,8 @@ export default function AboutPage() {
               <div className={styles.prose}>
                 <p>
                   Scouts are organized into patrols, plan the meetings, and —
-                  this is the part that surprises new families — are deeply involved in doing the
-                  teaching. Older scouts lead skill instruction at
+                  this is the part that surprises new families — are deeply involved in 
+                  running the troop. Older scouts help lead skill instruction at
                   meetings, from knots and first aid to cooking and navigation.
                   Adults stay close, mentor, and handle the things that need a
                   more experienced hand.
