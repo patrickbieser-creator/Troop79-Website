@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { createLeader, deleteLeader, updateLeader } from './actions';
+import { useLookupTable } from './use-lookup-table';
 import styles from './lookups.module.css';
 
 export interface LeaderRow {
@@ -28,6 +29,7 @@ export function LeaderEditor({ rows }: Props) {
   const [busyCode, setBusyCode] = useState<string | null>(null);
   const [rowErr, setRowErr] = useState<{ code: string; msg: string } | null>(null);
   const [, startTransition] = useTransition();
+  const t = useLookupTable(rows, (l) => `${l.code} ${l.name} ${l.role ?? ""}`);
 
   useEffect(() => {
     const dlg = dialogRef.current;
@@ -68,6 +70,8 @@ export function LeaderEditor({ rows }: Props) {
           + Add Leader
         </button>
       </div>
+      {t.searchEl}
+      <div className={t.scrollClass}>
       <table className={styles.table}>
         <thead>
           <tr>
@@ -79,7 +83,7 @@ export function LeaderEditor({ rows }: Props) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((l) => (
+          {t.rows.map((l) => (
             <tr key={l.code}>
               <td className={styles.codeCell}>{l.code}</td>
               <td>
@@ -116,6 +120,8 @@ export function LeaderEditor({ rows }: Props) {
           ))}
         </tbody>
       </table>
+      </div>
+      {t.footerEl}
 
       <dialog
         ref={dialogRef}

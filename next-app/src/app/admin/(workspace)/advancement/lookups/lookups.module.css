@@ -427,3 +427,27 @@
   .editGrid { grid-template-columns: 1fr; }
   .editFieldFull { grid-column: auto; }
 }
+
+/* ── card expansion + table windowing (2026-07-12) ── */
+.cardExpanded { grid-column: 1 / -1; }
+.cardHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.expandBtn {
+  font-family: inherit; font-size: 10.5px; font-weight: 700; letter-spacing: .04em;
+  background: var(--admin-white); border: 1px solid var(--admin-gray-300);
+  color: var(--admin-gray-700); padding: 3px 10px; border-radius: 3px;
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
+}
+.expandBtn:hover { border-color: var(--admin-navy); color: var(--admin-navy); }
+.scrollWrap { max-height: 65vh; overflow-y: auto; }
+.scrollWrap .table th { position: sticky; top: 0; z-index: 1; }
+.tableSearch {
+  width: 100%; max-width: 320px; margin-bottom: 8px;
+  border: 1px solid var(--admin-gray-300); border-radius: 3px; padding: 6px 9px;
+  font-family: inherit; font-size: 12px; background: var(--admin-white);
+  color: var(--admin-gray-900); outline: none;
+}
+.tableSearch:focus { border-color: var(--admin-navy); }
+.linkBtn {
+  background: none; border: none; padding: 0; font: inherit; cursor: pointer;
+  color: var(--admin-navy); text-decoration: underline;
+}

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { updateMeritBadge } from './actions';
 import { SortableList } from '../../_components/sortable-list';
+import { useLookupTable } from './use-lookup-table';
 import styles from './lookups.module.css';
 
 export interface MbRow {
@@ -47,6 +48,7 @@ interface Props {
 export function MbEditor({ rows, leaders, counselorsByMb, reqTreesByMb }: Props) {
   const [openFor, setOpenFor] = useState<MbRow | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const t = useLookupTable(rows, (m) => `${m.name} ${m.id}`);
   const leaderNameByCode = useMemo(() => {
     const m = new Map<string, string>();
     for (const l of leaders) m.set(l.code, l.name);
@@ -62,6 +64,8 @@ export function MbEditor({ rows, leaders, counselorsByMb, reqTreesByMb }: Props)
 
   return (
     <>
+      {t.searchEl}
+      <div className={t.scrollClass}>
       <table className={styles.table}>
         <thead>
           <tr>
@@ -73,7 +77,7 @@ export function MbEditor({ rows, leaders, counselorsByMb, reqTreesByMb }: Props)
           </tr>
         </thead>
         <tbody>
-          {rows.map((m) => {
+          {t.rows.map((m) => {
             const cs = counselorsByMb.get(m.id) ?? [];
             return (
               <tr key={m.id}>
@@ -114,6 +118,8 @@ export function MbEditor({ rows, leaders, counselorsByMb, reqTreesByMb }: Props)
           })}
         </tbody>
       </table>
+      </div>
+      {t.footerEl}
 
       <dialog
         ref={dialogRef}

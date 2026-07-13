@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useLookupTable } from './use-lookup-table';
 import styles from './lookups.module.css';
 
 type ActionResult = { ok: boolean; error?: string };
@@ -29,6 +30,7 @@ export function SkillsEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const t = useLookupTable(rows, (r) => r.name);
 
   function add() {
     const name = newName.trim();
@@ -134,6 +136,8 @@ export function SkillsEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
         </div>
       )}
 
+      {t.searchEl}
+      <div className={t.scrollClass}>
       <table className={styles.table}>
         <thead>
           <tr>
@@ -143,7 +147,7 @@ export function SkillsEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
+          {t.rows.map((row) => (
             <tr key={row.id}>
               <td>{row.name}</td>
               <td>
@@ -180,6 +184,8 @@ export function SkillsEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
           ))}
         </tbody>
       </table>
+      </div>
+      {t.footerEl}
     </>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useLookupTable } from './use-lookup-table';
 import styles from './lookups.module.css';
 
 type ActionResult = { ok: boolean; error?: string };
@@ -30,6 +31,7 @@ export function NameLookupEditor({ rows, noun, onCreate, onUpdate, onDelete }: P
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const lower = noun.toLowerCase();
+  const t = useLookupTable(rows, (r) => r.name);
 
   function add() {
     const name = newName.trim();
@@ -116,6 +118,8 @@ export function NameLookupEditor({ rows, noun, onCreate, onUpdate, onDelete }: P
         </div>
       )}
 
+      {t.searchEl}
+      <div className={t.scrollClass}>
       <table className={styles.table}>
         <thead>
           <tr>
@@ -132,7 +136,7 @@ export function NameLookupEditor({ rows, noun, onCreate, onUpdate, onDelete }: P
               </td>
             </tr>
           ) : (
-            rows.map((row) => (
+            t.rows.map((row) => (
               <tr key={row.id}>
                 <td>{row.name}</td>
                 <td style={{ textAlign: 'right' }}>
@@ -159,6 +163,8 @@ export function NameLookupEditor({ rows, noun, onCreate, onUpdate, onDelete }: P
           )}
         </tbody>
       </table>
+      </div>
+      {t.footerEl}
     </>
   );
 }

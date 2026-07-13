@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { createScout, updateScout } from './actions';
 import { INACTIVE_REASON_LABEL, type InactiveReason } from '@/lib/supabase/types';
+import { useLookupTable } from './use-lookup-table';
 import styles from './lookups.module.css';
 
 export interface ScoutRow {
@@ -58,6 +59,7 @@ const REASON_ORDER: InactiveReason[] = [
 export function ScoutEditor({ rows, ranks, parentsByScout }: Props) {
   const [openFor, setOpenFor] = useState<ScoutRow | 'new' | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const t = useLookupTable(rows, (s) => `${s.display_name} ${s.id} ${s.bsa_member_id ?? ""}`);
 
   useEffect(() => {
     const dlg = dialogRef.current;
@@ -77,6 +79,8 @@ export function ScoutEditor({ rows, ranks, parentsByScout }: Props) {
           + Add Scout
         </button>
       </div>
+      {t.searchEl}
+      <div className={t.scrollClass}>
       <table className={styles.table}>
         <thead>
           <tr>
@@ -89,7 +93,7 @@ export function ScoutEditor({ rows, ranks, parentsByScout }: Props) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((s) => {
+          {t.rows.map((s) => {
             const rankLabel = s.current_rank
               ? ranks.find((r) => r.id === s.current_rank)?.display_name ?? s.current_rank
               : '—';
@@ -140,6 +144,8 @@ export function ScoutEditor({ rows, ranks, parentsByScout }: Props) {
           })}
         </tbody>
       </table>
+      </div>
+      {t.footerEl}
 
       <dialog
         ref={dialogRef}

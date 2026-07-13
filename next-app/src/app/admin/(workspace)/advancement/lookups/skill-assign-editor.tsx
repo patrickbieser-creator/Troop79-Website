@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useLookupTable } from './use-lookup-table';
 import styles from './lookups.module.css';
 
 type ActionResult = { ok: boolean; error?: string };
@@ -39,6 +40,7 @@ export function SkillAssignEditor({ people, skills, keyField, noun, onSave }: Pr
   const [draft, setDraft] = useState<Set<string>>(new Set());
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const t = useLookupTable(people, (p) => `${p.name} ${p.sub ?? ""}`);
 
   const skillName = new Map(skills.map((s) => [s.id, s.name]));
 
@@ -79,6 +81,8 @@ export function SkillAssignEditor({ people, skills, keyField, noun, onSave }: Pr
           {err}
         </div>
       )}
+      {t.searchEl}
+      <div className={t.scrollClass}>
       <table className={styles.table}>
         <thead>
           <tr>
@@ -95,7 +99,7 @@ export function SkillAssignEditor({ people, skills, keyField, noun, onSave }: Pr
               </td>
             </tr>
           ) : (
-            people.map((p) => (
+            t.rows.map((p) => (
               <tr key={p.key}>
                 <td>
                   <strong>{p.name}</strong>
@@ -167,6 +171,8 @@ export function SkillAssignEditor({ people, skills, keyField, noun, onSave }: Pr
           )}
         </tbody>
       </table>
+      </div>
+      {t.footerEl}
     </>
   );
 }

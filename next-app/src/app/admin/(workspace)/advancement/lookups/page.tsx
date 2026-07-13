@@ -13,6 +13,8 @@ import { ScoutEditor, type ScoutRow, type ParentRow } from './scout-editor';
 import { MbEditor, type MbRow, type CounselorRow, type EditReqNode } from './mb-editor';
 import { NameLookupEditor, type NameRow } from './name-lookup-editor';
 import { EventEditor, type EventRow } from './event-editor';
+import { ReqCodesTable } from './req-codes-table';
+import { LookupCard } from './lookup-card';
 import { SkillsEditor, type SkillRow } from './skills-editor';
 import { SkillAssignEditor, type AssignPerson } from './skill-assign-editor';
 import {
@@ -316,38 +318,7 @@ export default async function LookupsPage() {
           title="Internal Requirement Codes"
           sub={`${reqs.length} top-level codes · read-only (catalog tree editing ships in a later slice)`}
         >
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Code</th>
-                <th>Label</th>
-                <th>Source</th>
-              </tr>
-            </thead>
-            <tbody>
-              {reqs.slice(0, 50).map((r) => (
-                <tr key={`${r.source}-${r.parentId}-${r.code}`}>
-                  <td className={styles.codeCell}>{r.code}</td>
-                  <td>{r.label}</td>
-                  <td>
-                    <span
-                      className={`${styles.tag} ${
-                        r.source === 'rank' ? styles.tagRank : styles.tagMb
-                      }`}
-                    >
-                      {r.source === 'rank' ? 'Rank' : 'MB'}: {r.parentLabel}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {reqs.length > 50 && (
-            <p className={styles.summary}>
-              Showing first 50 of {reqs.length}. Full tree edit ships in a
-              later slice.
-            </p>
-          )}
+          <ReqCodesTable rows={reqs} />
         </Card>
       </div>
 
@@ -436,20 +407,6 @@ export default async function LookupsPage() {
   );
 }
 
-function Card({
-  title,
-  sub,
-  children
-}: {
-  title: string;
-  sub?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className={styles.card}>
-      <h3>{title}</h3>
-      {sub && <p className={styles.cardSub}>{sub}</p>}
-      {children}
-    </div>
-  );
-}
+// Card = client component with Expand (full-width + all rows); the editors
+// window themselves to 15 rows via useLookupTable/LookupCardContext.
+const Card = LookupCard;
