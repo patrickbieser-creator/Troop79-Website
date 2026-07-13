@@ -88,7 +88,12 @@ function ScoutHeader({ detail }: { detail: ScoutDetail }) {
     metaParts.push(<span key="patrol">{scout.patrol} Patrol</span>);
   }
   if (scout.bsa_member_id) {
-    metaParts.push(<span key="bsa">BSA ID {scout.bsa_member_id}</span>);
+    // Rendered in invisible ink — see .bsaHidden in the module CSS.
+    metaParts.push(
+      <span key="bsa" className={styles.bsaHidden}>
+        BSA ID {scout.bsa_member_id}
+      </span>
+    );
   } else {
     metaParts.push(
       <span key="bsa" className={styles.noBsa}>

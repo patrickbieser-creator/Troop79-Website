@@ -497,6 +497,37 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.2.1 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.2.1</span>
+        <span class="release-date">July 12, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Automatic Rank Awards &amp; Small Fixes</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Boards of Review now promote automatically.</strong> Recording a rank&rsquo;s Board of Review in the ledger auto-creates the matching <code>rank_award</code> entry (same date and leader), which flips the scout&rsquo;s rank everywhere &mdash; clipboard header, rank timeline, rosters, meeting-plan tiers. Previously the award was a separate manual entry that was easy to miss: Hazel&rsquo;s Star BoR was on record while every page still said First Class. A backfill promoted her on deploy.
+              <span class="change-note">The award remains its own ledger row (history, Courts of Honor, and the rank recompute trigger all key off it) &mdash; the BoR simply confers it now. Archiving a BoR does not retract an award; that stays a deliberate leader action. Scout rank, which BSA caps with a Scoutmaster conference instead of a BoR, is unchanged.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>BSA member IDs are now invisible ink</strong> on the public Scout Clipboard: the ID is still on the page for leaders and parents who know to select/highlight the header line, but renders as blank text otherwise (and is omitted from printouts).
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Merit Badges left the main nav</strong> &mdash; it&rsquo;s reachable from the Advancement page&rsquo;s Merit Badges section (and the footer), keeping the top nav to five tabs.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.2.0 -->
     <div class="release">
       <div class="release-header">

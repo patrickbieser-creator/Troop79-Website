@@ -47,6 +47,20 @@
 .noBsa {
   color: var(--bark);
 }
+/* Invisible-ink BSA ID (Patrick, 2026-07-12): useful to leaders/parents and
+   not especially sensitive, but shouldn't be casually readable. Transparent
+   glyphs render nothing on any background; select/highlight the header meta
+   line to reveal it. ::selection restores the color for the reveal, and
+   print keeps it hidden. */
+.bsaHidden {
+  color: transparent;
+}
+.bsaHidden::selection {
+  color: var(--text-body);
+}
+@media print {
+  .bsaHidden { display: none; }
+}
 .scoutActions { display: flex; gap: 8px; }
 .btnAction {
   font-family: var(--font-ui);
