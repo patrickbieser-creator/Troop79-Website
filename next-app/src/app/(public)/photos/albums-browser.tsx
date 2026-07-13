@@ -3,8 +3,9 @@
 /**
  * Client half of /photos: header with the filter cluster top-right
  * (Category + Year dropdowns and search — Patrick's revision of the chip
- * design), a Latest Albums strip that hides while filtering, and
- * year-grouped album cards that link out to Google Photos.
+ * design) and year-grouped album cards that link out to Google Photos.
+ * (A "Latest Albums" strip existed at launch but duplicated the top of the
+ * newest year group — removed 2026-07-12.)
  *
  * Filter state syncs to ?category=&year=&q= via replaceState so filtered
  * views can be shared (e.g. in the Bugle), and is read back on mount —
@@ -47,14 +48,11 @@ function displayMonth(iso: string): string {
 
 const yearOf = (a: PhotoAlbum) => a.event_date.slice(0, 4);
 
-function Cover({ album, wide }: { album: AlbumWithCover; wide?: boolean }) {
+function Cover({ album }: { album: AlbumWithCover }) {
   const [broken, setBroken] = useState(false);
   const hasCover = album.cover_url && !broken;
   return (
-    <div
-      className={`${styles.albumCover} ${hasCover ? '' : styles.noCover}`}
-      style={wide ? { aspectRatio: '16/9' } : undefined}
-    >
+    <div className={`${styles.albumCover} ${hasCover ? '' : styles.noCover}`}>
       {hasCover ? (
         <img
           src={album.cover_url!}
@@ -73,7 +71,7 @@ function Cover({ album, wide }: { album: AlbumWithCover; wide?: boolean }) {
   );
 }
 
-function AlbumCard({ album, wide }: { album: AlbumWithCover; wide?: boolean }) {
+function AlbumCard({ album }: { album: AlbumWithCover }) {
   const ariaBits = [album.title, album.category, displayMonth(album.event_date)];
   if (album.photo_count) ariaBits.push(`${album.photo_count} photos`);
   ariaBits.push('Opens Google Photos in a new tab');
@@ -87,7 +85,7 @@ function AlbumCard({ album, wide }: { album: AlbumWithCover; wide?: boolean }) {
       title={album.title}
       aria-label={ariaBits.join('. ')}
     >
-      <Cover album={album} wide={wide} />
+      <Cover album={album} />
       <div className={styles.albumBody}>
         <span className={`${styles.catTag} ${CATEGORY_CLASS[album.category] ?? ''}`}>
           {album.category}
@@ -172,8 +170,6 @@ export function AlbumsBrowser({ albums }: { albums: AlbumWithCover[] }) {
     }
     return true;
   });
-  const filtering = category !== 'all' || year !== 'all' || q !== '';
-
   function clearFilters() {
     setCategory('all');
     setYear('all');
@@ -258,20 +254,6 @@ export function AlbumsBrowser({ albums }: { albums: AlbumWithCover[] }) {
       </div>
 
       <main className={styles.mainContent}>
-        {!filtering && sorted.length > 3 && (
-          <section className={styles.featuredStrip} aria-label="Latest albums">
-            <div className={styles.sectionDivider}>
-              <span className={styles.divLabel}>Latest Albums</span>
-              <span className={styles.divRule} aria-hidden="true" />
-            </div>
-            <div className={styles.featuredGrid}>
-              {sorted.slice(0, 3).map((a) => (
-                <AlbumCard key={`f-${a.id}`} album={a} wide />
-              ))}
-            </div>
-          </section>
-        )}
-
         {years.map((y) => {
           const inYear = results.filter((a) => yearOf(a) === y);
           if (inYear.length === 0) return null;

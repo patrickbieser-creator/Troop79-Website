@@ -54,18 +54,6 @@
 
 .mainContent { max-width: 1180px; margin: 0 auto; padding: 0 24px 60px; }
 
-/* ── featured strip ── */
-.featuredStrip { margin-top: 22px; }
-.sectionDivider { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-.divLabel {
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
-  font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
-  color: var(--navy); white-space: nowrap; border-left: 3px solid var(--forest); padding-left: 8px;
-}
-.divRule { flex: 1; height: 1px; background: var(--border-light, #e2d9cc); }
-.featuredGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
-.featuredGrid .albumCover { aspect-ratio: 16/9; }
-
 .albumCard:focus-visible, .clearBtn:focus-visible, .filterSelect:focus-visible {
   outline: 2px solid var(--forest); outline-offset: 2px;
 }
@@ -244,7 +232,7 @@
 
 /* ── responsive ── */
 @media (max-width: 900px) {
-  .albumGrid, .featuredGrid { grid-template-columns: repeat(2, 1fr); }
+  .albumGrid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 600px) {
   .pageTitle { font-size: 26px; }
@@ -254,7 +242,6 @@
   .filterSelect { flex: 1 1 auto; }
   .albumSearch { flex: 1 1 100%; }
   .resultsCount { text-align: right; }
-  .featuredGrid { grid-template-columns: 1fr; }
   .albumGrid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .albumBody { padding: 10px 11px 12px; }
   .albumTitle { font-size: 14px; }
