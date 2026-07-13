@@ -95,7 +95,8 @@
   gap: 8px;
   margin-top: 6px;
 }
-.btn {
+.btn,
+.btnPrimary {
   font-family: inherit;
   font-size: 12px;
   font-weight: 700;
@@ -103,9 +104,11 @@
   padding: 8px 16px;
   border-radius: 3px;
   border: 1px solid var(--admin-gray-300);
+  cursor: pointer;
+}
+.btn {
   background: var(--admin-white);
   color: var(--admin-gray-700);
-  cursor: pointer;
 }
 .btn:hover {
   border-color: var(--admin-navy);
@@ -127,6 +130,7 @@
 .btnPrimary:disabled {
   background: var(--admin-gray-300);
   border-color: var(--admin-gray-300);
+  cursor: not-allowed;
 }
 
 .statusOk {
@@ -142,6 +146,12 @@
   font-weight: 600;
   margin-right: auto;
   align-self: center;
+}
+.pendingInline {
+  font-size: 12px;
+  color: var(--admin-navy);
+  align-self: center;
+  margin-right: 4px;
 }
 
 /* Picker */

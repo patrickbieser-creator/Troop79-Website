@@ -94,27 +94,28 @@ export function HasNeedsTool({ ranks, scouts }: { ranks: PickerRank[]; scouts: R
   }
 
   // Has = completed every checked requirement. Needs = completed none of
-  // them. A scout with some-but-not-all checked requirements done is on
-  // neither list — with 2+ boxes checked that's a real possibility, so
-  // partialCount is surfaced above the results rather than silently dropped.
-  const { hasList, needsList, partialCount } = useMemo(() => {
-    if (checked.size === 0) return { hasList: [], needsList: [], partialCount: 0 };
+  // them. A scout with some-but-not-all checked requirements done (only
+  // possible with 2+ boxes checked) shows at the bottom of the Needs column,
+  // set apart as partial rather than folded into either bucket.
+  const { hasList, needsList, partialList } = useMemo(() => {
+    if (checked.size === 0) return { hasList: [], needsList: [], partialList: [] };
     const has: ResultScout[] = [];
     const needs: ResultScout[] = [];
-    let partial = 0;
+    const partial: ResultScout[] = [];
     for (const s of scouts) {
       const held = codesByScout.get(s.id) ?? new Set<string>();
       let heldCount = 0;
       for (const key of checked) if (held.has(key)) heldCount++;
       if (heldCount === checked.size) has.push(s);
       else if (heldCount === 0) needs.push(s);
-      else partial++;
+      else partial.push(s);
     }
     const byRankThenName = (a: ResultScout, b: ResultScout) =>
       a.rankSortOrder - b.rankSortOrder || a.firstName.localeCompare(b.firstName);
     has.sort(byRankThenName);
     needs.sort(byRankThenName);
-    return { hasList: has, needsList: needs, partialCount: partial };
+    partial.sort(byRankThenName);
+    return { hasList: has, needsList: needs, partialList: partial };
   }, [checked, scouts, codesByScout]);
 
   return (
@@ -169,12 +170,6 @@ export function HasNeedsTool({ ranks, scouts }: { ranks: PickerRank[]; scouts: R
       </div>
 
       <div className={styles.results}>
-        {checked.size >= 2 && partialCount > 0 && (
-          <p className={styles.partialNote}>
-            {`${partialCount} ${partialCount === 1 ? 'scout has' : 'scouts have'} completed some but not all of the checked requirements, so they aren’t shown in either list below.`}
-          </p>
-        )}
-
         {checked.size === 0 ? (
           <div className={styles.emptyState}>
             Check one or more requirements to see who has and needs them.
@@ -192,6 +187,12 @@ export function HasNeedsTool({ ranks, scouts }: { ranks: PickerRank[]; scouts: R
                 Needs <span className={styles.resultCount}>({needsList.length})</span>
               </h2>
               <ScoutList scouts={needsList} />
+              {partialList.length > 0 && (
+                <>
+                  <div className={styles.partialSpacer} aria-hidden="true" />
+                  <ScoutList scouts={partialList} partial />
+                </>
+              )}
             </div>
           </div>
         )}
@@ -200,16 +201,20 @@ export function HasNeedsTool({ ranks, scouts }: { ranks: PickerRank[]; scouts: R
   );
 }
 
-function ScoutList({ scouts }: { scouts: ResultScout[] }) {
+function ScoutList({ scouts, partial }: { scouts: ResultScout[]; partial?: boolean }) {
   if (scouts.length === 0) {
     return <p className={styles.resultEmpty}>None.</p>;
   }
   return (
     <ul className={styles.resultList}>
       {scouts.map((s) => (
-        <li key={s.id} className={styles.resultItem}>
+        <li
+          key={s.id}
+          className={`${styles.resultItem} ${partial ? styles.resultItemPartial : ''}`.trim()}
+        >
           <Link href={`/scouts/${s.id}`} className={styles.resultLink}>
             {s.displayName}
+            {partial && ' (Partially Complete)'}
           </Link>
           {s.currentRank && (
             <span className={styles.resultRank}>{RANK_LABEL[s.currentRank] ?? s.currentRank}</span>

@@ -61,6 +61,11 @@ interface Props {
   };
   /** Called when the user undoes a history row. */
   onHistoryRemoved?: (entryId: number) => void;
+  /** Suppress the "N pending" banner normally shown above the tabs. Set by
+   *  hosts that render their own pending indicator next to Clear/Save
+   *  instead — the banner reflows the tabs down a row on every selection,
+   *  which reads as the screen jumping. */
+  hidePendingBanner?: boolean;
 }
 
 const FREE_TABS: { id: TabId; label: string; kind: string; unitPlaceholder: string }[] = [
@@ -79,7 +84,8 @@ export function RequirementPicker({
   showFreeTabs = true,
   onOpenMb,
   history,
-  onHistoryRemoved
+  onHistoryRemoved,
+  hidePendingBanner = false
 }: Props) {
   // Tab order: rank tabs in catalog order (Scout first since ranks come back
   // ordered by sort_order ASC), then MBs, then free-form tabs.
@@ -180,7 +186,7 @@ export function RequirementPicker({
   return (
     <div className={styles.picker}>
       {/* Top pending summary — visible across all tabs */}
-      {multi && selections.length > 0 && (
+      {multi && !hidePendingBanner && selections.length > 0 && (
         <div className={styles.pendingTop}>
           <strong>{selections.length}</strong> pending — click <em>Save</em> when ready
         </div>

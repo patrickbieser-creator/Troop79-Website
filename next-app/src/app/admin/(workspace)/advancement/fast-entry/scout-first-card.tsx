@@ -300,6 +300,7 @@ export function ScoutFirstCard({ scouts, leaders, catalog }: Props) {
           }}
           onOpenMb={openMb}
           multi
+          hidePendingBanner
         />
       </div>
 
@@ -358,6 +359,11 @@ export function ScoutFirstCard({ scouts, leaders, catalog }: Props) {
         {status && (
           <span className={status.kind === 'ok' ? styles.statusOk : styles.statusErr}>
             {status.msg}
+          </span>
+        )}
+        {selections.length > 0 && (
+          <span className={styles.pendingInline}>
+            <strong>{selections.length}</strong> pending
           </span>
         )}
         <button
