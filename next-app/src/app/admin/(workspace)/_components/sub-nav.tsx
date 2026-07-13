@@ -46,6 +46,11 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         label: 'Meetings',
         href: '/admin/advancement/meetings',
         matchPath: '/admin/advancement/meetings'
+      },
+      {
+        label: 'Has/Needs Tool',
+        href: '/admin/advancement/has-needs',
+        matchPath: '/admin/advancement/has-needs'
       }
     ]
   },
