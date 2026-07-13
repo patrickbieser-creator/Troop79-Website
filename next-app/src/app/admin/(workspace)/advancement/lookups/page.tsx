@@ -299,7 +299,10 @@ export default async function LookupsPage() {
           <ScoutEditor rows={scouts} ranks={ranks} parentsByScout={parentsByScout} />
         </Card>
 
-        <Card title="Adult Leaders (signoff initials)" sub={`${leaders.length} leaders`}>
+        <Card
+          title="Sign-off Initials"
+          sub={`${leaders.length} sign-off sources — adult leaders, youth leaders (also on the scout roster, e.g. JPII), and record sources like Camp, Clinic, and Prior Troop`}
+        >
           <LeaderEditor rows={leaders} />
         </Card>
       </div>
@@ -379,7 +382,7 @@ export default async function LookupsPage() {
       <div className={styles.grid}>
         <Card
           title="Leader Skills"
-          sub="What each adult can teach — the Meeting Plan matches these to requirement skills when it fills the Teaching slot"
+          sub="What each leader can teach — the Meeting Plan matches these to requirement skills when it fills the Teaching slot. NOTE: this list currently includes youth-leader initials and record sources (Camp, Clinic, …); the Meeting Plan treats anyone here as an adult teacher, so only assign skills to actual adults until the sign-off table distinguishes them."
         >
           <SkillAssignEditor
             people={leaderPeople}
