@@ -6,6 +6,7 @@ import Link from 'next/link';
 export function SiteFooter() {
   return (
     <footer
+      id="site-footer-root"
       style={{
         background: 'var(--navy)',
         color: 'rgba(255,255,255,.85)',

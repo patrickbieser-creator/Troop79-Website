@@ -59,3 +59,15 @@ img { display: block; max-width: 100%; }
    browser verification while prototyping the Event template's registration
    toggle (see prototypes/news-cms/). */
 [hidden] { display: none !important; }
+
+/* The Scout Clipboard (/scouts/[id]) is designed to be printed and handed
+   out at meetings — the shared site nav/footer chrome has no place on a
+   printed sign-off sheet and was adding ~2 full pages of pure overhead.
+   Scoped via :has() so every other public page keeps printing its chrome
+   as before; only the Clipboard opts out. */
+@media print {
+  body:has(#scout-clipboard-page) #site-nav-root,
+  body:has(#scout-clipboard-page) #site-footer-root {
+    display: none !important;
+  }
+}

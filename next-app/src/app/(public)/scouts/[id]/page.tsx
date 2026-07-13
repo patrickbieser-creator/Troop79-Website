@@ -51,26 +51,45 @@ export default async function ScoutClipboardPage({
   if (!detail) notFound();
 
   return (
-    <>
-      <ScoutHeader detail={detail} />
+    <div id="scout-clipboard-page">
+      {/* Header, metrics, and rank progression are screen-only context — a
+          printed Clipboard jumps straight to the sign-off grid to maximize
+          space for it (confirmed with the user, matches the pre-refactor
+          print reference). */}
+      <div className={styles.printHide}>
+        <ScoutHeader detail={detail} />
+      </div>
       <main className={styles.main}>
-        <MetricsStrip detail={detail} />
-        <SectionDivider label="Rank Progression" />
-        <RankTimeline detail={detail} />
+        <div className={styles.printHide}>
+          <MetricsStrip detail={detail} />
+          <SectionDivider label="Rank Progression" />
+          <RankTimeline detail={detail} />
+        </div>
         <Clipboard detail={detail} />
-        <SectionDivider label="Merit Badges & Activities" />
-        <div className={styles.twoCol}>
-          <MeritBadgesPanel detail={detail} />
-          <ActivitiesPanel detail={detail} />
+        {/* Screen-only — print gets this content redistributed into the
+            fixed two-page layout inside Clipboard (Nights of Camping +
+            Leadership under Second Class, Service under First Class, Merit
+            Badges + Activities on page 2). */}
+        <div className={styles.printHide}>
+          <SectionDivider label="Merit Badges & Activities" />
+          <div className={styles.twoCol}>
+            <MeritBadgesPanel detail={detail} />
+            <ActivitiesPanel detail={detail} />
+          </div>
+          <SectionDivider label="Leadership & Service" />
+          <div className={styles.twoCol}>
+            <LeadershipPanel detail={detail} />
+            <ServicePanel detail={detail} />
+          </div>
         </div>
-        <SectionDivider label="Leadership & Service" />
-        <div className={styles.twoCol}>
-          <LeadershipPanel detail={detail} />
-          <ServicePanel detail={detail} />
+        {/* Excluded from print — a leader printing the Clipboard for a
+            meeting wants the sign-off checklist, not in-progress detail
+            (confirmed with the user). Still shown on screen. */}
+        <div className={styles.printHide}>
+          <MbInProgressSection detail={detail} />
         </div>
-        <MbInProgressSection detail={detail} />
       </main>
-    </>
+    </div>
   );
 }
 
@@ -360,7 +379,14 @@ function Clipboard({ detail }: { detail: ScoutDetail }) {
           ranksToShow.length === 1 ? '' : 's'
         } · printable · hover for full text`}
       />
-      <div className={styles.clipboard}>
+      {/* Screen layout — hidden in print in favor of the fixed two-page
+          layout below, which mirrors the troop's original one-sheet
+          double-sided printout (a Google Sheet) column-for-column rather
+          than auto-flowing. Auto-flow (multi-column/grid) can't replicate a
+          hand-fit layout where unrelated content — camping nights,
+          leadership, service — deliberately fills the slack space of the
+          shorter columns. */}
+      <div className={`${styles.clipboard} ${styles.printHide}`}>
         <div className={styles.clipboardHeader}>
           <span className={styles.chName}>{publicScoutName(detail.scout)}</span>
           <span className={styles.chDate}>{todayShort}</span>
@@ -377,7 +403,56 @@ function Clipboard({ detail }: { detail: ScoutDetail }) {
           {renderBlock('eagle')}
         </div>
       </div>
+
+      {/* Print-only layout: one sheet, double-sided. Page 1 = Scout+Tenderfoot
+          / Second Class+Nights of Camping+Leadership / First Class+Service
+          Projects. Page 2 = Star / Life / Eagle, then Merit Badges +
+          Activities side by side. Matches the reference layout exactly
+          (confirmed with the user, 2026-07-13). */}
+      <div className={styles.printOnly}>
+        <div className={styles.printPageHeader}>
+          <span className={styles.chName}>{publicScoutName(detail.scout)}</span>
+          <span className={styles.chDate}>{todayShort}</span>
+        </div>
+        <div className={styles.printCols}>
+          <div className={styles.printCol}>
+            {renderBlock('scout')}
+            {renderBlock('tenderfoot')}
+          </div>
+          <div className={styles.printCol}>
+            {renderBlock('second-class')}
+            <NightsOfCamping detail={detail} />
+            <LeadershipPanel detail={detail} compact />
+          </div>
+          <div className={styles.printCol}>
+            {renderBlock('first-class')}
+            <ServicePanel detail={detail} />
+          </div>
+        </div>
+
+        <div className={styles.printPageBreak}>
+          <div className={styles.printCols}>
+            <div className={styles.printCol}>{renderBlock('star')}</div>
+            <div className={styles.printCol}>{renderBlock('life')}</div>
+            <div className={styles.printCol}>{renderBlock('eagle')}</div>
+          </div>
+          <div className={styles.printColBottomRow}>
+            <MeritBadgesPanel detail={detail} />
+            <ActivitiesPanel detail={detail} />
+          </div>
+        </div>
+      </div>
     </>
+  );
+}
+
+function NightsOfCamping({ detail }: { detail: ScoutDetail }) {
+  const nights = detail.summary?.camping_nights ?? 0;
+  return (
+    <div className={styles.printMiniBox}>
+      <div className={styles.printMiniBoxTitle}>Nights of Camping</div>
+      <div className={styles.printMiniBoxValue}>{nights}</div>
+    </div>
   );
 }
 
@@ -517,7 +592,11 @@ function RankReqRows({
         <span>{earned ? (ledger!.by ?? '') : ''}</span>
         <span className={styles.miniRowLabel}>
           <span className={styles.reqCode}>{req.code}</span>
-          {req.label}
+          {/* "BoR" (the reqCode above) already says everything the full
+              "Board of Review - <Rank>" label would — dropping the text
+              here removed a redundant, space-wasting repeat (confirmed with
+              the user, 2026-07-13). Full text stays in the title tooltip. */}
+          {!isBor && req.label}
         </span>
       </div>
     );
@@ -715,27 +794,34 @@ function ActivitiesPanel({ detail }: { detail: ScoutDetail }) {
   );
 }
 
-function LeadershipPanel({ detail }: { detail: ScoutDetail }) {
+/** `compact` drops the meta line, the "– present" suffix, and the "Current"
+ *  tag — used by the print-only layout, where Leadership shares a column
+ *  with Nights of Camping and needs every position to fit on one line
+ *  (confirmed with the user, 2026-07-13). Screen usage is unaffected. */
+function LeadershipPanel({ detail, compact }: { detail: ScoutDetail; compact?: boolean }) {
   const rows = [...detail.ledger.leadership].sort((a, b) =>
     (b.date ?? '').localeCompare(a.date ?? '')
   );
   return (
     <div className={styles.panel}>
       <div className={styles.panelTitle}>Leadership</div>
-      <div className={styles.panelMeta}>
-        {rows.length} position term{rows.length === 1 ? '' : 's'} · counts toward
-        rank requirements
-      </div>
+      {!compact && (
+        <div className={styles.panelMeta}>
+          {rows.length} position term{rows.length === 1 ? '' : 's'} · counts toward
+          rank requirements
+        </div>
+      )}
       {rows.length === 0 ? (
         <div className={styles.emptyLine}>No leadership positions yet.</div>
       ) : (
         rows.map((e) => (
           <div key={e.id} className={styles.leadershipRow}>
             <span className={styles.dateRange}>
-              {shortDate(e.date)} – present
+              {shortDate(e.date)}
+              {!compact && ' – present'}
             </span>
             <span>{e.label ?? e.code}</span>
-            <span className={styles.tagCurrent}>Current</span>
+            {!compact && <span className={styles.tagCurrent}>Current</span>}
           </div>
         ))
       )}

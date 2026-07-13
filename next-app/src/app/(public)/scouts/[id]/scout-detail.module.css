@@ -643,22 +643,142 @@
   font-weight: 600;
 }
 
+/* Real page margins for print — without this, the header text at the very
+   top of each page (the "Rank Requirements" divider on page 1, the
+   Star/Life/Eagle row on page 2) sat right at the physical page edge and
+   got clipped by the printer's unprintable margin. Browsers don't reserve
+   any margin by default for programmatic/headless printing. Top margin
+   pushed further than the others (2026-07-13, second pass) — still felt
+   tight there specifically, per the user. */
+@page {
+  margin: 0.7in 0.4in 0.35in 0.4in;
+}
+
+/* Print-only fixed two-page layout — mirrors the troop's original one-sheet
+   double-sided printout column-for-column (a Google Sheet screenshot, not
+   auto-flowed). See Clipboard() in page.tsx. Hidden on screen; the
+   `@media print` block below flips it to visible and hides the screen
+   layout instead. */
+.printOnly { display: none; }
+.printPageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 2px solid var(--text-head);
+  padding-bottom: 4px;
+  margin-bottom: 6px;
+  font-family: var(--font-ui);
+}
+.printCols {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  border: 1px solid #999;
+}
+.printCol {
+  border-right: 1px solid #aaa;
+  min-width: 0;
+}
+.printCol:last-child { border-right: none; }
+/* Forces the Star/Life/Eagle + Merit Badges/Activities block onto page 2 —
+   the two pages are sized (via the compact print typography below) to each
+   fit within one printed page, so this is the only page break needed.
+   padding-top is two blank lines of breathing room before the Star/Life/
+   Eagle row, matching the same buffer added above the page 1 divider
+   (confirmed with the user, 2026-07-13). */
+.printPageBreak { break-before: page; padding-top: 26px; }
+.printColBottomRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+.printMiniBox {
+  border-top: 1px solid #aaa;
+  padding: 4px 6px;
+}
+.printMiniBoxTitle {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-head);
+}
+.printMiniBoxValue {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--navy);
+  line-height: 1.3;
+}
+
 @media print {
   .scoutActions,
   .printHide { display: none !important; }
-  .clipboard {
-    box-shadow: none;
-    border: 1px solid #555;
-    page-break-inside: avoid;
-  }
-  .rankTimeline,
-  .metricsStrip { page-break-inside: avoid; }
-  .twoCol { page-break-inside: auto; }
-  .panel {
-    page-break-inside: avoid;
-    box-shadow: none;
-  }
-  .main { padding-bottom: 0; }
+  .printOnly { display: block; }
+  /* NOT page-break-inside:avoid — Merit Badges (32+ rows for a
+     well-progressed scout) needs to flow and fill whatever room is left on
+     page 2 after Star/Life/Eagle, not get shoved onto a fresh page 3
+     because it doesn't fit in the remainder as one atomic block. Same
+     lesson as the rank grid fix above. */
+  .panel { box-shadow: none; }
+  .main { padding: 0 16px; }
+  .scoutHeader { margin-top: 0; padding-bottom: 8px; }
+  .scoutNameBig { font-size: 26px; }
+  .scoutMeta { margin-top: 2px; }
+  /* Denser vertical rhythm for print — the screen values (24-32px) read
+     comfortably on a monitor but cost real pages when multiplied across
+     every section on a 7-rank, 30+ merit badge Clipboard. Pushed further
+     than the first pass (2026-07-13) per the user, trading some screen-mode
+     comfort for print density — this block only affects @media print, the
+     on-screen page is untouched. */
+  .metricsStrip { margin: 8px 0 10px; }
+  .metric { padding: 8px 6px; }
+  .metricLabel { font-size: 8px; margin-bottom: 3px; }
+  .metricValue { font-size: 18px; }
+  .metricSub { font-size: 8px; margin-top: 2px; }
+  .rankTimeline { margin-bottom: 8px; gap: 2px; }
+  .rankStep { padding: 5px 4px; }
+  .rankStepName { font-size: 9px; }
+  .rankStepDate { font-size: 8px; margin-top: 1px; }
+  /* Top margin is two blank lines of breathing room before this divider —
+     it's the first visible thing on page 1 now that header/metrics/rank
+     progression are print-hidden (confirmed with the user, 2026-07-13). */
+  .sectionDivider { margin: 26px 0 5px; }
+  .divLabel { font-size: 9px; padding-left: 6px; }
+  .divMeta { font-size: 9px; }
+  .twoCol { margin-bottom: 6px; gap: 10px; }
+  .panel { padding: 6px 8px; }
+  .panelTitle { font-size: 13px; margin-bottom: 1px; }
+  .panelMeta { font-size: 8.5px; margin-bottom: 4px; }
+  .panelSectionTitle { font-size: 8px; margin: 5px 0 3px; padding-bottom: 2px; }
+  .mbRow,
+  .actRow { font-size: 8.5px; padding: 0.5px 0; line-height: 1.15; }
+  .printColBottomRow { margin-top: 4px; }
+  /* Date column was 90px — much wider than a date like "10/20/23" needs at
+     this font size, leaving dead space that pushed labels/titles onto a
+     second line. Narrowed so Leadership and Service Projects each fit one
+     line per row (confirmed with the user, 2026-07-13). */
+  .leadershipRow,
+  .serviceRow { font-size: 9px; padding: 2px 0; grid-template-columns: 46px 1fr auto; }
+  .legend { margin-top: 2px; font-size: 8px; }
+  /* Clipboard grid: the bulk of every page. */
+  .clipboardHeader { padding-bottom: 4px; margin-bottom: 4px; }
+  .chName { font-size: 13px; }
+  /* Matches .chName's size and weight — the date is the print run's
+     timestamp, not a minor detail (confirmed with the user, 2026-07-13). */
+  .chDate { font-size: 13px; font-weight: 700; }
+  .rankBlock { min-height: 0; }
+  .rankBlockTitle { font-size: 9.5px; padding: 3px 4px; }
+  /* Date column narrowed same as leadership/service above, for the same
+     reason. Font bumped +0.5px — there was slack left at the bottom of
+     both pages (confirmed with the user, 2026-07-13). */
+  .miniRow,
+  .miniSubRow { font-size: 9px; line-height: 1.15; padding: 1px 5px; gap: 3px; grid-template-columns: 44px 28px 1fr; }
+  .miniSubRow { padding-left: 15px; font-size: 8px; }
+  .miniSectionHeading { font-size: 8px; padding: 2px 5px; }
+  .miniEmpty { padding: 4px 8px; font-size: 8.5px; }
   /* Force every accordion section open on print, regardless of what the
      reader had expanded/collapsed on screen — a printed Clipboard should
      always show full detail. */
@@ -670,7 +790,12 @@
   }
 }
 
-@media (max-width: 900px) {
+/* `screen` here is load-bearing: a printed Letter page (~850 CSS px wide)
+   is itself narrower than this breakpoint, so a bare `(max-width: 900px)`
+   query used to also fire during print — collapsing the 3-column Clipboard
+   grid to a single stacked column and blowing up the page count. Found
+   2026-07-13 while fixing the Clipboard's print layout. */
+@media screen and (max-width: 900px) {
   .scoutHeader { grid-template-columns: 1fr; }
   .scoutActions { justify-content: flex-start; flex-wrap: wrap; }
   .metricsStrip { grid-template-columns: repeat(3, 1fr); }

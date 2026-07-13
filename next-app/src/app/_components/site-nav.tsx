@@ -9,7 +9,7 @@ import { UtilityDate } from './utility-date';
 
 export function SiteNav() {
   return (
-    <>
+    <div id="site-nav-root">
       {/* Utility bar */}
       <div
         style={{
@@ -180,6 +180,6 @@ export function SiteNav() {
           </Link>
         </div>
       </nav>
-    </>
+    </div>
   );
 }
