@@ -49,6 +49,24 @@
   font-weight: 700;
   letter-spacing: .06em;
   font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Applied only when pointed at the local dev database — matches .subNavDevDb. */
+.topBarDevDb {
+  background: var(--admin-danger);
+  border-bottom-color: var(--admin-danger-hover);
+}
+.topBarDevTag {
+  background: rgba(255,255,255,.2);
+  color: var(--admin-white);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  padding: 3px 8px;
+  border-radius: 3px;
 }
 .topBarRight {
   display: flex;
@@ -93,6 +111,13 @@
   border-right: 1px solid var(--admin-gray-200);
   padding: 18px 0;
   overflow-y: auto;
+}
+
+/* Applied only when pointed at the local dev database (see sub-nav.tsx) —
+   a visual tripwire against mistaking dev for production. */
+.subNavDevDb {
+  background: #fbe4e1;
+  border-right-color: #eab8b1;
 }
 .subNavSection {
   font-size: 10px;

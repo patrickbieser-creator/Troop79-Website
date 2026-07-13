@@ -108,6 +108,16 @@
   font-variant-numeric: tabular-nums;
 }
 
+.detailLines {
+  font-size: 11px;
+  color: var(--admin-gray-500);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .missingList {
   display: flex;
   flex-direction: column;

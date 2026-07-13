@@ -24,7 +24,7 @@ export function AuditCard({
 }) {
   const router = useRouter();
   const [checked, setChecked] = useState<Set<string>>(new Set(finding.missing.map((m) => m.code)));
-  const [date, setDate] = useState(todayISO);
+  const [date, setDate] = useState(finding.qualifyingDate || todayISO());
   const [by, setBy] = useState('');
   const [status, setStatus] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -79,6 +79,14 @@ export function AuditCard({
         </div>
         <div className={styles.borContext}>{finding.contextLine}</div>
       </div>
+
+      {finding.detailLines && finding.detailLines.length > 0 && (
+        <div className={styles.detailLines}>
+          {finding.detailLines.map((line) => (
+            <div key={line}>{line}</div>
+          ))}
+        </div>
+      )}
 
       <div className={styles.missingList}>
         {finding.missing.map((m) => (

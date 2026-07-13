@@ -1,7 +1,8 @@
 import { loginAction } from './actions';
+import { IS_DEV_DB } from '@/lib/dev-db';
 
 export const metadata = {
-  title: 'Sign In — Troop 79 Admin'
+  title: IS_DEV_DB ? '[DEV] Sign In — Troop 79 Admin' : 'Sign In — Troop 79 Admin'
 };
 
 export default async function LoginPage({

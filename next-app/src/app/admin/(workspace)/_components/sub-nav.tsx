@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { IS_DEV_DB } from '@/lib/dev-db';
 import styles from '../admin.module.css';
 
 interface NavItem {
@@ -128,7 +129,10 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
 export function SubNav() {
   const pathname = usePathname();
   return (
-    <nav className={styles.subNav} aria-label="Leader Workspace navigation">
+    <nav
+      className={`${styles.subNav} ${IS_DEV_DB ? styles.subNavDevDb : ''}`}
+      aria-label="Leader Workspace navigation"
+    >
       {SECTIONS.map((section) => (
         <div key={section.title}>
           <div className={styles.subNavSection}>{section.title}</div>

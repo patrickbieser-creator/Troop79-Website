@@ -13,6 +13,9 @@
     "set-mb-reqs": "tsx --env-file=.env.local scripts/set-mb-requirements.ts",
     "import-ledger-backfill": "tsx --env-file=.env.local scripts/import-ledger-backfill.ts",
     "import-attendance": "tsx --env-file=.env.local scripts/import-attendance.ts",
+    "import-roster": "tsx --env-file=.env.local scripts/import-roster.ts",
+    "import-roster-birthdates": "tsx --env-file=.env.local scripts/import-roster-birthdates.ts",
+    "import-roster-parents-counselors": "tsx --env-file=.env.local scripts/import-roster-parents-counselors.ts",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "supabase:reset": "supabase db reset"

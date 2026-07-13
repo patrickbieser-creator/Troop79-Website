@@ -32,7 +32,7 @@ const CHECKS = [
     id: 'activity-thresholds',
     title: 'Activity & Campout Thresholds',
     description:
-      'A scout has logged enough activities and campouts to satisfy Second Class 1a (5 activities, 3 campouts) or First Class 1a (10 activities, 6 campouts), but that requirement isn’t signed off yet. Runs regardless of Board of Review status — a proactive check that can catch the gap before the rank is otherwise complete.',
+      'A scout has logged enough activities and campouts to satisfy Tenderfoot 1a (1 campout, used as a readiness nudge — the stored requirement is actually a packing skill demo, not a count), Second Class 1a (5 activities, 3 campouts), or First Class 1a (10 activities, 6 campouts), but that requirement isn’t signed off yet. Runs regardless of Board of Review status — a proactive check that can catch the gap before the rank is otherwise complete.',
     run: activityThresholds.run
   }
 ] as const;

@@ -20,4 +20,6 @@ export interface Finding {
   groupLabel: string; // e.g. the rank's display name
   contextLine: string; // pre-formatted per-check context, e.g. "BoR on record 3/12/2025 · LMP"
   missing: MissingLeaf[];
+  qualifyingDate?: string; // yyyy-mm-dd — defaults the sign-off date field instead of today, when a check can derive one
+  detailLines?: string[]; // optional extra context rows rendered under contextLine, e.g. per-event dates
 }
