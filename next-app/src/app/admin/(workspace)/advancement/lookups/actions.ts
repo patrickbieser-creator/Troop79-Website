@@ -37,6 +37,7 @@ interface ScoutDemoFields {
   phone: string | null;
   email: string | null;
   health_form_date: string | null;
+  birthdate: string | null;
 }
 
 interface ParentInput {
@@ -69,7 +70,35 @@ function readDemoFields(formData: FormData): ScoutDemoFields {
     zip: str('zip'),
     phone: str('phone'),
     email: str('email'),
-    health_form_date: str('health_form_date')
+    health_form_date: str('health_form_date'),
+    birthdate: str('birthdate')
+  };
+}
+
+/** Scout-only demographics (Scoutbook parity, 2026-07-13). */
+function readScoutExtras(formData: FormData) {
+  const str = (k: string) => {
+    const v = String(formData.get(k) ?? '').trim();
+    return v === '' ? null : v;
+  };
+  const gradYearRaw = str('graduation_year');
+  return {
+    gender: str('gender'),
+    school: str('school'),
+    graduation_year: gradYearRaw ? Number(gradYearRaw) : null,
+    swim_class: str('swim_class')
+  };
+}
+
+/** Leader-only demographics. */
+function readLeaderExtras(formData: FormData) {
+  const str = (k: string) => {
+    const v = String(formData.get(k) ?? '').trim();
+    return v === '' ? null : v;
+  };
+  return {
+    bsa_member_id: str('bsa_member_id_leader'),
+    ypt_completed: str('ypt_completed')
   };
 }
 
@@ -163,7 +192,7 @@ export async function createScout(formData: FormData): Promise<Result> {
   }
 
   const supabase = createAdminClient();
-  const demo = readDemoFields(formData);
+  const demo = { ...readDemoFields(formData), ...readScoutExtras(formData) };
   const parents = readParents(formData);
   const { error } = await supabase.from('scouts').insert({
     id,
@@ -238,7 +267,7 @@ export async function updateScout(formData: FormData): Promise<Result> {
   }
 
   const supabase = createAdminClient();
-  const demo = readDemoFields(formData);
+  const demo = { ...readDemoFields(formData), ...readScoutExtras(formData) };
   const parents = readParents(formData);
   const { error } = await supabase
     .from('scouts')
@@ -276,7 +305,7 @@ export async function createLeader(formData: FormData): Promise<Result> {
   if (!name) return { ok: false, error: 'Name is required' };
 
   const supabase = createAdminClient();
-  const demo = readDemoFields(formData);
+  const demo = { ...readDemoFields(formData), ...readLeaderExtras(formData) };
   const { error } = await supabase
     .from('leaders')
     .insert({ code, name, role, ...demo });
@@ -303,7 +332,7 @@ export async function updateLeader(formData: FormData): Promise<Result> {
   if (!name) return { ok: false, error: 'Name is required' };
 
   const supabase = createAdminClient();
-  const demo = readDemoFields(formData);
+  const demo = { ...readDemoFields(formData), ...readLeaderExtras(formData) };
   const { error } = await supabase
     .from('leaders')
     .update({ name, role, ...demo })

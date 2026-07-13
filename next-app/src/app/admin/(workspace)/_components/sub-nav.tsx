@@ -66,6 +66,11 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         href: '/admin/advancement/audits',
         matchPath: '/admin/advancement/audits'
       },
+      {
+        label: 'Roster',
+        href: '/admin/advancement/roster',
+        matchPath: '/admin/advancement/roster'
+      },
       { label: 'Court of Honor', disabled: true }
     ]
   },

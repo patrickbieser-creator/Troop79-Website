@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { createLeader, deleteLeader, updateLeader } from './actions';
 import { useLookupTable } from './use-lookup-table';
+import { ageOn, yptStatus } from '@/lib/demographics';
 import styles from './lookups.module.css';
 
 export type LeaderType = 'adult' | 'youth' | 'source';
@@ -21,6 +22,9 @@ export interface LeaderRow {
   phone: string | null;
   email: string | null;
   health_form_date: string | null;
+  birthdate: string | null;
+  bsa_member_id: string | null;
+  ypt_completed: string | null;
 }
 
 interface Props {
@@ -187,6 +191,9 @@ function LeaderForm({
   const [phone, setPhone] = useState(row?.phone ?? '');
   const [email, setEmail] = useState(row?.email ?? '');
   const [healthFormDate, setHealthFormDate] = useState(row?.health_form_date ?? '');
+  const [birthdate, setBirthdate] = useState(row?.birthdate ?? '');
+  const [bsaMemberId, setBsaMemberId] = useState(row?.bsa_member_id ?? '');
+  const [yptCompleted, setYptCompleted] = useState(row?.ypt_completed ?? '');
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -204,6 +211,9 @@ function LeaderForm({
     fd.set('phone', phone);
     fd.set('email', email);
     fd.set('health_form_date', healthFormDate);
+    fd.set('birthdate', birthdate);
+    fd.set('bsa_member_id_leader', bsaMemberId);
+    fd.set('ypt_completed', yptCompleted);
     startTransition(async () => {
       const res = isNew ? await createLeader(fd) : await updateLeader(fd);
       if (!res.ok) {
@@ -346,6 +356,41 @@ function LeaderForm({
               type="date"
               value={healthFormDate}
               onChange={(e) => setHealthFormDate(e.target.value)}
+              className={styles.editInput}
+            />
+          </label>
+          <label className={styles.editField}>
+            <span className={styles.editLabel}>
+              Birthdate{ageOn(birthdate || null) !== null ? ` · age ${ageOn(birthdate || null)}` : ''}
+            </span>
+            <input
+              type="date"
+              value={birthdate}
+              onChange={(e) => setBirthdate(e.target.value)}
+              className={styles.editInput}
+            />
+          </label>
+          <label className={styles.editField}>
+            <span className={styles.editLabel}>BSA Member ID</span>
+            <input
+              type="text"
+              value={bsaMemberId}
+              onChange={(e) => setBsaMemberId(e.target.value)}
+              className={styles.editInput}
+              placeholder="(optional)"
+            />
+          </label>
+          <label className={styles.editField}>
+            <span className={styles.editLabel}>
+              YPT Completed
+              {yptCompleted
+                ? ` · ${yptStatus(yptCompleted).status} (expires ${yptStatus(yptCompleted).expires})`
+                : ''}
+            </span>
+            <input
+              type="date"
+              value={yptCompleted}
+              onChange={(e) => setYptCompleted(e.target.value)}
               className={styles.editInput}
             />
           </label>

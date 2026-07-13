@@ -104,7 +104,7 @@ async function loadLookups() {
     supabase
       .from('scouts')
       .select(
-        'id, first_name, last_name, display_name, patrol, current_rank, bsa_member_id, active, inactive_reason, address_line1, address_line2, city, state, zip, phone, email, health_form_date'
+        'id, first_name, last_name, display_name, patrol, current_rank, bsa_member_id, birthdate, gender, school, graduation_year, swim_class, active, inactive_reason, address_line1, address_line2, city, state, zip, phone, email, health_form_date'
       )
       .order('display_name'),
     supabase.from('scout_parents').select('*').order('sort_order'),

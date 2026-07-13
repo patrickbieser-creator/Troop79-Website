@@ -60,6 +60,12 @@ export interface Scout {
   patrol: string | null;
   current_rank: string | null;
   bsa_member_id: string | null;
+  birthdate: string | null;
+  gender: 'M' | 'F' | null;
+  school: string | null;
+  /** Grade is derived from this (Aug 1 rollover) — see lib/demographics. */
+  graduation_year: number | null;
+  swim_class: 'swimmer' | 'beginner' | 'nonswimmer' | null;
   active: boolean;
   inactive_reason: InactiveReason | null;
   joined_date: string | null;
@@ -110,6 +116,10 @@ export interface Leader {
   phone: string | null;
   email: string | null;
   health_form_date: string | null;
+  birthdate: string | null;
+  bsa_member_id: string | null;
+  /** YPT completion date; certification runs two years (derived status). */
+  ypt_completed: string | null;
 }
 
 export interface MeritBadgeCounselor {

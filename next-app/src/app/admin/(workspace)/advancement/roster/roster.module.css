@@ -1,0 +1,62 @@
+.pageTitle {
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--admin-gray-200);
+  padding-bottom: 14px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.pageTitle h1 { font-size: 22px; font-weight: 700; color: var(--admin-navy); margin-bottom: 4px; }
+.pageTitle p { font-size: 13px; color: var(--admin-gray-500); max-width: 720px; line-height: 1.5; }
+
+.printBtn {
+  font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: .04em;
+  background: var(--admin-navy); color: var(--admin-white); border: 1px solid var(--admin-navy);
+  padding: 7px 14px; border-radius: 3px; cursor: pointer; white-space: nowrap;
+}
+
+.section { margin-bottom: 28px; }
+.sectionHead {
+  font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--admin-gray-500); margin-bottom: 8px;
+}
+
+.table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.table th, .table td { padding: 7px 10px; border-bottom: 1px solid var(--admin-gray-100); text-align: left; vertical-align: top; }
+.table th {
+  background: var(--admin-gray-50); font-size: 10px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--admin-gray-700);
+}
+.table tr:last-child td { border-bottom: none; }
+.muted { color: var(--admin-gray-400); }
+.mono { font-family: 'Menlo', 'Consolas', monospace; font-size: 11.5px; }
+
+.badge {
+  display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; padding: 2px 8px; border-radius: 10px;
+}
+.badgeOk { background: #e5efe4; color: var(--admin-forest); }
+.badgeWarn { background: #fdf3dc; color: #8a6d1a; }
+.badgeBad { background: #fdf0ef; color: var(--admin-danger); }
+.badgeMuted { background: var(--admin-gray-100); color: var(--admin-gray-700); }
+
+.callout {
+  background: #fdf3dc; border: 1px solid #ecd9a0; border-left: 4px solid #c9a227;
+  border-radius: 4px; padding: 10px 14px; margin-bottom: 18px;
+  font-size: 12.5px; color: var(--admin-gray-900);
+}
+.callout strong { letter-spacing: .02em; }
+
+.gate {
+  background: var(--admin-gray-50); border: 1px dashed var(--admin-gray-300);
+  border-radius: 4px; padding: 40px 24px; text-align: center;
+  color: var(--admin-gray-500); font-size: 13px;
+}
+
+@media print {
+  .printBtn { display: none; }
+  .table { font-size: 10.5px; }
+  .table th, .table td { padding: 4px 6px; }
+}

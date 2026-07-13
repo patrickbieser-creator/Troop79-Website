@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { createScout, promoteScoutToAdult, updateScout } from './actions';
 import { INACTIVE_REASON_LABEL, type InactiveReason } from '@/lib/supabase/types';
+import { ageOn, gradeFromGradYear, gradeLabel, gradYearFromGrade } from '@/lib/demographics';
 import { useLookupTable } from './use-lookup-table';
 import styles from './lookups.module.css';
 
@@ -14,6 +15,11 @@ export interface ScoutRow {
   patrol: string | null;
   current_rank: string | null;
   bsa_member_id: string | null;
+  birthdate: string | null;
+  gender: 'M' | 'F' | null;
+  school: string | null;
+  graduation_year: number | null;
+  swim_class: 'swimmer' | 'beginner' | 'nonswimmer' | null;
   active: boolean;
   inactive_reason: InactiveReason | null;
   address_line1: string | null;
@@ -242,6 +248,14 @@ function ScoutForm({
   const [phone, setPhone] = useState(row?.phone ?? '');
   const [email, setEmail] = useState(row?.email ?? '');
   const [healthFormDate, setHealthFormDate] = useState(row?.health_form_date ?? '');
+  const [birthdate, setBirthdate] = useState(row?.birthdate ?? '');
+  const [gender, setGender] = useState<string>(row?.gender ?? '');
+  const [school, setSchool] = useState(row?.school ?? '');
+  const [grade, setGrade] = useState<string>(() => {
+    const g = gradeFromGradYear(row?.graduation_year ?? null);
+    return g === null ? '' : String(g);
+  });
+  const [swimClass, setSwimClass] = useState<string>(row?.swim_class ?? '');
   const [parents, setParents] = useState<ParentDraft[]>(
     initialParents.length > 0
       ? initialParents.map(parentRowToDraft)
@@ -276,6 +290,11 @@ function ScoutForm({
     fd.set('phone', phone);
     fd.set('email', email);
     fd.set('health_form_date', healthFormDate);
+    fd.set('birthdate', birthdate);
+    fd.set('gender', gender);
+    fd.set('school', school);
+    fd.set('graduation_year', grade === '' ? '' : String(gradYearFromGrade(Number(grade))));
+    fd.set('swim_class', swimClass);
     fd.set(
       'parents',
       JSON.stringify(
@@ -387,6 +406,64 @@ function ScoutForm({
             </div>
           </div>
         </div>
+      </FormSection>
+
+      <FormSection title="Demographics">
+        <div className={styles.editGrid}>
+          <label className={styles.editField}>
+            <span className={styles.editLabel}>
+              Birthdate{ageOn(birthdate || null) !== null ? ` · age ${ageOn(birthdate || null)}` : ''}
+            </span>
+            <input
+              type="date"
+              value={birthdate}
+              onChange={(e) => setBirthdate(e.target.value)}
+              className={styles.editInput}
+            />
+          </label>
+          <label className={styles.editField}>
+            <span className={styles.editLabel}>Gender</span>
+            <select value={gender} onChange={(e) => setGender(e.target.value)} className={styles.editInput}>
+              <option value="">{'—'}</option>
+              <option value="M">Male</option>
+              <option value="F">Female</option>
+            </select>
+          </label>
+          <label className={styles.editField}>
+            <span className={styles.editLabel}>School</span>
+            <input
+              type="text"
+              value={school}
+              onChange={(e) => setSchool(e.target.value)}
+              className={styles.editInput}
+              placeholder="e.g. Milwaukee German Immersion"
+            />
+          </label>
+          <label className={styles.editField}>
+            <span className={styles.editLabel}>
+              Grade{grade !== '' ? ` · class of ${gradYearFromGrade(Number(grade))}` : ''}
+            </span>
+            <select value={grade} onChange={(e) => setGrade(e.target.value)} className={styles.editInput}>
+              <option value="">{'—'}</option>
+              {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((g) => (
+                <option key={g} value={g}>{gradeLabel(g)}</option>
+              ))}
+            </select>
+          </label>
+          <label className={styles.editField}>
+            <span className={styles.editLabel}>Swim classification</span>
+            <select value={swimClass} onChange={(e) => setSwimClass(e.target.value)} className={styles.editInput}>
+              <option value="">{'—'}</option>
+              <option value="swimmer">Swimmer</option>
+              <option value="beginner">Beginner</option>
+              <option value="nonswimmer">Non-swimmer</option>
+            </select>
+          </label>
+        </div>
+        <p className={styles.helpText}>
+          Age and grade are derived automatically (grade advances each August 1) {'—'} the stored
+          value is the graduation class year.
+        </p>
       </FormSection>
 
       <FormSection title="Contact">
