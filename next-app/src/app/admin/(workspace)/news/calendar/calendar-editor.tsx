@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import type { CalendarCategory, CalendarEntry } from '@/lib/supabase/types';
 import { CATEGORY_COLORS } from '@/lib/calendar-shared';
 import type { ArticleOption } from './page';
+import type { ImportResult, ImportRowFields, ImportUpdate } from './actions';
+import { CalendarImport } from './calendar-import';
 import styles from './calendar.module.css';
 
 type ActionResult = { ok: boolean; error?: string };
@@ -15,6 +17,7 @@ interface Props {
   onCreate: (fd: FormData) => Promise<ActionResult>;
   onUpdate: (fd: FormData) => Promise<ActionResult>;
   onDelete: (id: number) => Promise<ActionResult>;
+  onImport: (inserts: ImportRowFields[], updates: ImportUpdate[]) => Promise<ImportResult>;
 }
 
 function formatDate(iso: string): string {
@@ -29,7 +32,7 @@ function formatTime(hms: string): string {
   return new Date(`2000-01-01T${hms}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
-export function CalendarEditor({ rows, articles, categories, onCreate, onUpdate, onDelete }: Props) {
+export function CalendarEditor({ rows, articles, categories, onCreate, onUpdate, onDelete, onImport }: Props) {
   const [openFor, setOpenFor] = useState<CalendarEntry | 'new' | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -58,6 +61,7 @@ export function CalendarEditor({ rows, articles, categories, onCreate, onUpdate,
   return (
     <>
       <div className={styles.toolbar}>
+        <CalendarImport rows={rows} categories={categories} onImport={onImport} />
         <button type="button" className={styles.addBtn} onClick={() => setOpenFor('new')}>
           + Add Entry
         </button>

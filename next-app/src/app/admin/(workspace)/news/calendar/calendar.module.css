@@ -82,3 +82,43 @@
   .editGrid { grid-template-columns: 1fr; }
   .editFieldFull { grid-column: auto; }
 }
+
+/* ── CSV import review ─────────────────────────────────────────────────── */
+
+.importOverlay {
+  position: fixed; inset: 0; z-index: 200; background: rgba(0, 0, 0, .42);
+  display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px;
+  overflow-y: auto;
+}
+.importPanel {
+  background: var(--admin-white); border-radius: 6px; box-shadow: var(--admin-shadow-md);
+  width: 100%; max-width: 860px; padding: 22px 26px 18px; font-family: inherit;
+}
+.importBody { max-height: 62vh; overflow-y: auto; padding-right: 4px; }
+.importSection {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--admin-gray-500); margin: 16px 0 8px;
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+}
+.importSection:first-child { margin-top: 4px; }
+.importCard {
+  border: 1px solid var(--admin-gray-200); border-radius: 4px;
+  padding: 9px 12px; margin-bottom: 8px; background: var(--admin-gray-50);
+}
+.importCheck { display: inline-flex; align-items: flex-start; gap: 8px; font-size: 12.5px; color: var(--admin-gray-900); cursor: pointer; }
+.importCheck input { margin-top: 2px; accent-color: var(--admin-forest); cursor: pointer; }
+.importCardCtl { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 7px; margin-left: 22px; }
+.importCardCtl select { width: auto; font-size: 12px; padding: 4px 8px; }
+.importDiffHead { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 12.5px; margin-bottom: 6px; }
+.importDiffTable { width: 100%; border-collapse: collapse; font-size: 12px; }
+.importDiffTable td { padding: 3px 8px 3px 0; vertical-align: top; }
+.importDiffTable td:first-child {
+  font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--admin-gray-500); white-space: nowrap; width: 90px;
+}
+.importOld { color: var(--admin-gray-500); text-decoration: line-through; text-decoration-color: rgba(0,0,0,.25); }
+.importNew { color: var(--admin-forest); font-weight: 600; }
+.importOrphans { list-style: none; margin: 0 0 6px; padding: 0; font-size: 12px; }
+.importOrphans li { padding: 3px 0; border-bottom: 1px solid var(--admin-gray-100); }
+.importOrphans li:last-child { border-bottom: none; }
+.okNote { font-size: 12.5px; color: var(--admin-forest); font-weight: 600; }

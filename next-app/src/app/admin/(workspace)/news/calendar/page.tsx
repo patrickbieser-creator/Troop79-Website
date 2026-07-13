@@ -2,7 +2,12 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { CATEGORIES } from '@/lib/calendar';
 import type { CalendarEntry } from '@/lib/supabase/types';
 import { CalendarEditor } from './calendar-editor';
-import { createCalendarEntry, updateCalendarEntry, deleteCalendarEntry } from './actions';
+import {
+  createCalendarEntry,
+  updateCalendarEntry,
+  deleteCalendarEntry,
+  importCalendarEntries
+} from './actions';
 import styles from './calendar.module.css';
 
 export const metadata = {
@@ -47,6 +52,7 @@ export default async function CalendarAdminPage() {
         onCreate={createCalendarEntry}
         onUpdate={updateCalendarEntry}
         onDelete={deleteCalendarEntry}
+        onImport={importCalendarEntries}
       />
     </>
   );

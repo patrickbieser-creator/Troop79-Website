@@ -497,6 +497,27 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.5.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.5.0</span>
+        <span class="release-date">July 12, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Calendar CSV Import</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              The admin Calendar gains an <strong>Import CSV</strong> button that reads the Bugle Google Sheet&rsquo;s sheet2ics export and reconciles it against the live calendar in a review dialog before anything is written: <strong>new</strong> entries (checkbox per row, with an &ldquo;update existing instead&rdquo; option for retitled same-date events and a category picker for unrecognized categories), <strong>changed</strong> entries (per-field old&nbsp;&rarr;&nbsp;new diff with Apply/Keep per row), an <strong>unchanged</strong> count, and an info-only list of calendar entries the CSV no longer carries (possible cancellations &mdash; import never deletes).
+              <span class="change-note">Matching is date + title; category comparison ignores spacing (&ldquo;Fund Raiser&rdquo; = &ldquo;Fundraiser&rdquo;); <code>day_note</code> and linked articles are never overwritten. Re-importing the same file is a no-op. Verified against the live sheet export: 12 added + 6 updated, then 0/0/35 on re-import.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.4.0 -->
     <div class="release">
       <div class="release-header">
