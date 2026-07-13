@@ -1,13 +1,10 @@
 import { loadCalendarEntries, CATEGORIES } from '@/lib/calendar';
+import { siteUrl } from '@/lib/site-url';
 import { SubscribeCalendar } from './subscribe-calendar';
 import { CalendarBrowser } from './calendar-browser';
 import styles from './events.module.css';
 
 export const metadata = { title: 'Calendar — Troop 79' };
-
-function siteUrl(): string {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
-}
 
 export default async function EventsPage() {
   const { upcoming, past } = await loadCalendarEntries();

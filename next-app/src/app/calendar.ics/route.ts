@@ -1,13 +1,10 @@
 import { loadAllCalendarEntries } from '@/lib/calendar';
 import { buildCalendar, type IcsEvent } from '@/lib/ics';
+import { siteUrl } from '@/lib/site-url';
 
 // Regenerate at most every 30 minutes — plenty fresh for a troop calendar,
 // and matches the interval Google/Outlook themselves poll subscribed feeds at.
 export const revalidate = 1800;
-
-function siteUrl(): string {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
-}
 
 export async function GET() {
   const base = siteUrl();
