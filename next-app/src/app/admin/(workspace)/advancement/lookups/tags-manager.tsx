@@ -4,7 +4,7 @@ import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Tag } from '@/lib/supabase/types';
 import { createTag, deleteTag } from './actions';
-import styles from './tags.module.css';
+import styles from './lookups.module.css';
 
 export function TagsManager({ tags }: { tags: Tag[] }) {
   const router = useRouter();
@@ -43,7 +43,7 @@ export function TagsManager({ tags }: { tags: Tag[] }) {
 
   return (
     <>
-      <div className={styles.addForm}>
+      <div className={styles.tagAddForm}>
         <input
           ref={inputRef}
           type="text"
@@ -53,22 +53,22 @@ export function TagsManager({ tags }: { tags: Tag[] }) {
             if (e.key === 'Enter') handleAdd();
           }}
         />
-        <button type="button" className={styles.addBtn} disabled={isPending} onClick={handleAdd}>
+        <button type="button" className={styles.tagAddBtn} disabled={isPending} onClick={handleAdd}>
           + Add Tag
         </button>
       </div>
-      {error && <div className={styles.error}>{error}</div>}
+      {error && <div className={styles.tagError}>{error}</div>}
 
-      <div className={styles.list}>
+      <div className={styles.tagList}>
         {tags.map((t) => (
-          <div key={t.id} className={styles.row}>
+          <div key={t.id} className={styles.tagRow}>
             <span>
               {t.name}
-              <span className={styles.slug}>/{t.slug}</span>
+              <span className={styles.tagSlug}>/{t.slug}</span>
             </span>
             <button
               type="button"
-              className={styles.deleteBtn}
+              className={styles.tagDeleteBtn}
               disabled={isPending}
               onClick={() => {
                 if (window.confirm(`Delete "${t.name}"? It will be removed from any article that has it.`)) {

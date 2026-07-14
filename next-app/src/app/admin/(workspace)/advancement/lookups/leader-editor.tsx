@@ -37,6 +37,9 @@ interface Props {
   scouts: Pick<ScoutRow, 'id' | 'display_name'>[];
   /** The "First L." label each adult would get if login_name were blank. */
   defaultLoginLabelByCode: Record<string, string>;
+  /** Auto-opens this leader's edit dialog on mount — used by the Roster's
+   *  "Edit in Lookups & Admin" deep link (?editLeader=<code>). */
+  initialOpenCode?: string;
 }
 
 const TYPE_LABEL: Record<LeaderType, string> = {
@@ -45,8 +48,16 @@ const TYPE_LABEL: Record<LeaderType, string> = {
   source: 'Source'
 };
 
-export function LeaderEditor({ rows, typeByCode, scouts, defaultLoginLabelByCode }: Props) {
-  const [openFor, setOpenFor] = useState<LeaderRow | 'new' | null>(null);
+export function LeaderEditor({
+  rows,
+  typeByCode,
+  scouts,
+  defaultLoginLabelByCode,
+  initialOpenCode
+}: Props) {
+  const [openFor, setOpenFor] = useState<LeaderRow | 'new' | null>(() =>
+    initialOpenCode ? (rows.find((r) => r.code === initialOpenCode) ?? null) : null
+  );
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [busyCode, setBusyCode] = useState<string | null>(null);
   const [rowErr, setRowErr] = useState<{ code: string; msg: string } | null>(null);

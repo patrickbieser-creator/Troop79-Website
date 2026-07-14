@@ -28,7 +28,7 @@ export interface CatalogPayload {
    *  default_kind classification (Campout/Hike/Day Outing/Fundraiser) so the
    *  Events tab can resolve the ledger kind automatically for a recurring
    *  event instead of asking the leader to re-pick a Type every time. */
-  events: { id: number; name: string; default_kind: LedgerKind | null }[];
+  events: { id: number; name: string; default_kind: LedgerKind | null; start_date: string | null }[];
   serviceProjects: { id: number; name: string }[];
   leadershipPositions: { id: number; name: string }[];
 }

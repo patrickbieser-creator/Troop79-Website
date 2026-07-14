@@ -3,8 +3,8 @@
  *   - Scouts: edit (modal) + add new
  *   - Leaders: edit (modal) + add new + delete (if no ledger references)
  *   - Merit Badges: edit (modal)
- *   - Internal Requirement Codes: read-only (catalog tree is tricky to edit
- *     inline; ships in a later slice)
+ *   - Internal Requirement Codes: edit (modal), top-level rows only — nested
+ *     sub-requirement trees are edited per-MB in the Merit Badge card instead
  */
 
 import { createAdminClient } from '@/lib/supabase/server';
@@ -14,10 +14,12 @@ import { ScoutEditor, type ScoutRow, type ParentRow } from './scout-editor';
 import { MbEditor, type MbRow, type CounselorRow, type EditReqNode } from './mb-editor';
 import { NameLookupEditor, type NameRow } from './name-lookup-editor';
 import { EventEditor, type EventRow } from './event-editor';
-import { ReqCodesTable } from './req-codes-table';
+import { ReqCodesTable, type ReqRow } from './req-codes-table';
 import { LookupCard } from './lookup-card';
 import { SkillsEditor, type SkillRow } from './skills-editor';
 import { SkillAssignEditor, type AssignPerson } from './skill-assign-editor';
+import { TagsManager } from './tags-manager';
+import type { Tag } from '@/lib/supabase/types';
 import {
   createEvent,
   updateEvent,
@@ -76,14 +78,6 @@ export const metadata = {
   title: 'Lookups & Admin — Troop 79'
 };
 
-interface ReqRow {
-  source: 'rank' | 'mb';
-  parentId: string;
-  parentLabel: string;
-  code: string;
-  label: string;
-}
-
 async function loadLookups() {
   const supabase = createAdminClient();
 
@@ -99,7 +93,8 @@ async function loadLookups() {
     mbReqsFullRes,
     eventsRes,
     serviceProjectsRes,
-    leadershipPositionsRes
+    leadershipPositionsRes,
+    tagsRes
   ] = await Promise.all([
     supabase.from('leaders').select('*').order('code'),
     supabase
@@ -121,12 +116,12 @@ async function loadLookups() {
     supabase.from('ranks').select('id, display_name, sort_order').order('sort_order'),
     supabase
       .from('rank_requirements')
-      .select('rank_id, code, label')
+      .select('id, rank_id, code, label')
       .is('parent_id', null)
       .order('rank_id'),
     supabase
       .from('merit_badge_requirements')
-      .select('mb_id, code, label')
+      .select('id, mb_id, code, label')
       .is('parent_id', null)
       .order('mb_id'),
     supabase
@@ -134,9 +129,10 @@ async function loadLookups() {
       .select('id, mb_id, parent_id, code, label, complete_rule, complete_n, sort_order')
       .order('mb_id')
       .order('sort_order'),
-    supabase.from('events').select('id, name, default_kind').order('name'),
+    supabase.from('events').select('id, name, default_kind, start_date').order('name'),
     supabase.from('service_projects').select('id, name').order('name'),
-    supabase.from('leadership_positions').select('id, name').order('name')
+    supabase.from('leadership_positions').select('id, name').order('name'),
+    supabase.from('tags').select('*').order('name')
   ]);
 
   const [skillsRes, leaderSkillsRes, scoutInstructorsRes] = await Promise.all([
@@ -188,20 +184,26 @@ async function loadLookups() {
   const mbLabels = new Map(mbs.map((m) => [m.id, m.name]));
 
   const reqs: ReqRow[] = [
-    ...((rankReqsRes.data ?? []) as { rank_id: string; code: string; label: string }[]).map((r) => ({
-      source: 'rank' as const,
-      parentId: r.rank_id,
-      parentLabel: rankLabels.get(r.rank_id) ?? r.rank_id,
-      code: r.code,
-      label: r.label
-    })),
-    ...((mbReqsRes.data ?? []) as { mb_id: string; code: string; label: string }[]).map((r) => ({
-      source: 'mb' as const,
-      parentId: r.mb_id,
-      parentLabel: mbLabels.get(r.mb_id) ?? r.mb_id,
-      code: r.code,
-      label: r.label
-    }))
+    ...((rankReqsRes.data ?? []) as { id: number; rank_id: string; code: string; label: string }[]).map(
+      (r) => ({
+        id: r.id,
+        source: 'rank' as const,
+        parentId: r.rank_id,
+        parentLabel: rankLabels.get(r.rank_id) ?? r.rank_id,
+        code: r.code,
+        label: r.label
+      })
+    ),
+    ...((mbReqsRes.data ?? []) as { id: number; mb_id: string; code: string; label: string }[]).map(
+      (r) => ({
+        id: r.id,
+        source: 'mb' as const,
+        parentId: r.mb_id,
+        parentLabel: mbLabels.get(r.mb_id) ?? r.mb_id,
+        code: r.code,
+        label: r.label
+      })
+    )
   ];
 
   // Skills + assignments (Meeting Plan)
@@ -234,11 +236,17 @@ async function loadLookups() {
     leadershipPositions: (leadershipPositionsRes.data ?? []) as NameRow[],
     skills,
     skillIdsByLeader,
-    skillIdsByScout
+    skillIdsByScout,
+    tags: (tagsRes.data ?? []) as Tag[]
   };
 }
 
-export default async function LookupsPage() {
+export default async function LookupsPage({
+  searchParams
+}: {
+  searchParams: Promise<{ editScout?: string; editLeader?: string }>;
+}) {
+  const { editScout, editLeader } = await searchParams;
   const {
     leaders,
     scouts,
@@ -254,7 +262,8 @@ export default async function LookupsPage() {
     leadershipPositions,
     skills,
     skillIdsByLeader,
-    skillIdsByScout
+    skillIdsByScout,
+    tags
   } = await loadLookups();
   const leadersLite = leaders.map((l) => ({ code: l.code, name: l.name }));
 
@@ -310,14 +319,19 @@ export default async function LookupsPage() {
 
       <div className={styles.grid}>
         <Card
-          title="Scouts & BSA IDs"
+          title="Scouts"
           sub={`${scouts.length} scouts · internal ID permanent · uncheck Active to age out (ledger history preserved)`}
         >
-          <ScoutEditor rows={scouts} ranks={ranks} parentsByScout={parentsByScout} />
+          <ScoutEditor
+            rows={scouts}
+            ranks={ranks}
+            parentsByScout={parentsByScout}
+            initialOpenId={editScout}
+          />
         </Card>
 
         <Card
-          title="Sign-off Initials"
+          title="Adults and Instructors"
           sub={`${leaders.length} sign-off sources — adult leaders, youth leaders (initials of an active scout), and record sources like Camp, Clinic, and Prior Troop. When a scout ages out, their initials automatically become Adult.`}
         >
           <LeaderEditor
@@ -325,6 +339,7 @@ export default async function LookupsPage() {
             typeByCode={Object.fromEntries(leaders.map((l) => [l.code, leaderType(l)]))}
             scouts={scouts.map((s) => ({ id: s.id, display_name: s.display_name }))}
             defaultLoginLabelByCode={defaultLoginLabelByCode}
+            initialOpenCode={editLeader}
           />
         </Card>
       </div>
@@ -341,7 +356,7 @@ export default async function LookupsPage() {
 
         <Card
           title="Internal Requirement Codes"
-          sub={`${reqs.length} top-level codes · read-only (catalog tree editing ships in a later slice)`}
+          sub={`${reqs.length} top-level codes · renaming a code updates matching ledger entries too · nested sub-requirement trees are edited per-MB in the Merit Badge Catalog card`}
         >
           <ReqCodesTable rows={reqs} />
         </Card>
@@ -426,6 +441,15 @@ export default async function LookupsPage() {
             noun="Scout"
             onSave={setScoutInstructorSkills}
           />
+        </Card>
+      </div>
+
+      <div className={styles.grid}>
+        <Card
+          title="Tags"
+          sub={`${tags.length} tags · the controlled vocabulary scouts pick from when drafting articles`}
+        >
+          <TagsManager tags={tags} />
         </Card>
       </div>
     </>

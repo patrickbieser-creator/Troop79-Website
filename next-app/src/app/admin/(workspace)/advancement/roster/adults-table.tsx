@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { ageOn, yptStatus } from '@/lib/demographics';
 import type { Leader } from '@/lib/supabase/types';
 import styles from './roster.module.css';
@@ -131,9 +132,14 @@ function AdultDetail({ leader: l, today, onClose }: { leader: Leader; today: str
             {l.role ?? 'Adult leader'} · initials <span className={styles.mono}>{l.code}</span>
           </p>
         </div>
-        <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Close">
-          &times;
-        </button>
+        <div className={styles.headerActions}>
+          <Link href={`/admin/advancement/lookups?editLeader=${l.code}`} className={styles.editLink}>
+            Edit in Lookups &amp; Admin →
+          </Link>
+          <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Close">
+            &times;
+          </button>
+        </div>
       </div>
 
       <div className={styles.detailSection}>

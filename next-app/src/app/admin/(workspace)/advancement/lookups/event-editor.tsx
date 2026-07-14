@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import { useLookupTable } from './use-lookup-table';
 import styles from './lookups.module.css';
 
@@ -10,6 +10,7 @@ export interface EventRow {
   id: number;
   name: string;
   default_kind: string | null;
+  start_date: string | null;
 }
 
 interface Props {
@@ -37,13 +38,52 @@ const KIND_NAME = new Map(KIND_OPTIONS.map((o) => [o.value, o.label]));
  * Type classification so Fast Entry can resolve the ledger kind automatically
  * when a leader picks a recurring event, instead of asking every time.
  */
+type SortKey = 'name' | 'start_date';
+
 export function EventEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
   const [newName, setNewName] = useState('');
   const [newKind, setNewKind] = useState('');
+  const [newDate, setNewDate] = useState('');
   const [busyId, setBusyId] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const t = useLookupTable(rows, (r) => r.name);
+  // Newest-first by default — matches the Fast Entry picker's ordering.
+  const [sortKey, setSortKey] = useState<SortKey>('start_date');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+  const sorted = useMemo(() => {
+    const copy = [...rows];
+    copy.sort((a, b) => {
+      let cmp: number;
+      if (sortKey === 'start_date') {
+        // Undated events always sort after dated ones, regardless of direction.
+        if (!a.start_date && !b.start_date) cmp = 0;
+        else if (!a.start_date) return 1;
+        else if (!b.start_date) return -1;
+        else cmp = a.start_date.localeCompare(b.start_date);
+      } else {
+        cmp = a.name.localeCompare(b.name);
+      }
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+    return copy;
+  }, [rows, sortKey, sortDir]);
+
+  const t = useLookupTable(sorted, (r) => r.name);
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir(key === 'start_date' ? 'desc' : 'asc');
+    }
+  }
+
+  function sortIndicator(key: SortKey) {
+    if (sortKey !== key) return null;
+    return sortDir === 'asc' ? ' ▲' : ' ▼';
+  }
 
   function add() {
     const name = newName.trim();
@@ -52,6 +92,7 @@ export function EventEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
     const fd = new FormData();
     fd.set('name', name);
     fd.set('default_kind', newKind);
+    fd.set('start_date', newDate);
     startTransition(async () => {
       const res = await onCreate(fd);
       if (!res.ok) {
@@ -60,6 +101,7 @@ export function EventEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
       }
       setNewName('');
       setNewKind('');
+      setNewDate('');
     });
   }
 
@@ -74,6 +116,7 @@ export function EventEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
     fd.set('id', String(row.id));
     fd.set('name', name);
     fd.set('default_kind', row.default_kind ?? '');
+    fd.set('start_date', row.start_date ?? '');
     startTransition(async () => {
       const res = await onUpdate(fd);
       setBusyId(null);
@@ -88,10 +131,26 @@ export function EventEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
     fd.set('id', String(row.id));
     fd.set('name', row.name);
     fd.set('default_kind', kind);
+    fd.set('start_date', row.start_date ?? '');
     startTransition(async () => {
       const res = await onUpdate(fd);
       setBusyId(null);
       if (!res.ok) setErr(res.error ?? 'Reclassify failed');
+    });
+  }
+
+  function changeDate(row: EventRow, date: string) {
+    setBusyId(row.id);
+    setErr(null);
+    const fd = new FormData();
+    fd.set('id', String(row.id));
+    fd.set('name', row.name);
+    fd.set('default_kind', row.default_kind ?? '');
+    fd.set('start_date', date);
+    startTransition(async () => {
+      const res = await onUpdate(fd);
+      setBusyId(null);
+      if (!res.ok) setErr(res.error ?? 'Date update failed');
     });
   }
 
@@ -131,6 +190,13 @@ export function EventEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
             }
           }}
         />
+        <input
+          type="date"
+          className={styles.editInput}
+          style={{ maxWidth: 160 }}
+          value={newDate}
+          onChange={(e) => setNewDate(e.target.value)}
+        />
         <select
           className={styles.editInput}
           style={{ maxWidth: 160 }}
@@ -165,7 +231,20 @@ export function EventEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
       <table className={styles.table}>
         <thead>
           <tr>
-            <th>Event</th>
+            <th>
+              <button type="button" className={styles.sortHeaderBtn} onClick={() => toggleSort('name')}>
+                Event{sortIndicator('name')}
+              </button>
+            </th>
+            <th>
+              <button
+                type="button"
+                className={styles.sortHeaderBtn}
+                onClick={() => toggleSort('start_date')}
+              >
+                Start Date{sortIndicator('start_date')}
+              </button>
+            </th>
             <th>Type</th>
             <th style={{ textAlign: 'right' }}>Actions</th>
           </tr>
@@ -173,7 +252,7 @@ export function EventEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={3} className={styles.muted}>
+              <td colSpan={4} className={styles.muted}>
                 None yet. Add one above, or they appear automatically as you log
                 them in Fast Entry.
               </td>
@@ -182,6 +261,15 @@ export function EventEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
             t.rows.map((row) => (
               <tr key={row.id}>
                 <td>{row.name}</td>
+                <td>
+                  <input
+                    type="date"
+                    className={styles.editInput}
+                    value={row.start_date ?? ''}
+                    onChange={(e) => changeDate(row, e.target.value)}
+                    disabled={busyId === row.id}
+                  />
+                </td>
                 <td>
                   <select
                     className={styles.editInput}

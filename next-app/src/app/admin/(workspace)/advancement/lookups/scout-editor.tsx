@@ -52,6 +52,9 @@ interface Props {
   rows: ScoutRow[];
   ranks: { id: string; display_name: string }[];
   parentsByScout: Map<string, ParentRow[]>;
+  /** Auto-opens this scout's edit dialog on mount — used by the Roster's
+   *  "Edit in Lookups & Admin" deep link (?editScout=<id>). */
+  initialOpenId?: string;
 }
 
 const REASON_ORDER: InactiveReason[] = [
@@ -62,8 +65,13 @@ const REASON_ORDER: InactiveReason[] = [
   'other'
 ];
 
-export function ScoutEditor({ rows, ranks, parentsByScout }: Props) {
-  const [openFor, setOpenFor] = useState<ScoutRow | 'new' | null>(null);
+export function ScoutEditor({ rows, ranks, parentsByScout, initialOpenId }: Props) {
+  // Lazy initial state (not an effect) — the Roster's "Edit in Lookups &
+  // Admin" deep link (?editScout=<id>) opens this scout's dialog on first
+  // render without tripping the no-setState-in-effect lint rule.
+  const [openFor, setOpenFor] = useState<ScoutRow | 'new' | null>(() =>
+    initialOpenId ? (rows.find((r) => r.id === initialOpenId) ?? null) : null
+  );
   const dialogRef = useRef<HTMLDialogElement>(null);
   const t = useLookupTable(rows, (s) => `${s.display_name} ${s.id} ${s.bsa_member_id ?? ""}`);
 

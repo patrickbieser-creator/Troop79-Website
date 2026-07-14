@@ -79,6 +79,13 @@
   background: none; border: none; font-size: 20px; line-height: 1;
   color: var(--admin-gray-500); cursor: pointer; padding: 2px 6px;
 }
+.headerActions { display: flex; align-items: flex-start; gap: 4px; }
+.editLink {
+  font-size: 11px; font-weight: 700; letter-spacing: .02em;
+  color: var(--admin-navy); text-decoration: underline; white-space: nowrap;
+  padding: 3px 0;
+}
+.editLink:hover { color: var(--admin-navy-hover); }
 .detailSection { margin-bottom: 16px; }
 .detailSection:last-child { margin-bottom: 0; }
 .detailSectionHead {

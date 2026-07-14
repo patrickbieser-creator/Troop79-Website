@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { ageOn, gradeFromGradYear, gradeLabel, SWIM_CLASS_LABEL } from '@/lib/demographics';
 import type { Scout, ScoutParent } from '@/lib/supabase/types';
 import styles from './roster.module.css';
@@ -154,9 +155,14 @@ function ScoutDetail({
             {s.patrol ? ` · ${s.patrol}` : ''}
           </p>
         </div>
-        <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Close">
-          &times;
-        </button>
+        <div className={styles.headerActions}>
+          <Link href={`/admin/advancement/lookups?editScout=${s.id}`} className={styles.editLink}>
+            Edit in Lookups &amp; Admin →
+          </Link>
+          <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Close">
+            &times;
+          </button>
+        </div>
       </div>
 
       <div className={styles.detailSection}>

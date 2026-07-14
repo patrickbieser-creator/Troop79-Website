@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { LedgerKind } from '@/lib/supabase/types';
+import { slugify } from '@/lib/slugify';
 
 /** The event-tab kinds an event can be classified as — Day Outing/Fundraiser
  *  have no natural quantity of their own, Camping/Hiking are implied by
@@ -568,9 +569,12 @@ export async function createEvent(formData: FormData): Promise<Result> {
     return { ok: false, error: 'Invalid event type' };
   }
   const defaultKind = defaultKindRaw || null;
+  const startDate = String(formData.get('start_date') ?? '').trim() || null;
 
   const supabase = createAdminClient();
-  const { error } = await supabase.from('events').insert({ name, default_kind: defaultKind });
+  const { error } = await supabase
+    .from('events')
+    .insert({ name, default_kind: defaultKind, start_date: startDate });
   if (error) {
     if (error.code === '23505' || error.message.includes('duplicate key')) {
       return { ok: true }; // already exists — fine
@@ -596,12 +600,19 @@ export async function updateEvent(formData: FormData): Promise<Result> {
     return { ok: false, error: 'Invalid event type' };
   }
   const defaultKind = defaultKindRaw || null;
+  // start_date is only touched when the caller sends it — picker.tsx's
+  // auto-heal-classification call only sends id/name/default_kind, and
+  // must not silently wipe an event's date out from under it.
+  const update: { name: string; default_kind: string | null; start_date?: string | null } = {
+    name,
+    default_kind: defaultKind
+  };
+  if (formData.has('start_date')) {
+    update.start_date = String(formData.get('start_date') ?? '').trim() || null;
+  }
 
   const supabase = createAdminClient();
-  const { error } = await supabase
-    .from('events')
-    .update({ name, default_kind: defaultKind })
-    .eq('id', id);
+  const { error } = await supabase.from('events').update(update).eq('id', id);
   if (error) {
     if (error.code === '23505' || error.message.includes('duplicate key')) {
       return { ok: false, error: `An event named "${name}" already exists.` };
@@ -996,6 +1007,107 @@ export async function promoteScoutToAdult(formData: FormData): Promise<Result> {
       scout_id: scoutId
     });
     if (insErr) return { ok: false, error: insErr.message };
+  }
+
+  revalidateAll();
+  return { ok: true };
+}
+
+// ── Tags ──────────────────────────────────────────────────────────────────
+// Moved into Lookups & Admin (was its own /admin/news/tags page) — one place
+// for the troop's editable taxonomy instead of two.
+
+export async function createTag(formData: FormData): Promise<Result> {
+  try {
+    await ensureLeader();
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  const name = String(formData.get('name') ?? '').trim();
+  if (!name) return { ok: false, error: 'Tag name is required.' };
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.from('tags').insert({ name, slug: slugify(name) });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath('/admin/advancement/lookups');
+  return { ok: true };
+}
+
+/** Deletes a tag. Cascades to remove it from any article that had it (article_tags FK). */
+export async function deleteTag(id: number): Promise<Result> {
+  try {
+    await ensureLeader();
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  const supabase = createAdminClient();
+  const { error } = await supabase.from('tags').delete().eq('id', id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath('/admin/advancement/lookups');
+  return { ok: true };
+}
+
+// ── Internal Requirement Codes (top-level rows) ─────────────────────────────
+
+/**
+ * Edits a top-level rank/MB requirement's code + label. ledger_entries.code
+ * stores `<parentId>-<code>` for these (Fast Entry's picker and the award-
+ * gating check in fast-entry/actions.ts both match on that composite), so a
+ * code rename cascades to every ledger row already recorded under the old
+ * composite — otherwise already-completed requirements would silently stop
+ * counting toward the rank/MB.
+ */
+export async function updateReqCode(formData: FormData): Promise<Result> {
+  try {
+    await ensureLeader();
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  const id = Number(formData.get('id'));
+  const source = String(formData.get('source') ?? '');
+  const parentId = String(formData.get('parent_id') ?? '').trim();
+  const originalCode = String(formData.get('original_code') ?? '').trim();
+  const code = String(formData.get('code') ?? '').trim();
+  const label = String(formData.get('label') ?? '').trim();
+  if (!Number.isFinite(id) || id <= 0) return { ok: false, error: 'Invalid row id' };
+  if (source !== 'rank' && source !== 'mb') return { ok: false, error: 'Invalid source' };
+  if (!code) return { ok: false, error: 'Code is required' };
+  if (!label) return { ok: false, error: 'Label is required' };
+
+  const table = source === 'rank' ? 'rank_requirements' : 'merit_badge_requirements';
+  const parentField = source === 'rank' ? 'rank_id' : 'mb_id';
+  const kind: LedgerKind = source === 'rank' ? 'rank_requirement' : 'merit_badge_requirement';
+
+  const supabase = createAdminClient();
+
+  if (code !== originalCode) {
+    const { data: clash } = await supabase
+      .from(table)
+      .select('id')
+      .eq(parentField, parentId)
+      .eq('code', code)
+      .neq('id', id)
+      .maybeSingle();
+    if (clash) {
+      return { ok: false, error: `Code "${code}" is already used elsewhere in this ${source === 'rank' ? 'rank' : 'merit badge'}` };
+    }
+  }
+
+  const { error } = await supabase.from(table).update({ code, label }).eq('id', id);
+  if (error) return { ok: false, error: error.message };
+
+  if (code !== originalCode) {
+    const { error: cascadeErr } = await supabase
+      .from('ledger_entries')
+      .update({ code: `${parentId}-${code}` })
+      .eq('kind', kind)
+      .eq('code', `${parentId}-${originalCode}`);
+    if (cascadeErr) {
+      return {
+        ok: false,
+        error: `Catalog renamed, but couldn't update matching ledger entries: ${cascadeErr.message}`
+      };
+    }
   }
 
   revalidateAll();

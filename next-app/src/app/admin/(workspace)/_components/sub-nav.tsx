@@ -89,11 +89,6 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         matchPath: '/admin/news/articles'
       },
       {
-        label: 'Tags',
-        href: '/admin/news/tags',
-        matchPath: '/admin/news/tags'
-      },
-      {
         label: 'Media Manager',
         href: '/admin/news/media-manager',
         matchPath: '/admin/news/media-manager'

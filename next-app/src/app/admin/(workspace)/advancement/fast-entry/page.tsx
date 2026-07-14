@@ -78,7 +78,7 @@ async function loadFastEntry(): Promise<{
       .select('id, mb_id, parent_id, code, label, complete_rule, complete_n, sort_order')
       .order('mb_id')
       .order('sort_order'),
-    supabase.from('events').select('id, name, default_kind').order('name'),
+    supabase.from('events').select('id, name, default_kind, start_date').order('name'),
     supabase.from('service_projects').select('id, name').order('name'),
     supabase.from('leadership_positions').select('id, name').order('name'),
     supabase
@@ -127,6 +127,7 @@ async function loadFastEntry(): Promise<{
     id: number;
     name: string;
     default_kind: import('@/lib/supabase/types').LedgerKind | null;
+    start_date: string | null;
   }[];
   const serviceProjects = (serviceProjectsRes.data ?? []) as { id: number; name: string }[];
   const leadershipPositions = (leadershipPositionsRes.data ?? []) as { id: number; name: string }[];

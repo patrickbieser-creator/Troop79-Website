@@ -1052,7 +1052,12 @@ function EventsTab({
   events,
   onAdd
 }: {
-  events: { id: number; name: string; default_kind: PickerItem['kind'] | null }[];
+  events: {
+    id: number;
+    name: string;
+    default_kind: PickerItem['kind'] | null;
+    start_date: string | null;
+  }[];
   onAdd: (items: PickerItem[]) => void;
 }) {
   const [selected, setSelected] = useState('');
@@ -1066,11 +1071,29 @@ function EventsTab({
   const [eventKind, setEventKind] = useState('');
   const [, startTransition] = useTransition();
 
+  // Newest-dated events first (matches the Lookups list's default sort);
+  // undated catalog events fall in after, alphabetically. Events created
+  // this session (no date yet) surface first — the freshest action.
   const names = useMemo(() => {
-    const set = new Set<string>();
-    for (const e of events) set.add(e.name);
-    for (const n of localEvents) set.add(n);
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
+    const seen = new Set<string>();
+    const ordered: string[] = [];
+    for (const n of localEvents) {
+      if (!seen.has(n)) {
+        seen.add(n);
+        ordered.push(n);
+      }
+    }
+    const dated = events
+      .filter((e) => e.start_date)
+      .sort((a, b) => b.start_date!.localeCompare(a.start_date!));
+    const undated = events.filter((e) => !e.start_date).sort((a, b) => a.name.localeCompare(b.name));
+    for (const e of [...dated, ...undated]) {
+      if (!seen.has(e.name)) {
+        seen.add(e.name);
+        ordered.push(e.name);
+      }
+    }
+    return ordered;
   }, [events, localEvents]);
 
   const isNew = selected === NEW_EVENT;
