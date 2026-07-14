@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scout Clipboard Print Overhaul & Advancement Audits — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #2a4030;
+            --nw-brown: #8b6914;
+            --nw-gold: #8b6914;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #3d5a3e;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #faf6ef;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); }
+        tr:hover { background: var(--nw-sage); }
+
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+
+        @media print {
+            body { background: white; }
+            header { padding: 1.5rem; }
+            .container { padding: 1rem; }
+            .stat { break-inside: avoid; }
+        }
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.5rem; }
+            .stats { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Scout Clipboard Print Overhaul &amp; Advancement Audits</h1>
+        <p class="subtitle">Roster backfill, three new advancement audits, and a from-scratch print layout rebuild for the printable Clipboard</p>
+        <div class="meta">
+            <span>&#128197; 2026-07-13</span>
+            <span>&#129302; Operator</span>
+            <span>&#128204; Troop79-Website</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">46</div><div class="label">People Backfilled</div></div>
+            <div class="stat"><div class="number">3</div><div class="label">New Audit Checks</div></div>
+            <div class="stat"><div class="number">9 &rarr; 2</div><div class="label">Clipboard Print Pages</div></div>
+            <div class="stat"><div class="number">3</div><div class="label">Commits Pushed to Prod</div></div>
+            <div class="stat"><div class="number">2</div><div class="label">Decisions Recorded</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <h3>Scoutbook Roster Backfill</h3>
+        <p>Imported two Scoutbook exports (a Unit Roster PDF and a richer RosterReport CSV) to backfill demographics across all 33 scouts and 13 registered adults, applied to both local dev and production via direct SQL after cross-checking against live data to avoid clobbering stale local-dev state.</p>
+        <ul>
+            <li>Gender, grade &rarr; graduation year, BSA Member ID, address, phone for every scout; 5 previously-unregistered adults added as new leader records</li>
+            <li>Birthdate and school added from the CSV export; zero grade-math discrepancies found against the earlier import &mdash; a clean cross-validation of the app's own Aug-1 rollover derivation</li>
+            <li>Parent/guardian contacts populated in <span class="file-path">scout_parents</span>; merit badge counselor assignments backfilled, adding 5 badges to the catalog that had never been earned by the troop before (Cycling, Hiking, Public Speaking, Programming, Engineering)</li>
+        </ul>
+        <div class="callout callout-gold">
+            <strong>Flagged, not auto-fixed:</strong> Anjali Sankpal-Tatera's guardian entry was skipped &mdash; her Scoutbook export incorrectly listed the Scoutmaster as her father (likely an export artifact). A merit badge counselor conflict between two leaders was also left for manual review rather than guessed at.
+        </div>
+
+        <h3>Dev/Prod Visual Guards</h3>
+        <p>Added four visual tripwires to the admin workspace so a leader can never mistake the local dev database for production: a red-tinted left nav and top bar, a "[DEV]" tab title prefix, and a distinct favicon &mdash; all driven by a single check of whether <span class="file-path">NEXT_PUBLIC_SUPABASE_URL</span> points at localhost, so all four always agree with each other.</p>
+
+        <h3>Three New Advancement Audits</h3>
+        <p>Extended the existing "Activity &amp; Campout Thresholds" audit and added three new checks covering Star, Life, and Eagle sign-off readiness &mdash; the same proactive, ledger-driven pattern as the existing Board of Review audit, verified against real troop data at every step.</p>
+        <table>
+            <thead><tr><th>Check</th><th>What It Finds</th></tr></thead>
+            <tbody>
+                <tr><td>Tenderfoot 1a (extended)</td><td>Scouts who've been on 1+ campout, used as a readiness nudge for the packing-skill sign-off</td></tr>
+                <tr><td>Time in Rank</td><td>Star 1 (4mo since First Class), Life 1 (6mo since Star), Eagle 1 (6mo since Life)</td></tr>
+                <tr><td>Merit Badge Counts</td><td>Star 3 (6 badges, 4 Eagle-required), Life 3 (11 total, 7 Eagle-required)</td></tr>
+                <tr><td>Position of Responsibility</td><td>Star 5, Life 5 &mdash; gated on the prior rank already being earned</td></tr>
+            </tbody>
+        </table>
+        <p>Verified against real ledger data: 4 time-in-rank candidates, 3 merit-badge candidates, 2 POR candidates surfaced, all matching hand-calculated expectations.</p>
+
+        <h3>Scout Clipboard: Print Layout Rebuilt From Scratch</h3>
+        <div class="callout callout-green">
+            <strong>Shipped:</strong> The printable Clipboard now fits exactly one sheet, double-sided (2 pages) &mdash; matching the troop's original Google-Sheets-based printout column-for-column, even for the most-decorated scout in the troop (Life rank, 32 merit badges, 7 ranks of history).
+        </div>
+        <p>What started as "make it fit on 2 pages" surfaced a real, previously invisible bug: the printed Clipboard was actually <strong>9 pages</strong>, because the site's nav/footer chrome bled into print, a mobile CSS breakpoint accidentally fired during printing and collapsed the rank grid, and CSS Grid doesn't paginate reliably in Chrome's print engine at all &mdash; tall content gets shoved onto blank fresh pages instead of flowing to fill space.</p>
+        <table>
+            <thead><tr><th>Root Cause</th><th>Fix</th></tr></thead>
+            <tbody>
+                <tr><td>Site nav/footer printing in full</td><td>Scoped <span class="file-path">@media print</span> hide via <span class="file-path">:has()</span>, targeted only at the Clipboard page</td></tr>
+                <tr><td>Mobile breakpoint firing during print (a Letter page is narrower than 900px)</td><td>Scoped the breakpoint to <span class="file-path">screen</span> only</td></tr>
+                <tr><td>CSS Grid pushing tall content onto blank pages</td><td>Replaced with a fixed, explicit print-only template &mdash; content is placed by hand into the exact column/page arrangement of the reference layout, not auto-flowed</td></tr>
+                <tr><td>Physical page-edge clipping headers on every page</td><td>Added an explicit <span class="file-path">@page</span> margin rule (asymmetric, extra top space)</td></tr>
+            </tbody>
+        </table>
+        <p>Final layout: <strong>Page 1</strong> &mdash; Scout+Tenderfoot / Second Class+Nights of Camping+Leadership / First Class+Service Projects. <strong>Page 2</strong> &mdash; Star/Life/Eagle, then Merit Badges+Activities side by side. Verified via headless Chrome print-to-PDF against both a brand-new scout and the troop's most-progressed scout &mdash; both land at exactly 2 pages.</p>
+
+        <h2>Blockers Resolved</h2>
+        <table>
+            <thead><tr><th>Issue</th><th>Root Cause</th><th>Fix</th></tr></thead>
+            <tbody>
+                <tr><td>Dev server serving stale CSS mid-session</td><td><span class="file-path">npm run build</span> and <span class="file-path">npm run dev</span> shared the same <span class="file-path">.next</span> cache and collided</td><td>Restarted the dev server cleanly (with permission)</td></tr>
+                <tr><td>Clipboard printed 9 pages instead of 2</td><td>Site chrome bleed + mobile breakpoint firing in print + CSS Grid's unreliable print pagination (see above)</td><td>Print-only explicit layout, scoped breakpoint, @page margins</td></tr>
+            </tbody>
+        </table>
+
+        <h2>Decisions</h2>
+        <h3>[D-016] Star/Life/Eagle audit rules</h3>
+        <p>Any logged leadership term counts as a qualifying Position of Responsibility (no rank-specific eligible-position list exists in the data); POR and time-in-rank checks are gated on the prior rank already being earned, merit-badge-count checks are not; only leadership terms dated on/after the prior rank's award count toward POR.</p>
+        <h3>[D-017] Clipboard print layout: fixed template, not auto-flow</h3>
+        <p>CSS Grid and CSS multi-column both proved unreliable for Chrome's print pagination. Built a separate print-only DOM structure with content manually placed to match the troop's original reference layout exactly, rather than trying to make one responsive structure serve both screen and print.</p>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Enter correct guardian for Anjali Sankpal-Tatera in <span class="file-path">scout_parents</span> (skipped &mdash; data anomaly)</li>
+            <li>Resolve merit badge counselor conflict: Jason Porter vs. Jack Kosmoski (Archery / Citizenship in the Nation)</li>
+            <li>Review active-flag mismatches: Xavier Juchemich, Myles Maciejewski, Rose Manning (inactive in DB, active on current official roster)</li>
+            <li>Enter the ~55 historical Google Photos albums</li>
+            <li>Bunny CDN credentials in Vercel &mdash; media uploads are the only dark feature remaining</li>
+            <li>Phase 4 auth: per-user Supabase Auth + per-user RLS</li>
+        </ul>
+
+        <h2>Files Changed</h2>
+        <p>
+            <span class="badge badge-green">NEW</span> <span class="file-path">next-app/scripts/import-roster.ts</span>,
+            <span class="file-path">import-roster-birthdates.ts</span>,
+            <span class="file-path">import-roster-parents-counselors.ts</span>,
+            <span class="file-path">src/lib/dev-db.ts</span>,
+            <span class="file-path">src/app/admin/icon.tsx</span>,
+            <span class="file-path">.../audits/checks/rank-time-in-grade.ts</span>,
+            <span class="file-path">rank-merit-badges.ts</span>,
+            <span class="file-path">rank-por.ts</span>
+        </p>
+        <p style="margin-top: 0.75rem;">
+            <span class="badge badge-gold">MODIFIED</span> <span class="file-path">scouts/[id]/page.tsx</span>,
+            <span class="file-path">scout-detail.module.css</span> (print layout rebuild),
+            <span class="file-path">admin/(workspace)/_components/{site-nav,top-bar}.tsx</span>,
+            <span class="file-path">admin.module.css</span>,
+            <span class="file-path">audits/checks/activity-thresholds.ts</span>,
+            <span class="file-path">audits/page.tsx</span>
+        </p>
+
+    </div>
+
+    <footer>
+        <strong>Troop79-Website</strong> — Scout Troop 79, Milwaukee, WI<br>
+        Session Summary — 2026-07-13 — Operator
+    </footer>
+</body>
+</html>
