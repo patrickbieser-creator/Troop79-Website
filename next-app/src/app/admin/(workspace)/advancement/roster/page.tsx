@@ -14,15 +14,10 @@ import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/server';
 import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
 import { centralToday } from '@/lib/dates';
-import {
-  ageOn,
-  gradeFromGradYear,
-  gradeLabel,
-  SWIM_CLASS_LABEL,
-  yptStatus
-} from '@/lib/demographics';
-import type { Leader, Rank, Scout } from '@/lib/supabase/types';
+import type { Leader, Rank, Scout, ScoutParent } from '@/lib/supabase/types';
 import { PrintButton } from './print-button';
+import { ScoutsTable } from './scouts-table';
+import { AdultsTable } from './adults-table';
 import styles from './roster.module.css';
 
 export const metadata = {
@@ -57,16 +52,23 @@ export default async function RosterPage() {
   }
 
   const supabase = createAdminClient();
-  const [scoutsRes, leadersRes, ranksRes] = await Promise.all([
+  const [scoutsRes, leadersRes, ranksRes, parentsRes] = await Promise.all([
     supabase.from('scouts').select('*').eq('active', true).order('display_name'),
     supabase.from('leaders').select('*').eq('is_person', true).order('name'),
-    supabase.from('ranks').select('id, display_name, sort_order')
+    supabase.from('ranks').select('id, display_name, sort_order'),
+    supabase.from('scout_parents').select('*').order('sort_order')
   ]);
 
   const today = centralToday();
   const scouts = (scoutsRes.data ?? []) as Scout[];
   const allPeople = (leadersRes.data ?? []) as Leader[];
-  const rankLabel = new Map(((ranksRes.data ?? []) as Rank[]).map((r) => [r.id, r.display_name]));
+  const rankLabel = Object.fromEntries(
+    ((ranksRes.data ?? []) as Rank[]).map((r) => [r.id, r.display_name])
+  );
+  const parentsByScout: Record<string, ScoutParent[]> = {};
+  for (const p of (parentsRes.data ?? []) as ScoutParent[]) {
+    (parentsByScout[p.scout_id] ??= []).push(p);
+  }
 
   // Adults = person rows not linked to an active scout (youth initials
   // belong on the scout side of the roster).
@@ -109,100 +111,12 @@ export default async function RosterPage() {
 
       <div className={styles.section}>
         <div className={styles.sectionHead}>Scouts ({scouts.length})</div>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Scout</th>
-              <th>Age</th>
-              <th>Birthday</th>
-              <th>Grade</th>
-              <th>School</th>
-              <th>Patrol</th>
-              <th>Rank</th>
-              <th>Swim</th>
-              <th>BSA ID</th>
-              <th>Health Form</th>
-            </tr>
-          </thead>
-          <tbody>
-            {scouts.map((s) => {
-              const age = ageOn(s.birthdate, today);
-              const grade = gradeFromGradYear(s.graduation_year, today);
-              return (
-                <tr key={s.id}>
-                  <td>{s.display_name}</td>
-                  <td>{age ?? <span className={styles.muted}>—</span>}</td>
-                  <td>{s.birthdate ? fmtDate(s.birthdate) : <span className={styles.muted}>—</span>}</td>
-                  <td>{grade !== null ? gradeLabel(grade) : <span className={styles.muted}>—</span>}</td>
-                  <td>{s.school ?? <span className={styles.muted}>—</span>}</td>
-                  <td>{s.patrol ?? <span className={styles.muted}>—</span>}</td>
-                  <td>{s.current_rank ? (rankLabel.get(s.current_rank) ?? s.current_rank) : '—'}</td>
-                  <td>
-                    {s.swim_class ? (
-                      SWIM_CLASS_LABEL[s.swim_class]
-                    ) : (
-                      <span className={styles.muted}>—</span>
-                    )}
-                  </td>
-                  <td className={styles.mono}>{s.bsa_member_id ?? '—'}</td>
-                  <td>{s.health_form_date ? fmtDate(s.health_form_date) : <span className={styles.muted}>—</span>}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <ScoutsTable scouts={scouts} rankLabel={rankLabel} parentsByScout={parentsByScout} today={today} />
       </div>
 
       <div className={styles.section}>
         <div className={styles.sectionHead}>Adults ({adults.length})</div>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Initials</th>
-              <th>Role</th>
-              <th>Age</th>
-              <th>YPT</th>
-              <th>BSA ID</th>
-              <th>Health Form</th>
-              <th>Contact</th>
-            </tr>
-          </thead>
-          <tbody>
-            {adults.map((l) => {
-              const ypt = yptStatus(l.ypt_completed, today);
-              return (
-                <tr key={l.code}>
-                  <td>{l.name}</td>
-                  <td className={styles.mono}>{l.code}</td>
-                  <td>{l.role ?? <span className={styles.muted}>—</span>}</td>
-                  <td>{ageOn(l.birthdate, today) ?? <span className={styles.muted}>—</span>}</td>
-                  <td>
-                    {ypt.status === 'current' && (
-                      <span className={`${styles.badge} ${styles.badgeOk}`}>thru {fmtDate(ypt.expires)}</span>
-                    )}
-                    {ypt.status === 'expiring' && (
-                      <span className={`${styles.badge} ${styles.badgeWarn}`}>expires {fmtDate(ypt.expires)}</span>
-                    )}
-                    {ypt.status === 'expired' && (
-                      <span className={`${styles.badge} ${styles.badgeBad}`}>expired {fmtDate(ypt.expires)}</span>
-                    )}
-                    {ypt.status === 'missing' && (
-                      <span className={`${styles.badge} ${styles.badgeMuted}`}>not on file</span>
-                    )}
-                  </td>
-                  <td className={styles.mono}>{l.bsa_member_id ?? '—'}</td>
-                  <td>{l.health_form_date ? fmtDate(l.health_form_date) : <span className={styles.muted}>—</span>}</td>
-                  <td>
-                    {[l.phone, l.email].filter(Boolean).join(' · ') || (
-                      <span className={styles.muted}>—</span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <AdultsTable adults={adults} today={today} />
       </div>
     </>
   );

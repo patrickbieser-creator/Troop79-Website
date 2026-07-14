@@ -55,8 +55,51 @@
   color: var(--admin-gray-500); font-size: 13px;
 }
 
+.nameBtn {
+  background: none; border: none; padding: 0; margin: 0;
+  color: var(--admin-navy); font: inherit; font-weight: 600;
+  cursor: pointer; text-decoration: underline; text-decoration-color: transparent;
+}
+.nameBtn:hover { text-decoration-color: var(--admin-navy); }
+
+.detailDialog {
+  padding: 0; border: none; border-radius: 6px;
+  box-shadow: var(--admin-shadow-md); width: 92vw; max-width: 640px;
+  background: var(--admin-white);
+}
+.detailDialog::backdrop { background: rgba(0, 0, 0, .42); }
+.detailInner { padding: 22px 26px 20px; font-family: inherit; }
+.detailHeader {
+  border-bottom: 1px solid var(--admin-gray-200); padding-bottom: 12px; margin-bottom: 16px;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+}
+.detailHeader h3 { font-size: 17px; font-weight: 700; color: var(--admin-navy); }
+.detailHeader p { font-size: 12px; color: var(--admin-gray-500); margin-top: 2px; }
+.closeBtn {
+  background: none; border: none; font-size: 20px; line-height: 1;
+  color: var(--admin-gray-500); cursor: pointer; padding: 2px 6px;
+}
+.detailSection { margin-bottom: 16px; }
+.detailSection:last-child { margin-bottom: 0; }
+.detailSectionHead {
+  font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--admin-gray-500); margin-bottom: 8px;
+}
+.detailGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; }
+.detailField { display: block; }
+.detailLabel {
+  display: block; font-size: 10px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--admin-gray-500); margin-bottom: 2px;
+}
+.detailValue { font-size: 13px; color: var(--admin-gray-900); }
+.parentCard {
+  border: 1px solid var(--admin-gray-200); border-radius: 4px; padding: 10px 12px; margin-bottom: 8px;
+}
+.parentCard:last-child { margin-bottom: 0; }
+
 @media print {
   .printBtn { display: none; }
   .table { font-size: 10.5px; }
   .table th, .table td { padding: 4px 6px; }
+  .nameBtn { color: inherit; text-decoration: none; cursor: default; }
 }
