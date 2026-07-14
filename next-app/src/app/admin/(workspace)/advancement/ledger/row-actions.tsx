@@ -8,6 +8,7 @@ import {
   updateLedgerEntry
 } from './actions';
 import type { LedgerEntry, LedgerKind } from '@/lib/supabase/types';
+import { initialsFor } from '@/lib/initials';
 import styles from './ledger.module.css';
 
 interface Props {
@@ -185,6 +186,11 @@ function EditForm({
     <div className={styles.editDialogInner}>
       <div className={styles.editDialogHeader}>
         <h3>Edit ledger entry #{row.id}</h3>
+        <p>
+          Entered by <strong>{row.entered_by ?? '—'}</strong>
+          {row.entered_by && ` (${initialsFor(row.entered_by)})`}
+          {row.entered_at && ` on ${row.entered_at.slice(0, 10)}`}.
+        </p>
         <p>
           Mutates the row in place. Audit columns (entered_by, entered_at) are
           preserved. Use Delete instead if the row is erroneous.

@@ -292,6 +292,20 @@ export async function updateScout(formData: FormData): Promise<Result> {
 
 // ── Leaders ────────────────────────────────────────────────────────────────
 
+function readLeaderTypeFields(formData: FormData) {
+  const isPerson = String(formData.get('is_person') ?? 'true') !== 'false';
+  const scoutId = String(formData.get('scout_id') ?? '').trim() || null;
+  // Source rows (Camp, Clinic, ...) and adults never carry a scout link —
+  // only Youth does. Guards against a stale scout_id surviving a Type switch.
+  return { is_person: isPerson, scout_id: isPerson && scoutId ? scoutId : null };
+}
+
+function readLeaderLoginFields(formData: FormData) {
+  const canLogin = String(formData.get('can_login') ?? 'true') !== 'false';
+  const loginName = String(formData.get('login_name') ?? '').trim() || null;
+  return { can_login: canLogin, login_name: loginName };
+}
+
 export async function createLeader(formData: FormData): Promise<Result> {
   try {
     await ensureLeader();
@@ -306,9 +320,11 @@ export async function createLeader(formData: FormData): Promise<Result> {
 
   const supabase = createAdminClient();
   const demo = { ...readDemoFields(formData), ...readLeaderExtras(formData) };
+  const typeFields = readLeaderTypeFields(formData);
+  const loginFields = readLeaderLoginFields(formData);
   const { error } = await supabase
     .from('leaders')
-    .insert({ code, name, role, ...demo });
+    .insert({ code, name, role, ...typeFields, ...loginFields, ...demo });
   if (error) {
     if (error.message.includes('duplicate key') || error.code === '23505') {
       return { ok: false, error: `Code "${code}" already exists` };
@@ -319,25 +335,94 @@ export async function createLeader(formData: FormData): Promise<Result> {
   return { ok: true };
 }
 
+/** Tables with a `leader_code` FK to leaders.code (no ON UPDATE CASCADE). */
+const LEADER_CODE_REFERRERS = [
+  'merit_badge_counselors',
+  'leader_skills',
+  'meeting_attendance_leaders'
+] as const;
+
 export async function updateLeader(formData: FormData): Promise<Result> {
   try {
     await ensureLeader();
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
+  const originalCode = String(formData.get('original_code') ?? '').trim();
   const code = String(formData.get('code') ?? '').trim();
   const name = String(formData.get('name') ?? '').trim();
   const role = String(formData.get('role') ?? '').trim() || null;
+  if (!originalCode) return { ok: false, error: 'Missing original code' };
   if (!code) return { ok: false, error: 'Code is required' };
   if (!name) return { ok: false, error: 'Name is required' };
 
   const supabase = createAdminClient();
   const demo = { ...readDemoFields(formData), ...readLeaderExtras(formData) };
-  const { error } = await supabase
+  const typeFields = readLeaderTypeFields(formData);
+  const loginFields = readLeaderLoginFields(formData);
+
+  if (code === originalCode) {
+    const { error } = await supabase
+      .from('leaders')
+      .update({ name, role, ...typeFields, ...loginFields, ...demo })
+      .eq('code', code);
+    if (error) return { ok: false, error: error.message };
+    revalidateAll();
+    return { ok: true };
+  }
+
+  // Renaming the initials (the primary key). merit_badge_counselors,
+  // leader_skills, and meeting_attendance_leaders all FK to leaders.code
+  // without ON UPDATE CASCADE, so a direct rename would violate those
+  // constraints. Instead: insert the row under the new code, repoint every
+  // referencing table (including ledger_entries.by, which isn't an FK but
+  // is matched by convention), then delete the old row — each step is valid
+  // for the DB state at that moment.
+  const { data: clash } = await supabase
     .from('leaders')
-    .update({ name, role, ...demo })
-    .eq('code', code);
-  if (error) return { ok: false, error: error.message };
+    .select('code')
+    .eq('code', code)
+    .maybeSingle();
+  if (clash) return { ok: false, error: `Code "${code}" already exists` };
+
+  const { data: original, error: fetchErr } = await supabase
+    .from('leaders')
+    .select('*')
+    .eq('code', originalCode)
+    .single();
+  if (fetchErr || !original) {
+    return { ok: false, error: fetchErr?.message ?? `Leader "${originalCode}" not found` };
+  }
+
+  const { error: insErr } = await supabase.from('leaders').insert({
+    ...original,
+    code,
+    name,
+    role,
+    ...typeFields,
+    ...loginFields,
+    ...demo
+  });
+  if (insErr) return { ok: false, error: insErr.message };
+
+  for (const table of LEADER_CODE_REFERRERS) {
+    const { error: reassignErr } = await supabase
+      .from(table)
+      .update({ leader_code: code })
+      .eq('leader_code', originalCode);
+    if (reassignErr) {
+      return { ok: false, error: `Reassigning ${table}: ${reassignErr.message}` };
+    }
+  }
+  const { error: byErr } = await supabase
+    .from('ledger_entries')
+    .update({ by: code })
+    .eq('by', originalCode);
+  if (byErr) return { ok: false, error: `Reassigning ledger sign-offs: ${byErr.message}` };
+
+  const { error: delErr } = await supabase.from('leaders').delete().eq('code', originalCode);
+  if (delErr) return { ok: false, error: delErr.message };
+
   revalidateAll();
   return { ok: true };
 }

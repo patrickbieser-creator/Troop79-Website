@@ -1,5 +1,7 @@
 import { loginAction } from './actions';
 import { IS_DEV_DB } from '@/lib/dev-db';
+import { createAdminClient } from '@/lib/supabase/server';
+import { loadAuthorizedAdults } from '@/lib/authorized-adults';
 
 export const metadata = {
   title: IS_DEV_DB ? '[DEV] Sign In — Troop 79 Admin' : 'Sign In — Troop 79 Admin'
@@ -18,9 +20,12 @@ export default async function LoginPage({
         ? 'Password is required.'
         : error === 'bad-password'
           ? 'That password isn’t right — check with the Scoutmaster.'
-          : error === 'not-configured'
-            ? 'Sign-in isn’t configured on this server (LEADER_PASSWORD is unset).'
-            : null;
+          : error === 'bad-username'
+            ? 'That name isn’t on the authorized-adult list — check spelling, or use the scout password if you’re signing in as a scout.'
+            : error === 'not-configured'
+              ? 'Sign-in isn’t configured on this server (LEADER_PASSWORD is unset).'
+              : null;
+  const adults = await loadAuthorizedAdults(createAdminClient());
 
   return (
     <main
@@ -82,7 +87,17 @@ export default async function LoginPage({
 
         <form action={loginAction}>
           {next && <input type="hidden" name="next" value={next} />}
-          <Field label="Your name" name="username" placeholder="e.g. pbieser" />
+          <Field
+            label="Your name"
+            name="username"
+            placeholder="e.g. Patrick B."
+            listId="adults-list"
+          />
+          <datalist id="adults-list">
+            {adults.map((a) => (
+              <option key={a.code} value={a.label} />
+            ))}
+          </datalist>
           <Field
             label="Troop password"
             name="password"
@@ -143,12 +158,14 @@ function Field({
   label,
   name,
   type = 'text',
-  placeholder
+  placeholder,
+  listId
 }: {
   label: string;
   name: string;
   type?: string;
   placeholder?: string;
+  listId?: string;
 }) {
   return (
     <label style={{ display: 'block', marginBottom: 14 }}>
@@ -169,6 +186,7 @@ function Field({
         name={name}
         type={type}
         placeholder={placeholder}
+        list={listId}
         autoComplete={type === 'password' ? 'current-password' : 'username'}
         style={{
           width: '100%',

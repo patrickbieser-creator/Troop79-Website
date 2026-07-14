@@ -4,6 +4,8 @@ import { timingSafeEqual } from 'node:crypto';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { LEADER_COOKIE, signSession, type SessionRole } from '@/lib/leader-session';
+import { createAdminClient } from '@/lib/supabase/server';
+import { loadAuthorizedAdults, matchAuthorizedAdult } from '@/lib/authorized-adults';
 
 /** Constant-time string compare (length leak is fine for a shared secret). */
 function secretMatches(input: string, secret: string | undefined): boolean {
@@ -19,6 +21,12 @@ function secretMatches(input: string, secret: string | undefined): boolean {
  * SCOUT_PASSWORD (optional) grants the scout role. The matched password
  * determines the role — there is no role picker to talk your way past.
  * Per-user Supabase Auth remains the Phase 4 replacement for this.
+ *
+ * The leader role additionally requires the typed name to match the
+ * authorized-adults pool (see lib/authorized-adults.ts) — this is what makes
+ * ledger_entries.entered_by a trustworthy "who really did this" stamp rather
+ * than any string someone typed. Scout logins keep free-text names; they
+ * aren't part of that pool.
  */
 export async function loginAction(formData: FormData): Promise<void> {
   const username = String(formData.get('username') ?? '').trim();
@@ -41,7 +49,15 @@ export async function loginAction(formData: FormData): Promise<void> {
     return; // unreachable — redirect throws — but keeps TS happy
   }
 
-  const token = await signSession({ leader: username, iat: Date.now(), role });
+  let leaderName = username;
+  if (role === 'leader') {
+    const adults = await loadAuthorizedAdults(createAdminClient());
+    const matched = matchAuthorizedAdult(adults, username);
+    if (!matched) back('bad-username');
+    leaderName = matched!.label;
+  }
+
+  const token = await signSession({ leader: leaderName, iat: Date.now(), role });
   const jar = await cookies();
   jar.set(LEADER_COOKIE.name, token, {
     httpOnly: true,

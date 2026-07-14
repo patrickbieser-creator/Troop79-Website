@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import { createLeader, deleteLeader, updateLeader } from './actions';
 import { useLookupTable } from './use-lookup-table';
 import { ageOn, yptStatus } from '@/lib/demographics';
+import type { ScoutRow } from './scout-editor';
 import styles from './lookups.module.css';
 
 export type LeaderType = 'adult' | 'youth' | 'source';
@@ -14,6 +15,8 @@ export interface LeaderRow {
   role: string | null;
   is_person: boolean;
   scout_id: string | null;
+  can_login: boolean;
+  login_name: string | null;
   address_line1: string | null;
   address_line2: string | null;
   city: string | null;
@@ -31,6 +34,9 @@ interface Props {
   rows: LeaderRow[];
   /** adult | youth (initials of an active scout) | source (Camp, Clinic, …). */
   typeByCode: Record<string, LeaderType>;
+  scouts: Pick<ScoutRow, 'id' | 'display_name'>[];
+  /** The "First L." label each adult would get if login_name were blank. */
+  defaultLoginLabelByCode: Record<string, string>;
 }
 
 const TYPE_LABEL: Record<LeaderType, string> = {
@@ -39,7 +45,7 @@ const TYPE_LABEL: Record<LeaderType, string> = {
   source: 'Source'
 };
 
-export function LeaderEditor({ rows, typeByCode }: Props) {
+export function LeaderEditor({ rows, typeByCode, scouts, defaultLoginLabelByCode }: Props) {
   const [openFor, setOpenFor] = useState<LeaderRow | 'new' | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [busyCode, setBusyCode] = useState<string | null>(null);
@@ -121,6 +127,15 @@ export function LeaderEditor({ rows, typeByCode }: Props) {
                 >
                   {TYPE_LABEL[typeByCode[l.code] ?? 'adult']}
                 </span>
+                {typeByCode[l.code] !== 'source' && !l.can_login && (
+                  <span
+                    className={styles.tag}
+                    style={{ marginLeft: 4 }}
+                    title="Won't appear in the admin login autocomplete and can't sign in as a leader"
+                  >
+                    No login
+                  </span>
+                )}
               </td>
               <td>{l.role ?? <span className={styles.muted}>—</span>}</td>
               <td className={styles.contactCell}>
@@ -164,6 +179,10 @@ export function LeaderEditor({ rows, typeByCode }: Props) {
         {openFor && (
           <LeaderForm
             row={openFor === 'new' ? null : openFor}
+            scouts={scouts}
+            defaultLoginLabel={
+              openFor !== 'new' ? defaultLoginLabelByCode[openFor.code] : undefined
+            }
             onClose={() => setOpenFor(null)}
           />
         )}
@@ -172,17 +191,32 @@ export function LeaderEditor({ rows, typeByCode }: Props) {
   );
 }
 
+function typeOf(row: LeaderRow | null): LeaderType {
+  if (!row) return 'adult';
+  if (!row.is_person) return 'source';
+  if (row.scout_id) return 'youth';
+  return 'adult';
+}
+
 function LeaderForm({
   row,
+  scouts,
+  defaultLoginLabel,
   onClose
 }: {
   row: LeaderRow | null;
+  scouts: Pick<ScoutRow, 'id' | 'display_name'>[];
+  defaultLoginLabel?: string;
   onClose: () => void;
 }) {
   const isNew = row === null;
   const [code, setCode] = useState(row?.code ?? '');
   const [name, setName] = useState(row?.name ?? '');
   const [role, setRole] = useState(row?.role ?? '');
+  const [type, setType] = useState<LeaderType>(typeOf(row));
+  const [scoutId, setScoutId] = useState(row?.scout_id ?? '');
+  const [canLogin, setCanLogin] = useState(row?.can_login ?? true);
+  const [loginName, setLoginName] = useState(row?.login_name ?? '');
   const [addr1, setAddr1] = useState(row?.address_line1 ?? '');
   const [addr2, setAddr2] = useState(row?.address_line2 ?? '');
   const [city, setCity] = useState(row?.city ?? '');
@@ -199,10 +233,19 @@ function LeaderForm({
 
   function submit() {
     setErr(null);
+    if (type === 'youth' && !scoutId) {
+      setErr('Pick which scout these initials belong to.');
+      return;
+    }
     const fd = new FormData();
+    fd.set('original_code', row?.code ?? code);
     fd.set('code', code);
     fd.set('name', name);
     fd.set('role', role);
+    fd.set('is_person', type === 'source' ? 'false' : 'true');
+    fd.set('scout_id', type === 'youth' ? scoutId : '');
+    fd.set('can_login', String(canLogin));
+    fd.set('login_name', loginName);
     fd.set('address_line1', addr1);
     fd.set('address_line2', addr2);
     fd.set('city', city);
@@ -248,7 +291,6 @@ function LeaderForm({
               onChange={(e) => setCode(e.target.value)}
               className={`${styles.editInput} ${styles.editInputMono}`}
               placeholder="e.g. PB"
-              disabled={!isNew}
               required
             />
           </label>
@@ -262,6 +304,36 @@ function LeaderForm({
               required
             />
           </label>
+          <label className={styles.editField}>
+            <span className={styles.editLabel}>Type</span>
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value as LeaderType)}
+              className={styles.editInput}
+            >
+              <option value="adult">Adult</option>
+              <option value="youth">Youth (linked to a scout)</option>
+              <option value="source">Source (Camp, Clinic, …)</option>
+            </select>
+          </label>
+          {type === 'youth' && (
+            <label className={styles.editField}>
+              <span className={styles.editLabel}>Scout</span>
+              <select
+                value={scoutId}
+                onChange={(e) => setScoutId(e.target.value)}
+                className={styles.editInput}
+                required
+              >
+                <option value="">— Pick a scout —</option>
+                {scouts.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.display_name} ({s.id})
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className={styles.editFieldFull}>
             <span className={styles.editLabel}>Role (optional)</span>
             <input
@@ -272,7 +344,43 @@ function LeaderForm({
               placeholder="e.g. Assistant Scoutmaster, Merit Badge Counselor"
             />
           </label>
+          {type !== 'source' && (
+            <>
+              <label className={styles.editField} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={canLogin}
+                  onChange={(e) => setCanLogin(e.target.checked)}
+                />
+                <span className={styles.editLabel} style={{ marginBottom: 0 }}>
+                  Can sign in to /admin/login
+                </span>
+              </label>
+              <label className={styles.editFieldFull}>
+                <span className={styles.editLabel}>Login name (optional override)</span>
+                <input
+                  type="text"
+                  value={loginName}
+                  onChange={(e) => setLoginName(e.target.value)}
+                  className={styles.editInput}
+                  placeholder={
+                    defaultLoginLabel
+                      ? `Blank uses the auto-generated "${defaultLoginLabel}"`
+                      : 'Blank uses an auto-generated "First L." label'
+                  }
+                />
+              </label>
+            </>
+          )}
         </div>
+        {type === 'youth' && (
+          <p className={styles.muted}>
+            While this scout is active, these initials count as a youth leader.
+            Once the scout ages out (Scouts &amp; BSA IDs → uncheck Active),
+            they automatically count as an adult everywhere — Meeting Plan,
+            Leader Skills, Roll Call — with no further change needed here.
+          </p>
+        )}
       </div>
 
       <div className={styles.editSection}>

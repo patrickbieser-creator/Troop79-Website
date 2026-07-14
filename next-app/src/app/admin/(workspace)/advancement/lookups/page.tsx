@@ -8,6 +8,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/server';
+import { autoLoginLabels } from '@/lib/authorized-adults';
 import { LeaderEditor, type LeaderRow } from './leader-editor';
 import { ScoutEditor, type ScoutRow, type ParentRow } from './scout-editor';
 import { MbEditor, type MbRow, type CounselorRow, type EditReqNode } from './mb-editor';
@@ -263,6 +264,13 @@ export default async function LookupsPage() {
   const leaderType = (l: LeaderRow): 'adult' | 'youth' | 'source' =>
     !l.is_person ? 'source' : l.scout_id && activeScoutIds.has(l.scout_id) ? 'youth' : 'adult';
 
+  // What each adult's login label would be if their login_name override were
+  // blank — shown as a placeholder hint in the edit dialog. Computed over the
+  // exact same pool the login system uses (current adults only — an active
+  // youth leader isn't in this set yet, even if Type=Youth here).
+  const currentAdults = leaders.filter((l) => leaderType(l) === 'adult');
+  const defaultLoginLabelByCode = Object.fromEntries(autoLoginLabels(currentAdults));
+
   // Skill-assignment rows (Meeting Plan): ADULTS only — the engine schedules
   // anyone here as an adult teacher, including adults-only skills.
   const leaderPeople: AssignPerson[] = leaders
@@ -315,6 +323,8 @@ export default async function LookupsPage() {
           <LeaderEditor
             rows={leaders}
             typeByCode={Object.fromEntries(leaders.map((l) => [l.code, leaderType(l)]))}
+            scouts={scouts.map((s) => ({ id: s.id, display_name: s.display_name }))}
+            defaultLoginLabelByCode={defaultLoginLabelByCode}
           />
         </Card>
       </div>
