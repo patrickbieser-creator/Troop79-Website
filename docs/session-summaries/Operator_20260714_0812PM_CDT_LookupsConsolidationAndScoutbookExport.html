@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lookups Consolidation, Login Controls &amp; Scoutbook Export — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #2a4030;
+            --nw-brown: #8b6914;
+            --nw-gold: #8b6914;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #3d5a3e;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #faf6ef;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); }
+        tr:hover { background: var(--nw-sage); }
+
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+
+        @media print {
+            body { background: white; }
+            header { padding: 1.5rem; }
+            .container { padding: 1rem; }
+            .stat { break-inside: avoid; }
+        }
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.5rem; }
+            .stats { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Lookups Consolidation, Login Controls &amp; Scoutbook Export</h1>
+        <p class="subtitle">Leader login allowlist, Roster detail views, Lookups reorganization, a corrected Scoutbook ID reference, the Scoutbook Export feature, and a new duplicate-ledger-record audit</p>
+        <div class="meta">
+            <span>&#128197; 2026-07-14</span>
+            <span>&#129302; Operator</span>
+            <span>&#128204; Troop79-Website</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">4</div><div class="label">Features Shipped</div></div>
+            <div class="stat"><div class="number">6</div><div class="label">Decisions Recorded</div></div>
+            <div class="stat"><div class="number">5</div><div class="label">Migrations Applied</div></div>
+            <div class="stat"><div class="number">436</div><div class="label">Duplicate Groups Found</div></div>
+            <div class="stat"><div class="number">5</div><div class="label">Commits Pushed to Prod</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <h3>Leader Login Controls &amp; Audit Trail Display</h3>
+        <p>The Universal Ledger's <span class="file-path">entered_by</span> stamp already existed but wasn't trustworthy — the login "Your name" field was free text, so anyone with the shared troop password could type any name. Added a datalist of authorized adults (auto-derived "First L." labels, disambiguated when two adults share one) and server-side validation rejecting unrecognized names. New <span class="file-path">can_login</span>/<span class="file-path">login_name</span> columns on <span class="file-path">leaders</span> let an admin revoke a specific person's login or override their display name, without touching the shared password. Ledger list and detail views now show entered-by initials.</p>
+
+        <h3>Roster: Click a Name for Full Detail</h3>
+        <p>Scout and adult rows in the Roster report now open a detail dialog on click — everything the summary columns leave out (address, gender, swim class, YPT completion date, parent/guardian contacts) — with a deep link straight into the matching Lookups &amp; Admin edit dialog instead of requiring a second manual search.</p>
+
+        <h3>Lookups &amp; Admin Reorganization</h3>
+        <table>
+            <thead><tr><th>Change</th><th>Why</th></tr></thead>
+            <tbody>
+                <tr><td>Tags moved in as its own panel (was a standalone <span class="file-path">/admin/news/tags</span> page)</td><td>One place for the troop's editable taxonomy instead of two</td></tr>
+                <tr><td>Card renames: "Scouts", "Adults and Instructors"</td><td>Clearer at a glance</td></tr>
+                <tr><td>Internal Requirement Codes made editable</td><td>Renaming a code now cascades to matching ledger entries so a rename can't silently strand a scout's already-completed requirement</td></tr>
+                <tr><td>Events gained a Start Date column</td><td>Sortable/toggleable headers, newest-first default in both Lookups and the Fast Entry picker, inline-editable date</td></tr>
+            </tbody>
+        </table>
+
+        <h3>Scoutbook Export</h3>
+        <div class="callout callout-orange">
+            <strong>Caught before it shipped wrong:</strong> Cross-referencing a real historical Scoutbook upload file against our own ledger data (matching by BSA Member ID + award date) proved the existing <span class="file-path">merit_badges.scoutbook_id</span> values were wrong — populated in an earlier, unverified session. A user-provided "complete and verified" replacement CSV was <em>also</em> wrong for a 9-badge cluster (shifted by exactly +1), caught the same way and corrected after the user checked the source.
+        </div>
+        <p>Built <span class="file-path">scoutbook_merit_badge_reference</span> — a permanent, authoritative name&rarr;ID table covering 164 badge names (including ones the troop doesn't currently offer) — and corrected <span class="file-path">merit_badges.scoutbook_id</span> plus added <span class="file-path">ranks.scoutbook_id</span> from it. The new <span class="file-path">/admin/advancement/scoutbook-export</span> page then does the actual work: a date-range preview of every merit badge/rank award ready to export, an explicit excluded-rows panel for anything unmappable (no BSA Member ID, no confirmed Scoutbook ID) instead of silently guessing, and a download verified byte-for-byte against the real sample file.</p>
+
+        <h3>Duplicate Ledger Records Audit</h3>
+        <p>New Audits check finds scouts credited twice for the same rank/merit badge award, requirement leaf, or other award (any date), or the same event/service/leadership entry on the same date — a naive grouping would have false-positived on recurring named events (an annual campout reuses its event code every year), so the grouping key is date-scoped only for kinds that legitimately repeat. Each duplicate group shows every conflicting record with full context, defaults to keeping the oldest, and resolves with the same soft-delete audit trail as a manual Universal Ledger delete.</p>
+        <p>First run surfaced <strong>436 duplicate groups across 39 scouts</strong> in production — mostly genuine Fast Entry double-clicks, plus some overlap between the historical spreadsheet backfill and later live entries.</p>
+
+        <h2>Decisions</h2>
+        <h3>[D-018] Leader login constrained via can_login/login_name on leaders</h3>
+        <p>Reused the existing <span class="file-path">leaders</span> table as the authorized-adult login allowlist instead of a second parallel table.</p>
+        <h3>[D-019] Rename-cascade pattern for FK-adjacent identifiers</h3>
+        <p>Renaming a requirement code or a leader's initials now cascades to every table that references it by convention or FK, verified against seeded test data before shipping.</p>
+        <h3>[D-020] Tags moved into Lookups &amp; Admin</h3>
+        <p>One place for the troop's editable taxonomy instead of two.</p>
+        <h3>[D-021] scoutbook_merit_badge_reference is the authoritative ID source</h3>
+        <p>Built by cross-referencing real historical upload data against our own ledger, after two other claimed-authoritative sources both proved wrong for parts of the catalog.</p>
+        <h3>[D-022] Scoutbook Export flags gaps instead of guessing</h3>
+        <p>An explicit excluded-rows panel beats a silently incomplete or wrong export.</p>
+        <h3>[D-023] Duplicate-detection grouping key varies by ledger kind</h3>
+        <p>One-time achievements group by scout+kind+code alone; recurring event/service/leadership kinds also require the same date.</p>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Work through the ~434 remaining duplicate ledger record groups (Records &rarr; Audits)</li>
+            <li>Verify Scoutbook IDs for "Signals Signs and Codes" (best-guess) and "Indian Lore" (no confirmed ID anywhere)</li>
+            <li>Enter correct guardian for Anjali Sankpal-Tatera in <span class="file-path">scout_parents</span></li>
+            <li>Resolve merit badge counselor conflict: Jason Porter vs. Jack Kosmoski</li>
+            <li>Review active-flag mismatches: Xavier Juchemich, Myles Maciejewski, Rose Manning</li>
+            <li>Enter the ~55 historical Google Photos albums; Bunny CDN credentials in Vercel</li>
+            <li>Phase 4 auth: per-user Supabase Auth + per-user RLS</li>
+        </ul>
+
+        <h2>Files Changed</h2>
+        <p>
+            <span class="badge badge-green">NEW</span> <span class="file-path">lib/authorized-adults.ts</span>,
+            <span class="file-path">lib/initials.ts</span>,
+            <span class="file-path">lib/scoutbook-export.ts</span>,
+            <span class="file-path">roster/scouts-table.tsx</span>,
+            <span class="file-path">roster/adults-table.tsx</span>,
+            <span class="file-path">lookups/tags-manager.tsx</span>,
+            <span class="file-path">advancement/scoutbook-export/*</span>,
+            <span class="file-path">audits/checks/duplicate-records.ts</span>,
+            <span class="file-path">audits/duplicate-audit-card.tsx</span>,
+            5 migration files
+        </p>
+        <p style="margin-top: 0.75rem;">
+            <span class="badge badge-gold">MODIFIED</span> <span class="file-path">admin/login/{page,actions}.tsx</span>,
+            <span class="file-path">ledger/{ledger-table,row-actions}.tsx</span>,
+            <span class="file-path">lookups/{page,actions,leader-editor,scout-editor,req-codes-table,event-editor}.tsx</span>,
+            <span class="file-path">fast-entry/{page,picker,picker-types}.ts(x)</span>,
+            <span class="file-path">audits/{page,actions}.tsx</span>,
+            <span class="file-path">_components/sub-nav.tsx</span>
+        </p>
+
+    </div>
+
+    <footer>
+        <strong>Troop79-Website</strong> — Scout Troop 79, Milwaukee, WI<br>
+        Session Summary — 2026-07-14 — Operator
+    </footer>
+</body>
+</html>
