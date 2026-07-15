@@ -80,3 +80,62 @@ export async function fillMissingRankRequirements(formData: FormData): Promise<R
 
   return { ok: true, inserted: rows.length };
 }
+
+interface ResolveResult {
+  ok: boolean;
+  error?: string;
+  deleted: number;
+}
+
+/**
+ * Duplicate-records fix: soft-deletes every row in a duplicate group except
+ * the one the leader picked to keep — same audit trail (deleted_at/by/reason)
+ * as a manual Universal Ledger delete, just applied to N-1 rows at once.
+ */
+export async function resolveDuplicateLedgerEntries(formData: FormData): Promise<ResolveResult> {
+  let session;
+  try {
+    session = await ensureLeader();
+  } catch {
+    return { ok: false, error: 'Not authenticated', deleted: 0 };
+  }
+
+  const keepId = Number(formData.get('keep_id'));
+  const scoutId = String(formData.get('scout_id') ?? '').trim();
+  const deleteIdsJson = String(formData.get('delete_ids') ?? '[]');
+  if (!Number.isFinite(keepId) || keepId <= 0) {
+    return { ok: false, error: 'Invalid record to keep', deleted: 0 };
+  }
+
+  let deleteIds: number[];
+  try {
+    deleteIds = JSON.parse(deleteIdsJson) as number[];
+  } catch {
+    return { ok: false, error: 'Malformed request', deleted: 0 };
+  }
+  if (!Array.isArray(deleteIds) || deleteIds.length === 0) {
+    return { ok: false, error: 'Nothing to delete', deleted: 0 };
+  }
+
+  const supabase = createAdminClient();
+  const { error, count } = await supabase
+    .from('ledger_entries')
+    .update(
+      {
+        deleted_at: new Date().toISOString(),
+        deleted_by: session.leader,
+        deleted_reason: `Duplicate — kept #${keepId} via Audits`
+      },
+      { count: 'exact' }
+    )
+    .in('id', deleteIds);
+  if (error) return { ok: false, error: error.message, deleted: 0 };
+
+  revalidatePath('/admin/advancement/audits');
+  revalidatePath('/admin/advancement/dashboard');
+  revalidatePath('/admin/advancement/ledger');
+  revalidatePath('/admin/advancement/fast-entry');
+  if (scoutId) revalidatePath(`/scouts/${scoutId}`);
+
+  return { ok: true, deleted: count ?? deleteIds.length };
+}

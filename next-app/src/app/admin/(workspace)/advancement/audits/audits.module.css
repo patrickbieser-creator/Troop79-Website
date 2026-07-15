@@ -213,6 +213,50 @@
   color: var(--admin-danger);
 }
 
+.dupRecordList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.dupRecordRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--admin-gray-900);
+  background: var(--admin-gray-50);
+  border: 1px solid var(--admin-gray-100);
+  border-radius: 3px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+.dupRecordRow input {
+  margin: 3px 0 0;
+  flex-shrink: 0;
+}
+.dupRecordMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dupRecordMeta {
+  font-size: 11px;
+  color: var(--admin-gray-500);
+  font-variant-numeric: tabular-nums;
+}
+.dupDefaultTag {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--admin-forest);
+  background: #e5efe4;
+  border-radius: 8px;
+  padding: 1px 6px;
+  margin-left: 6px;
+}
+
 .footnote {
   margin-top: 24px;
   font-size: 12px;

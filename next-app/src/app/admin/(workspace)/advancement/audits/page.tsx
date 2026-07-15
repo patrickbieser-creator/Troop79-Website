@@ -11,12 +11,14 @@
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import { AuditCard } from './audit-card';
+import { DuplicateAuditCard } from './duplicate-audit-card';
 import type { Finding } from './types';
 import * as borRequirements from './checks/bor-requirements';
 import * as activityThresholds from './checks/activity-thresholds';
 import * as rankTimeInGrade from './checks/rank-time-in-grade';
 import * as rankMeritBadges from './checks/rank-merit-badges';
 import * as rankPor from './checks/rank-por';
+import * as duplicateRecords from './checks/duplicate-records';
 import styles from './audits.module.css';
 
 export const metadata = {
@@ -63,8 +65,9 @@ const CHECKS = [
 
 export default async function AuditsPage() {
   const supabase = createAdminClient();
-  const [findingsByCheck, leadersRes] = await Promise.all([
+  const [findingsByCheck, duplicateGroups, leadersRes] = await Promise.all([
     Promise.all(CHECKS.map((c) => c.run(supabase))),
+    duplicateRecords.run(supabase),
     supabase.from('leaders').select('code, name').order('code')
   ]);
   const leaders = (leadersRes.data ?? []) as { code: string; name: string }[];
@@ -81,6 +84,8 @@ export default async function AuditsPage() {
         </div>
       </div>
 
+      <DuplicateSection groups={duplicateGroups} />
+
       {CHECKS.map((check, i) => (
         <AuditSection
           key={check.id}
@@ -95,6 +100,41 @@ export default async function AuditsPage() {
         <Link href="/admin/advancement/dashboard">&larr; Back to Dashboard</Link>
       </p>
     </>
+  );
+}
+
+function DuplicateSection({ groups }: { groups: duplicateRecords.DuplicateGroup[] }) {
+  const recordCount = groups.reduce((sum, g) => sum + g.records.length, 0);
+  const scoutCount = new Set(groups.map((g) => g.scoutId)).size;
+
+  return (
+    <section className={styles.section}>
+      <h2 className={styles.sectionTitle}>Duplicate Ledger Records</h2>
+      <p className={styles.sectionDesc}>
+        A scout has more than one ledger entry for what looks like the same advancement, award, merit badge,
+        or campout &mdash; usually a Fast Entry double-click or a re-import, not a second real occurrence.
+        Recurring named events (e.g. an annual campout) only count as duplicates on the same date; a repeat
+        on a different date is a real, separate occurrence. The oldest record is selected to keep by default
+        &mdash; pick a different one before resolving if it isn&rsquo;t the right one.
+      </p>
+
+      {groups.length === 0 ? (
+        <div className={styles.empty}>No duplicates found.</div>
+      ) : (
+        <>
+          <div className={styles.summary}>
+            <strong>{groups.length}</strong> duplicate group{groups.length === 1 ? '' : 's'} across{' '}
+            <strong>{scoutCount}</strong> scout{scoutCount === 1 ? '' : 's'} &mdash; <strong>{recordCount}</strong>{' '}
+            record{recordCount === 1 ? '' : 's'} involved.
+          </div>
+          <div className={styles.list}>
+            {groups.map((g) => (
+              <DuplicateAuditCard key={g.key} group={g} />
+            ))}
+          </div>
+        </>
+      )}
+    </section>
   );
 }
 
