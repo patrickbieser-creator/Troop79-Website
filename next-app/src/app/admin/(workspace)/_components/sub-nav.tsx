@@ -107,7 +107,13 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
   },
   {
     title: 'Output',
-    items: [{ label: 'Scoutbook Export', disabled: true }]
+    items: [
+      {
+        label: 'Scoutbook Export',
+        href: '/admin/advancement/scoutbook-export',
+        matchPath: '/admin/advancement/scoutbook-export'
+      }
+    ]
   },
   {
     title: 'Setup',
