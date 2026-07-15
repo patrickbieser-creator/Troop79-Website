@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Composable Event Page — Event Signup Prototype v3 — Scout Troop 79</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/event-signup.css" />
+</head>
+<body>
+
+  <div class="proto-banner">
+    <div class="proto-banner-inner">
+      <p><strong>Prototype v3</strong> ONE generic event page composed from blocks — switch events in the corner strip; same renderer, five configs (Plans/Event-Signup.md). All names fictional.</p>
+      <a href="event-builder.html">Admin event builder &rarr;</a>
+    </div>
+  </div>
+
+  <main class="page page--narrow">
+
+    <!-- ══ STATE A · EVENT DETAIL — rendered entirely from the event config ══ -->
+    <section id="state-detail" class="state" aria-label="Event detail"></section>
+
+    <!-- ══ STATE B · FAMILY GATE (shared troop password — stub) ══ -->
+    <section id="state-gate" class="state" hidden aria-label="Family sign-in">
+      <p class="stepBack"><button type="button" onclick="go('detail')">&larr; Back to event</button></p>
+      <div class="stepCard">
+        <p class="stepKicker" id="gateKicker">Step 1 of 3</p>
+        <h2 class="stepTitle">Family sign-in</h2>
+        <p class="stepLede">One shared password for the whole troop &mdash; it&rsquo;s printed in the Bugle each week, or ask any leader. You&rsquo;ll only enter it once on this device.</p>
+        <label class="fieldLabel" for="gatePassword">Troop password</label>
+        <div class="gateRow">
+          <input class="textInput" type="password" id="gatePassword" autocomplete="off" placeholder="Enter the troop password" />
+          <button type="button" class="btn btn--navy" id="gateSubmit">Continue</button>
+        </div>
+        <p class="fieldError" id="gateError" hidden>Please enter the troop password.</p>
+        <p class="fieldHint">This isn&rsquo;t a personal account &mdash; no email, no signup wall. (Prototype: any input passes.)</p>
+      </div>
+    </section>
+
+    <!-- ══ STATE C · HOUSEHOLD PICKER ══ -->
+    <section id="state-picker" class="state" hidden aria-label="Find your household">
+      <p class="stepBack"><button type="button" onclick="go('detail')">&larr; Back to event</button></p>
+      <div class="stepCard">
+        <p class="stepKicker" id="pickerKicker">Step 2 of 3</p>
+        <h2 class="stepTitle">Find your scout</h2>
+        <p class="stepLede">Start typing your scout&rsquo;s name. Picking any scout brings up the whole household &mdash; siblings and parents included &mdash; so one signup covers the family.</p>
+        <div class="searchWrap">
+          <label class="fieldLabel" for="scoutSearch">Scout&rsquo;s name</label>
+          <input class="textInput" type="search" id="scoutSearch" placeholder="e.g. Ben, Kowalski&hellip;"
+                 autocomplete="off" role="combobox" aria-expanded="false" aria-controls="scoutResults" />
+        </div>
+        <ul class="scoutResults" id="scoutResults" role="listbox" aria-label="Matching scouts"></ul>
+        <div class="householdCard" id="householdCard" hidden>
+          <h3 class="householdName" id="hhName">Household</h3>
+          <p class="hhGroupLabel">Scouts</p>
+          <ul class="hhList" id="hhScouts"></ul>
+          <p class="hhGroupLabel">Parents / guardians</p>
+          <ul class="hhList" id="hhAdults"></ul>
+          <button type="button" class="btn btn--primary" onclick="go('form')">This is us &mdash; continue</button>
+          <p class="wrongHousehold"><button type="button" class="btn btn--ghost" onclick="resetPicker()">Not your household? Search again</button></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ STATE D · SIGNUP FORM — rebuilt from config + household on entry ══ -->
+    <section id="state-form" class="state" hidden aria-label="Signup form">
+      <p class="stepBack"><button type="button" onclick="go('picker')">&larr; Change household</button></p>
+      <div class="stepCard">
+        <p class="stepKicker" id="formKicker">Step 3 of 3</p>
+        <h2 class="stepTitle" id="formTitle">Family signup</h2>
+        <p class="stepLede" id="formLede"></p>
+        <form id="signupForm" novalidate>
+          <div id="formBody"></div>
+          <p class="fieldError" id="formError" hidden></p>
+          <div class="submitRow">
+            <button type="submit" class="btn btn--primary" id="formSubmit">Submit family signup</button>
+            <button type="button" class="btn btn--ghost" onclick="go('detail')">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ══ STATE E · CONFIRMATION / EDIT VIEW ══ -->
+    <section id="state-confirm" class="state" hidden aria-label="Your signup">
+      <p class="stepBack"><button type="button" onclick="go('detail')">&larr; Back to event</button></p>
+      <div class="stepCard" id="confirmCard"></div>
+      <div class="proto-note">
+        <strong>Note</strong> &mdash; Slip &amp; payment statuses are leader-managed (admin roster).
+        The owed line is derived, never stored: &Sigma; tier &times; (per-day ? days : 1) over the household&rsquo;s yes-entries.
+        Driver-only adults appear with an explicit $0 and are excluded from headcount and two-deep.
+      </div>
+    </section>
+
+    <nav class="exampleNav" aria-label="Other prototype pages">
+      <span class="exLabel">Prototype pages</span>
+      <span class="exHere">Composable event page (v3)</span>
+      <a href="event-builder.html">Admin event builder (v3)</a>
+      <a href="index.html">Campout RSVP</a>
+      <a href="fundraiser-shifts.html">Fundraiser shifts</a>
+      <a href="ski-outing.html">Outing + gear questions</a>
+      <a href="admin-roster.html">Leader roster</a>
+    </nav>
+
+  </main>
+
+  <!-- ══ PROTOTYPE CONTROL STRIP — the event switcher IS the demo ══ -->
+  <aside class="protoStrip" aria-label="Prototype controls">
+    <span class="stripTitle">Prototype &middot; one renderer, five configs</span>
+    <div class="stripGroup" id="stripEvent">
+      <span class="stripLabel">Event</span>
+      <button type="button" class="stripBtn isActive" data-event="campout">Campout</button>
+      <button type="button" class="stripBtn" data-event="pancake">Pancakes</button>
+      <button type="button" class="stripBtn" data-event="ski">Ski</button>
+      <button type="button" class="stripBtn" data-event="rummage">Rummage</button>
+      <button type="button" class="stripBtn" data-event="summercamp">Summer camp</button>
+    </div>
+    <div class="stripGroup" id="stripFlow">
+      <span class="stripLabel">Screen</span>
+      <button type="button" class="stripBtn isActive" data-state="detail">Detail</button>
+      <button type="button" class="stripBtn" data-state="gate">Gate</button>
+      <button type="button" class="stripBtn" data-state="picker">Picker</button>
+      <button type="button" class="stripBtn" data-state="form">Form</button>
+      <button type="button" class="stripBtn" data-state="confirm">Confirm</button>
+    </div>
+  </aside>
+
+  <script>
+  /* ══════════════════════════════════════════════════════════════════
+     COMPOSABLE EVENT PAGE — one renderer, N configs.
+     Each config mirrors the Plans/Event-Signup.md schema:
+       blocks       → which blocks render (event_signups columns / presence)
+       prices[]     → event_prices rows   (label, amount, per, applies)
+       slots[]      → signup_slots rows   (kind, label, time, elig, needed)
+       questions[]  → signup_questions rows (prompt, type, choices, applies, required)
+       flags        → compliance: slip / ahmr (none|info|required) / guests
+     All data 100% fictional.
+     ══════════════════════════════════════════════════════════════════ */
+
+  const CONFIGS = {
+    campout: {
+      category: 'Campout', title: 'Camp Long Lake Campout',
+      dek: 'Three days on the water at the council’s classic Northwoods camp — canoeing, shooting sports, and the annual patrol cook-off.',
+      when:  { value: 'Fri Aug 14 – Sun Aug 16', sub: 'Depart 5:30 PM Fri · back ~11 AM Sun' },
+      where: { value: 'Camp Long Lake', sub: 'St. Cloud, WI · ~50 min from the church' },
+      cost:  { value: '$30', sub: 'Everyone — one flat tier' },
+      deadline: { value: 'Sun Aug 9, 9:00 PM', sub: '5 days before departure' },
+      blocks: { content: true, attendance: true, pricing: true, capacity: false, drivers: true, slots: false, questions: false },
+      flags: { slip: true, ahmr: 'info', guests: false },
+      pill: '<strong>23</strong> going so far',
+      cta: 'Sign up your family',
+      details: [
+        'We’re back at Camp Long Lake for the summer capstone campout. Patrols rotate through the waterfront, the rifle and shotgun ranges, and an afternoon orienteering course. Saturday night is the patrol cook-off — grubmasters, start planning menus once headcounts are in.',
+        'Scouts working on Camping, Cooking, or Rifle Shooting merit badges should tell their patrol leader — counselors will be on site Saturday.',
+      ],
+      resources: [
+        { icon: '\u{1F4C4}', label: 'Packing list', meta: 'PDF' },
+        { icon: '✎', label: 'Activity Consent form (permission slip)', meta: 'PDF' },
+        { icon: '\u{1F5FA}', label: 'Directions to Camp Long Lake', meta: 'Link' },
+      ],
+      prices: [ { id: 'everyone', label: 'Everyone', amount: 30, per: 'event', applies: 'both' } ],
+      payment: 'Cash or check payable to <strong>Troop 79</strong> at any Sunday meeting by <strong>Aug 10</strong>. We don’t collect payment online.',
+      payRule: 'No slip + no payment = no trip.',
+      legs: { out: 'Drive up Friday (depart 5:30 PM)', back: 'Drive back Sunday (~9 AM pickup)' },
+      slots: [], questions: [],
+      notesPrompt: 'Allergies or dietary needs we should know about?',
+      notesDemo: 'Ben — peanut allergy, carries an EpiPen',
+    },
+
+    pancake: {
+      category: 'Fundraiser', title: 'Pancake Breakfast',
+      dek: 'The troop’s biggest fundraiser of the fall — flip, serve, and bus tables in the church basement. Bring the whole family.',
+      when:  { value: 'Sun Oct 25', sub: 'Shifts 6:00 AM – 1:30 PM' },
+      where: { value: 'St. Aidan’s basement', sub: '84th & Center · enter off the lot' },
+      cost:  { value: 'No cost', sub: 'Scouts are credited for hours worked' },
+      deadline: { value: 'Tue Oct 20, 9:00 PM', sub: '5 days before the breakfast' },
+      blocks: { content: true, attendance: false, pricing: false, capacity: false, drivers: false, slots: true, questions: false },
+      flags: { slip: false, ahmr: 'none', guests: true },
+      pill: '<strong>17</strong> helpers signed up so far',
+      cta: 'Sign up to help',
+      details: [
+        'Proceeds fund campership scholarships and new patrol gear. Scouts’ hours are credited toward their camp accounts — the more shifts, the bigger the credit. Claiming a shift is your signup: no separate RSVP.',
+        'Friends, siblings, and grandparents are welcome to come eat — tell us how many so the griddle team can plan batter.',
+      ],
+      resources: [ { icon: '\u{1F4C4}', label: 'Poster to print & hang', meta: 'PDF' } ],
+      prices: [], payment: null, payRule: null, legs: null,
+      slots: [
+        { id: 'setup',   kind: 'shift', label: 'Setup crew',            time: '6:00 – 8:00 AM',       elig: 'both',   needed: 4,  filled: 2 },
+        { id: 'serve1',  kind: 'shift', label: 'First serving shift',   time: '8:00 – 10:00 AM',      elig: 'both',   needed: 6,  filled: 3 },
+        { id: 'serve2',  kind: 'shift', label: 'Second serving shift',  time: '10:00 AM – 12:00 PM',  elig: 'both',   needed: 6,  filled: 6 },
+        { id: 'griddle', kind: 'shift', label: 'Griddle team',          time: '7:30 – 11:30 AM',      elig: 'adults', needed: 3,  filled: 1 },
+        { id: 'cleanup', kind: 'shift', label: 'Cleanup crew',          time: '12:00 – 1:30 PM',      elig: 'both',   needed: 5,  filled: 2 },
+        { id: 'posters', kind: 'task',  label: 'Hang posters the week before', time: null,            elig: 'scouts', needed: 4,  filled: 1 },
+        { id: 'mix',     kind: 'task',  label: 'Donate 10 lb pancake mix',     time: null,            elig: 'adults', needed: 5,  filled: 1, attendance_required: false },
+        { id: 'oj',      kind: 'task',  label: 'Donate frozen OJ (6 cans)',    time: null,            elig: 'adults', needed: 4,  filled: 2, attendance_required: false },
+      ],
+      questions: [],
+      notesPrompt: null, notesDemo: null,
+      noCostNote: 'No cost to sign up — scouts are credited for hours worked.',
+    },
+
+    ski: {
+      category: 'Outing', title: 'Sunburst Ski Outing',
+      dek: 'A full Saturday on the hill at Sunburst — lift ticket and rental in one group rate, hot cocoa in the chalet, home by dinner.',
+      when:  { value: 'Sat Jan 16, 2027', sub: 'Depart 7:00 AM · back ~6:30 PM' },
+      where: { value: 'Sunburst Winter Sports Park', sub: 'Kewaskum, WI · ~40 min' },
+      cost:  { value: '$45 / $0', sub: 'Chaperones & drivers ride free' },
+      deadline: { value: 'Mon Jan 11, 9:00 PM', sub: 'Rental sizes due to Sunburst Jan 12' },
+      blocks: { content: true, attendance: true, pricing: true, capacity: true, drivers: true, slots: false, questions: true },
+      flags: { slip: false, ahmr: 'none', guests: false },
+      capacity: 30, taken: 22, waitlist: true,
+      pill: '<strong>22</strong> of 30 spots taken · waitlist on',
+      cta: 'Sign up your family',
+      details: [
+        'The group rate covers the lift ticket and full rental (skis or board, boots, helmet). Sunburst needs everyone’s height, weight, and shoe size ahead of time to stage the rental gear — that’s what the questions on the form are for.',
+        'Never skied? Perfect — the 10 AM beginner lesson is included. Adults who’d rather sip cocoa and count heads sign up as chaperones, free.',
+      ],
+      resources: [
+        { icon: '\u{1F5FA}', label: 'Sunburst trail map', meta: 'Link' },
+        { icon: '\u{1F4C4}', label: 'Rental sizing guide', meta: 'PDF' },
+      ],
+      prices: [
+        { id: 'scout',  label: 'Scout',                        amount: 45, per: 'event', applies: 'scouts' },
+        { id: 'adski',  label: 'Adult — skiing',           amount: 45, per: 'event', applies: 'adults' },
+        { id: 'adchap', label: 'Adult — chaperone or driver', amount: 0, per: 'event', applies: 'adults' },
+      ],
+      payment: 'Cash or check payable to <strong>Troop 79</strong> by <strong>Jan 11</strong> — the group rate is invoiced to the troop.',
+      payRule: null,
+      legs: { out: 'Drive up Saturday morning (7:00 AM)', back: 'Drive home Saturday evening (~4:30 PM)' },
+      slots: [],
+      questions: [
+        { id: 'height', prompt: 'Height',    type: 'text',   applies: 'both', required: true,  demo: '5′1″',   ph: 'e.g. 5′2″' },
+        { id: 'weight', prompt: 'Weight',    type: 'text',   applies: 'both', required: true,  demo: '105 lbs', ph: 'e.g. 110 lbs' },
+        { id: 'shoe',   prompt: 'Shoe size', type: 'text',   applies: 'both', required: true,  demo: '7',       ph: 'e.g. 8' },
+        { id: 'equip',  prompt: 'Equipment', type: 'choice', applies: 'both', required: true,  demo: 'Snowboard',
+          choices: ['Downhill skis', 'Snowboard', 'Cross-country'] },
+      ],
+      notesPrompt: 'Anything else the leaders should know?',
+      notesDemo: null,
+    },
+
+    rummage: {
+      category: 'Fundraiser', title: 'Spring Rummage Sale',
+      dek: 'A brand-new event shape, zero new code: donation sorting Friday night, sale all day Saturday — claim a crew and come help.',
+      when:  { value: 'Sat May 1, 2027', sub: 'Sale 8 AM – 3 PM · sorting Friday evening' },
+      where: { value: 'Church basement', sub: 'Donations accepted all week at the office' },
+      cost:  { value: 'No cost', sub: 'Proceeds fund camperships' },
+      deadline: { value: 'Mon Apr 26, 9:00 PM', sub: '5 days before the sale' },
+      blocks: { content: true, attendance: false, pricing: false, capacity: false, drivers: false, slots: true, questions: false },
+      flags: { slip: false, ahmr: 'none', guests: true },
+      pill: '<strong>13</strong> helpers signed up so far',
+      cta: 'Claim a crew',
+      details: [
+        'Everything unsold at 3 PM gets boxed and driven to the donation center — that’s the load-out run, and it always needs the most hands. Claiming a crew is your signup.',
+        'Neighbors and friends are welcome to shop and to help — bring them along.',
+      ],
+      resources: [ { icon: '\u{1F4C4}', label: 'What we can (and can’t) accept', meta: 'PDF' } ],
+      prices: [], payment: null, payRule: null, legs: null,
+      slots: [
+        { id: 'sort',    kind: 'shift', label: 'Friday sorting crew',        time: 'Fri 5:00 – 8:00 PM',    elig: 'both',   needed: 8,  filled: 3 },
+        { id: 'price',   kind: 'shift', label: 'Pricing team',               time: 'Fri 5:00 – 8:00 PM',    elig: 'adults', needed: 4,  filled: 2 },
+        { id: 'cashier', kind: 'shift', label: 'Cashiers',                   time: 'Sat 8:00 AM – 3:00 PM', elig: 'adults', needed: 3,  filled: 3 },
+        { id: 'runner',  kind: 'shift', label: 'Sales floor runners',        time: 'Sat 8:00 AM – 3:00 PM', elig: 'scouts', needed: 10, filled: 4 },
+        { id: 'loadout', kind: 'shift', label: 'Load-out & donation run',    time: 'Sat 3:00 – 5:00 PM',    elig: 'both',   needed: 6,  filled: 1 },
+        { id: 'bake',    kind: 'task',  label: 'Donate baked goods for the bake table', time: null,    elig: 'both',   needed: 8,  filled: 2, attendance_required: false },
+      ],
+      questions: [],
+      notesPrompt: null, notesDemo: null,
+      noCostNote: 'No cost to sign up — every hour worked funds camperships.',
+    },
+
+    summercamp: {
+      category: 'Summer Camp', title: 'Summer Camp — Camp Long Lake',
+      dek: 'The big one: a full week of merit badges, waterfront, and campfires. The troop travels together Sunday at noon.',
+      when:  { value: 'Sun Jul 11 – Sat Jul 17, 2027', sub: 'Full week · depart Sunday noon' },
+      where: { value: 'Camp Long Lake', sub: 'St. Cloud, WI' },
+      cost:  { value: '$325 scout', sub: 'Adults $40 per day' },
+      deadline: { value: 'Tue Jul 6, 9:00 PM', sub: 'Council roster due earlier — don’t wait' },
+      blocks: { content: true, attendance: true, pricing: true, capacity: false, drivers: false, slots: false, questions: false },
+      flags: { slip: false, ahmr: 'required', guests: false },
+      pill: '<strong>14</strong> going so far',
+      cta: 'Sign up your family',
+      details: [
+        'Scouts pick merit badge sessions in June — first-year scouts do the Voyageur program together. The $325 covers the council fee, food, and program; campership help is available, ask the Scoutmaster quietly.',
+        'Adults are welcome for any stretch — many split the week. You’re charged only for the days you’re in camp.',
+      ],
+      resources: [
+        { icon: '\u{1F4C4}', label: 'Camp Long Lake leader guide', meta: 'PDF' },
+        { icon: '✎', label: 'AHMR Parts A, B & C', meta: 'PDF' },
+      ],
+      prices: [
+        { id: 'scout', label: 'Scout',              amount: 325, per: 'event', applies: 'scouts' },
+        { id: 'adult', label: 'Adult (per day)',    amount: 40,  per: 'day',   applies: 'adults' },
+      ],
+      payment: 'Check payable to <strong>Troop 79</strong> by <strong>Jun 1</strong> — deposits are forwarded to council.',
+      payRule: null,
+      legs: null,
+      slots: [], questions: [],
+      notesPrompt: 'Dietary needs or medications the leaders should know about?',
+      notesDemo: null,
+      maxDays: 7,
+    },
+  };
+
+  // ── Fictional roster: households → scouts (with patrol) + adults ──
+  const HOUSEHOLDS = [
+    { name: 'Kowalski',
+      scouts: [ { name: 'Ben Kowalski', patrol: 'Flaming Arrows' },
+                { name: 'Sam Kowalski', patrol: 'Wolverines' } ],
+      adults: [ 'Dan Kowalski', 'Marta Kowalski' ] },
+    { name: 'Trevino', scouts: [ { name: 'Marcus Trevino', patrol: 'Wolverines' } ], adults: [ 'Elena Trevino', 'Rob Trevino' ] },
+    { name: 'Lindqvist', scouts: [ { name: 'Ava Lindqvist', patrol: 'Screaming Eagles' } ], adults: [ 'Erik Lindqvist', 'Hannah Lindqvist' ] },
+    { name: 'Okafor', scouts: [ { name: 'Daniel Okafor', patrol: 'Flaming Arrows' } ], adults: [ 'Grace Okafor', 'Chidi Okafor' ] },
+    { name: 'Brandt',
+      scouts: [ { name: 'Theo Brandt', patrol: 'Screaming Eagles' },
+                { name: 'Oliver Brandt', patrol: 'Flaming Arrows' } ],
+      adults: [ 'Jill Brandt', 'Peter Brandt' ] },
+    { name: 'Nguyen', scouts: [ { name: 'Liam Nguyen', patrol: 'Wolverines' } ], adults: [ 'Thu Nguyen', 'Kevin Nguyen' ] },
+    { name: 'Petersen', scouts: [ { name: 'Jack Petersen', patrol: 'Screaming Eagles' } ], adults: [ 'Amy Petersen', 'Lars Petersen' ] },
+    { name: 'Delgado', scouts: [ { name: 'Rafael Delgado', patrol: 'Wolverines' } ], adults: [ 'Sofia Delgado' ] },
+    { name: 'Yoder', scouts: [ { name: 'Caleb Yoder', patrol: 'Flaming Arrows' } ], adults: [ 'Ruth Yoder', 'Mark Yoder' ] },
+    { name: 'Washington', scouts: [ { name: 'DeShawn Washington', patrol: 'Screaming Eagles' } ], adults: [ 'Tanya Washington' ] },
+  ];
+
+  // ── State ─────────────────────────────────────────────────────────
+  let cfg = CONFIGS.campout;
+  let eventId = 'campout';
+  let currentState = 'detail';
+  let household = HOUSEHOLDS[0];             // Kowalski — default demo household
+  const submissions = {};                    // per-event submission (survives event switching)
+  let pendingIntent = 'signup';
+
+  const $ = (id) => document.getElementById(id);
+  const money = (n) => '$' + (Number.isInteger(n) ? n : n.toFixed(2));
+  const whoLabel = { scouts: 'Scouts', adults: 'Adults', both: 'Everyone' };
+
+  function eligibleTiers(kind) {
+    const k = kind === 'scout' ? 'scouts' : 'adults';
+    return cfg.prices.filter(p => p.applies === 'both' || p.applies === k);
+  }
+  function personQuestions(kind) {
+    const k = kind === 'scout' ? 'scouts' : 'adults';
+    return cfg.questions.filter(q => q.applies === 'both' || q.applies === k);
+  }
+  function personSlots(kind) {
+    const k = kind === 'scout' ? 'scouts' : 'adults';
+    return cfg.slots.filter(s => s.elig === 'both' || s.elig === k);
+  }
+  function coverageText(filled, needed) {
+    if (needed == null) return filled + ' signed up · no limit';
+    if (filled >= needed) return 'Full (' + needed + '/' + needed + ')';
+    return filled + ' of ' + needed + ' — ' + (needed - filled) + ' more needed';
+  }
+
+  // ══ STATE A · DETAIL ══════════════════════════════════════════════
+  function renderDetail() {
+    const b = cfg.blocks, f = cfg.flags;
+    let h = '';
+
+    h += `<p class="kicker"><span class="kickerCat">${cfg.category}</span> &nbsp;&middot;&nbsp; Troop 79 Events</p>
+      <h1 class="eventTitle">${cfg.title}</h1>
+      <p class="eventDek">${cfg.dek}</p>
+      <div class="statusRow">
+        <span class="badge badge--open">Signup open</span>
+        <span class="countPill">${cfg.pill}</span>
+      </div>
+      <div class="factGrid">
+        <div class="fact"><div class="factLabel">When</div><div class="factValue">${cfg.when.value}</div><div class="factSub">${cfg.when.sub}</div></div>
+        <div class="fact"><div class="factLabel">Where</div><div class="factValue">${cfg.where.value}</div><div class="factSub">${cfg.where.sub}</div></div>
+        <div class="fact"><div class="factLabel">Cost</div><div class="factValue">${cfg.cost.value}</div><div class="factSub">${cfg.cost.sub}</div></div>
+        <div class="fact"><div class="factLabel">Signup deadline</div><div class="factValue">${cfg.deadline.value}</div><div class="factSub">${cfg.deadline.sub}</div></div>
+      </div>`;
+
+    if (b.content) {
+      h += '<div class="bodyCopy">' + cfg.details.map(p => `<p>${p}</p>`).join('') + '</div>';
+    }
+
+    if (b.pricing && cfg.prices.length) {
+      h += `<div class="payBlock"><h2>Cost &amp; payment</h2><ul class="tierRows">`
+        + cfg.prices.map(p => `<li><span><span class="tierLabel">${p.label}</span><span class="tierWho">${whoLabel[p.applies]}</span></span>
+            <span class="tierAmt">${money(p.amount)}${p.per === 'day' ? ' <small>per day</small>' : ''}</span></li>`).join('')
+        + `</ul><p>${cfg.payment}</p>`
+        + (cfg.payRule ? `<p class="payRule">${cfg.payRule}</p>` : '')
+        + `</div>`;
+    } else if (cfg.noCostNote) {
+      h += `<div class="payBlock"><h2>Cost</h2><p>${cfg.noCostNote}</p></div>`;
+    }
+
+    if (b.slots && cfg.slots.length) {
+      h += `<div class="formSectionHead" style="margin-top:26px"><span class="legendLike">Shifts &amp; tasks — who’s still needed</span><span class="rule" aria-hidden="true"></span></div>
+        <ul class="slotList" aria-label="Shift and task coverage">`
+        + cfg.slots.map(sl => {
+            const full = sl.needed != null && sl.filled >= sl.needed;
+            const pct = sl.needed ? Math.min(100, Math.round(sl.filled / sl.needed * 100)) : 0;
+            return `<li class="slotItem">
+              <span><span class="slotName">${sl.label}</span>
+                <span class="slotTime">${sl.time || 'Anytime — untimed task'}${sl.attendance_required === false ? ' · <strong>no attendance needed</strong>' : ''}</span></span>
+              <span class="slotMetaRow">
+                <span class="eligChip elig--${sl.elig}">${whoLabel[sl.elig]}</span>
+                ${full ? `<span class="fullChip">Full (${sl.needed}/${sl.needed})</span>`
+                       : `<span class="slotCount"><strong>${sl.filled}</strong> of ${sl.needed} — ${sl.needed - sl.filled} more needed</span>`}
+              </span>
+              <span class="slotBar${full ? ' isFull' : ''}"><span style="width:${pct}%"></span></span>
+            </li>`;
+          }).join('')
+        + `</ul>`;
+    }
+
+    // Compliance / logistics list
+    const info = [];
+    if (f.slip) info.push(`<li><span class="infoIcon" aria-hidden="true">&#9998;</span>
+      <span><strong>Permission slip required.</strong> One per scout — download the Activity Consent form below and bring the signed copy to a meeting.</span></li>`);
+    if (b.drivers) info.push(`<li><span class="infoIcon" aria-hidden="true">&#128663;</span>
+      <span><strong>Drivers needed — each leg counts.</strong> You can drive one way only, or provide transportation without attending at all. Say so on the form; every seat helps.</span></li>`);
+    if (f.guests) info.push(`<li><span class="infoIcon" aria-hidden="true">&#128106;</span>
+      <span><strong>Guests welcome.</strong> Friends and family are invited — there’s a place on the form to tell us how many.</span></li>`);
+    if (b.capacity) info.push(`<li><span class="infoIcon" aria-hidden="true">&#128101;</span>
+      <span><strong>Capped at ${cfg.capacity}.</strong> ${cfg.waitlist ? 'Once full, new signups join a waitlist in order — we’ll notify you if spots open.' : 'Once full, contact the Scoutmaster.'}</span></li>`);
+    if (info.length) h += `<ul class="infoList" aria-label="Before you go">${info.join('')}</ul>`;
+
+    if (f.ahmr === 'info') {
+      h += `<div class="ahmrBanner"><span aria-hidden="true">&#9432;</span>
+        <span><strong>Health forms:</strong> your annual AHMR Parts A &amp; B on file are all this outing needs. Part C is <em>not</em> required (under 72 hours).</span></div>`;
+    } else if (f.ahmr === 'required') {
+      h += `<div class="ahmrBanner ahmr--required"><span aria-hidden="true">&#9888;</span>
+        <span><strong>AHMR Part C REQUIRED</strong> — this event runs 72+ hours. Parts A, B <em>and</em> C (physician-signed within 12 months) are due before departure. No Part C, no camp — council rule, no exceptions.</span></div>`;
+    }
+
+    if (b.content && cfg.resources.length) {
+      h += `<div class="formSectionHead" style="margin-top:26px"><span class="legendLike">Resources</span><span class="rule" aria-hidden="true"></span></div>
+        <ul class="resourceList">` + cfg.resources.map(r =>
+          `<li><a href="#" onclick="return false"><span class="resIcon" aria-hidden="true">${r.icon}</span>${r.label}<span class="resMeta">${r.meta}</span></a></li>`).join('') + `</ul>`;
+    }
+
+    h += `<div class="ctaRow">
+        <button type="button" class="btn btn--primary" onclick="go('gate')">${cfg.cta}</button>
+        <button type="button" class="btn btn--ghost" onclick="go('gate', 'view')">Already signed up? View or edit</button>
+      </div>`;
+
+    const on = Object.entries(cfg.blocks).filter(([, v]) => v).map(([k]) => k);
+    h += `<div class="proto-note"><strong>Note</strong> — same renderer, different config. Blocks on for this event:
+      <em>${on.join(' · ')}</em>${f.slip || f.guests || f.ahmr !== 'none' ? ' &nbsp;+ compliance flags' : ''}.
+      Nothing above the gate renders a scout or family name (anon-PII lockdown).</div>`;
+
+    $('state-detail').innerHTML = h;
+  }
+
+  // ══ Screen switching ═══════════════════════════════════════════════
+  function go(state, intent) {
+    if (state === 'gate') pendingIntent = intent || 'signup';
+    document.querySelectorAll('.state').forEach(s => s.hidden = true);
+    $('state-' + state).hidden = false;
+    currentState = state;
+    document.querySelectorAll('#stripFlow .stripBtn').forEach(b =>
+      b.classList.toggle('isActive', b.dataset.state === state));
+    if (state === 'gate')   $('gateKicker').textContent = cfg.title + ' · Step 1 of 3';
+    if (state === 'picker') $('pickerKicker').textContent = cfg.title + ' · Step 2 of 3';
+    if (state === 'form')    buildForm();
+    if (state === 'confirm') buildConfirm();
+    window.scrollTo({ top: 0 });
+  }
+
+  function setEvent(id) {
+    eventId = id; cfg = CONFIGS[id];
+    document.querySelectorAll('#stripEvent .stripBtn').forEach(b =>
+      b.classList.toggle('isActive', b.dataset.event === id));
+    renderDetail();
+    go('detail');
+  }
+
+  // ══ STATE B · GATE (stub) ═════════════════════════════════════════
+  $('gateSubmit').addEventListener('click', () => {
+    const val = $('gatePassword').value.trim();
+    if (!val) { $('gateError').hidden = false; $('gatePassword').focus(); return; }
+    $('gateError').hidden = true;
+    go(pendingIntent === 'view' && submissions[eventId] ? 'confirm' : 'picker');
+  });
+  $('gatePassword').addEventListener('keydown', e => { if (e.key === 'Enter') $('gateSubmit').click(); });
+
+  // ══ STATE C · HOUSEHOLD PICKER ════════════════════════════════════
+  const ALL_SCOUTS = HOUSEHOLDS.flatMap(hh => hh.scouts.map(s => ({ ...s, hh })));
+  $('scoutSearch').addEventListener('input', () => {
+    const q = $('scoutSearch').value.trim().toLowerCase();
+    const list = $('scoutResults');
+    list.innerHTML = '';
+    $('scoutSearch').setAttribute('aria-expanded', q.length >= 2 ? 'true' : 'false');
+    if (q.length < 2) return;
+    const matches = ALL_SCOUTS.filter(s => s.name.toLowerCase().includes(q));
+    if (!matches.length) {
+      list.innerHTML = '<li class="noResults">No scout by that name — check spelling, or ask a leader to add your scout to the roster.</li>';
+      return;
+    }
+    matches.forEach(s => {
+      const li = document.createElement('li');
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'scoutResultBtn'; btn.setAttribute('role', 'option');
+      btn.innerHTML = `<span>${s.name}</span><span class="patrolTag">${s.patrol}</span>`;
+      btn.addEventListener('click', () => pickHousehold(s.hh));
+      li.appendChild(btn); list.appendChild(li);
+    });
+  });
+  function pickHousehold(hh) {
+    household = hh; delete submissions[eventId];
+    $('scoutResults').innerHTML = ''; $('scoutSearch').value = '';
+    $('hhName').textContent = 'The ' + hh.name + ' household';
+    $('hhScouts').innerHTML = hh.scouts.map(s => `<li><span>${s.name}</span><span class="hhMeta">${s.patrol}</span></li>`).join('');
+    $('hhAdults').innerHTML = hh.adults.map(a => `<li><span>${a}</span><span class="hhMeta">Parent</span></li>`).join('');
+    $('householdCard').hidden = false;
+  }
+  function resetPicker() { $('householdCard').hidden = true; $('scoutSearch').focus(); }
+
+  // ══ STATE D · SIGNUP FORM — composed from the enabled blocks ═══════
+  // Sub-renderers -------------------------------------------------------
+
+  function tierArea(kind, key) {
+    if (!cfg.blocks.pricing) return '';
+    const tiers = eligibleTiers(kind);
+    if (!tiers.length) return '';
+    let h = '';
+    if (tiers.length === 1) {
+      const t = tiers[0];
+      h += `<input type="hidden" data-autotier="${key}" value="${t.id}">`;
+      if (t.per === 'day') {
+        h += `<div><span class="miniLabel">${t.label} — ${money(t.amount)} per day</span>
+          <div class="stepperRow">${stepperHtml(key)}<span class="stepperMath" data-math="${key}"></span></div></div>`;
+      }
+      // single per-event tier: no per-person UI needed — the owed box shows the math
+    } else {
+      h += `<div><span class="miniLabel">Price tier</span><div class="pillGroup" role="radiogroup" aria-label="Price tier">`
+        + tiers.map((t, ti) => `<label class="pill"><input type="radio" name="tier-${key}" value="${t.id}" ${ti === 0 ? 'checked' : ''}>
+            ${t.label} — ${money(t.amount)}${t.per === 'day' ? '/day' : ''}</label>`).join('')
+        + `</div><div class="stepperRow" data-dayrow="${key}" hidden style="margin-top:10px">${stepperHtml(key)}<span class="stepperMath" data-math="${key}"></span></div></div>`;
+    }
+    return h;
+  }
+
+  function stepperHtml(key) {
+    return `<span class="stepper" role="group" aria-label="Days attending">
+      <button type="button" data-step="-1" data-days-for="${key}" aria-label="One day fewer">−</button>
+      <output data-days="${key}" data-val="2">2 days</output>
+      <button type="button" data-step="1" data-days-for="${key}" aria-label="One day more">+</button></span>`;
+  }
+
+  function claimArea(kind, key) {
+    if (!cfg.blocks.slots) return '';
+    const slots = personSlots(kind);
+    if (!slots.length) return '';
+    return `<div><span class="miniLabel">Shifts &amp; tasks — pick any</span><div class="claimGroup">`
+      + slots.map(sl => {
+          const full = sl.needed != null && sl.filled >= sl.needed;
+          return `<label class="claimChip${full ? ' isDisabled' : ''}">
+            <input type="checkbox" data-slot="${sl.id}" data-claimer="${key}" ${full ? 'disabled' : ''}>
+            <span>${sl.label}${sl.time ? ' · ' + sl.time : ''}</span>
+            ${sl.attendance_required === false ? '<span class="claimSub claimNote">no attendance needed</span>' : ''}
+            <span class="claimSub" data-cov="${sl.id}">${coverageText(sl.filled, sl.needed)}</span></label>`;
+        }).join('') + `</div></div>`;
+  }
+
+  function questionArea(kind, key, personName) {
+    if (!cfg.blocks.questions) return '';
+    const qs = personQuestions(kind);
+    if (!qs.length) return '';
+    return `<div><span class="miniLabel">Event questions</span><div class="qaGrid">`
+      + qs.map(q => {
+          const qid = `q-${key}-${q.id}`;
+          if (q.type === 'choice') {
+            return `<div class="qaField" data-q="${qid}" style="grid-column:1/-1">
+              <span class="fieldLabel">${q.prompt}${q.required ? '' : ' <span style="font-weight:400;color:var(--text-meta)">(optional)</span>'}</span>
+              <div class="pillGroup" role="radiogroup" aria-label="${q.prompt} for ${personName}">`
+              + q.choices.map(c => `<label class="pill"><input type="radio" name="${qid}" value="${c}">${c}</label>`).join('')
+              + `</div></div>`;
+          }
+          return `<div class="qaField" data-q="${qid}">
+            <label class="fieldLabel" for="${qid}">${q.prompt}${q.required ? '' : ' <span style="font-weight:400;color:var(--text-meta)">(optional)</span>'}</label>
+            <input class="textInput" type="${q.type === 'number' ? 'number' : 'text'}" id="${qid}" ${q.ph ? `placeholder="${q.ph}"` : ''}>
+          </div>`;
+        }).join('') + `</div></div>`;
+  }
+
+  function legsArea(key, prefix, seatsDefault) {
+    return `<div>
+      <div class="driveRow"><label class="chk"><input type="checkbox" data-leg="out" data-legs="${prefix}-${key}"><span>${cfg.legs.out}</span></label></div>
+      <div class="driveRow"><label class="chk"><input type="checkbox" data-leg="back" data-legs="${prefix}-${key}"><span>${cfg.legs.back}</span></label></div>
+      <div class="driveRow"><label class="fieldLabel" for="seats-${prefix}-${key}" style="margin:0">Seats (besides you)</label>
+        <select class="seatSelect" id="seats-${prefix}-${key}" disabled>
+          ${[1,2,3,4,5,6,7,8].map(n => `<option ${n === seatsDefault ? 'selected' : ''}>${n}</option>`).join('')}
+        </select></div>
+    </div>`;
+  }
+
+  // Contributor toggle (slots-only events with donation-style tasks):
+  // "not attending — donating items" restricts claims to attendance_required=false
+  // tasks; the person owes nothing and counts toward nothing (mirrors driver_only).
+  function contribToggle(kind, key) {
+    if (cfg.blocks.attendance) return '';
+    const donatable = personSlots(kind).some(sl => sl.attendance_required === false);
+    if (!donatable) return '';
+    return `<label class="chk"><input type="checkbox" data-contrib="${key}">
+      <span>Not attending — donating items only<span class="chkSub">only &ldquo;no attendance needed&rdquo; tasks stay selectable · counts toward nothing</span></span></label>`;
+  }
+
+  // A person's "extra" panel gets a visible box only when there is visible
+  // content — a lone hidden auto-tier input renders inline, box-free.
+  function extraWrap(content, attr) {
+    if (!content) return '';
+    const visible = content.replace(/<input type="hidden"[^>]*>/g, '').trim();
+    if (!visible) return content;
+    return `<div class="personExtra" ${attr} hidden>${content}</div>`;
+  }
+
+  // Form assembly -------------------------------------------------------
+  function buildForm() {
+    const b = cfg.blocks;
+    $('formKicker').textContent = cfg.title + ' · Step 3 of 3';
+    $('formTitle').textContent = household.name + ' family signup';
+    $('formLede').innerHTML = (b.attendance
+      ? 'Mark each person, then submit once for the whole household.'
+      : 'Claiming a shift or task <em>is</em> your signup — pick any, for anyone.')
+      + ` You can come back and change anything until <strong>${cfg.deadline.value}</strong>.`;
+
+    let h = '';
+
+    // — Scouts —
+    h += `<fieldset class="formSection"><div class="formSectionHead"><legend>Scouts</legend><span class="rule" aria-hidden="true"></span></div>`;
+    h += household.scouts.map((s, i) => {
+      const extras = tierArea('scout', 's' + i) + claimArea('scout', 's' + i) + questionArea('scout', 's' + i, s.name);
+      if (b.attendance) {
+        return `<div class="personRow"><div class="personMain">
+          <span class="personName">${s.name}<span class="patrolTag">${s.patrol}</span></span>
+          <span class="seg" role="radiogroup" aria-label="${s.name} attending?">
+            <label class="segLabel segLabel--yes"><input type="radio" name="scout-${i}" value="yes">Yes</label>
+            <label class="segLabel segLabel--no"><input type="radio" name="scout-${i}" value="no">Can&rsquo;t make it</label>
+          </span></div>
+          ${extraWrap(extras, `data-extra="s${i}"`)}
+        </div>`;
+      }
+      // slots-only events: chips are the signup
+      return `<div class="personRow"><div class="personMain">
+        <span class="personName">${s.name}<span class="patrolTag">${s.patrol}</span></span></div>
+        <div class="personExtra" data-extra="s${i}">${contribToggle('scout', 's' + i)}${extras}</div></div>`;
+    }).join('');
+    if (b.attendance) h += `<p class="fieldHint">&ldquo;Can&rsquo;t make it&rdquo; still helps — it tells the planners who <em>not</em> to wait for.</p>`;
+    h += `</fieldset>`;
+
+    // — Adults —
+    h += `<fieldset class="formSection"><div class="formSectionHead"><legend>Adults</legend><span class="rule" aria-hidden="true"></span></div>`;
+    h += household.adults.map((a, i) => {
+      if (b.attendance) {
+        const drv = b.drivers;
+        return `<div class="personRow"><div class="personMain">
+          <span class="personName">${a}<span class="patrolTag">Parent</span></span>
+          <span class="seg" role="radiogroup" aria-label="${a} participation">
+            <label class="segLabel segLabel--yes"><input type="radio" name="adult-${i}" value="full">Attending</label>
+            ${drv ? `<label class="segLabel segLabel--drv"><input type="radio" name="adult-${i}" value="driver_only">Driver only</label>` : ''}
+            <label class="segLabel segLabel--no"><input type="radio" name="adult-${i}" value="no">Not coming</label>
+          </span></div>
+          ${extraWrap(
+            tierArea('adult', 'a' + i)
+            + (drv ? `<div><span class="miniLabel">Carpool — can you drive?</span>${legsArea(i, 'att', 3)}</div>` : '')
+            + claimArea('adult', 'a' + i)
+            + questionArea('adult', 'a' + i, a), `data-fullextra="a${i}"`)}
+          ${drv ? `<div class="personExtra" data-drvextra="a${i}" hidden>
+            <p class="drvOnlyNote">Not attending — transportation only. Excluded from the headcount; <span class="drvZero">you won&rsquo;t be charged.</span></p>
+            <div><span class="miniLabel">Which legs can you drive?</span>${legsArea(i, 'drv', 4)}</div>
+          </div>` : ''}
+        </div>`;
+      }
+      const extras = claimArea('adult', 'a' + i);
+      return `<div class="personRow"><div class="personMain">
+        <span class="personName">${a}<span class="patrolTag">Parent</span></span></div>
+        <div class="personExtra" data-extra="a${i}">${contribToggle('adult', 'a' + i)}${extras}</div></div>`;
+    }).join('');
+    h += `</fieldset>`;
+
+    // — Guests —
+    if (cfg.flags.guests) {
+      h += `<div class="formSection"><div class="formSectionHead"><span class="legendLike">Guests</span><span class="rule" aria-hidden="true"></span></div>
+        <p class="fieldHint" style="margin:8px 0 10px">Friends, siblings, grandparents — all welcome. How many extra people are you bringing?</p>
+        <div class="stepperRow"><span class="stepper" role="group" aria-label="Guest count">
+          <button type="button" data-guest="-1" aria-label="One guest fewer">−</button>
+          <output id="guestCount" data-val="0">0 guests</output>
+          <button type="button" data-guest="1" aria-label="One guest more">+</button></span></div></div>`;
+    }
+
+    // — Notes —
+    if (cfg.notesPrompt) {
+      h += `<div class="formSection"><div class="formSectionHead"><span class="legendLike">Notes</span><span class="rule" aria-hidden="true"></span></div>
+        <label class="fieldLabel" for="notesField" style="margin-top:10px">${cfg.notesPrompt}</label>
+        <textarea class="notesArea" id="notesField" placeholder="${cfg.notesDemo ? 'e.g. ' + cfg.notesDemo : ''}"></textarea></div>`;
+    }
+
+    // — Live owed box —
+    if (b.pricing && cfg.prices.length) {
+      h += `<div class="owedBox" aria-live="polite"><h3>Your household total</h3><div id="owedBody"></div></div>`;
+    } else if (cfg.noCostNote) {
+      h += `<div class="owedBox" aria-live="polite"><h3>Cost</h3><p class="owedEmpty">${cfg.noCostNote}</p></div>`;
+    }
+
+    $('formBody').innerHTML = h;
+    $('formError').hidden = true;
+    $('formSubmit').textContent = submissions[eventId] ? 'Save changes' : 'Submit family signup';
+    wireForm();
+    recompute();
+  }
+
+  // Behavior wiring ------------------------------------------------------
+  function wireForm() {
+    const form = $('signupForm');
+
+    // Scout yes/no reveals extras
+    household.scouts.forEach((s, i) => {
+      form.querySelectorAll(`input[name="scout-${i}"]`).forEach(r => r.addEventListener('change', () => {
+        const ex = form.querySelector(`[data-extra="s${i}"]`);
+        if (ex) ex.hidden = (r.form.querySelector(`input[name="scout-${i}"]:checked`) || {}).value !== 'yes';
+      }));
+    });
+
+    // Adult 3-way participation reveals the matching panel
+    household.adults.forEach((a, i) => {
+      form.querySelectorAll(`input[name="adult-${i}"]`).forEach(r => r.addEventListener('change', () => {
+        const v = (form.querySelector(`input[name="adult-${i}"]:checked`) || {}).value;
+        const full = form.querySelector(`[data-fullextra="a${i}"]`);
+        const drv = form.querySelector(`[data-drvextra="a${i}"]`);
+        if (full) full.hidden = v !== 'full';
+        if (drv) {
+          drv.hidden = v !== 'driver_only';
+          // Edge-case polish: default the outbound leg on so "driver only"
+          // is one tap, not three — they can still flip legs.
+          if (v === 'driver_only') {
+            const out = drv.querySelector('input[data-leg="out"]');
+            if (out && !out.checked && !drv.dataset.touched) { out.checked = true; syncSeats(out); }
+          }
+        }
+      }));
+    });
+
+    // Any leg checkbox enables its seats select
+    form.querySelectorAll('input[data-legs]').forEach(cb => cb.addEventListener('change', () => {
+      cb.closest('[data-drvextra]')?.setAttribute('data-touched', '1');
+      syncSeats(cb);
+    }));
+
+    // Days steppers + guest stepper
+    form.querySelectorAll('button[data-step]').forEach(btn => btn.addEventListener('click', () => {
+      const out = form.querySelector(`output[data-days="${btn.dataset.daysFor}"]`);
+      const max = cfg.maxDays || 7;
+      let v = Math.min(max, Math.max(1, parseInt(out.dataset.val, 10) + parseInt(btn.dataset.step, 10)));
+      out.dataset.val = v; out.textContent = v + (v === 1 ? ' day' : ' days');
+      recompute();
+    }));
+    form.querySelectorAll('button[data-guest]').forEach(btn => btn.addEventListener('click', () => {
+      const out = $('guestCount');
+      let v = Math.min(10, Math.max(0, parseInt(out.dataset.val, 10) + parseInt(btn.dataset.guest, 10)));
+      out.dataset.val = v; out.textContent = v + (v === 1 ? ' guest' : ' guests');
+    }));
+
+    // Per-day tier pills toggle the days row
+    form.querySelectorAll('input[type="radio"][name^="tier-"]').forEach(r => r.addEventListener('change', () => {
+      const key = r.name.slice(5);
+      const tier = cfg.prices.find(p => p.id === r.value);
+      const row = form.querySelector(`[data-dayrow="${key}"]`);
+      if (row) row.hidden = !(tier && tier.per === 'day');
+    }));
+
+    // Contributor toggle: lock attendance-required chips for that person
+    form.querySelectorAll('input[data-contrib]').forEach(cb => cb.addEventListener('change', () => {
+      document.querySelectorAll(`input[data-claimer="${cb.dataset.contrib}"]`).forEach(x => {
+        const sl = cfg.slots.find(s => s.id === x.dataset.slot);
+        const lock = cb.checked && sl.attendance_required !== false;
+        if (lock && x.checked) x.checked = false;
+        x.dataset.lockout = lock ? '1' : '';
+      });
+      recompute();
+    }));
+
+    // Anything changing → clear errors, refresh owed math + slot counters
+    form.addEventListener('change', () => { $('formError').hidden = true; recompute(); });
+  }
+
+  function syncSeats(cb) {
+    const group = cb.dataset.legs;
+    const any = [...document.querySelectorAll(`input[data-legs="${group}"]`)].some(x => x.checked);
+    const sel = $('seats-' + group);
+    if (sel) sel.disabled = !any;
+  }
+
+  // Live slot counters: household claims count against filled/needed ----
+  function recomputeSlots() {
+    cfg.slots.forEach(sl => {
+      const boxes = [...document.querySelectorAll(`input[data-slot="${sl.id}"]`)];
+      if (!boxes.length) return;
+      const extra = boxes.filter(x => x.checked).length;
+      const filled = sl.filled + extra;
+      const isFull = sl.needed != null && filled >= sl.needed;
+      boxes.forEach(x => {
+        const chip = x.closest('.claimChip');
+        chip.querySelector('[data-cov]').textContent = coverageText(filled, sl.needed);
+        const lock = (isFull && !x.checked) || x.dataset.lockout === '1';
+        x.disabled = lock;
+        chip.classList.toggle('isDisabled', lock);
+      });
+    });
+  }
+
+  // Live owed math: Σ tier × (per-day ? days : 1) across the household --
+  function chosenTier(key) {
+    const auto = document.querySelector(`input[data-autotier="${key}"]`);
+    if (auto) return cfg.prices.find(p => p.id === auto.value);
+    const picked = document.querySelector(`input[name="tier-${key}"]:checked`);
+    return picked ? cfg.prices.find(p => p.id === picked.value) : null;
+  }
+  function daysFor(key) {
+    const out = document.querySelector(`output[data-days="${key}"]`);
+    return out ? parseInt(out.dataset.val, 10) : 1;
+  }
+
+  function recompute() {
+    recomputeSlots();
+    const body = $('owedBody');
+    if (!body) return;
+    const lines = [];
+    let total = 0;
+
+    household.scouts.forEach((s, i) => {
+      const v = (document.querySelector(`input[name="scout-${i}"]:checked`) || {}).value;
+      if (v !== 'yes') return;
+      const t = chosenTier('s' + i);
+      if (!t) return;
+      const d = t.per === 'day' ? daysFor('s' + i) : 1;
+      const amt = t.amount * d;
+      total += amt;
+      lines.push({ name: `${s.name} — ${t.label}`, amt, math: t.per === 'day' ? `${money(t.amount)} × ${d} days` : null });
+    });
+    household.adults.forEach((a, i) => {
+      const v = (document.querySelector(`input[name="adult-${i}"]:checked`) || {}).value;
+      if (v === 'full') {
+        const t = chosenTier('a' + i);
+        if (!t) return;
+        const d = t.per === 'day' ? daysFor('a' + i) : 1;
+        const amt = t.amount * d;
+        total += amt;
+        lines.push({ name: `${a} — ${t.label}`, amt, math: t.per === 'day' ? `${money(t.amount)} × ${d} days` : null });
+        const m = document.querySelector(`[data-math="a${i}"]`);
+        if (m) m.innerHTML = t.per === 'day' ? `${money(t.amount)} × ${d} = <strong>${money(amt)}</strong>` : '';
+      } else if (v === 'driver_only') {
+        lines.push({ name: `${a} — driver only (not attending)`, amt: 0 });
+      }
+    });
+
+    body.innerHTML = lines.length
+      ? `<ul class="owedLines">` + lines.map(l =>
+          `<li><span class="owedName">${l.name}${l.math ? ` <em>(${l.math})</em>` : ''}</span>
+           <span class="owedAmt${l.amt === 0 ? ' isZero' : ''}">${money(l.amt)}</span></li>`).join('') + `</ul>
+         <div class="owedTotal"><span>Total owed</span><span>${money(total)}</span></div>`
+      : `<p class="owedEmpty">Mark someone &ldquo;Yes&rdquo; and the math shows up here — nothing is charged online.</p>`;
+  }
+
+  // Submit ---------------------------------------------------------------
+  $('signupForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const b = cfg.blocks, errs = [];
+
+    const scouts = household.scouts.map((s, i) => {
+      const claimed = [...document.querySelectorAll(`input[data-claimer="s${i}"]:checked`)].length;
+      const contrib = (document.querySelector(`input[data-contrib="s${i}"]`) || {}).checked;
+      const status = b.attendance
+        ? (document.querySelector(`input[name="scout-${i}"]:checked`) || {}).value || null
+        : (claimed ? (contrib ? 'contributor' : 'yes') : null);
+      const t = status === 'yes' ? chosenTier('s' + i) : null;
+      return { ...s, status, tier: t, days: t && t.per === 'day' ? daysFor('s' + i) : null,
+        claims: claimsFor('s' + i), answers: status === 'yes' ? answersFor('scout', 's' + i, errs, s.name) : [] };
+    });
+
+    const adults = household.adults.map((a, i) => {
+      const claimed = [...document.querySelectorAll(`input[data-claimer="a${i}"]:checked`)].length;
+      const contrib = (document.querySelector(`input[data-contrib="a${i}"]`) || {}).checked;
+      let part = b.attendance
+        ? (document.querySelector(`input[name="adult-${i}"]:checked`) || {}).value || null
+        : (claimed ? (contrib ? 'contributor' : 'full') : null);
+      if (part === 'no') part = null;
+      const t = part === 'full' ? chosenTier('a' + i) : null;
+      const legPrefix = part === 'driver_only' ? 'drv' : 'att';
+      const legOut = !!document.querySelector(`input[data-legs="${legPrefix}-${i}"][data-leg="out"]:checked`);
+      const legBack = !!document.querySelector(`input[data-legs="${legPrefix}-${i}"][data-leg="back"]:checked`);
+      const seatsEl = $(`seats-${legPrefix}-${i}`);
+      if (part === 'driver_only' && !legOut && !legBack)
+        errs.push(`${a}: pick at least one leg to drive, or choose “Not coming.”`);
+      return { name: a, participation: part, tier: t, days: t && t.per === 'day' ? daysFor('a' + i) : null,
+        legOut, legBack, seats: (legOut || legBack) && seatsEl ? parseInt(seatsEl.value, 10) : null,
+        claims: claimsFor('a' + i), answers: part === 'full' ? answersFor('adult', 'a' + i, errs, a) : [] };
+    });
+
+    const anyChoice = scouts.some(s => s.status) || adults.some(a => a.participation);
+    if (!anyChoice) errs.unshift(b.attendance
+      ? 'Choose an answer for at least one person before submitting.'
+      : 'Claim at least one shift or task before submitting.');
+
+    if (errs.length) {
+      const errEl = $('formError');
+      errEl.textContent = errs[0];
+      errEl.hidden = false;
+      errEl.scrollIntoView({ block: 'center' });
+      return;
+    }
+
+    submissions[eventId] = {
+      scouts, adults,
+      guests: $('guestCount') ? parseInt($('guestCount').dataset.val, 10) : 0,
+      notes: $('notesField') ? $('notesField').value.trim() : '',
+      cancelled: false,
+    };
+    go('confirm');
+  });
+
+  function claimsFor(key) {
+    return [...document.querySelectorAll(`input[data-claimer="${key}"]:checked`)]
+      .map(x => cfg.slots.find(sl => sl.id === x.dataset.slot)).filter(Boolean);
+  }
+  function answersFor(kind, key, errs, personName) {
+    return personQuestions(kind).map(q => {
+      const qid = `q-${key}-${q.id}`;
+      const field = document.querySelector(`[data-q="${qid}"]`);
+      let value = '';
+      if (q.type === 'choice') value = (document.querySelector(`input[name="${qid}"]:checked`) || {}).value || '';
+      else value = ($(qid) || { value: '' }).value.trim();
+      const bad = q.required && !value;
+      if (field) {
+        field.classList.toggle('isInvalid', bad);
+        const inp = $(qid); if (inp) inp.setAttribute('aria-invalid', bad ? 'true' : 'false');
+      }
+      if (bad) errs.push(`${personName}: “${q.prompt}” is required for this event.`);
+      return { q, value };
+    }).filter(a => a.value);
+  }
+
+  // ══ STATE E · CONFIRMATION ═══════════════════════════════════════════
+  function synthDemo() {
+    // Jumping straight to Confirm from the strip: fabricate a plausible submission
+    const b = cfg.blocks;
+    const scouts = household.scouts.map((s, si) => {
+      const t = eligibleTiers('scout')[0] || null;
+      const open = personSlots('scout').filter(sl => sl.needed == null || sl.filled < sl.needed);
+      return { ...s, status: 'yes', tier: t, days: t && t.per === 'day' ? 2 : null,
+        claims: open.slice(si, si + 1), answers: personQuestions('scout').map(q => ({ q, value: q.demo })) };
+    });
+    const adults = household.adults.map((a, i) => {
+      if (i === 0) {
+        const tiers = eligibleTiers('adult');
+        const t = tiers[0] || null;
+        const open = personSlots('adult').filter(sl => sl.needed == null || sl.filled < sl.needed);
+        return { name: a, participation: 'full', tier: t, days: t && t.per === 'day' ? 2 : null,
+          legOut: !!cfg.legs, legBack: !!cfg.legs, seats: cfg.legs ? 3 : null,
+          claims: open.slice(0, 1), answers: personQuestions('adult').map(q => ({ q, value: q.demo })) };
+      }
+      if (b.drivers) return { name: a, participation: 'driver_only', tier: null, days: null,
+        legOut: true, legBack: false, seats: 4, claims: [], answers: [] };
+      const donation = b.slots ? personSlots('adult').find(sl => sl.attendance_required === false) : null;
+      if (donation) return { name: a, participation: 'contributor', tier: null, days: null,
+        legOut: false, legBack: false, seats: null, claims: [donation], answers: [] };
+      return { name: a, participation: null, tier: null, days: null, legOut: false, legBack: false, seats: null, claims: [], answers: [] };
+    });
+    return { scouts, adults, guests: cfg.flags.guests ? 2 : 0, notes: cfg.notesDemo || '', cancelled: false };
+  }
+
+  function buildConfirm() {
+    const sub = submissions[eventId] || (submissions[eventId] = synthDemo());
+    const b = cfg.blocks, f = cfg.flags;
+    let total = 0;
+    const yesScouts = sub.scouts.filter(s => s.status === 'yes');
+
+    const rows = [];
+    sub.scouts.forEach(s => {
+      if (!s.status) return;
+      const going = s.status === 'yes';
+      const subs = [];
+      if (s.status === 'contributor') subs.push('Not attending — donating items · counts toward nothing');
+      if (going && s.tier) {
+        const amt = s.tier.amount * (s.days || 1);
+        total += amt;
+        subs.push(`${s.tier.label} — ${s.days ? `${money(s.tier.amount)} × ${s.days} days = ${money(amt)}` : money(amt)}`);
+      }
+      s.claims.forEach(c => subs.push(`${c.label}${c.time ? ' · ' + c.time : ''}`));
+      if (s.answers.length) subs.push(s.answers.map(a => `${a.q.prompt}: ${a.value}`).join(' · '));
+      const chipClass = s.status === 'contributor' ? 'statusChip--drv' : going ? 'statusChip--yes' : 'statusChip--no';
+      const chipText = s.status === 'contributor' ? 'Donating' : going ? 'Going' : 'Can’t make it';
+      rows.push(`<li><span class="sumName">${s.name}${subs.map(x => `<span class="sumSub">${x}</span>`).join('')}</span>
+        <span class="statusChip ${chipClass}">${chipText}</span></li>`);
+    });
+    sub.adults.forEach(a => {
+      if (!a.participation) return;
+      const subs = [];
+      let chip, chipClass;
+      if (a.participation === 'driver_only') {
+        chip = 'Driver only'; chipClass = 'statusChip--drv';
+        subs.push('Not attending — transportation only · $0');
+      } else if (a.participation === 'contributor') {
+        chip = 'Donating'; chipClass = 'statusChip--drv';
+        subs.push('Not attending — donating items · counts toward nothing');
+      } else {
+        chip = 'Going'; chipClass = 'statusChip--yes';
+        if (a.tier) {
+          const amt = a.tier.amount * (a.days || 1);
+          total += amt;
+          subs.push(`${a.tier.label} — ${a.days ? `${money(a.tier.amount)} × ${a.days} days = ${money(amt)}` : money(amt)}`);
+        }
+      }
+      if (a.legOut || a.legBack) {
+        const legs = [a.legOut && 'up', a.legBack && 'back'].filter(Boolean).join(' & ');
+        subs.push(`Driving ${legs} · ${a.seats} seat${a.seats !== 1 ? 's' : ''} besides them`);
+      }
+      a.claims.forEach(c => subs.push(`${c.label}${c.time ? ' · ' + c.time : ''}`));
+      if (a.answers.length) subs.push(a.answers.map(x => `${x.q.prompt}: ${x.value}`).join(' · '));
+      rows.push(`<li><span class="sumName">${a.name}${subs.map(x => `<span class="sumSub">${x}</span>`).join('')}</span>
+        <span class="statusChip ${chipClass}">${chip}</span></li>`);
+    });
+    if (sub.guests > 0) rows.push(`<li><span class="sumName">Guests<span class="sumSub">${sub.guests} extra ${sub.guests === 1 ? 'person' : 'people'} joining</span></span></li>`);
+    if (sub.notes) rows.push(`<li><span class="sumName">Notes<span class="sumSub">${sub.notes}</span></span></li>`);
+
+    const dues = [];
+    if (f.slip && yesScouts.length) dues.push(`<div class="dueRow"><span class="dueIcon" aria-hidden="true">&#9998;</span>
+      <span><strong>Permission slips: not yet received.</strong> Bring a signed slip for each scout to the next meeting.</span></div>`);
+    if (b.pricing && total > 0) dues.push(`<div class="dueRow"><span class="dueIcon" aria-hidden="true">&#36;</span>
+      <span><strong>Payment: not yet received.</strong> ${money(total)} owed — ${cfg.payment}</span></div>`);
+    if (f.ahmr === 'required') dues.push(`<div class="dueRow"><span class="dueIcon" aria-hidden="true">&#9888;</span>
+      <span><strong>AHMR Part C required for everyone attending</strong> — physician-signed, due before departure.</span></div>`);
+
+    $('confirmCard').innerHTML = `
+      ${sub.cancelled ? '<div class="cancelledNote">Your signup was cancelled. Changed your mind? You can sign up again until the deadline.</div>' : ''}
+      <div class="confirmHead">
+        <span class="confirmMark" aria-hidden="true">&#10003;</span>
+        <div><h2 class="stepTitle">${sub.cancelled ? 'Signup cancelled' : 'You’re signed up!'}</h2>
+        <p class="stepLede">Here’s what the ${household.name} household submitted for ${cfg.title}.</p></div>
+      </div>
+      <ul class="summaryList" aria-label="Signup summary">${rows.join('')}</ul>
+      ${dues.join('')}
+      <p class="deadlineReminder">You can edit or cancel this signup until <strong>${cfg.deadline.value}</strong>. After that, contact the Scoutmaster.</p>
+      <div class="confirmActions">
+        <button type="button" class="btn btn--secondary" onclick="go('form')" ${sub.cancelled ? 'disabled' : ''}>Edit signup</button>
+        <button type="button" class="btn btn--danger" id="cancelBtn" ${sub.cancelled ? 'disabled' : ''}>Cancel signup</button>
+      </div>`;
+
+    const cbtn = $('cancelBtn');
+    if (cbtn) cbtn.addEventListener('click', () => {
+      if (!confirm(`Cancel your family’s signup for ${cfg.title}? Your spots go back to the pool.`)) return;
+      sub.cancelled = true;
+      sub.scouts.forEach(s => { if (s.status === 'yes') s.status = 'no'; });
+      sub.adults.forEach(a => a.participation = null);
+      buildConfirm();
+    });
+  }
+
+  // ══ Control strip wiring ═════════════════════════════════════════════
+  document.querySelectorAll('#stripEvent .stripBtn').forEach(b =>
+    b.addEventListener('click', () => setEvent(b.dataset.event)));
+  document.querySelectorAll('#stripFlow .stripBtn').forEach(b =>
+    b.addEventListener('click', () => go(b.dataset.state)));
+
+  renderDetail();
+  </script>
+</body>
+</html>

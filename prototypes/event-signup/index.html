@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Camp Long Lake Campout — Event Signup Prototype — Scout Troop 79</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/event-signup.css" />
+</head>
+<body>
+
+  <div class="proto-banner">
+    <div class="proto-banner-inner">
+      <p><strong>Prototype</strong> Event Signup — public event detail + family RSVP flow (Plans/Event-Signup.md, Phase 1). All names fictional.</p>
+      <a href="admin-roster.html">Leader roster view &rarr;</a>
+    </div>
+  </div>
+
+  <main class="page page--narrow">
+
+    <!-- ══ STATE A · EVENT DETAIL (public — no names rendered here) ══ -->
+    <section id="state-detail" class="state" aria-label="Event detail">
+      <p class="kicker"><span class="kickerCat">Campout</span> &nbsp;&middot;&nbsp; Troop 79 Events</p>
+      <h1 class="eventTitle">Camp Long Lake Campout</h1>
+      <p class="eventDek">Three days on the water at the council&rsquo;s classic Northwoods camp &mdash; canoeing, shooting sports, and the annual patrol cook-off.</p>
+
+      <div class="statusRow">
+        <span class="badge badge--open" id="detailBadge">Signup open</span>
+        <span class="countPill" id="detailCount"><strong>21</strong> of 40 spots taken</span>
+      </div>
+
+      <div class="factGrid">
+        <div class="fact">
+          <div class="factLabel">When</div>
+          <div class="factValue">Fri Aug 14 &ndash; Sun Aug 16</div>
+          <div class="factSub">Depart 5:30 PM Friday &middot; back ~11 AM Sunday</div>
+        </div>
+        <div class="fact">
+          <div class="factLabel">Where</div>
+          <div class="factValue">Camp Long Lake</div>
+          <div class="factSub">St. Cloud, WI &middot; ~50 min from the church</div>
+        </div>
+        <div class="fact">
+          <div class="factLabel">Cost</div>
+          <div class="factValue">$30 per scout</div>
+          <div class="factSub">Covers food &amp; program fees</div>
+        </div>
+        <div class="fact">
+          <div class="factLabel">Signup deadline</div>
+          <div class="factValue">Tue Aug 4, 9:00 PM</div>
+          <div class="factSub" id="deadlineCountdown">21 days left</div>
+        </div>
+      </div>
+
+      <div class="bodyCopy">
+        <p>We&rsquo;re back at Camp Long Lake for the summer capstone campout. Patrols will rotate through the waterfront (canoes and rowboats), the rifle and shotgun ranges, and an afternoon orienteering course. Saturday night is the patrol cook-off &mdash; grubmasters, start planning your menus once headcounts are in.</p>
+        <p>Scouts working on Camping, Cooking, or Rifle Shooting merit badges should tell their patrol leader &mdash; counselors will be on site Saturday.</p>
+      </div>
+
+      <div class="payBlock">
+        <h2>Cost &amp; payment</h2>
+        <div class="payCost">$30 per scout</div>
+        <p>Bring cash or a check payable to <strong>Troop 79</strong> to any Monday meeting by <strong>Aug&nbsp;10</strong>. We don&rsquo;t collect payment online.</p>
+        <p class="payRule">No slip + no payment = no trip.</p>
+      </div>
+
+      <ul class="infoList" aria-label="Before you go">
+        <li><span class="infoIcon" aria-hidden="true">&#9998;</span>
+          <span><strong>Permission slip required.</strong> One per scout &mdash; <a href="#" onclick="return false">download the Activity Consent form (PDF)</a> and bring the signed copy to a Monday meeting.</span></li>
+        <li><span class="infoIcon" aria-hidden="true">&#128663;</span>
+          <span><strong>Drivers needed.</strong> We carpool from the church lot. If you can drive, say so when you sign up &mdash; every seat helps.</span></li>
+        <li><span class="infoIcon" aria-hidden="true">&#127859;</span>
+          <span><strong>Allergies &amp; dietary needs</strong> &mdash; there&rsquo;s a place on the signup form; grubmasters plan menus from it.</span></li>
+      </ul>
+
+      <div class="ahmrBanner">
+        <span aria-hidden="true">&#9432;</span>
+        <span><strong>Health forms:</strong> your annual AHMR Parts A&nbsp;&amp;&nbsp;B on file are all this weekend outing needs. Part&nbsp;C is <em>not</em> required (event is under 72 hours).</span>
+      </div>
+
+      <!-- Locked notice — deadline-passed scenario only -->
+      <p class="lockedNotice" id="detailLocked" hidden>
+        <strong>Signups closed Tuesday, Aug 4 at 9:00 PM.</strong> Need to make a change or a late addition?
+        Contact the Scoutmaster directly &mdash; don&rsquo;t just show up Friday.
+      </p>
+
+      <div class="ctaRow">
+        <button type="button" class="btn btn--primary" id="ctaSignup" onclick="go('gate')">Sign up your family</button>
+        <button type="button" class="btn btn--ghost" id="ctaView" onclick="go('gate', 'view')">Already signed up? View or edit</button>
+      </div>
+
+      <div class="proto-note">
+        <strong>Note</strong> &mdash; This public state renders <em>zero</em> scout or family names (anon-PII lockdown).
+        The spots-taken count is aggregate only. Names appear solely behind the family gate below.
+      </div>
+    </section>
+
+    <!-- ══ STATE B · FAMILY GATE (shared troop password — stub) ══ -->
+    <section id="state-gate" class="state" hidden aria-label="Family sign-in">
+      <p class="stepBack"><button type="button" onclick="go('detail')">&larr; Back to event</button></p>
+      <div class="stepCard">
+        <p class="stepKicker">Camp Long Lake Campout &middot; Step 1 of 3</p>
+        <h2 class="stepTitle">Family sign-in</h2>
+        <p class="stepLede">One shared password for the whole troop &mdash; it&rsquo;s printed in the Bugle each week, or ask any leader. You&rsquo;ll only enter it once on this device.</p>
+        <label class="fieldLabel" for="gatePassword">Troop password</label>
+        <div class="gateRow">
+          <input class="textInput" type="password" id="gatePassword" autocomplete="off"
+                 placeholder="Enter the troop password" />
+          <button type="button" class="btn btn--navy" id="gateSubmit">Continue</button>
+        </div>
+        <p class="fieldError" id="gateError" hidden>Please enter the troop password.</p>
+        <p class="fieldHint">This isn&rsquo;t a personal account &mdash; no email, no signup wall. (Prototype: any input passes.)</p>
+      </div>
+    </section>
+
+    <!-- ══ STATE C · HOUSEHOLD PICKER ══ -->
+    <section id="state-picker" class="state" hidden aria-label="Find your household">
+      <p class="stepBack"><button type="button" onclick="go('detail')">&larr; Back to event</button></p>
+      <div class="stepCard">
+        <p class="stepKicker">Camp Long Lake Campout &middot; Step 2 of 3</p>
+        <h2 class="stepTitle">Find your scout</h2>
+        <p class="stepLede">Start typing your scout&rsquo;s name. Picking any scout brings up the whole household &mdash; siblings and parents included &mdash; so one signup covers the family.</p>
+        <div class="searchWrap">
+          <label class="fieldLabel" for="scoutSearch">Scout&rsquo;s name</label>
+          <input class="textInput" type="search" id="scoutSearch" placeholder="e.g. Ben, Kowalski&hellip;"
+                 autocomplete="off" role="combobox" aria-expanded="false" aria-controls="scoutResults" />
+        </div>
+        <ul class="scoutResults" id="scoutResults" role="listbox" aria-label="Matching scouts"></ul>
+
+        <div class="householdCard" id="householdCard" hidden>
+          <h3 class="householdName" id="hhName">Household</h3>
+          <p class="hhGroupLabel">Scouts</p>
+          <ul class="hhList" id="hhScouts"></ul>
+          <p class="hhGroupLabel">Parents / guardians</p>
+          <ul class="hhList" id="hhAdults"></ul>
+          <button type="button" class="btn btn--primary" onclick="go('form')">This is us &mdash; continue</button>
+          <p class="wrongHousehold"><button type="button" class="btn btn--ghost" onclick="resetPicker()">Not your household? Search again</button></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ STATE D · SIGNUP FORM ══ -->
+    <section id="state-form" class="state" hidden aria-label="Signup form">
+      <p class="stepBack"><button type="button" onclick="go('picker')">&larr; Change household</button></p>
+      <div class="stepCard">
+        <p class="stepKicker">Camp Long Lake Campout &middot; Step 3 of 3</p>
+        <h2 class="stepTitle" id="formTitle">Kowalski family signup</h2>
+        <p class="stepLede">Mark each person, then submit once for the whole household. You can come back and change anything until <strong>Tue Aug 4, 9:00&nbsp;PM</strong>.</p>
+
+        <div class="waitlistBanner" id="formWaitBanner" hidden>
+          <strong>Event full</strong> &mdash; all 40 spots are taken. You can still sign up: your family joins the
+          waitlist in order, and we&rsquo;ll notify you the moment spots open. Don&rsquo;t pay until you&rsquo;re confirmed.
+        </div>
+
+        <form id="signupForm" novalidate>
+          <fieldset class="formSection">
+            <div class="formSectionHead"><legend>Scouts</legend><span class="rule" aria-hidden="true"></span></div>
+            <div id="scoutRows"></div>
+            <p class="fieldHint">&ldquo;Can&rsquo;t make it&rdquo; still helps &mdash; it tells the grubmasters and drivers who <em>not</em> to plan for.</p>
+          </fieldset>
+
+          <fieldset class="formSection">
+            <div class="formSectionHead"><legend>Adults</legend><span class="rule" aria-hidden="true"></span></div>
+            <div id="adultRows"></div>
+          </fieldset>
+
+          <div class="formSection">
+            <div class="formSectionHead"><span class="legendLike">Notes</span><span class="rule" aria-hidden="true"></span></div>
+            <label class="fieldLabel" for="notesField" style="margin-top:10px">Allergies or dietary needs we should know about?</label>
+            <textarea class="notesArea" id="notesField" placeholder="e.g. Ben — peanut allergy, carries an EpiPen"></textarea>
+          </div>
+
+          <p class="fieldError" id="formError" hidden>Choose &ldquo;Yes&rdquo; or &ldquo;Can&rsquo;t make it&rdquo; for at least one scout before submitting.</p>
+
+          <div class="submitRow">
+            <button type="submit" class="btn btn--primary" id="formSubmit">Submit family signup</button>
+            <button type="button" class="btn btn--ghost" onclick="go('detail')">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ══ STATE E · CONFIRMATION / EDIT VIEW ══ -->
+    <section id="state-confirm" class="state" hidden aria-label="Your signup">
+      <p class="stepBack"><button type="button" onclick="go('detail')">&larr; Back to event</button></p>
+      <div class="stepCard">
+        <div class="cancelledNote" id="cancelledNote" hidden>
+          Your signup was cancelled. Changed your mind? You can sign up again until the deadline.
+        </div>
+
+        <div class="confirmHead">
+          <span class="confirmMark" id="confirmMark" aria-hidden="true">&#10003;</span>
+          <div>
+            <h2 class="stepTitle" id="confirmTitle">You&rsquo;re signed up!</h2>
+            <p class="stepLede" id="confirmLede">Here&rsquo;s what the Kowalski household submitted for Camp Long Lake.</p>
+          </div>
+        </div>
+
+        <ul class="summaryList" id="confirmSummary" aria-label="Signup summary"></ul>
+
+        <div class="dueRow">
+          <span class="dueIcon" aria-hidden="true">&#9998;</span>
+          <span><strong>Permission slips: not yet received.</strong> Bring a signed slip for each scout to the next Monday meeting.</span>
+        </div>
+        <div class="dueRow">
+          <span class="dueIcon" aria-hidden="true">&#36;</span>
+          <span id="paymentDue"><strong>Payment: not yet received.</strong> $60 due for 2 scouts &mdash; cash or check payable to Troop 79, by Aug 10.</span>
+        </div>
+
+        <p class="deadlineReminder" id="confirmDeadline">You can edit or cancel this signup until <strong>Tue Aug 4, 9:00 PM</strong>. After that, contact the Scoutmaster.</p>
+
+        <div class="confirmActions">
+          <button type="button" class="btn btn--secondary" id="editBtn" onclick="go('form')">Edit signup</button>
+          <button type="button" class="btn btn--danger" id="cancelBtn">Cancel signup</button>
+        </div>
+
+        <p class="lockedNotice" id="confirmLocked" hidden style="margin-top:18px">
+          <strong>The signup deadline has passed</strong> &mdash; this signup is now read-only.
+          Contact the Scoutmaster for any changes.
+        </p>
+      </div>
+
+      <div class="proto-note">
+        <strong>Note</strong> &mdash; Slip &amp; payment statuses are read-only here; only leaders check them off
+        (admin roster view). Cost line recomputes from the number of &ldquo;Yes&rdquo; scouts.
+      </div>
+    </section>
+
+    <nav class="exampleNav" aria-label="Other example events">
+      <span class="exLabel">Prototype examples</span>
+      <span class="exHere">Campout RSVP</span>
+      <a href="fundraiser-shifts.html">Fundraiser shifts</a>
+      <a href="ski-outing.html">Outing + gear questions</a>
+      <a href="event-page.html">Composable event page (v3)</a>
+      <a href="event-builder.html">Admin event builder (v3)</a>
+    </nav>
+
+  </main>
+
+  <!-- ══ PROTOTYPE CONTROL STRIP ══ -->
+  <aside class="protoStrip" aria-label="Prototype controls">
+    <span class="stripTitle">Prototype</span>
+    <div class="stripGroup" id="stripFlow">
+      <span class="stripLabel">Screen</span>
+      <button type="button" class="stripBtn isActive" data-state="detail">Detail</button>
+      <button type="button" class="stripBtn" data-state="gate">Gate</button>
+      <button type="button" class="stripBtn" data-state="picker">Picker</button>
+      <button type="button" class="stripBtn" data-state="form">Form</button>
+      <button type="button" class="stripBtn" data-state="confirm">Confirm</button>
+    </div>
+    <div class="stripGroup" id="stripScenario">
+      <span class="stripLabel">Scenario</span>
+      <button type="button" class="stripBtn isActive" data-scenario="open">Open</button>
+      <button type="button" class="stripBtn" data-scenario="full">Full &rarr; waitlist</button>
+      <button type="button" class="stripBtn" data-scenario="closed">Deadline passed</button>
+    </div>
+  </aside>
+
+  <script>
+  /* ══════════════════════════════════════════════════════════════════
+     Event Signup prototype — vanilla JS state machine.
+     Two axes: SCREEN (detail → gate → picker → form → confirm) and
+     SCENARIO (open | full | closed). All data 100% fictional.
+     ══════════════════════════════════════════════════════════════════ */
+
+  // ── Fictional roster: households → scouts (with patrol) + adults ──
+  const HOUSEHOLDS = [
+    { name: 'Kowalski',
+      scouts: [ { name: 'Ben Kowalski', patrol: 'Flaming Arrows' },
+                { name: 'Sam Kowalski', patrol: 'Wolverines' } ],
+      adults: [ 'Dan Kowalski', 'Marta Kowalski' ] },
+    { name: 'Trevino',
+      scouts: [ { name: 'Marcus Trevino', patrol: 'Wolverines' } ],
+      adults: [ 'Elena Trevino', 'Rob Trevino' ] },
+    { name: 'Lindqvist',
+      scouts: [ { name: 'Ava Lindqvist', patrol: 'Screaming Eagles' } ],
+      adults: [ 'Erik Lindqvist', 'Hannah Lindqvist' ] },
+    { name: 'Okafor',
+      scouts: [ { name: 'Daniel Okafor', patrol: 'Flaming Arrows' } ],
+      adults: [ 'Grace Okafor', 'Chidi Okafor' ] },
+    { name: 'Brandt',
+      scouts: [ { name: 'Theo Brandt', patrol: 'Screaming Eagles' },
+                { name: 'Oliver Brandt', patrol: 'Flaming Arrows' } ],
+      adults: [ 'Jill Brandt', 'Peter Brandt' ] },
+    { name: 'Nguyen',
+      scouts: [ { name: 'Liam Nguyen', patrol: 'Wolverines' } ],
+      adults: [ 'Thu Nguyen', 'Kevin Nguyen' ] },
+    { name: 'Petersen',
+      scouts: [ { name: 'Jack Petersen', patrol: 'Screaming Eagles' } ],
+      adults: [ 'Amy Petersen', 'Lars Petersen' ] },
+    { name: 'Delgado',
+      scouts: [ { name: 'Rafael Delgado', patrol: 'Wolverines' } ],
+      adults: [ 'Sofia Delgado' ] },
+    { name: 'Yoder',
+      scouts: [ { name: 'Caleb Yoder', patrol: 'Flaming Arrows' } ],
+      adults: [ 'Ruth Yoder', 'Mark Yoder' ] },
+    { name: 'Washington',
+      scouts: [ { name: 'DeShawn Washington', patrol: 'Screaming Eagles' } ],
+      adults: [ 'Tanya Washington' ] },
+    { name: 'Fitzgerald',
+      scouts: [ { name: 'Colin Fitzgerald', patrol: 'Screaming Eagles' } ],
+      adults: [ 'Maureen Fitzgerald' ] },
+    { name: 'Zielinski',
+      scouts: [ { name: 'Adam Zielinski', patrol: 'Flaming Arrows' } ],
+      adults: [ 'Beata Zielinski', 'Tomas Zielinski' ] },
+  ];
+
+  const DEADLINE = new Date('2026-08-04T21:00:00-05:00');
+  const COST_PER_SCOUT = 30;
+
+  let scenario = 'open';
+  let currentState = 'detail';
+  let household = HOUSEHOLDS[0];   // Kowalski — default demo household
+  let submission = null;           // captured on submit
+
+  const $ = (id) => document.getElementById(id);
+
+  // ── Screen switching ──────────────────────────────────────────────
+  function go(state, intent) {
+    // "View or edit" from detail: after the gate, skip picker if we
+    // already have a submission (returning family).
+    if (state === 'gate') pendingIntent = intent || 'signup';
+    document.querySelectorAll('.state').forEach(s => s.hidden = true);
+    $('state-' + state).hidden = false;
+    currentState = state;
+    document.querySelectorAll('#stripFlow .stripBtn').forEach(b =>
+      b.classList.toggle('isActive', b.dataset.state === state));
+    if (state === 'form') buildForm();
+    if (state === 'confirm') buildConfirm();
+    window.scrollTo({ top: 0 });
+  }
+  let pendingIntent = 'signup';
+
+  // ── Scenario switching ────────────────────────────────────────────
+  function setScenario(s) {
+    scenario = s;
+    document.querySelectorAll('#stripScenario .stripBtn').forEach(b =>
+      b.classList.toggle('isActive', b.dataset.scenario === s));
+
+    const badge = $('detailBadge'), count = $('detailCount');
+    const cta = $('ctaSignup'), locked = $('detailLocked');
+    const countdown = $('deadlineCountdown');
+
+    if (s === 'open') {
+      badge.className = 'badge badge--open'; badge.textContent = 'Signup open';
+      count.innerHTML = '<strong>21</strong> of 40 spots taken';
+      cta.disabled = false; cta.textContent = 'Sign up your family';
+      locked.hidden = true;
+      countdown.textContent = daysLeftText();
+    } else if (s === 'full') {
+      badge.className = 'badge badge--full'; badge.textContent = 'Event full — waitlist open';
+      count.innerHTML = '<strong>40</strong> of 40 spots taken · 3 on waitlist';
+      cta.disabled = false; cta.textContent = 'Join the waitlist';
+      locked.hidden = true;
+      countdown.textContent = daysLeftText();
+    } else { // closed
+      badge.className = 'badge badge--closed'; badge.textContent = 'Signups closed';
+      count.innerHTML = '<strong>38</strong> attending';
+      cta.disabled = true; cta.textContent = 'Signups closed';
+      locked.hidden = false;
+      countdown.textContent = 'Deadline passed';
+    }
+    $('formWaitBanner').hidden = (s !== 'full');
+    if (currentState === 'confirm') buildConfirm();
+  }
+
+  function daysLeftText() {
+    const days = Math.ceil((DEADLINE - Date.now()) / 864e5);
+    return days > 1 ? days + ' days left' : days === 1 ? 'Last day — closes 9:00 PM' : 'Deadline passed';
+  }
+
+  // ── Gate (stub — any non-empty input passes) ──────────────────────
+  $('gateSubmit').addEventListener('click', () => {
+    const val = $('gatePassword').value.trim();
+    if (!val) { $('gateError').hidden = false; $('gatePassword').focus(); return; }
+    $('gateError').hidden = true;
+    // Returning family with a submission on file goes straight to it.
+    go(pendingIntent === 'view' && submission ? 'confirm' : 'picker');
+  });
+  $('gatePassword').addEventListener('keydown', e => { if (e.key === 'Enter') $('gateSubmit').click(); });
+
+  // ── Household picker ──────────────────────────────────────────────
+  const ALL_SCOUTS = HOUSEHOLDS.flatMap(hh => hh.scouts.map(s => ({ ...s, hh })));
+
+  $('scoutSearch').addEventListener('input', () => {
+    const q = $('scoutSearch').value.trim().toLowerCase();
+    const list = $('scoutResults');
+    list.innerHTML = '';
+    $('scoutSearch').setAttribute('aria-expanded', q.length >= 2 ? 'true' : 'false');
+    if (q.length < 2) return; // don't dump the whole roster for one keystroke
+    const matches = ALL_SCOUTS.filter(s => s.name.toLowerCase().includes(q));
+    if (!matches.length) {
+      list.innerHTML = '<li class="noResults">No scout by that name — check spelling, or ask a leader to add your scout to the roster.</li>';
+      return;
+    }
+    matches.forEach(s => {
+      const li = document.createElement('li');
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'scoutResultBtn'; btn.setAttribute('role', 'option');
+      btn.innerHTML = `<span>${s.name}</span><span class="patrolTag">${s.patrol}</span>`;
+      btn.addEventListener('click', () => pickHousehold(s.hh));
+      li.appendChild(btn); list.appendChild(li);
+    });
+  });
+
+  function pickHousehold(hh) {
+    household = hh; submission = null;
+    $('scoutResults').innerHTML = '';
+    $('scoutSearch').value = '';
+    $('hhName').textContent = 'The ' + hh.name + ' household';
+    $('hhScouts').innerHTML = hh.scouts.map(s =>
+      `<li><span>${s.name}</span><span class="hhMeta">${s.patrol}</span></li>`).join('');
+    $('hhAdults').innerHTML = hh.adults.map(a =>
+      `<li><span>${a}</span><span class="hhMeta">Parent</span></li>`).join('');
+    $('householdCard').hidden = false;
+  }
+  function resetPicker() {
+    $('householdCard').hidden = true;
+    $('scoutSearch').focus();
+  }
+
+  // ── Signup form (built from the selected household) ───────────────
+  function buildForm() {
+    $('formTitle').textContent = household.name + ' family signup';
+
+    $('scoutRows').innerHTML = household.scouts.map((s, i) => `
+      <div class="personRow">
+        <div class="personMain">
+          <span class="personName">${s.name}<span class="patrolTag">${s.patrol}</span></span>
+          <span class="seg" role="radiogroup" aria-label="${s.name} attending?">
+            <label class="segLabel segLabel--yes"><input type="radio" name="scout-${i}" value="yes"
+              ${submission?.scouts[i]?.status === 'yes' ? 'checked' : ''}>Yes</label>
+            <label class="segLabel segLabel--no"><input type="radio" name="scout-${i}" value="no"
+              ${submission?.scouts[i]?.status === 'no' ? 'checked' : ''}>Can&rsquo;t make it</label>
+          </span>
+        </div>
+      </div>`).join('');
+
+    $('adultRows').innerHTML = household.adults.map((a, i) => {
+      const prev = submission?.adults?.[i];
+      return `
+      <div class="personRow">
+        <div class="personMain">
+          <label class="chk"><input type="checkbox" id="adult-${i}" ${prev?.attending ? 'checked' : ''}>
+            <span>${a}<span class="chkSub">Attending the campout</span></span></label>
+        </div>
+        <div class="adultExtra" id="adultExtra-${i}" ${prev?.attending ? '' : 'hidden'}>
+          <div class="driveRow">
+            <label class="chk"><input type="checkbox" id="drive-${i}" ${prev?.driver ? 'checked' : ''}>
+              <span>I can drive</span></label>
+            <label class="fieldLabel" for="seats-${i}" style="margin:0">Seats (besides you)</label>
+            <select class="seatSelect" id="seats-${i}" ${prev?.driver ? '' : 'disabled'} aria-label="Seats offered by ${a}">
+              ${[1,2,3,4,5,6,7,8].map(n => `<option ${prev?.seats === n ? 'selected' : n === 3 && !prev ? 'selected' : ''}>${n}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label class="fieldLabel" for="help-${i}">Willing to help with&hellip; <span style="font-weight:400;color:var(--text-meta)">(optional)</span></label>
+            <input class="textInput helpInput" type="text" id="help-${i}" value="${prev?.help || ''}"
+                   placeholder="e.g. Saturday cook-off judging, hauling the trailer" />
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+
+    if (submission?.notes) $('notesField').value = submission.notes;
+
+    // attending checkbox reveals the driver/help block; driver enables seats
+    household.adults.forEach((a, i) => {
+      $('adult-' + i).addEventListener('change', e => { $('adultExtra-' + i).hidden = !e.target.checked; });
+      $('drive-' + i).addEventListener('change', e => { $('seats-' + i).disabled = !e.target.checked; });
+    });
+
+    $('formSubmit').textContent = scenario === 'full' ? 'Join the waitlist' : (submission ? 'Save changes' : 'Submit family signup');
+  }
+
+  // Edge-case polish: once the parent fixes the empty submission (picks any
+  // radio / checkbox), clear the validation error immediately — don't make
+  // them submit again to find out whether they satisfied it.
+  $('signupForm').addEventListener('change', () => { $('formError').hidden = true; });
+
+  $('signupForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const scouts = household.scouts.map((s, i) => ({
+      ...s, status: (document.querySelector(`input[name="scout-${i}"]:checked`) || {}).value || null
+    }));
+    if (!scouts.some(s => s.status)) { // edge case: totally empty submit
+      $('formError').hidden = false;
+      return;
+    }
+    $('formError').hidden = true;
+    const adults = household.adults.map((a, i) => ({
+      name: a,
+      attending: $('adult-' + i).checked,
+      driver: $('adult-' + i).checked && $('drive-' + i).checked,
+      seats: parseInt($('seats-' + i).value, 10),
+      help: $('help-' + i).value.trim(),
+    }));
+    submission = { scouts, adults, notes: $('notesField').value.trim(), cancelled: false };
+    go('confirm');
+  });
+
+  // ── Confirmation / edit view ──────────────────────────────────────
+  function buildConfirm() {
+    // Demo fallback: jumping straight here from the control strip
+    if (!submission) submission = {
+      scouts: household.scouts.map(s => ({ ...s, status: 'yes' })),
+      adults: [ { name: household.adults[0], attending: true, driver: true, seats: 6, help: 'Can haul the trailer' },
+                ...(household.adults[1] ? [{ name: household.adults[1], attending: false }] : []) ],
+      notes: 'Ben — peanut allergy, carries an EpiPen',
+      cancelled: false,
+    };
+
+    const isFull = scenario === 'full';
+    const isClosed = scenario === 'closed';
+    const yesScouts = submission.scouts.filter(s => s.status === 'yes');
+
+    $('confirmMark').className = 'confirmMark' + (isFull ? ' confirmMark--wait' : '');
+    $('confirmMark').innerHTML = isFull ? '&#8943;' : '&#10003;';
+    $('confirmTitle').textContent = submission.cancelled ? 'Signup cancelled'
+      : isFull ? 'You’re on the waitlist' : 'You’re signed up!';
+    $('confirmLede').textContent = isFull
+      ? `The ${household.name} household is on the waitlist for Camp Long Lake — current position 4. We'll reach out the moment spots open.`
+      : `Here's what the ${household.name} household submitted for Camp Long Lake.`;
+
+    $('confirmSummary').innerHTML =
+      submission.scouts.map(s => `
+        <li><span class="sumName">${s.name}<span class="sumSub">${s.patrol}</span></span>
+          <span class="statusChip ${s.status === 'yes' ? (isFull ? 'statusChip--wait' : 'statusChip--yes') : 'statusChip--no'}">
+            ${s.status === 'yes' ? (isFull ? 'Waitlist' : 'Going') : 'Can’t make it'}</span></li>`).join('')
+      + submission.adults.filter(a => a.attending).map(a => `
+        <li><span class="sumName">${a.name}<span class="sumSub">Adult${a.driver ? ` · driving, ${a.seats} seats` : ''}${a.help ? ` · helping: ${a.help}` : ''}</span></span>
+          <span class="statusChip ${isFull ? 'statusChip--wait' : 'statusChip--yes'}">${isFull ? 'Waitlist' : 'Going'}</span></li>`).join('')
+      + (submission.notes ? `<li><span class="sumName">Notes<span class="sumSub">${submission.notes}</span></span></li>` : '');
+
+    const due = yesScouts.length * COST_PER_SCOUT;
+    $('paymentDue').innerHTML = isFull
+      ? '<strong>Payment: hold off for now.</strong> Pay only once your family is confirmed off the waitlist.'
+      : `<strong>Payment: not yet received.</strong> $${due} due for ${yesScouts.length} scout${yesScouts.length !== 1 ? 's' : ''} — cash or check payable to Troop 79, by Aug 10.`;
+
+    $('confirmDeadline').hidden = isClosed;
+    $('confirmLocked').hidden = !isClosed;
+    $('editBtn').disabled = isClosed || submission.cancelled;
+    $('cancelBtn').disabled = isClosed || submission.cancelled;
+    $('cancelledNote').hidden = !submission.cancelled;
+  }
+
+  $('cancelBtn').addEventListener('click', () => {
+    if (!confirm('Cancel your family’s signup for Camp Long Lake? Your spots go back to the pool.')) return;
+    submission.cancelled = true;
+    submission.scouts.forEach(s => s.status = 'no');
+    buildConfirm();
+  });
+
+  // ── Control strip wiring ──────────────────────────────────────────
+  document.querySelectorAll('#stripFlow .stripBtn').forEach(b =>
+    b.addEventListener('click', () => go(b.dataset.state)));
+  document.querySelectorAll('#stripScenario .stripBtn').forEach(b =>
+    b.addEventListener('click', () => setScenario(b.dataset.scenario)));
+
+  setScenario('open');
+  </script>
+</body>
+</html>

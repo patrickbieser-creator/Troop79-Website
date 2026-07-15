@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Event Builder — Event Signup Prototype v3 — Scout Troop 79</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/event-signup.css" />
+</head>
+<body>
+
+  <div class="proto-banner">
+    <div class="proto-banner-inner">
+      <p><strong>Prototype v3</strong> Admin event builder — compose any event from blocks; presets only pre-toggle (Plans/Event-Signup.md, /admin/events/signups). All names fictional.</p>
+      <a href="event-page.html">Family-facing event page &rarr;</a>
+    </div>
+  </div>
+
+  <main class="page page--wide">
+
+    <header class="adminHead">
+      <div>
+        <p class="kicker"><span class="kickerCat">Admin</span> &nbsp;&middot;&nbsp; /admin/events/signups</p>
+        <h1 class="adminTitle">Event builder</h1>
+        <p class="adminSub">Pick a calendar entry, accept its preset, then toggle blocks freely — new event shapes need zero new code.</p>
+      </div>
+      <div class="adminActions">
+        <button type="button" class="btn btn--secondary" onclick="location.href='admin-roster.html'">Roster view</button>
+        <button type="button" class="btn btn--primary" id="saveBtn">Save event setup</button>
+      </div>
+    </header>
+
+    <div class="builderGrid">
+      <div id="builderCol">
+
+        <!-- 1 · Calendar entry -->
+        <div class="card">
+          <div class="cardHead"><span class="cardTitle">1 &middot; Calendar entry</span></div>
+          <div class="cardBody">
+            <label class="edFieldLabel" for="calSelect">Attach signup to</label>
+            <select class="seatSelect" id="calSelect" style="width:100%; max-width:460px"></select>
+            <div class="edInlineRow" style="margin-top:14px">
+              <div>
+                <label class="edFieldLabel" for="deadlineInput">Signup deadline</label>
+                <input class="textInput" type="date" id="deadlineInput" style="max-width:200px; min-height:40px; padding:6px 10px" />
+              </div>
+              <p class="edHint" id="deadlineHint" style="align-self:flex-end; max-width: 320px"></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2 · Preset -->
+        <div class="card">
+          <div class="cardHead"><span class="cardTitle">2 &middot; Category preset</span></div>
+          <div class="cardBody">
+            <div class="presetRow" id="presetRow">
+              <button type="button" class="presetChip" data-preset="Campout">Campout</button>
+              <button type="button" class="presetChip" data-preset="Fundraiser">Fundraiser</button>
+              <button type="button" class="presetChip" data-preset="Clinic">Clinic</button>
+              <button type="button" class="presetChip" data-preset="Outing">Outing</button>
+            </div>
+            <p class="presetNote" id="presetNote"></p>
+          </div>
+        </div>
+
+        <!-- 3 · Blocks -->
+        <div class="card">
+          <div class="cardHead"><span class="cardTitle">3 &middot; Blocks</span><span class="cardCount" id="blockCount"></span></div>
+          <div class="cardBody" id="blockList"><!-- block rows rendered by JS --></div>
+        </div>
+
+        <div class="proto-note">
+          <strong>Note</strong> &mdash; Save is a stub; in production this writes <code>event_signups</code> +
+          <code>event_prices</code> / <code>signup_slots</code> / <code>signup_questions</code> child rows behind
+          <code>requireRole(['leader'])</code>. A preset is <em>just default toggles</em> &mdash; nothing here is locked
+          to the category.
+        </div>
+      </div>
+
+      <!-- Live preview -->
+      <aside class="previewPane" aria-label="Live preview of the family event page">
+        <div class="previewCard">
+          <div class="previewHead"><span>Family page &middot; live preview</span><span class="pvLive" id="pvPulse">&#9679; live</span></div>
+          <div class="previewBody" id="preview"></div>
+        </div>
+      </aside>
+    </div>
+
+    <nav class="exampleNav" aria-label="Other prototype pages">
+      <span class="exLabel">Prototype pages</span>
+      <a href="event-page.html">Composable event page (v3)</a>
+      <span class="exHere">Admin event builder (v3)</span>
+      <a href="index.html">Campout RSVP</a>
+      <a href="fundraiser-shifts.html">Fundraiser shifts</a>
+      <a href="ski-outing.html">Outing + gear questions</a>
+      <a href="admin-roster.html">Leader roster</a>
+    </nav>
+
+  </main>
+
+  <!-- ══ PROTOTYPE CONTROL STRIP ══ -->
+  <aside class="protoStrip" aria-label="Prototype controls">
+    <span class="stripTitle">Prototype &middot; build-your-template</span>
+    <div class="stripGroup">
+      <span class="stripLabel">Try</span>
+      <span style="font-size:10.5px; line-height:1.5">toggle blocks &rarr; watch the preview recompose</span>
+    </div>
+  </aside>
+
+  <script>
+  /* ══════════════════════════════════════════════════════════════════
+     ADMIN EVENT BUILDER — block checklist + sub-editors + live preview.
+     The preview pane re-renders the family event page from the same
+     config shape event-page.html consumes: that's the proof that one
+     renderer covers every event shape. All data fictional.
+     ══════════════════════════════════════════════════════════════════ */
+
+  const $ = (id) => document.getElementById(id);
+  const money = (n) => '$' + (Number.isInteger(+n) ? +n : (+n).toFixed(2));
+  const whoLabel = { scouts: 'Scouts', adults: 'Adults', both: 'Everyone' };
+
+  // ── Stub calendar entries (calendar_entries) ──────────────────────
+  const CAL = [
+    { id: 'cll',     title: 'Camp Long Lake Campout',      category: 'Campout',    start: '2026-08-14', label: 'Fri Aug 14 – Sun Aug 16' },
+    { id: 'pancake', title: 'Pancake Breakfast',           category: 'Fundraiser', start: '2026-10-25', label: 'Sun Oct 25' },
+    { id: 'firstaid',title: 'First Aid MB Clinic',         category: 'Clinic',     start: '2026-11-08', label: 'Sun Nov 8' },
+    { id: 'ski',     title: 'Sunburst Ski Outing',         category: 'Outing',     start: '2027-01-16', label: 'Sat Jan 16, 2027' },
+    { id: 'rummage', title: 'Spring Rummage Sale',         category: 'Fundraiser', start: '2027-05-01', label: 'Sat May 1, 2027' },
+    { id: 'camp',    title: 'Summer Camp — Camp Long Lake',category: 'Campout',    start: '2027-07-11', label: 'Sun Jul 11 – Sat Jul 17, 2027' },
+  ];
+
+  // ── Category presets: DEFAULT TOGGLES ONLY, fully editable after ──
+  const PRESETS = {
+    Campout: {
+      blocks: { content: true, attendance: true, pricing: true, capacity: false, drivers: true, slots: false, questions: false, compliance: true },
+      flags: { slip: true, ahmr: 'info', guests: false },
+      tiers: [ { label: 'Everyone', amount: 30, per: 'event', applies: 'both' } ],
+      slots: [], questions: [], capacity: '', waitlist: false,
+    },
+    Fundraiser: {
+      blocks: { content: true, attendance: false, pricing: false, capacity: false, drivers: false, slots: true, questions: false, compliance: true },
+      flags: { slip: false, ahmr: 'none', guests: true },
+      tiers: [],
+      slots: [
+        { label: 'Setup crew',   kind: 'shift', start: '6:00 AM',  end: '8:00 AM',  elig: 'both', needed: 4 },
+        { label: 'Cleanup crew', kind: 'shift', start: '12:00 PM', end: '1:30 PM',  elig: 'both', needed: 5 },
+        { label: 'Donate 10 lb pancake mix', kind: 'task', start: '', end: '', elig: 'adults', needed: 5, attendance_required: false },
+      ],
+      questions: [], capacity: '', waitlist: false,
+    },
+    Clinic: {
+      blocks: { content: true, attendance: true, pricing: false, capacity: true, drivers: false, slots: false, questions: true, compliance: false },
+      flags: { slip: false, ahmr: 'none', guests: false },
+      tiers: [],
+      slots: [],
+      questions: [ { prompt: 'Which session?', type: 'choice', choices: 'Morning, Afternoon', applies: 'scouts', required: true } ],
+      capacity: 12, waitlist: true,
+    },
+    Outing: {
+      blocks: { content: true, attendance: true, pricing: true, capacity: false, drivers: true, slots: false, questions: true, compliance: false },
+      flags: { slip: false, ahmr: 'none', guests: false },
+      tiers: [
+        { label: 'Scout', amount: 45, per: 'event', applies: 'scouts' },
+        { label: 'Adult — chaperone or driver', amount: 0, per: 'event', applies: 'adults' },
+      ],
+      slots: [],
+      questions: [ { prompt: 'Height', type: 'text', choices: '', applies: 'both', required: true } ],
+      capacity: '', waitlist: false,
+    },
+  };
+
+  const BLOCK_META = [
+    { key: 'content',    name: 'Content',            desc: 'Markdown details + resources (packing list, directions, forms).' },
+    { key: 'attendance', name: 'Attendance',         desc: 'Who’s coming — Yes / Can’t make it per household member.' },
+    { key: 'pricing',    name: 'Pricing tiers',      desc: 'Labeled tiers, per-event or per-day; each attendee picks one. Zero rows = free.' },
+    { key: 'capacity',   name: 'Capacity & waitlist',desc: 'Headcount cap; optional waitlist queues signups in order.' },
+    { key: 'drivers',    name: 'Drivers',            desc: 'Per-leg seat offers — including driver-only adults who don’t attend.' },
+    { key: 'slots',      name: 'Shifts & tasks',     desc: 'Time-slotted shifts and untimed tasks with per-slot eligibility + needed counts.' },
+    { key: 'questions',  name: 'Questions',          desc: 'Per-participant custom fields — short text, number, or single choice.' },
+    { key: 'compliance', name: 'Compliance flags',   desc: 'Permission slip, AHMR Part C banner, guests allowed.' },
+  ];
+
+  // ── Builder state (mirrors event_signups + child tables) ──────────
+  let S = null;          // current draft
+  let activePreset = null;
+
+  function applyPreset(name, entry) {
+    const p = PRESETS[name];
+    activePreset = name;
+    S = {
+      entry,
+      blocks: { ...p.blocks },
+      flags: { ...p.flags },
+      tiers: p.tiers.map(t => ({ ...t })),
+      slots: p.slots.map(s => ({ ...s })),
+      questions: p.questions.map(q => ({ ...q })),
+      capacity: p.capacity, waitlist: p.waitlist,
+      details: '',
+      deadline: defaultDeadline(entry.start),
+    };
+    $('deadlineInput').value = S.deadline;
+    $('deadlineHint').innerHTML = `Default: <strong>5 days before start</strong> — ${fmtDate(S.deadline)}. Editable per event.`;
+    document.querySelectorAll('.presetChip').forEach(c => c.classList.toggle('isActive', c.dataset.preset === name));
+    $('presetNote').innerHTML = `<strong>${name} preset applied</strong> from the calendar category — it only pre-toggled the blocks below. Change anything.`;
+    renderBlocks();
+    renderPreview();
+  }
+
+  function defaultDeadline(startISO) {
+    const d = new Date(startISO + 'T12:00:00');
+    d.setDate(d.getDate() - 5);
+    return d.toISOString().slice(0, 10);
+  }
+  function fmtDate(iso) {
+    return new Date(iso + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  // ── Calendar entry select ─────────────────────────────────────────
+  $('calSelect').innerHTML = CAL.map(c =>
+    `<option value="${c.id}">${c.title} — ${c.label} · ${c.category}</option>`).join('');
+  $('calSelect').addEventListener('change', () => {
+    const entry = CAL.find(c => c.id === $('calSelect').value);
+    applyPreset(entry.category === 'Summer Camp' ? 'Campout' : entry.category, entry);
+  });
+  document.querySelectorAll('.presetChip').forEach(c =>
+    c.addEventListener('click', () => applyPreset(c.dataset.preset, S.entry)));
+  $('deadlineInput').addEventListener('change', () => {
+    S.deadline = $('deadlineInput').value || S.deadline;
+    $('deadlineHint').innerHTML = S.deadline === defaultDeadline(S.entry.start)
+      ? `Default: <strong>5 days before start</strong> — ${fmtDate(S.deadline)}. Editable per event.`
+      : `Custom deadline — ${fmtDate(S.deadline)}. (Default would be ${fmtDate(defaultDeadline(S.entry.start))}.)`;
+    renderPreview();
+  });
+
+  // ── Block checklist ───────────────────────────────────────────────
+  function renderBlocks() {
+    $('blockList').innerHTML = BLOCK_META.map(b => `
+      <div class="blockRow ${S.blocks[b.key] ? 'isOn' : ''}" data-block="${b.key}">
+        <div class="blockHead">
+          <label class="chk"><input type="checkbox" data-toggle="${b.key}" ${S.blocks[b.key] ? 'checked' : ''}>
+            <span><span class="blockName">${b.name}</span><span class="blockDesc">${b.desc}</span></span></label>
+        </div>
+        <div class="blockBody" data-body="${b.key}" ${S.blocks[b.key] ? '' : 'hidden'}></div>
+      </div>`).join('');
+    $('blockCount').textContent = Object.values(S.blocks).filter(Boolean).length + ' of ' + BLOCK_META.length + ' on';
+
+    document.querySelectorAll('input[data-toggle]').forEach(t => t.addEventListener('change', () => {
+      const k = t.dataset.toggle;
+      S.blocks[k] = t.checked;
+      const row = t.closest('.blockRow');
+      row.classList.toggle('isOn', t.checked);
+      row.querySelector('[data-body]').hidden = !t.checked;
+      $('blockCount').textContent = Object.values(S.blocks).filter(Boolean).length + ' of ' + BLOCK_META.length + ' on';
+      renderPreview();
+    }));
+
+    renderBlockBodies();
+  }
+
+  function bodyEl(key) { return document.querySelector(`[data-body="${key}"]`); }
+
+  function renderBlockBodies() {
+    // Content
+    bodyEl('content').innerHTML = `
+      <div><label class="edFieldLabel" for="detailsInput">Event details (markdown — same renderer as News)</label>
+      <textarea class="notesArea" id="detailsInput" style="min-height:70px; background:var(--warm-white)"
+        placeholder="What, why, what to bring…">${S.details}</textarea></div>
+      <p class="edHint">Resources (packing list PDF, permission slip, map links) attach here via the existing Bunny upload pipeline.</p>`;
+    $('detailsInput').addEventListener('input', () => { S.details = $('detailsInput').value; renderPreview(); });
+
+    // Attendance
+    bodyEl('attendance').innerHTML = `<p class="edHint">Households mark each scout and adult <strong>Yes / Can’t make it</strong>.
+      No “Maybe” — silence is what the non-responder chase list is for. With Drivers on, adults get a third option: <strong>Driver only</strong>.</p>`;
+
+    // Pricing tiers
+    renderTierEditor();
+
+    // Capacity
+    bodyEl('capacity').innerHTML = `
+      <div class="edInlineRow">
+        <div><label class="edFieldLabel" for="capInput">Capacity (headcount)</label>
+          <input class="textInput" type="number" min="1" id="capInput" value="${S.capacity}" style="width:110px; min-height:40px; padding:6px 10px" placeholder="none"></div>
+        <label class="chk" style="align-self:flex-end"><input type="checkbox" id="waitlistChk" ${S.waitlist ? 'checked' : ''} ${S.capacity ? '' : 'disabled'}>
+          <span>Waitlist<span class="chkSub">queues signups in order once full</span></span></label>
+      </div>
+      <p class="edHint" id="capHint">${S.capacity ? '' : 'Waitlist needs a capacity first — campouts never set one; clinics usually do.'}</p>`;
+    $('capInput').addEventListener('input', () => {
+      S.capacity = $('capInput').value ? Math.max(1, parseInt($('capInput').value, 10)) : '';
+      const w = $('waitlistChk');
+      w.disabled = !S.capacity;
+      if (!S.capacity) { w.checked = false; S.waitlist = false; }
+      $('capHint').textContent = S.capacity ? '' : 'Waitlist needs a capacity first — campouts never set one; clinics usually do.';
+      renderPreview();
+    });
+    $('waitlistChk').addEventListener('change', () => { S.waitlist = $('waitlistChk').checked; renderPreview(); });
+
+    // Drivers
+    bodyEl('drivers').innerHTML = `<p class="edHint">Adds per-leg driving to every adult: <strong>drive up</strong> / <strong>drive back</strong>
+      + seats besides the driver. Also unlocks <strong>Driver only</strong> — adults who provide transportation without attending:
+      never charged, excluded from headcount and two-deep, fully visible in the driver plan.</p>`;
+
+    // Shifts & tasks
+    renderSlotEditor();
+
+    // Questions
+    renderQEditor();
+
+    // Compliance
+    bodyEl('compliance').innerHTML = `
+      <div class="edInlineRow">
+        <label class="chk"><input type="checkbox" id="slipChk" ${S.flags.slip ? 'checked' : ''}><span>Permission slip required</span></label>
+        <label class="chk"><input type="checkbox" id="guestsChk" ${S.flags.guests ? 'checked' : ''}><span>Guests allowed</span></label>
+        <div><label class="edFieldLabel" for="ahmrSel">Health form banner</label>
+          <select class="seatSelect" id="ahmrSel" style="min-height:40px">
+            <option value="none" ${S.flags.ahmr === 'none' ? 'selected' : ''}>None</option>
+            <option value="info" ${S.flags.ahmr === 'info' ? 'selected' : ''}>AHMR A&amp;B note (under 72 hrs)</option>
+            <option value="required" ${S.flags.ahmr === 'required' ? 'selected' : ''}>AHMR Part C REQUIRED (72+ hrs)</option>
+          </select></div>
+      </div>
+      <p class="edHint">Guests never applies to overnights (BSA rule); Part C is required on any event of 72+ hours.</p>`;
+    $('slipChk').addEventListener('change', () => { S.flags.slip = $('slipChk').checked; renderPreview(); });
+    $('guestsChk').addEventListener('change', () => { S.flags.guests = $('guestsChk').checked; renderPreview(); });
+    $('ahmrSel').addEventListener('change', () => { S.flags.ahmr = $('ahmrSel').value; renderPreview(); });
+  }
+
+  // ── Sub-editor: pricing tiers (event_prices rows) ──────────────────
+  function renderTierEditor() {
+    bodyEl('pricing').innerHTML = S.tiers.map((t, i) => `
+      <div class="edLine">
+        <input class="textInput edGrow" data-tier="${i}" data-f="label" value="${t.label}" placeholder="Tier label — e.g. Adult — skiing" aria-label="Tier label">
+        <input class="textInput edAmt" type="number" min="0" data-tier="${i}" data-f="amount" value="${t.amount}" aria-label="Amount, dollars">
+        <select class="miniSelect" data-tier="${i}" data-f="per" aria-label="Per event or per day">
+          <option value="event" ${t.per === 'event' ? 'selected' : ''}>per event</option>
+          <option value="day" ${t.per === 'day' ? 'selected' : ''}>per day</option>
+        </select>
+        <select class="miniSelect" data-tier="${i}" data-f="applies" aria-label="Who can pick this tier">
+          <option value="scouts" ${t.applies === 'scouts' ? 'selected' : ''}>scouts</option>
+          <option value="adults" ${t.applies === 'adults' ? 'selected' : ''}>adults</option>
+          <option value="both" ${t.applies === 'both' ? 'selected' : ''}>everyone</option>
+        </select>
+        <button type="button" class="edDel" data-deltier="${i}" aria-label="Remove tier">&times;</button>
+      </div>`).join('')
+      + `<button type="button" class="edAdd" id="addTier">+ Add tier</button>
+         <p class="edHint">Tiers with different prices per participant class — “Adult — chaperone or driver” at <strong>$0</strong> is a real tier, not a hack.</p>`;
+
+    bodyEl('pricing').querySelectorAll('[data-tier]').forEach(el => el.addEventListener('input', () => {
+      S.tiers[+el.dataset.tier][el.dataset.f] = el.dataset.f === 'amount' ? +el.value : el.value;
+      renderPreview();
+    }));
+    bodyEl('pricing').querySelectorAll('[data-deltier]').forEach(b => b.addEventListener('click', () => {
+      S.tiers.splice(+b.dataset.deltier, 1); renderTierEditor(); renderPreview();
+    }));
+    $('addTier').addEventListener('click', () => {
+      S.tiers.push({ label: '', amount: 0, per: 'event', applies: 'both' }); renderTierEditor(); renderPreview();
+    });
+  }
+
+  // ── Sub-editor: shifts & tasks (signup_slots rows) ─────────────────
+  function renderSlotEditor() {
+    bodyEl('slots').innerHTML = S.slots.map((s, i) => `
+      <div class="edLine">
+        <input class="textInput edGrow" data-slot="${i}" data-f="label" value="${s.label}" placeholder="Slot label — e.g. Cashiers" aria-label="Slot label">
+        <select class="miniSelect" data-slot="${i}" data-f="kind" data-rerender="1" aria-label="Shift or task">
+          <option value="shift" ${s.kind === 'shift' ? 'selected' : ''}>shift</option>
+          <option value="task" ${s.kind === 'task' ? 'selected' : ''}>task</option>
+        </select>
+        <input class="textInput edTime" data-slot="${i}" data-f="start" value="${s.kind === 'shift' ? s.start : ''}" placeholder="start" aria-label="Start time" ${s.kind === 'task' ? 'disabled' : ''}>
+        <input class="textInput edTime" data-slot="${i}" data-f="end" value="${s.kind === 'shift' ? s.end : ''}" placeholder="end" aria-label="End time" ${s.kind === 'task' ? 'disabled' : ''}>
+        <select class="miniSelect" data-slot="${i}" data-f="elig" aria-label="Eligibility">
+          <option value="scouts" ${s.elig === 'scouts' ? 'selected' : ''}>scouts</option>
+          <option value="adults" ${s.elig === 'adults' ? 'selected' : ''}>adults</option>
+          <option value="both" ${s.elig === 'both' ? 'selected' : ''}>both</option>
+        </select>
+        <input class="textInput edNum" type="number" min="1" data-slot="${i}" data-f="needed" value="${s.needed}" aria-label="How many needed" placeholder="need">
+        ${s.kind === 'task' ? `<label class="chk"><input type="checkbox" data-slot="${i}" data-f="donation" ${s.attendance_required === false ? 'checked' : ''}><span>no attendance<span class="chkSub">donation-style task</span></span></label>` : ''}
+        <button type="button" class="edDel" data-delslot="${i}" aria-label="Remove slot">&times;</button>
+      </div>`).join('')
+      + `<button type="button" class="edAdd" id="addSlot">+ Add shift or task</button>
+         <p class="edHint">A task is a shift without times (poster hanging, trailer haul). Coverage always shows numbers:
+         “3 of 6 — 3 more needed”, and full slots show “Full (6/6)”. Mark donation-style tasks
+         (“Donate 10 lb pancake mix”) <strong>no attendance</strong> — claimants become contributors: not attending, owing $0, counting toward nothing.</p>`;
+
+    bodyEl('slots').querySelectorAll('[data-slot]').forEach(el => el.addEventListener(el.dataset.rerender ? 'change' : 'input', () => {
+      const s = S.slots[+el.dataset.slot];
+      if (el.dataset.f === 'donation') s.attendance_required = !el.checked;   // shifts are always attendance-required
+      else s[el.dataset.f] = el.dataset.f === 'needed' ? (+el.value || 1) : el.value;
+      if (el.dataset.rerender) { if (s.kind === 'task') { s.start = ''; s.end = ''; } else s.attendance_required = undefined; renderSlotEditor(); }
+      renderPreview();
+    }));
+    bodyEl('slots').querySelectorAll('[data-delslot]').forEach(b => b.addEventListener('click', () => {
+      S.slots.splice(+b.dataset.delslot, 1); renderSlotEditor(); renderPreview();
+    }));
+    $('addSlot').addEventListener('click', () => {
+      S.slots.push({ label: '', kind: 'shift', start: '', end: '', elig: 'both', needed: 4 }); renderSlotEditor(); renderPreview();
+    });
+  }
+
+  // ── Sub-editor: questions (signup_questions rows) ──────────────────
+  function renderQEditor() {
+    bodyEl('questions').innerHTML = S.questions.map((q, i) => `
+      <div class="edLine">
+        <input class="textInput edGrow" data-q="${i}" data-f="prompt" value="${q.prompt}" placeholder="Prompt — e.g. Shoe size" aria-label="Question prompt">
+        <select class="miniSelect" data-q="${i}" data-f="type" data-rerender="1" aria-label="Answer type">
+          <option value="text" ${q.type === 'text' ? 'selected' : ''}>short text</option>
+          <option value="number" ${q.type === 'number' ? 'selected' : ''}>number</option>
+          <option value="choice" ${q.type === 'choice' ? 'selected' : ''}>choice</option>
+        </select>
+        ${q.type === 'choice' ? `<input class="textInput edGrow" data-q="${i}" data-f="choices" value="${q.choices}" placeholder="Choices, comma-separated" aria-label="Choices">` : ''}
+        <select class="miniSelect" data-q="${i}" data-f="applies" aria-label="Who answers">
+          <option value="scouts" ${q.applies === 'scouts' ? 'selected' : ''}>scouts</option>
+          <option value="adults" ${q.applies === 'adults' ? 'selected' : ''}>adults</option>
+          <option value="both" ${q.applies === 'both' ? 'selected' : ''}>everyone</option>
+        </select>
+        <label class="chk"><input type="checkbox" data-q="${i}" data-f="required" ${q.required ? 'checked' : ''}><span>required</span></label>
+        <button type="button" class="edDel" data-delq="${i}" aria-label="Remove question">&times;</button>
+      </div>`).join('')
+      + `<button type="button" class="edAdd" id="addQ">+ Add question</button>
+         <p class="edHint">Asked once per attending participant — ski rental sizes, T-shirt sizes, session picks.</p>`;
+
+    bodyEl('questions').querySelectorAll('[data-q]').forEach(el => el.addEventListener(el.dataset.rerender ? 'change' : 'input', () => {
+      const q = S.questions[+el.dataset.q];
+      q[el.dataset.f] = el.type === 'checkbox' ? el.checked : el.value;
+      if (el.dataset.rerender) renderQEditor();
+      renderPreview();
+    }));
+    bodyEl('questions').querySelectorAll('[data-delq]').forEach(b => b.addEventListener('click', () => {
+      S.questions.splice(+b.dataset.delq, 1); renderQEditor(); renderPreview();
+    }));
+    $('addQ').addEventListener('click', () => {
+      S.questions.push({ prompt: '', type: 'text', choices: '', applies: 'both', required: false }); renderQEditor(); renderPreview();
+    });
+  }
+
+  // ══ LIVE PREVIEW — a mini family event page from the draft config ══
+  function costSummary() {
+    if (!S.blocks.pricing || !S.tiers.length) return { value: 'Free', sub: 'No pricing block' };
+    const amts = S.tiers.map(t => +t.amount || 0);
+    const lo = Math.min(...amts), hi = Math.max(...amts);
+    return { value: lo === hi ? money(lo) : `${money(lo)} – ${money(hi)}`,
+             sub: S.tiers.length === 1 ? S.tiers[0].label : S.tiers.length + ' tiers' };
+  }
+
+  function renderPreview() {
+    const b = S.blocks, f = S.flags;
+    const cost = costSummary();
+    let h = '';
+
+    h += `<p class="kicker"><span class="kickerCat">${S.entry.category}</span> &nbsp;&middot;&nbsp; Troop 79 Events</p>
+      <h1 class="eventTitle">${S.entry.title}</h1>
+      <div class="statusRow"><span class="badge badge--open">Signup open</span>
+        ${b.capacity && S.capacity ? `<span class="countPill"><strong>0</strong> of ${S.capacity} spots taken${S.waitlist ? ' · waitlist on' : ''}</span>` : ''}
+      </div>
+      <div class="factGrid">
+        <div class="fact"><div class="factLabel">When</div><div class="factValue">${S.entry.label}</div></div>
+        <div class="fact"><div class="factLabel">Cost</div><div class="factValue">${cost.value}</div><div class="factSub">${cost.sub}</div></div>
+        <div class="fact"><div class="factLabel">Deadline</div><div class="factValue">${fmtDate(S.deadline)}</div><div class="factSub">edits allowed until then</div></div>
+        ${b.capacity && S.capacity ? `<div class="fact"><div class="factLabel">Capacity</div><div class="factValue">${S.capacity}</div><div class="factSub">${S.waitlist ? 'then waitlist' : 'then contact SM'}</div></div>` : ''}
+      </div>`;
+
+    if (b.content) {
+      h += S.details.trim()
+        ? `<div class="bodyCopy"><p style="font-size:13.5px">${S.details.trim().split('\n')[0].slice(0, 220)}</p></div>`
+        : `<p class="pvEmpty">Content block on — details render here (markdown + resources)</p>`;
+    }
+
+    if (b.pricing && S.tiers.length) {
+      h += `<div class="payBlock"><h2>Cost &amp; payment</h2><ul class="tierRows">`
+        + S.tiers.map(t => `<li><span><span class="tierLabel">${t.label || '<em>unnamed tier</em>'}</span><span class="tierWho">${whoLabel[t.applies]}</span></span>
+            <span class="tierAmt">${money(t.amount || 0)}${t.per === 'day' ? ' <small>per day</small>' : ''}</span></li>`).join('')
+        + `</ul><p>Payment instructions shown here — no online collection.</p></div>`;
+    }
+
+    if (b.slots && S.slots.length) {
+      h += `<p class="pvSectionLabel">Shifts &amp; tasks — who’s still needed</p><ul class="slotList">`
+        + S.slots.map(s => `<li class="slotItem">
+            <span><span class="slotName">${s.label || '<em>unnamed slot</em>'}</span>
+              <span class="slotTime">${s.kind === 'task' ? 'Anytime — untimed task' : [s.start, s.end].filter(Boolean).join(' – ') || 'times TBD'}${s.attendance_required === false ? ' · <strong>no attendance needed</strong>' : ''}</span></span>
+            <span class="slotMetaRow"><span class="eligChip elig--${s.elig}">${whoLabel[s.elig]}</span>
+              <span class="slotCount"><strong>0</strong> of ${s.needed} — ${s.needed} more needed</span></span>
+            <span class="slotBar"><span style="width:0%"></span></span></li>`).join('') + `</ul>`;
+    }
+
+    if (b.questions && S.questions.length) {
+      h += `<p class="pvSectionLabel">Each attendee answers</p><div class="qaGrid">`
+        + S.questions.map(q => {
+            const label = `<span class="fieldLabel">${q.prompt || '<em>unnamed question</em>'}${q.required ? '' : ' <span style="font-weight:400">(optional)</span>'} <span style="font-weight:400;color:var(--text-meta)">· ${whoLabel[q.applies].toLowerCase()}</span></span>`;
+            if (q.type === 'choice') return `<div class="qaField" style="grid-column:1/-1">${label}<div class="pillGroup">`
+              + (q.choices || 'A, B').split(',').map(c => `<span class="pill">${c.trim()}</span>`).join('') + `</div></div>`;
+            return `<div class="qaField">${label}<input class="textInput" type="${q.type === 'number' ? 'number' : 'text'}" disabled placeholder="${q.type}"></div>`;
+          }).join('') + `</div>`;
+    }
+
+    const info = [];
+    if (f.slip && (!b.compliance ? false : true) && b.compliance) info.push(`<li><span class="infoIcon">&#9998;</span><span><strong>Permission slip required</strong> — one per scout.</span></li>`);
+    if (b.drivers) info.push(`<li><span class="infoIcon">&#128663;</span><span><strong>Drivers needed — per leg.</strong> Adults can drive up, back, or both — or sign up driver-only without attending.</span></li>`);
+    if (f.guests && b.compliance) info.push(`<li><span class="infoIcon">&#128106;</span><span><strong>Guests welcome</strong> — families say how many.</span></li>`);
+    if (info.length) h += `<ul class="infoList">${info.join('')}</ul>`;
+
+    if (b.compliance && f.ahmr === 'info') h += `<div class="ahmrBanner"><span>&#9432;</span><span><strong>Health forms:</strong> annual AHMR A &amp; B on file suffice (under 72 hrs).</span></div>`;
+    if (b.compliance && f.ahmr === 'required') h += `<div class="ahmrBanner ahmr--required"><span>&#9888;</span><span><strong>AHMR Part C REQUIRED</strong> — event runs 72+ hours. Physician-signed, due before departure.</span></div>`;
+
+    if (b.attendance || (b.slots && S.slots.length)) {
+      h += `<div class="ctaRow" style="margin-top:18px"><span class="btn btn--primary" role="presentation" style="cursor:default">${b.attendance ? 'Sign up your family' : 'Sign up to help'}</span></div>`;
+    } else {
+      h += `<p class="pvEmpty" style="margin-top:16px">No signup mechanism enabled — turn on <strong>Attendance</strong> or <strong>Shifts &amp; tasks</strong>.</p>`;
+    }
+
+    $('preview').innerHTML = h;
+
+    // pulse the "live" dot so re-renders are visible
+    const p = $('pvPulse');
+    p.style.opacity = '0.25';
+    requestAnimationFrame(() => { p.style.transition = 'opacity .4s'; p.style.opacity = '1'; });
+  }
+
+  // ── Save (stub) ────────────────────────────────────────────────────
+  $('saveBtn').addEventListener('click', () => {
+    $('saveBtn').textContent = 'Saved ✓ (stub)';
+    setTimeout(() => { $('saveBtn').textContent = 'Save event setup'; }, 1600);
+  });
+
+  // ── Boot: first calendar entry + its preset ────────────────────────
+  applyPreset(CAL[0].category, CAL[0]);
+  </script>
+</body>
+</html>

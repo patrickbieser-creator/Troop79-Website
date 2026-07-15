@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session Summary — Event Signup Plan &amp; Prototypes</title>
+<style>
+  :root { --nw-teal: #1e3a4a; --nw-green: #3d5a3e; --cream: #faf6ef; --bark: #8b6914; --ink: #21201c; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Georgia, 'Times New Roman', serif; color: var(--ink); background: var(--cream); line-height: 1.55; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 24px 64px; }
+  header { background: var(--nw-teal); color: #fff; padding: 28px 24px; margin-bottom: 32px; }
+  header .inner { max-width: 880px; margin: 0 auto; }
+  header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: .01em; }
+  header .sub { opacity: .85; font-size: .95rem; margin-top: 6px; font-family: 'Segoe UI', Arial, sans-serif; }
+  h2 { font-size: 1.15rem; color: var(--nw-teal); border-bottom: 3px solid var(--nw-green); padding-bottom: 6px; margin: 36px 0 14px; }
+  h3 { font-size: 1rem; color: var(--nw-green); margin: 18px 0 6px; }
+  p, li { font-size: .98rem; }
+  ul { padding-left: 22px; margin: 8px 0; }
+  li { margin: 5px 0; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 18px 0; }
+  .metric { background: #fff; border: 1px solid #e4ddcf; border-top: 4px solid var(--nw-green); padding: 14px; text-align: center; }
+  .metric .num { font-size: 1.7rem; font-weight: 700; color: var(--nw-teal); }
+  .metric .lbl { font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: #6a675f; font-family: 'Segoe UI', Arial, sans-serif; }
+  code { background: #f0ead9; padding: 1px 5px; font-size: .88em; font-family: Consolas, monospace; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; background: #fff; font-size: .92rem; }
+  th, td { border: 1px solid #e4ddcf; padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--nw-teal); color: #fff; font-family: 'Segoe UI', Arial, sans-serif; font-size: .85rem; }
+  .tag { display: inline-block; background: var(--bark); color: #fff; font-size: .74rem; padding: 1px 8px; border-radius: 10px; font-family: 'Segoe UI', Arial, sans-serif; vertical-align: middle; }
+  footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid #d8d0bf; font-size: .84rem; color: #6a675f; font-family: 'Segoe UI', Arial, sans-serif; }
+</style>
+</head>
+<body>
+<header><div class="inner">
+  <h1>Event Signup — Research, Plan &amp; Prototypes</h1>
+  <div class="sub">Troop 79 Website · Session summary · July 14, 2026, 11:43 PM CDT · Operator</div>
+</div></header>
+<div class="wrap">
+
+<h2>Key Metrics</h2>
+<div class="metrics">
+  <div class="metric"><div class="num">1</div><div class="lbl">Feature plan (v3)</div></div>
+  <div class="metric"><div class="num">6</div><div class="lbl">Prototypes built</div></div>
+  <div class="metric"><div class="num">3</div><div class="lbl">Tech-lead reviews</div></div>
+  <div class="metric"><div class="num">4</div><div class="lbl">Decisions recorded</div></div>
+  <div class="metric"><div class="num">13</div><div class="lbl">Event types mapped</div></div>
+  <div class="metric"><div class="num">0</div><div class="lbl">App code touched</div></div>
+</div>
+
+<h2>What Was Accomplished</h2>
+
+<h3>Research</h3>
+<p>Surveyed scouting platforms (TroopTrack, TroopWebHost, Scoutbook, SOAR, TroopMaster), commercial signup UX (SignUpGenius, Evite, Eventbrite), and BSA program rules (Guide to Safe Scouting, YP FAQs, AHMR). Two competitive gaps no platform fills became first-class features: <strong>driver coordination with seat counts</strong> and <strong>waitlists</strong>. Validated pain points shaped the design: hard deadlines, permission-slip tracking separate from RSVP, per-patrol headcounts, and no-login friction (login walls kill response rates).</p>
+
+<h3>Plan — <code>Plans/Event-Signup.md</code> (v3, Active)</h3>
+<ul>
+  <li><strong>Composable blocks, not per-type templates</strong> (D-024): 8 blocks — content, attendance, pricing, capacity+waitlist, drivers, shifts/tasks, questions, compliance flags — composed per event; a 13-type preset matrix seeds defaults; one generic <code>/events/[id]</code> renderer. New event shapes need zero new code.</li>
+  <li><strong>Pricing tiers</strong> (D-025): labeled tiers per event (Scout / Webelos / Adult-skiing / Adult-chaperone $0), per-event or per-day (summer camp adult $40/day); owed always derived; no online payments — instructions + leader "payment received" checkbox.</li>
+  <li><strong>Participation kinds</strong> (D-026): full / driver-only (per-leg driving with per-leg seats, never charged) / contributor (donates pancake mix or OJ without attending). Money donations stay outside signup.</li>
+  <li><strong>Family identity</strong> (D-027): shared <code>FAMILY_PASSWORD</code> gate + household picker for Phase 1; explicit accepted risk; magic links arrive with Phase 4 per-user auth.</li>
+  <li>Three tech-lead reviews (v1, v2 delta, v3 delta) — every required change folded in: identity CHECKs, partial unique upsert indexes, <code>FOR UPDATE</code> capacity/claim RPCs, cancelled-entries-release-slots, per-leg seat columns, tier-deletion RESTRICT.</li>
+</ul>
+
+<h3>Prototypes — <code>prototypes/event-signup/</code> (browser-verified, zero console errors)</h3>
+<table>
+  <tr><th>File</th><th>Demonstrates</th></tr>
+  <tr><td><code>event-page.html</code> <span class="tag">key</span></td><td>One generic renderer, five configs: Campout ($30 flat, driver-only adult), Pancake Breakfast (shifts "3 of 6 — 3 more needed", donation tasks), Ski Outing (3 tiers, capacity+waitlist, gear questions), Rummage Sale (task crews), Summer Camp (per-day stepper, AHMR-C banner)</td></tr>
+  <tr><td><code>event-builder.html</code> <span class="tag">key</span></td><td>Admin side: category presets, 8-block checklist, tier/shift/question sub-editors, live preview pane</td></tr>
+  <tr><td><code>index.html</code>, <code>admin-roster.html</code>, <code>fundraiser-shifts.html</code>, <code>ski-outing.html</code></td><td>Earlier flow demos (gate → household picker → form → confirmation; leader roster with patrol subtotals, two-deep, seat math, non-responders, CSV/print)</td></tr>
+</table>
+
+<h2>Decisions</h2>
+<ul>
+  <li><strong>D-024</strong> — Event signup is composable blocks, not per-event-type templates</li>
+  <li><strong>D-025</strong> — Event pricing = labeled tiers, owed always derived</li>
+  <li><strong>D-026</strong> — Participation kinds full | driver_only | contributor; driving is per-leg</li>
+  <li><strong>D-027</strong> — Phase 1 family identity: shared FAMILY_PASSWORD gate + household picker</li>
+</ul>
+
+<h2>Next Steps</h2>
+<ul>
+  <li>Patrick reviews the composable prototypes and settles the open questions: preset matrix cells, calendar category renames, tier-scoped questions, driver-only-may-donate, guest counting.</li>
+  <li>Phase 1 implementation: migration (<code>event_signups</code>, <code>event_prices</code>, <code>signup_entries</code>, <code>details_md</code>, <code>event_resources</code>, RPCs, RLS) → family gate → event detail page → signup form → admin builder + roster.</li>
+</ul>
+
+<footer>Troop 79 Website · Generated by Operator via /northwoods:end-session · 2026-07-14 11:43 PM CDT</footer>
+</div>
+</body>
+</html>

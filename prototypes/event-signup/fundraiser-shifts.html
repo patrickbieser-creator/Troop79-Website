@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pancake Breakfast — Fundraiser Shift Signup Prototype — Scout Troop 79</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/event-signup.css" />
+</head>
+<body>
+
+  <div class="proto-banner">
+    <div class="proto-banner-inner">
+      <p><strong>Prototype</strong> Event Signup v2 — fundraiser with shift &amp; task slots (Plans/Event-Signup.md, Phase 2). All names fictional.</p>
+      <a href="index.html">Campout RSVP example &rarr;</a>
+    </div>
+  </div>
+
+  <main class="page page--narrow">
+
+    <!-- ══ STATE A · EVENT DETAIL (public — aggregate slot counts, no names) ══ -->
+    <section id="state-detail" class="state" aria-label="Event detail">
+      <p class="kicker"><span class="kickerCat">Fundraiser</span> &nbsp;&middot;&nbsp; Troop 79 Events</p>
+      <h1 class="eventTitle">Pancake Breakfast</h1>
+      <p class="eventDek">The troop&rsquo;s biggest fundraiser of the fall &mdash; griddles, syrup, and six hours of the best customer service in Milwaukee. Every shift worked funds summer camp.</p>
+
+      <div class="statusRow">
+        <span class="badge badge--open" id="detailBadge">Signup open</span>
+        <span class="countPill" id="detailCount"></span>
+      </div>
+
+      <div class="factGrid">
+        <div class="fact">
+          <div class="factLabel">When</div>
+          <div class="factValue">Sun Oct 25, 2026</div>
+          <div class="factSub">6:00 AM &ndash; 12:30 PM &middot; doors open to the public at 7:30</div>
+        </div>
+        <div class="fact">
+          <div class="factLabel">Where</div>
+          <div class="factValue">American Legion Hall</div>
+          <div class="factSub">Kitchen entrance off the back lot</div>
+        </div>
+        <div class="fact">
+          <div class="factLabel">Cost</div>
+          <div class="factValue">Free to work</div>
+          <div class="factSub">Scouts are credited for hours worked</div>
+        </div>
+        <div class="fact">
+          <div class="factLabel">Signup deadline</div>
+          <div class="factValue">Tue Oct 20, 9:00 PM</div>
+          <div class="factSub" id="deadlineCountdown">5 days before the event</div>
+        </div>
+      </div>
+
+      <div class="bodyCopy">
+        <p>We take over the Legion Hall kitchen and serve the neighborhood pancakes, sausage, and juice from 7:30 to noon. It runs on shifts &mdash; pick the ones that fit your morning. Scouts&rsquo; hours are credited toward their summer-camp account, so the more shifts a scout works, the less camp costs the family.</p>
+      </div>
+
+      <div class="payBlock">
+        <h2>No cost &mdash; hours are the currency</h2>
+        <div class="payCost">Free to attend &amp; work</div>
+        <p>This is a fundraiser, not a paid event. <strong>Scouts are credited for the hours they work</strong> toward their summer-camp account. Nothing to pay, nothing to collect.</p>
+      </div>
+
+      <!-- Shift coverage — PUBLIC, aggregate counts only -->
+      <div class="formSection" style="margin-top:26px">
+        <div class="formSectionHead"><span class="legendLike">Shifts</span><span class="rule" aria-hidden="true"></span></div>
+        <ul class="slotList" id="publicShifts" aria-label="Shift coverage"></ul>
+        <p class="fieldHint">A shift closes on its own when it&rsquo;s full &mdash; the rest stay open until the deadline.</p>
+      </div>
+
+      <div class="formSection">
+        <div class="formSectionHead"><span class="legendLike">Tasks &mdash; help without working a shift</span><span class="rule" aria-hidden="true"></span></div>
+        <ul class="slotList" id="publicTasks" aria-label="Task list"></ul>
+      </div>
+
+      <!-- Locked notice — deadline-passed scenario only -->
+      <p class="lockedNotice" id="detailLocked" hidden>
+        <strong>Signups closed Tuesday, Oct 20 at 9:00 PM.</strong> Kitchen assignments are set the Monday before.
+        Want to jump in late? Contact Mr. Hendricks &mdash; walk-in help is welcome, but he plans the griddle around this list.
+      </p>
+
+      <div class="ctaRow">
+        <button type="button" class="btn btn--primary" id="ctaSignup" onclick="go('gate')">Sign up to work</button>
+        <button type="button" class="btn btn--ghost" id="ctaView" onclick="go('gate', 'view')">Already signed up? View or edit</button>
+      </div>
+
+      <div class="proto-note">
+        <strong>Note</strong> &mdash; Shifts and tasks are one mechanism (<code>signup_slots</code>): a task is a slot
+        without times. Counts here are aggregate only (anon-PII lockdown) and include your own household&rsquo;s
+        claims live once submitted. Eligibility (Scouts / Adults / Everyone) is enforced in the form, not just labeled.
+      </div>
+    </section>
+
+    <!-- ══ STATE B · FAMILY GATE ══ -->
+    <section id="state-gate" class="state" hidden aria-label="Family sign-in">
+      <p class="stepBack"><button type="button" onclick="go('detail')">&larr; Back to event</button></p>
+      <div class="stepCard">
+        <p class="stepKicker">Pancake Breakfast &middot; Step 1 of 3</p>
+        <h2 class="stepTitle">Family sign-in</h2>
+        <p class="stepLede">One shared password for the whole troop &mdash; it&rsquo;s printed in the Bugle each week, or ask any leader. You&rsquo;ll only enter it once on this device.</p>
+        <label class="fieldLabel" for="gatePassword">Troop password</label>
+        <div class="gateRow">
+          <input class="textInput" type="password" id="gatePassword" autocomplete="off" placeholder="Enter the troop password" />
+          <button type="button" class="btn btn--navy" id="gateSubmit">Continue</button>
+        </div>
+        <p class="fieldError" id="gateError" hidden>Please enter the troop password.</p>
+        <p class="fieldHint">This isn&rsquo;t a personal account &mdash; no email, no signup wall. (Prototype: any input passes.)</p>
+      </div>
+    </section>
+
+    <!-- ══ STATE C · HOUSEHOLD PICKER ══ -->
+    <section id="state-picker" class="state" hidden aria-label="Find your household">
+      <p class="stepBack"><button type="button" onclick="go('detail')">&larr; Back to event</button></p>
+      <div class="stepCard">
+        <p class="stepKicker">Pancake Breakfast &middot; Step 2 of 3</p>
+        <h2 class="stepTitle">Find your scout</h2>
+        <p class="stepLede">Start typing your scout&rsquo;s name. Picking any scout brings up the whole household &mdash; siblings and parents included &mdash; so one signup covers the family.</p>
+        <div class="searchWrap">
+          <label class="fieldLabel" for="scoutSearch">Scout&rsquo;s name</label>
+          <input class="textInput" type="search" id="scoutSearch" placeholder="e.g. Ben, Kowalski&hellip;"
+                 autocomplete="off" role="combobox" aria-expanded="false" aria-controls="scoutResults" />
+        </div>
+        <ul class="scoutResults" id="scoutResults" role="listbox" aria-label="Matching scouts"></ul>
+
+        <div class="householdCard" id="householdCard" hidden>
+          <h3 class="householdName" id="hhName">Household</h3>
+          <p class="hhGroupLabel">Scouts</p>
+          <ul class="hhList" id="hhScouts"></ul>
+          <p class="hhGroupLabel">Parents / guardians</p>
+          <ul class="hhList" id="hhAdults"></ul>
+          <button type="button" class="btn btn--primary" onclick="go('form')">This is us &mdash; continue</button>
+          <p class="wrongHousehold"><button type="button" class="btn btn--ghost" onclick="resetPicker()">Not your household? Search again</button></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ STATE D · SHIFT SIGNUP FORM ══ -->
+    <section id="state-form" class="state" hidden aria-label="Shift signup form">
+      <p class="stepBack"><button type="button" onclick="go('picker')">&larr; Change household</button></p>
+      <div class="stepCard">
+        <p class="stepKicker">Pancake Breakfast &middot; Step 3 of 3</p>
+        <h2 class="stepTitle" id="formTitle">Kowalski family — who&rsquo;s working?</h2>
+        <p class="stepLede">Check each person who&rsquo;s helping, then give them at least one shift or task. Scouts&rsquo; hours go to their camp account. You can change anything until <strong>Tue Oct 20, 9:00&nbsp;PM</strong>.</p>
+
+        <form id="signupForm" novalidate>
+          <fieldset class="formSection">
+            <div class="formSectionHead"><legend>Scouts</legend><span class="rule" aria-hidden="true"></span></div>
+            <div id="scoutRows"></div>
+          </fieldset>
+
+          <fieldset class="formSection">
+            <div class="formSectionHead"><legend>Adults</legend><span class="rule" aria-hidden="true"></span></div>
+            <div id="adultRows"></div>
+            <p class="fieldHint">The griddle crew is adults-only (hot equipment) &mdash; scouts&rsquo; chips for it are disabled, and vice-versa for scout-only serving shifts.</p>
+          </fieldset>
+
+          <p class="fieldError" id="formError" hidden></p>
+
+          <div class="submitRow">
+            <button type="submit" class="btn btn--primary" id="formSubmit">Submit family signup</button>
+            <button type="button" class="btn btn--ghost" onclick="go('detail')">Cancel</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="proto-note">
+        <strong>Note</strong> &mdash; Spot counts on the chips update live as you check people in. In the
+        &ldquo;Shift filling&rdquo; scenario, Setup starts at 5 of 6: claim it and watch it close for everyone else.
+        Production enforces the same rule server-side with a <code>FOR UPDATE</code> slot-claim RPC.
+      </div>
+    </section>
+
+    <!-- ══ STATE E · CONFIRMATION / EDIT VIEW ══ -->
+    <section id="state-confirm" class="state" hidden aria-label="Your signup">
+      <p class="stepBack"><button type="button" onclick="go('detail')">&larr; Back to event</button></p>
+      <div class="stepCard">
+        <div class="cancelledNote" id="cancelledNote" hidden>
+          Your signup was cancelled and your shift spots went back to the pool. Changed your mind? You can sign up again until the deadline.
+        </div>
+
+        <div class="confirmHead">
+          <span class="confirmMark" id="confirmMark" aria-hidden="true">&#10003;</span>
+          <div>
+            <h2 class="stepTitle" id="confirmTitle">You&rsquo;re on the crew!</h2>
+            <p class="stepLede" id="confirmLede">Here&rsquo;s who the Kowalski household is sending to the Pancake Breakfast.</p>
+          </div>
+        </div>
+
+        <ul class="summaryList" id="confirmSummary" aria-label="Signup summary"></ul>
+
+        <div class="dueRow">
+          <span class="dueIcon" aria-hidden="true">&#8986;</span>
+          <span id="hoursLine"><strong>Camp-account hours.</strong> Scout shift hours are tallied after the event and credited toward summer camp.</span>
+        </div>
+
+        <p class="deadlineReminder" id="confirmDeadline">You can edit or cancel this signup until <strong>Tue Oct 20, 9:00 PM</strong>. After that, contact Mr. Hendricks.</p>
+
+        <div class="confirmActions">
+          <button type="button" class="btn btn--secondary" id="editBtn" onclick="go('form')">Edit signup</button>
+          <button type="button" class="btn btn--danger" id="cancelBtn">Cancel signup</button>
+        </div>
+
+        <p class="lockedNotice" id="confirmLocked" hidden style="margin-top:18px">
+          <strong>The signup deadline has passed</strong> &mdash; this signup is now read-only.
+          Contact Mr. Hendricks for any changes.
+        </p>
+      </div>
+
+      <div class="proto-note">
+        <strong>Note</strong> &mdash; No slip/payment checklist here: fundraisers have neither. The hours line is the
+        fundraiser&rsquo;s equivalent of the campout&rsquo;s payment block.
+      </div>
+    </section>
+
+    <nav class="exampleNav" aria-label="Other example events">
+      <span class="exLabel">Prototype examples</span>
+      <a href="index.html">Campout RSVP</a>
+      <span class="exHere">Fundraiser shifts</span>
+      <a href="ski-outing.html">Outing + gear questions</a>
+      <a href="event-page.html">Composable event page (v3)</a>
+      <a href="event-builder.html">Admin event builder (v3)</a>
+    </nav>
+
+  </main>
+
+  <!-- ══ PROTOTYPE CONTROL STRIP ══ -->
+  <aside class="protoStrip" aria-label="Prototype controls">
+    <span class="stripTitle">Prototype</span>
+    <div class="stripGroup" id="stripFlow">
+      <span class="stripLabel">Screen</span>
+      <button type="button" class="stripBtn isActive" data-state="detail">Detail</button>
+      <button type="button" class="stripBtn" data-state="gate">Gate</button>
+      <button type="button" class="stripBtn" data-state="picker">Picker</button>
+      <button type="button" class="stripBtn" data-state="form">Form</button>
+      <button type="button" class="stripBtn" data-state="confirm">Confirm</button>
+    </div>
+    <div class="stripGroup" id="stripScenario">
+      <span class="stripLabel">Scenario</span>
+      <button type="button" class="stripBtn isActive" data-scenario="open">Open</button>
+      <button type="button" class="stripBtn" data-scenario="filling">Shift filling</button>
+      <button type="button" class="stripBtn" data-scenario="closed">Deadline passed</button>
+    </div>
+  </aside>
+
+  <script>
+  /* ══════════════════════════════════════════════════════════════════
+     Fundraiser shift signup prototype — vanilla JS state machine.
+     Slots model = signup_slots: shifts and tasks are ONE mechanism
+     (a task is a slot without times). All data 100% fictional.
+     ══════════════════════════════════════════════════════════════════ */
+
+  // ── Slot catalog: kind shift|task, eligibility scouts|adults|both ──
+  // base = spots already claimed by OTHER households, per scenario.
+  const SLOTS = [
+    { id:'setup',   kind:'shift', label:'Setup',                          time:'6:00 – 7:30 AM',      hrs:1.5, elig:'both',   cap:6, base:{ open:3, filling:5, closed:6 } },
+    { id:'griddle', kind:'shift', label:'Griddle crew',                   time:'6:30 – 10:30 AM',     hrs:4,   elig:'adults', cap:4, base:{ open:2, filling:2, closed:4 } },
+    { id:'serve1',  kind:'shift', label:'Serving & busing — first shift', time:'7:00 – 10:00 AM',     hrs:3,   elig:'scouts', cap:8, base:{ open:5, filling:5, closed:8 } },
+    { id:'serve2',  kind:'shift', label:'Serving & busing — second shift',time:'9:30 AM – 12:00 PM',  hrs:2.5, elig:'scouts', cap:8, base:{ open:8, filling:8, closed:7 } },
+    { id:'cleanup', kind:'shift', label:'Cleanup',                        time:'11:30 AM – 12:30 PM', hrs:1,   elig:'both',   cap:6, base:{ open:2, filling:2, closed:5 } },
+    { id:'mix',     kind:'task',  label:'Donate 10 lb pancake mix',       time:'Drop off at a Monday meeting', elig:'both', cap:2, base:{ open:1, filling:1, closed:2 } },
+    { id:'oj',      kind:'task',  label:'Bring 4 gal orange juice',       time:'Cold, morning of',              elig:'both', cap:2, base:{ open:1, filling:1, closed:2 } },
+    { id:'posters', kind:'task',  label:'Poster hanging — week before',   time:'Routes assigned Oct 19 meeting',elig:'both', cap:3, base:{ open:2, filling:2, closed:3 } },
+  ];
+  const slotById = Object.fromEntries(SLOTS.map(s => [s.id, s]));
+  const ELIG_TEXT = { scouts:'Scouts', adults:'Adults', both:'Everyone' };
+
+  // ── Fictional roster (same households as the campout example) ──────
+  const HOUSEHOLDS = [
+    { name: 'Kowalski',
+      scouts: [ { name: 'Ben Kowalski', patrol: 'Flaming Arrows' },
+                { name: 'Sam Kowalski', patrol: 'Wolverines' } ],
+      adults: [ 'Dan Kowalski', 'Marta Kowalski' ] },
+    { name: 'Trevino',   scouts: [ { name: 'Marcus Trevino', patrol: 'Wolverines' } ],       adults: [ 'Elena Trevino', 'Rob Trevino' ] },
+    { name: 'Lindqvist', scouts: [ { name: 'Ava Lindqvist', patrol: 'Screaming Eagles' } ],  adults: [ 'Erik Lindqvist', 'Hannah Lindqvist' ] },
+    { name: 'Okafor',    scouts: [ { name: 'Daniel Okafor', patrol: 'Flaming Arrows' } ],    adults: [ 'Grace Okafor', 'Chidi Okafor' ] },
+    { name: 'Brandt',
+      scouts: [ { name: 'Theo Brandt', patrol: 'Screaming Eagles' },
+                { name: 'Oliver Brandt', patrol: 'Flaming Arrows' } ],
+      adults: [ 'Jill Brandt', 'Peter Brandt' ] },
+    { name: 'Nguyen',    scouts: [ { name: 'Liam Nguyen', patrol: 'Wolverines' } ],          adults: [ 'Thu Nguyen', 'Kevin Nguyen' ] },
+    { name: 'Petersen',  scouts: [ { name: 'Jack Petersen', patrol: 'Screaming Eagles' } ],  adults: [ 'Amy Petersen', 'Lars Petersen' ] },
+    { name: 'Delgado',   scouts: [ { name: 'Rafael Delgado', patrol: 'Wolverines' } ],       adults: [ 'Sofia Delgado' ] },
+    { name: 'Yoder',     scouts: [ { name: 'Caleb Yoder', patrol: 'Flaming Arrows' } ],      adults: [ 'Ruth Yoder', 'Mark Yoder' ] },
+    { name: 'Washington',scouts: [ { name: 'DeShawn Washington', patrol: 'Screaming Eagles' } ], adults: [ 'Tanya Washington' ] },
+  ];
+
+  let scenario = 'open';
+  let currentState = 'detail';
+  let household = HOUSEHOLDS[0];      // Kowalski — default demo household
+  let submission = null;              // captured on submit
+  // Draft state while the form is open: { key: { working:bool, claims:Set } }
+  // Keys: s0,s1… scouts · a0,a1… adults.
+  let draft = {};
+
+  const $ = (id) => document.getElementById(id);
+
+  // ── Person helpers ────────────────────────────────────────────────
+  function persons() {
+    return [
+      ...household.scouts.map((s, i) => ({ key:'s'+i, kind:'scout', name:s.name, sub:s.patrol })),
+      ...household.adults.map((a, i) => ({ key:'a'+i, kind:'adult', name:a, sub:'Parent' })),
+    ];
+  }
+  const eligible = (personKind, slot) =>
+    slot.elig === 'both' || (slot.elig === 'scouts' ? personKind === 'scout' : personKind === 'adult');
+
+  // Claims on a slot = other households (base) + this household's live draft
+  // (or submission, when no form is open).
+  function claimedCount(slotId) {
+    const base = slotById[slotId].base[scenario];
+    const source = (currentState === 'form') ? draft
+      : (submission && !submission.cancelled ? submission.people : null);
+    let mine = 0;
+    if (source) {
+      for (const key of Object.keys(source)) {
+        const p = source[key];
+        if (p.working && p.claims.has(slotId)) mine++;
+      }
+    }
+    return Math.min(base + mine, slotById[slotId].cap);
+  }
+
+  // ── Screen switching ──────────────────────────────────────────────
+  let pendingIntent = 'signup';
+  function go(state, intent) {
+    if (state === 'gate') pendingIntent = intent || 'signup';
+    document.querySelectorAll('.state').forEach(s => s.hidden = true);
+    $('state-' + state).hidden = false;
+    currentState = state;
+    document.querySelectorAll('#stripFlow .stripBtn').forEach(b =>
+      b.classList.toggle('isActive', b.dataset.state === state));
+    if (state === 'form') buildForm();
+    if (state === 'confirm') buildConfirm();
+    if (state === 'detail') renderPublicSlots();
+    window.scrollTo({ top: 0 });
+  }
+
+  // ── Public detail: shift & task coverage lists ────────────────────
+  function slotItemHtml(s) {
+    const n = claimedCount(s.id), full = n >= s.cap;
+    const pct = Math.round(100 * n / s.cap);
+    return `<li class="slotItem">
+      <div><span class="slotName">${s.label}</span><span class="slotTime">${s.time}${s.kind==='shift' ? '' : ''}</span></div>
+      <div class="slotMetaRow">
+        <span class="eligChip elig--${s.elig}">${ELIG_TEXT[s.elig]}</span>
+        ${full ? '<span class="fullChip">Full</span>' : ''}
+        <span class="slotCount"><strong>${n}</strong> of ${s.cap}</span>
+      </div>
+      <div class="slotBar${full ? ' isFull' : ''}"><span style="width:${pct}%"></span></div>
+    </li>`;
+  }
+  function renderPublicSlots() {
+    $('publicShifts').innerHTML = SLOTS.filter(s => s.kind==='shift').map(slotItemHtml).join('');
+    $('publicTasks').innerHTML  = SLOTS.filter(s => s.kind==='task').map(slotItemHtml).join('');
+    const shifts = SLOTS.filter(s => s.kind==='shift');
+    const filled = shifts.reduce((n,s) => n + claimedCount(s.id), 0);
+    const cap    = shifts.reduce((n,s) => n + s.cap, 0);
+    const openTasks = SLOTS.filter(s => s.kind==='task' && claimedCount(s.id) < s.cap).length;
+    $('detailCount').innerHTML = scenario === 'closed'
+      ? `<strong>${filled}</strong> of ${cap} shift spots filled`
+      : `<strong>${filled}</strong> of ${cap} shift spots filled &middot; ${openTasks} task${openTasks!==1?'s':''} still open`;
+  }
+
+  // ── Scenario switching ────────────────────────────────────────────
+  function setScenario(s) {
+    scenario = s;
+    document.querySelectorAll('#stripScenario .stripBtn').forEach(b =>
+      b.classList.toggle('isActive', b.dataset.scenario === s));
+    const badge = $('detailBadge'), cta = $('ctaSignup');
+    if (s === 'closed') {
+      badge.className = 'badge badge--closed'; badge.textContent = 'Signups closed';
+      cta.disabled = true; cta.textContent = 'Signups closed';
+      $('detailLocked').hidden = false;
+      $('deadlineCountdown').textContent = 'Deadline passed';
+    } else {
+      badge.className = 'badge badge--open';
+      badge.textContent = s === 'filling' ? 'Signup open — shifts filling fast' : 'Signup open';
+      cta.disabled = false; cta.textContent = 'Sign up to work';
+      $('detailLocked').hidden = true;
+      $('deadlineCountdown').textContent = daysLeftText();
+    }
+    renderPublicSlots();
+    if (currentState === 'form') buildForm();
+    if (currentState === 'confirm') buildConfirm();
+  }
+  const DEADLINE = new Date('2026-10-20T21:00:00-05:00');
+  function daysLeftText() {
+    const days = Math.ceil((DEADLINE - Date.now()) / 864e5);
+    return days > 1 ? days + ' days left' : days === 1 ? 'Last day — closes 9:00 PM' : 'Deadline passed';
+  }
+
+  // ── Gate (stub — any non-empty input passes) ──────────────────────
+  $('gateSubmit').addEventListener('click', () => {
+    const val = $('gatePassword').value.trim();
+    if (!val) { $('gateError').hidden = false; $('gatePassword').focus(); return; }
+    $('gateError').hidden = true;
+    go(pendingIntent === 'view' && submission ? 'confirm' : 'picker');
+  });
+  $('gatePassword').addEventListener('keydown', e => { if (e.key === 'Enter') $('gateSubmit').click(); });
+
+  // ── Household picker ──────────────────────────────────────────────
+  const ALL_SCOUTS = HOUSEHOLDS.flatMap(hh => hh.scouts.map(s => ({ ...s, hh })));
+  $('scoutSearch').addEventListener('input', () => {
+    const q = $('scoutSearch').value.trim().toLowerCase();
+    const list = $('scoutResults');
+    list.innerHTML = '';
+    $('scoutSearch').setAttribute('aria-expanded', q.length >= 2 ? 'true' : 'false');
+    if (q.length < 2) return;
+    const matches = ALL_SCOUTS.filter(s => s.name.toLowerCase().includes(q));
+    if (!matches.length) {
+      list.innerHTML = '<li class="noResults">No scout by that name — check spelling, or ask a leader to add your scout to the roster.</li>';
+      return;
+    }
+    matches.forEach(s => {
+      const li = document.createElement('li');
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'scoutResultBtn'; btn.setAttribute('role', 'option');
+      btn.innerHTML = `<span>${s.name}</span><span class="patrolTag">${s.patrol}</span>`;
+      btn.addEventListener('click', () => pickHousehold(s.hh));
+      li.appendChild(btn); list.appendChild(li);
+    });
+  });
+  function pickHousehold(hh) {
+    household = hh; submission = null; draft = {};
+    $('scoutResults').innerHTML = '';
+    $('scoutSearch').value = '';
+    $('hhName').textContent = 'The ' + hh.name + ' household';
+    $('hhScouts').innerHTML = hh.scouts.map(s =>
+      `<li><span>${s.name}</span><span class="hhMeta">${s.patrol}</span></li>`).join('');
+    $('hhAdults').innerHTML = hh.adults.map(a =>
+      `<li><span>${a}</span><span class="hhMeta">Parent</span></li>`).join('');
+    $('householdCard').hidden = false;
+  }
+  function resetPicker() {
+    $('householdCard').hidden = true;
+    $('scoutSearch').focus();
+  }
+
+  // ── Shift signup form ─────────────────────────────────────────────
+  function initDraft() {
+    draft = {};
+    persons().forEach(p => {
+      const prev = submission && !submission.cancelled ? submission.people[p.key] : null;
+      draft[p.key] = { working: !!(prev && prev.working), claims: new Set(prev ? [...prev.claims] : []) };
+    });
+  }
+
+  function chipHtml(p, s) {
+    const checked = draft[p.key].claims.has(s.id);
+    return `<label class="claimChip" data-person="${p.key}" data-slot="${s.id}">
+      <input type="checkbox" data-person="${p.key}" data-slot="${s.id}" ${checked ? 'checked' : ''}
+             aria-label="${p.name} — ${s.label}">
+      <span>${s.label}</span><span class="claimSub"></span>
+    </label>`;
+  }
+
+  function buildForm() {
+    $('formTitle').textContent = household.name + ' family — who’s working?';
+    initDraft();
+
+    const rowHtml = (p) => `
+      <div class="personRow">
+        <div class="personMain">
+          <label class="chk"><input type="checkbox" class="workChk" data-person="${p.key}" ${draft[p.key].working ? 'checked' : ''}>
+            <span>${p.name}<span class="chkSub">${p.sub} &middot; ${p.kind === 'scout' ? 'hours go to their camp account' : 'working the breakfast'}</span></span></label>
+        </div>
+        <div class="personExtra" id="extra-${p.key}" ${draft[p.key].working ? '' : 'hidden'}>
+          <div><p class="miniLabel">Shifts</p>
+            <div class="claimGroup">${SLOTS.filter(s => s.kind==='shift').map(s => chipHtml(p, s)).join('')}</div></div>
+          <div><p class="miniLabel">Tasks</p>
+            <div class="claimGroup">${SLOTS.filter(s => s.kind==='task').map(s => chipHtml(p, s)).join('')}</div></div>
+        </div>
+      </div>`;
+
+    $('scoutRows').innerHTML = persons().filter(p => p.kind==='scout').map(rowHtml).join('');
+    $('adultRows').innerHTML = persons().filter(p => p.kind==='adult').map(rowHtml).join('');
+
+    // Working toggle reveals the chip block
+    document.querySelectorAll('.workChk').forEach(chk => chk.addEventListener('change', e => {
+      const key = e.target.dataset.person;
+      draft[key].working = e.target.checked;
+      $('extra-' + key).hidden = !e.target.checked;
+      $('formError').hidden = true;
+      refreshChips();          // their claims count toward totals only while checked
+      renderPublicSlots();
+    }));
+
+    // Chip claims — update live counts everywhere
+    document.querySelectorAll('.claimChip input').forEach(inp => inp.addEventListener('change', e => {
+      const { person, slot } = e.target.dataset;
+      if (e.target.checked) draft[person].claims.add(slot);
+      else draft[person].claims.delete(slot);
+      $('formError').hidden = true;
+      refreshChips();
+      renderPublicSlots();
+    }));
+
+    $('formSubmit').textContent = submission && !submission.cancelled ? 'Save changes' : 'Submit family signup';
+    $('formSubmit').disabled = scenario === 'closed';
+    refreshChips();
+  }
+
+  // Live chip state: eligibility enforced, full slots closed, counts update
+  // as the household checks people in — the "shift filling up live" demo.
+  function refreshChips() {
+    document.querySelectorAll('.claimChip').forEach(chip => {
+      const p = persons().find(x => x.key === chip.dataset.person);
+      const s = slotById[chip.dataset.slot];
+      const input = chip.querySelector('input');
+      const sub = chip.querySelector('.claimSub');
+      const checked = draft[p.key].claims.has(s.id);
+      const n = claimedCount(s.id), left = s.cap - n;
+
+      let disabled = false, text;
+      if (!eligible(p.kind, s)) {
+        disabled = true;
+        text = s.elig === 'adults' ? 'Adults only' : 'Scouts only';
+      } else if (checked) {
+        text = (s.kind === 'shift' ? s.time + ' · ' : '') + (left <= 0 ? 'you took the last spot' : 'you’re on it');
+      } else if (left <= 0) {
+        disabled = true;
+        text = 'Full';
+      } else {
+        text = (s.kind === 'shift' ? s.time + ' · ' : '') + left + (left === 1 ? ' spot left' : ' spots left');
+      }
+      input.disabled = disabled;
+      input.checked = checked;
+      chip.classList.toggle('isDisabled', disabled);
+      sub.textContent = text;
+    });
+  }
+
+  $('signupForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const working = persons().filter(p => draft[p.key].working);
+    if (!working.length) {
+      showFormError('Check at least one person as working before submitting — or hit Cancel if your family can’t make it this year.');
+      return;
+    }
+    const unassigned = working.filter(p => draft[p.key].claims.size === 0);
+    if (unassigned.length) {
+      showFormError(unassigned.map(p => p.name.split(' ')[0]).join(' and ') +
+        (unassigned.length === 1 ? ' is' : ' are') +
+        ' marked as working but ' + (unassigned.length === 1 ? 'has' : 'have') +
+        ' no shift or task yet — pick at least one, or uncheck them.');
+      return;
+    }
+    $('formError').hidden = true;
+    submission = { cancelled: false, people: {} };
+    persons().forEach(p => {
+      submission.people[p.key] = { working: draft[p.key].working, claims: new Set(draft[p.key].claims) };
+    });
+    go('confirm');
+  });
+  function showFormError(msg) {
+    const el = $('formError');
+    el.textContent = msg; el.hidden = false;
+    el.scrollIntoView({ block: 'center' });
+  }
+
+  // ── Confirmation / edit view ──────────────────────────────────────
+  function buildConfirm() {
+    // Demo fallback: jumping straight here from the control strip
+    if (!submission) {
+      submission = { cancelled: false, people: {
+        s0: { working: true, claims: new Set(['serve1']) },
+        s1: { working: true, claims: new Set(['serve1', 'cleanup']) },
+        a0: { working: true, claims: new Set(['setup', 'griddle']) },
+        a1: { working: true, claims: new Set(['mix']) },
+      } };
+      // guard: fallback assumes the Kowalski household shape
+      if (household !== HOUSEHOLDS[0]) { household = HOUSEHOLDS[0]; }
+    }
+
+    const isClosed = scenario === 'closed';
+    const workers = persons().filter(p => submission.people[p.key] && submission.people[p.key].working);
+
+    $('confirmTitle').textContent = submission.cancelled ? 'Signup cancelled' : 'You’re on the crew!';
+    $('confirmLede').textContent = submission.cancelled
+      ? `No one from the ${household.name} household is signed up to work.`
+      : `Here’s who the ${household.name} household is sending to the Pancake Breakfast.`;
+
+    $('confirmSummary').innerHTML = workers.map(p => {
+      const claims = [...submission.people[p.key].claims].map(id => slotById[id]);
+      const shifts = claims.filter(c => c.kind === 'shift');
+      const tasks  = claims.filter(c => c.kind === 'task');
+      const hrs = shifts.reduce((n, c) => n + c.hrs, 0);
+      const lines = [
+        ...shifts.map(c => `${c.label} (${c.time})`),
+        ...tasks.map(c => c.label),
+      ].join(' · ');
+      return `<li>
+        <span class="sumName">${p.name}<span class="sumSub">${lines}</span></span>
+        <span class="statusChip statusChip--yes">${p.kind === 'scout' && hrs ? '≈ ' + hrs + ' hrs' : 'Working'}</span>
+      </li>`;
+    }).join('') || '<li><span class="sumName">No workers on this signup.</span></li>';
+
+    const scoutHrs = workers.filter(p => p.kind === 'scout').reduce((n, p) =>
+      n + [...submission.people[p.key].claims].map(id => slotById[id]).filter(c => c.kind === 'shift').reduce((m, c) => m + c.hrs, 0), 0);
+    $('hoursLine').innerHTML = submission.cancelled
+      ? '<strong>Camp-account hours.</strong> None — this signup is cancelled.'
+      : `<strong>Camp-account hours: ≈ ${scoutHrs} scout hour${scoutHrs !== 1 ? 's' : ''} pledged.</strong> Tallied after the event and credited toward summer camp. Task claims (mix, juice, posters) help the bottom line but don’t accrue hours.`;
+
+    $('confirmDeadline').hidden = isClosed;
+    $('confirmLocked').hidden = !isClosed;
+    $('editBtn').disabled = isClosed || submission.cancelled;
+    $('cancelBtn').disabled = isClosed || submission.cancelled;
+    $('cancelledNote').hidden = !submission.cancelled;
+  }
+
+  $('cancelBtn').addEventListener('click', () => {
+    if (!confirm('Cancel your family’s Pancake Breakfast signup? Your shift spots go back to the pool.')) return;
+    submission.cancelled = true;
+    buildConfirm();
+    renderPublicSlots();
+  });
+
+  // ── Control strip wiring ──────────────────────────────────────────
+  document.querySelectorAll('#stripFlow .stripBtn').forEach(b =>
+    b.addEventListener('click', () => go(b.dataset.state)));
+  document.querySelectorAll('#stripScenario .stripBtn').forEach(b =>
+    b.addEventListener('click', () => setScenario(b.dataset.scenario)));
+
+  setScenario('open');
+  </script>
+</body>
+</html>

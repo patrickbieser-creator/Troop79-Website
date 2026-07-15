@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Roster — Camp Long Lake Campout — Event Signup Prototype — Scout Troop 79</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/event-signup.css" />
+</head>
+<body>
+
+  <div class="proto-banner">
+    <div class="proto-banner-inner">
+      <p><strong>Prototype</strong> Event Signup — leader roster &amp; headcount view (/admin/events/signups). All names fictional.</p>
+      <a href="index.html">&larr; Public family flow</a>
+    </div>
+  </div>
+
+  <main class="page page--wide">
+
+    <header class="adminHead">
+      <div>
+        <p class="kicker"><span class="kickerCat">Campout</span> &nbsp;&middot;&nbsp; Signup roster</p>
+        <h1 class="adminTitle">Camp Long Lake Campout</h1>
+        <p class="adminSub">Fri Aug 14 &ndash; Sun Aug 16, 2026 &middot; Camp Long Lake, St. Cloud WI &middot; Signups close <strong>Tue Aug 4, 9:00 PM</strong></p>
+      </div>
+      <div class="adminActions">
+        <button type="button" class="btn btn--secondary" onclick="window.print()">Print roster</button>
+        <button type="button" class="btn btn--navy" id="exportCsv">Export CSV</button>
+      </div>
+    </header>
+
+    <!-- ══ SUMMARY TILES ══ -->
+    <section class="tiles" aria-label="Headcount summary">
+      <div class="tile">
+        <div class="tileLabel">Scouts going</div>
+        <div class="tileValue" id="tileScouts">14</div>
+        <div class="tileSub" id="tileScoutsSub">across 3 patrols</div>
+      </div>
+      <div class="tile">
+        <div class="tileLabel">Adults going</div>
+        <div class="tileValue" id="tileAdults">7</div>
+        <div class="tileSub">2 drivers</div>
+      </div>
+      <div class="tile">
+        <div class="tileLabel">Guests</div>
+        <div class="tileValue">&mdash;</div>
+        <div class="tileSub">Not allowed (overnight event)</div>
+      </div>
+      <div class="tile">
+        <div class="tileLabel">Total headcount</div>
+        <div class="tileValue"><span id="tileTotal">21</span> <span class="tileOf">of 40</span></div>
+        <div class="tileBar" aria-hidden="true"><span id="tileTotalBar" style="width:52.5%"></span></div>
+      </div>
+      <div class="tile tile--warn">
+        <div class="tileLabel">Driver seats</div>
+        <div class="tileValue">10 <span class="tileOf">offered</span></div>
+        <div class="tileSub" id="tileSeatsSub">14 scouts need rides &mdash; <strong>short 4 seats</strong></div>
+      </div>
+      <div class="tile tile--ok">
+        <div class="tileLabel">Two-deep leadership</div>
+        <div class="tileValue">&#10003;</div>
+        <div class="tileSub">7 adults signed up (need &ge;2)</div>
+      </div>
+    </section>
+
+    <div class="proto-note" style="margin-top:0">
+      <strong>Note</strong> &mdash; Rider math here is deliberately simple: every &ldquo;Yes&rdquo; scout counts as needing a seat, and offered
+      seats exclude the driver&rsquo;s own. Leaders sort actual carpools offline &mdash; the tile&rsquo;s job is the early warning, not the assignment.
+      Waitlist entries are shown even though 21&nbsp;&lt;&nbsp;40 so the section is visible in the prototype; in production it only fills at capacity.
+    </div>
+
+    <div class="adminGrid">
+      <!-- ══ LEFT COLUMN — roster tables ══ -->
+      <div>
+
+        <!-- Scouts by patrol -->
+        <section class="card" aria-label="Scout roster by patrol">
+          <div class="cardHead">
+            <h2 class="cardTitle">Scouts &mdash; by patrol</h2>
+            <span class="cardCount" id="scoutCardCount"></span>
+          </div>
+          <div class="rosterTableWrap">
+            <table class="rosterTable" id="scoutTable">
+              <thead>
+                <tr>
+                  <th scope="col">Scout</th>
+                  <th scope="col">Notes</th>
+                  <th scope="col" class="chkCol">Slip</th>
+                  <th scope="col" class="chkCol">Paid</th>
+                </tr>
+              </thead>
+              <tbody id="scoutTbody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Adults -->
+        <section class="card" aria-label="Adult roster">
+          <div class="cardHead">
+            <h2 class="cardTitle">Adults</h2>
+            <span class="cardCount">7 going &middot; 2 drivers &middot; 10 seats</span>
+          </div>
+          <div class="rosterTableWrap">
+            <table class="rosterTable">
+              <thead>
+                <tr>
+                  <th scope="col">Adult</th>
+                  <th scope="col">Driving</th>
+                  <th scope="col">Willing to help</th>
+                </tr>
+              </thead>
+              <tbody id="adultTbody"></tbody>
+            </table>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- ══ RIGHT COLUMN — waitlist, chase list, settings ══ -->
+      <div>
+
+        <!-- Waitlist -->
+        <section class="card" aria-label="Waitlist">
+          <div class="cardHead">
+            <h2 class="cardTitle">Waitlist</h2>
+            <span class="cardCount" id="waitCount">3 waiting</span>
+          </div>
+          <div class="cardBody" id="waitBody"></div>
+        </section>
+
+        <!-- Non-responders -->
+        <section class="card" aria-label="Non-responders">
+          <div class="cardHead">
+            <h2 class="cardTitle">No response yet</h2>
+            <button type="button" class="btn btn--ghost" id="copyChase" style="min-height:0;padding:2px 4px">Copy list</button>
+          </div>
+          <div class="cardBody">
+            <div class="chipList" id="nrChips"></div>
+            <p class="declinedLine">Declined (explicit &ldquo;can&rsquo;t make it&rdquo;): <strong>Jonas Feldman</strong> (Screaming Eagles), <strong>Tommy Reyes</strong> (Wolverines). Not chased &mdash; they answered.</p>
+          </div>
+        </section>
+
+        <!-- Signup settings -->
+        <section class="card" aria-label="Signup settings">
+          <div class="cardHead">
+            <h2 class="cardTitle">Signup settings</h2>
+            <button type="button" class="btn btn--secondary" style="min-height:34px;padding:6px 14px" onclick="document.getElementById('settingsDialog').showModal()">Edit settings</button>
+          </div>
+          <div class="cardBody">
+            <ul class="settingRows">
+              <li><span class="sKey">Status</span><span class="sVal flagOn">Open</span></li>
+              <li><span class="sKey">Deadline</span><span class="sVal">Tue Aug 4, 9:00 PM</span></li>
+              <li><span class="sKey">Capacity</span><span class="sVal">40</span></li>
+              <li><span class="sKey">Cost</span><span class="sVal">$30 / scout</span></li>
+              <li><span class="sKey">Permission slip</span><span class="sVal flagOn">Required</span></li>
+              <li><span class="sKey">AHMR Part C</span><span class="sVal flagOff">Not required (&lt;72 hrs)</span></li>
+              <li><span class="sKey">Guests</span><span class="sVal flagOff">Not allowed</span></li>
+              <li><span class="sKey">Drivers</span><span class="sVal flagOn">Needed</span></li>
+              <li><span class="sKey">Notes prompt</span><span class="sVal" style="font-weight:400;max-width:56%;text-align:right">&ldquo;Allergies or dietary needs we should know about?&rdquo;</span></li>
+            </ul>
+          </div>
+        </section>
+
+      </div>
+    </div>
+
+    <nav class="exampleNav" aria-label="Other prototype pages">
+      <span class="exLabel">Prototype pages</span>
+      <a href="index.html">Campout RSVP</a>
+      <a href="fundraiser-shifts.html">Fundraiser shifts</a>
+      <a href="ski-outing.html">Outing + gear questions</a>
+      <a href="event-page.html">Composable event page (v3)</a>
+      <a href="event-builder.html">Admin event builder (v3)</a>
+      <span class="exHere">Leader roster</span>
+    </nav>
+
+  </main>
+
+  <!-- ══ EDIT SETTINGS DIALOG — the event_signups config fields from the plan ══ -->
+  <dialog class="settingsDialog" id="settingsDialog" aria-labelledby="dlgTitle">
+    <form method="dialog">
+      <div class="dlgHead">
+        <h2 class="dlgTitle" id="dlgTitle">Signup settings</h2>
+        <button type="submit" class="dlgClose" aria-label="Close" value="cancel">&times;</button>
+      </div>
+      <div class="dlgBody">
+        <div class="dlgRow2">
+          <div class="dlgField">
+            <label for="setStatus">Status</label>
+            <select class="textInput" id="setStatus">
+              <option selected>Open</option>
+              <option>Closed</option>
+            </select>
+          </div>
+          <div class="dlgField">
+            <label for="setDeadline">Signup deadline</label>
+            <input class="textInput" type="datetime-local" id="setDeadline" value="2026-08-04T21:00" />
+          </div>
+        </div>
+        <div class="dlgRow2">
+          <div class="dlgField">
+            <label for="setCapacity">Capacity <span style="text-transform:none;font-weight:400">(blank = unlimited)</span></label>
+            <input class="textInput" type="number" id="setCapacity" value="40" min="1" />
+          </div>
+          <div class="dlgField">
+            <label for="setCost">Cost per scout ($)</label>
+            <input class="textInput" type="number" id="setCost" value="30" min="0" step="0.50" />
+          </div>
+        </div>
+        <div class="dlgField">
+          <label for="setPay">Payment instructions</label>
+          <textarea class="notesArea" id="setPay" rows="3" style="min-height:64px">Bring cash or a check payable to Troop 79 to any Monday meeting by Aug 10 — no slip + no payment = no trip.</textarea>
+        </div>
+        <div class="dlgField">
+          <label>Requirements &amp; options</label>
+          <div class="dlgFlags">
+            <label class="chk"><input type="checkbox" checked /> <span>Permission slip required</span></label>
+            <label class="chk"><input type="checkbox" /> <span>AHMR Part C required (&ge;72 hrs)</span></label>
+            <label class="chk"><input type="checkbox" /> <span>Guests allowed</span></label>
+            <label class="chk"><input type="checkbox" checked /> <span>Drivers needed</span></label>
+          </div>
+        </div>
+        <div class="dlgField">
+          <label for="setPrompt">Notes prompt shown to families</label>
+          <input class="textInput" type="text" id="setPrompt" value="Allergies or dietary needs we should know about?" />
+        </div>
+      </div>
+      <div class="dlgFoot">
+        <button type="submit" class="btn btn--ghost" value="cancel">Cancel</button>
+        <button type="submit" class="btn btn--primary" value="save">Save settings</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+  /* ══════════════════════════════════════════════════════════════════
+     Leader roster prototype — data-driven so slip/paid checkboxes and
+     the Promote action keep the patrol subtotals and tiles live.
+     All names fictional.
+     ══════════════════════════════════════════════════════════════════ */
+
+  const PATROLS = ['Flaming Arrows', 'Wolverines', 'Screaming Eagles'];
+
+  const SCOUTS = [
+    { name: 'Ben Kowalski',      patrol: 'Flaming Arrows',  hh: 'Kowalski',   slip: true,  paid: true,  note: 'Peanut allergy — EpiPen in day bag' },
+    { name: 'Daniel Okafor',     patrol: 'Flaming Arrows',  hh: 'Okafor',     slip: true,  paid: true,  note: '' },
+    { name: 'Oliver Brandt',     patrol: 'Flaming Arrows',  hh: 'Brandt',     slip: false, paid: true,  note: 'Vegetarian' },
+    { name: 'Matteo Rossi',      patrol: 'Flaming Arrows',  hh: 'Rossi',      slip: false, paid: false, note: '' },
+    { name: 'Caleb Yoder',       patrol: 'Flaming Arrows',  hh: 'Yoder',      slip: true,  paid: false, note: '' },
+    { name: 'Sam Kowalski',      patrol: 'Wolverines',      hh: 'Kowalski',   slip: true,  paid: true,  note: '' },
+    { name: 'Marcus Trevino',    patrol: 'Wolverines',      hh: 'Trevino',    slip: true,  paid: true,  note: '' },
+    { name: 'Liam Nguyen',       patrol: 'Wolverines',      hh: 'Nguyen',     slip: false, paid: false, note: 'No dairy' },
+    { name: 'Rafael Delgado',    patrol: 'Wolverines',      hh: 'Delgado',    slip: false, paid: false, note: '' },
+    { name: 'Elijah Kim',        patrol: 'Wolverines',      hh: 'Kim',        slip: true,  paid: false, note: '' },
+    { name: 'Ava Lindqvist',     patrol: 'Screaming Eagles', hh: 'Lindqvist',  slip: true,  paid: true,  note: '' },
+    { name: 'Theo Brandt',       patrol: 'Screaming Eagles', hh: 'Brandt',     slip: false, paid: true,  note: 'Vegetarian' },
+    { name: 'Jack Petersen',     patrol: 'Screaming Eagles', hh: 'Petersen',   slip: true,  paid: false, note: '' },
+    { name: 'DeShawn Washington', patrol: 'Screaming Eagles', hh: 'Washington', slip: false, paid: false, note: '' },
+  ];
+
+  const ADULTS = [
+    { name: 'Dan Kowalski',    hh: 'Kowalski',   driver: true,  seats: 6, help: 'Can haul the trailer' },
+    { name: 'Elena Trevino',   hh: 'Trevino',    driver: true,  seats: 4, help: '' },
+    { name: 'Grace Okafor',    hh: 'Okafor',     driver: false, seats: 0, help: 'Saturday cook-off judging' },
+    { name: 'Erik Lindqvist',  hh: 'Lindqvist',  driver: false, seats: 0, help: '' },
+    { name: 'Jill Brandt',     hh: 'Brandt',     driver: false, seats: 0, help: 'First-aid kit restock' },
+    { name: 'Mark Yoder',      hh: 'Yoder',      driver: false, seats: 0, help: '' },
+    { name: 'Tanya Washington', hh: 'Washington', driver: false, seats: 0, help: '' },
+  ];
+
+  const WAITLIST = [
+    { name: 'Colin Fitzgerald', patrol: 'Screaming Eagles', when: 'Jul 12, 8:41 PM', promoted: false },
+    { name: 'Adam Zielinski',   patrol: 'Flaming Arrows',   when: 'Jul 13, 7:15 AM', promoted: false },
+    { name: 'Noah Vang',        patrol: 'Wolverines',       when: 'Jul 13, 9:02 PM', promoted: false },
+  ];
+
+  const NON_RESPONDERS = [
+    { name: 'Miles Okonkwo',     patrol: 'Wolverines' },
+    { name: 'Henry Steinbach',   patrol: 'Flaming Arrows' },
+    { name: 'Owen Gallagher',    patrol: 'Screaming Eagles' },
+    { name: 'Tyler Brooks',      patrol: 'Flaming Arrows' },
+    { name: 'Aiden Castellanos', patrol: 'Wolverines' },
+    { name: 'Wyatt Munson',      patrol: 'Screaming Eagles' },
+  ];
+
+  const CAPACITY = 40;
+  const $ = (id) => document.getElementById(id);
+
+  // ── Scout table, grouped by patrol with live subtotal rows ────────
+  function renderScouts() {
+    const tbody = $('scoutTbody');
+    tbody.innerHTML = '';
+    PATROLS.forEach(patrol => {
+      const members = SCOUTS.filter(s => s.patrol === patrol);
+      if (!members.length) return;
+      const head = document.createElement('tr');
+      head.className = 'patrolRow';
+      head.innerHTML = `<td colspan="4">${patrol}
+        <span class="patrolCounts" id="pc-${patrol.replace(/\s/g, '')}"></span></td>`;
+      tbody.appendChild(head);
+      members.forEach(s => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><span class="attName">${s.name}</span><span class="attMeta"> · ${s.hh} household</span></td>
+          <td>${s.note ? `<span class="attNote">${s.note}</span>` : '<span class="attMeta">—</span>'}</td>
+          <td class="chkCol"><input type="checkbox" ${s.slip ? 'checked' : ''} aria-label="Permission slip received — ${s.name}"></td>
+          <td class="chkCol"><input type="checkbox" ${s.paid ? 'checked' : ''} aria-label="Payment received — ${s.name}"></td>`;
+        const [slipChk, paidChk] = tr.querySelectorAll('input');
+        slipChk.addEventListener('change', () => { s.slip = slipChk.checked; renderCounts(); });
+        paidChk.addEventListener('change', () => { s.paid = paidChk.checked; renderCounts(); });
+        tbody.appendChild(tr);
+      });
+    });
+    renderCounts();
+  }
+
+  function renderCounts() {
+    PATROLS.forEach(patrol => {
+      const m = SCOUTS.filter(s => s.patrol === patrol);
+      const el = $('pc-' + patrol.replace(/\s/g, ''));
+      if (el) el.textContent =
+        `${m.length} scouts · slips ${m.filter(s => s.slip).length}/${m.length} · paid ${m.filter(s => s.paid).length}/${m.length}`;
+    });
+    const slips = SCOUTS.filter(s => s.slip).length, paid = SCOUTS.filter(s => s.paid).length;
+    $('scoutCardCount').textContent =
+      `${SCOUTS.length} going · slips ${slips}/${SCOUTS.length} · paid ${paid}/${SCOUTS.length}`;
+    $('tileScouts').textContent = SCOUTS.length;
+    const total = SCOUTS.length + ADULTS.length;
+    $('tileTotal').textContent = total;
+    $('tileTotalBar').style.width = Math.min(100, total / CAPACITY * 100) + '%';
+    const seats = ADULTS.reduce((n, a) => n + a.seats, 0);
+    const short = SCOUTS.length - seats;
+    $('tileSeatsSub').innerHTML = short > 0
+      ? `${SCOUTS.length} scouts need rides — <strong>short ${short} seat${short !== 1 ? 's' : ''}</strong>`
+      : `${SCOUTS.length} scouts need rides — covered`;
+  }
+
+  // ── Adults table ──────────────────────────────────────────────────
+  function renderAdults() {
+    $('adultTbody').innerHTML = ADULTS.map(a => `
+      <tr>
+        <td><span class="attName">${a.name}</span><span class="attMeta"> · ${a.hh} household</span></td>
+        <td>${a.driver ? `<span class="driverChip">Driver · ${a.seats} seats</span>` : '<span class="attMeta">—</span>'}</td>
+        <td>${a.help ? a.help : '<span class="attMeta">—</span>'}</td>
+      </tr>`).join('');
+  }
+
+  // ── Waitlist with Promote (moves the scout onto the roster) ───────
+  function renderWaitlist() {
+    const body = $('waitBody');
+    body.innerHTML = '';
+    const waiting = WAITLIST.filter(w => !w.promoted);
+    $('waitCount').textContent = waiting.length ? waiting.length + ' waiting' : 'empty';
+    if (!waiting.length) {
+      body.innerHTML = '<p class="attMeta" style="font-family:var(--font-ui);font-size:12.5px;color:var(--text-meta)">Waitlist is empty.</p>';
+      return;
+    }
+    waiting.forEach((w, i) => {
+      const row = document.createElement('div');
+      row.className = 'waitRow';
+      row.innerHTML = `
+        <span class="waitPos" aria-hidden="true">${i + 1}</span>
+        <span class="waitName">${w.name}<span class="waitMeta">${w.patrol} · joined ${w.when}</span></span>
+        <button type="button" class="promoteBtn">Promote</button>`;
+      row.querySelector('.promoteBtn').addEventListener('click', () => {
+        w.promoted = true;
+        SCOUTS.push({ name: w.name, patrol: w.patrol, hh: w.name.split(' ').pop(), slip: false, paid: false, note: '' });
+        renderScouts(); renderWaitlist();
+      });
+      body.appendChild(row);
+    });
+  }
+
+  // ── Non-responders (the chase list) ───────────────────────────────
+  $('nrChips').innerHTML = NON_RESPONDERS.map(n =>
+    `<span class="nrChip">${n.name}<span class="patrolTag">${n.patrol}</span></span>`).join('');
+
+  $('copyChase').addEventListener('click', async () => {
+    const text = NON_RESPONDERS.map(n => `${n.name} (${n.patrol})`).join('\n');
+    try { await navigator.clipboard.writeText(text); $('copyChase').textContent = 'Copied ✓'; }
+    catch { $('copyChase').textContent = 'Copy failed'; }
+    setTimeout(() => $('copyChase').textContent = 'Copy list', 1800);
+  });
+
+  // ── CSV export (real download — leaders live in spreadsheets) ─────
+  $('exportCsv').addEventListener('click', () => {
+    const rows = [['Type', 'Name', 'Patrol/Household', 'Status', 'Slip', 'Paid', 'Driver seats', 'Notes']];
+    SCOUTS.forEach(s => rows.push(['Scout', s.name, s.patrol, 'Yes', s.slip ? 'Y' : 'N', s.paid ? 'Y' : 'N', '', s.note]));
+    ADULTS.forEach(a => rows.push(['Adult', a.name, a.hh, 'Yes', '', '', a.driver ? a.seats : '', a.help]));
+    WAITLIST.filter(w => !w.promoted).forEach(w => rows.push(['Scout', w.name, w.patrol, 'Waitlist', 'N', 'N', '', '']));
+    NON_RESPONDERS.forEach(n => rows.push(['Scout', n.name, n.patrol, 'No response', '', '', '', '']));
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    a.download = 'camp-long-lake-roster.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  renderScouts();
+  renderAdults();
+  renderWaitlist();
+  </script>
+</body>
+</html>
