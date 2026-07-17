@@ -9,6 +9,15 @@
  */
 
 import type { createAdminClient } from '@/lib/supabase/server';
+import { fetchAllRows } from '@/lib/supabase/paginate';
+
+interface ExportLedgerRow {
+  scout_id: string;
+  kind: 'merit_badge_award' | 'rank_award';
+  code: string;
+  label: string | null;
+  date: string;
+}
 
 export interface ScoutbookExportRow {
   memberId: string;
@@ -38,14 +47,20 @@ export async function loadScoutbookExport(
   from: string,
   to: string
 ): Promise<ScoutbookExportResult> {
-  const [ledgerRes, scoutsRes, mbsRes, ranksRes] = await Promise.all([
-    supabase
-      .from('ledger_active')
-      .select('scout_id, kind, code, label, date')
-      .in('kind', ['merit_badge_award', 'rank_award'])
-      .gte('date', from)
-      .lte('date', to)
-      .order('date'),
+  const [ledgerRows, scoutsRes, mbsRes, ranksRes] = await Promise.all([
+    // Awards accumulate over time and never decrease — a wide date range can
+    // exceed the 1000-row PostgREST cap, which would silently drop awards from
+    // a Scoutbook upload the leader trusts as complete. Paginate every row.
+    fetchAllRows<ExportLedgerRow>((rangeFrom, rangeTo) =>
+      supabase
+        .from('ledger_active')
+        .select('scout_id, kind, code, label, date')
+        .in('kind', ['merit_badge_award', 'rank_award'])
+        .gte('date', from)
+        .lte('date', to)
+        .order('date')
+        .range(rangeFrom, rangeTo)
+    ),
     supabase.from('scouts').select('id, first_name, last_name, display_name, bsa_member_id'),
     supabase.from('merit_badges').select('id, name, scoutbook_id'),
     supabase.from('ranks').select('id, display_name, scoutbook_id')
@@ -75,13 +90,7 @@ export async function loadScoutbookExport(
   const rows: ScoutbookExportRow[] = [];
   const excluded: ScoutbookExcludedRow[] = [];
 
-  for (const entry of (ledgerRes.data ?? []) as {
-    scout_id: string;
-    kind: 'merit_badge_award' | 'rank_award';
-    code: string;
-    label: string | null;
-    date: string;
-  }[]) {
+  for (const entry of ledgerRows) {
     const scout = scoutMap.get(entry.scout_id);
     const scoutName = scout?.display_name ?? entry.scout_id;
 

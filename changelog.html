@@ -497,6 +497,27 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.9.2 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.9.2</span>
+        <span class="release-date">July 17, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Fix</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Behind the scenes</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Swept the rest of the site for the same &ldquo;only the first 1,000 rows load&rdquo; problem behind the Robotics fix and hardened three more spots before any of them could bite: the <strong>Scoutbook export</strong>, the <strong>meeting planner</strong>, and a scout&rsquo;s <strong>full advancement history</strong> page.
+              <span class="change-note">None were dropping data yet &mdash; each was still under the limit &mdash; but all three now page through every row, so a wide-range Scoutbook export can&rsquo;t silently omit awards and the planner can&rsquo;t run on a partial picture as the troop&rsquo;s history keeps growing. A full audit confirmed every other large query was already handled.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.9.1 -->
     <div class="release">
       <div class="release-header">

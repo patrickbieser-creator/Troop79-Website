@@ -5,6 +5,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/server';
+import { fetchAllRows } from '@/lib/supabase/paginate';
 import type {
   LedgerEntry,
   MeritBadge,
@@ -55,7 +56,7 @@ export interface ScoutDetail {
 
 export async function loadScoutDetail(scoutId: string): Promise<ScoutDetail | null> {
   const supabase = createAdminClient();
-  const [scoutRes, summaryRes, ranksRes, rankReqsRes, ledgerRes, mbRes] = await Promise.all([
+  const [scoutRes, summaryRes, ranksRes, rankReqsRes, ledgerRows, mbRes] = await Promise.all([
     supabase.from('scouts').select('*').eq('id', scoutId).maybeSingle(),
     supabase.from('scout_summary').select('*').eq('scout_id', scoutId).maybeSingle(),
     supabase.from('ranks').select('*').order('sort_order'),
@@ -64,11 +65,17 @@ export async function loadScoutDetail(scoutId: string): Promise<ScoutDetail | nu
       .select('id, rank_id, parent_id, code, label, complete_rule, complete_n, sort_order')
       .order('rank_id')
       .order('sort_order'),
-    supabase
-      .from('ledger_active')
-      .select('*')
-      .eq('scout_id', scoutId)
-      .order('date'),
+    // A long-tenured scout's full history (requirements + weekly attendance +
+    // activities over years) can approach the 1000-row cap — paginate so the
+    // detail page never silently shows a partial ledger.
+    fetchAllRows<LedgerEntry>((from, to) =>
+      supabase
+        .from('ledger_active')
+        .select('*')
+        .eq('scout_id', scoutId)
+        .order('date')
+        .range(from, to)
+    ),
     supabase.from('merit_badges').select('id, name, eagle')
   ]);
 
@@ -87,7 +94,7 @@ export async function loadScoutDetail(scoutId: string): Promise<ScoutDetail | nu
     leadership: [] as LedgerEntry[],
     awards: [] as LedgerEntry[]
   };
-  for (const e of (ledgerRes.data ?? []) as LedgerEntry[]) {
+  for (const e of ledgerRows) {
     switch (e.kind) {
       case 'rank_requirement':
         ledger.rankRequirements.push(e);

@@ -25,7 +25,7 @@ export async function loadEngineInput(meetingDate: string, title: string): Promi
     rankReqsRes,
     mbsRes,
     mbReqRows,
-    mbProgressRes,
+    mbProgressRows,
     rankReqLedgerRows,
     mbReqLedgerRows,
     skillsRes,
@@ -50,7 +50,16 @@ export async function loadEngineInput(meetingDate: string, title: string): Promi
         .select('id, mb_id, parent_id, code, label, complete_rule, complete_n, sort_order, venue')
         .range(from, to)
     ),
-    supabase.from('mb_progress').select('mb_id, scout_id, awarded, has_any_req'),
+    // mb_progress is roughly (badges-in-progress × scouts) and can climb past
+    // the 1000-row cap as the troop's badge activity grows — paginate so the
+    // planner never runs on a silently-truncated progress set.
+    fetchAllRows<{ mb_id: string; scout_id: string; awarded: boolean; has_any_req: boolean }>(
+      (from, to) =>
+        supabase
+          .from('mb_progress')
+          .select('mb_id, scout_id, awarded, has_any_req')
+          .range(from, to)
+    ),
     fetchAllRows<{ scout_id: string; code: string }>((from, to) =>
       supabase
         .from('ledger_active')
@@ -77,7 +86,6 @@ export async function loadEngineInput(meetingDate: string, title: string): Promi
     ranksRes.error ??
     rankReqsRes.error ??
     mbsRes.error ??
-    mbProgressRes.error ??
     skillsRes.error ??
     leadersRes.error ??
     leaderSkillsRes.error ??
@@ -106,7 +114,7 @@ export async function loadEngineInput(meetingDate: string, title: string): Promi
     rankReqs: (rankReqsRes.data ?? []) as EngineRankReqRow[],
     mbs: (mbsRes.data ?? []) as EngineInput['mbs'],
     mbReqs: mbReqRows,
-    mbProgress: (mbProgressRes.data ?? []) as EngineInput['mbProgress'],
+    mbProgress: mbProgressRows as EngineInput['mbProgress'],
     rankReqLedger: rankReqLedgerRows,
     mbReqLedger: mbReqLedgerRows,
     skills: (skillsRes.data ?? []) as Skill[],
