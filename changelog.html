@@ -497,6 +497,27 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.9.1 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.9.1</span>
+        <span class="release-date">July 17, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Fix</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Fast Entry &amp; Lookups</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Merit badges near the end of the alphabet (Robotics, Swimming, Welding, and 28 others) showed <strong>no requirements</strong> in Fast Entry, so scouts couldn&rsquo;t be signed off on them. The requirement catalog grew past 1,700 rows, and the page was loading the whole thing in one request &mdash; the database silently returns only the first 1,000, dropping every badge past &ldquo;Leatherwork.&rdquo;
+              <span class="change-note">Both the Fast Entry picker and the Merit Badge requirement-tree editor in Lookups now page through the full catalog, so every badge&rsquo;s requirements load. The badge data itself was never affected.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.6.1 -->
     <div class="release">
       <div class="release-header">

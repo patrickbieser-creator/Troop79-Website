@@ -13,6 +13,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/server';
+import { fetchAllRows } from '@/lib/supabase/paginate';
 import type { LedgerEntry } from '@/lib/supabase/types';
 import { ScoutFirstCard } from './scout-first-card';
 import { ReqFirstCard } from './req-first-card';
@@ -73,11 +74,18 @@ async function loadFastEntry(): Promise<{
       .order('rank_id')
       .order('sort_order'),
     supabase.from('merit_badges').select('id, name, eagle').order('name'),
-    supabase
-      .from('merit_badge_requirements')
-      .select('id, mb_id, parent_id, code, label, complete_rule, complete_n, sort_order')
-      .order('mb_id')
-      .order('sort_order'),
+    // The full MB requirement catalog is well past the 1000-row PostgREST cap
+    // (1,700+ rows across all badges) — an unbounded select silently drops
+    // everything after row 1000, hiding whole badges' requirement trees.
+    // Paginate (lib/supabase/paginate.ts) so every badge loads.
+    fetchAllRows<MbReqRow>((from, to) =>
+      supabase
+        .from('merit_badge_requirements')
+        .select('id, mb_id, parent_id, code, label, complete_rule, complete_n, sort_order')
+        .order('mb_id')
+        .order('sort_order')
+        .range(from, to)
+    ),
     supabase.from('events').select('id, name, default_kind, start_date').order('name'),
     supabase.from('service_projects').select('id, name').order('name'),
     supabase.from('leadership_positions').select('id, name').order('name'),
@@ -122,7 +130,8 @@ async function loadFastEntry(): Promise<{
   };
   const rankReqs = (rankReqsRes.data ?? []) as RankReqRow[];
   const mbs = (mbsRes.data ?? []) as { id: string; name: string; eagle: boolean }[];
-  const mbReqs = (mbReqsRes.data ?? []) as MbReqRow[];
+  // mbReqsRes is already a fully-paginated MbReqRow[] (see fetchAllRows above).
+  const mbReqs = mbReqsRes;
   const events = (eventsRes.data ?? []) as {
     id: number;
     name: string;

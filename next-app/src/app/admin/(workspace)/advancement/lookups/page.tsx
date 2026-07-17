@@ -8,6 +8,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/server';
+import { fetchAllRows } from '@/lib/supabase/paginate';
 import { autoLoginLabels } from '@/lib/authorized-adults';
 import { LeaderEditor, type LeaderRow } from './leader-editor';
 import { ScoutEditor, type ScoutRow, type ParentRow } from './scout-editor';
@@ -124,11 +125,17 @@ async function loadLookups() {
       .select('id, mb_id, code, label')
       .is('parent_id', null)
       .order('mb_id'),
-    supabase
-      .from('merit_badge_requirements')
-      .select('id, mb_id, parent_id, code, label, complete_rule, complete_n, sort_order')
-      .order('mb_id')
-      .order('sort_order'),
+    // Full MB requirement tree for the per-badge editor. Past the 1000-row
+    // PostgREST cap (1,700+ rows) — paginate so late-alphabet badges' trees
+    // aren't silently dropped (lib/supabase/paginate.ts).
+    fetchAllRows<MbReqRowFull>((from, to) =>
+      supabase
+        .from('merit_badge_requirements')
+        .select('id, mb_id, parent_id, code, label, complete_rule, complete_n, sort_order')
+        .order('mb_id')
+        .order('sort_order')
+        .range(from, to)
+    ),
     supabase.from('events').select('id, name, default_kind, start_date').order('name'),
     supabase.from('service_projects').select('id, name').order('name'),
     supabase.from('leadership_positions').select('id, name').order('name'),
@@ -168,7 +175,7 @@ async function loadLookups() {
     sort_order: number;
   };
   const reqsByMb = new Map<string, MbReqRowFull[]>();
-  for (const r of (mbReqsFullRes.data ?? []) as MbReqRowFull[]) {
+  for (const r of mbReqsFullRes) {
     const list = reqsByMb.get(r.mb_id) ?? [];
     list.push(r);
     reqsByMb.set(r.mb_id, list);
