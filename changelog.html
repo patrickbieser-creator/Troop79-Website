@@ -518,6 +518,123 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.9 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.9</span>
+        <span class="release-date">July 16, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Records &rarr; Audits</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              New <strong>Duplicate Ledger Records</strong> audit finds scouts credited twice for the same rank or badge award, the same requirement, or the same dated activity. It lists every conflicting record, defaults to keeping the oldest, and resolving soft-deletes the rest with the same audit trail as a manual ledger delete.
+              <span class="change-note">One-time achievements (ranks, badges, requirements) flag on <em>any</em> repeat; dated activities (service, camping, hiking, outings, fundraisers, leadership, attendance) only flag when the date matches too &mdash; so an annual campout that reuses the same event every year isn&rsquo;t a false alarm. First run surfaced roughly 436 duplicate groups across 39 scouts, mostly Fast Entry double-clicks and historical-import overlap.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.8 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.8</span>
+        <span class="release-date">July 16, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Scoutbook Export</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              New export screen: pick a date range, preview every merit badge and rank award ready to push to Scoutbook, and download a file that matches Scoutbook&rsquo;s bulk-upload format exactly. Anything that can&rsquo;t be mapped &mdash; a scout with no BSA member ID on file, or a badge with no confirmed Scoutbook ID &mdash; is listed in an &ldquo;excluded&rdquo; panel with the reason, rather than being silently dropped or guessed.
+              <span class="change-note">Building this first required rebuilding the authoritative Scoutbook ID reference (164 badges) by cross-referencing a real historical Scoutbook upload against our own ledger &mdash; the previously stored IDs were wrong. The download format was verified byte-for-byte against a working sample file.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.7.1 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.7.1</span>
+        <span class="release-date">July 15, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Lookups &amp; Admin</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Tags</strong> moved in as its own panel (it was a separate page), so every editable troop list &mdash; scouts, adults, badges, events, service projects, skills, tags &mdash; now lives in one place.
+            </span>
+          </li>
+          <li>
+            <span>
+              Internal requirement codes are now editable, and renaming one safely updates every historical ledger entry that referenced it.
+              <span class="change-note">Events also gained a start-date column with sortable, toggleable headers and newest-first ordering in both Lookups and the Fast Entry picker; dates are inline-editable.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Login &amp; Roster</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Admins can now revoke a specific adult&rsquo;s login access, or override the name they log in as, without touching the shared troop password. The typed login name is checked against the authorized-adult list, so the &ldquo;entered by&rdquo; stamps on ledger records are now a verified identity.
+              <span class="change-note">Clicking a name in the Roster opens full demographics plus parents/guardians, with a deep link straight into the matching Lookups edit dialog. The Universal Ledger now shows who entered each row.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.7 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.7</span>
+        <span class="release-date">July 13, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Scout Clipboard</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              The printed Clipboard was rebuilt as a fixed two-page template &mdash; one sheet, double-sided &mdash; matching the troop&rsquo;s original Google-Sheets printout exactly.
+              <span class="change-note">Chrome&rsquo;s automatic print layout kept pushing content onto blank extra pages, so the print view now places each rank and section explicitly. The on-screen Clipboard is unchanged.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Advancement Audits</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Three new audit checks: <strong>Time in Rank</strong>, <strong>Star/Life merit badge counts</strong>, and <strong>Position of Responsibility</strong>. The Activity &amp; Campout Thresholds check was also extended to Tenderfoot 1a, with a per-finding detail line explaining each result.
+            </span>
+          </li>
+          <li>
+            <span>
+              The admin workspace now shows clear dev-vs-production guards &mdash; red navigation, a top banner, a &ldquo;[DEV]&rdquo; tab title, and a distinct icon &mdash; so it&rsquo;s always obvious which database you&rsquo;re editing.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.6.1 -->
     <div class="release">
       <div class="release-header">
