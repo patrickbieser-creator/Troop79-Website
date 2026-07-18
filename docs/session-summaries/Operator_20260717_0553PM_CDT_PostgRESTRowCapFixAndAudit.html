@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session Summary — Fast Entry Row-Cap Fix &amp; Pagination Audit</title>
+<style>
+  :root { --nw-teal: #1e3a4a; --nw-green: #3d5a3e; --cream: #faf6ef; --bark: #8b6914; --ink: #21201c; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Georgia, 'Times New Roman', serif; color: var(--ink); background: var(--cream); line-height: 1.55; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 24px 64px; }
+  header { background: var(--nw-teal); color: #fff; padding: 28px 24px; margin-bottom: 32px; }
+  header .inner { max-width: 880px; margin: 0 auto; }
+  header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: .01em; }
+  header .sub { opacity: .85; font-size: .95rem; margin-top: 6px; font-family: 'Segoe UI', Arial, sans-serif; }
+  h2 { font-size: 1.15rem; color: var(--nw-teal); border-bottom: 3px solid var(--nw-green); padding-bottom: 6px; margin: 36px 0 14px; }
+  h3 { font-size: 1rem; color: var(--nw-green); margin: 18px 0 6px; }
+  p, li { font-size: .98rem; }
+  ul { padding-left: 22px; margin: 8px 0; }
+  li { margin: 5px 0; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 18px 0; }
+  .metric { background: #fff; border: 1px solid #e4ddcf; border-top: 4px solid var(--nw-green); padding: 14px; text-align: center; }
+  .metric .num { font-size: 1.7rem; font-weight: 700; color: var(--nw-teal); }
+  .metric .lbl { font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: #6a675f; font-family: 'Segoe UI', Arial, sans-serif; }
+  code { background: #f0ead9; padding: 1px 5px; font-size: .88em; font-family: Consolas, monospace; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; background: #fff; font-size: .92rem; }
+  th, td { border: 1px solid #e4ddcf; padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--nw-teal); color: #fff; font-family: 'Segoe UI', Arial, sans-serif; font-size: .85rem; }
+  .tag { display: inline-block; background: var(--bark); color: #fff; font-size: .74rem; padding: 1px 8px; border-radius: 10px; font-family: 'Segoe UI', Arial, sans-serif; vertical-align: middle; }
+  footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid #d8d0bf; font-size: .84rem; color: #6a675f; font-family: 'Segoe UI', Arial, sans-serif; }
+</style>
+</head>
+<body>
+<header><div class="inner">
+  <h1>Fast Entry Row-Cap Fix &amp; Pagination Audit</h1>
+  <div class="sub">Troop 79 Website · Session summary · July 17, 2026, 5:53 PM CDT · Operator</div>
+</div></header>
+<div class="wrap">
+
+<h2>Key Metrics</h2>
+<div class="metrics">
+  <div class="metric"><div class="num">1</div><div class="lbl">Reported bug fixed</div></div>
+  <div class="metric"><div class="num">5</div><div class="lbl">Loaders paginated</div></div>
+  <div class="metric"><div class="num">31</div><div class="lbl">Badges unblocked</div></div>
+  <div class="metric"><div class="num">3</div><div class="lbl">Prod deploys</div></div>
+  <div class="metric"><div class="num">1</div><div class="lbl">Decision recorded</div></div>
+  <div class="metric"><div class="num">4</div><div class="lbl">Changelog entries backfilled</div></div>
+</div>
+
+<h2>What Was Accomplished</h2>
+
+<h3>The reported bug — Robotics requirements missing in Fast Entry</h3>
+<p>A leader couldn&rsquo;t sign a scout off on the Robotics merit badge — Fast Entry showed <strong>zero requirements</strong>. The badge data was fine (Robotics has all 23 requirements in production). The loader fetched the entire <code>merit_badge_requirements</code> table (now <strong>1,735 rows</strong>) in one request, and PostgREST silently caps a response at <strong>1,000 rows</strong> — everything alphabetically past <code>leatherwork</code> was dropped, hiding <strong>31 badges&rsquo;</strong> requirement trees. Fixed <code>fast-entry/page.tsx</code> and the <code>lookups</code> MB-tree editor with the existing <code>fetchAllRows()</code> paginator. Verified live against production before and after: unbounded fetch returned 1,000 rows / 0 Robotics; paginated fetch returns all 23. Shipped as <strong>v1.9.1</strong>.</p>
+
+<h3>Follow-up audit — the whole read surface</h3>
+<p>Scanned every read of the only two tables that can exceed 1,000 rows — <code>ledger_entries</code>/<code>ledger_active</code> (9,388) and <code>merit_badge_requirements</code> (1,735); every other table is &le;171 rows. Checked each unpaginated read against live counts and preventively paginated three more before any could truncate:</p>
+<table>
+  <tr><th>Location</th><th>Query</th><th>Rows now</th><th>Why</th></tr>
+  <tr><td><code>lib/scoutbook-export.ts</code> <span class="tag">key</span></td><td>mb + rank awards</td><td>509</td><td>Awards only accumulate — a wide-range export could silently omit awards from a Scoutbook upload leaders trust as complete</td></tr>
+  <tr><td><code>meeting-plan/load-input.ts</code></td><td><code>mb_progress</code> view</td><td>483</td><td>Ceiling ~3,300 (badges × scouts); planner would run on partial data</td></tr>
+  <tr><td><code>lib/scout-detail.ts</code></td><td>one scout&rsquo;s full ledger</td><td>424</td><td>A long-tenured scout could approach the cap; page would show partial history</td></tr>
+</table>
+<p>Everything else was already paginated, page-limited for display, or scoped small. One read left intentionally unpaginated: <code>bor-requirements.ts</code> on <code>rank_award</code> (97 rows, naturally capped at scouts &times; 7 ranks &asymp; 700 — can&rsquo;t reach the cap). Shipped as <strong>v1.9.2</strong>.</p>
+
+<h3>Housekeeping — changelog backfill</h3>
+<p>The public changelog had drifted: its newest entry was v1.6.1 while the app had shipped through v1.9. Backfilled four entries — <strong>v1.7</strong> (Clipboard print overhaul + new audits), <strong>v1.7.1</strong> (Lookups/Tags consolidation, editable requirement codes, leader login controls), <strong>v1.8</strong> (Scoutbook Export), <strong>v1.9</strong> (Duplicate Ledger Records audit) — plus v1.9.1 and v1.9.2 for this session.</p>
+
+<h2>Blockers Resolved</h2>
+<ul>
+  <li><strong>Fast Entry could not sign off 31 merit badges</strong> (Robotics, Swimming, Welding, Wilderness Survival, Pioneering, Photography, and more) — root-caused to the PostgREST 1,000-row cap and fixed, verified live, deployed.</li>
+</ul>
+
+<h2>Decisions</h2>
+<ul>
+  <li><strong>D-028</strong> — Reads of large tables (<code>ledger_entries</code>/<code>ledger_active</code>, <code>merit_badge_requirements</code>, <code>mb_progress</code>) must paginate via <code>fetchAllRows()</code> unless provably scoped small or intentionally page-limited. Full read surface audited and brought into compliance.</li>
+</ul>
+
+<h2>Files Changed</h2>
+<ul>
+  <li><code>next-app/.../fast-entry/page.tsx</code>, <code>lookups/page.tsx</code> — paginate MB requirement loads (v1.9.1)</li>
+  <li><code>next-app/src/lib/scoutbook-export.ts</code>, <code>meeting-plan/load-input.ts</code>, <code>src/lib/scout-detail.ts</code> — preventive pagination (v1.9.2)</li>
+  <li><code>changelog.html</code> — v1.7–v1.9.2 entries</li>
+  <li>Commits: <code>a4b9c69</code> (fix) · <code>76f5c47</code> (changelog backfill) · <code>f6a70fd</code> (preventive sweep)</li>
+</ul>
+
+<h2>Next Steps</h2>
+<ul>
+  <li>Event Signup remains the active track — awaiting prototype review and the open-question calls before Phase 1 implementation.</li>
+  <li>Any future loader touching <code>ledger_entries</code> or <code>merit_badge_requirements</code> must paginate (D-028).</li>
+</ul>
+
+<footer>Troop 79 Website · Generated by Operator via /northwoods:end-session · 2026-07-17 5:53 PM CDT</footer>
+</div>
+</body>
+</html>
