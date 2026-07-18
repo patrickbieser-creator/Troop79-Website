@@ -277,3 +277,34 @@ None exists in the app. Phases 1–2 ship without email (on-screen confirmation;
 - **Donations:** explicitly out of scope; future Donate button → separate landing page, unrelated to signup.
 - Tech-lead reviews 2026-07-14: v1, v2, and v3 deltas all approve-with-changes; every required change folded in (v3: per-leg seat columns, price_id ON DELETE RESTRICT, amount/seat value CHECKs, tier-match on every write path, driver-only never waitlisted). No memory conflicts across all three reviews. When built, record the edit-in-place divergence from replace-on-save as a DECISIONS.md entry.
 - Prototypes: `prototypes/event-signup/` — v1/v2 pages (index, admin-roster, fundraiser-shifts, ski-outing) validated the individual flows; v3 adds the **composable** pair: one generic event page driven by a block config (demoed across campout / pancake breakfast / ski outing / rummage sale / summer camp), and an admin event-builder showing presets + block toggles + tier/shift/question editors.
+
+## Phase 1 Kickoff — Grounding & Pending Decisions (2026-07-18)
+
+Context grounded against **prod** (`qyovupepjdxikyepieps`) before starting Phase 1:
+
+- **No signup schema exists** — none of `event_signups / event_prices / signup_entries / signup_slots / signup_questions / event_resources` are present. (The `events` table in the DB is the unrelated ledger lookup, not this feature.) Clean slate.
+- **`calendar_entries.details_md` does not exist yet** — Phase 1 migration adds it. Current `calendar_entries` columns: id, entry_date, end_date, day_note, category, title, description, location, article_id, start_time, end_time, created_at, updated_at.
+- **Categories currently in use (10, with counts):** Troop Meeting (17), Campout (5), Fundraiser (3), Service Project (2), Committee Meeting (2), No Meeting (2), Summer Camp (1), Court of Honor (1), **Ceremony (1)**, High Adventure (1). Note "Ceremony" and "Court of Honor" already coexist as separate categories — the rename decision must merge/resolve them. `category` is free-text (no enum), so renames are plain `UPDATE`s + updating the CSV-import allowed list + the public calendar filter.
+
+**Proposed category mapping → 13-type taxonomy (awaiting Patrick's confirm/edit):**
+
+| Today (count) | Proposed |
+|---|---|
+| Troop Meeting (17) | keep (signup off by default) |
+| Campout (5) | keep, or rename **Campout / Overnight**? |
+| Fundraiser (3) | keep |
+| Service Project (2) | keep |
+| Committee Meeting (2) | → **Leadership / Planning**? |
+| No Meeting (2) | keep (calendar-only, never signup) |
+| Summer Camp (1) | keep |
+| Court of Honor (1) + Ceremony (1) | **merge → Ceremony / Recognition**? |
+| High Adventure (1) | keep |
+| *(none yet)* | add empty types: **Day Activity / Outing, Advancement Event, Training, Recruiting / Outreach, Social Event** |
+
+**Two decisions that gate the Phase 1 migration (must resolve before writing it):**
+1. **Category mapping** — confirm/edit the table above (touches real rows + CSV import + calendar filter).
+2. **Guests model** — per-household count (prototype) vs. per-entry `guest_count` (schema). Pick one before the `signup_entries` table is written.
+
+**Needed before the builder ships (Phase 1 step 5, not the migration):** confirm the preset matrix default cells (plan §"Preset matrix").
+
+**Parked — Phase 2, not blocking:** tier-scoped questions (`signup_questions.tier_ids`), driver_only-may-claim-donation-tasks rule, public aggregate answer summaries.
