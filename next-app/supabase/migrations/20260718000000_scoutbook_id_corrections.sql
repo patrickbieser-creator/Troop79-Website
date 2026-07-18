@@ -99,6 +99,15 @@ update public.scoutbook_merit_badge_reference set scoutbook_id = '56' where name
 update public.merit_badges set scoutbook_id = '140' where id = 'game-design';
 update public.scoutbook_merit_badge_reference set scoutbook_id = '140' where name = 'Game Design';
 
+-- Art (11) and Architecture (10) were both wrong: Art was 157, Architecture 11.
+-- Art is a live catalog badge; Architecture is reference-only.
+update public.merit_badges set scoutbook_id = '11' where id = 'art';
+update public.scoutbook_merit_badge_reference set scoutbook_id = '11' where name = 'Art';
+update public.scoutbook_merit_badge_reference set scoutbook_id = '10' where name = 'Architecture';
+
+-- Animation's correct ID is 150 (was 8); reference-only badge.
+update public.scoutbook_merit_badge_reference set scoutbook_id = '150' where name = 'Animation';
+
 -- No longer merit badges.
 delete from public.scoutbook_merit_badge_reference
   where name in ('Carpentry','Coin Collecting','Rifle/Shotgun','Print/Communications','Machinery','General Science','Food Systems');
