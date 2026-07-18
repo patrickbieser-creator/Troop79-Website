@@ -1031,9 +1031,9 @@
     },
     {
       "id": "signs-signals-codes",
-      "name": "Signals Signs and Codes",
+      "name": "Signs, Signals, and Codes",
       "eagle": false,
-      "scoutbookId": "112"
+      "scoutbookId": "151"
     },
     {
       "id": "leatherwork",
@@ -10208,7 +10208,7 @@
           "by": "JP"
         },
         {
-          "name": "Signals Signs and Codes",
+          "name": "Signs, Signals, and Codes",
           "date": "2023-07-25",
           "by": "Camp"
         },
