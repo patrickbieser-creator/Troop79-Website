@@ -118,7 +118,7 @@ export default async function EventDetailPage({
     saved,
     cancelled
   } = sp;
-  const { entry, signup, prices, slots, resources, headcount } = detail;
+  const { entry, signup, prices, slots, questions, resources, headcount } = detail;
   const gatedIn = audience !== null;
   const slotFirst = isSlotFirst(signup, slots);
 
@@ -359,6 +359,7 @@ export default async function EventDetailPage({
                         signup={signup}
                         household={household}
                         prices={prices}
+                        questions={questions}
                         existing={existing}
                         submitAction={submitSignupAction}
                         cancelAction={cancelSignupAction}

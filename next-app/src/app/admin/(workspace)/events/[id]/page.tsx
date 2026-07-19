@@ -24,7 +24,7 @@ async function load(signupId: number) {
   if (!signup) return null;
   const s = signup as unknown as { calendar_entry_id: number; id: number };
 
-  const [{ data: entry }, { data: prices }, { data: slots }] = await Promise.all([
+  const [{ data: entry }, { data: prices }, { data: slots }, { data: questions }] = await Promise.all([
     supabase
       .from('calendar_entries')
       .select('id, title, entry_date, end_date, category')
@@ -42,14 +42,16 @@ async function load(signupId: number) {
       .eq('event_signup_id', s.id)
       .order('slot_date')
       .order('sort')
-      .order('id')
+      .order('id'),
+    supabase.from('signup_questions').select('*').eq('event_signup_id', s.id).order('sort').order('id')
   ]);
 
   return {
     signup: signup as Record<string, unknown>,
     entry: entry as Record<string, unknown> | null,
     prices: (prices ?? []) as Record<string, unknown>[],
-    slots: (slots ?? []) as Record<string, unknown>[]
+    slots: (slots ?? []) as Record<string, unknown>[],
+    questions: (questions ?? []) as Record<string, unknown>[]
   };
 }
 
@@ -89,6 +91,7 @@ export default async function EventBuilderPage({ params }: { params: Promise<{ i
         signup={data.signup}
         prices={data.prices}
         slots={data.slots}
+        questions={data.questions}
       />
     </>
   );

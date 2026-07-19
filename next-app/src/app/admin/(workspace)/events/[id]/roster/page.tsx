@@ -36,6 +36,7 @@ export interface RosterRow {
   notes: string | null;
   household: string;
   claims: string[];
+  answers: string[];
 }
 
 async function load(signupId: number) {
@@ -54,6 +55,7 @@ async function load(signupId: number) {
   };
 
   const [{ data: entry }, { data: entries }, { data: prices }, { data: slots }, { data: claims },
+         { data: answerRows }, { data: questionRows },
          { data: scouts }, { data: parents }, { data: households }] = await Promise.all([
     supabase.from('calendar_entries').select('id, title, entry_date, category')
       .eq('id', sig.calendar_entry_id).maybeSingle(),
@@ -61,6 +63,8 @@ async function load(signupId: number) {
     supabase.from('event_prices').select('*').eq('event_signup_id', sig.id),
     supabase.from('signup_slots').select('*').eq('event_signup_id', sig.id).order('sort'),
     supabase.from('signup_slot_claims').select('slot_id, signup_entry_id'),
+    supabase.from('signup_answers').select('signup_entry_id, question_id, value'),
+    supabase.from('signup_questions').select('id, prompt').eq('event_signup_id', sig.id),
     supabase.from('scouts').select('id, display_name, active, household_id'),
     supabase.from('scout_parents').select('id, name'),
     supabase.from('households').select('id, label')
@@ -82,6 +86,23 @@ async function load(signupId: number) {
     const label = slotById.get(c.slot_id);
     if (!label) continue;
     claimsByEntry.set(c.signup_entry_id, [...(claimsByEntry.get(c.signup_entry_id) ?? []), label]);
+  }
+
+  const qLabel = new Map(
+    ((questionRows ?? []) as { id: number; prompt: string }[]).map((q) => [q.id, q.prompt])
+  );
+  const ansByEntry = new Map<number, string[]>();
+  for (const a of (answerRows ?? []) as {
+    signup_entry_id: number;
+    question_id: number;
+    value: string;
+  }[]) {
+    const label = qLabel.get(a.question_id);
+    if (!label) continue;
+    ansByEntry.set(a.signup_entry_id, [
+      ...(ansByEntry.get(a.signup_entry_id) ?? []),
+      `${label}: ${a.value}`
+    ]);
   }
 
   const rows: RosterRow[] = ((entries ?? []) as Record<string, unknown>[]).map((e) => {
@@ -111,7 +132,8 @@ async function load(signupId: number) {
       paymentReceived: e.payment_received === true,
       notes: (e.notes as string) ?? null,
       household: e.household_id ? (hhById.get(Number(e.household_id)) ?? '—') : '—',
-      claims: claimsByEntry.get(Number(e.id)) ?? []
+      claims: claimsByEntry.get(Number(e.id)) ?? [],
+      answers: ansByEntry.get(Number(e.id)) ?? []
     };
   });
 

@@ -215,3 +215,47 @@ export async function setEntryFlag(
   revalidateEvent(calendarEntryId, signupId);
   return { ok: true };
 }
+
+export async function addQuestion(
+  signupId: number,
+  calendarEntryId: number,
+  q: {
+    prompt: string;
+    input_type: 'text' | 'number' | 'choice';
+    choices: string[];
+    applies_to: 'scouts' | 'adults' | 'both';
+    required: boolean;
+  }
+): Promise<Result> {
+  await requireRole(['leader']);
+  if (!q.prompt.trim()) return { ok: false, error: 'Give the question a prompt.' };
+  if (q.input_type === 'choice' && q.choices.length === 0) {
+    return { ok: false, error: 'A choice question needs at least one option.' };
+  }
+  const supabase = createAdminClient();
+  const { error } = await supabase.from('signup_questions').insert({
+    event_signup_id: signupId,
+    prompt: q.prompt.trim(),
+    input_type: q.input_type,
+    // The DB CHECK requires choices exactly when the type is 'choice'.
+    choices: q.input_type === 'choice' ? q.choices : null,
+    applies_to: q.applies_to,
+    required: q.required
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidateEvent(calendarEntryId, signupId);
+  return { ok: true };
+}
+
+export async function deleteQuestion(
+  questionId: number,
+  signupId: number,
+  calendarEntryId: number
+): Promise<Result> {
+  await requireRole(['leader']);
+  const supabase = createAdminClient();
+  const { error } = await supabase.from('signup_questions').delete().eq('id', questionId);
+  if (error) return { ok: false, error: error.message };
+  revalidateEvent(calendarEntryId, signupId);
+  return { ok: true };
+}

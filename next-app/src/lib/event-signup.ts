@@ -62,6 +62,16 @@ export interface EventSignup {
   guest_prompt: string | null;
 }
 
+export interface SignupQuestion {
+  id: number;
+  prompt: string;
+  input_type: 'text' | 'number' | 'choice';
+  choices: string[] | null;
+  applies_to: 'scouts' | 'adults' | 'both';
+  required: boolean;
+  sort: number;
+}
+
 export interface EventDetail {
   entry: CalendarEntry;
   resources: EventResource[];
@@ -69,6 +79,7 @@ export interface EventDetail {
   signup: EventSignup | null;
   prices: EventPrice[];
   slots: SignupSlot[];
+  questions: SignupQuestion[];
   /** status='yes' + participation='full' headcount, including guests. */
   headcount: number;
 }
@@ -104,6 +115,7 @@ export interface HouseholdEntry {
   payment_received: boolean;
   /** slot ids this entry currently holds. */
   claims: number[];
+  answers: { question_id: number; value: string }[];
 }
 
 /**
@@ -125,7 +137,7 @@ export async function loadHouseholdSignup(
     .eq('household_id', householdId)
     .neq('status', 'cancelled');
 
-  const rows = (entries ?? []) as unknown as Omit<HouseholdEntry, 'claims'>[];
+  const rows = (entries ?? []) as unknown as Omit<HouseholdEntry, 'claims' | 'answers'>[];
   if (rows.length === 0) return [];
 
   const { data: claims } = await supabase
@@ -136,11 +148,31 @@ export async function loadHouseholdSignup(
       rows.map((r) => r.id)
     );
 
+  const { data: answerRows } = await supabase
+    .from('signup_answers')
+    .select('signup_entry_id, question_id, value')
+    .in('signup_entry_id', rows.map((r) => r.id));
+
   const byEntry = new Map<number, number[]>();
   for (const c of (claims ?? []) as { slot_id: number; signup_entry_id: number }[]) {
     byEntry.set(c.signup_entry_id, [...(byEntry.get(c.signup_entry_id) ?? []), c.slot_id]);
   }
-  return rows.map((r) => ({ ...r, claims: byEntry.get(r.id) ?? [] }));
+  const ansByEntry = new Map<number, { question_id: number; value: string }[]>();
+  for (const a of (answerRows ?? []) as {
+    signup_entry_id: number;
+    question_id: number;
+    value: string;
+  }[]) {
+    ansByEntry.set(a.signup_entry_id, [
+      ...(ansByEntry.get(a.signup_entry_id) ?? []),
+      { question_id: a.question_id, value: a.value }
+    ]);
+  }
+  return rows.map((r) => ({
+    ...r,
+    claims: byEntry.get(r.id) ?? [],
+    answers: ansByEntry.get(r.id) ?? []
+  }));
 }
 
 export async function loadEventDetail(entryId: number): Promise<EventDetail | null> {
@@ -175,6 +207,7 @@ export async function loadEventDetail(entryId: number): Promise<EventDetail | nu
     signup: (signup ?? null) as EventSignup | null,
     prices: [],
     slots: [],
+    questions: [],
     headcount: 0
   };
   if (!signup) return base;
@@ -198,6 +231,12 @@ export async function loadEventDetail(entryId: number): Promise<EventDetail | nu
       .order('sort', { ascending: true }),
     supabase.rpc('event_signup_headcount', { p_event_signup_id: sig.id })
   ]);
+  const { data: questions } = await supabase
+    .from('signup_questions')
+    .select('id, prompt, input_type, choices, applies_to, required, sort')
+    .eq('event_signup_id', sig.id)
+    .order('sort')
+    .order('id');
 
   // Coverage counts, aggregate only. Filtered to status='yes' so a cancelled
   // entry releases its spot — the same rule the claim RPC enforces.
@@ -224,6 +263,7 @@ export async function loadEventDetail(entryId: number): Promise<EventDetail | nu
       amount: Number(p.amount)
     })),
     slots: slotRows.map((s) => ({ ...s, filled: counts.get(s.id) ?? 0 })),
+    questions: (questions ?? []) as unknown as SignupQuestion[],
     headcount: typeof headcount === 'number' ? headcount : 0
   };
 }

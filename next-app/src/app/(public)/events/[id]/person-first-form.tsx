@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import type { EventPrice, EventSignup, HouseholdEntry } from '@/lib/event-signup';
+import type { EventPrice, EventSignup, HouseholdEntry, SignupQuestion } from '@/lib/event-signup';
 import type { Household } from '@/lib/households';
 import styles from './event-detail.module.css';
 
@@ -33,6 +33,7 @@ export default function PersonFirstForm({
   signup,
   household,
   prices,
+  questions,
   existing,
   submitAction,
   cancelAction
@@ -41,6 +42,7 @@ export default function PersonFirstForm({
   signup: EventSignup;
   household: Household;
   prices: EventPrice[];
+  questions: SignupQuestion[];
   existing: HouseholdEntry[];
   submitAction: (fd: FormData) => void;
   cancelAction: (fd: FormData) => void;
@@ -87,6 +89,68 @@ export default function PersonFirstForm({
   const [guestNote, setGuestNote] = useState(existing[0]?.guest_note ?? '');
   const [notes, setNotes] = useState(existing[0]?.notes ?? '');
   const [newAdults, setNewAdults] = useState<AdHocAdult[]>([]);
+  // answers[personKey][questionId]
+  const [answers, setAnswers] = useState<Record<string, Record<number, string>>>(() => {
+    const init: Record<string, Record<number, string>> = {};
+    for (const e of existing) {
+      const key = e.scout_id ? `s:${e.scout_id}` : `a:${e.scout_parent_id}`;
+      init[key] = Object.fromEntries((e.answers ?? []).map((x) => [x.question_id, x.value]));
+    }
+    return init;
+  });
+
+  const questionsFor = (kind: 'scout' | 'adult') =>
+    questions.filter(
+      (q) => q.applies_to === 'both' || q.applies_to === (kind === 'scout' ? 'scouts' : 'adults')
+    );
+
+  const answerArr = (key: string, kind: 'scout' | 'adult') =>
+    questionsFor(kind)
+      .map((q) => ({ question_id: q.id, value: answers[key]?.[q.id] ?? '' }))
+      .filter((a) => a.value !== '');
+
+  const questionFields = (key: string, kind: 'scout' | 'adult') => {
+    const qs = questionsFor(kind);
+    if (qs.length === 0) return null;
+    return (
+      <div className={styles.qaGrid}>
+        {qs.map((q) => (
+          <label key={q.id} className={styles.qaField}>
+            <span className={styles.miniLabel}>
+              {q.prompt}
+              {!q.required && <span className={styles.optional}> (optional)</span>}
+            </span>
+            {q.input_type === 'choice' ? (
+              <div className={styles.pillRow}>
+                {(q.choices ?? []).map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className={`${styles.pill} ${answers[key]?.[q.id] === c ? styles.pillOn : ''}`}
+                    aria-pressed={answers[key]?.[q.id] === c}
+                    onClick={() =>
+                      setAnswers((v) => ({ ...v, [key]: { ...(v[key] ?? {}), [q.id]: c } }))
+                    }
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <input
+                type={q.input_type === 'number' ? 'number' : 'text'}
+                className={styles.numInputWide}
+                value={answers[key]?.[q.id] ?? ''}
+                onChange={(e) =>
+                  setAnswers((v) => ({ ...v, [key]: { ...(v[key] ?? {}), [q.id]: e.target.value } }))
+                }
+              />
+            )}
+          </label>
+        ))}
+      </div>
+    );
+  };
 
   const tiersFor = (kind: 'scout' | 'adult') =>
     prices.filter((p) => p.applies_to === 'both' || p.applies_to === (kind === 'scout' ? 'scouts' : 'adults'));
@@ -155,7 +219,8 @@ export default function PersonFirstForm({
         price_id: t?.id ?? null,
         days: t?.per === 'day' ? days[`s:${s.id}`] : null,
         guest_count: 0,
-        notes: notes || null
+        notes: notes || null,
+        answers: c === 'yes' ? answerArr(`s:${s.id}`, 'scout') : []
       });
     }
     for (const a of adults) {
@@ -180,7 +245,8 @@ export default function PersonFirstForm({
         seats_offered_back: d.back ? d.seats : null,
         guest_count: wantsGuests ? guests : 0,
         guest_note: wantsGuests ? guestNote || null : null,
-        notes: notes || null
+        notes: notes || null,
+        answers: attending ? answerArr(`a:${a.id}`, 'adult') : []
       });
     }
     return out;
@@ -278,6 +344,7 @@ export default function PersonFirstForm({
                 </span>
               </div>
               {scoutChoice[s.id] === 'yes' && tierPicker(`s:${s.id}`, 'scout')}
+              {scoutChoice[s.id] === 'yes' && questionFields(`s:${s.id}`, 'scout')}
             </div>
           ))}
         </>
@@ -331,6 +398,7 @@ export default function PersonFirstForm({
               )}
 
               {adultChoice[a.id] === 'full' && tierPicker(`a:${a.id}`, 'adult')}
+              {adultChoice[a.id] === 'full' && questionFields(`a:${a.id}`, 'adult')}
 
               {signup.drivers_needed &&
                 (adultChoice[a.id] === 'full' || adultChoice[a.id] === 'driver_only') && (

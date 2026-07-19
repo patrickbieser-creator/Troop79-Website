@@ -447,3 +447,7 @@
 .owedAmt { font-weight: 700; color: var(--forest); white-space: nowrap; }
 .owedZero { font-weight: 700; color: var(--text-meta); white-space: nowrap; }
 .owedTotal { display: flex; justify-content: space-between; gap: 12px; margin-top: 10px; padding-top: 9px; border-top: 2px solid var(--border-mid); font-size: 15px; font-weight: 700; color: var(--text-head); }
+.qaGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-top: 4px; }
+.qaField { display: block; }
+.numInputWide { width: 100%; padding: 7px 10px; border: 1px solid var(--border-mid); border-radius: 3px; background: var(--warm-white); font-size: 14px; }
+.optional { font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--text-meta); }

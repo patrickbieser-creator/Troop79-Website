@@ -2,7 +2,9 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { updateSignup, addPrice, deletePrice, addSlot, deleteSlot } from '../actions';
+import {
+  updateSignup, addPrice, deletePrice, addSlot, deleteSlot, addQuestion, deleteQuestion
+} from '../actions';
 import styles from '../events-admin.module.css';
 
 /*
@@ -52,13 +54,15 @@ export function BuilderPanels({
   calendarEntryId,
   signup,
   prices,
-  slots
+  slots,
+  questions
 }: {
   signupId: number;
   calendarEntryId: number;
   signup: Rec;
   prices: Rec[];
   slots: Rec[];
+  questions: Rec[];
 }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +94,13 @@ export function BuilderPanels({
   const [sWho, setSWho] = useState<'scouts' | 'adults' | 'both'>('both');
   const [sNeeded, setSNeeded] = useState('4');
   const [sAttend, setSAttend] = useState(true);
+
+  // Question draft
+  const [qPrompt, setQPrompt] = useState('');
+  const [qType, setQType] = useState<'text' | 'number' | 'choice'>('text');
+  const [qChoices, setQChoices] = useState('');
+  const [qWho, setQWho] = useState<'scouts' | 'adults' | 'both'>('both');
+  const [qReq, setQReq] = useState(true);
 
   return (
     <div className={styles.builder}>
@@ -373,6 +384,99 @@ export function BuilderPanels({
             }
           >
             Add job
+          </button>
+        </div>
+      </section>
+
+      <section className={styles.panel}>
+        <h2>Questions asked of each attendee</h2>
+        <p className={styles.panelHint}>
+          Per person, not per household — the ski outing needs every skier’s own height, weight and
+          shoe size before the rental shop can stage gear. Answers are validated server-side.
+        </p>
+        {questions.length > 0 && (
+          <table className={styles.miniTable}>
+            <tbody>
+              {questions.map((q) => (
+                <tr key={String(q.id)}>
+                  <td>
+                    <strong>{s(q.prompt)}</strong>
+                    {b(q.required) && <span className={styles.tag}>required</span>}
+                  </td>
+                  <td>{s(q.input_type)}</td>
+                  <td>{Array.isArray(q.choices) ? (q.choices as string[]).join(' / ') : '—'}</td>
+                  <td>{s(q.applies_to)}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className={styles.rowDel}
+                      disabled={pending}
+                      onClick={() =>
+                        start(async () => {
+                          const res = await deleteQuestion(Number(q.id), signupId, calendarEntryId);
+                          if (!res.ok) setError(res.error ?? 'Could not remove question.');
+                          else router.refresh();
+                        })
+                      }
+                    >
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <div className={styles.addRow}>
+          <input
+            placeholder="Question (e.g. Shoe size)"
+            value={qPrompt}
+            onChange={(e) => setQPrompt(e.target.value)}
+          />
+          <select value={qType} onChange={(e) => setQType(e.target.value as 'text' | 'number' | 'choice')}>
+            <option value="text">Short text</option>
+            <option value="number">Number</option>
+            <option value="choice">Pick one</option>
+          </select>
+          {qType === 'choice' && (
+            <input
+              placeholder="Options, comma separated"
+              value={qChoices}
+              onChange={(e) => setQChoices(e.target.value)}
+            />
+          )}
+          <select value={qWho} onChange={(e) => setQWho(e.target.value as 'scouts' | 'adults' | 'both')}>
+            <option value="both">Everyone</option>
+            <option value="scouts">Scouts</option>
+            <option value="adults">Adults</option>
+          </select>
+          <label className={styles.inlineChk}>
+            <input type="checkbox" checked={qReq} onChange={(e) => setQReq(e.target.checked)} />
+            required
+          </label>
+          <button
+            type="button"
+            className={styles.enableBtn}
+            disabled={pending}
+            onClick={() =>
+              start(async () => {
+                const res = await addQuestion(signupId, calendarEntryId, {
+                  prompt: qPrompt,
+                  input_type: qType,
+                  choices: qChoices.split(',').map((c) => c.trim()).filter(Boolean),
+                  applies_to: qWho,
+                  required: qReq
+                });
+                if (!res.ok) setError(res.error ?? 'Could not add question.');
+                else {
+                  setQPrompt('');
+                  setQChoices('');
+                  router.refresh();
+                }
+              })
+            }
+          >
+            Add question
           </button>
         </div>
       </section>

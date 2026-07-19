@@ -31,14 +31,14 @@ export function RosterTable({
     const head = [
       'Type', 'Name', 'Household', 'Status', 'Participation', 'Tier', 'Days',
       'Owed', 'Guests', 'Guest note', 'Driving there', 'Driving back',
-      'Slip', 'Paid', 'Jobs', 'Notes'
+      'Slip', 'Paid', 'Jobs', 'Answers', 'Notes'
     ];
     const body = sorted.map((r) => [
       r.kind, r.name, r.household, r.status, r.participation, r.tierLabel ?? '',
       r.days ?? '', r.owed, r.guests, r.guestNote ?? '',
       r.drivesOut ? (r.seatsOut ?? '') : '', r.drivesBack ? (r.seatsBack ?? '') : '',
       r.slipReceived ? 'Y' : 'N', r.paymentReceived ? 'Y' : 'N',
-      r.claims.join(' | '), r.notes ?? ''
+      r.claims.join(' | '), r.answers.join(' | '), r.notes ?? ''
     ]);
     const csv = [head, ...body]
       .map((line) => line.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))
@@ -98,6 +98,9 @@ export function RosterTable({
                   {r.guests > 0 && ` · +${r.guests} guests`}
                 </span>
                 {r.notes && <span className={styles.rowNote}>{r.notes}</span>}
+                {r.answers.length > 0 && (
+                  <span className={styles.rowAnswers}>{r.answers.join(' · ')}</span>
+                )}
               </td>
               <td>{r.household}</td>
               <td className={styles.nowrap}>
