@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session Summary — Event Signup Shipped to Production</title>
+<style>
+  :root { --nw-teal: #1e3a4a; --nw-green: #3d5a3e; --cream: #faf6ef; --bark: #8b6914; --ink: #21201c; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Georgia, 'Times New Roman', serif; color: var(--ink); background: var(--cream); line-height: 1.55; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 24px 64px; }
+  header { background: var(--nw-teal); color: #fff; padding: 28px 24px; margin-bottom: 32px; }
+  header .inner { max-width: 880px; margin: 0 auto; }
+  header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: .01em; }
+  header .sub { opacity: .85; font-size: .95rem; margin-top: 6px; font-family: 'Segoe UI', Arial, sans-serif; }
+  h2 { font-size: 1.15rem; color: var(--nw-teal); border-bottom: 3px solid var(--nw-green); padding-bottom: 6px; margin: 36px 0 14px; }
+  h3 { font-size: 1rem; color: var(--nw-green); margin: 18px 0 6px; }
+  p, li { font-size: .98rem; }
+  ul { padding-left: 22px; margin: 8px 0; }
+  li { margin: 5px 0; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 18px 0; }
+  .metric { background: #fff; border: 1px solid #e4ddcf; border-top: 4px solid var(--nw-green); padding: 14px; text-align: center; }
+  .metric .num { font-size: 1.7rem; font-weight: 700; color: var(--nw-teal); }
+  .metric .lbl { font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: #6a675f; font-family: 'Segoe UI', Arial, sans-serif; }
+  code { background: #f0ead9; padding: 1px 5px; font-size: .88em; font-family: Consolas, monospace; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; background: #fff; font-size: .92rem; }
+  th, td { border: 1px solid #e4ddcf; padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--nw-teal); color: #fff; font-family: 'Segoe UI', Arial, sans-serif; font-size: .85rem; }
+  .tag { display: inline-block; background: var(--bark); color: #fff; font-size: .74rem; padding: 1px 8px; border-radius: 10px; font-family: 'Segoe UI', Arial, sans-serif; vertical-align: middle; }
+  .callout { background: #fff; border-left: 4px solid var(--bark); padding: 12px 16px; margin: 14px 0; }
+  footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid #d8d0bf; font-size: .84rem; color: #6a675f; font-family: 'Segoe UI', Arial, sans-serif; }
+</style>
+</head>
+<body>
+<header><div class="inner">
+  <h1>Event Signup Shipped to Production</h1>
+  <div class="sub">Troop 79 Website &middot; Session summary &middot; July 19, 2026, 12:23 AM CDT &middot; Operator</div>
+</div></header>
+<div class="wrap">
+
+<h2>Key Metrics</h2>
+<div class="metrics">
+  <div class="metric"><div class="num">54</div><div class="lbl">Files changed</div></div>
+  <div class="metric"><div class="num">15</div><div class="lbl">Commits</div></div>
+  <div class="metric"><div class="num">6</div><div class="lbl">Migrations to prod</div></div>
+  <div class="metric"><div class="num">8</div><div class="lbl">Decisions recorded</div></div>
+  <div class="metric"><div class="num">2</div><div class="lbl">qa-lead reviews</div></div>
+  <div class="metric"><div class="num">6</div><div class="lbl">Backlog items added</div></div>
+</div>
+
+<p>Event Signup went from a plan document to <strong>live in production</strong> in one session. Families can now sign up for calendar events online: who&rsquo;s coming, what they owe, who can drive, which jobs they&rsquo;ll take, and what they&rsquo;re bringing to a potluck.</p>
+
+<h2>What Was Accomplished</h2>
+
+<h3>From plan to schema</h3>
+<p>Started by grounding against production and closing the two decisions that gated the migration (guest model, calendar category mapping). Wrote the Phase 1 schema &mdash; ten tables, six RPCs &mdash; and verified it with <strong>13 constraint and concurrency assertions</strong> rather than assuming it worked: the identity CHECK, driver-only and contributor rules, per-leg seat constraints, and the partial unique indexes that make the D-023 duplicate-row failure impossible by construction (a live duplicate is rejected; a re-signup after cancelling is allowed).</p>
+
+<h3>The design pivot that shaped the feature</h3>
+<p>Patrick redirected the shift signup partway through: instead of listing every job under every family member, lead with the work. That became <strong>D-029</strong> &mdash; one job board, grouped by day, where the gate meets a visitor at the row they clicked rather than at the bottom of a 30-job page. The underlying storage never changed; only the input surface inverted, so roster and owed math stayed person-indexed throughout.</p>
+<p>A later report exposed the assumption underneath it: an Eagle Court of Honor with three potluck tasks showed families <em>nothing</em>, because the job list only rendered when attendance was off. Events genuinely need both at once (<strong>D-034</strong>), and the wording had to bend too &mdash; &ldquo;shifts &amp; tasks&rdquo; reads correctly for a pancake breakfast and badly for &ldquo;bring a dessert&rdquo;.</p>
+
+<h3>Two data-model corrections, both made before they could bite</h3>
+<table>
+  <tr><th>Change</th><th>Why it mattered</th></tr>
+  <tr><td><strong>Households became explicit</strong> <span class="tag">D-030</span></td><td>Deriving them from a shared parent email was correct against today&rsquo;s roster, but Patrick flagged that parents give whichever address they think of that day. The failure would have been silent: two siblings split into separate households, each shown a partial family.</td></tr>
+  <tr><td><strong>Parent emails as rows</strong> <span class="tag">D-031</span></td><td>Chosen for the eventual mail-program export &mdash; one deduped SELECT instead of an unpivot, plus per-address bounce and unsubscribe tracking that columns cannot express.</td></tr>
+</table>
+
+<h3>Leader tooling</h3>
+<ul>
+  <li><strong>Event Signups</strong> &mdash; a block checklist seeded by category, with editable jobs, tiers and questions, and a guarded remove-signup path whose first press is a dry run reporting how many people would lose their signup.</li>
+  <li><strong>Event Rosters</strong> &mdash; troop-wide totals, two-deep indicator (driver-only correctly excluded), per-leg driver seats, job coverage, owed vs. paid, non-responder chase list, print and CSV, and remove-with-restore for the families who phone rather than use the form.</li>
+  <li><strong>Calendar</strong> &mdash; Upcoming/Past tabs, oldest-first, and Clone for turning a configured troop meeting into next month&rsquo;s.</li>
+</ul>
+
+<h2>Blockers Resolved</h2>
+<table>
+  <tr><th>Problem</th><th>Diagnosis</th></tr>
+  <tr><td>Family gate appeared to do nothing on sign-out</td><td>It worked &mdash; the gate checks the leader session first, so deleting the family cookie changed nothing visible for a signed-in leader. The button now only appears for actual family sessions, and confirms when it fires.</td></tr>
+  <tr><td>Nested <code>&lt;form&gt;</code> hydration error</td><td>The sign-out bar was its own form and ended up inside the submit form. The standalone-board design existed precisely to avoid this and the status bar walked into it from the other side.</td></tr>
+  <tr><td>Court of Honor tasks invisible to families</td><td>Jobs only rendered when attendance was off; Ceremony defaults it on. Three tasks existed in the database with no path to claim them.</td></tr>
+  <tr><td>Public job list lost its padding</td><td>An unscoped <code>.slotList &gt; li { padding: 0 }</code> added for the form overrode the read-only list, which has no inner button to supply its own.</td></tr>
+</table>
+
+<h2>Review Findings</h2>
+<div class="callout">
+  <p>Two qa-lead passes each caught something real in code that had already been convinced-of:</p>
+  <ul>
+    <li><strong>Open redirect</strong> &mdash; <code>next.startsWith('/')</code> does not stop <code>/\evil.com</code>, which the URL parser resolves off-site. On a password form that is a phishing redirect aimed at the troop password. Replaced with origin comparison (12 assertions), and the identical pre-existing flaw in the admin login was fixed by the same helper.</li>
+    <li><strong>Email PII leak</strong> &mdash; the whole recipient list went in a shared <code>to:</code>, so the first &ldquo;Send&rdquo; would have shown every parent every other parent&rsquo;s address. Unrecallable. Now one message per recipient.</li>
+    <li><strong>Scout-role exposure</strong> &mdash; the new admin pages relied on a session check a shared-password scout login satisfies, which would have exposed guest notes, driving arrangements and payment status. All four are now leader-only.</li>
+  </ul>
+</div>
+
+<h2>Deployment</h2>
+<p>Code was deployed <em>before</em> the migration, deliberately: main&rsquo;s old code had no category-colour fallback, so migrating first would have returned a 500 on <code>/events</code> for every visitor until Vercel finished. Code-first meant the worst case was briefly-grey category chips.</p>
+<table>
+  <tr><th>Verified on production</th><th>Result</th></tr>
+  <tr><td>Signup tables / RPCs</td><td>10 / 6</td></tr>
+  <tr><td>Legacy category names remaining</td><td>0 &mdash; 9 rows renamed</td></tr>
+  <tr><td>Households bootstrapped</td><td>45, covering all 48 scouts, none orphaned</td></tr>
+  <tr><td>Parent emails backfilled</td><td>34</td></tr>
+  <tr><td>Live routes</td><td><code>/</code>, <code>/events</code>, <code>/calendar.ics</code>, <code>/admin/login</code> all 200</td></tr>
+</table>
+
+<h2>Next Steps</h2>
+<ul>
+  <li><strong>Re-enter Event Signup configuration in production</strong> &mdash; the schema is live but holds no content by choice; local setup was rough-draft work.</li>
+  <li><strong>Rotate the Resend API key</strong> &mdash; it passed through a chat transcript and must be treated as compromised.</li>
+  <li>Add <code>EMAIL_FROM</code> and verify <code>troop-79.com</code> as a second Resend domain on the existing paid account.</li>
+  <li>Verify the family gate on production in a private window once a signup exists &mdash; untestable pre-launch because prod had no signup rows.</li>
+  <li>Correct rummage sale job dates (jobs sit on Aug 18; the event is Aug 29).</li>
+  <li>Phase 3/4: deadline-reminder and missing-slip emails, then per-family magic links replacing the shared password.</li>
+</ul>
+
+<footer>
+  Troop 79 Website &middot; Session summary generated 2026-07-19 &middot; Decisions D-029 through D-036 recorded in <code>Agents/Architect/Memory/DECISIONS.md</code>
+</footer>
+</div>
+</body>
+</html>
