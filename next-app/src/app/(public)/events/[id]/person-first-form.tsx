@@ -1,7 +1,13 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import type { EventPrice, EventSignup, HouseholdEntry, SignupQuestion } from '@/lib/event-signup';
+import type {
+  EventPrice,
+  EventSignup,
+  HouseholdEntry,
+  SignupQuestion,
+  SignupSlot
+} from '@/lib/event-signup';
 import type { Household } from '@/lib/households';
 import styles from './event-detail.module.css';
 
@@ -34,6 +40,8 @@ export default function PersonFirstForm({
   household,
   prices,
   questions,
+  slots,
+  existingClaims,
   existing,
   submitAction,
   cancelAction
@@ -43,10 +51,17 @@ export default function PersonFirstForm({
   household: Household;
   prices: EventPrice[];
   questions: SignupQuestion[];
+  slots: SignupSlot[];
+  existingClaims: { slotId: number; personKey: string }[];
   existing: HouseholdEntry[];
   submitAction: (fd: FormData) => void;
   cancelAction: (fd: FormData) => void;
 }) {
+  const slotsTitle = signup.slots_title ?? 'What can you bring?';
+  const slotsIntro =
+    signup.slots_intro ??
+    'Tell us what your family is bringing so we don’t end up with fifteen desserts and no salad.';
+
   const scouts = household.scouts;
   const adults = household.adults;
 
@@ -89,6 +104,12 @@ export default function PersonFirstForm({
   const [guestNote, setGuestNote] = useState(existing[0]?.guest_note ?? '');
   const [notes, setNotes] = useState(existing[0]?.notes ?? '');
   const [newAdults, setNewAdults] = useState<AdHocAdult[]>([]);
+  const [claims, setClaims] = useState<Record<number, string[]>>(() => {
+    const init: Record<number, string[]> = {};
+    for (const c of existingClaims) init[c.slotId] = [...(init[c.slotId] ?? []), c.personKey];
+    return init;
+  });
+  const [openSlot, setOpenSlot] = useState<number | null>(null);
   // answers[personKey][questionId]
   const [answers, setAnswers] = useState<Record<string, Record<number, string>>>(() => {
     const init: Record<string, Record<number, string>> = {};
@@ -151,6 +172,32 @@ export default function PersonFirstForm({
       </div>
     );
   };
+
+  /** Only people marked as attending can take an item — you bring a dessert
+   *  because you're coming. (The donate-without-attending case belongs to
+   *  fundraisers, which use the job-first surface instead.) */
+  const attendingPeople = () => [
+    ...scouts
+      .filter((sc) => scoutChoice[sc.id] === 'yes')
+      .map((sc) => ({ key: `s:${sc.id}`, name: sc.displayName, kind: 'scout' as const })),
+    ...adults
+      .filter((a) => adultChoice[a.id] === 'full')
+      .map((a) => ({ key: `a:${a.id}`, name: a.name, kind: 'adult' as const }))
+  ];
+
+  const claimersOf = (slotId: number) => claims[slotId] ?? [];
+  const filledOf = (sl: SignupSlot) => {
+    const mineExisting = existingClaims.filter((c) => c.slotId === sl.id).length;
+    return sl.filled - mineExisting + claimersOf(sl.id).length;
+  };
+  const toggleClaim = (slotId: number, key: string) =>
+    setClaims((prev) => {
+      const cur = prev[slotId] ?? [];
+      return {
+        ...prev,
+        [slotId]: cur.includes(key) ? cur.filter((k) => k !== key) : [...cur, key]
+      };
+    });
 
   const tiersFor = (kind: 'scout' | 'adult') =>
     prices.filter((p) => p.applies_to === 'both' || p.applies_to === (kind === 'scout' ? 'scouts' : 'adults'));
@@ -309,7 +356,16 @@ export default function PersonFirstForm({
       <input type="hidden" name="signupId" value={signup.id} />
       <input type="hidden" name="householdKey" value={household.key} />
       <input type="hidden" name="entries" value={JSON.stringify(entries)} />
-      <input type="hidden" name="slotClaims" value="{}" />
+      <input
+        type="hidden"
+        name="slotClaims"
+        value={JSON.stringify(
+          Object.entries(claims).reduce<Record<string, number[]>>((acc, [slotId, keys]) => {
+            for (const k of keys) acc[k] = [...(acc[k] ?? []), Number(slotId)];
+            return acc;
+          }, {})
+        )}
+      />
       <input type="hidden" name="newAdults" value={JSON.stringify(newAdults.filter((a) => a.name.trim()))} />
 
       <p className={styles.formLede}>
@@ -331,7 +387,7 @@ export default function PersonFirstForm({
                     aria-pressed={scoutChoice[s.id] === 'yes'}
                     onClick={() => setScoutChoice((v) => ({ ...v, [s.id]: 'yes' }))}
                   >
-                    Yes
+                    Attending
                   </button>
                   <button
                     type="button"
@@ -385,7 +441,7 @@ export default function PersonFirstForm({
                     aria-pressed={adultChoice[a.id] === 'no'}
                     onClick={() => setAdultChoice((v) => ({ ...v, [a.id]: 'no' }))}
                   >
-                    Not coming
+                    Can’t make it
                   </button>
                 </span>
               </div>
@@ -506,6 +562,115 @@ export default function PersonFirstForm({
             </p>
           </div>
         </>
+      )}
+
+      {slots.length > 0 && (
+        <div className={styles.guestBlock}>
+          <p className={styles.dayHead}>{slotsTitle}</p>
+          <p className={styles.gateLede}>{slotsIntro}</p>
+          {attendingPeople().length === 0 && (
+            <p className={styles.recapEmpty}>
+              Mark who&rsquo;s attending above, then you can claim one of these.
+            </p>
+          )}
+          {(
+            <ul className={styles.slotList}>
+              {slots.map((sl) => {
+                const mine = claimersOf(sl.id);
+                const filled = filledOf(sl);
+                const full = sl.needed != null && filled >= sl.needed;
+                return (
+                  <li key={sl.id}>
+                    <button
+                      type="button"
+                      className={styles.slotTrigger}
+                      aria-expanded={openSlot === sl.id}
+                      disabled={attendingPeople().length === 0}
+                      onClick={() => setOpenSlot((v) => (v === sl.id ? null : sl.id))}
+                    >
+                      <span className={styles.slotTop}>
+                        <span>
+                          <strong>{sl.label}</strong>
+                        </span>
+                        <span className={styles.slotMeta}>
+                          <span className={styles.count}>
+                            {sl.needed == null
+                              ? `${filled} signed up`
+                              : full
+                                ? `Covered (${sl.needed}/${sl.needed})`
+                                : `${filled} of ${sl.needed}`}
+                          </span>
+                          {attendingPeople().length > 0 && (
+                            <span className={styles.jobCue}>
+                              {mine.length > 0 ? 'Change' : 'I can bring this'}
+                            </span>
+                          )}
+                        </span>
+                      </span>
+                    </button>
+
+                    {mine.length > 0 && (
+                      <div className={styles.claimerChips}>
+                        {mine.map((k) => {
+                          const p = attendingPeople().find((x) => x.key === k);
+                          return (
+                            <span key={k} className={styles.claimerChip}>
+                              {(p?.name ?? k).split(' ')[0]}
+                              <button
+                                type="button"
+                                className={styles.claimerX}
+                                aria-label="Remove"
+                                onClick={() => toggleClaim(sl.id, k)}
+                              >
+                                ×
+                              </button>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {openSlot === sl.id && (
+                      <div className={styles.memberPick}>
+                        <p className={styles.pickPrompt}>Who&rsquo;s bringing it?</p>
+                        <div className={styles.pickChips}>
+                          {attendingPeople().map((p) => {
+                            const on = mine.includes(p.key);
+                            const elig =
+                              sl.eligibility === 'both' ||
+                              sl.eligibility === (p.kind === 'scout' ? 'scouts' : 'adults');
+                            const blocked = !elig || (full && !on);
+                            return (
+                              <button
+                                key={p.key}
+                                type="button"
+                                className={`${styles.pickChip} ${on ? styles.pickOn : ''} ${blocked ? styles.pickBlocked : ''}`}
+                                disabled={blocked}
+                                aria-pressed={on}
+                                onClick={() => toggleClaim(sl.id, p.key)}
+                              >
+                                <span className={styles.pickName}>{p.name}</span>
+                                <span className={styles.pickSub}>
+                                  {!elig
+                                    ? sl.eligibility === 'adults'
+                                      ? 'Adults only'
+                                      : 'Scouts only'
+                                    : full && !on
+                                      ? 'Already covered'
+                                      : ''}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       )}
 
       {signup.allow_guests && (

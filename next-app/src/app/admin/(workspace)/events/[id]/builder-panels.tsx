@@ -379,6 +379,26 @@ export function BuilderPanels({
 
       <section className={styles.panel}>
         <h2>Jobs — shifts &amp; tasks</h2>
+        <div className={styles.fieldGrid}>
+          <label>
+            <span className={styles.fieldLabel}>What families see this called</span>
+            <input
+              type="text"
+              placeholder="e.g. What can you bring?"
+              defaultValue={s(signup.slots_title)}
+              onBlur={(e) => save({ slots_title: e.target.value || null })}
+            />
+          </label>
+          <label>
+            <span className={styles.fieldLabel}>Explanation under that heading</span>
+            <input
+              type="text"
+              placeholder="e.g. Potluck-style — tell us what you're bringing."
+              defaultValue={s(signup.slots_intro)}
+              onBlur={(e) => save({ slots_intro: e.target.value || null })}
+            />
+          </label>
+        </div>
         <p className={styles.panelHint}>
           One mechanism: a task is a shift without times. A task that doesn’t need attendance (a
           donation) can be claimed by someone who isn’t coming.

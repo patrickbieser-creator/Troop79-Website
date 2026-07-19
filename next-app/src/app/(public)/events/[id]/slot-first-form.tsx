@@ -49,6 +49,7 @@ export default function SlotFirstForm({
   slots,
   allowGuests,
   guestPrompt,
+  slotsIntro,
   existingClaims,
   submitAction,
   cancelAction,
@@ -66,6 +67,7 @@ export default function SlotFirstForm({
   slots: SignupSlot[];
   allowGuests: boolean;
   guestPrompt: string | null;
+  slotsIntro: string | null;
   existingClaims: ExistingClaim[];
   submitAction: (fd: FormData) => void;
   cancelAction: (fd: FormData) => void;
@@ -479,8 +481,8 @@ export default function SlotFirstForm({
 
       {signOutBar}
       <p className={styles.boardLede}>
-        Pick a job and choose who’s doing it — one person or several. Claiming a job <em>is</em>{' '}
-        your signup; there’s no separate RSVP.
+        {slotsIntro ??
+          'Pick a job and choose who’s doing it — one person or several. Claiming a job is your signup; there’s no separate RSVP.'}
       </p>
 
       {jobList}

@@ -60,6 +60,8 @@ export interface EventSignup {
   needs_ahmr_c: boolean;
   notes_prompt: string | null;
   guest_prompt: string | null;
+  slots_title: string | null;
+  slots_intro: string | null;
 }
 
 export interface SignupQuestion {
@@ -196,7 +198,7 @@ export async function loadEventDetail(entryId: number): Promise<EventDetail | nu
     .select(
       'id, status, deadline, capacity, waitlist_enabled, attendance_enabled, drivers_needed, ' +
         'allow_guests, audience, payment_instructions, needs_permission_slip, needs_ahmr_c, ' +
-        'notes_prompt, guest_prompt'
+        'notes_prompt, guest_prompt, slots_title, slots_intro'
     )
     .eq('calendar_entry_id', entryId)
     .maybeSingle();

@@ -270,10 +270,10 @@ export default async function EventDetailPage({
             </section>
           )}
 
-          {slots.length > 0 && !slotFirst && (
+          {slots.length > 0 && !slotFirst && !household && (
             <section className={styles.block}>
               <h2 className={styles.blockHead}>
-                {slotFirst ? 'Jobs — who’s still needed' : 'Shifts &amp; tasks'}
+                {signup.slots_title ?? (slotFirst ? 'Jobs — who’s still needed' : 'Shifts & tasks')}
               </h2>
               <ul className={styles.slotList}>
                 {slots.map((s) => {
@@ -306,7 +306,7 @@ export default async function EventDetailPage({
 
       {signup && slotFirst && !locked && (
         <section className={styles.block}>
-          <h2 className={styles.blockHead}>Jobs — pick one to sign up</h2>
+          <h2 className={styles.blockHead}>{signup.slots_title ?? 'Jobs — pick one to sign up'}</h2>
           <SlotFirstForm
             eventId={entry.id}
             signupId={signup.id}
@@ -315,6 +315,7 @@ export default async function EventDetailPage({
             slots={slots}
             allowGuests={signup.allow_guests}
             guestPrompt={signup.guest_prompt}
+            slotsIntro={signup.slots_intro}
             existingClaims={existingClaims}
             hasExisting={existing.length > 0}
             submitAction={submitSignupAction}
@@ -386,6 +387,8 @@ export default async function EventDetailPage({
                         household={household}
                         prices={prices}
                         questions={questions}
+                        slots={slots}
+                        existingClaims={existingClaims}
                         existing={existing}
                         submitAction={submitSignupAction}
                         cancelAction={cancelSignupAction}
