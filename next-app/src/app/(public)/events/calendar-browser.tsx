@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { CalendarCategory } from '@/lib/supabase/types';
 import type { CalendarEntryWithSlug } from '@/lib/calendar';
-import { formatCalendarDateParts, formatTimeOfDay, CATEGORY_COLORS } from '@/lib/calendar-shared';
+import { formatCalendarDateParts, formatTimeOfDay, categoryColor } from '@/lib/calendar-shared';
 import { MonthGrid } from './month-grid';
 import styles from './events.module.css';
 
@@ -55,7 +55,7 @@ function timeCell(entry: CalendarEntryWithSlug): React.ReactNode {
 
 function EntryRow({ entry, past }: { entry: CalendarEntryWithSlug; past?: boolean }) {
   const { day } = formatCalendarDateParts(entry.entry_date);
-  const color = CATEGORY_COLORS[entry.category];
+  const color = categoryColor(entry.category);
   const title = entry.articleSlug ? (
     <Link href={`/news/${entry.articleSlug}`}>{entry.title}</Link>
   ) : (
@@ -94,6 +94,11 @@ function EntryRow({ entry, past }: { entry: CalendarEntryWithSlug; past?: boolea
         </p>
         <p className={styles.itemCategory} style={{ color }}>
           {entry.category}
+          {entry.hasSignup && (
+            <Link href={`/events/${entry.id}`} className={styles.readStory}>
+              Details &amp; signup &rarr;
+            </Link>
+          )}
           {entry.articleSlug && (
             <Link href={`/news/${entry.articleSlug}`} className={styles.readStory}>
               Read the story &rarr;

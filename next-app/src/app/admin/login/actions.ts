@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import { LEADER_COOKIE, signSession, type SessionRole } from '@/lib/leader-session';
 import { createAdminClient } from '@/lib/supabase/server';
 import { loadAuthorizedAdults, matchAuthorizedAdult } from '@/lib/authorized-adults';
+import { safeInternalPath } from '@/lib/safe-redirect';
 
 /** Constant-time string compare (length leak is fine for a shared secret). */
 function secretMatches(input: string, secret: string | undefined): boolean {
@@ -67,9 +68,9 @@ export async function loginAction(formData: FormData): Promise<void> {
     maxAge: LEADER_COOKIE.maxAgeSeconds
   });
 
-  // Defense-in-depth: only allow same-origin redirects.
-  const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/admin/advancement';
-  redirect(safeNext);
+  // Defense-in-depth: only allow same-origin redirects. A startsWith('/')
+  // check used to live here, which "/\evil.com" defeats — see lib/safe-redirect.ts.
+  redirect(safeInternalPath(next, '/admin/advancement'));
 }
 
 export async function logoutAction(): Promise<void> {

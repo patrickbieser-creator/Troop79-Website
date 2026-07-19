@@ -323,18 +323,27 @@ export interface Tag {
   slug: string;
 }
 
+/**
+ * The 13 event types the signup preset matrix keys off, plus 'No Meeting'
+ * (calendar-only — signup never applies). Renamed/merged 2026-07-18 by the
+ * Event Signup Phase 1 migration; 'Court of Honor' and 'Ceremony' collapsed
+ * into 'Ceremony / Recognition'.
+ */
 export type CalendarCategory =
   | 'Troop Meeting'
-  | 'No Meeting'
-  | 'Campout'
+  | 'Campout / Overnight'
+  | 'Day Activity / Outing'
   | 'High Adventure'
   | 'Summer Camp'
   | 'Service Project'
-  | 'Outing'
   | 'Fundraiser'
-  | 'Court of Honor'
-  | 'Committee Meeting'
-  | 'Ceremony';
+  | 'Advancement Event'
+  | 'Training'
+  | 'Ceremony / Recognition'
+  | 'Leadership / Planning'
+  | 'Recruiting / Outreach'
+  | 'Social Event'
+  | 'No Meeting';
 
 export interface CalendarEntry {
   id: number;
@@ -349,6 +358,9 @@ export interface CalendarEntry {
   start_time: string | null;
   end_time: string | null;
   article_id: number | null;
+  /** Markdown event details shown on /events/[id]. Added by the Event Signup
+   *  Phase 1 migration; null on entries authored before it. */
+  details_md: string | null;
   created_at: string;
   updated_at: string;
 }

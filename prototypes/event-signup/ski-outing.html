@@ -407,7 +407,7 @@
       const li = document.createElement('li');
       const btn = document.createElement('button');
       btn.type = 'button'; btn.className = 'scoutResultBtn'; btn.setAttribute('role', 'option');
-      btn.innerHTML = `<span>${s.name}</span><span class="patrolTag">${s.patrol}</span>`;
+      btn.innerHTML = `<span>${s.name}</span>`;
       btn.addEventListener('click', () => pickHousehold(s.hh));
       li.appendChild(btn); list.appendChild(li);
     });
@@ -418,7 +418,7 @@
     $('scoutSearch').value = '';
     $('hhName').textContent = 'The ' + hh.name + ' household';
     $('hhScouts').innerHTML = hh.scouts.map(s =>
-      `<li><span>${s.name}</span><span class="hhMeta">${s.patrol}</span></li>`).join('');
+      `<li><span>${s.name}</span><span class="hhMeta">Scout</span></li>`).join('');
     $('hhAdults').innerHTML = hh.adults.map(a =>
       `<li><span>${a}</span><span class="hhMeta">Parent</span></li>`).join('');
     $('householdCard').hidden = false;
@@ -465,7 +465,7 @@
       return `
       <div class="personRow">
         <div class="personMain">
-          <span class="personName">${s.name}<span class="patrolTag">${s.patrol}</span></span>
+          <span class="personName">${s.name}</span>
           <span class="seg" role="radiogroup" aria-label="${s.name} attending?">
             <label class="segLabel segLabel--yes"><input type="radio" name="scout-${i}" value="yes" ${prev?.status === 'yes' ? 'checked' : ''}>Yes</label>
             <label class="segLabel segLabel--no"><input type="radio" name="scout-${i}" value="no" ${prev?.status === 'no' ? 'checked' : ''}>Can&rsquo;t make it</label>
@@ -644,7 +644,7 @@
 
     $('confirmSummary').innerHTML =
       submission.scouts.map(s => `
-        <li><span class="sumName">${s.name}<span class="sumSub">${s.patrol}</span>
+        <li><span class="sumName">${s.name}
             ${s.answers ? `<span class="answerLine">${answerLine(s.answers)}</span>` : ''}</span>
           ${chip(s.status === 'yes' ? (isFull ? 'Waitlist' : 'Going') : 'Can’t make it')}</li>`).join('')
       + submission.adults.filter(a => a.attending).map(a => `

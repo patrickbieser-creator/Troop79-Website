@@ -8,6 +8,96 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="assets/event-signup.css" />
+  <style>
+  /* ══ SLOT-FIRST SIGNUP (fundraisers) — organize by the work, not the person ══
+     Used when an event has slots on and attendance off: the job is the unit of
+     signup, so the family picks a job and then says who's doing it. Person-first
+     events (campout / ski / summer camp) are untouched. ══════════════════════ */
+  .slotSignList { list-style: none; display: flex; flex-direction: column; gap: 22px; margin: 4px 0 0; }
+  .dayGroup { list-style: none; }
+  .dayHead {
+    font-family: var(--font-ui); font-size: 12px; font-weight: 700; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--navy); padding-bottom: 7px; margin-bottom: 10px;
+    border-bottom: 2px solid var(--border-light);
+  }
+  .daySlots { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+
+  .slotSignItem {
+    background: var(--warm-white); border: 1px solid var(--border-light); border-radius: 4px;
+    padding: 0; overflow: hidden; font-family: var(--font-ui);
+    transition: border-color var(--transition), box-shadow var(--transition);
+  }
+  /* The whole row IS the control — clicking the job name opens the picker.
+     A separate "Sign up" button restated the row and cost a line of height. */
+  .slotSignTrigger { display: block; width: 100%; text-align: left; padding: 13px 15px 12px; }
+  .slotSignTrigger:hover { background: var(--cream); }
+  .slotSignTrigger:focus-visible { outline: 2px solid var(--forest); outline-offset: -2px; }
+  /* Full rows stay clickable so they can explain themselves rather than
+     swallowing the click — see .fullNote. */
+  .slotSignTrigger[aria-disabled="true"]:hover { background: transparent; }
+  .fullNote {
+    display: flex; align-items: flex-start; gap: 8px; margin: 0 15px 13px; padding: 9px 12px;
+    background: #fdf6e6; border-left: 3px solid var(--bark); border-radius: 0 3px 3px 0;
+    font-size: 12.5px; line-height: 1.45; color: var(--text-body);
+  }
+  .fullNote strong { color: var(--bark); }
+  .pickCaret { font-size: 10px; color: var(--text-meta); display: inline-block; transition: transform var(--transition); }
+  .pickCaret.isOpen { transform: rotate(180deg); }
+  .slotSignItem:has(.claimerChip) { border-color: var(--forest); box-shadow: inset 3px 0 0 var(--forest); }
+  .slotSignItem.isFull { background: var(--cream); }
+  .slotSignHead { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+  .slotSignName { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .slotSignItem .slotName { font-size: 15px; font-weight: 700; color: var(--text-head); }
+  .slotSignItem .slotTime { font-size: 12.5px; color: var(--text-meta); }
+  .slotSignItem .slotMetaRow { display: flex; align-items: center; gap: 9px; flex-shrink: 0; }
+  .slotSignItem .slotBar { display: block; height: 4px; background: var(--border-light); border-radius: 2px; overflow: hidden; margin: 10px 0 0; }
+  .slotSignItem .slotBar > span { display: block; height: 100%; background: var(--forest); }
+  .slotSignItem .slotBar.isFull > span { background: var(--border-mid); }
+
+  .claimerChips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 15px 12px; }
+  .claimerChip {
+    display: inline-flex; align-items: center; gap: 5px; background: #eef2ee; color: var(--forest);
+    border: 1px solid var(--forest); border-radius: 999px; padding: 3px 5px 3px 11px;
+    font-size: 12.5px; font-weight: 700;
+  }
+  .claimerX {
+    display: grid; place-items: center; width: 17px; height: 17px; border-radius: 50%;
+    background: var(--forest); color: #fff; font-size: 13px; line-height: 1; padding-bottom: 1px;
+  }
+  .claimerX:hover { background: var(--navy); }
+
+  .memberPick { margin: 0 15px 13px; padding-top: 12px; border-top: 1px dashed var(--border-mid); }
+  .pickPrompt { font-size: 12.5px; font-weight: 700; color: var(--text-head); margin-bottom: 9px; }
+  .pickChips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pickChip {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 1px; text-align: left;
+    background: var(--cream); border: 1.5px solid var(--border-mid); border-radius: 3px;
+    padding: 7px 13px; transition: all var(--transition);
+  }
+  .pickChip .pickName { font-size: 13px; font-weight: 700; color: var(--text-head); }
+  .pickChip .pickSub { font-size: 10.5px; color: var(--text-meta); }
+  .pickChip:hover:not(:disabled) { border-color: var(--forest); background: var(--warm-white); }
+  .pickChip.isOn { background: #eef2ee; border-color: var(--forest); box-shadow: inset 0 0 0 1px var(--forest); }
+  .pickChip.isOn .pickName { color: var(--forest); }
+  .pickChip.isOn .pickSub::before { content: '✓ '; font-weight: 700; }
+  .pickChip.isDisabled { opacity: .5; cursor: not-allowed; }
+  .pickChip:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
+
+  /* "You're done" affordance on the confirmation — the flow previously ended
+     with only Edit / Cancel, which read as unfinished. */
+  .confirmDoneHint {
+    margin-top: 12px; font-family: var(--font-ui); font-size: 12px;
+    color: var(--text-meta); line-height: 1.5;
+  }
+  .guestGrid { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 12px; align-items: start; }
+  .guestNum { text-align: left; }
+  @media (max-width: 560px) { .guestGrid { grid-template-columns: 1fr; } }
+  .recapLines .owedName { display: flex; flex-direction: column; gap: 2px; }
+  .recapLines .recapJobs { font-size: 12px; color: var(--text-meta); font-weight: 400; }
+  @media (max-width: 560px) {
+    .pickChip { flex: 1 1 calc(50% - 4px); }
+  }
+  </style>
 </head>
 <body>
 
@@ -187,14 +277,14 @@
       resources: [ { icon: '\u{1F4C4}', label: 'Poster to print & hang', meta: 'PDF' } ],
       prices: [], payment: null, payRule: null, legs: null,
       slots: [
-        { id: 'setup',   kind: 'shift', label: 'Setup crew',            time: '6:00 – 8:00 AM',       elig: 'both',   needed: 4,  filled: 2 },
-        { id: 'serve1',  kind: 'shift', label: 'First serving shift',   time: '8:00 – 10:00 AM',      elig: 'both',   needed: 6,  filled: 3 },
-        { id: 'serve2',  kind: 'shift', label: 'Second serving shift',  time: '10:00 AM – 12:00 PM',  elig: 'both',   needed: 6,  filled: 6 },
-        { id: 'griddle', kind: 'shift', label: 'Griddle team',          time: '7:30 – 11:30 AM',      elig: 'adults', needed: 3,  filled: 1 },
-        { id: 'cleanup', kind: 'shift', label: 'Cleanup crew',          time: '12:00 – 1:30 PM',      elig: 'both',   needed: 5,  filled: 2 },
-        { id: 'posters', kind: 'task',  label: 'Hang posters the week before', time: null,            elig: 'scouts', needed: 4,  filled: 1 },
-        { id: 'mix',     kind: 'task',  label: 'Donate 10 lb pancake mix',     time: null,            elig: 'adults', needed: 5,  filled: 1, attendance_required: false },
-        { id: 'oj',      kind: 'task',  label: 'Donate frozen OJ (6 cans)',    time: null,            elig: 'adults', needed: 4,  filled: 2, attendance_required: false },
+        { id: 'setup',   kind: 'shift', label: 'Setup crew',            time: '6:00 – 8:00 AM',       day: 'Sunday, Oct 25', elig: 'both',   needed: 4,  filled: 2 },
+        { id: 'serve1',  kind: 'shift', label: 'First serving shift',   time: '8:00 – 10:00 AM',      day: 'Sunday, Oct 25', elig: 'both',   needed: 6,  filled: 3 },
+        { id: 'serve2',  kind: 'shift', label: 'Second serving shift',  time: '10:00 AM – 12:00 PM',  day: 'Sunday, Oct 25', elig: 'both',   needed: 6,  filled: 6 },
+        { id: 'griddle', kind: 'shift', label: 'Griddle team',          time: '7:30 – 11:30 AM',      day: 'Sunday, Oct 25', elig: 'adults', needed: 3,  filled: 1 },
+        { id: 'cleanup', kind: 'shift', label: 'Cleanup crew',          time: '12:00 – 1:30 PM',      day: 'Sunday, Oct 25', elig: 'both',   needed: 5,  filled: 2 },
+        { id: 'posters', kind: 'task',  label: 'Hang posters the week before', time: null,     day: 'Anytime before the breakfast', elig: 'scouts', needed: 4,  filled: 1 },
+        { id: 'mix',     kind: 'task',  label: 'Donate 10 lb pancake mix',     time: null,     day: 'Anytime before the breakfast', elig: 'adults', needed: 5,  filled: 1, attendance_required: false },
+        { id: 'oj',      kind: 'task',  label: 'Donate frozen OJ (6 cans)',    time: null,     day: 'Anytime before the breakfast', elig: 'adults', needed: 4,  filled: 2, attendance_required: false },
       ],
       questions: [],
       notesPrompt: null, notesDemo: null,
@@ -259,12 +349,12 @@
       resources: [ { icon: '\u{1F4C4}', label: 'What we can (and can’t) accept', meta: 'PDF' } ],
       prices: [], payment: null, payRule: null, legs: null,
       slots: [
-        { id: 'sort',    kind: 'shift', label: 'Friday sorting crew',        time: 'Fri 5:00 – 8:00 PM',    elig: 'both',   needed: 8,  filled: 3 },
-        { id: 'price',   kind: 'shift', label: 'Pricing team',               time: 'Fri 5:00 – 8:00 PM',    elig: 'adults', needed: 4,  filled: 2 },
-        { id: 'cashier', kind: 'shift', label: 'Cashiers',                   time: 'Sat 8:00 AM – 3:00 PM', elig: 'adults', needed: 3,  filled: 3 },
-        { id: 'runner',  kind: 'shift', label: 'Sales floor runners',        time: 'Sat 8:00 AM – 3:00 PM', elig: 'scouts', needed: 10, filled: 4 },
-        { id: 'loadout', kind: 'shift', label: 'Load-out & donation run',    time: 'Sat 3:00 – 5:00 PM',    elig: 'both',   needed: 6,  filled: 1 },
-        { id: 'bake',    kind: 'task',  label: 'Donate baked goods for the bake table', time: null,    elig: 'both',   needed: 8,  filled: 2, attendance_required: false },
+        { id: 'sort',    kind: 'shift', label: 'Sorting crew',               time: '5:00 – 8:00 PM',    day: 'Friday, Apr 30 — sorting night', elig: 'both',   needed: 8,  filled: 3 },
+        { id: 'price',   kind: 'shift', label: 'Pricing team',               time: '5:00 – 8:00 PM',    day: 'Friday, Apr 30 — sorting night', elig: 'adults', needed: 4,  filled: 2 },
+        { id: 'cashier', kind: 'shift', label: 'Cashiers',                   time: '8:00 AM – 3:00 PM', day: 'Saturday, May 1 — sale day',     elig: 'adults', needed: 3,  filled: 3 },
+        { id: 'runner',  kind: 'shift', label: 'Sales floor runners',        time: '8:00 AM – 3:00 PM', day: 'Saturday, May 1 — sale day',     elig: 'scouts', needed: 10, filled: 4 },
+        { id: 'loadout', kind: 'shift', label: 'Load-out & donation run',    time: '3:00 – 5:00 PM',    day: 'Saturday, May 1 — sale day',     elig: 'both',   needed: 6,  filled: 1 },
+        { id: 'bake',    kind: 'task',  label: 'Donate baked goods for the bake table', time: null, day: 'Anytime before the sale',            elig: 'both',   needed: 8,  filled: 2, attendance_required: false },
       ],
       questions: [],
       notesPrompt: null, notesDemo: null,
@@ -331,6 +421,16 @@
   let household = HOUSEHOLDS[0];             // Kowalski — default demo household
   const submissions = {};                    // per-event submission (survives event switching)
   let pendingIntent = 'signup';
+
+  // Slot-first mode (fundraisers): the job is the unit of signup, so the form is
+  // organized BY the work — each slot asks "who from your family?" instead of each
+  // person re-listing every slot. Storage is unchanged: claims still resolve to
+  // per-person rows (signup_slot_claims), so confirm / roster / owed math are the same.
+  const slotFirst = () => cfg.blocks.slots && !cfg.blocks.attendance;
+  let slotClaims = {};                       // { slotId: Set(personKey) } — draft while the form is open
+  const openPickers = new Set();             // which slot pickers are expanded
+  let fullNoticeFor = null;                  // slot whose "this job is full" note is showing
+  let fullNoticeTimer = null;
 
   const $ = (id) => document.getElementById(id);
   const money = (n) => '$' + (Number.isInteger(n) ? n : n.toFixed(2));
@@ -496,7 +596,7 @@
       const li = document.createElement('li');
       const btn = document.createElement('button');
       btn.type = 'button'; btn.className = 'scoutResultBtn'; btn.setAttribute('role', 'option');
-      btn.innerHTML = `<span>${s.name}</span><span class="patrolTag">${s.patrol}</span>`;
+      btn.innerHTML = `<span>${s.name}</span>`;
       btn.addEventListener('click', () => pickHousehold(s.hh));
       li.appendChild(btn); list.appendChild(li);
     });
@@ -505,7 +605,7 @@
     household = hh; delete submissions[eventId];
     $('scoutResults').innerHTML = ''; $('scoutSearch').value = '';
     $('hhName').textContent = 'The ' + hh.name + ' household';
-    $('hhScouts').innerHTML = hh.scouts.map(s => `<li><span>${s.name}</span><span class="hhMeta">${s.patrol}</span></li>`).join('');
+    $('hhScouts').innerHTML = hh.scouts.map(s => `<li><span>${s.name}</span><span class="hhMeta">Scout</span></li>`).join('');
     $('hhAdults').innerHTML = hh.adults.map(a => `<li><span>${a}</span><span class="hhMeta">Parent</span></li>`).join('');
     $('householdCard').hidden = false;
   }
@@ -613,6 +713,7 @@
   // Form assembly -------------------------------------------------------
   function buildForm() {
     const b = cfg.blocks;
+    if (slotFirst()) { buildSlotFirstForm(); return; }
     $('formKicker').textContent = cfg.title + ' · Step 3 of 3';
     $('formTitle').textContent = household.name + ' family signup';
     $('formLede').innerHTML = (b.attendance
@@ -628,7 +729,7 @@
       const extras = tierArea('scout', 's' + i) + claimArea('scout', 's' + i) + questionArea('scout', 's' + i, s.name);
       if (b.attendance) {
         return `<div class="personRow"><div class="personMain">
-          <span class="personName">${s.name}<span class="patrolTag">${s.patrol}</span></span>
+          <span class="personName">${s.name}</span>
           <span class="seg" role="radiogroup" aria-label="${s.name} attending?">
             <label class="segLabel segLabel--yes"><input type="radio" name="scout-${i}" value="yes">Yes</label>
             <label class="segLabel segLabel--no"><input type="radio" name="scout-${i}" value="no">Can&rsquo;t make it</label>
@@ -638,7 +739,7 @@
       }
       // slots-only events: chips are the signup
       return `<div class="personRow"><div class="personMain">
-        <span class="personName">${s.name}<span class="patrolTag">${s.patrol}</span></span></div>
+        <span class="personName">${s.name}</span></div>
         <div class="personExtra" data-extra="s${i}">${contribToggle('scout', 's' + i)}${extras}</div></div>`;
     }).join('');
     if (b.attendance) h += `<p class="fieldHint">&ldquo;Can&rsquo;t make it&rdquo; still helps — it tells the planners who <em>not</em> to wait for.</p>`;
@@ -677,11 +778,13 @@
     // — Guests —
     if (cfg.flags.guests) {
       h += `<div class="formSection"><div class="formSectionHead"><span class="legendLike">Guests</span><span class="rule" aria-hidden="true"></span></div>
-        <p class="fieldHint" style="margin:8px 0 10px">Friends, siblings, grandparents — all welcome. How many extra people are you bringing?</p>
-        <div class="stepperRow"><span class="stepper" role="group" aria-label="Guest count">
-          <button type="button" data-guest="-1" aria-label="One guest fewer">−</button>
-          <output id="guestCount" data-val="0">0 guests</output>
-          <button type="button" data-guest="1" aria-label="One guest more">+</button></span></div></div>`;
+        <p class="fieldHint" style="margin:8px 0 10px">Friends, siblings, grandparents &mdash; all welcome. How many extra people are you bringing? We don&rsquo;t need their names.</p>
+        <div class="guestGrid">
+          <div><label class="fieldLabel" for="guestCount">How many guests?</label>
+            <input class="textInput guestNum" type="number" id="guestCount" min="0" max="200" step="1" value="0" inputmode="numeric"></div>
+          <div><label class="fieldLabel" for="guestNote">Who are they? <span style="font-weight:400;color:var(--text-meta)">(optional)</span></label>
+            <input class="textInput" type="text" id="guestNote" placeholder="e.g. grandparents, 2 aunts, neighbors"></div>
+        </div></div>`;
     }
 
     // — Notes —
@@ -708,6 +811,7 @@
   // Behavior wiring ------------------------------------------------------
   function wireForm() {
     const form = $('signupForm');
+    $('formBody').onclick = null;   // drop slot-first delegation when switching to a person-first event
 
     // Scout yes/no reveals extras
     household.scouts.forEach((s, i) => {
@@ -749,11 +853,6 @@
       let v = Math.min(max, Math.max(1, parseInt(out.dataset.val, 10) + parseInt(btn.dataset.step, 10)));
       out.dataset.val = v; out.textContent = v + (v === 1 ? ' day' : ' days');
       recompute();
-    }));
-    form.querySelectorAll('button[data-guest]').forEach(btn => btn.addEventListener('click', () => {
-      const out = $('guestCount');
-      let v = Math.min(10, Math.max(0, parseInt(out.dataset.val, 10) + parseInt(btn.dataset.guest, 10)));
-      out.dataset.val = v; out.textContent = v + (v === 1 ? ' guest' : ' guests');
     }));
 
     // Per-day tier pills toggle the days row
@@ -857,9 +956,252 @@
       : `<p class="owedEmpty">Mark someone &ldquo;Yes&rdquo; and the math shows up here — nothing is charged online.</p>`;
   }
 
+  // ══ STATE D (slot-first) · fundraiser signup, organized BY the work ═══════
+  // Pancake Breakfast / Rummage Sale: many jobs, many hands, no RSVP or pricing.
+  // Listing every slot under every person repeats an 8-row grid per household
+  // member; instead each job is listed once with live coverage, and "Sign up"
+  // opens a picker of eligible family members. Same claims, inverted surface.
+
+  function slotPeople() {
+    return [
+      ...household.scouts.map((s, i) => ({ key: 's' + i, kind: 'scout', name: s.name, sub: 'Scout' })),
+      ...household.adults.map((a, i) => ({ key: 'a' + i, kind: 'adult', name: a, sub: 'Parent' })),
+    ];
+  }
+  const firstName = (n) => n.split(' ')[0];
+  const slotEligible = (p, sl) =>
+    sl.elig === 'both' || (sl.elig === 'scouts' ? p.kind === 'scout' : p.kind === 'adult');
+  const slotFilled = (sl) => sl.filled + (slotClaims[sl.id] ? slotClaims[sl.id].size : 0);
+  const slotIsFull = (sl) => sl.needed != null && slotFilled(sl) >= sl.needed;
+  const claimersOf = (sl) => slotPeople().filter(p => slotClaims[sl.id] && slotClaims[sl.id].has(p.key));
+
+  // Rebuild the draft from an existing submission so "Edit signup" round-trips.
+  function initSlotClaims() {
+    slotClaims = {};
+    cfg.slots.forEach(sl => { slotClaims[sl.id] = new Set(); });
+    const sub = submissions[eventId];
+    if (!sub || sub.cancelled) return;
+    const restore = (person, key) =>
+      (person.claims || []).forEach(c => { if (slotClaims[c.id]) slotClaims[c.id].add(key); });
+    sub.scouts.forEach((s, i) => restore(s, 's' + i));
+    sub.adults.forEach((a, i) => restore(a, 'a' + i));
+  }
+
+  function claimerChipHtml(slotId, p) {
+    return `<span class="claimerChip"><span>${firstName(p.name)}</span>
+      <button type="button" class="claimerX" data-remove-slot="${slotId}" data-remove-person="${p.key}"
+              aria-label="Remove ${p.name} from this job">&times;</button></span>`;
+  }
+
+  function memberPickHtml(sl) {
+    const full = slotIsFull(sl);
+    return slotPeople().map(p => {
+      const on = slotClaims[sl.id].has(p.key);
+      const elig = slotEligible(p, sl);
+      const blocked = !elig || (full && !on);
+      const reason = !elig ? (sl.elig === 'adults' ? 'Adults only' : 'Scouts only')
+        : (full && !on) ? 'This job is full' : p.sub;
+      return `<button type="button" class="pickChip${on ? ' isOn' : ''}${blocked ? ' isDisabled' : ''}"
+        data-pick-slot="${sl.id}" data-pick-person="${p.key}" ${blocked ? 'disabled' : ''}
+        aria-pressed="${on ? 'true' : 'false'}">
+        <span class="pickName">${p.name}</span><span class="pickSub">${reason}</span></button>`;
+    }).join('');
+  }
+
+  function slotSignHtml(sl) {
+    const filled = slotFilled(sl), full = slotIsFull(sl);
+    const pct = sl.needed ? Math.min(100, Math.round(filled / sl.needed * 100)) : 0;
+    const mine = claimersOf(sl);
+    const open = openPickers.has(sl.id);
+    const donation = sl.attendance_required === false;
+    // Full with nobody of ours on it = nothing to do here; the muted row and the
+    // "Full" chip carry that, so the trigger goes inert rather than sprouting a
+    // disabled button that restates it.
+    const lockedOut = full && !mine.length;
+    return `<li class="slotSignItem${lockedOut ? ' isFull' : ''}" data-slot="${sl.id}">
+      <button type="button" class="slotSignTrigger" data-sign="${sl.id}"
+              ${lockedOut ? 'aria-disabled="true"' : `aria-expanded="${open ? 'true' : 'false'}" aria-controls="pick-${sl.id}"`}>
+        <span class="slotSignHead">
+          <span class="slotSignName">
+            <span class="slotName">${sl.label}</span>
+            <span class="slotTime">${sl.time || 'Untimed'}${donation ? ' &middot; no attendance needed' : ''}</span>
+          </span>
+          <span class="slotMetaRow">
+            <span class="eligChip elig--${sl.elig}">${whoLabel[sl.elig]}</span>
+            ${full ? `<span class="fullChip">Full (${sl.needed}/${sl.needed})</span>`
+                   : `<span class="slotCount">${coverageText(filled, sl.needed)}</span>`}
+            ${lockedOut ? '' : `<span class="pickCaret${open ? ' isOpen' : ''}" aria-hidden="true">&#9662;</span>`}
+          </span>
+        </span>
+        <span class="slotBar${full ? ' isFull' : ''}"><span style="width:${pct}%"></span></span>
+      </button>
+      ${fullNoticeFor === sl.id ? `<p class="fullNote" role="status">
+        <span aria-hidden="true">&#9432;</span>
+        <span><strong>This job is full.</strong> All ${sl.needed} spots are taken — pick another job below,
+        or ask a leader if you think there's room.</span></p>` : ''}
+      ${mine.length ? `<div class="claimerChips">${mine.map(p => claimerChipHtml(sl.id, p)).join('')}</div>` : ''}
+      <div class="memberPick" id="pick-${sl.id}" data-pick="${sl.id}" ${open ? '' : 'hidden'}>
+        <p class="pickPrompt">Who from the ${household.name} family is doing this?</p>
+        <div class="pickChips">${memberPickHtml(sl)}</div>
+      </div>
+    </li>`;
+  }
+
+  // Group by day so multi-day events (rummage: sorting night + sale day) read
+  // as a schedule rather than one flat list.
+  function slotListInner() {
+    const groups = [];
+    cfg.slots.forEach(sl => {
+      const label = sl.day || 'Anytime';
+      let g = groups.find(x => x.day === label);
+      if (!g) { g = { day: label, slots: [] }; groups.push(g); }
+      g.slots.push(sl);
+    });
+    return groups.map(g => `<li class="dayGroup"><p class="dayHead">${g.day}</p>
+      <ul class="daySlots">${g.slots.map(slotSignHtml).join('')}</ul></li>`).join('');
+  }
+
+  function renderClaimRecap() {
+    const box = $('claimRecap');
+    if (!box) return;
+    const lines = [];
+    slotPeople().forEach(p => {
+      const claims = cfg.slots.filter(sl => slotClaims[sl.id] && slotClaims[sl.id].has(p.key));
+      if (!claims.length) return;
+      // Someone whose only claims are donation tasks isn't attending — that's a
+      // contributor, derived from the claims rather than a separate toggle.
+      const tag = claims.every(c => c.attendance_required === false) ? 'Donating — not attending' : 'Helping';
+      lines.push(`<li><span class="owedName">${p.name} <em>(${tag})</em>
+        <span class="recapJobs">${claims.map(c => c.label).join(' &middot; ')}</span></span></li>`);
+    });
+    box.innerHTML = lines.length
+      ? `<ul class="owedLines recapLines">${lines.join('')}</ul>`
+      : `<p class="owedEmpty">No jobs claimed yet — pick one above and say who&rsquo;s doing it.</p>`;
+  }
+
+  // Transient "this job is full" note — auto-clears so it can't pile up.
+  function showFullNotice(slotId) {
+    clearTimeout(fullNoticeTimer);
+    fullNoticeFor = slotId;
+    rerenderSlots();
+    fullNoticeTimer = setTimeout(() => {
+      if (fullNoticeFor !== slotId) return;
+      fullNoticeFor = null;
+      if ($('slotSignList')) rerenderSlots();
+    }, 5000);
+  }
+
+  function rerenderSlots() {
+    $('slotSignList').innerHTML = slotListInner();
+    renderClaimRecap();
+    $('formError').hidden = true;
+  }
+
+  function buildSlotFirstForm() {
+    $('formKicker').textContent = cfg.title + ' · Step 3 of 3';
+    $('formTitle').textContent = `What can the ${household.name} family help with?`;
+    $('formLede').innerHTML = 'Pick a job and choose who&rsquo;s doing it &mdash; one person or several. '
+      + 'Claiming a job <em>is</em> your signup; there&rsquo;s no separate RSVP. '
+      + `You can change anything until <strong>${cfg.deadline.value}</strong>.`;
+    initSlotClaims();
+    openPickers.clear();
+    clearTimeout(fullNoticeTimer);
+    fullNoticeFor = null;
+
+    let h = `<ul class="slotSignList" id="slotSignList">${slotListInner()}</ul>`;
+
+    if (cfg.flags.guests) {
+      // Typed field, not a stepper: an Eagle Court of Honor family may bring 30+
+      // guests, and nobody is clicking "+" thirty times. Names aren't collected —
+      // just a headcount, plus an optional free-form "who are they".
+      h += `<div class="formSection"><div class="formSectionHead"><span class="legendLike">Guests coming along</span><span class="rule" aria-hidden="true"></span></div>
+        <p class="fieldHint" style="margin:8px 0 10px">Friends, family, grandparents, neighbors &mdash; how many, so we can set out enough chairs and refreshments? We don&rsquo;t need their names.</p>
+        <div class="guestGrid">
+          <div><label class="fieldLabel" for="guestCount">How many guests?</label>
+            <input class="textInput guestNum" type="number" id="guestCount" min="0" max="200" step="1" value="0" inputmode="numeric"></div>
+          <div><label class="fieldLabel" for="guestNote">Who are they? <span style="font-weight:400;color:var(--text-meta)">(optional)</span></label>
+            <input class="textInput" type="text" id="guestNote" placeholder="e.g. grandparents, 2 aunts, neighbors &mdash; no names needed"></div>
+        </div></div>`;
+    }
+    if (cfg.notesPrompt) {
+      h += `<div class="formSection"><div class="formSectionHead"><span class="legendLike">Notes</span><span class="rule" aria-hidden="true"></span></div>
+        <label class="fieldLabel" for="notesField" style="margin-top:10px">${cfg.notesPrompt}</label>
+        <textarea class="notesArea" id="notesField" placeholder="${cfg.notesDemo ? 'e.g. ' + cfg.notesDemo : ''}"></textarea></div>`;
+    }
+    h += `<div class="owedBox" aria-live="polite"><h3>Your household&rsquo;s jobs</h3><div id="claimRecap"></div></div>`;
+
+    $('formBody').innerHTML = h;
+    $('formError').hidden = true;
+    $('formSubmit').textContent = submissions[eventId] ? 'Save changes' : 'Submit family signup';
+    wireSlotFirst();
+    renderClaimRecap();
+  }
+
+  // Delegated so the slot list can re-render freely on every change.
+  function wireSlotFirst() {
+    $('formBody').onclick = (e) => {
+      const sign = e.target.closest('[data-sign]');
+      if (sign) {
+        const id = sign.dataset.sign;
+        const sl = cfg.slots.find(s => s.id === id);
+        // Full, with none of ours on it: say so instead of doing nothing.
+        if (slotIsFull(sl) && !claimersOf(sl).length) { showFullNotice(id); return; }
+        openPickers.has(id) ? openPickers.delete(id) : openPickers.add(id);
+        rerenderSlots();
+        return;
+      }
+      const pick = e.target.closest('[data-pick-person]');
+      if (pick && !pick.disabled) {
+        const { pickSlot, pickPerson } = pick.dataset;
+        const set = slotClaims[pickSlot];
+        set.has(pickPerson) ? set.delete(pickPerson) : set.add(pickPerson);
+        openPickers.add(pickSlot);           // keep it open for multi-select
+        rerenderSlots();
+        return;
+      }
+      const rm = e.target.closest('[data-remove-person]');
+      if (rm) { slotClaims[rm.dataset.removeSlot].delete(rm.dataset.removePerson); rerenderSlots(); return; }
+    };
+  }
+
+  // Fold the slot-indexed draft back into per-person rows — the shape the
+  // confirmation, roster, and schema all expect.
+  function submitSlotFirst() {
+    if (!cfg.slots.some(sl => slotClaims[sl.id] && slotClaims[sl.id].size)) {
+      const errEl = $('formError');
+      errEl.textContent = 'Pick at least one job and say who’s doing it before submitting.';
+      errEl.hidden = false;
+      errEl.scrollIntoView({ block: 'center' });
+      return;
+    }
+    const claimsFor = (key) => cfg.slots.filter(sl => slotClaims[sl.id].has(key));
+    const donationOnly = (claims) => claims.every(c => c.attendance_required === false);
+
+    const scouts = household.scouts.map((s, i) => {
+      const claims = claimsFor('s' + i);
+      return { ...s, status: claims.length ? (donationOnly(claims) ? 'contributor' : 'yes') : null,
+        tier: null, days: null, claims, answers: [] };
+    });
+    const adults = household.adults.map((a, i) => {
+      const claims = claimsFor('a' + i);
+      return { name: a, participation: claims.length ? (donationOnly(claims) ? 'contributor' : 'full') : null,
+        tier: null, days: null, legOut: false, legBack: false, seats: null, claims, answers: [] };
+    });
+
+    submissions[eventId] = {
+      scouts, adults,
+      guests: $('guestCount') ? (parseInt($('guestCount').value, 10) || 0) : 0,
+      guestNote: $('guestNote') ? $('guestNote').value.trim() : '',
+      notes: $('notesField') ? $('notesField').value.trim() : '',
+      cancelled: false,
+    };
+    go('confirm');
+  }
+
   // Submit ---------------------------------------------------------------
   $('signupForm').addEventListener('submit', e => {
     e.preventDefault();
+    if (slotFirst()) { submitSlotFirst(); return; }
     const b = cfg.blocks, errs = [];
 
     const scouts = household.scouts.map((s, i) => {
@@ -907,7 +1249,8 @@
 
     submissions[eventId] = {
       scouts, adults,
-      guests: $('guestCount') ? parseInt($('guestCount').dataset.val, 10) : 0,
+      guests: $('guestCount') ? (parseInt($('guestCount').value, 10) || 0) : 0,
+      guestNote: $('guestNote') ? $('guestNote').value.trim() : '',
       notes: $('notesField') ? $('notesField').value.trim() : '',
       cancelled: false,
     };
@@ -961,7 +1304,9 @@
         legOut: false, legBack: false, seats: null, claims: [donation], answers: [] };
       return { name: a, participation: null, tier: null, days: null, legOut: false, legBack: false, seats: null, claims: [], answers: [] };
     });
-    return { scouts, adults, guests: cfg.flags.guests ? 2 : 0, notes: cfg.notesDemo || '', cancelled: false };
+    return { scouts, adults, guests: cfg.flags.guests ? 2 : 0,
+      guestNote: cfg.flags.guests ? 'grandparents and a neighbor' : '',
+      notes: cfg.notesDemo || '', cancelled: false };
   }
 
   function buildConfirm() {
@@ -1015,7 +1360,7 @@
       rows.push(`<li><span class="sumName">${a.name}${subs.map(x => `<span class="sumSub">${x}</span>`).join('')}</span>
         <span class="statusChip ${chipClass}">${chip}</span></li>`);
     });
-    if (sub.guests > 0) rows.push(`<li><span class="sumName">Guests<span class="sumSub">${sub.guests} extra ${sub.guests === 1 ? 'person' : 'people'} joining</span></span></li>`);
+    if (sub.guests > 0) rows.push(`<li><span class="sumName">Guests<span class="sumSub">${sub.guests} extra ${sub.guests === 1 ? 'person' : 'people'} joining${sub.guestNote ? ' &mdash; ' + sub.guestNote : ''}</span></span></li>`);
     if (sub.notes) rows.push(`<li><span class="sumName">Notes<span class="sumSub">${sub.notes}</span></span></li>`);
 
     const dues = [];
@@ -1037,9 +1382,11 @@
       ${dues.join('')}
       <p class="deadlineReminder">You can edit or cancel this signup until <strong>${cfg.deadline.value}</strong>. After that, contact the Scoutmaster.</p>
       <div class="confirmActions">
+        <button type="button" class="btn btn--primary" onclick="go('detail')">Done &mdash; back to events</button>
         <button type="button" class="btn btn--secondary" onclick="go('form')" ${sub.cancelled ? 'disabled' : ''}>Edit signup</button>
         <button type="button" class="btn btn--danger" id="cancelBtn" ${sub.cancelled ? 'disabled' : ''}>Cancel signup</button>
-      </div>`;
+      </div>
+      <p class="confirmDoneHint">Nothing else to do &mdash; we&rsquo;ve got your signup. You&rsquo;ll find this event again on the events page any time before the deadline.</p>`;
 
     const cbtn = $('cancelBtn');
     if (cbtn) cbtn.addEventListener('click', () => {

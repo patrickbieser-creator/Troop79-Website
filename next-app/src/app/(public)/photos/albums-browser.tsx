@@ -14,7 +14,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 /* eslint-disable @next/next/no-img-element -- Bunny CDN covers, plain img with onError fallback */
-import type { CalendarCategory, PhotoAlbum } from '@/lib/supabase/types';
+import type { PhotoAlbum } from '@/lib/supabase/types';
 import styles from './photos.module.css';
 
 export interface AlbumWithCover extends PhotoAlbum {
@@ -22,14 +22,27 @@ export interface AlbumWithCover extends PhotoAlbum {
   cover_alt: string | null;
 }
 
-const CATEGORY_CLASS: Partial<Record<CalendarCategory, string>> = {
+/**
+ * Album accent class by category. Keyed by plain string, not CalendarCategory,
+ * because `photo_albums.category` is free text with no constraint — albums
+ * created before the 2026-07-18 calendar rename still hold the old labels, and
+ * they should keep their color rather than silently falling through to none.
+ * Both spellings map to the same style.
+ */
+const CATEGORY_CLASS: Record<string, string> = {
+  // current labels
+  'Campout / Overnight': styles.catCampout,
+  'Day Activity / Outing': styles.catOuting,
+  'Ceremony / Recognition': styles.catCoh,
+  // legacy labels, still present on older album rows
   Campout: styles.catCampout,
+  Outing: styles.catOuting,
+  'Court of Honor': styles.catCoh,
+  Ceremony: styles.catCoh,
+  // unchanged
   'Summer Camp': styles.catSummerCamp,
   'High Adventure': styles.catHighAdventure,
   'Service Project': styles.catService,
-  'Court of Honor': styles.catCoh,
-  Ceremony: styles.catCoh,
-  Outing: styles.catOuting,
   Fundraiser: styles.catFundraiser,
   'Troop Meeting': styles.catMeeting
 };

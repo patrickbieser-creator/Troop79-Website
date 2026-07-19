@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 /* eslint-disable @next/next/no-img-element -- admin thumbnails; remote sizes vary */
 import type { CalendarCategory, Media, PhotoAlbum } from '@/lib/supabase/types';
-import { CATEGORY_COLORS } from '@/lib/calendar-shared';
+import { categoryColor } from '@/lib/calendar-shared';
 import { MediaPicker } from '../_components/media-picker';
 import styles from './albums.module.css';
 
@@ -101,7 +101,7 @@ export function AlbumsEditor({ rows, covers, categories, onCreate, onUpdate, onD
                     <span className={styles.catTag}>
                       <span
                         className={styles.catPip}
-                        style={{ background: CATEGORY_COLORS[row.category] ?? 'var(--admin-gray-400)' }}
+                        style={{ background: categoryColor(row.category) }}
                       />
                       {row.category}
                     </span>

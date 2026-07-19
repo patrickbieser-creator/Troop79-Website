@@ -1,0 +1,350 @@
+/* One generic event detail page — blocks render from the event's own config.
+   Tokens only; no hard-coded palette (see globals.css). */
+
+.page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 28px 24px 72px;
+  color: var(--text-body);
+}
+
+.breadcrumb {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  margin-bottom: 18px;
+}
+.breadcrumb a {
+  color: var(--text-meta);
+  text-decoration: none;
+}
+.breadcrumb a:hover {
+  color: var(--navy);
+  text-decoration: underline;
+}
+
+.head {
+  border-bottom: 2px solid var(--border-light);
+  padding-bottom: 18px;
+  margin-bottom: 22px;
+}
+.kicker {
+  margin-bottom: 10px;
+}
+.cat {
+  display: inline-block;
+  color: #fff;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 3px;
+}
+.title {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 5vw, 42px);
+  line-height: 1.12;
+  color: var(--text-head);
+  margin-bottom: 10px;
+}
+.dek {
+  font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--text-body);
+}
+
+.factGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1px;
+  background: var(--border-light);
+  border: 1px solid var(--border-light);
+  margin-bottom: 26px;
+}
+.fact {
+  background: var(--warm-white);
+  padding: 12px 14px;
+  font-family: var(--font-ui);
+}
+.fact dt {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-meta);
+  margin-bottom: 4px;
+}
+.fact dd {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text-head);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.factSub {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-meta);
+}
+
+.body {
+  font-family: var(--font-body);
+  font-size: 16.5px;
+  line-height: 1.65;
+  margin-bottom: 26px;
+}
+.body p + p {
+  margin-top: 14px;
+}
+
+.block {
+  margin-bottom: 26px;
+}
+.blockHead {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--navy);
+  padding-bottom: 7px;
+  margin-bottom: 12px;
+  border-bottom: 2px solid var(--border-light);
+}
+
+.resourceList {
+  list-style: none;
+  font-family: var(--font-ui);
+  font-size: 14px;
+}
+.resourceList li + li {
+  margin-top: 8px;
+}
+.resourceList a {
+  color: var(--navy);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.tierRows {
+  list-style: none;
+  border: 1px solid var(--border-light);
+  font-family: var(--font-ui);
+}
+.tierRows li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--warm-white);
+  font-size: 14.5px;
+}
+.tierRows li + li {
+  border-top: 1px solid var(--border-light);
+}
+.tierWho {
+  display: block;
+  font-size: 11px;
+  color: var(--text-meta);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+}
+.tierAmt {
+  font-weight: 700;
+  color: var(--forest);
+  white-space: nowrap;
+}
+.tierAmt small {
+  font-weight: 400;
+  color: var(--text-meta);
+}
+.payNote {
+  font-family: var(--font-ui);
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-body);
+  margin-top: 10px;
+}
+
+.slotList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: var(--font-ui);
+}
+.slotList > li {
+  background: var(--warm-white);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  padding: 11px 14px;
+}
+.slotFull {
+  background: var(--cream);
+}
+.slotTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.slotWhen {
+  display: block;
+  font-size: 12.5px;
+  color: var(--text-meta);
+  margin-top: 2px;
+}
+.slotMeta {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-shrink: 0;
+}
+.elig {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-meta);
+  border: 1px solid var(--border-mid);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.count {
+  font-size: 12.5px;
+  color: var(--text-body);
+}
+.bar {
+  display: block;
+  height: 4px;
+  background: var(--border-light);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 9px;
+}
+.bar > span {
+  display: block;
+  height: 100%;
+  background: var(--forest);
+}
+
+.capacity {
+  font-family: var(--font-ui);
+  font-size: 13.5px;
+  color: var(--text-body);
+  margin-bottom: 12px;
+}
+
+.ahmr,
+.locked,
+.noSignup,
+.stub {
+  font-family: var(--font-ui);
+  font-size: 13.5px;
+  line-height: 1.55;
+  padding: 11px 14px;
+  border-radius: 3px;
+  margin-bottom: 22px;
+}
+.ahmr {
+  background: #fdf6e6;
+  border-left: 3px solid var(--bark, #8b6914);
+}
+.locked,
+.noSignup {
+  background: var(--cream);
+  border-left: 3px solid var(--border-mid);
+}
+.stub {
+  background: var(--cream);
+  border-left: 3px solid var(--forest);
+  margin-bottom: 12px;
+}
+
+.gate {
+  background: var(--cream);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  padding: 18px;
+  font-family: var(--font-ui);
+}
+.gateLede {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-body);
+  margin-bottom: 14px;
+}
+.gateLabel {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-meta);
+  margin-bottom: 6px;
+}
+.gateRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.gateInput {
+  flex: 1 1 200px;
+  padding: 9px 12px;
+  border: 1px solid var(--border-mid);
+  border-radius: 3px;
+  background: var(--warm-white);
+  font-size: 15px;
+}
+.gateInput:focus-visible {
+  outline: 2px solid var(--forest);
+  outline-offset: 1px;
+}
+.gateBtn {
+  background: var(--navy);
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  padding: 9px 20px;
+  font-family: var(--font-ui);
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.gateBtn:hover {
+  background: var(--forest);
+}
+.gateErr {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #a04a3d;
+  font-weight: 600;
+}
+.gatedIn {
+  font-family: var(--font-ui);
+}
+.gateOk {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--forest);
+  margin-bottom: 10px;
+}
+.linkBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  color: var(--text-meta);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.linkBtn:hover {
+  color: var(--navy);
+}

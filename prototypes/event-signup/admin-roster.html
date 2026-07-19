@@ -37,7 +37,7 @@
       <div class="tile">
         <div class="tileLabel">Scouts going</div>
         <div class="tileValue" id="tileScouts">14</div>
-        <div class="tileSub" id="tileScoutsSub">across 3 patrols</div>
+        <div class="tileSub" id="tileScoutsSub">from 5 households</div>
       </div>
       <div class="tile">
         <div class="tileLabel">Adults going</div>
@@ -76,10 +76,10 @@
       <!-- ══ LEFT COLUMN — roster tables ══ -->
       <div>
 
-        <!-- Scouts by patrol -->
-        <section class="card" aria-label="Scout roster by patrol">
+        <!-- Scouts — one troop-wide list -->
+        <section class="card" aria-label="Scout roster">
           <div class="cardHead">
-            <h2 class="cardTitle">Scouts &mdash; by patrol</h2>
+            <h2 class="cardTitle">Scouts</h2>
             <span class="cardCount" id="scoutCardCount"></span>
           </div>
           <div class="rosterTableWrap">
@@ -139,7 +139,7 @@
           </div>
           <div class="cardBody">
             <div class="chipList" id="nrChips"></div>
-            <p class="declinedLine">Declined (explicit &ldquo;can&rsquo;t make it&rdquo;): <strong>Jonas Feldman</strong> (Screaming Eagles), <strong>Tommy Reyes</strong> (Wolverines). Not chased &mdash; they answered.</p>
+            <p class="declinedLine">Declined (explicit &ldquo;can&rsquo;t make it&rdquo;): <strong>Jonas Feldman</strong>, <strong>Tommy Reyes</strong>. Not chased &mdash; they answered.</p>
           </div>
         </section>
 
@@ -242,7 +242,6 @@
      All names fictional.
      ══════════════════════════════════════════════════════════════════ */
 
-  const PATROLS = ['Flaming Arrows', 'Wolverines', 'Screaming Eagles'];
 
   const SCOUTS = [
     { name: 'Ben Kowalski',      patrol: 'Flaming Arrows',  hh: 'Kowalski',   slip: true,  paid: true,  note: 'Peanut allergy — EpiPen in day bag' },
@@ -289,41 +288,31 @@
   const CAPACITY = 40;
   const $ = (id) => document.getElementById(id);
 
-  // ── Scout table, grouped by patrol with live subtotal rows ────────
+  // ── Scout table — one troop-wide list, alphabetical ───────────────
+  // No patrol grouping: the troop shops and plans as a troop, and patrols are
+  // in flux and routinely combined for events, so patrol subtotals model an
+  // aspiration rather than how this troop actually runs an outing.
   function renderScouts() {
     const tbody = $('scoutTbody');
     tbody.innerHTML = '';
-    PATROLS.forEach(patrol => {
-      const members = SCOUTS.filter(s => s.patrol === patrol);
-      if (!members.length) return;
-      const head = document.createElement('tr');
-      head.className = 'patrolRow';
-      head.innerHTML = `<td colspan="4">${patrol}
-        <span class="patrolCounts" id="pc-${patrol.replace(/\s/g, '')}"></span></td>`;
-      tbody.appendChild(head);
-      members.forEach(s => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td><span class="attName">${s.name}</span><span class="attMeta"> · ${s.hh} household</span></td>
-          <td>${s.note ? `<span class="attNote">${s.note}</span>` : '<span class="attMeta">—</span>'}</td>
-          <td class="chkCol"><input type="checkbox" ${s.slip ? 'checked' : ''} aria-label="Permission slip received — ${s.name}"></td>
-          <td class="chkCol"><input type="checkbox" ${s.paid ? 'checked' : ''} aria-label="Payment received — ${s.name}"></td>`;
-        const [slipChk, paidChk] = tr.querySelectorAll('input');
-        slipChk.addEventListener('change', () => { s.slip = slipChk.checked; renderCounts(); });
-        paidChk.addEventListener('change', () => { s.paid = paidChk.checked; renderCounts(); });
-        tbody.appendChild(tr);
-      });
+    [...SCOUTS].sort((a, b) => a.name.localeCompare(b.name)).forEach(s => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><span class="attName">${s.name}</span><span class="attMeta"> · ${s.hh} household</span></td>
+        <td>${s.note ? `<span class="attNote">${s.note}</span>` : '<span class="attMeta">—</span>'}</td>
+        <td class="chkCol"><input type="checkbox" ${s.slip ? 'checked' : ''} aria-label="Permission slip received — ${s.name}"></td>
+        <td class="chkCol"><input type="checkbox" ${s.paid ? 'checked' : ''} aria-label="Payment received — ${s.name}"></td>`;
+      const [slipChk, paidChk] = tr.querySelectorAll('input');
+      slipChk.addEventListener('change', () => { s.slip = slipChk.checked; renderCounts(); });
+      paidChk.addEventListener('change', () => { s.paid = paidChk.checked; renderCounts(); });
+      tbody.appendChild(tr);
     });
     renderCounts();
   }
 
   function renderCounts() {
-    PATROLS.forEach(patrol => {
-      const m = SCOUTS.filter(s => s.patrol === patrol);
-      const el = $('pc-' + patrol.replace(/\s/g, ''));
-      if (el) el.textContent =
-        `${m.length} scouts · slips ${m.filter(s => s.slip).length}/${m.length} · paid ${m.filter(s => s.paid).length}/${m.length}`;
-    });
+    const households = new Set(SCOUTS.map(s => s.hh)).size;
+    $('tileScoutsSub').textContent = `from ${households} household${households !== 1 ? 's' : ''}`;
     const slips = SCOUTS.filter(s => s.slip).length, paid = SCOUTS.filter(s => s.paid).length;
     $('scoutCardCount').textContent =
       `${SCOUTS.length} going · slips ${slips}/${SCOUTS.length} · paid ${paid}/${SCOUTS.length}`;
@@ -363,11 +352,11 @@
       row.className = 'waitRow';
       row.innerHTML = `
         <span class="waitPos" aria-hidden="true">${i + 1}</span>
-        <span class="waitName">${w.name}<span class="waitMeta">${w.patrol} · joined ${w.when}</span></span>
+        <span class="waitName">${w.name}<span class="waitMeta">joined ${w.when}</span></span>
         <button type="button" class="promoteBtn">Promote</button>`;
       row.querySelector('.promoteBtn').addEventListener('click', () => {
         w.promoted = true;
-        SCOUTS.push({ name: w.name, patrol: w.patrol, hh: w.name.split(' ').pop(), slip: false, paid: false, note: '' });
+        SCOUTS.push({ name: w.name, hh: w.name.split(' ').pop(), slip: false, paid: false, note: '' });
         renderScouts(); renderWaitlist();
       });
       body.appendChild(row);
@@ -376,10 +365,10 @@
 
   // ── Non-responders (the chase list) ───────────────────────────────
   $('nrChips').innerHTML = NON_RESPONDERS.map(n =>
-    `<span class="nrChip">${n.name}<span class="patrolTag">${n.patrol}</span></span>`).join('');
+    `<span class="nrChip">${n.name}</span>`).join('');
 
   $('copyChase').addEventListener('click', async () => {
-    const text = NON_RESPONDERS.map(n => `${n.name} (${n.patrol})`).join('\n');
+    const text = NON_RESPONDERS.map(n => n.name).join('\n');
     try { await navigator.clipboard.writeText(text); $('copyChase').textContent = 'Copied ✓'; }
     catch { $('copyChase').textContent = 'Copy failed'; }
     setTimeout(() => $('copyChase').textContent = 'Copy list', 1800);
@@ -387,11 +376,11 @@
 
   // ── CSV export (real download — leaders live in spreadsheets) ─────
   $('exportCsv').addEventListener('click', () => {
-    const rows = [['Type', 'Name', 'Patrol/Household', 'Status', 'Slip', 'Paid', 'Driver seats', 'Notes']];
-    SCOUTS.forEach(s => rows.push(['Scout', s.name, s.patrol, 'Yes', s.slip ? 'Y' : 'N', s.paid ? 'Y' : 'N', '', s.note]));
+    const rows = [['Type', 'Name', 'Household', 'Status', 'Slip', 'Paid', 'Driver seats', 'Notes']];
+    SCOUTS.forEach(s => rows.push(['Scout', s.name, s.hh, 'Yes', s.slip ? 'Y' : 'N', s.paid ? 'Y' : 'N', '', s.note]));
     ADULTS.forEach(a => rows.push(['Adult', a.name, a.hh, 'Yes', '', '', a.driver ? a.seats : '', a.help]));
-    WAITLIST.filter(w => !w.promoted).forEach(w => rows.push(['Scout', w.name, w.patrol, 'Waitlist', 'N', 'N', '', '']));
-    NON_RESPONDERS.forEach(n => rows.push(['Scout', n.name, n.patrol, 'No response', '', '', '', '']));
+    WAITLIST.filter(w => !w.promoted).forEach(w => rows.push(['Scout', w.name, w.name.split(' ').pop(), 'Waitlist', 'N', 'N', '', '']));
+    NON_RESPONDERS.forEach(n => rows.push(['Scout', n.name, n.name.split(' ').pop(), 'No response', '', '', '', '']));
     const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));

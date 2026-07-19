@@ -34,14 +34,16 @@ Defaults when a leader enables signup on an event of each type. ✓ = block on, 
 | Day Activity / Outing | ✓ | ✓ | — | ✓ | — | — | ✓ | — | — | both |
 | High Adventure | ✓ | ✓ | ✓ +WL (crew-size limits) | ✓ | — | ✓ (gear/shirt/dietary) | ✓ | ✓ | — | both |
 | Summer Camp | ✓ | ✓ (scout flat, adult per-day) | — | ✓ | — | ✓ | ✓ | ✓ | — | both |
-| Service Project | ✓ | — | — | ✓ | ✓ | — | ✓ | — | ✓ | both |
-| Fundraiser | ✓ | — | — | — | ✓ | — | — | — | ✓ | both |
+| Service Project | — † | — | — | ✓ | ✓ | — | ✓ | — | ✓ | both |
+| Fundraiser | — † | — | — | — | ✓ | — | — | — | ✓ | both |
 | Advancement Event (MB clinic) | ✓ | — (materials fee when needed) | ✓ +WL | ✓ | — | ✓ (badge/session choice) | — | — | — | scouts |
 | Training | ✓ | — | — | — | — | — | — | — | — | per event (often adults- or scouts-only) |
 | Ceremony / Recognition | ✓ | — | — | — | — (toggle on for CoH dessert/setup) | — | — | — | ✓ (families/guests counted) | both |
 | Leadership / Planning | *signup off by default* — PLC/committee rarely needs one; when on: attendance only, scoped audience | | | | | | | | | |
-| Recruiting / Outreach | ✓ | — | — | — | ✓ (greeters, demo stations) | — | — | — | ✓ (Webelos/visitor counts) | both |
-| Social Event | ✓ | — (add tier when needed) | — | — | ✓ (potluck items) | — | — | — | ✓ | both |
+| Recruiting / Outreach | — † | — | — | — | ✓ (greeters, demo stations) | — | — | — | ✓ (Webelos/visitor counts) | both |
+| Social Event | — † | — (add tier when needed) | — | — | ✓ (potluck items) | — | — | — | ✓ | both |
+
+**† Attendance defaults OFF on slots-carrying types (2026-07-18, Patrick): claiming a job *is* signing up.** These four types get the **slot-first form** (organized by the work, not the person — see Decisions made), so a separate RSVP alongside it would be redundant data entry. The block stays editable: a leader can turn attendance back on for an event that genuinely needs both.
 
 (The existing "No Meeting" calendar category is calendar-only — signup never applies.) Potluck items, greeter stations, rummage-sale crews, and grubmaster lists are all the same `signup_slots` mechanism — the matrix needs no per-type code.
 
@@ -52,7 +54,7 @@ Today headcounts are chased by email/GroupMe. Research across scouting platforms
 1. **Driver coordination as a first-class signup** (seats offered vs. seats needed) — every platform punts to spreadsheets.
 2. **Waitlists with auto-promotion** — only SignUpGenius (paid tier) does this.
 
-Other validated pain points this solves: grubmaster food-buying counts (per-patrol rollups), permission-slip chasing (slip status per attendee, separate from RSVP), soft deadlines causing last-minute scrambles (hard gate: "no slip + no money = no trip"), login walls killing response rates, and fundraiser shift staffing living in disconnected SignUpGenius sheets.
+Other validated pain points this solves: grubmaster food-buying counts (troop-wide headcount), permission-slip chasing (slip status per attendee, separate from RSVP), soft deadlines causing last-minute scrambles (hard gate: "no slip + no money = no trip"), login walls killing response rates, and fundraiser shift staffing living in disconnected SignUpGenius sheets.
 
 ### BSA program rules the model must respect
 
@@ -61,7 +63,7 @@ Other validated pain points this solves: grubmaster food-buying counts (per-patr
 - **Permission slips (Activity Consent):** per-event, per-scout; status tracked separately from RSVP.
 - **Health forms:** AHMR A/B assumed annual; events ≥72 hrs flag "Part C required" as an informational banner.
 - **No generic guests on overnights:** non-registered siblings/adults generally may not attend campouts. Guests (including Webelos/Cub Scout visitors at recruiting events) allowed only when the event enables them.
-- **Patrol rollups:** headcounts subtotal by patrol (grubmaster budgeting), reusing Roll Call's patrol grouping.
+- ~~**Patrol rollups:** headcounts subtotal by patrol (grubmaster budgeting), reusing Roll Call's patrol grouping.~~ **Dropped 2026-07-18 (Patrick):** Troop 79 shops and plans **as a troop**, and its patrols are frequently in flux and combined for events — patrol subtotals model an aspiration rather than how the troop actually runs an outing. Headcounts roll up troop-wide and by household. No patrol display anywhere in this feature, family-facing or leader-facing.
 
 ### Decisions made (2026-07-14, Patrick)
 
@@ -74,6 +76,11 @@ Other validated pain points this solves: grubmaster food-buying counts (per-patr
 - **Default signup deadline: 5 days before event start** (configurable).
 - **No "Maybe"** — Yes / No / silence; silence is what the non-responder chase list is for.
 - **Scouts may sign themselves up** through the same gate + household picker.
+- **Slot-first signup surface for slots-driven events (2026-07-18, Patrick):** when an event's signup is the work itself (`slots` on, `attendance` off — Pancake Breakfast, Rummage Sale), the family form is organized **by the job, not by the person**. Each slot is listed once, grouped by day, showing live coverage; a "Sign up" control opens a picker asking *which household members* are doing it (multi-select, eligibility-enforced). The old person-first layout repeated the entire slot grid under every family member — four people × eight slots on a pancake breakfast. **This does not apply to the other forms:** attendance/pricing/questions events (campout, ski outing, summer camp) keep the person-first flow, where the person genuinely is the unit of signup.
+  - **Storage is unchanged** — claims still resolve to per-person `signup_slot_claims` rows, so the confirmation, admin roster, and owed math stay person-indexed. Only the input surface inverts.
+  - **The row is the control (2026-07-18, Patrick):** clicking the job name/row opens the picker — there is no separate "Sign up" button, which restated the row and cost a line of height per slot. Implemented as a full-width `<button>` wrapping the row header (`aria-expanded` + `aria-controls`), so keyboard and screen-reader access survive; claimed-member chips with their remove buttons sit *outside* that trigger to avoid nested interactive elements. A full slot with none of your household on it renders the trigger inert — **the muted row and "Full (n/n)" chip carry that state on their own**, no disabled button needed.
+  - **A full job explains itself (2026-07-18, Patrick):** clicking a full slot shows a transient "This job is full — all N spots are taken" note (`role="status"`, auto-clears after 5s) instead of silently swallowing the click. The row stays clickable and carries `aria-disabled` rather than `disabled`, so the click is still receivable.
+  - **Contributor is derived, not toggled:** a person whose claims are *all* `attendance_required=false` is a contributor (donating, not attending) automatically. The explicit "not attending — donating items only" checkbox is removed from this flow.
 - **Item donations are IN scope; money donations are not (revised 2026-07-14):** donating pancake mix or orange juice is part of event signup — a household member can claim a donation-style task **without attending** (participation `contributor`, mirroring `driver_only`: owes nothing, counts toward nothing, holds task claims). Money donations remain separate — a future Donate button/landing page, unrelated to signup.
 
 ## Acceptance Criteria
@@ -84,12 +91,15 @@ Other validated pain points this solves: grubmaster food-buying counts (per-patr
 - [ ] A leader can define shifts (label, time range, eligibility scouts/adults/both, needed count) and tasks (same, untimed) — with coverage always shown as filled/needed numbers.
 - [ ] A leader can define per-participant questions (short text / number / single choice; applies to scouts/adults/both; required or not).
 - [ ] A family can pass the shared troop password gate once (cookie), pick their household, and in one submission: RSVP scouts and adults, pick each person's price tier (and days, when per-day), claim shifts/tasks per person, answer questions per person, and offer driver seats per leg (outbound / return / both).
+- [ ] On a **slots-driven event** (slots on, attendance off), the family form is organized **by job**: slots listed once and grouped by day, each showing live coverage (filled/needed), with a "Sign up" control that opens a picker of eligible household members. Ineligible members are disabled with the reason; a full slot disables members not already on it. Person-first events are unaffected.
 - [ ] An adult can sign up as **driver only** — not attending, never charged, excluded from headcount and two-deep, listed in the driver plan for the legs they drive.
 - [ ] A household member can claim a **donation-style task** (e.g., "donate 10 lb pancake mix") **without attending** — a contributor: owes nothing, counts toward nothing, appears on the task coverage list. Shifts and work tasks still require attendance.
+- [ ] The confirmation page ends the flow explicitly: a primary **"Done — back to events"** button (linking to `/events` in production) alongside Edit and Cancel, plus a line confirming there's nothing left to do. Applies to every event type, not just slot-driven ones.
+- [ ] Clicking a **full** shift/task surfaces a brief "this job is full" message rather than doing nothing.
 - [ ] A family sees their computed amount owed (tiers × people × days) with payment instructions — and can return to view, edit, or cancel until the deadline; after it, the form locks.
 - [ ] "Can't make it" is recorded as an explicit *No*, distinct from not responding.
 - [ ] Capacity reached: waitlist-enabled events queue new signups visibly; otherwise "Full — contact the Scoutmaster." Individual shifts close at their needed count (showing "Full (6/6)").
-- [ ] Leader roster view: totals, per-patrol subtotals, two-deep indicator, driver seat math, shift coverage grid (filled/needed), question answers, amount owed vs. payment received per household, non-responders, waitlist, per-attendee slip/payment checkboxes, print + CSV.
+- [ ] Leader roster view: troop-wide totals (no patrol grouping), household count, two-deep indicator, driver seat math, shift coverage grid (filled/needed), question answers, amount owed vs. payment received per household, non-responders, waitlist, per-attendee slip/payment checkboxes, print + CSV.
 - [ ] Public (un-gated) pages never expose scout or family names; event content is public, signup data is gated.
 - [ ] `npm run lint` and `next build` pass.
 
@@ -110,10 +120,16 @@ No automated suite exists yet (project constraint); acceptance stubs to write wh
 - [ ] `CancelledEntry_ReleasesSlotCapacity_WhenStatusLeavesYes()`
 - [ ] `Anonymous_CannotReadRosterNames_WhenNotGateAuthenticated()`
 - [ ] `Anonymous_CanReadEventContent_WhenPagePublic()`
-- [ ] `Leader_SeesPatrolSubtotalsAndPerLegDriverSeatMath_WhenViewingRoster()`
+- [ ] `Leader_SeesTroopWideTotalsAndPerLegDriverSeatMath_WhenViewingRoster()`
 - [ ] `DriverOnlyAdult_ExcludedFromHeadcountTwoDeepAndOwed_WhenSignedUp()`
 - [ ] `Contributor_CanClaimDonationTask_WithoutAttending()`
 - [ ] `Contributor_CannotClaimShiftOrAttendanceRequiredTask_WhenNotAttending()`
+- [ ] `SlotsDrivenEvent_RendersFormByJobGroupedByDay_WhenAttendanceBlockOff()`
+- [ ] `PersonFirstEvent_RendersFormByPerson_WhenAttendanceBlockOn()`
+- [ ] `SlotPicker_DisablesIneligibleHouseholdMembers_WhenSlotRestrictsEligibility()`
+- [ ] `SlotPicker_DisablesUnclaimedMembers_WhenSlotAtCapacity()`
+- [ ] `Entry_DerivesContributor_WhenAllClaimsAreAttendanceNotRequired()`
+- [ ] `SlotFirstDraft_RestoresExistingClaims_WhenEditingSubmittedSignup()`
 - [ ] `Leader_SeesShiftCoverageNumbers_WhenViewingRoster()`
 - [ ] `Leader_CanTogglePermissionSlipAndPayment_WhenManagingRoster()`
 - [ ] `NonResponderList_ShowsActiveScoutsWithoutEntries_WhenRosterViewed()`
@@ -185,6 +201,13 @@ signup_entries           -- one row per attending person (or explicit decline)
 signup_slots             -- shifts AND tasks: one mechanism (a task is a shift without times)
   id, event_signup_id FK, kind (shift|task),
   label, starts_at time null, ends_at time null,   -- shifts only
+  slot_date date null,                             -- which day this slot falls on; drives the
+                                                   -- day grouping in the slot-first form. Required
+                                                   -- for multi-day events (rummage: Friday sorting
+                                                   -- night + Saturday sale day); null on untimed
+                                                   -- tasks, which group as "Anytime before the event".
+                                                   -- CHECK: slot_date within the calendar entry's
+                                                   -- entry_date..end_date range when both are set.
   attendance_required bool default true,           -- false = donation-style task, claimable
                                                    -- by contributor entries (CHECK: shifts always true)
   eligibility (scouts|adults|both),
@@ -244,12 +267,14 @@ None exists in the app. Phases 1–2 ship without email (on-screen confirmation;
 
 ## Implementation Steps
 
-**Phase 1 — Core: attendance + content + pricing**
-1. Migration: `event_signups`, `event_prices`, `signup_entries`, `calendar_entries.details_md`, `event_resources`, all CHECKs + partial unique indexes, capacity RPC, RLS (anon: no read on signup tables; content public; service-role loaders only). Same migration: reconcile `calendar_entries.category` with the 13-type taxonomy — add Advancement Event, Training, Recruiting / Outreach, Social Event; map Court of Honor → Ceremony / Recognition and Committee Meeting → Leadership / Planning (pending Patrick's confirmation); update the calendar CSV import's category list and the public calendar filter to match.
+> **DEPLOY ORDERING (found 2026-07-18 during the migration build).** The category rename splits across code and data, so the two must land together. `CATEGORY_COLORS[category]` returns undefined for an unknown category, and `hexToRgba()` then throws on `.replace` — which took down the entire `/events` prerender, not just one chip. Mitigated by `categoryColor()` in `lib/calendar-shared.ts`, which falls back to a neutral swatch, but the ordering still matters: **run `supabase db push` (migration) and deploy the code in the same window.** The CSV import is separately protected — `LEGACY_CATEGORY_ALIASES` maps the Bugle sheet's old labels forward, since that Google Sheet is external and will keep emitting "Campout" / "Court of Honor" indefinitely.
+
+**Phase 1 — Core: attendance + content + pricing + slots**
+1. ~~Migration~~ **DONE 2026-07-18** — `next-app/supabase/migrations/20260718100000_event_signup_phase1.sql`, applied and smoke-tested on local Docker; **not yet pushed to prod**. Covers all Phase 1 tables *plus* `signup_slots` / `signup_slot_claims` / questions (slots pulled forward from Phase 2 — the slot-first pivot made them the whole fundraiser experience), `slot_date`, `guest_note`, `attendance_enabled`, both concurrency RPCs (`claim_signup_capacity`, `claim_signup_slot`), and the category reconciliation. 13 constraint/RPC assertions verified: identity CHECK, driver-only, contributor, per-leg seats, shift-times, partial unique (live duplicate rejected, cancelled re-signup allowed), headcount excluding driver_only, waitlist verdict, slot eligibility, non-attending task rule, claim idempotency. Original step text: reconcile `calendar_entries.category` with the 13-type taxonomy — add Advancement Event, Training, Recruiting / Outreach, Social Event; map Court of Honor → Ceremony / Recognition and Committee Meeting → Leadership / Planning (pending Patrick's confirmation); update the calendar CSV import's category list and the public calendar filter to match.
 2. Family gate: `FAMILY_PASSWORD`, `family` role, `t79_family_session` cookie, gate component.
 3. Generic event detail page `/events/[id]`: content blocks, signup module states (open / closed / full / full→waitlist / deadline passed), tier table + owed math + payment instructions, AHMR-C banner.
 4. Household signup form + Server Actions (create/edit/cancel, tier + days selection, capacity/waitlist/deadline enforcement, explicit No).
-5. Admin: event builder (block checklist + presets + pricing editor + content/resources) and roster view (totals, patrol subtotals, two-deep, driver seats, owed vs. paid, non-responders, slip/payment checkboxes, print + CSV).
+5. Admin: event builder (block checklist + presets + pricing editor + content/resources) and roster view (troop-wide totals, two-deep, driver seats, owed vs. paid, non-responders, slip/payment checkboxes, print + CSV).
 6. Lint + build; manual acceptance walkthrough on dev; deploy.
 
 **Phase 2 — Shifts, tasks, questions** (fundraisers, ski outing, MB clinics)
@@ -262,9 +287,10 @@ None exists in the app. Phases 1–2 ship without email (on-screen confirmation;
 
 ## Open Questions
 
+- [x] ~~Mixed attendance+slots events — which form layout wins?~~ **RESOLVED 2026-07-18 (Patrick): claiming a job IS signing up.** Slots-carrying event types default **attendance OFF**, so families get the slot-first form with no redundant RSVP beside it. Preset matrix updated (Fundraiser, Service Project, Recruiting / Outreach, Social Event). A leader can still switch attendance back on for a specific event that genuinely needs both — but the *default* is one signup act.
 - [ ] Should per-participant questions be scopeable to price tiers, not just scouts/adults (ski gear questions skip the $0 chaperone tier)? Option: nullable `signup_questions.tier_ids`.
 - [ ] May a driver-only adult also claim donation tasks (drive up AND donate the OJ)? Simplest rule: any non-attending entry (driver_only or contributor) may claim `attendance_required=false` tasks.
-- [ ] Guests: per-household count (prototype) vs. per-entry `guest_count` (schema) — pick one before Phase 1.
+- [x] ~~Guests: per-household count (prototype) vs. per-entry `guest_count` (schema)~~ — **RESOLVED 2026-07-18 (Patrick): per-entry `guest_count`**, as the schema already drafts it. Keeps guests attributable to a specific household member and rolls up naturally; the prototype's household-level stepper is a UI convenience that writes to the submitting member's entry.
 
 - [ ] Should question answers be summarized publicly in aggregate (e.g., "12 skiers / 5 snowboarders"), or family-visible + admin roster only? (Plan: the latter.)
 - [ ] Preset matrix defaults (see Overview) — proposed from the 13-type list; confirm the cells with Patrick before the builder ships.
@@ -274,9 +300,10 @@ None exists in the app. Phases 1–2 ship without email (on-screen confirmation;
 
 - Research sources: TroopTrack, TroopWebHost, Scoutbook, SOAR, TroopMaster; SignUpGenius/Eventbrite UX; Guide to Safe Scouting (transportation, camping), YP FAQs, AHMR FAQ; grubmaster guides, no-show discussions. Driver signup + waitlist are the two competitive gaps.
 - Anchors: single-source event classification (no type layers), `createAdminClient()` loaders, anon-key PII lockdown, Bunny CDN uploads, News CMS markdown renderer reused for `details_md`. Replace-on-save is **not** used (entries need stable identity for slip/payment checkboxes — edit in place).
+- **No patrol anywhere in this feature (2026-07-18, Patrick):** patrol tags are removed from every prototype — scout search, household picker, signup forms, confirmations, **and the admin roster**, which is now one troop-wide alphabetical list with household counts instead of patrol groups and subtotals. Rationale: the troop shops and plans as a troop, and patrols are often in flux and combined for events, so patrol structure is an aspiration rather than an operating reality. Scouts/adults read as "Scout" / "Parent" where a role label earns its space. (The `scouts.patrol` column still exists for Roll Call and other features — this decision scopes to Event Signup.)
 - **Donations:** explicitly out of scope; future Donate button → separate landing page, unrelated to signup.
 - Tech-lead reviews 2026-07-14: v1, v2, and v3 deltas all approve-with-changes; every required change folded in (v3: per-leg seat columns, price_id ON DELETE RESTRICT, amount/seat value CHECKs, tier-match on every write path, driver-only never waitlisted). No memory conflicts across all three reviews. When built, record the edit-in-place divergence from replace-on-save as a DECISIONS.md entry.
-- Prototypes: `prototypes/event-signup/` — v1/v2 pages (index, admin-roster, fundraiser-shifts, ski-outing) validated the individual flows; v3 adds the **composable** pair: one generic event page driven by a block config (demoed across campout / pancake breakfast / ski outing / rummage sale / summer camp), and an admin event-builder showing presets + block toggles + tier/shift/question editors.
+- Prototypes: `prototypes/event-signup/` — v1/v2 pages (index, admin-roster, fundraiser-shifts, ski-outing) validated the individual flows and are **superseded** by the v3 pair; note `fundraiser-shifts.html` still shows the old person-first shift grid and is kept only as a before/after reference for the slot-first pivot. v3 adds the **composable** pair: one generic event page driven by a block config (demoed across campout / pancake breakfast / ski outing / rummage sale / summer camp), and an admin event-builder showing presets + block toggles + tier/shift/question editors.
 
 ## Phase 1 Kickoff — Grounding & Pending Decisions (2026-07-18)
 
@@ -301,9 +328,11 @@ Context grounded against **prod** (`qyovupepjdxikyepieps`) before starting Phase
 | High Adventure (1) | keep |
 | *(none yet)* | add empty types: **Day Activity / Outing, Advancement Event, Training, Recruiting / Outreach, Social Event** |
 
-**Two decisions that gate the Phase 1 migration (must resolve before writing it):**
-1. **Category mapping** — confirm/edit the table above (touches real rows + CSV import + calendar filter).
-2. **Guests model** — per-household count (prototype) vs. per-entry `guest_count` (schema). Pick one before the `signup_entries` table is written.
+**Two decisions that gated the Phase 1 migration — both RESOLVED 2026-07-18 (Patrick):**
+1. ~~**Category mapping**~~ → **proposed mapping accepted as written.** Merge Court of Honor + Ceremony → *Ceremony / Recognition*; Committee Meeting → *Leadership / Planning*; Campout → *Campout / Overnight*; add the five empty types (Day Activity / Outing, Advancement Event, Training, Recruiting / Outreach, Social Event); keep Troop Meeting, Fundraiser, Service Project, No Meeting, Summer Camp, High Adventure. Migration does the `UPDATE`s plus the CSV-import allowed list and the public calendar filter.
+2. ~~**Guests model**~~ → **per-entry `guest_count`** (see Open Questions).
+
+**Slot-first form pivot (2026-07-18, Patrick) — prototyped and browser-verified.** The family signup form for slots-driven events is now organized by the job rather than the person (see Decisions made). Built into `prototypes/event-signup/event-page.html` and verified across both fundraiser configs: day grouping, live coverage, per-slot household picker, eligibility lockout, capacity lockout, auto-derived contributor, edit round-trip, and no regression on the person-first events. **Schema consequence:** `signup_slots` gains `slot_date` — multi-day events need shifts to carry a day, not just a time.
 
 **Needed before the builder ships (Phase 1 step 5, not the migration):** confirm the preset matrix default cells (plan §"Preset matrix").
 

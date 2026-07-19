@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireRole } from '@/lib/require-role';
 import { createAdminClient } from '@/lib/supabase/server';
+import { CATEGORIES } from '@/lib/calendar-shared';
 import type { CalendarCategory } from '@/lib/supabase/types';
 
 type ActionResult = { ok: boolean; error?: string };
@@ -70,10 +71,30 @@ export async function updateCalendarEntry(fd: FormData): Promise<ActionResult> {
 
 // ── CSV import ──────────────────────────────────────────────────────────────
 
-const IMPORT_CATEGORIES = [
-  'Troop Meeting', 'No Meeting', 'Campout', 'High Adventure', 'Summer Camp',
-  'Service Project', 'Outing', 'Fundraiser', 'Court of Honor', 'Committee Meeting', 'Ceremony'
-];
+const IMPORT_CATEGORIES: string[] = [...CATEGORIES];
+
+/**
+ * The Bugle's Google Sheet is external and still uses the pre-2026-07-18
+ * category names — it will keep emitting "Campout" and "Court of Honor" long
+ * after the app renamed them. Map legacy labels forward on import instead of
+ * rejecting them as unknown, so the sheet never has to be edited in lockstep
+ * with the app. New names pass through untouched.
+ */
+const LEGACY_CATEGORY_ALIASES: Record<string, string> = {
+  Campout: 'Campout / Overnight',
+  Outing: 'Day Activity / Outing',
+  'Committee Meeting': 'Leadership / Planning',
+  'Court of Honor': 'Ceremony / Recognition',
+  Ceremony: 'Ceremony / Recognition'
+};
+
+/** Canonical category for a raw sheet value; unchanged if already current.
+ *  Not exported — this is a 'use server' module, where every export must be an
+ *  async function. */
+function normalizeImportCategory(raw: string): string {
+  const trimmed = raw.trim();
+  return LEGACY_CATEGORY_ALIASES[trimmed] ?? trimmed;
+}
 
 /** The fields the Bugle sheet carries. day_note and article_id are NOT here
  *  on purpose — the sheet doesn't know about them, so imports never clobber
@@ -104,7 +125,8 @@ function validateImportRow(f: ImportRowFields): string | null {
   if (f.end_date && !DATE_RE.test(f.end_date)) return `bad end date "${f.end_date}"`;
   if (f.start_time && !TIME_RE.test(f.start_time)) return `bad start time "${f.start_time}"`;
   if (f.end_time && !TIME_RE.test(f.end_time)) return `bad end time "${f.end_time}"`;
-  if (!IMPORT_CATEGORIES.includes(f.category)) return `unknown category "${f.category}"`;
+  if (!IMPORT_CATEGORIES.includes(normalizeImportCategory(f.category)))
+    return `unknown category "${f.category}"`;
   if (!f.title.trim()) return 'missing title';
   return null;
 }
@@ -120,6 +142,9 @@ export async function importCalendarEntries(
   for (const f of [...inserts, ...updates.map((u) => u.fields)]) {
     const problem = validateImportRow(f);
     if (problem) return { ok: false, error: `Rejected: ${problem}.`, inserted: 0, updated: 0 };
+    // Write the canonical name, not the sheet's legacy one — otherwise a valid
+    // row would still trip the calendar_entries category CHECK on insert.
+    f.category = normalizeImportCategory(f.category);
   }
 
   const supabase = createAdminClient();

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import type { CalendarCategory, CalendarEntry } from '@/lib/supabase/types';
-import { CATEGORY_COLORS } from '@/lib/calendar-shared';
+import { categoryColor } from '@/lib/calendar-shared';
 import type { ArticleOption } from './page';
 import type { ImportResult, ImportRowFields, ImportUpdate } from './actions';
 import { CalendarImport } from './calendar-import';
@@ -101,7 +101,7 @@ export function CalendarEditor({ rows, articles, categories, onCreate, onUpdate,
                 </td>
                 <td>
                   <span className={styles.catTag}>
-                    <span className={styles.catPip} style={{ background: CATEGORY_COLORS[row.category] }} />
+                    <span className={styles.catPip} style={{ background: categoryColor(row.category) }} />
                     {row.category}
                   </span>
                 </td>

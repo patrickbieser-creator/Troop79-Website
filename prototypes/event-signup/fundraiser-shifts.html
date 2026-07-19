@@ -300,7 +300,7 @@
   // ── Person helpers ────────────────────────────────────────────────
   function persons() {
     return [
-      ...household.scouts.map((s, i) => ({ key:'s'+i, kind:'scout', name:s.name, sub:s.patrol })),
+      ...household.scouts.map((s, i) => ({ key:'s'+i, kind:'scout', name:s.name, sub:'Scout' })),
       ...household.adults.map((a, i) => ({ key:'a'+i, kind:'adult', name:a, sub:'Parent' })),
     ];
   }
@@ -418,7 +418,7 @@
       const li = document.createElement('li');
       const btn = document.createElement('button');
       btn.type = 'button'; btn.className = 'scoutResultBtn'; btn.setAttribute('role', 'option');
-      btn.innerHTML = `<span>${s.name}</span><span class="patrolTag">${s.patrol}</span>`;
+      btn.innerHTML = `<span>${s.name}</span>`;
       btn.addEventListener('click', () => pickHousehold(s.hh));
       li.appendChild(btn); list.appendChild(li);
     });
@@ -429,7 +429,7 @@
     $('scoutSearch').value = '';
     $('hhName').textContent = 'The ' + hh.name + ' household';
     $('hhScouts').innerHTML = hh.scouts.map(s =>
-      `<li><span>${s.name}</span><span class="hhMeta">${s.patrol}</span></li>`).join('');
+      `<li><span>${s.name}</span><span class="hhMeta">Scout</span></li>`).join('');
     $('hhAdults').innerHTML = hh.adults.map(a =>
       `<li><span>${a}</span><span class="hhMeta">Parent</span></li>`).join('');
     $('householdCard').hidden = false;

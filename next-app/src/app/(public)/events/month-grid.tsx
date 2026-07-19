@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { CalendarCategory } from '@/lib/supabase/types';
 import type { CalendarEntryWithSlug } from '@/lib/calendar';
-import { CATEGORY_COLORS, formatTimeOfDay } from '@/lib/calendar-shared';
+import { categoryColor, formatTimeOfDay } from '@/lib/calendar-shared';
 import styles from './events.module.css';
 
 /*
@@ -469,7 +469,7 @@ export function MonthGrid({
                       </div>
                       <div className={styles.chipList}>
                         {singleDay.slice(0, MAX_CHIPS).map((e) => {
-                          const color = CATEGORY_COLORS[e.category];
+                          const color = categoryColor(e.category);
                           return (
                             <button
                               key={e.id}
@@ -498,7 +498,7 @@ export function MonthGrid({
               {laneCount > 0 && (
                 <div className={styles.spansLayer} aria-hidden="true">
                   {placed.map((p) => {
-                    const color = CATEGORY_COLORS[p.entry.category];
+                    const color = categoryColor(p.entry.category);
                     return (
                       <button
                         key={p.entry.id}
@@ -571,7 +571,7 @@ export function MonthGrid({
           ) : (
             <div className={styles.dayEventList}>
               {selectedDayEvents.map((e) => {
-                const color = CATEGORY_COLORS[e.category];
+                const color = categoryColor(e.category);
                 return (
                   <div
                     key={e.id}
