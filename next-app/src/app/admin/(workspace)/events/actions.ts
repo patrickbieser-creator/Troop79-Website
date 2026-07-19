@@ -508,3 +508,55 @@ export async function restoreEntry(
   revalidateEvent(calendarEntryId, signupId);
   return { ok: true };
 }
+
+/**
+ * Turn signup off for an event entirely — for one enabled by mistake, or on a
+ * planning entry that never needed one.
+ *
+ * DESTRUCTIVE: removes the signup and everything hanging off it (jobs, price
+ * tiers, questions, and any entries families already submitted). Requires
+ * `confirm` once anyone has signed up, and reports the count so the leader
+ * finds out BEFORE agreeing rather than after.
+ *
+ * Deletes in explicit order rather than leaning on the cascade: signup_entries
+ * references event_prices with ON DELETE RESTRICT, so removing the parent can
+ * try to drop a price while an entry still points at it and fail with a raw FK
+ * error. Clearing entries first makes the rest a clean cascade.
+ */
+export async function disableSignup(
+  signupId: number,
+  calendarEntryId: number,
+  confirm: boolean
+): Promise<Result & { entryCount?: number; needsConfirm?: boolean }> {
+  await requireRole(['leader']);
+  const supabase = createAdminClient();
+
+  const { data: entries } = await supabase
+    .from('signup_entries')
+    .select('id')
+    .eq('event_signup_id', signupId)
+    .neq('status', 'cancelled');
+  const entryCount = (entries ?? []).length;
+
+  if (entryCount > 0 && !confirm) {
+    return {
+      ok: false,
+      needsConfirm: true,
+      entryCount,
+      error: `${entryCount} ${entryCount === 1 ? 'person has' : 'people have'} already signed up. Removing the signup deletes their entries too — this can't be undone.`
+    };
+  }
+
+  // Entries first (takes their claims and answers with them), then the parent.
+  const { error: entryErr } = await supabase
+    .from('signup_entries')
+    .delete()
+    .eq('event_signup_id', signupId);
+  if (entryErr) return { ok: false, error: entryErr.message };
+
+  const { error } = await supabase.from('event_signups').delete().eq('id', signupId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidateEvent(calendarEntryId, signupId);
+  return { ok: true, entryCount };
+}

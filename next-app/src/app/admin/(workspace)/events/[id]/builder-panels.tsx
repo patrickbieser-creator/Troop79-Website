@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   updateSignup, addPrice, deletePrice, updatePrice,
-  addSlot, deleteSlot, updateSlot, addQuestion, deleteQuestion
+  addSlot, deleteSlot, updateSlot, addQuestion, deleteQuestion, disableSignup
 } from '../actions';
 import styles from '../events-admin.module.css';
 
@@ -100,6 +100,8 @@ export function BuilderPanels({
   const [editSlot, setEditSlot] = useState<number | null>(null);
   const [eSlot, setESlot] = useState<Record<string, string>>({});
   const [editPrice, setEditPrice] = useState<number | null>(null);
+  const [dangerArmed, setDangerArmed] = useState(false);
+  const [dangerWarning, setDangerWarning] = useState<string | null>(null);
   const [ePrice, setEPrice] = useState<Record<string, string>>({});
 
   // Question draft
@@ -692,6 +694,68 @@ export function BuilderPanels({
             Add question
           </button>
         </div>
+      </section>
+      <section className={styles.dangerPanel}>
+        <h2>Remove signup from this event</h2>
+        <p className={styles.panelHint}>
+          For an event that never needed a signup — a planning entry, say — or one enabled by
+          mistake. This deletes the jobs, price tiers, questions and any entries families have
+          submitted. The calendar entry itself stays; only the signup goes.
+        </p>
+        {dangerWarning && <p className={styles.err}>{dangerWarning}</p>}
+        {dangerArmed ? (
+          <div className={styles.addRow}>
+            <button
+              type="button"
+              className={styles.dangerBtn}
+              disabled={pending}
+              onClick={() =>
+                start(async () => {
+                  const res = await disableSignup(signupId, calendarEntryId, true);
+                  if (!res.ok) {
+                    setDangerWarning(res.error ?? 'Could not remove the signup.');
+                    return;
+                  }
+                  router.push('/admin/events');
+                })
+              }
+            >
+              Yes, delete this signup
+            </button>
+            <button
+              type="button"
+              className={styles.rowEdit}
+              onClick={() => {
+                setDangerArmed(false);
+                setDangerWarning(null);
+              }}
+            >
+              Keep it
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className={styles.dangerBtn}
+            disabled={pending}
+            onClick={() =>
+              start(async () => {
+                // Dry run: reports how many people would lose their signup
+                // before the leader agrees to anything.
+                const res = await disableSignup(signupId, calendarEntryId, false);
+                if (res.ok) {
+                  router.push('/admin/events');
+                  return;
+                }
+                setDangerWarning(res.error ?? null);
+                if (res.needsConfirm) setDangerArmed(true);
+                else setDangerArmed(true);
+              })
+            }
+          >
+            Remove signup
+          </button>
+        )}
       </section>
     </div>
   );
