@@ -460,3 +460,4 @@
 .inlineGate { margin-top: 4px; }
 .boardStatus { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; background: var(--cream); border: 1px solid var(--border-light); border-radius: 4px; padding: 8px 12px; margin-bottom: 14px; font-size: 13px; color: var(--text-body); }
 .boardStatusActions { display: flex; gap: 14px; align-items: center; }
+.linkBtnQuiet { font-family: var(--font-ui); font-size: 12.5px; color: var(--text-meta); line-height: 1.5; }

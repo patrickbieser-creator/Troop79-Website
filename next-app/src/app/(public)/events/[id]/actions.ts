@@ -170,5 +170,8 @@ export async function familySignOutAction(formData: FormData): Promise<void> {
   const safeNext = safeInternalPath(String(formData.get('next') ?? ''), '/events');
   const jar = await cookies();
   jar.delete(FAMILY_COOKIE.name);
-  redirect(safeNext);
+  // Land with a flag so the page can confirm it worked. Without this the
+  // redirect is silent and indistinguishable from the button doing nothing.
+  const sep = safeNext.includes('?') ? '&' : '?';
+  redirect(`${safeNext}${sep}signedout=1`);
 }

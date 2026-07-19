@@ -98,6 +98,7 @@ export default async function EventDetailPage({
     err?: string;
     saved?: string;
     cancelled?: string;
+    signedout?: string;
   }>;
 }) {
   const { id } = await params;
@@ -116,7 +117,8 @@ export default async function EventDetailPage({
     household: householdKey,
     err: formError,
     saved,
-    cancelled
+    cancelled,
+    signedout
   } = sp;
   const { entry, signup, prices, slots, questions, resources, headcount } = detail;
   const gatedIn = audience !== null;
@@ -323,6 +325,7 @@ export default async function EventDetailPage({
             gateAction={familyGateAction}
             signOutAction={familySignOutAction}
             gateState={gateState}
+            isFamilySession={audience === 'family'}
             gateError={gateError}
             gateConfigured={familyGateConfigured()}
           />
@@ -348,6 +351,11 @@ export default async function EventDetailPage({
                 {saved && (
                   <p className={styles.savedNote}>
                     ✓ Your signup is saved. You can come back and change it until the deadline.
+                  </p>
+                )}
+                {signedout && (
+                  <p className={styles.savedNote}>
+                    ✓ Signed out of the family gate on this device.
                   </p>
                 )}
                 {cancelled && (
@@ -397,12 +405,25 @@ export default async function EventDetailPage({
                   </>
                 )}
 
-                <form action={familySignOutAction} className={styles.signOutRow}>
-                  <input type="hidden" name="next" value={`/events/${entry.id}`} />
-                  <button type="submit" className={styles.linkBtn}>
-                    Sign out of the family gate
-                  </button>
-                </form>
+                {audience === 'family' ? (
+                  <form action={familySignOutAction} className={styles.signOutRow}>
+                    <input type="hidden" name="next" value={`/events/${entry.id}`} />
+                    <button type="submit" className={styles.linkBtn}>
+                      Sign out of the family gate
+                    </button>
+                  </form>
+                ) : (
+                  /* A leader/scout session already clears the gate, so signing
+                     out of the FAMILY cookie would change nothing visible —
+                     the button would look broken. Say so instead. */
+                  <p className={styles.signOutRow}>
+                    <span className={styles.linkBtnQuiet}>
+                      You&rsquo;re seeing this as a signed-in {audience}, not through the family
+                      gate. To view it as a family would, use a private window or sign out of the
+                      admin area.
+                    </span>
+                  </p>
+                )}
               </div>
             ) : !familyGateConfigured() ? (
               <p className={styles.locked}>

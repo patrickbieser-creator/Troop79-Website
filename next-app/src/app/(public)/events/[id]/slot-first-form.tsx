@@ -57,6 +57,7 @@ export default function SlotFirstForm({
   signOutAction,
   hasExisting,
   gateState,
+  isFamilySession,
   gateError,
   gateConfigured
 }: {
@@ -75,6 +76,7 @@ export default function SlotFirstForm({
   signOutAction: (fd: FormData) => void;
   hasExisting: boolean;
   gateState: GateState;
+  isFamilySession: boolean;
   gateError?: string;
   gateConfigured: boolean;
 }) {
@@ -450,9 +452,13 @@ export default function SlotFirstForm({
             Change household
           </a>
         )}
-        <button type="submit" className={styles.linkBtn}>
-          Sign out
-        </button>
+        {isFamilySession ? (
+          <button type="submit" className={styles.linkBtn}>
+            Sign out
+          </button>
+        ) : (
+          <span className={styles.linkBtnQuiet}>signed in as a leader</span>
+        )}
       </span>
     </form>
   );
