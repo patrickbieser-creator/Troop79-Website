@@ -412,3 +412,38 @@
 .cancelRow { margin-top: 12px; }
 .signOutRow { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--border-light); }
 .savedNote { font-family: var(--font-ui); font-size: 13.5px; font-weight: 700; color: var(--forest); background: #eef2ee; border-left: 3px solid var(--forest); padding: 10px 13px; border-radius: 0 3px 3px 0; margin-bottom: 14px; }
+
+/* ─── Person-first form (campout / ski / summer camp) ────────────────── */
+.personRow { border: 1px solid var(--border-light); border-radius: 4px; background: var(--warm-white); padding: 12px 14px; margin-bottom: 10px; }
+.personMain { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }
+.personName { font-size: 14.5px; font-weight: 700; color: var(--text-head); display: flex; flex-direction: column; gap: 1px; }
+.personSub { font-size: 10.5px; font-weight: 400; letter-spacing: .06em; text-transform: uppercase; color: var(--text-meta); }
+.seg { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.segBtn { border: 1.5px solid var(--border-mid); background: var(--cream); border-radius: 3px; padding: 6px 13px; font-family: var(--font-ui); font-size: 12.5px; font-weight: 700; color: var(--text-body); cursor: pointer; }
+.segBtn:hover { border-color: var(--forest); }
+.segYes { background: #eef2ee; border-color: var(--forest); color: var(--forest); }
+.segNo { background: #f6eeec; border-color: #a04a3d; color: #a04a3d; }
+.segDrv { background: #eef1f5; border-color: var(--navy); color: var(--navy); }
+.personExtra { margin-top: 11px; padding-top: 11px; border-top: 1px dashed var(--border-mid); display: flex; flex-direction: column; gap: 9px; }
+.miniLabel { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-meta); margin-bottom: 5px; }
+.tierPick { }
+.pillRow { display: flex; flex-wrap: wrap; gap: 7px; }
+.pill { border: 1.5px solid var(--border-mid); background: var(--cream); border-radius: 999px; padding: 5px 13px; font-family: var(--font-ui); font-size: 12.5px; cursor: pointer; color: var(--text-body); }
+.pill:hover { border-color: var(--forest); }
+.pillOn { background: #eef2ee; border-color: var(--forest); color: var(--forest); font-weight: 700; }
+.daysRow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.daysRow .miniLabel { margin-bottom: 0; }
+.numInput { width: 76px; padding: 6px 9px; border: 1px solid var(--border-mid); border-radius: 3px; background: var(--warm-white); font-size: 14px; }
+.dayMath { font-size: 12.5px; color: var(--text-meta); }
+.chk { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text-body); }
+.drvNote { margin-top: 10px; font-size: 12.5px; line-height: 1.5; color: var(--text-body); background: var(--cream); border-left: 3px solid var(--navy); padding: 8px 11px; border-radius: 0 3px 3px 0; }
+.addAdult { border: 1px dashed var(--border-mid); border-radius: 4px; padding: 12px 14px; margin-bottom: 18px; background: var(--cream); }
+.addAdultRow { display: grid; grid-template-columns: minmax(0,1.2fr) minmax(0,1.4fr) minmax(0,.9fr) auto; gap: 8px; align-items: center; margin-bottom: 8px; }
+@media (max-width: 640px) { .addAdultRow { grid-template-columns: 1fr; } }
+.addAdultBtn { background: none; border: none; padding: 0; font-family: var(--font-ui); font-size: 13px; font-weight: 700; color: var(--navy); text-decoration: underline; cursor: pointer; }
+.addAdultBtn:hover { color: var(--forest); }
+.notesArea { display: block; width: 100%; margin-top: 6px; padding: 9px 12px; border: 1px solid var(--border-mid); border-radius: 3px; background: var(--warm-white); font-family: var(--font-body); font-size: 14.5px; resize: vertical; }
+.owedLine { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.owedAmt { font-weight: 700; color: var(--forest); white-space: nowrap; }
+.owedZero { font-weight: 700; color: var(--text-meta); white-space: nowrap; }
+.owedTotal { display: flex; justify-content: space-between; gap: 12px; margin-top: 10px; padding-top: 9px; border-top: 2px solid var(--border-mid); font-size: 15px; font-weight: 700; color: var(--text-head); }

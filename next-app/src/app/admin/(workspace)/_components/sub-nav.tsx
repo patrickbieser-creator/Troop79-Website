@@ -31,7 +31,11 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         href: '/admin/advancement/fast-entry',
         matchPath: '/admin/advancement/fast-entry'
       },
-      { label: 'Event Roster', disabled: true }
+      {
+        label: 'Event Roster',
+        href: '/admin/events',
+        matchPath: '/admin/events'
+      }
     ]
   },
   {
@@ -97,6 +101,11 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         label: 'Calendar',
         href: '/admin/news/calendar',
         matchPath: '/admin/news/calendar'
+      },
+      {
+        label: 'Event Signups',
+        href: '/admin/events',
+        matchPath: '/admin/events'
       },
       {
         label: 'Photo Albums',

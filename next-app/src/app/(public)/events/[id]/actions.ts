@@ -89,11 +89,37 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
   const supabase = createAdminClient();
   const actor = `family:${audience}`;
 
+  // Adults added on the fly become real scout_parents rows, not throwaway names
+  // on one entry — that's what makes the roster improve over time. Done BEFORE
+  // the entries submit so their new parent ids can be referenced immediately.
+  const householdId = householdKey ? Number(householdKey) : null;
+  if (householdId) {
+    let newAdults: { name?: string; email?: string; relationship?: string }[] = [];
+    try {
+      newAdults = JSON.parse(String(formData.get('newAdults') ?? '[]'));
+    } catch {
+      newAdults = [];
+    }
+    for (const na of newAdults) {
+      if (!na?.name?.trim()) continue;
+      const { error: addErr } = await supabase.rpc('add_parent_to_household', {
+        p_household_id: householdId,
+        p_name: na.name.trim(),
+        p_email: na.email?.trim() || null,
+        p_phone: null,
+        p_relationship: na.relationship?.trim() || null
+      });
+      if (addErr) {
+        redirect(`${back}&err=${encodeURIComponent('Could not save the new adult: ' + addErr.message)}`);
+      }
+    }
+  }
+
   const { data: written, error } = await supabase.rpc('submit_household_signup', {
     p_event_signup_id: signupId,
     p_entries: entries,
     p_actor: actor,
-    p_household_id: householdKey ? Number(householdKey) : null
+    p_household_id: householdId
   });
   if (error) redirect(`${back}&err=${encodeURIComponent(friendlyError(error.message))}`);
 

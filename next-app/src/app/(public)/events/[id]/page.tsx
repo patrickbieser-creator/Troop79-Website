@@ -18,6 +18,7 @@ import {
 } from './actions';
 import HouseholdPicker from './household-picker';
 import SlotFirstForm from './slot-first-form';
+import PersonFirstForm from './person-first-form';
 import styles from './event-detail.module.css';
 
 /*
@@ -353,11 +354,15 @@ export default async function EventDetailPage({
                         cancelAction={cancelSignupAction}
                       />
                     ) : (
-                      <p className={styles.stub}>
-                        The person-first RSVP form (tiers, days, driver legs) is the next piece of
-                        work. This event has attendance enabled, so it needs that surface rather
-                        than the job-first one.
-                      </p>
+                      <PersonFirstForm
+                        eventId={entry.id}
+                        signup={signup}
+                        household={household}
+                        prices={prices}
+                        existing={existing}
+                        submitAction={submitSignupAction}
+                        cancelAction={cancelSignupAction}
+                      />
                     )}
                   </>
                 )}
