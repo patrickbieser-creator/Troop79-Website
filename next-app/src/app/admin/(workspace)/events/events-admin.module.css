@@ -65,3 +65,4 @@
 .rowActions { display: flex; gap: 10px; white-space: nowrap; }
 .rowEdit { background: none; border: none; color: #1e3a4a; font-size: 12px; font-weight: 700; text-decoration: underline; cursor: pointer; padding: 0; }
 .editRow { background: #f6f9fb; }
+.removedBlock { margin-top: 16px; padding-top: 12px; border-top: 1px dashed var(--admin-gray-300, #ccc); }

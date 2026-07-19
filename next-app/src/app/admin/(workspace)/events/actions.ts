@@ -419,3 +419,92 @@ export async function updatePrice(
   revalidateEvent(calendarEntryId, signupId);
   return { ok: true };
 }
+
+/**
+ * Remove one person from an event on their behalf.
+ *
+ * Families call or email to cancel and won't always go back to the form, so a
+ * leader needs to be able to do it for them.
+ *
+ * Soft-cancel, not delete: status='cancelled' keeps the audit trail (who
+ * removed whom, and when) and is what every coverage count already filters
+ * on, so their slot claims and seat release immediately without destroying
+ * the record. It also means an accidental removal can be undone.
+ *
+ * Frees a seat, so the waitlist gets a chance to move in the same breath.
+ */
+export async function cancelEntry(
+  entryId: number,
+  signupId: number,
+  calendarEntryId: number
+): Promise<Result> {
+  const session = await requireRole(['leader']);
+  const supabase = createAdminClient();
+
+  const { error } = await supabase
+    .from('signup_entries')
+    .update({
+      status: 'cancelled',
+      cancelled_at: new Date().toISOString(),
+      updated_by: session.leader,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', entryId);
+  if (error) return { ok: false, error: error.message };
+
+  const { error: promoteErr } = await supabase.rpc('promote_waitlist', {
+    p_event_signup_id: signupId
+  });
+  if (promoteErr) return { ok: false, error: promoteErr.message };
+
+  revalidatePath(`/admin/events/${signupId}/roster`);
+  revalidateEvent(calendarEntryId, signupId);
+  return { ok: true };
+}
+
+/** Undo a removal — puts the person back, subject to capacity (they may land
+ *  on the waitlist if the seat has since been taken). */
+export async function restoreEntry(
+  entryId: number,
+  signupId: number,
+  calendarEntryId: number
+): Promise<Result> {
+  const session = await requireRole(['leader']);
+  const supabase = createAdminClient();
+
+  const { data: sig } = await supabase
+    .from('event_signups')
+    .select('capacity, waitlist_enabled')
+    .eq('id', signupId)
+    .maybeSingle();
+  const s = sig as unknown as { capacity: number | null; waitlist_enabled: boolean } | null;
+
+  let status = 'yes';
+  if (s?.capacity != null) {
+    const { data: used } = await supabase.rpc('event_signup_headcount', {
+      p_event_signup_id: signupId
+    });
+    const head = typeof used === 'number' ? used : 0;
+    if (head >= s.capacity) {
+      if (!s.waitlist_enabled) {
+        return { ok: false, error: 'The event is full and has no waitlist, so they can’t be added back.' };
+      }
+      status = 'waitlist';
+    }
+  }
+
+  const { error } = await supabase
+    .from('signup_entries')
+    .update({
+      status,
+      cancelled_at: null,
+      updated_by: session.leader,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', entryId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/admin/events/${signupId}/roster`);
+  revalidateEvent(calendarEntryId, signupId);
+  return { ok: true };
+}

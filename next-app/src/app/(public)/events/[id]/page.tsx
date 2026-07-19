@@ -320,6 +320,7 @@ export default async function EventDetailPage({
             submitAction={submitSignupAction}
             cancelAction={cancelSignupAction}
             gateAction={familyGateAction}
+            signOutAction={familySignOutAction}
             gateState={gateState}
             gateError={gateError}
             gateConfigured={familyGateConfigured()}

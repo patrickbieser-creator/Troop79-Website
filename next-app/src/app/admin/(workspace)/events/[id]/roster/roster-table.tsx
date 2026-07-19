@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { setEntryFlag } from '../../actions';
+import { setEntryFlag, cancelEntry, restoreEntry } from '../../actions';
 import type { RosterRow } from './page';
 import styles from '../../events-admin.module.css';
 
@@ -10,11 +10,13 @@ import styles from '../../events-admin.module.css';
  *  One troop-wide list — no patrol grouping (see page.tsx). */
 export function RosterTable({
   rows,
+  removedRows,
   signupId,
   calendarEntryId,
   showSlip
 }: {
   rows: RosterRow[];
+  removedRows: RosterRow[];
   signupId: number;
   calendarEntryId: number;
   showSlip: boolean;
@@ -22,6 +24,9 @@ export function RosterTable({
   const [pending, start] = useTransition();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  // Two-click confirm rather than a modal: a stray click shouldn't drop
+  // someone from a trip, but a dialog for every removal is heavy.
+  const [confirming, setConfirming] = useState<number | null>(null);
 
   const sorted = [...rows].sort(
     (a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name)
@@ -85,6 +90,7 @@ export function RosterTable({
             <th scope="col">Jobs</th>
             {showSlip && <th scope="col">Slip</th>}
             <th scope="col">Paid</th>
+            <th scope="col" />
           </tr>
         </thead>
         <tbody>
@@ -138,17 +144,88 @@ export function RosterTable({
                   onChange={(e) => toggle(r, 'payment_received', e.target.checked)}
                 />
               </td>
+              <td className={styles.nowrap}>
+                {confirming === r.id ? (
+                  <>
+                    <button
+                      type="button"
+                      className={styles.rowDel}
+                      disabled={pending}
+                      onClick={() =>
+                        start(async () => {
+                          setError(null);
+                          const res = await cancelEntry(r.id, signupId, calendarEntryId);
+                          if (!res.ok) setError(res.error ?? 'Could not remove.');
+                          setConfirming(null);
+                          router.refresh();
+                        })
+                      }
+                    >
+                      Confirm
+                    </button>{' '}
+                    <button
+                      type="button"
+                      className={styles.rowEdit}
+                      onClick={() => setConfirming(null)}
+                    >
+                      Keep
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className={styles.rowDel}
+                    disabled={pending}
+                    onClick={() => setConfirming(r.id)}
+                  >
+                    Remove
+                  </button>
+                )}
+              </td>
             </tr>
           ))}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={showSlip ? 8 : 7} className={styles.empty}>
+              <td colSpan={showSlip ? 9 : 8} className={styles.empty}>
                 Nobody has signed up yet.
               </td>
             </tr>
           )}
         </tbody>
       </table>
+
+      {removedRows.length > 0 && (
+        <div className={styles.removedBlock}>
+          <p className={styles.panelHint}>
+            <strong>Removed ({removedRows.length}).</strong> Their spots are already back in the
+            pool — restore anyone taken off by mistake.
+          </p>
+          <ul className={styles.coverList}>
+            {removedRows.map((r) => (
+              <li key={r.id}>
+                <span>
+                  {r.name} <span className={styles.evCat}>{r.household}</span>
+                </span>
+                <button
+                  type="button"
+                  className={styles.rowEdit}
+                  disabled={pending}
+                  onClick={() =>
+                    start(async () => {
+                      setError(null);
+                      const res = await restoreEntry(r.id, signupId, calendarEntryId);
+                      if (!res.ok) setError(res.error ?? 'Could not restore.');
+                      router.refresh();
+                    })
+                  }
+                >
+                  Put back
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </section>
   );
 }

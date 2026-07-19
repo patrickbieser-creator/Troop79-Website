@@ -53,6 +53,7 @@ export default function SlotFirstForm({
   submitAction,
   cancelAction,
   gateAction,
+  signOutAction,
   hasExisting,
   gateState,
   gateError,
@@ -69,6 +70,7 @@ export default function SlotFirstForm({
   submitAction: (fd: FormData) => void;
   cancelAction: (fd: FormData) => void;
   gateAction: (fd: FormData) => void;
+  signOutAction: (fd: FormData) => void;
   hasExisting: boolean;
   gateState: GateState;
   gateError?: string;
@@ -374,7 +376,11 @@ export default function SlotFirstForm({
                               : `${filledOf(sl)} of ${sl.needed} — ${sl.needed - filledOf(sl)} more needed`}
                         </span>
                         <span className={styles.jobCue}>
-                          {ready ? 'Sign up' : 'Sign in to claim'}
+                          {gateState === 'anon'
+                            ? 'Sign in to claim'
+                            : gateState === 'no-household'
+                              ? 'Choose your family'
+                              : 'Sign up'}
                         </span>
                       </span>
                     </span>
@@ -424,9 +430,35 @@ export default function SlotFirstForm({
 
   // Not signed in / no family yet: the board stands alone, and each row can
   // carry its own gate form. No outer <form> to nest inside.
+  const signOutBar = (
+    <form action={signOutAction} className={styles.boardStatus}>
+      <input type="hidden" name="next" value={`/events/${eventId}`} />
+      <span>
+        {ready ? (
+          <>
+            Signing up the <strong>{household!.label}</strong> household
+          </>
+        ) : (
+          <>&#10003; You&rsquo;re signed in &mdash; no family chosen yet</>
+        )}
+      </span>
+      <span className={styles.boardStatusActions}>
+        {ready && (
+          <a href={`/events/${eventId}`} className={styles.linkBtn}>
+            Change household
+          </a>
+        )}
+        <button type="submit" className={styles.linkBtn}>
+          Sign out
+        </button>
+      </span>
+    </form>
+  );
+
   if (!ready) {
     return (
       <div className={styles.jobBoard}>
+        {gateState === 'no-household' && signOutBar}
         <p className={styles.boardLede}>
           {gateState === 'anon'
             ? 'Pick a job below to sign in and claim it — one shared troop password, no account needed.'
@@ -445,6 +477,7 @@ export default function SlotFirstForm({
       <input type="hidden" name="entries" value={JSON.stringify(entries)} />
       <input type="hidden" name="slotClaims" value={JSON.stringify(claimsForSubmit)} />
 
+      {signOutBar}
       <p className={styles.boardLede}>
         Pick a job and choose who’s doing it — one person or several. Claiming a job <em>is</em>{' '}
         your signup; there’s no separate RSVP.

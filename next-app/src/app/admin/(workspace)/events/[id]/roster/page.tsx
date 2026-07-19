@@ -61,7 +61,7 @@ async function load(signupId: number) {
          { data: scouts }, { data: parents }, { data: households }] = await Promise.all([
     supabase.from('calendar_entries').select('id, title, entry_date, category')
       .eq('id', sig.calendar_entry_id).maybeSingle(),
-    supabase.from('signup_entries').select('*').eq('event_signup_id', sig.id).neq('status', 'cancelled'),
+    supabase.from('signup_entries').select('*').eq('event_signup_id', sig.id),
     supabase.from('event_prices').select('*').eq('event_signup_id', sig.id),
     supabase.from('signup_slots').select('*').eq('event_signup_id', sig.id).order('sort'),
     supabase.from('signup_slot_claims').select('slot_id, signup_entry_id'),
@@ -139,9 +139,12 @@ async function load(signupId: number) {
     };
   });
 
+  const liveRows = rows.filter((r) => r.status !== 'cancelled');
+  const removedRows = rows.filter((r) => r.status === 'cancelled');
+
   // Non-responders: active scouts with no entry at all. Silence is not a "no",
   // and this list is what turns it into one.
-  const responded = new Set(rows.filter((r) => r.kind === 'scout').map((r) => r.name));
+  const responded = new Set(liveRows.filter((r) => r.kind === 'scout').map((r) => r.name));
   const nonResponders = ((scouts ?? []) as { display_name: string; active: boolean }[])
     .filter((s) => s.active && !responded.has(s.display_name))
     .map((s) => s.display_name)
@@ -149,12 +152,19 @@ async function load(signupId: number) {
 
   const slotCoverage = ((slots ?? []) as { id: number; label: string; needed: number | null }[]).map(
     (sl) => {
-      const filled = rows.filter((r) => r.status === 'yes' && r.claims.includes(sl.label)).length;
+      const filled = liveRows.filter((r) => r.status === 'yes' && r.claims.includes(sl.label)).length;
       return { label: sl.label, filled, needed: sl.needed };
     }
   );
 
-  return { signup: sig, entry: entry as Record<string, unknown> | null, rows, nonResponders, slotCoverage };
+  return {
+    signup: sig,
+    entry: entry as Record<string, unknown> | null,
+    rows: liveRows,
+    removedRows,
+    nonResponders,
+    slotCoverage
+  };
 }
 
 export default async function EventRosterPage({ params }: { params: Promise<{ id: string }> }) {
@@ -164,7 +174,7 @@ export default async function EventRosterPage({ params }: { params: Promise<{ id
   const data = await load(signupId);
   if (!data || !data.entry) notFound();
 
-  const { rows, nonResponders, slotCoverage, signup } = data;
+  const { rows, removedRows, nonResponders, slotCoverage, signup } = data;
   const going = rows.filter((r) => r.status === 'yes' && r.participation === 'full');
   const scoutsGoing = going.filter((r) => r.kind === 'scout');
   const adultsGoing = going.filter((r) => r.kind === 'adult');
@@ -258,6 +268,7 @@ export default async function EventRosterPage({ params }: { params: Promise<{ id
 
       <RosterTable
         rows={rows}
+        removedRows={removedRows}
         signupId={signupId}
         calendarEntryId={Number(data.entry.id)}
         showSlip={signup.needs_permission_slip}
