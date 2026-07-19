@@ -3,7 +3,8 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  updateSignup, addPrice, deletePrice, addSlot, deleteSlot, addQuestion, deleteQuestion
+  updateSignup, addPrice, deletePrice, updatePrice,
+  addSlot, deleteSlot, updateSlot, addQuestion, deleteQuestion
 } from '../actions';
 import styles from '../events-admin.module.css';
 
@@ -94,6 +95,12 @@ export function BuilderPanels({
   const [sWho, setSWho] = useState<'scouts' | 'adults' | 'both'>('both');
   const [sNeeded, setSNeeded] = useState('4');
   const [sAttend, setSAttend] = useState(true);
+
+  // Inline edit state: which row is open, plus its draft values.
+  const [editSlot, setEditSlot] = useState<number | null>(null);
+  const [eSlot, setESlot] = useState<Record<string, string>>({});
+  const [editPrice, setEditPrice] = useState<number | null>(null);
+  const [ePrice, setEPrice] = useState<Record<string, string>>({});
 
   // Question draft
   const [qPrompt, setQPrompt] = useState('');
@@ -220,34 +227,118 @@ export function BuilderPanels({
         {prices.length > 0 && (
           <table className={styles.miniTable}>
             <tbody>
-              {prices.map((p) => (
-                <tr key={String(p.id)}>
-                  <td>
-                    <strong>{s(p.label)}</strong>
-                  </td>
-                  <td>
-                    ${Number(p.amount)}
-                    {s(p.per) === 'day' && '/day'}
-                  </td>
-                  <td>{s(p.applies_to)}</td>
-                  <td>
-                    <button
-                      type="button"
-                      className={styles.rowDel}
-                      disabled={pending}
-                      onClick={() =>
-                        start(async () => {
-                          const res = await deletePrice(Number(p.id), signupId, calendarEntryId);
-                          if (!res.ok) setError(res.error ?? 'Could not remove tier.');
-                          else router.refresh();
-                        })
-                      }
-                    >
-                      Remove
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {prices.map((p) => {
+                const pid = Number(p.id);
+                if (editPrice === pid) {
+                  return (
+                    <tr key={pid} className={styles.editRow}>
+                      <td colSpan={4}>
+                        <div className={styles.addRow}>
+                          <input
+                            value={ePrice.label ?? ''}
+                            placeholder="Label"
+                            onChange={(ev) => setEPrice((v) => ({ ...v, label: ev.target.value }))}
+                          />
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={ePrice.amount ?? '0'}
+                            onChange={(ev) => setEPrice((v) => ({ ...v, amount: ev.target.value }))}
+                          />
+                          <select
+                            value={ePrice.per ?? 'event'}
+                            onChange={(ev) => setEPrice((v) => ({ ...v, per: ev.target.value }))}
+                          >
+                            <option value="event">per event</option>
+                            <option value="day">per day</option>
+                          </select>
+                          <select
+                            value={ePrice.applies_to ?? 'both'}
+                            onChange={(ev) => setEPrice((v) => ({ ...v, applies_to: ev.target.value }))}
+                          >
+                            <option value="both">Everyone</option>
+                            <option value="scouts">Scouts</option>
+                            <option value="adults">Adults</option>
+                          </select>
+                          <button
+                            type="button"
+                            className={styles.enableBtn}
+                            disabled={pending}
+                            onClick={() =>
+                              start(async () => {
+                                const res = await updatePrice(pid, signupId, calendarEntryId, {
+                                  label: ePrice.label ?? '',
+                                  amount: Number(ePrice.amount) || 0,
+                                  per: (ePrice.per ?? 'event') as 'event' | 'day',
+                                  applies_to: (ePrice.applies_to ?? 'both') as
+                                    | 'scouts'
+                                    | 'adults'
+                                    | 'both'
+                                });
+                                if (!res.ok) setError(res.error ?? 'Could not save tier.');
+                                else {
+                                  setEditPrice(null);
+                                  router.refresh();
+                                }
+                              })
+                            }
+                          >
+                            Save
+                          </button>
+                          <button type="button" className={styles.rowDel} onClick={() => setEditPrice(null)}>
+                            Cancel
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }
+                return (
+                  <tr key={pid}>
+                    <td>
+                      <strong>{s(p.label)}</strong>
+                    </td>
+                    <td>
+                      ${Number(p.amount)}
+                      {s(p.per) === 'day' && '/day'}
+                    </td>
+                    <td>{s(p.applies_to)}</td>
+                    <td className={styles.rowActions}>
+                      <button
+                        type="button"
+                        className={styles.rowEdit}
+                        disabled={pending}
+                        onClick={() => {
+                          setEditPrice(pid);
+                          setEPrice({
+                            label: s(p.label),
+                            amount: s(p.amount),
+                            per: s(p.per),
+                            applies_to: s(p.applies_to)
+                          });
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.rowDel}
+                        disabled={pending}
+                        onClick={() =>
+                          start(async () => {
+                            const res = await deletePrice(pid, signupId, calendarEntryId);
+                            if (!res.ok) setError(res.error ?? 'Could not remove tier.');
+                            else router.refresh();
+                          })
+                        }
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
@@ -293,38 +384,160 @@ export function BuilderPanels({
         {slots.length > 0 && (
           <table className={styles.miniTable}>
             <tbody>
-              {slots.map((sl) => (
-                <tr key={String(sl.id)}>
-                  <td>
-                    <strong>{s(sl.label)}</strong>
-                    {b(sl.attendance_required) === false && (
-                      <span className={styles.tag}>no attendance</span>
-                    )}
-                  </td>
-                  <td className={styles.nowrap}>
-                    {s(sl.slot_date) || '—'}{' '}
-                    {s(sl.starts_at) ? `${s(sl.starts_at).slice(0, 5)}–${s(sl.ends_at).slice(0, 5)}` : ''}
-                  </td>
-                  <td>{s(sl.eligibility)}</td>
-                  <td className={styles.nowrap}>{sl.needed == null ? 'no limit' : `${s(sl.needed)} needed`}</td>
-                  <td>
-                    <button
-                      type="button"
-                      className={styles.rowDel}
-                      disabled={pending}
-                      onClick={() =>
-                        start(async () => {
-                          const res = await deleteSlot(Number(sl.id), signupId, calendarEntryId);
-                          if (!res.ok) setError(res.error ?? 'Could not remove job.');
-                          else router.refresh();
-                        })
-                      }
-                    >
-                      Remove
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {slots.map((sl) => {
+                const id = Number(sl.id);
+                const isShift = s(sl.kind) === 'shift';
+                if (editSlot === id) {
+                  return (
+                    <tr key={id} className={styles.editRow}>
+                      <td colSpan={5}>
+                        <div className={styles.addRow}>
+                          <input
+                            value={eSlot.label ?? ''}
+                            placeholder="Job name"
+                            onChange={(ev) => setESlot((v) => ({ ...v, label: ev.target.value }))}
+                          />
+                          <input
+                            type="date"
+                            value={eSlot.slot_date ?? ''}
+                            onChange={(ev) => setESlot((v) => ({ ...v, slot_date: ev.target.value }))}
+                          />
+                          {isShift && (
+                            <>
+                              <input
+                                type="time"
+                                value={eSlot.starts_at ?? ''}
+                                onChange={(ev) => setESlot((v) => ({ ...v, starts_at: ev.target.value }))}
+                              />
+                              <input
+                                type="time"
+                                value={eSlot.ends_at ?? ''}
+                                onChange={(ev) => setESlot((v) => ({ ...v, ends_at: ev.target.value }))}
+                              />
+                            </>
+                          )}
+                          <select
+                            value={eSlot.eligibility ?? 'both'}
+                            onChange={(ev) => setESlot((v) => ({ ...v, eligibility: ev.target.value }))}
+                          >
+                            <option value="both">Everyone</option>
+                            <option value="scouts">Scouts</option>
+                            <option value="adults">Adults</option>
+                          </select>
+                          <input
+                            type="number"
+                            min={1}
+                            placeholder="needed"
+                            value={eSlot.needed ?? ''}
+                            onChange={(ev) => setESlot((v) => ({ ...v, needed: ev.target.value }))}
+                          />
+                          {!isShift && (
+                            <label className={styles.inlineChk}>
+                              <input
+                                type="checkbox"
+                                checked={eSlot.attendance_required === '1'}
+                                onChange={(ev) =>
+                                  setESlot((v) => ({
+                                    ...v,
+                                    attendance_required: ev.target.checked ? '1' : ''
+                                  }))
+                                }
+                              />
+                              needs attendance
+                            </label>
+                          )}
+                          <button
+                            type="button"
+                            className={styles.enableBtn}
+                            disabled={pending}
+                            onClick={() =>
+                              start(async () => {
+                                const res = await updateSlot(id, signupId, calendarEntryId, {
+                                  label: eSlot.label ?? '',
+                                  slot_date: eSlot.slot_date || null,
+                                  starts_at: eSlot.starts_at || null,
+                                  ends_at: eSlot.ends_at || null,
+                                  eligibility: (eSlot.eligibility ?? 'both') as
+                                    | 'scouts'
+                                    | 'adults'
+                                    | 'both',
+                                  needed: eSlot.needed ? Number(eSlot.needed) : null,
+                                  attendance_required: eSlot.attendance_required === '1'
+                                });
+                                if (!res.ok) setError(res.error ?? 'Could not save job.');
+                                else {
+                                  setEditSlot(null);
+                                  router.refresh();
+                                }
+                              })
+                            }
+                          >
+                            Save
+                          </button>
+                          <button type="button" className={styles.rowDel} onClick={() => setEditSlot(null)}>
+                            Cancel
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }
+                return (
+                  <tr key={id}>
+                    <td>
+                      <strong>{s(sl.label)}</strong>
+                      {b(sl.attendance_required) === false && (
+                        <span className={styles.tag}>no attendance</span>
+                      )}
+                    </td>
+                    <td className={styles.nowrap}>
+                      {s(sl.slot_date) || '—'}{' '}
+                      {s(sl.starts_at)
+                        ? `${s(sl.starts_at).slice(0, 5)}–${s(sl.ends_at).slice(0, 5)}`
+                        : ''}
+                    </td>
+                    <td>{s(sl.eligibility)}</td>
+                    <td className={styles.nowrap}>
+                      {sl.needed == null ? 'no limit' : `${s(sl.needed)} needed`}
+                    </td>
+                    <td className={styles.rowActions}>
+                      <button
+                        type="button"
+                        className={styles.rowEdit}
+                        disabled={pending}
+                        onClick={() => {
+                          setEditSlot(id);
+                          setESlot({
+                            label: s(sl.label),
+                            slot_date: s(sl.slot_date),
+                            starts_at: s(sl.starts_at).slice(0, 5),
+                            ends_at: s(sl.ends_at).slice(0, 5),
+                            eligibility: s(sl.eligibility),
+                            needed: sl.needed == null ? '' : s(sl.needed),
+                            attendance_required: b(sl.attendance_required) ? '1' : ''
+                          });
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.rowDel}
+                        disabled={pending}
+                        onClick={() =>
+                          start(async () => {
+                            const res = await deleteSlot(id, signupId, calendarEntryId);
+                            if (!res.ok) setError(res.error ?? 'Could not remove job.');
+                            else router.refresh();
+                          })
+                        }
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

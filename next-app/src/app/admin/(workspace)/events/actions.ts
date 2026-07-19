@@ -324,3 +324,98 @@ export async function emailNonResponders(
 
   return { ok: res.status !== 'error', error: res.detail, status: res.status, to: res.to };
 }
+
+/** Edit an existing job in place. Keeps the row identity, so any claims
+ *  families have already made on it survive a rename or a time change —
+ *  delete-and-recreate would silently drop them. */
+export async function updateSlot(
+  slotId: number,
+  signupId: number,
+  calendarEntryId: number,
+  slot: {
+    label: string;
+    slot_date: string | null;
+    starts_at: string | null;
+    ends_at: string | null;
+    eligibility: 'scouts' | 'adults' | 'both';
+    needed: number | null;
+    attendance_required: boolean;
+  }
+): Promise<Result> {
+  await requireRole(['leader']);
+  if (!slot.label.trim()) return { ok: false, error: 'Give the job a name.' };
+
+  const supabase = createAdminClient();
+  const { data: existing } = await supabase
+    .from('signup_slots')
+    .select('kind')
+    .eq('id', slotId)
+    .maybeSingle();
+  const kind = (existing as { kind?: string } | null)?.kind;
+  if (!kind) return { ok: false, error: 'Job not found.' };
+
+  if (kind === 'shift' && (!slot.starts_at || !slot.ends_at)) {
+    return { ok: false, error: 'A shift needs both a start and an end time.' };
+  }
+
+  // Don't let a job shrink below what people have already claimed — the
+  // coverage numbers would read as over-full and someone would get bumped.
+  if (slot.needed != null) {
+    const { data: claimed } = await supabase
+      .from('signup_slot_claims')
+      .select('signup_entry_id, signup_entries!inner(status)')
+      .eq('slot_id', slotId)
+      .eq('signup_entries.status', 'yes');
+    const taken = (claimed ?? []).length;
+    if (slot.needed < taken) {
+      return {
+        ok: false,
+        error: `${taken} ${taken === 1 ? 'person has' : 'people have'} already claimed this job, so it can't be set below ${taken}.`
+      };
+    }
+  }
+
+  const { error } = await supabase
+    .from('signup_slots')
+    .update({
+      label: slot.label.trim(),
+      slot_date: slot.slot_date || null,
+      starts_at: kind === 'shift' ? slot.starts_at : null,
+      ends_at: kind === 'shift' ? slot.ends_at : null,
+      eligibility: slot.eligibility,
+      needed: slot.needed,
+      attendance_required: kind === 'shift' ? true : slot.attendance_required
+    })
+    .eq('id', slotId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidateEvent(calendarEntryId, signupId);
+  return { ok: true };
+}
+
+/** Edit a price tier in place — same reasoning as updateSlot: entries point at
+ *  price_id, so recreating the tier would orphan the owed math. */
+export async function updatePrice(
+  priceId: number,
+  signupId: number,
+  calendarEntryId: number,
+  fields: { label: string; amount: number; per: 'event' | 'day'; applies_to: 'scouts' | 'adults' | 'both' }
+): Promise<Result> {
+  await requireRole(['leader']);
+  if (!fields.label.trim()) return { ok: false, error: 'Give the tier a label.' };
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from('event_prices')
+    .update({ ...fields, label: fields.label.trim() })
+    .eq('id', priceId);
+  if (error) {
+    return {
+      ok: false,
+      error: error.message.includes('duplicate')
+        ? 'Another tier on this event already uses that label.'
+        : error.message
+    };
+  }
+  revalidateEvent(calendarEntryId, signupId);
+  return { ok: true };
+}

@@ -62,3 +62,6 @@
 .nrList { font-size: 13px; line-height: 1.7; color: var(--admin-gray-700, #444); }
 @media print { .enableBtn, .actions, .actionLink, .actionLinkMuted { display: none; } }
 .rowAnswers { display: block; font-size: 11.5px; color: #2f6b7a; margin-top: 2px; }
+.rowActions { display: flex; gap: 10px; white-space: nowrap; }
+.rowEdit { background: none; border: none; color: #1e3a4a; font-size: 12px; font-weight: 700; text-decoration: underline; cursor: pointer; padding: 0; }
+.editRow { background: #f6f9fb; }
