@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>July 13, 2026</strong></p>
+      <p>Last updated: <strong>July 19, 2026</strong></p>
     </div>
   </div>
 
@@ -494,6 +494,139 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.10.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.10.0</span>
+        <span class="release-date">July 19, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Event Signup &mdash; families can now sign up online</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Every event on the calendar can now carry a <strong>signup</strong>, and one page handles
+              every kind of event we run.
+              <span class="change-note">There is no separate form per event type. A campout asks who&rsquo;s coming, what they owe and who can drive; a pancake breakfast asks who can work which shift; a Court of Honor asks who&rsquo;s coming, how many guests, and who&rsquo;s bringing dessert. Same page, different pieces switched on.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>One shared troop password</strong> &mdash; no accounts, no email signup, no password to forget.
+              <span class="change-note">It&rsquo;s printed in the Bugle each week. Enter it once on a device and you stay signed in. Pick any scout and the whole household comes up, siblings and parents included, so one submission covers the family.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              Jobs and potluck items are claimed from a <strong>single list</strong> that shows what&rsquo;s still needed.
+              <span class="change-note">Each job shows how many more people it needs. Click one and pick who&rsquo;s doing it. Nothing is hidden behind a separate RSVP, and a job that&rsquo;s already full says so rather than quietly refusing.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              Families can <strong>edit or cancel</strong> right up to the deadline, and leaders can do it for them.
+              <span class="change-note">People phone or email to cancel and don&rsquo;t always go back to the form. A leader can now remove someone from the roster on their behalf &mdash; and put them back if it was a mistake. When a spot frees up, anyone on the waitlist moves up automatically.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>No payments are ever collected online.</strong>
+              <span class="change-note">Events show what things cost and how to pay; leaders tick off payment as it arrives. Nothing financial is stored or processed by this site.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">For leaders</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              New <strong>Event Signups</strong> screen (News &amp; Events) to switch a signup on for any
+              event and build it: jobs, shifts, price tiers, questions, capacity, guests, drivers.
+              <span class="change-note">The category picks sensible defaults &mdash; a fundraiser starts as a job list, a campout starts as an RSVP &mdash; and every one of them can be changed. Jobs and price tiers can be edited after they&rsquo;re created without losing anyone who already signed up.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              New <strong>Event Rosters</strong> screen (Entry) for running the event.
+              <span class="change-note">Headcount, guests, two-deep leadership, driver seats each way, job coverage, permission slips outstanding, who owes what, and the list of families who haven&rsquo;t replied at all. Print or export to CSV.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              The admin <strong>Calendar</strong> now splits into Upcoming and Past, sorts oldest first,
+              and has a <strong>Clone</strong> button.
+              <span class="change-note">Cloning a configured troop meeting into next month&rsquo;s takes a couple of clicks. The date is deliberately left blank so it can&rsquo;t be missed.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Setup required &mdash; hosting configuration</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Vercel &rarr; Settings &rarr; Environment Variables:</strong> add
+              <code>FAMILY_PASSWORD</code>. <strong>Required.</strong>
+              <span class="change-note">This is the shared troop password families type at the signup gate, and it belongs in the Bugle. Without it every event page reports &ldquo;the family signup gate isn&rsquo;t configured&rdquo; and nobody can sign up. Keep it DIFFERENT from <code>LEADER_PASSWORD</code> and <code>SCOUT_PASSWORD</code>: this one is semi-public by design, so if it were shared with either of those, printing it in the newsletter would hand out access to the Leader Workspace. No new signing secret is needed &mdash; the family session reuses the existing <code>LEADER_SESSION_SECRET</code>.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Vercel, optional:</strong> <code>RESEND_API_KEY</code>, <code>EMAIL_FROM</code>,
+              and optionally <code>EMAIL_REPLY_TO</code> &mdash; only needed for the roster&rsquo;s
+              &ldquo;chase the non-responders&rdquo; email.
+              <span class="change-note">Leave them unset and the email button simply reports &ldquo;skipped&rdquo;; nothing else is affected. <code>EMAIL_FROM</code> must be an address on a domain verified in Resend, e.g. <code>Troop 79 &lt;noreply@troop-79.com&gt;</code>.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Resend:</strong> add <code>troop-79.com</code> as a second verified domain on the
+              existing paid account &mdash; a separate account isn&rsquo;t needed.
+              <span class="change-note">The Pro plan allows 10 verified domains and 50,000 emails a month, against maybe a few hundred a year here. Any number of from-addresses works on a verified domain. Verification is a couple of DNS records, added in Cloudflare where the site&rsquo;s DNS already lives. Note that sender reputation is shared across the account, which is why the troop uses its own domain and why bounced and unsubscribed addresses are dropped automatically.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              Changing an environment variable in Vercel does <strong>not</strong> affect the running
+              site until it redeploys.
+              <span class="change-note">Trigger a redeploy from the Vercel dashboard (Deployments &rarr; &hellip; &rarr; Redeploy), or it takes effect on the next push.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Behind the scenes</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Calendar categories were reorganised into the thirteen kinds of event the troop actually
+              runs.
+              <span class="change-note">Campout became Campout / Overnight, Committee Meeting became Leadership / Planning, and Court of Honor and Ceremony merged into Ceremony / Recognition. Four new kinds were added: Advancement Event, Training, Recruiting / Outreach and Social Event. The Bugle&rsquo;s spreadsheet import still understands the old names, so nothing needs changing there.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              Households are now recorded properly rather than guessed from contact details, and a
+              parent can have more than one email address.
+              <span class="change-note">Working it out from a shared parent email was right for today&rsquo;s data but would have quietly split a family the first time two parents gave different addresses. Membership is now stored and correctable. Parents added while signing up are saved to the scout&rsquo;s record, so the roster improves over time instead of going stale.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              Signup data is protected server-side, not just hidden in the page.
+              <span class="change-note">Deadlines, capacity, waitlists, who a price applies to and required questions are all enforced by the database, so they hold even against a request that bypasses the form. No scout or family name appears anywhere before the troop password is entered, and the roster screens are restricted to leaders.</span>
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 
