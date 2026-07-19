@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import { RosterTable } from './roster-table';
+import { EmailPanel } from './email-panel';
+import { emailConfigured } from '@/lib/email';
 import styles from '../../events-admin.module.css';
 
 export const metadata = { title: 'Event Roster — Troop 79' };
@@ -281,6 +283,8 @@ export default async function EventRosterPage({ params }: { params: Promise<{ id
           </ul>
         </section>
       )}
+
+      <EmailPanel signupId={signupId} configured={emailConfigured()} />
 
       <section className={styles.panel}>
         <h2>No response yet ({nonResponders.length})</h2>

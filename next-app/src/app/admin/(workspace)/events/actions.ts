@@ -3,6 +3,9 @@
 import { revalidatePath } from 'next/cache';
 import { requireRole } from '@/lib/require-role';
 import { createAdminClient } from '@/lib/supabase/server';
+import { sendEmail, renderEmail } from '@/lib/email';
+import { recipientsForScouts } from '@/lib/email-recipients';
+import { siteUrl } from '@/lib/site-url';
 
 /*
  * Event Signup builder actions. House pattern throughout:
@@ -258,4 +261,66 @@ export async function deleteQuestion(
   if (error) return { ok: false, error: error.message };
   revalidateEvent(calendarEntryId, signupId);
   return { ok: true };
+}
+
+/**
+ * Email the families who haven't responded yet.
+ *
+ * Deliberately leader-triggered and DRY-RUN by default: `confirm` must be
+ * true to actually dispatch. Nothing in this feature ever mails a family
+ * automatically — a signup form that quietly emails 25 households the first
+ * time it's exercised is not something you can take back.
+ */
+export async function emailNonResponders(
+  signupId: number,
+  confirm: boolean
+): Promise<{ ok: boolean; error?: string; status?: string; to?: string[] }> {
+  await requireRole(['leader']);
+  const supabase = createAdminClient();
+
+  const { data: signup } = await supabase
+    .from('event_signups')
+    .select('id, calendar_entry_id, deadline')
+    .eq('id', signupId)
+    .maybeSingle();
+  if (!signup) return { ok: false, error: 'Signup not found.' };
+  const sig = signup as unknown as { calendar_entry_id: number; deadline: string };
+
+  const [{ data: entry }, { data: entries }, { data: scouts }] = await Promise.all([
+    supabase.from('calendar_entries').select('id, title').eq('id', sig.calendar_entry_id).maybeSingle(),
+    supabase.from('signup_entries').select('scout_id').eq('event_signup_id', signupId).neq('status', 'cancelled'),
+    supabase.from('scouts').select('id').eq('active', true)
+  ]);
+
+  const responded = new Set(
+    ((entries ?? []) as { scout_id: string | null }[]).map((e) => e.scout_id).filter(Boolean) as string[]
+  );
+  const missing = ((scouts ?? []) as { id: string }[]).map((s) => s.id).filter((id) => !responded.has(id));
+
+  const recipients = await recipientsForScouts(missing);
+  const title = String((entry as { title?: string } | null)?.title ?? 'an upcoming event');
+  const deadline = new Date(sig.deadline).toLocaleString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit'
+  });
+
+  const { html, text } = renderEmail({
+    heading: `We haven't heard from you about ${title}`,
+    intro:
+      `We're finalising numbers for ${title} and don't have an answer from your family yet. ` +
+      `Even a "can't make it" helps — it tells the planners who not to wait for.`,
+    bullets: [`Signups close ${deadline}.`],
+    actionUrl: `${siteUrl()}/events/${sig.calendar_entry_id}`,
+    actionLabel: 'Sign up or decline',
+    outro: 'If you have already replied, thank you — please ignore this.'
+  });
+
+  const res = await sendEmail({
+    to: recipients.map((r) => r.email),
+    subject: `Troop 79 — are you coming to ${title}?`,
+    html,
+    text,
+    confirm
+  });
+
+  return { ok: res.status !== 'error', error: res.detail, status: res.status, to: res.to };
 }

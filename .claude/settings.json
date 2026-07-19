@@ -4,5 +4,11 @@
       "Read(~/.claude/agents/disciplines/**)",
       "Glob(~/.claude/agents/disciplines/**)"
     ]
-  }
+  },
+  "ignorePatterns": [
+    "**/.env",
+    "**/.env.*",
+    ".env",
+    ".env.*"
+  ]
 }
