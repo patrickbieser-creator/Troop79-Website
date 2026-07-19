@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { emailNonResponders } from '../../actions';
-import styles from '../../events-admin.module.css';
+import { emailNonResponders } from '../../events/actions';
+import styles from '../../events/events-admin.module.css';
 
 /**
  * Nudge the families who haven't answered.

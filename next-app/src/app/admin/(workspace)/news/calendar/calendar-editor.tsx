@@ -28,17 +28,43 @@ function formatDate(iso: string): string {
   });
 }
 
+/** Local YYYY-MM-DD. Deliberately not toISOString(), which is UTC and can
+ *  put an evening event on 'tomorrow' for anyone west of Greenwich. */
+function todayLocal(): string {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
+/** A multi-day event counts as upcoming until its LAST day has passed. */
+function lastDay(row: CalendarEntry): string {
+  return row.end_date ?? row.entry_date;
+}
+
 function formatTime(hms: string): string {
   return new Date(`2000-01-01T${hms}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
 export function CalendarEditor({ rows, articles, categories, onCreate, onUpdate, onDelete, onImport }: Props) {
-  const [openFor, setOpenFor] = useState<CalendarEntry | 'new' | null>(null);
+  // 'new' = blank form; { clone } = prefilled from an existing entry but
+  // saved as a new one; a row = editing that row.
+  const [openFor, setOpenFor] = useState<CalendarEntry | 'new' | { clone: CalendarEntry } | null>(
+    null
+  );
+  const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [rowErr, setRowErr] = useState<{ id: number; msg: string } | null>(null);
   const [, startTransition] = useTransition();
   const articlesById = new Map(articles.map((a) => [a.id, a]));
+
+  const today = todayLocal();
+  const upcoming = rows.filter((r) => lastDay(r) >= today);
+  // Past reads newest-first: the most recent thing is what you're usually
+  // looking for when you go back.
+  const past = rows.filter((r) => lastDay(r) < today).slice().reverse();
+  const shown = tab === 'upcoming' ? upcoming : past;
 
   useEffect(() => {
     const dlg = dialogRef.current;
@@ -61,6 +87,26 @@ export function CalendarEditor({ rows, articles, categories, onCreate, onUpdate,
   return (
     <>
       <div className={styles.toolbar}>
+        <div className={styles.tabs} role="tablist" aria-label="Calendar range">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'upcoming'}
+            className={`${styles.tab} ${tab === 'upcoming' ? styles.tabOn : ''}`}
+            onClick={() => setTab('upcoming')}
+          >
+            Upcoming <span className={styles.tabCount}>{upcoming.length}</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'past'}
+            className={`${styles.tab} ${tab === 'past' ? styles.tabOn : ''}`}
+            onClick={() => setTab('past')}
+          >
+            Past <span className={styles.tabCount}>{past.length}</span>
+          </button>
+        </div>
         <CalendarImport rows={rows} categories={categories} onImport={onImport} />
         <button type="button" className={styles.addBtn} onClick={() => setOpenFor('new')}>
           + Add Entry
@@ -79,14 +125,16 @@ export function CalendarEditor({ rows, articles, categories, onCreate, onUpdate,
           </tr>
         </thead>
         <tbody>
-          {rows.length === 0 ? (
+          {shown.length === 0 ? (
             <tr>
               <td colSpan={6} className={styles.muted}>
-                No calendar entries yet. Add one above.
+                {tab === 'upcoming'
+                  ? 'No upcoming entries. Add one above, or clone a past entry from the Past tab.'
+                  : 'No past entries yet.'}
               </td>
             </tr>
           ) : (
-            rows.map((row) => (
+            shown.map((row) => (
               <tr key={row.id}>
                 <td className={styles.dateCell}>
                   {formatDate(row.entry_date)}
@@ -126,6 +174,15 @@ export function CalendarEditor({ rows, articles, categories, onCreate, onUpdate,
                   </button>
                   <button
                     type="button"
+                    className={styles.editBtn}
+                    onClick={() => setOpenFor({ clone: row })}
+                    disabled={busyId === row.id}
+                    title="Create a new entry pre-filled from this one"
+                  >
+                    Clone
+                  </button>
+                  <button
+                    type="button"
                     className={`${styles.editBtn} ${styles.dangerBtn}`}
                     onClick={() => onDeleteClick(row)}
                     disabled={busyId === row.id}
@@ -149,8 +206,17 @@ export function CalendarEditor({ rows, articles, categories, onCreate, onUpdate,
       >
         {openFor && (
           <CalendarEntryForm
-            key={openFor === 'new' ? 'new' : openFor.id}
-            row={openFor === 'new' ? null : openFor}
+            key={
+              openFor === 'new'
+                ? 'new'
+                : 'clone' in openFor
+                  ? `clone-${openFor.clone.id}`
+                  : openFor.id
+            }
+            row={openFor === 'new' ? null : 'clone' in openFor ? openFor.clone : openFor}
+            /* A clone prefills from an existing entry but must SAVE AS NEW —
+               otherwise "clone" would silently overwrite the entry it copied. */
+            forceNew={openFor !== 'new' && 'clone' in openFor}
             articles={articles}
             categories={categories}
             onCreate={onCreate}
@@ -165,6 +231,7 @@ export function CalendarEditor({ rows, articles, categories, onCreate, onUpdate,
 
 function CalendarEntryForm({
   row,
+  forceNew = false,
   articles,
   categories,
   onCreate,
@@ -172,15 +239,20 @@ function CalendarEntryForm({
   onClose
 }: {
   row: CalendarEntry | null;
+  forceNew?: boolean;
   articles: ArticleOption[];
   categories: CalendarCategory[];
   onCreate: (fd: FormData) => Promise<ActionResult>;
   onUpdate: (fd: FormData) => Promise<ActionResult>;
   onClose: () => void;
 }) {
-  const isNew = row === null;
-  const [entryDate, setEntryDate] = useState(row?.entry_date ?? '');
-  const [endDate, setEndDate] = useState(row?.end_date ?? '');
+  const isNew = row === null || forceNew;
+  // Cloning: keep every detail, but clear the dates. The date is the whole
+  // point of the new entry, and a prefilled one is the easiest thing to
+  // miss — leaving it blank makes the required check catch it.
+  const [entryDate, setEntryDate] = useState(forceNew ? '' : (row?.entry_date ?? ''));
+  const [endDateInit] = useState(forceNew ? '' : (row?.end_date ?? ''));
+  const [endDate, setEndDate] = useState(endDateInit);
   const [startTime, setStartTime] = useState(row?.start_time?.slice(0, 5) ?? '');
   const [endTime, setEndTime] = useState(row?.end_time?.slice(0, 5) ?? '');
   const [dayNote, setDayNote] = useState(row?.day_note ?? '');
@@ -188,14 +260,16 @@ function CalendarEntryForm({
   const [title, setTitle] = useState(row?.title ?? '');
   const [description, setDescription] = useState(row?.description ?? '');
   const [location, setLocation] = useState(row?.location ?? '');
-  const [articleId, setArticleId] = useState(row?.article_id ? String(row.article_id) : '');
+  const [articleId, setArticleId] = useState(
+    !forceNew && row?.article_id ? String(row.article_id) : ''
+  );
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function submit() {
     setErr(null);
     const fd = new FormData();
-    if (row) fd.set('id', String(row.id));
+    if (row && !forceNew) fd.set('id', String(row.id));
     fd.set('entry_date', entryDate);
     fd.set('end_date', endDate);
     fd.set('start_time', startTime);

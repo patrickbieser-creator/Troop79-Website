@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { RosterTable } from './roster-table';
 import { EmailPanel } from './email-panel';
 import { emailConfigured } from '@/lib/email';
-import styles from '../../events-admin.module.css';
+import styles from '../../events/events-admin.module.css';
 
 export const metadata = { title: 'Event Roster — Troop 79' };
 

@@ -32,9 +32,9 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         matchPath: '/admin/advancement/fast-entry'
       },
       {
-        label: 'Event Roster',
-        href: '/admin/events',
-        matchPath: '/admin/events'
+        label: 'Event Rosters',
+        href: '/admin/rosters',
+        matchPath: '/admin/rosters'
       }
     ]
   },

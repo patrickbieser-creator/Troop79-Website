@@ -2,9 +2,9 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { setEntryFlag, cancelEntry, restoreEntry } from '../../actions';
+import { setEntryFlag, cancelEntry, restoreEntry } from '../../events/actions';
 import type { RosterRow } from './page';
-import styles from '../../events-admin.module.css';
+import styles from '../../events/events-admin.module.css';
 
 /** Roster table with leader-managed slip/payment ticks and a CSV export.
  *  One troop-wide list — no patrol grouping (see page.tsx). */

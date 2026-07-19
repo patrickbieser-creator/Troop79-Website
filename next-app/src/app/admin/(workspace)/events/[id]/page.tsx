@@ -75,7 +75,7 @@ export default async function EventBuilderPage({ params }: { params: Promise<{ i
             All signups
           </Link>{' '}
           ·{' '}
-          <Link href={`/admin/events/${signupId}/roster`} className={styles.actionLink}>
+          <Link href={`/admin/rosters/${signupId}`} className={styles.actionLink}>
             Roster
           </Link>{' '}
           ·{' '}

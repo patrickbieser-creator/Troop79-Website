@@ -214,7 +214,7 @@ export async function setEntryFlag(
     .update({ [field]: value, updated_by: session.leader, updated_at: new Date().toISOString() })
     .eq('id', entryId);
   if (error) return { ok: false, error: error.message };
-  revalidatePath(`/admin/events/${signupId}/roster`);
+  revalidatePath(`/admin/rosters/${signupId}`);
   revalidateEvent(calendarEntryId, signupId);
   return { ok: true };
 }
@@ -457,7 +457,7 @@ export async function cancelEntry(
   });
   if (promoteErr) return { ok: false, error: promoteErr.message };
 
-  revalidatePath(`/admin/events/${signupId}/roster`);
+  revalidatePath(`/admin/rosters/${signupId}`);
   revalidateEvent(calendarEntryId, signupId);
   return { ok: true };
 }
@@ -504,7 +504,7 @@ export async function restoreEntry(
     .eq('id', entryId);
   if (error) return { ok: false, error: error.message };
 
-  revalidatePath(`/admin/events/${signupId}/roster`);
+  revalidatePath(`/admin/rosters/${signupId}`);
   revalidateEvent(calendarEntryId, signupId);
   return { ok: true };
 }

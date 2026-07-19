@@ -22,7 +22,9 @@ export interface ArticleOption {
 async function loadData() {
   const supabase = createAdminClient();
   const [entriesRes, articlesRes] = await Promise.all([
-    supabase.from('calendar_entries').select('*').order('entry_date', { ascending: false }),
+    // Oldest first: the tabs below split upcoming from past, and within each
+    // an ascending run reads as a schedule rather than a reverse log.
+    supabase.from('calendar_entries').select('*').order('entry_date', { ascending: true }),
     supabase.from('articles').select('id, title').order('created_at', { ascending: false }).limit(200)
   ]);
   return {

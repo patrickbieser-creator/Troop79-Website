@@ -159,7 +159,7 @@ export default async function EventSignupsAdminPage() {
                         Builder
                       </Link>
                       <Link
-                        href={`/admin/events/${r.signup.id}/roster`}
+                        href={`/admin/rosters/${r.signup.id}`}
                         className={styles.actionLink}
                       >
                         Roster
