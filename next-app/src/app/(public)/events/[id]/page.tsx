@@ -1,10 +1,23 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { loadEventDetail, isSlotFirst, signupLocked } from '@/lib/event-signup';
+import {
+  loadEventDetail,
+  loadHouseholdSignup,
+  isSlotFirst,
+  signupLocked
+} from '@/lib/event-signup';
+import { loadHouseholds } from '@/lib/households';
 import { gateAudience, familyGateConfigured } from '@/lib/family-access';
 import { formatCalendarDateParts, formatTimeOfDay, categoryColor } from '@/lib/calendar-shared';
-import { familyGateAction, familySignOutAction } from './actions';
+import {
+  familyGateAction,
+  familySignOutAction,
+  submitSignupAction,
+  cancelSignupAction
+} from './actions';
+import HouseholdPicker from './household-picker';
+import SlotFirstForm from './slot-first-form';
 import styles from './event-detail.module.css';
 
 /*
@@ -78,22 +91,53 @@ export default async function EventDetailPage({
   searchParams
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ gate?: string }>;
+  searchParams: Promise<{
+    gate?: string;
+    household?: string;
+    err?: string;
+    saved?: string;
+    cancelled?: string;
+  }>;
 }) {
   const { id } = await params;
   const numeric = parseId(id);
   if (!numeric) notFound();
 
-  const [detail, audience, { gate: gateError }] = await Promise.all([
+  const [detail, audience, sp] = await Promise.all([
     loadEventDetail(numeric),
     gateAudience(),
     searchParams
   ]);
   if (!detail) notFound();
 
+  const {
+    gate: gateError,
+    household: householdKey,
+    err: formError,
+    saved,
+    cancelled
+  } = sp;
   const { entry, signup, prices, slots, resources, headcount } = detail;
   const gatedIn = audience !== null;
   const slotFirst = isSlotFirst(signup, slots);
+
+  // Household roster and any existing entries are gate-only: they carry names.
+  const households = gatedIn && signup ? await loadHouseholds() : [];
+  const household = householdKey ? (households.find((h) => h.key === householdKey) ?? null) : null;
+  const existing =
+    household && signup ? await loadHouseholdSignup(signup.id, household.key) : [];
+
+  // Map stored entries back to the form's person keys (s0/s1…, a0/a1…).
+  const existingClaims = household
+    ? existing.flatMap((e) => {
+        let key: string | null = null;
+        const si = household.scouts.findIndex((s) => s.id === e.scout_id);
+        if (si >= 0) key = `s${si}`;
+        const ai = household.adults.findIndex((a) => a.id === e.scout_parent_id);
+        if (ai >= 0) key = `a${ai}`;
+        return key ? e.claims.map((slotId) => ({ slotId, personKey: key! })) : [];
+      })
+    : [];
   const locked = signup ? signupLocked(signup) : false;
   const times = timeRange(entry.start_time, entry.end_time);
   const backHref = '/events';
@@ -263,16 +307,56 @@ export default async function EventDetailPage({
               </p>
             ) : gatedIn ? (
               <div className={styles.gatedIn}>
-                <p className={styles.gateOk}>
-                  ✓ You’re signed in as {audience === 'family' ? 'a family' : `a ${audience}`}.
-                </p>
-                <p className={styles.stub}>
-                  The signup form lands here next.{' '}
-                  {slotFirst
-                    ? 'This event is job-first: you’ll pick a job and say who’s doing it.'
-                    : 'You’ll RSVP each person in your household in one submission.'}
-                </p>
-                <form action={familySignOutAction}>
+                {saved && (
+                  <p className={styles.savedNote}>
+                    ✓ Your signup is saved. You can come back and change it until the deadline.
+                  </p>
+                )}
+                {cancelled && (
+                  <p className={styles.savedNote}>
+                    Your signup was cancelled and your spots went back to the pool.
+                  </p>
+                )}
+                {formError && <p className={styles.gateErr}>{formError}</p>}
+
+                {!household ? (
+                  <>
+                    <p className={styles.gateOk}>✓ You’re signed in — now find your family.</p>
+                    <HouseholdPicker households={households} eventId={entry.id} />
+                  </>
+                ) : (
+                  <>
+                    <p className={styles.householdBar}>
+                      Signing up the <strong>{household.label}</strong> household
+                      <Link href={`/events/${entry.id}`} className={styles.linkBtn}>
+                        Not you? Change household
+                      </Link>
+                    </p>
+
+                    {slotFirst ? (
+                      <SlotFirstForm
+                        eventId={entry.id}
+                        signupId={signup.id}
+                        household={household}
+                        slots={slots}
+                        allowGuests={signup.allow_guests}
+                        guestPrompt={signup.guest_prompt}
+                        existingClaims={existingClaims}
+                        hasExisting={existing.length > 0}
+                        submitAction={submitSignupAction}
+                        cancelAction={cancelSignupAction}
+                      />
+                    ) : (
+                      <p className={styles.stub}>
+                        The person-first RSVP form (tiers, days, driver legs) is the next piece of
+                        work. This event has attendance enabled, so it needs that surface rather
+                        than the job-first one.
+                      </p>
+                    )}
+                  </>
+                )}
+
+                <form action={familySignOutAction} className={styles.signOutRow}>
                   <input type="hidden" name="next" value={`/events/${entry.id}`} />
                   <button type="submit" className={styles.linkBtn}>
                     Sign out of the family gate

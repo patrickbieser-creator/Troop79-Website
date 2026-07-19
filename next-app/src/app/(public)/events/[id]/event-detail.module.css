@@ -348,3 +348,64 @@
 .linkBtn:hover {
   color: var(--navy);
 }
+
+/* ─── Signup form: household picker + slot-first surface ─────────────── */
+
+.picker { margin-top: 12px; }
+.pickerHint { font-family: var(--font-ui); font-size: 12.5px; color: var(--text-meta); margin-top: 8px; line-height: 1.5; }
+.pickerResults { list-style: none; margin-top: 12px; border: 1px solid var(--border-light); border-radius: 4px; overflow: hidden; }
+.pickerResults > li + li { border-top: 1px solid var(--border-light); }
+.pickerNone { padding: 12px 14px; font-family: var(--font-ui); font-size: 13px; color: var(--text-meta); background: var(--warm-white); }
+.pickerBtn { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; padding: 11px 14px; background: var(--warm-white); border: none; cursor: pointer; font-family: var(--font-ui); }
+.pickerBtn:hover { background: var(--cream); }
+.pickerName { font-size: 14.5px; font-weight: 700; color: var(--text-head); }
+.pickerMeta { font-size: 12px; color: var(--text-meta); }
+
+.householdBar { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; font-family: var(--font-ui); font-size: 13.5px; color: var(--text-body); padding-bottom: 10px; margin-bottom: 14px; border-bottom: 1px solid var(--border-light); }
+.signupForm { font-family: var(--font-ui); }
+.formLede { font-size: 13.5px; line-height: 1.55; color: var(--text-body); margin-bottom: 18px; }
+
+.dayGroup { margin-bottom: 20px; }
+.dayHead { font-family: var(--font-ui); font-size: 11.5px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--navy); padding-bottom: 6px; margin-bottom: 10px; border-bottom: 2px solid var(--border-light); }
+
+/* The row IS the control — a separate "Sign up" button restated it and cost a
+   line of height per job. Claimed-member chips sit OUTSIDE this button so we
+   never nest interactive elements. */
+.slotTrigger { display: block; width: 100%; text-align: left; padding: 11px 14px; background: none; border: none; cursor: pointer; font: inherit; color: inherit; }
+.slotTrigger:hover { background: var(--cream); }
+.slotList > li { padding: 0; overflow: hidden; }
+.slotList > li:has(.claimerChip) { border-color: var(--forest); box-shadow: inset 3px 0 0 var(--forest); }
+
+.claimerChips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 11px; }
+.claimerChip { display: inline-flex; align-items: center; gap: 5px; background: #eef2ee; color: var(--forest); border: 1px solid var(--forest); border-radius: 999px; padding: 3px 5px 3px 11px; font-size: 12.5px; font-weight: 700; }
+.claimerX { display: grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: var(--forest); color: #fff; font-size: 13px; line-height: 1; border: none; cursor: pointer; padding: 0 0 1px; }
+.claimerX:hover { background: var(--navy); }
+
+.memberPick { margin: 0 14px 12px; padding-top: 11px; border-top: 1px dashed var(--border-mid); }
+.pickPrompt { font-size: 12.5px; font-weight: 700; color: var(--text-head); margin-bottom: 9px; }
+.pickChips { display: flex; flex-wrap: wrap; gap: 8px; }
+.pickChip { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; text-align: left; background: var(--cream); border: 1.5px solid var(--border-mid); border-radius: 3px; padding: 7px 13px; cursor: pointer; font: inherit; }
+.pickChip:hover:not(:disabled) { border-color: var(--forest); background: var(--warm-white); }
+.pickName { font-size: 13px; font-weight: 700; color: var(--text-head); }
+.pickSub { font-size: 10.5px; color: var(--text-meta); }
+.pickOn { background: #eef2ee; border-color: var(--forest); box-shadow: inset 0 0 0 1px var(--forest); }
+.pickOn .pickName { color: var(--forest); }
+.pickBlocked { opacity: 0.5; cursor: not-allowed; }
+
+.fullNote { display: flex; gap: 8px; margin: 0 14px 12px; padding: 9px 12px; background: #fdf6e6; border-left: 3px solid var(--bark, #8b6914); border-radius: 0 3px 3px 0; font-size: 12.5px; line-height: 1.45; }
+
+.guestBlock { margin: 22px 0; }
+.guestGrid { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 560px) { .guestGrid { grid-template-columns: 1fr; } }
+
+.recap { background: var(--cream); border: 1px solid var(--border-light); border-radius: 4px; padding: 14px; margin: 22px 0; }
+.recap .dayHead { border-bottom: none; margin-bottom: 8px; padding-bottom: 0; }
+.recapEmpty { font-size: 13px; color: var(--text-meta); }
+.recapList { list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; }
+.recapJobs { display: block; font-size: 12px; color: var(--text-meta); margin-top: 2px; }
+
+.formActions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+.gateBtn:disabled { background: var(--border-mid); cursor: not-allowed; }
+.cancelRow { margin-top: 12px; }
+.signOutRow { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--border-light); }
+.savedNote { font-family: var(--font-ui); font-size: 13.5px; font-weight: 700; color: var(--forest); background: #eef2ee; border-left: 3px solid var(--forest); padding: 10px 13px; border-radius: 0 3px 3px 0; margin-bottom: 14px; }

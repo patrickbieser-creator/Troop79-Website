@@ -87,6 +87,62 @@ export function signupLocked(signup: EventSignup): boolean {
   return signup.status === 'closed' || new Date(signup.deadline).getTime() < Date.now();
 }
 
+export interface HouseholdEntry {
+  id: number;
+  person_kind: 'scout' | 'adult';
+  scout_id: string | null;
+  scout_parent_id: number | null;
+  adult_name: string | null;
+  status: 'yes' | 'no' | 'waitlist' | 'cancelled';
+  participation: 'full' | 'driver_only' | 'contributor';
+  price_id: number | null;
+  days: number | null;
+  guest_count: number;
+  guest_note: string | null;
+  notes: string | null;
+  permission_slip_received: boolean;
+  payment_received: boolean;
+  /** slot ids this entry currently holds. */
+  claims: number[];
+}
+
+/**
+ * One household's live entries for an event. GATE-ONLY — this returns names
+ * and must never be rendered without a passing family/leader check.
+ */
+export async function loadHouseholdSignup(
+  eventSignupId: number,
+  householdScoutId: string
+): Promise<HouseholdEntry[]> {
+  const supabase = createAdminClient();
+  const { data: entries } = await supabase
+    .from('signup_entries')
+    .select(
+      'id, person_kind, scout_id, scout_parent_id, adult_name, status, participation, ' +
+        'price_id, days, guest_count, guest_note, notes, permission_slip_received, payment_received'
+    )
+    .eq('event_signup_id', eventSignupId)
+    .eq('household_scout_id', householdScoutId)
+    .neq('status', 'cancelled');
+
+  const rows = (entries ?? []) as unknown as Omit<HouseholdEntry, 'claims'>[];
+  if (rows.length === 0) return [];
+
+  const { data: claims } = await supabase
+    .from('signup_slot_claims')
+    .select('slot_id, signup_entry_id')
+    .in(
+      'signup_entry_id',
+      rows.map((r) => r.id)
+    );
+
+  const byEntry = new Map<number, number[]>();
+  for (const c of (claims ?? []) as { slot_id: number; signup_entry_id: number }[]) {
+    byEntry.set(c.signup_entry_id, [...(byEntry.get(c.signup_entry_id) ?? []), c.slot_id]);
+  }
+  return rows.map((r) => ({ ...r, claims: byEntry.get(r.id) ?? [] }));
+}
+
 export async function loadEventDetail(entryId: number): Promise<EventDetail | null> {
   const supabase = createAdminClient();
 
