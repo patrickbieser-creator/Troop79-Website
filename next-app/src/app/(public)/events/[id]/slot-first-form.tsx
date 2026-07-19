@@ -434,10 +434,13 @@ export default function SlotFirstForm({
 
   // Not signed in / no family yet: the board stands alone, and each row can
   // carry its own gate form. No outer <form> to nest inside.
-  const signOutBar = (
-    <form action={signOutAction} className={styles.boardStatus}>
-      <input type="hidden" name="next" value={`/events/${eventId}`} />
-      <span>
+  // `asForm` matters: when the board stands alone (anon / no household) this
+  // is its own <form>. Inside the submit form it must NOT be — nested forms
+  // are invalid HTML and React reports a hydration error.
+  const statusBar = (asForm: boolean) => {
+    const inner = (
+      <>
+        <span>
         {ready ? (
           <>
             Signing up the <strong>{household!.label}</strong> household
@@ -452,21 +455,34 @@ export default function SlotFirstForm({
             Change household
           </a>
         )}
-        {isFamilySession ? (
-          <button type="submit" className={styles.linkBtn}>
-            Sign out
-          </button>
-        ) : (
-          <span className={styles.linkBtnQuiet}>signed in as a leader</span>
-        )}
-      </span>
-    </form>
-  );
+          {isFamilySession ? (
+            <button
+              type="submit"
+              className={styles.linkBtn}
+              formAction={asForm ? undefined : signOutAction}
+            >
+              Sign out
+            </button>
+          ) : (
+            <span className={styles.linkBtnQuiet}>signed in as a leader</span>
+          )}
+        </span>
+      </>
+    );
+    return asForm ? (
+      <form action={signOutAction} className={styles.boardStatus}>
+        <input type="hidden" name="next" value={`/events/${eventId}`} />
+        {inner}
+      </form>
+    ) : (
+      <div className={styles.boardStatus}>{inner}</div>
+    );
+  };
 
   if (!ready) {
     return (
       <div className={styles.jobBoard}>
-        {gateState === 'no-household' && signOutBar}
+        {gateState === 'no-household' && statusBar(true)}
         <p className={styles.boardLede}>
           {gateState === 'anon'
             ? 'Pick a job below to sign in and claim it — one shared troop password, no account needed.'
@@ -484,8 +500,9 @@ export default function SlotFirstForm({
       <input type="hidden" name="householdKey" value={household!.key} />
       <input type="hidden" name="entries" value={JSON.stringify(entries)} />
       <input type="hidden" name="slotClaims" value={JSON.stringify(claimsForSubmit)} />
+      <input type="hidden" name="next" value={`/events/${eventId}`} />
 
-      {signOutBar}
+      {statusBar(false)}
       <p className={styles.boardLede}>
         {slotsIntro ??
           'Pick a job and choose who’s doing it — one person or several. Claiming a job is your signup; there’s no separate RSVP.'}

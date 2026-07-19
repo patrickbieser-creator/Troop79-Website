@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
+import { requireRole } from '@/lib/require-role';
 import { formatCalendarDateParts, categoryColor } from '@/lib/calendar-shared';
 import { EnableSignupButton } from './enable-button';
 import styles from './events-admin.module.css';
@@ -32,6 +33,9 @@ interface Row {
 }
 
 async function loadRows(): Promise<Row[]> {
+  // Leader-only: rosters carry guest notes, driving arrangements, payment
+  // status and household composition. A scout-role session must not see them.
+  await requireRole(['leader']);
   const supabase = createAdminClient();
   const today = new Date().toISOString().slice(0, 10);
 

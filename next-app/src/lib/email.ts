@@ -39,9 +39,9 @@ export function emailConfigured(): boolean {
 }
 
 /**
- * Sends one message to many recipients as individual BCC-free sends is
- * overkill here; the troop is ~25 families and Resend accepts an array. But
- * `confirm` must be true or this only reports what it *would* do.
+ * Sends the message individually to each recipient (see the loop below for
+ * why a shared To: is not acceptable). `confirm` must be true or this only
+ * reports what it *would* do.
  */
 export async function sendEmail(opts: {
   to: string[];
@@ -65,20 +65,40 @@ export async function sendEmail(opts: {
     };
   }
 
-  try {
-    const { error } = await resend.emails.send({
-      from,
-      to,
-      subject: opts.subject,
-      html: opts.html,
-      text: opts.text,
-      replyTo: process.env.EMAIL_REPLY_TO || undefined
-    });
-    if (error) return { status: 'error', to, detail: error.message };
-    return { status: 'sent', to };
-  } catch (err) {
-    return { status: 'error', to, detail: err instanceof Error ? err.message : String(err) };
+  // ONE MESSAGE PER RECIPIENT — never a shared To:.
+  //
+  // Passing the whole list to `to` puts every parent's address in the header
+  // of everyone else's copy, which discloses the troop's family contact list
+  // to all of it. At ~25 families the extra API calls cost nothing, and a
+  // per-recipient send is also what lets these be personalised later.
+  const failures: string[] = [];
+  for (const recipient of to) {
+    try {
+      const { error } = await resend.emails.send({
+        from,
+        to: [recipient],
+        subject: opts.subject,
+        html: opts.html,
+        text: opts.text,
+        replyTo: process.env.EMAIL_REPLY_TO || undefined
+      });
+      if (error) failures.push(`${recipient}: ${error.message}`);
+    } catch (err) {
+      failures.push(`${recipient}: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
+
+  if (failures.length === to.length) {
+    return { status: 'error', to, detail: failures[0] };
+  }
+  if (failures.length > 0) {
+    return {
+      status: 'sent',
+      to,
+      detail: `${to.length - failures.length} sent, ${failures.length} failed: ${failures.join('; ')}`
+    };
+  }
+  return { status: 'sent', to };
 }
 
 /** Minimal, readable HTML — troop mail lands in Gmail and phone clients, and

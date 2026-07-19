@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
+import { requireRole } from '@/lib/require-role';
 import { BuilderPanels } from './builder-panels';
 import styles from '../events-admin.module.css';
 
@@ -15,6 +16,9 @@ export const metadata = { title: 'Event Builder — Troop 79' };
  */
 
 async function load(signupId: number) {
+  // Leader-only: rosters carry guest notes, driving arrangements, payment
+  // status and household composition. A scout-role session must not see them.
+  await requireRole(['leader']);
   const supabase = createAdminClient();
   const { data: signup } = await supabase
     .from('event_signups')
