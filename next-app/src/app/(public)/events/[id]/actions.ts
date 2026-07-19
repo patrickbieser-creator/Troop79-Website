@@ -93,7 +93,7 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
     p_event_signup_id: signupId,
     p_entries: entries,
     p_actor: actor,
-    p_household_scout_id: householdKey || null
+    p_household_id: householdKey ? Number(householdKey) : null
   });
   if (error) redirect(`${back}&err=${encodeURIComponent(friendlyError(error.message))}`);
 
@@ -129,7 +129,7 @@ export async function cancelSignupAction(formData: FormData): Promise<void> {
   const supabase = createAdminClient();
   const { error } = await supabase.rpc('cancel_household_signup', {
     p_event_signup_id: signupId,
-    p_household_scout_id: householdKey,
+    p_household_id: Number(householdKey),
     p_actor: `family:${audience}`
   });
 

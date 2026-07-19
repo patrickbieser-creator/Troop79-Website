@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import type { SignupSlot } from '@/lib/event-signup';
 import type { Household } from '@/lib/households';
+import { formatTimeOfDay } from '@/lib/calendar-shared';
 import styles from './event-detail.module.css';
 
 /*
@@ -210,7 +211,9 @@ export default function SlotFirstForm({
                       <span>
                         <strong>{s.label}</strong>
                         <span className={styles.slotWhen}>
-                          {s.starts_at ? `${s.starts_at.slice(0, 5)}–${s.ends_at?.slice(0, 5)}` : 'Untimed'}
+                          {s.starts_at
+                            ? `${formatTimeOfDay(s.starts_at)} – ${s.ends_at ? formatTimeOfDay(s.ends_at) : ''}`
+                            : 'Untimed'}
                           {!s.attendance_required && ' · no attendance needed'}
                         </span>
                       </span>

@@ -373,8 +373,11 @@
    never nest interactive elements. */
 .slotTrigger { display: block; width: 100%; text-align: left; padding: 11px 14px; background: none; border: none; cursor: pointer; font: inherit; color: inherit; }
 .slotTrigger:hover { background: var(--cream); }
-.slotList > li { padding: 0; overflow: hidden; }
-.slotList > li:has(.claimerChip) { border-color: var(--forest); box-shadow: inset 3px 0 0 var(--forest); }
+/* Scoped to the form: its <li> gets padding from the inner .slotTrigger
+   button instead. The PUBLIC slot list has no inner button and relies on the
+   padding set at .slotList > li above — an unscoped rule here stripped it. */
+.signupForm .slotList > li { padding: 0; overflow: hidden; }
+.signupForm .slotList > li:has(.claimerChip) { border-color: var(--forest); box-shadow: inset 3px 0 0 var(--forest); }
 
 .claimerChips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 11px; }
 .claimerChip { display: inline-flex; align-items: center; gap: 5px; background: #eef2ee; color: var(--forest); border: 1px solid var(--forest); border-radius: 999px; padding: 3px 5px 3px 11px; font-size: 12.5px; font-weight: 700; }

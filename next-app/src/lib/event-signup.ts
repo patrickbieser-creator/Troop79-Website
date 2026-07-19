@@ -112,7 +112,7 @@ export interface HouseholdEntry {
  */
 export async function loadHouseholdSignup(
   eventSignupId: number,
-  householdScoutId: string
+  householdId: number
 ): Promise<HouseholdEntry[]> {
   const supabase = createAdminClient();
   const { data: entries } = await supabase
@@ -122,7 +122,7 @@ export async function loadHouseholdSignup(
         'price_id, days, guest_count, guest_note, notes, permission_slip_received, payment_received'
     )
     .eq('event_signup_id', eventSignupId)
-    .eq('household_scout_id', householdScoutId)
+    .eq('household_id', householdId)
     .neq('status', 'cancelled');
 
   const rows = (entries ?? []) as unknown as Omit<HouseholdEntry, 'claims'>[];

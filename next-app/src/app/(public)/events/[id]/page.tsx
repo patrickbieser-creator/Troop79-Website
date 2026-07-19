@@ -124,8 +124,12 @@ export default async function EventDetailPage({
   // Household roster and any existing entries are gate-only: they carry names.
   const households = gatedIn && signup ? await loadHouseholds() : [];
   const household = householdKey ? (households.find((h) => h.key === householdKey) ?? null) : null;
+  // Unassigned scouts get a "scout:<id>" key and have no stored household, so
+  // they have no prior entries to load.
+  const householdIdNum =
+    household && !household.key.startsWith('scout:') ? Number(household.key) : null;
   const existing =
-    household && signup ? await loadHouseholdSignup(signup.id, household.key) : [];
+    householdIdNum && signup ? await loadHouseholdSignup(signup.id, householdIdNum) : [];
 
   // Map stored entries back to the form's person keys (s0/s1…, a0/a1…).
   const existingClaims = household
@@ -327,7 +331,9 @@ export default async function EventDetailPage({
                 ) : (
                   <>
                     <p className={styles.householdBar}>
-                      Signing up the <strong>{household.label}</strong> household
+                      <span>
+                        Signing up the <strong>{household.label}</strong> household
+                      </span>
                       <Link href={`/events/${entry.id}`} className={styles.linkBtn}>
                         Not you? Change household
                       </Link>
