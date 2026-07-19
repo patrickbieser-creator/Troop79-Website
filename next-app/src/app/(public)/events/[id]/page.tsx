@@ -143,6 +143,14 @@ export default async function EventDetailPage({
         return key ? e.claims.map((slotId) => ({ slotId, personKey: key! })) : [];
       })
     : [];
+  // How far into the flow this visitor is — the job board renders the right
+  // prompt inline at whichever job they click, instead of sending them to
+  // the bottom of a 30-job page.
+  const gateState: 'anon' | 'no-household' | 'ready' = !gatedIn
+    ? 'anon'
+    : household
+      ? 'ready'
+      : 'no-household';
   const locked = signup ? signupLocked(signup) : false;
   const times = timeRange(entry.start_time, entry.end_time);
   const backHref = '/events';
@@ -262,7 +270,7 @@ export default async function EventDetailPage({
             </section>
           )}
 
-          {slots.length > 0 && (
+          {slots.length > 0 && !slotFirst && (
             <section className={styles.block}>
               <h2 className={styles.blockHead}>
                 {slotFirst ? 'Jobs — who’s still needed' : 'Shifts &amp; tasks'}
@@ -296,6 +304,29 @@ export default async function EventDetailPage({
             </section>
           )}
 
+      {signup && slotFirst && !locked && (
+        <section className={styles.block}>
+          <h2 className={styles.blockHead}>Jobs — pick one to sign up</h2>
+          <SlotFirstForm
+            eventId={entry.id}
+            signupId={signup.id}
+            household={household}
+            households={households}
+            slots={slots}
+            allowGuests={signup.allow_guests}
+            guestPrompt={signup.guest_prompt}
+            existingClaims={existingClaims}
+            hasExisting={existing.length > 0}
+            submitAction={submitSignupAction}
+            cancelAction={cancelSignupAction}
+            gateAction={familyGateAction}
+            gateState={gateState}
+            gateError={gateError}
+            gateConfigured={familyGateConfigured()}
+          />
+        </section>
+      )}
+
           <section className={styles.block}>
             <h2 className={styles.blockHead}>Signing up</h2>
             {signup.capacity != null && (
@@ -326,8 +357,10 @@ export default async function EventDetailPage({
 
                 {!household ? (
                   <>
-                    <p className={styles.gateOk}>✓ You’re signed in — now find your family.</p>
-                    <HouseholdPicker households={households} eventId={entry.id} />
+                    <p className={styles.gateOk}>
+                      ✓ You’re signed in{slotFirst ? ' — pick a job above to choose your family.' : ' — now find your family.'}
+                    </p>
+                    {!slotFirst && <HouseholdPicker households={households} eventId={entry.id} />}
                   </>
                 ) : (
                   <>
@@ -341,18 +374,10 @@ export default async function EventDetailPage({
                     </p>
 
                     {slotFirst ? (
-                      <SlotFirstForm
-                        eventId={entry.id}
-                        signupId={signup.id}
-                        household={household}
-                        slots={slots}
-                        allowGuests={signup.allow_guests}
-                        guestPrompt={signup.guest_prompt}
-                        existingClaims={existingClaims}
-                        hasExisting={existing.length > 0}
-                        submitAction={submitSignupAction}
-                        cancelAction={cancelSignupAction}
-                      />
+                      <p className={styles.stub}>
+                        Your jobs are in the list above — pick any job to add or change who’s
+                        doing it.
+                      </p>
                     ) : (
                       <PersonFirstForm
                         eventId={entry.id}

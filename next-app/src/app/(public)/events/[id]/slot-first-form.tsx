@@ -1,22 +1,28 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import type { SignupSlot } from '@/lib/event-signup';
 import type { Household } from '@/lib/households';
 import { formatTimeOfDay } from '@/lib/calendar-shared';
 import styles from './event-detail.module.css';
 
 /*
- * SLOT-FIRST signup — organized by the JOB, not the person.
+ * THE JOB BOARD — one list, not two.
  *
- * For fundraisers (Pancake Breakfast, Rummage Sale) the work is the unit of
- * signup: listing every slot under every family member repeats an 8-row grid
- * per person. Here each job appears once with live coverage, and "sign up"
- * opens a picker of eligible household members. Claiming a job IS the signup,
- * which is why these events run with attendance off.
+ * This list used to render twice: a public read-only copy up top, then an
+ * identical interactive copy inside the signup form below. With 30+ jobs on a
+ * rummage sale that meant scrolling past every job to reach the same jobs
+ * again. Now there is a single list, and the gate comes to the job you
+ * clicked instead of making you hunt for it.
  *
- * Storage is unchanged: claims still resolve to per-person entries, so the
- * roster and confirmation stay person-indexed. Only the input surface flips.
+ * Three interaction states, all anchored at the row you clicked:
+ *   anon         → inline "sign in with the troop password" panel
+ *   no-household → inline "find your family" search
+ *   ready        → the member picker
+ *
+ * When not ready there is no outer <form>, so the inline gate can be its own
+ * form (nested forms are invalid HTML and silently break submission).
  */
 
 interface Person {
@@ -26,7 +32,6 @@ interface Person {
   sub: string;
   scoutId?: string;
   parentId?: number;
-  adultName?: string;
 }
 
 export interface ExistingClaim {
@@ -34,46 +39,64 @@ export interface ExistingClaim {
   personKey: string;
 }
 
+export type GateState = 'anon' | 'no-household' | 'ready';
+
 export default function SlotFirstForm({
   eventId,
   signupId,
   household,
+  households,
   slots,
   allowGuests,
   guestPrompt,
   existingClaims,
   submitAction,
   cancelAction,
-  hasExisting
+  gateAction,
+  hasExisting,
+  gateState,
+  gateError,
+  gateConfigured
 }: {
   eventId: number;
   signupId: number;
-  household: Household;
+  household: Household | null;
+  households: Household[];
   slots: SignupSlot[];
   allowGuests: boolean;
   guestPrompt: string | null;
   existingClaims: ExistingClaim[];
   submitAction: (fd: FormData) => void;
   cancelAction: (fd: FormData) => void;
+  gateAction: (fd: FormData) => void;
   hasExisting: boolean;
+  gateState: GateState;
+  gateError?: string;
+  gateConfigured: boolean;
 }) {
+  const router = useRouter();
+  const ready = gateState === 'ready' && household !== null;
+
   const people = useMemo<Person[]>(
-    () => [
-      ...household.scouts.map((s, i) => ({
-        key: `s${i}`,
-        kind: 'scout' as const,
-        name: s.displayName,
-        sub: 'Scout',
-        scoutId: s.id
-      })),
-      ...household.adults.map((a, i) => ({
-        key: `a${i}`,
-        kind: 'adult' as const,
-        name: a.name,
-        sub: a.relationship || 'Parent',
-        parentId: a.id
-      }))
-    ],
+    () =>
+      household
+        ? [
+            ...household.scouts.map((s, i) => ({
+              key: `s${i}`,
+              kind: 'scout' as const,
+              name: s.displayName,
+              sub: 'Scout',
+              scoutId: s.id
+            })),
+            ...household.adults.map((a, i) => ({
+              key: `a${i}`,
+              kind: 'adult' as const,
+              name: a.name,
+              sub: a.relationship || 'Parent',
+              parentId: a.id
+            }))
+          ]
+        : [],
     [household]
   );
 
@@ -86,11 +109,10 @@ export default function SlotFirstForm({
   const [fullNote, setFullNote] = useState<number | null>(null);
   const [guests, setGuests] = useState(0);
   const [guestNote, setGuestNote] = useState('');
+  const [query, setQuery] = useState('');
 
   const claimersOf = (slotId: number) => claims[slotId] ?? [];
   const filledOf = (s: SignupSlot) => {
-    // Base coverage excludes this household's existing claims so re-rendering
-    // our own picks doesn't double-count them.
     const mineExisting = existingClaims.filter((c) => c.slotId === s.id).length;
     return s.filled - mineExisting + claimersOf(s.id).length;
   };
@@ -99,7 +121,7 @@ export default function SlotFirstForm({
     s.eligibility === 'both' ||
     (s.eligibility === 'scouts' ? p.kind === 'scout' : p.kind === 'adult');
 
-  const toggle = (slotId: number, personKey: string) => {
+  const toggle = (slotId: number, personKey: string) =>
     setClaims((prev) => {
       const cur = prev[slotId] ?? [];
       return {
@@ -109,9 +131,7 @@ export default function SlotFirstForm({
           : [...cur, personKey]
       };
     });
-  };
 
-  // Group by day so multi-day events read as a schedule.
   const groups = useMemo(() => {
     const out: { day: string; items: SignupSlot[] }[] = [];
     for (const s of slots) {
@@ -129,10 +149,8 @@ export default function SlotFirstForm({
     return out;
   }, [slots]);
 
-  // Only people who actually hold a claim become entries. Someone whose claims
-  // are all donation tasks isn't attending — that's a contributor, derived
-  // rather than asked for.
   const entries = useMemo(() => {
+    if (!ready) return [];
     const claimedBy = new Map<string, SignupSlot[]>();
     for (const [slotId, keys] of Object.entries(claims)) {
       const slot = slots.find((s) => s.id === Number(slotId));
@@ -149,14 +167,13 @@ export default function SlotFirstForm({
           person_kind: p.kind,
           scout_id: p.scoutId ?? null,
           scout_parent_id: p.parentId ?? null,
-          adult_name: p.adultName ?? null,
           status: 'yes',
           participation: donationOnly ? 'contributor' : 'full',
           guest_count: p.key === people[0]?.key ? guests : 0,
-          guest_note: p.key === people[0]?.key ? guestNote : null
+          guest_note: p.key === people[0]?.key ? guestNote || null : null
         };
       });
-  }, [claims, people, slots, guests, guestNote]);
+  }, [claims, people, slots, guests, guestNote, ready]);
 
   const claimsForSubmit = useMemo(() => {
     const byPerson: Record<string, number[]> = {};
@@ -166,71 +183,198 @@ export default function SlotFirstForm({
     return byPerson;
   }, [claims]);
 
-  const nothingClaimed = entries.length === 0;
+  const matches = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (q.length < 2) return [];
+    return households
+      .flatMap((h) => h.scouts.map((s) => ({ household: h, scout: s })))
+      .filter(({ scout, household: hh }) =>
+        `${scout.displayName} ${hh.label}`.toLowerCase().includes(q)
+      )
+      .slice(0, 6);
+  }, [query, households]);
 
-  return (
-    <form action={submitAction} className={styles.signupForm}>
-      <input type="hidden" name="eventId" value={eventId} />
-      <input type="hidden" name="signupId" value={signupId} />
-      <input type="hidden" name="householdKey" value={household.key} />
-      <input type="hidden" name="entries" value={JSON.stringify(entries)} />
-      <input type="hidden" name="slotClaims" value={JSON.stringify(claimsForSubmit)} />
+  /** What opens under a job row, depending on how far in the visitor is. */
+  const rowPanel = (sl: SignupSlot) => {
+    if (gateState === 'anon') {
+      return (
+        <div className={styles.memberPick}>
+          <p className={styles.pickPrompt}>Sign in to claim “{sl.label}”</p>
+          {!gateConfigured ? (
+            <p className={styles.gateLede}>
+              The family signup gate isn’t configured on this server yet.
+            </p>
+          ) : (
+            <form action={gateAction} className={styles.inlineGate}>
+              <input type="hidden" name="next" value={`/events/${eventId}`} />
+              <p className={styles.gateLede}>
+                One shared password for the whole troop — it’s in the Bugle each week, or ask any
+                leader. You’ll only enter it once on this device.
+              </p>
+              <div className={styles.gateRow}>
+                <input
+                  name="password"
+                  type="password"
+                  autoComplete="off"
+                  className={styles.gateInput}
+                  placeholder="Troop password"
+                  aria-label="Troop password"
+                />
+                <button type="submit" className={styles.gateBtn}>
+                  Sign in
+                </button>
+              </div>
+              {gateError === 'bad-password' && (
+                <p className={styles.gateErr}>That password didn’t match. Try again.</p>
+              )}
+              {gateError === 'missing' && (
+                <p className={styles.gateErr}>Please enter the troop password.</p>
+              )}
+            </form>
+          )}
+        </div>
+      );
+    }
 
-      <p className={styles.formLede}>
-        Pick a job and choose who’s doing it — one person or several. Claiming a job{' '}
-        <em>is</em> your signup; there’s no separate RSVP.
-      </p>
+    if (gateState === 'no-household') {
+      return (
+        <div className={styles.memberPick}>
+          <p className={styles.pickPrompt}>Which family is signing up for “{sl.label}”?</p>
+          <input
+            type="search"
+            className={styles.gateInput}
+            placeholder="Start typing your scout’s name…"
+            autoComplete="off"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="Your scout’s name"
+          />
+          {query.trim().length >= 2 && (
+            <ul className={styles.pickerResults}>
+              {matches.length === 0 && (
+                <li className={styles.pickerNone}>
+                  No scout by that name — check the spelling, or ask a leader.
+                </li>
+              )}
+              {matches.map(({ household: hh, scout }) => (
+                <li key={scout.id}>
+                  <button
+                    type="button"
+                    className={styles.pickerBtn}
+                    onClick={() =>
+                      router.push(`/events/${eventId}?household=${encodeURIComponent(hh.key)}`)
+                    }
+                  >
+                    <span className={styles.pickerName}>{scout.displayName}</span>
+                    <span className={styles.pickerMeta}>
+                      {hh.scouts.length > 1
+                        ? `${hh.label} household · ${hh.scouts.length} scouts`
+                        : `${hh.label} household`}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      );
+    }
 
+    const full = isFull(sl);
+    const mine = claimersOf(sl.id);
+    return (
+      <div className={styles.memberPick}>
+        <p className={styles.pickPrompt}>Who from the {household!.label} family is doing this?</p>
+        <div className={styles.pickChips}>
+          {people.map((p) => {
+            const on = mine.includes(p.key);
+            const ok = eligible(p, sl);
+            const blocked = !ok || (full && !on);
+            return (
+              <button
+                key={p.key}
+                type="button"
+                className={`${styles.pickChip} ${on ? styles.pickOn : ''} ${blocked ? styles.pickBlocked : ''}`}
+                disabled={blocked}
+                aria-pressed={on}
+                onClick={() => toggle(sl.id, p.key)}
+              >
+                <span className={styles.pickName}>{p.name}</span>
+                <span className={styles.pickSub}>
+                  {!ok
+                    ? sl.eligibility === 'adults'
+                      ? 'Adults only'
+                      : 'Scouts only'
+                    : full && !on
+                      ? 'This job is full'
+                      : p.sub}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const jobList = (
+    <>
       {groups.map((g) => (
         <div key={g.day} className={styles.dayGroup}>
           <p className={styles.dayHead}>{g.day}</p>
           <ul className={styles.slotList}>
-            {g.items.map((s) => {
-              const mine = claimersOf(s.id);
-              const full = isFull(s);
-              const lockedOut = full && mine.length === 0;
-              const pct = s.needed
-                ? Math.min(100, Math.round((filledOf(s) / s.needed) * 100))
+            {g.items.map((sl) => {
+              const mine = claimersOf(sl.id);
+              const full = isFull(sl);
+              const lockedOut = full && mine.length === 0 && ready;
+              const pct = sl.needed
+                ? Math.min(100, Math.round((filledOf(sl) / sl.needed) * 100))
                 : 0;
               return (
-                <li key={s.id} className={lockedOut ? styles.slotFull : undefined}>
+                <li key={sl.id} className={lockedOut ? styles.slotFull : undefined}>
                   <button
                     type="button"
                     className={styles.slotTrigger}
-                    aria-expanded={open === s.id}
+                    aria-expanded={open === sl.id}
                     onClick={() => {
                       if (lockedOut) {
-                        setFullNote(s.id);
-                        window.setTimeout(() => setFullNote((v) => (v === s.id ? null : v)), 5000);
+                        setFullNote(sl.id);
+                        window.setTimeout(
+                          () => setFullNote((v) => (v === sl.id ? null : v)),
+                          5000
+                        );
                         return;
                       }
-                      setOpen((v) => (v === s.id ? null : s.id));
+                      setOpen((v) => (v === sl.id ? null : sl.id));
                     }}
                   >
                     <span className={styles.slotTop}>
                       <span>
-                        <strong>{s.label}</strong>
+                        <strong>{sl.label}</strong>
                         <span className={styles.slotWhen}>
-                          {s.starts_at
-                            ? `${formatTimeOfDay(s.starts_at)} – ${s.ends_at ? formatTimeOfDay(s.ends_at) : ''}`
+                          {sl.starts_at
+                            ? `${formatTimeOfDay(sl.starts_at)} – ${sl.ends_at ? formatTimeOfDay(sl.ends_at) : ''}`
                             : 'Untimed'}
-                          {!s.attendance_required && ' · no attendance needed'}
+                          {!sl.attendance_required && ' · no attendance needed'}
                         </span>
                       </span>
                       <span className={styles.slotMeta}>
                         <span className={styles.elig}>
-                          {s.eligibility === 'both'
+                          {sl.eligibility === 'both'
                             ? 'Everyone'
-                            : s.eligibility === 'scouts'
+                            : sl.eligibility === 'scouts'
                               ? 'Scouts'
                               : 'Adults'}
                         </span>
                         <span className={styles.count}>
-                          {s.needed == null
-                            ? `${filledOf(s)} signed up`
+                          {sl.needed == null
+                            ? `${filledOf(sl)} signed up`
                             : full
-                              ? `Full (${s.needed}/${s.needed})`
-                              : `${filledOf(s)} of ${s.needed} — ${s.needed - filledOf(s)} more needed`}
+                              ? `Full (${sl.needed}/${sl.needed})`
+                              : `${filledOf(sl)} of ${sl.needed} — ${sl.needed - filledOf(sl)} more needed`}
+                        </span>
+                        <span className={styles.jobCue}>
+                          {ready ? 'Sign up' : 'Sign in to claim'}
                         </span>
                       </span>
                     </span>
@@ -239,9 +383,9 @@ export default function SlotFirstForm({
                     </span>
                   </button>
 
-                  {fullNote === s.id && (
+                  {fullNote === sl.id && (
                     <p className={styles.fullNote} role="status">
-                      <strong>This job is full.</strong> All {s.needed} spots are taken — pick
+                      <strong>This job is full.</strong> All {sl.needed} spots are taken — pick
                       another job, or ask a leader if you think there’s room.
                     </p>
                   )}
@@ -258,7 +402,7 @@ export default function SlotFirstForm({
                               type="button"
                               className={styles.claimerX}
                               aria-label={`Remove ${p.name}`}
-                              onClick={() => toggle(s.id, k)}
+                              onClick={() => toggle(sl.id, k)}
                             >
                               ×
                             </button>
@@ -268,53 +412,52 @@ export default function SlotFirstForm({
                     </div>
                   )}
 
-                  {open === s.id && (
-                    <div className={styles.memberPick}>
-                      <p className={styles.pickPrompt}>
-                        Who from the {household.label} family is doing this?
-                      </p>
-                      <div className={styles.pickChips}>
-                        {people.map((p) => {
-                          const on = mine.includes(p.key);
-                          const ok = eligible(p, s);
-                          const blocked = !ok || (full && !on);
-                          return (
-                            <button
-                              key={p.key}
-                              type="button"
-                              className={`${styles.pickChip} ${on ? styles.pickOn : ''} ${blocked ? styles.pickBlocked : ''}`}
-                              disabled={blocked}
-                              aria-pressed={on}
-                              onClick={() => toggle(s.id, p.key)}
-                            >
-                              <span className={styles.pickName}>{p.name}</span>
-                              <span className={styles.pickSub}>
-                                {!ok
-                                  ? s.eligibility === 'adults'
-                                    ? 'Adults only'
-                                    : 'Scouts only'
-                                  : full && !on
-                                    ? 'This job is full'
-                                    : p.sub}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
+                  {open === sl.id && rowPanel(sl)}
                 </li>
               );
             })}
           </ul>
         </div>
       ))}
+    </>
+  );
+
+  // Not signed in / no family yet: the board stands alone, and each row can
+  // carry its own gate form. No outer <form> to nest inside.
+  if (!ready) {
+    return (
+      <div className={styles.jobBoard}>
+        <p className={styles.boardLede}>
+          {gateState === 'anon'
+            ? 'Pick a job below to sign in and claim it — one shared troop password, no account needed.'
+            : 'Pick a job below, then choose your family.'}
+        </p>
+        {jobList}
+      </div>
+    );
+  }
+
+  return (
+    <form action={submitAction} className={styles.signupForm}>
+      <input type="hidden" name="eventId" value={eventId} />
+      <input type="hidden" name="signupId" value={signupId} />
+      <input type="hidden" name="householdKey" value={household!.key} />
+      <input type="hidden" name="entries" value={JSON.stringify(entries)} />
+      <input type="hidden" name="slotClaims" value={JSON.stringify(claimsForSubmit)} />
+
+      <p className={styles.boardLede}>
+        Pick a job and choose who’s doing it — one person or several. Claiming a job <em>is</em>{' '}
+        your signup; there’s no separate RSVP.
+      </p>
+
+      {jobList}
 
       {allowGuests && (
         <div className={styles.guestBlock}>
           <p className={styles.dayHead}>Guests coming along</p>
           <p className={styles.gateLede}>
-            {guestPrompt ?? 'Friends and family joining — how many, so we can plan? We don’t need their names.'}
+            {guestPrompt ??
+              'Friends and family joining — how many, so we can plan? We don’t need their names.'}
           </p>
           <div className={styles.guestGrid}>
             <label className={styles.gateLabel}>
@@ -344,7 +487,7 @@ export default function SlotFirstForm({
 
       <div className={styles.recap}>
         <p className={styles.dayHead}>Your household’s jobs</p>
-        {nothingClaimed ? (
+        {entries.length === 0 ? (
           <p className={styles.recapEmpty}>
             No jobs claimed yet — pick one above and say who’s doing it.
           </p>
@@ -359,7 +502,9 @@ export default function SlotFirstForm({
               return (
                 <li key={e.key}>
                   <strong>{p.name}</strong>{' '}
-                  <em>({e.participation === 'contributor' ? 'Donating — not attending' : 'Helping'})</em>
+                  <em>
+                    ({e.participation === 'contributor' ? 'Donating — not attending' : 'Helping'})
+                  </em>
                   <span className={styles.recapJobs}>{mine.join(' · ')}</span>
                 </li>
               );
@@ -369,7 +514,7 @@ export default function SlotFirstForm({
       </div>
 
       <div className={styles.formActions}>
-        <button type="submit" className={styles.gateBtn} disabled={nothingClaimed}>
+        <button type="submit" className={styles.gateBtn} disabled={entries.length === 0}>
           {hasExisting ? 'Save changes' : 'Submit family signup'}
         </button>
       </div>
