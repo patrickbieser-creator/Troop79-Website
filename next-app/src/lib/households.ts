@@ -1,67 +1,70 @@
 /**
  * Households for the family signup flow.
  *
- * Membership is a STORED fact (`scouts.household_id` → `households`), not an
- * inference. It used to be derived at runtime by linking scouts that shared a
- * parent email; that matched today's data but broke the moment a parent gave a
- * work address on one form and a personal one on the next — two siblings would
- * silently split into separate households and each would see a partial family.
+ * IDENTITY IS NOW DECLARED, NOT INFERRED.
  *
- * The email derivation still exists, but only as a bootstrap (run once by
- * migration 20260719010000) and as a SUGGESTION for a newly added scout. It is
- * never the source of truth at read time.
+ * This module used to reconstruct each human at read time by normalizing names
+ * and emails across `scouts`, `leaders` and `scout_parents` — three tables with
+ * no link between them, where one person legitimately holds rows in two. That
+ * matching failed twice in production in one week, each time listing a real
+ * person twice in the picker and letting them sign up twice for one event:
+ * once when siblings' records spelled a parent's name two ways ("JamieLynn" /
+ * "Jamie Lynn"), and once for adults recorded by nickname on one record and
+ * formal name on the other ("Dan" / "Daniel").
  *
- * WHO CAN BE FOUND HERE — the signup universe is every real person in the
- * troop, not only families with a currently-active scout. Three sources feed it:
+ * Every one of those tables now carries `person_id` into a `people` spine, so
+ * "the same human" is a join, not a guess. The `claimedEmails` / `claimedNames`
+ * sets this file used to carry are gone, and with them the entire class of bug.
  *
- *   1. Active scouts, bucketed by household, with their parents attached.
- *   2. Households whose scouts have all aged out or gone inactive. The scout is
- *      no longer someone to sign up, but the ADULTS stay reachable — an aged-out
- *      scout's parent is still on the committee, still drives, still comes to
- *      the banquet. Filtering the query on scouts.active dropped the whole
- *      household and took those adults with it.
- *   3. Adults on the `leaders` roster with no parent row at all — committee
- *      members, merit badge counselors, ASMs whose own children were never in
- *      the troop. Each becomes a household of one keyed `leader:<code>`.
+ * MEMBERSHIP is a stored row in `household_members`, seeded once and correctable
+ * by a leader — never re-derived here. Adults get their own membership row, so
+ * an adult with no scout in the troop can belong to a household, which the old
+ * shape (membership implied through a child) could not express.
  *
- * A scout whose household_id is null still works: they become a household of
- * one, so nobody is unreachable in the picker.
+ * WHO CAN BE FOUND HERE — every real person in the troop, not only families
+ * with a currently-active scout:
  *
- * DE-DUPLICATION: `leaders` and `scout_parents` have no foreign key between
- * them, so one human can legitimately hold a row in both — a committee member
- * who is also a parent. Match on email, then name, and keep the PARENT row: it
- * carries household context the leader row doesn't. Without this the picker
- * lists them twice and they can sign up twice for one event, which the
- * per-column unique indexes on signup_entries cannot catch (each one only sees
- * its own identity column).
+ *   1. Active scouts, with the adults of their household attached.
+ *   2. Households whose scouts have all aged out. The scout is no longer someone
+ *      to sign up, but the ADULTS stay reachable — an aged-out scout's parent is
+ *      still on the committee, still drives, still comes to the banquet.
+ *   3. Adults with no household at all — committee members, merit badge
+ *      counselors, ASMs whose children were never in the troop. Each becomes a
+ *      household of one.
+ *
+ * KEY CONTRACT — unchanged, and load-bearing. `<households.id>` for a stored
+ * household; `scout:<id>`, `leader:<code>` or `person:<id>` for a party with no
+ * stored household row. Callers parse it (`storedHouseholdId`, and a `/^\d+$/`
+ * test in person-first-form) and it travels in the `?household=` URL, so the
+ * shapes must stay stable even though what produces them changed completely.
  */
 
 import { createAdminClient } from '@/lib/supabase/server';
 import { isAdultPerson, type LeaderLite } from '@/lib/authorized-adults';
 
 export interface HouseholdAdult {
-  /** Stable identity for form state and React keys: `p<parentId>` or `l<code>`.
-   *  Adults come from two tables now, so a bare numeric id is no longer unique
-   *  across the set. */
+  /** Stable identity for form state and React keys. */
   key: string;
-  /** scout_parents.id — set when this adult came from a parent row. */
+  /** people.id — the real identity. Everything below is a legacy pointer kept
+   *  because signup_entries still records a participant as one of three
+   *  nullable columns rather than a person. */
+  personId: number;
+  /** scout_parents.id — set when this adult also holds a parent row. */
   scoutParentId: number | null;
-  /** leaders.code — set when this adult came from the adult roster. */
+  /** leaders.code — set when this adult also holds an adult-roster row. */
   leaderCode: string | null;
   name: string;
   relationship: string | null;
-  /** Primary contact address, when one is recorded. */
   email: string | null;
 }
 
 export interface HouseholdScout {
   id: string;
   displayName: string;
+  personId: number | null;
 }
 
 export interface Household {
-  /** `<households.id>`, `scout:<id>` for an unassigned scout, or
-   *  `leader:<code>` for an adult with no scout in the troop. */
   key: string;
   label: string;
   /** ACTIVE scouts only. An inactive scout's household still surfaces for the
@@ -70,154 +73,193 @@ export interface Household {
   adults: HouseholdAdult[];
 }
 
+interface PersonRow {
+  id: number;
+  display_name: string;
+  primary_email: string | null;
+}
+interface MemberRow {
+  household_id: number;
+  person_id: number;
+}
 interface ScoutRow {
   id: string;
   display_name: string;
   last_name: string | null;
   household_id: number | null;
   active: boolean;
+  person_id: number | null;
 }
 interface ParentRow {
   id: number;
-  scout_id: string;
-  name: string;
+  person_id: number | null;
   relationship: string | null;
   email: string | null;
 }
 interface LeaderRow extends LeaderLite {
   email: string | null;
-}
-
-/** Collapses the duplicate parent rows siblings each carry for the same person.
- *  Both rows come from scout_parents, so email presence is consistent between
- *  them and preferring email is safe here. */
-function personKey(name: string, email: string | null): string {
-  return (email ?? '').trim().toLowerCase() || name.trim().toLowerCase();
-}
-
-function normalizeEmail(email: string | null): string | null {
-  return (email ?? '').trim().toLowerCase() || null;
+  person_id: number | null;
 }
 
 export async function loadHouseholds(): Promise<Household[]> {
   const supabase = createAdminClient();
-  const [{ data: householdData }, { data: scoutData }, { data: parentData }, { data: leaderData }] =
-    await Promise.all([
-      supabase.from('households').select('id, label'),
-      // Deliberately NOT filtered to active — see source 2 in the header note.
-      supabase.from('scouts').select('id, display_name, last_name, household_id, active'),
-      supabase.from('scout_parents').select('id, scout_id, name, relationship, email'),
-      supabase
-        .from('leaders')
-        .select('code, name, is_person, scout_id, can_login, login_name, email')
-    ]);
+  const [
+    { data: householdData },
+    { data: memberData },
+    { data: peopleData },
+    { data: scoutData },
+    { data: parentData },
+    { data: leaderData }
+  ] = await Promise.all([
+    supabase.from('households').select('id, label'),
+    supabase.from('household_members').select('household_id, person_id'),
+    // Merged-away records are excluded here rather than everywhere downstream:
+    // a person merged into another must never appear as a second option.
+    supabase
+      .from('people')
+      .select('id, display_name, primary_email')
+      .is('merged_into_person_id', null),
+    supabase.from('scouts').select('id, display_name, last_name, household_id, active, person_id'),
+    supabase.from('scout_parents').select('id, person_id, relationship, email'),
+    supabase
+      .from('leaders')
+      .select('code, name, is_person, scout_id, can_login, login_name, email, person_id')
+  ]);
 
   const labels = new Map(
     ((householdData ?? []) as { id: number; label: string }[]).map((h) => [h.id, h.label])
   );
-  const scouts = (scoutData ?? []) as unknown as ScoutRow[];
-  const parents = (parentData ?? []) as unknown as ParentRow[];
-  const leaders = (leaderData ?? []) as unknown as LeaderRow[];
+  const members = (memberData ?? []) as MemberRow[];
+  const people = new Map(((peopleData ?? []) as PersonRow[]).map((p) => [p.id, p]));
+  const scouts = (scoutData ?? []) as ScoutRow[];
+  const parents = (parentData ?? []) as ParentRow[];
+  const leaders = (leaderData ?? []) as LeaderRow[];
   const activeScoutIds = new Set(scouts.filter((s) => s.active).map((s) => s.id));
 
-  // Bucket every scout by stored household; unassigned scouts stand alone.
-  const buckets = new Map<string, ScoutRow[]>();
-  for (const s of scouts) {
-    const key = s.household_id != null ? String(s.household_id) : `scout:${s.id}`;
-    buckets.set(key, [...(buckets.get(key) ?? []), s]);
+  // person_id → the legacy pointers signup_entries still needs. A person may
+  // hold both; the parent row is preferred because it carries the relationship
+  // wording families recognise ("Mom", "Dad").
+  const scoutByPerson = new Map<number, ScoutRow>();
+  for (const s of scouts) if (s.person_id != null) scoutByPerson.set(s.person_id, s);
+
+  const parentByPerson = new Map<number, ParentRow>();
+  for (const p of parents) {
+    if (p.person_id == null) continue;
+    const existing = parentByPerson.get(p.person_id);
+    // Siblings each carry a row for the same adult; lowest id wins so the
+    // choice is stable between page loads.
+    if (!existing || p.id < existing.id) parentByPerson.set(p.person_id, p);
+  }
+
+  const leaderByPerson = new Map<number, LeaderRow>();
+  for (const l of leaders) {
+    if (l.person_id == null || !l.is_person) continue;
+    if (!leaderByPerson.has(l.person_id)) leaderByPerson.set(l.person_id, l);
+  }
+
+  /** An adult is anyone who is not a currently-active scout AND holds some
+   *  adult identity — a parent row, or an adult-roster row that isn't a current
+   *  scout's youth-leader code. An aged-out scout with neither is simply not
+   *  listed, exactly as before. */
+  function asAdult(personId: number): HouseholdAdult | null {
+    const person = people.get(personId);
+    if (!person) return null;
+
+    const scout = scoutByPerson.get(personId);
+    if (scout && scout.active) return null; // listed as a scout instead
+
+    const parent = parentByPerson.get(personId);
+    const leader = leaderByPerson.get(personId);
+    const leaderIsAdult = leader ? isAdultPerson(leader, activeScoutIds) : false;
+    if (!parent && !leaderIsAdult) return null;
+
+    return {
+      key: `pe${personId}`,
+      personId,
+      scoutParentId: parent?.id ?? null,
+      leaderCode: leaderIsAdult ? (leader?.code ?? null) : null,
+      name: person.display_name,
+      relationship: parent?.relationship ?? null,
+      email: person.primary_email ?? parent?.email ?? leader?.email ?? null
+    };
   }
 
   const households: Household[] = [];
-  /* Everyone already reachable through a parent row, so the leader pass below
-     doesn't surface the same human a second time.
+  const placed = new Set<number>();
 
-     Tracked as TWO sets rather than one preferred key, because the two tables
-     populate email differently: every leaders row in production has a null
-     email while most scout_parents rows have one. A single "email else name"
-     key therefore compares a leader's NAME against a parent's EMAIL and never
-     matches — which silently listed eight real people (the Scoutmaster among
-     them) twice, once per source table, and let them sign up twice for one
-     event. The per-column unique indexes on signup_entries can't catch that:
-     each only sees its own identity column. Match on either axis. */
-  const claimedEmails = new Set<string>();
-  const claimedNames = new Set<string>();
+  // ── Stored households ────────────────────────────────────────────────────
+  const byHousehold = new Map<number, number[]>();
+  for (const m of members) {
+    if (!people.has(m.person_id)) continue; // merged away
+    byHousehold.set(m.household_id, [...(byHousehold.get(m.household_id) ?? []), m.person_id]);
+  }
 
-  for (const [key, members] of buckets) {
-    const memberIds = new Set(members.map((m) => m.id));
-
-    // One adult per real person: siblings each carry their own parent row for
-    // the same person, so de-duplicate on email, then name.
-    const seen = new Set<string>();
+  for (const [householdId, personIds] of byHousehold) {
+    const householdScouts: HouseholdScout[] = [];
     const adults: HouseholdAdult[] = [];
-    for (const p of parents) {
-      if (!memberIds.has(p.scout_id)) continue;
-      // Claim BEFORE the dedupe check: siblings' rows for the same adult can
-      // spell the name differently ("JamieLynn" vs "Jamie Lynn"). Claiming only
-      // the surviving row leaves the other spelling unclaimed, so a leaders row
-      // carrying THAT spelling slips past the pass below and the same human
-      // appears twice — once in her household, once "signing up on your own".
-      if (p.email?.trim()) claimedEmails.add(p.email.trim().toLowerCase());
-      claimedNames.add(p.name.trim().toLowerCase());
-      const dedupeKey = personKey(p.name, p.email);
-      if (seen.has(dedupeKey)) continue;
-      seen.add(dedupeKey);
-      adults.push({
-        key: `p${p.id}`,
-        scoutParentId: p.id,
-        leaderCode: null,
-        name: p.name.trim(),
-        relationship: p.relationship,
-        email: normalizeEmail(p.email)
-      });
+
+    for (const personId of personIds) {
+      const scout = scoutByPerson.get(personId);
+      if (scout && scout.active) {
+        householdScouts.push({ id: scout.id, displayName: scout.display_name, personId });
+        continue;
+      }
+      const adult = asAdult(personId);
+      if (adult) adults.push(adult);
     }
 
-    const activeMembers = members.filter((m) => m.active);
     // Every scout gone AND nobody left to contact — that household really is
     // finished, and listing it would just add noise to the picker.
-    if (activeMembers.length === 0 && adults.length === 0) continue;
+    if (householdScouts.length === 0 && adults.length === 0) continue;
 
-    const stored = key.startsWith('scout:') ? null : labels.get(Number(key));
-    // Label off the active scouts when there are any, so a household isn't
+    personIds.forEach((id) => placed.add(id));
+
+    // Label off the ACTIVE scouts when there are any, so a household isn't
     // named for the sibling who aged out.
-    const forLabel = activeMembers.length > 0 ? activeMembers : members;
-    const surnames = [...new Set(forLabel.map((m) => m.last_name).filter(Boolean))];
+    const memberScouts = personIds.map((id) => scoutByPerson.get(id)).filter(Boolean) as ScoutRow[];
+    const forLabel = memberScouts.filter((s) => s.active);
+    const surnames = [...new Set((forLabel.length > 0 ? forLabel : memberScouts).map((s) => s.last_name).filter(Boolean))];
+
     households.push({
-      key,
-      label: stored ?? (surnames.length > 0 ? surnames.join(' / ') : forLabel[0].display_name),
-      scouts: activeMembers
-        .map((m) => ({ id: m.id, displayName: m.display_name }))
-        .sort((a, b) => a.displayName.localeCompare(b.displayName)),
+      key: String(householdId),
+      label:
+        labels.get(householdId) ??
+        (surnames.length > 0
+          ? surnames.join(' / ')
+          : (people.get(personIds[0])?.display_name ?? `Household ${householdId}`)),
+      scouts: householdScouts.sort((a, b) => a.displayName.localeCompare(b.displayName)),
       adults
     });
   }
 
-  // Source 3: real adults with no parent row anywhere. isAdultPerson() is the
-  // same rule the login pool and Meeting Plan engine use — a real person who
-  // isn't a currently-active scout's youth-leader initials — so an aged-out
-  // youth leader correctly graduates into the adult picker here.
-  for (const l of leaders) {
-    if (!isAdultPerson(l, activeScoutIds)) continue;
-    const email = normalizeEmail(l.email);
-    const name = l.name.trim().toLowerCase();
-    // Already reachable as a parent — leave them in their household, where
-    // they have the rest of the family with them.
-    if ((email && claimedEmails.has(email)) || claimedNames.has(name)) continue;
-    if (email) claimedEmails.add(email);
-    claimedNames.add(name);
+  // ── Anyone with no household row ─────────────────────────────────────────
+  // A scout not yet assigned, and every adult who belongs to no household —
+  // committee members, counselors, and the adults the roster import added who
+  // have not been placed in a family yet. Each becomes a household of one so
+  // nobody is unreachable in the picker.
+  for (const scout of scouts) {
+    if (!scout.active || scout.person_id == null || placed.has(scout.person_id)) continue;
+    placed.add(scout.person_id);
     households.push({
-      key: `leader:${l.code}`,
-      label: l.name.trim(),
+      key: `scout:${scout.id}`,
+      label: scout.last_name || scout.display_name,
+      scouts: [{ id: scout.id, displayName: scout.display_name, personId: scout.person_id }],
+      adults: []
+    });
+  }
+
+  for (const personId of people.keys()) {
+    if (placed.has(personId)) continue;
+    const adult = asAdult(personId);
+    if (!adult) continue;
+    placed.add(personId);
+    households.push({
+      // leader:<code> preserved for adults on the roster so links already in
+      // circulation keep resolving; person:<id> for everyone else.
+      key: adult.leaderCode ? `leader:${adult.leaderCode}` : `person:${personId}`,
+      label: adult.name,
       scouts: [],
-      adults: [
-        {
-          key: `l${l.code}`,
-          scoutParentId: null,
-          leaderCode: l.code,
-          name: l.name.trim(),
-          relationship: null,
-          email: normalizeEmail(l.email)
-        }
-      ]
+      adults: [adult]
     });
   }
 
@@ -230,9 +272,10 @@ export async function loadHouseholdByKey(key: string): Promise<Household | null>
 }
 
 /** `households.id` when the key refers to a stored household, else null.
- *  `scout:<id>` and `leader:<code>` parties have no stored household row, and
- *  the signup RPCs take null for those. Centralised so callers can't reinvent
- *  a `Number(key)` parse that yields NaN for the sentinel forms. */
+ *  `scout:<id>`, `leader:<code>` and `person:<id>` parties have no stored
+ *  household row, and the signup RPCs take null for those. Centralised so
+ *  callers can't reinvent a `Number(key)` parse that yields NaN for the
+ *  sentinel forms. */
 export function storedHouseholdId(key: string | null | undefined): number | null {
   if (!key || !/^\d+$/.test(key)) return null;
   return Number(key);
