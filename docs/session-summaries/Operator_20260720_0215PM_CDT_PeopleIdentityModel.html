@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>People Identity Model — Troop 79 — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #2e4530;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #faf6ef;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); }
+        tr:hover { background: var(--nw-sage); }
+
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+
+        @media print {
+            body { background: white; }
+            header { padding: 1.5rem; }
+            .container { padding: 1rem; }
+            .stat { break-inside: avoid; }
+        }
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.5rem; }
+            .stats { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>People Identity Model &mdash; Identity Declared, Not Inferred</h1>
+        <p class="subtitle">Shipped to production &mdash; Scout Troop 79 admin workspace and family signup</p>
+        <div class="meta">
+            <span>&#128197; July 20, 2026</span>
+            <span>&#129302; Operator</span>
+            <span>&#128204; Troop79-Website</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">6</div><div class="label">Decisions Recorded</div></div>
+            <div class="stat"><div class="number">7</div><div class="label">Migrations to Production</div></div>
+            <div class="stat"><div class="number">41&rarr;83</div><div class="label">Adults Reachable in Picker</div></div>
+            <div class="stat"><div class="number">0</div><div class="label">Duplicate People Remaining</div></div>
+            <div class="stat"><div class="number">125</div><div class="label">Roster Rows Reviewed</div></div>
+            <div class="stat"><div class="number">10</div><div class="label">Duplicate People Merged</div></div>
+        </div>
+
+        <h2>The Problem</h2>
+        <div class="callout callout-orange">
+            <strong>Identity was inferred on every page load.</strong> A human had no single record &mdash; the same person could be a <span class="file-path">scouts</span> row, a <span class="file-path">leaders</span> row, and one <span class="file-path">scout_parents</span> row <em>per child</em>, with nothing linking them. <span class="file-path">households.ts</span> reconstructed who was who by normalising names and email addresses.
+            <br><br>
+            That inference failed <strong>twice in one week</strong>: first when two siblings' records spelled a parent's name differently (&ldquo;JamieLynn&rdquo; / &ldquo;Jamie Lynn&rdquo;), then for four adults recorded by nickname on one record and formal name on the other (&ldquo;Dan&rdquo;/&ldquo;Daniel&rdquo;, &ldquo;Mike&rdquo;/&ldquo;Michael&rdquo;, &ldquo;Nate&rdquo;/&ldquo;Nathaniel&rdquo;). Each listed a real person twice in the public signup picker and would have let them sign up twice for one event.
+            <br><br>
+            16 of 42 leaders were also in <span class="file-path">scout_parents</span>. String matching was load-bearing for 38% of the adult roster.
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <h3>The Identity Spine</h3>
+        <p><span class="file-path">people</span> plus <span class="file-path">household_members</span>, <span class="file-path">person_roles</span> and <span class="file-path">relationships</span>, with nullable <span class="file-path">person_id</span> links on the three existing tables. Deliberately additive: <span class="file-path">scouts.id</span> and <span class="file-path">leaders.code</span> stay as business keys, so 9,723 ledger rows and the rename-cascade machinery were never touched. The backfill matched on <strong>exact email only</strong> &mdash; fuzzy name matching is the mechanism that caused the bugs, so it was not used at any confidence level.</p>
+        <p>Verified against production: zero unlinked records anywhere, zero links pointing at a merged-away person, and the temporary correlation column cleaned up. Re-running the migration is a complete no-op.</p>
+
+        <h3>Three Axes That Were Previously One</h3>
+        <p><strong>Role</strong> is what someone does in the troop. <strong>Relationship</strong> is how they relate to another person. <strong>Status</strong> is whether they are still around. Parent is a relationship, not a role &mdash; so &ldquo;not a leader, not a counselor, only a parent&rdquo; is a person with zero role rows, and absence is the statement rather than a flag.</p>
+        <p>This is what made a guardian at a different address expressible for the first time, and what lets an aged-out scout keep their siblings and their household while ceasing to be a scout.</p>
+
+        <h3>Roster Import</h3>
+        <p>A 125-row roster CSV staged into <span class="file-path">import_batches</span> / <span class="file-path">import_rows</span> / <span class="file-path">merge_suggestions</span>, matched exact-only, and reviewed by hand: <strong>124 accepted, 47 superseded, 1 rejected</strong>, with 42 people created who were not previously on record. Nothing was written to live tables without an explicit accept.</p>
+
+        <h3>Roster Rework</h3>
+        <p>Four tabs &mdash; Active Scouts, Inactive Scouts, Leaders, Adults &mdash; driven by a single <span class="file-path">person_directory</span> view so the Roster, the signup picker and the login pool cannot drift apart. Tab membership is derived from current role, and there is deliberately no action that sets it. A person editor manages household, roles and relationships; the scout editor records parents as relationships rather than free text while keeping the at-a-glance phone and email layout.</p>
+
+        <h3>Household Manager</h3>
+        <p>Households were only reachable through a person, so duplicates and empties were invisible. Production had two &ldquo;Stollenwerk&rdquo; households (two genuinely separate families), two &ldquo;Haslam&rdquo; and two &ldquo;Pasquesi&rdquo;. Labels are deliberately <em>not</em> forced unique &mdash; two Johnson families may legitimately share a surname &mdash; so each household now lists its members and repeated names are flagged.</p>
+
+        <h2>Bugs Caught Before They Shipped</h2>
+        <p>Several of the session's fixes came from watching the new tooling misbehave rather than from reading the diff:</p>
+        <ul>
+            <li><strong>A merge suggester that manufactured the error it existed to prevent.</strong> A shared-surname rule produced 73 candidates against 102 people and proposed merging Jack Porter into his father Jason, and Anjali Sankpal-Tatera into her sister Maya. Removed; the narrowed view returns 11.</li>
+            <li><strong>Exact-email matching proposed merging children into their parents.</strong> Families share one address, so the matcher offered Ben Bieser &rarr; Daniel Bieser and Summer Curtis &rarr; her daughter Fiona Kimble. Email matches now require name corroboration.</li>
+            <li><strong>A backfill that correlated by name</strong> &mdash; inside the migration whose whole purpose was to end name-correlation. Caught by qa-lead and by a from-scratch rebuild; the first attempted fix was itself wrong and only surfaced because counts were compared against a known-good run.</li>
+            <li><strong>A data-loss trap in the scout form.</strong> <span class="file-path">replaceParents()</span> wipes before re-inserting and an absent field defaulted to an empty array &mdash; so a form that simply stopped sending parents would have silently deleted every parent row on the scout being saved.</li>
+        </ul>
+
+        <h2>Blockers Resolved</h2>
+        <div class="callout">
+            <strong>The family gate verification was blocked by 10 duplicate people.</strong> Switching the picker to identity-based matching would have listed each of them twice. All 10 were merged through the new tool, and <span class="file-path">households.ts</span> now resolves 83 adults with zero duplicates &mdash; up from 41, because the 42 import-created people had no legacy record and were invisible until the loader stopped requiring one.
+        </div>
+
+        <h2>Decisions</h2>
+        <p><strong>D-042</strong> &mdash; People identity spine: identity declared, not inferred.<br>
+        <strong>D-043</strong> &mdash; Role and relationship are different things, and both are separate from status.<br>
+        <strong>D-044</strong> &mdash; Age-out is not inactivity; at 18 a scout is no longer a scout.<br>
+        <strong>D-045</strong> &mdash; Imports are staged and human-accepted, never auto-merged.<br>
+        <strong>D-046</strong> &mdash; Household labels are not unique; membership disambiguates them.<br>
+        <strong>D-047</strong> &mdash; <span class="file-path">signup_entries</span> records one participant identity.</p>
+
+        <h2>Quality Gate</h2>
+        <p>A qa-lead review before the production migration returned <strong>ship-with-fixes, 7/10</strong>: access control clean at all four layers, but two correctness bugs in the identity-linking logic itself. All four findings were fixed before anything reached production &mdash; the name-correlated backfill, a non-atomic accept that could change a person while reporting failure, a non-idempotent role insert, and a missing undo runbook.</p>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Migrate <span class="file-path">submit_household_signup</span> to <span class="file-path">person_id</span>, with acceptance test stubs written first &mdash; the one piece qa-lead wants covered before it is touched</li>
+            <li>Verify the family gate end-to-end on production against the new model &mdash; the original goal, now unblocked</li>
+            <li>Split the two Stollenwerk families and move Adriana Haslam in with her children</li>
+            <li>Give aged-out scouts a route to their own clipboard, for Eagle and college applications</li>
+            <li>Migrate legacy <span class="file-path">scout_parents</span> rows into <span class="file-path">relationships</span>, then retire the table</li>
+        </ul>
+
+    </div>
+
+<footer>
+        <strong>Scout Troop 79</strong> &mdash; Milwaukee, WI<br>
+        Session Summary &mdash; July 20, 2026 &mdash; Operator
+    </footer>
+</body>
+</html>

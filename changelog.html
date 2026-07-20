@@ -497,6 +497,87 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.14.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.14.0</span>
+        <span class="release-date">July 20, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Everyone in the troop now has one record</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              A person is recorded <strong>once</strong>, however many ways they are involved.
+              <span class="change-note">Until now a parent who also helps out was two separate records, and a parent of two scouts was two more &mdash; with nothing linking them. The site worked out who was who each time a page loaded, by comparing names and email addresses. That is what put the same person in the signup list twice, and it had gone wrong twice in a week. Being the same person is now something the site knows rather than something it guesses.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              An adult can be recorded <strong>without being a leader</strong>.
+              <span class="change-note">Previously the only way to add an adult was to put them on the leader roster, which then offered them for sign-offs, roll call and meeting planning. A parent who is simply a parent now has somewhere to exist &mdash; which is what made it possible to load the full family roster.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Relationships and households are recorded properly</strong>, including guardians who live elsewhere.
+              <span class="change-note">Being someone&rsquo;s parent, being their guardian, and living in the same house are now three separate facts. A parent at a different address is still recorded as a guardian, which the old records could not express at all.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">The Roster is now where people are managed</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Four tabs: <strong>Active Scouts, Inactive Scouts, Leaders and Adults</strong>.
+              <span class="change-note">Which tab someone appears on follows the role they currently hold. Give someone a role and they move to Leaders; end it and they move back to Adults. Their family and household never change as a result.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>A scout who turns 18 is no longer a scout</strong>, and moves off the scout tabs entirely.
+              <span class="change-note">They become an adult &mdash; a leader if they hold a role &mdash; and keep their family, their household and their record. &ldquo;Inactive Scouts&rdquo; now means a youth who left the troop, not someone who grew up.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              Adults can be marked <strong>inactive</strong> without being deleted.
+              <span class="change-note">Families who have moved on stop appearing in the signup list, but their history, their relationships and their past events all stay on record.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              Opening a scout shows their <strong>parents&rsquo; phone numbers and emails</strong>, as before &mdash; but those details now belong to the parent.
+              <span class="change-note">Correcting a phone number once fixes it for every child that parent has in the troop, instead of leaving two siblings&rsquo; records disagreeing.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              Households can be <strong>created, renamed and told apart</strong>.
+              <span class="change-note">Two families can share a surname &mdash; the troop has two Stollenwerk families &mdash; so each household now lists who is in it, and any repeated name is flagged. Previously a second family with the same surname had nowhere to go.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Roster import</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              A 125-row roster file was loaded, matched against existing records, and <strong>reviewed by hand row by row</strong>.
+              <span class="change-note">Nothing was written automatically. Matches were only proposed on an exact BSA member ID, an email backed up by the name, or an exact full name &mdash; and anything that disagreed with what was already on file was left for a person to decide, because the file was known to contain older values in places. 42 people were added who were not previously on record at all.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.13.1 -->
     <div class="release">
       <div class="release-header">
