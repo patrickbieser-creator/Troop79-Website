@@ -195,3 +195,74 @@ export async function searchPeople(
     .limit(15);
   return data ?? [];
 }
+
+/**
+ * Everything the editor shows for one person, re-read after a change.
+ *
+ * The editor used to rely on revalidatePath + router.refresh() feeding fresh
+ * props back down. The writes landed — 12 relationships reached the database
+ * during the session that reported this — but the open dialog kept rendering
+ * the props it was given, so every save looked like it had done nothing. Worse
+ * than a visible failure: the reviewer re-enters what is already recorded.
+ *
+ * So a mutation now returns the person's actual state and the editor renders
+ * that, instead of inferring success from the absence of an error.
+ */
+export interface PersonDetail {
+  householdId: number | null;
+  roles: { id: number; role: string; start_date: string | null; end_date: string | null }[];
+  relationships: {
+    id: number;
+    outgoing: boolean;
+    type: string;
+    isGuardian: boolean;
+    otherName: string;
+  }[];
+}
+
+export async function getPersonDetail(personId: number): Promise<PersonDetail> {
+  await requireRole(['leader']);
+  const supabase = createAdminClient();
+
+  const [{ data: member }, { data: roles }, { data: rels }] = await Promise.all([
+    supabase.from('household_members').select('household_id').eq('person_id', personId).maybeSingle(),
+    supabase
+      .from('person_roles')
+      .select('id, role, start_date, end_date')
+      .eq('person_id', personId)
+      .order('end_date', { nullsFirst: true }),
+    supabase
+      .from('relationships')
+      .select(
+        'id, person_id, related_person_id, type, is_guardian,' +
+          'person:people!relationships_person_id_fkey(display_name),' +
+          'related:people!relationships_related_person_id_fkey(display_name)'
+      )
+      .or(`person_id.eq.${personId},related_person_id.eq.${personId}`)
+  ]);
+
+  type RawRel = {
+    id: number;
+    person_id: number;
+    related_person_id: number;
+    type: string;
+    is_guardian: boolean;
+    person: { display_name: string } | null;
+    related: { display_name: string } | null;
+  };
+
+  return {
+    householdId: member?.household_id ?? null,
+    roles: roles ?? [],
+    relationships: ((rels ?? []) as unknown as RawRel[]).map((r) => {
+      const outgoing = r.person_id === personId;
+      return {
+        id: r.id,
+        outgoing,
+        type: r.type,
+        isGuardian: r.is_guardian,
+        otherName: (outgoing ? r.related?.display_name : r.person?.display_name) ?? 'someone'
+      };
+    })
+  };
+}

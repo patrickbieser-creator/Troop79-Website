@@ -54,7 +54,10 @@ function scoutValue(s: SortableScout, key: ColKey): unknown {
     case 'age':
       return ageOn(s.birthdate, s._today);
     case 'birthday':
-      return s.birthdate;
+      // Month-day, NOT the full date. Sorting on the ISO date orders by year
+      // first, which is just the Age column wearing a different hat. What a
+      // birthday column is actually for is "whose is coming up".
+      return s.birthdate ? s.birthdate.slice(5) : null;
     case 'grade':
       return gradeFromGradYear(s.graduation_year, s._today);
     case 'school':
@@ -90,7 +93,14 @@ interface Props {
 }
 
 export function ScoutsTable({ scouts, ranks, rankLabel, parentsByScout, today, only }: Props) {
-  const [tab, setTab] = useState<'active' | 'inactive'>(only ?? 'active');
+  // `only` must NOT seed state. A state initialiser runs once on mount, and
+  // React keeps this component mounted when the page navigates between the
+  // Active and Inactive roster tabs — so the internal tab stayed 'active'
+  // while the page handed over the inactive list, and the table filtered every
+  // row away: "18" in the tab, nothing in the body.
+  const [ownTab, setOwnTab] = useState<'active' | 'inactive'>('active');
+  const tab = only ?? ownTab;
+  const setTab = setOwnTab;
   const [openFor, setOpenFor] = useState<ScoutRow | 'new' | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
 

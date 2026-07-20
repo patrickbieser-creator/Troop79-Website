@@ -231,3 +231,4 @@
 .results li + li { border-top: 1px solid var(--admin-gray-100); }
 .resultBtn { display: block; width: 100%; text-align: left; background: var(--admin-white); border: none; cursor: pointer; font-family: inherit; font-size: 12.5px; padding: 7px 10px; }
 .resultBtn:hover { background: var(--admin-gray-50); }
+.savedNote { padding: 8px 12px; margin-bottom: 10px; border-radius: 3px; font-size: 12.5px; background: #f0f6f1; border: 1px solid #b8d6c0; color: #2f6b3f; }

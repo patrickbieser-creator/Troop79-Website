@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   addRole,
@@ -10,8 +10,10 @@ import {
   addRelationship,
   removeRelationship,
   searchPeople,
+  getPersonDetail,
   type GrantableRole,
-  type RelationshipInput
+  type RelationshipInput,
+  type PersonDetail
 } from './person-actions';
 import styles from './roster.module.css';
 
@@ -91,9 +93,7 @@ export function PeopleTable({
   nameById: Record<number, string>;
 }) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
   const [openFor, setOpenFor] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState('');
 
   const visible = useMemo(() => {
@@ -105,15 +105,6 @@ export function PeopleTable({
         (p.primary_email ?? '').toLowerCase().includes(term)
     );
   }, [people, q]);
-
-  function run(fn: () => Promise<{ ok: boolean; error?: string }>) {
-    setError(null);
-    startTransition(async () => {
-      const res = await fn();
-      if (!res.ok) setError(res.error ?? 'Something went wrong.');
-      else router.refresh();
-    });
-  }
 
   return (
     <div>
@@ -128,8 +119,6 @@ export function PeopleTable({
           {visible.length} of {people.length}
         </span>
       </div>
-
-      {error && <div className={styles.rowError}>{error}</div>}
 
       <table className={styles.table}>
         <thead>
@@ -198,16 +187,27 @@ export function PeopleTable({
       {openFor !== null && (
         <PersonEditor
           person={people.find((p) => p.person_id === openFor)!}
-          roles={roles.filter((r) => r.person_id === openFor)}
-          relationships={relationships.filter(
-            (r) => r.person_id === openFor || r.related_person_id === openFor
-          )}
           households={households}
-          householdId={householdByPerson[openFor] ?? null}
-          nameById={nameById}
-          disabled={pending}
-          onRun={run}
+          seed={{
+            householdId: householdByPerson[openFor] ?? null,
+            roles: roles
+              .filter((r) => r.person_id === openFor)
+              .map((r) => ({ id: r.id, role: r.role, start_date: r.start_date, end_date: r.end_date })),
+            relationships: relationships
+              .filter((r) => r.person_id === openFor || r.related_person_id === openFor)
+              .map((r) => {
+                const outgoing = r.person_id === openFor;
+                return {
+                  id: r.id,
+                  outgoing,
+                  type: r.type,
+                  isGuardian: r.is_guardian,
+                  otherName: nameById[outgoing ? r.related_person_id : r.person_id] ?? 'someone'
+                };
+              })
+          }}
           onClose={() => setOpenFor(null)}
+          onChanged={() => router.refresh()}
         />
       )}
     </div>
@@ -216,31 +216,59 @@ export function PeopleTable({
 
 function PersonEditor({
   person,
-  roles,
-  relationships,
   households,
-  householdId,
-  nameById,
-  disabled,
-  onRun,
-  onClose
+  seed,
+  onClose,
+  onChanged
 }: {
   person: DirectoryPerson;
-  roles: PersonRoleRow[];
-  relationships: RelationshipRow[];
   households: HouseholdOption[];
-  householdId: number | null;
-  nameById: Record<number, string>;
-  disabled: boolean;
-  onRun: (fn: () => Promise<{ ok: boolean; error?: string }>) => void;
+  seed: PersonDetail;
   onClose: () => void;
+  onChanged: () => void;
 }) {
   const [newRole, setNewRole] = useState<GrantableRole>('adult_leader');
   const [relType, setRelType] = useState<RelationshipInput>('parent_of');
   const [isGuardian, setIsGuardian] = useState(false);
 
-  const current = roles.filter((r) => !r.end_date);
-  const ended = roles.filter((r) => r.end_date);
+  // The editor renders what the SERVER says this person is, re-read after every
+  // change. Relying on revalidatePath + router.refresh() to feed new props into
+  // an already-open dialog silently failed: the writes landed, the dialog kept
+  // showing its original props, and every save looked like it had done nothing.
+  const [detail, setDetail] = useState<PersonDetail>(seed);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState<string | null>(null);
+
+  // Fresh read on open, so a dialog opened after someone else's edit is current.
+  useEffect(() => {
+    let live = true;
+    getPersonDetail(person.person_id)
+      .then((d) => { if (live) setDetail(d); })
+      .catch(() => {});
+    return () => { live = false; };
+  }, [person.person_id]);
+
+  function act(fn: () => Promise<{ ok: boolean; error?: string }>, okMessage: string) {
+    setError(null);
+    setSaved(null);
+    setBusy(true);
+    fn()
+      .then(async (res) => {
+        if (!res.ok) { setError(res.error ?? 'Something went wrong.'); return; }
+        setDetail(await getPersonDetail(person.person_id));
+        setSaved(okMessage);
+        onChanged();
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : 'Something went wrong.'))
+      .finally(() => setBusy(false));
+  }
+
+  const disabled = busy;
+  const householdId = detail.householdId;
+  const current = detail.roles.filter((r) => !r.end_date);
+  const ended = detail.roles.filter((r) => r.end_date);
+  const relationships = detail.relationships;
 
   return (
     <div className={styles.editorOverlay} role="dialog" aria-modal="true">
@@ -258,6 +286,9 @@ function PersonEditor({
             Close
           </button>
         </div>
+
+        {error && <div className={styles.rowError}>{error}</div>}
+        {saved && <div className={styles.savedNote}>{saved}</div>}
 
         {!person.has_legacy_pointer && (
           <div className={styles.editorWarn}>
@@ -279,8 +310,9 @@ function PersonEditor({
             value={householdId ?? ''}
             disabled={disabled}
             onChange={(e) =>
-              onRun(() =>
-                setHousehold(person.person_id, e.target.value ? Number(e.target.value) : null)
+              act(
+                () => setHousehold(person.person_id, e.target.value ? Number(e.target.value) : null),
+                e.target.value ? 'Household updated.' : 'Removed from household.'
               )
             }
           >
@@ -310,7 +342,7 @@ function PersonEditor({
                 <button
                   className={styles.chipBtn}
                   disabled={disabled}
-                  onClick={() => onRun(() => endRole(r.id))}
+                  onClick={() => act(() => endRole(r.id), 'Role ended — they move to Adults.')}
                 >
                   End
                 </button>
@@ -328,7 +360,7 @@ function PersonEditor({
                     <button
                       className={styles.chipBtn}
                       disabled={disabled}
-                      onClick={() => onRun(() => deleteRole(r.id))}
+                      onClick={() => act(() => deleteRole(r.id), 'Role deleted.')}
                     >
                       Delete
                     </button>
@@ -354,7 +386,7 @@ function PersonEditor({
             <button
               className={styles.smallBtn}
               disabled={disabled}
-              onClick={() => onRun(() => addRole(person.person_id, newRole))}
+              onClick={() => act(() => addRole(person.person_id, newRole), 'Role added.')}
             >
               Add role
             </button>
@@ -371,35 +403,33 @@ function PersonEditor({
 
           {relationships.length === 0 && <p className={styles.muted}>None recorded.</p>}
           <ul className={styles.relList}>
-            {relationships.map((r) => {
-              const outgoing = r.person_id === person.person_id;
-              const otherId = outgoing ? r.related_person_id : r.person_id;
-              return (
-                <li key={r.id} className={styles.relItem}>
-                  <span>
-                    {outgoing ? (
-                      <>
-                        <strong>{person.display_name}</strong> is {RELATION_WORDS[r.type]}{' '}
-                        <strong>{nameById[otherId] ?? 'someone'}</strong>
-                      </>
-                    ) : (
-                      <>
-                        <strong>{nameById[otherId] ?? 'someone'}</strong> is {RELATION_WORDS[r.type]}{' '}
-                        <strong>{person.display_name}</strong>
-                      </>
-                    )}
-                    {r.is_guardian && <span className={styles.guardianTag}>guardian</span>}
-                  </span>
-                  <button
-                    className={styles.chipBtn}
-                    disabled={disabled}
-                    onClick={() => onRun(() => removeRelationship(r.id))}
-                  >
-                    Remove
-                  </button>
-                </li>
-              );
-            })}
+            {relationships.map((r) => (
+              <li key={r.id} className={styles.relItem}>
+                <span>
+                  {r.outgoing ? (
+                    <>
+                      <strong>{person.display_name}</strong>{' '}
+                      is {RELATION_WORDS[r.type as RelationshipRow['type']] ?? r.type}{' '}
+                      <strong>{r.otherName}</strong>
+                    </>
+                  ) : (
+                    <>
+                      <strong>{r.otherName}</strong>{' '}
+                      is {RELATION_WORDS[r.type as RelationshipRow['type']] ?? r.type}{' '}
+                      <strong>{person.display_name}</strong>
+                    </>
+                  )}
+                  {r.isGuardian && <span className={styles.guardianTag}>guardian</span>}
+                </span>
+                <button
+                  className={styles.chipBtn}
+                  disabled={disabled}
+                  onClick={() => act(() => removeRelationship(r.id), 'Relationship removed.')}
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
           </ul>
 
           <div className={styles.inlineRow}>
@@ -430,7 +460,10 @@ function PersonEditor({
             label="…of whom"
             disabled={disabled}
             onPick={(otherId) =>
-              onRun(() => addRelationship(person.person_id, otherId, relType, isGuardian))
+              act(
+                () => addRelationship(person.person_id, otherId, relType, isGuardian),
+                'Relationship saved.'
+              )
             }
           />
         </section>
