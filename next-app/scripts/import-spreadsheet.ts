@@ -25,7 +25,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { readFileSync, mkdirSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import * as XLSX from 'xlsx';
 
@@ -217,7 +217,8 @@ function dateToISO(d: Date | string | null | undefined): string | null {
   // Try parsing as date string
   const m = String(d).match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
   if (m) {
-    let [, mm, dd, yy] = m;
+    const [, mm, dd] = m;
+    let yy = m[3];
     if (yy.length === 2) yy = '20' + yy;
     if (yy.length === 4 && +yy > 2100) return null; // bogus year like 0254
     return `${yy.padStart(4, '0')}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;

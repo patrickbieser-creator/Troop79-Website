@@ -46,6 +46,30 @@ const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
 const dataPath = resolve(__dirname, '..', '..', 'data', 'advancement.json');
 const RAW = JSON.parse(readFileSync(dataPath, 'utf8'));
 
+// ── Prototype JSON shapes (data/advancement.json) ───────────────────────────
+
+interface RawLeader {
+  code: string;
+  name: string;
+  role?: string | null;
+}
+interface RawActivityType {
+  id: string;
+  label: string;
+}
+interface RawRank {
+  id: string;
+  displayName: string;
+  color?: string | null;
+}
+interface RawReqNode {
+  code: string;
+  label: string;
+  complete?: string;
+  completeN?: number | null;
+  children?: RawReqNode[];
+}
+
 // ── Truncate (reference tables only) ──────────────────────────────────────
 
 async function truncateReqTrees() {
@@ -62,7 +86,7 @@ async function truncateReqTrees() {
 // ── Inserters ─────────────────────────────────────────────────────────────
 
 async function seedLeaders() {
-  const rows = (RAW.leaders ?? []).map((l: any) => ({
+  const rows = (RAW.leaders ?? []).map((l: RawLeader) => ({
     code: l.code,
     name: l.name,
     role: l.role ?? null
@@ -74,7 +98,7 @@ async function seedLeaders() {
 }
 
 async function seedActivityTypes() {
-  const rows = (RAW.activityTypes ?? []).map((a: any) => ({
+  const rows = (RAW.activityTypes ?? []).map((a: RawActivityType) => ({
     id: a.id,
     label: a.label
   }));
@@ -85,7 +109,7 @@ async function seedActivityTypes() {
 }
 
 async function seedRanks() {
-  const rows = (RAW.ranks ?? []).map((r: any, i: number) => ({
+  const rows = (RAW.ranks ?? []).map((r: RawRank, i: number) => ({
     id: r.id,
     display_name: r.displayName,
     color: r.color ?? null,
@@ -186,7 +210,7 @@ async function seedMeritBadges() {
 
 async function insertMbReqTree(
   mbId: string,
-  nodes: any[],
+  nodes: RawReqNode[],
   parentId: number | null
 ): Promise<number> {
   let count = 0;

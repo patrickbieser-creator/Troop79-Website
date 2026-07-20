@@ -72,6 +72,8 @@ export function ScoutFirstCard({ scouts, leaders, catalog }: Props) {
       const label = req ? `${mb.name} req ${reqCode} — ${req.label}` : `${mb.name} req ${reqCode}`;
       item = mbReqItem(mb.id, mb.name, reqCode, label);
     }
+    // Prefilling from the URL's query params (external to render) on mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setScoutId(sid);
     setSelections([item]);
     // Strip the URL params so re-opens are clean. Use replace so this doesn't
@@ -88,6 +90,10 @@ export function ScoutFirstCard({ scouts, leaders, catalog }: Props) {
   // can render completed state with green checks + date badges.
   useEffect(() => {
     if (!scoutId) {
+      // Reset alongside the data fetch below, which this same effect also
+      // owns (cancellation flag + async loads) — not splittable into a
+      // render-time computation.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCompletion(new Map());
       setHistory({ service: [], events: [], leadership: [] });
       return;

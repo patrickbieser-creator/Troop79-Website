@@ -170,7 +170,8 @@ export async function createScout(formData: FormData): Promise<Result> {
   const firstName = String(formData.get('first_name') ?? '').trim();
   const lastName = String(formData.get('last_name') ?? '').trim();
   const patrol = String(formData.get('patrol') ?? '').trim() || null;
-  const currentRank = String(formData.get('current_rank') ?? '').trim() || null;
+  // current_rank is intentionally not read from the form — it's computed
+  // from rank_award ledger entries via trigger (see the insert below).
   const bsaMemberId = String(formData.get('bsa_member_id') ?? '').trim() || null;
   const active = formData.get('active') === 'on' || formData.get('active') === 'true';
   const inactiveReasonRaw = String(formData.get('inactive_reason') ?? '').trim();

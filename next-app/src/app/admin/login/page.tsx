@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { loginAction } from './actions';
 import { IS_DEV_DB } from '@/lib/dev-db';
 import { createAdminClient } from '@/lib/supabase/server';
@@ -145,9 +146,9 @@ export default async function LoginPage({
             textAlign: 'center'
           }}
         >
-          <a href="/" style={{ color: '#3d7a4a', fontWeight: 600 }}>
+          <Link href="/" style={{ color: '#3d7a4a', fontWeight: 600 }}>
             &larr; Back to public site
-          </a>
+          </Link>
         </p>
       </div>
     </main>
