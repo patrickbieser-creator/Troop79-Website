@@ -148,6 +148,11 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         matchPath: '/admin/advancement/lookups'
       },
       {
+        label: 'Roster Import',
+        href: '/admin/advancement/roster-import',
+        matchPath: '/admin/advancement/roster-import'
+      },
+      {
         label: 'Utilities',
         href: '/admin/utilities',
         matchPath: '/admin/utilities',

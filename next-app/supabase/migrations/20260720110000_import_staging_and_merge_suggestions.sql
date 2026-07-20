@@ -79,8 +79,12 @@ create table if not exists public.merge_suggestions (
 
   -- Ranked strongest to weakest. 'name_only' is called out deliberately: it is
   -- the evidence class that produced both production duplicate-person bugs
-  -- this week, so the UI must never pre-accept it.
-  confidence text not null check (confidence in ('bsa_member_id', 'email', 'name_only', 'none')),
+  -- this week, so the UI must never pre-accept it. 'manual' is a target a
+  -- reviewer chose by hand — the matcher never emits it, and it exists because
+  -- the safe-direction matcher produces false negatives it cannot see: the
+  -- roster's "Summer Curtis" is stored as "Summer Kimble", which no exact rule
+  -- links, so a human has to say so.
+  confidence text not null check (confidence in ('bsa_member_id', 'email', 'name_only', 'none', 'manual')),
 
   -- Which fields agreed, and on what values. Lets a reviewer see WHY something
   -- was suggested instead of trusting a score.

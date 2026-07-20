@@ -1,0 +1,142 @@
+.gate {
+  padding: 40px; text-align: center; font-size: 14px; color: var(--admin-gray-500);
+}
+
+.pageTitle {
+  margin-bottom: 20px; border-bottom: 1px solid var(--admin-gray-200); padding-bottom: 14px;
+}
+.pageTitle h1 { font-size: 22px; font-weight: 700; color: var(--admin-navy); margin-bottom: 4px; }
+.pageTitle p { font-size: 13px; color: var(--admin-gray-500); max-width: 760px; line-height: 1.5; }
+
+.fieldLabel {
+  display: block; font-size: 10px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--admin-gray-500); margin-bottom: 4px;
+}
+.fieldInput {
+  border: 1px solid var(--admin-gray-300); border-radius: 3px; padding: 7px 9px;
+  font-family: inherit; font-size: 13px; background: var(--admin-white);
+  color: var(--admin-gray-900); min-width: 260px;
+}
+.select {
+  border: 1px solid var(--admin-gray-300); border-radius: 3px; padding: 6px 8px;
+  font-family: inherit; font-size: 13px; background: var(--admin-white); color: var(--admin-gray-900);
+}
+
+.batchBar { margin-bottom: 14px; }
+.summary { font-size: 13px; color: var(--admin-gray-700); margin-bottom: 12px; }
+.filename { color: var(--admin-gray-500); }
+
+.filterRow { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.chip, .chipActive {
+  font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: .03em;
+  border-radius: 3px; padding: 5px 10px; cursor: pointer;
+  border: 1px solid var(--admin-gray-300); background: var(--admin-white); color: var(--admin-gray-700);
+}
+.chipActive { background: var(--admin-navy); border-color: var(--admin-navy); color: var(--admin-white); }
+
+.empty {
+  padding: 24px; background: var(--admin-gray-50); border: 1px solid var(--admin-gray-200);
+  border-radius: 4px; font-size: 13px; color: var(--admin-gray-700); line-height: 1.6;
+}
+.code {
+  display: block; margin: 10px 0; padding: 8px 10px; background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200); border-radius: 3px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+}
+.error {
+  padding: 10px 12px; margin-bottom: 12px; border-radius: 3px; font-size: 13px;
+  background: #fdf2f2; border: 1px solid #e5b3b3; color: #8c2f2f;
+}
+
+.list { display: flex; flex-direction: column; gap: 6px; }
+.card { border: 1px solid var(--admin-gray-200); border-radius: 4px; background: var(--admin-white); }
+.cardHead {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  padding: 10px 12px; background: none; border: none; cursor: pointer;
+  font-family: inherit; font-size: 13px; color: var(--admin-gray-900);
+}
+.cardHead:hover { background: var(--admin-gray-50); }
+.lineNo {
+  font-size: 11px; color: var(--admin-gray-500); min-width: 38px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.names { display: flex; align-items: center; gap: 8px; flex: 1; flex-wrap: wrap; }
+.arrow { color: var(--admin-gray-400); }
+.newPerson { color: var(--admin-forest); font-style: italic; }
+.roleCode {
+  font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--admin-gray-500); border: 1px solid var(--admin-gray-300);
+  border-radius: 2px; padding: 1px 5px;
+}
+
+.badge, .badgeWeak, .badgeConflict, .badgeFill {
+  font-size: 10px; font-weight: 700; letter-spacing: .04em; border-radius: 2px;
+  padding: 2px 7px; white-space: nowrap;
+}
+.badge { background: var(--admin-gray-100); color: var(--admin-gray-700); }
+.badgeWeak { background: #fdf6e3; color: #8a6d1f; border: 1px solid #e6d5a3; }
+.badgeConflict { background: #fdf2f2; color: #8c2f2f; border: 1px solid #e5b3b3; }
+.badgeFill { background: #f0f6f1; color: #2f6b3f; border: 1px solid #b8d6c0; }
+
+.cardBody { padding: 4px 14px 16px; border-top: 1px solid var(--admin-gray-200); }
+.warn {
+  margin: 12px 0; padding: 10px 12px; border-radius: 3px; font-size: 12.5px; line-height: 1.5;
+  background: #fdf6e3; border: 1px solid #e6d5a3; color: #6b5514;
+}
+.metaRow {
+  display: flex; gap: 16px; flex-wrap: wrap; margin: 12px 0;
+  font-size: 12px; color: var(--admin-gray-600);
+}
+
+.relBlock { margin: 14px 0; }
+.relText {
+  padding: 8px 10px; background: var(--admin-gray-50); border: 1px solid var(--admin-gray-200);
+  border-radius: 3px; font-size: 13px; color: var(--admin-gray-900);
+}
+.relHint { font-size: 11.5px; color: var(--admin-gray-500); margin-top: 5px; line-height: 1.5; }
+
+.fieldTable { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 12.5px; }
+.fieldTable th {
+  text-align: left; font-size: 10px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--admin-gray-500);
+  padding: 5px 8px; border-bottom: 1px solid var(--admin-gray-200);
+}
+.fieldTable td { padding: 6px 8px; border-bottom: 1px solid var(--admin-gray-100); vertical-align: top; }
+.rowConflict { background: #fdf7f7; }
+.csvVal { color: var(--admin-gray-900); }
+.dbVal { color: var(--admin-gray-600); }
+.emptyVal { color: var(--admin-gray-400); }
+
+.actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 4px; }
+.primaryBtn, .secondaryBtn {
+  font-family: inherit; font-size: 12px; font-weight: 700; letter-spacing: .04em;
+  padding: 8px 16px; border-radius: 3px; cursor: pointer;
+}
+.primaryBtn { background: var(--admin-navy); color: var(--admin-white); border: 1px solid var(--admin-navy); }
+.secondaryBtn { background: var(--admin-white); color: var(--admin-gray-700); border: 1px solid var(--admin-gray-300); }
+.primaryBtn:disabled, .secondaryBtn:disabled { opacity: .5; cursor: default; }
+
+.pickerBlock { margin-top: 14px; }
+.searching { font-size: 11px; color: var(--admin-gray-500); margin-left: 8px; }
+.results {
+  list-style: none; margin: 6px 0 0; padding: 0; max-width: 420px;
+  border: 1px solid var(--admin-gray-200); border-radius: 3px; overflow: hidden;
+}
+.results li + li { border-top: 1px solid var(--admin-gray-100); }
+.resultBtn {
+  display: flex; justify-content: space-between; gap: 12px; width: 100%; text-align: left;
+  background: var(--admin-white); border: none; cursor: pointer;
+  font-family: inherit; font-size: 12.5px; color: var(--admin-gray-900); padding: 7px 10px;
+}
+.resultBtn:hover { background: var(--admin-gray-50); }
+.resultEmail { color: var(--admin-gray-500); font-size: 11.5px; }
+
+.relEntry {
+  margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--admin-gray-200);
+}
+.relControls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.relPrefix { font-size: 12.5px; color: var(--admin-gray-700); }
+.checkLabel {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 12.5px; color: var(--admin-gray-700);
+}
