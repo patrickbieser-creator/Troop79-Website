@@ -240,3 +240,8 @@
 .chipInactiveTag { margin-left: 8px; font-size: 10px; font-weight: 700; letter-spacing: .04em; background: #f2d2d2; color: #7d2626; border: 1px solid #c98b8b; border-radius: 2px; padding: 1px 7px; }
 .readValue { font-size: 13px; color: var(--admin-gray-900); padding: 6px 0; }
 .readValue a { color: var(--admin-navy); }
+.dangerSection { margin-top: 26px; padding-top: 16px; border-top: 1px solid #e5b3b3; }
+.dangerSection h3 { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #8c2f2f; margin: 0 0 6px; }
+.dangerBtn { font-family: inherit; font-size: 12px; font-weight: 700; letter-spacing: .04em; background: var(--admin-white); color: #8c2f2f; border: 1px solid #c98b8b; border-radius: 3px; padding: 7px 14px; cursor: pointer; }
+.dangerBtn:hover { background: #fdf2f2; }
+.dangerBtn:disabled { opacity: .5; cursor: default; }

@@ -432,3 +432,85 @@ export async function createAdultForScout(
   const res = await addRelationship(created.id, scoutPersonId, type, isGuardian);
   return res.ok ? { ok: true, personId: created.id } : res;
 }
+
+/**
+ * Merge one person into another, chosen by hand.
+ *
+ * person_merge_candidates only proposes pairs an exact rule can spot — same
+ * name, or a nickname that is a prefix of the formal name. A duplicate recorded
+ * under a different name entirely ("Kate Brown" / "Katherine Bruen") is
+ * invisible to it and always will be, so a leader who spots one needs a way to
+ * say so directly.
+ *
+ * Preferred over deleting the duplicate: merge_people moves every link — scout,
+ * leader and parent rows, household, roles, relationships, pending import
+ * suggestions — onto the survivor and fills its blanks from the loser, then
+ * retains the loser flagged rather than destroying it. Deleting and
+ * re-entering by hand loses whichever of those the eye misses.
+ */
+export async function mergePersonInto(loserId: number, survivorId: number): Promise<Result> {
+  const session = await requireRole(['leader']);
+  if (loserId === survivorId) return { ok: false, error: 'Pick two different people.' };
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.rpc('merge_people', {
+    p_survivor: survivorId,
+    p_loser: loserId,
+    p_decided_by: session.leader
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidate();
+  return { ok: true };
+}
+
+/**
+ * Delete a person outright.
+ *
+ * REFUSES while anything still points at them, because the foreign keys would
+ * hide the damage rather than prevent it: scouts.person_id, leaders.person_id
+ * and scout_parents.person_id are all ON DELETE SET NULL, so deleting a person
+ * attached to a scout silently blanks that scout's link — and person_directory
+ * is built from `people`, so the scout would vanish from the Roster entirely
+ * with no error anywhere. signup_entries is RESTRICT and would at least fail
+ * loudly, but a raw constraint message is not an explanation.
+ *
+ * Deletion is therefore for records that stand alone — a duplicate person the
+ * import created that nothing has been attached to yet. Anything else should be
+ * merged, which moves the links rather than orphaning them.
+ */
+export async function deletePerson(personId: number): Promise<Result> {
+  await requireRole(['leader']);
+  const supabase = createAdminClient();
+
+  const [scoutRes, leaderRes, parentRes, signupRes] = await Promise.all([
+    supabase.from('scouts').select('id').eq('person_id', personId).limit(1),
+    supabase.from('leaders').select('code').eq('person_id', personId).limit(1),
+    supabase.from('scout_parents').select('id').eq('person_id', personId).limit(1),
+    supabase.from('signup_entries').select('id').eq('person_id', personId).limit(1)
+  ]);
+
+  const blockers: string[] = [];
+  if (scoutRes.data?.length) blockers.push(`a scout record (${scoutRes.data[0].id})`);
+  if (leaderRes.data?.length) blockers.push(`a leader record (${leaderRes.data[0].code})`);
+  if (parentRes.data?.length) blockers.push('a parent record on a scout');
+  if (signupRes.data?.length) blockers.push('an event signup');
+
+  if (blockers.length > 0) {
+    return {
+      ok: false,
+      error:
+        `Cannot delete — this person still holds ${blockers.join(', ')}. ` +
+        `Deleting would leave that record pointing at nobody. Merge them into the person they duplicate instead, ` +
+        `which moves everything across, or unlink those records first.`
+    };
+  }
+
+  // Household membership, roles, relationships and import suggestions all
+  // cascade; none of them mean anything without the person.
+  const { error } = await supabase.from('people').delete().eq('id', personId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidate();
+  return { ok: true };
+}

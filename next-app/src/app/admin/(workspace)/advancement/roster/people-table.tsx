@@ -12,6 +12,8 @@ import {
   searchPeople,
   getPersonDetail,
   setPersonActive,
+  mergePersonInto,
+  deletePerson,
   type GrantableRole,
   type RelationshipInput,
   type PersonDetail
@@ -546,6 +548,51 @@ function PersonEditor({
               )
             }
           />
+        </section>
+
+        {/* ── Duplicates and removal ─────────────────────────────────── */}
+        <section className={styles.dangerSection}>
+          <h3>This is a duplicate, or should not exist</h3>
+          <p className={styles.editorHint}>
+            <strong>Merging is almost always the right choice.</strong> It moves every link — scout,
+            leader and parent records, household, roles, relationships — onto the person you keep,
+            fills their blanks from this one, and keeps this record flagged rather than destroying
+            it. Deleting keeps nothing, so anything attached here has to be re-entered by hand.
+          </p>
+          <PersonPicker
+            label="Merge this person into…"
+            disabled={disabled}
+            onPick={(survivorId) =>
+              act(
+                () => mergePersonInto(person.person_id, survivorId),
+                'Merged. Everything moved to the person you kept.'
+              )
+            }
+          />
+
+          <div className={styles.inlineRow}>
+            <button
+              className={styles.dangerBtn}
+              disabled={disabled}
+              onClick={() => {
+                if (
+                  !window.confirm(
+                    `Delete ${person.display_name} permanently?\n\n` +
+                      'Their household, roles and relationships go with them. This cannot be undone, ' +
+                      'and is refused outright if they still hold a scout, leader or parent record.'
+                  )
+                ) {
+                  return;
+                }
+                act(() => deletePerson(person.person_id), 'Deleted.');
+              }}
+            >
+              Delete this person
+            </button>
+            <span className={styles.editorHint}>
+              Only possible for a record nothing is attached to yet.
+            </span>
+          </div>
         </section>
       </div>
     </div>
