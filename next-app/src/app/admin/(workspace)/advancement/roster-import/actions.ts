@@ -34,6 +34,16 @@ const APPLIABLE = new Set([
   'gender'
 ]);
 
+/** What the reviewer may choose in the UI. 'child_of' is an input phrasing
+ *  only — it is normalised to a parent_of edge before storage, so the four
+ *  canonical types in the database constraint are unchanged. */
+export type RelationshipInput =
+  | 'parent_of'
+  | 'child_of'
+  | 'guardian_of'
+  | 'sibling_of'
+  | 'emergency_contact_for';
+
 interface FieldChange {
   field: string;
   csv_value: string;
@@ -282,19 +292,29 @@ export async function searchPeople(
 export async function addRelationship(
   personId: number,
   relatedPersonId: number,
-  type: 'parent_of' | 'guardian_of' | 'sibling_of' | 'emergency_contact_for',
+  type: RelationshipInput,
   isGuardian: boolean,
   sourceLabel?: string
 ): Promise<Result> {
   await requireRole(['leader']);
   if (personId === relatedPersonId) return { ok: false, error: 'A person cannot relate to themselves.' };
 
+  // "Child of" is stored as the parent's parent_of edge with the two people
+  // swapped, NOT as a type of its own. One fact must have exactly one
+  // representation: if both spellings were storable, "Ben child_of Dan" and
+  // "Dan parent_of Ben" would be two rows saying the same thing, and every
+  // query would have to check both — the unique index would stop neither.
+  // Entering it from either end therefore lands on the same row, and the
+  // upsert below makes a duplicate entry a no-op.
+  const stored =
+    type === 'child_of'
+      ? { person_id: relatedPersonId, related_person_id: personId, type: 'parent_of' as const }
+      : { person_id: personId, related_person_id: relatedPersonId, type };
+
   const supabase = createAdminClient();
   const { error } = await supabase.from('relationships').upsert(
     {
-      person_id: personId,
-      related_person_id: relatedPersonId,
-      type,
+      ...stored,
       is_guardian: isGuardian,
       source_label: sourceLabel || null
     },

@@ -9,7 +9,8 @@ import {
   createPersonFromRow,
   searchPeople,
   addRelationship,
-  removeRelationship
+  removeRelationship,
+  type RelationshipInput
 } from './actions';
 import styles from './roster-import.module.css';
 
@@ -419,7 +420,7 @@ function RelationshipEntry({
   disabled: boolean;
   onDone: (fn: () => Promise<{ ok: boolean; error?: string }>) => void;
 }) {
-  const [type, setType] = useState<'parent_of' | 'guardian_of' | 'sibling_of' | 'emergency_contact_for'>('parent_of');
+  const [type, setType] = useState<RelationshipInput>('parent_of');
   const [isGuardian, setIsGuardian] = useState(false);
 
   return (
@@ -465,10 +466,11 @@ function RelationshipEntry({
         <select
           className={styles.select}
           value={type}
-          onChange={(e) => setType(e.target.value as typeof type)}
+          onChange={(e) => setType(e.target.value as RelationshipInput)}
           disabled={disabled}
         >
           <option value="parent_of">parent of</option>
+        <option value="child_of">child of</option>
           <option value="guardian_of">guardian of</option>
           <option value="sibling_of">sibling of</option>
           <option value="emergency_contact_for">emergency contact for</option>
@@ -484,8 +486,9 @@ function RelationshipEntry({
         </label>
       </div>
       <p className={styles.relHint}>
-        Guardianship is recorded separately from living arrangements, so a parent at a different
-        address is still recorded as a guardian.
+        &ldquo;Child of&rdquo; records the same fact as the parent&rsquo;s own entry, just stated from
+        this end — so enter it from whichever record you happen to be on. Guardianship is recorded
+        separately from living arrangements, so a parent at a different address is still a guardian.
       </p>
       <PersonPicker
         label="…of whom"
