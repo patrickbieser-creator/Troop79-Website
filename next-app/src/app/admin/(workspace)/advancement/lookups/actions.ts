@@ -102,10 +102,19 @@ function readLeaderExtras(formData: FormData) {
   };
 }
 
-function readParents(formData: FormData): ParentInput[] {
-  const raw = String(formData.get('parents') ?? '[]');
+/** Returns null when the form does not carry a `parents` field at all.
+ *
+ *  The distinction matters because replaceParents() is destructive: it wipes
+ *  every scout_parents row for the scout before re-inserting. A form that has
+ *  stopped sending the field — the scout editor now records parents as
+ *  relationships instead — would otherwise submit an empty array and silently
+ *  delete every parent on that scout. Absent means "leave them alone"; an
+ *  explicit empty array still means "remove them all". */
+function readParents(formData: FormData): ParentInput[] | null {
+  const raw = formData.get('parents');
+  if (raw === null) return null;
   try {
-    const arr = JSON.parse(raw) as ParentInput[];
+    const arr = JSON.parse(String(raw)) as ParentInput[];
     if (!Array.isArray(arr)) return [];
     return arr.filter((p) => p && p.name && p.name.trim() !== '');
   } catch {
@@ -210,7 +219,7 @@ export async function createScout(formData: FormData): Promise<Result> {
     ...demo
   });
   if (error) return { ok: false, error: error.message };
-  await replaceParents(supabase, id, parents);
+  if (parents !== null) await replaceParents(supabase, id, parents);
   revalidateAll();
   return { ok: true };
 }
@@ -286,7 +295,7 @@ export async function updateScout(formData: FormData): Promise<Result> {
     })
     .eq('id', id);
   if (error) return { ok: false, error: error.message };
-  await replaceParents(supabase, id, parents);
+  if (parents !== null) await replaceParents(supabase, id, parents);
   revalidateAll();
   return { ok: true };
 }

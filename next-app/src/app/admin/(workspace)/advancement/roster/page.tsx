@@ -34,7 +34,7 @@ import {
   type RelationshipRow,
   type HouseholdOption
 } from './people-table';
-import type { ScoutRow, ParentRow } from './scout-form';
+import type { ScoutRow } from './scout-form';
 import styles from './roster.module.css';
 
 export const metadata = {
@@ -85,7 +85,6 @@ export default async function RosterPage({
     directoryRes,
     scoutsRes,
     ranksRes,
-    parentsRes,
     rolesRes,
     relsRes,
     householdsRes,
@@ -94,7 +93,6 @@ export default async function RosterPage({
     supabase.from('person_directory').select('*').order('display_name'),
     supabase.from('scouts').select('*').order('display_name'),
     supabase.from('ranks').select('id, display_name, sort_order').order('sort_order'),
-    supabase.from('scout_parents').select('*').order('sort_order'),
     supabase.from('person_roles').select('id, person_id, role, start_date, end_date'),
     supabase.from('relationships').select('id, person_id, related_person_id, type, is_guardian'),
     supabase.from('households').select('id, label').order('label'),
@@ -109,11 +107,6 @@ export default async function RosterPage({
     display_name: r.display_name
   }));
   const rankLabel = Object.fromEntries(ranks.map((r) => [r.id, r.display_name]));
-  const parentsByScout: Record<string, ParentRow[]> = {};
-  for (const p of (parentsRes.data ?? []) as unknown as ParentRow[]) {
-    (parentsByScout[p.scout_id] ??= []).push(p);
-  }
-
   const roles = (rolesRes.data ?? []) as unknown as PersonRoleRow[];
   const relationships = (relsRes.data ?? []) as unknown as RelationshipRow[];
   const households = (householdsRes.data ?? []) as unknown as HouseholdOption[];
@@ -200,7 +193,6 @@ export default async function RosterPage({
           scouts={tabScouts}
           ranks={ranks}
           rankLabel={rankLabel}
-          parentsByScout={parentsByScout}
           today={today}
           only={tab === 'active_scout' ? 'active' : 'inactive'}
         />

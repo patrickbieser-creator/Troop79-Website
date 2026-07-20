@@ -297,3 +297,129 @@ export async function setPersonActive(
   revalidate();
   return { ok: true };
 }
+
+/**
+ * The adults attached to one scout, for the scout editor.
+ *
+ * Replaces the free-text Parents / Guardians block, which stored a name, a
+ * relationship word and contact details straight onto scout_parents — one row
+ * per child, so a parent of two scouts existed twice with no link between the
+ * copies. That is the shape that produced the duplicate-person bugs. A parent
+ * is now a person, related to the scout, and their contact details live once
+ * on that person.
+ */
+export interface ScoutRelation {
+  relationshipId: number;
+  personId: number;
+  name: string;
+  type: string;
+  isGuardian: boolean;
+  email: string | null;
+  phone: string | null;
+  active: boolean;
+}
+
+export async function getScoutRelations(scoutPersonId: number): Promise<ScoutRelation[]> {
+  await requireRole(['leader']);
+  const supabase = createAdminClient();
+
+  const { data } = await supabase
+    .from('relationships')
+    .select(
+      'id, person_id, type, is_guardian,' +
+        'person:people!relationships_person_id_fkey(id, display_name, primary_email, primary_phone, active)'
+    )
+    .eq('related_person_id', scoutPersonId)
+    .in('type', ['parent_of', 'guardian_of', 'emergency_contact_for']);
+
+  type Raw = {
+    id: number;
+    person_id: number;
+    type: string;
+    is_guardian: boolean;
+    person: {
+      id: number;
+      display_name: string;
+      primary_email: string | null;
+      primary_phone: string | null;
+      active: boolean;
+    } | null;
+  };
+
+  return ((data ?? []) as unknown as Raw[])
+    .filter((r) => r.person)
+    .map((r) => ({
+      relationshipId: r.id,
+      personId: r.person_id,
+      name: r.person!.display_name,
+      type: r.type,
+      isGuardian: r.is_guardian,
+      email: r.person!.primary_email,
+      phone: r.person!.primary_phone,
+      active: r.person!.active
+    }));
+}
+
+/** Link an adult already on record to a scout. */
+export async function linkAdultToScout(
+  adultPersonId: number,
+  scoutPersonId: number,
+  type: 'parent_of' | 'guardian_of' | 'emergency_contact_for',
+  isGuardian: boolean
+): Promise<Result> {
+  return addRelationship(adultPersonId, scoutPersonId, type, isGuardian);
+}
+
+/**
+ * Create an adult who is not on record yet and attach them to a scout, in one
+ * step. Without this, adding a parent means leaving the scout, creating them on
+ * the Adults tab, and coming back — which is precisely the kind of detour that
+ * gets skipped, leaving the scout with no contact on file.
+ */
+export async function createAdultForScout(
+  scoutPersonId: number,
+  name: string,
+  email: string,
+  phone: string,
+  type: 'parent_of' | 'guardian_of' | 'emergency_contact_for',
+  isGuardian: boolean
+): Promise<Result & { personId?: number }> {
+  await requireRole(['leader']);
+  const trimmed = name.trim();
+  if (!trimmed) return { ok: false, error: 'A name is required.' };
+
+  const supabase = createAdminClient();
+
+  // An exact email match almost certainly means this person is already on
+  // record — linking beats creating a second copy of them.
+  if (email.trim()) {
+    const { data: existing } = await supabase
+      .from('people')
+      .select('id')
+      .is('merged_into_person_id', null)
+      .ilike('primary_email', email.trim())
+      .limit(1)
+      .maybeSingle();
+    if (existing) {
+      const res = await addRelationship(existing.id, scoutPersonId, type, isGuardian);
+      return res.ok ? { ok: true, personId: existing.id } : res;
+    }
+  }
+
+  const space = trimmed.lastIndexOf(' ');
+  const { data: created, error } = await supabase
+    .from('people')
+    .insert({
+      display_name: trimmed,
+      first_name: space > 0 ? trimmed.slice(0, space) : trimmed,
+      last_name: space > 0 ? trimmed.slice(space + 1) : null,
+      primary_email: email.trim() || null,
+      primary_phone: phone.trim() || null
+    })
+    .select('id')
+    .single();
+  if (error || !created) return { ok: false, error: error?.message ?? 'Could not create the adult.' };
+
+  const res = await addRelationship(created.id, scoutPersonId, type, isGuardian);
+  return res.ok ? { ok: true, personId: created.id } : res;
+}

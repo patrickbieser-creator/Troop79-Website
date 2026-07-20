@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ageOn, gradeFromGradYear, gradeLabel, SWIM_CLASS_LABEL } from '@/lib/demographics';
 import { INACTIVE_REASON_LABEL } from '@/lib/supabase/types';
-import { ScoutForm, type ScoutRow, type ParentRow } from './scout-form';
+import { ScoutForm, type ScoutRow } from './scout-form';
 import { SortHeader, useSortable } from './use-sortable';
 import styles from './roster.module.css';
 
@@ -83,7 +83,6 @@ interface Props {
   scouts: ScoutRow[];
   ranks: { id: string; display_name: string }[];
   rankLabel: Record<string, string>;
-  parentsByScout: Record<string, ParentRow[]>;
   today: string;
   /** Set when the page owns the Active/Inactive split (the four-tab Roster).
    *  The internal tab bar is hidden and this decides the filter, so age-out —
@@ -92,7 +91,7 @@ interface Props {
   only?: 'active' | 'inactive';
 }
 
-export function ScoutsTable({ scouts, ranks, rankLabel, parentsByScout, today, only }: Props) {
+export function ScoutsTable({ scouts, ranks, rankLabel, today, only }: Props) {
   // `only` must NOT seed state. A state initialiser runs once on mount, and
   // React keeps this component mounted when the page navigates between the
   // Active and Inactive roster tabs — so the internal tab stayed 'active'
@@ -257,7 +256,6 @@ export function ScoutsTable({ scouts, ranks, rankLabel, parentsByScout, today, o
         {openFor && (
           <ScoutForm
             row={openFor === 'new' ? null : openFor}
-            initialParents={openFor !== 'new' ? (parentsByScout[openFor.id] ?? []) : []}
             ranks={ranks}
             onClose={() => setOpenFor(null)}
           />

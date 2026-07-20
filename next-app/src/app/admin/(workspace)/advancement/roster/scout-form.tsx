@@ -3,10 +3,13 @@
 import { useState, useTransition } from 'react';
 import { createScout, promoteScoutToAdult, updateScout } from '../lookups/actions';
 import { INACTIVE_REASON_LABEL, type InactiveReason } from '@/lib/supabase/types';
+import { ScoutRelations } from './scout-relations';
 import { ageOn, gradeFromGradYear, gradeLabel, gradYearFromGrade } from '@/lib/demographics';
 import styles from '../lookups/lookups.module.css';
 
 export interface ScoutRow {
+  /** people.id — the scout's identity in the person spine. */
+  person_id: number | null;
   id: string;
   first_name: string;
   last_name: string;
@@ -57,57 +60,12 @@ const REASON_ORDER: InactiveReason[] = [
   'other'
 ];
 
-interface ParentDraft {
-  name: string;
-  relationship: string;
-  phone: string;
-  email: string;
-  same_address_as_scout: boolean;
-  address_line1: string;
-  address_line2: string;
-  city: string;
-  state: string;
-  zip: string;
-}
-
-function emptyParent(): ParentDraft {
-  return {
-    name: '',
-    relationship: '',
-    phone: '',
-    email: '',
-    same_address_as_scout: true,
-    address_line1: '',
-    address_line2: '',
-    city: '',
-    state: '',
-    zip: ''
-  };
-}
-
-function parentRowToDraft(p: ParentRow): ParentDraft {
-  return {
-    name: p.name,
-    relationship: p.relationship ?? '',
-    phone: p.phone ?? '',
-    email: p.email ?? '',
-    same_address_as_scout: p.same_address_as_scout,
-    address_line1: p.address_line1 ?? '',
-    address_line2: p.address_line2 ?? '',
-    city: p.city ?? '',
-    state: p.state ?? '',
-    zip: p.zip ?? ''
-  };
-}
-
 export function ScoutForm({
   row,
-  initialParents,
   ranks,
   onClose
 }: {
   row: ScoutRow | null;
-  initialParents: ParentRow[];
   ranks: { id: string; display_name: string }[];
   onClose: () => void;
 }) {
@@ -137,11 +95,6 @@ export function ScoutForm({
     return g === null ? '' : String(g);
   });
   const [swimClass, setSwimClass] = useState<string>(row?.swim_class ?? '');
-  const [parents, setParents] = useState<ParentDraft[]>(
-    initialParents.length > 0
-      ? initialParents.map(parentRowToDraft)
-      : [emptyParent()]
-  );
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -176,25 +129,10 @@ export function ScoutForm({
     fd.set('school', school);
     fd.set('graduation_year', grade === '' ? '' : String(gradYearFromGrade(Number(grade))));
     fd.set('swim_class', swimClass);
-    fd.set(
-      'parents',
-      JSON.stringify(
-        parents
-          .filter((p) => p.name.trim() !== '')
-          .map((p) => ({
-            name: p.name,
-            relationship: p.relationship || null,
-            phone: p.phone || null,
-            email: p.email || null,
-            same_address_as_scout: p.same_address_as_scout,
-            address_line1: p.same_address_as_scout ? null : p.address_line1 || null,
-            address_line2: p.same_address_as_scout ? null : p.address_line2 || null,
-            city: p.same_address_as_scout ? null : p.city || null,
-            state: p.same_address_as_scout ? null : p.state || null,
-            zip: p.same_address_as_scout ? null : p.zip || null
-          }))
-      )
-    );
+    // `parents` is deliberately NOT sent. Parents are relationships now, saved
+    // as they are edited, and readParents() treats an absent field as "leave
+    // the existing rows alone" — sending an empty array here would delete every
+    // scout_parents row the old editor had written.
     startTransition(async () => {
       const res = isNew ? await createScout(fd) : await updateScout(fd);
       if (!res.ok) {
@@ -205,15 +143,6 @@ export function ScoutForm({
     });
   }
 
-  function updateParent(i: number, patch: Partial<ParentDraft>) {
-    setParents((prev) => prev.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
-  }
-  function addParent() {
-    setParents((prev) => [...prev, emptyParent()]);
-  }
-  function removeParent(i: number) {
-    setParents((prev) => prev.filter((_, idx) => idx !== i));
-  }
 
   return (
     <div className={styles.editDialogInner}>
@@ -431,23 +360,8 @@ export function ScoutForm({
         </div>
       </FormSection>
 
-      <FormSection
-        title="Parents / Guardians"
-        actions={
-          <button type="button" className={styles.editBtn} onClick={addParent}>
-            + Add another
-          </button>
-        }
-      >
-        {parents.map((p, i) => (
-          <ParentSubform
-            key={i}
-            value={p}
-            onChange={(patch) => updateParent(i, patch)}
-            onRemove={parents.length > 1 ? () => removeParent(i) : undefined}
-            index={i}
-          />
-        ))}
+      <FormSection title="Parents / Guardians">
+        <ScoutRelations scoutPersonId={row?.person_id ?? null} />
       </FormSection>
 
       <FormSection title="Status">
@@ -586,135 +500,3 @@ function FormSection({
   );
 }
 
-function ParentSubform({
-  value,
-  onChange,
-  onRemove,
-  index
-}: {
-  value: ParentDraft;
-  onChange: (patch: Partial<ParentDraft>) => void;
-  onRemove?: () => void;
-  index: number;
-}) {
-  return (
-    <div className={styles.parentRow}>
-      <div className={styles.parentRowHeader}>
-        <span className={styles.parentRowLabel}>Parent {index + 1}</span>
-        {onRemove && (
-          <button
-            type="button"
-            className={`${styles.editBtn} ${styles.dangerBtn}`}
-            onClick={onRemove}
-          >
-            Remove
-          </button>
-        )}
-      </div>
-      <div className={styles.editGrid}>
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>Name</span>
-          <input
-            type="text"
-            value={value.name}
-            onChange={(e) => onChange({ name: e.target.value })}
-            className={styles.editInput}
-            placeholder="Required"
-          />
-        </label>
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>Relationship</span>
-          <input
-            type="text"
-            value={value.relationship}
-            onChange={(e) => onChange({ relationship: e.target.value })}
-            className={styles.editInput}
-            placeholder="Mom / Dad / Guardian"
-          />
-        </label>
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>Phone</span>
-          <input
-            type="tel"
-            value={value.phone}
-            onChange={(e) => onChange({ phone: e.target.value })}
-            className={styles.editInput}
-          />
-        </label>
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>Email</span>
-          <input
-            type="email"
-            value={value.email}
-            onChange={(e) => onChange({ email: e.target.value })}
-            className={styles.editInput}
-          />
-        </label>
-        <div className={styles.editFieldFull}>
-          <label className={styles.toggleRow}>
-            <input
-              type="checkbox"
-              checked={value.same_address_as_scout}
-              onChange={(e) =>
-                onChange({ same_address_as_scout: e.target.checked })
-              }
-            />
-            <span>Same address as scout</span>
-          </label>
-        </div>
-        {!value.same_address_as_scout && (
-          <>
-            <label className={styles.editFieldFull}>
-              <span className={styles.editLabel}>Address Line 1</span>
-              <input
-                type="text"
-                value={value.address_line1}
-                onChange={(e) => onChange({ address_line1: e.target.value })}
-                className={styles.editInput}
-              />
-            </label>
-            <label className={styles.editFieldFull}>
-              <span className={styles.editLabel}>Address Line 2</span>
-              <input
-                type="text"
-                value={value.address_line2}
-                onChange={(e) => onChange({ address_line2: e.target.value })}
-                className={styles.editInput}
-              />
-            </label>
-            <label className={styles.editField}>
-              <span className={styles.editLabel}>City</span>
-              <input
-                type="text"
-                value={value.city}
-                onChange={(e) => onChange({ city: e.target.value })}
-                className={styles.editInput}
-              />
-            </label>
-            <div className={styles.editTinyGrid}>
-              <label>
-                <span className={styles.editLabel}>State</span>
-                <input
-                  type="text"
-                  value={value.state}
-                  onChange={(e) => onChange({ state: e.target.value })}
-                  className={styles.editInput}
-                  maxLength={2}
-                />
-              </label>
-              <label>
-                <span className={styles.editLabel}>ZIP</span>
-                <input
-                  type="text"
-                  value={value.zip}
-                  onChange={(e) => onChange({ zip: e.target.value })}
-                  className={styles.editInput}
-                />
-              </label>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}

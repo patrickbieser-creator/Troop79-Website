@@ -234,3 +234,5 @@
 .savedNote { padding: 8px 12px; margin-bottom: 10px; border-radius: 3px; font-size: 12.5px; background: #f0f6f1; border: 1px solid #b8d6c0; color: #2f6b3f; }
 .chipActiveTag { margin-left: 8px; font-size: 10px; font-weight: 700; letter-spacing: .04em; background: #f0f6f1; color: #2f6b3f; border: 1px solid #b8d6c0; border-radius: 2px; padding: 1px 7px; }
 .chipInactiveTag { margin-left: 8px; font-size: 10px; font-weight: 700; letter-spacing: .04em; background: var(--admin-gray-100); color: var(--admin-gray-600); border: 1px solid var(--admin-gray-300); border-radius: 2px; padding: 1px 7px; }
+.readValue { font-size: 13px; color: var(--admin-gray-900); padding: 6px 0; }
+.readValue a { color: var(--admin-navy); }
