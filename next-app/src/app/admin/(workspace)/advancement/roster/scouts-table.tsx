@@ -82,10 +82,15 @@ interface Props {
   rankLabel: Record<string, string>;
   parentsByScout: Record<string, ParentRow[]>;
   today: string;
+  /** Set when the page owns the Active/Inactive split (the four-tab Roster).
+   *  The internal tab bar is hidden and this decides the filter, so age-out —
+   *  which the page classifies, not this component — cannot be contradicted
+   *  here by a bare `scouts.active` test. */
+  only?: 'active' | 'inactive';
 }
 
-export function ScoutsTable({ scouts, ranks, rankLabel, parentsByScout, today }: Props) {
-  const [tab, setTab] = useState<'active' | 'inactive'>('active');
+export function ScoutsTable({ scouts, ranks, rankLabel, parentsByScout, today, only }: Props) {
+  const [tab, setTab] = useState<'active' | 'inactive'>(only ?? 'active');
   const [openFor, setOpenFor] = useState<ScoutRow | 'new' | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
 
@@ -129,26 +134,30 @@ export function ScoutsTable({ scouts, ranks, rankLabel, parentsByScout, today }:
   return (
     <>
       <div className={styles.tableToolbar}>
-        <div className={styles.tabs} role="tablist" aria-label="Scout status">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'active'}
-            className={tab === 'active' ? styles.tabActive : styles.tab}
-            onClick={() => setTab('active')}
-          >
-            Active ({activeCount})
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'inactive'}
-            className={tab === 'inactive' ? styles.tabActive : styles.tab}
-            onClick={() => setTab('inactive')}
-          >
-            Inactive ({inactiveCount})
-          </button>
-        </div>
+        {only ? (
+          <span className={styles.toolbarCount}>{scouts.length} scouts</span>
+        ) : (
+          <div className={styles.tabs} role="tablist" aria-label="Scout status">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'active'}
+              className={tab === 'active' ? styles.tabActive : styles.tab}
+              onClick={() => setTab('active')}
+            >
+              Active ({activeCount})
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'inactive'}
+              className={tab === 'inactive' ? styles.tabActive : styles.tab}
+              onClick={() => setTab('inactive')}
+            >
+              Inactive ({inactiveCount})
+            </button>
+          </div>
+        )}
         <button type="button" className={styles.addBtn} onClick={() => setOpenFor('new')}>
           + Add Scout
         </button>

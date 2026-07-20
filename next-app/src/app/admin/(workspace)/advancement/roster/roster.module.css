@@ -194,3 +194,40 @@
 /* Delete fails when ledger rows still reference the signer — the reason has to
    land next to the button that caused it, not in a toast somewhere else. */
 .rowErr { display: block; margin-top: 4px; font-size: 10.5px; color: #b3261e; }
+
+/* Four-tab roster: people tables, person editor */
+.linkBtn { background: none; border: none; padding: 0; font-family: inherit; font-size: inherit; color: var(--admin-navy); font-weight: 600; cursor: pointer; text-align: left; }
+.linkBtn:hover { text-decoration: underline; }
+.smallBtn { font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: .03em; background: var(--admin-white); border: 1px solid var(--admin-gray-300); color: var(--admin-gray-700); border-radius: 3px; padding: 4px 10px; cursor: pointer; }
+.smallBtn:disabled { opacity: .5; cursor: default; }
+.muted { color: var(--admin-gray-500); }
+.warnTag { margin-left: 8px; font-size: 10px; font-weight: 700; background: #fdf6e3; color: #8a6d1f; border: 1px solid #e6d5a3; border-radius: 2px; padding: 1px 6px; }
+.searchInput { border: 1px solid var(--admin-gray-300); border-radius: 3px; padding: 6px 9px; font-family: inherit; font-size: 13px; min-width: 240px; }
+.toolbarCount { font-size: 12px; color: var(--admin-gray-500); }
+.rowError { padding: 8px 12px; margin-bottom: 10px; border-radius: 3px; font-size: 13px; background: #fdf2f2; border: 1px solid #e5b3b3; color: #8c2f2f; }
+.editorOverlay { position: fixed; inset: 0; background: rgba(20,24,28,.45); display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; z-index: 60; }
+.editorPanel { background: var(--admin-white); border-radius: 6px; max-width: 640px; width: 100%; padding: 20px 22px 26px; box-shadow: 0 12px 40px rgba(0,0,0,.25); }
+.editorHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--admin-gray-200); padding-bottom: 12px; margin-bottom: 4px; }
+.editorHead h2 { font-size: 18px; color: var(--admin-navy); margin: 0 0 2px; }
+.editorSub { font-size: 12px; color: var(--admin-gray-500); margin: 0; }
+.editorWarn { margin: 14px 0 0; padding: 10px 12px; border-radius: 3px; font-size: 12.5px; line-height: 1.5; background: #fdf6e3; border: 1px solid #e6d5a3; color: #6b5514; }
+.editorSection { margin-top: 22px; }
+.editorSection h3 { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--admin-gray-500); margin: 0 0 6px; }
+.editorHint { font-size: 11.5px; color: var(--admin-gray-500); line-height: 1.5; margin: 0 0 8px; }
+.chipList { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.roleChip, .roleChipEnded { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; border-radius: 3px; padding: 4px 8px; border: 1px solid var(--admin-gray-300); background: var(--admin-gray-50); }
+.roleChipEnded { opacity: .65; }
+.chipBtn { font-family: inherit; font-size: 10px; font-weight: 700; background: none; border: 1px solid var(--admin-gray-300); color: var(--admin-gray-600); border-radius: 2px; padding: 1px 6px; cursor: pointer; }
+.inlineRow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+.relPrefix { font-size: 12.5px; color: var(--admin-gray-700); }
+.checkLabel { display: flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--admin-gray-700); }
+.relList { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.relItem { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 10px; font-size: 12.5px; background: var(--admin-gray-50); border: 1px solid var(--admin-gray-200); border-radius: 3px; }
+.guardianTag { margin-left: 8px; font-size: 10px; font-weight: 700; background: #f0f6f1; color: #2f6b3f; border: 1px solid #b8d6c0; border-radius: 2px; padding: 1px 6px; }
+.pickerBlock { margin-top: 8px; }
+.fieldLabel { display: block; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--admin-gray-500); margin-bottom: 4px; }
+.pickedTag { margin-left: 8px; font-size: 12px; font-weight: 700; color: #2f6b3f; }
+.results { list-style: none; margin: 6px 0 0; padding: 0; max-width: 420px; border: 1px solid var(--admin-gray-200); border-radius: 3px; overflow: hidden; }
+.results li + li { border-top: 1px solid var(--admin-gray-100); }
+.resultBtn { display: block; width: 100%; text-align: left; background: var(--admin-white); border: none; cursor: pointer; font-family: inherit; font-size: 12.5px; padding: 7px 10px; }
+.resultBtn:hover { background: var(--admin-gray-50); }

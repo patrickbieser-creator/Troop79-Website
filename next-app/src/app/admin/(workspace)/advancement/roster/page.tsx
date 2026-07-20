@@ -1,30 +1,54 @@
 /**
- * /admin/advancement/roster — the troop roster report (Patrick, 2026-07-13).
+ * /admin/advancement/roster — troop roster and person management.
  *
- * LEADER-ONLY: demographics (birthdays, ages, school) are for adults, not
- * the scout-role shared login — the page gates on session.role server-side.
+ * LEADER-ONLY: demographics (birthdays, ages, school) are for adults, not the
+ * scout-role shared login — the page gates on session.role server-side, and
+ * the route is absent from proxy.ts's scout allowlist (D-037).
  *
- * Everything derived is computed here, never stored: age from birthdate,
- * grade from graduation year (Aug 1 rollover), YPT status from completion
- * date (+2 years). Includes a "turning 18 soon" callout so promotions
- * (Lookups → scout → Promote to adult) don't sneak up on anyone.
+ * FOUR TABS, AND MEMBERSHIP IS DERIVED (Patrick, 2026-07-20). Active Scouts,
+ * Inactive Scouts, Leaders, Adults all come from the `person_directory` view
+ * rather than being computed here — the picker and the login pool need the
+ * same answer, and computing it three times is how the old model drifted.
+ *
+ * Age-out is not inactivity: at 18 a scout is no longer a scout, so they leave
+ * the scout tabs entirely and appear under Leaders or Adults depending on
+ * whether they hold a role. Inactive Scouts means a youth who left — dropped
+ * out, moved away, transferred.
+ *
+ * A person moves between Leaders and Adults by gaining or ending a role and by
+ * nothing else. Their household and relationships are untouched by it.
  */
 
 import { cookies } from 'next/headers';
+import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
 import { centralToday } from '@/lib/dates';
 import type { Rank } from '@/lib/supabase/types';
 import { PrintButton } from './print-button';
 import { ScoutsTable } from './scouts-table';
-import { AdultsTable } from './adults-table';
+import {
+  PeopleTable,
+  type DirectoryPerson,
+  type PersonRoleRow,
+  type RelationshipRow,
+  type HouseholdOption
+} from './people-table';
 import type { ScoutRow, ParentRow } from './scout-form';
-import type { LeaderRow } from './leader-form';
 import styles from './roster.module.css';
 
 export const metadata = {
   title: 'Roster — Troop 79'
 };
+
+type TabKey = 'active_scout' | 'inactive_scout' | 'leader' | 'adult';
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: 'active_scout', label: 'Active Scouts' },
+  { key: 'inactive_scout', label: 'Inactive Scouts' },
+  { key: 'leader', label: 'Leaders' },
+  { key: 'adult', label: 'Adults' }
+];
 
 function fmtDate(iso: string | null): string {
   if (!iso) return '—';
@@ -42,31 +66,44 @@ function eighteenth(birthdate: string): string {
   return `${y + 18}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
 
-export default async function RosterPage() {
+export default async function RosterPage({
+  searchParams
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const jar = await cookies();
   const session = await verifySession(jar.get(LEADER_COOKIE.name)?.value);
   if (!session || session.role !== 'leader') {
-    return (
-      <div className={styles.gate}>
-        The roster report is available to adult leaders only.
-      </div>
-    );
+    return <div className={styles.gate}>The roster is available to adult leaders only.</div>;
   }
 
+  const { tab: tabParam } = await searchParams;
+  const tab: TabKey = TABS.some((t) => t.key === tabParam) ? (tabParam as TabKey) : 'active_scout';
+
   const supabase = createAdminClient();
-  // No .eq('active', true) any more — the Inactive tab needs the rest, and
-  // the active-only views below are derived from this one read.
-  const [scoutsRes, leadersRes, ranksRes, parentsRes] = await Promise.all([
+  const [
+    directoryRes,
+    scoutsRes,
+    ranksRes,
+    parentsRes,
+    rolesRes,
+    relsRes,
+    householdsRes,
+    membersRes
+  ] = await Promise.all([
+    supabase.from('person_directory').select('*').order('display_name'),
     supabase.from('scouts').select('*').order('display_name'),
-    supabase.from('leaders').select('*').eq('is_person', true).order('name'),
     supabase.from('ranks').select('id, display_name, sort_order').order('sort_order'),
-    supabase.from('scout_parents').select('*').order('sort_order')
+    supabase.from('scout_parents').select('*').order('sort_order'),
+    supabase.from('person_roles').select('id, person_id, role, start_date, end_date'),
+    supabase.from('relationships').select('id, person_id, related_person_id, type, is_guardian'),
+    supabase.from('households').select('id, label').order('label'),
+    supabase.from('household_members').select('household_id, person_id')
   ]);
 
   const today = centralToday();
-  const scouts = (scoutsRes.data ?? []) as unknown as ScoutRow[];
-  const activeScouts = scouts.filter((s) => s.active);
-  const allPeople = (leadersRes.data ?? []) as unknown as LeaderRow[];
+  const directory = (directoryRes.data ?? []) as unknown as DirectoryPerson[];
+  const allScouts = (scoutsRes.data ?? []) as unknown as ScoutRow[];
   const ranks = ((ranksRes.data ?? []) as Rank[]).map((r) => ({
     id: r.id,
     display_name: r.display_name
@@ -77,23 +114,41 @@ export default async function RosterPage() {
     (parentsByScout[p.scout_id] ??= []).push(p);
   }
 
-  // Adults = person rows not linked to an ACTIVE scout (youth initials belong
-  // on the scout side of the roster). Deliberately still keyed on active
-  // scouts only, so an aged-out youth leader graduates into the adult list —
-  // the same rule lib/authorized-adults.ts uses for the login pool.
-  const activeIds = new Set(activeScouts.map((s) => s.id));
-  const adults = allPeople.filter((l) => !(l.scout_id && activeIds.has(l.scout_id)));
+  const roles = (rolesRes.data ?? []) as unknown as PersonRoleRow[];
+  const relationships = (relsRes.data ?? []) as unknown as RelationshipRow[];
+  const households = (householdsRes.data ?? []) as unknown as HouseholdOption[];
+  const householdByPerson: Record<number, number> = {};
+  for (const m of (membersRes.data ?? []) as { household_id: number; person_id: number }[]) {
+    householdByPerson[m.person_id] = m.household_id;
+  }
+  const nameById = Object.fromEntries(directory.map((p) => [p.person_id, p.display_name]));
 
-  // Scouts turning 18 within six months — promotion heads-up. Active only:
-  // someone already marked inactive has been dealt with.
+  const counts = TABS.map((t) => ({
+    ...t,
+    n: directory.filter((p) => p.tab === t.key).length
+  }));
+
+  // Scout tabs follow the directory's classification, NOT scouts.active — an
+  // aged-out scout is an adult and must not reappear here.
+  const scoutIdsFor = (key: TabKey) =>
+    new Set(directory.filter((p) => p.tab === key && p.scout_id).map((p) => p.scout_id as string));
+  const tabScouts =
+    tab === 'active_scout' || tab === 'inactive_scout'
+      ? allScouts.filter((s) => scoutIdsFor(tab).has(s.id))
+      : [];
+
+  // Turning 18 within six months — a promotion heads-up, since age-out moves
+  // someone off the scout roster entirely.
   const horizon = new Date(`${today}T12:00:00Z`);
   horizon.setUTCMonth(horizon.getUTCMonth() + 6);
   const horizonIso = horizon.toISOString().slice(0, 10);
-  const turning18 = activeScouts
-    .filter((s) => s.birthdate)
+  const turning18 = allScouts
+    .filter((s) => s.active && s.birthdate)
     .map((s) => ({ s, on: eighteenth(s.birthdate!) }))
     .filter(({ on }) => on > today && on <= horizonIso)
     .sort((a, b) => a.on.localeCompare(b.on));
+
+  const notInPicker = directory.filter((p) => p.tab === 'adult' && !p.has_legacy_pointer).length;
 
   return (
     <>
@@ -101,44 +156,62 @@ export default async function RosterPage() {
         <div>
           <h1>Troop Roster</h1>
           <p>
-            {activeScouts.length} active scouts &middot; {adults.length}{' '}
-            adults &middot; ages and grades derived from birthdate and graduation year as of{' '}
-            {fmtDate(today)} &middot; leaders only
+            Ages and grades derived from birthdate and graduation year as of {fmtDate(today)}.
+            Which tab someone appears on follows their current role — giving or ending a role moves
+            them, and never changes their household or relationships.
           </p>
         </div>
         <PrintButton className={styles.printBtn} />
       </div>
 
-      {turning18.length > 0 && (
+      <div className={styles.tabBar}>
+        {counts.map((t) => (
+          <Link
+            key={t.key}
+            href={`/admin/advancement/roster?tab=${t.key}`}
+            className={tab === t.key ? styles.tabActive : styles.tab}
+          >
+            {t.label} ({t.n})
+          </Link>
+        ))}
+      </div>
+
+      {tab === 'active_scout' && turning18.length > 0 && (
         <div className={styles.callout}>
           <strong>Turning 18 soon:</strong>{' '}
-          {turning18
-            .map(({ s, on }) => `${s.display_name} (${fmtDate(on)})`)
-            .join(' · ')}{' '}
-          — record any outstanding sign-offs, then open the scout below and use
-          Promote to adult.
+          {turning18.map(({ s, on }) => `${s.display_name} (${fmtDate(on)})`).join(' · ')} — record
+          any outstanding sign-offs, then open the scout and use Promote to adult. At 18 they leave
+          the scout roster and appear under Leaders or Adults.
         </div>
       )}
 
-      <div className={styles.section}>
-        <div className={styles.sectionHead}>Scouts</div>
+      {tab === 'adult' && notInPicker > 0 && (
+        <div className={styles.callout}>
+          <strong>{notInPicker} adults are not yet reachable in the family signup picker.</strong>{' '}
+          They were added from the roster import and have no household or relationship on record.
+          Open one and give them a household, or a relationship to someone already in one.
+        </div>
+      )}
+
+      {tab === 'active_scout' || tab === 'inactive_scout' ? (
         <ScoutsTable
-          scouts={scouts}
+          scouts={tabScouts}
           ranks={ranks}
           rankLabel={rankLabel}
           parentsByScout={parentsByScout}
           today={today}
+          only={tab === 'active_scout' ? 'active' : 'inactive'}
         />
-      </div>
-
-      <div className={styles.section}>
-        <div className={styles.sectionHead}>Adults ({adults.length})</div>
-        <AdultsTable
-          adults={adults}
-          scouts={activeScouts.map((s) => ({ id: s.id, display_name: s.display_name }))}
-          today={today}
+      ) : (
+        <PeopleTable
+          people={directory.filter((p) => p.tab === tab)}
+          roles={roles}
+          relationships={relationships}
+          households={households}
+          householdByPerson={householdByPerson}
+          nameById={nameById}
         />
-      </div>
+      )}
     </>
   );
 }
