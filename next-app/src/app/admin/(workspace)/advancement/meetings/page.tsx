@@ -8,6 +8,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/server';
+import { requireRole } from '@/lib/require-role';
 import { nextSunday } from '@/lib/dates';
 import type { Meeting } from '@/lib/supabase/types';
 import { MeetingsList } from './meetings-list';
@@ -44,6 +45,7 @@ async function loadAttendanceCounts(): Promise<Record<string, { scouts: number; 
 }
 
 export default async function MeetingsAdminPage() {
+  await requireRole(['leader']);
   const [meetings, attendance] = await Promise.all([loadMeetings(), loadAttendanceCounts()]);
 
   return (

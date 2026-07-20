@@ -9,6 +9,7 @@
 
 import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
+import { requireRole } from '@/lib/require-role';
 import { autoLoginLabels } from '@/lib/authorized-adults';
 import { LeaderEditor, type LeaderRow } from './leader-editor';
 import { ScoutEditor, type ScoutRow, type ParentRow } from './scout-editor';
@@ -253,6 +254,7 @@ export default async function LookupsPage({
 }: {
   searchParams: Promise<{ editScout?: string; editLeader?: string }>;
 }) {
+  await requireRole(['leader']);
   const { editScout, editLeader } = await searchParams;
   const {
     leaders,

@@ -12,14 +12,17 @@ import type { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 
 interface ExportLedgerRow {
+  id: number;
   scout_id: string;
   kind: 'merit_badge_award' | 'rank_award';
   code: string;
   label: string | null;
   date: string;
+  scoutbook_submitted_at: string | null;
 }
 
 export interface ScoutbookExportRow {
+  id: number;
   memberId: string;
   firstName: string;
   lastName: string;
@@ -28,6 +31,7 @@ export interface ScoutbookExportRow {
   advancementLabel: string;
   advancementId: string;
   dateCompleted: string;
+  submittedAt: string | null;
 }
 
 export interface ScoutbookExcludedRow {
@@ -54,7 +58,7 @@ export async function loadScoutbookExport(
     fetchAllRows<ExportLedgerRow>((rangeFrom, rangeTo) =>
       supabase
         .from('ledger_active')
-        .select('scout_id, kind, code, label, date')
+        .select('id, scout_id, kind, code, label, date, scoutbook_submitted_at')
         .in('kind', ['merit_badge_award', 'rank_award'])
         .gte('date', from)
         .lte('date', to)
@@ -136,6 +140,7 @@ export async function loadScoutbookExport(
     }
 
     rows.push({
+      id: entry.id,
       memberId: scout.bsa_member_id,
       firstName: scout.first_name,
       lastName: scout.last_name,
@@ -143,7 +148,8 @@ export async function loadScoutbookExport(
       advancementType,
       advancementLabel,
       advancementId,
-      dateCompleted: entry.date
+      dateCompleted: entry.date,
+      submittedAt: entry.scoutbook_submitted_at
     });
   }
 

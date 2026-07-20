@@ -8,6 +8,7 @@
 
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
+import { requireRole } from '@/lib/require-role';
 import type { Meeting, MeetingAttendanceLeader } from '@/lib/supabase/types';
 import { RollCall, type RollCallLeader, type RollCallScout } from './roll-call';
 
@@ -16,6 +17,7 @@ export const metadata = {
 };
 
 export default async function RollCallPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireRole(['leader']);
   const { id } = await params;
   const meetingId = Number(id);
   if (!Number.isInteger(meetingId)) notFound();

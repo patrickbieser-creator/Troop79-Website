@@ -2,16 +2,14 @@
 
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+import { requireRole } from '@/lib/require-role';
 import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { LedgerKind } from '@/lib/supabase/types';
 import { keyForLedgerRow } from './picker-types';
 
 async function ensureLeader() {
-  const jar = await cookies();
-  const session = await verifySession(jar.get(LEADER_COOKIE.name)?.value);
-  if (!session) throw new Error('Not authenticated');
-  return session;
+  return requireRole(['leader']);
 }
 
 interface EntryToInsert {

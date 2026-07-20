@@ -14,6 +14,7 @@
 
 import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
+import { requireRole } from '@/lib/require-role';
 import type { LedgerEntry } from '@/lib/supabase/types';
 import { ScoutFirstCard } from './scout-first-card';
 import { ReqFirstCard } from './req-first-card';
@@ -253,6 +254,7 @@ function shortLabelFor(
 }
 
 export default async function FastEntryPage() {
+  await requireRole(['leader']);
   const { catalog, scouts, leaders, tape } = await loadFastEntry();
 
   return (

@@ -2,6 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+import { requireRole } from '@/lib/require-role';
 import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { LedgerKind } from '@/lib/supabase/types';
@@ -35,10 +36,7 @@ async function leaderInitials(): Promise<string> {
 }
 
 async function ensureLeader() {
-  const jar = await cookies();
-  const session = await verifySession(jar.get(LEADER_COOKIE.name)?.value);
-  if (!session) throw new Error('Not authenticated');
-  return session;
+  return requireRole(['leader']);
 }
 
 export async function archiveLedgerEntry(formData: FormData): Promise<void> {
@@ -311,4 +309,98 @@ export async function restoreLedgerEntry(formData: FormData): Promise<void> {
     .eq('id', id);
   if (error) throw new Error(`restore failed: ${error.message}`);
   revalidatePath('/admin/advancement/ledger');
+}
+
+interface ConfirmResult {
+  ok: boolean;
+  error?: string;
+}
+
+function revalidateAwardViews() {
+  revalidatePath('/admin/advancement/ledger');
+  revalidatePath('/admin/advancement/records');
+  revalidatePath('/admin/advancement/scoutbook-export');
+}
+
+/**
+ * "Submitted to Scoutbook" and "Presented to scout" — two independent
+ * human confirmations on a rank/MB/special-award row, same write-once
+ * nullable-columns shape as archived_at/archived_by. Not tied to a specific
+ * meeting or Court of Honor record: the troop presents awards at regular
+ * meetings as well as COH, so this is deliberately just a "did it happen"
+ * flag, not a link to an event.
+ */
+export async function setScoutbookSubmitted(formData: FormData): Promise<ConfirmResult> {
+  try {
+    await ensureLeader();
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  const id = Number(formData.get('id'));
+  if (!Number.isFinite(id) || id <= 0) return { ok: false, error: 'Invalid id' };
+  const on = formData.get('on') === '1';
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from('ledger_entries')
+    .update(
+      on
+        ? { scoutbook_submitted_at: new Date().toISOString(), scoutbook_submitted_by: await leaderInitials() }
+        : { scoutbook_submitted_at: null, scoutbook_submitted_by: null }
+    )
+    .eq('id', id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidateAwardViews();
+  return { ok: true };
+}
+
+export async function setPresented(formData: FormData): Promise<ConfirmResult> {
+  try {
+    await ensureLeader();
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  const id = Number(formData.get('id'));
+  if (!Number.isFinite(id) || id <= 0) return { ok: false, error: 'Invalid id' };
+  const on = formData.get('on') === '1';
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from('ledger_entries')
+    .update(
+      on
+        ? { presented_at: new Date().toISOString(), presented_by: await leaderInitials() }
+        : { presented_at: null, presented_by: null }
+    )
+    .eq('id', id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidateAwardViews();
+  return { ok: true };
+}
+
+/** Bulk "mark as submitted" — the Scoutbook Export page's one-click action
+ *  right after a successful upload, over every row in the current preview. */
+export async function bulkSetScoutbookSubmitted(formData: FormData): Promise<BulkResult> {
+  try {
+    await ensureLeader();
+  } catch {
+    return { ok: false, updated: 0, error: 'Not authenticated' };
+  }
+  const ids = parseIds(formData);
+  if (ids.length === 0) return { ok: false, updated: 0, error: 'No rows to mark' };
+
+  const supabase = createAdminClient();
+  const { error, count } = await supabase
+    .from('ledger_entries')
+    .update(
+      { scoutbook_submitted_at: new Date().toISOString(), scoutbook_submitted_by: await leaderInitials() },
+      { count: 'exact' }
+    )
+    .in('id', ids);
+  if (error) return { ok: false, updated: 0, error: error.message };
+
+  revalidateAwardViews();
+  return { ok: true, updated: count ?? ids.length };
 }

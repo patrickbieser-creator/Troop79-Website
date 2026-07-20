@@ -16,6 +16,7 @@
 
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
+import { requireRole } from '@/lib/require-role';
 import type { LedgerEntry, LedgerKind, Scout } from '@/lib/supabase/types';
 import { LedgerToolbar } from './ledger-toolbar';
 import { LedgerTable } from './ledger-table';
@@ -201,6 +202,7 @@ export default async function LedgerPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
+  await requireRole(['leader']);
   const raw = await searchParams;
   const parsed = parseSearch(raw);
   const { rows, total, scouts, leaders } = await loadLedger(parsed);

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { IS_DEV_DB } from '@/lib/dev-db';
+import type { SessionRole } from '@/lib/leader-session';
 import styles from '../admin.module.css';
 
 interface NavItem {
@@ -10,6 +11,10 @@ interface NavItem {
   href?: string;
   matchPath?: string;
   disabled?: boolean;
+  /** Scout-role sessions can only reach the News drafting surface — see
+   *  SCOUT_ALLOWED_PREFIXES in proxy.ts, which this list must stay in sync
+   *  with. Everything else defaults to leader-only. */
+  scoutVisible?: boolean;
 }
 
 const SECTIONS: { title: string; items: NavItem[] }[] = [
@@ -54,7 +59,8 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
       {
         label: 'Has/Needs Tool',
         href: '/admin/advancement/has-needs',
-        matchPath: '/admin/advancement/has-needs'
+        matchPath: '/admin/advancement/has-needs',
+        scoutVisible: true
       }
     ]
   },
@@ -65,6 +71,11 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         label: 'Universal Ledger',
         href: '/admin/advancement/ledger',
         matchPath: '/admin/advancement/ledger'
+      },
+      {
+        label: 'Submit & Present',
+        href: '/admin/advancement/records',
+        matchPath: '/admin/advancement/records'
       },
       {
         label: 'MB Progress',
@@ -90,17 +101,20 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
       {
         label: 'Articles',
         href: '/admin/news/articles',
-        matchPath: '/admin/news/articles'
+        matchPath: '/admin/news/articles',
+        scoutVisible: true
       },
       {
         label: 'Media Manager',
         href: '/admin/news/media-manager',
-        matchPath: '/admin/news/media-manager'
+        matchPath: '/admin/news/media-manager',
+        scoutVisible: true
       },
       {
         label: 'Calendar',
         href: '/admin/news/calendar',
-        matchPath: '/admin/news/calendar'
+        matchPath: '/admin/news/calendar',
+        scoutVisible: true
       },
       {
         label: 'Event Signups',
@@ -110,7 +124,8 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
       {
         label: 'Photo Albums',
         href: '/admin/news/photo-albums',
-        matchPath: '/admin/news/photo-albums'
+        matchPath: '/admin/news/photo-albums',
+        scoutVisible: true
       }
     ]
   },
@@ -135,20 +150,29 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
       {
         label: 'Utilities',
         href: '/admin/utilities',
-        matchPath: '/admin/utilities'
+        matchPath: '/admin/utilities',
+        scoutVisible: true
       }
     ]
   }
 ];
 
-export function SubNav() {
+export function SubNav({ role }: { role: SessionRole }) {
   const pathname = usePathname();
+  const visibleSections =
+    role === 'leader'
+      ? SECTIONS
+      : SECTIONS.map((section) => ({
+          ...section,
+          items: section.items.filter((item) => item.scoutVisible)
+        })).filter((section) => section.items.length > 0);
+
   return (
     <nav
       className={`${styles.subNav} ${IS_DEV_DB ? styles.subNavDevDb : ''}`}
       aria-label="Leader Workspace navigation"
     >
-      {SECTIONS.map((section) => (
+      {visibleSections.map((section) => (
         <div key={section.title}>
           <div className={styles.subNavSection}>{section.title}</div>
           {section.items.map((item) =>

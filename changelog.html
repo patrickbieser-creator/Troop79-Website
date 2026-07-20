@@ -630,6 +630,48 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.11.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.11.0</span>
+        <span class="release-date">July 19, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Submit &amp; Present &mdash; track Scoutbook submission and award presentation</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              A new <strong>Submit &amp; Present</strong> screen lists every rank, merit badge, and special
+              award earned, most recent first, with a checkbox for each of two confirmations.
+              <span class="change-note">Check <strong>Submitted</strong> once the Scoutbook upload is confirmed, and <strong>Presented</strong> once the scout has actually received it at a meeting or Court of Honor &mdash; the troop does both, so presentation isn&rsquo;t tied to a specific event. Both record who checked it and when, for the audit trail. Filter by Ranks, Merit Badges, or Special Awards, or show only what&rsquo;s still outstanding.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              The Scoutbook Export page can now <strong>mark everything it just showed you as submitted</strong>
+              in one click.
+              <span class="change-note">Right after uploading the downloaded file and confirming it went through, one button marks every previewed row &mdash; no need to go find the same rows again in a separate screen.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Fix &mdash; scout login had unintended read access to leader-only pages</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Signing in with the shared <strong>scout password</strong> could reach pages that were meant to
+              be leader-only &mdash; the full ledger, meeting attendance, duplicate-record audits, and more.
+              <span class="change-note">Every mutation (edits, deletes, sign-offs) was already correctly locked to leaders; the gap was read access to the page itself. 13 pages now check role explicitly, and the scout/leader boundary is additionally enforced at the edge (before any page even runs), so a future page can&rsquo;t reopen the same gap by omission. Scout access is now exactly News drafting, Utilities, and (by request) the Has/Needs Tool.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.9.3 -->
     <div class="release">
       <div class="release-header">

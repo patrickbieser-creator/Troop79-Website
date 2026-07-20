@@ -13,6 +13,7 @@
 
 import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
+import { requireRole } from '@/lib/require-role';
 import { buildReqTree } from '@/lib/mb-helpers';
 import type { Rank } from '@/lib/supabase/types';
 import { HasNeedsTool, type PickerRank, type ResultScout } from './has-needs-tool';
@@ -109,6 +110,7 @@ async function loadData() {
 }
 
 export default async function HasNeedsPage() {
+  await requireRole(['leader', 'scout']);
   const { pickerRanks, scouts } = await loadData();
   return (
     <>

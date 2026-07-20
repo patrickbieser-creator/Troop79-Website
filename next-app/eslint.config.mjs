@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Leftover renamed build cache from a Windows file-lock workaround
+    // (2026-07-19) — not .gitignore'd since it isn't literally ".next", and
+    // still locked by a running dev server. Safe to remove this line once
+    // the folder itself is deleted.
+    ".next-broken/**",
   ]),
 ]);
 

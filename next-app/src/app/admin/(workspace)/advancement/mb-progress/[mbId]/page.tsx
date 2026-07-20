@@ -13,6 +13,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
+import { requireRole } from '@/lib/require-role';
 import {
   buildReqTree,
   flattenLeaves,
@@ -131,6 +132,7 @@ export default async function MbProgressDetailPage({
 }: {
   params: Promise<{ mbId: string }>;
 }) {
+  await requireRole(['leader']);
   const { mbId } = await params;
   const data = await loadDetail(mbId);
   if (!data) notFound();

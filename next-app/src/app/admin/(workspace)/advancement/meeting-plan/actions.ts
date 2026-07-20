@@ -1,18 +1,14 @@
 'use server';
 
-import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
-import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
+import { requireRole } from '@/lib/require-role';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { MeetingPlanPayload } from '@/lib/meeting-plan-types';
 import { buildMeetingPlan } from './engine';
 import { loadEngineInput } from './load-input';
 
 async function ensureLeader() {
-  const jar = await cookies();
-  const session = await verifySession(jar.get(LEADER_COOKIE.name)?.value);
-  if (!session) throw new Error('Not authenticated');
-  return session;
+  return requireRole(['leader']);
 }
 
 interface GenerateResult {

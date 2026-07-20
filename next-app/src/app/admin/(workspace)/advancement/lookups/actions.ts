@@ -1,8 +1,7 @@
 'use server';
 
-import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
-import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
+import { requireRole } from '@/lib/require-role';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { LedgerKind } from '@/lib/supabase/types';
 import { slugify } from '@/lib/slugify';
@@ -148,10 +147,7 @@ function readReqTree(formData: FormData): ReqInput[] | null {
 }
 
 async function ensureLeader() {
-  const jar = await cookies();
-  const session = await verifySession(jar.get(LEADER_COOKIE.name)?.value);
-  if (!session) throw new Error('Not authenticated');
-  return session;
+  return requireRole(['leader']);
 }
 
 function revalidateAll() {

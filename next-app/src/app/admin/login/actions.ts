@@ -32,9 +32,13 @@ function secretMatches(input: string, secret: string | undefined): boolean {
 export async function loginAction(formData: FormData): Promise<void> {
   const username = String(formData.get('username') ?? '').trim();
   const password = String(formData.get('password') ?? '');
-  const next = String(formData.get('next') ?? '/admin/advancement') || '/admin/advancement';
+  // Only trust an explicit `next` (set by the proxy redirect when a protected
+  // page bounced someone to login) — the fallback below depends on role,
+  // which isn't known yet, so it's applied after the password match.
+  const requestedNext = formData.get('next');
+  const next = typeof requestedNext === 'string' && requestedNext ? requestedNext : null;
   const back = (error: string) =>
-    redirect(`/admin/login?error=${error}&next=${encodeURIComponent(next)}`);
+    redirect(`/admin/login?error=${error}&next=${encodeURIComponent(next ?? '/admin/advancement')}`);
 
   if (!username) back('missing-username');
   if (!password) back('missing-password');
@@ -68,9 +72,20 @@ export async function loginAction(formData: FormData): Promise<void> {
     maxAge: LEADER_COOKIE.maxAgeSeconds
   });
 
+  // Default landing differs by role — /admin/advancement is leader-only, so a
+  // scout with no explicit `next` (the common case: visiting /admin/login
+  // directly) would otherwise land straight on an access-denied error.
+  const roleDefault = role === 'scout' ? '/admin/news/articles' : '/admin/advancement';
+
   // Defense-in-depth: only allow same-origin redirects. A startsWith('/')
   // check used to live here, which "/\evil.com" defeats — see lib/safe-redirect.ts.
-  redirect(safeInternalPath(next, '/admin/advancement'));
+  //
+  // An explicit `next` isn't checked for role-appropriateness here (e.g. a
+  // scout bounced from /admin/advancement/ledger keeps that as its target) —
+  // that's intentionally left to proxy.ts, which re-validates role on the
+  // very next request and redirects a scout session away from anything
+  // outside SCOUT_ALLOWED_PREFIXES before the page ever renders.
+  redirect(safeInternalPath(next ?? roleDefault, roleDefault));
 }
 
 export async function logoutAction(): Promise<void> {

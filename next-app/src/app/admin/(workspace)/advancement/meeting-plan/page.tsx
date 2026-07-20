@@ -11,6 +11,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/server';
+import { requireRole } from '@/lib/require-role';
 import { nextSunday } from '@/lib/dates';
 import { PlanView, type PublishedPlanRow } from './plan-view';
 import styles from './meeting-plan.module.css';
@@ -35,6 +36,7 @@ async function loadData(): Promise<{ published: PublishedPlanRow[] }> {
 }
 
 export default async function MeetingPlanPage() {
+  await requireRole(['leader']);
   const { published } = await loadData();
 
   return (

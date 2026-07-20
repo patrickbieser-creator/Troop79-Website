@@ -8,6 +8,7 @@
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
+import { requireRole } from '@/lib/require-role';
 import type { MeritBadge, MbProgressRow } from '@/lib/supabase/types';
 import styles from './mb-progress.module.css';
 
@@ -52,6 +53,7 @@ async function loadCatalog() {
 }
 
 export default async function MbProgressCatalogPage() {
+  await requireRole(['leader']);
   const { cards, totalActive } = await loadCatalog();
   return (
     <>

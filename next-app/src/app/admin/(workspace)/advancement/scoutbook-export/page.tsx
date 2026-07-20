@@ -14,6 +14,7 @@ import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
 import { createAdminClient } from '@/lib/supabase/server';
 import { centralToday } from '@/lib/dates';
 import { loadScoutbookExport } from '@/lib/scoutbook-export';
+import { MarkSubmittedButton } from './mark-submitted-button';
 import styles from './scoutbook-export.module.css';
 
 export const metadata = {
@@ -55,6 +56,7 @@ export default async function ScoutbookExportPage({
   const { rows, excluded } = await loadScoutbookExport(supabase, from, to);
   const mbCount = rows.filter((r) => r.advancementType === 'meritbadge').length;
   const rankCount = rows.filter((r) => r.advancementType === 'rank').length;
+  const unsubmittedIds = rows.filter((r) => !r.submittedAt).map((r) => r.id);
 
   return (
     <>
@@ -85,7 +87,13 @@ export default async function ScoutbookExportPage({
         >
           Download .txt ({rows.length})
         </a>
+        <MarkSubmittedButton ids={unsubmittedIds} />
       </form>
+
+      <p className={styles.muted} style={{ fontSize: 12, marginTop: -12, marginBottom: 14 }}>
+        Only mark rows as submitted after the downloaded file has been uploaded to Scoutbook and the
+        upload confirmed successful — this is a record-keeping flag, not part of the upload itself.
+      </p>
 
       <p className={styles.summary}>
         {fmtDate(from)} &ndash; {fmtDate(to)}: <strong>{rows.length}</strong> ready to export ({mbCount} merit
@@ -137,12 +145,13 @@ export default async function ScoutbookExportPage({
               <th>Date</th>
               <th>Member ID</th>
               <th>Scoutbook ID</th>
+              <th>Submitted</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={6} className={styles.muted}>
+                <td colSpan={7} className={styles.muted}>
                   No merit badge or rank awards in this date range.
                 </td>
               </tr>
@@ -159,6 +168,7 @@ export default async function ScoutbookExportPage({
                   <td>{fmtDate(r.dateCompleted)}</td>
                   <td className={styles.mono}>{r.memberId}</td>
                   <td className={styles.mono}>{r.advancementId}</td>
+                  <td>{r.submittedAt ? `✓ ${fmtDate(r.submittedAt.slice(0, 10))}` : <span className={styles.muted}>—</span>}</td>
                 </tr>
               ))
             )}

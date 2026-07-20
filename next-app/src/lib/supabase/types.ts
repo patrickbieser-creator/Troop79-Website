@@ -147,6 +147,10 @@ export interface LedgerEntry {
   deleted_at: string | null;
   deleted_by: string | null;
   deleted_reason: string | null;
+  scoutbook_submitted_at: string | null;
+  scoutbook_submitted_by: string | null;
+  presented_at: string | null;
+  presented_by: string | null;
 }
 
 export interface MbProgressRow {

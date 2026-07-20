@@ -10,6 +10,7 @@
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
+import { requireRole } from '@/lib/require-role';
 import styles from '../meetings.module.css';
 
 export const metadata = {
@@ -33,6 +34,7 @@ export default async function AttendanceReportPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string; sort?: string }>;
 }) {
+  await requireRole(['leader']);
   const sp = await searchParams;
   const from = sp.from && DATE_RE.test(sp.from) ? sp.from : '';
   const to = sp.to && DATE_RE.test(sp.to) ? sp.to : '';
