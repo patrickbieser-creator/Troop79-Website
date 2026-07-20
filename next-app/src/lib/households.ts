@@ -151,11 +151,16 @@ export async function loadHouseholds(): Promise<Household[]> {
     const adults: HouseholdAdult[] = [];
     for (const p of parents) {
       if (!memberIds.has(p.scout_id)) continue;
+      // Claim BEFORE the dedupe check: siblings' rows for the same adult can
+      // spell the name differently ("JamieLynn" vs "Jamie Lynn"). Claiming only
+      // the surviving row leaves the other spelling unclaimed, so a leaders row
+      // carrying THAT spelling slips past the pass below and the same human
+      // appears twice — once in her household, once "signing up on your own".
+      if (p.email?.trim()) claimedEmails.add(p.email.trim().toLowerCase());
+      claimedNames.add(p.name.trim().toLowerCase());
       const dedupeKey = personKey(p.name, p.email);
       if (seen.has(dedupeKey)) continue;
       seen.add(dedupeKey);
-      if (p.email?.trim()) claimedEmails.add(p.email.trim().toLowerCase());
-      claimedNames.add(p.name.trim().toLowerCase());
       adults.push({
         key: `p${p.id}`,
         scoutParentId: p.id,

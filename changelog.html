@@ -497,6 +497,35 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.13.1 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.13.1</span>
+        <span class="release-date">July 20, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Polish</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Fix &mdash; some adults still appeared twice when signing up</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              An adult whose name was <strong>spelled differently on two of their children&rsquo;s
+              records</strong> still showed up twice in the signup list.
+              <span class="change-note">Scouting records keep a separate parent entry for each child, so a parent with two scouts in the troop has two entries &mdash; and one may read &ldquo;JamieLynn&rdquo; where the other reads &ldquo;Jamie Lynn&rdquo;. The matching added last release used whichever spelling it happened to keep, so the leader record carrying the other spelling was treated as a different person and listed on its own. Both spellings are now recognised, and the duplicate is gone.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              Four more adults known by a <strong>short form of their name</strong> were being listed
+              twice for the same reason.
+              <span class="change-note">Recorded as &ldquo;Dan&rdquo; on one record and &ldquo;Daniel&rdquo; on the other &mdash; a nickname no automatic match would catch. Those records are now linked by email address instead, which stays correct even if a name is edited later. Each of them now appears once, inside their family, rather than a second time on their own.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.13.0 -->
     <div class="release">
       <div class="release-header">
