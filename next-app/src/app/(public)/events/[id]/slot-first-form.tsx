@@ -31,7 +31,10 @@ interface Person {
   name: string;
   sub: string;
   scoutId?: string;
-  parentId?: number;
+  /** scout_parents.id, or null when this adult came from the leader roster. */
+  parentId?: number | null;
+  /** leaders.code, or null when this adult is a parent row. */
+  leaderCode?: string | null;
 }
 
 export interface ExistingClaim {
@@ -98,8 +101,11 @@ export default function SlotFirstForm({
               key: `a${i}`,
               kind: 'adult' as const,
               name: a.name,
-              sub: a.relationship || 'Parent',
-              parentId: a.id
+              /* A leader-roster adult has no relationship to a scout — calling
+                 them "Parent" would be wrong, sometimes conspicuously so. */
+              sub: a.relationship || (a.leaderCode ? 'Adult' : 'Parent'),
+              parentId: a.scoutParentId,
+              leaderCode: a.leaderCode
             }))
           ]
         : [],
@@ -173,6 +179,7 @@ export default function SlotFirstForm({
           person_kind: p.kind,
           scout_id: p.scoutId ?? null,
           scout_parent_id: p.parentId ?? null,
+          leader_code: p.leaderCode ?? null,
           status: 'yes',
           participation: donationOnly ? 'contributor' : 'full',
           guest_count: p.key === people[0]?.key ? guests : 0,

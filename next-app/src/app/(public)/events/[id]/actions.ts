@@ -8,6 +8,7 @@ import { requireFamilyAccess } from '@/lib/family-access';
 import { FAMILY_COOKIE, signFamilySession } from '@/lib/family-session';
 import { secretMatches } from '@/lib/signed-cookie';
 import { safeInternalPath } from '@/lib/safe-redirect';
+import { loadHouseholdByKey, storedHouseholdId } from '@/lib/households';
 
 /**
  * Family gate: exchange the shared troop password for the family cookie.
@@ -92,7 +93,9 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
   // Adults added on the fly become real scout_parents rows, not throwaway names
   // on one entry — that's what makes the roster improve over time. Done BEFORE
   // the entries submit so their new parent ids can be referenced immediately.
-  const householdId = householdKey ? Number(householdKey) : null;
+  // Null for the two party shapes with no stored household row (`scout:<id>`,
+  // `leader:<code>`). The submit RPC already accepts a null household.
+  const householdId = storedHouseholdId(householdKey);
   if (householdId) {
     let newAdults: { name?: string; email?: string; relationship?: string }[] = [];
     try {
@@ -153,10 +156,19 @@ export async function cancelSignupAction(formData: FormData): Promise<void> {
   const householdKey = String(formData.get('householdKey') ?? '');
 
   const supabase = createAdminClient();
-  const { error } = await supabase.rpc('cancel_household_signup', {
+  // Resolve the party server-side rather than trusting posted identities — the
+  // caller only ever names a household key, and we cancel exactly the people
+  // that key resolves to.
+  const party = await loadHouseholdByKey(householdKey);
+  const { error } = await supabase.rpc('cancel_party_signup', {
     p_event_signup_id: signupId,
-    p_household_id: Number(householdKey),
-    p_actor: `family:${audience}`
+    p_actor: `family:${audience}`,
+    p_household_id: storedHouseholdId(householdKey),
+    p_scout_ids: party?.scouts.map((s) => s.id) ?? [],
+    p_scout_parent_ids:
+      party?.adults.map((a) => a.scoutParentId).filter((v): v is number => v != null) ?? [],
+    p_leader_codes:
+      party?.adults.map((a) => a.leaderCode).filter((v): v is string => v != null) ?? []
   });
 
   const back = `/events/${eventId}?household=${encodeURIComponent(householdKey)}`;

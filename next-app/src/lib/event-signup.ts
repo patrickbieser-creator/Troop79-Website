@@ -105,6 +105,7 @@ export interface HouseholdEntry {
   person_kind: 'scout' | 'adult';
   scout_id: string | null;
   scout_parent_id: number | null;
+  leader_code: string | null;
   adult_name: string | null;
   status: 'yes' | 'no' | 'waitlist' | 'cancelled';
   participation: 'full' | 'driver_only' | 'contributor';
@@ -120,26 +121,59 @@ export interface HouseholdEntry {
   answers: { question_id: number; value: string }[];
 }
 
+/** The people a signup party is allowed to see entries for. Needed because two
+ *  of the three party shapes — an unassigned scout, and an adult with no scout
+ *  in the troop — have no `households` row, so their entries carry a null
+ *  household_id and can't be found by the household filter. */
+export interface PartyIdentities {
+  scoutIds: string[];
+  scoutParentIds: number[];
+  leaderCodes: string[];
+}
+
+const ENTRY_COLUMNS =
+  'id, person_kind, scout_id, scout_parent_id, leader_code, adult_name, status, participation, ' +
+  'price_id, days, guest_count, guest_note, notes, permission_slip_received, payment_received';
+
 /**
- * One household's live entries for an event. GATE-ONLY — this returns names
+ * One signup party's live entries for an event. GATE-ONLY — this returns names
  * and must never be rendered without a passing family/leader check.
+ *
+ * A party with a stored household takes the indexed household_id path. A party
+ * without one (unassigned scout, standalone adult) is resolved by identity
+ * instead: fetch the event's entries and keep the ones belonging to this party.
+ * Filtering in memory rather than composing a PostgREST `.or()` avoids building
+ * a filter string out of ids, and an event's entry count is bounded by troop
+ * size, so the read stays small.
  */
-export async function loadHouseholdSignup(
+export async function loadPartySignup(
   eventSignupId: number,
-  householdId: number
+  householdId: number | null,
+  identities: PartyIdentities
 ): Promise<HouseholdEntry[]> {
   const supabase = createAdminClient();
-  const { data: entries } = await supabase
+  let query = supabase
     .from('signup_entries')
-    .select(
-      'id, person_kind, scout_id, scout_parent_id, adult_name, status, participation, ' +
-        'price_id, days, guest_count, guest_note, notes, permission_slip_received, payment_received'
-    )
+    .select(ENTRY_COLUMNS)
     .eq('event_signup_id', eventSignupId)
-    .eq('household_id', householdId)
     .neq('status', 'cancelled');
+  if (householdId != null) query = query.eq('household_id', householdId);
+  const { data: entries } = await query;
 
-  const rows = (entries ?? []) as unknown as Omit<HouseholdEntry, 'claims' | 'answers'>[];
+  const all = (entries ?? []) as unknown as Omit<HouseholdEntry, 'claims' | 'answers'>[];
+  // Household path already filtered in SQL; identity path narrows here.
+  const scoutIds = new Set(identities.scoutIds);
+  const parentIds = new Set(identities.scoutParentIds);
+  const leaderCodes = new Set(identities.leaderCodes);
+  const rows =
+    householdId != null
+      ? all
+      : all.filter(
+          (r) =>
+            (r.scout_id != null && scoutIds.has(r.scout_id)) ||
+            (r.scout_parent_id != null && parentIds.has(r.scout_parent_id)) ||
+            (r.leader_code != null && leaderCodes.has(r.leader_code))
+        );
   if (rows.length === 0) return [];
 
   const { data: claims } = await supabase

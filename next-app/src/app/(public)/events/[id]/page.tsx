@@ -3,11 +3,11 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import {
   loadEventDetail,
-  loadHouseholdSignup,
+  loadPartySignup,
   isSlotFirst,
   signupLocked
 } from '@/lib/event-signup';
-import { loadHouseholds } from '@/lib/households';
+import { loadHouseholds, storedHouseholdId } from '@/lib/households';
 import { gateAudience, familyGateConfigured } from '@/lib/family-access';
 import { formatCalendarDateParts, formatTimeOfDay, categoryColor } from '@/lib/calendar-shared';
 import {
@@ -127,12 +127,22 @@ export default async function EventDetailPage({
   // Household roster and any existing entries are gate-only: they carry names.
   const households = gatedIn && signup ? await loadHouseholds() : [];
   const household = householdKey ? (households.find((h) => h.key === householdKey) ?? null) : null;
-  // Unassigned scouts get a "scout:<id>" key and have no stored household, so
-  // they have no prior entries to load.
-  const householdIdNum =
-    household && !household.key.startsWith('scout:') ? Number(household.key) : null;
+  // "scout:<id>" (unassigned scout) and "leader:<code>" (adult with no scout in
+  // the troop) parties have no stored household row, so their entries carry a
+  // null household_id and are found by identity instead.
+  const householdIdNum = storedHouseholdId(household?.key);
   const existing =
-    householdIdNum && signup ? await loadHouseholdSignup(signup.id, householdIdNum) : [];
+    household && signup
+      ? await loadPartySignup(signup.id, householdIdNum, {
+          scoutIds: household.scouts.map((s) => s.id),
+          scoutParentIds: household.adults
+            .map((a) => a.scoutParentId)
+            .filter((v): v is number => v != null),
+          leaderCodes: household.adults
+            .map((a) => a.leaderCode)
+            .filter((v): v is string => v != null)
+        })
+      : [];
 
   // Map stored entries back to the form's person keys (s0/s1…, a0/a1…).
   const existingClaims = household
@@ -140,7 +150,11 @@ export default async function EventDetailPage({
         let key: string | null = null;
         const si = household.scouts.findIndex((s) => s.id === e.scout_id);
         if (si >= 0) key = `s${si}`;
-        const ai = household.adults.findIndex((a) => a.id === e.scout_parent_id);
+        const ai = household.adults.findIndex(
+          (a) =>
+            (a.scoutParentId != null && a.scoutParentId === e.scout_parent_id) ||
+            (a.leaderCode != null && a.leaderCode === e.leader_code)
+        );
         if (ai >= 0) key = `a${ai}`;
         return key ? e.claims.map((slotId) => ({ slotId, personKey: key! })) : [];
       })
@@ -368,7 +382,8 @@ export default async function EventDetailPage({
                 {!household ? (
                   <>
                     <p className={styles.gateOk}>
-                      ✓ You’re signed in{slotFirst ? ' — pick a job above to choose your family.' : ' — now find your family.'}
+                      ✓ You’re signed in
+                      {slotFirst ? ' — pick a job above to find yourself.' : ' — now find yourself.'}
                     </p>
                     {!slotFirst && <HouseholdPicker households={households} eventId={entry.id} />}
                   </>
@@ -376,10 +391,20 @@ export default async function EventDetailPage({
                   <>
                     <p className={styles.householdBar}>
                       <span>
-                        Signing up the <strong>{household.label}</strong> household
+                        {/* A standalone adult has no household to name — saying
+                            "the Jane Smith household" would read as a bug. */}
+                        {household.scouts.length === 0 ? (
+                          <>
+                            Signing up <strong>{household.label}</strong>
+                          </>
+                        ) : (
+                          <>
+                            Signing up the <strong>{household.label}</strong> household
+                          </>
+                        )}
                       </span>
                       <Link href={`/events/${entry.id}`} className={styles.linkBtn}>
-                        Not you? Change household
+                        Not you? Change
                       </Link>
                     </p>
 

@@ -8,7 +8,7 @@ import type {
   SignupQuestion,
   SignupSlot
 } from '@/lib/event-signup';
-import type { Household } from '@/lib/households';
+import type { Household, HouseholdAdult } from '@/lib/households';
 import styles from './event-detail.module.css';
 
 /*
@@ -64,9 +64,19 @@ export default function PersonFirstForm({
 
   const scouts = household.scouts;
   const adults = household.adults;
+  /** A stored `households` row, as opposed to the `scout:<id>` / `leader:<code>`
+   *  parties that stand alone. Gates anything that needs a household id. */
+  const hasStoredHousehold = /^\d+$/.test(household.key);
 
   const priorScout = (id: string) => existing.find((e) => e.scout_id === id);
-  const priorAdult = (pid: number) => existing.find((e) => e.scout_parent_id === pid);
+  /* Adults come from two tables now (parent rows and the leader roster), so a
+     prior entry matches on whichever identity column this adult carries. */
+  const priorAdult = (a: HouseholdAdult) =>
+    existing.find(
+      (e) =>
+        (a.scoutParentId != null && e.scout_parent_id === a.scoutParentId) ||
+        (a.leaderCode != null && e.leader_code === a.leaderCode)
+    );
 
   const [scoutChoice, setScoutChoice] = useState<Record<string, ScoutChoice>>(() =>
     Object.fromEntries(
@@ -76,29 +86,29 @@ export default function PersonFirstForm({
       })
     )
   );
-  const [adultChoice, setAdultChoice] = useState<Record<number, AdultChoice>>(() =>
+  const [adultChoice, setAdultChoice] = useState<Record<string, AdultChoice>>(() =>
     Object.fromEntries(
       adults.map((a) => {
-        const p = priorAdult(a.id);
-        if (!p) return [a.id, ''];
-        return [a.id, p.participation === 'driver_only' ? 'driver_only' : 'full'];
+        const p = priorAdult(a);
+        if (!p) return [a.key, ''];
+        return [a.key, p.participation === 'driver_only' ? 'driver_only' : 'full'];
       })
     )
   );
   const [tier, setTier] = useState<Record<string, number | null>>(() => {
     const init: Record<string, number | null> = {};
     for (const s of scouts) init[`s:${s.id}`] = priorScout(s.id)?.price_id ?? null;
-    for (const a of adults) init[`a:${a.id}`] = priorAdult(a.id)?.price_id ?? null;
+    for (const a of adults) init[`a:${a.key}`] = priorAdult(a)?.price_id ?? null;
     return init;
   });
   const [days, setDays] = useState<Record<string, number>>(() => {
     const init: Record<string, number> = {};
     for (const s of scouts) init[`s:${s.id}`] = priorScout(s.id)?.days ?? 1;
-    for (const a of adults) init[`a:${a.id}`] = priorAdult(a.id)?.days ?? 1;
+    for (const a of adults) init[`a:${a.key}`] = priorAdult(a)?.days ?? 1;
     return init;
   });
-  const [drives, setDrives] = useState<Record<number, { out: boolean; back: boolean; seats: number }>>(
-    () => Object.fromEntries(adults.map((a) => [a.id, { out: false, back: false, seats: 3 }]))
+  const [drives, setDrives] = useState<Record<string, { out: boolean; back: boolean; seats: number }>>(
+    () => Object.fromEntries(adults.map((a) => [a.key, { out: false, back: false, seats: 3 }]))
   );
   const [guests, setGuests] = useState(existing[0]?.guest_count ?? 0);
   const [guestNote, setGuestNote] = useState(existing[0]?.guest_note ?? '');
@@ -181,8 +191,8 @@ export default function PersonFirstForm({
       .filter((sc) => scoutChoice[sc.id] === 'yes')
       .map((sc) => ({ key: `s:${sc.id}`, name: sc.displayName, kind: 'scout' as const })),
     ...adults
-      .filter((a) => adultChoice[a.id] === 'full')
-      .map((a) => ({ key: `a:${a.id}`, name: a.name, kind: 'adult' as const }))
+      .filter((a) => adultChoice[a.key] === 'full')
+      .map((a) => ({ key: `a:${a.key}`, name: a.name, kind: 'adult' as const }))
   ];
 
   const claimersOf = (slotId: number) => claims[slotId] ?? [];
@@ -229,15 +239,15 @@ export default function PersonFirstForm({
       });
     }
     for (const a of adults) {
-      const c = adultChoice[a.id];
+      const c = adultChoice[a.key];
       if (c === 'driver_only') {
         out.push({ name: a.name, label: 'Driver only — not attending', amount: 0, math: null });
         continue;
       }
       if (c !== 'full') continue;
-      const t = chosenTier(`a:${a.id}`, 'adult');
+      const t = chosenTier(`a:${a.key}`, 'adult');
       if (!t) continue;
-      const d = t.per === 'day' ? days[`a:${a.id}`] : 1;
+      const d = t.per === 'day' ? days[`a:${a.key}`] : 1;
       out.push({
         name: a.name,
         label: t.label,
@@ -271,21 +281,24 @@ export default function PersonFirstForm({
       });
     }
     for (const a of adults) {
-      const c = adultChoice[a.id];
+      const c = adultChoice[a.key];
       if (!c || c === 'no') continue;
       const attending = c === 'full';
-      const t = attending ? chosenTier(`a:${a.id}`, 'adult') : null;
-      const d = drives[a.id] ?? { out: false, back: false, seats: 3 };
+      const t = attending ? chosenTier(`a:${a.key}`, 'adult') : null;
+      const d = drives[a.key] ?? { out: false, back: false, seats: 3 };
       const wantsGuests = attending && !guestsAssigned && guests > 0;
       if (wantsGuests) guestsAssigned = true;
       out.push({
-        key: `a:${a.id}`,
+        key: `a:${a.key}`,
         person_kind: 'adult',
-        scout_parent_id: a.id,
+        /* Exactly one identity column, matching the signup_entries check
+           constraint — a parent row, or a leader-roster adult with no scout. */
+        scout_parent_id: a.scoutParentId,
+        leader_code: a.leaderCode,
         status: 'yes',
         participation: attending ? 'full' : 'driver_only',
         price_id: t?.id ?? null,
-        days: t?.per === 'day' ? days[`a:${a.id}`] : null,
+        days: t?.per === 'day' ? days[`a:${a.key}`] : null,
         drives_out: d.out,
         drives_back: d.back,
         seats_offered_out: d.out ? d.seats : null,
@@ -293,7 +306,7 @@ export default function PersonFirstForm({
         guest_count: wantsGuests ? guests : 0,
         guest_note: wantsGuests ? guestNote || null : null,
         notes: notes || null,
-        answers: attending ? answerArr(`a:${a.id}`, 'adult') : []
+        answers: attending ? answerArr(`a:${a.key}`, 'adult') : []
       });
     }
     return out;
@@ -410,62 +423,66 @@ export default function PersonFirstForm({
         <>
           <p className={styles.dayHead}>Adults</p>
           {adults.map((a) => (
-            <div key={a.id} className={styles.personRow}>
+            <div key={a.key} className={styles.personRow}>
               <div className={styles.personMain}>
                 <span className={styles.personName}>
                   {a.name}
-                  <span className={styles.personSub}>{a.relationship || 'Parent'}</span>
+                  {/* A leader-roster adult has no relationship to a scout —
+                      labelling the Scoutmaster "Parent" is just wrong. */}
+                  <span className={styles.personSub}>
+                    {a.relationship || (a.leaderCode ? 'Adult' : 'Parent')}
+                  </span>
                 </span>
                 <span className={styles.seg}>
                   <button
                     type="button"
-                    className={`${styles.segBtn} ${adultChoice[a.id] === 'full' ? styles.segYes : ''}`}
-                    aria-pressed={adultChoice[a.id] === 'full'}
-                    onClick={() => setAdultChoice((v) => ({ ...v, [a.id]: 'full' }))}
+                    className={`${styles.segBtn} ${adultChoice[a.key] === 'full' ? styles.segYes : ''}`}
+                    aria-pressed={adultChoice[a.key] === 'full'}
+                    onClick={() => setAdultChoice((v) => ({ ...v, [a.key]: 'full' }))}
                   >
                     Attending
                   </button>
                   {signup.drivers_needed && (
                     <button
                       type="button"
-                      className={`${styles.segBtn} ${adultChoice[a.id] === 'driver_only' ? styles.segDrv : ''}`}
-                      aria-pressed={adultChoice[a.id] === 'driver_only'}
-                      onClick={() => setAdultChoice((v) => ({ ...v, [a.id]: 'driver_only' }))}
+                      className={`${styles.segBtn} ${adultChoice[a.key] === 'driver_only' ? styles.segDrv : ''}`}
+                      aria-pressed={adultChoice[a.key] === 'driver_only'}
+                      onClick={() => setAdultChoice((v) => ({ ...v, [a.key]: 'driver_only' }))}
                     >
                       Driver only
                     </button>
                   )}
                   <button
                     type="button"
-                    className={`${styles.segBtn} ${adultChoice[a.id] === 'no' ? styles.segNo : ''}`}
-                    aria-pressed={adultChoice[a.id] === 'no'}
-                    onClick={() => setAdultChoice((v) => ({ ...v, [a.id]: 'no' }))}
+                    className={`${styles.segBtn} ${adultChoice[a.key] === 'no' ? styles.segNo : ''}`}
+                    aria-pressed={adultChoice[a.key] === 'no'}
+                    onClick={() => setAdultChoice((v) => ({ ...v, [a.key]: 'no' }))}
                   >
                     Can’t make it
                   </button>
                 </span>
               </div>
 
-              {adultChoice[a.id] === 'driver_only' && (
+              {adultChoice[a.key] === 'driver_only' && (
                 <p className={styles.drvNote}>
                   Not attending — transportation only. Excluded from the headcount and the two-deep
                   count, and <strong>never charged</strong>.
                 </p>
               )}
 
-              {adultChoice[a.id] === 'full' && tierPicker(`a:${a.id}`, 'adult')}
-              {adultChoice[a.id] === 'full' && questionFields(`a:${a.id}`, 'adult')}
+              {adultChoice[a.key] === 'full' && tierPicker(`a:${a.key}`, 'adult')}
+              {adultChoice[a.key] === 'full' && questionFields(`a:${a.key}`, 'adult')}
 
               {signup.drivers_needed &&
-                (adultChoice[a.id] === 'full' || adultChoice[a.id] === 'driver_only') && (
+                (adultChoice[a.key] === 'full' || adultChoice[a.key] === 'driver_only') && (
                   <div className={styles.personExtra}>
                     <span className={styles.miniLabel}>Can you drive? Each leg counts separately.</span>
                     <label className={styles.chk}>
                       <input
                         type="checkbox"
-                        checked={drives[a.id]?.out ?? false}
+                        checked={drives[a.key]?.out ?? false}
                         onChange={(e) =>
-                          setDrives((v) => ({ ...v, [a.id]: { ...v[a.id], out: e.target.checked } }))
+                          setDrives((v) => ({ ...v, [a.key]: { ...v[a.key], out: e.target.checked } }))
                         }
                       />
                       Drive there
@@ -473,25 +490,25 @@ export default function PersonFirstForm({
                     <label className={styles.chk}>
                       <input
                         type="checkbox"
-                        checked={drives[a.id]?.back ?? false}
+                        checked={drives[a.key]?.back ?? false}
                         onChange={(e) =>
-                          setDrives((v) => ({ ...v, [a.id]: { ...v[a.id], back: e.target.checked } }))
+                          setDrives((v) => ({ ...v, [a.key]: { ...v[a.key], back: e.target.checked } }))
                         }
                       />
                       Drive back
                     </label>
-                    {(drives[a.id]?.out || drives[a.id]?.back) && (
+                    {(drives[a.key]?.out || drives[a.key]?.back) && (
                       <label className={styles.daysRow}>
                         <span className={styles.miniLabel}>Seats besides you</span>
                         <input
                           type="number"
                           min={1}
                           max={8}
-                          value={drives[a.id]?.seats ?? 3}
+                          value={drives[a.key]?.seats ?? 3}
                           onChange={(e) =>
                             setDrives((v) => ({
                               ...v,
-                              [a.id]: { ...v[a.id], seats: Math.max(1, Number(e.target.value) || 1) }
+                              [a.key]: { ...v[a.key], seats: Math.max(1, Number(e.target.value) || 1) }
                             }))
                           }
                           className={styles.numInput}
@@ -505,8 +522,16 @@ export default function PersonFirstForm({
 
           {/* Parent contact info is hard to collect ahead of time; this is often
               the first moment a second adult's details exist. Saved as a real
-              scout_parents row so the roster improves instead of staying stale. */}
-          <div className={styles.addAdult}>
+              scout_parents row so the roster improves instead of staying stale.
+
+              Offered only to parties that HAVE a stored household: a new adult
+              is written by add_parent_to_household, which needs a household id
+              and raises HOUSEHOLD_HAS_NO_SCOUTS without one. Showing the field
+              to a standalone adult would take their input and silently drop it
+              on submit, since the action skips the add step when there's no
+              household. Growing a committee-only household is a real want, but
+              it needs its own design — see Plans/. */}
+          {hasStoredHousehold && <div className={styles.addAdult}>
             {newAdults.map((na, i) => (
               <div key={na.tempId} className={styles.addAdultRow}>
                 <input
@@ -560,7 +585,7 @@ export default function PersonFirstForm({
               Missing a parent or guardian? Add them here — we’ll save them to your scout’s record so
               you don’t have to type it again next time.
             </p>
-          </div>
+          </div>}
         </>
       )}
 
