@@ -23,6 +23,7 @@ import { NameLookupEditor, type NameRow } from './name-lookup-editor';
 import { EventEditor, type EventRow } from './event-editor';
 import { ReqCodesTable, type ReqRow } from './req-codes-table';
 import { LookupCard } from './lookup-card';
+import { HouseholdsManager, type HouseholdRow } from './households-manager';
 import { SkillsEditor, type SkillRow } from './skills-editor';
 import { SkillAssignEditor, type AssignPerson } from './skill-assign-editor';
 import { TagsManager } from './tags-manager';
@@ -146,11 +147,37 @@ async function loadLookups() {
     supabase.from('tags').select('*').order('name')
   ]);
 
-  const [skillsRes, leaderSkillsRes, scoutInstructorsRes] = await Promise.all([
-    supabase.from('skills').select('id, name, youth_teachable, sort_order').order('sort_order'),
-    supabase.from('leader_skills').select('leader_code, skill_id'),
-    supabase.from('scout_instructors').select('scout_id, skill_id')
-  ]);
+  const [skillsRes, leaderSkillsRes, scoutInstructorsRes, householdsRes, hhMembersRes] =
+    await Promise.all([
+      supabase.from('skills').select('id, name, youth_teachable, sort_order').order('sort_order'),
+      supabase.from('leader_skills').select('leader_code, skill_id'),
+      supabase.from('scout_instructors').select('scout_id, skill_id'),
+      supabase.from('households').select('id, label').order('label'),
+      // Members carried through so each household can be told apart by WHO is
+      // in it. Two families sharing a surname is normal — the troop has two
+      // Stollenwerk households — and the label alone cannot distinguish them.
+      supabase
+        .from('household_members')
+        .select('household_id, people!inner(display_name, merged_into_person_id)')
+    ]);
+
+  const memberNames = new Map<number, string[]>();
+  for (const m of (hhMembersRes.data ?? []) as unknown as {
+    household_id: number;
+    people: { display_name: string; merged_into_person_id: number | null } | null;
+  }[]) {
+    if (!m.people || m.people.merged_into_person_id !== null) continue;
+    memberNames.set(m.household_id, [
+      ...(memberNames.get(m.household_id) ?? []),
+      m.people.display_name
+    ]);
+  }
+  const householdRows: HouseholdRow[] = ((householdsRes.data ?? []) as { id: number; label: string }[])
+    .map((h) => ({
+      id: h.id,
+      label: h.label,
+      members: (memberNames.get(h.id) ?? []).sort((a, b) => a.localeCompare(b))
+    }));
 
   // Group counselors by MB
   const counselorsByMb = new Map<string, CounselorRow[]>();
@@ -240,7 +267,8 @@ async function loadLookups() {
     skills,
     skillIdsByLeader,
     skillIdsByScout,
-    tags: (tagsRes.data ?? []) as Tag[]
+    tags: (tagsRes.data ?? []) as Tag[],
+    householdRows
   };
 }
 
@@ -260,7 +288,8 @@ export default async function LookupsPage() {
     skills,
     skillIdsByLeader,
     skillIdsByScout,
-    tags
+    tags,
+    householdRows
   } = await loadLookups();
   const leadersLite = leaders.map((l) => ({ code: l.code, name: l.name }));
 
@@ -423,6 +452,13 @@ export default async function LookupsPage() {
           sub={`${tags.length} tags · the controlled vocabulary scouts pick from when drafting articles`}
         >
           <TagsManager tags={tags} />
+        </Card>
+
+        <Card
+          title="Households"
+          sub={`${householdRows.length} households · who belongs to one is set on each person under Roster · two families can share a surname, so name them apart`}
+        >
+          <HouseholdsManager households={householdRows} />
         </Card>
       </div>
     </>
