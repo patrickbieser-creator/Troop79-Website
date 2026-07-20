@@ -17,7 +17,8 @@ import {
   ReviewClient,
   type QueueRow,
   type BatchSummary,
-  type PersonRelationship
+  type PersonRelationship,
+  type MergeCandidate
 } from './review-client';
 import styles from './roster-import.module.css';
 
@@ -92,6 +93,21 @@ export default async function RosterImportPage({
 
   const batch = batches.find((b) => b.id === activeBatch) ?? batches[0];
 
+  // Duplicate people the exact-email backfill could not resolve. These block
+  // the next phase: until they are merged, pointing households.ts at person_id
+  // would list each of these humans twice in the family signup picker.
+  const { data: candidateRows } = await supabase
+    .from('person_merge_candidate_detail')
+    .select('*');
+  const candidates = (candidateRows ?? []) as MergeCandidate[];
+
+  const { count: cleanCount } = await supabase
+    .from('merge_review_queue')
+    .select('suggestion_id', { count: 'exact', head: true })
+    .eq('batch_id', activeBatch)
+    .in('confidence', ['bsa_member_id', 'email'])
+    .eq('conflict_count', 0);
+
   // Relationships already recorded for anyone in this queue, BOTH directions.
   // A person routinely has several — two children, or a child plus a spouse's
   // child — so the screen has to show the whole set, not just the last one
@@ -153,6 +169,8 @@ export default async function RosterImportPage({
         rows={rows}
         decidedCount={decidedCount ?? 0}
         relationshipsByPerson={relationshipsByPerson}
+        candidates={candidates}
+        cleanCount={cleanCount ?? 0}
       />
     </>
   );

@@ -305,3 +305,49 @@ export async function removeRelationship(relationshipId: number): Promise<Result
   revalidatePath(PATH);
   return { ok: true };
 }
+
+/**
+ * Merge two person records into one.
+ *
+ * The most destructive action on this screen — it moves every link off one
+ * person and onto another — so it runs entirely inside one Postgres function.
+ * The losing record is retained with merged_into_person_id set, never deleted,
+ * so a wrong merge stays visible and can be unpicked.
+ */
+export async function mergePeople(survivorId: number, loserId: number): Promise<Result> {
+  const session = await requireRole(['leader']);
+  if (survivorId === loserId) return { ok: false, error: 'Pick two different records.' };
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.rpc('merge_people', {
+    p_survivor: survivorId,
+    p_loser: loserId,
+    p_decided_by: session.leader
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(PATH);
+  return { ok: true };
+}
+
+/**
+ * Accept every row matching on BSA id or corroborated email that carries no
+ * conflicting field, taking only the fields where nothing is on record yet.
+ *
+ * Clicking ~59 unambiguous rows one at a time is not review, it is fatigue —
+ * and fatigue is what makes someone rubber-stamp the dozen rows that genuinely
+ * need judgement. Name-only and no-match rows are deliberately excluded.
+ */
+export async function acceptAllClean(batchId: number): Promise<Result & { count?: number }> {
+  const session = await requireRole(['leader']);
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase.rpc('accept_clean_suggestions', {
+    p_batch_id: batchId,
+    p_decided_by: session.leader
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(PATH);
+  return { ok: true, count: typeof data === 'number' ? data : undefined };
+}

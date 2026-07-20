@@ -10,6 +10,8 @@ import {
   searchPeople,
   addRelationship,
   removeRelationship,
+  mergePeople,
+  acceptAllClean,
   type RelationshipInput
 } from './actions';
 import styles from './roster-import.module.css';
@@ -29,6 +31,22 @@ export interface PersonRelationship {
   type: 'parent_of' | 'guardian_of' | 'sibling_of' | 'emergency_contact_for';
   isGuardian: boolean;
   otherName: string;
+}
+
+export interface MergeCandidate {
+  person_id: number;
+  person_name: string;
+  candidate_id: number;
+  candidate_name: string;
+  evidence: string;
+  person_email: string | null;
+  candidate_email: string | null;
+  person_bsa: string | null;
+  candidate_bsa: string | null;
+  person_links: number;
+  candidate_links: number;
+  person_rels: number;
+  candidate_rels: number;
 }
 
 export interface FieldChange {
@@ -102,13 +120,17 @@ export function ReviewClient({
   activeBatch,
   rows,
   decidedCount,
-  relationshipsByPerson
+  relationshipsByPerson,
+  candidates,
+  cleanCount
 }: {
   batches: BatchSummary[];
   activeBatch: BatchSummary;
   rows: QueueRow[];
   decidedCount: number;
   relationshipsByPerson: Record<number, PersonRelationship[]>;
+  candidates: MergeCandidate[];
+  cleanCount: number;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -116,6 +138,8 @@ export function ReviewClient({
   const [chosen, setChosen] = useState<Record<number, string[]>>({});
   const [filter, setFilter] = useState<'all' | QueueRow['confidence']>('all');
   const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<'queue' | 'duplicates'>('queue');
+  const [notice, setNotice] = useState<string | null>(null);
 
   const counts = rows.reduce<Record<string, number>>((acc, r) => {
     acc[r.confidence] = (acc[r.confidence] ?? 0) + 1;
@@ -124,12 +148,16 @@ export function ReviewClient({
 
   const visible = filter === 'all' ? rows : rows.filter((r) => r.confidence === filter);
 
-  function run(fn: () => Promise<{ ok: boolean; error?: string }>) {
+  function run(fn: () => Promise<{ ok: boolean; error?: string }>, okMessage?: string) {
     setError(null);
+    setNotice(null);
     startTransition(async () => {
       const res = await fn();
       if (!res.ok) setError(res.error ?? 'Something went wrong.');
-      else router.refresh();
+      else {
+        if (okMessage) setNotice(okMessage);
+        router.refresh();
+      }
     });
   }
 
@@ -137,6 +165,28 @@ export function ReviewClient({
 
   return (
     <div>
+      <div className={styles.tabBar}>
+        <button
+          className={tab === 'queue' ? styles.tabActive : styles.tab}
+          onClick={() => setTab('queue')}
+        >
+          Import queue {rows.length}
+        </button>
+        <button
+          className={tab === 'duplicates' ? styles.tabActive : styles.tab}
+          onClick={() => setTab('duplicates')}
+        >
+          Duplicate people {candidates.length}
+        </button>
+      </div>
+
+      {notice && <div className={styles.notice}>{notice}</div>}
+      {error && <div className={styles.error}>{error}</div>}
+
+      {tab === 'duplicates' ? (
+        <DuplicatesPanel candidates={candidates} disabled={pending} onMerge={run} />
+      ) : (
+      <>
       {batches.length > 1 && (
         <div className={styles.batchBar}>
           <span className={styles.fieldLabel}>Batch</span>
@@ -181,10 +231,30 @@ export function ReviewClient({
         )}
       </div>
 
-      {error && <div className={styles.error}>{error}</div>}
-
       {visible.length === 0 && (
         <div className={styles.empty}>Nothing left in this view — every row has been decided.</div>
+      )}
+
+      {cleanCount > 0 && (
+        <div className={styles.bulkBar}>
+          <div>
+            <strong>{cleanCount}</strong> rows match on BSA ID or corroborated email with nothing
+            conflicting.
+            <span className={styles.bulkHint}>
+              Accepting these fills only blanks &mdash; no value already on record is replaced.
+              Name-only and new-person rows are excluded and stay for you to read.
+            </span>
+          </div>
+          <button
+            className={styles.primaryBtn}
+            disabled={pending}
+            onClick={() =>
+              run(() => acceptAllClean(activeBatch.id), `Accepted ${cleanCount} unambiguous rows.`)
+            }
+          >
+            Accept all {cleanCount}
+          </button>
+        </div>
       )}
 
       <div className={styles.list}>
@@ -332,6 +402,134 @@ export function ReviewClient({
           );
         })}
       </div>
+      </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Duplicate people the exact-email backfill could not resolve — the same human
+ * holding both a leader record and a parent record with no email in common.
+ *
+ * The reviewer chooses which record survives rather than the tool guessing.
+ * Link counts are shown because the record carrying real links is almost always
+ * the one to keep; gaps on the survivor are filled from the other rather than
+ * discarded.
+ */
+function DuplicatesPanel({
+  candidates,
+  disabled,
+  onMerge
+}: {
+  candidates: MergeCandidate[];
+  disabled: boolean;
+  onMerge: (fn: () => Promise<{ ok: boolean; error?: string }>, msg?: string) => void;
+}) {
+  if (candidates.length === 0) {
+    return <div className={styles.empty}>No duplicate people outstanding.</div>;
+  }
+
+  return (
+    <div>
+      <div className={styles.summary}>
+        The same person on two records, with no shared email to link them automatically. Merging
+        moves every link onto the record you keep and fills its blanks from the other &mdash;
+        nothing is discarded, and the merged-away record is retained rather than deleted.
+      </div>
+      <div className={styles.list}>
+        {candidates.map((c) => (
+          <div key={`${c.person_id}-${c.candidate_id}`} className={styles.card}>
+            <div className={styles.dupBody}>
+              <div className={styles.dupHead}>
+                <strong>{c.person_name}</strong>
+                <span className={styles.badge}>{c.evidence.replace(/_/g, ' ')}</span>
+              </div>
+              <div className={styles.dupGrid}>
+                <DupSide
+                  id={c.person_id}
+                  name={c.person_name}
+                  email={c.person_email}
+                  bsa={c.person_bsa}
+                  links={c.person_links}
+                  rels={c.person_rels}
+                  otherId={c.candidate_id}
+                  disabled={disabled}
+                  onMerge={onMerge}
+                />
+                <DupSide
+                  id={c.candidate_id}
+                  name={c.candidate_name}
+                  email={c.candidate_email}
+                  bsa={c.candidate_bsa}
+                  links={c.candidate_links}
+                  rels={c.candidate_rels}
+                  otherId={c.person_id}
+                  disabled={disabled}
+                  onMerge={onMerge}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DupSide({
+  id,
+  name,
+  email,
+  bsa,
+  links,
+  rels,
+  otherId,
+  disabled,
+  onMerge
+}: {
+  id: number;
+  name: string;
+  email: string | null;
+  bsa: string | null;
+  links: number;
+  rels: number;
+  otherId: number;
+  disabled: boolean;
+  onMerge: (fn: () => Promise<{ ok: boolean; error?: string }>, msg?: string) => void;
+}) {
+  return (
+    <div className={styles.dupSide}>
+      <div className={styles.dupName}>{name}</div>
+      <dl className={styles.dupFacts}>
+        <div>
+          <dt>Record</dt>
+          <dd>#{id}</dd>
+        </div>
+        <div>
+          <dt>Email</dt>
+          <dd>{email || <em>none</em>}</dd>
+        </div>
+        <div>
+          <dt>BSA ID</dt>
+          <dd>{bsa || <em>none</em>}</dd>
+        </div>
+        <div>
+          <dt>Linked records</dt>
+          <dd>{links}</dd>
+        </div>
+        <div>
+          <dt>Relationships</dt>
+          <dd>{rels}</dd>
+        </div>
+      </dl>
+      <button
+        className={styles.primaryBtn}
+        disabled={disabled}
+        onClick={() => onMerge(() => mergePeople(id, otherId), `Merged into ${name}.`)}
+      >
+        Keep this one
+      </button>
     </div>
   );
 }
