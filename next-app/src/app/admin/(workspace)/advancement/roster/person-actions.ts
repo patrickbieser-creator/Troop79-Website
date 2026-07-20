@@ -209,6 +209,11 @@ export async function searchPeople(
  * that, instead of inferring success from the absence of an error.
  */
 export interface PersonDetail {
+  /** Live status, so the editor never renders a stale copy from the row it was
+   *  opened from — the row may have left the tab entirely by then. */
+  active: boolean;
+  inactiveReason: string | null;
+  tab: string;
   householdId: number | null;
   roles: { id: number; role: string; start_date: string | null; end_date: string | null }[];
   relationships: {
@@ -224,7 +229,8 @@ export async function getPersonDetail(personId: number): Promise<PersonDetail> {
   await requireRole(['leader']);
   const supabase = createAdminClient();
 
-  const [{ data: member }, { data: roles }, { data: rels }] = await Promise.all([
+  const [{ data: person }, { data: member }, { data: roles }, { data: rels }] = await Promise.all([
+    supabase.from('person_directory').select('active, person_inactive_reason, tab').eq('person_id', personId).maybeSingle(),
     supabase.from('household_members').select('household_id').eq('person_id', personId).maybeSingle(),
     supabase
       .from('person_roles')
@@ -252,6 +258,9 @@ export async function getPersonDetail(personId: number): Promise<PersonDetail> {
   };
 
   return {
+    active: person?.active ?? true,
+    inactiveReason: person?.person_inactive_reason ?? null,
+    tab: person?.tab ?? 'adult',
     householdId: member?.household_id ?? null,
     roles: roles ?? [],
     relationships: ((rels ?? []) as unknown as RawRel[]).map((r) => {

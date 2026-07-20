@@ -162,7 +162,9 @@
   text-transform: uppercase; padding: 2px 8px; border-radius: 10px;
 }
 .tagActive { background: var(--admin-green-50, #e8f5ec); color: var(--admin-green-700, #1d6b38); }
-.tagInactive { background: var(--admin-gray-100); color: var(--admin-gray-600); }
+/* Red, matching .chipInactiveTag — inactive is a state to notice, and the
+   grey version read as decoration when scanning a long list. */
+.tagInactive { background: #f2d2d2; color: #7d2626; }
 
 /* Reason under the status tag, patrol under a name — a second line that
    shouldn't compete with the value above it. */
@@ -233,6 +235,8 @@
 .resultBtn:hover { background: var(--admin-gray-50); }
 .savedNote { padding: 8px 12px; margin-bottom: 10px; border-radius: 3px; font-size: 12.5px; background: #f0f6f1; border: 1px solid #b8d6c0; color: #2f6b3f; }
 .chipActiveTag { margin-left: 8px; font-size: 10px; font-weight: 700; letter-spacing: .04em; background: #f0f6f1; color: #2f6b3f; border: 1px solid #b8d6c0; border-radius: 2px; padding: 1px 7px; }
-.chipInactiveTag { margin-left: 8px; font-size: 10px; font-weight: 700; letter-spacing: .04em; background: var(--admin-gray-100); color: var(--admin-gray-600); border: 1px solid var(--admin-gray-300); border-radius: 2px; padding: 1px 7px; }
+/* Red, not grey. Inactive is a state a leader needs to notice while scanning
+   a list of 80 people — grey-on-grey read as decoration and disappeared. */
+.chipInactiveTag { margin-left: 8px; font-size: 10px; font-weight: 700; letter-spacing: .04em; background: #f2d2d2; color: #7d2626; border: 1px solid #c98b8b; border-radius: 2px; padding: 1px 7px; }
 .readValue { font-size: 13px; color: var(--admin-gray-900); padding: 6px 0; }
 .readValue a { color: var(--admin-navy); }

@@ -96,7 +96,13 @@ export function PeopleTable({
   nameById: Record<number, string>;
 }) {
   const router = useRouter();
-  const [openFor, setOpenFor] = useState<number | null>(null);
+  // The whole row, not just an id. Adding a role moves someone from Adults to
+  // Leaders, so they leave `people` on the very refresh that follows the save —
+  // and looking them up by id in a list they had just left returned undefined,
+  // which a non-null assertion happily passed into the editor. That was the
+  // page-load error: the save succeeded, then the dialog crashed rendering a
+  // person who was no longer on the tab.
+  const [openPerson, setOpenPerson] = useState<DirectoryPerson | null>(null);
   const [q, setQ] = useState('');
 
   const visible = useMemo(() => {
@@ -140,7 +146,7 @@ export function PeopleTable({
             return (
               <tr key={p.person_id}>
                 <td>
-                  <button className={styles.linkBtn} onClick={() => setOpenFor(p.person_id)}>
+                  <button className={styles.linkBtn} onClick={() => setOpenPerson(p)}>
                     {p.display_name}
                   </button>
                   {p.active ? (
@@ -178,7 +184,7 @@ export function PeopleTable({
                   )}
                 </td>
                 <td>
-                  <button className={styles.smallBtn} onClick={() => setOpenFor(p.person_id)}>
+                  <button className={styles.smallBtn} onClick={() => setOpenPerson(p)}>
                     Edit
                   </button>
                 </td>
@@ -195,19 +201,26 @@ export function PeopleTable({
         </tbody>
       </table>
 
-      {openFor !== null && (
+      {openPerson !== null && (
         <PersonEditor
-          person={people.find((p) => p.person_id === openFor)!}
+          person={openPerson}
           households={households}
           seed={{
-            householdId: householdByPerson[openFor] ?? null,
+            active: openPerson.active,
+            inactiveReason: openPerson.person_inactive_reason,
+            tab: openPerson.tab,
+            householdId: householdByPerson[openPerson.person_id] ?? null,
             roles: roles
-              .filter((r) => r.person_id === openFor)
+              .filter((r) => r.person_id === openPerson.person_id)
               .map((r) => ({ id: r.id, role: r.role, start_date: r.start_date, end_date: r.end_date })),
             relationships: relationships
-              .filter((r) => r.person_id === openFor || r.related_person_id === openFor)
+              .filter(
+                (r) =>
+                  r.person_id === openPerson.person_id ||
+                  r.related_person_id === openPerson.person_id
+              )
               .map((r) => {
-                const outgoing = r.person_id === openFor;
+                const outgoing = r.person_id === openPerson.person_id;
                 return {
                   id: r.id,
                   outgoing,
@@ -217,7 +230,8 @@ export function PeopleTable({
                 };
               })
           }}
-          onClose={() => setOpenFor(null)}
+          currentTab={people[0]?.tab ?? null}
+          onClose={() => setOpenPerson(null)}
           onChanged={() => router.refresh()}
         />
       )}
@@ -229,12 +243,16 @@ function PersonEditor({
   person,
   households,
   seed,
+  currentTab,
   onClose,
   onChanged
 }: {
   person: DirectoryPerson;
   households: HouseholdOption[];
   seed: PersonDetail;
+  /** Which tab is being viewed, so a person who has just moved off it can say
+   *  so rather than silently vanishing from the list behind the dialog. */
+  currentTab: string | null;
   onClose: () => void;
   onChanged: () => void;
 }) {
@@ -301,6 +319,12 @@ function PersonEditor({
 
         {error && <div className={styles.rowError}>{error}</div>}
         {saved && <div className={styles.savedNote}>{saved}</div>}
+        {currentTab && detail.tab !== currentTab && (
+          <div className={styles.savedNote}>
+            {person.display_name} now appears under{' '}
+            {detail.tab === 'leader' ? 'Leaders' : detail.tab === 'adult' ? 'Adults' : detail.tab}.
+          </div>
+        )}
 
         <section className={styles.editorSection}>
           <h3>Status</h3>
@@ -311,13 +335,13 @@ function PersonEditor({
             offered.
           </p>
           <div className={styles.inlineRow}>
-            <span className={person.active ? styles.chipActiveTag : styles.chipInactiveTag}>
-              {person.active ? 'Active' : 'Inactive'}
+            <span className={detail.active ? styles.chipActiveTag : styles.chipInactiveTag}>
+              {detail.active ? 'Active' : 'Inactive'}
             </span>
-            {!person.active && person.person_inactive_reason && (
-              <span className={styles.muted}>{person.person_inactive_reason}</span>
+            {!detail.active && detail.inactiveReason && (
+              <span className={styles.muted}>{detail.inactiveReason}</span>
             )}
-            {person.active ? (
+            {detail.active ? (
               <>
                 <input
                   className={styles.searchInput}
