@@ -20,6 +20,13 @@ interface CatalogCard {
   hasProgress: boolean;
 }
 
+// No Dynamic API (cookies/headers/searchParams) is used here, so Next
+// silently prerendered this page as static HTML at build time despite the
+// file's own "fetched at request time" intent — it can't reflect a database
+// change (like tonight's mb_progress fix) until the next deploy rebuilds it.
+// Force it dynamic so "live progress" is actually live.
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: 'Merit Badge Progress — Scout Troop 79',
   description:

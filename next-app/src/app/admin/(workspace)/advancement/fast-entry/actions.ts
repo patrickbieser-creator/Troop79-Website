@@ -25,6 +25,105 @@ interface SaveResult {
   ok: boolean;
   inserted: number;
   error?: string;
+  skipped?: SkippedEntry[];
+}
+
+interface SkippedEntry {
+  scout_id: string;
+  code: string;
+  label: string | null;
+}
+
+/** One-time/binary kinds — a scout either has this or doesn't, so a repeat
+ *  is always a mistake (unlike service_hours, camping_nights, etc., which
+ *  are legitimately logged more than once). Only these are deduped. */
+const DEDUP_KINDS: ReadonlySet<LedgerKind> = new Set<LedgerKind>([
+  'rank_requirement',
+  'rank_award',
+  'merit_badge_requirement',
+  'merit_badge_award'
+]);
+
+/** Set of "scout_id kind code" strings already on the active ledger, among
+ *  the DEDUP_KINDS present in `items`. Shared by the pre-submit warning
+ *  check and the actual insert-time filter below. */
+async function queryExistingSet(
+  supabase: ReturnType<typeof createAdminClient>,
+  items: { scout_id: string; kind: LedgerKind; code: string }[]
+): Promise<Set<string>> {
+  const candidates = items.filter((it) => DEDUP_KINDS.has(it.kind));
+  if (candidates.length === 0) return new Set();
+
+  const scoutIds = Array.from(new Set(candidates.map((it) => it.scout_id)));
+  const codes = Array.from(new Set(candidates.map((it) => it.code)));
+  const { data } = await supabase
+    .from('ledger_active')
+    .select('scout_id, kind, code')
+    .in('scout_id', scoutIds)
+    .in('code', codes)
+    .in('kind', Array.from(DEDUP_KINDS));
+
+  return new Set(
+    ((data ?? []) as { scout_id: string; kind: string; code: string }[]).map(
+      (r) => `${r.scout_id} ${r.kind} ${r.code}`
+    )
+  );
+}
+
+/**
+ * Drops any item that's a no-op — the scout already has that exact
+ * (kind, code) on the active ledger. Fast Entry's Requirement-First card
+ * bulk-signs a requirement across many scouts at once with no per-scout
+ * visibility into who already has it (unlike Scout-First, whose picker
+ * shows a completed badge and redirects a click to the undo flow instead
+ * of re-adding). This is the server-side backstop for both cards, and the
+ * only actual guard for Requirement-First's cartesian-product submit.
+ */
+async function filterOutExisting(
+  supabase: ReturnType<typeof createAdminClient>,
+  items: EntryToInsert[]
+): Promise<{ items: EntryToInsert[]; skipped: SkippedEntry[] }> {
+  const existing = await queryExistingSet(supabase, items);
+  const keep: EntryToInsert[] = [];
+  const skipped: SkippedEntry[] = [];
+  for (const it of items) {
+    const key = `${it.scout_id} ${it.kind} ${it.code}`;
+    if (DEDUP_KINDS.has(it.kind) && existing.has(key)) {
+      skipped.push({ scout_id: it.scout_id, code: it.code, label: it.label });
+    } else {
+      keep.push(it);
+    }
+  }
+  return { items: keep, skipped };
+}
+
+/**
+ * Pre-submit check for Requirement-First's confirm dialog: which of the
+ * about-to-be-created (scout, requirement) pairs already exist, so the
+ * leader sees it before clicking Save rather than only from the post-save
+ * "N skipped" summary. Read-only -- addLedgerEntries re-checks and filters
+ * at submit time regardless, since this list can go stale between opening
+ * the dialog and clicking Save.
+ */
+export async function checkExistingCompletions(formData: FormData): Promise<SkippedEntry[]> {
+  try {
+    await ensureLeader();
+  } catch {
+    return [];
+  }
+  let items: EntryToInsert[];
+  try {
+    items = JSON.parse(String(formData.get('items') ?? '[]')) as EntryToInsert[];
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(items) || items.length === 0) return [];
+
+  const supabase = createAdminClient();
+  const existing = await queryExistingSet(supabase, items);
+  return items
+    .filter((it) => DEDUP_KINDS.has(it.kind) && existing.has(`${it.scout_id} ${it.kind} ${it.code}`))
+    .map((it) => ({ scout_id: it.scout_id, code: it.code, label: it.label }));
 }
 
 /**
@@ -62,11 +161,22 @@ export async function addLedgerEntries(formData: FormData): Promise<SaveResult> 
 
   const supabase = createAdminClient();
 
+  // Drop no-ops (scout already has this exact req/award) before award
+  // gating, so a batch that's ENTIRELY already-done doesn't get rejected as
+  // "no items to save" further down without explanation, and so gating
+  // isn't evaluated against rows that won't actually be written.
+  const { items: dedupedItems, skipped } = await filterOutExisting(supabase, items);
+  if (dedupedItems.length === 0) {
+    // Nothing left to insert, but not an error — every selected item was
+    // already signed off. The caller reports this from `skipped`.
+    return { ok: true, inserted: 0, skipped };
+  }
+
   // Award gating: for every award row (MB or rank) check the catalog tree is
   // satisfied for that scout, counting both completed (from the ledger) AND
   // the other rows in this same batch (so leaders can save reqs + award in
   // one click).
-  const gateErrors = await validateAwardRows(supabase, items);
+  const gateErrors = await validateAwardRows(supabase, dedupedItems);
   if (gateErrors.length > 0) {
     const first = gateErrors[0];
     const more = gateErrors.length > 1 ? ` (+${gateErrors.length - 1} more issue${gateErrors.length === 2 ? '' : 's'})` : '';
@@ -77,7 +187,7 @@ export async function addLedgerEntries(formData: FormData): Promise<SaveResult> 
     };
   }
 
-  const rows = items.map((it) => ({
+  const rows = dedupedItems.map((it) => ({
     scout_id: it.scout_id,
     date,
     kind: it.kind,
@@ -104,7 +214,7 @@ export async function addLedgerEntries(formData: FormData): Promise<SaveResult> 
   revalidatePath('/admin/advancement/fast-entry');
   revalidatePath('/admin/advancement/ledger');
   revalidatePath('/admin/advancement/dashboard');
-  return { ok: true, inserted: rows.length };
+  return { ok: true, inserted: rows.length, skipped };
 }
 
 interface AwardGateError {
@@ -410,20 +520,24 @@ export async function loadScoutCompletion(
   }
   if (!scoutId) return [];
   const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from('ledger_active')
-    .select('id, kind, code, date, by')
-    .eq('scout_id', scoutId)
-    .in('kind', [
-      'rank_requirement',
-      'rank_award',
-      'merit_badge_award',
-      'merit_badge_requirement'
-    ]);
+  const [{ data, error }, mbIdsRes] = await Promise.all([
+    supabase
+      .from('ledger_active')
+      .select('id, kind, code, date, by')
+      .eq('scout_id', scoutId)
+      .in('kind', [
+        'rank_requirement',
+        'rank_award',
+        'merit_badge_award',
+        'merit_badge_requirement'
+      ]),
+    supabase.from('merit_badges').select('id')
+  ]);
   if (error || !data) return [];
+  const mbIds = ((mbIdsRes.data ?? []) as { id: string }[]).map((m) => m.id);
   return data
     .map((row) => {
-      const key = keyForLedgerRow({ kind: row.kind, code: row.code });
+      const key = keyForLedgerRow({ kind: row.kind, code: row.code, mbIds });
       if (!key) return null;
       return {
         key,

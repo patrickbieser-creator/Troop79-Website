@@ -122,12 +122,21 @@ export function mbAwardItem(
   };
 }
 
-/** Resolve a ledger row's PickerItem key, given catalog context. */
+/** Resolve a ledger row's PickerItem key, given catalog context.
+ *
+ *  `mbIds` — the real merit_badges ids, needed to correctly split a
+ *  merit_badge_requirement code (shape `<mb_id>-<reqCode>`, e.g.
+ *  "first-aid-2a"). 30 of 64 badge ids contain a hyphen themselves, so
+ *  splitting on the first '-' misreads "first-aid-2a" as mb_id "first" —
+ *  the same bug class fixed for the mb_progress SQL view in
+ *  20260719060000_mb_progress_hyphenated_id_fix.sql. Matches the LONGEST
+ *  known id that's a prefix of code, mirroring that fix's approach. */
 export function keyForLedgerRow(args: {
   kind: LedgerKind;
   code: string;
+  mbIds?: readonly string[];
 }): string | null {
-  const { kind, code } = args;
+  const { kind, code, mbIds } = args;
   if (kind === 'rank_requirement') {
     // code shape: "<rank>-<reqCode>"; split on first dash but two-word ranks
     // contain dashes (second-class, first-class). Match against known prefixes.
@@ -158,11 +167,20 @@ export function keyForLedgerRow(args: {
     return itemKey.mbAward(id);
   }
   if (kind === 'merit_badge_requirement') {
-    const dash = code.indexOf('-');
-    if (dash < 0) return null;
-    const id = code.slice(0, dash);
-    const reqCode = code.slice(dash + 1);
-    return itemKey.mbReq(id, reqCode);
+    let best: string | null = null;
+    for (const id of mbIds ?? []) {
+      if (code.startsWith(`${id}-`) && (!best || id.length > best.length)) {
+        best = id;
+      }
+    }
+    if (!best) {
+      // Fallback if the id list wasn't passed — matches the old (buggy for
+      // hyphenated ids) behavior rather than silently dropping the row.
+      const dash = code.indexOf('-');
+      if (dash < 0) return null;
+      return itemKey.mbReq(code.slice(0, dash), code.slice(dash + 1));
+    }
+    return itemKey.mbReq(best, code.slice(best.length + 1));
   }
   return null;
 }

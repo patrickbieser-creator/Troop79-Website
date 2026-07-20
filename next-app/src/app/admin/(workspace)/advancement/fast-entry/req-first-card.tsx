@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { addLedgerEntries } from './actions';
+import { addLedgerEntries, checkExistingCompletions } from './actions';
 import { RequirementPicker } from './picker';
 import type { CatalogPayload, PickerItem } from './picker-types';
 import styles from './fast-entry.module.css';
@@ -11,6 +11,21 @@ interface Props {
   scouts: { id: string; display_name: string; current_rank: string | null }[];
   leaders: { code: string; name: string }[];
   catalog: CatalogPayload;
+}
+
+interface BulkItem {
+  scout_id: string;
+  kind: PickerItem['kind'];
+  code: string;
+  label: string;
+  unit: string;
+  qty?: number;
+}
+
+interface DupWarning {
+  scout_id: string;
+  code: string;
+  label: string | null;
 }
 
 function todayISO(): string {
@@ -31,15 +46,38 @@ export function ReqFirstCard({ scouts, leaders, catalog }: Props) {
   const [status, setStatus] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmErr, setConfirmErr] = useState<string | null>(null);
+  const [dupWarnings, setDupWarnings] = useState<DupWarning[]>([]);
+  const [checkingDups, setCheckingDups] = useState(false);
   const [isPending, startTransition] = useTransition();
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   const totalEntries = selections.length * selectedScouts.size;
   const selectedScoutRows = scouts.filter((s) => selectedScouts.has(s.id));
+  const scoutNameById = new Map(scouts.map((s) => [s.id, s.display_name]));
   const byLabel = (() => {
     const l = leaders.find((x) => x.code === by);
     return l ? `${l.code} — ${l.name}` : by;
   })();
+
+  // Every selected requirement × every selected scout — the batch that will
+  // actually be submitted. Built once and reused by both the pre-submit
+  // duplicate check and the real save.
+  function buildItems(): BulkItem[] {
+    const items: BulkItem[] = [];
+    for (const s of selections) {
+      for (const sid of selectedScouts) {
+        items.push({
+          scout_id: sid,
+          kind: s.kind,
+          code: s.code,
+          label: s.label,
+          unit: s.unit,
+          qty: s.qty
+        });
+      }
+    }
+    return items;
+  }
 
   useEffect(() => {
     const dlg = dialogRef.current;
@@ -68,9 +106,13 @@ export function ReqFirstCard({ scouts, leaders, catalog }: Props) {
     setNotes('');
     setStatus(null);
     setConfirmOpen(false);
+    setDupWarnings([]);
   }
 
-  // Validate, then open the confirmation modal (no DB write yet).
+  // Validate, then open the confirmation modal (no DB write yet) and check
+  // for scout+requirement pairs that are already signed off, so the leader
+  // sees it before clicking Save rather than only from the post-save
+  // "N skipped" summary.
   function openConfirm() {
     if (selections.length === 0) {
       setStatus({ kind: 'err', msg: 'Pick at least one requirement.' });
@@ -86,38 +128,27 @@ export function ReqFirstCard({ scouts, leaders, catalog }: Props) {
     }
     setStatus(null);
     setConfirmErr(null);
+    setDupWarnings([]);
     setConfirmOpen(true);
+
+    setCheckingDups(true);
+    const fd = new FormData();
+    fd.set('items', JSON.stringify(buildItems()));
+    checkExistingCompletions(fd)
+      .then((dups) => setDupWarnings(dups))
+      .finally(() => setCheckingDups(false));
   }
 
   // Commit the cartesian product: every selected requirement × every selected
-  // scout. Server-side award gating still applies per scout.
+  // scout. Server-side award gating + the actual duplicate filter still
+  // apply regardless of what the pre-submit check above found.
   function commit() {
     setConfirmErr(null);
-    const items: Array<{
-      scout_id: string;
-      kind: PickerItem['kind'];
-      code: string;
-      label: string;
-      unit: string;
-      qty?: number;
-    }> = [];
-    for (const s of selections) {
-      for (const sid of selectedScouts) {
-        items.push({
-          scout_id: sid,
-          kind: s.kind,
-          code: s.code,
-          label: s.label,
-          unit: s.unit,
-          qty: s.qty
-        });
-      }
-    }
     const fd = new FormData();
     fd.set('date', date);
     fd.set('by', by);
     fd.set('notes', notes);
-    fd.set('items', JSON.stringify(items));
+    fd.set('items', JSON.stringify(buildItems()));
 
     startTransition(async () => {
       const res = await addLedgerEntries(fd);
@@ -125,14 +156,20 @@ export function ReqFirstCard({ scouts, leaders, catalog }: Props) {
         setConfirmErr(res.error ?? 'Save failed');
         return;
       }
+      const skippedCount = res.skipped?.length ?? 0;
       setStatus({
         kind: 'ok',
-        msg: `Saved ${res.inserted} entr${res.inserted === 1 ? 'y' : 'ies'}.`
+        msg:
+          `Saved ${res.inserted} entr${res.inserted === 1 ? 'y' : 'ies'}.` +
+          (skippedCount > 0
+            ? ` ${skippedCount} skipped — already signed off.`
+            : '')
       });
       setSelectedScouts(new Set());
       setSelections([]);
       setNotes('');
       setConfirmOpen(false);
+      setDupWarnings([]);
       router.refresh();
     });
   }
@@ -326,6 +363,26 @@ export function ReqFirstCard({ scouts, leaders, catalog }: Props) {
               ))}
             </div>
           </div>
+
+          {checkingDups && (
+            <p style={{ fontSize: 12, color: 'var(--admin-gray-500)', marginTop: 12 }}>
+              Checking for existing sign-offs…
+            </p>
+          )}
+          {!checkingDups && dupWarnings.length > 0 && (
+            <div className={styles.dupWarning}>
+              <div className={styles.dupWarningHead}>
+                {dupWarnings.length} of {totalEntries} already signed off — will be skipped
+              </div>
+              <div className={styles.dupWarningList}>
+                {dupWarnings.map((d, i) => (
+                  <div key={i} className={styles.dupWarningRow}>
+                    {scoutNameById.get(d.scout_id) ?? d.scout_id} — {d.label ?? d.code}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {confirmErr && (
             <div className={styles.statusErr} style={{ marginTop: 12, display: 'block' }}>

@@ -16,6 +16,12 @@ import { publicScoutName } from '@/lib/scout-name';
 import styles from './advancement.module.css';
 import { RosterTable, type RosterRow } from './roster-table';
 
+// No Dynamic API is used here, so Next silently prerendered this page as
+// static HTML at build time — same bug as /merit-badges (see that page's
+// comment): a rank award, promotion, or any other advancement change
+// wouldn't show up here until the next deploy rebuilds the page.
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: 'Advancement Tracker — Scout Troop 79',
   description:
