@@ -191,6 +191,37 @@ come from. It is surfaced verbatim in the review UI and entered by hand.
 - Piper Barry / Piper Kingston share BSA `13706001` with different surnames and emails —
   name change or data error?
 
+## Roster management — four tabs (Patrick, 2026-07-20)
+
+The Roster screen becomes the place where people are linked, replacing the gap
+that left 42 imported people invisible to the signup picker.
+
+| Tab | Contains |
+|---|---|
+| **Active Scouts** | `scouts.active` |
+| **Inactive Scouts** | `scouts` where not active |
+| **Leaders** | anyone holding a current troop role |
+| **Adults** | everyone else — parents, outside merit badge counselors, council reps, anyone with no scout and no role |
+
+**Tab membership is derived, never stored.** A person moves between Leaders and
+Adults by gaining or ending a role, not by being reassigned. Someone who starts
+helping out appears under Leaders; when they stop, they return to Adults.
+
+**A leader need not have a scout in the troop**, and an outside merit badge
+counselor is an Adult rather than a Leader — so 'Leader' means a current role in
+`adult_leader`, `committee_member`, or `chartered_org_rep`. A
+`merit_badge_counselor`-only person stays under Adults.
+
+**The scout tabs and the adult tabs are different lenses, and may overlap.** An
+aged-out scout who now serves as a leader (Maya, promoted 2026-07-13) appears
+under Inactive Scouts *and* Leaders: the scout record is history, the role is
+current, and both are true.
+
+**Relationships and household membership are unaffected by which tab someone
+appears in.** They persist across role changes and are edited explicitly. This
+is the whole point of separating role from relationship — where a person is
+*shown* is a projection of their current role; who they are *related to* is not.
+
 ## Runbook — reversing a bad Accept
 
 There is **no undo in the UI**, by design: `merge_review_queue` excludes any
