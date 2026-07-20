@@ -514,3 +514,58 @@ export async function deletePerson(personId: number): Promise<Result> {
   revalidate();
   return { ok: true };
 }
+
+/**
+ * Create a household and move this person into it.
+ *
+ * Missing until now, and its absence was doing real damage. The household
+ * picker offered only households that already existed, so a second family
+ * sharing a surname had nowhere to go: both Stollenwerk families ended up in
+ * one household, and Adriana Haslam was assigned to a same-named household that
+ * held none of her children. A leader could see the problem and had no way to
+ * fix it.
+ */
+export async function createHouseholdForPerson(
+  personId: number,
+  label: string
+): Promise<Result & { householdId?: number }> {
+  await requireRole(['leader']);
+  const trimmed = label.trim();
+  if (!trimmed) return { ok: false, error: 'Give the household a name.' };
+
+  const supabase = createAdminClient();
+  const { data: created, error } = await supabase
+    .from('households')
+    .insert({ label: trimmed })
+    .select('id')
+    .single();
+  if (error || !created) return { ok: false, error: error?.message ?? 'Could not create it.' };
+
+  const res = await setHousehold(personId, created.id);
+  return res.ok ? { ok: true, householdId: created.id } : res;
+}
+
+/**
+ * Rename a household.
+ *
+ * Labels are seeded from surnames, so two unrelated families — or two branches
+ * of one, which the troop has — read identically in every picker. Renaming one
+ * to "Stollenwerk (Joe & Mindy)" is the only thing that makes them tellable
+ * apart at a glance. Deliberately not forced to be unique: two Johnson families
+ * genuinely share a name, and rejecting that would be wrong.
+ */
+export async function renameHousehold(householdId: number, label: string): Promise<Result> {
+  await requireRole(['leader']);
+  const trimmed = label.trim();
+  if (!trimmed) return { ok: false, error: 'A household needs a name.' };
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from('households')
+    .update({ label: trimmed, updated_at: new Date().toISOString() })
+    .eq('id', householdId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidate();
+  return { ok: true };
+}

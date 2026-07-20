@@ -111,8 +111,14 @@ export default async function RosterPage({
   const relationships = (relsRes.data ?? []) as unknown as RelationshipRow[];
   const households = (householdsRes.data ?? []) as unknown as HouseholdOption[];
   const householdByPerson: Record<number, number> = {};
+  // Who is in each household, so two families sharing a surname can be told
+  // apart. A label alone is not an identifier: production already has two
+  // Stollenwerk households, two Haslam, two Pasquesi.
+  const householdMembers: Record<number, string[]> = {};
   for (const m of (membersRes.data ?? []) as { household_id: number; person_id: number }[]) {
     householdByPerson[m.person_id] = m.household_id;
+    const name = directory.find((p) => p.person_id === m.person_id)?.display_name;
+    if (name) (householdMembers[m.household_id] ??= []).push(name);
   }
   const nameById = Object.fromEntries(directory.map((p) => [p.person_id, p.display_name]));
 
@@ -203,6 +209,7 @@ export default async function RosterPage({
           relationships={relationships}
           households={households}
           householdByPerson={householdByPerson}
+          householdMembers={householdMembers}
           nameById={nameById}
         />
       )}

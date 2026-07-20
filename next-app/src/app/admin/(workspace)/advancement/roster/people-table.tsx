@@ -14,6 +14,8 @@ import {
   setPersonActive,
   mergePersonInto,
   deletePerson,
+  createHouseholdForPerson,
+  renameHousehold,
   type GrantableRole,
   type RelationshipInput,
   type PersonDetail
@@ -88,6 +90,7 @@ export function PeopleTable({
   relationships,
   households,
   householdByPerson,
+  householdMembers,
   nameById
 }: {
   people: DirectoryPerson[];
@@ -95,6 +98,7 @@ export function PeopleTable({
   relationships: RelationshipRow[];
   households: HouseholdOption[];
   householdByPerson: Record<number, number>;
+  householdMembers: Record<number, string[]>;
   nameById: Record<number, string>;
 }) {
   const router = useRouter();
@@ -180,7 +184,13 @@ export function PeopleTable({
                 </td>
                 <td>
                   {hh ? (
-                    households.find((h) => h.id === hh)?.label
+                    <>
+                      {households.find((h) => h.id === hh)?.label}
+                      <span className={styles.subText}>
+                        {(householdMembers[hh] ?? []).length} member
+                        {(householdMembers[hh] ?? []).length === 1 ? '' : 's'}
+                      </span>
+                    </>
                   ) : (
                     <span className={styles.muted}>—</span>
                   )}
@@ -233,6 +243,7 @@ export function PeopleTable({
               })
           }}
           currentTab={people[0]?.tab ?? null}
+          householdMembers={householdMembers}
           onClose={() => setOpenPerson(null)}
           onChanged={() => router.refresh()}
         />
@@ -246,6 +257,7 @@ function PersonEditor({
   households,
   seed,
   currentTab,
+  householdMembers,
   onClose,
   onChanged
 }: {
@@ -255,6 +267,7 @@ function PersonEditor({
   /** Which tab is being viewed, so a person who has just moved off it can say
    *  so rather than silently vanishing from the list behind the dialog. */
   currentTab: string | null;
+  householdMembers: Record<number, string[]>;
   onClose: () => void;
   onChanged: () => void;
 }) {
@@ -262,6 +275,9 @@ function PersonEditor({
   const [relType, setRelType] = useState<RelationshipInput>('parent_of');
   const [isGuardian, setIsGuardian] = useState(false);
   const [reason, setReason] = useState('');
+  const [newHouseholdLabel, setNewHouseholdLabel] = useState('');
+  const [renaming, setRenaming] = useState(false);
+  const [renameLabel, setRenameLabel] = useState('');
 
   // The editor renders what the SERVER says this person is, re-read after every
   // change. Relying on revalidatePath + router.refresh() to feed new props into
@@ -399,12 +415,84 @@ function PersonEditor({
             }
           >
             <option value="">— no household —</option>
-            {households.map((h) => (
-              <option key={h.id} value={h.id}>
-                {h.label}
-              </option>
-            ))}
+            {households.map((h) => {
+              // The label alone is not an identifier — the troop already has two
+              // Stollenwerk households, two Haslam and two Pasquesi. Listing who
+              // is in each is what makes them tellable apart at the moment of
+              // choosing, which is when it matters.
+              const who = householdMembers[h.id] ?? [];
+              return (
+                <option key={h.id} value={h.id}>
+                  {h.label}
+                  {who.length > 0 ? ` — ${who.slice(0, 4).join(', ')}${who.length > 4 ? '…' : ''}` : ' — empty'}
+                </option>
+              );
+            })}
           </select>
+
+          <div className={styles.inlineRow}>
+            {householdId !== null &&
+              (renaming ? (
+                <>
+                  <input
+                    className={styles.searchInput}
+                    value={renameLabel}
+                    placeholder="e.g. Stollenwerk (Joe &amp; Mindy)"
+                    disabled={disabled}
+                    onChange={(e) => setRenameLabel(e.target.value)}
+                  />
+                  <button
+                    className={styles.smallBtn}
+                    disabled={disabled || !renameLabel.trim()}
+                    onClick={() =>
+                      act(() => renameHousehold(householdId, renameLabel), 'Household renamed.')
+                    }
+                  >
+                    Save name
+                  </button>
+                  <button className={styles.smallBtn} disabled={disabled} onClick={() => setRenaming(false)}>
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <button
+                  className={styles.smallBtn}
+                  disabled={disabled}
+                  onClick={() => {
+                    setRenameLabel(households.find((h) => h.id === householdId)?.label ?? '');
+                    setRenaming(true);
+                  }}
+                >
+                  Rename this household
+                </button>
+              ))}
+          </div>
+
+          <div className={styles.inlineRow}>
+            <input
+              className={styles.searchInput}
+              value={newHouseholdLabel}
+              placeholder="New household name"
+              disabled={disabled}
+              onChange={(e) => setNewHouseholdLabel(e.target.value)}
+            />
+            <button
+              className={styles.smallBtn}
+              disabled={disabled || !newHouseholdLabel.trim()}
+              onClick={() =>
+                act(
+                  () => createHouseholdForPerson(person.person_id, newHouseholdLabel),
+                  'Household created and assigned.'
+                )
+              }
+            >
+              + New household
+            </button>
+          </div>
+          <p className={styles.editorHint}>
+            Two families can share a surname — name them apart (&ldquo;Stollenwerk (Joe &amp;
+            Mindy)&rdquo;) rather than leaving two identical entries in the list.
+          </p>
         </section>
 
         {/* ── Roles ─────────────────────────────────────────────────── */}
