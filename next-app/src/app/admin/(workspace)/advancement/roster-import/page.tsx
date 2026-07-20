@@ -13,8 +13,24 @@
 import { cookies } from 'next/headers';
 import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
 import { createAdminClient } from '@/lib/supabase/server';
-import { ReviewClient, type QueueRow, type BatchSummary } from './review-client';
+import {
+  ReviewClient,
+  type QueueRow,
+  type BatchSummary,
+  type PersonRelationship
+} from './review-client';
 import styles from './roster-import.module.css';
+
+/** Shape returned by the two-sided relationships join below. */
+interface RawRelationship {
+  id: number;
+  person_id: number;
+  related_person_id: number;
+  type: PersonRelationship['type'];
+  is_guardian: boolean;
+  person: { display_name: string } | null;
+  related: { display_name: string } | null;
+}
 
 export const metadata = {
   title: 'Roster Import — Troop 79'
@@ -76,6 +92,49 @@ export default async function RosterImportPage({
 
   const batch = batches.find((b) => b.id === activeBatch) ?? batches[0];
 
+  // Relationships already recorded for anyone in this queue, BOTH directions.
+  // A person routinely has several — two children, or a child plus a spouse's
+  // child — so the screen has to show the whole set, not just the last one
+  // added, or a reviewer cannot tell what is already recorded from what is not.
+  const personIds = [...new Set(rows.map((r) => r.person_id).filter((id): id is number => id !== null))];
+  const relationshipsByPerson: Record<number, PersonRelationship[]> = {};
+
+  if (personIds.length > 0) {
+    const idList = personIds.join(',');
+    const { data: relRows } = await supabase
+      .from('relationships')
+      .select(
+        'id, person_id, related_person_id, type, is_guardian,' +
+          'person:people!relationships_person_id_fkey(display_name),' +
+          'related:people!relationships_related_person_id_fkey(display_name)'
+      )
+      .or(`person_id.in.(${idList}),related_person_id.in.(${idList})`);
+
+    for (const row of (relRows ?? []) as unknown as RawRelationship[]) {
+      const push = (owner: number, rel: PersonRelationship) => {
+        relationshipsByPerson[owner] = [...(relationshipsByPerson[owner] ?? []), rel];
+      };
+      if (personIds.includes(row.person_id)) {
+        push(row.person_id, {
+          id: row.id,
+          direction: 'outgoing',
+          type: row.type,
+          isGuardian: row.is_guardian,
+          otherName: row.related?.display_name ?? 'someone'
+        });
+      }
+      if (personIds.includes(row.related_person_id)) {
+        push(row.related_person_id, {
+          id: row.id,
+          direction: 'incoming',
+          type: row.type,
+          isGuardian: row.is_guardian,
+          otherName: row.person?.display_name ?? 'someone'
+        });
+      }
+    }
+  }
+
   return (
     <>
       <div className={styles.pageTitle}>
@@ -93,6 +152,7 @@ export default async function RosterImportPage({
         activeBatch={batch}
         rows={rows}
         decidedCount={decidedCount ?? 0}
+        relationshipsByPerson={relationshipsByPerson}
       />
     </>
   );

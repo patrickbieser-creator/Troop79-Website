@@ -8,7 +8,8 @@ import {
   retargetRow,
   createPersonFromRow,
   searchPeople,
-  addRelationship
+  addRelationship,
+  removeRelationship
 } from './actions';
 import styles from './roster-import.module.css';
 
@@ -19,6 +20,14 @@ export interface BatchSummary {
   row_count: number;
   status: string;
   created_at: string;
+}
+
+export interface PersonRelationship {
+  id: number;
+  direction: 'outgoing' | 'incoming';
+  type: 'parent_of' | 'guardian_of' | 'sibling_of' | 'emergency_contact_for';
+  isGuardian: boolean;
+  otherName: string;
 }
 
 export interface FieldChange {
@@ -57,6 +66,14 @@ const CONFIDENCE_LABEL: Record<QueueRow['confidence'], string> = {
   manual: 'Chosen by hand'
 };
 
+/** Reads inside the sentence "<A> is <word> <B>". */
+const RELATION_WORDS: Record<PersonRelationship['type'], string> = {
+  parent_of: 'parent of',
+  guardian_of: 'guardian of',
+  sibling_of: 'sibling of',
+  emergency_contact_for: 'emergency contact for'
+};
+
 const FIELD_LABEL: Record<string, string> = {
   display_name: 'Name',
   primary_email: 'Email',
@@ -83,12 +100,14 @@ export function ReviewClient({
   batches,
   activeBatch,
   rows,
-  decidedCount
+  decidedCount,
+  relationshipsByPerson
 }: {
   batches: BatchSummary[];
   activeBatch: BatchSummary;
   rows: QueueRow[];
   decidedCount: number;
+  relationshipsByPerson: Record<number, PersonRelationship[]>;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -299,7 +318,9 @@ export function ReviewClient({
                   {!isNew && r.person_id !== null && (
                     <RelationshipEntry
                       personId={r.person_id}
+                      personName={r.person_name ?? r.import_name}
                       sourceLabel={r.relationship_text}
+                      existing={relationshipsByPerson[r.person_id] ?? []}
                       disabled={pending}
                       onDone={(fn) => run(fn)}
                     />
@@ -324,6 +345,10 @@ function PersonPicker({
   disabled: boolean;
   onPick: (personId: number) => void;
 }) {
+  // Picking a name used to clear the box and show nothing, so a successful
+  // choice looked identical to a click that did not register. The name stays
+  // on screen until the server round-trip re-renders the list above.
+  const [picked, setPicked] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const [results, setResults] = useState<{ id: number; display_name: string; primary_email: string | null }[]>([]);
   const [searching, startSearch] = useTransition();
@@ -348,6 +373,7 @@ function PersonPicker({
         disabled={disabled}
       />
       {searching && <span className={styles.searching}>searching…</span>}
+      {picked && !q && <span className={styles.picked}>✓ {picked} selected</span>}
       {results.length > 0 && (
         <ul className={styles.results}>
           {results.map((p) => (
@@ -356,6 +382,7 @@ function PersonPicker({
                 className={styles.resultBtn}
                 disabled={disabled}
                 onClick={() => {
+                  setPicked(p.display_name);
                   onPick(p.id);
                   setQ('');
                   setResults([]);
@@ -379,12 +406,16 @@ function PersonPicker({
  */
 function RelationshipEntry({
   personId,
+  personName,
   sourceLabel,
+  existing,
   disabled,
   onDone
 }: {
   personId: number;
+  personName: string;
   sourceLabel: string | null;
+  existing: PersonRelationship[];
   disabled: boolean;
   onDone: (fn: () => Promise<{ ok: boolean; error?: string }>) => void;
 }) {
@@ -393,7 +424,42 @@ function RelationshipEntry({
 
   return (
     <div className={styles.relEntry}>
-      <span className={styles.fieldLabel}>Record a relationship</span>
+      <span className={styles.fieldLabel}>
+        Relationships on record{existing.length > 0 ? ` (${existing.length})` : ''}
+      </span>
+      {existing.length === 0 ? (
+        <p className={styles.relNone}>None recorded yet.</p>
+      ) : (
+        <ul className={styles.relList}>
+          {existing.map((rel) => (
+            <li key={`${rel.id}-${rel.direction}`} className={styles.relItem}>
+              <span>
+                {rel.direction === 'outgoing' ? (
+                  <>
+                    <strong>{personName}</strong> is {RELATION_WORDS[rel.type]}{' '}
+                    <strong>{rel.otherName}</strong>
+                  </>
+                ) : (
+                  <>
+                    <strong>{rel.otherName}</strong> is {RELATION_WORDS[rel.type]}{' '}
+                    <strong>{personName}</strong>
+                  </>
+                )}
+                {rel.isGuardian && <span className={styles.guardianTag}>guardian</span>}
+              </span>
+              <button
+                className={styles.removeBtn}
+                disabled={disabled}
+                onClick={() => onDone(() => removeRelationship(rel.id))}
+              >
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <span className={styles.fieldLabel}>Record another relationship</span>
       <div className={styles.relControls}>
         <span className={styles.relPrefix}>This person is</span>
         <select

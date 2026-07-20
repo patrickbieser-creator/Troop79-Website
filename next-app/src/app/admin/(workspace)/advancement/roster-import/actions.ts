@@ -305,3 +305,16 @@ export async function addRelationship(
   revalidatePath(PATH);
   return { ok: true };
 }
+
+/** Undo a relationship recorded by mistake. Deletes the edge only — neither
+ *  person is touched. */
+export async function removeRelationship(relationshipId: number): Promise<Result> {
+  await requireRole(['leader']);
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.from('relationships').delete().eq('id', relationshipId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(PATH);
+  return { ok: true };
+}
