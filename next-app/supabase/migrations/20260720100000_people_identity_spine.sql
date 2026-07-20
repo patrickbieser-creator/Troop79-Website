@@ -164,22 +164,36 @@ create index if not exists scout_parents_person_idx on public.scout_parents (per
 -- there, since most leaders rows carry no email.
 -- ═══════════════════════════════════════════════════════════════════════════
 
+-- Temporary correlation key, dropped at the end of the backfill.
+--
+-- The first version of this file inserted a person per source row and then
+-- linked back by matching display_name and taking min(id). That is name-based
+-- correlation inside the migration whose entire purpose is to END name-based
+-- correlation, and it is unsound: nothing constrains scouts.display_name (or
+-- leader/parent names) to be unique, so two people sharing a name would both
+-- link to the lowest-id row and one person's demographics would silently land
+-- on another. It happens to be safe against today's data — 0 duplicate display
+-- names among scouts, leaders, or parents, checked — but seven scouts DO share
+-- a name with an adult record, so a later run with a new scout could mislink
+-- to the adult. Correlating on the source row's own primary key removes the
+-- class of bug entirely rather than relying on the data staying lucky.
+alter table public.people add column if not exists _backfill_key text;
+create unique index if not exists people_backfill_key_idx on public.people (_backfill_key);
+
 -- 1. Every scout is a person. No matching required; scouts are already unique.
-insert into public.people (first_name, last_name, display_name, birthdate, gender, primary_email, primary_phone, bsa_member_id)
+insert into public.people (first_name, last_name, display_name, birthdate, gender, primary_email, primary_phone, bsa_member_id, _backfill_key)
 select s.first_name, s.last_name, coalesce(nullif(s.display_name, ''), s.first_name || ' ' || s.last_name),
-       s.birthdate, s.gender, nullif(trim(s.email), ''), nullif(trim(s.phone), ''), nullif(trim(s.bsa_member_id), '')
+       s.birthdate, s.gender, nullif(trim(s.email), ''), nullif(trim(s.phone), ''), nullif(trim(s.bsa_member_id), ''),
+       'scout:' || s.id
 from public.scouts s
-where s.person_id is null;
+where s.person_id is null
+on conflict (_backfill_key) do nothing;
 
 update public.scouts s
 set person_id = p.id
 from public.people p
 where s.person_id is null
-  and p.display_name = coalesce(nullif(s.display_name, ''), s.first_name || ' ' || s.last_name)
-  and p.id = (
-    select min(p2.id) from public.people p2
-    where p2.display_name = coalesce(nullif(s.display_name, ''), s.first_name || ' ' || s.last_name)
-  );
+  and p._backfill_key = 'scout:' || s.id;
 
 -- 2. Youth leader codes resolve to their scout's person via the DECLARED link
 --    (leaders.scout_id, D-013) rather than by name. This is the one adult/scout
@@ -223,20 +237,23 @@ resolved as (
   from groups g
 ),
 created as (
-  insert into public.people (first_name, last_name, display_name, primary_email, primary_phone)
+  insert into public.people (first_name, last_name, display_name, primary_email, primary_phone, _backfill_key)
   select nullif(split_part(r.nm, ' ', 1), ''),
          nullif(substring(r.nm from position(' ' in r.nm) + 1), ''),
-         r.nm, r.em, r.ph
+         r.nm, r.em, r.ph, 'parent:' || r.gkey
   from resolved r
   where r.existing_id is null
-  returning id, display_name, lower(trim(coalesce(primary_email, ''))) as em
+  on conflict (_backfill_key) do nothing
+  -- Returned from the CTE, not re-read from the table: rows a data-modifying
+  -- CTE inserts are invisible to any other read of that table in the SAME
+  -- statement, so a lookup against public.people here silently finds nothing.
+  returning id, _backfill_key
 )
+-- Correlate on the group key, not on the name that was just written.
 update public.scout_parents sp
 set person_id = coalesce(
       r.existing_id,
-      (select min(c.id) from created c
-       where c.display_name = r.nm
-         and c.em = coalesce(r.em, ''))
+      (select c.id from created c where c._backfill_key = 'parent:' || r.gkey)
     )
 from resolved r
 where sp.person_id is null
@@ -258,16 +275,22 @@ resolved as (
   from unresolved u
 ),
 created as (
-  insert into public.people (first_name, last_name, display_name, primary_email, primary_phone, birthdate, bsa_member_id)
+  insert into public.people (first_name, last_name, display_name, primary_email, primary_phone, birthdate, bsa_member_id, _backfill_key)
   select nullif(split_part(r.name, ' ', 1), ''),
          nullif(substring(r.name from position(' ' in r.name) + 1), ''),
-         r.name, r.em, r.ph, r.birthdate, r.bsa
+         r.name, r.em, r.ph, r.birthdate, r.bsa, 'leader:' || r.code
   from resolved r
   where r.existing_id is null
-  returning id, display_name
+  on conflict (_backfill_key) do nothing
+  -- See the note in step 3: correlate through the CTE's own RETURNING.
+  returning id, _backfill_key
 )
+-- Correlate on leaders.code, not on the name that was just written.
 update public.leaders l
-set person_id = coalesce(r.existing_id, (select min(c.id) from created c where c.display_name = r.name))
+set person_id = coalesce(
+      r.existing_id,
+      (select c.id from created c where c._backfill_key = 'leader:' || r.code)
+    )
 from resolved r
 where l.code = r.code and l.person_id is null;
 
@@ -304,13 +327,20 @@ from public.scouts s
 where s.person_id is not null and s.active
 on conflict do nothing;
 
+-- `on conflict do nothing` cannot guard this insert: the partial unique index
+-- person_roles_one_current only covers rows with a NULL end_date, and these all
+-- carry one, so there is no conflict target to hit. A re-run would append a
+-- second ended-role row per scout. Guarding on absence instead.
 insert into public.person_roles (person_id, role, start_date, end_date, notes)
 select distinct s.person_id, 'youth_member', s.joined_date, current_date,
        'End date approximate — set from inactive status at spine backfill, actual date unknown'
        || coalesce(' (' || nullif(trim(s.inactive_reason), '') || ')', '')
 from public.scouts s
 where s.person_id is not null and not s.active
-on conflict do nothing;
+  and not exists (
+    select 1 from public.person_roles pr
+    where pr.person_id = s.person_id and pr.role = 'youth_member'
+  );
 
 insert into public.person_roles (person_id, role)
 select distinct l.person_id, 'adult_leader'
@@ -336,6 +366,11 @@ from public.scout_parents sp
 join public.scouts s on s.id = sp.scout_id
 where sp.person_id is not null and s.person_id is not null and sp.person_id <> s.person_id
 on conflict do nothing;
+
+-- The correlation key has served its purpose; nothing outside this file may
+-- depend on it.
+drop index if exists public.people_backfill_key_idx;
+alter table public.people drop column if exists _backfill_key;
 
 -- ── Review queue for what exact-email matching could not resolve ───────────
 -- Read-only. Surfaces same-human candidates WITHOUT acting on them, which is

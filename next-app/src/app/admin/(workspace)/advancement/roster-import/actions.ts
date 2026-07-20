@@ -68,50 +68,17 @@ export async function acceptSuggestion(
 
   const supabase = createAdminClient();
 
-  const { data: sug, error: sugErr } = await supabase
-    .from('merge_suggestions')
-    .select('id, person_id, status, field_changes, import_row_id')
-    .eq('id', suggestionId)
-    .single();
-  if (sugErr || !sug) return { ok: false, error: 'Suggestion not found.' };
-  if (sug.status !== 'pending') return { ok: false, error: 'Already decided.' };
-  if (!sug.person_id) {
-    return { ok: false, error: 'No person on this suggestion — use Create new person instead.' };
-  }
-
-  // Re-read the row's own field_changes rather than trusting values posted from
-  // the browser: the client sends field NAMES to take, never values.
-  const changes = (sug.field_changes ?? []) as FieldChange[];
-  const patch: Record<string, string | null> = {};
-  for (const f of changes) {
-    if (!chosenFields.includes(f.field)) continue;
-    if (!APPLIABLE.has(f.field)) continue;
-    patch[f.field] = f.csv_value === '' ? null : f.csv_value;
-  }
-
-  if (Object.keys(patch).length > 0) {
-    const { error: updErr } = await supabase.from('people').update(patch).eq('id', sug.person_id);
-    if (updErr) return { ok: false, error: `Updating person: ${updErr.message}` };
-  }
-
-  const { error: accErr } = await supabase
-    .from('merge_suggestions')
-    .update({
-      status: 'accepted',
-      decided_at: new Date().toISOString(),
-      decided_by: session.leader,
-      decision_note: note || null
-    })
-    .eq('id', suggestionId);
-  if (accErr) return { ok: false, error: `Accepting: ${accErr.message}` };
-
-  // Competing candidates for the same source row can no longer be chosen.
-  await supabase
-    .from('merge_suggestions')
-    .update({ status: 'superseded' })
-    .eq('import_row_id', sug.import_row_id)
-    .eq('status', 'pending')
-    .neq('id', suggestionId);
+  // One transaction in Postgres, not two round-trips. Patching `people` and
+  // recording the decision must both happen or neither: a failure between them
+  // used to leave a person record already changed while the UI reported failure
+  // and the row still read as pending.
+  const { error } = await supabase.rpc('accept_merge_suggestion', {
+    p_suggestion_id: suggestionId,
+    p_fields: chosenFields.filter((f) => APPLIABLE.has(f)),
+    p_decided_by: session.leader,
+    p_note: note ?? null
+  });
+  if (error) return { ok: false, error: error.message };
 
   revalidatePath(PATH);
   return { ok: true };

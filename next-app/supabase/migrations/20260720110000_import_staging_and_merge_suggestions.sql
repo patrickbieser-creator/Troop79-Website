@@ -162,3 +162,73 @@ order by
     else 4
   end,
   r.line_no;
+
+-- ── Accepting a suggestion, atomically ─────────────────────────────────────
+-- The first version did this as two separate client calls: patch `people`,
+-- then flip the suggestion to accepted. They are not one transaction, so if
+-- the second call failed — a network blip, or the merge_suggestions_one_accepted
+-- index rejecting a concurrent second accept — the person record had ALREADY
+-- been changed while the UI reported failure and the row still showed as
+-- pending. The reviewer would then re-decide a row whose target had silently
+-- moved under them. One function, one transaction, both writes or neither.
+--
+-- Takes field NAMES, never values: the values are read here from the row's own
+-- stored field_changes, so nothing a browser sends can put arbitrary data into
+-- a person record.
+create or replace function public.accept_merge_suggestion(
+  p_suggestion_id bigint,
+  p_fields text[],
+  p_decided_by text,
+  p_note text default null
+) returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_person bigint;
+  v_row bigint;
+  v_status text;
+  v_changes jsonb;
+  v_name text; v_email text; v_phone text; v_bsa text; v_birth text; v_gender text;
+begin
+  -- Locked for the duration so two reviewers cannot accept the same row twice.
+  select person_id, import_row_id, status, field_changes
+    into v_person, v_row, v_status, v_changes
+  from merge_suggestions where id = p_suggestion_id for update;
+
+  if not found then raise exception 'Suggestion not found'; end if;
+  if v_status <> 'pending' then raise exception 'This row has already been decided'; end if;
+  if v_person is null then raise exception 'No person on this suggestion — create a new person instead'; end if;
+
+  select
+    max(case when fc->>'field' = 'display_name'   then fc->>'csv_value' end),
+    max(case when fc->>'field' = 'primary_email'  then fc->>'csv_value' end),
+    max(case when fc->>'field' = 'primary_phone'  then fc->>'csv_value' end),
+    max(case when fc->>'field' = 'bsa_member_id'  then fc->>'csv_value' end),
+    max(case when fc->>'field' = 'birthdate'      then fc->>'csv_value' end),
+    max(case when fc->>'field' = 'gender'         then fc->>'csv_value' end)
+  into v_name, v_email, v_phone, v_bsa, v_birth, v_gender
+  from jsonb_array_elements(coalesce(v_changes, '[]'::jsonb)) fc;
+
+  update people set
+    -- display_name is NOT NULL, so an empty file value can never blank it.
+    display_name  = case when 'display_name'  = any(p_fields) and nullif(v_name, '') is not null
+                         then v_name else display_name end,
+    primary_email = case when 'primary_email' = any(p_fields) then nullif(v_email, '')  else primary_email end,
+    primary_phone = case when 'primary_phone' = any(p_fields) then nullif(v_phone, '')  else primary_phone end,
+    bsa_member_id = case when 'bsa_member_id' = any(p_fields) then nullif(v_bsa, '')    else bsa_member_id end,
+    birthdate     = case when 'birthdate'     = any(p_fields) then nullif(v_birth, '')::date else birthdate end,
+    gender        = case when 'gender'        = any(p_fields) then nullif(v_gender, '') else gender end,
+    updated_at    = now()
+  where id = v_person;
+
+  update merge_suggestions
+  set status = 'accepted', decided_at = now(), decided_by = p_decided_by, decision_note = p_note
+  where id = p_suggestion_id;
+
+  update merge_suggestions
+  set status = 'superseded'
+  where import_row_id = v_row and status = 'pending' and id <> p_suggestion_id;
+end;
+$$;

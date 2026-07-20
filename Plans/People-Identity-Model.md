@@ -191,6 +191,38 @@ come from. It is surfaced verbatim in the review UI and entered by hand.
 - Piper Barry / Piper Kingston share BSA `13706001` with different surnames and emails —
   name change or data error?
 
+## Runbook — reversing a bad Accept
+
+There is **no undo in the UI**, by design: `merge_review_queue` excludes any
+import row that has an accepted suggestion, so a wrong accept disappears from
+the queue rather than offering itself for correction. With ~125 rows decided by
+hand, assume this will happen at least once.
+
+To reverse one, in SQL:
+
+```sql
+-- 1. Find it, and see exactly what it changed.
+select s.id, s.person_id, p.display_name, s.field_changes, s.decided_by, s.decided_at
+from merge_suggestions s join people p on p.id = s.person_id
+where s.status = 'accepted' and s.import_row_id = <row>;
+
+-- 2. Put back any field it overwrote, using db_value from field_changes above.
+update people set <field> = '<db_value>' where id = <person_id>;
+
+-- 3. Return the row to the queue, and un-park its siblings.
+update merge_suggestions set status = 'pending', decided_at = null,
+       decided_by = null, decision_note = null
+where id = <suggestion_id>;
+update merge_suggestions set status = 'pending'
+where import_row_id = <row> and status = 'superseded';
+```
+
+`field_changes` is stored precisely so this is possible — it records the value
+that *was* on record at the time of the decision, not just the one taken. A
+person created in error via **Create new person** is deleted with
+`delete from people where id = <id>`, which cascades its suggestion row; it has
+no links into scouts/leaders/scout_parents unless one was made by hand.
+
 ## Out of Scope
 
 - The "Event Registration History" sheet — substantial, deferred to its own effort.
