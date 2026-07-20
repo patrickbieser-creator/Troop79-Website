@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submit &amp; Present, Access Control, and Data-Correctness Fixes — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #2e4530;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #faf6ef;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); }
+        tr:hover { background: var(--nw-sage); }
+
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+
+        @media print {
+            body { background: white; }
+            header { padding: 1.5rem; }
+            .container { padding: 1rem; }
+            .stat { break-inside: avoid; }
+        }
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.5rem; }
+            .stats { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Submit &amp; Present, Access Control, and Data-Correctness Fixes</h1>
+        <p class="subtitle">Shipped to production — Scout Troop 79 admin workspace and public site</p>
+        <div class="meta">
+            <span>&#128197; July 19, 2026</span>
+            <span>&#129302; Operator</span>
+            <span>&#128204; Troop79-Website</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">5</div><div class="label">Decisions Recorded</div></div>
+            <div class="stat"><div class="number">13</div><div class="label">Pages Access-Fixed</div></div>
+            <div class="stat"><div class="number">30</div><div class="label">Badges Fixed by ID Bug</div></div>
+            <div class="stat"><div class="number">10&rarr;0</div><div class="label">Lint Errors</div></div>
+            <div class="stat"><div class="number">3</div><div class="label">Production Deploys</div></div>
+            <div class="stat"><div class="number">3</div><div class="label">DB Migrations Applied</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <h3>Submit &amp; Present</h3>
+        <p>New admin screen tracks two independent human confirmations per rank / merit badge / special award — submitted to Scoutbook, and presented to the scout — each recording who and when, following the same audit-column pattern already used for archive/delete. Scoutbook Export gained a one-click &ldquo;mark previewed rows as submitted&rdquo; bulk action for right after an upload is verified.</p>
+
+        <h3>Login Access-Control Fix</h3>
+        <div class="callout callout-orange">
+            <strong>Found live in production:</strong> the shared scout-role login could read 13 leader-only admin pages &mdash; the full ledger, meeting attendance, duplicate-record audits, fast entry, lookups, and the dashboard. Only Server Actions were role-gated; the pages themselves only checked &ldquo;is authenticated.&rdquo;
+        </div>
+        <p>All 13 pages fixed with the same <span class="file-path">requireRole(['leader'])</span> pattern already used elsewhere. Added a second, independent layer &mdash; an edge-level allowlist in <span class="file-path">proxy.ts</span> &mdash; so a future new page can&rsquo;t reopen the same class of gap just because someone forgot the per-page check. Scout access was explicitly widened to the Has/Needs Tool by request.</p>
+
+        <h3>Merit Badge Data-Correctness Fixes</h3>
+        <p>Found and fixed the same underlying bug in three independent places, all caused by extracting a merit badge id from a ledger code by splitting on the first hyphen &mdash; which breaks for the 30 of 64 badge ids (First Aid, all four Citizenship badges, Emergency Preparedness, etc.) that contain a hyphen themselves:</p>
+        <ul>
+            <li>The <span class="file-path">mb_progress</span> SQL view &mdash; silently dropped &ldquo;in progress&rdquo; counts on both the public and admin Merit Badge Progress catalogs, and fed wrong candidate data to the Meeting Plan engine, a third non-obvious consumer of the same view.</li>
+            <li>Fast Entry&rsquo;s <span class="file-path">keyForLedgerRow</span> &mdash; silently disabled Scout-First&rsquo;s own duplicate-protection for those same 30 badges.</li>
+            <li><span class="file-path">/merit-badges</span> and <span class="file-path">/advancement</span> &mdash; both public pages used no Dynamic API, so Next.js silently prerendered them as static HTML at build time. Neither could reflect any database change, including the <span class="file-path">mb_progress</span> fix above, until the next deploy rebuilt them.</li>
+        </ul>
+        <div class="callout callout-green">
+            Verified end-to-end against real data on both local dev and production before shipping: Archery went from showing &ldquo;0 in progress&rdquo; to correctly showing &ldquo;1 in progress&rdquo; live on <span class="file-path">www.troop-79.com</span>.
+        </div>
+
+        <h3>Fast Entry Duplicate Prevention</h3>
+        <p>Requirement-First&rsquo;s bulk multi-scout entry had no protection against re-signing a requirement a scout already had &mdash; a structural gap (scout selection happens after requirement selection, so there&rsquo;s no per-scout completion context at pick time) with no database constraint behind it either. Very likely a real contributor to the ~434 duplicate ledger record groups already sitting in the Audits backlog.</p>
+        <p>Added a server-side hard block (skips existing scout+kind+code matches among the four one-time/binary kinds, reports what was skipped) plus a pre-submit warning in the confirm dialog. Verified live: bulk-signing a requirement for two scouts, one of whom already had it, correctly saved 1 and skipped 1 with no duplicate row created.</p>
+
+        <h3>Lint Baseline Cleanup</h3>
+        <p>10 long-standing errors (unrelated to this session&rsquo;s feature work) fixed to 0 &mdash; <span class="file-path">prefer-const</span>, explicit <span class="file-path">any</span> in the seed script, an <span class="file-path">&lt;a&gt;</span> that should have been <span class="file-path">&lt;Link&gt;</span>, a dead variable, and three scoped suppressions for legitimate <span class="file-path">setState</span>-in-effect patterns. Two remaining warnings left deliberately &mdash; both need a real refactor with visual verification, not a mechanical sweep.</p>
+
+        <h2>Blockers Resolved</h2>
+        <table>
+            <thead><tr><th>Issue</th><th>Root Cause</th><th>Fix</th></tr></thead>
+            <tbody>
+                <tr><td>Scout login could read 13 leader-only pages</td><td>Only Server Actions were role-gated, not the pages</td><td><span class="file-path">requireRole()</span> on every page + edge-level allowlist</td></tr>
+                <tr><td>Merit badge &ldquo;in progress&rdquo; counts wrong for 30 badges</td><td><span class="file-path">split_part(code,'-',1)</span> breaks on hyphenated badge ids</td><td>Match against the real merit_badges catalog instead</td></tr>
+                <tr><td>Public pages never reflected database changes</td><td>No Dynamic API usage &rarr; Next silently prerendered them static</td><td><span class="file-path">export const dynamic = 'force-dynamic'</span></td></tr>
+                <tr><td>Bulk entry could create duplicate sign-offs</td><td>No per-scout completion context + no DB constraint</td><td>Server-side dedup filter + pre-submit warning</td></tr>
+                <tr><td>Deploy stuck at &ldquo;Initializing&rdquo; for 7+ minutes</td><td>Vercel platform queue delay, unrelated to the lint check</td><td>Resolved on its own; confirmed via <span class="file-path">vercel ls</span></td></tr>
+            </tbody>
+        </table>
+
+        <h2>Decisions</h2>
+        <ul>
+            <li><strong>[D-037]</strong> Scout/leader access must be gated at the page AND the edge, not just the Server Action.</li>
+            <li><strong>[D-038]</strong> Submit &amp; Present reuses the existing audit-column pattern on <span class="file-path">ledger_entries</span>, not a new table.</li>
+            <li><strong>[D-039]</strong> Resolve merit-badge ids by matching real catalog rows, never by splitting on hyphen position.</li>
+            <li><strong>[D-040]</strong> Public Server Component pages must explicitly force dynamic rendering when they show live data.</li>
+            <li><strong>[D-041]</strong> Fast Entry bulk actions get a server-side dedup backstop, not just UI-level protection.</li>
+        </ul>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Rotate the Resend API key (exposed in a chat transcript 2026-07-19)</li>
+            <li>Verify the family signup gate on production in a private window once a signup exists</li>
+            <li>Work through the ~434 remaining duplicate ledger record groups (Records &rarr; Audits) &mdash; tonight&rsquo;s fix prevents new ones from Fast Entry, doesn&rsquo;t retroactively clean up existing ones</li>
+            <li>Understand what the Vercel dashboard lint Check is actually for &mdash; confirmed it&rsquo;s never blocked a deploy despite failing on the pre-existing baseline</li>
+            <li>Clean up <span class="file-path">next-app/.next-broken/</span> once it&rsquo;s no longer locked</li>
+            <li>Bunny CDN credentials in Vercel &mdash; media uploads remain the only dark feature</li>
+        </ul>
+
+        <h2>Files Changed</h2>
+        <p><span class="badge badge-green">NEW</span> <span class="file-path">advancement/records/</span> (Submit &amp; Present page, table, styles) &middot; 2 SQL migrations</p>
+        <p><span class="badge badge-gold">MODIFIED</span> 13 admin pages (access-control) &middot; <span class="file-path">proxy.ts</span> &middot; <span class="file-path">sub-nav.tsx</span> &middot; <span class="file-path">admin/login/actions.ts</span> &middot; <span class="file-path">ledger/actions.ts</span> &middot; <span class="file-path">fast-entry/actions.ts</span> &middot; <span class="file-path">fast-entry/req-first-card.tsx</span> &middot; <span class="file-path">fast-entry/picker-types.ts</span> &middot; <span class="file-path">scoutbook-export/page.tsx</span> &middot; <span class="file-path">merit-badges/page.tsx</span> &middot; <span class="file-path">advancement/page.tsx</span> &middot; 6 files for lint cleanup</p>
+
+    </div>
+
+    <footer>
+        <strong>Scout Troop 79</strong> &mdash; Milwaukee, WI<br>
+        Session Summary &mdash; July 19, 2026 &mdash; Operator
+    </footer>
+</body>
+</html>
