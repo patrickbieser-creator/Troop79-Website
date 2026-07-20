@@ -212,10 +212,23 @@ counselor is an Adult rather than a Leader — so 'Leader' means a current role 
 `adult_leader`, `committee_member`, or `chartered_org_rep`. A
 `merit_badge_counselor`-only person stays under Adults.
 
-**The scout tabs and the adult tabs are different lenses, and may overlap.** An
-aged-out scout who now serves as a leader (Maya, promoted 2026-07-13) appears
-under Inactive Scouts *and* Leaders: the scout record is history, the role is
-current, and both are true.
+**Age-out is not inactivity.** At 18 a scout is no longer a scout — full stop,
+not "an inactive scout". They become an Adult, and a Leader if they hold a role.
+The `scouts` row remains as history but no longer confers youth membership.
+
+So **Inactive Scouts means a youth who left** — dropped out, moved away,
+transferred. On production that is 18 people; exactly one person has aged out
+(Maya), and she belongs under Leaders. Others will follow every year.
+
+The test is `inactive_reason = 'aged_out'` **or** age ≥ 18. Both are needed:
+11 of the 18 inactive scouts have no birthdate on record, so age alone cannot
+decide, and an explicit aged-out reason has to count on its own.
+
+**Relationships survive the transition.** Maya aged out of the troop but is
+still Anjali's sibling and still in the Sankpal-Tatera household — an adult can
+have a scout as a sibling, and a person's relationships and household are
+untouched by which tab they appear in. Encoded in the `person_directory` view
+so the Roster, the picker, and the login pool cannot drift apart.
 
 **Relationships and household membership are unaffected by which tab someone
 appears in.** They persist across role changes and are edited explicitly. This
