@@ -1,18 +1,23 @@
 /**
  * /admin/advancement/lookups — Reference tables. Each card has an editor:
- *   - Scouts: edit (modal) + add new
- *   - Leaders: edit (modal) + add new + delete (if no ledger references)
  *   - Merit Badges: edit (modal)
  *   - Internal Requirement Codes: edit (modal), top-level rows only — nested
  *     sub-requirement trees are edited per-MB in the Merit Badge card instead
+ *
+ * Scouts and adults are NOT here — they moved to /admin/advancement/roster in
+ * v1.12. This page still READS both tables to populate the merit-badge
+ * counselor and Meeting Plan skill-assignment pickers.
  */
 
+import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import { requireRole } from '@/lib/require-role';
-import { autoLoginLabels } from '@/lib/authorized-adults';
-import { LeaderEditor, type LeaderRow } from './leader-editor';
-import { ScoutEditor, type ScoutRow, type ParentRow } from './scout-editor';
+// Scout and adult MANAGEMENT moved to /admin/advancement/roster in v1.12 —
+// this page still READS both to build the merit-badge counselor and skill
+// assignment pickers, so the row types come from there.
+import type { LeaderRow } from '../roster/leader-form';
+import type { ScoutRow } from '../roster/scout-form';
 import { MbEditor, type MbRow, type CounselorRow, type EditReqNode } from './mb-editor';
 import { NameLookupEditor, type NameRow } from './name-lookup-editor';
 import { EventEditor, type EventRow } from './event-editor';
@@ -86,7 +91,6 @@ async function loadLookups() {
   const [
     leadersRes,
     scoutsRes,
-    parentsRes,
     mbsRes,
     counselorsRes,
     ranksRes,
@@ -105,7 +109,6 @@ async function loadLookups() {
         'id, first_name, last_name, display_name, patrol, current_rank, bsa_member_id, birthdate, gender, school, graduation_year, swim_class, active, inactive_reason, address_line1, address_line2, city, state, zip, phone, email, health_form_date'
       )
       .order('display_name'),
-    supabase.from('scout_parents').select('*').order('sort_order'),
     supabase
       .from('merit_badges')
       .select('id, name, eagle, scoutbook_id, bsa_page_url, workbook_url')
@@ -149,13 +152,6 @@ async function loadLookups() {
     supabase.from('scout_instructors').select('scout_id, skill_id')
   ]);
 
-  // Group parents by scout
-  const parentsByScout = new Map<string, ParentRow[]>();
-  for (const p of (parentsRes.data ?? []) as ParentRow[]) {
-    const list = parentsByScout.get(p.scout_id) ?? [];
-    list.push(p);
-    parentsByScout.set(p.scout_id, list);
-  }
   // Group counselors by MB
   const counselorsByMb = new Map<string, CounselorRow[]>();
   for (const c of (counselorsRes.data ?? []) as CounselorRow[]) {
@@ -232,7 +228,6 @@ async function loadLookups() {
   return {
     leaders: (leadersRes.data ?? []) as LeaderRow[],
     scouts: (scoutsRes.data ?? []) as ScoutRow[],
-    parentsByScout,
     mbs,
     counselorsByMb,
     mbReqTrees,
@@ -249,21 +244,14 @@ async function loadLookups() {
   };
 }
 
-export default async function LookupsPage({
-  searchParams
-}: {
-  searchParams: Promise<{ editScout?: string; editLeader?: string }>;
-}) {
+export default async function LookupsPage() {
   await requireRole(['leader']);
-  const { editScout, editLeader } = await searchParams;
   const {
     leaders,
     scouts,
-    parentsByScout,
     mbs,
     counselorsByMb,
     mbReqTrees,
-    ranks,
     ranksFull,
     reqs,
     events,
@@ -286,8 +274,6 @@ export default async function LookupsPage({
   // blank — shown as a placeholder hint in the edit dialog. Computed over the
   // exact same pool the login system uses (current adults only — an active
   // youth leader isn't in this set yet, even if Type=Youth here).
-  const currentAdults = leaders.filter((l) => leaderType(l) === 'adult');
-  const defaultLoginLabelByCode = Object.fromEntries(autoLoginLabels(currentAdults));
 
   // Skill-assignment rows (Meeting Plan): ADULTS only — the engine schedules
   // anyone here as an adult teacher, including adults-only skills.
@@ -321,37 +307,15 @@ export default async function LookupsPage({
         <p>
           The editable Troop 79 taxonomy. Internal codes, BSA Member IDs, leader
           signoff initials, and the merit-badge catalog. Click <strong>Edit</strong>{' '}
-          on any row to make changes; new scouts and leaders can be added with the
-          buttons at the top of each card.
+          on any row to make changes. Scouts and adults are managed on the{' '}
+          <Link href="/admin/advancement/roster">Roster</Link>.
         </p>
       </div>
 
-      <div className={styles.grid}>
-        <Card
-          title="Scouts"
-          sub={`${scouts.length} scouts · internal ID permanent · uncheck Active to age out (ledger history preserved)`}
-        >
-          <ScoutEditor
-            rows={scouts}
-            ranks={ranks}
-            parentsByScout={parentsByScout}
-            initialOpenId={editScout}
-          />
-        </Card>
-
-        <Card
-          title="Adults and Instructors"
-          sub={`${leaders.length} sign-off sources — adult leaders, youth leaders (initials of an active scout), and record sources like Camp, Clinic, and Prior Troop. When a scout ages out, their initials automatically become Adult.`}
-        >
-          <LeaderEditor
-            rows={leaders}
-            typeByCode={Object.fromEntries(leaders.map((l) => [l.code, leaderType(l)]))}
-            scouts={scouts.map((s) => ({ id: s.id, display_name: s.display_name }))}
-            defaultLoginLabelByCode={defaultLoginLabelByCode}
-            initialOpenCode={editLeader}
-          />
-        </Card>
-      </div>
+      {/* The Scouts and "Adults and Instructors" cards used to sit here. They
+          moved to /admin/advancement/roster in v1.12 so the roster you read and
+          the record you correct are the same screen. This page still reads both
+          tables for the counselor and skill-assignment pickers below. */}
 
       <div className={styles.grid}>
         <Card title="Merit Badge Catalog" sub={`${mbs.length} merit badges · BSA Scoutbook IDs for export · assigned counselors`}>

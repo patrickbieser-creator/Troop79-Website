@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState, useTransition } from 'react';
-import { createLeader, deleteLeader, updateLeader } from './actions';
-import { useLookupTable } from './use-lookup-table';
+import { useState, useTransition } from 'react';
+import { createLeader, updateLeader } from '../lookups/actions';
 import { ageOn, yptStatus } from '@/lib/demographics';
-import type { ScoutRow } from './scout-editor';
-import styles from './lookups.module.css';
+import type { ScoutRow } from './scout-form';
+import styles from '../lookups/lookups.module.css';
 
 export type LeaderType = 'adult' | 'youth' | 'source';
 
@@ -30,178 +29,6 @@ export interface LeaderRow {
   ypt_completed: string | null;
 }
 
-interface Props {
-  rows: LeaderRow[];
-  /** adult | youth (initials of an active scout) | source (Camp, Clinic, …). */
-  typeByCode: Record<string, LeaderType>;
-  scouts: Pick<ScoutRow, 'id' | 'display_name'>[];
-  /** The "First L." label each adult would get if login_name were blank. */
-  defaultLoginLabelByCode: Record<string, string>;
-  /** Auto-opens this leader's edit dialog on mount — used by the Roster's
-   *  "Edit in Lookups & Admin" deep link (?editLeader=<code>). */
-  initialOpenCode?: string;
-}
-
-const TYPE_LABEL: Record<LeaderType, string> = {
-  adult: 'Adult',
-  youth: 'Youth',
-  source: 'Source'
-};
-
-export function LeaderEditor({
-  rows,
-  typeByCode,
-  scouts,
-  defaultLoginLabelByCode,
-  initialOpenCode
-}: Props) {
-  const [openFor, setOpenFor] = useState<LeaderRow | 'new' | null>(() =>
-    initialOpenCode ? (rows.find((r) => r.code === initialOpenCode) ?? null) : null
-  );
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const [busyCode, setBusyCode] = useState<string | null>(null);
-  const [rowErr, setRowErr] = useState<{ code: string; msg: string } | null>(null);
-  const [, startTransition] = useTransition();
-  const t = useLookupTable(rows, (l) => `${l.code} ${l.name} ${l.role ?? ""}`);
-
-  useEffect(() => {
-    const dlg = dialogRef.current;
-    if (!dlg) return;
-    if (openFor && !dlg.open) dlg.showModal();
-    if (!openFor && dlg.open) dlg.close();
-  }, [openFor]);
-
-  function onDelete(code: string) {
-    if (
-      !window.confirm(
-        `Delete leader "${code}"? Only allowed when no ledger rows reference this signer.`
-      )
-    ) {
-      return;
-    }
-    setBusyCode(code);
-    setRowErr(null);
-    const fd = new FormData();
-    fd.set('code', code);
-    startTransition(async () => {
-      const res = await deleteLeader(fd);
-      setBusyCode(null);
-      if (!res.ok) {
-        setRowErr({ code, msg: res.error ?? 'Delete failed' });
-      }
-    });
-  }
-
-  return (
-    <>
-      <div className={styles.cardActions}>
-        <button
-          type="button"
-          className={styles.addBtn}
-          onClick={() => setOpenFor('new')}
-        >
-          + Add Leader
-        </button>
-      </div>
-      {t.searchEl}
-      <div className={t.scrollClass}>
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th>Initials</th>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Role</th>
-            <th>Contact</th>
-            <th style={{ textAlign: 'right' }}>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {t.rows.map((l) => (
-            <tr key={l.code}>
-              <td className={styles.codeCell}>{l.code}</td>
-              <td>
-                {l.name}
-                {rowErr?.code === l.code && (
-                  <span className={styles.rowError}>{rowErr.msg}</span>
-                )}
-              </td>
-              <td>
-                <span
-                  className={`${styles.tag} ${
-                    typeByCode[l.code] === 'youth'
-                      ? styles.tagMb
-                      : typeByCode[l.code] === 'source'
-                        ? ''
-                        : styles.tagRank
-                  }`}
-                >
-                  {TYPE_LABEL[typeByCode[l.code] ?? 'adult']}
-                </span>
-                {typeByCode[l.code] !== 'source' && !l.can_login && (
-                  <span
-                    className={styles.tag}
-                    style={{ marginLeft: 4 }}
-                    title="Won't appear in the admin login autocomplete and can't sign in as a leader"
-                  >
-                    No login
-                  </span>
-                )}
-              </td>
-              <td>{l.role ?? <span className={styles.muted}>—</span>}</td>
-              <td className={styles.contactCell}>
-                {l.phone && <span className={styles.contactItem}>{l.phone}</span>}
-                {l.email && <span className={styles.contactItem}>{l.email}</span>}
-                {!l.phone && !l.email && <span className={styles.muted}>—</span>}
-              </td>
-              <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                <button
-                  type="button"
-                  className={styles.editBtn}
-                  onClick={() => setOpenFor(l)}
-                  disabled={busyCode === l.code}
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.editBtn} ${styles.dangerBtn}`}
-                  onClick={() => onDelete(l.code)}
-                  disabled={busyCode === l.code}
-                >
-                  {busyCode === l.code ? '…' : 'Delete'}
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      </div>
-      {t.footerEl}
-
-      <dialog
-        ref={dialogRef}
-        className={`${styles.editDialog} ${styles.editDialogLarge}`}
-        onClose={() => setOpenFor(null)}
-        onClick={(e) => {
-          if (e.target === dialogRef.current) setOpenFor(null);
-        }}
-      >
-        {openFor && (
-          <LeaderForm
-            row={openFor === 'new' ? null : openFor}
-            scouts={scouts}
-            defaultLoginLabel={
-              openFor !== 'new' ? defaultLoginLabelByCode[openFor.code] : undefined
-            }
-            onClose={() => setOpenFor(null)}
-          />
-        )}
-      </dialog>
-    </>
-  );
-}
-
 function typeOf(row: LeaderRow | null): LeaderType {
   if (!row) return 'adult';
   if (!row.is_person) return 'source';
@@ -209,7 +36,7 @@ function typeOf(row: LeaderRow | null): LeaderType {
   return 'adult';
 }
 
-function LeaderForm({
+export function LeaderForm({
   row,
   scouts,
   defaultLoginLabel,

@@ -152,6 +152,9 @@ async function ensureLeader() {
 
 function revalidateAll() {
   revalidatePath('/admin/advancement/lookups');
+  // Scout/adult management moved to the Roster in v1.12 — without this, an
+  // edit made there redirects back to a cached, stale table.
+  revalidatePath('/admin/advancement/roster');
   revalidatePath('/admin/advancement/dashboard');
   revalidatePath('/admin/advancement/ledger');
   revalidatePath('/admin/advancement/fast-entry');

@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState, useTransition } from 'react';
-import { createScout, promoteScoutToAdult, updateScout } from './actions';
+import { useState, useTransition } from 'react';
+import { createScout, promoteScoutToAdult, updateScout } from '../lookups/actions';
 import { INACTIVE_REASON_LABEL, type InactiveReason } from '@/lib/supabase/types';
 import { ageOn, gradeFromGradYear, gradeLabel, gradYearFromGrade } from '@/lib/demographics';
-import { useLookupTable } from './use-lookup-table';
-import styles from './lookups.module.css';
+import styles from '../lookups/lookups.module.css';
 
 export interface ScoutRow {
   id: string;
@@ -48,15 +47,8 @@ export interface ParentRow {
   sort_order: number;
 }
 
-interface Props {
-  rows: ScoutRow[];
-  ranks: { id: string; display_name: string }[];
-  parentsByScout: Map<string, ParentRow[]>;
-  /** Auto-opens this scout's edit dialog on mount — used by the Roster's
-   *  "Edit in Lookups & Admin" deep link (?editScout=<id>). */
-  initialOpenId?: string;
-}
-
+/** Order the inactive reasons are offered in when a scout is marked inactive.
+ *  Server-side validation of the same set lives in lookups/actions.ts. */
 const REASON_ORDER: InactiveReason[] = [
   'dropped_out',
   'transferred',
@@ -64,125 +56,6 @@ const REASON_ORDER: InactiveReason[] = [
   'aged_out',
   'other'
 ];
-
-export function ScoutEditor({ rows, ranks, parentsByScout, initialOpenId }: Props) {
-  // Lazy initial state (not an effect) — the Roster's "Edit in Lookups &
-  // Admin" deep link (?editScout=<id>) opens this scout's dialog on first
-  // render without tripping the no-setState-in-effect lint rule.
-  const [openFor, setOpenFor] = useState<ScoutRow | 'new' | null>(() =>
-    initialOpenId ? (rows.find((r) => r.id === initialOpenId) ?? null) : null
-  );
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const t = useLookupTable(rows, (s) => `${s.display_name} ${s.id} ${s.bsa_member_id ?? ""}`);
-
-  useEffect(() => {
-    const dlg = dialogRef.current;
-    if (!dlg) return;
-    if (openFor && !dlg.open) dlg.showModal();
-    if (!openFor && dlg.open) dlg.close();
-  }, [openFor]);
-
-  return (
-    <>
-      <div className={styles.cardActions}>
-        <button
-          type="button"
-          className={styles.addBtn}
-          onClick={() => setOpenFor('new')}
-        >
-          + Add Scout
-        </button>
-      </div>
-      {t.searchEl}
-      <div className={t.scrollClass}>
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th>Scout</th>
-            <th>Internal ID</th>
-            <th>Rank</th>
-            <th>BSA Member ID</th>
-            <th>Status</th>
-            <th style={{ textAlign: 'right' }}>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {t.rows.map((s) => {
-            const rankLabel = s.current_rank
-              ? ranks.find((r) => r.id === s.current_rank)?.display_name ?? s.current_rank
-              : '—';
-            return (
-              <tr key={s.id}>
-                <td>
-                  {s.display_name}
-                  {s.patrol && (
-                    <span className={styles.subText}>{s.patrol} Patrol</span>
-                  )}
-                </td>
-                <td className={styles.codeCell}>{s.id}</td>
-                <td>
-                  {s.current_rank ? (
-                    rankLabel
-                  ) : (
-                    <span className={styles.muted}>—</span>
-                  )}
-                </td>
-                <td>
-                  {s.bsa_member_id ?? (
-                    <span className={styles.muted}>—</span>
-                  )}
-                </td>
-                <td>
-                  <span
-                    className={`${styles.tag} ${s.active ? styles.tagActive : styles.tagInactive}`}
-                  >
-                    {s.active ? 'Active' : 'Inactive'}
-                  </span>
-                  {!s.active && s.inactive_reason && (
-                    <span className={styles.subText}>
-                      {INACTIVE_REASON_LABEL[s.inactive_reason]}
-                    </span>
-                  )}
-                </td>
-                <td style={{ textAlign: 'right' }}>
-                  <button
-                    type="button"
-                    className={styles.editBtn}
-                    onClick={() => setOpenFor(s)}
-                  >
-                    Edit
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-      </div>
-      {t.footerEl}
-
-      <dialog
-        ref={dialogRef}
-        className={`${styles.editDialog} ${styles.editDialogLarge}`}
-        onClose={() => setOpenFor(null)}
-        onClick={(e) => {
-          if (e.target === dialogRef.current) setOpenFor(null);
-        }}
-      >
-        {openFor && (
-          <ScoutForm
-            row={openFor === 'new' ? null : openFor}
-            initialParents={
-              openFor !== 'new' ? parentsByScout.get(openFor.id) ?? [] : []
-            }
-            ranks={ranks}
-            onClose={() => setOpenFor(null)}
-          />
-        )}
-      </dialog>
-    </>
-  );
-}
 
 interface ParentDraft {
   name: string;
@@ -227,7 +100,7 @@ function parentRowToDraft(p: ParentRow): ParentDraft {
   };
 }
 
-function ScoutForm({
+export function ScoutForm({
   row,
   initialParents,
   ranks,

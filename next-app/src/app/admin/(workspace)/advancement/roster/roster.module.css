@@ -110,3 +110,87 @@
   .table th, .table td { padding: 4px 6px; }
   .nameBtn { color: inherit; text-decoration: none; cursor: default; }
 }
+
+/* ── Roster management (v1.12): sorting, tabs, add/edit ──────────────────── */
+
+/* Sortable column headers. The th keeps its own padding, so the button is a
+   bare inline trigger rather than a control with chrome of its own. */
+.sortBtn {
+  background: none; border: none; padding: 0; margin: 0;
+  font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
+}
+.sortBtn:hover { color: var(--admin-navy); }
+.sortArrow { font-size: 8px; color: var(--admin-navy); }
+/* Idle arrows stay in the layout but recede, so headers don't shift on sort. */
+.sortArrowIdle { font-size: 8px; color: var(--admin-gray-300); }
+.sortBtn:hover .sortArrowIdle { color: var(--admin-gray-500); }
+
+.tableToolbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 0 0 10px;
+}
+
+.tabs { display: inline-flex; gap: 2px; }
+.tab, .tabActive {
+  background: none; border: 1px solid transparent; border-radius: 5px;
+  padding: 5px 12px; font: inherit; font-size: 12px; font-weight: 600;
+  color: var(--admin-gray-600); cursor: pointer;
+}
+.tab:hover { background: var(--admin-gray-50); color: var(--admin-navy); }
+.tabActive {
+  background: var(--admin-white); border-color: var(--admin-gray-200);
+  color: var(--admin-navy); box-shadow: var(--admin-shadow-sm);
+}
+
+.addBtn {
+  background: var(--admin-navy); color: var(--admin-white);
+  border: none; border-radius: 5px; padding: 6px 12px;
+  font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.addBtn:hover { filter: brightness(1.12); }
+
+.editBtn {
+  background: var(--admin-white); color: var(--admin-gray-700);
+  border: 1px solid var(--admin-gray-200); border-radius: 5px;
+  padding: 3px 10px; font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer;
+}
+.editBtn:hover { border-color: var(--admin-navy); color: var(--admin-navy); }
+
+.tagActive, .tagInactive {
+  display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; padding: 2px 8px; border-radius: 10px;
+}
+.tagActive { background: var(--admin-green-50, #e8f5ec); color: var(--admin-green-700, #1d6b38); }
+.tagInactive { background: var(--admin-gray-100); color: var(--admin-gray-600); }
+
+/* Reason under the status tag, patrol under a name — a second line that
+   shouldn't compete with the value above it. */
+.subText { display: block; font-size: 10.5px; color: var(--admin-gray-500); margin-top: 2px; }
+
+/* Wider than detailDialog: the scout form is a full record, not a summary.
+   The height cap and scroll sit on the dialog itself rather than on the form's
+   inner wrapper — that wrapper is styled by lookups.module.css, and a
+   descendant selector can't reach across two CSS modules' hashed names. Without
+   a cap the form runs past the viewport and the dialog anchors to the top. */
+.editDialog {
+  padding: 0; border: none; border-radius: 6px;
+  box-shadow: var(--admin-shadow-md);
+  width: 94vw; max-width: 860px; max-height: 90vh; overflow-y: auto;
+  /* Explicit, not inherited: the UA centres a modal dialog with margin:auto,
+     but the admin workspace resets margins on block elements. */
+  margin: auto;
+  background: var(--admin-white);
+}
+.editDialog::backdrop { background: rgba(0, 0, 0, .42); }
+
+.deleteBtn {
+  background: var(--admin-white); color: var(--admin-gray-600);
+  border: 1px solid var(--admin-gray-200); border-radius: 5px;
+  padding: 3px 10px; font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer;
+}
+.deleteBtn:hover:not(:disabled) { border-color: #b3261e; color: #b3261e; }
+.deleteBtn:disabled { opacity: .5; cursor: default; }
+/* Delete fails when ledger rows still reference the signer — the reason has to
+   land next to the button that caused it, not in a toast somewhere else. */
+.rowErr { display: block; margin-top: 4px; font-size: 10.5px; color: #b3261e; }

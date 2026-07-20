@@ -14,10 +14,12 @@ import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/server';
 import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
 import { centralToday } from '@/lib/dates';
-import type { Leader, Rank, Scout, ScoutParent } from '@/lib/supabase/types';
+import type { Rank } from '@/lib/supabase/types';
 import { PrintButton } from './print-button';
 import { ScoutsTable } from './scouts-table';
 import { AdultsTable } from './adults-table';
+import type { ScoutRow, ParentRow } from './scout-form';
+import type { LeaderRow } from './leader-form';
 import styles from './roster.module.css';
 
 export const metadata = {
@@ -52,34 +54,42 @@ export default async function RosterPage() {
   }
 
   const supabase = createAdminClient();
+  // No .eq('active', true) any more — the Inactive tab needs the rest, and
+  // the active-only views below are derived from this one read.
   const [scoutsRes, leadersRes, ranksRes, parentsRes] = await Promise.all([
-    supabase.from('scouts').select('*').eq('active', true).order('display_name'),
+    supabase.from('scouts').select('*').order('display_name'),
     supabase.from('leaders').select('*').eq('is_person', true).order('name'),
-    supabase.from('ranks').select('id, display_name, sort_order'),
+    supabase.from('ranks').select('id, display_name, sort_order').order('sort_order'),
     supabase.from('scout_parents').select('*').order('sort_order')
   ]);
 
   const today = centralToday();
-  const scouts = (scoutsRes.data ?? []) as Scout[];
-  const allPeople = (leadersRes.data ?? []) as Leader[];
-  const rankLabel = Object.fromEntries(
-    ((ranksRes.data ?? []) as Rank[]).map((r) => [r.id, r.display_name])
-  );
-  const parentsByScout: Record<string, ScoutParent[]> = {};
-  for (const p of (parentsRes.data ?? []) as ScoutParent[]) {
+  const scouts = (scoutsRes.data ?? []) as unknown as ScoutRow[];
+  const activeScouts = scouts.filter((s) => s.active);
+  const allPeople = (leadersRes.data ?? []) as unknown as LeaderRow[];
+  const ranks = ((ranksRes.data ?? []) as Rank[]).map((r) => ({
+    id: r.id,
+    display_name: r.display_name
+  }));
+  const rankLabel = Object.fromEntries(ranks.map((r) => [r.id, r.display_name]));
+  const parentsByScout: Record<string, ParentRow[]> = {};
+  for (const p of (parentsRes.data ?? []) as unknown as ParentRow[]) {
     (parentsByScout[p.scout_id] ??= []).push(p);
   }
 
-  // Adults = person rows not linked to an active scout (youth initials
-  // belong on the scout side of the roster).
-  const activeIds = new Set(scouts.map((s) => s.id));
+  // Adults = person rows not linked to an ACTIVE scout (youth initials belong
+  // on the scout side of the roster). Deliberately still keyed on active
+  // scouts only, so an aged-out youth leader graduates into the adult list —
+  // the same rule lib/authorized-adults.ts uses for the login pool.
+  const activeIds = new Set(activeScouts.map((s) => s.id));
   const adults = allPeople.filter((l) => !(l.scout_id && activeIds.has(l.scout_id)));
 
-  // Scouts turning 18 within six months — promotion heads-up.
+  // Scouts turning 18 within six months — promotion heads-up. Active only:
+  // someone already marked inactive has been dealt with.
   const horizon = new Date(`${today}T12:00:00Z`);
   horizon.setUTCMonth(horizon.getUTCMonth() + 6);
   const horizonIso = horizon.toISOString().slice(0, 10);
-  const turning18 = scouts
+  const turning18 = activeScouts
     .filter((s) => s.birthdate)
     .map((s) => ({ s, on: eighteenth(s.birthdate!) }))
     .filter(({ on }) => on > today && on <= horizonIso)
@@ -91,7 +101,7 @@ export default async function RosterPage() {
         <div>
           <h1>Troop Roster</h1>
           <p>
-            {scouts.length} active scouts &middot; {adults.length}{' '}
+            {activeScouts.length} active scouts &middot; {adults.length}{' '}
             adults &middot; ages and grades derived from birthdate and graduation year as of{' '}
             {fmtDate(today)} &middot; leaders only
           </p>
@@ -105,18 +115,29 @@ export default async function RosterPage() {
           {turning18
             .map(({ s, on }) => `${s.display_name} (${fmtDate(on)})`)
             .join(' · ')}{' '}
-          — record any outstanding sign-offs, then use Promote to adult in Lookups.
+          — record any outstanding sign-offs, then open the scout below and use
+          Promote to adult.
         </div>
       )}
 
       <div className={styles.section}>
-        <div className={styles.sectionHead}>Scouts ({scouts.length})</div>
-        <ScoutsTable scouts={scouts} rankLabel={rankLabel} parentsByScout={parentsByScout} today={today} />
+        <div className={styles.sectionHead}>Scouts</div>
+        <ScoutsTable
+          scouts={scouts}
+          ranks={ranks}
+          rankLabel={rankLabel}
+          parentsByScout={parentsByScout}
+          today={today}
+        />
       </div>
 
       <div className={styles.section}>
         <div className={styles.sectionHead}>Adults ({adults.length})</div>
-        <AdultsTable adults={adults} today={today} />
+        <AdultsTable
+          adults={adults}
+          scouts={activeScouts.map((s) => ({ id: s.id, display_name: s.display_name }))}
+          today={today}
+        />
       </div>
     </>
   );

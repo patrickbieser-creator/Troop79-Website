@@ -1,10 +1,36 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ageOn, gradeFromGradYear, gradeLabel, SWIM_CLASS_LABEL } from '@/lib/demographics';
-import type { Scout, ScoutParent } from '@/lib/supabase/types';
+import { INACTIVE_REASON_LABEL } from '@/lib/supabase/types';
+import { ScoutForm, type ScoutRow, type ParentRow } from './scout-form';
+import { SortHeader, useSortable } from './use-sortable';
 import styles from './roster.module.css';
+
+/*
+ * The troop's scout roster — and, since v1.12, the place scouts are MANAGED.
+ * Scout add/edit and the active/inactive toggle used to live in Lookups &
+ * Admin; a roster you can read but not correct meant spotting a wrong grade
+ * here and fixing it two screens away.
+ *
+ * Active and inactive are tabs rather than a filter control because they are
+ * different jobs: the active tab is the working roster you print and take to
+ * a campout, the inactive tab is the archive you consult when someone comes
+ * back or you need history.
+ */
+
+type ColKey =
+  | 'name'
+  | 'age'
+  | 'birthday'
+  | 'grade'
+  | 'school'
+  | 'patrol'
+  | 'rank'
+  | 'swim'
+  | 'bsa'
+  | 'health'
+  | 'status';
 
 function fmtDate(iso: string | null): string {
   if (!iso) return '—';
@@ -16,81 +42,185 @@ function fmtDate(iso: string | null): string {
   }).format(new Date(`${iso}T12:00:00Z`));
 }
 
-function addressLine(p: {
-  address_line1: string | null;
-  address_line2: string | null;
-  city: string | null;
-  state: string | null;
-  zip: string | null;
-}): string | null {
-  const line1 = [p.address_line1, p.address_line2].filter(Boolean).join(' ');
-  const line2 = [p.city, [p.state, p.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ');
-  const full = [line1, line2].filter(Boolean).join(', ');
-  return full || null;
+/** The lookups the comparator needs, carried on the row so the sort function
+ *  can live at module scope instead of being rebuilt each render. */
+type SortableScout = ScoutRow & { _today: string; _rankLabel: Record<string, string> };
+
+/** Module scope on purpose — see the note on useSortable. */
+function scoutValue(s: SortableScout, key: ColKey): unknown {
+  switch (key) {
+    case 'name':
+      return s.display_name;
+    case 'age':
+      return ageOn(s.birthdate, s._today);
+    case 'birthday':
+      return s.birthdate;
+    case 'grade':
+      return gradeFromGradYear(s.graduation_year, s._today);
+    case 'school':
+      return s.school;
+    case 'patrol':
+      return s.patrol;
+    case 'rank':
+      return s.current_rank ? (s._rankLabel[s.current_rank] ?? s.current_rank) : null;
+    case 'swim':
+      return s.swim_class ? SWIM_CLASS_LABEL[s.swim_class] : null;
+    case 'bsa':
+      return s.bsa_member_id;
+    case 'health':
+      return s.health_form_date;
+    case 'status':
+      return s.active ? 'Active' : (s.inactive_reason ? INACTIVE_REASON_LABEL[s.inactive_reason] : 'Inactive');
+    default:
+      return null;
+  }
 }
 
 interface Props {
-  scouts: Scout[];
+  scouts: ScoutRow[];
+  ranks: { id: string; display_name: string }[];
   rankLabel: Record<string, string>;
-  parentsByScout: Record<string, ScoutParent[]>;
+  parentsByScout: Record<string, ParentRow[]>;
   today: string;
 }
 
-export function ScoutsTable({ scouts, rankLabel, parentsByScout, today }: Props) {
-  const [openId, setOpenId] = useState<string | null>(null);
+export function ScoutsTable({ scouts, ranks, rankLabel, parentsByScout, today }: Props) {
+  const [tab, setTab] = useState<'active' | 'inactive'>('active');
+  const [openFor, setOpenFor] = useState<ScoutRow | 'new' | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const open = openId ? scouts.find((s) => s.id === openId) : null;
 
   useEffect(() => {
     const dlg = dialogRef.current;
     if (!dlg) return;
-    if (open && !dlg.open) dlg.showModal();
-    if (!open && dlg.open) dlg.close();
-  }, [open]);
+    if (openFor && !dlg.open) dlg.showModal();
+    if (!openFor && dlg.open) dlg.close();
+  }, [openFor]);
+
+  const activeCount = useMemo(() => scouts.filter((s) => s.active).length, [scouts]);
+  const inactiveCount = scouts.length - activeCount;
+
+  // Decorate with the two lookups the comparator needs, so the sort function
+  // can stay at module scope and not be rebuilt every render.
+  const visible = useMemo(
+    () =>
+      scouts
+        .filter((s) => (tab === 'active' ? s.active : !s.active))
+        .map((s) => ({ ...s, _today: today, _rankLabel: rankLabel })),
+    [scouts, tab, today, rankLabel]
+  );
+
+  const { sorted, sortKey, sortDir, toggle } = useSortable<SortableScout, ColKey>(
+    visible,
+    scoutValue,
+    'name'
+  );
+
+  const head = (label: string, colKey: ColKey, align?: 'right') => (
+    <SortHeader
+      label={label}
+      colKey={colKey}
+      sortKey={sortKey}
+      sortDir={sortDir}
+      toggle={toggle}
+      align={align}
+    />
+  );
 
   return (
     <>
+      <div className={styles.tableToolbar}>
+        <div className={styles.tabs} role="tablist" aria-label="Scout status">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'active'}
+            className={tab === 'active' ? styles.tabActive : styles.tab}
+            onClick={() => setTab('active')}
+          >
+            Active ({activeCount})
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'inactive'}
+            className={tab === 'inactive' ? styles.tabActive : styles.tab}
+            onClick={() => setTab('inactive')}
+          >
+            Inactive ({inactiveCount})
+          </button>
+        </div>
+        <button type="button" className={styles.addBtn} onClick={() => setOpenFor('new')}>
+          + Add Scout
+        </button>
+      </div>
+
       <table className={styles.table}>
         <thead>
           <tr>
-            <th>Scout</th>
-            <th>Age</th>
-            <th>Birthday</th>
-            <th>Grade</th>
-            <th>School</th>
-            <th>Patrol</th>
-            <th>Rank</th>
-            <th>Swim</th>
-            <th>BSA ID</th>
-            <th>Health Form</th>
+            {head('Scout', 'name')}
+            {head('Age', 'age')}
+            {head('Birthday', 'birthday')}
+            {head('Grade', 'grade')}
+            {head('School', 'school')}
+            {head('Patrol', 'patrol')}
+            {head('Rank', 'rank')}
+            {head('Swim', 'swim')}
+            {head('BSA ID', 'bsa')}
+            {head('Health Form', 'health')}
+            {head('Status', 'status')}
+            <th style={{ textAlign: 'right' }}>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {scouts.map((s) => {
+          {sorted.length === 0 && (
+            <tr>
+              <td colSpan={12} className={styles.muted}>
+                {tab === 'active'
+                  ? 'No active scouts.'
+                  : 'No inactive scouts — nobody has been marked dropped, transferred, moved, or aged out.'}
+              </td>
+            </tr>
+          )}
+          {sorted.map((s) => {
             const age = ageOn(s.birthdate, today);
             const grade = gradeFromGradYear(s.graduation_year, today);
+            const dash = <span className={styles.muted}>—</span>;
             return (
               <tr key={s.id}>
                 <td>
-                  <button type="button" className={styles.nameBtn} onClick={() => setOpenId(s.id)}>
+                  <button
+                    type="button"
+                    className={styles.nameBtn}
+                    onClick={() => setOpenFor(s)}
+                    title="Edit this scout"
+                  >
                     {s.display_name}
                   </button>
                 </td>
-                <td>{age ?? <span className={styles.muted}>—</span>}</td>
-                <td>{s.birthdate ? fmtDate(s.birthdate) : <span className={styles.muted}>—</span>}</td>
-                <td>{grade !== null ? gradeLabel(grade) : <span className={styles.muted}>—</span>}</td>
-                <td>{s.school ?? <span className={styles.muted}>—</span>}</td>
-                <td>{s.patrol ?? <span className={styles.muted}>—</span>}</td>
-                <td>{s.current_rank ? (rankLabel[s.current_rank] ?? s.current_rank) : '—'}</td>
+                <td>{age ?? dash}</td>
+                <td>{s.birthdate ? fmtDate(s.birthdate) : dash}</td>
+                <td>{grade !== null ? gradeLabel(grade) : dash}</td>
+                <td>{s.school ?? dash}</td>
+                <td>{s.patrol ?? dash}</td>
+                <td>{s.current_rank ? (rankLabel[s.current_rank] ?? s.current_rank) : dash}</td>
+                <td>{s.swim_class ? SWIM_CLASS_LABEL[s.swim_class] : dash}</td>
+                <td className={styles.mono}>{s.bsa_member_id ?? dash}</td>
+                <td>{s.health_form_date ? fmtDate(s.health_form_date) : dash}</td>
                 <td>
-                  {s.swim_class ? (
-                    SWIM_CLASS_LABEL[s.swim_class]
-                  ) : (
-                    <span className={styles.muted}>—</span>
+                  <span className={s.active ? styles.tagActive : styles.tagInactive}>
+                    {s.active ? 'Active' : 'Inactive'}
+                  </span>
+                  {!s.active && s.inactive_reason && (
+                    <span className={styles.subText}>
+                      {INACTIVE_REASON_LABEL[s.inactive_reason]}
+                    </span>
                   )}
                 </td>
-                <td className={styles.mono}>{s.bsa_member_id ?? '—'}</td>
-                <td>{s.health_form_date ? fmtDate(s.health_form_date) : <span className={styles.muted}>—</span>}</td>
+                <td style={{ textAlign: 'right' }}>
+                  <button type="button" className={styles.editBtn} onClick={() => setOpenFor(s)}>
+                    Edit
+                  </button>
+                </td>
               </tr>
             );
           })}
@@ -99,118 +229,21 @@ export function ScoutsTable({ scouts, rankLabel, parentsByScout, today }: Props)
 
       <dialog
         ref={dialogRef}
-        className={styles.detailDialog}
-        onClose={() => setOpenId(null)}
+        className={styles.editDialog}
+        onClose={() => setOpenFor(null)}
         onClick={(e) => {
-          if (e.target === dialogRef.current) setOpenId(null);
+          if (e.target === dialogRef.current) setOpenFor(null);
         }}
       >
-        {open && (
-          <ScoutDetail
-            scout={open}
-            parents={parentsByScout[open.id] ?? []}
-            rankLabel={rankLabel}
-            today={today}
-            onClose={() => setOpenId(null)}
+        {openFor && (
+          <ScoutForm
+            row={openFor === 'new' ? null : openFor}
+            initialParents={openFor !== 'new' ? (parentsByScout[openFor.id] ?? []) : []}
+            ranks={ranks}
+            onClose={() => setOpenFor(null)}
           />
         )}
       </dialog>
     </>
-  );
-}
-
-function Field({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className={styles.detailField}>
-      <span className={styles.detailLabel}>{label}</span>
-      <span className={styles.detailValue}>{value ?? <span className={styles.muted}>—</span>}</span>
-    </div>
-  );
-}
-
-function ScoutDetail({
-  scout: s,
-  parents,
-  rankLabel,
-  today,
-  onClose
-}: {
-  scout: Scout;
-  parents: ScoutParent[];
-  rankLabel: Record<string, string>;
-  today: string;
-  onClose: () => void;
-}) {
-  const age = ageOn(s.birthdate, today);
-  const grade = gradeFromGradYear(s.graduation_year, today);
-  const address = addressLine(s);
-
-  return (
-    <div className={styles.detailInner}>
-      <div className={styles.detailHeader}>
-        <div>
-          <h3>{s.display_name}</h3>
-          <p>
-            {s.current_rank ? (rankLabel[s.current_rank] ?? s.current_rank) : 'No rank'}
-            {s.patrol ? ` · ${s.patrol}` : ''}
-          </p>
-        </div>
-        <div className={styles.headerActions}>
-          <Link href={`/admin/advancement/lookups?editScout=${s.id}`} className={styles.editLink}>
-            Edit in Lookups &amp; Admin →
-          </Link>
-          <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Close">
-            &times;
-          </button>
-        </div>
-      </div>
-
-      <div className={styles.detailSection}>
-        <div className={styles.detailSectionHead}>Demographics</div>
-        <div className={styles.detailGrid}>
-          <Field label="Birthdate" value={s.birthdate ? `${fmtDate(s.birthdate)} (age ${age})` : null} />
-          <Field label="Grade" value={grade !== null ? gradeLabel(grade) : null} />
-          <Field label="School" value={s.school} />
-          <Field label="Gender" value={s.gender === 'M' ? 'Male' : s.gender === 'F' ? 'Female' : null} />
-          <Field label="Swim Class" value={s.swim_class ? SWIM_CLASS_LABEL[s.swim_class] : null} />
-          <Field label="BSA Member ID" value={s.bsa_member_id} />
-          <Field label="Health Form Date" value={s.health_form_date ? fmtDate(s.health_form_date) : null} />
-          <Field label="Joined" value={s.joined_date ? fmtDate(s.joined_date) : null} />
-        </div>
-      </div>
-
-      <div className={styles.detailSection}>
-        <div className={styles.detailSectionHead}>Contact</div>
-        <div className={styles.detailGrid}>
-          <Field label="Address" value={address} />
-          <Field label="Phone" value={s.phone} />
-          <Field label="Email" value={s.email} />
-        </div>
-      </div>
-
-      <div className={styles.detailSection}>
-        <div className={styles.detailSectionHead}>
-          Parents / Guardians {parents.length > 0 ? `(${parents.length})` : ''}
-        </div>
-        {parents.length === 0 ? (
-          <p className={styles.muted}>None on file.</p>
-        ) : (
-          parents.map((p, i) => (
-            <div key={p.id ?? i} className={styles.parentCard}>
-              <div className={styles.detailGrid}>
-                <Field label="Name" value={p.name} />
-                <Field label="Relationship" value={p.relationship} />
-                <Field label="Phone" value={p.phone} />
-                <Field label="Email" value={p.email} />
-                <Field
-                  label="Address"
-                  value={p.same_address_as_scout ? 'Same as scout' : addressLine(p)}
-                />
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
   );
 }

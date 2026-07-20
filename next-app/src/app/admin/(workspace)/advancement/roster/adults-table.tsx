@@ -1,10 +1,27 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { ageOn, yptStatus } from '@/lib/demographics';
-import type { Leader } from '@/lib/supabase/types';
+import { deleteLeader } from '../lookups/actions';
+import { LeaderForm, type LeaderRow } from './leader-form';
+import type { ScoutRow } from './scout-form';
+import { SortHeader, useSortable } from './use-sortable';
 import styles from './roster.module.css';
+
+/*
+ * Adults on the roster — and, since v1.12, where they're managed. Add/edit
+ * moved here from Lookups & Admin alongside scouts, so the whole "who is in
+ * this troop" job lives on one screen.
+ *
+ * There is no active/inactive tab here: `leaders` has no active flag. An adult
+ * leaves the roster by being deleted, or stops counting as an adult by being
+ * linked to a currently-active scout (youth leader initials) — see page.tsx.
+ */
+
+type ColKey = 'name' | 'code' | 'role' | 'age' | 'ypt' | 'bsa' | 'health' | 'contact';
+
+/** today carried on the row so the comparator can stay at module scope. */
+type SortableAdult = LeaderRow & { _today: string };
 
 function fmtDate(iso: string | null): string {
   if (!iso) return '—';
@@ -16,77 +33,164 @@ function fmtDate(iso: string | null): string {
   }).format(new Date(`${iso}T12:00:00Z`));
 }
 
-function addressLine(l: Leader): string | null {
-  const line1 = [l.address_line1, l.address_line2].filter(Boolean).join(' ');
-  const line2 = [l.city, [l.state, l.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ');
-  const full = [line1, line2].filter(Boolean).join(', ');
-  return full || null;
+/** Module scope — see the note on useSortable. */
+function adultValue(l: SortableAdult, key: ColKey): unknown {
+  switch (key) {
+    case 'name':
+      return l.name;
+    case 'code':
+      return l.code;
+    case 'role':
+      return l.role;
+    case 'age':
+      return ageOn(l.birthdate, l._today);
+    case 'ypt':
+      // Sort by the date it runs out, so the most urgent surface together.
+      // "Not on file" has no date and falls to the bottom via the null rule.
+      return l.ypt_completed ? yptStatus(l.ypt_completed, l._today).expires : null;
+    case 'bsa':
+      return l.bsa_member_id;
+    case 'health':
+      return l.health_form_date;
+    case 'contact':
+      return l.email || l.phone;
+    default:
+      return null;
+  }
 }
 
 interface Props {
-  adults: Leader[];
+  adults: LeaderRow[];
+  scouts: Pick<ScoutRow, 'id' | 'display_name'>[];
   today: string;
 }
 
-export function AdultsTable({ adults, today }: Props) {
-  const [openCode, setOpenCode] = useState<string | null>(null);
+export function AdultsTable({ adults, scouts, today }: Props) {
+  const [openFor, setOpenFor] = useState<LeaderRow | 'new' | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const open = openCode ? adults.find((l) => l.code === openCode) : null;
+  const [busyCode, setBusyCode] = useState<string | null>(null);
+  const [rowErr, setRowErr] = useState<{ code: string; msg: string } | null>(null);
+  const [, startTransition] = useTransition();
+
+  /* Delete came across from the old Lookups card. The database refuses when
+     ledger rows still reference the signer, so the confirm text says so
+     rather than letting the failure arrive as a surprise. */
+  function onDelete(code: string) {
+    if (
+      !window.confirm(
+        `Delete leader "${code}"? Only allowed when no ledger rows reference this signer.`
+      )
+    ) {
+      return;
+    }
+    setBusyCode(code);
+    setRowErr(null);
+    const fd = new FormData();
+    fd.set('code', code);
+    startTransition(async () => {
+      const res = await deleteLeader(fd);
+      setBusyCode(null);
+      if (!res.ok) setRowErr({ code, msg: res.error ?? 'Delete failed' });
+    });
+  }
 
   useEffect(() => {
     const dlg = dialogRef.current;
     if (!dlg) return;
-    if (open && !dlg.open) dlg.showModal();
-    if (!open && dlg.open) dlg.close();
-  }, [open]);
+    if (openFor && !dlg.open) dlg.showModal();
+    if (!openFor && dlg.open) dlg.close();
+  }, [openFor]);
+
+  const decorated = useMemo(() => adults.map((l) => ({ ...l, _today: today })), [adults, today]);
+  const { sorted, sortKey, sortDir, toggle } = useSortable<SortableAdult, ColKey>(
+    decorated,
+    adultValue,
+    'name'
+  );
+
+  const head = (label: string, colKey: ColKey) => (
+    <SortHeader label={label} colKey={colKey} sortKey={sortKey} sortDir={sortDir} toggle={toggle} />
+  );
 
   return (
     <>
+      <div className={styles.tableToolbar}>
+        <span className={styles.muted}>{adults.length} adults</span>
+        <button type="button" className={styles.addBtn} onClick={() => setOpenFor('new')}>
+          + Add Adult
+        </button>
+      </div>
+
       <table className={styles.table}>
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Initials</th>
-            <th>Role</th>
-            <th>Age</th>
-            <th>YPT</th>
-            <th>BSA ID</th>
-            <th>Health Form</th>
-            <th>Contact</th>
+            {head('Name', 'name')}
+            {head('Initials', 'code')}
+            {head('Role', 'role')}
+            {head('Age', 'age')}
+            {head('YPT', 'ypt')}
+            {head('BSA ID', 'bsa')}
+            {head('Health Form', 'health')}
+            {head('Contact', 'contact')}
+            <th style={{ textAlign: 'right' }}>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {adults.map((l) => {
+          {sorted.map((l) => {
             const ypt = yptStatus(l.ypt_completed, today);
+            const dash = <span className={styles.muted}>—</span>;
             return (
               <tr key={l.code}>
                 <td>
-                  <button type="button" className={styles.nameBtn} onClick={() => setOpenCode(l.code)}>
+                  <button
+                    type="button"
+                    className={styles.nameBtn}
+                    onClick={() => setOpenFor(l)}
+                    title="Edit this adult"
+                  >
                     {l.name}
                   </button>
                 </td>
                 <td className={styles.mono}>{l.code}</td>
-                <td>{l.role ?? <span className={styles.muted}>—</span>}</td>
-                <td>{ageOn(l.birthdate, today) ?? <span className={styles.muted}>—</span>}</td>
+                <td>{l.role ?? dash}</td>
+                <td>{ageOn(l.birthdate, today) ?? dash}</td>
                 <td>
                   {ypt.status === 'current' && (
-                    <span className={`${styles.badge} ${styles.badgeOk}`}>thru {fmtDate(ypt.expires)}</span>
+                    <span className={`${styles.badge} ${styles.badgeOk}`}>
+                      thru {fmtDate(ypt.expires)}
+                    </span>
                   )}
                   {ypt.status === 'expiring' && (
-                    <span className={`${styles.badge} ${styles.badgeWarn}`}>expires {fmtDate(ypt.expires)}</span>
+                    <span className={`${styles.badge} ${styles.badgeWarn}`}>
+                      expires {fmtDate(ypt.expires)}
+                    </span>
                   )}
                   {ypt.status === 'expired' && (
-                    <span className={`${styles.badge} ${styles.badgeBad}`}>expired {fmtDate(ypt.expires)}</span>
+                    <span className={`${styles.badge} ${styles.badgeBad}`}>
+                      expired {fmtDate(ypt.expires)}
+                    </span>
                   )}
                   {ypt.status === 'missing' && (
                     <span className={`${styles.badge} ${styles.badgeMuted}`}>not on file</span>
                   )}
                 </td>
                 <td className={styles.mono}>{l.bsa_member_id ?? '—'}</td>
-                <td>{l.health_form_date ? fmtDate(l.health_form_date) : <span className={styles.muted}>—</span>}</td>
-                <td>
-                  {[l.phone, l.email].filter(Boolean).join(' · ') || (
-                    <span className={styles.muted}>—</span>
+                <td>{l.health_form_date ? fmtDate(l.health_form_date) : dash}</td>
+                <td>{[l.phone, l.email].filter(Boolean).join(' · ') || dash}</td>
+                <td style={{ textAlign: 'right' }}>
+                  <button type="button" className={styles.editBtn} onClick={() => setOpenFor(l)}>
+                    Edit
+                  </button>{' '}
+                  <button
+                    type="button"
+                    className={styles.deleteBtn}
+                    onClick={() => onDelete(l.code)}
+                    disabled={busyCode === l.code}
+                  >
+                    {busyCode === l.code ? '…' : 'Delete'}
+                  </button>
+                  {rowErr?.code === l.code && (
+                    <span className={styles.rowErr}>{rowErr.msg}</span>
                   )}
                 </td>
               </tr>
@@ -97,76 +201,20 @@ export function AdultsTable({ adults, today }: Props) {
 
       <dialog
         ref={dialogRef}
-        className={styles.detailDialog}
-        onClose={() => setOpenCode(null)}
+        className={styles.editDialog}
+        onClose={() => setOpenFor(null)}
         onClick={(e) => {
-          if (e.target === dialogRef.current) setOpenCode(null);
+          if (e.target === dialogRef.current) setOpenFor(null);
         }}
       >
-        {open && <AdultDetail leader={open} today={today} onClose={() => setOpenCode(null)} />}
+        {openFor && (
+          <LeaderForm
+            row={openFor === 'new' ? null : openFor}
+            scouts={scouts}
+            onClose={() => setOpenFor(null)}
+          />
+        )}
       </dialog>
     </>
-  );
-}
-
-function Field({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className={styles.detailField}>
-      <span className={styles.detailLabel}>{label}</span>
-      <span className={styles.detailValue}>{value ?? <span className={styles.muted}>—</span>}</span>
-    </div>
-  );
-}
-
-function AdultDetail({ leader: l, today, onClose }: { leader: Leader; today: string; onClose: () => void }) {
-  const age = ageOn(l.birthdate, today);
-  const ypt = yptStatus(l.ypt_completed, today);
-  const address = addressLine(l);
-
-  return (
-    <div className={styles.detailInner}>
-      <div className={styles.detailHeader}>
-        <div>
-          <h3>{l.name}</h3>
-          <p>
-            {l.role ?? 'Adult leader'} · initials <span className={styles.mono}>{l.code}</span>
-          </p>
-        </div>
-        <div className={styles.headerActions}>
-          <Link href={`/admin/advancement/lookups?editLeader=${l.code}`} className={styles.editLink}>
-            Edit in Lookups &amp; Admin →
-          </Link>
-          <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Close">
-            &times;
-          </button>
-        </div>
-      </div>
-
-      <div className={styles.detailSection}>
-        <div className={styles.detailSectionHead}>Demographics</div>
-        <div className={styles.detailGrid}>
-          <Field label="Birthdate" value={l.birthdate ? `${fmtDate(l.birthdate)} (age ${age})` : null} />
-          <Field label="BSA Member ID" value={l.bsa_member_id} />
-          <Field
-            label="YPT Completed"
-            value={
-              l.ypt_completed
-                ? `${fmtDate(l.ypt_completed)} — ${ypt.status} (expires ${fmtDate(ypt.expires)})`
-                : null
-            }
-          />
-          <Field label="Health Form Date" value={l.health_form_date ? fmtDate(l.health_form_date) : null} />
-        </div>
-      </div>
-
-      <div className={styles.detailSection}>
-        <div className={styles.detailSectionHead}>Contact</div>
-        <div className={styles.detailGrid}>
-          <Field label="Address" value={address} />
-          <Field label="Phone" value={l.phone} />
-          <Field label="Email" value={l.email} />
-        </div>
-      </div>
-    </div>
   );
 }
