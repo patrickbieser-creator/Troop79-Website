@@ -266,3 +266,34 @@ export async function getPersonDetail(personId: number): Promise<PersonDetail> {
     })
   };
 }
+
+/**
+ * Mark an adult active or inactive.
+ *
+ * Separate from role on purpose. Ending a role moves someone from Leaders to
+ * Adults — they are still around, still a parent, still offered at signup.
+ * Inactive says they have left the troop's orbit: no longer offered, but still
+ * on record, because they are attached to ledger history, past events and
+ * other people's relationships. Deleting them was never an option.
+ */
+export async function setPersonActive(
+  personId: number,
+  active: boolean,
+  reason?: string
+): Promise<Result> {
+  await requireRole(['leader']);
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from('people')
+    .update({
+      active,
+      inactive_reason: active ? null : (reason?.trim() || null),
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', personId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidate();
+  return { ok: true };
+}

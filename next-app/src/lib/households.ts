@@ -78,6 +78,17 @@ interface PersonRow {
   display_name: string;
   primary_email: string | null;
 }
+
+/** At 18 a scout is no longer a scout — they are an adult, and belong in the
+ *  picker as one. An explicit aged_out reason counts on its own, because most
+ *  historic records carry no birthdate. */
+function noLongerYouth(scout: ScoutRow): boolean {
+  if ((scout.inactive_reason ?? '').trim() === 'aged_out') return true;
+  if (!scout.birthdate) return false;
+  const eighteenth = new Date(`${scout.birthdate}T12:00:00Z`);
+  eighteenth.setUTCFullYear(eighteenth.getUTCFullYear() + 18);
+  return eighteenth <= new Date();
+}
 interface MemberRow {
   household_id: number;
   person_id: number;
@@ -89,6 +100,8 @@ interface ScoutRow {
   household_id: number | null;
   active: boolean;
   person_id: number | null;
+  inactive_reason: string | null;
+  birthdate: string | null;
 }
 interface ParentRow {
   id: number;
@@ -115,11 +128,17 @@ export async function loadHouseholds(): Promise<Household[]> {
     supabase.from('household_members').select('household_id, person_id'),
     // Merged-away records are excluded here rather than everywhere downstream:
     // a person merged into another must never appear as a second option.
+    // Inactive adults stay on record — attached to ledger history, past events
+    // and relationships — but are no longer OFFERED. Without this the picker
+    // accumulates everyone who has ever been on the roster.
     supabase
       .from('people')
       .select('id, display_name, primary_email')
-      .is('merged_into_person_id', null),
-    supabase.from('scouts').select('id, display_name, last_name, household_id, active, person_id'),
+      .is('merged_into_person_id', null)
+      .eq('active', true),
+    supabase
+      .from('scouts')
+      .select('id, display_name, last_name, household_id, active, person_id, inactive_reason, birthdate'),
     supabase.from('scout_parents').select('id, person_id, relationship, email'),
     supabase
       .from('leaders')
@@ -157,21 +176,32 @@ export async function loadHouseholds(): Promise<Household[]> {
     if (!leaderByPerson.has(l.person_id)) leaderByPerson.set(l.person_id, l);
   }
 
-  /** An adult is anyone who is not a currently-active scout AND holds some
-   *  adult identity — a parent row, or an adult-roster row that isn't a current
-   *  scout's youth-leader code. An aged-out scout with neither is simply not
-   *  listed, exactly as before. */
+  /**
+   * An adult is anyone on record who is not a currently-enrolled youth.
+   *
+   * This used to additionally require a scout_parents or leaders row, which
+   * quietly excluded the 42 people the roster import created — they held a
+   * person record and nothing else, so no matter what a leader did to them
+   * (including assigning the household the Roster told them to assign) they
+   * never appeared here. signup_entries has always carried an `adult_name`
+   * fallback for exactly this case, so there was never a reason to require a
+   * legacy row to list someone.
+   *
+   * Still excluded: currently-enrolled scouts (they are listed as scouts) and
+   * youth who left without ageing out — a scout who dropped out at 14 is not
+   * an adult to be offered at signup.
+   */
   function asAdult(personId: number): HouseholdAdult | null {
     const person = people.get(personId);
     if (!person) return null;
 
     const scout = scoutByPerson.get(personId);
     if (scout && scout.active) return null; // listed as a scout instead
+    if (scout && !scout.active && !noLongerYouth(scout)) return null; // youth who left
 
     const parent = parentByPerson.get(personId);
     const leader = leaderByPerson.get(personId);
     const leaderIsAdult = leader ? isAdultPerson(leader, activeScoutIds) : false;
-    if (!parent && !leaderIsAdult) return null;
 
     return {
       key: `pe${personId}`,

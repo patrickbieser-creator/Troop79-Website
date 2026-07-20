@@ -11,6 +11,7 @@ import {
   removeRelationship,
   searchPeople,
   getPersonDetail,
+  setPersonActive,
   type GrantableRole,
   type RelationshipInput,
   type PersonDetail
@@ -27,7 +28,9 @@ export interface DirectoryPerson {
   inactive_reason: string | null;
   roles: string;
   tab: 'active_scout' | 'inactive_scout' | 'leader' | 'adult';
-  has_legacy_pointer: boolean;
+  in_picker: boolean;
+  active: boolean;
+  person_inactive_reason: string | null;
 }
 
 export interface PersonRoleRow {
@@ -140,12 +143,20 @@ export function PeopleTable({
                   <button className={styles.linkBtn} onClick={() => setOpenFor(p.person_id)}>
                     {p.display_name}
                   </button>
-                  {!p.has_legacy_pointer && (
+                  {p.active ? (
+                    <span className={styles.chipActiveTag} title="Offered in the family signup picker">
+                      Active
+                    </span>
+                  ) : (
                     <span
-                      className={styles.warnTag}
-                      title="Not yet reachable in the family signup picker — needs a household or relationship."
+                      className={styles.chipInactiveTag}
+                      title={
+                        p.person_inactive_reason
+                          ? `Not offered at signup — ${p.person_inactive_reason}`
+                          : 'Not offered at signup; still on record'
+                      }
                     >
-                      not in picker
+                      Inactive
                     </span>
                   )}
                 </td>
@@ -230,6 +241,7 @@ function PersonEditor({
   const [newRole, setNewRole] = useState<GrantableRole>('adult_leader');
   const [relType, setRelType] = useState<RelationshipInput>('parent_of');
   const [isGuardian, setIsGuardian] = useState(false);
+  const [reason, setReason] = useState('');
 
   // The editor renders what the SERVER says this person is, re-read after every
   // change. Relying on revalidatePath + router.refresh() to feed new props into
@@ -290,12 +302,56 @@ function PersonEditor({
         {error && <div className={styles.rowError}>{error}</div>}
         {saved && <div className={styles.savedNote}>{saved}</div>}
 
-        {!person.has_legacy_pointer && (
-          <div className={styles.editorWarn}>
-            This person cannot yet be found in the family signup picker. Giving them a household,
-            or a relationship to someone in one, is what makes their family reachable.
+        <section className={styles.editorSection}>
+          <h3>Status</h3>
+          <p className={styles.editorHint}>
+            Inactive people stay on record — they keep their ledger history, relationships and past
+            events — but are no longer offered in the family signup picker. This is separate from
+            roles: someone who steps down from a role is still around, still a parent, still
+            offered.
+          </p>
+          <div className={styles.inlineRow}>
+            <span className={person.active ? styles.chipActiveTag : styles.chipInactiveTag}>
+              {person.active ? 'Active' : 'Inactive'}
+            </span>
+            {!person.active && person.person_inactive_reason && (
+              <span className={styles.muted}>{person.person_inactive_reason}</span>
+            )}
+            {person.active ? (
+              <>
+                <input
+                  className={styles.searchInput}
+                  placeholder="Reason (optional) — moved away, aged out of the troop…"
+                  value={reason}
+                  disabled={disabled}
+                  onChange={(e) => setReason(e.target.value)}
+                />
+                <button
+                  className={styles.smallBtn}
+                  disabled={disabled}
+                  onClick={() =>
+                    act(
+                      () => setPersonActive(person.person_id, false, reason),
+                      'Marked inactive — no longer offered at signup.'
+                    )
+                  }
+                >
+                  Mark inactive
+                </button>
+              </>
+            ) : (
+              <button
+                className={styles.smallBtn}
+                disabled={disabled}
+                onClick={() =>
+                  act(() => setPersonActive(person.person_id, true), 'Marked active.')
+                }
+              >
+                Mark active
+              </button>
+            )}
           </div>
-        )}
+        </section>
 
         {/* ── Household ─────────────────────────────────────────────── */}
         <section className={styles.editorSection}>

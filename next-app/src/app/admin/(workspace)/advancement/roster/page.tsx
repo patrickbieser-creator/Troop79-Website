@@ -148,7 +148,9 @@ export default async function RosterPage({
     .filter(({ on }) => on > today && on <= horizonIso)
     .sort((a, b) => a.on.localeCompare(b.on));
 
-  const notInPicker = directory.filter((p) => p.tab === 'adult' && !p.has_legacy_pointer).length;
+  const inactiveAdults = directory.filter(
+    (p) => (p.tab === 'adult' || p.tab === 'leader') && !p.active
+  ).length;
 
   return (
     <>
@@ -185,11 +187,11 @@ export default async function RosterPage({
         </div>
       )}
 
-      {tab === 'adult' && notInPicker > 0 && (
+      {(tab === 'adult' || tab === 'leader') && inactiveAdults > 0 && (
         <div className={styles.callout}>
-          <strong>{notInPicker} adults are not yet reachable in the family signup picker.</strong>{' '}
-          They were added from the roster import and have no household or relationship on record.
-          Open one and give them a household, or a relationship to someone already in one.
+          <strong>{inactiveAdults} people are marked inactive.</strong> They stay on record for
+          history but are not offered in the family signup picker. Open one and use Mark active to
+          bring them back.
         </div>
       )}
 
