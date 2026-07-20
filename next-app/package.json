@@ -18,7 +18,8 @@
     "import-roster-parents-counselors": "tsx --env-file=.env.local scripts/import-roster-parents-counselors.ts",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
-    "supabase:reset": "supabase db reset"
+    "supabase:reset": "supabase db reset",
+    "import-roster-csv": "tsx --env-file=.env.local scripts/import-roster-csv.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
