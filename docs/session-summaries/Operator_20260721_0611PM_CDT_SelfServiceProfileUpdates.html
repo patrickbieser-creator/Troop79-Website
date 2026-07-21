@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family Self-Service Profile Updates — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #2a4530;
+            --nw-brown: #8b6914;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #faf6ef;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); }
+        tr:hover { background: var(--nw-sage); }
+
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+
+        @media print {
+            body { background: white; }
+            header { padding: 1.5rem; }
+            .container { padding: 1rem; }
+            .stat { break-inside: avoid; }
+        }
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.5rem; }
+            .stats { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Family Self-Service Profile Updates</h1>
+        <p class="subtitle">v1.16.0 — families can now propose their own scout's info, leader-reviewed before it applies</p>
+        <div class="meta">
+            <span>&#128197; July 21, 2026</span>
+            <span>&#129302; Operator</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; Deployed to production</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">2</div><div class="label">New DB Migrations</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">New Public Page</div></div>
+            <div class="stat"><div class="number">2</div><div class="label">Decisions Recorded</div></div>
+            <div class="stat"><div class="number">30</div><div class="label">Files Changed</div></div>
+            <div class="stat"><div class="number">3</div><div class="label">Pre-Deploy Findings Fixed</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">Production Deploy</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <h3>Families can now update their own scout's info</h3>
+        <p>A new public <strong>/profile</strong> page — reached from the utility bar, deliberately its own surface rather than a step bolted onto Event Signup's household picker — lets a family sign in with the shared troop password and submit a proposed update to their scout's address, phone, email, school, grade, swim classification, birthdate, or the new "Things We Should Know" field.</p>
+        <div class="callout callout-teal">
+            <strong>Nothing a family submits touches the live record.</strong> Proposals land in a new <span class="file-path">change_requests</span> table and only apply once a leader approves them from a new diff panel folded into the existing Scout editor. A second submission overwrites the first pending one — with an in-UI warning shown first — rather than queuing.
+        </div>
+        <p>The browser stays "logged in" as a household across visits via a second signed cookie layered on top of the existing family session — additive, doesn't change what that cookie proves, doesn't touch Event Signup's separate flow. A Log out control fully resets the session so a shared device can hand off to a different family.</p>
+
+        <h3>New field: "Things We Should Know"</h3>
+        <p>Scout and adult records now have a freeform place for food allergies, medical conditions, and special needs — visible to leaders only, and one of the fields a family can propose an update to. This reverses a prior explicit decision (D-014) to store no medical data, by the project owner's direct sign-off mid-session, specifically because the review-approval gate above is the real safeguard, not gatekeeping which fields families can touch.</p>
+
+        <h3>Leaders: a new "Needs Attention" panel on the Dashboard</h3>
+        <p>The Leader Dashboard now opens with a list of anything waiting on a decision, instead of leaders needing to already know which scout to check. Clicking an item deep-links straight to that scout's editor with the record already open (<span class="file-path">?tab=active_scout&amp;open=&lt;id&gt;</span>).</p>
+        <div class="callout callout-green">
+            Built as an <strong>extensible list of categories</strong>, not a single hardcoded item type — submitted news articles and submitted site suggestions will land in the same space later without changing the panel itself.
+        </div>
+
+        <h3>Fixes &amp; polish</h3>
+        <ul>
+            <li>The Scout editor's Parents/Guardians section was pulling styles from the wrong CSS module and rendering completely unstyled — broken grid, plain-text dropdown, an oversized Unlink button. Root-caused and fixed.</li>
+            <li>Button-sizing and layout polish from a ux-lead review: a distinct Promote-to-adult style, a collapsible "+ Add parent/guardian" card instead of an always-open control strip, proper label associations.</li>
+            <li>Active/Inactive status is now the same two-option radio toggle everywhere (scouts, leaders, adults) — previously two different UI patterns.</li>
+            <li>The household picker dropdown no longer trails every member's name after the household label.</li>
+        </ul>
+
+        <h2>Blockers Resolved</h2>
+        <table>
+            <thead><tr><th>Issue</th><th>Root Cause</th><th>Fix</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td>Parents/Guardians section rendered unstyled</td>
+                    <td><span class="file-path">scout-relations.tsx</span> imported the wrong CSS module — several classes it referenced were never defined in it, only in a sibling module</td>
+                    <td>Added the missing class definitions; classNames now resolve</td>
+                </tr>
+                <tr>
+                    <td>Mass-assignment gap in the admin approve action (qa-lead)</td>
+                    <td><span class="file-path">approveChangeRequest</span> applied stored jsonb to <span class="file-path">scouts</span> with no allowlist re-check at the privileged apply step</td>
+                    <td>Re-filters <span class="file-path">proposed_changes</span> through the field allowlist immediately before the update</td>
+                </tr>
+                <tr>
+                    <td>Notification email exposed medical text (pre-deploy risk review)</td>
+                    <td>Email body included actual proposed field <em>values</em>, including "Things We Should Know" — a weaker security boundary than the DB</td>
+                    <td>Email now lists which fields changed, never the values</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-054</td><td>"Things We Should Know" supersedes D-014's no-medical-data clause — explicit family sign-off, scoped for future self-service use</td></tr>
+                <tr><td>D-055</td><td>Family self-service demographic updates, shipped end-to-end — generic <span class="file-path">change_requests</span> review-approval queue, household-bound second cookie, extensible Dashboard attention panel</td></tr>
+            </tbody>
+        </table>
+
+        <h2>Deployment</h2>
+        <p>Standard mid-session pause: production deploys are a mandatory escalation trigger in this project's rules, so an Opus risk assessment ran before touching anything live. Sequence followed its recommendation:</p>
+        <ul>
+            <li>Production DB backed up (schema + data dump) before migrating</li>
+            <li>Migrations applied to production <em>first</em> (additive-only — new nullable columns, a new table — compatible with already-live code)</li>
+            <li>RLS verified <em>live</em> via a direct anon-key REST probe against both new surfaces — not assumed from the migration</li>
+            <li>Code committed, pushed, Vercel auto-deploy confirmed <span class="badge badge-green">Ready</span></li>
+            <li>Smoke-tested live: homepage 200, <span class="file-path">/profile</span> 200, Profile link visually confirmed in the real utility bar</li>
+        </ul>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Consider a retention/purge policy for <span class="file-path">change_requests.proposed_changes</span> — medical text persists there indefinitely after a request is reviewed, a second PII location beyond the live <span class="file-path">scouts</span> row</li>
+            <li>Drop <span class="file-path">signup_entries</span> legacy identity columns after the production soak week, then drop <span class="file-path">scout_parents</span></li>
+            <li>Work through the ~434 remaining duplicate ledger record groups (Records → Audits)</li>
+            <li>Aged-out scouts still need a route to their own clipboard</li>
+        </ul>
+
+        <h2>Files Changed</h2>
+        <ul>
+            <li><span class="badge badge-green">NEW</span> <span class="file-path">next-app/src/app/(public)/profile/</span> — page, actions, editor, household picker, styles</li>
+            <li><span class="badge badge-green">NEW</span> <span class="file-path">next-app/src/lib/change-requests.ts</span>, <span class="file-path">profile-household-session.ts</span></li>
+            <li><span class="badge badge-green">NEW</span> <span class="file-path">next-app/src/app/admin/.../roster/change-request-actions.ts</span>, <span class="file-path">pending-update-panel.tsx</span></li>
+            <li><span class="badge badge-green">NEW</span> <span class="file-path">next-app/src/app/admin/.../dashboard/attention-items.ts</span></li>
+            <li><span class="badge badge-green">NEW</span> 2 migrations — <span class="file-path">things_we_should_know</span>, <span class="file-path">change_requests</span></li>
+            <li><span class="badge badge-gold">MODIFIED</span> <span class="file-path">scout-form.tsx</span>, <span class="file-path">leader-form.tsx</span>, <span class="file-path">scout-relations.tsx</span>, <span class="file-path">scouts-table.tsx</span>, <span class="file-path">people-table.tsx</span>, <span class="file-path">roster.module.css</span>, <span class="file-path">lookups.module.css</span>, <span class="file-path">dashboard/page.tsx</span>, <span class="file-path">site-nav.tsx</span></li>
+        </ul>
+
+    </div>
+
+    <footer>
+        <strong>Scout Troop 79</strong> — Milwaukee, WI<br>
+        Session Summary — July 21, 2026 — Operator
+    </footer>
+</body>
+</html>
