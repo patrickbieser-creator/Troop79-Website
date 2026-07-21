@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signup Identity Migration &amp; Production Fixes — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #5a6e3c;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #faf6ef;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); }
+        tr:hover { background: var(--nw-sage); }
+
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+
+        @media print {
+            body { background: white; }
+            header { padding: 1.5rem; }
+            .container { padding: 1rem; }
+            .stat { break-inside: avoid; }
+        }
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.5rem; }
+            .stats { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Signup Identity Migration &amp; Production Fixes</h1>
+        <p class="subtitle">v1.15.0 — the signup record now recognizes a person by who they are, not which role they signed up through</p>
+        <div class="meta">
+            <span>&#128197; July 20&ndash;21, 2026</span>
+            <span>&#129302; Operator</span>
+            <span>&#128204; Troop79-Website</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">6</div><div class="label">Tests Added</div></div>
+            <div class="stat"><div class="number">10</div><div class="label">Migrations Shipped</div></div>
+            <div class="stat"><div class="number">4</div><div class="label">Production Bugs Fixed</div></div>
+            <div class="stat"><div class="number">6</div><div class="label">Decisions Recorded</div></div>
+            <div class="stat"><div class="number">4</div><div class="label">Deploys to Production</div></div>
+            <div class="stat"><div class="number">0</div><div class="label">Rollbacks Needed</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <h3>Signup identity closes the loop (D-048)</h3>
+        <p>The public signup picker stopped showing anyone twice back in v1.14.0, but the <span class="file-path">signup_entries</span> record underneath still recognized a participant by whichever legacy column they signed up through — <span class="file-path">scout_id</span>, <span class="file-path">scout_parent_id</span>, or <span class="file-path">leader_code</span> — not by who they actually are. A person reachable both ways (a parent who is also a troop leader) could still land two signup rows for the same event.</p>
+        <p>Seven migrations, deliberately sequenced so each one is safe to ship on its own: fix the one write path that still created a person without an identity record; have the RPC <strong>write</strong> <span class="file-path">person_id</span> before it ever <strong>reads</strong> it (split across two separate migrations, so a row still mid-flight is never invisible to the lookup); a guarded backfill and <span class="file-path">NOT NULL</span> constraint that verify their own precondition rather than trust an earlier step; the existing-row lookup flips to prefer the real identity last.</p>
+        <div class="callout callout-orange">
+            <strong>Found along the way:</strong> the original identity-spine backfill (shipped weeks earlier) had silently merged three parents into their own children's identity record, whenever a minor's contact email happened to be the parent's own (Porter, Kimble, Barry families). Confirmed present on production via a full dry run against a real data snapshot, pulled down specifically to test this before ever touching prod — then fixed and verified there were zero remaining instances of the pattern anywhere in the system.
+        </div>
+
+        <h3>First automated tests in this project (D-049)</h3>
+        <p>Vitest, integration-style against a real local Postgres instance — no database mocking. Chosen over pgTAP on tech-lead's recommendation: every target behavior is reachable through the exact call path production code already uses, and a second SQL-native test runner wasn't worth standing up for a solo-dev project with no CI. Six tests now cover the dual-identity dedup fix, two D-033 capacity/waitlist regressions, and the <span class="file-path">merge_people</span> fix below.</p>
+
+        <h3>merge_people closes the same gap through a second door (D-050)</h3>
+        <p>A qa-lead review of the identity migration caught something the migration itself couldn't see: the existing admin &ldquo;merge two duplicate people&rdquo; tool never moved <span class="file-path">signup_entries.person_id</span> — a routine merge could have silently reopened the exact bug the whole migration exists to close. Fixed to reassign correctly, and to <strong>block</strong> the merge outright (nothing written) if both people already hold a live signup for the same event — that's a genuine conflict for a human to look at, not something safe to guess.</p>
+        <p>Verified for real: Patrick performed an actual merge (a genuine duplicate &ldquo;Summer Kimble&rdquo; record) through the live admin tool after deploy, and every downstream link — both <span class="file-path">scout_parents</span> rows, both relationship edges — reassigned correctly to the survivor.</p>
+
+        <h3>Three unrelated production bugs, found and fixed live</h3>
+        <p>None of these were part of the plan going in — each surfaced from real use of the live site during or right after the identity work, and each was fixed and verified on production the same session.</p>
+
+        <h2>Blockers Resolved</h2>
+        <table>
+            <thead><tr><th>Issue</th><th>Root Cause</th><th>Fix</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td><strong>B-001</strong> — anon key could read/write all person PII</td>
+                    <td>9 people-spine tables (<span class="file-path">people</span>, <span class="file-path">relationships</span>, <span class="file-path">households</span>, etc.) shipped with Row Level Security disabled</td>
+                    <td>Grepped every call site first — confirmed all 9 tables are touched exclusively through the service-role client. Enabled RLS with <strong>zero</strong> policies (service role bypasses RLS regardless), matching the existing <span class="file-path">signup_entries</span> pattern. Verified both directions: app tests unaffected, direct anon-key REST call now returns <span class="file-path">[]</span>.</td>
+                </tr>
+                <tr>
+                    <td>Scout rank showing blank / not earned for a scout who finished every requirement</td>
+                    <td>Scout is the one BSA rank with no real Board of Review — it was left on a manual-award-only path (matching the existing Tenderfoot&ndash;Eagle auto-award design) that nobody had exercised for this scout</td>
+                    <td>New trigger parallels the existing BoR mechanism: completing the final Scout requirement auto-awards the rank once every requirement on record is satisfied. Backfilled the one scout already qualifying; verified 16/17 doesn't fire and 17/17 does, both locally and live.</td>
+                </tr>
+                <tr>
+                    <td>Adding a new photo album failed with a database constraint error</td>
+                    <td><span class="file-path">photo_albums.category</span> had its own CHECK constraint that was never updated when the calendar category taxonomy was renamed weeks earlier</td>
+                    <td>Remapped the 4 existing albums still on old category values, replaced the constraint with the current 14-category list. Swept the rest of the codebase for the same staleness risk — everywhere else had already been built to tolerate the rename.</td>
+                </tr>
+                <tr>
+                    <td>SUPABASE_DB_PASSWORD partially echoed into the session (B-002, still open)</td>
+                    <td>A verification command meant only to confirm the variable was set instead printed part of its value</td>
+                    <td>Not fixed this session — logged for Patrick to rotate. No exploitation observed; the linked CLI never actually needed the raw password for anything done afterward.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Decisions</h2>
+        <ul>
+            <li><strong>D-048</strong> — <span class="file-path">submit_household_signup</span> migrated to <span class="file-path">person_id</span> via a write-before-read migration sequence, closing D-042/D-047.</li>
+            <li><strong>D-049</strong> — Vitest, integration-style, chosen as this project's first test framework over pgTAP.</li>
+            <li><strong>D-050</strong> — <span class="file-path">merge_people</span> now reassigns signup identity and blocks on live-signup conflicts.</li>
+            <li><strong>D-051</strong> — RLS enabled with zero policies on the 9 people-spine tables (B-001 fix).</li>
+            <li><strong>D-052</strong> — Scout rank auto-awards on completing all requirements, mirroring the existing BoR trigger.</li>
+            <li><strong>D-053</strong> — <span class="file-path">photo_albums.category</span> re-synced to the current calendar taxonomy.</li>
+        </ul>
+
+        <div class="callout callout-teal">
+            <strong>Deployment discipline this session:</strong> every migration was dry-run tested against a real production data snapshot before ever touching production, and every fix was verified live on the actual site (browser-tested, not just query-checked) immediately after deploy. Nothing shipped on faith.
+        </div>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Drop <span class="file-path">signup_entries</span>' legacy identity columns after a production soak week — only then can <span class="file-path">scout_parents</span> actually be dropped</li>
+            <li>Add a lightweight household-membership validation on client-supplied <span class="file-path">person_id</span> before that legacy fallback is removed (qa-lead LOW finding, deferred)</li>
+            <li>Re-key <span class="file-path">scout_parent_emails</span> to <span class="file-path">person_id</span> instead of <span class="file-path">scout_parent_id</span></li>
+            <li><strong>Patrick:</strong> rotate <span class="file-path">SUPABASE_DB_PASSWORD</span> (B-002) when convenient</li>
+            <li>Aged-out scouts need a route to their own clipboard (carried over)</li>
+            <li>Work through the ~434 remaining duplicate ledger record groups (carried over, no urgency)</li>
+        </ul>
+
+        <h2>Files Changed</h2>
+        <p>10 new migration files (<span class="file-path">next-app/supabase/migrations/20260720170000</span> through <span class="file-path">20260721020000</span>) <span class="badge badge-green">NEW</span>, plus:</p>
+        <ul>
+            <li><span class="file-path">next-app/src/app/(public)/events/[id]/person-first-form.tsx</span>, <span class="file-path">slot-first-form.tsx</span>, <span class="file-path">page.tsx</span>, <span class="file-path">actions.ts</span> <span class="badge badge-gold">MODIFIED</span> — send/resolve <span class="file-path">person_id</span></li>
+            <li><span class="file-path">next-app/src/lib/event-signup.ts</span> <span class="badge badge-gold">MODIFIED</span> — reader types + filters gain <span class="file-path">person_id</span></li>
+            <li><span class="file-path">next-app/src/lib/email-recipients.ts</span> <span class="badge badge-blue">REWRITTEN</span> — resolves parent emails through <span class="file-path">relationships</span></li>
+            <li><span class="file-path">next-app/src/app/admin/(workspace)/rosters/[id]/page.tsx</span> <span class="badge badge-gold">MODIFIED</span> — names resolve via <span class="file-path">person_id</span> first</li>
+            <li><span class="file-path">next-app/src/app/admin/(workspace)/advancement/lookups/actions.ts</span>, <span class="file-path">roster/scout-form.tsx</span> <span class="badge badge-gold">MODIFIED</span> — dead <span class="file-path">readParents</span>/<span class="file-path">replaceParents</span> code removed</li>
+            <li><span class="file-path">next-app/tests/</span> <span class="badge badge-green">NEW</span> — first test suite (2 files, 6 tests, 2 fixture helpers)</li>
+            <li><span class="file-path">next-app/vitest.config.ts</span>, <span class="file-path">Tests/CLAUDE.md</span> <span class="badge badge-green">NEW</span> / <span class="badge badge-gold">MODIFIED</span></li>
+        </ul>
+
+    </div>
+
+    <footer>
+        <strong>Troop79-Website</strong> — Scout Troop 79, Milwaukee WI<br>
+        Session Summary — July 20&ndash;21, 2026 — Operator
+    </footer>
+</body>
+</html>
