@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>July 19, 2026</strong></p>
+      <p>Last updated: <strong>July 20, 2026</strong></p>
     </div>
   </div>
 
@@ -494,6 +494,49 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.15.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.15.0</span>
+        <span class="release-date">July 20, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Event signups now use the same one-record-per-person system</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Signing up for an event <strong>checks the same identity everywhere</strong>, closing the
+              last piece of the duplicate-listing problem &mdash; not just in the picker, but in the
+              signup itself.
+              <span class="change-note">The picker stopped showing anyone twice back in v1.14.0, but the signup record underneath it still recognised a person by whichever role they signed up through &mdash; a parent, a leader, or a scout &mdash; rather than by who they are. Someone reachable both ways could still end up with two signup records for the same event instead of one. That gap is now closed at the record level too, with the database itself refusing a second one.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              Combining two duplicate records (the <strong>merge tool</strong>) now also moves that
+              person&rsquo;s event signups.
+              <span class="change-note">Previously a merge moved someone&rsquo;s roles, household and relationships, but not any event they&rsquo;d already signed up for &mdash; which could quietly leave a stray signup behind under the old record. If both records already have a live signup for the same event, the merge now stops and asks a person to look at both first, rather than guessing which one is right.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">A data problem from the July 20 rollout, found and fixed</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Three parents had been silently combined with their own child&rsquo;s record</strong>
+              (Porter, Kimble, and Barry families), and are now split back into two people.
+              <span class="change-note">When the new one-record system launched earlier this same week, it linked records that shared an exact email address &mdash; which is the right rule almost everywhere, except when a parent&rsquo;s email is also listed as their child&rsquo;s. In those three cases the parent and the scout ended up as one record instead of two. Each parent now has their own record again, with their information and their place in the household restored.</span>
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

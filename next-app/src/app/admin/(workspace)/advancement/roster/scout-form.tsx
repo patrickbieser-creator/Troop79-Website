@@ -129,10 +129,9 @@ export function ScoutForm({
     fd.set('school', school);
     fd.set('graduation_year', grade === '' ? '' : String(gradYearFromGrade(Number(grade))));
     fd.set('swim_class', swimClass);
-    // `parents` is deliberately NOT sent. Parents are relationships now, saved
-    // as they are edited, and readParents() treats an absent field as "leave
-    // the existing rows alone" — sending an empty array here would delete every
-    // scout_parents row the old editor had written.
+    // `parents` is deliberately NOT sent — createScout/updateScout no longer
+    // read or handle it at all. Parents are relationships now, saved as they
+    // are edited (see scout-relations.tsx / person-actions.ts).
     startTransition(async () => {
       const res = isNew ? await createScout(fd) : await updateScout(fd);
       if (!res.ok) {

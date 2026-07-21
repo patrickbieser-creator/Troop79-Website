@@ -31,6 +31,8 @@ interface Person {
   name: string;
   sub: string;
   scoutId?: string;
+  /** people.id — the real identity (signup_entries_person_uniq). */
+  personId: number | null;
   /** scout_parents.id, or null when this adult came from the leader roster. */
   parentId?: number | null;
   /** leaders.code, or null when this adult is a parent row. */
@@ -95,7 +97,8 @@ export default function SlotFirstForm({
               kind: 'scout' as const,
               name: s.displayName,
               sub: 'Scout',
-              scoutId: s.id
+              scoutId: s.id,
+              personId: s.personId
             })),
             ...household.adults.map((a, i) => ({
               key: `a${i}`,
@@ -104,6 +107,7 @@ export default function SlotFirstForm({
               /* A leader-roster adult has no relationship to a scout — calling
                  them "Parent" would be wrong, sometimes conspicuously so. */
               sub: a.relationship || (a.leaderCode ? 'Adult' : 'Parent'),
+              personId: a.personId,
               parentId: a.scoutParentId,
               leaderCode: a.leaderCode
             }))
@@ -180,6 +184,7 @@ export default function SlotFirstForm({
           scout_id: p.scoutId ?? null,
           scout_parent_id: p.parentId ?? null,
           leader_code: p.leaderCode ?? null,
+          person_id: p.personId,
           status: 'yes',
           participation: donationOnly ? 'contributor' : 'full',
           guest_count: p.key === people[0]?.key ? guests : 0,

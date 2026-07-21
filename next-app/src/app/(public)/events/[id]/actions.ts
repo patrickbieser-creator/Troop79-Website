@@ -168,7 +168,11 @@ export async function cancelSignupAction(formData: FormData): Promise<void> {
     p_scout_parent_ids:
       party?.adults.map((a) => a.scoutParentId).filter((v): v is number => v != null) ?? [],
     p_leader_codes:
-      party?.adults.map((a) => a.leaderCode).filter((v): v is string => v != null) ?? []
+      party?.adults.map((a) => a.leaderCode).filter((v): v is string => v != null) ?? [],
+    p_person_ids: [
+      ...(party?.scouts.map((s) => s.personId).filter((v): v is number => v != null) ?? []),
+      ...(party?.adults.map((a) => a.personId) ?? [])
+    ]
   });
 
   const back = `/events/${eventId}?household=${encodeURIComponent(householdKey)}`;

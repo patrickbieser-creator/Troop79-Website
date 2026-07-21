@@ -103,6 +103,7 @@ export function signupLocked(signup: EventSignup): boolean {
 export interface HouseholdEntry {
   id: number;
   person_kind: 'scout' | 'adult';
+  person_id: number;
   scout_id: string | null;
   scout_parent_id: number | null;
   leader_code: string | null;
@@ -124,15 +125,20 @@ export interface HouseholdEntry {
 /** The people a signup party is allowed to see entries for. Needed because two
  *  of the three party shapes — an unassigned scout, and an adult with no scout
  *  in the troop — have no `households` row, so their entries carry a null
- *  household_id and can't be found by the household filter. */
+ *  household_id and can't be found by the household filter.
+ *
+ *  personIds is the real identity filter now; the legacy arrays stay as a
+ *  fallback for any row written before the person_id cutover (or, in
+ *  principle, a caller that hasn't been updated yet). */
 export interface PartyIdentities {
+  personIds: number[];
   scoutIds: string[];
   scoutParentIds: number[];
   leaderCodes: string[];
 }
 
 const ENTRY_COLUMNS =
-  'id, person_kind, scout_id, scout_parent_id, leader_code, adult_name, status, participation, ' +
+  'id, person_kind, person_id, scout_id, scout_parent_id, leader_code, adult_name, status, participation, ' +
   'price_id, days, guest_count, guest_note, notes, permission_slip_received, payment_received';
 
 /**
@@ -162,6 +168,7 @@ export async function loadPartySignup(
 
   const all = (entries ?? []) as unknown as Omit<HouseholdEntry, 'claims' | 'answers'>[];
   // Household path already filtered in SQL; identity path narrows here.
+  const personIds = new Set(identities.personIds);
   const scoutIds = new Set(identities.scoutIds);
   const parentIds = new Set(identities.scoutParentIds);
   const leaderCodes = new Set(identities.leaderCodes);
@@ -170,6 +177,7 @@ export async function loadPartySignup(
       ? all
       : all.filter(
           (r) =>
+            personIds.has(r.person_id) ||
             (r.scout_id != null && scoutIds.has(r.scout_id)) ||
             (r.scout_parent_id != null && parentIds.has(r.scout_parent_id)) ||
             (r.leader_code != null && leaderCodes.has(r.leader_code))

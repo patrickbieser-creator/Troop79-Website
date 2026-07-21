@@ -19,7 +19,8 @@
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "supabase:reset": "supabase db reset",
-    "import-roster-csv": "tsx --env-file=.env.local scripts/import-roster-csv.ts"
+    "import-roster-csv": "tsx --env-file=.env.local scripts/import-roster-csv.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
@@ -43,6 +44,7 @@
     "tailwindcss": "^4",
     "tsx": "^4.22.3",
     "typescript": "^5",
+    "vitest": "^4.1.10",
     "xlsx": "^0.18.5"
   }
 }

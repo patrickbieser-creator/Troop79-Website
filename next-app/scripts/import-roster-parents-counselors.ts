@@ -1,7 +1,17 @@
 /**
- * One-shot importer: backfills scout_parents and merit_badge_counselors from
+ * One-shot importer, already run — historical record, not for re-run.
+ * Backfills scout_parents and merit_badge_counselors from
  * RosterReport_Troop0079F_Pat1_20260713.csv (ADULT MEMBERS' "Merit Badges"
  * column, and each YOUTH MEMBER row's trailing Parent/Guardian columns).
+ *
+ * SUPERSEDED (2026-07-20): scout_parents rows now carry a person_id, and any
+ * new adult must get a real `people` row alongside them (see
+ * add_parent_to_household in the SQL migrations, and person-actions.ts's
+ * addRelationship/createAdultForScout). Re-running this script would insert
+ * scout_parents rows with no person_id, reopening exactly the gap those
+ * changes closed. It also inserted the 3 parent/child email collisions fixed
+ * by 20260720185000_unmerge_parent_child_person_conflations.sql (Michelle
+ * Porter, Summer Kimble, Kevin Barry) — a second run would recreate them.
  *
  * Run:
  *   npm run import-roster-parents-counselors              (dry run)

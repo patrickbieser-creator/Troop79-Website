@@ -134,6 +134,10 @@ export default async function EventDetailPage({
   const existing =
     household && signup
       ? await loadPartySignup(signup.id, householdIdNum, {
+          personIds: [
+            ...household.scouts.map((s) => s.personId).filter((v): v is number => v != null),
+            ...household.adults.map((a) => a.personId)
+          ],
           scoutIds: household.scouts.map((s) => s.id),
           scoutParentIds: household.adults
             .map((a) => a.scoutParentId)
@@ -145,13 +149,18 @@ export default async function EventDetailPage({
       : [];
 
   // Map stored entries back to the form's person keys (s0/s1…, a0/a1…).
+  // person_id first (the real identity); legacy columns as a fallback for
+  // any entry a not-yet-migrated write path left without one.
   const existingClaims = household
     ? existing.flatMap((e) => {
         let key: string | null = null;
-        const si = household.scouts.findIndex((s) => s.id === e.scout_id);
+        const si = household.scouts.findIndex(
+          (s) => s.personId === e.person_id || s.id === e.scout_id
+        );
         if (si >= 0) key = `s${si}`;
         const ai = household.adults.findIndex(
           (a) =>
+            a.personId === e.person_id ||
             (a.scoutParentId != null && a.scoutParentId === e.scout_parent_id) ||
             (a.leaderCode != null && a.leaderCode === e.leader_code)
         );

@@ -40,19 +40,6 @@ interface ScoutDemoFields {
   birthdate: string | null;
 }
 
-interface ParentInput {
-  name: string;
-  relationship: string | null;
-  phone: string | null;
-  email: string | null;
-  same_address_as_scout: boolean;
-  address_line1: string | null;
-  address_line2: string | null;
-  city: string | null;
-  state: string | null;
-  zip: string | null;
-}
-
 interface CounselorInput {
   leader_code: string;
 }
@@ -100,26 +87,6 @@ function readLeaderExtras(formData: FormData) {
     bsa_member_id: str('bsa_member_id_leader'),
     ypt_completed: str('ypt_completed')
   };
-}
-
-/** Returns null when the form does not carry a `parents` field at all.
- *
- *  The distinction matters because replaceParents() is destructive: it wipes
- *  every scout_parents row for the scout before re-inserting. A form that has
- *  stopped sending the field — the scout editor now records parents as
- *  relationships instead — would otherwise submit an empty array and silently
- *  delete every parent on that scout. Absent means "leave them alone"; an
- *  explicit empty array still means "remove them all". */
-function readParents(formData: FormData): ParentInput[] | null {
-  const raw = formData.get('parents');
-  if (raw === null) return null;
-  try {
-    const arr = JSON.parse(String(raw)) as ParentInput[];
-    if (!Array.isArray(arr)) return [];
-    return arr.filter((p) => p && p.name && p.name.trim() !== '');
-  } catch {
-    return [];
-  }
 }
 
 function readCounselors(formData: FormData): CounselorInput[] {
@@ -203,7 +170,6 @@ export async function createScout(formData: FormData): Promise<Result> {
 
   const supabase = createAdminClient();
   const demo = { ...readDemoFields(formData), ...readScoutExtras(formData) };
-  const parents = readParents(formData);
   const { error } = await supabase.from('scouts').insert({
     id,
     first_name: firstName,
@@ -219,34 +185,8 @@ export async function createScout(formData: FormData): Promise<Result> {
     ...demo
   });
   if (error) return { ok: false, error: error.message };
-  if (parents !== null) await replaceParents(supabase, id, parents);
   revalidateAll();
   return { ok: true };
-}
-
-async function replaceParents(
-  supabase: ReturnType<typeof createAdminClient>,
-  scoutId: string,
-  parents: ParentInput[]
-): Promise<void> {
-  // Replace-on-save: wipe existing parents for this scout, then re-insert.
-  await supabase.from('scout_parents').delete().eq('scout_id', scoutId);
-  if (parents.length === 0) return;
-  const rows = parents.map((p, i) => ({
-    scout_id: scoutId,
-    name: p.name.trim(),
-    relationship: p.relationship,
-    phone: p.phone,
-    email: p.email,
-    same_address_as_scout: p.same_address_as_scout,
-    address_line1: p.same_address_as_scout ? null : p.address_line1,
-    address_line2: p.same_address_as_scout ? null : p.address_line2,
-    city: p.same_address_as_scout ? null : p.city,
-    state: p.same_address_as_scout ? null : p.state,
-    zip: p.same_address_as_scout ? null : p.zip,
-    sort_order: i
-  }));
-  await supabase.from('scout_parents').insert(rows);
 }
 
 export async function updateScout(formData: FormData): Promise<Result> {
@@ -278,7 +218,6 @@ export async function updateScout(formData: FormData): Promise<Result> {
 
   const supabase = createAdminClient();
   const demo = { ...readDemoFields(formData), ...readScoutExtras(formData) };
-  const parents = readParents(formData);
   const { error } = await supabase
     .from('scouts')
     .update({
@@ -295,7 +234,6 @@ export async function updateScout(formData: FormData): Promise<Result> {
     })
     .eq('id', id);
   if (error) return { ok: false, error: error.message };
-  if (parents !== null) await replaceParents(supabase, id, parents);
   revalidateAll();
   return { ok: true };
 }

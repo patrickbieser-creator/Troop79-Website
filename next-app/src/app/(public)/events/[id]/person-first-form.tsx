@@ -68,12 +68,15 @@ export default function PersonFirstForm({
    *  parties that stand alone. Gates anything that needs a household id. */
   const hasStoredHousehold = /^\d+$/.test(household.key);
 
-  const priorScout = (id: string) => existing.find((e) => e.scout_id === id);
-  /* Adults come from two tables now (parent rows and the leader roster), so a
-     prior entry matches on whichever identity column this adult carries. */
+  const priorScout = (s: { id: string; personId: number | null }) =>
+    existing.find((e) => e.person_id === s.personId || e.scout_id === s.id);
+  /* person_id is the real identity now; legacy columns stay as a fallback for
+     any entry a not-yet-migrated write path left without a scout_parent_id/
+     leader_code match. */
   const priorAdult = (a: HouseholdAdult) =>
     existing.find(
       (e) =>
+        e.person_id === a.personId ||
         (a.scoutParentId != null && e.scout_parent_id === a.scoutParentId) ||
         (a.leaderCode != null && e.leader_code === a.leaderCode)
     );
@@ -81,7 +84,7 @@ export default function PersonFirstForm({
   const [scoutChoice, setScoutChoice] = useState<Record<string, ScoutChoice>>(() =>
     Object.fromEntries(
       scouts.map((s) => {
-        const p = priorScout(s.id);
+        const p = priorScout(s);
         return [s.id, p ? (p.status === 'yes' || p.status === 'waitlist' ? 'yes' : 'no') : ''];
       })
     )
@@ -97,13 +100,13 @@ export default function PersonFirstForm({
   );
   const [tier, setTier] = useState<Record<string, number | null>>(() => {
     const init: Record<string, number | null> = {};
-    for (const s of scouts) init[`s:${s.id}`] = priorScout(s.id)?.price_id ?? null;
+    for (const s of scouts) init[`s:${s.id}`] = priorScout(s)?.price_id ?? null;
     for (const a of adults) init[`a:${a.key}`] = priorAdult(a)?.price_id ?? null;
     return init;
   });
   const [days, setDays] = useState<Record<string, number>>(() => {
     const init: Record<string, number> = {};
-    for (const s of scouts) init[`s:${s.id}`] = priorScout(s.id)?.days ?? 1;
+    for (const s of scouts) init[`s:${s.id}`] = priorScout(s)?.days ?? 1;
     for (const a of adults) init[`a:${a.key}`] = priorAdult(a)?.days ?? 1;
     return init;
   });
@@ -271,6 +274,7 @@ export default function PersonFirstForm({
         key: `s:${s.id}`,
         person_kind: 'scout',
         scout_id: s.id,
+        person_id: s.personId,
         status: c,
         participation: 'full',
         price_id: t?.id ?? null,
@@ -291,10 +295,12 @@ export default function PersonFirstForm({
       out.push({
         key: `a:${a.key}`,
         person_kind: 'adult',
-        /* Exactly one identity column, matching the signup_entries check
-           constraint — a parent row, or a leader-roster adult with no scout. */
+        /* person_id is the real identity now (signup_entries_person_uniq).
+           scout_parent_id / leader_code are kept as a fallback for the RPC's
+           legacy-column read path, not as the enforced identity anymore. */
         scout_parent_id: a.scoutParentId,
         leader_code: a.leaderCode,
+        person_id: a.personId,
         status: 'yes',
         participation: attending ? 'full' : 'driver_only',
         price_id: t?.id ?? null,
