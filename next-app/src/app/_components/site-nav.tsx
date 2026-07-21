@@ -41,6 +41,18 @@ export function SiteNav() {
               Milwaukee, WI
             </span>
             <Link
+              href="/profile"
+              style={{
+                fontFamily: 'var(--font-ui)',
+                fontSize: 11,
+                fontWeight: 600,
+                color: 'var(--navy)',
+                letterSpacing: '.03em'
+              }}
+            >
+              Profile
+            </Link>
+            <Link
               href="/admin"
               style={{
                 fontFamily: 'var(--font-ui)',

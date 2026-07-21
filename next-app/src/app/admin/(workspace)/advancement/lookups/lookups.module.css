@@ -139,6 +139,14 @@
   color: var(--admin-navy);
 }
 .editBtn:disabled { opacity: .5; cursor: not-allowed; }
+/* Promote to adult is an irreversible domain state change, not a no-op like
+   Cancel — needs its own visual weight so it doesn't read as interchangeable
+   with Cancel/editBtn. Amber, matching the warning-tag color used elsewhere
+   (e.g. .warnTag in roster.module.css) rather than danger-red — this isn't a
+   destructive action, just one that shouldn't be clicked casually. */
+.promoteBtn { background: var(--admin-white); color: #8a6d1a; border: 1px solid #e6d5a3; border-radius: 3px; padding: 3px 9px; font: inherit; cursor: pointer; }
+.promoteBtn:hover { background: #fdf6e3; border-color: #8a6d1a; }
+.promoteBtn:disabled { opacity: .5; cursor: not-allowed; }
 .dangerBtn {
   color: var(--admin-danger);
   border-color: #e8c4c0;

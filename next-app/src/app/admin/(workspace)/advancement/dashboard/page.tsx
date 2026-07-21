@@ -12,6 +12,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import { requireRole } from '@/lib/require-role';
 import type { LedgerEntry, LedgerKind } from '@/lib/supabase/types';
+import { loadAttentionCategories } from './attention-items';
 import styles from './dashboard.module.css';
 
 const RECENT_LIMIT = 10;
@@ -262,10 +263,33 @@ function shortDate(s: string | null): string {
 
 export default async function DashboardPage() {
   await requireRole(['leader']);
-  const data = await loadDashboard();
+  const [data, attentionCategories] = await Promise.all([loadDashboard(), loadAttentionCategories()]);
 
   return (
     <>
+      <div className={styles.attentionCard}>
+        <h3>Needs Attention</h3>
+        {attentionCategories.length === 0 ? (
+          <p className={styles.attentionEmpty}>All caught up — nothing awaiting review.</p>
+        ) : (
+          attentionCategories.map((cat) => (
+            <div key={cat.key} className={styles.attentionGroup}>
+              <div className={styles.attentionGroupLabel}>
+                {cat.label} ({cat.items.length})
+              </div>
+              <ul className={styles.attentionList}>
+                {cat.items.map((item, i) => (
+                  <li key={i}>
+                    <Link href={item.href}>{item.label}</Link>
+                    <span className={styles.attentionMeta}>{item.meta}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        )}
+      </div>
+
       <div className={styles.pageTitle}>
         <div>
           <h1>Leader Dashboard</h1>

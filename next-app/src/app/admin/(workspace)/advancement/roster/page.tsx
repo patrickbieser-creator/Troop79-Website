@@ -69,7 +69,7 @@ function eighteenth(birthdate: string): string {
 export default async function RosterPage({
   searchParams
 }: {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; open?: string }>;
 }) {
   const jar = await cookies();
   const session = await verifySession(jar.get(LEADER_COOKIE.name)?.value);
@@ -77,7 +77,7 @@ export default async function RosterPage({
     return <div className={styles.gate}>The roster is available to adult leaders only.</div>;
   }
 
-  const { tab: tabParam } = await searchParams;
+  const { tab: tabParam, open: openScoutId } = await searchParams;
   const tab: TabKey = TABS.some((t) => t.key === tabParam) ? (tabParam as TabKey) : 'active_scout';
 
   const supabase = createAdminClient();
@@ -201,6 +201,7 @@ export default async function RosterPage({
           rankLabel={rankLabel}
           today={today}
           only={tab === 'active_scout' ? 'active' : 'inactive'}
+          openScoutId={openScoutId}
         />
       ) : (
         <PeopleTable

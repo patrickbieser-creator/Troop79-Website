@@ -89,9 +89,14 @@ interface Props {
    *  which the page classifies, not this component — cannot be contradicted
    *  here by a bare `scouts.active` test. */
   only?: 'active' | 'inactive';
+  /** Deep-link support for the Dashboard's "Needs Attention" panel
+   *  (?open=<scoutId>) — auto-opens that scout's editor on load, so a leader
+   *  clicking a pending-update link lands directly on the right record
+   *  instead of having to find it in a 29-row table. */
+  openScoutId?: string;
 }
 
-export function ScoutsTable({ scouts, ranks, rankLabel, today, only }: Props) {
+export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId }: Props) {
   // `only` must NOT seed state. A state initialiser runs once on mount, and
   // React keeps this component mounted when the page navigates between the
   // Active and Inactive roster tabs — so the internal tab stayed 'active'
@@ -109,6 +114,15 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only }: Props) {
     if (openFor && !dlg.open) dlg.showModal();
     if (!openFor && dlg.open) dlg.close();
   }, [openFor]);
+
+  useEffect(() => {
+    if (!openScoutId) return;
+    const match = scouts.find((s) => s.id === openScoutId);
+    // Prefilling from the URL's ?open= param (external to render) on mount —
+    // same pattern as scout-first-card.tsx / calendar-browser.tsx.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (match) setOpenFor(match);
+  }, [openScoutId, scouts]);
 
   const activeCount = useMemo(() => scouts.filter((s) => s.active).length, [scouts]);
   const inactiveCount = scouts.length - activeCount;

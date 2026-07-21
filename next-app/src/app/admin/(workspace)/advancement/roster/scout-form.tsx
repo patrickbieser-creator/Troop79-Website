@@ -4,7 +4,9 @@ import { useState, useTransition } from 'react';
 import { createScout, promoteScoutToAdult, updateScout } from '../lookups/actions';
 import { INACTIVE_REASON_LABEL, type InactiveReason } from '@/lib/supabase/types';
 import { ScoutRelations } from './scout-relations';
+import { PendingUpdatePanel } from './pending-update-panel';
 import { ageOn, gradeFromGradYear, gradeLabel, gradYearFromGrade } from '@/lib/demographics';
+import type { EditableScoutField } from '@/lib/change-requests';
 import styles from '../lookups/lookups.module.css';
 
 export interface ScoutRow {
@@ -32,6 +34,7 @@ export interface ScoutRow {
   phone: string | null;
   email: string | null;
   health_form_date: string | null;
+  things_we_should_know: string | null;
 }
 
 export interface ParentRow {
@@ -87,6 +90,7 @@ export function ScoutForm({
   const [phone, setPhone] = useState(row?.phone ?? '');
   const [email, setEmail] = useState(row?.email ?? '');
   const [healthFormDate, setHealthFormDate] = useState(row?.health_form_date ?? '');
+  const [thingsWeShouldKnow, setThingsWeShouldKnow] = useState(row?.things_we_should_know ?? '');
   const [birthdate, setBirthdate] = useState(row?.birthdate ?? '');
   const [gender, setGender] = useState<string>(row?.gender ?? '');
   const [school, setSchool] = useState(row?.school ?? '');
@@ -101,6 +105,23 @@ export function ScoutForm({
   const currentRankLabel = row?.current_rank
     ? ranks.find((r) => r.id === row.current_rank)?.display_name ?? row.current_rank
     : null;
+
+  const currentValues: Partial<Record<EditableScoutField, string | number | null>> = row
+    ? {
+        address_line1: row.address_line1,
+        address_line2: row.address_line2,
+        city: row.city,
+        state: row.state,
+        zip: row.zip,
+        phone: row.phone,
+        email: row.email,
+        school: row.school,
+        graduation_year: row.graduation_year,
+        swim_class: row.swim_class,
+        birthdate: row.birthdate,
+        things_we_should_know: row.things_we_should_know
+      }
+    : {};
 
   function submit() {
     setErr(null);
@@ -124,6 +145,7 @@ export function ScoutForm({
     fd.set('phone', phone);
     fd.set('email', email);
     fd.set('health_form_date', healthFormDate);
+    fd.set('things_we_should_know', thingsWeShouldKnow);
     fd.set('birthdate', birthdate);
     fd.set('gender', gender);
     fd.set('school', school);
@@ -153,6 +175,10 @@ export function ScoutForm({
           a BoR is recorded.
         </p>
       </div>
+
+      {!isNew && row && (
+        <PendingUpdatePanel scoutId={row.id} currentValues={currentValues} onApplied={onClose} />
+      )}
 
       <FormSection title="Identity">
         <div className={styles.editGrid}>
@@ -359,6 +385,23 @@ export function ScoutForm({
         </div>
       </FormSection>
 
+      <FormSection title="Things We Should Know">
+        <label className={styles.editFieldFull}>
+          <span className={styles.editLabel}>Food allergies, medical conditions, special needs</span>
+          <textarea
+            value={thingsWeShouldKnow}
+            onChange={(e) => setThingsWeShouldKnow(e.target.value)}
+            className={styles.editInput}
+            rows={3}
+            placeholder="e.g. Peanut allergy (EpiPen in backpack), asthma inhaler, needs a lower bunk"
+          />
+        </label>
+        <p className={styles.helpText}>
+          Visible to leaders only. Feeds a future per-event report listing special needs for
+          attending Scouts and adults.
+        </p>
+      </FormSection>
+
       <FormSection title="Parents / Guardians">
         <ScoutRelations scoutPersonId={row?.person_id ?? null} />
       </FormSection>
@@ -415,7 +458,7 @@ export function ScoutForm({
         {!isNew && row?.active && (
           <button
             type="button"
-            className={styles.editBtn}
+            className={styles.promoteBtn}
             style={{ marginRight: 'auto' }}
             disabled={isPending}
             onClick={() => {

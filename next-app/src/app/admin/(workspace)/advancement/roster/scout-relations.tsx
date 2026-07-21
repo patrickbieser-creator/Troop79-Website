@@ -49,6 +49,7 @@ export function ScoutRelations({ scoutPersonId }: { scoutPersonId: number | null
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
   const [mode, setMode] = useState<'none' | 'link' | 'create'>('none');
   const [type, setType] = useState<LinkType>('parent_of');
   const [isGuardian, setIsGuardian] = useState(true);
@@ -109,7 +110,7 @@ export function ScoutRelations({ scoutPersonId }: { scoutPersonId: number | null
             </span>
             <button
               type="button"
-              className={`${styles.editBtn} ${styles.dangerBtn}`}
+              className={styles.unlinkBtn}
               disabled={busy}
               onClick={() => act(() => removeRelationship(r.relationshipId), `Unlinked ${r.name}.`)}
             >
@@ -146,67 +147,94 @@ export function ScoutRelations({ scoutPersonId }: { scoutPersonId: number | null
         tab, and every scout they are attached to sees the change.
       </p>
 
-      <div className={styles.inlineRow}>
-        <span className={styles.relPrefix}>Add as</span>
-        <select
-          className={styles.select}
-          value={type}
-          disabled={busy}
-          onChange={(e) => setType(e.target.value as LinkType)}
-        >
-          <option value="parent_of">Parent</option>
-          <option value="guardian_of">Guardian</option>
-          <option value="emergency_contact_for">Emergency contact</option>
-        </select>
-        <label className={styles.checkLabel}>
-          <input
-            type="checkbox"
-            checked={isGuardian}
-            disabled={busy}
-            onChange={(e) => setIsGuardian(e.target.checked)}
-          />
-          has guardianship
-        </label>
-        <button
-          type="button"
-          className={styles.editBtn}
-          disabled={busy}
-          onClick={() => setMode(mode === 'link' ? 'none' : 'link')}
-        >
-          Find someone on record
+      {!showAdd && (
+        <button type="button" className={styles.addBtn} onClick={() => setShowAdd(true)}>
+          + Add parent/guardian
         </button>
-        <button
-          type="button"
-          className={styles.editBtn}
-          disabled={busy}
-          onClick={() => setMode(mode === 'create' ? 'none' : 'create')}
-        >
-          + New adult
-        </button>
-      </div>
-
-      {mode === 'link' && (
-        <AdultPicker
-          disabled={busy}
-          onPick={(personId, name) =>
-            act(
-              () => linkAdultToScout(personId, scoutPersonId, type, isGuardian),
-              `Linked ${name}.`
-            )
-          }
-        />
       )}
 
-      {mode === 'create' && (
-        <NewAdultForm
-          disabled={busy}
-          onCreate={(name, email, phone) =>
-            act(
-              () => createAdultForScout(scoutPersonId, name, email, phone, type, isGuardian),
-              `Added ${name}.`
-            )
-          }
-        />
+      {showAdd && (
+        <div className={styles.parentRow}>
+          <div className={styles.parentRowHeader}>
+            <span className={styles.parentRowLabel}>Add parent / guardian</span>
+            <button
+              type="button"
+              className={styles.editBtn}
+              onClick={() => { setShowAdd(false); setMode('none'); }}
+            >
+              Cancel
+            </button>
+          </div>
+
+          <div className={styles.inlineRow}>
+            <label className={styles.relPrefix}>
+              Add as{' '}
+              <select
+                className={styles.select}
+                value={type}
+                disabled={busy}
+                onChange={(e) => setType(e.target.value as LinkType)}
+              >
+                <option value="parent_of">Parent</option>
+                <option value="guardian_of">Guardian</option>
+                <option value="emergency_contact_for">Emergency contact</option>
+              </select>
+            </label>
+            <label className={styles.checkLabel}>
+              <input
+                type="checkbox"
+                checked={isGuardian}
+                disabled={busy}
+                onChange={(e) => setIsGuardian(e.target.checked)}
+              />
+              has guardianship
+            </label>
+          </div>
+          <div className={styles.inlineRow}>
+            <button
+              type="button"
+              className={styles.editBtn}
+              disabled={busy}
+              aria-pressed={mode === 'link'}
+              onClick={() => setMode(mode === 'link' ? 'none' : 'link')}
+            >
+              Find someone on record
+            </button>
+            <button
+              type="button"
+              className={styles.editBtn}
+              disabled={busy}
+              aria-pressed={mode === 'create'}
+              onClick={() => setMode(mode === 'create' ? 'none' : 'create')}
+            >
+              + New adult
+            </button>
+          </div>
+
+          {mode === 'link' && (
+            <AdultPicker
+              disabled={busy}
+              onPick={(personId, name) =>
+                act(
+                  () => linkAdultToScout(personId, scoutPersonId, type, isGuardian),
+                  `Linked ${name}.`
+                )
+              }
+            />
+          )}
+
+          {mode === 'create' && (
+            <NewAdultForm
+              disabled={busy}
+              onCreate={(name, email, phone) =>
+                act(
+                  () => createAdultForScout(scoutPersonId, name, email, phone, type, isGuardian),
+                  `Added ${name}.`
+                )
+              }
+            />
+          )}
+        </div>
       )}
     </div>
   );

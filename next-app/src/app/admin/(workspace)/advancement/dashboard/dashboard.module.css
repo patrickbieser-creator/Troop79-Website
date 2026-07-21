@@ -1,3 +1,62 @@
+/* "Needs Attention" — always the first thing on the page (Patrick, 2026-07-21).
+   Amber accent (not red/danger) — these are routine items awaiting a
+   decision, not something broken. */
+.attentionCard {
+  background: #fffaf0;
+  border: 1px solid #f0e2b8;
+  border-radius: var(--admin-radius);
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+.attentionCard h3 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--admin-navy);
+  margin-bottom: 8px;
+}
+.attentionGroup + .attentionGroup {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f0e2b8;
+}
+.attentionGroupLabel {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--admin-gray-700);
+  margin-bottom: 6px;
+}
+.attentionList {
+  list-style: none;
+}
+.attentionList li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 5px 0;
+  font-size: 13px;
+}
+.attentionList a {
+  color: var(--admin-navy);
+  font-weight: 600;
+  text-decoration: none;
+}
+.attentionList a:hover {
+  text-decoration: underline;
+}
+.attentionMeta {
+  font-size: 11.5px;
+  color: var(--admin-gray-500);
+  white-space: nowrap;
+}
+.attentionEmpty {
+  font-size: 12.5px;
+  color: var(--admin-gray-500);
+  font-style: italic;
+}
+
 .pageTitle {
   display: flex;
   justify-content: space-between;

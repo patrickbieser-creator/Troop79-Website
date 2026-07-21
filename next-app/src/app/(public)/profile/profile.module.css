@@ -1,0 +1,140 @@
+/* /profile — family self-service demographics. Same visual language as
+   events/[id]/event-detail.module.css (gate/picker classes), own module
+   because each public route owns its CSS (project convention). */
+
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 28px 24px 72px;
+  color: var(--text-body);
+}
+
+.head {
+  border-bottom: 2px solid var(--border-light);
+  padding-bottom: 18px;
+  margin-bottom: 22px;
+}
+.title {
+  font-family: var(--font-display);
+  font-size: clamp(26px, 5vw, 38px);
+  line-height: 1.12;
+  color: var(--text-head);
+  margin-bottom: 8px;
+}
+.dek {
+  font-family: var(--font-body);
+  font-size: 15.5px;
+  line-height: 1.55;
+  color: var(--text-body);
+}
+
+.gate {
+  background: var(--cream);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  padding: 18px;
+  font-family: var(--font-ui);
+}
+.gateLede {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-body);
+  margin-bottom: 14px;
+}
+.gateLabel {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-meta);
+  margin-bottom: 6px;
+}
+.gateRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.gateInput {
+  flex: 1 1 200px;
+  padding: 9px 12px;
+  border: 1px solid var(--border-mid);
+  border-radius: 3px;
+  background: var(--warm-white);
+  font-size: 15px;
+}
+.gateInput:focus-visible {
+  outline: 2px solid var(--forest);
+  outline-offset: 1px;
+}
+.gateBtn {
+  background: var(--navy);
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  padding: 9px 20px;
+  font-family: var(--font-ui);
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.gateBtn:hover { background: var(--forest); }
+.gateErr {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #a04a3d;
+  font-weight: 600;
+}
+
+.picker { margin-top: 4px; }
+.pickerHint { font-family: var(--font-ui); font-size: 12.5px; color: var(--text-meta); margin-top: 8px; line-height: 1.5; }
+.pickerResults { list-style: none; margin-top: 12px; border: 1px solid var(--border-light); border-radius: 4px; overflow: hidden; }
+.pickerResults > li + li { border-top: 1px solid var(--border-light); }
+.pickerNone { padding: 12px 14px; font-family: var(--font-ui); font-size: 13px; color: var(--text-meta); background: var(--warm-white); }
+.pickerBtn { display: block; width: 100%; text-align: left; padding: 11px 14px; background: var(--warm-white); border: none; cursor: pointer; font-family: var(--font-ui); }
+.pickerBtn:hover { background: var(--cream); }
+.pickerName { font-size: 14.5px; font-weight: 700; color: var(--text-head); display: block; }
+.pickerMeta { font-size: 12px; color: var(--text-meta); }
+
+.loggedInBar {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  font-family: var(--font-ui); font-size: 13.5px; color: var(--text-body);
+  padding-bottom: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border-light);
+}
+.linkBtn {
+  background: none; border: none; padding: 0; font-family: var(--font-ui);
+  font-size: 12.5px; color: var(--text-meta); text-decoration: underline; cursor: pointer;
+}
+.linkBtn:hover { color: var(--navy); }
+
+.savedNote { font-family: var(--font-ui); font-size: 13.5px; font-weight: 700; color: var(--forest); background: #eef2ee; border-left: 3px solid var(--forest); padding: 10px 13px; border-radius: 0 3px 3px 0; margin-bottom: 18px; }
+.errNote { font-family: var(--font-ui); font-size: 13.5px; font-weight: 700; color: #a04a3d; background: #fbf0ee; border-left: 3px solid #a04a3d; padding: 10px 13px; border-radius: 0 3px 3px 0; margin-bottom: 18px; }
+.warnNote { font-family: var(--font-ui); font-size: 13px; line-height: 1.5; color: #6b5514; background: #fdf6e3; border: 1px solid #e6d5a3; border-radius: 3px; padding: 10px 13px; margin-bottom: 12px; }
+
+.scoutCard { border: 1px solid var(--border-light); border-radius: 4px; margin-bottom: 16px; }
+.scoutSummary { font-family: var(--font-ui); font-size: 15px; font-weight: 700; color: var(--text-head); padding: 14px 16px; cursor: pointer; list-style: none; }
+.scoutSummary::-webkit-details-marker { display: none; }
+.scoutBody { padding: 4px 16px 18px; }
+
+.editGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; font-family: var(--font-ui); }
+.editField { display: block; }
+.editFieldFull { display: block; grid-column: 1 / -1; }
+.editLabel { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-meta); margin-bottom: 4px; }
+.editInput {
+  width: 100%; border: 1px solid var(--border-mid); border-radius: 3px; padding: 8px 10px;
+  font-family: inherit; font-size: 13.5px; background: var(--warm-white); color: var(--text-body);
+}
+.editInput:focus-visible { outline: 2px solid var(--forest); outline-offset: 1px; }
+.helpText { font-size: 11.5px; color: var(--text-meta); line-height: 1.5; margin-top: 6px; }
+
+.editActions { margin-top: 14px; display: flex; justify-content: flex-end; }
+.editSaveBtn {
+  background: var(--navy); color: #fff; border: none; border-radius: 3px; padding: 8px 18px;
+  font-family: var(--font-ui); font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.editSaveBtn:hover { background: var(--forest); }
+
+@media (max-width: 480px) {
+  .editGrid { grid-template-columns: 1fr; }
+  .editFieldFull { grid-column: auto; }
+}

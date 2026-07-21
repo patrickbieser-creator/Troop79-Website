@@ -38,6 +38,9 @@ interface ScoutDemoFields {
   email: string | null;
   health_form_date: string | null;
   birthdate: string | null;
+  /** Freeform: allergies/medical/special needs. Shared by scouts and leaders,
+   *  same as every other field readDemoFields returns (D-014 supersede). */
+  things_we_should_know: string | null;
 }
 
 interface CounselorInput {
@@ -58,7 +61,8 @@ function readDemoFields(formData: FormData): ScoutDemoFields {
     phone: str('phone'),
     email: str('email'),
     health_form_date: str('health_form_date'),
-    birthdate: str('birthdate')
+    birthdate: str('birthdate'),
+    things_we_should_know: str('things_we_should_know')
   };
 }
 

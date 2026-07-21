@@ -243,7 +243,6 @@ export function PeopleTable({
               })
           }}
           currentTab={people[0]?.tab ?? null}
-          householdMembers={householdMembers}
           onClose={() => setOpenPerson(null)}
           onChanged={() => router.refresh()}
         />
@@ -257,7 +256,6 @@ function PersonEditor({
   households,
   seed,
   currentTab,
-  householdMembers,
   onClose,
   onChanged
 }: {
@@ -267,7 +265,6 @@ function PersonEditor({
   /** Which tab is being viewed, so a person who has just moved off it can say
    *  so rather than silently vanishing from the list behind the dialog. */
   currentTab: string | null;
-  householdMembers: Record<number, string[]>;
   onClose: () => void;
   onChanged: () => void;
 }) {
@@ -275,6 +272,11 @@ function PersonEditor({
   const [relType, setRelType] = useState<RelationshipInput>('parent_of');
   const [isGuardian, setIsGuardian] = useState(false);
   const [reason, setReason] = useState('');
+  // True only while the admin has picked the Inactive radio but hasn't
+  // confirmed yet — lets the reason box "pop up" without firing the mutation
+  // before there's a chance to type a reason (same UX as the Scout editor's
+  // Active/Inactive radios in scout-form.tsx).
+  const [pendingInactive, setPendingInactive] = useState(false);
   const [newHouseholdLabel, setNewHouseholdLabel] = useState('');
   const [renaming, setRenaming] = useState(false);
   const [renameLabel, setRenameLabel] = useState('');
@@ -352,47 +354,66 @@ function PersonEditor({
             roles: someone who steps down from a role is still around, still a parent, still
             offered.
           </p>
-          <div className={styles.inlineRow}>
-            <span className={detail.active ? styles.chipActiveTag : styles.chipInactiveTag}>
-              {detail.active ? 'Active' : 'Inactive'}
-            </span>
-            {!detail.active && detail.inactiveReason && (
-              <span className={styles.muted}>{detail.inactiveReason}</span>
-            )}
-            {detail.active ? (
-              <>
-                <input
-                  className={styles.searchInput}
-                  placeholder="Reason (optional) — moved away, aged out of the troop…"
-                  value={reason}
-                  disabled={disabled}
-                  onChange={(e) => setReason(e.target.value)}
-                />
-                <button
-                  className={styles.smallBtn}
-                  disabled={disabled}
-                  onClick={() =>
-                    act(
-                      () => setPersonActive(person.person_id, false, reason),
-                      'Marked inactive — no longer offered at signup.'
-                    )
+          <div className={styles.statusRadioRow}>
+            <label className={styles.statusRadio}>
+              <input
+                type="radio"
+                name={`person-status-${person.person_id}`}
+                checked={detail.active && !pendingInactive}
+                disabled={disabled}
+                onChange={() => {
+                  setPendingInactive(false);
+                  if (!detail.active) {
+                    act(() => setPersonActive(person.person_id, true), 'Marked active.');
                   }
-                >
-                  Mark inactive
-                </button>
-              </>
-            ) : (
+                }}
+              />
+              <span>Active</span>
+            </label>
+            <label className={styles.statusRadio}>
+              <input
+                type="radio"
+                name={`person-status-${person.person_id}`}
+                checked={!detail.active || pendingInactive}
+                disabled={disabled}
+                onChange={() => setPendingInactive(true)}
+              />
+              <span>Inactive</span>
+            </label>
+          </div>
+          {!detail.active && !pendingInactive && detail.inactiveReason && (
+            <p className={styles.muted}>{detail.inactiveReason}</p>
+          )}
+          {detail.active && pendingInactive && (
+            <div className={styles.inlineRow}>
+              <input
+                className={styles.searchInput}
+                placeholder="Reason (optional) — moved away, aged out of the troop…"
+                value={reason}
+                disabled={disabled}
+                onChange={(e) => setReason(e.target.value)}
+              />
               <button
                 className={styles.smallBtn}
                 disabled={disabled}
                 onClick={() =>
-                  act(() => setPersonActive(person.person_id, true), 'Marked active.')
+                  act(
+                    () => setPersonActive(person.person_id, false, reason),
+                    'Marked inactive — no longer offered at signup.'
+                  )
                 }
               >
-                Mark active
+                Mark inactive
               </button>
-            )}
-          </div>
+              <button
+                className={styles.smallBtn}
+                disabled={disabled}
+                onClick={() => setPendingInactive(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
         </section>
 
         {/* ── Household ─────────────────────────────────────────────── */}
@@ -415,19 +436,11 @@ function PersonEditor({
             }
           >
             <option value="">— no household —</option>
-            {households.map((h) => {
-              // The label alone is not an identifier — the troop already has two
-              // Stollenwerk households, two Haslam and two Pasquesi. Listing who
-              // is in each is what makes them tellable apart at the moment of
-              // choosing, which is when it matters.
-              const who = householdMembers[h.id] ?? [];
-              return (
-                <option key={h.id} value={h.id}>
-                  {h.label}
-                  {who.length > 0 ? ` — ${who.slice(0, 4).join(', ')}${who.length > 4 ? '…' : ''}` : ' — empty'}
-                </option>
-              );
-            })}
+            {households.map((h) => (
+              <option key={h.id} value={h.id}>
+                {h.label}
+              </option>
+            ))}
           </select>
 
           <div className={styles.inlineRow}>

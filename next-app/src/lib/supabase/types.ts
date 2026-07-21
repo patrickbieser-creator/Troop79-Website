@@ -79,6 +79,11 @@ export interface Scout {
   phone: string | null;
   email: string | null;
   health_form_date: string | null;
+  /** Freeform: food allergies, medical conditions, special needs (D-014
+   *  supersede). Admin-entered for now; the planned family self-service flow
+   *  (Plans/) will let households propose updates here too, gated through
+   *  review-approval before they take effect. */
+  things_we_should_know: string | null;
 }
 
 export interface ScoutParent {
@@ -120,6 +125,11 @@ export interface Leader {
   bsa_member_id: string | null;
   /** YPT completion date; certification runs two years (derived status). */
   ypt_completed: string | null;
+  /** Freeform: food allergies, medical conditions, special needs (D-014
+   *  supersede). Admin-entered for now; the planned family self-service flow
+   *  (Plans/) will let households propose updates here too, gated through
+   *  review-approval before they take effect. */
+  things_we_should_know: string | null;
 }
 
 export interface MeritBadgeCounselor {

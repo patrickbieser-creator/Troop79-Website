@@ -27,6 +27,7 @@ export interface LeaderRow {
   birthdate: string | null;
   bsa_member_id: string | null;
   ypt_completed: string | null;
+  things_we_should_know: string | null;
 }
 
 function typeOf(row: LeaderRow | null): LeaderType {
@@ -63,6 +64,7 @@ export function LeaderForm({
   const [phone, setPhone] = useState(row?.phone ?? '');
   const [email, setEmail] = useState(row?.email ?? '');
   const [healthFormDate, setHealthFormDate] = useState(row?.health_form_date ?? '');
+  const [thingsWeShouldKnow, setThingsWeShouldKnow] = useState(row?.things_we_should_know ?? '');
   const [birthdate, setBirthdate] = useState(row?.birthdate ?? '');
   const [bsaMemberId, setBsaMemberId] = useState(row?.bsa_member_id ?? '');
   const [yptCompleted, setYptCompleted] = useState(row?.ypt_completed ?? '');
@@ -92,6 +94,7 @@ export function LeaderForm({
     fd.set('phone', phone);
     fd.set('email', email);
     fd.set('health_form_date', healthFormDate);
+    fd.set('things_we_should_know', thingsWeShouldKnow);
     fd.set('birthdate', birthdate);
     fd.set('bsa_member_id_leader', bsaMemberId);
     fd.set('ypt_completed', yptCompleted);
@@ -341,6 +344,26 @@ export function LeaderForm({
             />
           </label>
         </div>
+      </div>
+
+      <div className={styles.editSection}>
+        <div className={styles.editSectionHeader}>
+          <h4>Things We Should Know</h4>
+        </div>
+        <label className={styles.editFieldFull}>
+          <span className={styles.editLabel}>Food allergies, medical conditions, special needs</span>
+          <textarea
+            value={thingsWeShouldKnow}
+            onChange={(e) => setThingsWeShouldKnow(e.target.value)}
+            className={styles.editInput}
+            rows={3}
+            placeholder="e.g. Peanut allergy (EpiPen in backpack), asthma inhaler"
+          />
+        </label>
+        <p className={styles.helpText}>
+          Visible to leaders only. Feeds a future per-event report listing special needs for
+          attending Scouts and adults.
+        </p>
       </div>
 
       {err && <div className={styles.editError}>{err}</div>}

@@ -198,6 +198,21 @@
 .rowErr { display: block; margin-top: 4px; font-size: 10.5px; color: #b3261e; }
 
 /* Four-tab roster: people tables, person editor */
+/* scout-relations.tsx references these — kept in sync with the equivalent
+   definitions in lookups.module.css so the Parents/Guardians grid, cards and
+   select actually get styled instead of silently resolving to no class. */
+.editGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+.editField { display: block; }
+.editFieldFull { display: block; grid-column: 1 / -1; }
+.editLabel { display: block; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--admin-gray-500); margin-bottom: 4px; }
+.parentRow { background: var(--admin-gray-50); border: 1px solid var(--admin-gray-200); border-radius: 3px; padding: 10px 12px; margin-bottom: 8px; }
+.parentRowHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.parentRowLabel { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--admin-gray-500); }
+.select { border: 1px solid var(--admin-gray-300); border-radius: 3px; padding: 6px 9px; font-family: inherit; font-size: 13px; background: var(--admin-white); color: var(--admin-gray-900); }
+@media (max-width: 560px) {
+  .editGrid { grid-template-columns: 1fr; }
+  .editFieldFull { grid-column: auto; }
+}
 .linkBtn { background: none; border: none; padding: 0; font-family: inherit; font-size: inherit; color: var(--admin-navy); font-weight: 600; cursor: pointer; text-align: left; }
 .linkBtn:hover { text-decoration: underline; }
 .smallBtn { font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: .03em; background: var(--admin-white); border: 1px solid var(--admin-gray-300); color: var(--admin-gray-700); border-radius: 3px; padding: 4px 10px; cursor: pointer; }
@@ -245,3 +260,17 @@
 .dangerBtn { font-family: inherit; font-size: 12px; font-weight: 700; letter-spacing: .04em; background: var(--admin-white); color: #8c2f2f; border: 1px solid #c98b8b; border-radius: 3px; padding: 7px 14px; cursor: pointer; }
 .dangerBtn:hover { background: #fdf2f2; }
 .dangerBtn:disabled { opacity: .5; cursor: default; }
+
+/* Small, inline danger action (e.g. Unlink a parent) — same box model as
+   .editBtn, just red. Deliberately NOT combined with .dangerBtn above: that
+   class is sized for the standalone danger-zone delete button, and pairing
+   `${editBtn} ${dangerBtn}` let dangerBtn's larger padding/font-size win the
+   cascade, making Unlink read as louder than Save/Cancel. */
+.unlinkBtn { background: var(--admin-white); color: #8c2f2f; border: 1px solid #c98b8b; border-radius: 5px; padding: 3px 10px; font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; }
+.unlinkBtn:hover { background: #fdf2f2; border-color: #8c2f2f; }
+.unlinkBtn:disabled { opacity: .5; cursor: default; }
+
+/* Also referenced by people-table.tsx's PersonEditor Status section — kept in
+   sync with lookups.module.css's definitions, same reason as the block above. */
+.statusRadioRow { display: flex; gap: 18px; margin-bottom: 4px; }
+.statusRadio { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--admin-gray-900); cursor: pointer; user-select: none; }

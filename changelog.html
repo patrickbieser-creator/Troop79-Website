@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>July 20, 2026</strong></p>
+      <p>Last updated: <strong>July 21, 2026</strong></p>
     </div>
   </div>
 
@@ -494,6 +494,99 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.16.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.16.0</span>
+        <span class="release-date">July 21, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Families can now update their own scout&rsquo;s info</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              A new <strong>Profile</strong> page (link in the top bar, next to Members Login) lets a
+              family sign in with the troop password and submit an update to their scout&rsquo;s
+              address, phone, email, school, grade, swim classification, or birthdate.
+              <span class="change-note">The page remembers which household you are once you find yourself the first time, so you don&rsquo;t have to search your name again on a later visit &mdash; with a Log out link if you need to switch to a different family on the same device.</span>
+            </span>
+          </li>
+          <li>
+            <span>
+              Nothing a family submits changes the record right away &mdash; it&rsquo;s <strong>reviewed
+              by a leader first</strong>, from the same screen leaders already use to edit a scout, with
+              a clear before/after comparison.
+            </span>
+          </li>
+          <li>
+            <span>
+              Submitting a second update before the first is reviewed <strong>replaces</strong> it,
+              with a warning shown first &mdash; there&rsquo;s never more than one update waiting per
+              scout.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">New: &ldquo;Things We Should Know&rdquo;</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Scout and adult records now have a place for <strong>food allergies, medical
+              conditions, and special needs</strong> &mdash; visible to leaders only, and one of the
+              fields a family can propose an update to from their Profile page.
+              <span class="change-note">This is meant to replace digging through paper health forms when it matters most, like on a campout. A report that pulls this together for everyone attending a specific event is planned but not built yet.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Leaders: a new &ldquo;Needs Attention&rdquo; section on the Dashboard</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              The Leader Dashboard now opens with a list of anything waiting on a decision &mdash;
+              starting with family-submitted profile updates &mdash; instead of leaders needing to
+              already know which scout to check.
+              <span class="change-note">Clicking an item jumps straight to that scout&rsquo;s record with the update already showing, ready to approve or reject. More categories (submitted news articles, submitted site suggestions) will land in this same space as those features are built.</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="change-group">
+        <p class="change-group-title">Fixes &amp; polish in the Scout editor</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              The <strong>Parents/Guardians</strong> section of the Scout editor was rendering
+              unstyled &mdash; names and contact fields stacked oddly, an unstyled dropdown, an
+              oversized Unlink button. Fixed, and the &ldquo;add a parent&rdquo; controls now stay
+              tucked away until you actually want to add one.
+            </span>
+          </li>
+          <li>
+            <span>
+              Active/Inactive status &mdash; for scouts, leaders, and adults &mdash; is now the same
+              two-option toggle everywhere, with the reason box only appearing once you choose
+              Inactive.
+            </span>
+          </li>
+          <li>
+            <span>
+              The household picker in the Roster no longer lists every member&rsquo;s name after the
+              household name &mdash; just the name itself, since two same-surname households are told
+              apart by how they&rsquo;re named, not by a list trailing off the edge of a dropdown.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 
