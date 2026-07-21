@@ -1,7 +1,6 @@
 # Scout/Family Self-Service Demographics (Review-Approval)
 
-**Status:** Parked
-**Parked:** 2026-07-21
+**Status:** Shipped — v1.16.0, 2026-07-21 (see D-055)
 **Priority:** Medium
 
 ## Overview
