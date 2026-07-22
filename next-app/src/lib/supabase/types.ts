@@ -402,3 +402,77 @@ export interface Article {
   created_at: string;
   updated_at: string;
 }
+
+// ── Resource Library (Plans/Resource-Library.md) ────────────────────────────
+
+export interface LibraryTopic {
+  id: number;
+  slug: string;
+  title: string;
+  blurb_md: string | null;
+  icon: string | null;
+  sort_order: number;
+  retired_at: string | null;
+  created_at: string;
+}
+
+export interface LibraryResource {
+  id: number;
+  title: string;
+  blurb: string | null;
+  kind: 'link' | 'video' | 'document' | 'image' | 'post';
+  url: string | null;
+  body_md: string | null;
+  thumbnail_url: string | null;
+  host: string | null;
+  visibility: 'public' | 'leaders';
+  status: 'pending' | 'published' | 'archived';
+  submitted_by_label: string | null;
+  submitted_person_id: number | null;
+  submitter_note: string | null;
+  /** Webmaster-editable public credit; defaults from submitted_by_label at publish. */
+  attribution_label: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  decline_reason: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LibraryPlacement {
+  id: number;
+  resource_id: number;
+  target_kind: 'rank_req' | 'mb' | 'mb_req' | 'topic';
+  target_key: string;
+  pinned: boolean;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface RequirementNote {
+  id: number;
+  target_kind: 'rank_req' | 'mb' | 'mb_req';
+  target_key: string;
+  narrative_md: string;
+  updated_by: string | null;
+  updated_at: string;
+}
+
+export interface RequirementSubmission {
+  id: number;
+  scout_id: string;
+  target_kind: 'rank_req' | 'mb_req';
+  target_key: string;
+  proof_type: 'photo' | 'report' | 'link';
+  body_md: string | null;
+  link_url: string | null;
+  /** Private-bucket storage paths (never public CDN) — see Plans/Resource-Library.md. */
+  media: unknown[];
+  submitted_via: 'family' | 'scout';
+  status: 'pending' | 'approved' | 'returned';
+  feedback_md: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  ledger_entry_id: number | null;
+  created_at: string;
+}

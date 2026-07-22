@@ -184,6 +184,24 @@ export default async function MeritBadgeDetailPage({
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 14 }}>
           <ExternLink href={bsaPageUrl(mb)}>Official BSA page ↗</ExternLink>
           <ExternLink href={workbookUrl(mb)}>Workbook (PDF) ↗</ExternLink>
+          <Link
+            href={`/library/mb/${mbId}`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              fontFamily: 'var(--font-ui)',
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: '.04em',
+              textTransform: 'uppercase',
+              color: 'var(--forest)',
+              padding: '8px 16px',
+              border: '1px solid var(--forest)',
+              borderRadius: 2
+            }}
+          >
+            Troop Library resources
+          </Link>
         </div>
         <div style={{ height: 2, background: 'var(--border-mid)', marginTop: 20 }} />
       </div>

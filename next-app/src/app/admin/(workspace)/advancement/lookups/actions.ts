@@ -5,6 +5,7 @@ import { requireRole } from '@/lib/require-role';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { LedgerKind } from '@/lib/supabase/types';
 import { slugify } from '@/lib/slugify';
+import { cascadeLibraryReqRename } from '@/lib/library-data';
 
 /** The event-tab kinds an event can be classified as — Day Outing/Fundraiser
  *  have no natural quantity of their own, Camping/Hiking are implied by
@@ -1057,6 +1058,20 @@ export async function updateReqCode(formData: FormData): Promise<Result> {
       return {
         ok: false,
         error: `Catalog renamed, but couldn't update matching ledger entries: ${cascadeErr.message}`
+      };
+    }
+
+    // Resource Library rides the same composite codes (Plans/Resource-Library.md)
+    // — placements, narratives, and proof submissions keyed to the old code
+    // follow the rename, or requirement pages would silently orphan their
+    // content (the exact bug class D-019 exists to prevent). NOTE: if
+    // sub-requirement renaming ever ships (top-level only today), it must
+    // carry this same cascade.
+    const libErr = await cascadeLibraryReqRename(supabase, source, parentId, originalCode, code);
+    if (libErr) {
+      return {
+        ok: false,
+        error: `Catalog and ledger renamed, but couldn't update Resource Library rows: ${libErr}`
       };
     }
   }

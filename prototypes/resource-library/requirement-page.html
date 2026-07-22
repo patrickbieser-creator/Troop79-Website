@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>First Class 9a — Resource Library Prototype — Scout Troop 79</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/library.css" />
+  <style>
+    .reqHeader { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 10px; }
+    .reqText {
+      font-family: var(--font-display); font-weight: 700; color: var(--text-head);
+      font-size: clamp(24px, 4.5vw, 34px); line-height: 1.15; text-wrap: balance; flex: 1; min-width: 260px;
+    }
+    .siblingNav { display: flex; gap: 14px; font-family: var(--font-ui); font-size: 12.5px; font-weight: 700; margin-top: 30px; }
+    .siblingNav a { color: var(--navy); padding: 8px 0; }
+    .siblingNav a:hover { color: var(--forest); text-decoration: underline; text-underline-offset: 2px; }
+    .siblingNav .spacer { flex: 1; }
+    .officialNote { font-family: var(--font-body); font-size: 12px; font-style: italic; color: var(--text-meta); margin-top: 8px; }
+    .ctaRow { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin: 24px 0 6px; }
+  </style>
+</head>
+<body>
+
+  <div class="proto-banner">
+    <div class="proto-banner-inner">
+      <p><strong>Prototype v1</strong> Requirement landing page — narrative + resources + &ldquo;I did this&rdquo; proof flow (Phase 2). All names fictional.</p>
+      <a href="index.html">&larr; Library home</a>
+    </div>
+  </div>
+
+  <main class="page page--narrow">
+
+    <!-- ══ STATE: PAGE ═════════════════════════════════════════════════ -->
+    <section id="state-page" class="state" aria-label="Requirement page">
+
+      <p class="kicker">
+        <a href="index.html">Resource Library</a><span class="sep">·</span>
+        <a href="index.html">First Class</a><span class="sep">·</span>
+        Requirement 9
+      </p>
+
+      <div class="reqHeader">
+        <span class="reqTag reqTag--large">9a</span>
+        <h1 class="reqText">Visit and discuss citizenship with a community leader</h1>
+      </div>
+      <p class="pageDek" style="margin-bottom:8px;">Visit and have a conversation with an elected official
+        or civic leader in your community — then be ready to discuss what you learned about
+        their role and your own responsibilities as a citizen.</p>
+      <p class="officialNote">Paraphrased — confirm exact wording against the current handbook at sign-off.</p>
+      <div class="headRule"></div>
+
+      <!-- Leader-written narrative -->
+      <div class="narrative">
+        <p>This is the requirement scouts put off the longest — and the one they end up
+          telling stories about. You don&rsquo;t need an appointment with the mayor: an
+          alderperson, a school-board member, a village trustee, or a judge all count, and
+          most are genuinely happy to talk to a scout who emails them.</p>
+        <p>Our troop&rsquo;s usual path: look up your alder using the link below, send a
+          short email (there&rsquo;s a template in the resources), and bring three questions
+          from the question list. Afterward, jot down what surprised you — that&rsquo;s
+          exactly what a leader will ask about at sign-off. Several scouts have done this
+          one together as a patrol visit; that&rsquo;s fine, but each scout has their own
+          conversation notes.</p>
+        <p class="narrativeCredit">Written by <strong>Mr. Bieser</strong> · updated June 2026 ·
+          <em>leaders: edit this intro from the workstation</em></p>
+      </div>
+
+      <!-- Live troop context (Has/Needs data the site already computes) -->
+      <div class="contextStrip" aria-label="Troop progress on this requirement">
+        <div class="ctxCell"><div class="ctxNum ctxNum--forest">12</div><div class="ctxLabel">Scouts have it</div></div>
+        <div class="ctxCell"><div class="ctxNum ctxNum--bark">14</div><div class="ctxLabel">Still need it</div></div>
+        <div class="ctxCell"><div class="ctxNum">4</div><div class="ctxLabel">Resources here</div></div>
+        <div class="ctxCell" style="display:flex; align-items:center;">
+          <a href="#" style="font-family:var(--font-ui); font-size:12px; font-weight:700; color:var(--navy);">Has/Needs detail &rarr;</a>
+        </div>
+      </div>
+
+      <div class="ctaRow">
+        <button type="button" class="btn btn--primary" onclick="go('gate')">✓&ensp;I Did This — Submit Proof</button>
+        <button type="button" class="btn btn--secondary" onclick="alert('Prototype: opens the same suggest-a-resource form as the library home.')">Suggest a Resource</button>
+      </div>
+      <p class="fieldHint" style="margin-bottom:22px;">Proof goes to an adult leader for review —
+        nothing is signed off automatically. You&rsquo;ll hear back by email.</p>
+
+      <div class="sectionDivider"><span class="divLabel">Resources</span><span class="divRule"></span></div>
+
+      <ul class="resourceList">
+        <li class="resourceCard isPinned">
+          <span class="pinFlag">★ Pinned</span>
+          <span class="resIcon" aria-hidden="true">🏛</span>
+          <div class="resBody">
+            <a class="resTitleLink" href="#" target="_blank" rel="noopener noreferrer"><h3 class="resTitle">Milwaukee Common Council — Find Your Alder ↗</h3></a>
+            <p class="resBlurb">Type your address, get your district and alderperson with contact info. Start here.</p>
+            <div class="resMetaRow">
+              <span class="hostChip">Website</span>
+              <span class="resCredit">Shared by <strong>Mr. Bieser</strong></span>
+            </div>
+          </div>
+        </li>
+        <li class="resourceCard">
+          <span class="resIcon resIcon--doc" aria-hidden="true">📄</span>
+          <div class="resBody">
+            <a class="resTitleLink" href="#" target="_blank" rel="noopener noreferrer"><h3 class="resTitle">Questions to Ask a Civic Leader ↗</h3></a>
+            <p class="resBlurb">One page of conversation starters collected from past scouts&rsquo; visits — plus the email template for requesting one.</p>
+            <div class="resMetaRow">
+              <span class="hostChip hostChip--gdoc">Google Doc</span>
+              <span class="resCredit">Shared by <strong>Mrs. Weber</strong></span>
+            </div>
+          </div>
+        </li>
+        <li class="resourceCard">
+          <span class="resIcon resIcon--video" aria-hidden="true">▶</span>
+          <div class="resBody">
+            <a class="resTitleLink" href="#" target="_blank" rel="noopener noreferrer"><h3 class="resTitle">How City Government Works (Crash Course, 10 min) ↗</h3></a>
+            <p class="resBlurb">Councils, budgets, and why local government touches everything scouts care about. Watch before your visit and your questions get better.</p>
+            <div class="resMetaRow">
+              <span class="hostChip hostChip--youtube">YouTube</span>
+              <span class="resCredit">Shared by <strong>Aiden R.</strong> (scout)</span>
+              <span class="alsoOn">Also on: <a href="#">Citizenship in the Community</a></span>
+            </div>
+          </div>
+        </li>
+        <li class="resourceCard">
+          <span class="resIcon resIcon--doc" aria-hidden="true">📰</span>
+          <div class="resBody">
+            <a class="resTitleLink" href="#" target="_blank" rel="noopener noreferrer"><h3 class="resTitle">&ldquo;Scouts Grill the Village Board&rdquo; — Journal Sentinel ↗</h3></a>
+            <p class="resBlurb">News story about a Wisconsin troop&rsquo;s group visit — good for seeing what the conversation can look like.</p>
+            <div class="resMetaRow">
+              <span class="hostChip">News Story</span>
+              <span class="resCredit">Shared by <strong>Mr. Kowalski</strong></span>
+            </div>
+          </div>
+        </li>
+      </ul>
+
+      <div class="proto-note"><strong>Note</strong> — resources render pinned-first, then webmaster
+        order. Video cards link out (no embedded iframes on a kids&rsquo; site — matches the news CMS
+        decision). &ldquo;Also on&rdquo; shows the same resource placed on other requirement pages.</div>
+
+      <nav class="siblingNav" aria-label="Neighboring requirements">
+        <a href="#">&larr; 8b — Explain body-composition measures</a>
+        <span class="spacer"></span>
+        <a href="#">9b — Environmental issue &rarr;</a>
+      </nav>
+    </section>
+
+    <!-- ══ STATE: GATE ═════════════════════════════════════════════════ -->
+    <section id="state-gate" class="state" hidden aria-label="Sign in">
+      <p class="stepBack"><button type="button" onclick="go('page')">&larr; Back to First Class 9a</button></p>
+      <div class="stepCard">
+        <p class="stepKicker">Submit proof · Step 1 of 3</p>
+        <h2 class="stepTitle">Who&rsquo;s signing in?</h2>
+        <p class="stepLede">Use whichever troop password you know — both are printed in the Bugle.
+          A leader reviews every submission either way.</p>
+        <div class="pickChips" style="margin-bottom:18px;">
+          <button type="button" class="pickChip isOn" id="gateFamily" onclick="setGate('family')">
+            <span class="pickName">Family password</span>
+            <span class="pickSub">Parent or scout on a family device</span>
+          </button>
+          <button type="button" class="pickChip" id="gateScout" onclick="setGate('scout')">
+            <span class="pickName">Scout password</span>
+            <span class="pickSub">The one scouts use for the Has/Needs tool</span>
+          </button>
+        </div>
+        <label class="fieldLabel" for="gatePw">Password</label>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <input class="textInput" type="password" id="gatePw" autocomplete="off" placeholder="Troop password" style="flex:1; min-width:220px;" />
+          <button type="button" class="btn btn--navy" onclick="go('who')">Continue</button>
+        </div>
+        <p class="fieldHint">No personal accounts — this device stays recognized afterward. (Prototype: any input passes.)</p>
+      </div>
+    </section>
+
+    <!-- ══ STATE: WHO ══════════════════════════════════════════════════ -->
+    <section id="state-who" class="state" hidden aria-label="Which scout">
+      <p class="stepBack"><button type="button" onclick="go('gate')">&larr; Back</button></p>
+      <div class="stepCard">
+        <p class="stepKicker">Submit proof · Step 2 of 3</p>
+        <h2 class="stepTitle">Which scout is this for?</h2>
+        <p class="stepLede" id="whoLedeFamily">This device is recognized as the <strong>Sanders household</strong> —
+          pick your scout. (Family sessions only see their own household.)</p>
+        <p class="stepLede" id="whoLedeScout" hidden>Pick your name from the roster. Your leader
+          will confirm it&rsquo;s really you at review — submitting as someone else just wastes
+          everyone&rsquo;s time.</p>
+        <div class="pickChips" id="whoChips"></div>
+        <div style="margin-top:18px;">
+          <button type="button" class="btn btn--primary" id="whoNext" disabled onclick="go('proof')">Continue</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ STATE: PROOF ════════════════════════════════════════════════ -->
+    <section id="state-proof" class="state" hidden aria-label="Proof">
+      <p class="stepBack"><button type="button" onclick="go('who')">&larr; Back</button></p>
+      <div class="stepCard">
+        <p class="stepKicker">Submit proof · Step 3 of 3</p>
+        <h2 class="stepTitle">Show a leader what you did</h2>
+        <p class="stepLede">For <strong>First Class 9a — visit a civic leader</strong>,
+          submitting as <strong id="proofScoutName">Ben Sanders</strong>.</p>
+
+        <div class="proofTypes" style="margin-bottom:18px;">
+          <button type="button" class="proofType isOn" data-pt="photo" onclick="setProofType(this)">
+            <span class="ptIcon" aria-hidden="true">📷</span>
+            <span class="ptName">Photo</span>
+            <span class="ptSub">You at the visit, your signed notes, a score screenshot</span>
+          </button>
+          <button type="button" class="proofType" data-pt="report" onclick="setProofType(this)">
+            <span class="ptIcon" aria-hidden="true">✍️</span>
+            <span class="ptName">Written report</span>
+            <span class="ptSub">Tell what you did and what you learned</span>
+          </button>
+          <button type="button" class="proofType" data-pt="link" onclick="setProofType(this)">
+            <span class="ptIcon" aria-hidden="true">🔗</span>
+            <span class="ptName">Link</span>
+            <span class="ptSub">A Google Doc, video, or quiz result you can share</span>
+          </button>
+        </div>
+
+        <div id="proofPhoto">
+          <div class="uploadWell" role="button" tabindex="0">
+            <div class="upIcon" aria-hidden="true">📷</div>
+            <div class="upMain">Tap to take or choose a photo</div>
+            <div class="upSub">Up to 3 photos · JPG/PNG/HEIC</div>
+          </div>
+        </div>
+        <div id="proofReport" hidden>
+          <label class="fieldLabel" for="reportText">Your report</label>
+          <textarea class="textArea" id="reportText" style="min-height:150px;"
+            placeholder="Who did you visit? What did you talk about? What surprised you? A solid paragraph is plenty."></textarea>
+        </div>
+        <div id="proofLink" hidden>
+          <label class="fieldLabel" for="linkUrl">Link</label>
+          <input class="textInput" id="linkUrl" type="url" placeholder="https://…" />
+          <p class="fieldHint">Make sure the link is viewable by anyone with it — your leader can&rsquo;t open a locked Doc.</p>
+        </div>
+
+        <div class="fieldRow" style="margin-top:16px;">
+          <label class="fieldLabel" for="proofNote">Anything the reviewing leader should know? <span style="text-transform:none;letter-spacing:0;font-weight:400;">(optional)</span></label>
+          <input class="textInput" id="proofNote" type="text" placeholder="e.g. Visited Alder Coggs with my dad on July 12" />
+        </div>
+
+        <div class="privacyNote">
+          <span aria-hidden="true">🔒</span>
+          <span><strong>Private.</strong> Photos and reports go only to troop leaders for review —
+            they are never published on the website, and photos are stored in a locked area
+            only leaders can open.</span>
+        </div>
+
+        <div style="margin-top:20px; display:flex; gap:12px; flex-wrap:wrap;">
+          <button type="button" class="btn btn--primary" onclick="go('done')">Send for Review</button>
+          <button type="button" class="btn btn--ghost" onclick="go('page')">Cancel</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ STATE: DONE ═════════════════════════════════════════════════ -->
+    <section id="state-done" class="state" hidden aria-label="Submitted">
+      <div class="stepCard">
+        <div class="confirmDone">
+          <div class="bigCheck" aria-hidden="true">✓</div>
+          <h3>Sent to your leaders</h3>
+          <p><strong id="doneScoutName">Ben Sanders</strong>&rsquo;s proof for
+            <strong>First Class 9a</strong> is queued for review. A leader will either sign
+            it off — it&rsquo;ll show up on the Clipboard — or reply by email with what&rsquo;s
+            still needed.</p>
+          <p style="font-size:13px; color:var(--text-meta);">Most reviews happen within a few days.
+            Bring your notes to the next meeting anyway — leaders love the stories.</p>
+          <div style="display:flex; gap:12px; justify-content:center; margin-top:14px; flex-wrap:wrap;">
+            <button type="button" class="btn btn--secondary" onclick="go('page')">Back to First Class 9a</button>
+            <a class="btn btn--ghost" href="index.html">Library home</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <nav class="protoFooterNav" aria-label="Prototype pages">
+      <a href="index.html">Library Home</a>
+      <a href="requirement-page.html">Requirement Page</a>
+      <a href="topic-page.html?t=sparkler">Topic Shelf</a>
+      <a href="admin-review.html">Webmaster Workstation</a>
+    </nav>
+  </main>
+
+<script>
+/* ── State machine ── */
+const STATES = ['page', 'gate', 'who', 'proof', 'done'];
+function go(s) {
+  STATES.forEach(x => document.getElementById('state-' + x).hidden = (x !== s));
+  window.scrollTo({ top: 0, behavior: 'instant' });
+  if (s === 'who') renderWho();
+}
+
+/* ── Gate type: family vs scout session ── */
+let gateType = 'family';
+function setGate(t) {
+  gateType = t;
+  document.getElementById('gateFamily').classList.toggle('isOn', t === 'family');
+  document.getElementById('gateScout').classList.toggle('isOn', t === 'scout');
+}
+
+/* ── Scout picker — household-scoped for family, roster for scout session ── */
+const HOUSEHOLD = [
+  { name: 'Ben Sanders', sub: 'First Class · needs 9a' },
+  { name: 'Theo Sanders', sub: 'Tenderfoot · needs 9a later' },
+];
+const ROSTER = [
+  { name: 'Ben Sanders', sub: 'First Class' }, { name: 'Aiden Rooney', sub: 'Star' },
+  { name: 'Marcus Webb', sub: 'Second Class' }, { name: 'Eli Stoll', sub: 'First Class' },
+  { name: 'Theo Sanders', sub: 'Tenderfoot' }, { name: 'Dev Patel', sub: 'First Class' },
+];
+let pickedScout = null;
+function renderWho() {
+  document.getElementById('whoLedeFamily').hidden = gateType !== 'family';
+  document.getElementById('whoLedeScout').hidden = gateType !== 'scout';
+  const list = gateType === 'family' ? HOUSEHOLD : ROSTER;
+  const wrap = document.getElementById('whoChips');
+  pickedScout = null;
+  document.getElementById('whoNext').disabled = true;
+  wrap.innerHTML = '';
+  list.forEach(s => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'pickChip';
+    b.innerHTML = `<span class="pickName">${s.name}</span><span class="pickSub">${s.sub}</span>`;
+    b.addEventListener('click', () => {
+      wrap.querySelectorAll('.pickChip').forEach(x => x.classList.remove('isOn'));
+      b.classList.add('isOn'); pickedScout = s.name;
+      document.getElementById('whoNext').disabled = false;
+      document.getElementById('proofScoutName').textContent = s.name;
+      document.getElementById('doneScoutName').textContent = s.name;
+    });
+    wrap.appendChild(b);
+  });
+}
+
+/* ── Proof type toggle ── */
+function setProofType(btn) {
+  document.querySelectorAll('.proofType').forEach(x => x.classList.remove('isOn'));
+  btn.classList.add('isOn');
+  const pt = btn.dataset.pt;
+  document.getElementById('proofPhoto').hidden = pt !== 'photo';
+  document.getElementById('proofReport').hidden = pt !== 'report';
+  document.getElementById('proofLink').hidden = pt !== 'link';
+}
+</script>
+</body>
+</html>

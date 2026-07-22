@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resource Library — Prototype — Scout Troop 79</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/library.css" />
+</head>
+<body>
+
+  <div class="proto-banner">
+    <div class="proto-banner-inner">
+      <p><strong>Prototype v1</strong> Resource Library home — search, advancement drill, topic shelves (Plans/Resource-Library.md). All names fictional; search works over sample data.</p>
+      <a href="admin-review.html">Webmaster workstation &rarr;</a>
+    </div>
+  </div>
+
+  <main class="page page--wide">
+
+    <header>
+      <p class="kicker"><a href="#">Scout Troop 79</a><span class="sep">·</span>Resource Library</p>
+      <h1 class="pageTitle">The Resource Library</h1>
+      <p class="pageDek">Videos, guides, links, and troop know-how — organized by the same
+        ranks and merit badges we track, plus shelves for everything else worth keeping.
+        Found something great? Share it, and the webmaster will add it to the shelf.</p>
+    </header>
+
+    <!-- ══ SEARCH ══════════════════════════════════════════════════════ -->
+    <div class="searchHero">
+      <span class="searchIcon" aria-hidden="true">⌕</span>
+      <input class="searchInput" id="q" type="search" autocomplete="off"
+             placeholder="Search everything… try &ldquo;knots&rdquo;, &ldquo;first aid&rdquo;, or &ldquo;cot&rdquo;"
+             aria-label="Search the resource library" />
+    </div>
+    <div class="searchScopeRow" role="group" aria-label="Search scope">
+      <button type="button" class="scopeChip isOn" data-scope="all">Everything</button>
+      <button type="button" class="scopeChip" data-scope="adv">Advancement</button>
+      <button type="button" class="scopeChip" data-scope="topic">Topics</button>
+    </div>
+
+    <div class="searchResults" id="results" hidden>
+      <p class="searchCount" id="resultCount"></p>
+      <ul class="resourceList" id="resultList"></ul>
+    </div>
+
+    <div id="homeBody">
+
+      <!-- ══ FEATURED ══════════════════════════════════════════════════ -->
+      <div class="sectionDivider">
+        <span class="divLabel">Featured This Month</span><span class="divRule"></span>
+      </div>
+      <ul class="resourceList">
+        <li class="resourceCard isPinned">
+          <span class="pinFlag">★ Pinned</span>
+          <span class="resIcon resIcon--video" aria-hidden="true">▶</span>
+          <div class="resBody">
+            <a class="resTitleLink" href="#"><h3 class="resTitle">Animated Knots — Every Knot Through First Class</h3></a>
+            <p class="resBlurb">One page, every knot a scout needs from Scout through First Class, animated step-by-step. Bookmark it before your next campout.</p>
+            <div class="resMetaRow">
+              <span class="hostChip">Website</span>
+              <span class="resCredit">Shared by <strong>Mr. Kowalski</strong></span>
+              <span class="alsoOn">Also on: <a href="requirement-page.html">Tenderfoot 3a</a>, <a href="#">Second Class 2f</a>, <a href="#">Pioneering</a></span>
+            </div>
+          </div>
+        </li>
+        <li class="resourceCard isPinned">
+          <span class="pinFlag">★ Pinned</span>
+          <span class="resIcon resIcon--post" aria-hidden="true">🦅</span>
+          <div class="resBody">
+            <a class="resTitleLink" href="topic-page.html?t=eagle"><h3 class="resTitle">So You&rsquo;re Ready to Start an Eagle Project</h3></a>
+            <p class="resBlurb">The troop&rsquo;s own step-by-step: picking a project, the proposal workbook, fundraising rules, and who signs what — written by leaders who&rsquo;ve coached a dozen of them.</p>
+            <div class="resMetaRow">
+              <span class="hostChip">Troop Post</span>
+              <span class="resCredit">Shared by <strong>Mrs. Weber</strong></span>
+              <span class="alsoOn">On: <a href="topic-page.html?t=eagle">The Eagle Project Trail</a></span>
+            </div>
+          </div>
+        </li>
+      </ul>
+
+      <!-- ══ BROWSE BY RANK ════════════════════════════════════════════ -->
+      <div class="sectionDivider">
+        <span class="divLabel">Browse by Rank</span><span class="divRule"></span>
+        <a class="divLink" href="#">Advancement Tracker &rarr;</a>
+      </div>
+      <p class="proto-note"><strong>Note</strong> — the drill below reads the same
+        <code>rank_requirements</code> tree the site already tracks; nothing is retyped here.
+        Counts are published-resource counts per requirement. First Class is expanded as the demo;
+        <em>9a</em> links to the requirement landing page.</p>
+
+      <div class="rankAccordion" id="rankAccordion"></div>
+
+      <!-- ══ MERIT BADGES ══════════════════════════════════════════════ -->
+      <div class="sectionDivider">
+        <span class="divLabel">Browse by Merit Badge</span><span class="divRule"></span>
+        <a class="divLink" href="#">Full catalog (64) &rarr;</a>
+      </div>
+      <div class="fieldRow" style="max-width: 340px;">
+        <input class="textInput" id="mbFilter" type="search" placeholder="Filter badges… e.g. Cooking" aria-label="Filter merit badges" />
+      </div>
+      <div class="mbGrid" id="mbGrid"></div>
+
+      <!-- ══ TOPIC SHELVES ═════════════════════════════════════════════ -->
+      <div class="sectionDivider">
+        <span class="divLabel">Topic Shelves</span><span class="divRule"></span>
+      </div>
+      <div class="shelfGrid">
+        <a class="shelfCard shelfCard--sparkler" href="topic-page.html?t=sparkler">
+          <span class="shelfIcon" aria-hidden="true">✨</span>
+          <h3 class="shelfTitle">The Sparkler</h3>
+          <p class="shelfBlurb">Every week&rsquo;s joke from the Bugle, archived for posterity. Groans guaranteed.</p>
+          <span class="shelfMeta">38 posts</span>
+        </a>
+        <a class="shelfCard shelfCard--eagle" href="topic-page.html?t=eagle">
+          <span class="shelfIcon" aria-hidden="true">🦅</span>
+          <h3 class="shelfTitle">The Eagle Project Trail</h3>
+          <p class="shelfBlurb">How to pick, propose, fund, and finish an Eagle project — the troop&rsquo;s collected wisdom.</p>
+          <span class="shelfMeta">9 resources</span>
+        </a>
+        <a class="shelfCard" href="topic-page.html?t=gear">
+          <span class="shelfIcon" aria-hidden="true">🎒</span>
+          <h3 class="shelfTitle">Gear &amp; Packing</h3>
+          <p class="shelfBlurb">Which cot survives summer camp, what sleeping bag rating actually matters, packing lists that work.</p>
+          <span class="shelfMeta">12 resources</span>
+        </a>
+        <a class="shelfCard" href="#">
+          <span class="shelfIcon" aria-hidden="true">📯</span>
+          <h3 class="shelfTitle">The Bugle</h3>
+          <p class="shelfBlurb">Subscribe to the weekly newsletter, browse back issues, and see how to submit an item.</p>
+          <span class="shelfMeta">4 resources</span>
+        </a>
+        <a class="shelfCard" href="#">
+          <span class="shelfIcon" aria-hidden="true">🎬</span>
+          <h3 class="shelfTitle">Fun &amp; Films</h3>
+          <p class="shelfBlurb">Funny scout videos, campout bloopers, and the skits nobody will let die.</p>
+          <span class="shelfMeta">7 resources</span>
+        </a>
+        <a class="shelfCard" href="#" onclick="openSubmit(event)">
+          <span class="shelfIcon" aria-hidden="true">➕</span>
+          <h3 class="shelfTitle">Share Something</h3>
+          <p class="shelfBlurb">Found a great video, article, or link? Send it in — the webmaster reviews everything before it&rsquo;s shelved.</p>
+          <span class="shelfMeta">Suggest a resource &rarr;</span>
+        </a>
+      </div>
+
+      <!-- ══ SUBMIT CTA ════════════════════════════════════════════════ -->
+      <div class="sectionDivider"><span class="divLabel">Contribute</span><span class="divRule"></span></div>
+      <div class="stepCard" style="display:flex; gap:20px; align-items:center; flex-wrap:wrap;">
+        <div style="flex:1; min-width:260px;">
+          <h2 class="stepTitle" style="margin-bottom:6px;">Found something worth keeping?</h2>
+          <p class="stepLede" style="margin-bottom:0;">Leaders, scouts, and parents can all suggest resources.
+            Everything goes to the webmaster&rsquo;s review queue first — nothing publishes until it&rsquo;s approved,
+            so send it in even if you&rsquo;re not sure where it belongs.</p>
+        </div>
+        <button type="button" class="btn btn--primary" onclick="openSubmit(event)">Suggest a Resource</button>
+      </div>
+    </div>
+
+    <nav class="protoFooterNav" aria-label="Prototype pages">
+      <a href="index.html">Library Home</a>
+      <a href="requirement-page.html">Requirement Page (First Class 9a)</a>
+      <a href="topic-page.html?t=sparkler">Topic Shelf</a>
+      <a href="admin-review.html">Webmaster Workstation</a>
+    </nav>
+  </main>
+
+  <!-- ══ SUBMIT MODAL ═══════════════════════════════════════════════════ -->
+  <div class="modalScrim" id="submitScrim" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="submitTitle">
+      <div id="submitForm">
+        <h2 class="modalTitle" id="submitTitle">Suggest a resource</h2>
+        <p class="modalLede">The webmaster reviews every suggestion before it&rsquo;s published.
+          You&rsquo;ll need the troop password (family, scout, or leader) to send it in.</p>
+        <div class="fieldRow">
+          <label class="fieldLabel" for="subUrl">Link</label>
+          <input class="textInput" id="subUrl" type="url" placeholder="https://…  (YouTube, article, Google Doc, Amazon — anything)" />
+        </div>
+        <div class="fieldRow">
+          <label class="fieldLabel" for="subTitle">What is it?</label>
+          <input class="textInput" id="subTitle" type="text" placeholder="e.g. Great 6-minute video on splinting an arm" />
+        </div>
+        <div class="fieldRow">
+          <label class="fieldLabel" for="subWhere">Where does it belong? <span style="text-transform:none; letter-spacing:0; font-weight:400;">(best guess is fine)</span></label>
+          <select class="selectInput" id="subWhere">
+            <option>Let the webmaster decide</option>
+            <option>Tenderfoot — 4a/4b First aid</option>
+            <option>First Class — 9a Visit a civic leader</option>
+            <option>Merit badge — First Aid</option>
+            <option>Topic — Gear &amp; Packing</option>
+            <option>Topic — Fun &amp; Films</option>
+          </select>
+        </div>
+        <div class="fieldRow">
+          <label class="fieldLabel" for="subWhy">Why is it good?</label>
+          <textarea class="textArea" id="subWhy" placeholder="One or two sentences — this becomes the blurb if it&rsquo;s published."></textarea>
+        </div>
+        <div class="modalActions">
+          <button type="button" class="btn btn--primary" onclick="submitResource()">Send to the Webmaster</button>
+          <button type="button" class="btn btn--ghost" onclick="closeSubmit()">Cancel</button>
+        </div>
+      </div>
+      <div id="submitDone" hidden>
+        <div class="confirmDone">
+          <div class="bigCheck" aria-hidden="true">✓</div>
+          <h3>Sent for review</h3>
+          <p>Your suggestion is in the webmaster&rsquo;s queue. If it&rsquo;s published you&rsquo;ll
+            see it on the shelf — usually within a few days.</p>
+          <button type="button" class="btn btn--secondary" onclick="closeSubmit()" style="margin-top:10px;">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ── Sample data — fictional; production reads rank_requirements /
+     merit_badge_requirements + library_resources live ─────────────── */
+const RESOURCES = [
+  { t: 'Animated Knots — Every Knot Through First Class', b: 'Every knot from Scout through First Class, animated step-by-step.', host: 'Website', icon: '▶', cls: 'resIcon--video', scope: 'adv', on: 'Tenderfoot 3a · Second Class 2f · Pioneering', kw: 'knots square hitch taut-line rope pioneering' },
+  { t: 'Wilderness First Aid Basics (12 min)', b: 'Clean, current demo of hurry cases, bleeding, and shock — matches the handbook order.', host: 'YouTube', icon: '▶', cls: 'resIcon--video', hostCls: 'hostChip--youtube', scope: 'adv', on: 'Tenderfoot 4a · First Aid MB', kw: 'first aid bleeding shock hurry tenderfoot' },
+  { t: 'Milwaukee Common Council — Find Your Alder', b: 'Look up your district and alderperson — the starting point for the First Class 9a civic visit.', host: 'Website', icon: '🏛', scope: 'adv', on: 'First Class 9a', kw: 'civic leader alderman government milwaukee first class 9a' },
+  { t: 'Questions to Ask a Civic Leader', b: 'A one-page list of conversation starters for the 9a visit, from past scouts&rsquo; visits.', host: 'Google Doc', icon: '📄', cls: 'resIcon--doc', hostCls: 'hostChip--gdoc', scope: 'adv', on: 'First Class 9a', kw: 'civic leader questions 9a visit government' },
+  { t: 'How City Government Works (Crash Course)', b: 'Ten minutes on councils, budgets, and why local government touches everything scouts care about.', host: 'YouTube', icon: '▶', cls: 'resIcon--video', hostCls: 'hostChip--youtube', scope: 'adv', on: 'First Class 9a · Citizenship in the Community', kw: 'civic government citizenship community council 9a' },
+  { t: 'Totin&rsquo; Chip Rules — Printable Card', b: 'The knife/axe/saw rules on one printable card.', host: 'PDF', icon: '📄', cls: 'resIcon--doc', hostCls: 'hostChip--pdf', scope: 'adv', on: 'Scout 5 · Totin&rsquo; Chip', kw: 'totin chip knife axe saw woods tools' },
+  { t: 'Coleman Trailhead II Cot', b: 'The summer-camp standard — survives six years of scouts. Buy once.', host: 'Amazon', icon: '🛒', hostCls: 'hostChip--amazon', scope: 'topic', on: 'Gear &amp; Packing', kw: 'cot summer camp sleeping gear buy amazon' },
+  { t: 'Sleeping Bag Ratings, Decoded', b: 'What &ldquo;20°F&rdquo; actually means and what to buy for Wisconsin shoulder seasons.', host: 'Article', icon: '🔗', scope: 'topic', on: 'Gear &amp; Packing', kw: 'sleeping bag rating cold camping gear' },
+  { t: 'So You&rsquo;re Ready to Start an Eagle Project', b: 'The troop&rsquo;s own step-by-step: picking, proposing, funding, finishing.', host: 'Troop Post', icon: '🦅', cls: 'resIcon--post', scope: 'topic', on: 'The Eagle Project Trail', kw: 'eagle project proposal workbook fundraising' },
+  { t: 'Eagle Project Proposal Workbook (Official)', b: 'The BSA workbook every proposal must use — current edition.', host: 'PDF', icon: '📄', cls: 'resIcon--doc', hostCls: 'hostChip--pdf', scope: 'topic', on: 'The Eagle Project Trail', kw: 'eagle workbook proposal official bsa' },
+  { t: 'Subscribe to the Bugle', b: 'The weekly newsletter — calendar, advancement, the Sparkler, and everything else.', host: 'Website', icon: '📯', scope: 'topic', on: 'The Bugle', kw: 'bugle newsletter subscribe weekly email' },
+  { t: 'The Sparkler — Complete Archive', b: 'Every week&rsquo;s joke since the beginning. You were warned.', host: 'Troop Post', icon: '✨', cls: 'resIcon--post', scope: 'topic', on: 'The Sparkler', kw: 'sparkler joke funny humor bugle' },
+  { t: 'Campout Cooking: One-Pot Meals That Work', b: 'Five patrol-tested recipes with duty-roster timing built in.', host: 'Google Doc', icon: '📄', cls: 'resIcon--doc', hostCls: 'hostChip--gdoc', scope: 'adv', on: 'Second Class 2c · Cooking MB', kw: 'cooking recipes one-pot patrol campout second class' },
+  { t: 'Swim Test: What to Expect', b: 'The BSA swim classification test explained — strokes, order, and how not to psych yourself out.', host: 'YouTube', icon: '▶', cls: 'resIcon--video', hostCls: 'hostChip--youtube', scope: 'adv', on: 'Second Class 5a · Swimming MB', kw: 'swim test classification beginner swimmer pool' },
+];
+
+const RANKS = [
+  { name: 'Scout', count: 3 },
+  { name: 'Tenderfoot', count: 6 },
+  { name: 'Second Class', count: 5 },
+  { name: 'First Class', count: 7, open: true, reqs: [
+      { code: '1a', label: 'Since joining, participate in 10 troop/patrol activities…', n: 0 },
+      { code: '3a', label: 'Discuss when to use lashings; tie timber hitch and clove hitch', n: 2 },
+      { code: '4a', label: 'Using a map and compass, complete an orienteering course', n: 1 },
+      { code: '6a', label: 'Successfully complete the BSA swimmer test', n: 1 },
+      { code: '9a', label: 'Visit and discuss citizenship with a community leader', n: 4, hot: true },
+      { code: '9b', label: 'Investigate an environmental issue in your community', n: 1 },
+      { code: '10', label: 'Tell how you have lived the Scout Oath and Law…', n: 0 },
+    ] },
+  { name: 'Star', count: 2 },
+  { name: 'Life', count: 1 },
+  { name: 'Eagle', count: 4 },
+];
+
+const MBS = [
+  { name: 'Camping', eagle: true, n: 5 }, { name: 'Cooking', eagle: true, n: 3 },
+  { name: 'First Aid', eagle: true, n: 6 }, { name: 'Citizenship in the Community', eagle: true, n: 2 },
+  { name: 'Swimming', eagle: true, n: 2 }, { name: 'Pioneering', n: 3 },
+  { name: 'Robotics', n: 1 }, { name: 'Fishing', n: 0 },
+  { name: 'Environmental Science', eagle: true, n: 1 }, { name: 'Personal Fitness', eagle: true, n: 0 },
+  { name: 'Wood Carving', n: 2 }, { name: 'Astronomy', n: 0 },
+];
+
+/* ── Render rank accordion ── */
+const acc = document.getElementById('rankAccordion');
+RANKS.forEach((r) => {
+  const item = document.createElement('div');
+  item.className = 'rankItem' + (r.open ? ' isOpen' : '');
+  const zero = r.count === 0 ? ' rankCount--zero' : '';
+  item.innerHTML = `
+    <button type="button" class="rankHead" aria-expanded="${!!r.open}">
+      <span class="rankName">${r.name}</span>
+      <span class="rankCount${zero}">${r.count} resource${r.count === 1 ? '' : 's'}</span>
+      <span class="rankCaret" aria-hidden="true">▼</span>
+    </button>
+    ${r.reqs ? `<div class="reqRows" ${r.open ? '' : 'hidden'}>` + r.reqs.map(q => {
+      const link = q.hot ? 'requirement-page.html' : '#';
+      const cnt = q.n > 0 ? `<span class="reqResCount">${q.n} resource${q.n === 1 ? '' : 's'}</span>`
+                          : `<span class="reqResCount reqResCount--zero">—</span>`;
+      return `<a class="reqRow ${q.n > 0 ? 'hasStuff' : ''}" href="${link}">
+        <span class="reqTag reqTag--ghost">${q.code}</span>
+        <span class="reqLabel">${q.label}</span>${cnt}</a>`;
+    }).join('') + '</div>' : ''}`;
+  const head = item.querySelector('.rankHead');
+  head.addEventListener('click', () => {
+    const rows = item.querySelector('.reqRows');
+    if (!rows) { alert('Prototype: only First Class has sample requirement rows.'); return; }
+    const open = item.classList.toggle('isOpen');
+    head.setAttribute('aria-expanded', open);
+    rows.hidden = !open;
+  });
+  acc.appendChild(item);
+});
+
+/* ── Render MB grid + filter ── */
+const mbGrid = document.getElementById('mbGrid');
+function renderMbs(filter = '') {
+  const f = filter.trim().toLowerCase();
+  mbGrid.innerHTML = MBS.filter(m => !f || m.name.toLowerCase().includes(f)).map(m => `
+    <a class="mbTile" href="#">
+      <span class="mbName">${m.name}${m.eagle ? ' <span class="eagleDot">★ EAGLE</span>' : ''}</span>
+      <span class="mbCount ${m.n === 0 ? 'mbCount--zero' : ''}">${m.n === 0 ? '—' : m.n}</span>
+    </a>`).join('') || '<p class="fieldHint">No badges match.</p>';
+}
+renderMbs();
+document.getElementById('mbFilter').addEventListener('input', e => renderMbs(e.target.value));
+
+/* ── Search ── */
+let scope = 'all';
+document.querySelectorAll('.scopeChip').forEach(c => c.addEventListener('click', () => {
+  document.querySelectorAll('.scopeChip').forEach(x => x.classList.remove('isOn'));
+  c.classList.add('isOn'); scope = c.dataset.scope; runSearch();
+}));
+const qInput = document.getElementById('q');
+qInput.addEventListener('input', runSearch);
+function runSearch() {
+  const q = qInput.value.trim().toLowerCase();
+  const results = document.getElementById('results');
+  const homeBody = document.getElementById('homeBody');
+  if (!q) { results.hidden = true; homeBody.hidden = false; return; }
+  const hits = RESOURCES.filter(r =>
+    (scope === 'all' || r.scope === scope) &&
+    (r.t.toLowerCase().includes(q) || r.b.toLowerCase().includes(q) || r.kw.includes(q)));
+  results.hidden = false; homeBody.hidden = true;
+  document.getElementById('resultCount').innerHTML =
+    `<strong>${hits.length}</strong> result${hits.length === 1 ? '' : 's'} for &ldquo;${qInput.value.trim()}&rdquo; — clear the box to browse.`;
+  document.getElementById('resultList').innerHTML = hits.map(r => `
+    <li class="resourceCard">
+      <span class="resIcon ${r.cls || ''}" aria-hidden="true">${r.icon}</span>
+      <div class="resBody">
+        <a class="resTitleLink" href="#"><h3 class="resTitle">${r.t}</h3></a>
+        <p class="resBlurb">${r.b}</p>
+        <div class="resMetaRow">
+          <span class="hostChip ${r.hostCls || ''}">${r.host}</span>
+          <span class="alsoOn">On: ${r.on}</span>
+        </div>
+      </div>
+    </li>`).join('') ||
+    '<li class="fieldHint" style="list-style:none;">Nothing yet — try &ldquo;knots&rdquo;, &ldquo;civic&rdquo;, &ldquo;cot&rdquo;, or suggest the resource that should be here.</li>';
+}
+
+/* ── Submit modal ── */
+function openSubmit(e) { if (e) e.preventDefault();
+  document.getElementById('submitScrim').hidden = false;
+  document.getElementById('submitForm').hidden = false;
+  document.getElementById('submitDone').hidden = true; }
+function closeSubmit() { document.getElementById('submitScrim').hidden = true; }
+function submitResource() {
+  document.getElementById('submitForm').hidden = true;
+  document.getElementById('submitDone').hidden = false; }
+document.getElementById('submitScrim').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeSubmit(); });
+</script>
+</body>
+</html>

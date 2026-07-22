@@ -126,6 +126,11 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         href: '/admin/news/photo-albums',
         matchPath: '/admin/news/photo-albums',
         scoutVisible: true
+      },
+      {
+        label: 'Resource Library',
+        href: '/admin/library',
+        matchPath: '/admin/library'
       }
     ]
   },

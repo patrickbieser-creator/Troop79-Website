@@ -73,8 +73,32 @@ async function loadPendingProfileUpdates(): Promise<AttentionCategory> {
   return { key: 'profile-updates', label: 'Profile updates awaiting review', items };
 }
 
+/** Resource Library submissions waiting for webmaster review
+ *  (Plans/Resource-Library.md — everything queues, including leaders'). */
+async function loadPendingLibrarySubmissions(): Promise<AttentionCategory> {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from('library_resources')
+    .select('id, title, submitted_by_label, created_at')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true });
+
+  const items: AttentionItem[] = (
+    (data ?? []) as { id: number; title: string; submitted_by_label: string | null; created_at: string }[]
+  ).map((r) => ({
+    label: r.title,
+    meta: `${r.submitted_by_label ? `from ${r.submitted_by_label} · ` : ''}submitted ${shortDate(r.created_at)}`,
+    href: '/admin/library?tab=queue'
+  }));
+
+  return { key: 'library-submissions', label: 'Library submissions awaiting review', items };
+}
+
 export async function loadAttentionCategories(): Promise<AttentionCategory[]> {
-  const categories = await Promise.all([loadPendingProfileUpdates()]);
+  const categories = await Promise.all([
+    loadPendingProfileUpdates(),
+    loadPendingLibrarySubmissions()
+  ]);
   // A category with nothing in it is noise, not signal — drop it rather than
   // showing an empty "0 items" heading.
   return categories.filter((c) => c.items.length > 0);

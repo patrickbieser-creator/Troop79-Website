@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Library Workstation — Prototype — Troop 79 Leader Workspace</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/library.css" />
+  <style>
+    .attnBanner {
+      display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap;
+      background: var(--gold-soft); border: 1px solid var(--khaki); border-left: 4px solid var(--bark);
+      border-radius: 0 3px 3px 0; padding: 12px 16px; margin: 18px 0 4px;
+      font-family: var(--font-ui); font-size: 13px; line-height: 1.5;
+    }
+    .attnBanner strong { color: var(--bark); }
+    .feedbackBox { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-mid); }
+    .topicRow {
+      display: flex; align-items: center; gap: 12px; background: var(--warm-white);
+      border: 1px solid var(--border-light); border-radius: 3px; padding: 12px 16px; margin-bottom: 8px;
+      font-family: var(--font-ui); box-shadow: var(--shadow-card);
+    }
+    .topicRow .grip { color: var(--border-mid); cursor: grab; font-size: 15px; }
+    .topicRow .tName { font-weight: 700; color: var(--text-head); font-size: 14px; }
+    .topicRow .tMeta { font-size: 11.5px; color: var(--text-meta); flex: 1; }
+    .narrPreview {
+      border: 1px solid var(--border-light); border-left: 4px solid var(--navy); border-radius: 0 3px 3px 0;
+      background: var(--cream); padding: 14px 18px; font-family: var(--font-body); font-size: 14.5px;
+      line-height: 1.6; margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="proto-banner">
+    <div class="proto-banner-inner">
+      <p><strong>Prototype v1</strong> Webmaster workstation — resource queue, proof review, shelves, narratives. Lives at /admin/library in the Leader Workspace. All names fictional.</p>
+      <a href="index.html">&larr; Public library</a>
+    </div>
+  </div>
+
+  <div class="adminBar">
+    <div class="adminBarInner">
+      <span class="adminBrand">Troop 79 · Leader Workspace</span>
+      <span class="adminCrumb">Records &amp; Site → <strong style="color:#fff;">Resource Library</strong></span>
+    </div>
+  </div>
+
+  <main class="page page--wide">
+
+    <div class="attnBanner">
+      <span aria-hidden="true">⚠</span>
+      <span><strong>Needs Attention:</strong> 3 resource submissions and 2 proof submissions are waiting.
+        This banner is the Dashboard&rsquo;s &ldquo;Needs Attention&rdquo; panel deep-linking here —
+        same pattern as pending profile updates.</span>
+    </div>
+
+    <nav class="adminTabs" role="tablist" aria-label="Library workstation sections">
+      <button class="adminTab isOn" role="tab" data-tab="queue" onclick="setTab('queue')">Resource Queue <span class="tabBadge">3</span></button>
+      <button class="adminTab" role="tab" data-tab="proof" onclick="setTab('proof')">Proof Review <span class="tabBadge">2</span></button>
+      <button class="adminTab" role="tab" data-tab="shelves" onclick="setTab('shelves')">Topics &amp; Shelves</button>
+      <button class="adminTab" role="tab" data-tab="narr" onclick="setTab('narr')">Narratives</button>
+    </nav>
+
+    <!-- ══ TAB: RESOURCE QUEUE ═════════════════════════════════════════ -->
+    <section id="tab-queue" role="tabpanel">
+      <p class="proto-note"><strong>Rule</strong> — everything queues, including leader submissions
+        (decision 2026-07-21). Approve publishes; Edit fixes title/blurb/placements first; Decline
+        records a note back to the submitter. Nothing hard-deletes — declined and retired items archive.</p>
+
+      <div class="queueRow" id="q1">
+        <div class="queueHead">
+          <span class="resIcon resIcon--video" aria-hidden="true">▶</span>
+          <div class="queueBody">
+            <h3 class="resTitle">Splinting an Arm with What You&rsquo;ve Got (6 min)</h3>
+            <p class="resBlurb">&ldquo;Great short demo using bandanas and a camp pad — exactly how we teach it.&rdquo;</p>
+            <p class="queueMeta">youtube.com/watch?v=… · submitted by <strong>Mr. Kowalski</strong> (leader session) · 2 days ago</p>
+            <div class="placementChips">
+              <span class="placementChip">Tenderfoot 4b <button class="chipX" title="Remove placement">×</button></span>
+              <span class="placementChip">First Aid MB — req 6 <button class="chipX" title="Remove placement">×</button></span>
+              <button class="addPlacement" onclick="alert('Prototype: opens a requirement/topic picker — same drill as the public library.')">+ Add placement</button>
+            </div>
+          </div>
+          <span class="statusPill statusPill--pending" data-status>Pending</span>
+        </div>
+        <div class="queueActions">
+          <button class="btn btn--primary btn--small" onclick="approveRes('q1')">Approve &amp; Publish</button>
+          <button class="btn btn--secondary btn--small" onclick="alert('Prototype: inline edit of title, blurb, thumbnail, visibility.')">Edit First</button>
+          <button class="btn btn--danger btn--small" onclick="declineRes('q1')">Decline</button>
+        </div>
+        <div class="feedbackBox" hidden data-decline>
+          <label class="fieldLabel">Note to submitter (emailed)</label>
+          <input class="textInput" type="text" placeholder="e.g. Great video but we already shelf the AnimatedKnots version — merged." />
+          <div style="margin-top:10px;"><button class="btn btn--danger btn--small" onclick="confirmDecline('q1')">Decline &amp; Send Note</button></div>
+        </div>
+      </div>
+
+      <div class="queueRow" id="q2">
+        <div class="queueHead">
+          <span class="resIcon" aria-hidden="true">🛒</span>
+          <div class="queueBody">
+            <h3 class="resTitle">REI Camp Chair — the good one</h3>
+            <p class="resBlurb">&ldquo;my dad says every adult ends up buying this chair eventually&rdquo;</p>
+            <p class="queueMeta">rei.com/product/… · submitted by <strong>Aiden R.</strong> (scout session) · 3 days ago</p>
+            <div class="placementChips">
+              <span class="placementChip">Gear &amp; Packing <button class="chipX" title="Remove placement">×</button></span>
+              <button class="addPlacement" onclick="alert('Prototype: opens the placement picker.')">+ Add placement</button>
+            </div>
+          </div>
+          <span class="statusPill statusPill--pending" data-status>Pending</span>
+        </div>
+        <div class="queueActions">
+          <button class="btn btn--primary btn--small" onclick="approveRes('q2')">Approve &amp; Publish</button>
+          <button class="btn btn--secondary btn--small" onclick="alert('Prototype: edit — probably tighten that blurb.')">Edit First</button>
+          <button class="btn btn--danger btn--small" onclick="declineRes('q2')">Decline</button>
+        </div>
+        <div class="feedbackBox" hidden data-decline>
+          <label class="fieldLabel">Note to submitter (emailed)</label>
+          <input class="textInput" type="text" placeholder="Why it isn&rsquo;t being shelved…" />
+          <div style="margin-top:10px;"><button class="btn btn--danger btn--small" onclick="confirmDecline('q2')">Decline &amp; Send Note</button></div>
+        </div>
+      </div>
+
+      <div class="queueRow" id="q3">
+        <div class="queueHead">
+          <span class="resIcon resIcon--doc" aria-hidden="true">📄</span>
+          <div class="queueBody">
+            <h3 class="resTitle">(untitled) — docs.google.com/presentation/d/…</h3>
+            <p class="resBlurb">&ldquo;my orienteering powerpoint from the april meeting&rdquo;</p>
+            <p class="queueMeta">submitted by <strong>Mrs. Sanders</strong> (family session) · 5 days ago</p>
+            <div class="placementChips">
+              <span class="placementChip" style="opacity:.6;">No placement suggested</span>
+              <button class="addPlacement" onclick="alert('Prototype: webmaster picks — First Class 4a is the obvious home.')">+ Add placement</button>
+            </div>
+          </div>
+          <span class="statusPill statusPill--pending" data-status>Pending</span>
+        </div>
+        <div class="queueActions">
+          <button class="btn btn--primary btn--small" onclick="approveRes('q3')">Approve &amp; Publish</button>
+          <button class="btn btn--secondary btn--small" onclick="alert('Prototype: edit — needs a title and a placement before publish makes sense.')">Edit First</button>
+          <button class="btn btn--danger btn--small" onclick="declineRes('q3')">Decline</button>
+        </div>
+        <div class="feedbackBox" hidden data-decline>
+          <label class="fieldLabel">Note to submitter (emailed)</label>
+          <input class="textInput" type="text" />
+          <div style="margin-top:10px;"><button class="btn btn--danger btn--small" onclick="confirmDecline('q3')">Decline &amp; Send Note</button></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ TAB: PROOF REVIEW ═══════════════════════════════════════════ -->
+    <section id="tab-proof" role="tabpanel" hidden>
+      <p class="proto-note"><strong>Rule</strong> — Approve writes the ledger entry through the same
+        duplicate-blocked path Fast Entry uses, stamped with your initials. Return sends your feedback
+        to the household by email. Proof media lives in a private bucket — these previews are
+        admin-only signed URLs, never public.</p>
+
+      <div class="queueRow" id="p1">
+        <div class="queueHead">
+          <div class="proofThumb" role="img" aria-label="Submitted photo (admin-only)">📷 photo<br/>(signed URL)</div>
+          <div class="queueBody">
+            <h3 class="resTitle">Ben Sanders — First Class <span class="reqTag">9a</span> Visit a civic leader</h3>
+            <p class="resBlurb" style="font-style:italic;">&ldquo;Visited Alder Coggs with my dad on July 12. We talked about
+              the new bike lanes and how the budget works. Photo is us outside City Hall.&rdquo;</p>
+            <p class="queueMeta">Photo + note · submitted via <strong>family session</strong> (Sanders household ✓ verified member) · yesterday</p>
+            <div class="ledgerState">Ledger check: <strong>9a not yet signed off</strong> for Ben Sanders ·
+              First Class progress 11 of 17 · no pending duplicates. <a href="#" style="color:var(--navy); font-weight:700;">Open Clipboard →</a></div>
+          </div>
+          <span class="statusPill statusPill--pending" data-status>Pending</span>
+        </div>
+        <div class="queueActions">
+          <button class="btn btn--primary btn--small" onclick="approveProof('p1', 'Ben Sanders — First Class 9a signed off. Ledger entry written (entered_by: PB). Household emailed.')">✓ Sign Off — Write to Ledger</button>
+          <button class="btn btn--secondary btn--small" onclick="returnProof('p1')">Return with Feedback</button>
+        </div>
+        <div class="feedbackBox" hidden data-return>
+          <label class="fieldLabel">Feedback to the scout (emailed to household)</label>
+          <textarea class="textArea" placeholder="e.g. Great visit! Before I sign off, tell me one responsibility YOU have as a citizen — reply or grab me Sunday."></textarea>
+          <div style="margin-top:10px;"><button class="btn btn--navy btn--small" onclick="confirmReturn('p1')">Send Feedback &amp; Return</button></div>
+        </div>
+      </div>
+
+      <div class="queueRow" id="p2">
+        <div class="queueHead">
+          <span class="resIcon" style="align-self:flex-start;" aria-hidden="true">✍️</span>
+          <div class="queueBody">
+            <h3 class="resTitle">Marcus Webb — Second Class <span class="reqTag">2c</span> Plan and cook a hot breakfast</h3>
+            <p class="resBlurb" style="font-style:italic;">&ldquo;I cooked eggs and pancakes for my patrol at the June campout.
+              Mr. K watched me do it.&rdquo;</p>
+            <p class="queueMeta">Written report · submitted via <strong>scout session</strong> (identity confirmed at review) · 3 days ago</p>
+            <div class="dupWarn"><strong>Already signed off.</strong> The ledger shows Second Class 2c
+              completed for Marcus on <strong>June 14, 2026</strong> (entered by JK at the campout).
+              Approving again is blocked — return this with the good news instead.</div>
+          </div>
+          <span class="statusPill statusPill--pending" data-status>Pending</span>
+        </div>
+        <div class="queueActions">
+          <button class="btn btn--primary btn--small" disabled title="Blocked: duplicate of an existing ledger entry">✓ Sign Off — Blocked (duplicate)</button>
+          <button class="btn btn--secondary btn--small" onclick="returnProof('p2')">Return with Feedback</button>
+        </div>
+        <div class="feedbackBox" hidden data-return>
+          <label class="fieldLabel">Feedback to the scout (emailed to household)</label>
+          <textarea class="textArea">Good news — Mr. K already signed this off at the campout on June 14! It&rsquo;s on your Clipboard. Nothing more needed.</textarea>
+          <div style="margin-top:10px;"><button class="btn btn--navy btn--small" onclick="confirmReturn('p2')">Send Feedback &amp; Return</button></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ TAB: TOPICS & SHELVES ═══════════════════════════════════════ -->
+    <section id="tab-shelves" role="tabpanel" hidden>
+      <p class="proto-note"><strong>Note</strong> — shelves are the only taxonomy the webmaster
+        maintains; the advancement drill comes from the requirement tables for free. Drag to reorder;
+        renames are safe (placements key on the topic, not the label).</p>
+      <div class="topicRow"><span class="grip">⠿</span><span style="font-size:18px;">✨</span><span class="tName">The Sparkler</span><span class="tMeta">38 posts · auto-fed by the weekly Bugle</span><button class="btn btn--ghost btn--small">Rename</button><button class="btn btn--ghost btn--small">Retire</button></div>
+      <div class="topicRow"><span class="grip">⠿</span><span style="font-size:18px;">🦅</span><span class="tName">The Eagle Project Trail</span><span class="tMeta">9 resources · ordered as a numbered trail</span><button class="btn btn--ghost btn--small">Rename</button><button class="btn btn--ghost btn--small">Retire</button></div>
+      <div class="topicRow"><span class="grip">⠿</span><span style="font-size:18px;">🎒</span><span class="tName">Gear &amp; Packing</span><span class="tMeta">12 resources</span><button class="btn btn--ghost btn--small">Rename</button><button class="btn btn--ghost btn--small">Retire</button></div>
+      <div class="topicRow"><span class="grip">⠿</span><span style="font-size:18px;">📯</span><span class="tName">The Bugle</span><span class="tMeta">4 resources · subscribe link pinned</span><button class="btn btn--ghost btn--small">Rename</button><button class="btn btn--ghost btn--small">Retire</button></div>
+      <div class="topicRow"><span class="grip">⠿</span><span style="font-size:18px;">🎬</span><span class="tName">Fun &amp; Films</span><span class="tMeta">7 resources</span><button class="btn btn--ghost btn--small">Rename</button><button class="btn btn--ghost btn--small">Retire</button></div>
+      <button class="btn btn--secondary btn--small" style="margin-top:8px;" onclick="alert('Prototype: new topic — slug, title, blurb, icon.')">+ New Shelf</button>
+    </section>
+
+    <!-- ══ TAB: NARRATIVES ═════════════════════════════════════════════ -->
+    <section id="tab-narr" role="tabpanel" hidden>
+      <p class="proto-note"><strong>Note</strong> — the free-form intro paragraph on any requirement
+        page. Pick a requirement, write markdown, preview, save. Empty = the page simply shows no
+        narrative block.</p>
+      <div class="stepCard" style="max-width:820px;">
+        <div class="fieldRow">
+          <label class="fieldLabel" for="narrTarget">Requirement</label>
+          <select class="selectInput" id="narrTarget" style="max-width:420px;">
+            <option>First Class — 9a Visit a civic leader</option>
+            <option>Tenderfoot — 4a First aid demonstration</option>
+            <option>First Aid MB — requirement 6</option>
+            <option>Scout — 5 Totin&rsquo; Chip / Firem&rsquo;n Chit</option>
+          </select>
+        </div>
+        <div class="fieldRow">
+          <label class="fieldLabel" for="narrMd">Narrative (markdown)</label>
+          <textarea class="textArea" id="narrMd" style="min-height:130px;">This is the requirement scouts put off the longest — and the one they end up telling stories about. You don't need an appointment with the mayor: an alderperson, a school-board member, a village trustee, or a judge all count...</textarea>
+        </div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <button class="btn btn--primary btn--small" onclick="alert('Prototype: saves requirement_notes for this target; page updates immediately.')">Save Narrative</button>
+          <button class="btn btn--secondary btn--small" onclick="document.getElementById('narrPrev').hidden = !document.getElementById('narrPrev').hidden">Toggle Preview</button>
+        </div>
+        <div class="narrPreview" id="narrPrev" hidden>
+          <p>This is the requirement scouts put off the longest — and the one they end up telling
+          stories about. You don&rsquo;t need an appointment with the mayor: an alderperson, a
+          school-board member, a village trustee, or a judge all count&hellip;</p>
+        </div>
+      </div>
+    </section>
+
+    <nav class="protoFooterNav" aria-label="Prototype pages">
+      <a href="index.html">Library Home</a>
+      <a href="requirement-page.html">Requirement Page</a>
+      <a href="topic-page.html?t=sparkler">Topic Shelf</a>
+      <a href="admin-review.html">Webmaster Workstation</a>
+    </nav>
+  </main>
+
+<script>
+function setTab(t) {
+  ['queue', 'proof', 'shelves', 'narr'].forEach(x => {
+    document.getElementById('tab-' + x).hidden = (x !== t);
+  });
+  document.querySelectorAll('.adminTab').forEach(b =>
+    b.classList.toggle('isOn', b.dataset.tab === t));
+}
+
+function setRowStatus(id, cls, label) {
+  const row = document.getElementById(id);
+  const pill = row.querySelector('[data-status]');
+  pill.className = 'statusPill ' + cls;
+  pill.textContent = label;
+  row.classList.add('isDone');
+  row.querySelectorAll('.queueActions .btn').forEach(b => b.disabled = true);
+  row.querySelectorAll('[data-decline],[data-return]').forEach(x => x.hidden = true);
+}
+
+function approveRes(id) { setRowStatus(id, 'statusPill--published', 'Published'); }
+function declineRes(id) {
+  const box = document.getElementById(id).querySelector('[data-decline]');
+  box.hidden = !box.hidden;
+}
+function confirmDecline(id) { setRowStatus(id, 'statusPill--archived', 'Declined'); }
+
+function approveProof(id, msg) {
+  setRowStatus(id, 'statusPill--published', 'Signed Off');
+  alert('Prototype: ' + msg);
+}
+function returnProof(id) {
+  const box = document.getElementById(id).querySelector('[data-return]');
+  box.hidden = !box.hidden;
+}
+function confirmReturn(id) { setRowStatus(id, 'statusPill--returned', 'Returned'); }
+</script>
+</body>
+</html>

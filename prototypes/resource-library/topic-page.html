@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Topic Shelf — Resource Library Prototype — Scout Troop 79</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/library.css" />
+  <style>
+    .topicSwitch { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 22px; }
+    .postGrid { display: flex; flex-direction: column; gap: 12px; }
+    .subscribeBand {
+      display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+      background: var(--gold-soft); border: 1px solid var(--khaki); border-radius: 3px;
+      padding: 16px 20px; margin: 22px 0;
+    }
+    .subscribeBand .sbText { flex: 1; min-width: 240px; font-family: var(--font-body); font-size: 14.5px; line-height: 1.5; }
+    .subscribeBand strong { color: var(--bark); }
+    .stepNum {
+      flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+      background: var(--forest); color: #fff; font-family: var(--font-display); font-size: 16px; font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="proto-banner">
+    <div class="proto-banner-inner">
+      <p><strong>Prototype v1</strong> ONE topic-shelf renderer, three configs — switch shelves below (same pattern as the event-page prototype). All names fictional.</p>
+      <a href="index.html">&larr; Library home</a>
+    </div>
+  </div>
+
+  <main class="page page--narrow">
+
+    <p class="kicker"><a href="index.html">Resource Library</a><span class="sep">·</span>Topic Shelf</p>
+
+    <div class="topicSwitch" role="group" aria-label="Switch topic (prototype only)">
+      <button type="button" class="scopeChip" data-t="sparkler" onclick="setTopic('sparkler')">✨ The Sparkler</button>
+      <button type="button" class="scopeChip" data-t="eagle" onclick="setTopic('eagle')">🦅 Eagle Project Trail</button>
+      <button type="button" class="scopeChip" data-t="gear" onclick="setTopic('gear')">🎒 Gear &amp; Packing</button>
+    </div>
+
+    <header>
+      <h1 class="pageTitle" id="topicTitle"></h1>
+      <p class="pageDek" id="topicDek"></p>
+      <div class="headRule"></div>
+    </header>
+
+    <div id="topicBody"></div>
+
+    <div class="sectionDivider"><span class="divLabel">Contribute</span><span class="divRule"></span></div>
+    <p style="font-family:var(--font-ui); font-size:13.5px; line-height:1.55;">
+      Got something that belongs on this shelf?
+      <a href="index.html" style="color:var(--navy); font-weight:700; text-decoration:underline; text-underline-offset:2px;">Suggest a resource</a>
+      — the webmaster reviews everything before it&rsquo;s published.</p>
+
+    <nav class="protoFooterNav" aria-label="Prototype pages">
+      <a href="index.html">Library Home</a>
+      <a href="requirement-page.html">Requirement Page</a>
+      <a href="topic-page.html?t=sparkler">Topic Shelf</a>
+      <a href="admin-review.html">Webmaster Workstation</a>
+    </nav>
+  </main>
+
+<script>
+const TOPICS = {
+  sparkler: {
+    title: 'The Sparkler',
+    dek: 'Every week&rsquo;s joke from the Bugle, archived for posterity. Each new issue adds one automatically — the webmaster just keeps publishing the Bugle.',
+    render: () => `
+      <div class="subscribeBand">
+        <span style="font-size:26px;" aria-hidden="true">📯</span>
+        <p class="sbText"><strong>Fresh Sparklers arrive in the Bugle every week.</strong>
+          Subscribe and you&rsquo;ll never miss a groan — plus the calendar, advancement news, and clipboards.</p>
+        <a class="btn btn--navy btn--small" href="#">Subscribe to the Bugle</a>
+      </div>
+      <div class="postGrid">
+        <article class="postCard isPinned">
+          <p class="postDate">★ This week · July 20, 2026</p>
+          <h3 class="postTitle">The Camping Merit Badge</h3>
+          <p class="postBody">Why don&rsquo;t mummies go to summer camp?<br/><em>They&rsquo;re afraid to unwind.</em></p>
+        </article>
+        <article class="postCard">
+          <p class="postDate">July 13, 2026</p>
+          <h3 class="postTitle">Knot Again</h3>
+          <p class="postBody">I told my patrol a joke about a square knot.<br/><em>It didn&rsquo;t land — I guess you had to be tied there.</em></p>
+        </article>
+        <article class="postCard">
+          <p class="postDate">July 6, 2026</p>
+          <h3 class="postTitle">Civic Duty</h3>
+          <p class="postBody">Our scout asked the alderman what his favorite part of the job was.<br/><em>&ldquo;The council naps&hellip; I mean, meetings.&rdquo;</em></p>
+        </article>
+        <article class="postCard">
+          <p class="postDate">June 29, 2026</p>
+          <h3 class="postTitle">Weather or Knot</h3>
+          <p class="postBody">What does a cloud wear under its raincoat?<br/><em>Thunderwear.</em></p>
+        </article>
+      </div>
+      <p class="proto-note"><strong>Note</strong> — Sparklers are <em>post</em>-kind resources
+        (title + body markdown, no external link) placed on this shelf, newest first, current
+        week pinned. The weekly Bugle workflow can append the new one automatically.</p>`
+  },
+
+  eagle: {
+    title: 'The Eagle Project Trail',
+    dek: 'How to pick, propose, fund, and finish an Eagle project — the troop&rsquo;s collected wisdom, in the order you&rsquo;ll need it.',
+    render: () => `
+      <ul class="resourceList">
+        <li class="resourceCard isPinned">
+          <span class="pinFlag">★ Start here</span>
+          <span class="stepNum" aria-hidden="true">1</span>
+          <div class="resBody">
+            <a class="resTitleLink" href="#"><h3 class="resTitle">So You&rsquo;re Ready to Start an Eagle Project</h3></a>
+            <p class="resBlurb">The troop&rsquo;s own step-by-step: what makes a good project, who to talk to first, and the mistakes that cost scouts months.</p>
+            <div class="resMetaRow"><span class="hostChip">Troop Post</span><span class="resCredit">By <strong>Mrs. Weber</strong>, Eagle coach</span></div>
+          </div>
+        </li>
+        <li class="resourceCard">
+          <span class="stepNum" aria-hidden="true">2</span>
+          <div class="resBody">
+            <a class="resTitleLink" href="#"><h3 class="resTitle">Eagle Project Proposal Workbook (Official) ↗</h3></a>
+            <p class="resBlurb">The BSA workbook every proposal must use — current edition, straight from the source.</p>
+            <div class="resMetaRow"><span class="hostChip hostChip--pdf">PDF</span></div>
+          </div>
+        </li>
+        <li class="resourceCard">
+          <span class="stepNum" aria-hidden="true">3</span>
+          <div class="resBody">
+            <a class="resTitleLink" href="#"><h3 class="resTitle">Fundraising Rules &amp; the Council Form ↗</h3></a>
+            <p class="resBlurb">When you need council approval to raise money, and the form to do it. Read <em>before</em> you promise anyone a car wash.</p>
+            <div class="resMetaRow"><span class="hostChip hostChip--gdoc">Google Doc</span><span class="resCredit">By <strong>Mr. Bieser</strong></span></div>
+          </div>
+        </li>
+        <li class="resourceCard">
+          <span class="stepNum" aria-hidden="true">4</span>
+          <div class="resBody">
+            <a class="resTitleLink" href="#"><h3 class="resTitle">Watch: A Project From Proposal to Court of Honor (18 min) ↗</h3></a>
+            <p class="resBlurb">One scout&rsquo;s full project documented start to finish — planning meetings, workdays, the write-up.</p>
+            <div class="resMetaRow"><span class="hostChip hostChip--youtube">YouTube</span></div>
+          </div>
+        </li>
+        <li class="resourceCard">
+          <span class="stepNum" aria-hidden="true">5</span>
+          <div class="resBody">
+            <a class="resTitleLink" href="#"><h3 class="resTitle">Projects Our Troop Has Done</h3></a>
+            <p class="resBlurb">Benches, trail restoration, the food-pantry shelving — what past Troop 79 scouts built, with photos and hour counts.</p>
+            <div class="resMetaRow"><span class="hostChip">Troop Post</span></div>
+          </div>
+        </li>
+      </ul>
+      <p class="proto-note"><strong>Note</strong> — shelves support webmaster ordering, so a topic
+        can read as a numbered trail rather than a feed. Same resource objects, different shelf.</p>`
+  },
+
+  gear: {
+    title: 'Gear &amp; Packing',
+    dek: 'Which cot survives summer camp, what sleeping-bag rating actually matters in Wisconsin, and packing lists that work.',
+    render: () => `
+      <ul class="resourceList">
+        <li class="resourceCard isPinned">
+          <span class="pinFlag">★ Pinned</span>
+          <span class="resIcon resIcon--doc" aria-hidden="true">📄</span>
+          <div class="resBody">
+            <a class="resTitleLink" href="#"><h3 class="resTitle">The Troop 79 Summer Camp Packing List ↗</h3></a>
+            <p class="resBlurb">The real list, updated each spring. Print it, tape it to the duffel, check things off.</p>
+            <div class="resMetaRow"><span class="hostChip hostChip--gdoc">Google Doc</span><span class="resCredit">By <strong>Mr. Kowalski</strong></span></div>
+          </div>
+        </li>
+        <li class="resourceCard">
+          <span class="resIcon" aria-hidden="true">🛒</span>
+          <div class="resBody">
+            <a class="resTitleLink" href="#"><h3 class="resTitle">Coleman Trailhead II Cot ↗</h3></a>
+            <p class="resBlurb">The summer-camp standard — steel frame, survives six years of scouts. Buy once, cry once.</p>
+            <div class="resMetaRow"><span class="hostChip hostChip--amazon">Amazon</span><span class="resCredit">Recommended by <strong>Mrs. Sanders</strong></span></div>
+          </div>
+        </li>
+        <li class="resourceCard">
+          <span class="resIcon" aria-hidden="true">🔗</span>
+          <div class="resBody">
+            <a class="resTitleLink" href="#"><h3 class="resTitle">Sleeping Bag Ratings, Decoded ↗</h3></a>
+            <p class="resBlurb">What &ldquo;20°F&rdquo; actually means, and why the shoulder-season campouts are the ones that bite.</p>
+            <div class="resMetaRow"><span class="hostChip">Article</span></div>
+          </div>
+        </li>
+        <li class="resourceCard">
+          <span class="resIcon resIcon--video" aria-hidden="true">▶</span>
+          <div class="resBody">
+            <a class="resTitleLink" href="#"><h3 class="resTitle">How to Pack a Backpack (8 min) ↗</h3></a>
+            <p class="resBlurb">Weight distribution that saves your back on the 10-miler — heavy high and close.</p>
+            <div class="resMetaRow"><span class="hostChip hostChip--youtube">YouTube</span><span class="alsoOn">Also on: <a href="#">Camping MB</a>, <a href="#">Second Class 1b</a></span></div>
+          </div>
+        </li>
+      </ul>
+      <p class="proto-note"><strong>Note</strong> — product links are plain outbound links
+        (rel=noopener, no affiliate codes). The same packing video also appears on two
+        requirement pages — one resource, three placements.</p>`
+  }
+};
+
+function setTopic(t) {
+  const cfg = TOPICS[t] || TOPICS.sparkler;
+  document.getElementById('topicTitle').innerHTML = cfg.title;
+  document.getElementById('topicDek').innerHTML = cfg.dek;
+  document.getElementById('topicBody').innerHTML = cfg.render();
+  document.querySelectorAll('.topicSwitch .scopeChip').forEach(c =>
+    c.classList.toggle('isOn', c.dataset.t === t));
+  const url = new URL(location); url.searchParams.set('t', t);
+  history.replaceState(null, '', url);
+  document.title = cfg.title.replace(/&[^;]+;/g, '') + ' — Resource Library Prototype — Scout Troop 79';
+}
+setTopic(new URLSearchParams(location.search).get('t') || 'sparkler');
+</script>
+</body>
+</html>
