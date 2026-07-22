@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Event Roster — Spring Family Campout — Troop 79 Leaders</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../news-cms/assets/news-cms.css" />
+  <link rel="stylesheet" href="assets/event-registration.css" />
+</head>
+<body>
+
+  <div class="proto-banner">
+    <div class="proto-banner-inner">
+      <p><strong>Prototype</strong> Leader roster view &mdash; headcounts, drivers vs. seats, readiness flags, two-deep check, waitlist, offline-payment tracking. Print-ready (try File &rarr; Print).</p>
+      <a href="index.html">&larr; Back to prototype index</a>
+    </div>
+  </div>
+
+  <div class="utility-bar" role="banner">
+    <div class="utility-inner">
+      <span class="utility-date">Wednesday, April 1, 2026</span>
+      <div class="utility-links">
+        <a href="#">Signed in: Mindy S. (leader)</a>
+      </div>
+    </div>
+  </div>
+
+  <header class="masthead" role="banner">
+    <div class="masthead-inner">
+      <div class="masthead-logo">
+        <a href="../../index.html" aria-label="Troop 79 Home">
+          <img src="../../assets/images/troop-79-logo.png" alt="Scout Troop 79 &mdash; Milwaukee, WI" />
+        </a>
+      </div>
+      <div class="masthead-wordmark">
+        <h1 class="site-name">Scout Troop 79</h1>
+        <p class="site-sub">Leader Workspace &nbsp;&middot;&nbsp; Events</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="roster-page" id="main-content">
+
+    <div class="print-bar">
+      <button class="btn-secondary btn-sm" onclick="window.print()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg>
+        Print roster
+      </button>
+      <button class="btn-ghost btn-sm">Enter a response on a family&rsquo;s behalf</button>
+    </div>
+
+    <div class="roster-head">
+      <div>
+        <h1>Spring Family Campout &mdash; Roster</h1>
+        <p class="rh-sub">Kettle Moraine State Forest &middot; Fri May 16 &ndash; Sun May 18 &middot; $24 scout / $12 adult (offline)</p>
+      </div>
+    </div>
+
+    <div class="roster-status-chips">
+      <span class="status-chip chip-open">Signups open</span>
+      <span class="status-chip">Closes Fri, May 9 &mdash; grubmaster shops from this count</span>
+      <span class="status-chip">Capacity 40 (site limit)</span>
+    </div>
+
+    <!-- Computed readiness banners: warn, never block -->
+    <div class="roster-warning roster-ok">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+      <p><strong>Two-deep leadership covered:</strong> 5 registered adults age 21+.</p>
+    </div>
+    <div class="roster-warning">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+      <p><strong>No female adult 21+ is registered</strong> &mdash; 3 female youth are going (Nora B., Ava C., Ruby S.). BSA Youth Protection requires a registered female adult 21+ on the outing.</p>
+    </div>
+    <div class="roster-warning">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+      <p><strong>1 seat short to camp.</strong> 13 riders need transport to camp; drivers have offered 12 open seats. One more driver (or roof rack Tetris) needed.</p>
+    </div>
+
+    <div class="count-tiles">
+      <div class="count-tile ct-going"><div class="ct-num">12</div><div class="ct-label">Scouts going</div></div>
+      <div class="count-tile ct-going"><div class="ct-num">5</div><div class="ct-label">Adults going</div></div>
+      <div class="count-tile"><div class="ct-num">4</div><div class="ct-label">Not going</div></div>
+      <div class="count-tile ct-warn"><div class="ct-num">14</div><div class="ct-label">No response</div></div>
+      <div class="count-tile"><div class="ct-num">6<span style="font-size:16px;color:var(--text-meta)">/17</span></div><div class="ct-label">Paid</div></div>
+    </div>
+
+    <div class="roster-grid">
+      <div><!-- left column -->
+
+        <div class="roster-card">
+          <div class="roster-card-head">
+            <h2>Scouts going &mdash; by patrol</h2>
+            <span class="rch-note">Flags come from records already on file &mdash; they warn, they never block a signup</span>
+          </div>
+          <table class="roster-table">
+            <thead><tr><th>Scout</th><th>Dietary</th><th>Health form</th><th>Paid $24</th></tr></thead>
+            <tbody>
+              <tr class="patrol-divider"><td colspan="4">Hawk Patrol &mdash; 4 going</td></tr>
+              <tr><td>Eli Brandt</td><td>Peanut allergy</td><td><span class="flag flag-ok">A/B current</span></td><td><input type="checkbox" checked aria-label="Eli Brandt paid"></td></tr>
+              <tr><td>Theo Kessler</td><td class="muted">&mdash;</td><td><span class="flag flag-warn">A/B expired 3/12</span></td><td><input type="checkbox" checked aria-label="Theo Kessler paid"></td></tr>
+              <tr><td>Marcus Webb</td><td class="muted">&mdash;</td><td><span class="flag flag-ok">A/B current</span></td><td><input type="checkbox" aria-label="Marcus Webb paid"></td></tr>
+              <tr><td>Leo Vance</td><td class="muted">&mdash;</td><td><span class="flag flag-ok">A/B current</span></td><td><input type="checkbox" aria-label="Leo Vance paid"></td></tr>
+              <tr class="patrol-divider"><td colspan="4">Falcon Patrol &mdash; 4 going</td></tr>
+              <tr><td>Nora Brandt</td><td class="muted">&mdash;</td><td><span class="flag flag-ok">A/B current</span></td><td><input type="checkbox" checked aria-label="Nora Brandt paid"></td></tr>
+              <tr><td>Ava Chen</td><td class="muted">&mdash;</td><td><span class="flag flag-ok">A/B current</span></td><td><input type="checkbox" aria-label="Ava Chen paid"></td></tr>
+              <tr><td>Sam Ortiz</td><td>Gluten-free</td><td><span class="flag flag-ok">A/B current</span></td><td><input type="checkbox" aria-label="Sam Ortiz paid"></td></tr>
+              <tr><td>Dylan Price</td><td class="muted">&mdash;</td><td><span class="flag flag-warn">No form on file</span></td><td><input type="checkbox" aria-label="Dylan Price paid"></td></tr>
+              <tr class="patrol-divider"><td colspan="4">Bear Patrol &mdash; 4 going</td></tr>
+              <tr><td>Jonah Reyes</td><td class="muted">&mdash;</td><td><span class="flag flag-ok">A/B current</span></td><td><input type="checkbox" checked aria-label="Jonah Reyes paid"></td></tr>
+              <tr><td>Ruby Sandoval</td><td>Vegetarian</td><td><span class="flag flag-ok">A/B current</span></td><td><input type="checkbox" checked aria-label="Ruby Sandoval paid"></td></tr>
+              <tr><td>Quinn Harper</td><td class="muted">&mdash;</td><td><span class="flag flag-ok">A/B current</span></td><td><input type="checkbox" aria-label="Quinn Harper paid"></td></tr>
+              <tr><td>Cole Maddox</td><td class="muted">&mdash;</td><td><span class="flag flag-ok">A/B current</span></td><td><input type="checkbox" checked aria-label="Cole Maddox paid"></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="roster-card">
+          <div class="roster-card-head">
+            <h2>Adults going</h2>
+            <span class="rch-note">YPT status from the leader record</span>
+          </div>
+          <table class="roster-table">
+            <thead><tr><th>Adult</th><th>Driving</th><th>YPT</th><th>Paid $12</th></tr></thead>
+            <tbody>
+              <tr><td>Michael Brandt <span class="muted">(parent)</span></td><td>To &amp; from &middot; 3 seats</td><td><span class="flag flag-ok">Current</span></td><td><input type="checkbox" aria-label="Michael Brandt paid"></td></tr>
+              <tr><td>Peter Webb <span class="muted">(parent)</span></td><td class="muted">Riding</td><td><span class="flag flag-warn">Expires 5/02</span></td><td><input type="checkbox" aria-label="Peter Webb paid"></td></tr>
+              <tr><td>Ken Price <span class="muted">(parent)</span></td><td>To camp &middot; 4 seats</td><td><span class="flag flag-ok">Current</span></td><td><input type="checkbox" aria-label="Ken Price paid"></td></tr>
+              <tr><td>Carl Vance <span class="muted">(ASM)</span></td><td>From camp &middot; 4 seats</td><td><span class="flag flag-ok">Current</span></td><td><input type="checkbox" aria-label="Carl Vance paid"></td></tr>
+              <tr><td>Marco Sandoval <span class="muted">(parent)</span></td><td>To &amp; from &middot; 5 seats</td><td><span class="flag flag-ok">Current</span></td><td><input type="checkbox" aria-label="Marco Sandoval paid"></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+      <div><!-- right column -->
+
+        <div class="roster-card">
+          <div class="roster-card-head"><h2>Seats vs. riders</h2></div>
+          <div class="driver-summary">
+            <div class="ds-item ds-warn"><strong>12</strong> seats to camp</div>
+            <div class="ds-item"><strong>13</strong> riders to camp</div>
+            <div class="ds-item ds-ok"><strong>12</strong> seats home</div>
+          </div>
+          <ul class="small-list">
+            <li>Michael Brandt <span class="sl-meta">to &amp; from &middot; 3 seats</span></li>
+            <li>Marco Sandoval <span class="sl-meta">to &amp; from &middot; 5 seats</span></li>
+            <li>Ken Price <span class="sl-meta">to camp only &middot; 4 seats</span></li>
+            <li>Carl Vance <span class="sl-meta">from camp only &middot; 4 seats</span></li>
+          </ul>
+        </div>
+
+        <div class="roster-card">
+          <div class="roster-card-head"><h2>Dietary rollup</h2><span class="rch-note">For the grubmasters</span></div>
+          <ul class="small-list">
+            <li>Peanut allergy <span class="sl-meta">Eli Brandt (Hawk)</span></li>
+            <li>Gluten-free <span class="sl-meta">Sam Ortiz (Falcon)</span></li>
+            <li>Vegetarian <span class="sl-meta">Ruby Sandoval (Bear)</span></li>
+          </ul>
+        </div>
+
+        <div class="roster-card">
+          <div class="roster-card-head"><h2>Waitlist</h2><span class="rch-note">Appears only on capped events &mdash; shown populated for illustration</span></div>
+          <ul class="small-list" id="waitlist">
+            <li>Leo Vance <span class="sl-meta">#1 &middot; since 4/02</span> <button class="btn-secondary btn-sm">Promote</button></li>
+            <li>Quinn Harper <span class="sl-meta">#2 &middot; since 4/03</span> <button class="btn-secondary btn-sm">Promote</button></li>
+          </ul>
+        </div>
+
+        <div class="roster-card">
+          <div class="roster-card-head"><h2>No response yet &mdash; 14</h2><span class="rch-note">Reminder email: Phase 2</span></div>
+          <ul class="small-list">
+            <li>Finn A., Mateo B., Ella C., Owen D. <span class="sl-meta">Hawk</span></li>
+            <li>Lucas F., Mia G., Noah H., Zoe J. <span class="sl-meta">Falcon</span></li>
+            <li>Ian K., Lena M., Oscar P., Tess R., Max S., Ivy W. <span class="sl-meta">Bear</span></li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <div class="footer-inner">
+      <div class="footer-bottom">
+        <p>&copy; 2026 Scout Troop 79 &nbsp;&middot;&nbsp; Leader workspace</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Prototype-only: Promote moves a waitlisted person up and shows the intended behavior.
+    document.querySelectorAll('#waitlist button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const li = btn.closest('li');
+        li.innerHTML = '<span>' + li.firstChild.textContent.trim() + '</span> <span class="flag flag-ok">Promoted — family notified (Phase 2: email)</span>';
+      });
+    });
+  </script>
+
+  <!--
+    OPEN QUESTIONS / JUDGMENT CALLS (Leader roster):
+    - Readiness flags (health form, YPT) surface data already on file
+      (health_form_date, ypt_completed) — they WARN on the leader view and
+      never block a family's signup. Blocking guarantees leaders bypass the
+      tool (research anti-pattern #7).
+    - Two-deep and female-leader checks are computed from birthdate + gender
+      on the going list — banner, not gate. Green when satisfied so leaders
+      get positive confirmation, amber when not.
+    - Seats vs. riders is directional (to / from) because Sunday drivers are
+      routinely different from Friday drivers.
+    - "Paid" checkboxes track OFFLINE payment only — cash/check per the event's
+      payment instructions. No money moves through the site.
+    - Non-responders are derived (active scouts minus scouts with any answer) —
+      the list leaders actually chase. Phase 2 adds a one-click reminder email.
+    - Print: File → Print strips chrome and reflows to one column for the
+      campsite binder (no signal at Kettle Moraine).
+  -->
+
+</body>
+</html>

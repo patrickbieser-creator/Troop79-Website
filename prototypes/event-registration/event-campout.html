@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spring Family Campout — Sign Up — Scout Troop 79</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../news-cms/assets/news-cms.css" />
+  <link rel="stylesheet" href="assets/event-registration.css" />
+</head>
+<body>
+
+  <div class="proto-banner">
+    <div class="proto-banner-inner">
+      <p><strong>Prototype</strong> Event detail + family signup flow &mdash; Campout variant (drivers, dietary, deadline, payment info).</p>
+      <a href="index.html">&larr; Back to prototype index</a>
+    </div>
+  </div>
+
+  <div class="utility-bar" role="banner">
+    <div class="utility-inner">
+      <span class="utility-date">Wednesday, April 1, 2026</span>
+      <div class="utility-links">
+        <a href="#">Milwaukee, WI</a>
+        <a href="#" class="utility-login">Members Login</a>
+      </div>
+    </div>
+  </div>
+
+  <header class="masthead" role="banner">
+    <div class="masthead-inner">
+      <div class="masthead-logo">
+        <a href="../../index.html" aria-label="Troop 79 Home">
+          <img src="../../assets/images/troop-79-logo.png" alt="Scout Troop 79 &mdash; Milwaukee, WI" />
+        </a>
+      </div>
+      <div class="masthead-wordmark">
+        <h1 class="site-name">Scout Troop 79</h1>
+        <p class="site-sub">Milwaukee, Wisconsin &nbsp;&middot;&nbsp; Est. 2022</p>
+      </div>
+      <div class="masthead-rule" aria-hidden="true"></div>
+      <p class="masthead-tagline">Prepared. Courageous.<br>Ready for anything.</p>
+    </div>
+  </header>
+
+  <nav class="main-nav" role="navigation" aria-label="Main navigation">
+    <div class="nav-inner">
+      <ul class="nav-links" id="navLinks">
+        <li><a href="../../index.html">Home</a></li>
+        <li><a href="#">Meetings</a></li>
+        <li><a href="#" class="active" aria-current="page">Events</a></li>
+        <li><a href="#">Photos</a></li>
+        <li><a href="../../advancement.html">Advancement</a></li>
+        <li><a href="#">About</a></li>
+      </ul>
+      <button class="hamburger" id="hamburger" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <ol>
+      <li><a href="../../index.html">Home</a></li>
+      <li><a href="#">Events</a></li>
+      <li aria-current="page">Spring Family Campout</li>
+    </ol>
+  </nav>
+
+  <main class="article-page" id="main-content">
+
+    <div class="article-head">
+      <span class="cat-tag cat-events">Campout</span>
+      <h1 class="article-headline">Spring Family Campout &mdash; Kettle Moraine State Forest</h1>
+      <p class="article-dek">Two nights of tent camping, a Saturday hike loop through the glacial kettles, and a family potluck around the fire.</p>
+    </div>
+
+    <div class="event-panel" id="eventPanel">
+      <div class="event-panel-when">
+        <div class="event-panel-date-block">
+          <div class="e-month">May</div>
+          <div class="e-day">16</div>
+        </div>
+      </div>
+      <div class="event-panel-facts">
+        <div class="event-panel-row"><span class="ep-label">Starts</span><span>Friday, May 16 &middot; 5:30 PM</span></div>
+        <div class="event-panel-row"><span class="ep-label">Ends</span><span>Sunday, May 18 &middot; 11:00 AM</span></div>
+        <div class="event-panel-row"><span class="ep-label">Location</span><span>Kettle Moraine State Forest &mdash; Northern Unit, Group Camp 3</span></div>
+        <div class="event-panel-row"><span class="ep-label">Cost</span><span>$24 per scout &middot; $12 per adult &mdash; paid offline, see below</span></div>
+      </div>
+      <div class="event-panel-actions">
+        <a class="btn-register" href="#signup">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+          Sign up
+        </a>
+      </div>
+    </div>
+
+    <div class="article-body">
+      <p>Scouts arrive Friday evening to set up camp; families are welcome to join for the Saturday activities and potluck even if they can&rsquo;t stay overnight. Patrols cook their own meals per the patrol method &mdash; the grubmaster shops from the final headcount, which is why the signup deadline matters.</p>
+    </div>
+
+  </main>
+
+  <!-- Prototype state jumper -->
+  <div class="proto-state-bar">
+    <p><strong>Prototype states</strong> &mdash; jump to any step of the flow, or walk it naturally:</p>
+    <div class="psb-buttons">
+      <button data-state="gate" class="active">1 &middot; Signed out</button>
+      <button data-state="pick">2 &middot; Pick your scouts</button>
+      <button data-state="form">3 &middot; Family response</button>
+      <button data-state="confirm">4 &middot; Confirmed</button>
+    </div>
+  </div>
+
+  <section class="signup-section" id="signup" aria-label="Event signup">
+
+    <!-- ============ STATE 1: family password gate ============ -->
+    <div class="signup-card" id="stateGate">
+      <p class="signup-kicker">Sign up &middot; Troop families</p>
+      <h2 class="signup-title">Who&rsquo;s coming to the Spring Campout?</h2>
+      <p class="signup-sub">One parent can answer for the whole family &mdash; scouts and adults together, about a minute on your phone.</p>
+
+      <div class="signup-meta-strip">
+        <div class="signup-meta-item"><span class="smi-label">Sign up by</span><strong>Friday, May 9</strong><span class="smi-reason">so the grubmaster can shop</span></div>
+        <div class="signup-meta-item"><span class="smi-label">Going so far</span><strong>14</strong><span class="smi-reason">10 scouts &middot; 4 adults</span></div>
+      </div>
+
+      <form class="gate-form" id="gateForm">
+        <input type="password" placeholder="Family password" aria-label="Family password" id="gatePw" />
+        <button type="submit" class="btn-primary">Continue</button>
+      </form>
+      <p class="gate-hint">One shared password for all troop families &mdash; it&rsquo;s in every issue of the Bugle, or ask any leader. You&rsquo;ll stay signed in on this device. <em>(Prototype: any input works.)</em></p>
+    </div>
+
+    <!-- ============ STATE 2: pick your scouts ============ -->
+    <div class="signup-card" id="statePick" hidden>
+      <p class="signup-kicker">Step 1 of 2</p>
+      <h2 class="signup-title">Pick your scout(s)</h2>
+      <p class="signup-sub">Choose everyone in your household &mdash; we&rsquo;ll add their parents and guardians on the next step.</p>
+      <div class="scout-picker" id="scoutPicker" role="group" aria-label="Select your scouts"></div>
+      <p class="picker-remember"><svg width="12" height="12" viewBox="0 0 24 24" fill="#787060"><path d="M12 1a11 11 0 1 0 11 11A11 11 0 0 0 12 1zm1 17h-2v-2h2zm0-4h-2V6h2z"/></svg> Remembered on this device &mdash; next time your family is pre-selected.</p>
+      <div class="submit-bar">
+        <button class="btn-primary" id="pickContinue" disabled>Continue</button>
+        <span class="submit-summary" id="pickSummary">Select at least one scout</span>
+      </div>
+    </div>
+
+    <!-- ============ STATE 3: family response form ============ -->
+    <div class="signup-card" id="stateForm" hidden>
+      <p class="signup-kicker">Step 2 of 2</p>
+      <h2 class="signup-title">Family response</h2>
+      <p class="signup-sub">Mark each person Going or Not going. Anyone you skip stays &ldquo;no response&rdquo; and will get a reminder before the deadline.</p>
+
+      <div id="scoutRows"></div>
+      <div id="adultRows"></div>
+      <div class="add-person-row">
+        <button class="btn-ghost btn-sm" id="addAdultBtn">+ Add another adult</button>
+      </div>
+
+      <div class="organizer-note">
+        <label for="orgNote">Note to the organizer <span class="muted" style="font-weight:400">(optional)</span></label>
+        <textarea id="orgNote" placeholder="Anything the leaders should know &mdash; arriving late, leaving early, gear questions&hellip;"></textarea>
+      </div>
+
+      <div class="payment-note">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M11 17h2v-6h-2v6zm1-15C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zM11 9h2V7h-2v2z"/></svg>
+        <p><strong>How to pay &mdash; $24 per scout, $12 per adult.</strong> Cash or a check to &ldquo;Troop 79&rdquo; in the grubmaster envelope at the May 5 or May 12 meeting.
+        <span class="pn-sub">Nothing is collected online &mdash; this signup just gets you on the roster.</span></p>
+      </div>
+
+      <div class="submit-bar">
+        <button class="btn-primary" id="submitBtn">Submit family response</button>
+        <button class="btn-ghost btn-sm" id="backToPick">&larr; Change scouts</button>
+        <span class="submit-summary" id="formSummary"></span>
+      </div>
+    </div>
+
+    <!-- ============ STATE 4: confirmation ============ -->
+    <div class="signup-card" id="stateConfirm" hidden>
+      <div class="confirm-panel">
+        <h3><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg> You&rsquo;re on the roster</h3>
+        <p id="confirmIntro">Here&rsquo;s what we recorded for your family:</p>
+        <ul id="confirmList"></ul>
+        <p><strong>Payment:</strong> $24 per scout / $12 per adult &mdash; cash or check to &ldquo;Troop 79&rdquo; in the grubmaster envelope at the May 5 or May 12 meeting.</p>
+        <p class="muted" style="margin-top:8px">You can change any of this until <strong>Friday, May 9</strong> &mdash; just come back to this page. After that, contact a leader.</p>
+        <div class="confirm-actions">
+          <button class="btn-secondary btn-sm" id="editResponse">Edit response</button>
+        </div>
+      </div>
+      <div class="going-strip" style="margin-top:16px">
+        <span class="gs-count" id="goingCount">17</span>
+        <span>going so far &middot; <span id="goingBreakdown">12 scouts &middot; 5 adults</span></span>
+        <span class="gs-note">Full list visible to signed-in families &middot; details visible to leaders</span>
+      </div>
+    </div>
+
+  </section>
+
+  <footer class="site-footer" role="contentinfo">
+    <div class="footer-inner">
+      <div class="footer-bottom">
+        <p>&copy; 2026 Scout Troop 79 &nbsp;&middot;&nbsp; Milwaukee, Wisconsin</p>
+        <p><a href="#">Privacy</a> &nbsp;&middot;&nbsp; <a href="#">Accessibility</a></p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // ---------- sample data (fictional names, per prototype convention) ----------
+    const SCOUTS = [
+      { id: 'eli-brandt',    name: 'Eli Brandt',    patrol: 'Hawk',   rank: 'Second Class' },
+      { id: 'theo-kessler',  name: 'Theo Kessler',  patrol: 'Hawk',   rank: 'First Class' },
+      { id: 'marcus-webb',   name: 'Marcus Webb',   patrol: 'Hawk',   rank: 'Tenderfoot' },
+      { id: 'leo-vance',     name: 'Leo Vance',     patrol: 'Hawk',   rank: 'Star' },
+      { id: 'nora-brandt',   name: 'Nora Brandt',   patrol: 'Falcon', rank: 'Tenderfoot' },
+      { id: 'ava-chen',      name: 'Ava Chen',      patrol: 'Falcon', rank: 'First Class' },
+      { id: 'sam-ortiz',     name: 'Sam Ortiz',     patrol: 'Falcon', rank: 'Scout' },
+      { id: 'dylan-price',   name: 'Dylan Price',   patrol: 'Falcon', rank: 'Second Class' },
+      { id: 'jonah-reyes',   name: 'Jonah Reyes',   patrol: 'Bear',   rank: 'Life' },
+      { id: 'ruby-sandoval', name: 'Ruby Sandoval', patrol: 'Bear',   rank: 'Tenderfoot' },
+      { id: 'quinn-harper',  name: 'Quinn Harper',  patrol: 'Bear',   rank: 'First Class' },
+      { id: 'cole-maddox',   name: 'Cole Maddox',   patrol: 'Bear',   rank: 'Star' },
+    ];
+    // Parents/guardians derived from scout_parents — shared parents dedupe across siblings.
+    const PARENTS = {
+      'eli-brandt':    [ 'Dana Brandt', 'Michael Brandt' ],
+      'nora-brandt':   [ 'Dana Brandt', 'Michael Brandt' ],
+      'theo-kessler':  [ 'Anne Kessler' ],
+      'marcus-webb':   [ 'Peter Webb', 'Joy Webb' ],
+      'leo-vance':     [ 'Carl Vance' ],
+      'ava-chen':      [ 'Lily Chen', 'David Chen' ],
+      'sam-ortiz':     [ 'Maria Ortiz' ],
+      'dylan-price':   [ 'Ken Price', 'Sarah Price' ],
+      'jonah-reyes':   [ 'Elena Reyes' ],
+      'ruby-sandoval': [ 'Marco Sandoval', 'Iris Sandoval' ],
+      'quinn-harper':  [ 'Beth Harper' ],
+      'cole-maddox':   [ 'Ray Maddox', 'June Maddox' ],
+    };
+
+    const state = { selected: new Set(['eli-brandt', 'nora-brandt']), people: {}, extraAdults: 0 };
+
+    // ---------- state switching ----------
+    const STATES = ['gate', 'pick', 'form', 'confirm'];
+    function show(stateName) {
+      STATES.forEach(s => {
+        document.getElementById('state' + s[0].toUpperCase() + s.slice(1)).hidden = (s !== stateName);
+      });
+      document.querySelectorAll('.proto-state-bar button').forEach(b =>
+        b.classList.toggle('active', b.dataset.state === stateName));
+      if (stateName === 'pick') renderPicker();
+      if (stateName === 'form') renderForm();
+      if (stateName === 'confirm' && !document.getElementById('confirmList').children.length) buildConfirm();
+    }
+    document.querySelectorAll('.proto-state-bar button').forEach(b =>
+      b.addEventListener('click', () => show(b.dataset.state)));
+
+    document.getElementById('gateForm').addEventListener('submit', e => { e.preventDefault(); show('pick'); });
+
+    // ---------- scout picker ----------
+    function renderPicker() {
+      const el = document.getElementById('scoutPicker');
+      el.innerHTML = '';
+      SCOUTS.forEach(s => {
+        const label = document.createElement('label');
+        label.className = 'scout-chip' + (state.selected.has(s.id) ? ' selected' : '');
+        label.innerHTML = '<input type="checkbox" ' + (state.selected.has(s.id) ? 'checked' : '') + '> ' +
+          s.name + ' <span class="sc-patrol">' + s.patrol + '</span>';
+        label.querySelector('input').addEventListener('change', ev => {
+          ev.target.checked ? state.selected.add(s.id) : state.selected.delete(s.id);
+          label.classList.toggle('selected', ev.target.checked);
+          updatePickSummary();
+        });
+        el.appendChild(label);
+      });
+      updatePickSummary();
+    }
+    function updatePickSummary() {
+      const n = state.selected.size;
+      document.getElementById('pickContinue').disabled = n === 0;
+      document.getElementById('pickSummary').textContent =
+        n === 0 ? 'Select at least one scout' : n + ' scout' + (n > 1 ? 's' : '') + ' selected';
+    }
+    document.getElementById('pickContinue').addEventListener('click', () => show('form'));
+    document.getElementById('backToPick').addEventListener('click', () => show('pick'));
+
+    // ---------- family form ----------
+    function personRow(key, name, meta, isAdult) {
+      if (!state.people[key]) state.people[key] = { name, rsvp: null, dietary: '', driver: false, direction: 'both', seats: 3, isAdult };
+      const p = state.people[key];
+      const row = document.createElement('div');
+      row.className = 'person-row';
+      row.innerHTML =
+        '<div class="person-row-main">' +
+          '<span class="person-name">' + name + (meta ? '<span class="p-meta">' + meta + '</span>' : '') + '</span>' +
+          '<span class="rsvp-seg" role="group" aria-label="RSVP for ' + name + '">' +
+            '<button type="button" data-v="going">Going</button>' +
+            '<button type="button" data-v="not_going">Not going</button>' +
+          '</span>' +
+        '</div>' +
+        '<div class="person-details" hidden>' +
+          '<div class="pd-field"><label>Dietary needs</label><input type="text" placeholder="Allergies or restrictions (blank if none)" value="' + p.dietary + '"></div>' +
+          (isAdult ?
+            '<label class="driver-check"><input type="checkbox" class="drv"' + (p.driver ? ' checked' : '') + '> I can drive</label>' +
+            '<div class="driver-fields"' + (p.driver ? '' : ' hidden') + '>' +
+              '<div class="pd-field"><label>Direction</label><select class="dir">' +
+                '<option value="both">To &amp; from camp</option><option value="to">To camp only</option><option value="from">From camp only</option>' +
+              '</select></div>' +
+              '<div class="pd-field"><label>Open seats</label><input type="number" class="seats" min="1" max="8" value="' + p.seats + '"> <span class="muted" style="font-size:11px">besides the driver</span></div>' +
+            '</div>'
+          : '') +
+        '</div>';
+      const details = row.querySelector('.person-details');
+      row.querySelectorAll('.rsvp-seg button').forEach(btn => {
+        const set = () => {
+          row.querySelectorAll('.rsvp-seg button').forEach(b => b.classList.remove('on-going', 'on-notgoing'));
+          btn.classList.add(btn.dataset.v === 'going' ? 'on-going' : 'on-notgoing');
+          p.rsvp = btn.dataset.v;
+          details.hidden = p.rsvp !== 'going';
+          updateFormSummary();
+        };
+        btn.addEventListener('click', set);
+        if (p.rsvp === btn.dataset.v) set();
+      });
+      row.querySelector('input[type=text]').addEventListener('input', e => p.dietary = e.target.value);
+      if (isAdult) {
+        row.querySelector('.drv').addEventListener('change', e => {
+          p.driver = e.target.checked;
+          row.querySelector('.driver-fields').hidden = !p.driver;
+        });
+        row.querySelector('.dir').addEventListener('change', e => p.direction = e.target.value);
+        row.querySelector('.seats').addEventListener('input', e => p.seats = +e.target.value);
+      }
+      return row;
+    }
+
+    function renderForm() {
+      const scoutEl = document.getElementById('scoutRows');
+      const adultEl = document.getElementById('adultRows');
+      scoutEl.innerHTML = '<p class="person-group-label">Scouts</p>';
+      adultEl.innerHTML = '<p class="person-group-label">Parents &amp; adults <span style="text-transform:none;letter-spacing:0;font-weight:400">&mdash; adults camp with the troop; drivers especially welcome</span></p>';
+      const seenAdults = new Set();
+      state.selected.forEach(id => {
+        const s = SCOUTS.find(x => x.id === id);
+        scoutEl.appendChild(personRow('scout:' + id, s.name, s.patrol + ' Patrol · ' + s.rank, false));
+        (PARENTS[id] || []).forEach(pn => {
+          if (seenAdults.has(pn)) return;   // shared parents appear once per household
+          seenAdults.add(pn);
+          adultEl.appendChild(personRow('adult:' + pn, pn, 'Parent/Guardian', true));
+        });
+      });
+      for (let i = 1; i <= state.extraAdults; i++) {
+        const key = 'extra:' + i;
+        adultEl.appendChild(personRow(key, state.people[key] ? state.people[key].name : 'Guest adult ' + i, 'Added adult', true));
+      }
+      updateFormSummary();
+    }
+
+    document.getElementById('addAdultBtn').addEventListener('click', () => {
+      const name = prompt('Adult’s name (grandparent, family friend…):');
+      if (!name) return;
+      state.extraAdults++;
+      state.people['extra:' + state.extraAdults] = { name, rsvp: 'going', dietary: '', driver: false, direction: 'both', seats: 3, isAdult: true };
+      renderForm();
+    });
+
+    function tally() {
+      let g = { scouts: 0, adults: 0, drivers: 0, seats: 0 }, answered = 0;
+      Object.entries(state.people).forEach(([key, p]) => {
+        const active = key.startsWith('scout:') ? state.selected.has(key.slice(6)) : true;
+        if (!active || !p.rsvp) return;
+        answered++;
+        if (p.rsvp !== 'going') return;
+        p.isAdult ? g.adults++ : g.scouts++;
+        if (p.isAdult && p.driver) { g.drivers++; g.seats += p.seats; }
+      });
+      return { g, answered };
+    }
+    function updateFormSummary() {
+      const { g } = tally();
+      document.getElementById('formSummary').textContent =
+        g.scouts + ' scout' + (g.scouts === 1 ? '' : 's') + ' + ' + g.adults + ' adult' + (g.adults === 1 ? '' : 's') + ' going' +
+        (g.seats ? ' · ' + g.seats + ' seats offered' : '');
+    }
+
+    document.getElementById('submitBtn').addEventListener('click', () => { buildConfirm(true); show('confirm'); });
+    document.getElementById('editResponse').addEventListener('click', () => show('form'));
+
+    function buildConfirm(fromForm) {
+      const ul = document.getElementById('confirmList');
+      ul.innerHTML = '';
+      let any = false;
+      Object.entries(state.people).forEach(([key, p]) => {
+        const active = key.startsWith('scout:') ? state.selected.has(key.slice(6)) : true;
+        if (!active || !p.rsvp) return;
+        any = true;
+        let line = '<strong>' + p.name + '</strong> — ' + (p.rsvp === 'going' ? 'Going' : 'Not going');
+        if (p.rsvp === 'going' && p.dietary) line += ' · dietary: ' + p.dietary;
+        if (p.rsvp === 'going' && p.isAdult && p.driver)
+          line += ' · driving (' + { both: 'to & from', to: 'to camp', from: 'from camp' }[p.direction] + ', ' + p.seats + ' open seats)';
+        const li = document.createElement('li');
+        li.innerHTML = line;
+        ul.appendChild(li);
+      });
+      if (!any) {
+        // default demo content when jumping straight to state 4
+        ul.innerHTML = '<li><strong>Eli Brandt</strong> — Going · dietary: peanut allergy</li>' +
+          '<li><strong>Nora Brandt</strong> — Going</li>' +
+          '<li><strong>Dana Brandt</strong> — Going · driving (to & from, 3 open seats)</li>' +
+          '<li><strong>Michael Brandt</strong> — Not going</li>';
+      }
+      const { g } = tally();
+      const s = any ? 12 + g.scouts - 2 : 12, a = any ? 4 + g.adults - 1 : 5;  // demo math on top of pre-existing 14
+      document.getElementById('goingCount').textContent = s + a;
+      document.getElementById('goingBreakdown').textContent = s + ' scouts · ' + a + ' adults';
+    }
+
+    // nav hamburger (shared shell behavior)
+    const hamburger = document.getElementById('hamburger');
+    const navLinks = document.getElementById('navLinks');
+    hamburger.addEventListener('click', () => {
+      const isOpen = navLinks.classList.toggle('open');
+      hamburger.setAttribute('aria-expanded', isOpen);
+    });
+
+    show('gate');
+  </script>
+
+  <!--
+    OPEN QUESTIONS / JUDGMENT CALLS (Campout signup):
+    - Household flow: the scout picker DEFINES the household (scouts you select +
+      their parents from scout_parents) — no families table, per "simplify,
+      don't layer." Shared parents across siblings dedupe to one row.
+    - RSVP is two-state (Going / Not going); "no response" is the absence of an
+      answer, kept distinct so leaders can chase actual non-responders. No
+      "Maybe" — every platform survey said leaders hate it.
+    - Driver fields only render on adult rows, only when Going, and only for
+      categories whose defaults ask for drivers (campouts/outings). Direction +
+      open seats mirror TroopWebHost's pattern.
+    - Payment is display-only by requirement: amount + instructions, restated
+      on the confirmation. No card fields anywhere, ever.
+    - The deadline shows its REASON ("so the grubmaster can shop") — research
+      says deadlines with reasons get respected.
+    - Edit-until-deadline: confirmation offers "Edit response"; after the
+      deadline the page would show the response read-only with "contact a
+      leader to change."
+  -->
+
+</body>
+</html>

@@ -1,0 +1,293 @@
+/* ============================================================
+   Troop 79 — Event Registration prototypes
+   Loads AFTER ../news-cms/assets/news-cms.css, which supplies the
+   page shell (masthead, nav, footer), article layout, event panel,
+   and the :root palette. This file adds only signup components.
+   Palette tokens referenced here are defined in news-cms.css.
+   ============================================================ */
+
+/* ---------- Signup section shell ---------- */
+.signup-section { max-width: 760px; margin: 0 auto 40px; }
+.signup-card {
+  background: var(--warm-white); border: 1px solid var(--border-light);
+  border-top: 3px solid var(--forest); border-radius: 2px;
+  box-shadow: var(--shadow-card); padding: 22px 24px 24px;
+}
+.signup-card + .signup-card { margin-top: 18px; }
+.signup-kicker {
+  font-family: 'Open Sans', Arial, sans-serif; font-size: 11px; font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--forest);
+  margin-bottom: 6px;
+}
+.signup-title { font-family: 'Playfair Display', Georgia, serif; font-size: 24px; font-weight: 700; color: var(--text-head); margin-bottom: 4px; }
+.signup-sub { font-family: 'Lora', Georgia, serif; font-size: 14px; color: var(--text-meta); line-height: 1.6; }
+
+/* Deadline + fee strip */
+.signup-meta-strip {
+  display: flex; flex-wrap: wrap; gap: 10px 26px; margin: 16px 0 4px;
+  padding: 12px 14px; background: var(--newsprint); border: 1px solid var(--border-light); border-radius: 2px;
+}
+.signup-meta-item { font-family: 'Open Sans', Arial, sans-serif; font-size: 13px; color: var(--text-body); display: flex; gap: 8px; align-items: baseline; }
+.signup-meta-item .smi-label { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-meta); }
+.signup-meta-item strong { font-weight: 700; color: var(--text-head); }
+.signup-meta-item .smi-reason { font-family: 'Lora', Georgia, serif; font-style: italic; color: var(--text-meta); font-size: 12px; }
+
+/* Payment callout — display only, no collection */
+.payment-note {
+  display: flex; gap: 12px; align-items: flex-start; margin-top: 14px;
+  padding: 12px 14px; background: #f7f3e8; border: 1px solid var(--khaki-light);
+  border-left: 3px solid var(--bark); border-radius: 2px;
+}
+.payment-note svg { width: 18px; height: 18px; fill: var(--bark); flex-shrink: 0; margin-top: 1px; }
+.payment-note p { font-family: 'Open Sans', Arial, sans-serif; font-size: 13px; line-height: 1.55; color: var(--text-body); }
+.payment-note p strong { color: var(--text-head); }
+.payment-note .pn-sub { display: block; margin-top: 2px; font-size: 12px; color: var(--text-meta); }
+
+/* Going count strip */
+.going-strip {
+  display: flex; align-items: center; gap: 10px; margin-top: 14px;
+  font-family: 'Open Sans', Arial, sans-serif; font-size: 13px; color: var(--text-body);
+}
+.going-strip .gs-count { font-family: 'Playfair Display', Georgia, serif; font-size: 22px; font-weight: 700; color: var(--forest); }
+.going-strip .gs-note { font-size: 11px; color: var(--text-meta); }
+
+/* ---------- Family password gate ---------- */
+.gate-form { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.gate-form input[type="password"] {
+  flex: 1; min-width: 200px; border: 1px solid var(--border-mid); border-radius: 2px;
+  padding: 10px 12px; font-family: 'Open Sans', Arial, sans-serif; font-size: 14px;
+  background: var(--warm-white); color: var(--text-body); outline: none;
+}
+.gate-form input[type="password"]:focus { border-color: var(--forest); }
+.gate-hint { font-family: 'Lora', Georgia, serif; font-style: italic; font-size: 12px; color: var(--text-meta); margin-top: 10px; }
+
+/* ---------- Buttons ---------- */
+.btn-primary, .btn-secondary, .btn-ghost {
+  font-family: 'Open Sans', Arial, sans-serif; font-size: 13px; font-weight: 700;
+  letter-spacing: .03em; border-radius: 2px; padding: 10px 20px; cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+  display: inline-flex; align-items: center; gap: 8px; border: 1px solid transparent;
+}
+.btn-primary { background: var(--forest); color: #fff; }
+.btn-primary:hover { background: var(--forest-light); }
+.btn-primary:active { transform: translateY(1px); }
+.btn-primary:disabled { background: var(--border-mid); cursor: not-allowed; }
+.btn-secondary { background: var(--warm-white); color: var(--forest); border-color: var(--forest); }
+.btn-secondary:hover { background: var(--forest); color: #fff; }
+.btn-ghost { background: none; color: var(--text-meta); border-color: var(--border-mid); font-weight: 600; }
+.btn-ghost:hover { color: var(--navy); border-color: var(--navy); }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+
+/* ---------- Scout picker ---------- */
+.scout-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin-top: 14px; }
+.scout-chip {
+  display: flex; align-items: center; gap: 9px; padding: 9px 12px;
+  border: 1px solid var(--border-mid); border-radius: 2px; background: var(--warm-white);
+  cursor: pointer; font-family: 'Open Sans', Arial, sans-serif; font-size: 13px; color: var(--text-body);
+  transition: border-color var(--transition), background var(--transition);
+}
+.scout-chip:hover { border-color: var(--forest); }
+.scout-chip input { accent-color: var(--forest); width: 15px; height: 15px; }
+.scout-chip .sc-patrol { margin-left: auto; font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-meta); }
+.scout-chip.selected { background: #eef3ec; border-color: var(--forest); }
+.picker-remember { font-family: 'Open Sans', Arial, sans-serif; font-size: 11px; color: var(--text-meta); margin-top: 10px; display: flex; align-items: center; gap: 6px; }
+
+/* ---------- Person rows ---------- */
+.person-group-label {
+  font-family: 'Open Sans', Arial, sans-serif; font-size: 11px; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--text-meta);
+  margin: 22px 0 8px; padding-bottom: 5px; border-bottom: 1px solid var(--border-light);
+}
+.person-row {
+  border: 1px solid var(--border-light); border-radius: 2px; background: var(--warm-white);
+  padding: 12px 14px; margin-bottom: 8px;
+}
+.person-row-main { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.person-name { font-family: 'Lora', Georgia, serif; font-size: 15px; font-weight: 600; color: var(--text-head); flex: 1; min-width: 140px; }
+.person-name .p-meta { display: block; font-family: 'Open Sans', Arial, sans-serif; font-size: 11px; font-weight: 400; color: var(--text-meta); margin-top: 1px; }
+
+/* RSVP segmented control */
+.rsvp-seg { display: inline-flex; border: 1px solid var(--border-mid); border-radius: 2px; overflow: hidden; }
+.rsvp-seg button {
+  font-family: 'Open Sans', Arial, sans-serif; font-size: 12px; font-weight: 600;
+  padding: 7px 14px; background: var(--warm-white); color: var(--text-meta);
+  border: none; cursor: pointer; transition: background var(--transition), color var(--transition);
+}
+.rsvp-seg button + button { border-left: 1px solid var(--border-mid); }
+.rsvp-seg button.on-going { background: var(--forest); color: #fff; }
+.rsvp-seg button.on-notgoing { background: var(--text-meta); color: #fff; }
+.rsvp-seg button:hover:not(.on-going):not(.on-notgoing) { color: var(--navy); }
+
+/* Per-person detail fields (dietary, driver) — appear when Going */
+.person-details { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border-light); display: flex; flex-direction: column; gap: 8px; }
+.pd-field { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pd-field label { font-family: 'Open Sans', Arial, sans-serif; font-size: 12px; font-weight: 600; color: var(--text-body); min-width: 110px; }
+.pd-field input[type="text"], .pd-field select, .pd-field input[type="number"] {
+  border: 1px solid var(--border-mid); border-radius: 2px; padding: 6px 9px;
+  font-family: 'Open Sans', Arial, sans-serif; font-size: 12px; color: var(--text-body); background: var(--warm-white);
+}
+.pd-field input[type="text"] { flex: 1; min-width: 160px; }
+.pd-field input[type="number"] { width: 60px; }
+.pd-field input:focus, .pd-field select:focus { border-color: var(--forest); outline: none; }
+.driver-check { display: flex; align-items: center; gap: 8px; font-family: 'Open Sans', Arial, sans-serif; font-size: 13px; font-weight: 600; color: var(--text-body); cursor: pointer; }
+.driver-check input { accent-color: var(--forest); width: 15px; height: 15px; }
+.driver-fields { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding-left: 23px; }
+
+.add-person-row { margin-top: 4px; }
+
+/* Note to organizer */
+.organizer-note { margin-top: 18px; }
+.organizer-note label { font-family: 'Open Sans', Arial, sans-serif; font-size: 12px; font-weight: 700; color: var(--text-body); display: block; margin-bottom: 6px; }
+.organizer-note textarea {
+  width: 100%; min-height: 64px; border: 1px solid var(--border-mid); border-radius: 2px;
+  padding: 9px 11px; font-family: 'Open Sans', Arial, sans-serif; font-size: 13px; color: var(--text-body); resize: vertical;
+}
+.organizer-note textarea:focus { border-color: var(--forest); outline: none; }
+
+/* Submit bar + confirmation */
+.submit-bar { display: flex; align-items: center; gap: 14px; margin-top: 20px; flex-wrap: wrap; }
+.submit-summary { font-family: 'Open Sans', Arial, sans-serif; font-size: 12px; color: var(--text-meta); }
+.confirm-panel {
+  border: 1px solid var(--forest); border-radius: 2px; background: #eef3ec; padding: 18px 20px; margin-top: 4px;
+}
+.confirm-panel h3 { font-family: 'Playfair Display', Georgia, serif; font-size: 19px; color: var(--forest); margin-bottom: 8px; display: flex; align-items: center; gap: 9px; }
+.confirm-panel h3 svg { width: 20px; height: 20px; fill: var(--forest); }
+.confirm-panel p { font-family: 'Open Sans', Arial, sans-serif; font-size: 13px; color: var(--text-body); line-height: 1.6; }
+.confirm-panel ul { margin: 10px 0; padding-left: 20px; font-family: 'Open Sans', Arial, sans-serif; font-size: 13px; color: var(--text-body); line-height: 1.7; }
+.confirm-actions { margin-top: 12px; display: flex; gap: 10px; }
+
+/* ---------- Slot cards (fundraiser shifts, potluck dishes) ---------- */
+.slot-list { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.slot-card {
+  border: 1px solid var(--border-light); border-left: 3px solid var(--bark-light);
+  border-radius: 2px; background: var(--warm-white); padding: 13px 16px;
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+.slot-card.slot-full { border-left-color: var(--border-mid); background: var(--newsprint); }
+.slot-info { flex: 1; min-width: 200px; }
+.slot-name { font-family: 'Lora', Georgia, serif; font-size: 15px; font-weight: 600; color: var(--text-head); }
+.slot-desc { font-family: 'Open Sans', Arial, sans-serif; font-size: 12px; color: var(--text-meta); margin-top: 2px; }
+.slot-fill { display: flex; align-items: center; gap: 10px; min-width: 170px; }
+.slot-meter { flex: 1; height: 6px; background: var(--border-light); border-radius: 3px; overflow: hidden; min-width: 70px; }
+.slot-meter span { display: block; height: 100%; background: var(--forest); border-radius: 3px; }
+.slot-card.slot-full .slot-meter span { background: var(--text-meta); }
+.slot-count { font-family: 'Open Sans', Arial, sans-serif; font-size: 11px; font-weight: 700; color: var(--text-meta); white-space: nowrap; }
+.slot-claimed-names { width: 100%; font-family: 'Open Sans', Arial, sans-serif; font-size: 11px; color: var(--text-meta); }
+.slot-claimed-names strong { color: var(--forest); font-weight: 700; }
+.slot-badge-you {
+  font-family: 'Open Sans', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: .05em;
+  text-transform: uppercase; background: var(--forest); color: #fff; border-radius: 2px; padding: 2px 7px;
+}
+.slot-badge-wait { background: var(--bark); }
+
+/* ---------- Prototype state toggle bar (matches news-cms convention) ---------- */
+.proto-state-bar {
+  max-width: 760px; margin: 0 auto 18px; padding: 10px 14px;
+  background: #fdf6e3; border: 1px dashed var(--bark-light); border-radius: 2px;
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+}
+.proto-state-bar p { font-family: 'Open Sans', Arial, sans-serif; font-size: 11px; color: var(--text-meta); letter-spacing: .02em; }
+.proto-state-bar .psb-buttons { display: flex; gap: 6px; flex-wrap: wrap; }
+.proto-state-bar button {
+  font-family: 'Open Sans', Arial, sans-serif; font-size: 11px; font-weight: 700;
+  padding: 5px 10px; border: 1px solid var(--border-mid); background: var(--warm-white);
+  color: var(--text-meta); border-radius: 2px; cursor: pointer;
+}
+.proto-state-bar button.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+/* ============================================================
+   LEADER ROSTER VIEW
+   ============================================================ */
+.roster-page { max-width: 1080px; margin: 26px auto 48px; padding: 0 24px; }
+.roster-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 6px; }
+.roster-head h1 { font-family: 'Playfair Display', Georgia, serif; font-size: 30px; font-weight: 700; color: var(--text-head); line-height: 1.15; }
+.roster-head .rh-sub { font-family: 'Open Sans', Arial, sans-serif; font-size: 13px; color: var(--text-meta); margin-top: 4px; }
+.roster-status-chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 18px; }
+.status-chip {
+  font-family: 'Open Sans', Arial, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: .04em;
+  padding: 4px 11px; border-radius: 12px; background: var(--newsprint); border: 1px solid var(--border-mid); color: var(--text-body);
+}
+.status-chip.chip-open { background: #eef3ec; border-color: var(--forest); color: var(--forest); }
+
+/* Warning banners */
+.roster-warning {
+  display: flex; gap: 12px; align-items: flex-start; padding: 13px 16px; margin-bottom: 10px;
+  border-radius: 2px; border: 1px solid #d9b264; background: #fdf3dd; border-left: 4px solid var(--bark);
+}
+.roster-warning svg { width: 18px; height: 18px; fill: var(--bark); flex-shrink: 0; margin-top: 1px; }
+.roster-warning p { font-family: 'Open Sans', Arial, sans-serif; font-size: 13px; color: var(--text-body); line-height: 1.55; }
+.roster-warning p strong { color: var(--text-head); }
+.roster-ok {
+  border-color: var(--forest-light); background: #eef3ec; border-left-color: var(--forest);
+}
+.roster-ok svg { fill: var(--forest); }
+
+/* Headcount tiles */
+.count-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin: 16px 0 24px; }
+.count-tile {
+  background: var(--warm-white); border: 1px solid var(--border-light); border-radius: 2px;
+  box-shadow: var(--shadow-card); padding: 14px 16px 12px; text-align: center;
+}
+.count-tile .ct-num { font-family: 'Playfair Display', Georgia, serif; font-size: 30px; font-weight: 700; color: var(--navy); line-height: 1; }
+.count-tile .ct-label { font-family: 'Open Sans', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-meta); margin-top: 6px; }
+.count-tile.ct-going .ct-num { color: var(--forest); }
+.count-tile.ct-warn .ct-num { color: var(--bark); }
+
+/* Roster cards + tables */
+.roster-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; align-items: start; }
+.roster-card { background: var(--warm-white); border: 1px solid var(--border-light); border-radius: 2px; box-shadow: var(--shadow-card); }
+.roster-card + .roster-card { margin-top: 18px; }
+.roster-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 13px 16px; border-bottom: 1px solid var(--border-light); }
+.roster-card-head h2 { font-family: 'Playfair Display', Georgia, serif; font-size: 17px; font-weight: 700; color: var(--text-head); }
+.roster-card-head .rch-note { font-family: 'Open Sans', Arial, sans-serif; font-size: 11px; color: var(--text-meta); }
+.roster-table { width: 100%; border-collapse: collapse; font-family: 'Open Sans', Arial, sans-serif; font-size: 12.5px; }
+.roster-table th {
+  text-align: left; padding: 8px 14px; font-size: 10px; font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--text-meta); background: var(--newsprint); border-bottom: 1px solid var(--border-light);
+}
+.roster-table td { padding: 8px 14px; border-top: 1px solid var(--border-light); color: var(--text-body); vertical-align: top; }
+.roster-table .patrol-divider td {
+  background: var(--newsprint); font-size: 10px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text-meta); padding: 5px 14px;
+}
+.roster-table .flag {
+  display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 9px; letter-spacing: .03em; white-space: nowrap;
+}
+.flag-warn { background: #fdf3dd; color: var(--bark); border: 1px solid #e5cd96; }
+.flag-ok { background: #eef3ec; color: var(--forest); border: 1px solid #c4d4c2; }
+.roster-table input[type="checkbox"] { accent-color: var(--forest); width: 15px; height: 15px; }
+.muted { color: var(--text-meta); }
+.small-list { list-style: none; padding: 10px 16px 14px; font-family: 'Open Sans', Arial, sans-serif; font-size: 13px; color: var(--text-body); }
+.small-list li { padding: 5px 0; border-bottom: 1px dotted var(--border-light); display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.small-list li:last-child { border-bottom: none; }
+.small-list .sl-meta { font-size: 11px; color: var(--text-meta); }
+
+/* Driver matrix */
+.driver-summary { display: flex; gap: 18px; padding: 12px 16px; border-bottom: 1px solid var(--border-light); flex-wrap: wrap; }
+.driver-summary .ds-item { font-family: 'Open Sans', Arial, sans-serif; font-size: 12px; color: var(--text-meta); }
+.driver-summary .ds-item strong { display: block; font-family: 'Playfair Display', Georgia, serif; font-size: 21px; color: var(--navy); }
+.driver-summary .ds-ok strong { color: var(--forest); }
+.driver-summary .ds-warn strong { color: var(--bark); }
+
+/* Print */
+.print-bar { display: flex; justify-content: flex-end; margin-bottom: 12px; gap: 10px; }
+@media print {
+  .proto-banner, .utility-bar, .main-nav, .print-bar, .site-footer, .proto-state-bar, .btn-primary, .btn-secondary, .btn-ghost { display: none !important; }
+  .masthead { padding: 6px 0; }
+  .masthead-logo img { height: 40px; }
+  .roster-page { margin: 8px auto; }
+  .roster-grid { grid-template-columns: 1fr; }
+  .roster-card, .count-tile { box-shadow: none; break-inside: avoid; }
+  body { background: #fff; }
+}
+
+/* Responsive */
+@media (max-width: 860px) {
+  .roster-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .person-row-main { align-items: flex-start; }
+  .rsvp-seg { width: 100%; }
+  .rsvp-seg button { flex: 1; }
+  .count-tiles { grid-template-columns: repeat(2, 1fr); }
+}
