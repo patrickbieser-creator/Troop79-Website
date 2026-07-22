@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Official Rank Requirement Text — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #8b6914;
+            --nw-gold: #8b6914;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #faf6ef;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); }
+        tr:hover { background: var(--nw-sage); }
+
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+
+        @media print {
+            body { background: white; }
+            header { padding: 1.5rem; }
+            .container { padding: 1rem; }
+            .stat { break-inside: avoid; }
+        }
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.5rem; }
+            .stats { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Official Rank Requirement Text</h1>
+        <p class="subtitle">A new reference field for verbatim BSA rank requirement wording — all 7 ranks populated and shipped to production</p>
+        <div class="meta">
+            <span>&#128197; 2026-07-21/22</span>
+            <span>&#129302; Operator</span>
+            <span>&#128204; Troop79-Website</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">7 / 7</div><div class="label">Ranks Populated</div></div>
+            <div class="stat"><div class="number">126</div><div class="label">Requirement Codes w/ Text</div></div>
+            <div class="stat"><div class="number">5</div><div class="label">Files Changed</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">New Catalog Row (5d)</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">Migration Shipped</div></div>
+            <div class="stat"><div class="number">3</div><div class="label">Decisions Recorded</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <h3>New reference field, built to last</h3>
+        <p>Added a <code>requirement_official_text</code> table so leaders can keep the verbatim official BSA wording for any rank requirement on file, right alongside the troop's own internal code/label catalog — without touching either existing catalog table. Keyed by <code>(source, parent_id, code)</code> rather than the requirement row's own id, specifically because the Merit Badge editor fully rebuilds its requirement rows (fresh ids) on every save — an id-based link would have silently lost data the first time a badge was edited.</p>
+
+        <div class="callout callout-teal">
+            <strong>Security posture:</strong> the new table ships with Row-Level Security enabled and zero policies — the same "service-role only" pattern already used for sensitive tables in this project. The anon key cannot read it under any circumstance.
+        </div>
+
+        <h3>Internal Requirement Codes editor, extended</h3>
+        <p>The admin editor now surfaces every rank requirement row, including nested sub-requirements (like Tenderfoot's lettered <code>4a.1</code>–<code>4a.8</code>) that had no edit screen at all before this session. Each row gets a new "Official text" field, saved through the existing rename-safe code/label action.</p>
+
+        <h3>Content sourced from the leader, not the internet</h3>
+        <p>Rather than auto-fetching BSA's copyrighted requirement text, the actual content came from Patrick pasting and uploading the real source material (typed text, a PDF screenshot, and a full rank-requirements-book excerpt) over the course of the session — mirroring the project's existing paste-driven pattern for this exact category of content. Merit badges (69 badges, ~1,900 rows) were explicitly left out of this pass.</p>
+
+        <table>
+            <thead><tr><th>Rank</th><th>Codes with Text</th></tr></thead>
+            <tbody>
+                <tr><td>Scout</td><td>17 / 17</td></tr>
+                <tr><td>Tenderfoot</td><td>30 / 43</td></tr>
+                <tr><td>Second Class</td><td>37 / 44</td></tr>
+                <tr><td>First Class</td><td>39 / 45</td></tr>
+                <tr><td>Star</td><td>8 / 8</td></tr>
+                <tr><td>Life</td><td>8 / 8</td></tr>
+                <tr><td>Eagle</td><td>7 / 7</td></tr>
+            </tbody>
+        </table>
+        <p style="font-size: 0.85rem; color: var(--nw-gray);">The gaps on Tenderfoot/Second Class/First Class are entirely this project's own invented sub-codes (a single BSA-numbered bullet list split into rows) — their parent code already carries the full text, so nothing is actually missing.</p>
+
+        <h3>A real catalog gap, found along the way</h3>
+        <p>While reviewing the Tenderfoot text against a current edition, Patrick caught that his first upload was an older printing — three wording differences, plus one entirely new requirement (<strong>5d</strong>, on hiking durable surfaces) that isn't in the catalog at all yet. Added as a new row, positioned correctly, text imported.</p>
+
+        <div class="callout callout-gold">
+            <strong>Worth checking:</strong> only Tenderfoot happened to get compared against a current edition. The other 6 ranks were seeded the same way, at the same time — they may have the same kind of gap, just undiscovered.
+        </div>
+
+        <h3>Shipped to production, correctly</h3>
+        <p>Since all of the actual text lived only in local dev (inserted via a one-off script, not a migration), deploying meant more than a code push: the schema migration went to production first, then every rank's text — and the new Tenderfoot row — was explicitly replicated from local to prod using the same import script pointed at production credentials, so the two environments would actually match rather than just sharing an empty table.</p>
+
+        <h2>Decisions</h2>
+        <ul>
+            <li><strong>D-056:</strong> Official text keyed by natural key (source/parent/code), not a bigserial foreign key — avoids silent data loss on catalog re-saves.</li>
+            <li><strong>D-057:</strong> Content population stays paste-driven, never AI-scraped, for both ranks and merit badges — merit badges intentionally left unpopulated this session.</li>
+            <li><strong>D-058:</strong> The requirement-codes editor now shows every rank row (not just top-level) rather than building a full nested-tree editor just for this feature.</li>
+        </ul>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Populate official text for the 69 merit badges (~1,900 rows) whenever source material is available to paste in</li>
+            <li>Spot-check the other 6 ranks against a current BSA Requirements book edition for gaps like Tenderfoot's missing 5d</li>
+            <li>Continue working through remaining duplicate ledger record groups (Records → Audits)</li>
+        </ul>
+
+        <h2>Files Changed</h2>
+        <ul>
+            <li><span class="badge badge-green">NEW</span> <span class="file-path">next-app/supabase/migrations/20260722000000_requirement_official_text.sql</span></li>
+            <li><span class="badge badge-green">NEW</span> <span class="file-path">next-app/scripts/set-official-text.ts</span></li>
+            <li><span class="badge badge-gold">MODIFIED</span> <span class="file-path">next-app/src/app/admin/(workspace)/advancement/lookups/actions.ts</span></li>
+            <li><span class="badge badge-gold">MODIFIED</span> <span class="file-path">next-app/src/app/admin/(workspace)/advancement/lookups/page.tsx</span></li>
+            <li><span class="badge badge-gold">MODIFIED</span> <span class="file-path">next-app/src/app/admin/(workspace)/advancement/lookups/req-codes-table.tsx</span></li>
+        </ul>
+
+    </div>
+
+    <footer>
+        <strong>Troop 79</strong> — Troop79-Website<br>
+        Session Summary — 2026-07-21/22 — Operator
+    </footer>
+</body>
+</html>
