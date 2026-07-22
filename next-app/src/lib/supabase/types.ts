@@ -186,6 +186,36 @@ export interface Rank {
   sort_order: number;
 }
 
+export interface RankRequirement {
+  id: number;
+  rank_id: string;
+  parent_id: number | null;
+  code: string;
+  label: string;
+  complete_rule: 'all' | 'any' | 'n-of';
+  complete_n: number | null;
+  sort_order: number;
+  venue: 'meeting' | 'outing' | 'either';
+  skill_id: string | null;
+}
+
+/** Verbatim official BSA requirement wording — a leader-pasted reference
+ *  field, kept out of rank_requirements/merit_badge_requirements so those
+ *  public catalog tables gain no columns. Keyed by (source, parent_id, code)
+ *  — the same stable natural key ledger_entries uses — not the bigserial
+ *  requirement row id, which is regenerated on every catalog save. Service-
+ *  role only (no RLS policies) — never fetched with the anon key. */
+export interface RequirementOfficialText {
+  id: number;
+  source: 'rank' | 'mb';
+  parent_id: string;
+  code: string;
+  official_text: string;
+  source_url: string | null;
+  updated_at: string;
+  updated_by: string | null;
+}
+
 export interface Event {
   id: number;
   name: string;

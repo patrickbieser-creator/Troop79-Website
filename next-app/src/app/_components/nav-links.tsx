@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import styles from './site-nav.module.css';
 
 const LINKS: { href: string; label: string }[] = [
   { href: '/', label: 'Home' },
@@ -16,15 +17,9 @@ const LINKS: { href: string; label: string }[] = [
 export function NavLinks() {
   const pathname = usePathname();
   return (
-    <ul
-      style={{
-        display: 'flex',
-        listStyle: 'none',
-        gap: 0,
-        margin: 0,
-        padding: 0
-      }}
-    >
+    // Layout + responsive sizing live in site-nav.module.css (the strip
+    // scrolls sideways on phones); only the active-state colors stay inline.
+    <ul className={styles.links}>
       {LINKS.map((l) => {
         const active =
           l.href === '/' ? pathname === '/' : pathname.startsWith(l.href);
@@ -33,16 +28,10 @@ export function NavLinks() {
             <Link
               href={l.href}
               aria-current={active ? 'page' : undefined}
+              className={styles.link}
               style={{
-                display: 'block',
-                fontFamily: 'var(--font-ui)',
-                fontSize: 13,
-                fontWeight: 600,
                 color: active ? 'var(--navy)' : 'var(--text-head)',
-                padding: '14px 16px',
-                borderBottom: `3px solid ${active ? 'var(--navy)' : 'transparent'}`,
-                letterSpacing: '.02em',
-                transition: 'color .18s ease, border-color .18s ease'
+                borderBottom: `3px solid ${active ? 'var(--navy)' : 'transparent'}`
               }}
             >
               {l.label}

@@ -1,0 +1,51 @@
+/* Main-nav layout — the one piece of SiteNav that needs media queries
+   (inline styles can't). On phones the links become a horizontally
+   swipeable strip (the newspaper section-bar pattern) instead of wrapping
+   off-screen; the Join button holds its ground on the right. */
+
+.navInner {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.links {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  min-width: 0; /* lets the strip shrink instead of pushing the row wide */
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.links::-webkit-scrollbar {
+  display: none;
+}
+
+.link {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 14px 16px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transition: color 0.18s ease, border-color 0.18s ease;
+}
+
+@media (max-width: 700px) {
+  .navInner {
+    padding: 0 12px;
+    gap: 8px;
+  }
+  .link {
+    font-size: 12.5px;
+    padding: 13px 11px;
+  }
+}

@@ -6,6 +6,7 @@
 import Link from 'next/link';
 import { NavLinks } from './nav-links';
 import { UtilityDate } from './utility-date';
+import styles from './site-nav.module.css';
 
 export function SiteNav() {
   return (
@@ -160,17 +161,7 @@ export function SiteNav() {
           boxShadow: '0 1px 6px rgba(0,0,0,.06)'
         }}
       >
-        <div
-          style={{
-            maxWidth: 1180,
-            margin: '0 auto',
-            padding: '0 24px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap'
-          }}
-        >
+        <div className={styles.navInner}>
           <NavLinks />
           <Link
             href="/join"

@@ -120,11 +120,14 @@ async function loadLookups() {
       .order('mb_id')
       .order('sort_order'),
     supabase.from('ranks').select('id, display_name, sort_order').order('sort_order'),
+    // ALL depths (not just top-level) — rank_requirements nests up to one
+    // level (e.g. Tenderfoot 4a under 4) and there's no separate nested-tree
+    // editor for ranks, so this flat table is the only place to reach them.
     supabase
       .from('rank_requirements')
-      .select('id, rank_id, code, label')
-      .is('parent_id', null)
-      .order('rank_id'),
+      .select('id, rank_id, parent_id, code, label')
+      .order('rank_id')
+      .order('code'),
     supabase
       .from('merit_badge_requirements')
       .select('id, mb_id, code, label')
