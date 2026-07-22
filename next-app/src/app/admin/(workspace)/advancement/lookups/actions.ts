@@ -1021,6 +1021,7 @@ export async function updateReqCode(formData: FormData): Promise<Result> {
   const originalCode = String(formData.get('original_code') ?? '').trim();
   const code = String(formData.get('code') ?? '').trim();
   const label = String(formData.get('label') ?? '').trim();
+  const officialText = String(formData.get('official_text') ?? '').trim();
   if (!Number.isFinite(id) || id <= 0) return { ok: false, error: 'Invalid row id' };
   if (source !== 'rank' && source !== 'mb') return { ok: false, error: 'Invalid source' };
   if (!code) return { ok: false, error: 'Code is required' };
@@ -1074,6 +1075,34 @@ export async function updateReqCode(formData: FormData): Promise<Result> {
         error: `Catalog and ledger renamed, but couldn't update Resource Library rows: ${libErr}`
       };
     }
+
+    // Official text rides the same composite key — follow the rename so a
+    // pasted-in requirement doesn't silently orphan under the old code.
+    await supabase
+      .from('requirement_official_text')
+      .update({ code })
+      .eq('source', source)
+      .eq('parent_id', parentId)
+      .eq('code', originalCode);
+  }
+
+  if (officialText) {
+    const { error: textErr } = await supabase
+      .from('requirement_official_text')
+      .upsert(
+        { source, parent_id: parentId, code, official_text: officialText },
+        { onConflict: 'source,parent_id,code' }
+      );
+    if (textErr) {
+      return { ok: false, error: `Catalog saved, but official text failed to save: ${textErr.message}` };
+    }
+  } else {
+    await supabase
+      .from('requirement_official_text')
+      .delete()
+      .eq('source', source)
+      .eq('parent_id', parentId)
+      .eq('code', code);
   }
 
   revalidateAll();

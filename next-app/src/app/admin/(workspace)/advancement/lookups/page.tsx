@@ -101,7 +101,8 @@ async function loadLookups() {
     eventsRes,
     serviceProjectsRes,
     leadershipPositionsRes,
-    tagsRes
+    tagsRes,
+    officialTextRes
   ] = await Promise.all([
     supabase.from('leaders').select('*').order('code'),
     supabase
@@ -147,7 +148,18 @@ async function loadLookups() {
     supabase.from('events').select('id, name, default_kind, start_date').order('name'),
     supabase.from('service_projects').select('id, name').order('name'),
     supabase.from('leadership_positions').select('id, name').order('name'),
-    supabase.from('tags').select('*').order('name')
+    supabase.from('tags').select('*').order('name'),
+    // Verbatim official BSA text, keyed by (source, parent_id, code) — see
+    // the requirement_official_text migration for why not a bigserial FK.
+    // Small today (ranks only), but paginate defensively per the PostgREST
+    // 1,000-row cap lesson (D-028) in case merit badge text is added later.
+    fetchAllRows<{ source: 'rank' | 'mb'; parent_id: string; code: string; official_text: string }>(
+      (from, to) =>
+        supabase
+          .from('requirement_official_text')
+          .select('source, parent_id, code, official_text')
+          .range(from, to)
+    )
   ]);
 
   const [skillsRes, leaderSkillsRes, scoutInstructorsRes, householdsRes, hhMembersRes] =
@@ -217,17 +229,31 @@ async function loadLookups() {
   const mbs = (mbsRes.data ?? []) as MbRow[];
   const mbLabels = new Map(mbs.map((m) => [m.id, m.name]));
 
+  const officialTextByKey = new Map<string, string>();
+  for (const t of officialTextRes as {
+    source: 'rank' | 'mb';
+    parent_id: string;
+    code: string;
+    official_text: string;
+  }[]) {
+    officialTextByKey.set(`${t.source}:${t.parent_id}:${t.code}`, t.official_text);
+  }
+
+  type RankReqFull = { id: number; rank_id: string; parent_id: number | null; code: string; label: string };
+  const rankReqRows = (rankReqsRes.data ?? []) as RankReqFull[];
+  const rankCodeById = new Map(rankReqRows.map((r) => [r.id, r.code]));
+
   const reqs: ReqRow[] = [
-    ...((rankReqsRes.data ?? []) as { id: number; rank_id: string; code: string; label: string }[]).map(
-      (r) => ({
-        id: r.id,
-        source: 'rank' as const,
-        parentId: r.rank_id,
-        parentLabel: rankLabels.get(r.rank_id) ?? r.rank_id,
-        code: r.code,
-        label: r.label
-      })
-    ),
+    ...rankReqRows.map((r) => ({
+      id: r.id,
+      source: 'rank' as const,
+      parentId: r.rank_id,
+      parentLabel: rankLabels.get(r.rank_id) ?? r.rank_id,
+      code: r.code,
+      label: r.label,
+      nestedUnder: r.parent_id !== null ? (rankCodeById.get(r.parent_id) ?? null) : null,
+      officialText: officialTextByKey.get(`rank:${r.rank_id}:${r.code}`) ?? ''
+    })),
     ...((mbReqsRes.data ?? []) as { id: number; mb_id: string; code: string; label: string }[]).map(
       (r) => ({
         id: r.id,
@@ -235,7 +261,9 @@ async function loadLookups() {
         parentId: r.mb_id,
         parentLabel: mbLabels.get(r.mb_id) ?? r.mb_id,
         code: r.code,
-        label: r.label
+        label: r.label,
+        nestedUnder: null,
+        officialText: officialTextByKey.get(`mb:${r.mb_id}:${r.code}`) ?? ''
       })
     )
   ];

@@ -23,6 +23,11 @@ export interface ReqRow {
   parentLabel: string;
   code: string;
   label: string;
+  /** Immediate parent's code, e.g. "4" for rank code "4a" — null for
+   *  top-level rows. Rank rows only; MB nested rows aren't shown here. */
+  nestedUnder: string | null;
+  /** Verbatim official BSA text, leader-pasted. Empty string = not yet set. */
+  officialText: string;
 }
 
 export function ReqCodesTable({ rows }: { rows: ReqRow[] }) {
@@ -53,12 +58,20 @@ export function ReqCodesTable({ rows }: { rows: ReqRow[] }) {
           <tbody>
             {t.rows.map((r) => (
               <tr key={`${r.source}-${r.parentId}-${r.code}`}>
-                <td className={styles.codeCell}>{r.code}</td>
+                <td className={styles.codeCell} style={r.nestedUnder ? { paddingLeft: 20 } : undefined}>
+                  {r.nestedUnder ? `↳ ${r.code}` : r.code}
+                </td>
                 <td>{r.label}</td>
                 <td>
                   <span className={`${styles.tag} ${r.source === 'rank' ? styles.tagRank : styles.tagMb}`}>
                     {r.source === 'rank' ? 'Rank' : 'MB'}: {r.parentLabel}
+                    {r.nestedUnder ? ` — under ${r.nestedUnder}` : ''}
                   </span>
+                  {r.officialText && (
+                    <span className={styles.tag} style={{ marginLeft: 4 }} title="Official text on file">
+                      📄
+                    </span>
+                  )}
                 </td>
                 <td style={{ textAlign: 'right' }}>
                   <button type="button" className={styles.editBtn} onClick={() => setOpenFor(r)}>
@@ -89,6 +102,7 @@ export function ReqCodesTable({ rows }: { rows: ReqRow[] }) {
 function ReqCodeForm({ row, onClose }: { row: ReqRow; onClose: () => void }) {
   const [code, setCode] = useState(row.code);
   const [label, setLabel] = useState(row.label);
+  const [officialText, setOfficialText] = useState(row.officialText);
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -103,6 +117,7 @@ function ReqCodeForm({ row, onClose }: { row: ReqRow; onClose: () => void }) {
     fd.set('original_code', row.code);
     fd.set('code', code.trim());
     fd.set('label', label.trim());
+    fd.set('official_text', officialText.trim());
     startTransition(async () => {
       const res = await updateReqCode(fd);
       if (!res.ok) {
@@ -142,6 +157,16 @@ function ReqCodeForm({ row, onClose }: { row: ReqRow; onClose: () => void }) {
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             className={styles.editInput}
+          />
+        </label>
+        <label className={styles.editFieldFull}>
+          <span className={styles.editLabel}>Official text (reference)</span>
+          <textarea
+            value={officialText}
+            onChange={(e) => setOfficialText(e.target.value)}
+            className={styles.editInput}
+            rows={4}
+            placeholder="Verbatim official BSA requirement wording — paste it here. Shown only to logged-in leaders and families, never on a public page."
           />
         </label>
       </div>
