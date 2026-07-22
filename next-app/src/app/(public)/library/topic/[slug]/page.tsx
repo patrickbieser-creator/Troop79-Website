@@ -50,7 +50,7 @@ export default async function LibraryTopicPage({
         <div className={styles.headRule} />
       </div>
 
-      <main className={`${styles.main} ${styles.mainNarrow}`}>
+      <main className={styles.main}>
         {resources.length === 0 ? (
           <div className={styles.emptyState}>
             This shelf is waiting for its first item.{' '}

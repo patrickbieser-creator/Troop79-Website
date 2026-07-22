@@ -104,7 +104,7 @@ export default async function LibraryMbPage({
         <div className={styles.headRule} />
       </div>
 
-      <main className={`${styles.main} ${styles.mainNarrow}`}>
+      <main className={styles.main}>
         {narrative && (
           <div className={styles.narrative}>
             <ArticleBody body={narrative.narrative_md} />

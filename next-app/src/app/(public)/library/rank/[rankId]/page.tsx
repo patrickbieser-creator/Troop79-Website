@@ -55,7 +55,7 @@ export default async function LibraryRankPage({
         <div className={styles.headRule} />
       </div>
 
-      <main className={`${styles.main} ${styles.mainNarrow}`}>
+      <main className={styles.main}>
         <div className={styles.rankItem}>
           <div className={styles.reqRows}>
             {reqs.map((req) => {

@@ -306,6 +306,17 @@
   font-size: 16px;
   line-height: 1.65;
 }
+/* ArticleBody centers itself at a 760px article measure with a 40px bottom
+   margin (article-body.module.css) — right for news pages, wrong inside this
+   card: it floated the prose into the middle. Left-anchor the wrapper here
+   and cap the measure per paragraph instead. */
+.narrative > div {
+  max-width: none;
+  margin: 0;
+}
+.narrative > div p {
+  max-width: 72ch;
+}
 /* Editorial drop cap on the narrative's opening letter — pure CSS, applied
    to every narrative automatically (nothing special to write in markdown).
    Scoped to the rendered markdown (`> div`) so the byline paragraph, a
