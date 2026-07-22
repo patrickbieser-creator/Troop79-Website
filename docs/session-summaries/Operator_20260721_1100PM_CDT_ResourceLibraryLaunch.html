@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Session Summary — Resource Library Launch — Troop79-Website</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root { --nw-teal: #1e3a4a; --nw-green: #3d5a3e; --gray-dark: #333; --gray-mid: #666; --pale: #f4efe6; --line: #ddd; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Montserrat', Arial, sans-serif; font-size: 14px; color: var(--gray-dark); background: var(--pale); }
+  .header { background: var(--nw-teal); color: #fff; padding: 40px 60px; }
+  .header .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.55); margin-bottom: 8px; }
+  .header h1 { font-size: 30px; font-weight: 500; margin-bottom: 6px; }
+  .header .sub { font-size: 13px; font-weight: 300; color: rgba(255,255,255,.7); }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 32px 24px 80px; }
+  h2 { font-size: 15px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--nw-teal); margin: 34px 0 12px; border-bottom: 2px solid var(--nw-teal); padding-bottom: 6px; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 20px; }
+  .metric { background: #fff; border: 1px solid var(--line); border-radius: 4px; padding: 14px 16px; }
+  .metric .n { font-size: 26px; font-weight: 700; color: var(--nw-green); line-height: 1; }
+  .metric .l { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--gray-mid); margin-top: 6px; }
+  ul { margin: 0 0 10px 20px; }
+  li { margin-bottom: 8px; line-height: 1.55; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 4px; padding: 18px 20px; margin-bottom: 12px; }
+  .card h3 { font-size: 13.5px; font-weight: 700; color: var(--nw-teal); margin-bottom: 8px; }
+  code { background: var(--pale); border: 1px solid var(--line); border-radius: 3px; padding: 1px 5px; font-size: 12.5px; }
+  .decision { border-left: 4px solid var(--nw-green); }
+  .footer { text-align: center; font-size: 11.5px; color: var(--gray-mid); padding: 24px; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <p class="eyebrow">Session Summary · Scout Troop 79 Website</p>
+    <h1>Resource Library — Planned, Prototyped, Built, and Shipped</h1>
+    <p class="sub">Operator · July 21, 2026, 11:00 PM CDT · v1.17.0 + v1.17.1 live at www.troop-79.com</p>
+  </div>
+  <div class="wrap">
+
+    <div class="metrics">
+      <div class="metric"><div class="n">2</div><div class="l">Prod Releases</div></div>
+      <div class="metric"><div class="n">5</div><div class="l">Decisions (D-059–063)</div></div>
+      <div class="metric"><div class="n">10</div><div class="l">Tests (was 6)</div></div>
+      <div class="metric"><div class="n">5</div><div class="l">New DB Tables</div></div>
+      <div class="metric"><div class="n">22</div><div class="l">Sparkler Issues</div></div>
+      <div class="metric"><div class="n">4</div><div class="l">Prototypes</div></div>
+    </div>
+
+    <h2>What Was Accomplished</h2>
+    <div class="card">
+      <h3>Design → prototypes → decisions (one sitting)</h3>
+      <ul>
+        <li>Full feature design in <code>Plans/Resource-Library.md</code>; four pivotal calls made interactively (canonical <code>/library</code>, everything queues, quizzes deferred, proof via both gates).</li>
+        <li>Four interactive prototypes in <code>prototypes/resource-library/</code> on production design tokens — reviewed and approved before any schema was cut.</li>
+        <li>Tech-lead review: ship-with-fixes — both HIGH findings (composite rank keys, coalesced FTS vector) adopted in the shipped code.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Phase 1 built and deployed to production</h3>
+      <ul>
+        <li>Public <code>/library</code>: search (FTS + ilike), rank drill and 69-badge grid reading the requirement tables live, requirement pages with leader narratives (markdown, auto drop cap) and counts-only troop context, topic shelves, gated suggest-a-resource.</li>
+        <li>Admin <code>/admin/library</code>: moderation queue, Published tab as a grouped drill-in mirroring the public IA, placements/pins, shelf management, narrative editor. Leader-only at both proxy and page layers.</li>
+        <li>Needs Attention category, YouTube thumbnails (static, no embeds), http(s) scheme guards on write and render paths, D-019 rename cascade extended to all three library tables.</li>
+        <li>qa-lead pre-deploy review: <strong>ship, 9/10, zero critical issues</strong>. Deploy sequence: prod backup → migration → RLS verified live (anon role: 0 rows) → deploy → data port → live smoke of every route.</li>
+        <li>Sparkler archive backfilled: 22 weekly issues with true dates via idempotent importer; Patrick's 9a narrative and first resource ported to prod.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Same-night fixes (v1.17.1, all verified live)</h3>
+      <ul>
+        <li>Mobile main nav was wrapping off-screen — now a swipeable section strip, Join button pinned.</li>
+        <li>Library pages aligned to the full 1180px site width; ArticleBody's news-page centering overridden; all prose measure caps removed at Patrick's direction.</li>
+        <li>Admin button CSS bug fixed (variants lacked base styles); Sparkler shelf ordering bug caught live (placement-date vs. resource-date) and fixed.</li>
+      </ul>
+    </div>
+
+    <h2>Decisions Recorded</h2>
+    <div class="card decision"><strong>D-059</strong> — Library is an enrichment layer keyed by ledger composite codes (<code>{rankId}-{code}</code>, never bare); no parallel taxonomy; rename cascade extended.</div>
+    <div class="card decision"><strong>D-060</strong> — Everything queues for webmaster review, including leaders; webmaster-editable attribution; archive-never-delete.</div>
+    <div class="card decision"><strong>D-061</strong> — No embeds; YouTube = derived static thumbnails; http(s)-only guards at write and render.</div>
+    <div class="card decision"><strong>D-062</strong> — Phase 2 proof flow designed (both gates, private media bucket, 3-month retention, dup-blocked ledger write); schema shipped early for cascade coverage.</div>
+    <div class="card decision"><strong>D-063</strong> — Sparkler = one post per weekly issue with real dates; shelves order pinned → sort → newest by resource date.</div>
+
+    <h2>Next Steps</h2>
+    <ul>
+      <li>Resource Library Phase 2: proof submissions + review + ledger write-through (plan Active).</li>
+      <li>Consolidate the 3-step rename cascade into one RPC (qa-lead warning — non-transactional today).</li>
+      <li>Clipboard pages: add library links; Sparkler weekly append via the Bugle workflow.</li>
+      <li>Note: a concurrent session shipped v1.18.0 (official BSA requirement text) the same night — its records live in its own session summary.</li>
+    </ul>
+
+  </div>
+  <p class="footer">Scout Troop 79 · Troop79-Website · Generated by Operator via /northwoods:end-session</p>
+</body>
+</html>
