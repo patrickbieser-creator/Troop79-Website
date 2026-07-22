@@ -34,7 +34,6 @@
   font-style: italic;
   color: var(--text-meta);
   line-height: 1.5;
-  max-width: 60ch;
 }
 .headRule { height: 2px; background: var(--border-mid); margin-top: 20px; }
 
@@ -157,7 +156,7 @@
 .resBody { min-width: 0; flex: 1; }
 .resTitle { font-family: var(--font-ui); font-size: 15px; font-weight: 700; color: var(--text-head); line-height: 1.35; margin: 0; }
 .resTitleLink:hover .resTitle { color: var(--navy); text-decoration: underline; text-underline-offset: 2px; }
-.resBlurb { font-family: var(--font-body); font-size: 13.5px; color: var(--text-body); line-height: 1.5; margin: 3px 0 0; max-width: 70ch; }
+.resBlurb { font-family: var(--font-body); font-size: 13.5px; color: var(--text-body); line-height: 1.5; margin: 3px 0 0; }
 .resMetaRow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
 .hostChip {
   display: inline-flex;
@@ -308,14 +307,15 @@
 }
 /* ArticleBody centers itself at a 760px article measure with a 40px bottom
    margin (article-body.module.css) — right for news pages, wrong inside this
-   card: it floated the prose into the middle. Left-anchor the wrapper here
-   and cap the measure per paragraph instead. */
+   card: it floated the prose into the middle. Left-anchor it and let the
+   prose run the card's full width (Patrick's call, 2026-07-21 — no measure
+   caps on library pages). */
 .narrative > div {
   max-width: none;
   margin: 0;
 }
 .narrative > div p {
-  max-width: 72ch;
+  max-width: none;
 }
 /* Editorial drop cap on the narrative's opening letter — pure CSS, applied
    to every narrative automatically (nothing special to write in markdown).
