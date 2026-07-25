@@ -817,6 +817,12 @@
   .rankBlock {
     border-right: none;
     border-bottom: 1px solid #aaa;
+    /* min-height:200px is the details ELEMENT's own height, not its content's
+       — with the accordion collapsed, that reserved height showed as a large
+       blank box under every closed rank instead of the header collapsing
+       down to just its title bar. Same fix @media print already applies to
+       this rule, for the same reason (min-height without content to fill it). */
+    min-height: 0;
   }
   .rankBlockStack { border-right: none; }
   /* Only meaningful in the desktop 3-column grid, to bottom-align the
