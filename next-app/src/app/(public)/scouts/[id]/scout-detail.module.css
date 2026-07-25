@@ -283,30 +283,9 @@
   background: #f0ebe0;
   padding: 6px 4px;
   border-bottom: 1px solid #aaa;
-  /* RankBlock is a <summary> now (see below) — plain title bar on desktop
-     and in print, no native disclosure marker or pointer affordance. The
-     mobile breakpoint turns this back into a real accordion toggle. */
-  list-style: none;
-  cursor: default;
 }
-.rankBlockTitle::-webkit-details-marker { display: none; }
 .rankBlockTitleBordered {
   border-top: 1px solid #aaa;
-}
-/* RankBlock is a <details>/<summary> pair so the mobile breakpoint (below)
-   can collapse it into a per-rank accordion — same trick this page already
-   uses for .mbDetails under @media print. On desktop and in print, content
-   always shows regardless of the [open] attribute; only the mobile query
-   restores native collapse behavior.
-   BOTH properties are required: Chrome hides a closed <details>'s non-summary
-   content via `content-visibility: hidden` (not `display: none`), a separate
-   UA-stylesheet mechanism from the one .mbDetails's print override deals
-   with. Overriding `display` alone (as first shipped) left `content-visibility`
-   still hiding everything but the current rank on desktop — found live in
-   production, 2026-07-25, second deploy same day. */
-.rankBlock > .rankBlockContent {
-  display: block !important;
-  content-visibility: visible !important;
 }
 .miniRow {
   display: grid;
@@ -826,11 +805,9 @@
   .rankBlock {
     border-right: none;
     border-bottom: 1px solid #aaa;
-    /* min-height:200px is the details ELEMENT's own height, not its content's
-       — with the accordion collapsed, that reserved height showed as a large
-       blank box under every closed rank instead of the header collapsing
-       down to just its title bar. Same fix @media print already applies to
-       this rule, for the same reason (min-height without content to fill it). */
+    /* The 200px desktop min-height exists to keep the 3-column grid's rows
+       visually even; stacked to 1 column on mobile there's no row to even
+       out, so it just wasted space below short rank blocks. */
     min-height: 0;
   }
   .rankBlockStack { border-right: none; }
@@ -865,27 +842,4 @@
      instead of truncating makes it always readable, at the cost of some
      rows running two lines. */
   .miniRowLabel { white-space: normal; overflow: visible; text-overflow: clip; }
-
-  /* Per-rank accordion — reopens the native <details> collapse behavior
-     the desktop/print rule above suppresses. Once the Clipboard grid
-     collapses to one column, all 7 rank blocks stacking open is 1400px+ of
-     scroll before you even reach merit badges/activities/leadership/
-     service; collapsing everything but the scout's current rank (see
-     Clipboard()'s isCurrent calc in page.tsx) makes this screen scannable
-     instead of a long scroll — same accordion pattern already used for
-     Merit Badges In Progress. */
-  .rankBlockTitle {
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .rankBlockTitle::before {
-    content: '\25B8';
-    color: var(--forest);
-    font-size: 10px;
-    margin-left: 8px;
-  }
-  .rankBlock[open] > .rankBlockTitle::before { content: '\25BE'; }
-  .rankBlock:not([open]) > .rankBlockContent { display: none !important; }
 }
