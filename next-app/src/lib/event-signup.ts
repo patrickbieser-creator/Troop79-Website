@@ -168,20 +168,12 @@ export async function loadPartySignup(
 
   const all = (entries ?? []) as unknown as Omit<HouseholdEntry, 'claims' | 'answers'>[];
   // Household path already filtered in SQL; identity path narrows here.
+  // person_id-only: it's been NOT NULL since 20260720210000, and as of the
+  // submit_household_signup party-membership check (2026-07-25) every future
+  // write is validated to belong to this party too — no live or future row
+  // can match this party by legacy column without also matching by person_id.
   const personIds = new Set(identities.personIds);
-  const scoutIds = new Set(identities.scoutIds);
-  const parentIds = new Set(identities.scoutParentIds);
-  const leaderCodes = new Set(identities.leaderCodes);
-  const rows =
-    householdId != null
-      ? all
-      : all.filter(
-          (r) =>
-            personIds.has(r.person_id) ||
-            (r.scout_id != null && scoutIds.has(r.scout_id)) ||
-            (r.scout_parent_id != null && parentIds.has(r.scout_parent_id)) ||
-            (r.leader_code != null && leaderCodes.has(r.leader_code))
-        );
+  const rows = householdId != null ? all : all.filter((r) => personIds.has(r.person_id));
   if (rows.length === 0) return [];
 
   const { data: claims } = await supabase

@@ -181,9 +181,10 @@ export default function SlotFirstForm({
         return {
           key: p.key,
           person_kind: p.kind,
+          // scout_parent_id/leader_code no longer sent — person_id is always
+          // resolvable here and is the sole identity the RPC's party-
+          // membership check validates against.
           scout_id: p.scoutId ?? null,
-          scout_parent_id: p.parentId ?? null,
-          leader_code: p.leaderCode ?? null,
           person_id: p.personId,
           status: 'yes',
           participation: donationOnly ? 'contributor' : 'full',

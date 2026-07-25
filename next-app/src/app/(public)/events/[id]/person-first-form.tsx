@@ -127,7 +127,12 @@ export default function PersonFirstForm({
   const [answers, setAnswers] = useState<Record<string, Record<number, string>>>(() => {
     const init: Record<string, Record<number, string>> = {};
     for (const e of existing) {
-      const key = e.scout_id ? `s:${e.scout_id}` : `a:${e.scout_parent_id}`;
+      // person_id is the real identity now — matched against the household
+      // adult list rather than read off e.scout_parent_id, which forms stop
+      // sending on submit (2026-07-25) and would otherwise go null on reload.
+      const adult = e.person_kind === 'adult' ? adults.find((a) => a.personId === e.person_id) : null;
+      const key = e.scout_id ? `s:${e.scout_id}` : adult ? `a:${adult.key}` : null;
+      if (!key) continue;
       init[key] = Object.fromEntries((e.answers ?? []).map((x) => [x.question_id, x.value]));
     }
     return init;
@@ -295,11 +300,9 @@ export default function PersonFirstForm({
       out.push({
         key: `a:${a.key}`,
         person_kind: 'adult',
-        /* person_id is the real identity now (signup_entries_person_uniq).
-           scout_parent_id / leader_code are kept as a fallback for the RPC's
-           legacy-column read path, not as the enforced identity anymore. */
-        scout_parent_id: a.scoutParentId,
-        leader_code: a.leaderCode,
+        // person_id is the sole identity sent now (signup_entries_person_uniq
+        // + the RPC's party-membership check) — scout_parent_id/leader_code
+        // are no longer needed since person_id is always resolvable here.
         person_id: a.personId,
         status: 'yes',
         participation: attending ? 'full' : 'driver_only',

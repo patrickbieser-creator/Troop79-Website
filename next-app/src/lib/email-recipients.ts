@@ -3,18 +3,17 @@ import { createAdminClient } from '@/lib/supabase/server';
 /**
  * Who should receive troop mail for a given set of scouts.
  *
- * Parent resolution now goes through the people/relationships spine —
+ * Parent resolution goes through the people/relationships spine —
  * `relationships` (type='parent_of') rather than joining scout_parents on
  * scout_id directly — so this keeps working for a parent recorded ONLY as a
  * relationship (the roster-import / scout-relations path), not just one who
  * also happens to hold a scout_parents row.
  *
- * Bounce/unsubscribe tracking (scout_parent_emails) is still keyed on
- * scout_parent_id, not person_id — re-keying that table is its own future
- * migration (sequenced alongside the eventual scout_parents drop), so this
- * still joins through scout_parents for deliverability status. A parent with
- * no scout_parents row at all (relationship-only) has no address-status
- * history yet and falls back to people.primary_email directly.
+ * Bounce/unsubscribe tracking (scout_parent_emails) is keyed directly on
+ * person_id (2026-07-25 re-key) — no scout_parents join needed for
+ * deliverability status. A parent with a legacy scout_parents.email but no
+ * scout_parent_emails row yet falls back to that, then to
+ * people.primary_email.
  */
 
 export interface Recipient {
@@ -52,43 +51,42 @@ export async function recipientsForScouts(scoutIds: string[]): Promise<Recipient
   }
   const parentPersonIds = [...scoutIdsByParentPerson.keys()];
 
-  const [{ data: people }, { data: parents }] = await Promise.all([
+  const [{ data: people }, { data: parents }, { data: addresses }] = await Promise.all([
     supabase.from('people').select('id, display_name, primary_email').in('id', parentPersonIds),
-    supabase.from('scout_parents').select('id, person_id, email').in('person_id', parentPersonIds)
+    // Legacy fallback only — a parent with a scout_parents.email but no
+    // scout_parent_emails row yet (shouldn't happen post-backfill, but cheap
+    // to keep as a safety net during rollout).
+    supabase.from('scout_parents').select('person_id, email').in('person_id', parentPersonIds),
+    supabase
+      .from('scout_parent_emails')
+      .select('person_id, email, is_primary, bounced_at, unsubscribed_at')
+      .in('person_id', parentPersonIds)
   ]);
   const peopleRows = (people ?? []) as { id: number; display_name: string; primary_email: string | null }[];
-  const parentRows = (parents ?? []) as { id: number; person_id: number | null; email: string | null }[];
-
-  const scoutParentIdByPerson = new Map<number, number>();
-  for (const p of parentRows) if (p.person_id != null && !scoutParentIdByPerson.has(p.person_id)) {
-    scoutParentIdByPerson.set(p.person_id, p.id);
+  const legacyEmailByPerson = new Map<number, string>();
+  for (const p of (parents ?? []) as { person_id: number | null; email: string | null }[]) {
+    if (p.person_id != null && p.email && !legacyEmailByPerson.has(p.person_id)) {
+      legacyEmailByPerson.set(p.person_id, p.email);
+    }
   }
-
-  const { data: addresses } = await supabase
-    .from('scout_parent_emails')
-    .select('scout_parent_id, email, is_primary, bounced_at, unsubscribed_at')
-    .in('scout_parent_id', [...scoutParentIdByPerson.values()]);
   const addressRows = (addresses ?? []) as {
-    scout_parent_id: number;
+    person_id: number;
     email: string;
     is_primary: boolean;
     bounced_at: string | null;
     unsubscribed_at: string | null;
   }[];
-  const byScoutParentId = new Map<number, typeof addressRows>();
+  const byPersonId = new Map<number, typeof addressRows>();
   for (const a of addressRows) {
-    byScoutParentId.set(a.scout_parent_id, [...(byScoutParentId.get(a.scout_parent_id) ?? []), a]);
+    byPersonId.set(a.person_id, [...(byPersonId.get(a.person_id) ?? []), a]);
   }
 
   const out = new Map<string, Recipient>();
   for (const person of peopleRows) {
-    const scoutParentId = scoutParentIdByPerson.get(person.id);
-    const addrs = (scoutParentId != null ? (byScoutParentId.get(scoutParentId) ?? []) : []).filter(
-      (a) => !a.bounced_at && !a.unsubscribed_at
-    );
+    const addrs = (byPersonId.get(person.id) ?? []).filter((a) => !a.bounced_at && !a.unsubscribed_at);
     // Prefer a live, tracked address; fall back to the parent row's own email,
     // then people.primary_email for a relationship-only parent with neither.
-    const legacyEmail = scoutParentId != null ? parentRows.find((p) => p.id === scoutParentId)?.email : null;
+    const legacyEmail = legacyEmailByPerson.get(person.id);
     const chosen =
       addrs.find((a) => a.is_primary)?.email ??
       addrs[0]?.email ??

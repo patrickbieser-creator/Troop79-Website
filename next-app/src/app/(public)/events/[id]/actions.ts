@@ -57,6 +57,8 @@ function friendlyError(message: string): string {
   if (message.includes('PRICE_')) return 'That price option isn’t valid for this event — reload and try again.';
   if (message.includes('DAYS_')) return 'Please enter how many days each adult is attending.';
   if (message.includes('SLOT_FULL')) return 'Someone took the last spot on that job. Pick another.';
+  if (message.includes('PERSON_NOT_IN_PARTY'))
+    return 'That doesn’t look like someone in your household. Reload the page and try again.';
   return 'Something went wrong saving your signup. Please try again.';
 }
 
@@ -118,11 +120,22 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
     }
   }
 
+  // Resolved server-side from the same source loadHouseholdByKey renders the
+  // form from — never trusted from the client's entries payload. Covers all
+  // 3 party shapes (stored household, unassigned scout, standalone adult)
+  // with no shape-specific logic; the RPC just checks membership in this list.
+  const party = await loadHouseholdByKey(householdKey);
+  const allowedPersonIds = [
+    ...(party?.scouts.map((s) => s.personId).filter((v): v is number => v != null) ?? []),
+    ...(party?.adults.map((a) => a.personId) ?? [])
+  ];
+
   const { data: written, error } = await supabase.rpc('submit_household_signup', {
     p_event_signup_id: signupId,
     p_entries: entries,
     p_actor: actor,
-    p_household_id: householdId
+    p_household_id: householdId,
+    p_allowed_person_ids: allowedPersonIds
   });
   if (error) redirect(`${back}&err=${encodeURIComponent(friendlyError(error.message))}`);
 

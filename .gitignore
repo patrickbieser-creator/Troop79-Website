@@ -4,3 +4,6 @@ PROJECT.user.md
 .claude/agents/
 .claude-project
 Agents/
+
+# Production DB backups — contain real family PII, never commit
+backups/

@@ -217,3 +217,137 @@ describe('submit_household_signup — person_id migration', () => {
     }
   });
 });
+
+/**
+ * Acceptance tests for the household-membership validation added to
+ * submit_household_signup on 2026-07-25 (qa-lead LOW finding on the D-048
+ * review, closed as part of the signup-identity-cleanup session). Before this,
+ * the RPC trusted a client-supplied person_id with no check that it belonged
+ * to the submitting party at all.
+ */
+describe('submit_household_signup — party membership validation', () => {
+  it('Signup_Rejects_WhenPersonIdNotInAllowedParty', async () => {
+    const admin = adminClient();
+    const event = await createTestEvent(admin);
+    const scoutA = await createTestScout(admin, 'PartyA');
+    const scoutB = await createTestScout(admin, 'PartyB');
+
+    try {
+      const { error } = await admin.rpc('submit_household_signup', {
+        p_event_signup_id: event.eventSignupId,
+        p_entries: [
+          { key: 's', person_kind: 'scout', person_id: scoutB.personId, status: 'yes' }
+        ],
+        p_actor: 'test:party-reject',
+        p_household_id: null,
+        p_allowed_person_ids: [scoutA.personId]
+      });
+      expect(error?.message).toContain('PERSON_NOT_IN_PARTY');
+
+      // Whole-call atomicity: the rejected entry must not have been written.
+      const { data: rows } = await admin
+        .from('signup_entries')
+        .select('id')
+        .eq('event_signup_id', event.eventSignupId)
+        .eq('person_id', scoutB.personId);
+      expect(rows).toHaveLength(0);
+    } finally {
+      await deleteTestEvent(admin, event);
+      await deleteTestScout(admin, scoutA);
+      await deleteTestScout(admin, scoutB);
+    }
+  });
+
+  it('Signup_Accepts_WhenPersonIdInAllowedParty', async () => {
+    const admin = adminClient();
+    const event = await createTestEvent(admin);
+    const scoutA = await createTestScout(admin, 'PartyAccept');
+
+    try {
+      const { error } = await admin.rpc('submit_household_signup', {
+        p_event_signup_id: event.eventSignupId,
+        p_entries: [
+          { key: 's', person_kind: 'scout', person_id: scoutA.personId, status: 'yes' }
+        ],
+        p_actor: 'test:party-accept',
+        p_household_id: null,
+        p_allowed_person_ids: [scoutA.personId]
+      });
+      expect(error).toBeNull();
+
+      const { data: rows } = await admin
+        .from('signup_entries')
+        .select('id, status')
+        .eq('event_signup_id', event.eventSignupId)
+        .eq('person_id', scoutA.personId);
+      expect(rows).toHaveLength(1);
+      expect(rows?.[0].status).toBe('yes');
+    } finally {
+      await deleteTestEvent(admin, event);
+      await deleteTestScout(admin, scoutA);
+    }
+  });
+
+  it('Signup_Accepts_WhenAllowedPersonIdsOmitted', async () => {
+    // Back-compat: a caller that hasn't been deployed with the new param yet
+    // (default null) must not be rejected — this is what makes the migration
+    // and the actions.ts change deployable in either order.
+    const admin = adminClient();
+    const event = await createTestEvent(admin);
+    const scout = await createTestScout(admin, 'PartyOmitted');
+
+    try {
+      const { error } = await admin.rpc('submit_household_signup', {
+        p_event_signup_id: event.eventSignupId,
+        p_entries: [{ key: 's', person_kind: 'scout', person_id: scout.personId, status: 'yes' }],
+        p_actor: 'test:party-omitted',
+        p_household_id: null
+      });
+      expect(error).toBeNull();
+    } finally {
+      await deleteTestEvent(admin, event);
+      await deleteTestScout(admin, scout);
+    }
+  });
+
+  it('Signup_DedupesSamePersonId_AcrossTwoSubmissions', async () => {
+    // The direct, simpler invariant Piece 2/3 introduce: two calls that both
+    // send person_id straight (no legacy columns at all) for the same person
+    // resolve to one row. Complements (not replaces) the legacy-column dedup
+    // test above, which stays true as long as those columns exist.
+    const admin = adminClient();
+    const event = await createTestEvent(admin);
+    const scout = await createTestScout(admin, 'PartyDedup');
+
+    try {
+      const { error: err1 } = await admin.rpc('submit_household_signup', {
+        p_event_signup_id: event.eventSignupId,
+        p_entries: [{ key: 's', person_kind: 'scout', person_id: scout.personId, status: 'yes' }],
+        p_actor: 'test:dedup1',
+        p_household_id: null,
+        p_allowed_person_ids: [scout.personId]
+      });
+      expect(err1).toBeNull();
+
+      const { error: err2 } = await admin.rpc('submit_household_signup', {
+        p_event_signup_id: event.eventSignupId,
+        p_entries: [{ key: 's', person_kind: 'scout', person_id: scout.personId, status: 'yes' }],
+        p_actor: 'test:dedup2',
+        p_household_id: null,
+        p_allowed_person_ids: [scout.personId]
+      });
+      expect(err2).toBeNull();
+
+      const { data: rows } = await admin
+        .from('signup_entries')
+        .select('id')
+        .eq('event_signup_id', event.eventSignupId)
+        .eq('person_id', scout.personId)
+        .neq('status', 'cancelled');
+      expect(rows).toHaveLength(1);
+    } finally {
+      await deleteTestEvent(admin, event);
+      await deleteTestScout(admin, scout);
+    }
+  });
+});
