@@ -283,10 +283,22 @@
   background: #f0ebe0;
   padding: 6px 4px;
   border-bottom: 1px solid #aaa;
+  /* RankBlock is a <summary> now (see below) — plain title bar on desktop
+     and in print, no native disclosure marker or pointer affordance. The
+     mobile breakpoint turns this back into a real accordion toggle. */
+  list-style: none;
+  cursor: default;
 }
+.rankBlockTitle::-webkit-details-marker { display: none; }
 .rankBlockTitleBordered {
   border-top: 1px solid #aaa;
 }
+/* RankBlock is a <details>/<summary> pair so the mobile breakpoint (below)
+   can collapse it into a per-rank accordion — same trick this page already
+   uses for .mbDetails under @media print. On desktop and in print, content
+   always shows regardless of the [open] attribute; only the mobile query
+   restores native collapse behavior. */
+.rankBlock > .rankBlockContent { display: block !important; }
 .miniRow {
   display: grid;
   grid-template-columns: 60px 32px 1fr;
@@ -807,5 +819,58 @@
     border-bottom: 1px solid #aaa;
   }
   .rankBlockStack { border-right: none; }
+  /* Only meaningful in the desktop 3-column grid, to bottom-align the
+     stacked Star+Life cell against First Class/Eagle — collapsed to 1
+     column here, it was leaving a ~230px dead gap between Star and Life. */
+  .rankBlockGapAbove { margin-top: 0; }
   .twoCol { grid-template-columns: 1fr; }
+
+  /* Checklist rows were sized for dense print output (10.5px/9.5px) and
+     never got a mobile-specific bump — recovered to a legible screen size,
+     with the fixed date/initials columns narrowed to give the label back
+     some of the width they were taking. */
+  .miniRow {
+    font-size: 13px;
+    line-height: 1.4;
+    padding: 6px 6px;
+    gap: 5px;
+    grid-template-columns: 44px 26px 1fr;
+  }
+  .miniSubRow {
+    font-size: 12px;
+    line-height: 1.4;
+    padding: 4px 6px 4px 14px;
+    gap: 5px;
+    grid-template-columns: 44px 26px 1fr;
+  }
+  .miniSectionHeading { font-size: 11px; padding: 5px 6px; }
+  /* The full requirement text lived only in a `title` tooltip, which
+     requires a hover event a touchscreen never sends — any label long
+     enough to ellipsis was permanently unreadable on a phone. Wrapping
+     instead of truncating makes it always readable, at the cost of some
+     rows running two lines. */
+  .miniRowLabel { white-space: normal; overflow: visible; text-overflow: clip; }
+
+  /* Per-rank accordion — reopens the native <details> collapse behavior
+     the desktop/print rule above suppresses. Once the Clipboard grid
+     collapses to one column, all 7 rank blocks stacking open is 1400px+ of
+     scroll before you even reach merit badges/activities/leadership/
+     service; collapsing everything but the scout's current rank (see
+     Clipboard()'s isCurrent calc in page.tsx) makes this screen scannable
+     instead of a long scroll — same accordion pattern already used for
+     Merit Badges In Progress. */
+  .rankBlockTitle {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .rankBlockTitle::before {
+    content: '\25B8';
+    color: var(--forest);
+    font-size: 10px;
+    margin-left: 8px;
+  }
+  .rankBlock[open] > .rankBlockTitle::before { content: '\25BE'; }
+  .rankBlock:not([open]) > .rankBlockContent { display: none !important; }
 }

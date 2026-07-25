@@ -350,6 +350,17 @@ function Clipboard({ detail }: { detail: ScoutDetail }) {
     year: 'numeric'
   });
 
+  // Which rank defaults open in the mobile accordion (see RankBlock / the
+  // @media screen max-width:900px rules) — the one the scout is actively
+  // working toward, same "in progress" concept RankTimeline already uses.
+  // Falls back to the last rank shown if everything catalogued is earned.
+  const currentRankIdx = detail.ranks.findIndex((r) => r.id === detail.scout.current_rank);
+  const nextRank = detail.ranks[currentRankIdx + 1];
+  const openRankId =
+    nextRank && ranksToShow.some((r) => r.id === nextRank.id)
+      ? nextRank.id
+      : ranksToShow[ranksToShow.length - 1]?.id;
+
   // Fixed two-row-of-three layout: top row is Scout/Tenderfoot/Second Class,
   // bottom row is First Class / (Star+Life stacked) / Eagle. Star and Life
   // share the middle-bottom cell (see .rankBlockStack) instead of Life
@@ -367,6 +378,7 @@ function Clipboard({ detail }: { detail: ScoutDetail }) {
         ledgerByCode={ledgerByCode}
         mbBucket={mbBuckets.get(r.id)}
         gapAbove={gapAbove}
+        isCurrent={r.id === openRankId}
       />
     );
   };
@@ -462,7 +474,8 @@ function RankBlock({
   catalog,
   ledgerByCode,
   mbBucket,
-  gapAbove
+  gapAbove,
+  isCurrent
 }: {
   rankId: string;
   label: string;
@@ -470,32 +483,42 @@ function RankBlock({
   ledgerByCode: Map<string, LedgerEntry>;
   mbBucket?: { eagleRows: MbDisplayRow[]; otherRows: MbDisplayRow[] };
   gapAbove?: boolean;
+  isCurrent?: boolean;
 }) {
   const mbQuota = MB_QUOTAS[rankId];
+  // <details>/<summary> so the mobile breakpoint can turn this into a
+  // per-rank accordion (see scout-detail.module.css) — desktop and print
+  // force the content always open regardless of the `open` attribute, so
+  // this only changes behavior on a phone.
   return (
-    <div className={`${styles.rankBlock} ${gapAbove ? styles.rankBlockGapAbove : ''}`.trim()}>
-      <div
+    <details
+      className={`${styles.rankBlock} ${gapAbove ? styles.rankBlockGapAbove : ''}`.trim()}
+      open={isCurrent}
+    >
+      <summary
         className={`${styles.rankBlockTitle} ${gapAbove ? styles.rankBlockTitleBordered : ''}`.trim()}
       >
         {label}
+      </summary>
+      <div className={styles.rankBlockContent}>
+        {catalog.length === 0 ? (
+          <div className={styles.miniEmpty}>No requirements catalogued.</div>
+        ) : (
+          catalog.map((req) => (
+            <RankReqRows
+              key={`${rankId}-${req.code}`}
+              rankId={rankId}
+              req={req}
+              ledgerByCode={ledgerByCode}
+            />
+          ))
+        )}
+        {/* Computed Eagle-required / other merit badge breakdown, appended
+            below the numbered requirement checklist (not in place of req "3",
+            which stays as the leader's manual signoff). */}
+        {mbQuota && mbBucket && <MbQuotaSection quota={mbQuota} bucket={mbBucket} />}
       </div>
-      {catalog.length === 0 ? (
-        <div className={styles.miniEmpty}>No requirements catalogued.</div>
-      ) : (
-        catalog.map((req) => (
-          <RankReqRows
-            key={`${rankId}-${req.code}`}
-            rankId={rankId}
-            req={req}
-            ledgerByCode={ledgerByCode}
-          />
-        ))
-      )}
-      {/* Computed Eagle-required / other merit badge breakdown, appended
-          below the numbered requirement checklist (not in place of req "3",
-          which stays as the leader's manual signoff). */}
-      {mbQuota && mbBucket && <MbQuotaSection quota={mbQuota} bucket={mbBucket} />}
-    </div>
+    </details>
   );
 }
 
