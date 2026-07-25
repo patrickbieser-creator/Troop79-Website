@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Fixes &amp; Mobile UX — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #2c4430;
+            --nw-brown: #8b6914;
+            --nw-gold: #8b6914;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #3d5a3e;
+            --nw-pale-green: #e8ede4;
+            --nw-cream: #faf6ef;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #e8ede4;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f5ee; }
+        .callout-gold { border-color: var(--nw-gold); background: #faf3e3; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #eaeff2; }
+        .callout strong { font-weight: 600; }
+
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); }
+        tr:hover { background: var(--nw-sage); }
+
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+
+        @media print {
+            body { background: white; }
+            header { padding: 1.5rem; }
+            .container { padding: 1rem; }
+            .stat { break-inside: avoid; }
+        }
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.5rem; }
+            .stats { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Production Fixes &amp; Mobile UX</h1>
+        <p class="subtitle">Signup identity cleanup, Event Builder safety net, Scout Clipboard mobile optimization, and a historical data correction — all shipped and verified live</p>
+        <div class="meta">
+            <span>&#128197; July 25, 2026</span>
+            <span>&#129302; Operator</span>
+            <span>&#128204; Troop79-Website</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">6</div><div class="label">Commits Deployed</div></div>
+            <div class="stat"><div class="number">10&rarr;26</div><div class="label">Test Baseline</div></div>
+            <div class="stat"><div class="number">6</div><div class="label">Decisions Recorded</div></div>
+            <div class="stat"><div class="number">3</div><div class="label">Live Bugs Caught &amp; Fixed</div></div>
+            <div class="stat"><div class="number">34</div><div class="label">Ledger Rows Corrected</div></div>
+            <div class="stat"><div class="number">0</div><div class="label">New Blockers</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <h3>1. Signup Identity Cleanup — Prerequisites for Retiring Legacy Columns</h3>
+        <p>Prepared the ground for eventually dropping <span class="file-path">signup_entries</span>' legacy identity columns and the <span class="file-path">scout_parents</span> table, without actually dropping them yet.</p>
+        <ul>
+            <li><span class="file-path">scout_parent_emails</span> re-keyed from <span class="file-path">scout_parent_id</span> to <span class="file-path">person_id</span>, with a dedup rule for siblings who independently tracked the same address</li>
+            <li>Household-membership validation added to <span class="file-path">submit_household_signup</span> — closes a real gap where a client-supplied <span class="file-path">person_id</span> was never checked against the submitting party</li>
+            <li>Code migrated off the 4 legacy identity columns in the signup read/write paths</li>
+            <li><span class="file-path">scout_parents</span>' address fields backfilled onto <span class="file-path">people</span>, so a future table drop won't lose data collected for a planned mail-program export</li>
+        </ul>
+        <div class="callout callout-teal"><strong>Deliberately held back:</strong> both the <span class="file-path">DROP TABLE scout_parents</span> and the <span class="file-path">signup_entries</span> column drops stay for a later session, after the new code path gets real production soak time (target: August 2026).</div>
+
+        <h3>2. Event Builder — Price-Tier Backfill &amp; Warn-Before-Delete</h3>
+        <p>Root-caused and fixed a real production bug: Tesomas Summer Camp signups were stuck un-priced because the price tier was added after families had already signed up, leaving the "Paid" checkbox permanently disabled with no way to fix it.</p>
+        <ul>
+            <li>Adding or editing a price tier now automatically backfills existing un-priced entries wherever the choice is unambiguous</li>
+            <li>New "Apply to existing entries" button in the Builder for tiers that predate this logic</li>
+            <li>Deleting a slot or question now shows exactly who claimed the job or what was answered, requiring a second confirm click — skipped entirely when nothing's at risk</li>
+            <li>Price tier deletion deliberately stays hard-blocked when in use — editing is the safe path, since amounts are always derived live, never stored</li>
+        </ul>
+
+        <h3>3. Scout Clipboard Mobile Optimization</h3>
+        <p>A scout reported the site's single most-used screen was hard to read on her phone. A UX review found the checklist text was sized for dense print output and never got a mobile-specific bump, and long requirement labels relied entirely on a hover tooltip for their full text — which never works on a touchscreen, making them permanently unreadable, not just small.</p>
+        <ul>
+            <li>Mobile checklist font sizes increased; text now wraps instead of truncating</li>
+            <li>A dead ~230px blank gap (a leftover desktop alignment hack) removed</li>
+            <li>New per-rank accordion, active only on mobile — desktop and print are unaffected, reusing the same forced-open pattern already used elsewhere on the page. Defaults open to the scout's current in-progress rank</li>
+        </ul>
+
+        <h3>4. Lapham Peak Ski Outing — Historical Data Correction</h3>
+        <p>Both years of the troop's annual ski trip (34 ledger rows across roughly 25 scouts) were miscategorized as a Campout during the original spreadsheet import — the source data actually tagged it "Outing." Corrected via a scoped one-off migration; verified no scout's rank-requirement progress was affected by the reclassification.</p>
+
+        <h2>Blockers Resolved (Caught Live, Fixed Same Session)</h2>
+        <table>
+            <thead><tr><th>Issue</th><th>Root Cause</th><th>Fix</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td>Signup RPC would have broken on deploy</td>
+                    <td>Adding a parameter to a Postgres function via <span class="file-path">CREATE OR REPLACE</span> creates a second overload instead of replacing the first, unless the old signature is explicitly dropped first</td>
+                    <td>Added the explicit <span class="file-path">DROP FUNCTION</span> before <span class="file-path">CREATE OR REPLACE</span></td>
+                </tr>
+                <tr>
+                    <td>Price backfill silently skipped payable people</td>
+                    <td>A driver-only/contributor row included in a batched <span class="file-path">UPDATE ... WHERE id IN (...)</span> tripped a DB constraint, failing the whole batch atomically</td>
+                    <td>Excluded non-<span class="file-path">full</span> participation from the backfill candidate set; added a regression test proving both halves</td>
+                </tr>
+                <tr>
+                    <td>Mobile accordion left a 200px blank box per collapsed rank</td>
+                    <td>A <span class="file-path">min-height: 200px</span> meant for the desktop 3-column grid still applied to the collapsed <span class="file-path">&lt;details&gt;</span> element itself</td>
+                    <td>Same <span class="file-path">min-height: 0</span> override the print stylesheet already used for the identical reason</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Decisions</h2>
+        <ul>
+            <li><strong>D-064</strong> — Household-membership validation on <span class="file-path">submit_household_signup</span>, resolved server-side, never trusted from the client payload</li>
+            <li><strong>D-065</strong> — <span class="file-path">scout_parent_emails</span> re-keyed to <span class="file-path">person_id</span> with an explicit signal-preserving dedup rule</li>
+            <li><strong>D-066</strong> — <span class="file-path">scout_parents</span> retirement: prerequisites complete, actual drops explicitly held for a later session</li>
+            <li><strong>D-067</strong> — Event Builder: tier deletion stays hard-blocked; slots/questions get warn-then-allow instead</li>
+            <li><strong>D-068</strong> — Price-tier backfill only auto-assigns when unambiguous (one eligible tier, per-event only, attending participants only)</li>
+            <li><strong>D-069</strong> — Scout Clipboard: mobile-only accordion reusing the existing forced-open <span class="file-path">&lt;details&gt;</span> pattern</li>
+        </ul>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Wait out the production soak week (~August 2026), then drop <span class="file-path">signup_entries</span> legacy columns and <span class="file-path">scout_parents</span> — all prerequisites are done</li>
+            <li>Resource Library Phase 2 — proof-of-completion submissions (design locked, schema live)</li>
+            <li>Populate official BSA text for the 69 merit badges, whenever source text is fed in</li>
+            <li>Low priority: Rank Progression timeline still runs a bit tight on the 4-column mobile grid</li>
+            <li>Restore local dev's realistic data snapshot if local testing against real-shaped data is needed again (lost to a mid-session <span class="file-path">db reset</span>)</li>
+            <li>Add a "Skiing Lapham" Day Outing entry to the Events lookup table proactively, so the trip can't default to Campout again next time it's logged</li>
+        </ul>
+
+        <h2>Files Changed</h2>
+        <p><span class="badge badge-green">NEW</span> <span class="file-path">lib/event-signup-admin.ts</span> — testable backfill/delete-impact logic, no auth coupling</p>
+        <p><span class="badge badge-green">NEW</span> <span class="file-path">tests/event-signup-admin.test.ts</span>, <span class="file-path">tests/email-recipients.test.ts</span> — 17 new tests</p>
+        <p><span class="badge badge-gold">MODIFIED</span> <span class="file-path">scout-detail.module.css</span>, <span class="file-path">scouts/[id]/page.tsx</span> — mobile Clipboard fixes</p>
+        <p><span class="badge badge-gold">MODIFIED</span> <span class="file-path">events/actions.ts</span>, <span class="file-path">events/[id]/builder-panels.tsx</span> — backfill + warn-before-delete</p>
+        <p><span class="badge badge-gold">MODIFIED</span> <span class="file-path">lib/email-recipients.ts</span>, 3 new Supabase migrations — signup identity cleanup</p>
+
+    </div>
+
+    <footer>
+        <strong>Troop 79</strong> — Scout Troop 79, Milwaukee WI<br>
+        Session Summary — July 25, 2026 — Operator
+    </footer>
+</body>
+</html>
