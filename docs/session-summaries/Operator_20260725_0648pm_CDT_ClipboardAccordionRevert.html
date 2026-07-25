@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clipboard Accordion Revert — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #2c4430;
+            --nw-brown: #8b6914;
+            --nw-gold: #8b6914;
+            --nw-orange: #a95b28;
+            --nw-pale-green: #e8ede4;
+            --nw-cream: #faf6ef;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #e8ede4;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-orange) 0%, var(--nw-teal) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #eaeff2; }
+        .callout strong { font-weight: 600; }
+
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); }
+        tr:hover { background: var(--nw-sage); }
+
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.5rem; }
+            .stats { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Clipboard Accordion Revert</h1>
+        <p class="subtitle">A same-day production incident, root-caused and reverted within the hour a real user reported it</p>
+        <div class="meta">
+            <span>&#128197; July 25, 2026 (evening)</span>
+            <span>&#129302; Operator</span>
+            <span>&#128204; Troop79-Website</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">2</div><div class="label">Failed CSS Attempts</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">Full Revert</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">Decision Recorded</div></div>
+            <div class="stat"><div class="number">7/7</div><div class="label">Ranks Verified This Time</div></div>
+        </div>
+
+        <h2>What Happened</h2>
+        <div class="callout callout-orange"><strong>Reported by a real user:</strong> Patrick relayed that a scout's desktop Clipboard view was blank for every rank except her current one — a direct regression from the mobile accordion shipped earlier the same day.</div>
+
+        <p>The earlier session's mobile-optimization work added a per-rank collapsible accordion to the Scout Clipboard, built on native HTML <span class="file-path">&lt;details&gt;</span>/<span class="file-path">&lt;summary&gt;</span> elements with CSS intended to force all ranks open on desktop and in print, regardless of the collapsed state. Two rounds of CSS were tried, in production, before the real root cause was found:</p>
+
+        <table>
+            <thead><tr><th>Attempt</th><th>Fix Tried</th><th>Result</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td><span class="file-path">display: block !important</span></td>
+                    <td>Failed — still blank on desktop</td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td>Added <span class="file-path">content-visibility: visible !important</span></td>
+                    <td>Failed — still blank, confirmed via a fresh deploy and hard-reload</td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td>Full revert to a plain, always-rendered <span class="file-path">&lt;div&gt;</span></td>
+                    <td>Fixed — verified across all 7 ranks via direct DOM query</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Root Cause</h3>
+        <p>A closed <span class="file-path">&lt;details&gt;</span> element's non-summary content is hidden by Chrome as browser-internal "skipped content" — not an ordinary, cascade-overridable <span class="file-path">display</span> or <span class="file-path">content-visibility</span> value. No CSS specificity or <span class="file-path">!important</span> can force it back into the render tree. This was proven, not guessed: <span class="file-path">getComputedStyle</span> reported the content as fully visible and block-level, while <span class="file-path">elementFromPoint</span>/<span class="file-path">innerText</span> showed the browser's actual layout and hit-test engine still treated it as absent.</p>
+
+        <div class="callout callout-teal"><strong>Why the pattern seemed proven before this:</strong> the accordion design was modeled on an existing "Merit Badges In Progress" trick that forces its own <span class="file-path">&lt;details&gt;</span> sections open specifically for <span class="file-path">@media print</span>. That trick only ever worked because Chrome's print rendering pipeline doesn't apply the same content-skipping behavior in the first place — it was never actually evidence the technique would generalize to the interactive screen case.</div>
+
+        <h2>Fix</h2>
+        <p>Reverted <span class="file-path">RankBlock</span> to a plain, always-rendered <span class="file-path">&lt;div&gt;</span> — the exact pre-accordion structure. Kept everything from the original mobile-optimization work that was correct and unrelated to the accordion: the larger mobile font sizes, text wrapping instead of tooltip-only truncation, and the dead 230px alignment-gap fix.</p>
+
+        <h3>Cost</h3>
+        <p>The mobile Clipboard is back to one long scrollable column instead of a collapsible accordion — the original "1400px+ of scroll" concern is unresolved again and back on the Backlog. That was always the lower-priority half of the original ask; the critical fix (text actually readable on a phone) is untouched.</p>
+
+        <h2>Process Lesson</h2>
+        <p>Both prior verification passes checked only 1-2 of the 7 rank blocks via a partial screenshot rather than scrolling through the entire section or querying the DOM directly — that gap is exactly why this shipped broken twice before a real user caught it. This revert was verified against all 7 ranks via direct DOM inspection (<span class="file-path">elementFromPoint</span>, row counts per rank) before being called done.</p>
+
+        <h2>Decision</h2>
+        <ul>
+            <li><strong>D-070</strong> — Reverted the Clipboard mobile accordion. Established that <span class="file-path">&lt;details&gt;</span> closed-content hiding is not CSS-overridable outside <span class="file-path">@media print</span>; any future collapsible section needs a different mechanism entirely (checkbox-hack CSS accordion, or client-side JS) — not this pattern. Supersedes the accordion portion of D-069; that decision's font-size/wrap/gap findings remain valid and shipped.</li>
+        </ul>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Mobile Clipboard scroll-length is back on the Backlog, unsolved — needs a genuinely different collapse mechanism if revisited</li>
+            <li>No other action needed — production is confirmed correct for all 7 ranks on both mobile and desktop</li>
+        </ul>
+
+    </div>
+
+    <footer>
+        <strong>Troop 79</strong> — Scout Troop 79, Milwaukee WI<br>
+        Session Summary — July 25, 2026 — Operator
+    </footer>
+</body>
+</html>
