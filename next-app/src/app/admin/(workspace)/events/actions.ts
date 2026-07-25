@@ -6,6 +6,14 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { sendEmail, renderEmail } from '@/lib/email';
 import { recipientsForScouts } from '@/lib/email-recipients';
 import { siteUrl } from '@/lib/site-url';
+import {
+  backfillEventPrices,
+  slotClaimants,
+  questionAnswers,
+  type BackfillPricesResult,
+  type SlotClaimant,
+  type QuestionAnswerRow
+} from '@/lib/event-signup-admin';
 
 /*
  * Event Signup builder actions. House pattern throughout:
@@ -102,6 +110,23 @@ export async function updateSignup(
   return { ok: true };
 }
 
+/** Human-readable summary of a backfill pass, or null if there's nothing
+ *  worth telling the leader (no un-priced entries existed at all). */
+function backfillNote(r: BackfillPricesResult): string | undefined {
+  const skipped = r.skippedAmbiguous + r.skippedPerDay;
+  if (r.applied === 0 && skipped === 0) return undefined;
+  const parts = [`Priced ${r.applied} existing ${r.applied === 1 ? 'entry' : 'entries'} automatically.`];
+  if (skipped > 0) {
+    parts.push(
+      `${skipped} ${skipped === 1 ? 'entry needs' : 'entries need'} a tier assigned by hand ` +
+        `(${r.skippedAmbiguous > 0 ? 'more than one tier could apply' : ''}` +
+        `${r.skippedAmbiguous > 0 && r.skippedPerDay > 0 ? '; ' : ''}` +
+        `${r.skippedPerDay > 0 ? 'per-day pricing has no stored day count for them' : ''}).`
+    );
+  }
+  return parts.join(' ');
+}
+
 export async function addPrice(
   signupId: number,
   calendarEntryId: number,
@@ -109,7 +134,7 @@ export async function addPrice(
   amount: number,
   per: 'event' | 'day',
   appliesTo: 'scouts' | 'adults' | 'both'
-): Promise<Result> {
+): Promise<Result & { note?: string }> {
   await requireRole(['leader']);
   if (!label.trim()) return { ok: false, error: 'Give the tier a label.' };
   const supabase = createAdminClient();
@@ -124,12 +149,20 @@ export async function addPrice(
         : error.message
     };
   }
+  // Retroactively price any existing un-priced entry wherever the choice is
+  // unambiguous — a tier added after families already signed up shouldn't
+  // require every one of them to reopen the form just to get priced.
+  const backfill = await backfillEventPrices(supabase, signupId);
   revalidateEvent(calendarEntryId, signupId);
-  return { ok: true };
+  return { ok: true, note: backfillNote(backfill) };
 }
 
-/** Blocked by ON DELETE RESTRICT when households already picked the tier —
- *  surfaced as a clear message rather than a raw FK error. */
+/** Tier deletion stays a hard block when any entry has already chosen it —
+ *  deliberately NOT loosened to warn-then-allow. Unlike slots/questions,
+ *  removing a tier a family is relying on erases what they agreed to pay,
+ *  silently reverting their "owed" to $0. Editing (updatePrice below) is the
+ *  supported way to change a tier that's in use — it's non-destructive since
+ *  every entry's amount is derived live from the tier row, never stored. */
 export async function deletePrice(
   priceId: number,
   signupId: number,
@@ -147,6 +180,25 @@ export async function deletePrice(
   }
   revalidateEvent(calendarEntryId, signupId);
   return { ok: true };
+}
+
+/** Manual one-time trigger for the Builder's "Apply to existing entries"
+ *  button — the same backfill addPrice/updatePrice run automatically, but
+ *  callable directly for a tier that already existed before this logic
+ *  shipped (or after a leader fixes an ambiguous/per-day case by hand and
+ *  wants to re-check the rest). */
+export async function backfillPrices(
+  signupId: number,
+  calendarEntryId: number
+): Promise<Result & { note?: string }> {
+  await requireRole(['leader']);
+  const supabase = createAdminClient();
+  const backfill = await backfillEventPrices(supabase, signupId);
+  revalidateEvent(calendarEntryId, signupId);
+  return {
+    ok: true,
+    note: backfillNote(backfill) ?? 'Nothing to backfill — every entry already has a tier, or none apply.'
+  };
 }
 
 export async function addSlot(
@@ -186,13 +238,34 @@ export async function addSlot(
   return { ok: true };
 }
 
+/** Deleting a claimed slot cascades away every claim on it (signup_slot_claims
+ *  ON DELETE CASCADE). Editing a job (updateSlot) is the normal, expected way
+ *  to change one and needs no warning; deleting it is destructive to anyone
+ *  who's already claimed it, so a first call with confirm=false reports
+ *  exactly who's affected instead of deleting outright — the leader decides
+ *  whether to proceed and go tell them. Skips the warning entirely when
+ *  nobody's claimed it, since nothing would be lost. */
 export async function deleteSlot(
   slotId: number,
   signupId: number,
-  calendarEntryId: number
-): Promise<Result> {
+  calendarEntryId: number,
+  confirm = false
+): Promise<Result & { needsConfirm?: boolean; claimants?: SlotClaimant[] }> {
   await requireRole(['leader']);
   const supabase = createAdminClient();
+
+  if (!confirm) {
+    const claimants = await slotClaimants(supabase, slotId);
+    if (claimants.length > 0) {
+      return {
+        ok: false,
+        needsConfirm: true,
+        claimants,
+        error: `${claimants.length} ${claimants.length === 1 ? 'person has' : 'people have'} claimed this job. Removing it drops their claim — let them know a change was made.`
+      };
+    }
+  }
+
   const { error } = await supabase.from('signup_slots').delete().eq('id', slotId);
   if (error) return { ok: false, error: error.message };
   revalidateEvent(calendarEntryId, signupId);
@@ -250,13 +323,33 @@ export async function addQuestion(
   return { ok: true };
 }
 
+/** Deleting a question cascades away every recorded answer to it
+ *  (signup_answers ON DELETE CASCADE). Same pattern as deleteSlot: a first
+ *  call with confirm=false reports the actual data that would be destroyed
+ *  (who answered, and what) rather than guessing a count is enough — a
+ *  leader deciding whether "10.5" or "Vegetarian" is worth losing needs to
+ *  see it, not just a number. Skips the warning when nobody's answered yet. */
 export async function deleteQuestion(
   questionId: number,
   signupId: number,
-  calendarEntryId: number
-): Promise<Result> {
+  calendarEntryId: number,
+  confirm = false
+): Promise<Result & { needsConfirm?: boolean; answers?: QuestionAnswerRow[] }> {
   await requireRole(['leader']);
   const supabase = createAdminClient();
+
+  if (!confirm) {
+    const answers = await questionAnswers(supabase, questionId);
+    if (answers.length > 0) {
+      return {
+        ok: false,
+        needsConfirm: true,
+        answers,
+        error: `${answers.length} ${answers.length === 1 ? 'answer has' : 'answers have'} already been submitted for this question. Removing it deletes them — this can't be undone.`
+      };
+    }
+  }
+
   const { error } = await supabase.from('signup_questions').delete().eq('id', questionId);
   if (error) return { ok: false, error: error.message };
   revalidateEvent(calendarEntryId, signupId);
@@ -400,7 +493,7 @@ export async function updatePrice(
   signupId: number,
   calendarEntryId: number,
   fields: { label: string; amount: number; per: 'event' | 'day'; applies_to: 'scouts' | 'adults' | 'both' }
-): Promise<Result> {
+): Promise<Result & { note?: string }> {
   await requireRole(['leader']);
   if (!fields.label.trim()) return { ok: false, error: 'Give the tier a label.' };
   const supabase = createAdminClient();
@@ -416,8 +509,14 @@ export async function updatePrice(
         : error.message
     };
   }
+  // An applies_to change can newly make a kind's tier choice unambiguous
+  // (e.g. widening "Scouts" to "Everyone") — re-check the same way addPrice
+  // does. Amount/per/label-only edits are non-destructive on their own since
+  // owed is always derived live; this backfill only ever fills gaps, never
+  // overwrites an entry that already has a price_id.
+  const backfill = await backfillEventPrices(supabase, signupId);
   revalidateEvent(calendarEntryId, signupId);
-  return { ok: true };
+  return { ok: true, note: backfillNote(backfill) };
 }
 
 /**

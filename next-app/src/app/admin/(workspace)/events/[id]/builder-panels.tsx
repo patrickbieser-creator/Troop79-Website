@@ -3,9 +3,10 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  updateSignup, addPrice, deletePrice, updatePrice,
+  updateSignup, addPrice, deletePrice, updatePrice, backfillPrices,
   addSlot, deleteSlot, updateSlot, addQuestion, deleteQuestion, disableSignup
 } from '../actions';
+import type { SlotClaimant, QuestionAnswerRow } from '@/lib/event-signup-admin';
 import styles from '../events-admin.module.css';
 
 /*
@@ -103,6 +104,18 @@ export function BuilderPanels({
   const [dangerArmed, setDangerArmed] = useState(false);
   const [dangerWarning, setDangerWarning] = useState<string | null>(null);
   const [ePrice, setEPrice] = useState<Record<string, string>>({});
+  const [priceNote, setPriceNote] = useState<string | null>(null);
+
+  // Delete confirmation: null until a dry-run reports someone/something is
+  // actually affected, at which point the row shows the affected list and a
+  // second click is required. Nothing shown at all when there's nothing to
+  // lose — see deleteSlot/deleteQuestion's own confirm=false dry run.
+  const [slotDeleteConfirm, setSlotDeleteConfirm] = useState<
+    { id: number; claimants: SlotClaimant[]; message: string } | null
+  >(null);
+  const [questionDeleteConfirm, setQuestionDeleteConfirm] = useState<
+    { id: number; answers: QuestionAnswerRow[]; message: string } | null
+  >(null);
 
   // Question draft
   const [qPrompt, setQPrompt] = useState('');
@@ -224,8 +237,10 @@ export function BuilderPanels({
         <h2>Price tiers</h2>
         <p className={styles.panelHint}>
           No tiers = a free event. Costs differ by who’s attending, so add one per class of
-          participant. Amount owed is always derived, never stored.
+          participant. Amount owed is always derived, never stored. Adding or editing a tier
+          automatically prices any existing entry wherever the choice is unambiguous.
         </p>
+        {priceNote && <p className={styles.note}>{priceNote}</p>}
         {prices.length > 0 && (
           <table className={styles.miniTable}>
             <tbody>
@@ -281,6 +296,7 @@ export function BuilderPanels({
                                 if (!res.ok) setError(res.error ?? 'Could not save tier.');
                                 else {
                                   setEditPrice(null);
+                                  setPriceNote(res.note ?? null);
                                   router.refresh();
                                 }
                               })
@@ -367,6 +383,7 @@ export function BuilderPanels({
                 else {
                   setPLabel('');
                   setPAmount('0');
+                  setPriceNote(res.note ?? null);
                   router.refresh();
                 }
               })
@@ -375,6 +392,25 @@ export function BuilderPanels({
             Add tier
           </button>
         </div>
+        {prices.length > 0 && (
+          <button
+            type="button"
+            className={styles.rowEdit}
+            disabled={pending}
+            onClick={() =>
+              start(async () => {
+                const res = await backfillPrices(signupId, calendarEntryId);
+                if (!res.ok) setError(res.error ?? 'Could not backfill tiers.');
+                else {
+                  setPriceNote(res.note ?? null);
+                  router.refresh();
+                }
+              })
+            }
+          >
+            Apply to existing entries
+          </button>
+        )}
       </section>
 
       <section className={styles.panel}>
@@ -504,6 +540,44 @@ export function BuilderPanels({
                     </tr>
                   );
                 }
+                if (slotDeleteConfirm?.id === id) {
+                  return (
+                    <tr key={id} className={styles.editRow}>
+                      <td colSpan={5}>
+                        <p className={styles.err}>{slotDeleteConfirm.message}</p>
+                        {slotDeleteConfirm.claimants.length > 0 && (
+                          <p className={styles.panelHint}>
+                            {slotDeleteConfirm.claimants.map((c) => c.name).join(', ')}
+                          </p>
+                        )}
+                        <div className={styles.addRow}>
+                          <button
+                            type="button"
+                            className={styles.dangerBtn}
+                            disabled={pending}
+                            onClick={() =>
+                              start(async () => {
+                                const res = await deleteSlot(id, signupId, calendarEntryId, true);
+                                if (!res.ok) setError(res.error ?? 'Could not remove job.');
+                                setSlotDeleteConfirm(null);
+                                router.refresh();
+                              })
+                            }
+                          >
+                            Yes, remove anyway
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.rowEdit}
+                            onClick={() => setSlotDeleteConfirm(null)}
+                          >
+                            Keep it
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }
                 return (
                   <tr key={id}>
                     <td>
@@ -548,9 +622,20 @@ export function BuilderPanels({
                         disabled={pending}
                         onClick={() =>
                           start(async () => {
-                            const res = await deleteSlot(id, signupId, calendarEntryId);
-                            if (!res.ok) setError(res.error ?? 'Could not remove job.');
-                            else router.refresh();
+                            const res = await deleteSlot(id, signupId, calendarEntryId, false);
+                            if (res.ok) {
+                              router.refresh();
+                              return;
+                            }
+                            if (res.needsConfirm) {
+                              setSlotDeleteConfirm({
+                                id,
+                                claimants: res.claimants ?? [],
+                                message: res.error ?? ''
+                              });
+                              return;
+                            }
+                            setError(res.error ?? 'Could not remove job.');
                           })
                         }
                       >
@@ -632,33 +717,85 @@ export function BuilderPanels({
         {questions.length > 0 && (
           <table className={styles.miniTable}>
             <tbody>
-              {questions.map((q) => (
-                <tr key={String(q.id)}>
-                  <td>
-                    <strong>{s(q.prompt)}</strong>
-                    {b(q.required) && <span className={styles.tag}>required</span>}
-                  </td>
-                  <td>{s(q.input_type)}</td>
-                  <td>{Array.isArray(q.choices) ? (q.choices as string[]).join(' / ') : '—'}</td>
-                  <td>{s(q.applies_to)}</td>
-                  <td>
-                    <button
-                      type="button"
-                      className={styles.rowDel}
-                      disabled={pending}
-                      onClick={() =>
-                        start(async () => {
-                          const res = await deleteQuestion(Number(q.id), signupId, calendarEntryId);
-                          if (!res.ok) setError(res.error ?? 'Could not remove question.');
-                          else router.refresh();
-                        })
-                      }
-                    >
-                      Remove
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {questions.map((q) => {
+                const qid = Number(q.id);
+                if (questionDeleteConfirm?.id === qid) {
+                  return (
+                    <tr key={qid} className={styles.editRow}>
+                      <td colSpan={5}>
+                        <p className={styles.err}>{questionDeleteConfirm.message}</p>
+                        {questionDeleteConfirm.answers.length > 0 && (
+                          <p className={styles.panelHint}>
+                            {questionDeleteConfirm.answers.map((a) => `${a.name}: ${a.value}`).join(' · ')}
+                          </p>
+                        )}
+                        <div className={styles.addRow}>
+                          <button
+                            type="button"
+                            className={styles.dangerBtn}
+                            disabled={pending}
+                            onClick={() =>
+                              start(async () => {
+                                const res = await deleteQuestion(qid, signupId, calendarEntryId, true);
+                                if (!res.ok) setError(res.error ?? 'Could not remove question.');
+                                setQuestionDeleteConfirm(null);
+                                router.refresh();
+                              })
+                            }
+                          >
+                            Yes, remove anyway
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.rowEdit}
+                            onClick={() => setQuestionDeleteConfirm(null)}
+                          >
+                            Keep it
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }
+                return (
+                  <tr key={qid}>
+                    <td>
+                      <strong>{s(q.prompt)}</strong>
+                      {b(q.required) && <span className={styles.tag}>required</span>}
+                    </td>
+                    <td>{s(q.input_type)}</td>
+                    <td>{Array.isArray(q.choices) ? (q.choices as string[]).join(' / ') : '—'}</td>
+                    <td>{s(q.applies_to)}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className={styles.rowDel}
+                        disabled={pending}
+                        onClick={() =>
+                          start(async () => {
+                            const res = await deleteQuestion(qid, signupId, calendarEntryId, false);
+                            if (res.ok) {
+                              router.refresh();
+                              return;
+                            }
+                            if (res.needsConfirm) {
+                              setQuestionDeleteConfirm({
+                                id: qid,
+                                answers: res.answers ?? [],
+                                message: res.error ?? ''
+                              });
+                              return;
+                            }
+                            setError(res.error ?? 'Could not remove question.');
+                          })
+                        }
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
