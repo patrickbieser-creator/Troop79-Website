@@ -297,8 +297,17 @@
    can collapse it into a per-rank accordion — same trick this page already
    uses for .mbDetails under @media print. On desktop and in print, content
    always shows regardless of the [open] attribute; only the mobile query
-   restores native collapse behavior. */
-.rankBlock > .rankBlockContent { display: block !important; }
+   restores native collapse behavior.
+   BOTH properties are required: Chrome hides a closed <details>'s non-summary
+   content via `content-visibility: hidden` (not `display: none`), a separate
+   UA-stylesheet mechanism from the one .mbDetails's print override deals
+   with. Overriding `display` alone (as first shipped) left `content-visibility`
+   still hiding everything but the current rank on desktop — found live in
+   production, 2026-07-25, second deploy same day. */
+.rankBlock > .rankBlockContent {
+  display: block !important;
+  content-visibility: visible !important;
+}
 .miniRow {
   display: grid;
   grid-template-columns: 60px 32px 1fr;
