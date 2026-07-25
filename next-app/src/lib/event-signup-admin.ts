@@ -49,6 +49,12 @@ export async function backfillEventPrices(
       .eq('event_signup_id', signupId)
       .is('price_id', null)
       .neq('status', 'cancelled')
+      // driver_only / contributor aren't attending — never charged, matching
+      // the public form's own rule (person-first-form.tsx only ever resolves
+      // a tier when `attending` is true). Without this, a driver-only adult
+      // added after the tier existed would get billed for camp they're not
+      // going to.
+      .eq('participation', 'full')
   ]);
   const tiers = (priceData ?? []) as PriceRow[];
   const entries = (entryData ?? []) as EntryRow[];

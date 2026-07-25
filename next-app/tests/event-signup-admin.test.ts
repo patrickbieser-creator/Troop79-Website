@@ -117,6 +117,93 @@ describe('backfillEventPrices', () => {
     }
   });
 
+  it('BackfillEventPrices_SkipsDriverOnlyAndContributor_NeverAttendingNeverCharged', async () => {
+    // Caught live against production: a "Driver Only" adult (participation
+    // != 'full') isn't attending the event and must never be billed for it,
+    // even though person_kind/price_id alone would otherwise look eligible.
+    const admin = adminClient();
+    const event = await createTestEvent(admin);
+    const driver = await createTestScout(admin, 'BackfillDriverOnly');
+    const contributor = await createTestScout(admin, 'BackfillContributor');
+
+    await admin
+      .from('event_prices')
+      .insert({ event_signup_id: event.eventSignupId, label: 'Everyone', amount: 450, per: 'event', applies_to: 'both' });
+    const { data: driverEntry, error: driverErr } = await admin
+      .from('signup_entries')
+      .insert({
+        event_signup_id: event.eventSignupId,
+        person_kind: 'adult',
+        person_id: driver.personId,
+        scout_id: driver.scoutId,
+        status: 'yes',
+        participation: 'driver_only',
+        // signup_entries_driver_only requires an actual leg driven.
+        drives_out: true,
+        seats_offered_out: 3
+      })
+      .select('id')
+      .single();
+    if (driverErr || !driverEntry) throw new Error(`fixture: driver entry insert failed: ${driverErr?.message}`);
+    const { data: contributorEntry, error: contributorErr } = await admin
+      .from('signup_entries')
+      .insert({
+        event_signup_id: event.eventSignupId,
+        person_kind: 'scout',
+        person_id: contributor.personId,
+        scout_id: contributor.scoutId,
+        status: 'yes',
+        participation: 'contributor'
+      })
+      .select('id')
+      .single();
+    if (contributorErr || !contributorEntry) {
+      throw new Error(`fixture: contributor entry insert failed: ${contributorErr?.message}`);
+    }
+
+    // A legitimately payable adult in the SAME event, sharing the same
+    // per-kind batch update as the driver-only row above. Before the
+    // participation filter, including a driver_only row in the 'adult'
+    // update's .in(ids) would trip the DB's signup_entries_driver_only CHECK
+    // (price_id must stay null for driver-only) and fail the WHOLE batched
+    // update atomically — silently leaving this payable adult unpriced too.
+    // Caught exactly this way in production (Jason Porter, Tesomas Summer
+    // Camp, 2026-07-25).
+    const payableAdult = await createTestScout(admin, 'BackfillPayableAdult');
+    const { data: payableEntry, error: payableErr } = await admin
+      .from('signup_entries')
+      .insert({
+        event_signup_id: event.eventSignupId,
+        person_kind: 'adult',
+        person_id: payableAdult.personId,
+        scout_id: payableAdult.scoutId,
+        status: 'yes',
+        participation: 'full'
+      })
+      .select('id')
+      .single();
+    if (payableErr || !payableEntry) throw new Error(`fixture: payable adult insert failed: ${payableErr?.message}`);
+
+    try {
+      const result = await backfillEventPrices(admin, event.eventSignupId);
+      expect(result.applied).toBe(1);
+
+      const { data: after } = await admin
+        .from('signup_entries')
+        .select('id, price_id')
+        .in('id', [driverEntry.id, contributorEntry.id, payableEntry.id]);
+      const priceById = new Map((after ?? []).map((r) => [r.id, r.price_id]));
+      expect(priceById.get(driverEntry.id)).toBeNull();
+      expect(priceById.get(contributorEntry.id)).toBeNull();
+      expect(priceById.get(payableEntry.id)).not.toBeNull();
+    } finally {
+      await deleteTestEvent(admin, event);
+      await deleteTestScout(admin, driver);
+      await deleteTestScout(admin, contributor);
+      await deleteTestScout(admin, payableAdult);
+    }
+  });
+
   it('BackfillEventPrices_LeavesAlreadyPricedEntries_Untouched', async () => {
     const admin = adminClient();
     const event = await createTestEvent(admin);
