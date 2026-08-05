@@ -13,6 +13,7 @@ import {
   type PickerItem
 } from './picker-types';
 import { validateAwards } from './satisfaction';
+import { DatePickerField } from '../../_components/date-picker-field';
 import styles from './fast-entry.module.css';
 
 interface Props {
@@ -327,12 +328,7 @@ export function ScoutFirstCard({ scouts, leaders, catalog }: Props) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <label className={styles.field}>
           <span className={styles.fieldLabel}>Date Completed</span>
-          <input
-            type="date"
-            className={styles.input}
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
+          <DatePickerField value={date} onChange={setDate} />
         </label>
         <label className={styles.field}>
           <span className={styles.fieldLabel}>Signed Off By</span>

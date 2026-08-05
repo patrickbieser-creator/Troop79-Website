@@ -7,6 +7,7 @@ import {
   addSlot, deleteSlot, updateSlot, addQuestion, deleteQuestion, disableSignup
 } from '../actions';
 import type { SlotClaimant, QuestionAnswerRow } from '@/lib/event-signup-admin';
+import { DatePickerField } from '../../_components/date-picker-field';
 import styles from '../events-admin.module.css';
 
 /*
@@ -455,10 +456,10 @@ export function BuilderPanels({
                             placeholder="Job name"
                             onChange={(ev) => setESlot((v) => ({ ...v, label: ev.target.value }))}
                           />
-                          <input
-                            type="date"
+                          <DatePickerField
+                            className={styles.dateField}
                             value={eSlot.slot_date ?? ''}
-                            onChange={(ev) => setESlot((v) => ({ ...v, slot_date: ev.target.value }))}
+                            onChange={(v) => setESlot((prev) => ({ ...prev, slot_date: v }))}
                           />
                           {isShift && (
                             <>
@@ -654,7 +655,7 @@ export function BuilderPanels({
             <option value="task">Task (untimed)</option>
           </select>
           <input placeholder="Job name" value={sLabel} onChange={(e) => setSLabel(e.target.value)} />
-          <input type="date" value={sDate} onChange={(e) => setSDate(e.target.value)} />
+          <DatePickerField className={styles.dateField} value={sDate} onChange={setSDate} />
           {sKind === 'shift' && (
             <>
               <input type="time" value={sStart} onChange={(e) => setSStart(e.target.value)} />

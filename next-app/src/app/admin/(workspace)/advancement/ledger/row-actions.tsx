@@ -9,6 +9,7 @@ import {
 } from './actions';
 import type { LedgerEntry, LedgerKind } from '@/lib/supabase/types';
 import { initialsFor } from '@/lib/initials';
+import { DatePickerField } from '../../_components/date-picker-field';
 import styles from './ledger.module.css';
 
 interface Props {
@@ -199,12 +200,7 @@ function EditForm({
 
       <div className={styles.editGrid}>
         <Field label="Date">
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className={styles.editInput}
-          />
+          <DatePickerField value={date} onChange={setDate} />
         </Field>
         <Field label="Scout">
           <select

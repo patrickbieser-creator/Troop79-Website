@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import type { CalendarCategory, Media, PhotoAlbum } from '@/lib/supabase/types';
 import { categoryColor } from '@/lib/calendar-shared';
 import { MediaPicker } from '../_components/media-picker';
+import { DatePickerField } from '../../_components/date-picker-field';
 import styles from './albums.module.css';
 
 type ActionResult = { ok: boolean; error?: string };
@@ -254,13 +255,7 @@ function AlbumForm({
 
         <label className={styles.editField}>
           <span className={styles.editLabel}>Event date</span>
-          <input
-            type="date"
-            className={styles.editInput}
-            value={eventDate}
-            onChange={(e) => setEventDate(e.target.value)}
-            required
-          />
+          <DatePickerField value={eventDate} onChange={setEventDate} />
         </label>
         <label className={styles.editField}>
           <span className={styles.editLabel}>Category</span>

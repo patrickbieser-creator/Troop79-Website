@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { Meeting, MeetingSection, MeetingSession } from '@/lib/supabase/types';
 import { formatLongDate } from '@/lib/dates';
 import type { PromotePayload } from '../actions';
+import { DatePickerField } from '../../../_components/date-picker-field';
 import styles from '../meetings.module.css';
 
 type ActionResult = { ok: boolean; error?: string };
@@ -51,6 +52,7 @@ export function MeetingEditor({
 }: Props) {
   const [err, setErr] = useState<string | null>(null);
   const [savedNote, setSavedNote] = useState(false);
+  const [meetingDate, setMeetingDate] = useState(meeting.meeting_date);
   const [openFor, setOpenFor] = useState<MeetingSession | { newIn: MeetingSection } | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [addedKeys, setAddedKeys] = useState<Set<number>>(new Set());
@@ -174,7 +176,11 @@ export function MeetingEditor({
               </button>
             </div>
             <div className={styles.logisticsGrid}>
-              <Field label="Date" name="meeting_date" type="date" defaultValue={meeting.meeting_date} required />
+              <label className={styles.editField}>
+                <span className={styles.editLabel}>Date</span>
+                <DatePickerField value={meetingDate} onChange={setMeetingDate} />
+                <input type="hidden" name="meeting_date" value={meetingDate} />
+              </label>
               <Field label="Title" name="title" defaultValue={meeting.title} />
               <Field label="Time" name="time_range" defaultValue={meeting.time_range ?? ''} placeholder="4:00 – 5:30 PM" />
               <Field label="Uniform" name="uniform" defaultValue={meeting.uniform ?? ''} placeholder="Class A" />

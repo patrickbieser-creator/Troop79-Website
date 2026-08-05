@@ -6,6 +6,7 @@ import { categoryColor } from '@/lib/calendar-shared';
 import type { ArticleOption } from './page';
 import type { ImportResult, ImportRowFields, ImportUpdate } from './actions';
 import { CalendarImport } from './calendar-import';
+import { DatePickerField } from '../../_components/date-picker-field';
 import styles from './calendar.module.css';
 
 type ActionResult = { ok: boolean; error?: string };
@@ -300,22 +301,11 @@ function CalendarEntryForm({
       <div className={styles.editGrid}>
         <label className={styles.editField}>
           <span className={styles.editLabel}>Date</span>
-          <input
-            type="date"
-            className={styles.editInput}
-            value={entryDate}
-            onChange={(e) => setEntryDate(e.target.value)}
-            required
-          />
+          <DatePickerField value={entryDate} onChange={setEntryDate} />
         </label>
         <label className={styles.editField}>
           <span className={styles.editLabel}>End Date (multi-day only)</span>
-          <input
-            type="date"
-            className={styles.editInput}
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-          />
+          <DatePickerField value={endDate} onChange={setEndDate} />
         </label>
 
         <label className={styles.editField}>

@@ -7,6 +7,7 @@ import { ScoutRelations } from './scout-relations';
 import { PendingUpdatePanel } from './pending-update-panel';
 import { ageOn, gradeFromGradYear, gradeLabel, gradYearFromGrade } from '@/lib/demographics';
 import type { EditableScoutField } from '@/lib/change-requests';
+import { DatePickerField } from '../../_components/date-picker-field';
 import styles from '../lookups/lookups.module.css';
 
 export interface ScoutRow {
@@ -249,12 +250,7 @@ export function ScoutForm({
             <span className={styles.editLabel}>
               Birthdate{ageOn(birthdate || null) !== null ? ` · age ${ageOn(birthdate || null)}` : ''}
             </span>
-            <input
-              type="date"
-              value={birthdate}
-              onChange={(e) => setBirthdate(e.target.value)}
-              className={styles.editInput}
-            />
+            <DatePickerField value={birthdate} onChange={setBirthdate} />
           </label>
           <label className={styles.editField}>
             <span className={styles.editLabel}>Gender</span>
@@ -375,12 +371,7 @@ export function ScoutForm({
           </label>
           <label className={styles.editField}>
             <span className={styles.editLabel}>Health Form Date</span>
-            <input
-              type="date"
-              value={healthFormDate}
-              onChange={(e) => setHealthFormDate(e.target.value)}
-              className={styles.editInput}
-            />
+            <DatePickerField value={healthFormDate} onChange={setHealthFormDate} />
           </label>
         </div>
       </FormSection>

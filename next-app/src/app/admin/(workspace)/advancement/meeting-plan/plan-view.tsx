@@ -9,6 +9,7 @@ import {
   type TierId
 } from '@/lib/meeting-plan-types';
 import { generatePlan, publishPlan, unpublishPlan } from './actions';
+import { DatePickerField } from '../../_components/date-picker-field';
 import styles from './meeting-plan.module.css';
 
 export interface PublishedPlanRow {
@@ -80,11 +81,7 @@ export function PlanView({ published, defaultDate }: Props) {
       <div className={styles.generateBar}>
         <label className={styles.field}>
           Meeting date
-          <input
-            type="date"
-            value={meetingDate}
-            onChange={(e) => setMeetingDate(e.target.value)}
-          />
+          <DatePickerField value={meetingDate} onChange={setMeetingDate} />
         </label>
         <button
           type="button"

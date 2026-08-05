@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { fillMissingRankRequirements } from './actions';
 import type { Finding } from './types';
+import { DatePickerField } from '../../_components/date-picker-field';
 import styles from './audits.module.css';
 
 function todayISO(): string {
@@ -110,11 +111,7 @@ export function AuditCard({
       <div className={styles.fillRow}>
         <label className={styles.fillField}>
           <span>Date Completed</span>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
+          <DatePickerField value={date} onChange={setDate} />
         </label>
         <label className={styles.fillField}>
           <span>Signed Off By</span>

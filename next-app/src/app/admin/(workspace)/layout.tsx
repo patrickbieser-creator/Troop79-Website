@@ -28,6 +28,10 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
         <SubNav role={role} />
         <main className={styles.main}>{children}</main>
       </div>
+      {/* Portal target for admin components (e.g. DatePickerField) that need
+          document.body-level positioning but must stay inside .adminRoot's
+          DOM subtree to inherit its --admin-* CSS custom properties. */}
+      <div id="admin-popover-root" />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { createLeader, updateLeader } from '../lookups/actions';
 import { ageOn, yptStatus } from '@/lib/demographics';
 import type { ScoutRow } from './scout-form';
+import { DatePickerField } from '../../_components/date-picker-field';
 import styles from '../lookups/lookups.module.css';
 
 export type LeaderType = 'adult' | 'youth' | 'source';
@@ -301,23 +302,13 @@ export function LeaderForm({
           </label>
           <label className={styles.editField}>
             <span className={styles.editLabel}>Health Form Date</span>
-            <input
-              type="date"
-              value={healthFormDate}
-              onChange={(e) => setHealthFormDate(e.target.value)}
-              className={styles.editInput}
-            />
+            <DatePickerField value={healthFormDate} onChange={setHealthFormDate} />
           </label>
           <label className={styles.editField}>
             <span className={styles.editLabel}>
               Birthdate{ageOn(birthdate || null) !== null ? ` · age ${ageOn(birthdate || null)}` : ''}
             </span>
-            <input
-              type="date"
-              value={birthdate}
-              onChange={(e) => setBirthdate(e.target.value)}
-              className={styles.editInput}
-            />
+            <DatePickerField value={birthdate} onChange={setBirthdate} />
           </label>
           <label className={styles.editField}>
             <span className={styles.editLabel}>BSA Member ID</span>
@@ -336,12 +327,7 @@ export function LeaderForm({
                 ? ` · ${yptStatus(yptCompleted).status} (expires ${yptStatus(yptCompleted).expires})`
                 : ''}
             </span>
-            <input
-              type="date"
-              value={yptCompleted}
-              onChange={(e) => setYptCompleted(e.target.value)}
-              className={styles.editInput}
-            />
+            <DatePickerField value={yptCompleted} onChange={setYptCompleted} />
           </label>
         </div>
       </div>

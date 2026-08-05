@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { useLookupTable } from './use-lookup-table';
+import { DatePickerField } from '../../_components/date-picker-field';
 import styles from './lookups.module.css';
 
 type ActionResult = { ok: boolean; error?: string };
@@ -190,13 +191,7 @@ export function EventEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
             }
           }}
         />
-        <input
-          type="date"
-          className={styles.editInput}
-          style={{ maxWidth: 160 }}
-          value={newDate}
-          onChange={(e) => setNewDate(e.target.value)}
-        />
+        <DatePickerField className={styles.dateField} value={newDate} onChange={setNewDate} />
         <select
           className={styles.editInput}
           style={{ maxWidth: 160 }}
@@ -262,11 +257,10 @@ export function EventEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
               <tr key={row.id}>
                 <td>{row.name}</td>
                 <td>
-                  <input
-                    type="date"
-                    className={styles.editInput}
+                  <DatePickerField
+                    className={styles.dateField}
                     value={row.start_date ?? ''}
-                    onChange={(e) => changeDate(row, e.target.value)}
+                    onChange={(date) => changeDate(row, date)}
                     disabled={busyId === row.id}
                   />
                 </td>

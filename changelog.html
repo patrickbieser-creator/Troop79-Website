@@ -497,6 +497,40 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.18.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.18.0</span>
+        <span class="release-date">August 5, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Admin date picker</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Replaced the browser&rsquo;s bare date input across the Leader Workspace with a
+              proper calendar picker &mdash; type a date or click through a month grid, with
+              Clear/Today shortcuts and the same look everywhere it appears. Landed on 14 screens
+              (Roster, Ledger, Fast Entry, Audits, Meetings, Events, and the News calendar/photo
+              tools); the two read-only report-filter pages and the public profile&rsquo;s
+              birthdate field were left on the native picker on purpose &mdash; a calendar popup
+              is worse for typing decades-old dates, and the report filters don&rsquo;t carry
+              their own client-side state to hang a picker off of.
+            </span>
+          </li>
+          <li>
+            <span>
+              Works correctly inside the app&rsquo;s popup dialogs too (Add Scout, Add Leader,
+              Edit Ledger Entry, and others) &mdash; the calendar now detects when it&rsquo;s
+              opened from inside one of those and renders itself above it instead of getting
+              hidden behind it.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.17.1 -->
     <div class="release">
       <div class="release-header">

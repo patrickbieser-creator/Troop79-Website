@@ -51,8 +51,14 @@
 .tag { display: inline-block; margin-left: 6px; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #8b6914; background: #fdf6e6; border-radius: 3px; padding: 1px 5px; }
 .rowDel { background: none; border: none; color: #a04a3d; font-size: 12px; text-decoration: underline; cursor: pointer; padding: 0; }
 .addRow { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
-.addRow input, .addRow select { padding: 6px 9px; border: 1px solid var(--admin-gray-300, #ccc); border-radius: 3px; font-size: 13px; font-family: inherit; }
-.addRow input[type="text"], .addRow input:not([type]) { min-width: 170px; }
+/* Child combinator on purpose: DatePickerField renders its own nested
+   <input>, and a plain `.addRow input` descendant selector would also catch
+   that inner input, fighting the component's own border/padding. `.inlineChk
+   input` keeps the existing "needs attendance" checkbox (nested one level
+   inside its own label) styled exactly as before. */
+.addRow > input, .addRow > select, .addRow .inlineChk input { padding: 6px 9px; border: 1px solid var(--admin-gray-300, #ccc); border-radius: 3px; font-size: 13px; font-family: inherit; }
+.addRow > input[type="text"], .addRow > input:not([type]) { min-width: 170px; }
+.dateField { width: 150px; }
 .inlineChk { display: flex; align-items: center; gap: 5px; font-size: 12.5px; }
 .coverList { list-style: none; font-size: 13px; }
 .coverList li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--admin-gray-100, #f0f0f0); }

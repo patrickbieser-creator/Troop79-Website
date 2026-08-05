@@ -10,6 +10,7 @@ import {
   mbHasPending
 } from './picker';
 import { nodeSatisfied } from './satisfaction';
+import { DatePickerField } from '../../_components/date-picker-field';
 import {
   itemKey,
   mbAwardItem,
@@ -261,12 +262,7 @@ export function MbFocusModal({
           <div className={styles.mbModalMeta}>
             <label className={styles.field}>
               <span className={styles.fieldLabel}>Date Completed</span>
-              <input
-                type="date"
-                className={styles.input}
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
+              <DatePickerField value={date} onChange={setDate} />
             </label>
             <label className={styles.field}>
               <span className={styles.fieldLabel}>Signed Off By</span>

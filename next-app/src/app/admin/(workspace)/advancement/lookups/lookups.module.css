@@ -514,6 +514,8 @@
 .tagDeleteBtn:hover { background: #fdf0ef; border-color: var(--admin-danger); }
 .tagError { color: #b5484d; font-size: 12px; margin-top: 8px; }
 
+.dateField { width: 150px; }
+
 .sortHeaderBtn {
   background: none; border: none; padding: 0; margin: 0; font: inherit;
   color: inherit; cursor: pointer; white-space: nowrap;

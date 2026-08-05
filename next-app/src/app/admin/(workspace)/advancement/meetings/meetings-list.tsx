@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Meeting } from '@/lib/supabase/types';
 import { formatLongDate } from '@/lib/dates';
+import { DatePickerField } from '../../_components/date-picker-field';
 import styles from './meetings.module.css';
 
 const PAGE_SIZE = 25;
@@ -148,13 +149,10 @@ export function MeetingsList({ rows, attendance, defaultDate, onCreate, onDelete
         >
           Date {dir === 'desc' ? '↓' : '↑'}
         </button>
-        <input
-          type="date"
-          className={styles.dateInput}
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          aria-label="New meeting date"
-        />
+        <label className={styles.dateFieldLabel}>
+          <span className={styles.srOnly}>New meeting date</span>
+          <DatePickerField className={styles.dateField} value={date} onChange={setDate} />
+        </label>
         <button type="button" className={styles.addBtn} onClick={create} disabled={isPending || !date}>
           {isPending ? 'Creating…' : '+ New Meeting'}
         </button>

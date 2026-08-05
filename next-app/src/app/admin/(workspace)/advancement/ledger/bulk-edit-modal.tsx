@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { bulkUpdateLedgerEntries } from './actions';
 import type { LedgerEntry } from '@/lib/supabase/types';
+import { DatePickerField } from '../../_components/date-picker-field';
 import styles from './ledger.module.css';
 
 type Row = LedgerEntry & { scoutName?: string };
@@ -265,14 +266,7 @@ function FieldInput({
   leaders: { code: string; name: string }[];
 }) {
   if (field.type === 'date') {
-    return (
-      <input
-        type="date"
-        className={styles.editInput}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    );
+    return <DatePickerField value={value} onChange={onChange} />;
   }
   if (field.type === 'scout') {
     return (
