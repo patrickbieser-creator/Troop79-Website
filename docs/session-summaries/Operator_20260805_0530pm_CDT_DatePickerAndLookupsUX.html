@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DatePicker &amp; Lookups UX — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #2e4530;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #faf6ef;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); }
+        tr:hover { background: var(--nw-sage); }
+
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+
+        @media print {
+            body { background: white; }
+            header { padding: 1.5rem; }
+            .container { padding: 1rem; }
+            .stat { break-inside: avoid; }
+        }
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.5rem; }
+            .stats { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Custom Date Picker &amp; Lookups Search/Add UX</h1>
+        <p class="subtitle">Replaced the browser's native date input app-wide, then fixed the search-vs-add ambiguity on the admin taxonomy screen</p>
+        <div class="meta">
+            <span>&#128197; August 5, 2026</span>
+            <span>&#129302; Operator</span>
+            <span>&#128204; Troop79-Website</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">14</div><div class="label">Admin Files Converted</div></div>
+            <div class="stat"><div class="number">19</div><div class="label">Date Fields Migrated</div></div>
+            <div class="stat"><div class="number">3</div><div class="label">Real Bugs Found &amp; Fixed</div></div>
+            <div class="stat"><div class="number">2</div><div class="label">Decisions Recorded</div></div>
+            <div class="stat"><div class="number">2</div><div class="label">Production Deploys</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <h3>Custom calendar date picker, replacing native <span class="file-path">type="date"</span> app-wide</h3>
+        <p>Built a shared <code>DatePickerField</code> component (react-day-picker) — text input showing the formatted date, calendar-icon trigger, typed-entry parsing, Clear/Today shortcuts, themed with the admin's existing color/spacing tokens. Landed first on the Events lookup editor, verified end-to-end in the browser, then rolled out via six parallel subagents to 14 more files across Roster, Ledger, Fast Entry, Audits, Meetings, Events, and News — 19 date fields total.</p>
+
+        <div class="callout callout-teal">
+            <strong>Three files were left on the native picker on purpose, not by oversight:</strong> two read-only report-filter pages are zero-JS server components with no client state to hang a controlled picker off of, and the public profile's birthdate field is better served by native typed entry than a decades-of-month-paging calendar popup.
+        </div>
+
+        <h3>Real architecture problem found mid-rollout: native &lt;dialog&gt; top-layer stacking</h3>
+        <p>Seven of the seventeen candidate files render their date field inside a native <span class="file-path">&lt;dialog&gt;</span> shown via <span class="file-path">showModal()</span>. Dialogs promote to the browser's top layer, which renders above all normal-stacking-context content regardless of z-index — the calendar popover was rendering <em>behind</em> the open dialog, not above it. Fixed by having the component detect the nearest open ancestor dialog at open-time and portal into it instead of the default target, so it shares the dialog's top-layer promotion while still inheriting the admin's theme tokens. Verified on two different dialogs (Roster's Add Scout, Calendar's Add Entry) before rolling out to the remaining five.</p>
+
+        <h3>Two more bugs caught by actually using the thing, not just building it</h3>
+        <p>The popover portaling to <span class="file-path">document.body</span> broke CSS variable inheritance (the admin's color tokens are scoped to a parent element the popover no longer lived inside) — fixed with a dedicated portal target inside that parent. Separately, closing the popover via an outside click updated React state but didn't blur the actual input field, so clicking the same field a second time never reopened it — fixed by also opening on click, not just on focus. Neither was caught by lint, typecheck, or the production build; both surfaced only from driving the real interaction in a browser.</p>
+
+        <h3>Lookups &amp; Admin: search box unconfused from add</h3>
+        <p>Events, Service Projects, Leadership Positions, Skills, and Tags each had a top text box that silently did double duty — sometimes it filtered the list, sometimes it was the field for a brand-new entry, depending on how many rows the card had, with no visual cue which one you were looking at. That box is now always search; the <strong>+ Add</strong> button reveals a small form (name plus whatever else that item needs — date/type for Events, a checkbox for Skills) with its own Cancel/Add buttons instead of sitting inline permanently. Tags, which had no search at all, was brought onto the same shared filtering pattern as its siblings. Households' add row moved from the bottom of the card to the top, matching where every other card's add action lives.</p>
+
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>Decision</th><th>Why</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td><strong>DatePickerField portals into the nearest open dialog when one exists</strong></td>
+                    <td>Smaller, one-component fix that shares an existing top-layer promotion, instead of rebuilding the popover on the native Popover API and trading one stacking subtlety for another.</td>
+                </tr>
+                <tr>
+                    <td><strong>Lookups search is opt-in per card, not a global default change</strong></td>
+                    <td>Merit Badge Catalog, Internal Requirement Codes, Leader Skills, and Scout Instructors weren't part of the ask — an opt-in flag on the shared hook keeps their existing behavior untouched.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li><strong>Changelog version drift:</strong> <span class="file-path">changelog.html</span> hadn't been updated since July 21 — this session's entries were mislabeled v1.18.0/v1.18.1, colliding with the true version numbers already recorded in project history. Needs a renumber/backfill pass next time the changelog is touched.</li>
+            <li>Everything else on the existing backlog is unchanged (Resource Library Phase 2, merit badge official text, <span class="file-path">scout_parents</span> retirement soak week, etc.)</li>
+        </ul>
+
+        <h2>Files Changed</h2>
+        <p>21 files across two commits (<span class="file-path">4180edc</span>, <span class="file-path">5124e4f</span>), both deployed and verified live:</p>
+        <ul>
+            <li><span class="badge badge-green">NEW</span> <span class="file-path">admin/(workspace)/_components/date-picker-field.tsx</span> + <span class="file-path">.module.css</span> — the shared component</li>
+            <li><span class="badge badge-gold">MODIFIED</span> 14 admin files wired to the new component (Roster, Ledger, Fast Entry, Audits, Meetings, Events, News)</li>
+            <li><span class="badge badge-gold">MODIFIED</span> <span class="file-path">admin/(workspace)/layout.tsx</span> — portal target for the date picker's popover</li>
+            <li><span class="badge badge-gold">MODIFIED</span> 7 files in <span class="file-path">advancement/lookups/</span> — search/add split, plus the shared search hook</li>
+            <li><span class="badge badge-gold">MODIFIED</span> <span class="file-path">changelog.html</span> — two entries added (versioning caveat above)</li>
+        </ul>
+
+    </div>
+
+    <footer>
+        <strong>Troop 79</strong> — Troop79-Website<br>
+        Session Summary — August 5, 2026 — Operator
+    </footer>
+</body>
+</html>
