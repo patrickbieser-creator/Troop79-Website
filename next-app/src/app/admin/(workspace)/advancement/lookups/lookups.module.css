@@ -107,6 +107,42 @@
   justify-content: flex-end;
   margin-bottom: 10px;
 }
+
+/* Search-left / Add-right toolbar (2026-08-05) — the top text box on these
+   cards is unambiguously search now; adding lives behind the button and
+   reveals .addPanel below instead of sitting inline permanently. */
+.cardToolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.cardToolbar .tableSearch {
+  margin-bottom: 0;
+  flex: 1 1 260px;
+}
+.cardToolbar .addBtn {
+  flex-shrink: 0;
+}
+
+/* Reveal-on-click add form — replaces the old always-visible add row. */
+.addPanel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  background: var(--admin-gray-50);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+.addPanelActions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
 .addBtn {
   font-family: inherit;
   font-size: 11px;
@@ -459,30 +495,6 @@
   background: none; border: none; padding: 0; font: inherit; cursor: pointer;
   color: var(--admin-navy); text-decoration: underline;
 }
-
-.tagAddForm { display: flex; gap: 8px; margin-bottom: 16px; }
-.tagAddForm input {
-  border: 1px solid var(--admin-gray-300);
-  border-radius: var(--admin-radius-sm);
-  padding: 7px 10px;
-  font-family: inherit;
-  font-size: 13px;
-  width: 240px;
-}
-.tagAddBtn {
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .04em;
-  background: var(--admin-navy);
-  color: var(--admin-white);
-  border: 1px solid var(--admin-navy);
-  padding: 7px 16px;
-  border-radius: var(--admin-radius-sm);
-  cursor: pointer;
-}
-.tagAddBtn:hover { background: var(--admin-navy-hover); }
-.tagAddBtn:disabled { opacity: .5; cursor: not-allowed; }
 
 .tagList {
   background: var(--admin-white);

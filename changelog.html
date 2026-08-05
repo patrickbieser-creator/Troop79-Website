@@ -497,6 +497,37 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.18.1 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.18.1</span>
+        <span class="release-date">August 5, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Fix</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Lookups &amp; Admin: search vs. add, unconfused</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Events, Service Projects, Leadership Positions, Skills, and Tags all had a top text
+              box that quietly did double duty &mdash; sometimes search, sometimes the field for a
+              brand-new entry, with no way to tell which from looking at it. That box is now
+              always a search filter; clicking <strong>+ Add</strong> reveals a small form (name,
+              plus whatever else that item needs &mdash; date/type for Events, the
+              &ldquo;older scout may teach&rdquo; checkbox for Skills) with its own Cancel/Add
+              buttons, instead of sitting inline permanently.
+            </span>
+          </li>
+          <li>
+            <span>
+              Households: the &ldquo;add a household&rdquo; row moved from the bottom of the card
+              to the top, matching where every other card&rsquo;s add action lives.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.18.0 -->
     <div class="release">
       <div class="release-header">

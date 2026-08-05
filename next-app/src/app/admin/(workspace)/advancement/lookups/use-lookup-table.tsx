@@ -14,6 +14,14 @@
  *   {t.searchEl}
  *   <div className={t.scrollClass}><table>…{t.rows.map(...)}…</table></div>
  *   {t.footerEl}
+ *
+ * Pass `{ alwaysSearch: true }` to force the search box on regardless of row
+ * count — used by the small name-only lookups (Events, Service Projects,
+ * Leadership Positions, Skills, Tags) so their top text box is unambiguously
+ * "search," never doubling as the add-new-row field (2026-08-05: that dual
+ * meaning, present on some cards but not others, was confusing). Cards not
+ * in that list (Merit Badge Catalog, Internal Requirement Codes, Leader
+ * Skills, Scout Instructors) keep the row-count-gated default.
  */
 
 import { useMemo, useState } from 'react';
@@ -23,12 +31,16 @@ import styles from './lookups.module.css';
 const COLLAPSED_ROWS = 15;
 const SEARCH_THRESHOLD = 50;
 
-export function useLookupTable<T>(all: T[], searchText: (row: T) => string) {
+export function useLookupTable<T>(
+  all: T[],
+  searchText: (row: T) => string,
+  opts?: { alwaysSearch?: boolean }
+) {
   const { expanded } = useLookupCard();
   const [query, setQuery] = useState('');
   const [showAll, setShowAll] = useState(false);
 
-  const searchable = all.length > SEARCH_THRESHOLD;
+  const searchable = opts?.alwaysSearch || all.length > SEARCH_THRESHOLD;
   const q = query.trim().toLowerCase();
 
   const matching = useMemo(

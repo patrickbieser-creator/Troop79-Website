@@ -25,12 +25,13 @@ interface Props {
  * instructor on the Meeting Plan.
  */
 export function SkillsEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
+  const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState('');
   const [newYouth, setNewYouth] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const t = useLookupTable(rows, (r) => r.name);
+  const t = useLookupTable(rows, (r) => r.name, { alwaysSearch: true });
 
   function add() {
     const name = newName.trim();
@@ -47,7 +48,15 @@ export function SkillsEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
       }
       setNewName('');
       setNewYouth(false);
+      setAdding(false);
     });
+  }
+
+  function cancelAdd() {
+    setNewName('');
+    setNewYouth(false);
+    setErr(null);
+    setAdding(false);
   }
 
   function rename(row: SkillRow) {
@@ -97,38 +106,57 @@ export function SkillsEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
 
   return (
     <>
-      <div className={styles.cardActions} style={{ gap: 8, alignItems: 'center' }}>
-        <input
-          type="text"
-          className={styles.editInput}
-          style={{ maxWidth: 220 }}
-          placeholder="New skill name"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              add();
-            }
-          }}
-        />
-        <label style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <input
-            type="checkbox"
-            checked={newYouth}
-            onChange={(e) => setNewYouth(e.target.checked)}
-          />
-          Older scout may teach
-        </label>
-        <button
-          type="button"
-          className={styles.addBtn}
-          onClick={add}
-          disabled={isPending || !newName.trim()}
-        >
+      <div className={styles.cardToolbar}>
+        {t.searchEl}
+        <button type="button" className={styles.addBtn} onClick={() => setAdding(true)}>
           + Add Skill
         </button>
       </div>
+
+      {adding && (
+        <div className={styles.addPanel}>
+          <input
+            type="text"
+            className={styles.editInput}
+            style={{ maxWidth: 220 }}
+            placeholder="New skill name"
+            value={newName}
+            autoFocus
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                add();
+              }
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                cancelAdd();
+              }
+            }}
+          />
+          <label style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <input
+              type="checkbox"
+              checked={newYouth}
+              onChange={(e) => setNewYouth(e.target.checked)}
+            />
+            Older scout may teach
+          </label>
+          <div className={styles.addPanelActions}>
+            <button type="button" className={styles.editBtn} onClick={cancelAdd} disabled={isPending}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className={styles.addBtn}
+              onClick={add}
+              disabled={isPending || !newName.trim()}
+            >
+              Add Skill
+            </button>
+          </div>
+        </div>
+      )}
 
       {err && (
         <div className={styles.editError} style={{ marginBottom: 10 }}>
@@ -136,7 +164,6 @@ export function SkillsEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
         </div>
       )}
 
-      {t.searchEl}
       <div className={t.scrollClass}>
       <table className={styles.table}>
         <thead>

@@ -51,6 +51,32 @@ export function HouseholdsManager({ households }: { households: HouseholdRow[] }
     <div>
       {error && <div className={styles.rowError}>{error}</div>}
 
+      <div className={styles.addRow}>
+        <input
+          className={styles.input}
+          value={newLabel}
+          placeholder="New household — e.g. Stollenwerk (Joe &amp; Mindy)"
+          disabled={pending}
+          onChange={(e) => setNewLabel(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && newLabel.trim()) {
+              run(() => createHousehold(newLabel));
+              setNewLabel('');
+            }
+          }}
+        />
+        <button
+          className={styles.smallBtn}
+          disabled={pending || !newLabel.trim()}
+          onClick={() => {
+            run(() => createHousehold(newLabel));
+            setNewLabel('');
+          }}
+        >
+          + Add household
+        </button>
+      </div>
+
       <table className={styles.table}>
         <thead>
           <tr>
@@ -153,31 +179,6 @@ export function HouseholdsManager({ households }: { households: HouseholdRow[] }
         </tbody>
       </table>
 
-      <div className={styles.addRow}>
-        <input
-          className={styles.input}
-          value={newLabel}
-          placeholder="New household — e.g. Stollenwerk (Joe &amp; Mindy)"
-          disabled={pending}
-          onChange={(e) => setNewLabel(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && newLabel.trim()) {
-              run(() => createHousehold(newLabel));
-              setNewLabel('');
-            }
-          }}
-        />
-        <button
-          className={styles.smallBtn}
-          disabled={pending || !newLabel.trim()}
-          onClick={() => {
-            run(() => createHousehold(newLabel));
-            setNewLabel('');
-          }}
-        >
-          + Add household
-        </button>
-      </div>
       <p className={styles.hint}>
         Who belongs to a household is set on each person, under Roster. Only households with nobody
         in them can be deleted.

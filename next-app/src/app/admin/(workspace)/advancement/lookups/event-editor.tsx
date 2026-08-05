@@ -42,6 +42,7 @@ const KIND_NAME = new Map(KIND_OPTIONS.map((o) => [o.value, o.label]));
 type SortKey = 'name' | 'start_date';
 
 export function EventEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
+  const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState('');
   const [newKind, setNewKind] = useState('');
   const [newDate, setNewDate] = useState('');
@@ -70,7 +71,7 @@ export function EventEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
     return copy;
   }, [rows, sortKey, sortDir]);
 
-  const t = useLookupTable(sorted, (r) => r.name);
+  const t = useLookupTable(sorted, (r) => r.name, { alwaysSearch: true });
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -103,7 +104,16 @@ export function EventEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
       setNewName('');
       setNewKind('');
       setNewDate('');
+      setAdding(false);
     });
+  }
+
+  function cancelAdd() {
+    setNewName('');
+    setNewKind('');
+    setNewDate('');
+    setErr(null);
+    setAdding(false);
   }
 
   function rename(row: EventRow) {
@@ -176,44 +186,63 @@ export function EventEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
 
   return (
     <>
-      <div className={styles.cardActions} style={{ gap: 8 }}>
-        <input
-          type="text"
-          className={styles.editInput}
-          style={{ maxWidth: 220 }}
-          placeholder="New event name"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              add();
-            }
-          }}
-        />
-        <DatePickerField className={styles.dateField} value={newDate} onChange={setNewDate} />
-        <select
-          className={styles.editInput}
-          style={{ maxWidth: 160 }}
-          value={newKind}
-          onChange={(e) => setNewKind(e.target.value)}
-        >
-          <option value="">— Type —</option>
-          {KIND_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
-          className={styles.addBtn}
-          onClick={add}
-          disabled={isPending || !newName.trim() || !newKind}
-        >
+      <div className={styles.cardToolbar}>
+        {t.searchEl}
+        <button type="button" className={styles.addBtn} onClick={() => setAdding(true)}>
           + Add Event
         </button>
       </div>
+
+      {adding && (
+        <div className={styles.addPanel}>
+          <input
+            type="text"
+            className={styles.editInput}
+            style={{ maxWidth: 220 }}
+            placeholder="New event name"
+            value={newName}
+            autoFocus
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                add();
+              }
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                cancelAdd();
+              }
+            }}
+          />
+          <DatePickerField className={styles.dateField} value={newDate} onChange={setNewDate} />
+          <select
+            className={styles.editInput}
+            style={{ maxWidth: 160 }}
+            value={newKind}
+            onChange={(e) => setNewKind(e.target.value)}
+          >
+            <option value="">— Type —</option>
+            {KIND_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <div className={styles.addPanelActions}>
+            <button type="button" className={styles.editBtn} onClick={cancelAdd} disabled={isPending}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className={styles.addBtn}
+              onClick={add}
+              disabled={isPending || !newName.trim() || !newKind}
+            >
+              Add Event
+            </button>
+          </div>
+        </div>
+      )}
 
       {err && (
         <div className={styles.editError} style={{ marginBottom: 10 }}>
@@ -221,7 +250,6 @@ export function EventEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
         </div>
       )}
 
-      {t.searchEl}
       <div className={t.scrollClass}>
       <table className={styles.table}>
         <thead>

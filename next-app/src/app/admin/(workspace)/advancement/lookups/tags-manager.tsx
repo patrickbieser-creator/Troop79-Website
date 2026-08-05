@@ -4,13 +4,16 @@ import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Tag } from '@/lib/supabase/types';
 import { createTag, deleteTag } from './actions';
+import { useLookupTable } from './use-lookup-table';
 import styles from './lookups.module.css';
 
 export function TagsManager({ tags }: { tags: Tag[] }) {
   const router = useRouter();
+  const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
+  const t = useLookupTable(tags, (tag) => `${tag.name} ${tag.slug}`, { alwaysSearch: true });
 
   function handleAdd() {
     const name = inputRef.current?.value.trim();
@@ -25,8 +28,15 @@ export function TagsManager({ tags }: { tags: Tag[] }) {
         return;
       }
       if (inputRef.current) inputRef.current.value = '';
+      setAdding(false);
       router.refresh();
     });
+  }
+
+  function cancelAdd() {
+    if (inputRef.current) inputRef.current.value = '';
+    setError(null);
+    setAdding(false);
   }
 
   function handleDelete(id: number, name: string) {
@@ -43,44 +53,71 @@ export function TagsManager({ tags }: { tags: Tag[] }) {
 
   return (
     <>
-      <div className={styles.tagAddForm}>
-        <input
-          ref={inputRef}
-          type="text"
-          placeholder="New tag name…"
-          disabled={isPending}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') handleAdd();
-          }}
-        />
-        <button type="button" className={styles.tagAddBtn} disabled={isPending} onClick={handleAdd}>
+      <div className={styles.cardToolbar}>
+        {t.searchEl}
+        <button type="button" className={styles.addBtn} onClick={() => setAdding(true)}>
           + Add Tag
         </button>
       </div>
-      {error && <div className={styles.tagError}>{error}</div>}
 
-      <div className={styles.tagList}>
-        {tags.map((t) => (
-          <div key={t.id} className={styles.tagRow}>
-            <span>
-              {t.name}
-              <span className={styles.tagSlug}>/{t.slug}</span>
-            </span>
-            <button
-              type="button"
-              className={styles.tagDeleteBtn}
-              disabled={isPending}
-              onClick={() => {
-                if (window.confirm(`Delete "${t.name}"? It will be removed from any article that has it.`)) {
-                  handleDelete(t.id, t.name);
-                }
-              }}
-            >
-              Delete
+      {adding && (
+        <div className={styles.addPanel}>
+          <input
+            ref={inputRef}
+            type="text"
+            className={styles.editInput}
+            style={{ maxWidth: 220 }}
+            placeholder="New tag name…"
+            autoFocus
+            disabled={isPending}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleAdd();
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                cancelAdd();
+              }
+            }}
+          />
+          <div className={styles.addPanelActions}>
+            <button type="button" className={styles.editBtn} onClick={cancelAdd} disabled={isPending}>
+              Cancel
+            </button>
+            <button type="button" className={styles.addBtn} disabled={isPending} onClick={handleAdd}>
+              Add Tag
             </button>
           </div>
-        ))}
+        </div>
+      )}
+
+      {error && <div className={styles.tagError}>{error}</div>}
+
+      <div className={t.scrollClass}>
+        <div className={styles.tagList}>
+          {t.rows.map((row) => (
+            <div key={row.id} className={styles.tagRow}>
+              <span>
+                {row.name}
+                <span className={styles.tagSlug}>/{row.slug}</span>
+              </span>
+              <button
+                type="button"
+                className={styles.tagDeleteBtn}
+                disabled={isPending}
+                onClick={() => {
+                  if (
+                    window.confirm(`Delete "${row.name}"? It will be removed from any article that has it.`)
+                  ) {
+                    handleDelete(row.id, row.name);
+                  }
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
+      {t.footerEl}
     </>
   );
 }
