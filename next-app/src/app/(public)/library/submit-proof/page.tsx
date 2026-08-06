@@ -2,7 +2,8 @@
  * /library/submit-proof — "I did this" (Plans/Resource-Library.md Phase 2).
  * Reached only from a requirement/badge page's CTA, which always supplies
  * ?target=rank_req:{key} or ?target=mb_req:{key} — see the module comment
- * in actions.ts for the three gated paths (family / scout / leader-redirect).
+ * in actions.ts for why only the family path actually submits (scout and
+ * leader sessions are both refused, Plans/Family-Identity-Auth.md Phase 0).
  */
 import Link from 'next/link';
 import { cookies } from 'next/headers';
@@ -19,7 +20,6 @@ import {
   switchProofHouseholdAction
 } from './actions';
 import ProofHouseholdPicker from './proof-household-picker';
-import ScoutRosterPicker from './scout-roster-picker';
 import styles from '../library.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -39,6 +39,7 @@ const ERR_MESSAGES: Record<string, string> = {
   scout: 'Pick a scout to continue.',
   target: 'This link is missing which requirement it’s for — go back and try again.',
   leader: 'Leaders sign requirements off directly through Fast Entry.',
+  'scout-disabled': 'Scouts can’t submit proof directly yet — see below for what to do instead.',
   photo: 'That photo could not be uploaded — try a different file.',
   link: 'A working link (starting with http) is required.',
   empty: 'Add a photo, a link, or a short write-up.',
@@ -70,19 +71,6 @@ async function loadRequirementContext(target: string): Promise<RequirementContex
     label: resolved.label ? `${resolved.code} — ${resolved.label}` : `Requirement ${resolved.code}`,
     backHref: `/library/mb/${resolved.parentId}`
   };
-}
-
-async function loadActiveScoutsLite(): Promise<{ id: string; displayName: string }[]> {
-  const supabase = createAdminClient();
-  const { data } = await supabase
-    .from('scouts')
-    .select('id, display_name')
-    .eq('active', true)
-    .order('display_name');
-  return ((data ?? []) as { id: string; display_name: string }[]).map((s) => ({
-    id: s.id,
-    displayName: s.display_name
-  }));
 }
 
 export default async function SubmitProofPage({
@@ -121,7 +109,7 @@ export default async function SubmitProofPage({
         ) : audience === 'leader' ? (
           <LeaderRedirectCard />
         ) : audience === 'scout' ? (
-          <ScoutSubmitForm target={target} err={err} />
+          <ScoutDisabledCard err={err} />
         ) : (
           <FamilySubmitForm target={target} err={err} />
         )}
@@ -168,6 +156,34 @@ function LeaderRedirectCard() {
       <p style={{ marginTop: 16 }}>
         <Link className={styles.btnPrimary} href="/admin/advancement/fast-entry">
           Open Fast Entry →
+        </Link>
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Scout-login sessions are refused server-side (Plans/Family-Identity-Auth.md
+ * Phase 0) — this card explains why AND what to do instead, rather than
+ * letting a scout fill out the whole form and get refused only on submit
+ * (explicit acceptance criterion: "do not dead-end a scout").
+ */
+function ScoutDisabledCard({ err }: { err?: string }) {
+  return (
+    <div className={styles.formCard}>
+      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, marginBottom: 8 }}>
+        Ask a parent, or use a family device
+      </h2>
+      {err && ERR_MESSAGES[err] && <p className={styles.fieldError}>{ERR_MESSAGES[err]}</p>}
+      <p className={styles.fieldHint} style={{ fontSize: 14 }}>
+        Proof submissions can&rsquo;t be sent from the scout login right now &mdash; there&rsquo;s
+        no way yet to prove which scout is submitting, so this login can&rsquo;t send proof for
+        anyone. Show your leader in person, or have a parent sign in on their phone or computer
+        with the troop password to send it in for you.
+      </p>
+      <p style={{ marginTop: 16 }}>
+        <Link className={styles.btnSecondary} href="/library">
+          Back to the Library
         </Link>
       </p>
     </div>
@@ -272,19 +288,6 @@ async function FamilySubmitForm({ target, err }: { target: string; err?: string 
       )}
 
       <ProofFields />
-    </form>
-  );
-}
-
-async function ScoutSubmitForm({ target, err }: { target: string; err?: string }) {
-  const scouts = await loadActiveScoutsLite();
-  return (
-    <form className={styles.formCard} action={submitProofAction}>
-      <input type="hidden" name="target" value={target} />
-      {err && ERR_MESSAGES[err] && <p className={styles.fieldError}>{ERR_MESSAGES[err]}</p>}
-      <ScoutRosterPicker scouts={scouts}>
-        <ProofFields />
-      </ScoutRosterPicker>
     </form>
   );
 }

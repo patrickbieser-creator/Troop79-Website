@@ -4,22 +4,31 @@
  * Resource Library Phase 2 — proof-of-completion submission
  * (Plans/Resource-Library.md).
  *
- * Two gated paths, same as the rest of the Library:
- *   - family: shared troop password + a household bound to THIS device via
- *     lib/profile-household-session.ts (Patrick, 2026-08-06 — reused from
- *     /profile rather than Event Signup's URL-param picker, because proof
- *     submission is a repeated action across many pages over weeks, not a
- *     one-shot transaction). Scout choice is validated server-side against
- *     the bound household — never trust the posted scoutId alone.
- *   - scout: the shared scout admin login. No per-scout identity exists at
- *     that layer (D-037's accepted trust model, same as FAMILY_PASSWORD/
- *     D-027) — the roster picker is a courtesy, not a binding proof; the
- *     leader reviewing the submission is the actual check on who it's from.
+ * Exactly ONE gated path submits: family — shared troop password + a
+ * household bound to THIS device via lib/profile-household-session.ts
+ * (Patrick, 2026-08-06 — reused from /profile rather than Event Signup's
+ * URL-param picker, because proof submission is a repeated action across
+ * many pages over weeks, not a one-shot transaction). Scout choice is
+ * validated server-side against the bound household — never trust the
+ * posted scoutId alone.
  *
- * A leader session is deliberately NOT a third path here: a leader who
- * personally witnesses a requirement being met signs it off directly through
- * Fast Entry (immediate ledger write, no review queue needed) rather than
- * filing a submission for their own later approval.
+ * Leader and scout sessions are both REFUSED here (Plans/Family-Identity-Auth.md
+ * Phase 0, Patrick 2026-08-06):
+ *   - leader: signs a requirement off directly through Fast Entry (immediate
+ *     ledger write, no review queue needed) rather than filing a submission
+ *     for their own later approval.
+ *   - scout: the shared SCOUT_PASSWORD login has no per-scout identity, so
+ *     ANY holder could claim proof under ANY active scout's name — this
+ *     used to be a roster picker (removed, see scout-roster-picker.tsx's
+ *     git history) on the premise that "the leader reviewing the submission
+ *     is the actual check on who it's from." That premise was never
+ *     load-bearing: the reviewer has no independent way to verify an
+ *     identity claim, and the failure mode isn't malice, it's a misclick
+ *     that puts a false record under the wrong scout's name in the troop's
+ *     system of record for rank. Closed entirely rather than narrowed —
+ *     see proofSubmissionAllowedFor() (lib/library.ts) — until Tier 2-S
+ *     (verified scout identity, not yet built) can prove which scout is
+ *     actually submitting.
  *
  * Nothing here touches ledger_entries — that only happens on admin approval
  * (lib/library-data.ts's approveSubmission, the same dup-blocked path Fast
@@ -38,6 +47,7 @@ import {
 } from '@/lib/profile-household-session';
 import { secretMatches } from '@/lib/signed-cookie';
 import { loadHouseholdByKey } from '@/lib/households';
+import { proofSubmissionAllowedFor } from '@/lib/library';
 import { resolveRequirementLabel } from '@/lib/library-data';
 import { uploadProofMedia } from '@/lib/proof-media';
 import { sendEmail, renderEmail } from '@/lib/email';
@@ -133,10 +143,13 @@ export async function submitProofAction(formData: FormData): Promise<void> {
   const target = String(formData.get('target') ?? '').trim();
   const keep = { target: target || undefined };
   if (!audience) redirect(proofUrl({ ...keep, gate: 'missing' }));
-  // Leaders sign requirements off directly through Fast Entry — see the
-  // module comment. A direct POST from a leader session is treated as a
-  // shape error rather than silently accepted or crashing.
-  if (audience === 'leader') redirect(proofUrl({ ...keep, err: 'leader' }));
+  // Leaders and scouts are both refused — see the module comment and
+  // proofSubmissionAllowedFor() (lib/library.ts). A direct POST from either
+  // session is treated as a shape error, same as any other guard clause
+  // here, rather than silently accepted or crashing.
+  if (!proofSubmissionAllowedFor(audience)) {
+    redirect(proofUrl({ ...keep, err: audience === 'leader' ? 'leader' : 'scout-disabled' }));
+  }
 
   const parsedTarget = parseTarget(target);
   if (!parsedTarget) redirect(proofUrl({ ...keep, err: 'target' }));
@@ -148,29 +161,17 @@ export async function submitProofAction(formData: FormData): Promise<void> {
 
   // Resolve + validate the scout server-side — never trust the posted id
   // alone (same reasoning as cancelSignupAction in events/[id]/actions.ts
-  // and submitChangeRequestAction in profile/actions.ts).
-  let scoutName: string | null = null;
-  let fromLabel: string;
-  if (audience === 'family') {
-    const jar = await cookies();
-    const household = await verifyProfileHouseholdSession(jar.get(PROFILE_HOUSEHOLD_COOKIE.name)?.value);
-    if (!household) redirect(proofUrl({ ...keep, err: 'household' }));
-    const party = await loadHouseholdByKey(household.householdKey);
-    const scout = party?.scouts.find((s) => s.id === scoutId);
-    if (!party || !scout) redirect(proofUrl({ ...keep, err: 'scout' }));
-    scoutName = scout.displayName;
-    fromLabel = party.label;
-  } else {
-    const { data: scoutRow } = await supabase
-      .from('scouts')
-      .select('id, display_name')
-      .eq('id', scoutId)
-      .eq('active', true)
-      .maybeSingle();
-    if (!scoutRow) redirect(proofUrl({ ...keep, err: 'scout' }));
-    scoutName = (scoutRow as { display_name: string }).display_name;
-    fromLabel = 'Scout login';
-  }
+  // and submitChangeRequestAction in profile/actions.ts). audience is
+  // guaranteed 'family' past the proofSubmissionAllowedFor() guard above —
+  // there is no other path left to branch on.
+  const jar = await cookies();
+  const household = await verifyProfileHouseholdSession(jar.get(PROFILE_HOUSEHOLD_COOKIE.name)?.value);
+  if (!household) redirect(proofUrl({ ...keep, err: 'household' }));
+  const party = await loadHouseholdByKey(household.householdKey);
+  const scout = party?.scouts.find((s) => s.id === scoutId);
+  if (!party || !scout) redirect(proofUrl({ ...keep, err: 'scout' }));
+  const scoutName = scout.displayName;
+  const fromLabel = party.label;
 
   // proof_type is inferred from what was actually filled in — priority
   // photo > link > write-up — rather than a separate radio the family also
@@ -212,7 +213,7 @@ export async function submitProofAction(formData: FormData): Promise<void> {
     body_md: bodyMd,
     link_url: linkUrl,
     media,
-    submitted_via: audience === 'family' ? 'family' : 'scout',
+    submitted_via: 'family',
     status: 'pending'
   });
   if (insertErr) redirect(proofUrl({ ...keep, err: 'save' }));
@@ -227,18 +228,18 @@ export async function submitProofAction(formData: FormData): Promise<void> {
   // the DB). The leader reviews the actual submission from the Proof Queue.
   const { html, text } = renderEmail({
     heading: 'Proof-of-completion submission',
-    intro: `${scoutName ?? scoutId} submitted proof for a requirement through the Resource Library. It's waiting in the review queue.`,
+    intro: `${scoutName} submitted proof for a requirement through the Resource Library. It's waiting in the review queue.`,
     bullets: [
-      `Scout: ${scoutName ?? scoutId}`,
+      `Scout: ${scoutName}`,
       `Requirement: ${reqLabel}`,
       `Proof type: ${proofType!}`,
-      `Submitted via: ${fromLabel}`
+      `Submitted via: ${fromLabel} household`
     ],
     outro: 'Review it from the Leader Workspace → Resource Library → Proof Queue.'
   });
   await sendEmail({
     to: [TROOP_EMAIL],
-    subject: `Proof submission pending review — ${scoutName ?? scoutId}`,
+    subject: `Proof submission pending review — ${scoutName}`,
     html,
     text,
     confirm: true

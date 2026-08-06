@@ -497,6 +497,55 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.21.1 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.21.1</span>
+        <span class="release-date">August 6, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Fix</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Proof submission: closed the scout free-pick, same day it shipped</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              The scout-login path to <code>/library/submit-proof</code> (shipped in v1.21.0, just
+              hours earlier) let anyone holding the shared scout password claim proof under
+              <strong>any</strong> active scout&rsquo;s name &mdash; a roster picker with no real
+              check behind it. The likeliest failure wasn&rsquo;t malice, it was a misclick: a
+              dropdown of thirty names, no confirmation step, feeding straight into an admin
+              approval that writes to the ledger.
+            </span>
+          </li>
+          <li>
+            <span>
+              The scout-login path is now refused outright, server-side, the same way a leader
+              session already was &mdash; not narrowed, not confirmation-gated, closed. The
+              &ldquo;I did this&rdquo; buttons on both rank and merit badge pages now explain what
+              to do instead (submit from a family device, or ask a parent) rather than letting a
+              scout fill out the whole form and get refused at the end. The family path is
+              untouched.
+            </span>
+          </li>
+          <li>
+            <span>
+              First step of <strong>Plans/Family-Identity-Auth.md</strong>, a new plan for
+              passwordless per-family identity (email/SMS magic link, later passkeys) that replaces
+              today&rsquo;s self-asserted household picker &mdash; the real fix Phase 1&ndash;4 will
+              build. This Phase 0 piece stands alone: no schema change, no dependency on the rest of
+              the plan.
+            </span>
+          </li>
+          <li>
+            <span>
+              qa-lead review: clear, ship verdict, no critical or high findings. 36 tests passing
+              (up from 32), lint/build clean.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.21.0 -->
     <div class="release">
       <div class="release-header">

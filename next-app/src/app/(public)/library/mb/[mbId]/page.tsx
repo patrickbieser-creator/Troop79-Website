@@ -11,6 +11,7 @@ import type { MeritBadge, MeritBadgeRequirement } from '@/lib/supabase/types';
 import { buildReqTree, topLevelCodeOf } from '@/lib/mb-helpers';
 import { ArticleBody } from '@/lib/article-body/ArticleBody';
 import { flattenLeaves } from '@/lib/mb-helpers';
+import { gateAudience } from '@/lib/family-access';
 import { loadNarrative, loadPublishedFor, type PlacedResource } from '@/lib/library-data';
 import { ResourceCard } from '../../_components/resource-card';
 import MbProofPicker from './mb-proof-picker';
@@ -97,6 +98,10 @@ export default async function LibraryMbPage({
   const totalCount =
     badgeResources.length + topGroups.reduce((sum, g) => sum + g.resources.length, 0);
   const suggestHref = `/library/submit?target=${encodeURIComponent(`mb:${mbId}`)}`;
+  // A scout-login session can't submit proof at all (Plans/Family-Identity-Auth.md
+  // Phase 0) — MbProofPicker needs to know so it can explain that instead of
+  // walking a scout through a picker that will refuse them at the end.
+  const audience = await gateAudience();
 
   return (
     <>
@@ -139,7 +144,9 @@ export default async function LibraryMbPage({
           </div>
         )}
 
-        {proofGroups.length > 0 && <MbProofPicker mbId={mbId} groups={proofGroups} />}
+        {proofGroups.length > 0 && (
+          <MbProofPicker mbId={mbId} groups={proofGroups} scoutBlocked={audience === 'scout'} />
+        )}
 
         <div className={styles.sectionDivider}>
           <span className={styles.divLabel}>Whole-badge resources</span>

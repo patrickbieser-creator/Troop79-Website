@@ -11,6 +11,7 @@ import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { Rank } from '@/lib/supabase/types';
 import { ArticleBody } from '@/lib/article-body/ArticleBody';
+import { gateAudience } from '@/lib/family-access';
 import { loadNarrative, loadPublishedFor } from '@/lib/library-data';
 import { rankReqKey } from '@/lib/library';
 import { fetchAllRows } from '@/lib/supabase/paginate';
@@ -91,6 +92,10 @@ export default async function LibraryRequirementPage({
   // requirement; a parent code (e.g. "9") has no direct ledger row of its
   // own to sign off.
   const proofHref = `/library/submit-proof?target=${encodeURIComponent(`rank_req:${targetKey}`)}`;
+  // A scout-login session can't submit proof at all (Plans/Family-Identity-Auth.md
+  // Phase 0) — say so at the button rather than sending a scout through the
+  // whole form only to be refused on submit.
+  const audience = await gateAudience();
 
   return (
     <>
@@ -147,7 +152,13 @@ export default async function LibraryRequirementPage({
           </div>
         )}
 
-        {isLeaf && (
+        {isLeaf && audience === 'scout' && (
+          <p style={{ margin: '18px 0 0', textAlign: 'center' }} className={styles.fieldHint}>
+            Scouts: proof can&rsquo;t be submitted from this login yet — ask a parent to send it
+            in, or show a leader in person.
+          </p>
+        )}
+        {isLeaf && audience !== 'scout' && (
           <p style={{ margin: '18px 0 0', textAlign: 'center' }}>
             <Link className={styles.btnPrimary} href={proofHref}>
               I did this →

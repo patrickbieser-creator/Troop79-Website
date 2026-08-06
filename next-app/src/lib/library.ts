@@ -149,3 +149,20 @@ export const RESOURCE_KIND_ICON: Record<ResourceKind, string> = {
   image: '🖼',
   post: '📝'
 };
+
+/**
+ * Who may submit proof-of-completion (Plans/Family-Identity-Auth.md Phase 0,
+ * Patrick 2026-08-06). Only 'family' — leaders sign requirements off
+ * directly via Fast Entry (no review queue needed when the reviewer IS the
+ * signer), and scouts are refused entirely: the shared SCOUT_PASSWORD login
+ * has no per-scout identity, so any holder could previously claim proof
+ * under any active scout's name (Resource-Library.md decision 4's "leader
+ * review catches misuse" was never actually load-bearing — the reviewer has
+ * no independent way to verify the claim). This must stay 'family'-only
+ * until Tier 2-S (verified scout identity, not yet built) ships — see
+ * tests/proof-submission-gate.test.ts, the regression guard for this exact
+ * behavior.
+ */
+export function proofSubmissionAllowedFor(audience: 'family' | 'leader' | 'scout' | null): boolean {
+  return audience === 'family';
+}

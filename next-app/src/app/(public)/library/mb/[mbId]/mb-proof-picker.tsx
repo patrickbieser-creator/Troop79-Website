@@ -26,7 +26,18 @@ interface TopGroup {
   leaves: Leaf[];
 }
 
-export default function MbProofPicker({ mbId, groups }: { mbId: string; groups: TopGroup[] }) {
+export default function MbProofPicker({
+  mbId,
+  groups,
+  scoutBlocked = false
+}: {
+  mbId: string;
+  groups: TopGroup[];
+  /** Scout-login sessions can't submit proof at all (Plans/Family-Identity-Auth.md
+   *  Phase 0) — skip the picker entirely and explain, rather than letting a
+   *  scout pick a requirement only to be refused on submit. */
+  scoutBlocked?: boolean;
+}) {
   const [topCode, setTopCode] = useState('');
   const [leafCode, setLeafCode] = useState('');
 
@@ -42,6 +53,20 @@ export default function MbProofPicker({ mbId, groups }: { mbId: string; groups: 
 
   const proofHref =
     leafCode && `/library/submit-proof?target=${encodeURIComponent(`mb_req:${mbId}-${leafCode}`)}`;
+
+  if (scoutBlocked) {
+    return (
+      <div className={styles.formCard} style={{ marginTop: 16 }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, marginBottom: 4 }}>
+          I did this
+        </h2>
+        <p className={styles.fieldHint}>
+          Scouts: proof can&rsquo;t be submitted from this login yet — ask a parent to send it
+          in, or show a leader in person.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.formCard} style={{ marginTop: 16 }}>
