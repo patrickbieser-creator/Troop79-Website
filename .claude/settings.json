@@ -1,8 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Read(~/.claude/agents/disciplines/**)",
-      "Glob(~/.claude/agents/disciplines/**)"
+      "Read(~/.claude/agents/disciplines/**)"
     ]
   },
   "ignorePatterns": [
