@@ -10,8 +10,10 @@ import { createAdminClient } from '@/lib/supabase/server';
 import type { MeritBadge, MeritBadgeRequirement } from '@/lib/supabase/types';
 import { buildReqTree, topLevelCodeOf } from '@/lib/mb-helpers';
 import { ArticleBody } from '@/lib/article-body/ArticleBody';
+import { flattenLeaves } from '@/lib/mb-helpers';
 import { loadNarrative, loadPublishedFor, type PlacedResource } from '@/lib/library-data';
 import { ResourceCard } from '../../_components/resource-card';
+import MbProofPicker from './mb-proof-picker';
 import styles from '../../library.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -75,6 +77,23 @@ export default async function LibraryMbPage({
     .map((top) => ({ top, resources: byTopCode.get(top.code) ?? [] }))
     .filter((g) => g.resources.length > 0);
 
+  // Phase 2 (Plans/Resource-Library.md) — proof groups are independent of
+  // which top-level requirements happen to have resources yet (topGroups
+  // above), so every leaf in the catalog is reachable here even on a badge
+  // page with nothing shelved.
+  const leavesByTop = new Map<string, { code: string; label: string }[]>();
+  for (const leaf of flattenLeaves(reqTree)) {
+    const top = topLevelCodeOf(reqTree, leaf.code) ?? leaf.code;
+    const list = leavesByTop.get(top) ?? [];
+    list.push({ code: leaf.code, label: leaf.label });
+    leavesByTop.set(top, list);
+  }
+  const proofGroups = reqTree.map((top) => ({
+    code: top.code,
+    label: top.label,
+    leaves: leavesByTop.get(top.code) ?? []
+  }));
+
   const totalCount =
     badgeResources.length + topGroups.reduce((sum, g) => sum + g.resources.length, 0);
   const suggestHref = `/library/submit?target=${encodeURIComponent(`mb:${mbId}`)}`;
@@ -119,6 +138,8 @@ export default async function LibraryMbPage({
             )}
           </div>
         )}
+
+        {proofGroups.length > 0 && <MbProofPicker mbId={mbId} groups={proofGroups} />}
 
         <div className={styles.sectionDivider}>
           <span className={styles.divLabel}>Whole-badge resources</span>

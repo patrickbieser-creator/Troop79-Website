@@ -6,8 +6,14 @@
 import Link from 'next/link';
 import { NavLinks } from './nav-links';
 import { UtilityDate } from './utility-date';
+import { SiteLogoutButton } from './site-logout-button';
 import styles from './site-nav.module.css';
 
+// Deliberately NOT async and does not read cookies()/headers() — this layout
+// wraps every public page, and doing either here would bail every one of
+// them out of static/ISR generation (caught in build output, 2026-08-06).
+// SiteLogoutButton checks session state itself, client-side, via
+// /api/session-status — see that route's comment for the full story.
 export function SiteNav() {
   return (
     <div id="site-nav-root">
@@ -53,6 +59,7 @@ export function SiteNav() {
             >
               Profile
             </Link>
+            <SiteLogoutButton />
             <Link
               href="/admin"
               style={{

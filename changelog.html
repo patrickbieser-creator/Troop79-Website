@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>July 21, 2026</strong></p>
+      <p>Last updated: <strong>August 6, 2026</strong></p>
     </div>
   </div>
 
@@ -494,6 +494,94 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.21.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.21.0</span>
+        <span class="release-date">August 6, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Resource Library Phase 2: proof-of-completion submissions</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              A scout or family can now hit <strong>&ldquo;I did this&rdquo;</strong> on any rank
+              requirement or merit badge page and send in a photo, a link, or a short write-up
+              showing they completed it &mdash; queued for a leader to review, not written
+              straight to the ledger. Merit badge pages (which group several sub-requirements on
+              one shared page) get an in-page picker to confirm the exact leaf code before
+              continuing.
+            </span>
+          </li>
+          <li>
+            <span>
+              Gated the same way as the rest of the Library: the shared troop password plus a
+              household bound to the device (reusing <code>/profile</code>&rsquo;s cookie, so a
+              family recognized there is recognized here too &mdash; chosen over Event
+              Signup&rsquo;s one-shot picker since this is a repeated action over weeks), or the
+              shared scout login with a roster picker. A leader session is redirected to Fast
+              Entry instead &mdash; no review queue needed when the person signing off IS the
+              leader.
+            </span>
+          </li>
+          <li>
+            <span>
+              New admin <strong>Proof Queue</strong> tab (<code>/admin/library</code>): approve
+              writes exactly the ledger row Fast Entry would, through the same duplicate-blocked
+              path (extracted into a shared <code>lib/ledger-dedup.ts</code> so both features can
+              never drift apart), shows a warning if the scout already has the requirement, and
+              self-heals if two leaders approve the same submission at once. Return sends
+              feedback back to the household without touching the ledger. New Dashboard
+              &ldquo;Needs Attention&rdquo; category surfaces anything pending.
+            </span>
+          </li>
+          <li>
+            <span>
+              Proof photos land in a brand-new <strong>private Supabase Storage bucket</strong>
+              &mdash; the first one in this project (everything else has been public Bunny CDN or
+              RLS-locked Postgres tables). No public access, ever; leaders view photos via
+              short-lived signed URLs generated server-side only.
+            </span>
+          </li>
+          <li>
+            <span>
+              qa-lead security review: clear on every gate/access-control path traced. Caught and
+              fixed two real bugs along the way &mdash; a foreign-key delete-order bug in the test
+              suite&rsquo;s own cleanup that made repeated runs flaky, and a low-severity
+              concurrent-approval race (now self-healing rather than silently double-awarding).
+              32 tests passing (up from 26), lint/build clean.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Site-wide Log Out</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              New <strong>Log Out</strong> link in the public site&rsquo;s utility bar, shown
+              whenever any session is active, that clears the family session, the household
+              binding, <em>and</em> the leader/scout admin session together &mdash; found to be
+              needed after logging in as a leader made every gated page (including this new proof
+              flow) skip straight past the family gate, and <code>/profile</code>&rsquo;s own sign
+              out only ever cleared the family side.
+            </span>
+          </li>
+          <li>
+            <span>
+              Two bugs caught and fixed before this shipped: reading the session directly in the
+              shared nav quietly knocked six pages (<code>/about</code>, <code>/events</code>,
+              <code>/join</code>, <code>/meeting-plan</code>, <code>/meetings</code>,
+              <code>/photos</code>) out of static/ISR rendering, so the check was moved to a small
+              polled API route instead; and a same-page login redirect didn&rsquo;t remount the
+              button, so it now re-checks on focus and a short interval, not just once on load.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

@@ -19,7 +19,8 @@ import type {
   LibraryTopic,
   MeritBadge,
   Rank,
-  RequirementNote
+  RequirementNote,
+  RequirementSubmission
 } from '@/lib/supabase/types';
 import {
   rankReqKey,
@@ -29,13 +30,21 @@ import {
   type ResourceKind
 } from '@/lib/library';
 import {
+  loadPendingSubmissions,
+  resolveRequirementLabel,
+  scoutAlreadyHasRequirement
+} from '@/lib/library-data';
+import { signedProofMediaUrl } from '@/lib/proof-media';
+import {
   addPlacementAction,
   approveResourceAction,
+  approveSubmissionAction,
   archiveResourceAction,
   createTopicAction,
   declineResourceAction,
   removePlacementAction,
   restoreResourceAction,
+  returnSubmissionAction,
   saveNarrativeAction,
   saveResourceAction,
   togglePinAction,
@@ -48,14 +57,84 @@ export const metadata = {
   title: 'Resource Library — Troop 79 Admin'
 };
 
-type Tab = 'queue' | 'published' | 'archived' | 'topics' | 'narratives';
+type Tab = 'queue' | 'published' | 'archived' | 'topics' | 'narratives' | 'proof';
 const TABS: { key: Tab; label: string }[] = [
   { key: 'queue', label: 'Queue' },
+  { key: 'proof', label: 'Proof Queue' },
   { key: 'published', label: 'Published' },
   { key: 'archived', label: 'Archived' },
   { key: 'topics', label: 'Topics & Shelves' },
   { key: 'narratives', label: 'Narratives' }
 ];
+
+/** One submission plus everything the review row needs, pre-resolved
+ *  server-side so the row itself is a plain render. */
+interface ProofQueueItem {
+  submission: RequirementSubmission;
+  scoutName: string;
+  requirementLabel: string;
+  requirementHref: string | null;
+  alreadyHasIt: boolean;
+  photoUrls: string[];
+}
+
+/** Tab-badge count without the per-row signed-URL/label resolution work
+ *  loadProofQueue does — used whenever the Proof Queue tab isn't the active
+ *  one, so switching to Published/Topics/etc. doesn't pay for it. */
+async function countPendingSubmissions(): Promise<number> {
+  const supabase = createAdminClient();
+  const { count } = await supabase
+    .from('requirement_submissions')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'pending');
+  return count ?? 0;
+}
+
+async function loadProofQueue(): Promise<ProofQueueItem[]> {
+  const supabase = createAdminClient();
+  const pending = await loadPendingSubmissions(supabase);
+  if (pending.length === 0) return [];
+
+  const scoutIds = [...new Set(pending.map((s) => s.scout_id))];
+  const { data: scouts } = await supabase.from('scouts').select('id, display_name').in('id', scoutIds);
+  const scoutNames = new Map(
+    ((scouts ?? []) as { id: string; display_name: string }[]).map((s) => [s.id, s.display_name])
+  );
+
+  return Promise.all(
+    pending.map(async (submission) => {
+      const resolved = await resolveRequirementLabel(supabase, submission.target_kind, submission.target_key);
+      const requirementLabel = resolved?.label
+        ? `${resolved.code} — ${resolved.label}`
+        : `${submission.target_kind === 'rank_req' ? 'Rank req' : 'MB req'} ${submission.target_key}`;
+      const requirementHref = resolved
+        ? submission.target_kind === 'rank_req'
+          ? `/library/rank/${resolved.parentId}/${encodeURIComponent(resolved.code)}`
+          : `/library/mb/${resolved.parentId}`
+        : null;
+      const alreadyHasIt = await scoutAlreadyHasRequirement(
+        supabase,
+        submission.scout_id,
+        submission.target_kind,
+        submission.target_key
+      );
+      const photoUrls = (
+        await Promise.all(
+          (submission.media as { path: string }[]).map((m) => signedProofMediaUrl(supabase, m.path))
+        )
+      ).filter((u): u is string => !!u);
+
+      return {
+        submission,
+        scoutName: scoutNames.get(submission.scout_id) ?? submission.scout_id,
+        requirementLabel,
+        requirementHref,
+        alreadyHasIt,
+        photoUrls
+      };
+    })
+  );
+}
 
 interface Catalog {
   topics: LibraryTopic[];
@@ -180,6 +259,8 @@ export default async function AdminLibraryPage({
   const sp = await searchParams;
   const tab: Tab = (TABS.find((t) => t.key === sp.tab)?.key ?? 'queue') as Tab;
   const data = await loadWorkstation();
+  const proofQueue = tab === 'proof' ? await loadProofQueue() : [];
+  const proofQueueCount = tab === 'proof' ? proofQueue.length : await countPendingSubmissions();
 
   const pending = data.resources.filter((r) => r.status === 'pending');
   const published = data.resources.filter((r) => r.status === 'published');
@@ -202,7 +283,13 @@ export default async function AdminLibraryPage({
       <nav className={styles.tabs} aria-label="Library workstation sections">
         {TABS.map((t) => {
           const badge =
-            t.key === 'queue' ? pending.length : t.key === 'archived' ? archived.length : 0;
+            t.key === 'queue'
+              ? pending.length
+              : t.key === 'proof'
+                ? proofQueueCount
+                : t.key === 'archived'
+                  ? archived.length
+                  : 0;
           return (
             <Link
               key={t.key}
@@ -252,6 +339,13 @@ export default async function AdminLibraryPage({
           archived.map((res) => (
             <ResourceRow key={res.id} res={res} data={data} tab="archived" />
           ))
+        ))}
+
+      {tab === 'proof' &&
+        (proofQueue.length === 0 ? (
+          <p className={styles.emptyTab}>The proof queue is empty — all caught up.</p>
+        ) : (
+          proofQueue.map((item) => <ProofQueueRow key={item.submission.id} item={item} />)
         ))}
 
       {tab === 'topics' && <TopicsTab topics={data.catalog.topics} />}
@@ -325,6 +419,80 @@ function PublishedGroups({
           { group: 'unplaced', label: 'Published but placed nowhere', n: unplaced }
         ])}
     </>
+  );
+}
+
+// ── Proof queue row ──────────────────────────────────────────────────────
+
+const PROOF_TYPE_LABEL: Record<RequirementSubmission['proof_type'], string> = {
+  photo: 'Photo',
+  report: 'Write-up',
+  link: 'Link'
+};
+
+function ProofQueueRow({ item }: { item: ProofQueueItem }) {
+  const { submission: s, scoutName, requirementLabel, requirementHref, alreadyHasIt, photoUrls } = item;
+  return (
+    <div className={styles.queueRow}>
+      <div className={styles.rowHead}>
+        <span aria-hidden="true">{PROOF_TYPE_LABEL[s.proof_type] === 'Photo' ? '📷' : '📝'}</span>
+        <span className={styles.rowTitle}>{scoutName}</span>
+        <span className={styles.rowMeta}>
+          {requirementHref ? <Link href={requirementHref}>{requirementLabel}</Link> : requirementLabel} ·{' '}
+          {PROOF_TYPE_LABEL[s.proof_type]} · via {s.submitted_via} ·{' '}
+          {new Date(s.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+        </span>
+      </div>
+
+      {alreadyHasIt && (
+        <p className={styles.declineReason}>
+          This scout already has this requirement signed off on the active ledger — approving
+          will be blocked. Consider returning this submission instead.
+        </p>
+      )}
+
+      {s.body_md && <p className={styles.rowMeta}>&ldquo;{s.body_md}&rdquo;</p>}
+      {s.link_url && (
+        <p className={styles.rowMeta}>
+          <a href={s.link_url} target="_blank" rel="noopener noreferrer">
+            {s.link_url} ↗
+          </a>
+        </p>
+      )}
+      {photoUrls.length > 0 && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '8px 0' }}>
+          {photoUrls.map((url) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={url}
+              src={url}
+              alt="Proof submitted by the scout/family"
+              style={{ maxWidth: 160, maxHeight: 160, borderRadius: 4, border: '1px solid var(--border-mid)' }}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className={styles.actionsRow}>
+        <form action={approveSubmissionAction} style={{ display: 'inline' }}>
+          <input type="hidden" name="id" value={s.id} />
+          <button className={styles.btnPrimary} type="submit">
+            Approve — Write to Ledger
+          </button>
+        </form>
+      </div>
+      <form className={styles.declineForm} action={returnSubmissionAction}>
+        <input type="hidden" name="id" value={s.id} />
+        <input
+          className={styles.textInput}
+          name="feedback_md"
+          placeholder="Feedback for the household (kept on the record)"
+        />
+        <button className={styles.btnDanger} type="submit">
+          Return
+        </button>
+      </form>
+    </div>
   );
 }
 

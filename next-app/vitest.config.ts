@@ -16,6 +16,16 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['tests/**/*.test.ts'],
-    testTimeout: 20000
+    testTimeout: 20000,
+    // Every test file shares ONE local Supabase/Postgres instance — Vitest's
+    // default concurrent-file execution races them against it. Files that use
+    // deterministic fixture ids (e.g. resource-library.test.ts's `vitest-*`
+    // scout rows) can collide on a shared primary key when two files insert
+    // at the same moment (qa-lead, 2026-08-06 — reproduced the flake, fixed
+    // here rather than chasing collision-resistant ids file-by-file). This
+    // project also runs concurrent Claude sessions against the same repo/DB
+    // (see feedback-multi-session-git memory), which makes the race a near-
+    // certainty rather than a rare CI fluke.
+    fileParallelism: false
   }
 });

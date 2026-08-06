@@ -13,7 +13,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireRole } from '@/lib/require-role';
 import { createAdminClient } from '@/lib/supabase/server';
-import { approveResource, declineResource } from '@/lib/library-data';
+import { approveResource, approveSubmission, declineResource, returnSubmission } from '@/lib/library-data';
 import { detectHost, type LibraryTargetKind, type ResourceKind } from '@/lib/library';
 import { slugify } from '@/lib/slugify';
 
@@ -146,6 +146,37 @@ export async function restoreResourceAction(formData: FormData): Promise<void> {
     .eq('id', id);
   if (error) fail('archived', error.message);
   refresh('queue');
+}
+
+// ── Proof-of-completion submissions (Phase 2) ───────────────────────────────
+
+/** Writes the ledger row (same dup-blocked path Fast Entry uses, D-041) and
+ *  marks the submission approved. Blocked, not silent, if the scout already
+ *  has this exact requirement — the error surfaces on the Proof Queue tab so
+ *  the leader can Return it instead. */
+export async function approveSubmissionAction(formData: FormData): Promise<void> {
+  const reviewer = await guard();
+  const id = Number(formData.get('id'));
+  if (!Number.isFinite(id) || id <= 0) fail('proof', 'Invalid submission id');
+  const { error } = await approveSubmission(createAdminClient(), id, reviewer);
+  if (error) fail('proof', error);
+  revalidatePath(ADMIN_PATH);
+  revalidatePath('/admin/advancement/fast-entry');
+  revalidatePath('/admin/advancement/ledger');
+  revalidatePath('/admin/advancement/dashboard');
+  redirect(`${ADMIN_PATH}?tab=proof`);
+}
+
+/** Returns a submission with feedback for the household — the ledger is
+ *  never touched. */
+export async function returnSubmissionAction(formData: FormData): Promise<void> {
+  const reviewer = await guard();
+  const id = Number(formData.get('id'));
+  if (!Number.isFinite(id) || id <= 0) fail('proof', 'Invalid submission id');
+  const feedback = String(formData.get('feedback_md') ?? '').trim();
+  const err = await returnSubmission(createAdminClient(), id, reviewer, feedback);
+  if (err) fail('proof', err);
+  refresh('proof');
 }
 
 // ── Placements ─────────────────────────────────────────────────────────────

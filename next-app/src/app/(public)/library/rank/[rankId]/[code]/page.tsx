@@ -87,6 +87,10 @@ export default async function LibraryRequirementPage({
   const next = idx >= 0 && idx < topCodes.length - 1 ? topCodes[idx + 1] : null;
 
   const suggestHref = `/library/submit?target=${encodeURIComponent(`rank_req:${targetKey}`)}`;
+  // Phase 2 (Plans/Resource-Library.md) — proof only makes sense on a leaf
+  // requirement; a parent code (e.g. "9") has no direct ledger row of its
+  // own to sign off.
+  const proofHref = `/library/submit-proof?target=${encodeURIComponent(`rank_req:${targetKey}`)}`;
 
   return (
     <>
@@ -141,6 +145,14 @@ export default async function LibraryRequirementPage({
               <div className={styles.ctxLabel}>Resources here</div>
             </div>
           </div>
+        )}
+
+        {isLeaf && (
+          <p style={{ margin: '18px 0 0', textAlign: 'center' }}>
+            <Link className={styles.btnPrimary} href={proofHref}>
+              I did this →
+            </Link>
+          </p>
         )}
 
         {children.length > 0 && (

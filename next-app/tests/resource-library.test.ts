@@ -3,8 +3,10 @@ import { createClient } from '@supabase/supabase-js';
 import { adminClient } from './helpers/admin-client';
 import {
   approveResource,
+  approveSubmission,
   cascadeLibraryReqRename,
-  loadPublishedFor
+  loadPublishedFor,
+  returnSubmission
 } from '../src/lib/library-data';
 
 /**
@@ -27,23 +29,64 @@ describe('resource library', () => {
   let resourceIds: number[] = [];
   let noteIds: number[] = [];
   let submissionIds: number[] = [];
+  let ledgerEntryIds: number[] = [];
+  let scoutIds: string[] = [];
 
   afterEach(async () => {
     const admin = adminClient();
-    // Resources first — placements cascade on resource delete.
+    // Submissions FIRST — requirement_submissions.ledger_entry_id FKs to
+    // ledger_entries with no ON DELETE clause (default RESTRICT), so deleting
+    // the ledger row first fails silently (Supabase returns {error}, doesn't
+    // throw) and leaves both rows orphaned, which then also blocks the scout
+    // delete below via ledger_entries.scout_id. Caught live in this suite:
+    // Leader_ApprovingProof_WritesLedgerEntry_WithEnteredBy passed once, then
+    // every subsequent run failed on a stale 'vitest-approve' scout row
+    // (qa-lead review, 2026-08-06).
     if (submissionIds.length > 0) {
       await admin.from('requirement_submissions').delete().in('id', submissionIds);
+    }
+    if (ledgerEntryIds.length > 0) {
+      await admin.from('ledger_entries').delete().in('id', ledgerEntryIds);
     }
     if (noteIds.length > 0) {
       await admin.from('requirement_notes').delete().in('id', noteIds);
     }
+    // Resources after placements/notes — placements cascade on resource delete.
     if (resourceIds.length > 0) {
       await admin.from('library_resources').delete().in('id', resourceIds);
+    }
+    // Scouts LAST — ledger_entries.scout_id and requirement_submissions.scout_id
+    // both FK to scouts with no cascade.
+    if (scoutIds.length > 0) {
+      await admin.from('scouts').delete().in('id', scoutIds);
     }
     resourceIds = [];
     noteIds = [];
     submissionIds = [];
+    ledgerEntryIds = [];
+    scoutIds = [];
   });
+
+  /**
+   * A throwaway scout row, not a read off whatever happens to be in local
+   * Postgres — the shared local DB has been empty of seed data since a
+   * mid-session `db reset` (Backlog: "restore local dev's realistic data
+   * snapshot"), so tests that depend on "some scout exists" can't be trusted
+   * to run standalone. `id` is a text primary key we must supply ourselves.
+   */
+  async function makeScout(admin: ReturnType<typeof adminClient>, suffix: string): Promise<string> {
+    const id = `vitest-${suffix}`;
+    const { error } = await admin.from('scouts').insert({
+      id,
+      first_name: '[TEST]',
+      last_name: 'Vitest',
+      display_name: `[TEST] Vitest ${suffix}`,
+      active: true
+    });
+    if (error) throw new Error(`fixture: scout insert failed: ${error.message}`);
+    scoutIds.push(id);
+    return id;
+  }
 
   async function makeResource(
     admin: ReturnType<typeof adminClient>,
@@ -129,12 +172,11 @@ describe('resource library', () => {
     if (noteErr || !note) throw new Error(`fixture: note insert failed: ${noteErr?.message}`);
     noteIds.push(note.id);
 
-    const { data: scout } = await admin.from('scouts').select('id').limit(1).single();
-    if (!scout) throw new Error('fixture: no scouts in local DB');
+    const scoutId = await makeScout(admin, 'rename');
     const { data: submission, error: subErr } = await admin
       .from('requirement_submissions')
       .insert({
-        scout_id: scout.id,
+        scout_id: scoutId,
         target_kind: 'rank_req',
         target_key: oldKey,
         proof_type: 'report',
@@ -157,6 +199,155 @@ describe('resource library', () => {
     expect(p?.target_key).toBe(newKey);
     expect(n?.target_key).toBe(newKey);
     expect(s?.target_key).toBe(newKey);
+  });
+
+  it('Leader_ApprovingProof_WritesLedgerEntry_WithEnteredBy', async () => {
+    const admin = adminClient();
+    const scoutId = await makeScout(admin, 'approve');
+
+    // Fictional composite key — same convention as the rename test above.
+    // 'first-class' is a real rank id (needed so splitRankReqKey resolves
+    // the target back to a rank_id/code pair); the '9zz' leaf doesn't need
+    // to exist in the catalog for the ledger write itself to succeed.
+    const targetKey = 'first-class-9zz-proof';
+    const { data: submission, error: subErr } = await admin
+      .from('requirement_submissions')
+      .insert({
+        scout_id: scoutId,
+        target_kind: 'rank_req',
+        target_key: targetKey,
+        proof_type: 'report',
+        body_md: '[TEST] I did this',
+        submitted_via: 'family',
+        status: 'pending'
+      })
+      .select('id')
+      .single();
+    if (subErr || !submission) throw new Error(`fixture: submission insert failed: ${subErr?.message}`);
+    submissionIds.push(submission.id);
+
+    const result = await approveSubmission(admin, submission.id, 'VT');
+    expect(result.error).toBeNull();
+    expect(result.ledgerEntryId).toBeDefined();
+    if (result.ledgerEntryId) ledgerEntryIds.push(result.ledgerEntryId);
+
+    const { data: ledgerRow } = await admin
+      .from('ledger_entries')
+      .select('scout_id, kind, code, entered_by, by')
+      .eq('id', result.ledgerEntryId)
+      .single();
+    expect(ledgerRow?.scout_id).toBe(scoutId);
+    expect(ledgerRow?.kind).toBe('rank_requirement');
+    expect(ledgerRow?.code).toBe(targetKey);
+    expect(ledgerRow?.entered_by).toBe('VT');
+
+    const { data: subRow } = await admin
+      .from('requirement_submissions')
+      .select('status, reviewed_by, ledger_entry_id')
+      .eq('id', submission.id)
+      .single();
+    expect(subRow?.status).toBe('approved');
+    expect(subRow?.reviewed_by).toBe('VT');
+    expect(subRow?.ledger_entry_id).toBe(result.ledgerEntryId);
+  });
+
+  it('Leader_ApprovingProof_IsBlocked_WhenScoutAlreadyHasCode', async () => {
+    const admin = adminClient();
+    const scoutId = await makeScout(admin, 'dup');
+
+    const targetKey = 'first-class-9zz-dup';
+    const { data: existingLedgerRow, error: ledgerErr } = await admin
+      .from('ledger_entries')
+      .insert({
+        scout_id: scoutId,
+        date: '2026-01-01',
+        kind: 'rank_requirement',
+        code: targetKey,
+        label: '[TEST] already signed off',
+        by: 'VT',
+        qty: 1,
+        unit: 'complete',
+        entered_by: 'VT',
+        entered_at: new Date().toISOString()
+      })
+      .select('id')
+      .single();
+    if (ledgerErr || !existingLedgerRow) {
+      throw new Error(`fixture: ledger insert failed: ${ledgerErr?.message}`);
+    }
+    ledgerEntryIds.push(existingLedgerRow.id);
+
+    const { data: submission, error: subErr } = await admin
+      .from('requirement_submissions')
+      .insert({
+        scout_id: scoutId,
+        target_kind: 'rank_req',
+        target_key: targetKey,
+        proof_type: 'report',
+        body_md: '[TEST] I did this too',
+        submitted_via: 'family',
+        status: 'pending'
+      })
+      .select('id')
+      .single();
+    if (subErr || !submission) throw new Error(`fixture: submission insert failed: ${subErr?.message}`);
+    submissionIds.push(submission.id);
+
+    const result = await approveSubmission(admin, submission.id, 'VT');
+    expect(result.error).not.toBeNull();
+    expect(result.ledgerEntryId).toBeUndefined();
+
+    // Blocked, not silently dropped — the submission stays pending so the
+    // leader can still return it with feedback instead.
+    const { data: subRow } = await admin
+      .from('requirement_submissions')
+      .select('status, ledger_entry_id')
+      .eq('id', submission.id)
+      .single();
+    expect(subRow?.status).toBe('pending');
+    expect(subRow?.ledger_entry_id).toBeNull();
+
+    const { data: allLedgerRows } = await admin
+      .from('ledger_entries')
+      .select('id')
+      .eq('scout_id', scoutId)
+      .eq('kind', 'rank_requirement')
+      .eq('code', targetKey);
+    expect((allLedgerRows ?? []).length).toBe(1);
+  });
+
+  it('Leader_ReturningProof_RecordsFeedbackWithoutTouchingLedger', async () => {
+    const admin = adminClient();
+    const scoutId = await makeScout(admin, 'return');
+
+    const { data: submission, error: subErr } = await admin
+      .from('requirement_submissions')
+      .insert({
+        scout_id: scoutId,
+        target_kind: 'rank_req',
+        target_key: 'first-class-9zz-return',
+        proof_type: 'report',
+        body_md: '[TEST] not quite',
+        submitted_via: 'scout',
+        status: 'pending'
+      })
+      .select('id')
+      .single();
+    if (subErr || !submission) throw new Error(`fixture: submission insert failed: ${subErr?.message}`);
+    submissionIds.push(submission.id);
+
+    const err = await returnSubmission(admin, submission.id, 'VT', 'Please redo with a clearer photo.');
+    expect(err).toBeNull();
+
+    const { data: subRow } = await admin
+      .from('requirement_submissions')
+      .select('status, feedback_md, reviewed_by, ledger_entry_id')
+      .eq('id', submission.id)
+      .single();
+    expect(subRow?.status).toBe('returned');
+    expect(subRow?.feedback_md).toBe('Please redo with a clearer photo.');
+    expect(subRow?.reviewed_by).toBe('VT');
+    expect(subRow?.ledger_entry_id).toBeNull();
   });
 
   it('AnonKey_CannotRead_AnyLibraryOrSubmissionTable', async () => {

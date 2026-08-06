@@ -6,6 +6,7 @@ import { requireRole } from '@/lib/require-role';
 import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { LedgerKind } from '@/lib/supabase/types';
+import { DEDUP_KINDS, queryExistingSet, filterOutExisting as filterOutExistingGeneric } from '@/lib/ledger-dedup';
 import { keyForLedgerRow } from './picker-types';
 
 async function ensureLeader() {
@@ -34,42 +35,6 @@ interface SkippedEntry {
   label: string | null;
 }
 
-/** One-time/binary kinds — a scout either has this or doesn't, so a repeat
- *  is always a mistake (unlike service_hours, camping_nights, etc., which
- *  are legitimately logged more than once). Only these are deduped. */
-const DEDUP_KINDS: ReadonlySet<LedgerKind> = new Set<LedgerKind>([
-  'rank_requirement',
-  'rank_award',
-  'merit_badge_requirement',
-  'merit_badge_award'
-]);
-
-/** Set of "scout_id kind code" strings already on the active ledger, among
- *  the DEDUP_KINDS present in `items`. Shared by the pre-submit warning
- *  check and the actual insert-time filter below. */
-async function queryExistingSet(
-  supabase: ReturnType<typeof createAdminClient>,
-  items: { scout_id: string; kind: LedgerKind; code: string }[]
-): Promise<Set<string>> {
-  const candidates = items.filter((it) => DEDUP_KINDS.has(it.kind));
-  if (candidates.length === 0) return new Set();
-
-  const scoutIds = Array.from(new Set(candidates.map((it) => it.scout_id)));
-  const codes = Array.from(new Set(candidates.map((it) => it.code)));
-  const { data } = await supabase
-    .from('ledger_active')
-    .select('scout_id, kind, code')
-    .in('scout_id', scoutIds)
-    .in('code', codes)
-    .in('kind', Array.from(DEDUP_KINDS));
-
-  return new Set(
-    ((data ?? []) as { scout_id: string; kind: string; code: string }[]).map(
-      (r) => `${r.scout_id} ${r.kind} ${r.code}`
-    )
-  );
-}
-
 /**
  * Drops any item that's a no-op — the scout already has that exact
  * (kind, code) on the active ledger. Fast Entry's Requirement-First card
@@ -78,23 +43,19 @@ async function queryExistingSet(
  * shows a completed badge and redirects a click to the undo flow instead
  * of re-adding). This is the server-side backstop for both cards, and the
  * only actual guard for Requirement-First's cartesian-product submit.
+ *
+ * Thin wrapper over lib/ledger-dedup.ts's generic version — narrows the
+ * skipped shape to what this file's callers already expect.
  */
 async function filterOutExisting(
   supabase: ReturnType<typeof createAdminClient>,
   items: EntryToInsert[]
 ): Promise<{ items: EntryToInsert[]; skipped: SkippedEntry[] }> {
-  const existing = await queryExistingSet(supabase, items);
-  const keep: EntryToInsert[] = [];
-  const skipped: SkippedEntry[] = [];
-  for (const it of items) {
-    const key = `${it.scout_id} ${it.kind} ${it.code}`;
-    if (DEDUP_KINDS.has(it.kind) && existing.has(key)) {
-      skipped.push({ scout_id: it.scout_id, code: it.code, label: it.label });
-    } else {
-      keep.push(it);
-    }
-  }
-  return { items: keep, skipped };
+  const { items: kept, skipped } = await filterOutExistingGeneric(supabase, items);
+  return {
+    items: kept,
+    skipped: skipped.map((it) => ({ scout_id: it.scout_id, code: it.code, label: it.label }))
+  };
 }
 
 /**

@@ -1,15 +1,29 @@
 /**
- * "Which household is logged in on /profile" — a SECOND signed cookie layered
- * on top of the family gate (lib/family-session.ts), not a change to it.
+ * "Which household is logged in on this device" — a SECOND signed cookie
+ * layered on top of the family gate (lib/family-session.ts), not a change to
+ * it.
  *
  * lib/family-session.ts is deliberately documented as proof-of-password only
  * ("Do not treat this cookie as identity") and Event Signup relies on exactly
  * that contract via its URL-param-carried household selection. This module
- * doesn't touch that — it's additive, used only by /profile, so a returning
- * visitor there can see "Logged in as {name}" instead of re-picking every
- * visit. Set once a household is picked on /profile; cleared together with
- * the family session cookie on Log out (Plans/Scout-Self-Service-Demographics.md
- * — "logout and re-enter the password for a different family").
+ * doesn't touch that — it's additive, so a returning visitor can see
+ * "Logged in as {name}" instead of re-picking every visit.
+ *
+ * Shared by two features whose usage pattern is "the same family returns
+ * over weeks," not a one-shot transaction: /profile (originally, D-055) and
+ * Resource Library proof submission (Plans/Resource-Library.md Phase 2,
+ * Patrick 2026-08-06 — recommended over Event Signup's URL-param pattern for
+ * exactly this reason). Each route keeps its own gate/pick/switch Server
+ * Actions per this project's convention (see submit/actions.ts's
+ * libraryGateAction comment) — only this cookie module and its session shape
+ * are shared. Set once a household is picked; cleared together with the
+ * family session cookie on full sign-out
+ * (Plans/Scout-Self-Service-Demographics.md — "logout and re-enter the
+ * password for a different family"). A route MAY also clear just this
+ * cookie alone (keeping the family gate) to let someone switch households
+ * without re-entering the troop password — see profile/actions.ts's
+ * profileSignOutAction for the full-logout version this is NOT; each route
+ * that wants a switch-only affordance implements its own thin action.
  */
 
 import { signToken, verifyToken } from '@/lib/signed-cookie';

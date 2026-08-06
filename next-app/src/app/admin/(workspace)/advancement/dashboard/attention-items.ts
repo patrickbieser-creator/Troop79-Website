@@ -94,10 +94,38 @@ async function loadPendingLibrarySubmissions(): Promise<AttentionCategory> {
   return { key: 'library-submissions', label: 'Library submissions awaiting review', items };
 }
 
+/** Proof-of-completion submissions awaiting review
+ *  (Plans/Resource-Library.md Phase 2). */
+async function loadPendingProofSubmissions(): Promise<AttentionCategory> {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from('requirement_submissions')
+    .select('id, scout_id, target_key, created_at')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true });
+
+  const rows = (data ?? []) as { id: number; scout_id: string; target_key: string; created_at: string }[];
+  const scoutIds = [...new Set(rows.map((r) => r.scout_id))];
+  const { data: scouts } =
+    scoutIds.length > 0
+      ? await supabase.from('scouts').select('id, display_name').in('id', scoutIds)
+      : { data: [] as { id: string; display_name: string }[] };
+  const scoutById = new Map(((scouts ?? []) as { id: string; display_name: string }[]).map((s) => [s.id, s]));
+
+  const items: AttentionItem[] = rows.map((r) => ({
+    label: scoutById.get(r.scout_id)?.display_name ?? r.scout_id,
+    meta: `${r.target_key} · submitted ${shortDate(r.created_at)}`,
+    href: '/admin/library?tab=proof'
+  }));
+
+  return { key: 'proof-submissions', label: 'Proof submissions awaiting review', items };
+}
+
 export async function loadAttentionCategories(): Promise<AttentionCategory[]> {
   const categories = await Promise.all([
     loadPendingProfileUpdates(),
-    loadPendingLibrarySubmissions()
+    loadPendingLibrarySubmissions(),
+    loadPendingProofSubmissions()
   ]);
   // A category with nothing in it is noise, not signal — drop it rather than
   // showing an empty "0 items" heading.

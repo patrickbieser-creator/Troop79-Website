@@ -11,8 +11,17 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { LibraryPlacement, LibraryResource, LibraryTopic, RequirementNote } from '@/lib/supabase/types';
+import type {
+  LedgerKind,
+  LibraryPlacement,
+  LibraryResource,
+  LibraryTopic,
+  RequirementNote,
+  RequirementSubmission
+} from '@/lib/supabase/types';
 import type { LibraryTargetKind } from '@/lib/library';
+import { splitRankReqKey } from '@/lib/library';
+import { isDuplicateLedgerEntry } from '@/lib/ledger-dedup';
 
 export interface PlacedResource extends LibraryResource {
   placement: Pick<LibraryPlacement, 'id' | 'pinned' | 'sort_order' | 'target_kind' | 'target_key'>;
@@ -219,6 +228,182 @@ export async function declineResource(
  * ships top-level only). When it ships, it MUST carry this same cascade or
  * it reintroduces the silent-orphan bug D-019 exists to prevent.
  */
+// ── Phase 2: proof-of-completion submissions ────────────────────────────────
+
+const REQUIREMENT_KIND_LABEL: Record<'rank_req' | 'mb_req', LedgerKind> = {
+  rank_req: 'rank_requirement',
+  mb_req: 'merit_badge_requirement'
+};
+
+/** Pending proof submissions, oldest first — the admin Proof Queue and the
+ *  Needs Attention panel both read this. */
+export async function loadPendingSubmissions(
+  supabase: SupabaseClient
+): Promise<RequirementSubmission[]> {
+  const { data } = await supabase
+    .from('requirement_submissions')
+    .select('*')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true });
+  return (data ?? []) as RequirementSubmission[];
+}
+
+/**
+ * Resolves a (target_kind, target_key) submission address back to the
+ * catalog row it names — same '{parentId}-{code}' split the admin workstation
+ * already does for display (targetLabel/targetHref in admin/library/page.tsx),
+ * reused here so the ledger write carries the real requirement label.
+ * Returns null only if the composite key doesn't match any known rank/badge
+ * (never for an unknown leaf code — the label is just null in that case).
+ */
+export async function resolveRequirementLabel(
+  supabase: SupabaseClient,
+  targetKind: 'rank_req' | 'mb_req',
+  targetKey: string
+): Promise<{ parentId: string; code: string; label: string | null } | null> {
+  if (targetKind === 'rank_req') {
+    const { data: ranks } = await supabase.from('ranks').select('id');
+    const rankIds = ((ranks ?? []) as { id: string }[]).map((r) => r.id);
+    const split = splitRankReqKey(targetKey, rankIds);
+    if (!split) return null;
+    const { data: req } = await supabase
+      .from('rank_requirements')
+      .select('label')
+      .eq('rank_id', split.rankId)
+      .eq('code', split.code)
+      .maybeSingle();
+    return { parentId: split.rankId, code: split.code, label: (req as { label: string } | null)?.label ?? null };
+  }
+  const { data: mbs } = await supabase.from('merit_badges').select('id');
+  const mbId = ((mbs ?? []) as { id: string }[]).map((m) => m.id).find((id) => targetKey.startsWith(`${id}-`));
+  if (!mbId) return null;
+  const code = targetKey.slice(mbId.length + 1);
+  const { data: req } = await supabase
+    .from('merit_badge_requirements')
+    .select('label')
+    .eq('mb_id', mbId)
+    .eq('code', code)
+    .maybeSingle();
+  return { parentId: mbId, code, label: (req as { label: string } | null)?.label ?? null };
+}
+
+/** True if the scout already has this requirement on the active ledger —
+ *  the admin Proof Queue shows this as a warning before the leader approves. */
+export async function scoutAlreadyHasRequirement(
+  supabase: SupabaseClient,
+  scoutId: string,
+  targetKind: 'rank_req' | 'mb_req',
+  targetKey: string
+): Promise<boolean> {
+  return isDuplicateLedgerEntry(supabase, scoutId, REQUIREMENT_KIND_LABEL[targetKind], targetKey);
+}
+
+/**
+ * Approves a pending proof submission: writes exactly the ledger row Fast
+ * Entry would (same dup-blocked path, D-041) and back-links ledger_entry_id.
+ * Blocked — not silently dropped — if the scout already has this exact
+ * requirement, so the leader can choose to Return instead with feedback
+ * rather than the approval vanishing with no explanation.
+ */
+export async function approveSubmission(
+  supabase: SupabaseClient,
+  id: number,
+  reviewer: string
+): Promise<{ error: string | null; ledgerEntryId?: number }> {
+  const { data: sub } = await supabase
+    .from('requirement_submissions')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+  if (!sub) return { error: 'Submission not found' };
+  const submission = sub as RequirementSubmission;
+  if (submission.status !== 'pending') return { error: 'This submission was already reviewed.' };
+
+  const kind = REQUIREMENT_KIND_LABEL[submission.target_kind];
+  const duplicate = await isDuplicateLedgerEntry(supabase, submission.scout_id, kind, submission.target_key);
+  if (duplicate) {
+    return {
+      error:
+        'This scout already has this requirement signed off — nothing to approve. Consider returning the submission instead.'
+    };
+  }
+
+  const resolved = await resolveRequirementLabel(supabase, submission.target_kind, submission.target_key);
+  const { data: ledgerRow, error: ledgerErr } = await supabase
+    .from('ledger_entries')
+    .insert({
+      scout_id: submission.scout_id,
+      date: new Date().toISOString().slice(0, 10),
+      kind,
+      code: submission.target_key,
+      label: resolved?.label ?? null,
+      by: reviewer,
+      qty: 1,
+      unit: 'complete',
+      notes: 'Approved from a scout/family proof submission (Resource Library).',
+      entered_by: reviewer,
+      entered_at: new Date().toISOString()
+    })
+    .select('id')
+    .single();
+  if (ledgerErr || !ledgerRow) return { error: ledgerErr?.message ?? 'Could not write the ledger entry.' };
+
+  // Guarded on status='pending' — closes most of a two-leaders-approve-at-once
+  // race (qa-lead 2026-08-06): the read-then-write duplicate check above can't
+  // be fully atomic without a DB transaction, but if a second concurrent call
+  // slipped past it, THIS update affects zero rows (the first call already
+  // flipped status), so we can detect it and self-heal instead of leaving two
+  // ledger rows for the same requirement.
+  const { data: updatedSub, error: subErr } = await supabase
+    .from('requirement_submissions')
+    .update({
+      status: 'approved',
+      reviewed_by: reviewer,
+      reviewed_at: new Date().toISOString(),
+      ledger_entry_id: ledgerRow.id
+    })
+    .eq('id', id)
+    .eq('status', 'pending')
+    .select('id')
+    .maybeSingle();
+  if (subErr) return { error: subErr.message };
+  if (!updatedSub) {
+    // Lost the race — soft-delete the ledger row we just wrote (same
+    // deleted_at/deleted_by/deleted_reason convention as undoCompletion in
+    // fast-entry/actions.ts) rather than leaving a duplicate award behind.
+    await supabase
+      .from('ledger_entries')
+      .update({
+        deleted_at: new Date().toISOString(),
+        deleted_by: reviewer,
+        deleted_reason: 'Automatic: this submission was reviewed by someone else a moment earlier.'
+      })
+      .eq('id', ledgerRow.id);
+    return { error: 'This submission was just reviewed by someone else — refresh the Proof Queue.' };
+  }
+
+  return { error: null, ledgerEntryId: ledgerRow.id };
+}
+
+/** Returns a submission with feedback — the ledger is never touched. */
+export async function returnSubmission(
+  supabase: SupabaseClient,
+  id: number,
+  reviewer: string,
+  feedback: string
+): Promise<string | null> {
+  const { error } = await supabase
+    .from('requirement_submissions')
+    .update({
+      status: 'returned',
+      feedback_md: feedback || null,
+      reviewed_by: reviewer,
+      reviewed_at: new Date().toISOString()
+    })
+    .eq('id', id);
+  return error ? error.message : null;
+}
+
 export async function cascadeLibraryReqRename(
   supabase: SupabaseClient,
   source: 'rank' | 'mb',
