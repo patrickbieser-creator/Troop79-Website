@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family Identity &amp; Passwordless Auth — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #2e4530;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #faf6ef;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); }
+        tr:hover { background: var(--nw-sage); }
+
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+
+        @media print {
+            body { background: white; }
+            header { padding: 1.5rem; }
+            .container { padding: 1rem; }
+            .stat { break-inside: avoid; }
+        }
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.5rem; }
+            .stats { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Family Identity &amp; Passwordless Auth</h1>
+        <p class="subtitle">Proof-of-completion submissions shipped, then a same-day identity gap in them closed, then real per-person sign-in replaced the self-asserted household picker across three surfaces</p>
+        <div class="meta">
+            <span>&#128197; August 6, 2026</span>
+            <span>&#129302; Operator</span>
+            <span>&#128204; Troop79-Website</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">3</div><div class="label">Versions Shipped</div></div>
+            <div class="stat"><div class="number">32</div><div class="label">Tests Added (26&rarr;58)</div></div>
+            <div class="stat"><div class="number">4</div><div class="label">Decisions Recorded</div></div>
+            <div class="stat"><div class="number">4</div><div class="label">qa-lead Passes</div></div>
+            <div class="stat"><div class="number">3</div><div class="label">Production Deploys</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <h3>Resource Library Phase 2 (v1.21.0): proof-of-completion goes live</h3>
+        <p>A scout or family can now submit a photo, link, or write-up as proof of a completed requirement — new <span class="file-path">/library/submit-proof</span>, "I did this" call-to-action buttons on rank and merit badge requirement pages, and an admin Proof Queue tab that approves through the exact same duplicate-blocked ledger path Fast Entry already uses (extracted to a shared <span class="file-path">lib/ledger-dedup.ts</span> helper). Approval self-heals a two-leaders-approve-at-once race rather than double-writing the ledger. First private Supabase Storage bucket in the project — no public access, signed URLs generated server-side only. qa-lead review came back clear; two real bugs were caught and fixed along the way (a foreign-key delete-order issue in the test suite's own cleanup, and the concurrent-approval race itself). Shipped alongside a site-wide <strong>Log Out</strong> utility that clears all three session types (family, household-binding, admin) from one button.</p>
+
+        <div class="callout callout-orange">
+            <strong>Hours after v1.21.0 shipped, a real gap surfaced in it:</strong> the scout-login path into <span class="file-path">/library/submit-proof</span> used a roster picker with no identity check behind it — any holder of the shared scout password could submit proof under <em>any</em> active scout's name. Not a malicious-actor risk so much as a plain misclick: thirty names in a dropdown, no confirmation step, feeding straight into an admin approval that writes to the ledger.
+        </div>
+
+        <h3>Phase 0 (v1.21.1): closed the same day it opened</h3>
+        <p>Refused the scout-login path outright, server-side — the same way a leader session already was. Not narrowed, not confirmation-gated: closed. <span class="file-path">scout-roster-picker.tsx</span> was deleted rather than left disabled, and the "I did this" buttons now explain what to do instead (submit from a family device, or ask a parent) instead of letting a scout fill out the whole form only to be refused at the end. This was also the opening move of a much larger plan drafted the same day: <span class="file-path">Plans/Family-Identity-Auth.md</span> — passwordless per-family identity to replace the self-asserted household picker everywhere it's load-bearing. qa-lead: clear, ship, no critical or high findings.</p>
+
+        <h3>Family Identity &amp; Passwordless Auth, Phases 0&ndash;2 (v1.22.0): the real fix</h3>
+        <p>New <span class="file-path">/signin</span>: enter an email, get a one-time link and a 6-digit code, land in a 120-day session bound to a real person and household. No password to remember, and no more self-asserted "pick your own household" picker standing in for identity. Enumeration-safe (identical response whether or not the address is on the roster), rate-limited, and the emailed link's landing page consumes nothing on a bare GET — so a mail scanner prefetching the link can't burn the token before the real recipient clicks it. Verification tokens are stored as salted SHA-256 hashes only.</p>
+        <p>Three surfaces now trust this instead of a picker: <strong>/profile</strong> requires a verified adult (the old household picker is deleted, not orphaned); <strong>Resource Library proof submission</strong> gets its scout path back &mdash; properly this time, a verified scout can submit proof of their own work again, with no picker and no way to claim anyone else's; <strong>Event Signup</strong> recognizes a verified visitor automatically, skipping the password re-prompt and pre-selecting their household (still switchable &mdash; locking a family to only their own household was explicitly rejected as a capability regression, since a grandparent or family friend legitimately signs up on someone else's behalf).</p>
+        <p>Revocation runs off a per-person session counter that the database itself bumps whenever the roster marks someone inactive &mdash; catching bulk import corrections and direct database edits, not just app-side changes.</p>
+
+        <div class="callout callout-teal">
+            <strong>qa-lead's two passes earned their keep here.</strong> The first caught per-IP rate limiting that looked implemented but was silently dead code &mdash; the IP address was never actually threaded through to the check &mdash; and a revoked session that kept full Event Signup write access indefinitely, because the access-check function had never been taught to look at the new revocation counter. Also fixed: a smaller enumeration side-channel hiding in the code-entry lockout message. The second pass: ship, no blockers.
+        </div>
+
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>Decision</th><th>Why</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td><strong>D-073 &mdash; Proof-of-completion via the same dup-blocked ledger path as Fast Entry</strong></td>
+                    <td>One write path into the ledger instead of two to keep in sync; extracted as <span class="file-path">lib/ledger-dedup.ts</span> so both call it.</td>
+                </tr>
+                <tr>
+                    <td><strong>D-074 &mdash; Site-wide Log Out, one control for three session types</strong></td>
+                    <td>Family, household-binding, and admin sessions each had their own cookie with no single way to end all of them at once.</td>
+                </tr>
+                <tr>
+                    <td><strong>D-075 &mdash; Scout free-pick closed outright, not narrowed</strong></td>
+                    <td>"Leader review catches misuse" was never actually true &mdash; the reviewer has no independent way to verify a claim, so the picker had to go, not shrink.</td>
+                </tr>
+                <tr>
+                    <td><strong>D-076 &mdash; Passwordless identity, deleted (not orphaned) the picker it replaces</strong></td>
+                    <td>A parallel unverified fallback sitting next to a verified system is exactly the kind of ambiguity this whole plan exists to remove.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li><strong>Family Identity Phases 3&ndash;4:</strong> leader tooling, a revoke UI, and offline codes (Phase 3), then passkeys (Phase 4) &mdash; per <span class="file-path">Plans/Family-Identity-Auth.md</span>, not yet started.</li>
+            <li><strong>Proof media retention job:</strong> the design called for proof photos to be deleted 3 months after review by a routine job &mdash; that job doesn't exist yet, so the private bucket currently accumulates indefinitely.</li>
+            <li>Everything else on the existing backlog is unchanged (merit badge official text, <span class="file-path">scout_parents</span> retirement soak week, remaining duplicate ledger records, etc.)</li>
+        </ul>
+
+        <h2>Files Changed</h2>
+        <p>Three commits, all deployed and verified live, pushed to <span class="file-path">origin/main</span>:</p>
+        <ul>
+            <li><span class="badge badge-green">NEW</span> <span class="file-path">722847f</span> &mdash; Resource Library Phase 2 (24 files: submit-proof flow, Proof Queue, private storage bucket, <span class="file-path">lib/ledger-dedup.ts</span>, site-wide Log Out)</li>
+            <li><span class="badge badge-gold">MODIFIED</span> <span class="file-path">3490723</span> &mdash; scout free-pick closed (11 files, incl. <span class="file-path">Plans/Family-Identity-Auth.md</span> added)</li>
+            <li><span class="badge badge-green">NEW</span> <span class="file-path">ec28ff0</span> &mdash; Family Identity &amp; Passwordless Auth Phases 0&ndash;2 (<span class="file-path">/signin</span>, <span class="file-path">login_tokens</span> table, revocation triggers, three surfaces migrated)</li>
+            <li><span class="badge badge-gold">MODIFIED</span> <span class="file-path">changelog.html</span> &mdash; v1.21.0, v1.21.1, v1.22.0 entries, recorded correctly in real time this session</li>
+        </ul>
+
+    </div>
+
+    <footer>
+        <strong>Troop 79</strong> — Troop79-Website<br>
+        Session Summary — August 6, 2026 — Operator
+    </footer>
+</body>
+</html>
