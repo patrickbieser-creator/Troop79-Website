@@ -6,13 +6,13 @@
 import Link from 'next/link';
 import { NavLinks } from './nav-links';
 import { UtilityDate } from './utility-date';
-import { SiteLogoutButton } from './site-logout-button';
+import { SiteAuthStatus } from './site-auth-status';
 import styles from './site-nav.module.css';
 
 // Deliberately NOT async and does not read cookies()/headers() — this layout
 // wraps every public page, and doing either here would bail every one of
 // them out of static/ISR generation (caught in build output, 2026-08-06).
-// SiteLogoutButton checks session state itself, client-side, via
+// SiteAuthStatus checks session state itself, client-side, via
 // /api/session-status — see that route's comment for the full story.
 export function SiteNav() {
   return (
@@ -37,61 +37,7 @@ export function SiteNav() {
         >
           <UtilityDate />
           <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-            <span
-              style={{
-                fontFamily: 'var(--font-ui)',
-                fontSize: 11,
-                color: 'var(--text-meta)',
-                letterSpacing: '.03em'
-              }}
-            >
-              Milwaukee, WI
-            </span>
-            <Link
-              href="/profile"
-              style={{
-                fontFamily: 'var(--font-ui)',
-                fontSize: 11,
-                fontWeight: 600,
-                color: 'var(--navy)',
-                letterSpacing: '.03em'
-              }}
-            >
-              Profile
-            </Link>
-            {/* Family Identity & Passwordless Auth (Plans/Family-Identity-Auth.md
-                Phase 1, Implementation Step 5) — plain static Link, same reason
-                Profile/Members Login are: SiteNav must stay cookie-free. Shown
-                unconditionally (soft-launch); SiteLogoutButton already carries
-                the "you're signed in" signal once verified. */}
-            <Link
-              href="/signin"
-              style={{
-                fontFamily: 'var(--font-ui)',
-                fontSize: 11,
-                fontWeight: 600,
-                color: 'var(--navy)',
-                letterSpacing: '.03em'
-              }}
-            >
-              Sign In
-            </Link>
-            <SiteLogoutButton />
-            <Link
-              href="/admin"
-              style={{
-                fontFamily: 'var(--font-ui)',
-                fontSize: 11,
-                fontWeight: 600,
-                color: 'var(--navy)',
-                letterSpacing: '.03em',
-                border: '1px solid var(--border-mid)',
-                padding: '3px 10px',
-                borderRadius: 2
-              }}
-            >
-              Members Login
-            </Link>
+            <SiteAuthStatus />
           </div>
         </div>
       </div>

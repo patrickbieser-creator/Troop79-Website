@@ -497,6 +497,44 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.22.1 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.22.1</span>
+        <span class="release-date">August 6, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Fix</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Public site status bar: one login, and only shown when it matters</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              The utility bar at the top of every public page used to show <strong>Profile</strong>,
+              <strong>Sign In</strong>, and <strong>Members Login</strong> all the time, whether or
+              not anyone was signed in &mdash; and two separate sign-in links to boot. It now shows a
+              single <strong>Member Login</strong> when signed out, and when signed in, who&rsquo;s
+              signed in and at what level (<strong>Family</strong>, <strong>Scout</strong>, or
+              <strong>Admin</strong>), with <strong>Profile</strong> appearing only for a verified
+              parent/guardian and <strong>Log Out</strong> only when there&rsquo;s something to log
+              out of.
+            </span>
+          </li>
+          <li>
+            <span>
+              The redundant <strong>Milwaukee, WI</strong> label on the status bar&rsquo;s right side
+              is gone &mdash; the masthead below already says where the troop is.
+            </span>
+          </li>
+          <li>
+            <span>
+              Leaders and scouts still reach the separate troop-password login &mdash; now from a
+              link on the Sign In page itself rather than a second item in the nav.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.22.0 -->
     <div class="release">
       <div class="release-header">

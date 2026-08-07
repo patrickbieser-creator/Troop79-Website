@@ -61,6 +61,19 @@ export default async function SignInPage({
         ) : (
           <RequestForm email={email} next={next} err={err} configured={configured} />
         )}
+
+        {/* Consolidated nav login (Patrick, 2026-08-06: "Consolidate all
+            logins under member login. Having two sign ins is confusing.") —
+            the public nav now has one entry point, this page. Leaders and
+            scouts still use the separate shared-password login
+            (lib/leader-session.ts is a different credential entirely, not a
+            passwordless email — see that module's header), reached from
+            here rather than a second top-level nav link. */}
+        <p style={{ marginTop: 24, textAlign: 'center' }}>
+          <Link className={styles.divLink} href="/admin/login">
+            Leader or Scout? Sign in with the troop password
+          </Link>
+        </p>
       </main>
     </>
   );
