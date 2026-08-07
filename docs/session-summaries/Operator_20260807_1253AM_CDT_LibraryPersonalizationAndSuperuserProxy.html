@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resource Library Personalization &amp; Superuser Proxy — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #2e4530;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #faf6ef;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); }
+        tr:hover { background: var(--nw-sage); }
+
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+
+        @media print {
+            body { background: white; }
+            header { padding: 1.5rem; }
+            .container { padding: 1rem; }
+            .stat { break-inside: avoid; }
+        }
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.5rem; }
+            .stats { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Resource Library Personalization &amp; Superuser Proxy</h1>
+        <p class="subtitle">A signed-in family now sees their own scout's progress in the library — plus a leader proxy view, reviewed by tech-lead and qa-lead before shipping</p>
+        <div class="meta">
+            <span>&#128197; August 7, 2026</span>
+            <span>&#129302; Operator</span>
+            <span>&#128204; Troop79-Website</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">15</div><div class="label">Files Changed</div></div>
+            <div class="stat"><div class="number">5</div><div class="label">New Tests (63 total)</div></div>
+            <div class="stat"><div class="number">2</div><div class="label">SME Reviews (tech-lead + qa-lead)</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">New Table, Migrated to Prod</div></div>
+            <div class="stat"><div class="number">4</div><div class="label">Viewer States Live-Verified</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <p>Patrick's ask: show a scout's completed requirements next to each rank row once expanded, highlight completed merit badges on the grid with their date, add a switcher for households with more than one scout, and give designated leaders a way to view the library as any scout in the troop.</p>
+
+        <h3>Designed before it was built</h3>
+        <p>Given the scope — a new table, cross-cutting UI changes, and a genuinely new access-control capability (leader impersonation) — this went to <strong>tech-lead</strong> for a design review before any code was written. It flagged a real risk: a leader session only ever carries a display <em>label</em> ("Mike Ba."), never the database code the new superuser table is keyed on, so the resolution had to go through the same label&rarr;code lookup the login page already uses. It also caught a gap in the existing rename-cascade list and steered the admin UI into the existing Lookups &amp; Admin card pattern rather than a new standalone screen.</p>
+
+        <h3>The authorization model</h3>
+        <p>A single resolver &mdash; <span class="file-path">resolveLibraryViewer()</span> &mdash; is the only place that decides whose progress renders. The URL carries a <span class="file-path">?viewScout=</span> parameter, but it is never trusted on its own: it only picks a scout from a list the session is already authorized to see (a verified household's own kids, or an authorized leader's full active-scout list). Everyone else &mdash; anonymous visitors, the shared family password, an unauthorized leader &mdash; gets nothing extra, exactly as before.</p>
+
+        <div class="callout callout-teal">
+            <strong>qa-lead's mandatory security review</strong> (any new access-control surface gets one, no exceptions) came back <strong>SHIP</strong>, with two low-severity fixes folded in: a scout who happens to also hold an admin login no longer loses their own personalization, and the merit-badge detail page's deliberate exclusion is now documented in a comment instead of looking like an oversight.
+        </div>
+
+        <h3>The superuser proxy is opt-in, on purpose</h3>
+        <p>A leader flagged as a library superuser does <em>not</em> see anyone's progress by default when they land on the page &mdash; a leader has no "their own scout" to default to, and silently dropping every leader into someone else's view would be a strange surprise. Instead they see a clearly labeled picker; choosing a scout switches on a "Viewing as {name}" banner with a one-click way back out.</p>
+
+        <h3>Verified against real data, without touching real credentials</h3>
+        <p>Local Postgres was started fresh for this session and turned out to already hold real production-shaped data (48 scouts, 7 ranks, 69 merit badges) &mdash; a stale backlog note claiming it was empty has been removed. All four viewer states (anonymous, a real two-scout household switching between siblings, a scout's own verified sign-in, and the superuser proxy) were exercised live in the browser against that data, using a throwaway dev-only route that mints test sessions server-side rather than typing any shared password into browser automation. The route and all fixture data were deleted immediately after.</p>
+
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>Decision</th><th>Why</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td><strong>D-078 &mdash; One resolver, param never bypasses authorization</strong></td>
+                    <td>The library was previously anonymous-by-default everywhere; personalizing it needed one place where "who is this, and what may they see" is decided, not one check per page.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Blockers</h2>
+        <table>
+            <thead><tr><th>Blocker</th><th>Status</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td><strong>B-003 &mdash; Production service_role key printed into this session's transcript</strong></td>
+                    <td><span class="badge badge-red">OPEN</span> &mdash; a command run to fetch the safe, public anon key for an RLS check also printed the full-access key. Held for Patrick to rotate at end of session, per standing B-002 precedent.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li><strong>Grant at least one leader superuser status</strong> in Lookups &amp; Admin &mdash; the production table is empty post-migration, so nobody can use the proxy view yet.</li>
+            <li><strong>Rotate the production <span class="file-path">service_role</span> key</strong> (B-003) &mdash; Supabase dashboard, then Vercel env vars, then redeploy.</li>
+            <li>Everything else on the existing backlog is unchanged (Family Identity Phases 3&ndash;4, merit badge official text, <span class="file-path">scout_parents</span> retirement soak week, etc.)</li>
+        </ul>
+
+        <h2>Files Changed</h2>
+        <p>One commit, migration applied to production first, then pushed to <span class="file-path">origin/main</span> (<span class="file-path">1b122a9</span>):</p>
+        <ul>
+            <li><span class="badge badge-green">NEW</span> <span class="file-path">lib/library-viewer.ts</span> &mdash; the authorization resolver</li>
+            <li><span class="badge badge-green">NEW</span> <span class="file-path">library/_components/scout-switcher.tsx</span>, <span class="file-path">lookups/superuser-editor.tsx</span> &mdash; the two new UI pieces</li>
+            <li><span class="badge badge-green">NEW</span> <span class="file-path">supabase/migrations/20260807000000_library_superusers.sql</span> &mdash; applied to production, RLS verified live</li>
+            <li><span class="badge badge-green">NEW</span> <span class="file-path">tests/library-scout-progress.test.ts</span> &mdash; 5 tests</li>
+            <li><span class="badge badge-gold">MODIFIED</span> 9 files across <span class="file-path">library/</span>, <span class="file-path">lookups/</span>, and <span class="file-path">lib/</span> wiring the feature in</li>
+        </ul>
+
+    </div>
+
+    <footer>
+        <strong>Troop 79</strong> — Troop79-Website<br>
+        Session Summary — August 7, 2026 — Operator
+    </footer>
+</body>
+</html>
