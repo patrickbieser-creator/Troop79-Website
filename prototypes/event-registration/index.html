@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Event Registration Prototypes — Scout Troop 79</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../news-cms/assets/news-cms.css" />
+  <link rel="stylesheet" href="assets/event-registration.css" />
+  <style>
+    .proto-index { max-width: 860px; margin: 34px auto 60px; padding: 0 24px; }
+    .proto-index h1 { font-family: 'Playfair Display', Georgia, serif; font-size: 34px; font-weight: 700; color: var(--text-head); margin-bottom: 8px; }
+    .proto-index > p.lede { font-family: 'Lora', Georgia, serif; font-size: 16px; color: var(--text-body); line-height: 1.7; margin-bottom: 26px; }
+    .proto-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; margin-bottom: 34px; }
+    .proto-card {
+      display: block; background: var(--warm-white); border: 1px solid var(--border-light);
+      border-top: 3px solid var(--forest); border-radius: 2px; box-shadow: var(--shadow-card);
+      padding: 18px 20px; transition: box-shadow var(--transition);
+    }
+    .proto-card:hover { box-shadow: var(--shadow-hover); }
+    .proto-card .pc-kind { font-family: 'Open Sans', Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--forest); }
+    .proto-card h2 { font-family: 'Playfair Display', Georgia, serif; font-size: 19px; font-weight: 700; color: var(--text-head); margin: 5px 0 7px; }
+    .proto-card p { font-family: 'Open Sans', Arial, sans-serif; font-size: 12.5px; color: var(--text-meta); line-height: 1.6; }
+    .proto-card.pc-admin { border-top-color: var(--navy); }
+    .proto-card.pc-admin .pc-kind { color: var(--navy); }
+    .design-notes h2 { font-family: 'Playfair Display', Georgia, serif; font-size: 22px; color: var(--text-head); margin: 30px 0 10px; }
+    .design-notes ol, .design-notes ul { padding-left: 22px; font-family: 'Open Sans', Arial, sans-serif; font-size: 13.5px; color: var(--text-body); line-height: 1.75; }
+    .design-notes li { margin-bottom: 6px; }
+    .design-notes li strong { color: var(--text-head); }
+    .design-notes p { font-family: 'Open Sans', Arial, sans-serif; font-size: 13.5px; color: var(--text-body); line-height: 1.7; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+
+  <div class="proto-banner">
+    <div class="proto-banner-inner">
+      <p><strong>Prototype suite</strong> Event Registration System &mdash; design reference for the production build. See <code>Plans/Event-Registration-System.md</code> for the full plan.</p>
+      <a href="../news-cms/index.html">Other prototypes &rarr;</a>
+    </div>
+  </div>
+
+  <header class="masthead" role="banner">
+    <div class="masthead-inner">
+      <div class="masthead-logo">
+        <a href="../../index.html" aria-label="Troop 79 Home">
+          <img src="../../assets/images/troop-79-logo.png" alt="Scout Troop 79 &mdash; Milwaukee, WI" />
+        </a>
+      </div>
+      <div class="masthead-wordmark">
+        <h1 class="site-name">Scout Troop 79</h1>
+        <p class="site-sub">Event Registration &nbsp;&middot;&nbsp; Design Prototypes</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="proto-index">
+    <h1>Event Registration System</h1>
+    <p class="lede">Sign-ups for everything the troop does &mdash; campouts, service projects, fundraisers, outings, merit badge clinics, Courts of Honor &mdash; designed so <strong>one parent answers for the whole family in about a minute on a phone</strong>. Payments stay offline: the site shows the amount and how to pay, and leaders tick off who has. The <strong>event category decides which questions appear</strong>, so a Court of Honor never asks about driver seats.</p>
+
+    <div class="proto-cards">
+      <a class="proto-card" href="event-campout.html">
+        <span class="pc-kind">Public &middot; Family flow</span>
+        <h2>Campout signup</h2>
+        <p>The flagship 4-state flow: family password &rarr; pick your scouts &rarr; per-person Going/Not going with drivers &amp; dietary &rarr; confirmation with edit-until-deadline. Includes fee display and offline payment instructions.</p>
+      </a>
+      <a class="proto-card" href="event-fundraiser.html">
+        <span class="pc-kind">Public &middot; Shift slots</span>
+        <h2>Fundraiser shifts</h2>
+        <p>Named slots with hard capacity &mdash; scout wash crews and adult supervisors per 2-hour shift. Full shifts flip to a waitlist. The SignUpGenius pattern, on our own site.</p>
+      </a>
+      <a class="proto-card" href="event-coh.html">
+        <span class="pc-kind">Public &middot; Family event</span>
+        <h2>Court of Honor RSVP</h2>
+        <p>Whole-family headcount including a plain guest <em>number</em> (no names needed for grandma), plus potluck dish slots. No campout machinery in sight.</p>
+      </a>
+      <a class="proto-card pc-admin" href="admin-roster.html">
+        <span class="pc-kind">Leaders &middot; Admin</span>
+        <h2>Event roster</h2>
+        <p>Headcount tiles, patrol-grouped roster, dietary rollup, seats-vs-riders matrix, two-deep &amp; female-leader banners, health-form/YPT flags, waitlist promotion, paid checkboxes &mdash; and it prints for the campsite binder.</p>
+      </a>
+    </div>
+
+    <div class="design-notes">
+      <h2>The design in nine rules</h2>
+      <ol>
+        <li><strong>Households, not individuals.</strong> Picking your scout(s) defines your family; parents come along automatically from records on file. (Scoutbook&rsquo;s per-person-only RSVP is its most complained-about gap.)</li>
+        <li><strong>Going / Not going / No response.</strong> No &ldquo;Maybe.&rdquo; Silence stays visible so leaders know exactly who to chase.</li>
+        <li><strong>The category shapes the form.</strong> Campouts ask drivers + dietary; family events ask a guest count; fundraisers offer shift slots; meetings ask nothing extra.</li>
+        <li><strong>Deadlines carry their reason.</strong> &ldquo;Sign up by May 9 <em>so the grubmaster can shop</em>&rdquo; &mdash; then self-service locks and leaders can still edit.</li>
+        <li><strong>Drivers are event-level data.</strong> Direction + open seats per adult, rolled into a seats-vs-riders check both directions.</li>
+        <li><strong>Money stays offline.</strong> The site displays amounts and instructions; leaders tick &ldquo;paid.&rdquo; No cards, ever.</li>
+        <li><strong>Flag, never block.</strong> Expired health forms and YPT show as warnings on the leader roster &mdash; a signup is never rejected over paperwork.</li>
+        <li><strong>Safety is computed.</strong> Two-deep (2 adults 21+) and female-leader coverage are derived from the going list and surfaced as banners.</li>
+        <li><strong>Signups become records.</strong> The roster seeds post-event attendance, which seeds camping nights / service hours / activity ledger entries (Phase 3).</li>
+      </ol>
+
+      <h2>What ships when</h2>
+      <ul>
+        <li><strong>Phase 1:</strong> event detail pages, family signup flow, capacity + waitlist, leader roster with print &mdash; the campout and Court of Honor prototypes.</li>
+        <li><strong>Phase 2:</strong> shift/dish slots, electronic permission slips, email confirmations &amp; reminders &mdash; the fundraiser prototype.</li>
+        <li><strong>Phase 3:</strong> roster &rarr; attendance &rarr; ledger conversion; summer camp / high adventure commitment + payment-milestone tracking; MB clinic session caps.</li>
+      </ul>
+
+      <h2>Open questions for review</h2>
+      <ul>
+        <li>Separate <code>FAMILY_PASSWORD</code> (recommended) vs. reusing the scout password?</li>
+        <li>Who sees the who&rsquo;s-going list &mdash; counts-only when signed out, names for signed-in families, details for leaders?</li>
+        <li>Guests as a plain number (as prototyped) vs. named rows?</li>
+      </ul>
+    </div>
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <div class="footer-inner">
+      <div class="footer-bottom">
+        <p>&copy; 2026 Scout Troop 79 &nbsp;&middot;&nbsp; Milwaukee, Wisconsin</p>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
