@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Public Site Status Bar Cleanup — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #2e4530;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #faf6ef;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); }
+        tr:hover { background: var(--nw-sage); }
+
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+
+        @media print {
+            body { background: white; }
+            header { padding: 1.5rem; }
+            .container { padding: 1rem; }
+            .stat { break-inside: avoid; }
+        }
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.5rem; }
+            .stats { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Public Site Status Bar Cleanup</h1>
+        <p class="subtitle">One login control that reflects who's actually signed in, instead of four items shown regardless of session state</p>
+        <div class="meta">
+            <span>&#128197; August 6, 2026</span>
+            <span>&#129302; Operator</span>
+            <span>&#128204; Troop79-Website</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">4&rarr;1</div><div class="label">Status-Bar Items Consolidated</div></div>
+            <div class="stat"><div class="number">2&rarr;1</div><div class="label">Sign-In Entry Points</div></div>
+            <div class="stat"><div class="number">6</div><div class="label">Files Changed</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">Decision Recorded</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">Production Deploy</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <p>Patrick's ask, verbatim: keep the date on the left, drop the redundant "Milwaukee, WI" on the right, hide Profile and Log Out unless someone's actually signed in, show who's signed in and at what level when they are, and stop showing two separate sign-in links.</p>
+
+        <h3>One component instead of four unconditional items</h3>
+        <p>The utility bar used to show <strong>Profile</strong>, <strong>Sign In</strong>, and <strong>Members Login</strong> all the time &mdash; regardless of whether anyone was signed in &mdash; plus a self-hiding <strong>Log Out</strong> that was the only one of the four that actually checked session state. A new <span class="file-path">SiteAuthStatus</span> component replaces all four: a single <strong>Member Login</strong> link when signed out, or &ldquo;Signed in as {name} &middot; {Level}&rdquo; plus Log Out when signed in. <strong>Profile</strong> now appears only for a verified adult identity session &mdash; the one audience the page is actually built for; a scout's verified session or the plain family-password cookie never show it.</p>
+
+        <h3>Three real access levels, one label each</h3>
+        <p>The site actually has four distinct session mechanisms under the hood (leader/scout shared password, family shared password, and verified passwordless identity split into adult and scout tiers) &mdash; but the troop only talks about three things: <strong>Admin</strong>, <strong>Scout</strong>, and <strong>Family</strong>. The new <span class="file-path">/api/session-status</span> endpoint collapses the four mechanisms onto those three labels, plus a display name when the session carries one.</p>
+
+        <div class="callout callout-teal">
+            <strong>Not new exposure:</strong> the display name shown in the nav (a leader's typed login name, or a verified visitor's name from the passwordless flow) was already rendered server-side on <span class="file-path">/profile</span> and every <span class="file-path">/admin</span> page for a signed-in visitor. This just lets the client-side nav show the same thing.
+        </div>
+
+        <h3>Two sign-ins become one</h3>
+        <p><span class="file-path">/signin</span> (passwordless email) is now the single nav entry point. Leaders and scouts still reach their separate shared-password login, but now via a link at the bottom of the Sign In page &mdash; &ldquo;Leader or Scout? Sign in with the troop password&rdquo; &mdash; rather than a second item competing for space in the nav.</p>
+
+        <h3>Verified live, with one deliberate gap</h3>
+        <p>Checked in the browser: the logged-out state shows exactly one link, and an already-active Family session on this machine correctly showed &ldquo;Signed in &middot; Family&rdquo; with no Profile link (the plain family-password cookie isn't the verified-adult tier Profile needs). The Admin/Scout-level branch and the identity-adult Profile case use the identical rendering path already proven live by that Family case, but weren't independently exercised with real credentials &mdash; doing so would mean typing <span class="file-path">LEADER_PASSWORD</span>/<span class="file-path">SCOUT_PASSWORD</span> into browser automation, which this project's own history (a partially-echoed database password, since rotated) treats as compromising the credential. Left as a 30-second manual check for next time.</p>
+
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>Decision</th><th>Why</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td><strong>D-077 &mdash; One status-bar control, three access levels</strong></td>
+                    <td>Four always-visible items with no shared source of truth for session state, and two sign-ins, were both confusing on their own terms &mdash; one component fixes both at once.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li><strong>Manual verification:</strong> confirm the Admin/Scout-level display live next time signed in as a leader or scout &mdash; not exercised with real credentials this session (see above).</li>
+            <li>Everything else on the existing backlog is unchanged (Family Identity Phases 3&ndash;4, proof media retention job, merit badge official text, <span class="file-path">scout_parents</span> retirement soak week, etc.)</li>
+        </ul>
+
+        <h2>Files Changed</h2>
+        <p>One commit, deployed and pushed to <span class="file-path">origin/main</span>:</p>
+        <ul>
+            <li><span class="badge badge-green">NEW</span> <span class="file-path">_components/site-auth-status.tsx</span> &mdash; the consolidated login/logout control</li>
+            <li><span class="badge badge-red">REMOVED</span> <span class="file-path">_components/site-logout-button.tsx</span> &mdash; superseded outright</li>
+            <li><span class="badge badge-gold">MODIFIED</span> <span class="file-path">_components/site-nav.tsx</span> &mdash; dropped "Milwaukee, WI", wired in the new component</li>
+            <li><span class="badge badge-gold">MODIFIED</span> <span class="file-path">api/session-status/route.ts</span> &mdash; boolean &rarr; level/label/canViewProfile</li>
+            <li><span class="badge badge-gold">MODIFIED</span> <span class="file-path">(public)/signin/page.tsx</span> &mdash; added the leader/scout fallback link</li>
+            <li><span class="badge badge-gold">MODIFIED</span> <span class="file-path">changelog.html</span> &mdash; v1.22.1 entry</li>
+        </ul>
+
+    </div>
+
+    <footer>
+        <strong>Troop 79</strong> — Troop79-Website<br>
+        Session Summary — August 6, 2026 — Operator
+    </footer>
+</body>
+</html>
