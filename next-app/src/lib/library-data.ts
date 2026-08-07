@@ -299,6 +299,75 @@ export async function scoutAlreadyHasRequirement(
 }
 
 /**
+ * One scout's completed rank requirements, keyed by the SAME composite
+ * `rankReqKey` (`{rankId}-{code}`) `rank_requirement` ledger rows already use
+ * as `code` — no per-rank query needed, one call covers every rank at once.
+ * Scoped to a single scout_id, so this is provably small (D-028) and never
+ * needs pagination even for a scout with a long ledger.
+ */
+export async function loadScoutRankProgress(
+  supabase: SupabaseClient,
+  scoutId: string
+): Promise<Map<string, string>> {
+  const { data } = await supabase
+    .from('ledger_active')
+    .select('code, date')
+    .eq('scout_id', scoutId)
+    .eq('kind', 'rank_requirement');
+  const map = new Map<string, string>();
+  for (const row of (data ?? []) as { code: string; date: string }[]) {
+    map.set(row.code, row.date);
+  }
+  return map;
+}
+
+/**
+ * One scout's earned merit badges, mbId → award date. `merit_badge_award`
+ * ledger rows use `MB:{mbId}` as their code (distinct from the `{mbId}-{code}`
+ * composite `merit_badge_requirement` rows use) — see
+ * (public)/merit-badges/[mbId]/page.tsx for the same convention read
+ * elsewhere. Scoped to one scout, no pagination needed.
+ */
+export async function loadScoutMbAwardMap(
+  supabase: SupabaseClient,
+  scoutId: string
+): Promise<Map<string, string>> {
+  const { data } = await supabase
+    .from('ledger_active')
+    .select('code, date')
+    .eq('scout_id', scoutId)
+    .eq('kind', 'merit_badge_award');
+  const map = new Map<string, string>();
+  for (const row of (data ?? []) as { code: string; date: string }[]) {
+    if (row.code.startsWith('MB:')) map.set(row.code.slice(3), row.date);
+  }
+  return map;
+}
+
+/** Every active scout in the troop, for the Resource Library superuser proxy
+ *  picker (lib/library-viewer.ts) — not household-scoped, deliberately. */
+export async function loadActiveScoutsList(
+  supabase: SupabaseClient
+): Promise<{ id: string; displayName: string }[]> {
+  const { data } = await supabase
+    .from('scouts')
+    .select('id, display_name')
+    .eq('active', true)
+    .order('display_name');
+  return ((data ?? []) as { id: string; display_name: string }[]).map((s) => ({
+    id: s.id,
+    displayName: s.display_name
+  }));
+}
+
+/** Leader codes authorized to proxy the Resource Library as any active scout
+ *  (lib/library-viewer.ts). Tiny table — no pagination needed. */
+export async function loadLibrarySuperuserCodes(supabase: SupabaseClient): Promise<Set<string>> {
+  const { data } = await supabase.from('library_superusers').select('leader_code');
+  return new Set(((data ?? []) as { leader_code: string }[]).map((r) => r.leader_code));
+}
+
+/**
  * Approves a pending proof submission: writes exactly the ledger row Fast
  * Entry would (same dup-blocked path, D-041) and back-links ledger_entry_id.
  * Blocked — not silently dropped — if the scout already has this exact

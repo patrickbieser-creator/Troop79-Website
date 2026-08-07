@@ -265,6 +265,75 @@
 .mbCount { font-size: 11px; font-weight: 700; color: var(--forest); }
 .mbCountZero { color: var(--border-mid); font-weight: 400; }
 
+/* ── Scout progress personalization (Family Identity viewer) ──
+   Khaki/bark accent (existing earth-tone tokens) deliberately distinct from
+   the forest green already used for "has resources" counts, so "the troop
+   has resources here" and "YOUR scout completed this" never look like the
+   same signal. */
+.mbTileCompleted { background: var(--khaki-light); border-color: var(--khaki); }
+.mbTileCompleted:hover { border-color: var(--bark); }
+.mbNameCompleted { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; font-size: 13.5px; font-weight: 600; color: var(--text-head); line-height: 1.3; }
+.mbCompletedDate { font-size: 10px; font-weight: 700; color: var(--bark); }
+
+.reqDoneBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--bark);
+  background: var(--khaki-light);
+  border: 1px solid var(--khaki);
+  border-radius: 999px;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+
+.scoutSwitcher {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: var(--khaki-light);
+  border: 1px solid var(--khaki);
+  border-radius: 3px;
+  padding: 8px 14px;
+  margin-bottom: 14px;
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+}
+.scoutSwitcherLabel { font-weight: 700; color: var(--text-head); }
+.scoutSwitcherSelect {
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  border: 1px solid var(--border-mid);
+  border-radius: 3px;
+  padding: 4px 8px;
+  background: var(--warm-white);
+  color: var(--text-body);
+}
+
+/* Superuser proxy — a stronger navy/bark treatment than the switcher above,
+   deliberately: this isn't "here's your family's progress," it's "you are
+   looking at someone else's as a leader," and should read as a distinct,
+   more deliberate mode. */
+.proxyBanner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: var(--cream);
+  border: 2px solid var(--bark);
+  border-radius: 3px;
+  padding: 8px 14px;
+  margin-bottom: 14px;
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  color: var(--text-head);
+}
+.proxyBannerLabel { font-weight: 700; color: var(--bark); }
+
 /* ── Topic shelves ── */
 .shelfGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
 .shelfCard {

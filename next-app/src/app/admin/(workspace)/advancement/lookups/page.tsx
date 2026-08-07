@@ -26,6 +26,7 @@ import { LookupCard } from './lookup-card';
 import { HouseholdsManager, type HouseholdRow } from './households-manager';
 import { SkillsEditor, type SkillRow } from './skills-editor';
 import { SkillAssignEditor, type AssignPerson } from './skill-assign-editor';
+import { SuperuserEditor, type SuperuserPerson } from './superuser-editor';
 import { TagsManager } from './tags-manager';
 import type { Tag } from '@/lib/supabase/types';
 import {
@@ -42,7 +43,8 @@ import {
   updateSkill,
   deleteSkill,
   setLeaderSkills,
-  setScoutInstructorSkills
+  setScoutInstructorSkills,
+  setLibrarySuperusers
 } from './actions';
 import styles from './lookups.module.css';
 
@@ -162,19 +164,26 @@ async function loadLookups() {
     )
   ]);
 
-  const [skillsRes, leaderSkillsRes, scoutInstructorsRes, householdsRes, hhMembersRes] =
-    await Promise.all([
-      supabase.from('skills').select('id, name, youth_teachable, sort_order').order('sort_order'),
-      supabase.from('leader_skills').select('leader_code, skill_id'),
-      supabase.from('scout_instructors').select('scout_id, skill_id'),
-      supabase.from('households').select('id, label').order('label'),
-      // Members carried through so each household can be told apart by WHO is
-      // in it. Two families sharing a surname is normal — the troop has two
-      // Stollenwerk households — and the label alone cannot distinguish them.
-      supabase
-        .from('household_members')
-        .select('household_id, people!inner(display_name, merged_into_person_id)')
-    ]);
+  const [
+    skillsRes,
+    leaderSkillsRes,
+    scoutInstructorsRes,
+    householdsRes,
+    librarySuperusersRes,
+    hhMembersRes
+  ] = await Promise.all([
+    supabase.from('skills').select('id, name, youth_teachable, sort_order').order('sort_order'),
+    supabase.from('leader_skills').select('leader_code, skill_id'),
+    supabase.from('scout_instructors').select('scout_id, skill_id'),
+    supabase.from('households').select('id, label').order('label'),
+    supabase.from('library_superusers').select('leader_code'),
+    // Members carried through so each household can be told apart by WHO is
+    // in it. Two families sharing a surname is normal — the troop has two
+    // Stollenwerk households — and the label alone cannot distinguish them.
+    supabase
+      .from('household_members')
+      .select('household_id, people!inner(display_name, merged_into_person_id)')
+  ]);
 
   const memberNames = new Map<number, string[]>();
   for (const m of (hhMembersRes.data ?? []) as unknown as {
@@ -299,7 +308,10 @@ async function loadLookups() {
     skillIdsByLeader,
     skillIdsByScout,
     tags: (tagsRes.data ?? []) as Tag[],
-    householdRows
+    householdRows,
+    librarySuperuserCodes: new Set(
+      ((librarySuperusersRes.data ?? []) as { leader_code: string }[]).map((r) => r.leader_code)
+    )
   };
 }
 
@@ -320,7 +332,8 @@ export default async function LookupsPage() {
     skillIdsByLeader,
     skillIdsByScout,
     tags,
-    householdRows
+    householdRows,
+    librarySuperuserCodes
   } = await loadLookups();
   const leadersLite = leaders.map((l) => ({ code: l.code, name: l.name }));
 
@@ -359,6 +372,12 @@ export default async function LookupsPage() {
       skillIds: skillIdsByScout.get(s.id) ?? []
     }));
   const youthSkills = skills.filter((s) => s.youth_teachable);
+
+  // Resource Library superuser picker: same adult-leader pool as Leader
+  // Skills above (real people, minus active youth-leader initials).
+  const superuserPeople: SuperuserPerson[] = leaders
+    .filter((l) => leaderType(l) === 'adult')
+    .map((l) => ({ code: l.code, name: l.name, sub: l.role ?? null }));
 
   return (
     <>
@@ -490,6 +509,19 @@ export default async function LookupsPage() {
           sub={`${householdRows.length} households · who belongs to one is set on each person under Roster · two families can share a surname, so name them apart`}
         >
           <HouseholdsManager households={householdRows} />
+        </Card>
+      </div>
+
+      <div className={styles.grid}>
+        <Card
+          title="Resource Library Superusers"
+          sub={`${librarySuperuserCodes.size} of ${superuserPeople.length} adult leaders · can view the public Resource Library as if they were any active scout in the troop, for support and testing`}
+        >
+          <SuperuserEditor
+            people={superuserPeople}
+            initialCodes={[...librarySuperuserCodes]}
+            onSave={setLibrarySuperusers}
+          />
         </Card>
       </div>
     </>

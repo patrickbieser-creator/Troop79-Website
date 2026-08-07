@@ -6,21 +6,27 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { Rank } from '@/lib/supabase/types';
-import { publishedCountsByTarget } from '@/lib/library-data';
-import { rankReqKey } from '@/lib/library';
+import { publishedCountsByTarget, loadScoutRankProgress } from '@/lib/library-data';
+import { rankReqKey, withViewScout } from '@/lib/library';
+import { resolveLibraryViewer } from '@/lib/library-viewer';
+import { ScoutSwitcher } from '../../_components/scout-switcher';
 import styles from '../../library.module.css';
 
 export const dynamic = 'force-dynamic';
 
 export default async function LibraryRankPage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ rankId: string }>;
+  searchParams: Promise<{ viewScout?: string }>;
 }) {
   const { rankId } = await params;
+  const { viewScout } = await searchParams;
   const supabase = createAdminClient();
+  const viewer = await resolveLibraryViewer(supabase, viewScout);
 
-  const [{ data: rank }, reqsRes, counts] = await Promise.all([
+  const [{ data: rank }, reqsRes, counts, rankProgress] = await Promise.all([
     supabase.from('ranks').select('*').eq('id', rankId).maybeSingle(),
     supabase
       .from('rank_requirements')
@@ -28,10 +34,12 @@ export default async function LibraryRankPage({
       .eq('rank_id', rankId)
       .is('parent_id', null)
       .order('sort_order'),
-    publishedCountsByTarget(createAdminClient())
+    publishedCountsByTarget(createAdminClient()),
+    viewer.kind === 'scout' ? loadScoutRankProgress(supabase, viewer.scoutId) : Promise.resolve(null)
   ]);
   if (!rank) notFound();
 
+  const viewScoutId = viewer.kind === 'scout' ? viewer.scoutId : undefined;
   const reqs = (reqsRes.data ?? []) as { code: string; label: string }[];
   const total = reqs.reduce(
     (sum, req) => sum + (counts.get(`rank_req:${rankReqKey(rankId, req.code)}`) ?? 0),
@@ -56,18 +64,33 @@ export default async function LibraryRankPage({
       </div>
 
       <main className={styles.main}>
+        <ScoutSwitcher viewer={viewer} />
         <div className={styles.rankItem}>
           <div className={styles.reqRows}>
             {reqs.map((req) => {
-              const n = counts.get(`rank_req:${rankReqKey(rankId, req.code)}`) ?? 0;
+              const key = rankReqKey(rankId, req.code);
+              const n = counts.get(`rank_req:${key}`) ?? 0;
+              const doneDate = rankProgress?.get(key) ?? null;
               return (
                 <Link
                   key={req.code}
                   className={`${styles.reqRow} ${n > 0 ? styles.reqRowHasStuff : ''}`}
-                  href={`/library/rank/${rankId}/${encodeURIComponent(req.code)}`}
+                  href={withViewScout(
+                    `/library/rank/${rankId}/${encodeURIComponent(req.code)}`,
+                    viewScoutId
+                  )}
                 >
                   <span className={`${styles.reqTag} ${styles.reqTagGhost}`}>{req.code}</span>
                   <span className={styles.reqLabel}>{req.label}</span>
+                  {doneDate && (
+                    <span className={styles.reqDoneBadge}>
+                      ✓{' '}
+                      {new Date(doneDate).toLocaleDateString('en-US', {
+                        month: 'short',
+                        year: 'numeric'
+                      })}
+                    </span>
+                  )}
                   {n > 0 ? (
                     <span className={styles.reqResCount}>
                       {n} resource{n === 1 ? '' : 's'}

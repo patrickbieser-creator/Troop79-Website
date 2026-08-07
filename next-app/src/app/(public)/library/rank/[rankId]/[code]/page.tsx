@@ -12,10 +12,12 @@ import { createAdminClient } from '@/lib/supabase/server';
 import type { Rank } from '@/lib/supabase/types';
 import { ArticleBody } from '@/lib/article-body/ArticleBody';
 import { gateAudience } from '@/lib/family-access';
-import { loadNarrative, loadPublishedFor } from '@/lib/library-data';
-import { rankReqKey } from '@/lib/library';
+import { loadNarrative, loadPublishedFor, loadScoutRankProgress } from '@/lib/library-data';
+import { rankReqKey, withViewScout } from '@/lib/library';
+import { resolveLibraryViewer } from '@/lib/library-viewer';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import { ResourceCard } from '../../../_components/resource-card';
+import { ScoutSwitcher } from '../../../_components/scout-switcher';
 import styles from '../../../library.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -29,16 +31,20 @@ interface ReqRow {
 }
 
 export default async function LibraryRequirementPage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ rankId: string; code: string }>;
+  searchParams: Promise<{ viewScout?: string }>;
 }) {
   const { rankId, code: rawCode } = await params;
+  const { viewScout } = await searchParams;
   const code = decodeURIComponent(rawCode);
   const supabase = createAdminClient();
   const targetKey = rankReqKey(rankId, code);
+  const viewer = await resolveLibraryViewer(supabase, viewScout);
 
-  const [{ data: rank }, reqsRes, narrative, resources] = await Promise.all([
+  const [{ data: rank }, reqsRes, narrative, resources, rankProgress] = await Promise.all([
     supabase.from('ranks').select('*').eq('id', rankId).maybeSingle(),
     supabase
       .from('rank_requirements')
@@ -46,9 +52,12 @@ export default async function LibraryRequirementPage({
       .eq('rank_id', rankId)
       .order('sort_order'),
     loadNarrative(createAdminClient(), 'rank_req', targetKey),
-    loadPublishedFor(createAdminClient(), 'rank_req', targetKey)
+    loadPublishedFor(createAdminClient(), 'rank_req', targetKey),
+    viewer.kind === 'scout' ? loadScoutRankProgress(supabase, viewer.scoutId) : Promise.resolve(null)
   ]);
   if (!rank) notFound();
+  const viewScoutId = viewer.kind === 'scout' ? viewer.scoutId : undefined;
+  const ownDoneDate = rankProgress?.get(targetKey) ?? null;
 
   const reqs = (reqsRes.data ?? []) as ReqRow[];
   const node = reqs.find((r) => r.code === code);
@@ -110,6 +119,12 @@ export default async function LibraryRequirementPage({
         <h1 className={styles.pageTitle} style={{ display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap' }}>
           <span className={`${styles.reqTag} ${styles.reqTagLarge}`}>{code}</span>
           <span style={{ flex: 1, minWidth: 260 }}>{node.label}</span>
+          {isLeaf && ownDoneDate && (
+            <span className={styles.reqDoneBadge}>
+              ✓ Completed{' '}
+              {new Date(ownDoneDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+            </span>
+          )}
         </h1>
         <p className={styles.pageLede} style={{ fontSize: 13, marginTop: 6 }}>
           Paraphrased — confirm exact wording against the current handbook at sign-off.
@@ -118,6 +133,7 @@ export default async function LibraryRequirementPage({
       </div>
 
       <main className={styles.main}>
+        <ScoutSwitcher viewer={viewer} />
         {narrative && (
           <div className={styles.narrative}>
             <ArticleBody body={narrative.narrative_md} />
@@ -174,16 +190,32 @@ export default async function LibraryRequirementPage({
             </div>
             <div className={styles.rankItem}>
               <div className={styles.reqRows}>
-                {children.map((child) => (
-                  <Link
-                    key={child.code}
-                    className={styles.reqRow}
-                    href={`/library/rank/${rankId}/${encodeURIComponent(child.code)}`}
-                  >
-                    <span className={`${styles.reqTag} ${styles.reqTagGhost}`}>{child.code}</span>
-                    <span className={styles.reqLabel}>{child.label}</span>
-                  </Link>
-                ))}
+                {children.map((child) => {
+                  const childKey = rankReqKey(rankId, child.code);
+                  const childDone = rankProgress?.get(childKey) ?? null;
+                  return (
+                    <Link
+                      key={child.code}
+                      className={styles.reqRow}
+                      href={withViewScout(
+                        `/library/rank/${rankId}/${encodeURIComponent(child.code)}`,
+                        viewScoutId
+                      )}
+                    >
+                      <span className={`${styles.reqTag} ${styles.reqTagGhost}`}>{child.code}</span>
+                      <span className={styles.reqLabel}>{child.label}</span>
+                      {childDone && (
+                        <span className={styles.reqDoneBadge}>
+                          ✓{' '}
+                          {new Date(childDone).toLocaleDateString('en-US', {
+                            month: 'short',
+                            year: 'numeric'
+                          })}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           </>
@@ -212,13 +244,23 @@ export default async function LibraryRequirementPage({
 
         <nav className={styles.siblingNav} aria-label="Neighboring requirements">
           {prev && (
-            <Link href={`/library/rank/${rankId}/${encodeURIComponent(prev.code)}`}>
+            <Link
+              href={withViewScout(
+                `/library/rank/${rankId}/${encodeURIComponent(prev.code)}`,
+                viewScoutId
+              )}
+            >
               ← {prev.code}
             </Link>
           )}
           <span className={styles.siblingSpacer} />
           {next && (
-            <Link href={`/library/rank/${rankId}/${encodeURIComponent(next.code)}`}>
+            <Link
+              href={withViewScout(
+                `/library/rank/${rankId}/${encodeURIComponent(next.code)}`,
+                viewScoutId
+              )}
+            >
               {next.code} →
             </Link>
           )}

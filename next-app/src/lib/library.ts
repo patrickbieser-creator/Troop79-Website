@@ -49,6 +49,19 @@ export function splitRankReqKey(
   return null;
 }
 
+/**
+ * Carries the "which scout's progress is showing" URL param forward across
+ * the rank drill → rank detail → requirement detail flow (lib/library-viewer.ts),
+ * the one navigation path the personalized completion indicators render on.
+ * No-op when nothing is selected, so every existing Link stays a plain href
+ * for an anonymous visitor.
+ */
+export function withViewScout(href: string, viewScoutId: string | undefined): string {
+  if (!viewScoutId) return href;
+  const sep = href.includes('?') ? '&' : '?';
+  return `${href}${sep}viewScout=${encodeURIComponent(viewScoutId)}`;
+}
+
 /** Display host chip for an outbound URL — presentation only, never trust. */
 export function detectHost(url: string | null): string | null {
   if (!url) return null;

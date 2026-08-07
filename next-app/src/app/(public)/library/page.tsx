@@ -15,10 +15,14 @@ import {
   loadTopics,
   publishedCountsByTarget,
   searchPublishedResources,
+  loadScoutRankProgress,
+  loadScoutMbAwardMap,
   type SearchHit
 } from '@/lib/library-data';
-import { rankReqKey, splitRankReqKey } from '@/lib/library';
+import { rankReqKey, splitRankReqKey, withViewScout } from '@/lib/library';
+import { resolveLibraryViewer, type LibraryViewer } from '@/lib/library-viewer';
 import { ResourceCard, type AlsoOnLink } from './_components/resource-card';
+import { ScoutSwitcher } from './_components/scout-switcher';
 import styles from './library.module.css';
 
 // New public pages must opt out of static prerendering or they freeze at
@@ -42,9 +46,16 @@ interface HomeData {
   mbs: MeritBadge[];
   topics: Awaited<ReturnType<typeof loadTopics>>;
   counts: Map<string, number>;
+  /** Personalization (Patrick, 2026-08-07) — null unless resolveLibraryViewer()
+   *  resolved a scout to show. rankProgress is keyed by the SAME rankReqKey
+   *  composite used everywhere else; mbAwards is keyed by bare mbId. */
+  progress: { rankProgress: Map<string, string>; mbAwards: Map<string, string> } | null;
+  /** Carried into every drill-down Link so the personalized view survives
+   *  navigation (lib/library.ts withViewScout()). Undefined = nothing to carry. */
+  viewScoutId: string | undefined;
 }
 
-async function loadHome(): Promise<HomeData> {
+async function loadHome(viewer: LibraryViewer): Promise<HomeData> {
   const supabase = createAdminClient();
   const [ranksRes, reqsRes, mbsRes, topics, counts] = await Promise.all([
     supabase.from('ranks').select('*').order('sort_order'),
@@ -65,22 +76,34 @@ async function loadHome(): Promise<HomeData> {
     reqsByRank.set(r.rank_id, list);
   }
 
+  let progress: HomeData['progress'] = null;
+  if (viewer.kind === 'scout') {
+    const [rankProgress, mbAwards] = await Promise.all([
+      loadScoutRankProgress(supabase, viewer.scoutId),
+      loadScoutMbAwardMap(supabase, viewer.scoutId)
+    ]);
+    progress = { rankProgress, mbAwards };
+  }
+
   return {
     ranks: (ranksRes.data ?? []) as Rank[],
     reqsByRank,
     mbs: (mbsRes.data ?? []) as MeritBadge[],
     topics,
-    counts
+    counts,
+    progress,
+    viewScoutId: viewer.kind === 'scout' ? viewer.scoutId : undefined
   };
 }
 
 export default async function LibraryHomePage({
   searchParams
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; viewScout?: string }>;
 }) {
-  const { q } = await searchParams;
-  const data = await loadHome();
+  const { q, viewScout } = await searchParams;
+  const viewer = await resolveLibraryViewer(createAdminClient(), viewScout);
+  const data = await loadHome(viewer);
   const query = (q ?? '').trim();
   const hits = query ? await searchPublishedResources(createAdminClient(), query) : null;
 
@@ -98,6 +121,8 @@ export default async function LibraryHomePage({
       </div>
 
       <main className={styles.main}>
+        <ScoutSwitcher viewer={viewer} />
+
         <form className={styles.searchForm} action="/library" method="get" role="search">
           <input
             className={styles.searchInput}
@@ -242,15 +267,29 @@ function RankDrill({ data }: { data: HomeData }) {
               </summary>
               <div className={styles.reqRows}>
                 {reqs.map((req) => {
-                  const n = data.counts.get(`rank_req:${rankReqKey(rank.id, req.code)}`) ?? 0;
+                  const key = rankReqKey(rank.id, req.code);
+                  const n = data.counts.get(`rank_req:${key}`) ?? 0;
+                  const doneDate = data.progress?.rankProgress.get(key) ?? null;
                   return (
                     <Link
                       key={req.code}
                       className={`${styles.reqRow} ${n > 0 ? styles.reqRowHasStuff : ''}`}
-                      href={`/library/rank/${rank.id}/${encodeURIComponent(req.code)}`}
+                      href={withViewScout(
+                        `/library/rank/${rank.id}/${encodeURIComponent(req.code)}`,
+                        data.viewScoutId
+                      )}
                     >
                       <span className={`${styles.reqTag} ${styles.reqTagGhost}`}>{req.code}</span>
                       <span className={styles.reqLabel}>{req.label}</span>
+                      {doneDate && (
+                        <span className={styles.reqDoneBadge}>
+                          ✓{' '}
+                          {new Date(doneDate).toLocaleDateString('en-US', {
+                            month: 'short',
+                            year: 'numeric'
+                          })}
+                        </span>
+                      )}
                       {n > 0 ? (
                         <span className={styles.reqResCount}>
                           {n} resource{n === 1 ? '' : 's'}
@@ -283,12 +322,36 @@ function MbGrid({ data }: { data: HomeData }) {
           for (const [key, count] of data.counts) {
             if (key.startsWith(`mb_req:${mb.id}-`)) n += count;
           }
+          const awardDate = data.progress?.mbAwards.get(mb.id) ?? null;
           return (
-            <Link key={mb.id} className={styles.mbTile} href={`/library/mb/${mb.id}`}>
-              <span className={styles.mbName}>
-                {mb.name}
-                {mb.eagle && <span className={styles.eagleDot}> ★ EAGLE</span>}
-              </span>
+            <Link
+              key={mb.id}
+              className={`${styles.mbTile} ${awardDate ? styles.mbTileCompleted : ''}`}
+              href={withViewScout(`/library/mb/${mb.id}`, data.viewScoutId)}
+              // Redundant with the always-visible date caption below —
+              // native hover tooltip on top of it for a desktop mouse-over,
+              // per the ask, but the date is never hover-only (D-069: title
+              // text is invisible on touch, and this is a completion date on
+              // an otherwise-anonymous-looking tile, not decoration).
+              title={awardDate ? `Completed ${new Date(awardDate).toLocaleDateString('en-US')}` : undefined}
+            >
+              {awardDate ? (
+                <span className={styles.mbNameCompleted}>
+                  <span>
+                    {mb.name}
+                    {mb.eagle && <span className={styles.eagleDot}> ★ EAGLE</span>}
+                  </span>
+                  <span className={styles.mbCompletedDate}>
+                    ✓ Completed{' '}
+                    {new Date(awardDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                  </span>
+                </span>
+              ) : (
+                <span className={styles.mbName}>
+                  {mb.name}
+                  {mb.eagle && <span className={styles.eagleDot}> ★ EAGLE</span>}
+                </span>
+              )}
               <span className={`${styles.mbCount} ${n === 0 ? styles.mbCountZero : ''}`}>
                 {n === 0 ? '—' : n}
               </span>

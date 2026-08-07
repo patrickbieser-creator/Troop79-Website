@@ -3,6 +3,13 @@
  * (target 'mb':mbId) first, then per-requirement groups ('mb_req':
  * '{mbId}-{code}') anchored under their top-level requirement — NOT one page
  * per requirement node (1,700+ nodes; the badge is the right granularity).
+ *
+ * Deliberately NOT personalized (Patrick's 2026-08-07 ask, and the requirement
+ * rows here aren't an accordion — grouped under plain section headers, per
+ * this file's own header above). The MB GRID on /library home shows
+ * completion highlighting instead (lib/library-viewer.ts,
+ * loadScoutMbAwardMap); a `?viewScout=` param reaching this page from that
+ * grid is simply dropped, not a leak — no scout data renders either way.
  */
 import Link from 'next/link';
 import { notFound } from 'next/navigation';

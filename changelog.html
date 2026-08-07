@@ -497,6 +497,52 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.23.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.23.0</span>
+        <span class="release-date">August 7, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Resource Library: personalized progress, and a leader proxy view</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              A signed-in family now sees their own scout&rsquo;s progress right in the
+              <strong>Resource Library</strong> &mdash; a checkmark and date on completed
+              requirements once a rank is expanded, and completed merit badges highlighted on
+              the badge grid with their completion date shown underneath.
+            </span>
+          </li>
+          <li>
+            <span>
+              A household with more than one scout gets a switcher at the top of the page to
+              pick whose progress is showing. A verified scout&rsquo;s own sign-in shows just
+              their own progress automatically, no picker needed.
+            </span>
+          </li>
+          <li>
+            <span>
+              New <strong>Resource Library Superusers</strong> &mdash; selected leaders (managed
+              under Lookups &amp; Admin) can view the library as any active scout in the troop, a
+              clearly-labeled proxy mode for support and testing. Nothing personalizes by default
+              for a leader; they pick a scout first.
+            </span>
+          </li>
+          <li>
+            <span>
+              tech-lead design review and a qa-lead security review (this is a new access-control
+              surface) both passed before shipping; two low-severity fixes applied along the way.
+              5 new tests (63 total, up from 58), lint/build clean, verified live against real
+              troop data for every viewer state: anonymous, signed-in family (switching between
+              two real scouts), a scout&rsquo;s own sign-in, and the superuser proxy.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.22.1 -->
     <div class="release">
       <div class="release-header">
