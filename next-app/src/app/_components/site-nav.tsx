@@ -59,6 +59,23 @@ export function SiteNav() {
             >
               Profile
             </Link>
+            {/* Family Identity & Passwordless Auth (Plans/Family-Identity-Auth.md
+                Phase 1, Implementation Step 5) — plain static Link, same reason
+                Profile/Members Login are: SiteNav must stay cookie-free. Shown
+                unconditionally (soft-launch); SiteLogoutButton already carries
+                the "you're signed in" signal once verified. */}
+            <Link
+              href="/signin"
+              style={{
+                fontFamily: 'var(--font-ui)',
+                fontSize: 11,
+                fontWeight: 600,
+                color: 'var(--navy)',
+                letterSpacing: '.03em'
+              }}
+            >
+              Sign In
+            </Link>
             <SiteLogoutButton />
             <Link
               href="/admin"

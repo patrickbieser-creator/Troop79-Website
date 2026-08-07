@@ -1,10 +1,15 @@
 /**
- * HMAC-signed cookie primitives, shared by every stub session in the app
- * (lib/leader-session.ts, lib/family-session.ts).
+ * HMAC-signed cookie primitives, shared by every session type in the app:
+ * lib/leader-session.ts, lib/family-session.ts, lib/profile-household-session.ts,
+ * and lib/identity-session.ts (Plans/Family-Identity-Auth.md Phase 1 — the
+ * verified per-person identity cookie, the fourth consumer).
  *
  * Extracted so a second session type doesn't mean a second copy of the
  * signing code — a bug fixed in one copy and missed in the other is exactly
- * the failure mode worth designing out of security-relevant code.
+ * the failure mode worth designing out of security-relevant code. All four
+ * share LEADER_SESSION_SECRET, which is why each session's own `role`
+ * literal is load-bearing — see identity-session.ts's header for the replay
+ * risk that guards against.
  *
  * Uses Web Crypto so the same module works in both the Edge middleware and
  * the Node server runtime.

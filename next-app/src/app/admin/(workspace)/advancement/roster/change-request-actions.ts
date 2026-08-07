@@ -16,7 +16,9 @@ interface Result {
   error?: string;
 }
 
-export async function getPendingChangeRequest(scoutId: string): Promise<ChangeRequestRow | null> {
+export type ChangeRequestWithSubmitter = ChangeRequestRow & { submittedByName: string | null };
+
+export async function getPendingChangeRequest(scoutId: string): Promise<ChangeRequestWithSubmitter | null> {
   await requireRole(['leader']);
   const supabase = createAdminClient();
   const { data } = await supabase
@@ -26,7 +28,23 @@ export async function getPendingChangeRequest(scoutId: string): Promise<ChangeRe
     .eq('entity_id', scoutId)
     .eq('status', 'pending')
     .maybeSingle();
-  return (data as ChangeRequestRow | null) ?? null;
+  const row = (data as ChangeRequestRow | null) ?? null;
+  if (!row) return null;
+
+  // submitted_by_person_id is only populated for a verified Tier 2 submitter
+  // (Plans/Family-Identity-Auth.md Phase 2) — null for anything submitted
+  // before that shipped, which the panel shows as "someone signed in via the
+  // shared troop password" rather than a name it doesn't have.
+  let submittedByName: string | null = null;
+  if (row.submitted_by_person_id != null) {
+    const { data: person } = await supabase
+      .from('people')
+      .select('display_name')
+      .eq('id', row.submitted_by_person_id)
+      .maybeSingle();
+    submittedByName = (person as { display_name: string } | null)?.display_name ?? null;
+  }
+  return { ...row, submittedByName };
 }
 
 export async function approveChangeRequest(id: number): Promise<Result> {

@@ -9,20 +9,23 @@
  * doesn't touch that — it's additive, so a returning visitor can see
  * "Logged in as {name}" instead of re-picking every visit.
  *
- * Shared by two features whose usage pattern is "the same family returns
- * over weeks," not a one-shot transaction: /profile (originally, D-055) and
- * Resource Library proof submission (Plans/Resource-Library.md Phase 2,
- * Patrick 2026-08-06 — recommended over Event Signup's URL-param pattern for
- * exactly this reason). Each route keeps its own gate/pick/switch Server
- * Actions per this project's convention (see submit/actions.ts's
- * libraryGateAction comment) — only this cookie module and its session shape
- * are shared. Set once a household is picked; cleared together with the
- * family session cookie on full sign-out
- * (Plans/Scout-Self-Service-Demographics.md — "logout and re-enter the
- * password for a different family"). A route MAY also clear just this
- * cookie alone (keeping the family gate) to let someone switch households
- * without re-entering the troop password — see profile/actions.ts's
- * profileSignOutAction for the full-logout version this is NOT; each route
+ * Built for "the same family returns over weeks," not a one-shot
+ * transaction — originally shared by /profile (D-055) and Resource Library
+ * proof submission (Plans/Resource-Library.md Phase 2, 2026-08-06,
+ * recommended over Event Signup's URL-param pattern for exactly this
+ * reason). /profile has SINCE MOVED OFF this cookie (Plans/Family-Identity-Auth.md
+ * Phase 2, 2026-08-06) — it now requires a verified Tier 2 identity session
+ * (lib/identity-session.ts) instead of a self-asserted household pick, so
+ * the module's only remaining consumer is /library/submit-proof's Tier 1
+ * fallback path (used when no verified session is present). Each route
+ * keeps its own gate/pick/switch Server Actions per this project's
+ * convention (see submit/actions.ts's libraryGateAction comment) — only this
+ * cookie module and its session shape are shared. Set once a household is
+ * picked; cleared together with the family session cookie on full sign-out,
+ * or by the site-wide Log Out button (site-nav-actions.ts). A route MAY also
+ * clear just this cookie alone (keeping the family gate) to let someone
+ * switch households without re-entering the troop password — see
+ * submit-proof/actions.ts's switchProofHouseholdAction; each route
  * that wants a switch-only affordance implements its own thin action.
  */
 

@@ -14,6 +14,14 @@ import { proofSubmissionAllowedFor } from '../src/lib/library';
  * Pure function, no DB/cookies — unlike the rest of this project's test
  * suite (D-049, integration against real Postgres), this one genuinely has
  * no I/O to integrate against.
+ *
+ * UPDATED for Plans/Family-Identity-Auth.md Phase 2 (2026-08-06):
+ * 'household' — a VERIFIED identity session, adult or scout subjectKind
+ * alike — is now allowed. This is Tier 2-S actually reopening the scout
+ * path Phase 0 closed, on a real identity basis instead of the free-pick
+ * that made Phase 0 necessary. The OLD unverified 'scout' (shared
+ * SCOUT_PASSWORD) stays refused permanently — it is superseded by
+ * 'household', not reopened itself.
  */
 describe('proof submission audience gate', () => {
   it('ScoutLogin_IsRefused_WhenSubmittingProof', () => {
@@ -30,5 +38,9 @@ describe('proof submission audience gate', () => {
 
   it('Family_IsAllowed_WhenSubmittingProof', () => {
     expect(proofSubmissionAllowedFor('family')).toBe(true);
+  });
+
+  it('VerifiedHousehold_IsAllowed_WhenSubmittingProof', () => {
+    expect(proofSubmissionAllowedFor('household')).toBe(true);
   });
 });

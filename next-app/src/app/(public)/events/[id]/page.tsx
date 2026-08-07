@@ -8,7 +8,8 @@ import {
   signupLocked
 } from '@/lib/event-signup';
 import { loadHouseholds, storedHouseholdId } from '@/lib/households';
-import { gateAudience, familyGateConfigured } from '@/lib/family-access';
+import { gateAudience, familyGateConfigured, getIdentitySessionIfValid } from '@/lib/family-access';
+import { resolveEffectiveHouseholdKey } from '@/lib/identity-session';
 import { formatCalendarDateParts, formatTimeOfDay, categoryColor } from '@/lib/calendar-shared';
 import {
   familyGateAction,
@@ -114,7 +115,7 @@ export default async function EventDetailPage({
 
   const {
     gate: gateError,
-    household: householdKey,
+    household: householdKeyParam,
     err: formError,
     saved,
     cancelled,
@@ -126,6 +127,13 @@ export default async function EventDetailPage({
 
   // Household roster and any existing entries are gate-only: they carry names.
   const households = gatedIn && signup ? await loadHouseholds() : [];
+
+  // Verified-visitor prefill (Plans/Family-Identity-Auth.md Phase 2) — see
+  // resolveEffectiveHouseholdKey()'s own doc for the undefined-vs-empty
+  // distinction that keeps the "Not you? Change" switch affordance working.
+  const verifiedSession = audience === 'household' ? await getIdentitySessionIfValid() : null;
+  const householdKey = resolveEffectiveHouseholdKey(householdKeyParam, verifiedSession?.householdKey ?? null);
+
   const household = householdKey ? (households.find((h) => h.key === householdKey) ?? null) : null;
   // "scout:<id>" (unassigned scout) and "leader:<code>" (adult with no scout in
   // the troop) parties have no stored household row, so their entries carry a
@@ -412,7 +420,13 @@ export default async function EventDetailPage({
                           </>
                         )}
                       </span>
-                      <Link href={`/events/${entry.id}`} className={styles.linkBtn}>
+                      {/* Explicit ?household= (empty) rather than a bare link — a
+                          verified visitor's household prefill only fires when the
+                          param is absent (see the page's householdKey resolution
+                          above); an EXPLICIT empty value is how "switching" stays
+                          possible instead of the prefill immediately winning it
+                          back on the very next render. */}
+                      <Link href={`/events/${entry.id}?household=`} className={styles.linkBtn}>
                         Not you? Change
                       </Link>
                     </p>

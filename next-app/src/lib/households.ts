@@ -301,6 +301,21 @@ export async function loadHouseholdByKey(key: string): Promise<Household | null>
   return all.find((h) => h.key === key) ?? null;
 }
 
+/** Which household (by key) a given person_id belongs to, scout or adult —
+ *  reuses loadHouseholds() rather than a bespoke query so household
+ *  membership stays defined in exactly one place (Plans/Family-Identity-Auth.md
+ *  Phase 1 — the reverse lookup a verified sign-in needs). Null for a person
+ *  with no household row at all, or one loadHouseholds() excludes (merged
+ *  away, inactive). */
+export async function resolveHouseholdKeyForPerson(personId: number): Promise<string | null> {
+  const all = await loadHouseholds();
+  for (const h of all) {
+    if (h.scouts.some((s) => s.personId === personId)) return h.key;
+    if (h.adults.some((a) => a.personId === personId)) return h.key;
+  }
+  return null;
+}
+
 /** `households.id` when the key refers to a stored household, else null.
  *  `scout:<id>`, `leader:<code>` and `person:<id>` parties have no stored
  *  household row, and the signup RPCs take null for those. Centralised so

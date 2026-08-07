@@ -1,16 +1,9 @@
 'use server';
 
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/server';
-import { FAMILY_COOKIE, signFamilySession, verifyFamilySession } from '@/lib/family-session';
-import {
-  PROFILE_HOUSEHOLD_COOKIE,
-  signProfileHouseholdSession,
-  verifyProfileHouseholdSession
-} from '@/lib/profile-household-session';
-import { secretMatches } from '@/lib/signed-cookie';
+import { requireHouseholdIdentity } from '@/lib/family-access';
 import { loadHouseholdByKey } from '@/lib/households';
 import {
   diffScoutFields,
@@ -25,88 +18,36 @@ import { sendEmail, renderEmail } from '@/lib/email';
 const PROFILE_PATH = '/profile';
 const TROOP_EMAIL = 'bsatroop79bg@gmail.com';
 
-/** Same shared-troop-password gate as Event Signup (lib/family-session.ts) —
- *  a separate action rather than importing events/[id]/actions.ts so Profile
- *  doesn't couple to that route's internals; the logic itself is a few lines. */
-export async function profileGateAction(formData: FormData): Promise<void> {
-  const password = String(formData.get('password') ?? '');
-
-  if (!process.env.FAMILY_PASSWORD) redirect(`${PROFILE_PATH}?gate=not-configured`);
-  if (!password) redirect(`${PROFILE_PATH}?gate=missing`);
-  if (!secretMatches(password, process.env.FAMILY_PASSWORD)) {
-    redirect(`${PROFILE_PATH}?gate=bad-password`);
-  }
-
-  const token = await signFamilySession({ role: 'family', iat: Date.now() });
-  const jar = await cookies();
-  jar.set(FAMILY_COOKIE.name, token, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    maxAge: FAMILY_COOKIE.maxAgeSeconds
-  });
-
-  redirect(PROFILE_PATH);
-}
-
-/** Binds this browser to a household — the second cookie layered on top of
- *  the family gate (lib/profile-household-session.ts). */
-export async function pickHouseholdAction(formData: FormData): Promise<void> {
-  const jar = await cookies();
-  const family = await verifyFamilySession(jar.get(FAMILY_COOKIE.name)?.value);
-  if (!family) redirect(`${PROFILE_PATH}?gate=missing`);
-
-  const householdKey = String(formData.get('householdKey') ?? '');
-  const household = await loadHouseholdByKey(householdKey);
-  if (!household) redirect(`${PROFILE_PATH}?err=${encodeURIComponent('Household not found.')}`);
-
-  const token = await signProfileHouseholdSession({
-    householdKey: household.key,
-    displayName: household.label,
-    iat: Date.now()
-  });
-  jar.set(PROFILE_HOUSEHOLD_COOKIE.name, token, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    maxAge: PROFILE_HOUSEHOLD_COOKIE.maxAgeSeconds
-  });
-
-  redirect(PROFILE_PATH);
-}
-
-/** Clears BOTH cookies — the explicit ask is "logout and re-enter the
- *  password for a different family," not just re-picking a household under
- *  the same family session. */
-export async function profileSignOutAction(): Promise<void> {
-  const jar = await cookies();
-  jar.delete(FAMILY_COOKIE.name);
-  jar.delete(PROFILE_HOUSEHOLD_COOKIE.name);
-  redirect(`${PROFILE_PATH}?signedout=1`);
-}
-
 /**
  * Submit (or overwrite) a proposed demographic update for one scout.
+ *
+ * Requires Tier 2 (Plans/Family-Identity-Auth.md Phase 2) — /profile no
+ * longer has a self-asserted household picker; requireHouseholdIdentity()
+ * throws for anything short of a verified adult session, and the household
+ * a submission can target is resolved from THAT session's householdKey, not
+ * a form field or cookie a visitor could pick for themselves.
  *
  * Nothing here touches the live `scouts` row — it lands as a 'pending'
  * change_requests row and only applies once a leader approves it from the
  * Scout editor (Plans/Scout-Self-Service-Demographics.md).
  */
 export async function submitChangeRequestAction(formData: FormData): Promise<void> {
-  const jar = await cookies();
-  const family = await verifyFamilySession(jar.get(FAMILY_COOKIE.name)?.value);
-  const household = await verifyProfileHouseholdSession(jar.get(PROFILE_HOUSEHOLD_COOKIE.name)?.value);
-  if (!family || !household) redirect(`${PROFILE_PATH}?gate=missing`);
+  let session;
+  try {
+    session = await requireHouseholdIdentity();
+  } catch {
+    redirect(`${PROFILE_PATH}?err=${encodeURIComponent('Please sign in again.')}`);
+    return;
+  }
 
   const scoutId = String(formData.get('scoutId') ?? '');
   const back = `${PROFILE_PATH}?scout=${encodeURIComponent(scoutId)}`;
 
-  // Resolve the party server-side rather than trusting the posted scoutId —
-  // it must belong to the household this browser is bound to (same reasoning
-  // as cancelSignupAction in events/[id]/actions.ts).
-  const party = await loadHouseholdByKey(household.householdKey);
+  // Resolve the party server-side from the VERIFIED session's household key —
+  // never a form field or self-asserted cookie (same reasoning as
+  // cancelSignupAction in events/[id]/actions.ts, now on a stronger footing:
+  // this household came from a challenge/code redemption, not a self-pick).
+  const party = await loadHouseholdByKey(session.householdKey);
   if (!party || !party.scouts.some((s) => s.id === scoutId)) {
     redirect(`${PROFILE_PATH}?err=${encodeURIComponent('That scout is not in your household.')}`);
   }
@@ -145,18 +86,15 @@ export async function submitChangeRequestAction(formData: FormData): Promise<voi
     .eq('status', 'pending')
     .maybeSingle();
 
-  // submitted_by_person_id is always null: the household-bound cookie
-  // (lib/profile-household-session.ts) identifies a HOUSEHOLD, not a person —
-  // deliberately, same trust model as D-027 (FAMILY_PASSWORD doesn't bind a
-  // session to an individual). The FK to people exists for a future per-scout
-  // magic-link phase (Phase 4, D-005) that would actually have a person_id to
-  // put here; until then this column stays null rather than guessing one.
+  // submitted_by_person_id is now populated (Plans/Family-Identity-Auth.md
+  // Phase 2) — session.personId comes from a verified challenge redemption,
+  // not a guess. The admin review panel shows this name.
   const writeError = existingPending
     ? (
         await supabase
           .from('change_requests')
           .update({
-            submitted_by_person_id: null,
+            submitted_by_person_id: session.personId,
             submitted_at: new Date().toISOString(),
             proposed_changes: changed
           })
@@ -166,7 +104,7 @@ export async function submitChangeRequestAction(formData: FormData): Promise<voi
         await supabase.from('change_requests').insert({
           entity_type: 'scout',
           entity_id: scoutId,
-          submitted_by_person_id: null,
+          submitted_by_person_id: session.personId,
           proposed_changes: changed,
           status: 'pending'
         })
@@ -187,7 +125,7 @@ export async function submitChangeRequestAction(formData: FormData): Promise<voi
   // are reviewed in the Scout editor's diff panel, behind the leader gate.
   const { html, text } = renderEmail({
     heading: `Profile update — ${party.label}`,
-    intro: `${party.label} submitted a demographic update for ${scoutId} through the website. Review it in the Scout editor before it takes effect.`,
+    intro: `${session.displayName} (${party.label} household) submitted a demographic update for ${scoutId} through the website. Review it in the Scout editor before it takes effect.`,
     bullets: Object.keys(changed).map((field) => FIELD_LABEL[field as EditableScoutField] ?? field)
   });
   await sendEmail({

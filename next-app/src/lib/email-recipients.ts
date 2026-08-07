@@ -22,6 +22,15 @@ export interface Recipient {
   scoutIds: string[];
 }
 
+/** Shared deliverability rule — a bounced or unsubscribed address must never
+ *  be mailed again, whether the caller is this module's scout->parent fan-out
+ *  or lib/identity-challenge.ts's reverse email->person sign-in lookup
+ *  (Plans/Family-Identity-Auth.md Phase 1, extracted 2026-08-06 so both
+ *  callers share one rule instead of two copies that can drift). */
+export function isDeliverable(addr: { bounced_at: string | null; unsubscribed_at: string | null }): boolean {
+  return !addr.bounced_at && !addr.unsubscribed_at;
+}
+
 export async function recipientsForScouts(scoutIds: string[]): Promise<Recipient[]> {
   if (scoutIds.length === 0) return [];
   const supabase = createAdminClient();
@@ -83,7 +92,7 @@ export async function recipientsForScouts(scoutIds: string[]): Promise<Recipient
 
   const out = new Map<string, Recipient>();
   for (const person of peopleRows) {
-    const addrs = (byPersonId.get(person.id) ?? []).filter((a) => !a.bounced_at && !a.unsubscribed_at);
+    const addrs = (byPersonId.get(person.id) ?? []).filter(isDeliverable);
     // Prefer a live, tracked address; fall back to the parent row's own email,
     // then people.primary_email for a relationship-only parent with neither.
     const legacyEmail = legacyEmailByPerson.get(person.id);

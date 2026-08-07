@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getPendingChangeRequest, approveChangeRequest, rejectChangeRequest } from './change-request-actions';
-import { FIELD_LABEL, type ChangeRequestRow, type EditableScoutField } from '@/lib/change-requests';
+import { getPendingChangeRequest, approveChangeRequest, rejectChangeRequest, type ChangeRequestWithSubmitter } from './change-request-actions';
+import { FIELD_LABEL, type EditableScoutField } from '@/lib/change-requests';
 import styles from '../lookups/lookups.module.css';
 
 /**
@@ -22,7 +22,7 @@ export function PendingUpdatePanel({
 }) {
   // undefined = still loading, null = nothing pending — kept distinct so the
   // panel doesn't flash an empty state before the fetch resolves.
-  const [request, setRequest] = useState<ChangeRequestRow | null | undefined>(undefined);
+  const [request, setRequest] = useState<ChangeRequestWithSubmitter | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState(false);
@@ -77,7 +77,14 @@ export function PendingUpdatePanel({
           day: 'numeric',
           hour: 'numeric',
           minute: '2-digit'
-        })} through the public Profile page.
+        })} through the public Profile page
+        {request.submittedByName ? (
+          <>
+            {' '}by <strong>{request.submittedByName}</strong> (verified sign-in).
+          </>
+        ) : (
+          '.'
+        )}
       </p>
       <table className={styles.table}>
         <thead>

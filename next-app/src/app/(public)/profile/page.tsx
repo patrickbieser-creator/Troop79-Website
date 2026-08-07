@@ -1,32 +1,23 @@
 import type { Metadata } from 'next';
-import { cookies } from 'next/headers';
+import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
-import { FAMILY_COOKIE, verifyFamilySession } from '@/lib/family-session';
-import { PROFILE_HOUSEHOLD_COOKIE, verifyProfileHouseholdSession } from '@/lib/profile-household-session';
-import { familyGateConfigured } from '@/lib/family-access';
-import { loadHouseholds, loadHouseholdByKey } from '@/lib/households';
+import { getIdentitySessionIfValid } from '@/lib/family-access';
+import { isEpochCurrent } from '@/lib/identity-session';
+import { loadHouseholdByKey } from '@/lib/households';
 import { EDITABLE_SCOUT_FIELDS, type ChangeRequestRow } from '@/lib/change-requests';
-import {
-  profileGateAction,
-  pickHouseholdAction,
-  profileSignOutAction,
-  submitChangeRequestAction
-} from './actions';
-import ProfileHouseholdPicker from './profile-household-picker';
+import { submitChangeRequestAction } from './actions';
 import ProfileEditor, { type ScoutProfileFields } from './profile-editor';
 import styles from './profile.module.css';
 
 /*
- * /profile — family self-service demographics (Plans/Scout-Self-Service-Demographics.md).
- * Deliberately its OWN surface, not a step inside Event Signup's household
- * picker: it's the general "manage your account" destination, reached from
- * the utility bar, and the natural home for whatever gets added here later.
- *
- * Three states on load: not logged in (password gate) → logged in but no
- * household bound yet (find yourself) → household bound ("Logged in as
- * {name}" banner + per-scout edit forms). See lib/profile-household-session.ts
- * for why the household binding is a second cookie, not a change to the
- * family gate's existing contract.
+ * /profile — family self-service demographics (Plans/Scout-Self-Service-Demographics.md),
+ * now Tier 2 (Plans/Family-Identity-Auth.md Phase 2). The self-asserted
+ * household picker is GONE — a verified adult session already carries its
+ * household (resolved once at redemption, in the signed cookie), so there is
+ * nothing left to pick. A visitor with no verified session sees a sign-in
+ * prompt instead of the old troop-password gate; a verified SCOUT session
+ * (Tier 2-S) sees a clear explanation, not a redirect loop — it grants proof
+ * submission only, never demographics.
  */
 
 export const metadata: Metadata = { title: 'Profile — Troop 79' };
@@ -52,37 +43,37 @@ export default async function ProfilePage({
   searchParams
 }: {
   searchParams: Promise<{
-    gate?: string;
     err?: string;
     submitted?: string;
     nochange?: string;
-    signedout?: string;
   }>;
 }) {
   const sp = await searchParams;
-  const jar = await cookies();
-  const family = await verifyFamilySession(jar.get(FAMILY_COOKIE.name)?.value);
-  const householdSession = family
-    ? await verifyProfileHouseholdSession(jar.get(PROFILE_HOUSEHOLD_COOKIE.name)?.value)
-    : null;
+  const session = await getIdentitySessionIfValid();
 
-  const state: 'anon' | 'no-household' | 'ready' = !family
+  const supabase = createAdminClient();
+  const epochOk = session ? await isEpochCurrent(supabase, session) : false;
+
+  const state: 'anon' | 'scout-blocked' | 'revoked' | 'ready' = !session
     ? 'anon'
-    : householdSession
-      ? 'ready'
-      : 'no-household';
+    : !epochOk
+      ? 'revoked'
+      : session.subjectKind === 'scout'
+        ? 'scout-blocked'
+        : 'ready';
 
   let scouts: ScoutProfileFields[] = [];
   let householdHasNoScouts = false;
+  let householdLabel = '';
   const pendingByScout = new Map<string, ChangeRequestRow>();
 
-  if (state === 'ready' && householdSession) {
-    const household = await loadHouseholdByKey(householdSession.householdKey);
+  if (state === 'ready' && session) {
+    const household = await loadHouseholdByKey(session.householdKey);
+    householdLabel = household?.label ?? session.displayName;
     const scoutIds = household?.scouts.map((s) => s.id) ?? [];
     householdHasNoScouts = scoutIds.length === 0;
 
     if (scoutIds.length > 0) {
-      const supabase = createAdminClient();
       const [{ data: scoutRows }, { data: pendingRows }] = await Promise.all([
         supabase
           .from('scouts')
@@ -117,8 +108,6 @@ export default async function ProfilePage({
     }
   }
 
-  const householdsForPicker = state === 'no-household' ? await loadHouseholds() : [];
-
   return (
     <main className={styles.page}>
       <header className={styles.head}>
@@ -135,72 +124,41 @@ export default async function ProfilePage({
       {sp.nochange === '1' && (
         <p className={styles.savedNote}>Nothing changed — no update was submitted.</p>
       )}
-      {sp.signedout === '1' && <p className={styles.savedNote}>✓ Logged out on this device.</p>}
       {sp.err && <p className={styles.errNote}>{decodeURIComponent(sp.err)}</p>}
 
-      {state !== 'anon' && (
+      {state === 'ready' && (
         <div className={styles.loggedInBar}>
           <span>
-            {state === 'ready' && householdSession ? (
-              <>
-                Logged in as <strong>{householdSession.displayName}</strong> household
-              </>
-            ) : (
-              '✓ You’re logged in — now find yourself below.'
-            )}
+            Signed in as <strong>{session!.displayName}</strong> ({householdLabel} household)
           </span>
-          <form action={profileSignOutAction}>
-            <button type="submit" className={styles.linkBtn}>
-              Log out
-            </button>
-          </form>
         </div>
       )}
 
-      {state === 'anon' &&
-        (!familyGateConfigured() ? (
-          <p className={styles.errNote}>
-            The family gate isn’t configured on this server (FAMILY_PASSWORD is unset).
+      {state === 'anon' && (
+        <div className={styles.gate}>
+          <p className={styles.gateLede}>
+            No password to remember — sign in with your email to update your scout&rsquo;s
+            information. We&rsquo;ll send you a one-time code and link.
           </p>
-        ) : (
-          <form action={profileGateAction} className={styles.gate}>
-            <p className={styles.gateLede}>
-              One shared password for the whole troop — it’s printed in the Bugle each week, or ask
-              any leader. No account, no email.
-            </p>
-            <label className={styles.gateLabel} htmlFor="profile-password">
-              Troop password
-            </label>
-            <div className={styles.gateRow}>
-              <input
-                id="profile-password"
-                name="password"
-                type="password"
-                autoComplete="off"
-                className={styles.gateInput}
-                placeholder="Enter the troop password"
-              />
-              <button type="submit" className={styles.gateBtn}>
-                Continue
-              </button>
-            </div>
-            {sp.gate === 'bad-password' && (
-              <p className={styles.gateErr}>That password didn’t match. Try again.</p>
-            )}
-            {sp.gate === 'missing' && (
-              <p className={styles.gateErr}>Please enter the troop password.</p>
-            )}
-            {sp.gate === 'not-configured' && (
-              <p className={styles.gateErr}>The family gate isn’t configured on this server.</p>
-            )}
-          </form>
-        ))}
+          <Link className={styles.gateBtn} href={`/signin?next=${encodeURIComponent('/profile')}`}>
+            Sign In
+          </Link>
+        </div>
+      )}
 
-      {state === 'no-household' && (
-        <ProfileHouseholdPicker
-          households={householdsForPicker}
-          pickHouseholdAction={pickHouseholdAction}
-        />
+      {state === 'revoked' && (
+        <p className={styles.errNote}>
+          Your sign-in has been revoked — please{' '}
+          <Link href={`/signin?next=${encodeURIComponent('/profile')}`}>sign in again</Link>.
+        </p>
+      )}
+
+      {state === 'scout-blocked' && (
+        <p className={styles.errNote}>
+          This scout login can submit proof of completion in the{' '}
+          <Link href="/library">Resource Library</Link>, but not profile updates — those need a
+          parent or guardian to sign in.
+        </p>
       )}
 
       {state === 'ready' && householdHasNoScouts && (

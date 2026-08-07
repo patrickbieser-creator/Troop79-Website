@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/server';
-import { requireFamilyAccess } from '@/lib/family-access';
+import { requireFamilyAccess, getIdentitySessionIfValid } from '@/lib/family-access';
 import { FAMILY_COOKIE, signFamilySession } from '@/lib/family-session';
 import { secretMatches } from '@/lib/signed-cookie';
 import { safeInternalPath } from '@/lib/safe-redirect';
@@ -71,14 +71,22 @@ function friendlyError(message: string): string {
  * by anyone who can craft a POST.
  */
 export async function submitSignupAction(formData: FormData): Promise<void> {
-  const audience = await requireFamilyAccess();
-
   const eventId = Number(formData.get('eventId'));
   const signupId = Number(formData.get('signupId'));
   const householdKey = String(formData.get('householdKey') ?? '');
   const entriesRaw = String(formData.get('entries') ?? '[]');
   const slotClaimsRaw = String(formData.get('slotClaims') ?? '{}');
   const back = `/events/${eventId}?household=${encodeURIComponent(householdKey)}`;
+
+  // requireFamilyAccess() now also rejects a revoked identity session (qa-lead
+  // 2026-08-06) — caught here rather than left to crash the request, same
+  // polish level as every other guard clause in this file.
+  let audience;
+  try {
+    audience = await requireFamilyAccess();
+  } catch {
+    redirect(`${back}&err=${encodeURIComponent('Your sign-in has been revoked — please sign in again.')}`);
+  }
 
   let entries: unknown[];
   let slotClaims: Record<string, string[]>;
@@ -139,12 +147,33 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
   });
   if (error) redirect(`${back}&err=${encodeURIComponent(friendlyError(error.message))}`);
 
+  // Verified-identity attribution (Plans/Family-Identity-Auth.md Phase 2) —
+  // additive only, a follow-up UPDATE rather than touching the RPC itself
+  // (that function has a documented history of breaking on signature
+  // changes without an explicit DROP FUNCTION first; a separate UPDATE
+  // carries none of that risk). entered_by_person_id is set once — an
+  // existing entry someone else originally created keeps its original
+  // attribution even when a second verified household member edits it;
+  // updated_by_person_id always reflects the most recent verified writer.
+  // Unverified (Tier 1) submissions leave both null, same as before.
+  const writtenRows = (written ?? []) as { key: string; entry_id: number }[];
+  if (audience === 'household') {
+    const session = await getIdentitySessionIfValid();
+    const entryIds = writtenRows.map((r) => r.entry_id);
+    if (session && entryIds.length > 0) {
+      await supabase.from('signup_entries').update({ updated_by_person_id: session.personId }).in('id', entryIds);
+      await supabase
+        .from('signup_entries')
+        .update({ entered_by_person_id: session.personId })
+        .in('id', entryIds)
+        .is('entered_by_person_id', null);
+    }
+  }
+
   // Slot claims resolve per person, so they need the entry ids the RPC just
   // returned. Each claim goes through claim_signup_slot, which holds its own
   // lock and re-checks eligibility.
-  const byKey = new Map(
-    ((written ?? []) as { key: string; entry_id: number }[]).map((r) => [r.key, r.entry_id])
-  );
+  const byKey = new Map(writtenRows.map((r) => [r.key, r.entry_id]));
   for (const [personKey, slotIds] of Object.entries(slotClaims)) {
     const entryId = byKey.get(personKey);
     if (!entryId) continue;
@@ -163,10 +192,17 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
 }
 
 export async function cancelSignupAction(formData: FormData): Promise<void> {
-  const audience = await requireFamilyAccess();
   const eventId = Number(formData.get('eventId'));
   const signupId = Number(formData.get('signupId'));
   const householdKey = String(formData.get('householdKey') ?? '');
+  const back = `/events/${eventId}?household=${encodeURIComponent(householdKey)}`;
+
+  let audience;
+  try {
+    audience = await requireFamilyAccess();
+  } catch {
+    redirect(`${back}&err=${encodeURIComponent('Your sign-in has been revoked — please sign in again.')}`);
+  }
 
   const supabase = createAdminClient();
   // Resolve the party server-side rather than trusting posted identities — the
@@ -188,7 +224,6 @@ export async function cancelSignupAction(formData: FormData): Promise<void> {
     ]
   });
 
-  const back = `/events/${eventId}?household=${encodeURIComponent(householdKey)}`;
   if (error) redirect(`${back}&err=${encodeURIComponent(friendlyError(error.message))}`);
   revalidatePath(`/events/${eventId}`);
   revalidatePath('/events');

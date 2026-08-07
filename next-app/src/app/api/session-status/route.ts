@@ -18,15 +18,20 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
 import { FAMILY_COOKIE, verifyFamilySession } from '@/lib/family-session';
+import { IDENTITY_COOKIE, verifyIdentitySession } from '@/lib/identity-session';
 
 export async function GET() {
   const jar = await cookies();
-  const [leaderSession, familySession] = await Promise.all([
+  const [leaderSession, familySession, identitySession] = await Promise.all([
     verifySession(jar.get(LEADER_COOKIE.name)?.value),
-    verifyFamilySession(jar.get(FAMILY_COOKIE.name)?.value)
+    verifyFamilySession(jar.get(FAMILY_COOKIE.name)?.value),
+    // Signature check only (no epoch/revocation read) — same cost profile
+    // this endpoint already had; a revoked-but-still-signed identity cookie
+    // showing "Log Out" is harmless, the button just clears it.
+    verifyIdentitySession(jar.get(IDENTITY_COOKIE.name)?.value)
   ]);
   return NextResponse.json(
-    { loggedIn: !!leaderSession || !!familySession },
+    { loggedIn: !!leaderSession || !!familySession || !!identitySession },
     { headers: { 'Cache-Control': 'no-store' } }
   );
 }

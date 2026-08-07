@@ -497,6 +497,56 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.22.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.22.0</span>
+        <span class="release-date">August 6, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Passwordless sign-in (Family Identity &amp; Auth, Phases 0&ndash;2)</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              New <strong>/signin</strong>: enter an email, get a one-time link and a 6-digit code,
+              land in a 120-day session bound to a real person and household &mdash; no password to
+              remember, and no more self-asserted &ldquo;pick your own household&rdquo; picker
+              standing in for identity. Enumeration-safe (identical response whether or not the
+              address is on the roster), rate-limited, and the emailed link can&rsquo;t be burned by
+              a mail scanner prefetching it.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>/profile</strong> now requires this real verification &mdash; the old
+              household picker is gone. <strong>Resource Library proof submission</strong> gets its
+              scout path back, properly this time: a verified scout can submit proof of their own
+              work again, with no picker and no way to claim anyone else&rsquo;s. <strong>Event
+              Signup</strong> recognizes a verified visitor automatically &mdash; no second password
+              prompt, household pre-selected, still switchable.
+            </span>
+          </li>
+          <li>
+            <span>
+              Revocation via a per-person session counter, bumped automatically by the database
+              whenever the roster marks someone inactive &mdash; catches bulk import corrections and
+              direct database edits, not just app-side changes.
+            </span>
+          </li>
+          <li>
+            <span>
+              qa-lead review caught two real gaps before ship: per-IP rate limiting was silently
+              inactive, and a revoked session kept full Event Signup access indefinitely. Both fixed
+              and independently re-verified, along with a smaller enumeration side-channel in the
+              code-entry error messaging. 58 tests passing (up from 32 this morning), lint/build
+              clean.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.21.1 -->
     <div class="release">
       <div class="release-header">

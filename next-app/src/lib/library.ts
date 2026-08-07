@@ -151,18 +151,26 @@ export const RESOURCE_KIND_ICON: Record<ResourceKind, string> = {
 };
 
 /**
- * Who may submit proof-of-completion (Plans/Family-Identity-Auth.md Phase 0,
- * Patrick 2026-08-06). Only 'family' — leaders sign requirements off
- * directly via Fast Entry (no review queue needed when the reviewer IS the
- * signer), and scouts are refused entirely: the shared SCOUT_PASSWORD login
- * has no per-scout identity, so any holder could previously claim proof
- * under any active scout's name (Resource-Library.md decision 4's "leader
- * review catches misuse" was never actually load-bearing — the reviewer has
- * no independent way to verify the claim). This must stay 'family'-only
- * until Tier 2-S (verified scout identity, not yet built) ships — see
- * tests/proof-submission-gate.test.ts, the regression guard for this exact
- * behavior.
+ * Who may submit proof-of-completion (Plans/Family-Identity-Auth.md,
+ * Patrick 2026-08-06). Allowed: 'family' (Tier 1, unverified troop password)
+ * and 'household' (Tier 2/2-S, a VERIFIED identity session — adult or scout
+ * subjectKind alike; submit-proof/actions.ts resolves which). Refused:
+ * 'leader' (signs requirements off directly via Fast Entry, no review queue
+ * needed when the reviewer IS the signer) and the OLD unverified 'scout'
+ * audience (shared SCOUT_PASSWORD login, no per-scout identity — any holder
+ * could previously claim proof under any active scout's name;
+ * Resource-Library.md decision 4's "leader review catches misuse" was never
+ * actually load-bearing, the reviewer has no independent way to verify the
+ * claim). That path is closed permanently, superseded by verified Tier 2-S
+ * rather than reopened itself — see tests/proof-submission-gate.test.ts, the
+ * regression guard for this exact behavior.
  */
-export function proofSubmissionAllowedFor(audience: 'family' | 'leader' | 'scout' | null): boolean {
-  return audience === 'family';
+export function proofSubmissionAllowedFor(audience: 'family' | 'leader' | 'scout' | 'household' | null): boolean {
+  // 'household' covers BOTH a verified adult (Tier 2, prefers their own
+  // household over the Tier 1 picker) and a verified scout (Tier 2-S,
+  // reopened Phase 0's closed scout path on a real identity basis — see
+  // Plans/Family-Identity-Auth.md Phase 2). 'scout' here is still the OLD,
+  // unverified SCOUT_PASSWORD login — that path stays refused permanently
+  // (Phase 0), superseded by Tier 2-S rather than reopened itself.
+  return audience === 'family' || audience === 'household';
 }

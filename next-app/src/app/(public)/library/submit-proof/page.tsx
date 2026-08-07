@@ -1,16 +1,19 @@
 /**
- * /library/submit-proof — "I did this" (Plans/Resource-Library.md Phase 2).
- * Reached only from a requirement/badge page's CTA, which always supplies
- * ?target=rank_req:{key} or ?target=mb_req:{key} — see the module comment
- * in actions.ts for why only the family path actually submits (scout and
- * leader sessions are both refused, Plans/Family-Identity-Auth.md Phase 0).
+ * /library/submit-proof — "I did this" (Plans/Resource-Library.md Phase 2,
+ * extended by Plans/Family-Identity-Auth.md Phase 2). Reached only from a
+ * requirement/badge page's CTA, which always supplies
+ * ?target=rank_req:{key} or ?target=mb_req:{key} — see actions.ts's module
+ * comment for the three paths that actually submit (verified scout, verified
+ * adult, Tier 1 family fallback) and the two that don't (leader, the OLD
+ * unverified scout login).
  */
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
-import { gateAudience, familyGateConfigured } from '@/lib/family-access';
-import { loadHouseholds, type Household } from '@/lib/households';
+import { gateAudience, familyGateConfigured, getIdentitySessionIfValid } from '@/lib/family-access';
+import { isEpochCurrent } from '@/lib/identity-session';
+import { loadHouseholds, loadHouseholdByKey, type Household } from '@/lib/households';
 import { PROFILE_HOUSEHOLD_COOKIE, verifyProfileHouseholdSession } from '@/lib/profile-household-session';
 import { resolveRequirementLabel } from '@/lib/library-data';
 import {
@@ -39,7 +42,8 @@ const ERR_MESSAGES: Record<string, string> = {
   scout: 'Pick a scout to continue.',
   target: 'This link is missing which requirement it’s for — go back and try again.',
   leader: 'Leaders sign requirements off directly through Fast Entry.',
-  'scout-disabled': 'Scouts can’t submit proof directly yet — see below for what to do instead.',
+  'scout-disabled': 'Scouts can’t submit proof directly this way — see below for what to do instead.',
+  revoked: 'Your sign-in has been revoked — please sign in again.',
   photo: 'That photo could not be uploaded — try a different file.',
   link: 'A working link (starting with http) is required.',
   empty: 'Add a photo, a link, or a short write-up.',
@@ -109,7 +113,9 @@ export default async function SubmitProofPage({
         ) : audience === 'leader' ? (
           <LeaderRedirectCard />
         ) : audience === 'scout' ? (
-          <ScoutDisabledCard err={err} />
+          <ScoutDisabledCard err={err} target={target} />
+        ) : audience === 'household' ? (
+          <VerifiedSubmitForm target={target} err={err} />
         ) : (
           <FamilySubmitForm target={target} err={err} />
         )}
@@ -163,25 +169,33 @@ function LeaderRedirectCard() {
 }
 
 /**
- * Scout-login sessions are refused server-side (Plans/Family-Identity-Auth.md
- * Phase 0) — this card explains why AND what to do instead, rather than
- * letting a scout fill out the whole form and get refused only on submit
- * (explicit acceptance criterion: "do not dead-end a scout").
+ * The OLD unverified scout-login path is refused server-side, permanently
+ * (Plans/Family-Identity-Auth.md Phase 0) — this card explains why AND
+ * points at the REAL fix now available (Phase 2): sign in with a verified
+ * scout identity via /signin, which collapses the picker to just yourself
+ * instead of any active scout. Not a dead end (explicit acceptance
+ * criterion) — there's now an actual path forward, not just "ask a parent."
  */
-function ScoutDisabledCard({ err }: { err?: string }) {
+function ScoutDisabledCard({ err, target }: { err?: string; target: string }) {
   return (
     <div className={styles.formCard}>
       <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, marginBottom: 8 }}>
-        Ask a parent, or use a family device
+        Sign in to submit proof as yourself
       </h2>
       {err && ERR_MESSAGES[err] && <p className={styles.fieldError}>{ERR_MESSAGES[err]}</p>}
       <p className={styles.fieldHint} style={{ fontSize: 14 }}>
-        Proof submissions can&rsquo;t be sent from the scout login right now &mdash; there&rsquo;s
-        no way yet to prove which scout is submitting, so this login can&rsquo;t send proof for
-        anyone. Show your leader in person, or have a parent sign in on their phone or computer
-        with the troop password to send it in for you.
+        The shared scout login can&rsquo;t send proof &mdash; it has no way to prove which
+        scout is submitting. Sign in with your own email instead (no password to remember)
+        and you&rsquo;ll be able to send proof as yourself. Or have a parent sign in and send
+        it for you.
       </p>
-      <p style={{ marginTop: 16 }}>
+      <p style={{ marginTop: 16, display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+        <Link
+          className={styles.btnPrimary}
+          href={`/signin?next=${encodeURIComponent(`/library/submit-proof?target=${target}`)}`}
+        >
+          Sign In →
+        </Link>
         <Link className={styles.btnSecondary} href="/library">
           Back to the Library
         </Link>
@@ -225,7 +239,96 @@ function GateCard({ target, gate }: { target: string; gate?: string }) {
       ) : (
         <p className={styles.fieldError}>{GATE_MESSAGES['not-configured']}</p>
       )}
+      <p className={styles.fieldHint} style={{ marginTop: 14, fontSize: 13 }}>
+        Prefer not to use the shared password? You can{' '}
+        <Link href={`/signin?next=${encodeURIComponent(`/library/submit-proof?target=${target}`)}`}>
+          sign in with your email instead
+        </Link>
+        .
+      </p>
     </div>
+  );
+}
+
+/**
+ * Tier 2 (verified adult) or Tier 2-S (verified scout) — Plans/Family-Identity-Auth.md
+ * Phase 2. Preferred over the Tier 1 picker whenever a verified session
+ * exists; a scout session collapses straight to themselves with no picker at
+ * all (Phase 0's closed path, reopened on a real identity basis).
+ */
+async function VerifiedSubmitForm({ target, err }: { target: string; err?: string }) {
+  const session = await getIdentitySessionIfValid();
+  if (!session) {
+    // Shouldn't happen — gateAudience() already said 'household' — but a
+    // signature that verifies and then vanishes between calls (cookie
+    // cleared mid-request) degrades to the sign-in prompt, not a crash.
+    return <GateCard target={target} gate="missing" />;
+  }
+
+  const supabase = createAdminClient();
+  const epochOk = await isEpochCurrent(supabase, session);
+  if (!epochOk) {
+    return (
+      <div className={styles.formCard}>
+        <p className={styles.fieldError}>{ERR_MESSAGES.revoked}</p>
+        <p style={{ marginTop: 12 }}>
+          <Link
+            className={styles.btnPrimary}
+            href={`/signin?next=${encodeURIComponent(`/library/submit-proof?target=${target}`)}`}
+          >
+            Sign In Again →
+          </Link>
+        </p>
+      </div>
+    );
+  }
+
+  const party = await loadHouseholdByKey(session.householdKey);
+
+  if (session.subjectKind === 'scout') {
+    // No picker at all — the scout IS the session (Phase 0 decision 6: "a
+    // scout may only ever claim their own work").
+    return (
+      <form className={styles.formCard} action={submitProofAction}>
+        <input type="hidden" name="target" value={target} />
+        {err && ERR_MESSAGES[err] && <p className={styles.fieldError}>{ERR_MESSAGES[err]}</p>}
+        <p className={styles.fieldHint} style={{ marginBottom: 0 }}>
+          Signed in as <strong>{session.displayName}</strong>
+        </p>
+        <ProofFields />
+      </form>
+    );
+  }
+
+  const scouts = party?.scouts ?? [];
+  return (
+    <form className={styles.formCard} action={submitProofAction}>
+      <input type="hidden" name="target" value={target} />
+      {err && ERR_MESSAGES[err] && <p className={styles.fieldError}>{ERR_MESSAGES[err]}</p>}
+
+      <p className={styles.fieldHint} style={{ margin: 0 }}>
+        Signed in as <strong>{session.displayName}</strong> ({party?.label ?? session.displayName}{' '}
+        household)
+      </p>
+
+      {scouts.length === 0 ? (
+        <p className={styles.fieldError}>
+          No active scout is on file for this household — ask a leader to add one.
+        </p>
+      ) : (
+        <div className={styles.fieldRow}>
+          <span className={styles.fieldLabel}>Which scout is this for?</span>
+          {scouts.map((s, i) => (
+            <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: i === 0 ? 4 : 8 }}>
+              <input type="radio" name="scoutId" value={s.id} defaultChecked={i === 0} required />
+              {s.displayName}
+            </label>
+          ))}
+        </div>
+      )}
+
+      <ProofFields />
+    </form>
   );
 }
 

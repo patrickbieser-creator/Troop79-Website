@@ -8,11 +8,24 @@
  *   * its own password (FAMILY_PASSWORD), so the family password can be
  *     printed in the Bugle and rotated without touching admin access.
  *
- * ACCEPTED RISK (Plans/Event-Signup.md): this proves the bearer knows the
- * troop password — it does NOT bind the session to a household, so any holder
- * could edit another family's signup. Accepted for a ~25-family trusted troop
- * and mitigated by the entered_by/updated_by audit columns; per-family magic
- * links are the Phase 4 fix. Do not treat this cookie as identity.
+ * ACCEPTED RISK (Plans/Event-Signup.md), CLOSED for /profile and
+ * /library/submit-proof, DELIBERATELY KEPT for Event Signup itself
+ * (Plans/Family-Identity-Auth.md Phase 2, 2026-08-06): this proves the
+ * bearer knows the troop password — it does NOT bind the session to a
+ * household, so any holder could edit another family's signup. That risk
+ * inherited into two features it was never evaluated for (D-055's
+ * change_requests, then Resource Library proof submission) — both now
+ * require a verified Tier 2/2-S identity session (lib/identity-session.ts)
+ * instead. Event Signup keeps this cookie on purpose: a mis-signup is
+ * correctable and audited (entered_by/updated_by, now also
+ * entered_by_person_id/updated_by_person_id for a verified submitter), and
+ * locking signup to "your own household only" would be a capability
+ * regression — a parent covering a carpool, a leader signing up a family who
+ * called them, etc. are all legitimate today. A verified session now skips
+ * re-challenging here too (gateAudience() returns 'household' for one,
+ * which satisfies hasFamilyAccess() same as this cookie does) and prefills
+ * the household picker — see events/[id]/page.tsx. Do not treat THIS cookie
+ * as identity; a verified session is the one that actually is.
  */
 
 import { signToken, verifyToken } from '@/lib/signed-cookie';

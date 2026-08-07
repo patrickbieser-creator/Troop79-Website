@@ -1,7 +1,8 @@
 # Family Identity & Passwordless Auth
 
-**Status:** Phase 0 SHIPPED 2026-08-06. Phases 1&ndash;4 ready to implement — no open questions.
-**Phase 0 is a live-defect fix; ship it first and separately, ahead of everything else in this plan.**
+**Status:** Phases 0&ndash;2 SHIPPED 2026-08-06 (identity core + all three bound surfaces). Phase 3
+(leader tooling, revoke UI, offline codes) and Phase 4 (passkeys) remain — ready to implement, no
+open questions.
 **Created:** 2026-08-06
 **Priority:** High
 
@@ -181,50 +182,65 @@ already made.
 
 **Phase 1 — identity core**
 
-- [ ] `/signin` accepts an email or phone, and responds **identically** whether or not it matches
+- [x] `/signin` accepts an email or phone, and responds **identically** whether or not it matches
       the roster ("If that address is on our roster, a code is on its way") — no membership oracle.
-- [ ] A matching `people.primary_email` / `scout_parent_emails` address receives one message
-      containing both a sign-in link and a 6-digit code, valid 15 minutes, single-use.
-- [ ] Redeeming either representation sets `t79_identity` bound to `person_id` + `household_key`,
-      120-day max age, `httpOnly` + `sameSite=lax` + `secure` in production.
-- [ ] The link's landing page **consumes nothing on GET**. It renders "Continue as Dana R." and
-      consumes the token on POST — a scanner prefetch cannot burn it.
-- [ ] `gateAudience()` returns a new `'household'` audience for a verified identity cookie, and
-      `hasFamilyAccess()` is true for it without `FAMILY_PASSWORD`.
-- [ ] Deep link survives the round trip: bounced from `/profile?scout=abc`, you land back there.
-- [ ] Rate limits enforced server-side: max 3 challenges per person per 15 min, 10 per IP per hour,
-      5 wrong code attempts before that token is dead.
-- [ ] Tokens stored as SHA-256 hashes with a server-side pepper — a database dump yields no usable
-      credential. Redemption invalidates all other outstanding tokens for that person.
-- [ ] `login_tokens` has RLS enabled, zero policies, service-role only (D-051 pattern), from the
-      first migration.
-- [ ] `next_path` is passed through `safeInternalPath()` (`lib/safe-redirect.ts`) on redemption. A
-      redirect target read back out of the database is an open redirect on the app's highest-value
-      form; that helper already documents the `/\evil.com` bypass a `startsWith('/')` check misses.
-- [ ] With `RESEND_API_KEY` **or** `EMAIL_FROM` unset the flow degrades to leader-issued codes and
-      says so — it does not crash. `emailConfigured()` requires both (`email.ts:38`) and
-      `sendEmail()` already returns `status: 'skipped'` rather than throwing (`email.ts:60-66`).
+      **Shipped 2026-08-06** (email only — Phase 1 doesn't need SMS; phone/Twilio stays Phase 3).
+- [x] A matching `people.primary_email` / `scout_parent_emails` address receives one message
+      containing both a sign-in link and a 6-digit code, valid 15 minutes, single-use. **Shipped.**
+- [x] Redeeming either representation sets `t79_identity` bound to `person_id` + `household_key`,
+      120-day max age, `httpOnly` + `sameSite=lax` + `secure` in production. **Shipped.**
+- [x] The link's landing page **consumes nothing on GET**. It renders "Continue as Dana R." and
+      consumes the token on POST — a scanner prefetch cannot burn it. **Shipped and tested**
+      (`Token_IsNotConsumed_WhenLinkIsFetchedByGet`).
+- [x] `gateAudience()` returns a new `'household'` audience for a verified identity cookie, and
+      `hasFamilyAccess()` is true for it without `FAMILY_PASSWORD`. **Shipped.**
+- [x] Deep link survives the round trip via `next_path` → `safeInternalPath()` — verified with the
+      real `/library/submit-proof?target=…` redirect target, not the `/profile?scout=abc` example
+      literally (that param never existed on `/profile`; the mechanism is generic and target-agnostic).
+- [x] Rate limits enforced server-side: max 3 challenges per person per 15 min, 10 per IP per hour,
+      5 wrong code attempts before that token is dead. **Shipped and tested.**
+- [x] Tokens stored as SHA-256 hashes with a server-side pepper — a database dump yields no usable
+      credential. Redemption invalidates all other outstanding tokens for that person. **Shipped and
+      tested** (`Token_IsRejected_WhenAlreadyRedeemed_AndSiblingsDieWithIt`).
+- [x] `login_tokens` has RLS enabled, zero policies, service-role only (D-051 pattern), from the
+      first migration. **Shipped and tested** (`AnonKey_CannotRead_LoginTokens`).
+- [x] `next_path` is passed through `safeInternalPath()` (`lib/safe-redirect.ts`) on redemption.
+      **Shipped.**
+- [x] With `RESEND_API_KEY` **or** `EMAIL_FROM` unset the flow degrades to leader-issued codes and
+      says so — it does not crash. **Shipped** — the request-form page checks `emailConfigured()`
+      directly; `sendEmail()`'s existing no-op-when-unset behavior means `requestChallenge()` never
+      throws either way (exercised naturally in local dev, where `EMAIL_FROM` is unset).
 
 **Phase 2 — bind the existing surfaces**
 
-- [ ] `/profile` requires Tier 2. The household picker disappears for a verified visitor — their
+- [x] `/profile` requires Tier 2. The household picker disappears for a verified visitor — their
       household is resolved from `household_members`, server-side, never from a form field.
-- [ ] `change_requests.submitted_by_person_id` is populated from the verified session rather than
-      left null, and the admin review panel shows *who* submitted.
-- [ ] Submitting a change for a scout outside the verified person's household is rejected
-      server-side, preserving the existing check at `profile/actions.ts:108-112` ("That scout is not
-      in your household") — which today has **no test coverage at all**. Add it here; D-055 shipped
-      without a single `/profile` test.
-- [ ] `/library/submit-proof` prefers the verified household when present, falls back to today's
+      **Shipped 2026-08-06** — `profile-household-picker.tsx` deleted, not orphaned.
+- [x] `change_requests.submitted_by_person_id` is populated from the verified session rather than
+      left null, and the admin review panel shows *who* submitted. **Shipped.**
+- [x] Submitting a change for a scout outside the verified person's household is rejected
+      server-side, preserving the existing check at `profile/actions.ts` ("That scout is not
+      in your household"). **Test coverage added** (`tests/profile-tier2.test.ts` —
+      `VerifiedParent_IsRefused_WhenSubmittingForScoutOutsideOwnHousehold`).
+- [x] `/library/submit-proof` prefers the verified household when present, falls back to today's
       picker under Tier 1. Under Tier 2-S the scout picker collapses to the verified scout alone.
-- [ ] `/profile` refuses a `subjectKind: 'scout'` session with a clear message, not a redirect loop.
-- [ ] **Event Signup recognizes a verified visitor and never re-challenges them** — no second
-      password prompt, and the household picker arrives pre-selected. See below.
-- [ ] Event Signup's *contract* is otherwise untouched: `?household=`, the formData `householdKey`,
+      **Shipped and tested** (`tests/submit-proof-tier2.test.ts` —
+      `ScoutSession_CanSubmitProof_WhenClaimingOnlyThemselves`, proven against a SIBLING scout in
+      the same household, not just "some scout").
+- [x] `/profile` refuses a `subjectKind: 'scout'` session with a clear message, not a redirect loop.
+      **Shipped** — inline message on `/profile` itself.
+- [x] **Event Signup recognizes a verified visitor and never re-challenges them** — no second
+      password prompt, and the household picker arrives pre-selected. **Shipped and tested**
+      (`tests/event-signup-prefill.test.ts`).
+- [x] Event Signup's *contract* is otherwise untouched: `?household=`, the formData `householdKey`,
       and `submit_household_signup`'s `p_allowed_person_ids` validation (D-064) all stay as they are.
-- [ ] `signup_entries` gains `entered_by_person_id` / `updated_by_person_id` (nullable FKs to
-      `people`), written when the submitter is verified and left null otherwise. Additive only — the
-      existing `entered_by` / `updated_by` text columns keep working for Tier 1 submissions.
+      **Confirmed** — the RPC itself was never modified; verified-identity attribution is a
+      follow-up `UPDATE`, not a change to `submit_household_signup`'s signature.
+- [x] `signup_entries` gains `entered_by_person_id` / `updated_by_person_id` (nullable FKs to
+      `people`), written when the submitter is verified and left null otherwise. **Shipped**
+      (migration `20260806220000_signup_entries_verified_actor.sql`) — `entered_by_person_id` set
+      once (first write only), `updated_by_person_id` refreshed on every verified write, matching
+      the existing text-column convention's semantics.
 
 ### Event Signup pass-through (answers "am I challenged twice?" — no)
 
@@ -403,25 +419,34 @@ if it's sparse, this is a data-entry task before it's an engineering one.
    `ScoutLogin_IsRefused_WhenClaimingProofForAnotherScout()`. No schema change, no dependency on
    anything below — this ships on its own.~~ (Test landed as `ScoutLogin_IsRefused_WhenSubmittingProof`,
    matching the Test Plan section's naming rather than this line's — same regression guard.)
-1. Migration: `login_tokens` + `people.session_epoch` + revocation triggers + RLS + indexes.
-2. `lib/identity-session.ts` and `lib/identity-challenge.ts`; extend `gateAudience()` with the
-   verified audiences and add `requireHouseholdIdentity()` (adult-only) alongside
-   `requireFamilyAccess()`. Write the reverse email → person lookup.
-3. `/signin` route: request form → sent confirmation → code entry → POST-consume landing page.
-   Rate limiting, enumeration-safe responses, `safeInternalPath()` on `next_path`.
-4. Vitest suite for Phase 1 criteria; lint + build; deploy behind no UI entry point yet.
-5. Add the "Sign in" entry to `site-nav.tsx`'s utility bar next to Profile; soft-launch to two or
-   three families before troop-wide.
-6. Phase 2: bind `/profile` (adult-only) and `/library/submit-proof` (adult or scout); populate
-   `submitted_by_person_id`; Event Signup prefill + `entered_by_person_id`. Add the `/profile` test
-   coverage D-055 shipped without — there is none today.
+1. **SHIPPED.** Migration: `login_tokens` + `people.session_epoch` + revocation triggers + RLS +
+   indexes (`20260806210000_identity_auth_phase1.sql`).
+2. **SHIPPED.** `lib/identity-session.ts` and `lib/identity-challenge.ts`; `gateAudience()` extended
+   with the verified `'household'` audience; `requireHouseholdIdentity()` (adult-only) and
+   `requireVerifiedScoutIdentity()` (scout-only) added alongside `requireFamilyAccess()`. Reverse
+   email → person lookup written (`resolveChallengeTarget()`).
+3. **SHIPPED.** `/signin` + `/signin/verify` routes: request form → sent confirmation → code entry →
+   POST-consume landing page. Rate limiting, enumeration-safe responses, `safeInternalPath()` on
+   `next_path`.
+4. **SHIPPED**, with one deviation: the Vitest suite (`tests/identity-auth.test.ts`, 12 tests) and
+   lint/build landed as planned, but the UI entry point (step 5) shipped in the SAME pass rather than
+   staying dark — no separate "deploy dark, flip on later" step was taken; soft-launch is a rollout
+   decision for Patrick to make with real families, not a code-readiness gate.
+5. **SHIPPED.** "Sign In" added to `site-nav.tsx`'s utility bar next to Profile.
+6. **SHIPPED.** Phase 2: `/profile` bound (adult-only, Tier 2), `/library/submit-proof` bound (adult
+   AND verified scout, Tier 2 / Tier 2-S), `submitted_by_person_id` populated + shown in the admin
+   review panel, Event Signup prefill + `entered_by_person_id`/`updated_by_person_id` shipped. The
+   `/profile` test coverage D-055 shipped without now exists (`tests/profile-tier2.test.ts`).
 7. Phase 3: roster "Send sign-in link" + "last verified" + revoke; leader-issued offline codes;
-   `noindex` headers; CDN/bucket audit; `.env.example` repair.
+   `noindex` headers; CDN/bucket audit. `.env.example` repair done EARLY, alongside Phase 0
+   (`IDENTITY_TOKEN_PEPPER` needed adding anyway) — see that file's diff, not deferred to here.
 8. Phase 4 (passkeys): only after the RP-ID question is answered. Table + registration offer on the
    post-verification screen + discoverable-credential sign-in; magic link retained as the recovery
    path forever.
-9. Record decisions D-073+ in `Agents/Architect/Memory/DECISIONS.md`; update `family-session.ts`'s
-   accepted-risk comment and `signed-cookie.ts`'s stale consumer list to match what shipped.
+9. **PARTIALLY DONE.** `family-session.ts`'s accepted-risk comment and `signed-cookie.ts`'s stale
+   consumer list are updated to match what shipped. Decisions D-073+ are NOT YET recorded in
+   `Agents/Architect/Memory/DECISIONS.md` — do that at session end, not mid-implementation, per this
+   project's memory-update-batching convention.
 
 ## Phase 4 — Passkeys (adopted and unblocked, Patrick 2026-08-06)
 
