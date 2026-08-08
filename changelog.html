@@ -497,6 +497,46 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.24.1 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.24.1</span>
+        <span class="release-date">August 8, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Fix</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">The job list explanation now shows before sign-in</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              The <strong>Explanation under that heading</strong> a leader writes in the Event
+              Builder was saving correctly but never reached the public page for a family who
+              hadn&rsquo;t signed in yet. The heading above the job list changed as expected, so
+              it looked like the explanation had simply been dropped.
+            </span>
+          </li>
+          <li>
+            <span>
+              Two separate places were at fault. On a job-first signup &mdash; a fundraiser, where
+              claiming a job <em>is</em> the RSVP &mdash; the not-yet-signed-in view showed a
+              generic &ldquo;pick a job below to sign in and claim it&rdquo; line in place of the
+              leader&rsquo;s text, which only appeared after signing in. On an ordinary signup, the
+              anonymous preview of the job list rendered the heading and skipped the explanation
+              entirely.
+            </span>
+          </li>
+          <li>
+            <span>
+              Both now show the leader&rsquo;s explanation, and the job-first view keeps the
+              sign-in guidance as a second line underneath it. This is the state a family is in
+              while deciding whether an event applies to them, so it is when the explanation
+              matters most.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.24.0 -->
     <div class="release">
       <div class="release-header">

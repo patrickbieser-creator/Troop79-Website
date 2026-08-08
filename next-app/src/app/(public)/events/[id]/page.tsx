@@ -308,6 +308,12 @@ export default async function EventDetailPage({
               <h2 className={styles.blockHead}>
                 {signup.slots_title ?? (slotFirst ? 'Jobs — who’s still needed' : 'Shifts & tasks')}
               </h2>
+              {/* The builder's "Explanation under that heading" reached the two
+                  signed-in forms (slot-first-form, person-first-form) but never
+                  this anonymous preview, so a leader who wrote one and then
+                  checked the public page saw the heading change and the
+                  explanation vanish. */}
+              {signup.slots_intro && <p className={styles.boardLede}>{signup.slots_intro}</p>}
               <ul className={styles.slotList}>
                 {slots.map((s) => {
                   const full = s.needed != null && s.filled >= s.needed;

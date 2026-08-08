@@ -496,6 +496,12 @@ export default function SlotFirstForm({
     return (
       <div className={styles.jobBoard}>
         {gateState === 'no-household' && statusBar(true)}
+        {/* The leader's own explanation goes first and is not replaced by the
+            sign-in hint: this is the state a family is in when they're still
+            deciding whether the event applies to them, so it's exactly when
+            "what is this signup for" matters most. It used to appear only
+            AFTER sign-in, which is too late to be useful. */}
+        {slotsIntro && <p className={styles.boardLede}>{slotsIntro}</p>}
         <p className={styles.boardLede}>
           {gateState === 'anon'
             ? 'Pick a job below to sign in and claim it — one shared troop password, no account needed.'
