@@ -200,6 +200,18 @@
   color: var(--text-meta);
   margin-top: 2px;
 }
+/* Per-job detail. Body colour, not meta grey: this is the leader's own
+   instruction ("bring a 6ft table, drop off Friday") and families have to be
+   able to read it, unlike the when/eligibility line above it. */
+.slotDesc {
+  display: block;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-body);
+  margin-top: 4px;
+  max-width: 62ch;
+  white-space: normal;
+}
 .slotMeta {
   display: flex;
   align-items: center;

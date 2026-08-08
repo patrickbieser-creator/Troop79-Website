@@ -92,6 +92,7 @@ export function BuilderPanels({
   // Slot draft
   const [sKind, setSKind] = useState<'shift' | 'task'>('shift');
   const [sLabel, setSLabel] = useState('');
+  const [sDesc, setSDesc] = useState('');
   const [sDate, setSDate] = useState('');
   const [sStart, setSStart] = useState('08:00');
   const [sEnd, setSEnd] = useState('10:00');
@@ -139,6 +140,7 @@ export function BuilderPanels({
       const res = await addSlot(signupId, calendarEntryId, {
         kind: sKind,
         label: sLabel,
+        description: sDesc || null,
         slot_date: sDate || null,
         starts_at: sStart,
         ends_at: sEnd,
@@ -153,9 +155,12 @@ export function BuilderPanels({
       }
       setSlotError(null);
       setSlotNote(`Added “${name}” — ${slots.length + 1} ${slots.length === 0 ? 'job' : 'jobs'}`);
-      // Everything except the name is kept on purpose: the next job in a build
-      // session is usually the same shape, so only the label needs retyping.
+      // Name and description clear; the rest (date, times, who, needed) is kept
+      // on purpose, since the next job in a build session is usually the same
+      // shape. Description is per-job by definition, so carrying it forward
+      // would silently mislabel the next one.
       setSLabel('');
+      setSDesc('');
       sLabelRef.current?.focus();
       router.refresh();
     });
@@ -171,6 +176,7 @@ export function BuilderPanels({
     flushSync(() => {
       setSKind(s(sl.kind) === 'task' ? 'task' : 'shift');
       setSLabel(s(sl.label));
+      setSDesc(s(sl.description));
       setSDate(s(sl.slot_date));
       setSStart(s(sl.starts_at).slice(0, 5) || '08:00');
       setSEnd(s(sl.ends_at).slice(0, 5) || '10:00');
@@ -189,6 +195,7 @@ export function BuilderPanels({
     setEditSlot(Number(sl.id));
     setESlot({
       label: s(sl.label),
+      description: s(sl.description),
       slot_date: s(sl.slot_date),
       starts_at: s(sl.starts_at).slice(0, 5),
       ends_at: s(sl.ends_at).slice(0, 5),
@@ -501,19 +508,11 @@ export function BuilderPanels({
               onBlur={(e) => save({ slots_title: e.target.value || null })}
             />
           </label>
-          <label>
-            <span className={styles.fieldLabel}>Explanation under that heading</span>
-            <input
-              type="text"
-              placeholder="e.g. Potluck-style — tell us what you're bringing."
-              defaultValue={s(signup.slots_intro)}
-              onBlur={(e) => save({ slots_intro: e.target.value || null })}
-            />
-          </label>
         </div>
         <p className={styles.panelHint}>
           One mechanism: a task is a shift without times. A task that doesn’t need attendance (a
-          donation) can be claimed by someone who isn’t coming.
+          donation) can be claimed by someone who isn’t coming. Detail that applies to one job goes
+          in that job’s own description — the event’s description covers the rest.
         </p>
 
         <form
@@ -589,6 +588,14 @@ export function BuilderPanels({
               </label>
             )}
           </div>
+          <label className={styles.addDescField}>
+            <span className={styles.addFieldLabel}>Description (optional)</span>
+            <input
+              value={sDesc}
+              onChange={(e) => setSDesc(e.target.value)}
+              placeholder="What this job involves — e.g. “Bring a folding table, 6ft or larger. Drop off Friday evening.”"
+            />
+          </label>
           <div className={styles.addCardActions}>
             <button type="submit" className={styles.enableBtn} disabled={pending}>
               {pending ? 'Adding…' : 'Add job'}
@@ -680,6 +687,16 @@ export function BuilderPanels({
                               needs attendance
                             </label>
                           )}
+                          <label className={styles.addDescField}>
+                            <span className={styles.addFieldLabel}>Description (optional)</span>
+                            <input
+                              value={eSlot.description ?? ''}
+                              placeholder="What this job involves"
+                              onChange={(ev) =>
+                                setESlot((v) => ({ ...v, description: ev.target.value }))
+                              }
+                            />
+                          </label>
                           <button
                             type="button"
                             className={styles.enableBtn}
@@ -688,6 +705,7 @@ export function BuilderPanels({
                               start(async () => {
                                 const res = await updateSlot(id, signupId, calendarEntryId, {
                                   label: eSlot.label ?? '',
+                                  description: eSlot.description || null,
                                   slot_date: eSlot.slot_date || null,
                                   starts_at: eSlot.starts_at || null,
                                   ends_at: eSlot.ends_at || null,
@@ -801,6 +819,9 @@ export function BuilderPanels({
                       {!isShift && <span className={styles.tag}>task</span>}
                       {b(sl.attendance_required) === false && (
                         <span className={styles.tag}>no attendance</span>
+                      )}
+                      {s(sl.description) && (
+                        <span className={styles.rowDesc}>{s(sl.description)}</span>
                       )}
                     </td>
                     <td className={styles.nowrap}>

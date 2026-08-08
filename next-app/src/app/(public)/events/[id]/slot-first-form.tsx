@@ -54,7 +54,6 @@ export default function SlotFirstForm({
   slots,
   allowGuests,
   guestPrompt,
-  slotsIntro,
   existingClaims,
   submitAction,
   cancelAction,
@@ -73,7 +72,6 @@ export default function SlotFirstForm({
   slots: SignupSlot[];
   allowGuests: boolean;
   guestPrompt: string | null;
-  slotsIntro: string | null;
   existingClaims: ExistingClaim[];
   submitAction: (fd: FormData) => void;
   cancelAction: (fd: FormData) => void;
@@ -376,6 +374,9 @@ export default function SlotFirstForm({
                             : 'Untimed'}
                           {!sl.attendance_required && ' · no attendance needed'}
                         </span>
+                        {sl.description && (
+                          <span className={styles.slotDesc}>{sl.description}</span>
+                        )}
                       </span>
                       <span className={styles.slotMeta}>
                         <span className={styles.elig}>
@@ -496,12 +497,6 @@ export default function SlotFirstForm({
     return (
       <div className={styles.jobBoard}>
         {gateState === 'no-household' && statusBar(true)}
-        {/* The leader's own explanation goes first and is not replaced by the
-            sign-in hint: this is the state a family is in when they're still
-            deciding whether the event applies to them, so it's exactly when
-            "what is this signup for" matters most. It used to appear only
-            AFTER sign-in, which is too late to be useful. */}
-        {slotsIntro && <p className={styles.boardLede}>{slotsIntro}</p>}
         <p className={styles.boardLede}>
           {gateState === 'anon'
             ? 'Pick a job below to sign in and claim it — one shared troop password, no account needed.'
@@ -523,8 +518,8 @@ export default function SlotFirstForm({
 
       {statusBar(false)}
       <p className={styles.boardLede}>
-        {slotsIntro ??
-          'Pick a job and choose who’s doing it — one person or several. Claiming a job is your signup; there’s no separate RSVP.'}
+        Pick a job and choose who’s doing it — one person or several. Claiming a job is your
+        signup; there’s no separate RSVP.
       </p>
 
       {jobList}

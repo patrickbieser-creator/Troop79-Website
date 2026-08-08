@@ -58,9 +58,6 @@ export default function PersonFirstForm({
   cancelAction: (fd: FormData) => void;
 }) {
   const slotsTitle = signup.slots_title ?? 'What can you bring?';
-  const slotsIntro =
-    signup.slots_intro ??
-    'Tell us what your family is bringing so we don’t end up with fifteen desserts and no salad.';
 
   const scouts = household.scouts;
   const adults = household.adults;
@@ -601,7 +598,6 @@ export default function PersonFirstForm({
       {slots.length > 0 && (
         <div className={styles.guestBlock}>
           <p className={styles.dayHead}>{slotsTitle}</p>
-          <p className={styles.gateLede}>{slotsIntro}</p>
           {attendingPeople().length === 0 && (
             <p className={styles.recapEmpty}>
               Mark who&rsquo;s attending above, then you can claim one of these.
@@ -625,6 +621,9 @@ export default function PersonFirstForm({
                       <span className={styles.slotTop}>
                         <span>
                           <strong>{sl.label}</strong>
+                          {sl.description && (
+                            <span className={styles.slotDesc}>{sl.description}</span>
+                          )}
                         </span>
                         <span className={styles.slotMeta}>
                           <span className={styles.count}>

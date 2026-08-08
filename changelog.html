@@ -497,6 +497,45 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.25.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.25.0</span>
+        <span class="release-date">August 8, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Every job can carry its own description</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Jobs now have an optional <strong>description</strong> &mdash; &ldquo;bring a folding
+              table, 6ft or larger, drop off Friday evening&rdquo; &mdash; entered per job in the
+              Event Builder and shown under the job name on the public event page. A rummage sale
+              with thirty or forty jobs needs thirty or forty of these; the detail that matters is
+              almost always specific to one job, not to the signup as a whole.
+            </span>
+          </li>
+          <li>
+            <span>
+              The old signup-wide <strong>Explanation under that heading</strong> field is retired
+              in the same change. It sat above the whole job list and duplicated what the
+              event&rsquo;s own description already says, so the builder now has one place for
+              signup-level text and one place for job-level text instead of two overlapping ones.
+              The job list heading is unchanged.
+            </span>
+          </li>
+          <li>
+            <span>
+              Descriptions appear on every view of the job list &mdash; the job-first board, the
+              household form, and the preview a visitor sees before signing in. 1 new test (67
+              total), lint and build clean, verified in a browser on both signup styles.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.24.1 -->
     <div class="release">
       <div class="release-header">

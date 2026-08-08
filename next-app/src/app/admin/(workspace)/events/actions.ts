@@ -207,6 +207,7 @@ export async function addSlot(
   slot: {
     kind: 'shift' | 'task';
     label: string;
+    description: string | null;
     slot_date: string | null;
     starts_at: string | null;
     ends_at: string | null;
@@ -225,6 +226,7 @@ export async function addSlot(
     event_signup_id: signupId,
     kind: slot.kind,
     label: slot.label.trim(),
+    description: slot.description?.trim() || null,
     slot_date: slot.slot_date || null,
     starts_at: slot.kind === 'shift' ? slot.starts_at : null,
     ends_at: slot.kind === 'shift' ? slot.ends_at : null,
@@ -427,6 +429,7 @@ export async function updateSlot(
   calendarEntryId: number,
   slot: {
     label: string;
+    description: string | null;
     slot_date: string | null;
     starts_at: string | null;
     ends_at: string | null;
@@ -472,6 +475,7 @@ export async function updateSlot(
     .from('signup_slots')
     .update({
       label: slot.label.trim(),
+      description: slot.description?.trim() || null,
       slot_date: slot.slot_date || null,
       starts_at: kind === 'shift' ? slot.starts_at : null,
       ends_at: kind === 'shift' ? slot.ends_at : null,

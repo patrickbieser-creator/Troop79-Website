@@ -57,7 +57,8 @@ describe('Event Signup family-facing job order', () => {
         slot_date: '2027-01-01',
         starts_at: '08:00',
         ends_at: '10:00',
-        attendance_required: true
+        attendance_required: true,
+        description: 'Bring a folding table, 6ft or larger.'
       }
     ];
 
@@ -87,6 +88,18 @@ describe('Event Signup family-facing job order', () => {
     const labels = (detail?.slots ?? []).map((s) => s.label);
 
     expect(labels[labels.length - 1]).toBe(`${TEST_PREFIX} Bake donation`);
+  });
+
+  it('JobDescription_ReachesThePublicPage_WhenSetOnASlot', async () => {
+    // Guards the select list, not the column. slots_intro was invisible for
+    // months because a renderer ignored it; the equivalent failure for
+    // description is dropping it from the explicit column list in
+    // loadEventDetail, which fails silently — the field just reads undefined
+    // and every `{description && ...}` render quietly skips.
+    const detail = await loadEventDetail(event.calendarEntryId);
+    const setup = (detail?.slots ?? []).find((s) => s.label === `${TEST_PREFIX} Setup crew`);
+
+    expect(setup?.description).toBe('Bring a folding table, 6ft or larger.');
   });
 
   it('JobOrder_IsStable_AcrossRepeatedLoads', async () => {

@@ -34,6 +34,10 @@ export interface SignupSlot {
   id: number;
   kind: 'shift' | 'task';
   label: string;
+  /** Optional per-job detail, shown under the job name. Replaces the retired
+   *  signup-wide slots_intro — the detail leaders need to give varies job by
+   *  job, not once for the whole list. */
+  description: string | null;
   slot_date: string | null;
   starts_at: string | null;
   ends_at: string | null;
@@ -61,7 +65,6 @@ export interface EventSignup {
   notes_prompt: string | null;
   guest_prompt: string | null;
   slots_title: string | null;
-  slots_intro: string | null;
 }
 
 export interface SignupQuestion {
@@ -232,7 +235,10 @@ export async function loadEventDetail(entryId: number): Promise<EventDetail | nu
     .select(
       'id, status, deadline, capacity, waitlist_enabled, attendance_enabled, drivers_needed, ' +
         'allow_guests, audience, payment_instructions, needs_permission_slip, needs_ahmr_c, ' +
-        'notes_prompt, guest_prompt, slots_title, slots_intro'
+        // slots_intro is intentionally no longer selected: per-job
+        // `signup_slots.description` replaced it (migration 20260808120000).
+        // The column still exists and still holds text on live signups.
+        'notes_prompt, guest_prompt, slots_title'
     )
     .eq('calendar_entry_id', entryId)
     .maybeSingle();
@@ -260,7 +266,7 @@ export async function loadEventDetail(entryId: number): Promise<EventDetail | nu
     supabase
       .from('signup_slots')
       .select(
-        'id, kind, label, slot_date, starts_at, ends_at, attendance_required, eligibility, needed, sort'
+        'id, kind, label, description, slot_date, starts_at, ends_at, attendance_required, eligibility, needed, sort'
       )
       .eq('event_signup_id', sig.id)
       // slot_date/sort first so an explicit ordering (when one is ever set)
