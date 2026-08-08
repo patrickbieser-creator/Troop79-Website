@@ -497,6 +497,81 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.24.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.24.0</span>
+        <span class="release-date">August 8, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Fix</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Event Builder: adding jobs in bulk, and a job list that reads as a schedule</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Building a big signup &mdash; a rummage sale with 30 or 40 jobs &mdash; exposed how
+              much the <strong>Jobs &mdash; shifts &amp; tasks</strong> panel assumed a handful.
+              The add form sat below the job list as a bare row of boxes, so it read as a blank
+              last row rather than a form, and it slid a row further down the page with every job
+              added. It is now an <strong>Add a job</strong> card above the list, with a label on
+              every field, and it stays put no matter how long the list gets.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Enter now adds the job</strong> and puts the cursor back in the name box with
+              everything else &mdash; date, times, who, how many needed &mdash; left in place for
+              the next one. A new <strong>Duplicate</strong> button on each job copies it into the
+              form with the name pre-selected, which turns a station repeated across five time
+              blocks into five quick edits instead of five full re-entries.
+            </span>
+          </li>
+          <li>
+            <span>
+              Errors and confirmations now appear in the add card itself. Previously a rejected
+              add &mdash; a missing name, a shift without times &mdash; reported at the very top
+              of the builder, several screens above where the leader was working, so it looked
+              like nothing had happened at all.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Removing a job now asks first, by name.</strong> Remove sat ten pixels from
+              Edit, and a job nobody had claimed yet &mdash; which every freshly entered job is
+              &mdash; was deleted instantly with no confirmation and no undo. The existing warning
+              that names who would lose their claim still appears for jobs families have already
+              signed up for.
+            </span>
+          </li>
+          <li>
+            <span>
+              Jobs are also easier to change: the job name itself now opens the editor, the
+              Edit / Duplicate / Remove buttons are larger and spaced apart, the table has column
+              headings, and the panel heading carries a job count.
+            </span>
+          </li>
+          <li>
+            <span>
+              On the family-facing side, the job list is now ordered by <strong>date, then start
+              time</strong>. It had been ordered only by date, so a day&rsquo;s jobs came back in
+              whatever order they were typed &mdash; an 8am setup entered after a 3pm teardown
+              displayed teardown first. Ties also had no defined resolution, meaning editing any
+              job could quietly move it on the page families read; that is now fixed too.
+            </span>
+          </li>
+          <li>
+            <span>
+              ux-lead review of the builder flow drove the change list. 3 new tests (66 total, up
+              from 63), lint and build clean, and every interaction checked in a browser against
+              a realistic job list &mdash; which caught a real bug in the first attempt at
+              Duplicate, where the copied name was not selected and the next job&rsquo;s name got
+              appended to it instead of replacing it.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.23.0 -->
     <div class="release">
       <div class="release-header">

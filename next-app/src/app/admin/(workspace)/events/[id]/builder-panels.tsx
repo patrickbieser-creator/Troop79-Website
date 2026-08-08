@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
+import { flushSync } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import {
   updateSignup, addPrice, deletePrice, updatePrice, backfillPrices,
@@ -97,6 +98,13 @@ export function BuilderPanels({
   const [sWho, setSWho] = useState<'scouts' | 'adults' | 'both'>('both');
   const [sNeeded, setSNeeded] = useState('4');
   const [sAttend, setSAttend] = useState(true);
+  // Jobs get entered dozens at a time, so this panel keeps its own error and
+  // confirmation line: the builder-wide `error` at the top of the page is
+  // several screens away once the list is long, which made a rejected add
+  // indistinguishable from nothing happening.
+  const [slotError, setSlotError] = useState<string | null>(null);
+  const [slotNote, setSlotNote] = useState<string | null>(null);
+  const sLabelRef = useRef<HTMLInputElement>(null);
 
   // Inline edit state: which row is open, plus its draft values.
   const [editSlot, setEditSlot] = useState<number | null>(null);
@@ -112,7 +120,7 @@ export function BuilderPanels({
   // second click is required. Nothing shown at all when there's nothing to
   // lose — see deleteSlot/deleteQuestion's own confirm=false dry run.
   const [slotDeleteConfirm, setSlotDeleteConfirm] = useState<
-    { id: number; claimants: SlotClaimant[]; message: string } | null
+    { id: number; label: string; claimants: SlotClaimant[]; message: string } | null
   >(null);
   const [questionDeleteConfirm, setQuestionDeleteConfirm] = useState<
     { id: number; answers: QuestionAnswerRow[]; message: string } | null
@@ -124,6 +132,71 @@ export function BuilderPanels({
   const [qChoices, setQChoices] = useState('');
   const [qWho, setQWho] = useState<'scouts' | 'adults' | 'both'>('both');
   const [qReq, setQReq] = useState(true);
+
+  const submitSlot = () =>
+    start(async () => {
+      const name = sLabel.trim();
+      const res = await addSlot(signupId, calendarEntryId, {
+        kind: sKind,
+        label: sLabel,
+        slot_date: sDate || null,
+        starts_at: sStart,
+        ends_at: sEnd,
+        eligibility: sWho,
+        needed: sNeeded ? Number(sNeeded) : null,
+        attendance_required: sKind === 'shift' ? true : sAttend
+      });
+      if (!res.ok) {
+        setSlotNote(null);
+        setSlotError(res.error ?? 'Could not add job.');
+        return;
+      }
+      setSlotError(null);
+      setSlotNote(`Added “${name}” — ${slots.length + 1} ${slots.length === 0 ? 'job' : 'jobs'}`);
+      // Everything except the name is kept on purpose: the next job in a build
+      // session is usually the same shape, so only the label needs retyping.
+      setSLabel('');
+      sLabelRef.current?.focus();
+      router.refresh();
+    });
+
+  /** Copy an existing job into the add form. A rummage sale is a few stations
+   *  repeated across time blocks, so duplicate-and-tweak beats retyping. */
+  const duplicateSlot = (sl: Rec) => {
+    // flushSync, not a bare set-then-select: select() has to run against the
+    // COPIED name, and React hasn't committed it to the DOM yet at the end of
+    // this handler. Without the flush, select() highlights the field's old
+    // (empty) value, the copied text lands unselected, and typing the next
+    // job's name APPENDS to it — "Teardown crewPricing table".
+    flushSync(() => {
+      setSKind(s(sl.kind) === 'task' ? 'task' : 'shift');
+      setSLabel(s(sl.label));
+      setSDate(s(sl.slot_date));
+      setSStart(s(sl.starts_at).slice(0, 5) || '08:00');
+      setSEnd(s(sl.ends_at).slice(0, 5) || '10:00');
+      setSWho((s(sl.eligibility) || 'both') as 'scouts' | 'adults' | 'both');
+      setSNeeded(sl.needed == null ? '' : s(sl.needed));
+      setSAttend(b(sl.attendance_required));
+      setSlotError(null);
+      setSlotNote(`Copied “${s(sl.label)}” into the form — change what differs, then add.`);
+    });
+    sLabelRef.current?.focus();
+    sLabelRef.current?.select();
+  };
+
+  const openSlotEdit = (sl: Rec) => {
+    setSlotDeleteConfirm(null);
+    setEditSlot(Number(sl.id));
+    setESlot({
+      label: s(sl.label),
+      slot_date: s(sl.slot_date),
+      starts_at: s(sl.starts_at).slice(0, 5),
+      ends_at: s(sl.ends_at).slice(0, 5),
+      eligibility: s(sl.eligibility),
+      needed: sl.needed == null ? '' : s(sl.needed),
+      attendance_required: b(sl.attendance_required) ? '1' : ''
+    });
+  };
 
   return (
     <div className={styles.builder}>
@@ -415,7 +488,9 @@ export function BuilderPanels({
       </section>
 
       <section className={styles.panel}>
-        <h2>Jobs — shifts &amp; tasks</h2>
+        <h2>
+          Jobs — shifts &amp; tasks{slots.length > 0 && ` (${slots.length})`}
+        </h2>
         <div className={styles.fieldGrid}>
           <label>
             <span className={styles.fieldLabel}>What families see this called</span>
@@ -440,8 +515,108 @@ export function BuilderPanels({
           One mechanism: a task is a shift without times. A task that doesn’t need attendance (a
           donation) can be claimed by someone who isn’t coming.
         </p>
+
+        <form
+          className={styles.addCard}
+          onSubmit={(e) => {
+            e.preventDefault();
+            submitSlot();
+          }}
+        >
+          <h3>Add a job</h3>
+          <div className={styles.addRow}>
+            <label className={styles.addField}>
+              <span className={styles.addFieldLabel}>Type</span>
+              <select value={sKind} onChange={(e) => setSKind(e.target.value as 'shift' | 'task')}>
+                <option value="shift">Shift (timed)</option>
+                <option value="task">Task (untimed)</option>
+              </select>
+            </label>
+            <label className={styles.addField}>
+              <span className={styles.addFieldLabel}>Job name</span>
+              <input
+                ref={sLabelRef}
+                placeholder="e.g. Setup crew"
+                value={sLabel}
+                onChange={(e) => setSLabel(e.target.value)}
+              />
+            </label>
+            <label className={styles.addField}>
+              <span className={styles.addFieldLabel}>Date</span>
+              <DatePickerField className={styles.dateField} value={sDate} onChange={setSDate} />
+            </label>
+            {sKind === 'shift' && (
+              <>
+                <label className={styles.addField}>
+                  <span className={styles.addFieldLabel}>Starts</span>
+                  <input type="time" value={sStart} onChange={(e) => setSStart(e.target.value)} />
+                </label>
+                <label className={styles.addField}>
+                  <span className={styles.addFieldLabel}>Ends</span>
+                  <input type="time" value={sEnd} onChange={(e) => setSEnd(e.target.value)} />
+                </label>
+              </>
+            )}
+            <label className={styles.addField}>
+              <span className={styles.addFieldLabel}>Who</span>
+              <select
+                value={sWho}
+                onChange={(e) => setSWho(e.target.value as 'scouts' | 'adults' | 'both')}
+              >
+                <option value="both">Everyone</option>
+                <option value="scouts">Scouts</option>
+                <option value="adults">Adults</option>
+              </select>
+            </label>
+            <label className={styles.addField}>
+              <span className={styles.addFieldLabel}>Needed</span>
+              <input
+                type="number"
+                min={1}
+                placeholder="no limit"
+                value={sNeeded}
+                onChange={(e) => setSNeeded(e.target.value)}
+              />
+            </label>
+            {sKind === 'task' && (
+              <label className={styles.inlineChk}>
+                <input
+                  type="checkbox"
+                  checked={sAttend}
+                  onChange={(e) => setSAttend(e.target.checked)}
+                />
+                needs attendance
+              </label>
+            )}
+          </div>
+          <div className={styles.addCardActions}>
+            <button type="submit" className={styles.enableBtn} disabled={pending}>
+              {pending ? 'Adding…' : 'Add job'}
+            </button>
+            <span className={styles.addHint}>
+              Enter adds the job and puts the cursor back in the name — everything else stays for
+              the next one.
+            </span>
+          </div>
+          {slotError && <p className={styles.err}>{slotError}</p>}
+          {slotNote && (
+            <p className={styles.okNote} role="status">
+              {slotNote}
+            </p>
+          )}
+        </form>
+
         {slots.length > 0 && (
           <table className={styles.miniTable}>
+            <thead>
+              <tr>
+                <th>Job</th>
+                <th>When</th>
+                <th>Who</th>
+                <th>Needed</th>
+                <th aria-label="Actions" />
+              </tr>
+            </thead>
             <tbody>
               {slots.map((sl) => {
                 const id = Number(sl.id);
@@ -523,8 +698,9 @@ export function BuilderPanels({
                                   needed: eSlot.needed ? Number(eSlot.needed) : null,
                                   attendance_required: eSlot.attendance_required === '1'
                                 });
-                                if (!res.ok) setError(res.error ?? 'Could not save job.');
+                                if (!res.ok) setSlotError(res.error ?? 'Could not save job.');
                                 else {
+                                  setSlotError(null);
                                   setEditSlot(null);
                                   router.refresh();
                                 }
@@ -542,11 +718,21 @@ export function BuilderPanels({
                   );
                 }
                 if (slotDeleteConfirm?.id === id) {
+                  // Two stages. The first is a plain "are you sure" that costs
+                  // nothing — every freshly entered job is unclaimed, and the
+                  // server deletes those outright, so without this a mis-click
+                  // next to Edit destroyed a job with no undo. The second only
+                  // appears once the server reports people have claimed it.
+                  const claimed = slotDeleteConfirm.claimants.length > 0;
                   return (
                     <tr key={id} className={styles.editRow}>
                       <td colSpan={5}>
-                        <p className={styles.err}>{slotDeleteConfirm.message}</p>
-                        {slotDeleteConfirm.claimants.length > 0 && (
+                        <p className={styles.err}>
+                          {claimed
+                            ? slotDeleteConfirm.message
+                            : `Remove “${slotDeleteConfirm.label}”?`}
+                        </p>
+                        {claimed && (
                           <p className={styles.panelHint}>
                             {slotDeleteConfirm.claimants.map((c) => c.name).join(', ')}
                           </p>
@@ -558,14 +744,32 @@ export function BuilderPanels({
                             disabled={pending}
                             onClick={() =>
                               start(async () => {
-                                const res = await deleteSlot(id, signupId, calendarEntryId, true);
-                                if (!res.ok) setError(res.error ?? 'Could not remove job.');
+                                const res = await deleteSlot(
+                                  id,
+                                  signupId,
+                                  calendarEntryId,
+                                  claimed
+                                );
+                                if (res.ok) {
+                                  setSlotDeleteConfirm(null);
+                                  router.refresh();
+                                  return;
+                                }
+                                if (res.needsConfirm) {
+                                  setSlotDeleteConfirm({
+                                    id,
+                                    label: slotDeleteConfirm.label,
+                                    claimants: res.claimants ?? [],
+                                    message: res.error ?? ''
+                                  });
+                                  return;
+                                }
+                                setSlotError(res.error ?? 'Could not remove job.');
                                 setSlotDeleteConfirm(null);
-                                router.refresh();
                               })
                             }
                           >
-                            Yes, remove anyway
+                            {claimed ? 'Yes, remove anyway' : 'Yes, remove'}
                           </button>
                           <button
                             type="button"
@@ -582,7 +786,19 @@ export function BuilderPanels({
                 return (
                   <tr key={id}>
                     <td>
-                      <strong>{s(sl.label)}</strong>
+                      {/* The name is the edit trigger as well as the label —
+                          reaching for the thing you want to change is the
+                          instinct the small Edit button alone didn't serve. */}
+                      <button
+                        type="button"
+                        className={styles.rowLabelBtn}
+                        disabled={pending}
+                        title="Edit this job"
+                        onClick={() => openSlotEdit(sl)}
+                      >
+                        {s(sl.label)}
+                      </button>
+                      {!isShift && <span className={styles.tag}>task</span>}
                       {b(sl.attendance_required) === false && (
                         <span className={styles.tag}>no attendance</span>
                       )}
@@ -600,20 +816,17 @@ export function BuilderPanels({
                     <td className={styles.rowActions}>
                       <button
                         type="button"
+                        className={styles.rowDup}
+                        disabled={pending}
+                        onClick={() => duplicateSlot(sl)}
+                      >
+                        Duplicate
+                      </button>
+                      <button
+                        type="button"
                         className={styles.rowEdit}
                         disabled={pending}
-                        onClick={() => {
-                          setEditSlot(id);
-                          setESlot({
-                            label: s(sl.label),
-                            slot_date: s(sl.slot_date),
-                            starts_at: s(sl.starts_at).slice(0, 5),
-                            ends_at: s(sl.ends_at).slice(0, 5),
-                            eligibility: s(sl.eligibility),
-                            needed: sl.needed == null ? '' : s(sl.needed),
-                            attendance_required: b(sl.attendance_required) ? '1' : ''
-                          });
-                        }}
+                        onClick={() => openSlotEdit(sl)}
                       >
                         Edit
                       </button>
@@ -622,21 +835,11 @@ export function BuilderPanels({
                         className={styles.rowDel}
                         disabled={pending}
                         onClick={() =>
-                          start(async () => {
-                            const res = await deleteSlot(id, signupId, calendarEntryId, false);
-                            if (res.ok) {
-                              router.refresh();
-                              return;
-                            }
-                            if (res.needsConfirm) {
-                              setSlotDeleteConfirm({
-                                id,
-                                claimants: res.claimants ?? [],
-                                message: res.error ?? ''
-                              });
-                              return;
-                            }
-                            setError(res.error ?? 'Could not remove job.');
+                          setSlotDeleteConfirm({
+                            id,
+                            label: s(sl.label),
+                            claimants: [],
+                            message: ''
                           })
                         }
                       >
@@ -649,64 +852,6 @@ export function BuilderPanels({
             </tbody>
           </table>
         )}
-        <div className={styles.addRow}>
-          <select value={sKind} onChange={(e) => setSKind(e.target.value as 'shift' | 'task')}>
-            <option value="shift">Shift (timed)</option>
-            <option value="task">Task (untimed)</option>
-          </select>
-          <input placeholder="Job name" value={sLabel} onChange={(e) => setSLabel(e.target.value)} />
-          <DatePickerField className={styles.dateField} value={sDate} onChange={setSDate} />
-          {sKind === 'shift' && (
-            <>
-              <input type="time" value={sStart} onChange={(e) => setSStart(e.target.value)} />
-              <input type="time" value={sEnd} onChange={(e) => setSEnd(e.target.value)} />
-            </>
-          )}
-          <select value={sWho} onChange={(e) => setSWho(e.target.value as 'scouts' | 'adults' | 'both')}>
-            <option value="both">Everyone</option>
-            <option value="scouts">Scouts</option>
-            <option value="adults">Adults</option>
-          </select>
-          <input
-            type="number"
-            min={1}
-            placeholder="needed"
-            value={sNeeded}
-            onChange={(e) => setSNeeded(e.target.value)}
-          />
-          {sKind === 'task' && (
-            <label className={styles.inlineChk}>
-              <input type="checkbox" checked={sAttend} onChange={(e) => setSAttend(e.target.checked)} />
-              needs attendance
-            </label>
-          )}
-          <button
-            type="button"
-            className={styles.enableBtn}
-            disabled={pending}
-            onClick={() =>
-              start(async () => {
-                const res = await addSlot(signupId, calendarEntryId, {
-                  kind: sKind,
-                  label: sLabel,
-                  slot_date: sDate || null,
-                  starts_at: sStart,
-                  ends_at: sEnd,
-                  eligibility: sWho,
-                  needed: sNeeded ? Number(sNeeded) : null,
-                  attendance_required: sKind === 'shift' ? true : sAttend
-                });
-                if (!res.ok) setError(res.error ?? 'Could not add job.');
-                else {
-                  setSLabel('');
-                  router.refresh();
-                }
-              })
-            }
-          >
-            Add job
-          </button>
-        </div>
       </section>
 
       <section className={styles.panel}>

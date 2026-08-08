@@ -44,8 +44,11 @@ async function load(signupId: number) {
       .from('signup_slots')
       .select('*')
       .eq('event_signup_id', s.id)
+      // Must match the public ordering in lib/event-signup.ts — the builder
+      // list is what a leader checks the family-facing order against.
       .order('slot_date')
       .order('sort')
+      .order('starts_at', { nullsFirst: false })
       .order('id'),
     supabase.from('signup_questions').select('*').eq('event_signup_id', s.id).order('sort').order('id')
   ]);

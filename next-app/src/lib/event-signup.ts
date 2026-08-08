@@ -263,8 +263,17 @@ export async function loadEventDetail(entryId: number): Promise<EventDetail | nu
         'id, kind, label, slot_date, starts_at, ends_at, attendance_required, eligibility, needed, sort'
       )
       .eq('event_signup_id', sig.id)
+      // slot_date/sort first so an explicit ordering (when one is ever set)
+      // wins; starts_at then makes each day read as a schedule regardless of
+      // the order the leader happened to enter jobs in. `id` last is not
+      // cosmetic — every row currently holds the schema default sort=0, and
+      // without a unique tiebreaker Postgres is free to return tied rows in
+      // any order, so editing one job could silently reshuffle the list a
+      // family sees.
       .order('slot_date', { ascending: true })
-      .order('sort', { ascending: true }),
+      .order('sort', { ascending: true })
+      .order('starts_at', { ascending: true, nullsFirst: false })
+      .order('id', { ascending: true }),
     supabase.rpc('event_signup_headcount', { p_event_signup_id: sig.id })
   ]);
   const { data: questions } = await supabase

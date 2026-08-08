@@ -48,16 +48,40 @@
 .fieldGrid input, .fieldGrid select, .fullField input, .fullField textarea { width: 100%; padding: 7px 10px; border: 1px solid var(--admin-gray-300, #ccc); border-radius: 3px; font-size: 13.5px; font-family: inherit; }
 .miniTable { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 12px; }
 .miniTable td { padding: 6px 8px; border-bottom: 1px solid var(--admin-gray-100, #f0f0f0); }
+.miniTable th { text-align: left; font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--admin-gray-600, #666); padding: 4px 8px; border-bottom: 1px solid var(--admin-gray-200, #e4e4e4); }
 .tag { display: inline-block; margin-left: 6px; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #8b6914; background: #fdf6e6; border-radius: 3px; padding: 1px 5px; }
-.rowDel { background: none; border: none; color: #a04a3d; font-size: 12px; text-decoration: underline; cursor: pointer; padding: 0; }
-.addRow { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+.rowDel { background: none; border: none; color: #a04a3d; font-size: 12px; text-decoration: underline; cursor: pointer; padding: 4px 6px; min-height: 24px; }
+/* Duplicate is the bulk-entry workhorse — a rummage sale is a handful of
+   stations repeated across time blocks — so it reads as a normal action, not
+   a destructive one. */
+.rowDup { background: none; border: 1px solid var(--admin-gray-300, #ccc); border-radius: 3px; color: var(--admin-gray-700, #444); font-size: 12px; cursor: pointer; padding: 4px 9px; min-height: 24px; }
+.rowDup:hover:not(:disabled) { border-color: #3d5a3e; color: #3d5a3e; background: #f4f7f4; }
+/* The job name is the thing a leader reaches for when they want to change a
+   job, so it is the edit trigger too — the small "Edit" button alone was not
+   discoverable. */
+.rowLabelBtn { background: none; border: none; padding: 0; font: inherit; font-weight: 700; color: var(--admin-gray-900, #1a1a1a); cursor: pointer; text-align: left; }
+.rowLabelBtn:hover:not(:disabled) { text-decoration: underline; color: #1e3a4a; }
+.addRow { display: flex; gap: 7px; flex-wrap: wrap; align-items: flex-end; }
+/* The add form used to sit *below* the jobs table as a bare row of inputs,
+   where it read as a blank last row of the list and drifted a row further
+   down the page with every job added. Above the list, in a titled box, it
+   stays put and reads as a form. */
+.addCard { border: 1px solid var(--admin-gray-300, #ccc); border-radius: 4px; background: #fafbfc; padding: 12px 13px; margin-bottom: 14px; }
+.addCard h3 { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--admin-gray-700, #444); margin-bottom: 9px; }
+.addCardActions { display: flex; gap: 12px; align-items: center; margin-top: 11px; flex-wrap: wrap; }
+.addField { display: flex; flex-direction: column; gap: 3px; }
+.addFieldLabel { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--admin-gray-600, #666); }
+.okNote { color: #3d5a3e; font-size: 12.5px; font-weight: 600; margin: 0; }
+.addHint { font-size: 11.5px; color: var(--admin-gray-600, #666); }
 /* Child combinator on purpose: DatePickerField renders its own nested
    <input>, and a plain `.addRow input` descendant selector would also catch
    that inner input, fighting the component's own border/padding. `.inlineChk
    input` keeps the existing "needs attendance" checkbox (nested one level
    inside its own label) styled exactly as before. */
-.addRow > input, .addRow > select, .addRow .inlineChk input { padding: 6px 9px; border: 1px solid var(--admin-gray-300, #ccc); border-radius: 3px; font-size: 13px; font-family: inherit; }
-.addRow > input[type="text"], .addRow > input:not([type]) { min-width: 170px; }
+.addRow > input, .addRow > select, .addRow .inlineChk input,
+.addField > input, .addField > select { padding: 6px 9px; border: 1px solid var(--admin-gray-300, #ccc); border-radius: 3px; font-size: 13px; font-family: inherit; }
+.addRow > input[type="text"], .addRow > input:not([type]),
+.addField > input[type="text"], .addField > input:not([type]) { min-width: 170px; }
 .dateField { width: 150px; }
 .inlineChk { display: flex; align-items: center; gap: 5px; font-size: 12.5px; }
 .coverList { list-style: none; font-size: 13px; }
@@ -68,8 +92,12 @@
 .nrList { font-size: 13px; line-height: 1.7; color: var(--admin-gray-700, #444); }
 @media print { .enableBtn, .actions, .actionLink, .actionLinkMuted { display: none; } }
 .rowAnswers { display: block; font-size: 11.5px; color: #2f6b7a; margin-top: 2px; }
-.rowActions { display: flex; gap: 10px; white-space: nowrap; }
-.rowEdit { background: none; border: none; color: #1e3a4a; font-size: 12px; font-weight: 700; text-decoration: underline; cursor: pointer; padding: 0; }
+/* 24px min target + real separation between Edit and the destructive Remove:
+   these sit in the same cell and a 40-job build session is a lot of chances
+   to hit the wrong one. */
+.rowActions { display: flex; gap: 14px; white-space: nowrap; align-items: center; justify-content: flex-end; }
+.rowEdit { background: none; border: 1px solid var(--admin-gray-300, #ccc); border-radius: 3px; color: #1e3a4a; font-size: 12px; font-weight: 700; cursor: pointer; padding: 4px 9px; min-height: 24px; }
+.rowEdit:hover:not(:disabled) { border-color: #1e3a4a; background: #f6f9fb; }
 .editRow { background: #f6f9fb; }
 .removedBlock { margin-top: 16px; padding-top: 12px; border-top: 1px dashed var(--admin-gray-300, #ccc); }
 .dangerPanel { background: #fff; border: 1px solid #e3c9c4; border-left: 3px solid #a04a3d; border-radius: 5px; padding: 16px; }
