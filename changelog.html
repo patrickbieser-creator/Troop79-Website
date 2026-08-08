@@ -497,6 +497,38 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.25.2 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.25.2</span>
+        <span class="release-date">August 8, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Fix</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Job descriptions read as belonging to their own job</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              A job&rsquo;s description sat inside the title block, which widened it enough to push
+              the &ldquo;0 of 30 &mdash; 30 more needed&rdquo; line and the sign-up button down onto
+              a row of their own. A job with a description therefore had a completely different
+              shape from one without, and its text floated in the middle of a tall card &mdash;
+              close enough to the next job down to look like it belonged there. The description now
+              sits on its own full-width line beneath the whole header, so every job card has the
+              same layout and the text is unmistakably attached to its own job.
+            </span>
+          </li>
+          <li>
+            <span>
+              The description box in the Event Builder is now a two-line text area that can be
+              dragged taller, rather than a single-line field. Line breaks entered there are
+              preserved on the public page.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.25.1 -->
     <div class="release">
       <div class="release-header">

@@ -81,7 +81,8 @@
    flex item and lands the same width as the "needed" box. In the add card it
    is a plain block child and the basis is simply ignored. */
 .addDescField { display: flex; flex-direction: column; gap: 3px; margin-top: 9px; flex: 1 0 100%; width: 100%; min-width: 0; }
-.addDescField > input { width: 100%; box-sizing: border-box; padding: 6px 9px; border: 1px solid var(--admin-gray-300, #ccc); border-radius: 3px; font-size: 13px; font-family: inherit; }
+.addDescField > input, .addDescField > textarea { width: 100%; box-sizing: border-box; padding: 6px 9px; border: 1px solid var(--admin-gray-300, #ccc); border-radius: 3px; font-size: 13px; font-family: inherit; }
+.addDescField > textarea { resize: vertical; line-height: 1.45; min-height: 48px; }
 .rowDesc { display: block; font-size: 11.5px; color: var(--admin-gray-600, #666); font-weight: 400; line-height: 1.45; margin-top: 2px; }
 /* Child combinator on purpose: DatePickerField renders its own nested
    <input>, and a plain `.addRow input` descendant selector would also catch

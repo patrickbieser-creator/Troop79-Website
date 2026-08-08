@@ -590,7 +590,11 @@ export function BuilderPanels({
           </div>
           <label className={styles.addDescField}>
             <span className={styles.addFieldLabel}>Description (optional)</span>
-            <input
+            {/* Textarea, not an input: this is prose and often two sentences.
+                Enter inserts a newline here rather than submitting the form —
+                the name field keeps the Enter-to-add shortcut. */}
+            <textarea
+              rows={2}
               value={sDesc}
               onChange={(e) => setSDesc(e.target.value)}
               placeholder="What this job involves — e.g. “Bring a folding table, 6ft or larger. Drop off Friday evening.”"
@@ -689,7 +693,8 @@ export function BuilderPanels({
                           )}
                           <label className={styles.addDescField}>
                             <span className={styles.addFieldLabel}>Description (optional)</span>
-                            <input
+                            <textarea
+                              rows={2}
                               value={eSlot.description ?? ''}
                               placeholder="What this job involves"
                               onChange={(ev) =>

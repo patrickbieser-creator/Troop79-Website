@@ -208,9 +208,11 @@
   font-size: 13px;
   line-height: 1.5;
   color: var(--text-body);
-  margin-top: 4px;
+  margin-top: 6px;
   max-width: 62ch;
-  white-space: normal;
+  /* pre-wrap, not normal: the builder field is a textarea, so a leader can put
+     each instruction on its own line and expect to see it that way. */
+  white-space: pre-wrap;
 }
 .slotMeta {
   display: flex;

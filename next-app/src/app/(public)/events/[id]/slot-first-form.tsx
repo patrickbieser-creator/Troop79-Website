@@ -374,9 +374,6 @@ export default function SlotFirstForm({
                             : 'Untimed'}
                           {!sl.attendance_required && ' · no attendance needed'}
                         </span>
-                        {sl.description && (
-                          <span className={styles.slotDesc}>{sl.description}</span>
-                        )}
                       </span>
                       <span className={styles.slotMeta}>
                         <span className={styles.elig}>
@@ -402,6 +399,15 @@ export default function SlotFirstForm({
                         </span>
                       </span>
                     </span>
+                    {/* Below the whole header row, not inside the title block:
+                        nested in the title span it widened that flex child
+                        enough to wrap the count/CTA onto its own line, so a job
+                        WITH a description had a different shape from one
+                        without and its text floated mid-card, reading as though
+                        it belonged to the next job down. */}
+                    {sl.description && (
+                      <span className={styles.slotDesc}>{sl.description}</span>
+                    )}
                     <span className={styles.bar}>
                       <span style={{ width: `${pct}%` }} />
                     </span>

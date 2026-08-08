@@ -321,15 +321,15 @@ export default async function EventDetailPage({
                             {timeRange(s.starts_at, s.ends_at) ?? 'Untimed'}
                             {!s.attendance_required && ' · no attendance needed'}
                           </span>
-                          {s.description && (
-                            <span className={styles.slotDesc}>{s.description}</span>
-                          )}
                         </span>
                         <span className={styles.slotMeta}>
                           <span className={styles.elig}>{AUDIENCE_LABEL[s.eligibility]}</span>
                           <span className={styles.count}>{coverage(s.filled, s.needed)}</span>
                         </span>
                       </div>
+                      {/* Full-width row under the header — see slot-first-form
+                          for why this can't live inside the title block. */}
+                      {s.description && <span className={styles.slotDesc}>{s.description}</span>}
                       <span className={styles.bar}>
                         <span style={{ width: `${pct}%` }} />
                       </span>

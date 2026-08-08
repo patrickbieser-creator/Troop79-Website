@@ -621,9 +621,6 @@ export default function PersonFirstForm({
                       <span className={styles.slotTop}>
                         <span>
                           <strong>{sl.label}</strong>
-                          {sl.description && (
-                            <span className={styles.slotDesc}>{sl.description}</span>
-                          )}
                         </span>
                         <span className={styles.slotMeta}>
                           <span className={styles.count}>
@@ -640,6 +637,11 @@ export default function PersonFirstForm({
                           )}
                         </span>
                       </span>
+                      {/* Full-width row under the header — see slot-first-form
+                          for why this can't live inside the title block. */}
+                      {sl.description && (
+                        <span className={styles.slotDesc}>{sl.description}</span>
+                      )}
                     </button>
 
                     {mine.length > 0 && (
