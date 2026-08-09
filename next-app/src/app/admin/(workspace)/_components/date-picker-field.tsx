@@ -182,6 +182,15 @@ export function DatePickerField({
     return true;
   }
 
+  /* Latest-ref so the document-level pointerdown listener can commit typed
+     text without re-subscribing on every keystroke (and without capturing a
+     stale `text`). Assigned in an effect, not during render — refs must not
+     be written while rendering. */
+  const commitRef = useRef(commitText);
+  useEffect(() => {
+    commitRef.current = commitText;
+  });
+
   function selectDay(date: Date | undefined) {
     if (!date) return;
     onChange(toISO(date));
@@ -223,7 +232,23 @@ export function DatePickerField({
     function onPointerDown(e: PointerEvent) {
       const target = e.target as Node;
       if (wrapRef.current?.contains(target) || popoverRef.current?.contains(target)) return;
-      closePopover();
+      // COMMIT the typed text rather than discarding it.
+      //
+      // This listener runs before the input's blur. It used to call
+      // closePopover(), which resets `text` back to the old committed value —
+      // so the blur that followed handed commitText() the OLD text and
+      // committed that. The effect was that typing a date and then clicking
+      // any button (rather than pressing Enter or tabbing) silently reverted
+      // the field to its previous value, and the click itself was spent
+      // closing the popover. On a field defaulting to the next Sunday, every
+      // typed date came out as that Sunday — reported 2026-08-08 as new
+      // meetings "assigning it into the next available Sunday no matter which
+      // date I am entering".
+      //
+      // Unparseable text still reverts: there is nothing to commit, and
+      // leaving garbage in a closed field would be worse.
+      if (commitRef.current()) setOpen(false);
+      else closePopover();
     }
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
