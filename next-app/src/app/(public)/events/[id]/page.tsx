@@ -7,9 +7,10 @@ import {
   isSlotFirst,
   signupLocked
 } from '@/lib/event-signup';
-import { loadHouseholds, storedHouseholdId } from '@/lib/households';
+import { householdKeyForPerson, loadHouseholds, storedHouseholdId } from '@/lib/households';
 import { gateAudience, familyGateConfigured, getIdentitySessionIfValid } from '@/lib/family-access';
 import { resolveEffectiveHouseholdKey } from '@/lib/identity-session';
+import { leaderSessionPersonId } from '@/lib/session-person';
 import { formatCalendarDateParts, formatTimeOfDay, categoryColor } from '@/lib/calendar-shared';
 import {
   familyGateAction,
@@ -128,11 +129,26 @@ export default async function EventDetailPage({
   // Household roster and any existing entries are gate-only: they carry names.
   const households = gatedIn && signup ? await loadHouseholds() : [];
 
-  // Verified-visitor prefill (Plans/Family-Identity-Auth.md Phase 2) — see
+  // Identity prefill (Plans/Family-Identity-Auth.md Phase 2) — see
   // resolveEffectiveHouseholdKey()'s own doc for the undefined-vs-empty
   // distinction that keeps the "Not you? Change" switch affordance working.
+  //
+  // Both session shapes that identify a PERSON feed this, not just the
+  // verified-household one. gateAudience() checks the leader cookie FIRST and
+  // returns its role, so a signed-in leader is 'leader' and never 'household'
+  // — which meant the prefill was skipped for the most strongly authenticated
+  // visitor on the site. A leader logs in by matching the authorized-adults
+  // roster, so the system knows exactly who they are, yet the job board still
+  // opened on "choose your family" with no way to just sign themselves up.
   const verifiedSession = audience === 'household' ? await getIdentitySessionIfValid() : null;
-  const householdKey = resolveEffectiveHouseholdKey(householdKeyParam, verifiedSession?.householdKey ?? null);
+  const sessionPersonId = verifiedSession?.personId ?? (audience === 'leader' ? await leaderSessionPersonId() : null);
+  // Resolved against the already-loaded roster rather than
+  // resolveHouseholdKeyForPerson(), which would load every household a second
+  // time on a page that has them in hand.
+  const sessionHouseholdKey =
+    verifiedSession?.householdKey ??
+    (sessionPersonId != null ? householdKeyForPerson(households, sessionPersonId) : null);
+  const householdKey = resolveEffectiveHouseholdKey(householdKeyParam, sessionHouseholdKey);
 
   const household = householdKey ? (households.find((h) => h.key === householdKey) ?? null) : null;
   // "scout:<id>" (unassigned scout) and "leader:<code>" (adult with no scout in
@@ -358,6 +374,7 @@ export default async function EventDetailPage({
             gateAction={familyGateAction}
             signOutAction={familySignOutAction}
             gateState={gateState}
+            sessionPersonId={sessionPersonId}
             isFamilySession={audience === 'family'}
             gateError={gateError}
             gateConfigured={familyGateConfigured()}

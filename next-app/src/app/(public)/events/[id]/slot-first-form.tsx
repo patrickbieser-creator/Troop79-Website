@@ -61,6 +61,7 @@ export default function SlotFirstForm({
   signOutAction,
   hasExisting,
   gateState,
+  sessionPersonId,
   isFamilySession,
   gateError,
   gateConfigured
@@ -79,6 +80,9 @@ export default function SlotFirstForm({
   signOutAction: (fd: FormData) => void;
   hasExisting: boolean;
   gateState: GateState;
+  /** people.id the session already identifies, when it identifies anyone.
+   *  Drives the one-click "Sign me up" path. */
+  sessionPersonId: number | null;
   isFamilySession: boolean;
   gateError?: string;
   gateConfigured: boolean;
@@ -134,6 +138,15 @@ export default function SlotFirstForm({
   const eligible = (p: Person, s: SignupSlot) =>
     s.eligibility === 'both' ||
     (s.eligibility === 'scouts' ? p.kind === 'scout' : p.kind === 'adult');
+
+  /** The signed-in person's own entry in `people`, when the session identifies
+   *  someone AND that someone is in the household currently being signed up.
+   *  Null when a leader has switched to another family — "Sign me up" would be
+   *  a lie there, since the claim would land on the family they're helping. */
+  const me = useMemo(
+    () => (sessionPersonId == null ? null : (people.find((p) => p.personId === sessionPersonId) ?? null)),
+    [people, sessionPersonId]
+  );
 
   const toggle = (slotId: number, personKey: string) =>
     setClaims((prev) => {
@@ -412,6 +425,23 @@ export default function SlotFirstForm({
                       <span style={{ width: `${pct}%` }} />
                     </span>
                   </button>
+
+                  {/* One click to claim, for a visitor the session already
+                      identifies. Sibling of the row trigger, not inside it —
+                      the trigger is itself a <button> and nesting is invalid.
+                      Hidden once they hold the job (the claimer chip carries
+                      the × to undo) and when they aren't eligible for it. */}
+                  {ready && me && !mine.includes(me.key) && !full && eligible(me, sl) && (
+                    <div className={styles.meRow}>
+                      <button
+                        type="button"
+                        className={styles.meBtn}
+                        onClick={() => toggle(sl.id, me.key)}
+                      >
+                        Sign me up — {me.name}
+                      </button>
+                    </div>
+                  )}
 
                   {fullNote === sl.id && (
                     <p className={styles.fullNote} role="status">

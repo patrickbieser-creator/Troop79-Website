@@ -497,6 +497,51 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.26.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.26.0</span>
+        <span class="release-date">August 8, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Sign yourself up for a job in one click</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              A signed-in leader was being asked &ldquo;which family is signing up?&rdquo; even
+              though the site already knew exactly who they were &mdash; leader login matches the
+              typed name against the adult roster. The job board now fills in the signed-in
+              person&rsquo;s own household automatically, the same way it already did for a family
+              using a verified sign-in link.
+            </span>
+          </li>
+          <li>
+            <span>
+              Being signed in as a leader had actually been <em>worse</em> than signing in as a
+              family: the prefill only ran for one specific kind of session, and a leader session
+              never qualified. It now runs for any session that identifies a person.
+            </span>
+          </li>
+          <li>
+            <span>
+              Each job also gets a <strong>Sign me up</strong> button when the site knows who you
+              are, so claiming a job for yourself is a single click instead of picking a family and
+              then picking yourself out of it. The button hides once you hold the job &mdash; the
+              name chip with its &times; is still how you undo it.
+            </span>
+          </li>
+          <li>
+            <span>
+              Signing up on behalf of another family is unchanged: the household is named in the
+              bar at the top with a <strong>Change household</strong> link, and an explicitly
+              chosen family always wins over the automatic one. 6 new tests (73 total).
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.25.2 -->
     <div class="release">
       <div class="release-header">

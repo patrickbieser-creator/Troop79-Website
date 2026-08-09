@@ -398,6 +398,13 @@
 .claimerX { display: grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: var(--forest); color: #fff; font-size: 13px; line-height: 1; border: none; cursor: pointer; padding: 0 0 1px; }
 .claimerX:hover { background: var(--navy); }
 
+/* One-click claim for an already-identified visitor. Sits between the row
+   trigger and the member picker, so the common case (signing yourself up)
+   never has to open the "who from this family" step at all. */
+.meRow { padding: 0 14px 11px; }
+.meBtn { font-family: var(--font-ui); font-size: 13px; font-weight: 700; color: #fff; background: var(--forest); border: 1px solid var(--forest); border-radius: 3px; padding: 6px 14px; cursor: pointer; }
+.meBtn:hover { background: var(--navy); border-color: var(--navy); }
+
 .memberPick { margin: 0 14px 12px; padding-top: 11px; border-top: 1px dashed var(--border-mid); }
 .pickPrompt { font-size: 12.5px; font-weight: 700; color: var(--text-head); margin-bottom: 9px; }
 .pickChips { display: flex; flex-wrap: wrap; gap: 8px; }

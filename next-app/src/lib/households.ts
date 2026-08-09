@@ -307,6 +307,23 @@ export async function loadHouseholdByKey(key: string): Promise<Household | null>
  *  Phase 1 — the reverse lookup a verified sign-in needs). Null for a person
  *  with no household row at all, or one loadHouseholds() excludes (merged
  *  away, inactive). */
+/** Same rule as resolveHouseholdKeyForPerson, against a roster the caller
+ *  already holds — the event page has every household in scope and would
+ *  otherwise load them all a second time just to place one person.
+ *
+ *  A person appears in exactly one household: loadHouseholds() tracks a
+ *  `placed` set, so nobody is both a member of a stored household and their
+ *  own household-of-one. That's what makes the first match the only match. */
+export function householdKeyForPerson(households: Household[], personId: number): string | null {
+  return (
+    households.find(
+      (h) =>
+        h.scouts.some((s) => s.personId === personId) ||
+        h.adults.some((a) => a.personId === personId)
+    )?.key ?? null
+  );
+}
+
 export async function resolveHouseholdKeyForPerson(personId: number): Promise<string | null> {
   const all = await loadHouseholds();
   for (const h of all) {
