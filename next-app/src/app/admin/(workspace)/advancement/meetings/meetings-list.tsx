@@ -64,6 +64,38 @@ export function MeetingsList({ rows, attendance, defaultDate, onCreate, onDelete
     setPage(1);
   }
 
+  /**
+   * The next Sunday that doesn't already have a meeting.
+   *
+   * The form defaulted to plain nextSunday(), which is normally already on the
+   * books by the time anyone is scheduling ahead — so opening it offered a
+   * date that could only fail with "A meeting already exists for that date."
+   * Landing on a date you cannot use reads as the form ignoring you, which is
+   * exactly how it was reported.
+   */
+  const firstOpenSunday = useMemo(() => {
+    const taken = new Set(rows.map((r) => r.meeting_date));
+    let d = defaultDate;
+    // Bounded: two years of Sundays. A troop with every Sunday booked that far
+    // out should get the plain default back rather than an infinite loop.
+    for (let i = 0; i < 104 && taken.has(d); i += 1) {
+      const parsed = new Date(`${d}T12:00:00Z`); // noon UTC dodges DST edges
+      parsed.setUTCDate(parsed.getUTCDate() + 7);
+      d = parsed.toISOString().slice(0, 10);
+    }
+    return d;
+  }, [rows, defaultDate]);
+
+  /** Re-seeded each time the form opens, so it reflects meetings added since
+   *  the page loaded rather than a date chosen at first render. */
+  function toggleCreate() {
+    setErr(null);
+    setCreating((open) => {
+      if (!open) setDate(firstOpenSunday);
+      return !open;
+    });
+  }
+
   function create() {
     setErr(null);
     const fd = new FormData();
@@ -153,7 +185,7 @@ export function MeetingsList({ rows, attendance, defaultDate, onCreate, onDelete
         <button
           type="button"
           className={styles.addBtn}
-          onClick={() => setCreating((v) => !v)}
+          onClick={toggleCreate}
           aria-expanded={creating}
         >
           + New Meeting
