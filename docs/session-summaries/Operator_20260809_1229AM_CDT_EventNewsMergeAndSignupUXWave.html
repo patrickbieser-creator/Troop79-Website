@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event→News Merge &amp; Signup UX Wave — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #2e4530;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #faf6ef;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Event&rarr;News Merge &amp; Signup UX Wave</h1>
+        <p class="subtitle">Thirteen releases in two days: the rummage sale builder rebuilt for bulk entry, three date bugs run to ground, the OMG news/events consolidation ported, and the site's content taxonomy settled</p>
+        <div class="meta">
+            <span>&#128197; August 8&ndash;9, 2026</span>
+            <span>&#129302; Operator</span>
+            <span>&#128204; Troop79-Website</span>
+        </div>
+    </header>
+
+    <div class="container">
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">13</div><div class="label">Releases (v1.24.0&ndash;v1.30.0)</div></div>
+            <div class="stat"><div class="number">102</div><div class="label">Tests (was 63)</div></div>
+            <div class="stat"><div class="number">6</div><div class="label">Decisions recorded</div></div>
+            <div class="stat"><div class="number">5</div><div class="label">Prod migrations</div></div>
+            <div class="stat"><div class="number">0</div><div class="label">Lint errors</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <h3>Event Signup UX wave (v1.24.0&ndash;v1.27.0)</h3>
+        <ul>
+            <li><strong>Jobs panel rebuilt for 30&ndash;40-job bulk entry:</strong> titled &ldquo;Add a job&rdquo; card above the list (it was a bare row of inputs <em>below</em> it, drifting off-screen with every add), Enter-to-add with focus return, panel-local errors, a Duplicate action, delete confirmation on unclaimed jobs, and chronological family-facing ordering with an <span class="file-path">id</span> tiebreaker &mdash; ties previously had <em>undefined</em> order.</li>
+            <li><strong>Per-job descriptions</strong> replaced the single signup-wide intro line; <strong>per-claim comments</strong> (&ldquo;I have a 6ft table&rdquo;) flow to the leader roster and CSV without disturbing the coverage tally.</li>
+            <li><strong>Adults without a scout can finally volunteer</strong> &mdash; the job board's picker only searched scouts; committee members and counselors (exactly who works a fundraiser) were told &ldquo;no scout by that name.&rdquo;</li>
+            <li><strong>Signed-in leaders stopped being second-class:</strong> the household prefill now runs for any session that identifies a person. The rummage sale's jobs were then entered for real on production, and the Resource Library superuser proxy (D-078) was granted and verified live &mdash; that feature is now fully closed.</li>
+        </ul>
+
+        <h3>The meeting-date bug, which was three bugs (v1.27.1 + follow-ups)</h3>
+        <ul>
+            <li><strong>Publish discarded unsaved logistics</strong> &mdash; the header button only flipped status; the date lived in a form saved by a different button. Publish now commits the form first.</li>
+            <li><strong>The new-meeting date field looked like a filter</strong> &mdash; it sat unlabeled between year/status filters, so every meeting silently got the default next Sunday. It now lives in a labeled create row that opens on the first <em>free</em> Sunday.</li>
+            <li><strong>Typed dates were reverted on click-away</strong> in the shared date picker (outside-click closed the popover <em>before</em> blur committed the text) &mdash; fixed for every admin date field at once.</li>
+        </ul>
+
+        <h3>Event&rarr;News merge &mdash; the OMG consolidation, ported (v1.28.0)</h3>
+        <ul>
+            <li>Read the OMG-Website implementation (their D-011: <em>&ldquo;merge at the feed, not the tables&rdquo;</em>) and applied it here, where the duplication was worse &mdash; three overlapping event representations, and a homepage &ldquo;Upcoming Events&rdquo; box that only knew about events someone had hand-written a duplicate article for.</li>
+            <li>Calendar entries now <strong>promote themselves into the news feed</strong> (window, card summary, hero image, optional homepage-hero turn); cards link to the event page with the live signup. <em>Create either a news item or an event &mdash; never both.</em></li>
+            <li>The legacy machinery (<span class="file-path">article_id</span>, article event columns, the &ldquo;event&rdquo; article type) was dropped via a <strong>two-phase migration</strong> with a guard against destroying live event data; the duplicate Rummage Sale article was archived on production with the calendar keeping full coverage.</li>
+        </ul>
+
+        <h3>News &amp; Events section + content taxonomy (v1.29.0&ndash;v1.30.0)</h3>
+        <ul>
+            <li>New public <strong>News &amp; Events</strong> page in the main nav: chronological grid of posts + promoted events, tag chips, pagination, and a public archive view. Admin renamed Articles&rarr;News; the pointless Type dropdown removed; a leader-guarded &ldquo;Feature on homepage&rdquo; checkbox added to the editor.</li>
+            <li><strong><span class="file-path">on_calendar</span> flag:</strong> external opportunities (district merit badge clinics, outside service days) are events that keep their page and news promotion &mdash; and self-expire &mdash; without ever touching the troop calendar. Admin screen renamed Calendar&rarr;Events: it holds every event; the calendar is one view.</li>
+        </ul>
+
+        <div class="callout callout-green">
+            <strong>The settled taxonomy:</strong> dated-and-ours &rarr; calendar event &middot; dated-but-external &rarr; off-calendar event &middot; no date at all &rarr; news post (with auto-archive for time-limited relevance) &middot; weekly meetings &rarr; the Meetings system. One honest question at entry time instead of a content-type puzzle.
+        </div>
+
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td><span class="badge badge-blue">D-079</span></td><td>Event&rarr;News promotion merges at the feed, not the tables (OMG D-011 port); featured in-window event <em>wins</em> the hero; two-phase migration pattern</td></tr>
+                <tr><td><span class="badge badge-blue">D-080</span></td><td>Being an event and being on the troop calendar are two different facts (<span class="file-path">on_calendar</span>); full content taxonomy settled</td></tr>
+                <tr><td><span class="badge badge-blue">D-081</span></td><td>Event treatments are progressive layers on one spine &mdash; no event types; story layer earned when a family must <em>decide</em>, not just <em>know</em></td></tr>
+                <tr><td><span class="badge badge-blue">D-082</span></td><td>Calendar categories become a managed lookup table (designed; photo-album taxonomy coupling mapped)</td></tr>
+                <tr><td><span class="badge badge-blue">D-083</span></td><td>Articles: Type retired (tags carry sorting); Featured moves into the editor, server-guarded against scout saves</td></tr>
+                <tr><td><span class="badge badge-blue">D-084</span></td><td>Event Signup identity &amp; claims: prefill any identified session; per-claim comment grain; no public self-registration; one-click claim removed by choice</td></tr>
+            </tbody>
+        </table>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li><span class="badge badge-gold">QUEUED</span> <strong>calendar_categories lookup</strong> and the <strong>event story-editor workbench</strong> &mdash; both fully designed in <span class="file-path">Plans/Event-News-Promotion.md</span></li>
+            <li><span class="badge badge-gold">QUEUED</span> Promote the Rummage Sale entry for sale week &mdash; one checkbox in admin &rarr; Events</li>
+            <li><span class="badge badge-gold">QUEUED</span> Leader session token to carry <span class="file-path">person_id</span>; job-panel deferrals (reordering, bulk import); standing queue (Family Identity Phases 3&ndash;4, proof-media retention)</li>
+        </ul>
+
+        <div class="callout callout-teal">
+            <strong>Quality:</strong> every release passed lint (0 errors) + build + the full test suite; test baseline rose 63 &rarr; 102, with the ordering and date-picker fixes proven to fail against the old code before shipping. All five production migrations were sequenced around deploys so live code never referenced a missing column.
+        </div>
+    </div>
+
+    <footer>
+        Session summary &middot; Troop79-Website &middot; Operator &middot; August 9, 2026<br>
+        Generated by /northwoods:end-session
+    </footer>
+</body>
+</html>
