@@ -407,6 +407,9 @@ export interface CalendarEntry {
   /* Event→News promotion (Plans/Event-News-Promotion.md). article_id is
      gone from this type ahead of the drop_legacy migration on purpose — the
      compiler is what enforces the removal sweep. */
+  /** Off = external opportunity: keeps its /events page and news promotion,
+   *  never appears on the troop calendar/ICS/homepage sidebar. */
+  on_calendar: boolean;
   show_on_homepage: boolean;
   featured: boolean;
   promo_start: string | null;

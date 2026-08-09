@@ -1,6 +1,41 @@
 # Event → News Promotion (port of OMG D-011)
 
-**Status:** In progress 2026-08-08
+**Status:** SHIPPED through v1.30.0 (2026-08-09). Two follow-ups parked below — this plan stays open until both land.
+
+## Follow-ups (designed 2026-08-09, Patrick's decisions — build next sessions)
+
+### 1. calendar_categories lookup table (replaces the hardcoded category CHECK)
+Patrick: "no more hardcoded categories — a lookup table so I can enter it dynamically."
+- Table: label (unique), color, sort; seeded from the current 14; FK from
+  `calendar_entries.category` by label with ON UPDATE CASCADE (rename tool for
+  free), ON DELETE RESTRICT. Model on OMG's Programs lookup [their D-019:
+  cascade-rename + merge-on-collision].
+- Admin CRUD under Lookups & Admin, with color picker. Patrick then creates
+  "Merit Badge Opportunity"/"Service Opportunity" himself, worded his way.
+- Blast radius mapped 2026-08-09: `CalendarCategory` union → string;
+  CATEGORY_COLORS/CATEGORIES/categoryColor become DB-driven and must be passed
+  down as props (used across ~12 files incl. client components);
+  **photo albums share this taxonomy** (20260721020000) — their category select
+  and CHECK must move to the same lookup or deliberately stay frozen; the CSV
+  import's LEGACY_CATEGORY_ALIASES keeps working (validates against the lookup).
+- Caveat: any code that special-cases a category NAME (e.g. meeting-view's
+  `category === 'No Meeting'`) silently breaks if that row is renamed — either
+  pin those rows as non-renamable or add behavior flags to the lookup.
+
+### 2. Full-page story editor for events (the "big event" layer)
+Approach A confirmed: progressive enhancement on one spine — no event types.
+- `details_md` gets the news editor's split-pane markdown experience (editorShell,
+  ArticleBody preview, media picker, gallery tokens) in an event workbench
+  reachable per calendar entry REGARDLESS of signup (note: /admin/events/[id] is
+  keyed by SIGNUP id today — the workbench needs an entry-keyed route).
+- Promotion fields surface there too; the quick-entry Events dialog stays as-is
+  with an "Open full event page →" escalation link.
+- Decision rule shipped in the taxonomy: family needs to DECIDE something →
+  story layer; just needs to KNOW → calendar line is the whole treatment.
+- End-state noted 2026-08-09 (admin rename): "Event Signups" eventually folds
+  into the workbench as a layer, resolving the Events/Event Signups nav pair.
+
+**Original status:** In progress 2026-08-08
 **Source:** OMG-Website `Plans/Completed/Event-News-Promotion.md` + `Agents/Architect/Memory/DECISIONS.md` [D-011], shipped there 2026-08-08 (PR #11). Reference implementation: `OMG-Website/src/lib/feed-logic.ts`, `src/lib/home-feed.ts`, migration `20260808120000_event_news_promotion.sql`.
 **Priority:** High — same double-entry disease, worse here (three overlapping representations).
 

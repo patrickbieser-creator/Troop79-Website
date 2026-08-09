@@ -111,7 +111,7 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         scoutVisible: true
       },
       {
-        label: 'Calendar',
+        label: 'Events',
         href: '/admin/news/calendar',
         matchPath: '/admin/news/calendar',
         scoutVisible: true

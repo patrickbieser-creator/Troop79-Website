@@ -38,6 +38,9 @@ function fieldsFromForm(fd: FormData) {
     location: location || null,
     start_time: startTime || null,
     end_time: endTime || null,
+    // Default ON: troop events are the common case; unchecking is the
+    // explicit act for an outside opportunity.
+    on_calendar: String(fd.get('on_calendar') ?? '1') === '1',
     show_on_homepage: showOnHomepage,
     // Promotion sub-fields are cleared when the opt-in is off, so stale
     // windows/excerpts can't linger invisibly and spring back later.
@@ -106,9 +109,9 @@ function normalizeImportCategory(raw: string): string {
   return LEGACY_CATEGORY_ALIASES[trimmed] ?? trimmed;
 }
 
-/** The fields the Bugle sheet carries. day_note and article_id are NOT here
- *  on purpose — the sheet doesn't know about them, so imports never clobber
- *  them on update. */
+/** The fields the Bugle sheet carries. day_note, on_calendar and the
+ *  promotion fields are NOT here on purpose — the sheet doesn't know about
+ *  them, so imports never clobber them on update. */
 export interface ImportRowFields {
   entry_date: string;
   end_date: string | null;

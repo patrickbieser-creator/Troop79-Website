@@ -155,6 +155,7 @@ export function CalendarEditor({ rows, categories, onCreate, onUpdate, onDelete,
                 </td>
                 <td>
                   {row.title}
+                  {!row.on_calendar && <span className={styles.catTag}> off-calendar</span>}
                   {rowErr?.id === row.id && <div className={styles.editError}>{rowErr.msg}</div>}
                 </td>
                 <td>{row.location || <span className={styles.muted}>—</span>}</td>
@@ -262,6 +263,7 @@ function CalendarEntryForm({
   // News promotion (Plans/Event-News-Promotion.md). Kept on a clone — the
   // point of cloning a promoted event is usually a sequel that will also be
   // promoted; the dates were already cleared above, and promo dates follow.
+  const [onCalendar, setOnCalendar] = useState(row?.on_calendar ?? true);
   const [showOnHomepage, setShowOnHomepage] = useState(row?.show_on_homepage ?? false);
   const [featured, setFeatured] = useState(row?.featured ?? false);
   const [promoStart, setPromoStart] = useState(forceNew ? '' : (row?.promo_start ?? ''));
@@ -286,6 +288,7 @@ function CalendarEntryForm({
     fd.set('title', title);
     fd.set('description', description);
     fd.set('location', location);
+    fd.set('on_calendar', onCalendar ? '1' : '');
     fd.set('show_on_homepage', showOnHomepage ? '1' : '');
     fd.set('featured', featured ? '1' : '');
     fd.set('promo_start', promoStart);
@@ -395,6 +398,22 @@ function CalendarEntryForm({
             value={autoArchiveAt}
             onChange={(e) => setAutoArchiveAt(e.target.value)}
           />
+        </label>
+
+        <label className={styles.editFieldFull}>
+          <span className={styles.editLabel}>
+            <input
+              type="checkbox"
+              checked={onCalendar}
+              onChange={(e) => setOnCalendar(e.target.checked)}
+            />{' '}
+            On the troop calendar
+            <span className={styles.muted}>
+              {' '}&mdash; uncheck for outside opportunities (district merit badge clinics, external
+              service days): they keep their event page and can appear in the news feed, but never
+              on our calendar.
+            </span>
+          </span>
         </label>
 
         {/* ── News promotion — replaces the Linked Article pattern ─────────

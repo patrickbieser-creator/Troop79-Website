@@ -50,7 +50,11 @@ export async function loadCalendarEntries(): Promise<{
 }> {
   const supabase = createAdminClient();
   const [{ data }, signupIds] = await Promise.all([
-    supabase.from('calendar_entries').select('*').order('entry_date', { ascending: true }),
+    supabase
+      .from('calendar_entries')
+      .select('*')
+      .eq('on_calendar', true)
+      .order('entry_date', { ascending: true }),
     signupEnabledIds(supabase)
   ]);
   const all = ((data ?? []) as CalendarEntry[]).filter(notAutoArchived).map((r) => toEntry(r, signupIds));
@@ -69,6 +73,7 @@ export async function loadAllCalendarEntries(): Promise<CalendarEntryPublic[]> {
   const { data } = await supabase
     .from('calendar_entries')
     .select('*')
+    .eq('on_calendar', true)
     .order('entry_date', { ascending: true });
   return ((data ?? []) as CalendarEntry[]).filter(notAutoArchived).map((r) => toEntry(r));
 }

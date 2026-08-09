@@ -35,11 +35,12 @@ export default async function CalendarAdminPage() {
   return (
     <>
       <div className={styles.pageTitle}>
-        <h1>Calendar</h1>
+        <h1>Events</h1>
         <p>
-          Everything that shows up on the public calendar and the .ics subscription feed — routine
-          meetings, campouts, fundraisers, and anything else worth a date. An entry can also promote
-          itself into the homepage news feed for a window — no separate article needed.
+          Every event, whether or not it&rsquo;s on the troop calendar &mdash; routine meetings,
+          campouts, fundraisers, and outside opportunities like district merit badge clinics.
+          On-calendar events feed the public calendar and .ics subscription; any event can promote
+          itself into the homepage news feed for a window &mdash; no separate article needed.
         </p>
       </div>
 
