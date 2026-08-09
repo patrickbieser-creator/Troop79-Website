@@ -505,31 +505,31 @@ py -m http.server 8000</pre>
         <span class="release-label"><span class="badge badge-polish">Fix</span></span>
       </div>
       <div class="change-group">
-        <p class="change-group-title">Meeting plans published under the wrong date</p>
+        <p class="change-group-title">Publishing a meeting no longer discards the date you just set</p>
         <ul class="change-list">
           <li>
             <span>
-              Publishing a meeting plan could file it under the previous meeting&rsquo;s date. Set
-              the date to August 16th, publish, and the plan appeared on August 9th; try again for
-              the 23rd and it did the same. It looked as though the date was snapping back to the
-              next meeting on its own.
+              Editing a meeting&rsquo;s date and then hitting <strong>Publish</strong> threw the
+              change away: set the date to August 16th, publish, and the meeting stayed on the
+              9th; try the 23rd and the same thing happened. It looked as though the date was
+              reverting to the next meeting on its own.
             </span>
           </li>
           <li>
             <span>
-              The cause was that <strong>Publish</strong> used whatever plan had last been
-              generated. Changing the date left the earlier plan in place with Publish still
-              available, so it saved that plan under <em>its</em> date while the screen showed the
-              new one. August 9th was simply the default date the page opens on &mdash; the next
-              Sunday &mdash; which is what made it look like a rule about the next available slot.
+              The Publish button sits in the page header, outside the Logistics panel, and only
+              changed the meeting&rsquo;s status. The date &mdash; and every other logistics field
+              &mdash; was saved only by the separate <strong>Save logistics</strong> button inside
+              that panel. Publish now saves what is on screen first and reports any problem
+              instead of publishing regardless.
             </span>
           </li>
           <li>
             <span>
-              Changing the date now clears the previously generated plan and says so, since a plan
-              is built from that specific meeting&rsquo;s attendance and advancement and cannot be
-              relabeled onto another date. Publishing also refuses outright if the two ever
-              disagree.
+              Separately, the Meeting Plan tool now publishes a generated plan under the date
+              currently selected rather than the date it happened to be generated for, and says
+              when the two differ. A plan is a suggestion and is meant to be reusable for another
+              date.
             </span>
           </li>
         </ul>

@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { requireRole } from '@/lib/require-role';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { MeetingPlanPayload } from '@/lib/meeting-plan-types';
-import { stalePlanError } from '@/lib/meeting-plan-publish';
+import { retargetPlan } from '@/lib/meeting-plan-publish';
 import { buildMeetingPlan } from './engine';
 import { loadEngineInput } from './load-input';
 
@@ -69,11 +69,16 @@ export async function publishPlan(formData: FormData): Promise<PublishResult> {
     return { ok: false, error: 'Plan payload was malformed' };
   }
 
-  // The date the leader had selected when they hit Publish. The client clears
-  // a stale plan on date change; refusing here as well means no future call
-  // path can reintroduce the same silent mismatch. See stalePlanError.
-  const stale = stalePlanError(payload.meetingDate, String(formData.get('meetingDate') ?? '').trim());
-  if (stale) return { ok: false, error: stale };
+  // The date the leader had selected when they hit Publish WINS over the one
+  // baked into the payload. A plan is a reusable suggestion, so generating for
+  // one date and publishing for another is legitimate; what was not legitimate
+  // was publishing under the generated date while the field showed a different
+  // one. See lib/meeting-plan-publish.ts.
+  const selectedDate = String(formData.get('meetingDate') ?? '').trim();
+  if (selectedDate && !/^\d{4}-\d{2}-\d{2}$/.test(selectedDate)) {
+    return { ok: false, error: 'Pick a meeting date' };
+  }
+  payload = retargetPlan(payload, selectedDate);
 
   const supabase = createAdminClient();
   const { error } = await supabase.from('meeting_plans').upsert(

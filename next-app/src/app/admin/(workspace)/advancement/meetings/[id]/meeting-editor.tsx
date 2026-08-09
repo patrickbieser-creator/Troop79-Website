@@ -57,6 +57,8 @@ export function MeetingEditor({
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [addedKeys, setAddedKeys] = useState<Set<number>>(new Set());
   const dialogRef = useRef<HTMLDialogElement>(null);
+  /** The logistics form, so Publish can commit it before flipping status. */
+  const formRef = useRef<HTMLFormElement>(null);
   const [, startTransition] = useTransition();
 
   const preMeeting = sessions.filter((s) => s.section === 'pre_meeting');
@@ -91,6 +93,23 @@ export function MeetingEditor({
     run('logistics', () => onUpdateMeeting(fd), () => setSavedNote(true));
   }
 
+  /**
+   * Publish/unpublish COMMITS THE LOGISTICS FORM FIRST.
+   *
+   * This button lives in the header, outside the logistics <form>, and used to
+   * call onSetStatus alone. So editing a field there and hitting Publish —
+   * rather than the "Save logistics" button buried in the panel title — flipped
+   * the status and silently threw the edit away. Reported against the date:
+   * "I put the date in as August 16th, but it reverted to August 9th. I added
+   * another meeting for August 23rd and it also reverted." Every other
+   * logistics field lost edits the same way; the date was just the one visible
+   * enough to notice, because the page heading kept showing the stored value.
+   *
+   * Saving unconditionally rather than tracking a dirty flag: the write is
+   * idempotent, this is a handful of leaders on a small admin tool, and
+   * "publishing shows you what you were looking at" is the behaviour that
+   * needs no explaining.
+   */
   function togglePublish() {
     const next = published ? 'draft' : 'published';
     if (
@@ -100,7 +119,28 @@ export function MeetingEditor({
     ) {
       return;
     }
-    run('publish', () => onSetStatus(meeting.id, next));
+    const form = formRef.current;
+    setErr(null);
+    setSavedNote(false);
+    setBusyKey('publish');
+    startTransition(async () => {
+      if (form) {
+        const fd = new FormData(form);
+        fd.set('id', String(meeting.id));
+        const saved = await onUpdateMeeting(fd);
+        if (!saved.ok) {
+          setBusyKey(null);
+          // Surfaced rather than swallowed: a date collision with another
+          // meeting reports here, and publishing must not proceed on details
+          // that were rejected.
+          setErr(saved.error ?? 'Could not save the meeting details.');
+          return;
+        }
+      }
+      const res = await onSetStatus(meeting.id, next);
+      setBusyKey(null);
+      if (!res.ok) setErr(res.error ?? 'Something went wrong.');
+    });
   }
 
   function removeSession(s: MeetingSession) {
@@ -163,6 +203,7 @@ export function MeetingEditor({
         <div>
           {/* ── logistics ── */}
           <form
+            ref={formRef}
             className={styles.panel}
             onSubmit={(e) => {
               e.preventDefault();

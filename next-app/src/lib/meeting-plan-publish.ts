@@ -1,22 +1,34 @@
+import type { MeetingPlanPayload } from '@/lib/meeting-plan-types';
+
 /**
- * A meeting plan is only publishable under the date it was generated FOR.
+ * A generated meeting plan is a SUGGESTION, not a commitment, so it is
+ * deliberately reusable for a date other than the one it was generated for
+ * (Patrick, 2026-08-08). Generating for the 9th and deciding to run it on the
+ * 16th is normal use, not an error.
  *
- * Its sessions come from that meeting's attendance and advancement state, so
- * the payload's date and the date the leader has selected are not
- * interchangeable labels — if they disagree, the plan in hand is stale.
+ * What must never happen is the two dates diverging silently: publish used to
+ * send the payload alone, so changing the date field and hitting Publish
+ * saved the plan under the date it was GENERATED for while the screen showed
+ * the new one. The selected date now wins, and the mismatch is stated rather
+ * than either guessed at or refused.
  *
- * This exists as a named rule rather than an inline `!==` because the bug it
- * guards was exactly the two dates silently diverging: the date field could be
- * changed without discarding the previously generated plan, and Publish then
- * wrote that plan under ITS date while the screen showed the new one. Reported
- * as "the date reverts to the next meeting on its own" (2026-08-08). The
- * builder clears the stale plan and the publish action refuses the mismatch;
- * both call this, so neither can quietly stop agreeing with the other.
+ * (The stricter "discard everything after a warning" rule belongs to the
+ * MEETING itself, once leaders or scouts have committed to slots on its
+ * agenda — moving a meeting people signed up for is a different operation
+ * from re-aiming a suggestion. Not implemented here.)
  */
-export function stalePlanError(payloadDate: string, selectedDate: string): string | null {
-  // No selected date sent (an older client, or a caller that doesn't track
-  // one) — nothing to contradict, so the payload stands on its own.
-  if (!selectedDate) return null;
-  if (selectedDate === payloadDate) return null;
-  return `This plan was generated for ${payloadDate}, not ${selectedDate} — generate a plan for ${selectedDate} first.`;
+
+/** Null when there's nothing to say — no selected date, or it already agrees. */
+export function retargetNotice(payloadDate: string, selectedDate: string): string | null {
+  if (!selectedDate || selectedDate === payloadDate) return null;
+  return `These suggestions were generated for ${payloadDate} — publishing them for ${selectedDate}.`;
+}
+
+/** The payload as it should be stored: under the date the leader selected. */
+export function retargetPlan(
+  payload: MeetingPlanPayload,
+  selectedDate: string
+): MeetingPlanPayload {
+  if (!selectedDate || selectedDate === payload.meetingDate) return payload;
+  return { ...payload, meetingDate: selectedDate };
 }

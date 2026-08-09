@@ -9,7 +9,7 @@ import {
   type TierId
 } from '@/lib/meeting-plan-types';
 import { generatePlan, publishPlan, unpublishPlan } from './actions';
-import { stalePlanError } from '@/lib/meeting-plan-publish';
+import { retargetNotice } from '@/lib/meeting-plan-publish';
 import { DatePickerField } from '../../_components/date-picker-field';
 import styles from './meeting-plan.module.css';
 
@@ -53,23 +53,16 @@ export function PlanView({ published, defaultDate }: Props) {
   }
 
   /**
-   * A generated plan belongs to the date it was generated FOR — its sessions
-   * come from that meeting's attendance and advancement state. Changing the
-   * date used to leave the previous plan sitting in `payload` with Publish
-   * still enabled, so publishing after changing the date silently wrote the
-   * OLD date's plan under the OLD date, while the field on screen showed the
-   * new one. It read as "the date reverts to the next meeting on its own".
-   * Changing the date discards the stale plan instead.
+   * A plan is a reusable suggestion — generating for one date and publishing
+   * it for another is normal. So changing the date KEEPS the generated plan;
+   * it just says which date it will actually be published under, because
+   * publishing silently under the generated date was the original bug.
    */
   function changeDate(next: string) {
     setMeetingDate(next);
-    if (payload && stalePlanError(payload.meetingDate, next)) {
-      setPayload(null);
-      setStatus({
-        ok: false,
-        msg: `Date changed — generate a plan for ${next} before publishing.`
-      });
-    }
+    if (!payload) return;
+    const notice = retargetNotice(payload.meetingDate, next);
+    setStatus(notice ? { ok: true, msg: notice } : null);
   }
 
   function publish() {
@@ -84,7 +77,10 @@ export function PlanView({ published, defaultDate }: Props) {
       const res = await publishPlan(fd);
       setStatus(
         res.ok
-          ? { ok: true, msg: `Published for ${payload.meetingDate} — live on /meeting-plan` }
+          ? // The SELECTED date, not payload.meetingDate — the two can
+            // legitimately differ, and reporting the generated one is exactly
+            // what made the original bug invisible.
+            { ok: true, msg: `Published for ${meetingDate} — live on /meeting-plan` }
           : { ok: false, msg: res.error ?? 'Publish failed' }
       );
     });
