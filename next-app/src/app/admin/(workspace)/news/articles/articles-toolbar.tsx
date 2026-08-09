@@ -13,19 +13,13 @@ interface Props {
   dir: string;
 }
 
-const TYPE_OPTIONS = [
-  { value: '', label: 'All types' },
-  { value: 'news', label: 'News' },
-  { value: 'event', label: 'Event' },
-  { value: 'recognition', label: 'Recognition' }
-];
 const STATUS_OPTIONS = [
   { value: '', label: 'All statuses' },
   { value: 'draft', label: 'Draft' },
   { value: 'published', label: 'Published' }
 ];
 
-export function ArticlesToolbar({ q, type, status, archived, sort, dir }: Props) {
+export function ArticlesToolbar({ q, status, archived, sort, dir }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [text, setText] = useState(q);
@@ -71,18 +65,6 @@ export function ArticlesToolbar({ q, type, status, archived, sort, dir }: Props)
           inputFocusedRef.current = false;
         }}
       />
-      <select
-        className={styles.select}
-        aria-label="Filter by type"
-        value={type}
-        onChange={(e) => push({ type: e.target.value })}
-      >
-        {TYPE_OPTIONS.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
       <select
         className={styles.select}
         aria-label="Filter by status"

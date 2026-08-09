@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import type { SessionRole } from '@/lib/leader-session';
-import type { ArticleType, ArticleStatus } from '@/lib/supabase/types';
+import type { ArticleStatus } from '@/lib/supabase/types';
 import type { ArticleRowVM } from './page';
 import { publishArticle, archiveArticle, unarchiveArticle, deleteArticle, setFeatured } from './actions';
 import styles from './articles.module.css';
@@ -21,14 +21,6 @@ interface SearchParams {
   page?: string;
 }
 
-const TYPE_LABEL: Record<ArticleType, string> = {
-  news: 'News',
-  recognition: 'Recognition'
-};
-const TYPE_CLASS: Record<ArticleType, string> = {
-  news: styles.pillNews,
-  recognition: styles.pillRecognition
-};
 const STATUS_LABEL: Record<ArticleStatus, string> = {
   draft: 'Draft',
   published: 'Published'
@@ -85,7 +77,6 @@ export function ArticlesTable({ rows, sp, sort, dir, sessionRole, sessionName }:
         <thead>
           <tr>
             {sortLink('title', 'Title')}
-            {sortLink('type', 'Type')}
             {sortLink('status', 'Status')}
             {sortLink('author', 'Author')}
             {sortLink('date', 'Date')}
@@ -97,8 +88,8 @@ export function ArticlesTable({ rows, sp, sort, dir, sessionRole, sessionName }:
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={8} className={styles.empty}>
-                {sp.q || sp.type || sp.status ? 'No articles match the current filters.' : 'No articles yet.'}
+              <td colSpan={7} className={styles.empty}>
+                {sp.q || sp.type || sp.status ? 'No posts match the current filters.' : 'No posts yet.'}
               </td>
             </tr>
           ) : (
@@ -112,9 +103,6 @@ export function ArticlesTable({ rows, sp, sort, dir, sessionRole, sessionName }:
                     ) : (
                       r.title
                     )}
-                  </td>
-                  <td className={styles.nowrap}>
-                    <span className={`${styles.pill} ${TYPE_CLASS[r.type]}`}>{TYPE_LABEL[r.type]}</span>
                   </td>
                   <td className={styles.nowrap}>
                     <span className={`${styles.pill} ${r.status === 'published' ? styles.pillPublished : styles.pillDraft}`}>

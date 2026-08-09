@@ -1,10 +1,9 @@
 import Link from 'next/link';
 import { loadAllTags, articleTypeLabel, formatDateLong } from '@/lib/news-feed';
-import type { ArticleCard } from '@/lib/news-feed';
-import { loadMergedHomeFeed, type FeedItem, type PromotedEntry } from '@/lib/home-feed';
+import { loadMergedHomeFeed } from '@/lib/home-feed';
 import { eventCardExcerpt } from '@/lib/feed-logic';
 import { loadCalendarEntries, formatCalendarDateParts } from '@/lib/calendar';
-import type { Media } from '@/lib/supabase/types';
+import { FeedCard, catClass, entryHeroMedia, entryDateLine } from '../_components/feed-cards';
 import styles from '../_components/news-cards.module.css';
 
 /*
@@ -16,25 +15,6 @@ import styles from '../_components/news-cards.module.css';
  * replacing the old event-articles source that only knew about events
  * someone had hand-written an article for.
  */
-
-function catClass(type: ArticleCard['type'] | 'event'): string {
-  if (type === 'news') return styles.catNews;
-  if (type === 'event') return styles.catEvents;
-  return styles.catRecognition;
-}
-
-function articleOf(item: FeedItem & { kind: 'article' }): ArticleCard {
-  return item.article as unknown as ArticleCard;
-}
-
-function entryHeroMedia(entry: PromotedEntry): Media | null {
-  return (entry.hero_media as Media | null) ?? null;
-}
-
-/** Card date line for a promoted event: the event's own date, not a publish date. */
-function entryDateLine(entry: PromotedEntry): string {
-  return formatDateLong(`${entry.entry_date}T12:00:00`);
-}
 
 export default async function Home({
   searchParams
@@ -66,7 +46,7 @@ export default async function Home({
             <div className={styles.heroLayout}>
               {hero.kind === 'article' ? (
                 (() => {
-                  const a = articleOf(hero as FeedItem & { kind: 'article' });
+                  const a = hero.article;
                   return (
                     <article className={styles.heroStory}>
                       {a.heroMedia && (
@@ -119,7 +99,7 @@ export default async function Home({
 
               <aside className={styles.sidebar}>
                 <div className={styles.sidebarModule}>
-                  <h3 className={styles.sidebarModuleTitle}>Upcoming Events</h3>
+                  <h3 className={styles.sidebarModuleTitle}>Troop Calendar</h3>
                   {sidebarEvents.length === 0 ? (
                     <p className={styles.eventMeta}>Nothing on the calendar yet.</p>
                   ) : (
@@ -174,53 +154,12 @@ export default async function Home({
                   <span className={styles.divRule} aria-hidden="true" />
                 </div>
                 <div className={styles.storyGrid}>
-                  {gridItems.map((item) =>
-                    item.kind === 'article' ? (
-                      (() => {
-                        const a = articleOf(item as FeedItem & { kind: 'article' });
-                        return (
-                          <Link key={`a${a.id}`} href={`/news/${a.slug}`} className={styles.storyCard}>
-                            {a.heroMedia && (
-                              <div className={styles.storyCardImg}>
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={a.heroMedia.cdn_url} alt={a.heroMedia.alt_text ?? ''} />
-                              </div>
-                            )}
-                            <div className={styles.storyCardBody}>
-                              <span className={`${styles.catTag} ${catClass(a.type)}`}>
-                                {articleTypeLabel(a.type)}
-                              </span>
-                              <h3 className={styles.cardHeadline}>{a.title}</h3>
-                              {a.excerpt && <p className={styles.cardSummary}>{a.excerpt}</p>}
-                              <p className={styles.cardMeta}>{formatDateLong(a.published_at ?? a.created_at)}</p>
-                            </div>
-                          </Link>
-                        );
-                      })()
-                    ) : (
-                      (() => {
-                        const e = item.entry;
-                        const media = entryHeroMedia(e);
-                        const excerpt = eventCardExcerpt(e);
-                        return (
-                          <Link key={`e${e.id}`} href={`/events/${e.id}`} className={styles.storyCard}>
-                            {media && (
-                              <div className={styles.storyCardImg}>
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={media.cdn_url} alt={media.alt_text ?? ''} />
-                              </div>
-                            )}
-                            <div className={styles.storyCardBody}>
-                              <span className={`${styles.catTag} ${catClass('event')}`}>{e.category}</span>
-                              <h3 className={styles.cardHeadline}>{e.title}</h3>
-                              {excerpt && <p className={styles.cardSummary}>{excerpt}</p>}
-                              <p className={styles.cardMeta}>{entryDateLine(e)}</p>
-                            </div>
-                          </Link>
-                        );
-                      })()
-                    )
-                  )}
+                  {gridItems.map((item) => (
+                    <FeedCard
+                      key={item.kind === 'article' ? `a${item.article.id}` : `e${item.entry.id}`}
+                      item={item}
+                    />
+                  ))}
                 </div>
               </section>
             )}

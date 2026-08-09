@@ -60,6 +60,28 @@ export async function loadHomeFeed(page: number) {
    duplicate article for. The sidebar now reads the real calendar
    (loadCalendarEntries().upcoming). */
 
+/**
+ * The /news index ("News & Events"): a flat, paginated article list —
+ * featured articles are NOT split out (that's homepage curation; here
+ * everything reads chronologically). `archive` flips to the
+ * articles_archived view (manual + auto-archived, still published) — the
+ * public archive surface OMG has at /news?archive=1, ported.
+ */
+export async function loadNewsIndex(page: number, archive: boolean) {
+  const supabase = createAdminClient();
+  const view = archive ? 'articles_archived' : 'articles_public';
+  const from = (page - 1) * PAGE_SIZE;
+  const { data, count } = await supabase
+    .from(view)
+    .select(CARD_SELECT, { count: 'exact' })
+    .order('published_at', { ascending: false })
+    .range(from, from + PAGE_SIZE - 1);
+  return {
+    rows: ((data ?? []) as RawArticleRow[]).map(toCard),
+    totalPages: Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE))
+  };
+}
+
 export async function loadAllTags() {
   const supabase = createAdminClient();
   const { data } = await supabase.from('tags').select('*').order('name');

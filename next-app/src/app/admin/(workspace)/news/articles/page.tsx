@@ -122,15 +122,17 @@ export default async function ArticlesPage({
     <>
       <div className={styles.pageTitle}>
         <div>
-          <h1>Articles</h1>
+          <h1>News</h1>
           <p>
-            News, Events, and Recognition posts for the public site. Scouts draft;
-            leaders review and publish. <strong>Archive</strong> hides a post from
-            the public site without deleting it.
+            Announcements, opportunities, and stories for the public site &mdash;
+            anything worth publishing that isn&rsquo;t a troop calendar event
+            (those promote themselves from the Calendar). Scouts draft; leaders
+            review and publish. <strong>Archive</strong> hides a post from the
+            public site without deleting it.
           </p>
         </div>
         <Link href="/admin/news/articles/new" className={styles.newBtn}>
-          + New Article
+          + New Post
         </Link>
       </div>
 

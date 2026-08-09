@@ -4,7 +4,7 @@ import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { SessionRole } from '@/lib/leader-session';
-import type { Article, ArticleType, Media, Tag } from '@/lib/supabase/types';
+import type { Article, Media, Tag } from '@/lib/supabase/types';
 import { ArticleBody, type EditableBlockInfo } from '@/lib/article-body/ArticleBody';
 import {
   buildGalleryLinkToken,
@@ -58,8 +58,8 @@ export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags, ses
   const isNew = !article;
 
   const [title, setTitle] = useState(article?.title ?? '');
-  const [type, setType] = useState<ArticleType>(article?.type ?? 'news');
   const [excerpt, setExcerpt] = useState(article?.excerpt ?? '');
+  const [featured, setFeatured] = useState(article?.featured ?? false);
   const [body, setBody] = useState(article?.body ?? '');
   const [tagIds, setTagIds] = useState<Set<number>>(new Set(selectedTagIds));
   const [hero, setHero] = useState<Media | null>(heroMedia);
@@ -141,8 +141,8 @@ export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags, ses
   function buildFormData(): FormData {
     const fd = new FormData();
     fd.set('title', title);
-    fd.set('type', type);
     fd.set('excerpt', excerpt);
+    fd.set('featured', featured ? '1' : '');
     fd.set('body', body);
     if (hero) fd.set('heroMediaId', String(hero.id));
     fd.set('tagIds', Array.from(tagIds).join(','));
@@ -175,11 +175,11 @@ export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags, ses
     <>
       <div className={styles.pageTitle}>
         <div>
-          <h1>{isNew ? 'New Article' : `Edit: ${article.title}`}</h1>
+          <h1>{isNew ? 'New Post' : `Edit: ${article.title}`}</h1>
           <p>Write in markdown on the left; see exactly how it will look on the right.</p>
         </div>
         <Link href="/admin/news/articles" className={styles.backLink}>
-          ← Back to Articles
+          ← Back to News
         </Link>
       </div>
 
@@ -199,14 +199,10 @@ export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags, ses
             <input id="title" type="text" value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
 
+          {/* The Type select is gone (Patrick, 2026-08-09) — every post is
+              news; tags carry the sorting. Legacy 'recognition' rows keep
+              their type until edited surfaces need otherwise. */}
           <div className={styles.fieldRow}>
-            <div className={styles.field}>
-              <label htmlFor="type">Type</label>
-              <select id="type" value={type} onChange={(e) => setType(e.target.value as ArticleType)}>
-                <option value="news">News</option>
-                <option value="recognition">Recognition</option>
-              </select>
-            </div>
             <div className={styles.field}>
               <label htmlFor="autoArchiveAt">Auto-archive on (optional)</label>
               <input
@@ -216,6 +212,19 @@ export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags, ses
                 onChange={(e) => setAutoArchiveAt(e.target.value)}
               />
             </div>
+            {isLeader && (
+              <div className={styles.field}>
+                <label htmlFor="featured">
+                  <input
+                    id="featured"
+                    type="checkbox"
+                    checked={featured}
+                    onChange={(e) => setFeatured(e.target.checked)}
+                  />{' '}
+                  Feature on homepage
+                </label>
+              </div>
+            )}
           </div>
 
           <div className={styles.field}>

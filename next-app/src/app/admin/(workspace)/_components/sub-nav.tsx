@@ -99,7 +99,7 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
     title: 'News & Events',
     items: [
       {
-        label: 'Articles',
+        label: 'News',
         href: '/admin/news/articles',
         matchPath: '/admin/news/articles',
         scoutVisible: true

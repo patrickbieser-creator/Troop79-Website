@@ -4,18 +4,20 @@ import { revalidatePath } from 'next/cache';
 import { requireRole } from '@/lib/require-role';
 import { createAdminClient } from '@/lib/supabase/server';
 import { slugify } from '@/lib/slugify';
-import type { Article, ArticleType } from '@/lib/supabase/types';
+import type { Article } from '@/lib/supabase/types';
 
 function revalidateNews() {
   revalidatePath('/admin/news/articles');
   revalidatePath('/');
+  revalidatePath('/news');
   revalidatePath('/events');
 }
 
 interface ArticleFields {
   title: string;
-  type: ArticleType;
   excerpt: string;
+  /** Homepage curation — applied only when the session is a leader. */
+  featured: boolean;
   body: string;
   heroMediaId: number | null;
   autoArchiveAt: string | null;
@@ -23,16 +25,15 @@ interface ArticleFields {
 }
 
 function parseFields(formData: FormData): ArticleFields {
-  const type = (String(formData.get('type') ?? 'news') as ArticleType) || 'news';
   const heroMediaIdRaw = formData.get('heroMediaId');
   const tagIdsRaw = String(formData.get('tagIds') ?? '');
   return {
     title: String(formData.get('title') ?? '').trim(),
-    type,
     excerpt: String(formData.get('excerpt') ?? '').trim(),
     body: String(formData.get('body') ?? ''),
     heroMediaId: heroMediaIdRaw ? Number(heroMediaIdRaw) : null,
     autoArchiveAt: String(formData.get('autoArchiveAt') ?? '').trim() || null,
+    featured: String(formData.get('featured') ?? '') === '1',
     tagIds: tagIdsRaw
       ? tagIdsRaw
           .split(',')
@@ -83,10 +84,13 @@ export async function createArticle(formData: FormData): Promise<ActionResult> {
     .insert({
       slug,
       title: fields.title,
-      type: fields.type,
+      // The editor no longer has a Type select (2026-08-09) — every new post
+      // is news; tags carry the sorting.
+      type: 'news',
       excerpt: fields.excerpt || null,
       body: fields.body,
       hero_media_id: fields.heroMediaId,
+      featured: session.role === 'leader' ? fields.featured : false,
       status: 'draft',
       author_name: session.leader,
       author_role: session.role,
@@ -129,11 +133,11 @@ export async function updateArticle(id: number, formData: FormData): Promise<Act
     .update({
       slug,
       title: fields.title,
-      type: fields.type,
       excerpt: fields.excerpt || null,
       body: fields.body,
       hero_media_id: fields.heroMediaId,
       auto_archive_at: fields.autoArchiveAt,
+      ...(session.role === 'leader' ? { featured: fields.featured } : {}),
       updated_at: new Date().toISOString()
     })
     .eq('id', id);
