@@ -9,6 +9,7 @@ import {
   type TierId
 } from '@/lib/meeting-plan-types';
 import { generatePlan, publishPlan, unpublishPlan } from './actions';
+import { stalePlanError } from '@/lib/meeting-plan-publish';
 import { DatePickerField } from '../../_components/date-picker-field';
 import styles from './meeting-plan.module.css';
 
@@ -51,11 +52,34 @@ export function PlanView({ published, defaultDate }: Props) {
     });
   }
 
+  /**
+   * A generated plan belongs to the date it was generated FOR — its sessions
+   * come from that meeting's attendance and advancement state. Changing the
+   * date used to leave the previous plan sitting in `payload` with Publish
+   * still enabled, so publishing after changing the date silently wrote the
+   * OLD date's plan under the OLD date, while the field on screen showed the
+   * new one. It read as "the date reverts to the next meeting on its own".
+   * Changing the date discards the stale plan instead.
+   */
+  function changeDate(next: string) {
+    setMeetingDate(next);
+    if (payload && stalePlanError(payload.meetingDate, next)) {
+      setPayload(null);
+      setStatus({
+        ok: false,
+        msg: `Date changed — generate a plan for ${next} before publishing.`
+      });
+    }
+  }
+
   function publish() {
     if (!payload) return;
     setStatus(null);
     const fd = new FormData();
     fd.set('payload', JSON.stringify(payload));
+    // Sent alongside the payload purely so the server can refuse a mismatch —
+    // see publishPlan. Belt and braces for the bug above.
+    fd.set('meetingDate', meetingDate);
     startTransition(async () => {
       const res = await publishPlan(fd);
       setStatus(
@@ -81,7 +105,7 @@ export function PlanView({ published, defaultDate }: Props) {
       <div className={styles.generateBar}>
         <label className={styles.field}>
           Meeting date
-          <DatePickerField value={meetingDate} onChange={setMeetingDate} />
+          <DatePickerField value={meetingDate} onChange={changeDate} />
         </label>
         <button
           type="button"

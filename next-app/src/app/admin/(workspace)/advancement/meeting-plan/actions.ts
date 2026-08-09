@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { requireRole } from '@/lib/require-role';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { MeetingPlanPayload } from '@/lib/meeting-plan-types';
+import { stalePlanError } from '@/lib/meeting-plan-publish';
 import { buildMeetingPlan } from './engine';
 import { loadEngineInput } from './load-input';
 
@@ -67,6 +68,12 @@ export async function publishPlan(formData: FormData): Promise<PublishResult> {
   if (!payload || payload.version !== 1 || !/^\d{4}-\d{2}-\d{2}$/.test(payload.meetingDate)) {
     return { ok: false, error: 'Plan payload was malformed' };
   }
+
+  // The date the leader had selected when they hit Publish. The client clears
+  // a stale plan on date change; refusing here as well means no future call
+  // path can reintroduce the same silent mismatch. See stalePlanError.
+  const stale = stalePlanError(payload.meetingDate, String(formData.get('meetingDate') ?? '').trim());
+  if (stale) return { ok: false, error: stale };
 
   const supabase = createAdminClient();
   const { error } = await supabase.from('meeting_plans').upsert(

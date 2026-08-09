@@ -497,6 +497,45 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.27.1 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.27.1</span>
+        <span class="release-date">August 8, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Fix</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Meeting plans published under the wrong date</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Publishing a meeting plan could file it under the previous meeting&rsquo;s date. Set
+              the date to August 16th, publish, and the plan appeared on August 9th; try again for
+              the 23rd and it did the same. It looked as though the date was snapping back to the
+              next meeting on its own.
+            </span>
+          </li>
+          <li>
+            <span>
+              The cause was that <strong>Publish</strong> used whatever plan had last been
+              generated. Changing the date left the earlier plan in place with Publish still
+              available, so it saved that plan under <em>its</em> date while the screen showed the
+              new one. August 9th was simply the default date the page opens on &mdash; the next
+              Sunday &mdash; which is what made it look like a rule about the next available slot.
+            </span>
+          </li>
+          <li>
+            <span>
+              Changing the date now clears the previously generated plan and says so, since a plan
+              is built from that specific meeting&rsquo;s attendance and advancement and cannot be
+              relabeled onto another date. Publishing also refuses outright if the two ever
+              disagree.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.27.0 -->
     <div class="release">
       <div class="release-header">
