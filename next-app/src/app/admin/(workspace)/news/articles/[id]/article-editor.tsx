@@ -29,18 +29,6 @@ interface Props {
   sessionName: string;
 }
 
-function toLocalInputValue(iso: string | null): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function fromLocalInputValue(value: string): string {
-  if (!value) return '';
-  return new Date(value).toISOString();
-}
-
 let stubMediaId = 0;
 
 /**
@@ -76,10 +64,9 @@ export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags, ses
   const [tagIds, setTagIds] = useState<Set<number>>(new Set(selectedTagIds));
   const [hero, setHero] = useState<Media | null>(heroMedia);
 
-  const [eventStart, setEventStart] = useState(toLocalInputValue(article?.event_start ?? null));
-  const [eventEnd, setEventEnd] = useState(toLocalInputValue(article?.event_end ?? null));
-  const [eventLocation, setEventLocation] = useState(article?.event_location ?? '');
-  const [eventRegistrationUrl, setEventRegistrationUrl] = useState(article?.event_registration_url ?? '');
+  // Event fields are gone (Event→News promotion): an event is a calendar
+  // entry promoted from the Calendar editor, never an article.
+  const [autoArchiveAt, setAutoArchiveAt] = useState(article?.auto_archive_at ?? '');
 
   const [pickerMode, setPickerMode] = useState<PickerMode>(null);
   const [galleryLinkForm, setGalleryLinkForm] = useState<{ url: string; caption: string; coverMedia: Media | null } | null>(null);
@@ -159,12 +146,7 @@ export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags, ses
     fd.set('body', body);
     if (hero) fd.set('heroMediaId', String(hero.id));
     fd.set('tagIds', Array.from(tagIds).join(','));
-    if (type === 'event') {
-      fd.set('eventStart', fromLocalInputValue(eventStart));
-      fd.set('eventEnd', fromLocalInputValue(eventEnd));
-      fd.set('eventLocation', eventLocation);
-      fd.set('eventRegistrationUrl', eventRegistrationUrl);
-    }
+    fd.set('autoArchiveAt', autoArchiveAt);
     return fd;
   }
 
@@ -222,51 +204,19 @@ export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags, ses
               <label htmlFor="type">Type</label>
               <select id="type" value={type} onChange={(e) => setType(e.target.value as ArticleType)}>
                 <option value="news">News</option>
-                <option value="event">Event</option>
                 <option value="recognition">Recognition</option>
               </select>
             </div>
+            <div className={styles.field}>
+              <label htmlFor="autoArchiveAt">Auto-archive on (optional)</label>
+              <input
+                id="autoArchiveAt"
+                type="date"
+                value={autoArchiveAt}
+                onChange={(e) => setAutoArchiveAt(e.target.value)}
+              />
+            </div>
           </div>
-
-          {type === 'event' && (
-            <>
-              <div className={styles.fieldRow}>
-                <div className={styles.field}>
-                  <label htmlFor="eventStart">Starts</label>
-                  <input
-                    id="eventStart"
-                    type="datetime-local"
-                    value={eventStart}
-                    onChange={(e) => setEventStart(e.target.value)}
-                  />
-                </div>
-                <div className={styles.field}>
-                  <label htmlFor="eventEnd">Ends (optional)</label>
-                  <input id="eventEnd" type="datetime-local" value={eventEnd} onChange={(e) => setEventEnd(e.target.value)} />
-                </div>
-              </div>
-              <div className={styles.field}>
-                <label htmlFor="eventLocation">Location</label>
-                <input
-                  id="eventLocation"
-                  type="text"
-                  value={eventLocation}
-                  onChange={(e) => setEventLocation(e.target.value)}
-                  placeholder="e.g. Brookfield East High School"
-                />
-              </div>
-              <div className={styles.field}>
-                <label htmlFor="eventRegistrationUrl">Registration link (optional)</label>
-                <input
-                  id="eventRegistrationUrl"
-                  type="url"
-                  value={eventRegistrationUrl}
-                  onChange={(e) => setEventRegistrationUrl(e.target.value)}
-                  placeholder="https://scoutbook.scouting.org/..."
-                />
-              </div>
-            </>
-          )}
 
           <div className={styles.field}>
             <label>Hero Image</label>

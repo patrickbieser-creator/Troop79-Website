@@ -1,0 +1,156 @@
+/**
+ * Pure logic for the merged news feed (articles + promoted calendar entries)
+ * — Plans/Event-News-Promotion.md, a port of OMG-Website's D-011 ("merge at
+ * the feed, not the tables"). No Supabase/Next imports so it stays
+ * unit-testable; the server loaders live in home-feed.ts.
+ *
+ * Generic over minimal base shapes rather than the concrete DB types, for
+ * two reasons: the tests build small literals without dragging the whole
+ * CalendarEntry row in, and callers keep their richer types (ArticleCard,
+ * CalendarEntry & hero_media) through the merge without casts.
+ *
+ * Divergences from the OMG original, all deliberate:
+ *  - No `active`/`is_recurring` checks — those columns don't exist here, and
+ *    every calendar entry is dated, so a null promo_end means "through
+ *    end_date ?? entry_date".
+ *  - pickHero is EVENT-WINS-WHILE-IN-WINDOW (Patrick, 2026-08-08), not OMG's
+ *    most-recent-wins: a featured promoted event takes the hero for its promo
+ *    window; the featured article resumes when the window closes.
+ */
+
+export interface FeedArticleBase {
+  id: number;
+  published_at: string | null;
+  created_at: string;
+}
+
+/** The promotion-relevant slice of a calendar_entries row. */
+export interface PromotedEntryBase {
+  id: number;
+  entry_date: string;
+  end_date: string | null;
+  description: string | null;
+  show_on_homepage: boolean;
+  featured: boolean;
+  promo_start: string | null;
+  promo_end: string | null;
+  excerpt: string | null;
+  auto_archive_at: string | null;
+  created_at: string;
+}
+
+export type FeedItem<A extends FeedArticleBase, E extends PromotedEntryBase> =
+  | { kind: 'article'; article: A }
+  | { kind: 'event'; entry: E };
+
+/** Parse a Postgres `date` string as a LOCAL calendar date — `new Date(iso)`
+ *  would parse as UTC midnight and land a day early west of UTC (the same
+ *  off-by-one OMG documented as D-009 and this repo dodges in
+ *  date-picker-field's parseISO). */
+function parseDateOnly(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/** Local midnight of `d` — all window math runs at day granularity. */
+function dayStart(d: Date): number {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
+/**
+ * True once `dateStr` (auto_archive_at) is today or earlier — the row's first
+ * hidden day. Mirrors the articles_public/articles_archived view predicate
+ * (`auto_archive_at <= current_date`).
+ */
+export function isAutoArchivedOn(dateStr: string | null, today: Date): boolean {
+  if (!dateStr) return false;
+  return parseDateOnly(dateStr).getTime() <= dayStart(today);
+}
+
+/**
+ * Is this calendar entry in the news surfaces today? Opt-in + not
+ * auto-archived + inside the promo window. Null promo_end = through the
+ * event's last day (end_date ?? entry_date).
+ */
+export function isPromoActive(entry: PromotedEntryBase, today: Date): boolean {
+  if (!entry.show_on_homepage) return false;
+  if (isAutoArchivedOn(entry.auto_archive_at, today)) return false;
+
+  const todayMs = dayStart(today);
+  if (entry.promo_start && parseDateOnly(entry.promo_start).getTime() > todayMs) return false;
+  if (entry.promo_end) return parseDateOnly(entry.promo_end).getTime() >= todayMs;
+
+  const lastDay = entry.end_date ?? entry.entry_date;
+  return parseDateOnly(lastDay).getTime() >= todayMs;
+}
+
+/** Feed sort instant for an event card: promo_start day, else created_at. */
+function entryFeedMs(entry: PromotedEntryBase): number {
+  if (entry.promo_start) return parseDateOnly(entry.promo_start).getTime();
+  return new Date(entry.created_at).getTime();
+}
+
+function feedItemMs(item: FeedItem<FeedArticleBase, PromotedEntryBase>): number {
+  if (item.kind === 'article') {
+    const a = item.article;
+    return new Date(a.published_at ?? a.created_at).getTime();
+  }
+  return entryFeedMs(item.entry);
+}
+
+/** Articles + promoted entries as one feed, newest first. */
+export function mergeFeed<A extends FeedArticleBase, E extends PromotedEntryBase>(
+  articles: A[],
+  entries: E[]
+): FeedItem<A, E>[] {
+  const items: FeedItem<A, E>[] = [
+    ...articles.map((article) => ({ kind: 'article', article }) as FeedItem<A, E>),
+    ...entries.map((entry) => ({ kind: 'event', entry }) as FeedItem<A, E>)
+  ];
+  return items.sort((x, y) => feedItemMs(y) - feedItemMs(x));
+}
+
+/**
+ * Homepage hero. A featured, in-window promoted event WINS for its window —
+ * it's the time-sensitive card, and the editor's featured checkbox is an
+ * explicit act. Newest featured event wins when several are in window; the
+ * featured article resumes once no event qualifies.
+ */
+export function pickHero<A extends FeedArticleBase, E extends PromotedEntryBase>(
+  featuredArticle: A | null,
+  entries: E[],
+  today: Date
+): FeedItem<A, E> | null {
+  const heroEntry = entries
+    .filter((e) => e.featured && isPromoActive(e, today))
+    .sort((a, b) => entryFeedMs(b) - entryFeedMs(a))[0];
+  if (heroEntry) return { kind: 'event', entry: heroEntry };
+  if (featuredArticle) return { kind: 'article', article: featuredArticle };
+  return null;
+}
+
+const EXCERPT_MAX = 160;
+
+/**
+ * Card summary for a promoted entry: the explicit excerpt, else the
+ * description flattened to plain text and truncated at a word boundary.
+ */
+export function eventCardExcerpt(entry: PromotedEntryBase): string | null {
+  if (entry.excerpt?.trim()) return entry.excerpt.trim();
+  const desc = entry.description?.trim();
+  if (!desc) return null;
+
+  const plain = desc
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '') // images
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1') // links → text
+    .replace(/^#{1,6}\s+/gm, '') // headings
+    .replace(/[*_`>#|]/g, '') // emphasis/quote/table chars
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!plain) return null;
+  if (plain.length <= EXCERPT_MAX) return plain;
+
+  const cut = plain.slice(0, EXCERPT_MAX);
+  const lastSpace = cut.lastIndexOf(' ');
+  return `${cut.slice(0, lastSpace > 0 ? lastSpace : EXCERPT_MAX).trimEnd()}…`;
+}

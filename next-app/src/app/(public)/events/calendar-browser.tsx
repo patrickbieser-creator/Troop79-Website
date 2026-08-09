@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { CalendarCategory } from '@/lib/supabase/types';
-import type { CalendarEntryWithSlug } from '@/lib/calendar';
+import type { CalendarEntryPublic } from '@/lib/calendar';
 import { formatCalendarDateParts, formatTimeOfDay, categoryColor } from '@/lib/calendar-shared';
 import { MonthGrid } from './month-grid';
 import styles from './events.module.css';
@@ -32,8 +32,8 @@ function monthLabel(dateStr: string): string {
 /** Groups an already-sorted list into consecutive [month label, entries]
  *  runs — computed per section AFTER filtering, so an empty month never
  *  renders a stranded header. */
-function groupByMonth(list: CalendarEntryWithSlug[]): [string, CalendarEntryWithSlug[]][] {
-  const groups: [string, CalendarEntryWithSlug[]][] = [];
+function groupByMonth(list: CalendarEntryPublic[]): [string, CalendarEntryPublic[]][] {
+  const groups: [string, CalendarEntryPublic[]][] = [];
   for (const e of list) {
     const label = monthLabel(e.entry_date);
     const last = groups[groups.length - 1];
@@ -43,7 +43,7 @@ function groupByMonth(list: CalendarEntryWithSlug[]): [string, CalendarEntryWith
   return groups;
 }
 
-function timeCell(entry: CalendarEntryWithSlug): React.ReactNode {
+function timeCell(entry: CalendarEntryPublic): React.ReactNode {
   if (!entry.start_time) return <span className={styles.metaEmpty}>&mdash;</span>;
   return (
     <>
@@ -53,14 +53,12 @@ function timeCell(entry: CalendarEntryWithSlug): React.ReactNode {
   );
 }
 
-function EntryRow({ entry, past }: { entry: CalendarEntryWithSlug; past?: boolean }) {
+function EntryRow({ entry, past }: { entry: CalendarEntryPublic; past?: boolean }) {
   const { day } = formatCalendarDateParts(entry.entry_date);
   const color = categoryColor(entry.category);
-  const title = entry.articleSlug ? (
-    <Link href={`/news/${entry.articleSlug}`}>{entry.title}</Link>
-  ) : (
-    entry.title
-  );
+  // articleSlug is gone (Event→News promotion) — an entry's own page is
+  // /events/[id]; the "read the story" pattern is retired.
+  const title = entry.title;
 
   // Multi-day: same-month spans render as "9–11" in the date block; a span
   // that crosses months keeps the start day in the block and spells the full
@@ -99,11 +97,6 @@ function EntryRow({ entry, past }: { entry: CalendarEntryWithSlug; past?: boolea
               Details &amp; signup &rarr;
             </Link>
           )}
-          {entry.articleSlug && (
-            <Link href={`/news/${entry.articleSlug}`} className={styles.readStory}>
-              Read the story &rarr;
-            </Link>
-          )}
         </p>
         {spanNote && <p className={styles.spanNote}>{spanNote}</p>}
         <p className={styles.mobileMeta}>
@@ -126,8 +119,8 @@ export function CalendarBrowser({
   past,
   categories
 }: {
-  upcoming: CalendarEntryWithSlug[];
-  past: CalendarEntryWithSlug[];
+  upcoming: CalendarEntryPublic[];
+  past: CalendarEntryPublic[];
   categories: CalendarCategory[];
 }) {
   const [category, setCategory] = useState<string>('all');
@@ -162,7 +155,7 @@ export function CalendarBrowser({
   }, [allEntries]);
 
   const q = query.trim().toLowerCase();
-  const matches = (e: CalendarEntryWithSlug) => {
+  const matches = (e: CalendarEntryPublic) => {
     if (category !== 'all' && e.category !== category) return false;
     if (q) {
       const hay = `${e.title} ${e.description ?? ''} ${e.location ?? ''} ${e.category}`.toLowerCase();

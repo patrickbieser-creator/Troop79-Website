@@ -23,12 +23,10 @@ interface SearchParams {
 
 const TYPE_LABEL: Record<ArticleType, string> = {
   news: 'News',
-  event: 'Event',
   recognition: 'Recognition'
 };
 const TYPE_CLASS: Record<ArticleType, string> = {
   news: styles.pillNews,
-  event: styles.pillEvent,
   recognition: styles.pillRecognition
 };
 const STATUS_LABEL: Record<ArticleStatus, string> = {

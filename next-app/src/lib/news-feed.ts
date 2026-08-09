@@ -55,17 +55,10 @@ export async function loadHomeFeed(page: number) {
   return { hero, gridItems, totalPages, page, total };
 }
 
-export async function loadUpcomingEvents(limit = 5) {
-  const supabase = createAdminClient();
-  const { data } = await supabase
-    .from('articles_public')
-    .select('*')
-    .eq('type', 'event')
-    .gte('event_start', new Date().toISOString())
-    .order('event_start', { ascending: true })
-    .limit(limit);
-  return (data ?? []) as Article[];
-}
+/* loadUpcomingEvents is GONE (Event→News promotion): it read event-ARTICLES,
+   so the homepage sidebar only knew about events someone had hand-written a
+   duplicate article for. The sidebar now reads the real calendar
+   (loadCalendarEntries().upcoming). */
 
 export async function loadAllTags() {
   const supabase = createAdminClient();
@@ -108,7 +101,9 @@ export async function loadArticlesByTag(slug: string, page: number) {
 
 export function articleTypeLabel(type: Article['type']): string {
   if (type === 'news') return 'News';
-  if (type === 'event') return 'Events';
+  // Legacy 'event' rows may exist until the drop_legacy migration converts
+  // them; label them as news rather than crashing or lying.
+  if ((type as string) === 'event') return 'News';
   return 'Recognition';
 }
 

@@ -1,13 +1,12 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { loadArticleBySlug, articleTypeLabel, formatDateLong, formatEventDateParts, formatEventDateTime } from '@/lib/news-feed';
+import { loadArticleBySlug, articleTypeLabel, formatDateLong } from '@/lib/news-feed';
 import { ArticleBody } from '@/lib/article-body/ArticleBody';
 import styles from './article-detail.module.css';
 
 function catClass(type: string): string {
   if (type === 'news') return styles.catNews;
-  if (type === 'event') return styles.catEvents;
   return styles.catRecognition;
 }
 
@@ -35,7 +34,6 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   const article = await loadArticleBySlug(slug);
   if (!article) notFound();
 
-  const showRegister = article.type === 'event' && !!article.event_registration_url;
 
   return (
     <main className={styles.articlePage}>
@@ -49,43 +47,10 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         </p>
       </div>
 
-      {article.type === 'event' && article.event_start && (
-        <div className={styles.eventPanel}>
-          <div className={styles.eventPanelWhen}>
-            <div className={styles.eventPanelDateBlock}>
-              <div className={styles.eMonth}>{formatEventDateParts(article.event_start).month}</div>
-              <div className={styles.eDay}>{formatEventDateParts(article.event_start).day}</div>
-            </div>
-          </div>
-          <div className={styles.eventPanelFacts}>
-            <div className={styles.eventPanelRow}>
-              <span className={styles.epLabel}>When</span>
-              <span>{formatEventDateTime(article.event_start)}</span>
-            </div>
-            {article.event_end && (
-              <div className={styles.eventPanelRow}>
-                <span className={styles.epLabel}>Ends</span>
-                <span>{formatEventDateTime(article.event_end)}</span>
-              </div>
-            )}
-            {article.event_location && (
-              <div className={styles.eventPanelRow}>
-                <span className={styles.epLabel}>Where</span>
-                <span>{article.event_location}</span>
-              </div>
-            )}
-          </div>
-          <div className={styles.eventPanelActions}>
-            {showRegister ? (
-              <a href={article.event_registration_url!} target="_blank" rel="noopener noreferrer" className={styles.btnRegister}>
-                Register
-              </a>
-            ) : (
-              <span className={styles.eventPanelNoreg}>No registration required</span>
-            )}
-          </div>
-        </div>
-      )}
+      {/* The event info panel is gone (Event→News promotion): events are
+          calendar entries promoted into the feed, and their page is
+          /events/[id] with the live signup — an article never carries event
+          fields anymore. */}
 
       {article.heroMedia && (
         <div className={styles.articleHero}>

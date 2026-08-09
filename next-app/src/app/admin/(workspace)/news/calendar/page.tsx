@@ -1,6 +1,9 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { CATEGORIES } from '@/lib/calendar';
-import type { CalendarEntry } from '@/lib/supabase/types';
+import type { CalendarEntry, Media } from '@/lib/supabase/types';
+
+/** Admin rows carry the resolved promotion hero for the editor's preview. */
+export type CalendarEntryRow = CalendarEntry & { hero_media: Media | null };
 import { CalendarEditor } from './calendar-editor';
 import {
   createCalendarEntry,
@@ -14,27 +17,20 @@ export const metadata = {
   title: 'Calendar — Troop 79'
 };
 
-export interface ArticleOption {
-  id: number;
-  title: string;
-}
-
 async function loadData() {
   const supabase = createAdminClient();
-  const [entriesRes, articlesRes] = await Promise.all([
-    // Oldest first: the tabs below split upcoming from past, and within each
-    // an ascending run reads as a schedule rather than a reverse log.
-    supabase.from('calendar_entries').select('*').order('entry_date', { ascending: true }),
-    supabase.from('articles').select('id, title').order('created_at', { ascending: false }).limit(200)
-  ]);
-  return {
-    entries: (entriesRes.data ?? []) as CalendarEntry[],
-    articles: (articlesRes.data ?? []) as ArticleOption[]
-  };
+  // Oldest first: the tabs below split upcoming from past, and within each
+  // an ascending run reads as a schedule rather than a reverse log.
+  // hero_media joined for the promotion section's picker preview.
+  const { data } = await supabase
+    .from('calendar_entries')
+    .select('*, hero_media:hero_media_id(*)')
+    .order('entry_date', { ascending: true });
+  return { entries: (data ?? []) as unknown as CalendarEntryRow[] };
 }
 
 export default async function CalendarAdminPage() {
-  const { entries, articles } = await loadData();
+  const { entries } = await loadData();
 
   return (
     <>
@@ -42,14 +38,13 @@ export default async function CalendarAdminPage() {
         <h1>Calendar</h1>
         <p>
           Everything that shows up on the public calendar and the .ics subscription feed — routine
-          meetings, campouts, fundraisers, and anything else worth a date. Optionally link an entry to
-          a News article for a &ldquo;Read the full story&rdquo; button.
+          meetings, campouts, fundraisers, and anything else worth a date. An entry can also promote
+          itself into the homepage news feed for a window — no separate article needed.
         </p>
       </div>
 
       <CalendarEditor
         rows={entries}
-        articles={articles}
         categories={CATEGORIES}
         onCreate={createCalendarEntry}
         onUpdate={updateCalendarEntry}

@@ -24,7 +24,9 @@ function fieldsFromForm(fd: FormData) {
   const location = String(fd.get('location') ?? '').trim();
   const startTime = String(fd.get('start_time') ?? '').trim();
   const endTime = String(fd.get('end_time') ?? '').trim();
-  const articleIdRaw = String(fd.get('article_id') ?? '').trim();
+  // News promotion (Plans/Event-News-Promotion.md) — replaces article_id.
+  const showOnHomepage = String(fd.get('show_on_homepage') ?? '') === '1';
+  const heroMediaIdRaw = String(fd.get('hero_media_id') ?? '').trim();
 
   return {
     entry_date: entryDate,
@@ -36,7 +38,15 @@ function fieldsFromForm(fd: FormData) {
     location: location || null,
     start_time: startTime || null,
     end_time: endTime || null,
-    article_id: articleIdRaw ? Number(articleIdRaw) : null
+    show_on_homepage: showOnHomepage,
+    // Promotion sub-fields are cleared when the opt-in is off, so stale
+    // windows/excerpts can't linger invisibly and spring back later.
+    featured: showOnHomepage && String(fd.get('featured') ?? '') === '1',
+    promo_start: showOnHomepage ? String(fd.get('promo_start') ?? '').trim() || null : null,
+    promo_end: showOnHomepage ? String(fd.get('promo_end') ?? '').trim() || null : null,
+    excerpt: showOnHomepage ? String(fd.get('excerpt') ?? '').trim() || null : null,
+    hero_media_id: showOnHomepage && heroMediaIdRaw ? Number(heroMediaIdRaw) : null,
+    auto_archive_at: String(fd.get('auto_archive_at') ?? '').trim() || null
   };
 }
 

@@ -1,9 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import type { CalendarCategory } from '@/lib/supabase/types';
-import type { CalendarEntryWithSlug } from '@/lib/calendar';
+import type { CalendarEntryPublic } from '@/lib/calendar';
 import { categoryColor, formatTimeOfDay } from '@/lib/calendar-shared';
 import styles from './events.module.css';
 
@@ -62,7 +61,7 @@ function formatMonthDay(iso: string): string {
   return `${MONTH_NAMES[d.getMonth()].slice(0, 3)} ${d.getDate()}`;
 }
 
-function formatDateRange(entry: CalendarEntryWithSlug): string {
+function formatDateRange(entry: CalendarEntryPublic): string {
   if (!entry.end_date || entry.end_date === entry.entry_date) return formatMonthDay(entry.entry_date);
   const s = parseLocal(entry.entry_date);
   const e = parseLocal(entry.end_date);
@@ -72,7 +71,7 @@ function formatDateRange(entry: CalendarEntryWithSlug): string {
   return `${sm} ${s.getDate()} – ${em} ${e.getDate()}${e.getFullYear() !== s.getFullYear() ? ', ' + e.getFullYear() : ''}`;
 }
 
-function isMultiDay(e: CalendarEntryWithSlug): boolean {
+function isMultiDay(e: CalendarEntryPublic): boolean {
   return !!e.end_date && e.end_date !== e.entry_date;
 }
 
@@ -108,7 +107,7 @@ function buildMonthGrid(year: number, month: number): DayCellData[][] {
 }
 
 interface SpanPlacement {
-  entry: CalendarEntryWithSlug;
+  entry: CalendarEntryPublic;
   startCol: number;
   endCol: number;
   lane: number;
@@ -119,7 +118,7 @@ interface SpanPlacement {
 /** Lane assignment for multi-day bars touching this week (greedy interval scheduling). `multiDayEntries` is already filter-aware. */
 function computeWeekSpans(
   week: DayCellData[],
-  multiDayEntries: CalendarEntryWithSlug[]
+  multiDayEntries: CalendarEntryPublic[]
 ): { placed: SpanPlacement[]; laneCount: number } {
   const weekStartIso = week[0].iso;
   const weekEndIso = week[6].iso;
@@ -157,7 +156,7 @@ export function MonthGrid({
   activeCategories,
   isActive
 }: {
-  entries: CalendarEntryWithSlug[];
+  entries: CalendarEntryPublic[];
   activeCategories: Set<CalendarCategory>;
   isActive: boolean;
 }) {
@@ -174,11 +173,11 @@ export function MonthGrid({
   const gridRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  function matchesFilter(e: CalendarEntryWithSlug) {
+  function matchesFilter(e: CalendarEntryPublic) {
     return activeCategories.size === 0 || activeCategories.has(e.category);
   }
 
-  function eventsOnDate(iso: string): CalendarEntryWithSlug[] {
+  function eventsOnDate(iso: string): CalendarEntryPublic[] {
     return entries
       .filter((e) => e.entry_date <= iso && (e.end_date ?? e.entry_date) >= iso)
       .sort((a, b) => {
@@ -189,7 +188,7 @@ export function MonthGrid({
       });
   }
 
-  function visibleEventsOnDate(iso: string): CalendarEntryWithSlug[] {
+  function visibleEventsOnDate(iso: string): CalendarEntryPublic[] {
     return eventsOnDate(iso).filter(matchesFilter);
   }
 
@@ -579,7 +578,7 @@ export function MonthGrid({
                     style={{ borderLeftColor: color }}
                   >
                     <p className={styles.dayEventCardTitle}>
-                      {e.articleSlug ? <Link href={`/news/${e.articleSlug}`}>{e.title}</Link> : e.title}
+                      {e.title}
                       {e.day_note && <span className={styles.dayNote}>{e.day_note}</span>}
                     </p>
                     <p className={styles.dayEventCardCat} style={{ color }}>

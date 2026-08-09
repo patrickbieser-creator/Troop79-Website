@@ -6,7 +6,6 @@ import styles from '../../../_components/news-cards.module.css';
 
 function catClass(type: ArticleCard['type']): string {
   if (type === 'news') return styles.catNews;
-  if (type === 'event') return styles.catEvents;
   return styles.catRecognition;
 }
 

@@ -25,7 +25,9 @@ export async function GET() {
     summary: e.title,
     description: e.description,
     location: e.location,
-    url: e.articleSlug ? `${base}/news/${e.articleSlug}` : null
+    // The event's own page — carries the signup when one exists. Replaces the
+    // retired article link (Event→News promotion; OMG made the same swap).
+    url: e.hasSignup ? `${base}/events/${e.id}` : null
   }));
 
   const body = buildCalendar({

@@ -497,6 +497,49 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.28.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.28.0</span>
+        <span class="release-date">August 8, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">One calendar, one news feed — events promote themselves</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              An event and its news coverage used to be two separate things maintained by hand: a
+              calendar entry, plus a near-duplicate &ldquo;event&rdquo; article if you wanted it on
+              the homepage. The homepage&rsquo;s Upcoming Events box only knew about events someone
+              had written that duplicate article for. Now a calendar entry can <strong>promote
+              itself into the homepage news feed</strong> for a window &mdash; with its own card
+              summary, image, and an optional turn as the top story &mdash; and its card links
+              straight to the event page with the live signup. Create either a news item or an
+              event; never both.
+            </span>
+          </li>
+          <li>
+            <span>
+              The <strong>Upcoming Events box now reads the real calendar</strong> &mdash; every
+              upcoming entry, meetings included &mdash; so nothing has to be entered twice to
+              appear there.
+            </span>
+          </li>
+          <li>
+            <span>
+              The &ldquo;Event&rdquo; article type and the calendar&rsquo;s &ldquo;linked
+              article&rdquo; field are retired; articles and calendar entries also gained an
+              optional <strong>auto-archive date</strong>. This mirrors the same consolidation
+              shipped on the OMG running club site earlier the same day, adapted to Troop
+              79&rsquo;s richer event pages. 21 new tests (102 total), lint/build clean, verified
+              in a browser.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.27.1 -->
     <div class="release">
       <div class="release-header">

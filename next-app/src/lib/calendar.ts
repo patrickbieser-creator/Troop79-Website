@@ -1,10 +1,23 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import type { CalendarEntry } from '@/lib/supabase/types';
+import { isAutoArchivedOn } from '@/lib/feed-logic';
 
 export { CATEGORY_COLORS, CATEGORIES, formatCalendarDateParts, formatTimeOfDay } from '@/lib/calendar-shared';
 
-export interface CalendarEntryWithSlug extends CalendarEntry {
-  articleSlug: string | null;
+/*
+ * The articles(slug) join and articleSlug are gone (Event→News promotion,
+ * Plans/Event-News-Promotion.md): the "read the full story" link is replaced
+ * by events promoting themselves into the news feed, and article_id is
+ * dropped by the drop_legacy migration.
+ *
+ * Auto-archived entries (auto_archive_at passed) are excluded from these
+ * public lists and the ICS feed, but NOT from /events/[id] — event pages
+ * carry live signups whose links circulate in confirmations, so a direct
+ * link keeps resolving (deliberate divergence from OMG, which hid all
+ * surfaces).
+ */
+
+export interface CalendarEntryPublic extends CalendarEntry {
   /** True when this entry has an event_signups row — drives the "Details &
    *  signup" link. Entries without one have nothing extra to show. */
   hasSignup: boolean;
@@ -18,17 +31,8 @@ async function signupEnabledIds(
   return new Set(((data ?? []) as { calendar_entry_id: number }[]).map((r) => r.calendar_entry_id));
 }
 
-const SELECT = '*, articles(slug)';
-
-type RawRow = CalendarEntry & { articles: { slug: string } | null };
-
-function toEntry(row: RawRow, signupIds?: Set<number>): CalendarEntryWithSlug {
-  const { articles, ...rest } = row;
-  return {
-    ...rest,
-    articleSlug: articles?.slug ?? null,
-    hasSignup: signupIds?.has(row.id) ?? false
-  };
+function toEntry(row: CalendarEntry, signupIds?: Set<number>): CalendarEntryPublic {
+  return { ...row, hasSignup: signupIds?.has(row.id) ?? false };
 }
 
 /** The entry's last calendar day (end_date for multi-day entries, entry_date otherwise) — the correct cutoff for upcoming vs. past. */
@@ -36,16 +40,20 @@ function lastDay(entry: Pick<CalendarEntry, 'entry_date' | 'end_date'>): string 
   return entry.end_date ?? entry.entry_date;
 }
 
+function notAutoArchived(entry: CalendarEntry): boolean {
+  return !isAutoArchivedOn(entry.auto_archive_at, new Date());
+}
+
 export async function loadCalendarEntries(): Promise<{
-  upcoming: CalendarEntryWithSlug[];
-  past: CalendarEntryWithSlug[];
+  upcoming: CalendarEntryPublic[];
+  past: CalendarEntryPublic[];
 }> {
   const supabase = createAdminClient();
   const [{ data }, signupIds] = await Promise.all([
-    supabase.from('calendar_entries').select(SELECT).order('entry_date', { ascending: true }),
+    supabase.from('calendar_entries').select('*').order('entry_date', { ascending: true }),
     signupEnabledIds(supabase)
   ]);
-  const all = ((data ?? []) as RawRow[]).map((r) => toEntry(r, signupIds));
+  const all = ((data ?? []) as CalendarEntry[]).filter(notAutoArchived).map((r) => toEntry(r, signupIds));
 
   const today = new Date().toISOString().slice(0, 10);
   const upcoming = all.filter((e) => lastDay(e) >= today);
@@ -56,11 +64,11 @@ export async function loadCalendarEntries(): Promise<{
 }
 
 /** Every entry, past and future — feeds the .ics subscription route. */
-export async function loadAllCalendarEntries(): Promise<CalendarEntryWithSlug[]> {
+export async function loadAllCalendarEntries(): Promise<CalendarEntryPublic[]> {
   const supabase = createAdminClient();
   const { data } = await supabase
     .from('calendar_entries')
-    .select(SELECT)
+    .select('*')
     .order('entry_date', { ascending: true });
-  return ((data ?? []) as RawRow[]).map((r) => toEntry(r));
+  return ((data ?? []) as CalendarEntry[]).filter(notAutoArchived).map((r) => toEntry(r));
 }

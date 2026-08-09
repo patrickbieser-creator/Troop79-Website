@@ -18,10 +18,7 @@ interface ArticleFields {
   excerpt: string;
   body: string;
   heroMediaId: number | null;
-  eventStart: string | null;
-  eventEnd: string | null;
-  eventLocation: string | null;
-  eventRegistrationUrl: string | null;
+  autoArchiveAt: string | null;
   tagIds: number[];
 }
 
@@ -35,11 +32,7 @@ function parseFields(formData: FormData): ArticleFields {
     excerpt: String(formData.get('excerpt') ?? '').trim(),
     body: String(formData.get('body') ?? ''),
     heroMediaId: heroMediaIdRaw ? Number(heroMediaIdRaw) : null,
-    eventStart: type === 'event' ? String(formData.get('eventStart') ?? '').trim() || null : null,
-    eventEnd: type === 'event' ? String(formData.get('eventEnd') ?? '').trim() || null : null,
-    eventLocation: type === 'event' ? String(formData.get('eventLocation') ?? '').trim() || null : null,
-    eventRegistrationUrl:
-      type === 'event' ? String(formData.get('eventRegistrationUrl') ?? '').trim() || null : null,
+    autoArchiveAt: String(formData.get('autoArchiveAt') ?? '').trim() || null,
     tagIds: tagIdsRaw
       ? tagIdsRaw
           .split(',')
@@ -97,10 +90,7 @@ export async function createArticle(formData: FormData): Promise<ActionResult> {
       status: 'draft',
       author_name: session.leader,
       author_role: session.role,
-      event_start: fields.eventStart,
-      event_end: fields.eventEnd,
-      event_location: fields.eventLocation,
-      event_registration_url: fields.eventRegistrationUrl
+      auto_archive_at: fields.autoArchiveAt
     })
     .select('id')
     .single();
@@ -143,10 +133,7 @@ export async function updateArticle(id: number, formData: FormData): Promise<Act
       excerpt: fields.excerpt || null,
       body: fields.body,
       hero_media_id: fields.heroMediaId,
-      event_start: fields.eventStart,
-      event_end: fields.eventEnd,
-      event_location: fields.eventLocation,
-      event_registration_url: fields.eventRegistrationUrl,
+      auto_archive_at: fields.autoArchiveAt,
       updated_at: new Date().toISOString()
     })
     .eq('id', id);

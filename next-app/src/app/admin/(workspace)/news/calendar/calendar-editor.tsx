@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
-import type { CalendarCategory, CalendarEntry } from '@/lib/supabase/types';
+import type { CalendarCategory, Media } from '@/lib/supabase/types';
 import { categoryColor } from '@/lib/calendar-shared';
-import type { ArticleOption } from './page';
+import type { CalendarEntryRow } from './page';
+import { MediaPicker } from '../_components/media-picker';
 import type { ImportResult, ImportRowFields, ImportUpdate } from './actions';
 import { CalendarImport } from './calendar-import';
 import { DatePickerField } from '../../_components/date-picker-field';
@@ -12,8 +13,7 @@ import styles from './calendar.module.css';
 type ActionResult = { ok: boolean; error?: string };
 
 interface Props {
-  rows: CalendarEntry[];
-  articles: ArticleOption[];
+  rows: CalendarEntryRow[];
   categories: CalendarCategory[];
   onCreate: (fd: FormData) => Promise<ActionResult>;
   onUpdate: (fd: FormData) => Promise<ActionResult>;
@@ -39,7 +39,7 @@ function todayLocal(): string {
 }
 
 /** A multi-day event counts as upcoming until its LAST day has passed. */
-function lastDay(row: CalendarEntry): string {
+function lastDay(row: CalendarEntryRow): string {
   return row.end_date ?? row.entry_date;
 }
 
@@ -47,10 +47,10 @@ function formatTime(hms: string): string {
   return new Date(`2000-01-01T${hms}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
-export function CalendarEditor({ rows, articles, categories, onCreate, onUpdate, onDelete, onImport }: Props) {
+export function CalendarEditor({ rows, categories, onCreate, onUpdate, onDelete, onImport }: Props) {
   // 'new' = blank form; { clone } = prefilled from an existing entry but
   // saved as a new one; a row = editing that row.
-  const [openFor, setOpenFor] = useState<CalendarEntry | 'new' | { clone: CalendarEntry } | null>(
+  const [openFor, setOpenFor] = useState<CalendarEntryRow | 'new' | { clone: CalendarEntryRow } | null>(
     null
   );
   const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
@@ -58,7 +58,6 @@ export function CalendarEditor({ rows, articles, categories, onCreate, onUpdate,
   const [busyId, setBusyId] = useState<number | null>(null);
   const [rowErr, setRowErr] = useState<{ id: number; msg: string } | null>(null);
   const [, startTransition] = useTransition();
-  const articlesById = new Map(articles.map((a) => [a.id, a]));
 
   const today = todayLocal();
   const upcoming = rows.filter((r) => lastDay(r) >= today);
@@ -74,7 +73,7 @@ export function CalendarEditor({ rows, articles, categories, onCreate, onUpdate,
     if (!openFor && dlg.open) dlg.close();
   }, [openFor]);
 
-  function onDeleteClick(row: CalendarEntry) {
+  function onDeleteClick(row: CalendarEntryRow) {
     if (!window.confirm(`Delete "${row.title}" (${formatDate(row.entry_date)}) from the calendar?`)) return;
     setBusyId(row.id);
     setRowErr(null);
@@ -121,7 +120,7 @@ export function CalendarEditor({ rows, articles, categories, onCreate, onUpdate,
             <th>Category</th>
             <th>Title</th>
             <th>Location</th>
-            <th>Article</th>
+            <th>News</th>
             <th style={{ textAlign: 'right' }}>Actions</th>
           </tr>
         </thead>
@@ -160,7 +159,9 @@ export function CalendarEditor({ rows, articles, categories, onCreate, onUpdate,
                 </td>
                 <td>{row.location || <span className={styles.muted}>—</span>}</td>
                 <td>
-                  {row.article_id ? articlesById.get(row.article_id)?.title ?? `#${row.article_id}` : (
+                  {row.show_on_homepage ? (
+                    <span className={styles.catTag}>{row.featured ? 'Promoted · Hero' : 'Promoted'}</span>
+                  ) : (
                     <span className={styles.muted}>—</span>
                   )}
                 </td>
@@ -218,7 +219,6 @@ export function CalendarEditor({ rows, articles, categories, onCreate, onUpdate,
             /* A clone prefills from an existing entry but must SAVE AS NEW —
                otherwise "clone" would silently overwrite the entry it copied. */
             forceNew={openFor !== 'new' && 'clone' in openFor}
-            articles={articles}
             categories={categories}
             onCreate={onCreate}
             onUpdate={onUpdate}
@@ -233,15 +233,13 @@ export function CalendarEditor({ rows, articles, categories, onCreate, onUpdate,
 function CalendarEntryForm({
   row,
   forceNew = false,
-  articles,
   categories,
   onCreate,
   onUpdate,
   onClose
 }: {
-  row: CalendarEntry | null;
+  row: CalendarEntryRow | null;
   forceNew?: boolean;
-  articles: ArticleOption[];
   categories: CalendarCategory[];
   onCreate: (fd: FormData) => Promise<ActionResult>;
   onUpdate: (fd: FormData) => Promise<ActionResult>;
@@ -261,9 +259,17 @@ function CalendarEntryForm({
   const [title, setTitle] = useState(row?.title ?? '');
   const [description, setDescription] = useState(row?.description ?? '');
   const [location, setLocation] = useState(row?.location ?? '');
-  const [articleId, setArticleId] = useState(
-    !forceNew && row?.article_id ? String(row.article_id) : ''
-  );
+  // News promotion (Plans/Event-News-Promotion.md). Kept on a clone — the
+  // point of cloning a promoted event is usually a sequel that will also be
+  // promoted; the dates were already cleared above, and promo dates follow.
+  const [showOnHomepage, setShowOnHomepage] = useState(row?.show_on_homepage ?? false);
+  const [featured, setFeatured] = useState(row?.featured ?? false);
+  const [promoStart, setPromoStart] = useState(forceNew ? '' : (row?.promo_start ?? ''));
+  const [promoEnd, setPromoEnd] = useState(forceNew ? '' : (row?.promo_end ?? ''));
+  const [excerpt, setExcerpt] = useState(row?.excerpt ?? '');
+  const [heroMedia, setHeroMedia] = useState<Media | null>(row?.hero_media ?? null);
+  const [autoArchiveAt, setAutoArchiveAt] = useState(forceNew ? '' : (row?.auto_archive_at ?? ''));
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -280,7 +286,13 @@ function CalendarEntryForm({
     fd.set('title', title);
     fd.set('description', description);
     fd.set('location', location);
-    fd.set('article_id', articleId);
+    fd.set('show_on_homepage', showOnHomepage ? '1' : '');
+    fd.set('featured', featured ? '1' : '');
+    fd.set('promo_start', promoStart);
+    fd.set('promo_end', promoEnd);
+    fd.set('excerpt', excerpt);
+    fd.set('hero_media_id', heroMedia ? String(heroMedia.id) : '');
+    fd.set('auto_archive_at', autoArchiveAt);
     startTransition(async () => {
       const res = isNew ? await onCreate(fd) : await onUpdate(fd);
       if (!res.ok) {
@@ -376,17 +388,86 @@ function CalendarEntryForm({
           />
         </label>
         <label className={styles.editField}>
-          <span className={styles.editLabel}>Linked Article (optional)</span>
-          <select className={styles.editInput} value={articleId} onChange={(e) => setArticleId(e.target.value)}>
-            <option value="">— None —</option>
-            {articles.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.title}
-              </option>
-            ))}
-          </select>
+          <span className={styles.editLabel}>Auto-archive on (optional)</span>
+          <input
+            type="date"
+            className={styles.editInput}
+            value={autoArchiveAt}
+            onChange={(e) => setAutoArchiveAt(e.target.value)}
+          />
         </label>
+
+        {/* ── News promotion — replaces the Linked Article pattern ─────────
+            The event itself appears in the homepage feed for a window; no
+            companion article. Fields hide (and clear on save) when the
+            opt-in is off. */}
+        <label className={styles.editFieldFull}>
+          <span className={styles.editLabel}>
+            <input
+              type="checkbox"
+              checked={showOnHomepage}
+              onChange={(e) => setShowOnHomepage(e.target.checked)}
+            />{' '}
+            Show in the homepage news feed
+          </span>
+        </label>
+
+        {showOnHomepage && (
+          <>
+            <label className={styles.editField}>
+              <span className={styles.editLabel}>Promote from (blank = now)</span>
+              <DatePickerField value={promoStart} onChange={setPromoStart} />
+            </label>
+            <label className={styles.editField}>
+              <span className={styles.editLabel}>Promote until (blank = event date)</span>
+              <DatePickerField value={promoEnd} onChange={setPromoEnd} />
+            </label>
+            <label className={styles.editFieldFull}>
+              <span className={styles.editLabel}>Card summary (blank = description)</span>
+              <input
+                type="text"
+                className={styles.editInput}
+                value={excerpt}
+                onChange={(e) => setExcerpt(e.target.value)}
+                maxLength={200}
+                placeholder="One sentence for the homepage card"
+              />
+            </label>
+            <label className={styles.editField}>
+              <span className={styles.editLabel}>Card image (optional)</span>
+              <button type="button" className={styles.editBtn} onClick={() => setPickerOpen(true)}>
+                {heroMedia ? 'Change image' : 'Choose image'}
+              </button>
+              {heroMedia && (
+                <button type="button" className={styles.editBtn} onClick={() => setHeroMedia(null)}>
+                  Remove
+                </button>
+              )}
+            </label>
+            <label className={styles.editField}>
+              <span className={styles.editLabel}>
+                <input
+                  type="checkbox"
+                  checked={featured}
+                  onChange={(e) => setFeatured(e.target.checked)}
+                />{' '}
+                Feature as homepage hero
+              </span>
+            </label>
+          </>
+        )}
       </div>
+
+      {pickerOpen && (
+        <MediaPicker
+          mode="single"
+          onClose={() => setPickerOpen(false)}
+          onInsert={(media) => {
+            setHeroMedia(media[0] ?? null);
+            setPickerOpen(false);
+          }}
+        />
+      )}
 
       {err && <div className={styles.editError}>{err}</div>}
 

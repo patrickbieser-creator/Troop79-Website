@@ -345,7 +345,10 @@ export interface MeetingSession {
 
 // ─── News & Events CMS ──────────────────────────────────────────────────────
 
-export type ArticleType = 'news' | 'event' | 'recognition';
+/* 'event' retired 2026-08-08 (Event→News promotion): an event is a
+   calendar_entries row promoted into the feed, never an article. Rows are
+   converted by the drop_legacy migration. */
+export type ArticleType = 'news' | 'recognition';
 export type ArticleStatus = 'draft' | 'published';
 export type AuthorRole = 'leader' | 'scout';
 
@@ -401,7 +404,16 @@ export interface CalendarEntry {
   /** "HH:MM:SS", nullable — not every entry has a known time of day. */
   start_time: string | null;
   end_time: string | null;
-  article_id: number | null;
+  /* Event→News promotion (Plans/Event-News-Promotion.md). article_id is
+     gone from this type ahead of the drop_legacy migration on purpose — the
+     compiler is what enforces the removal sweep. */
+  show_on_homepage: boolean;
+  featured: boolean;
+  promo_start: string | null;
+  promo_end: string | null;
+  excerpt: string | null;
+  hero_media_id: number | null;
+  auto_archive_at: string | null;
   /** Markdown event details shown on /events/[id]. Added by the Event Signup
    *  Phase 1 migration; null on entries authored before it. */
   details_md: string | null;
@@ -425,10 +437,7 @@ export interface Article {
   featured_order: number | null;
   archived_at: string | null;
   archived_by: string | null;
-  event_start: string | null;
-  event_end: string | null;
-  event_location: string | null;
-  event_registration_url: string | null;
+  auto_archive_at: string | null;
   created_at: string;
   updated_at: string;
 }
