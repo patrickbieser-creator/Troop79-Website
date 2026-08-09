@@ -122,6 +122,10 @@ export interface HouseholdEntry {
   payment_received: boolean;
   /** slot ids this entry currently holds. */
   claims: number[];
+  /** slot id -> the note written about doing that job, for the claims above.
+   *  Kept beside `claims` rather than folded into it so the many callers that
+   *  only care which slots are held stay unchanged. */
+  claimComments: Record<number, string>;
   answers: { question_id: number; value: string }[];
 }
 
@@ -181,7 +185,7 @@ export async function loadPartySignup(
 
   const { data: claims } = await supabase
     .from('signup_slot_claims')
-    .select('slot_id, signup_entry_id')
+    .select('slot_id, signup_entry_id, comment')
     .in(
       'signup_entry_id',
       rows.map((r) => r.id)
@@ -193,8 +197,19 @@ export async function loadPartySignup(
     .in('signup_entry_id', rows.map((r) => r.id));
 
   const byEntry = new Map<number, number[]>();
-  for (const c of (claims ?? []) as { slot_id: number; signup_entry_id: number }[]) {
+  const notesByEntry = new Map<number, Record<number, string>>();
+  for (const c of (claims ?? []) as {
+    slot_id: number;
+    signup_entry_id: number;
+    comment: string | null;
+  }[]) {
     byEntry.set(c.signup_entry_id, [...(byEntry.get(c.signup_entry_id) ?? []), c.slot_id]);
+    if (c.comment) {
+      notesByEntry.set(c.signup_entry_id, {
+        ...(notesByEntry.get(c.signup_entry_id) ?? {}),
+        [c.slot_id]: c.comment
+      });
+    }
   }
   const ansByEntry = new Map<number, { question_id: number; value: string }[]>();
   for (const a of (answerRows ?? []) as {
@@ -210,6 +225,7 @@ export async function loadPartySignup(
   return rows.map((r) => ({
     ...r,
     claims: byEntry.get(r.id) ?? [],
+    claimComments: notesByEntry.get(r.id) ?? {},
     answers: ansByEntry.get(r.id) ?? []
   }));
 }

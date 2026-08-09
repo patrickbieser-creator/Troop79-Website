@@ -189,7 +189,13 @@ export default async function EventDetailPage({
             (a.leaderCode != null && a.leaderCode === e.leader_code)
         );
         if (ai >= 0) key = `a${ai}`;
-        return key ? e.claims.map((slotId) => ({ slotId, personKey: key! })) : [];
+        return key
+          ? e.claims.map((slotId) => ({
+              slotId,
+              personKey: key!,
+              comment: e.claimComments[slotId] ?? null
+            }))
+          : [];
       })
     : [];
   // How far into the flow this visitor is — the job board renders the right
@@ -374,7 +380,6 @@ export default async function EventDetailPage({
             gateAction={familyGateAction}
             signOutAction={familySignOutAction}
             gateState={gateState}
-            sessionPersonId={sessionPersonId}
             isFamilySession={audience === 'family'}
             gateError={gateError}
             gateConfigured={familyGateConfigured()}

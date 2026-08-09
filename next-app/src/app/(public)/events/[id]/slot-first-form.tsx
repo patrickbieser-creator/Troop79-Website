@@ -42,6 +42,7 @@ interface Person {
 export interface ExistingClaim {
   slotId: number;
   personKey: string;
+  comment?: string | null;
 }
 
 export type GateState = 'anon' | 'no-household' | 'ready';
@@ -61,7 +62,6 @@ export default function SlotFirstForm({
   signOutAction,
   hasExisting,
   gateState,
-  sessionPersonId,
   isFamilySession,
   gateError,
   gateConfigured
@@ -80,9 +80,6 @@ export default function SlotFirstForm({
   signOutAction: (fd: FormData) => void;
   hasExisting: boolean;
   gateState: GateState;
-  /** people.id the session already identifies, when it identifies anyone.
-   *  Drives the one-click "Sign me up" path. */
-  sessionPersonId: number | null;
   isFamilySession: boolean;
   gateError?: string;
   gateConfigured: boolean;
@@ -123,6 +120,13 @@ export default function SlotFirstForm({
     for (const c of existingClaims) init[c.slotId] = [...(init[c.slotId] ?? []), c.personKey];
     return init;
   });
+  /** slotId -> this household's note about that job. Seeded from whatever was
+   *  saved so an edit shows the current text instead of a blank box. */
+  const [slotComments, setSlotComments] = useState<Record<number, string>>(() => {
+    const init: Record<number, string> = {};
+    for (const c of existingClaims) if (c.comment) init[c.slotId] = c.comment;
+    return init;
+  });
   const [open, setOpen] = useState<number | null>(null);
   const [fullNote, setFullNote] = useState<number | null>(null);
   const [guests, setGuests] = useState(0);
@@ -138,15 +142,6 @@ export default function SlotFirstForm({
   const eligible = (p: Person, s: SignupSlot) =>
     s.eligibility === 'both' ||
     (s.eligibility === 'scouts' ? p.kind === 'scout' : p.kind === 'adult');
-
-  /** The signed-in person's own entry in `people`, when the session identifies
-   *  someone AND that someone is in the household currently being signed up.
-   *  Null when a leader has switched to another family — "Sign me up" would be
-   *  a lie there, since the claim would land on the family they're helping. */
-  const me = useMemo(
-    () => (sessionPersonId == null ? null : (people.find((p) => p.personId === sessionPersonId) ?? null)),
-    [people, sessionPersonId]
-  );
 
   const toggle = (slotId: number, personKey: string) =>
     setClaims((prev) => {
@@ -213,15 +208,33 @@ export default function SlotFirstForm({
     return byPerson;
   }, [claims]);
 
+  /* Searches SCOUTS AND ADULTS — the same rule household-picker.tsx has always
+     used, which this board never picked up. Matching only scouts meant an
+     adult with no active scout (a committee member, a merit badge counselor,
+     the parent of a scout who aged out) could not reach the form at all: they
+     are a household of one with `scouts: []`, so they contributed no rows to
+     the match list and the board told them "No scout by that name". They are
+     exactly who volunteers for a fundraiser. */
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (q.length < 2) return [];
     return households
-      .flatMap((h) => h.scouts.map((s) => ({ household: h, scout: s })))
-      .filter(({ scout, household: hh }) =>
-        `${scout.displayName} ${hh.label}`.toLowerCase().includes(q)
-      )
-      .slice(0, 6);
+      .flatMap((h) => [
+        ...h.scouts.map((s) => ({
+          household: h,
+          rowKey: `s:${s.id}`,
+          name: s.displayName,
+          isScout: true
+        })),
+        ...h.adults.map((a) => ({
+          household: h,
+          rowKey: `a:${a.key}`,
+          name: a.name,
+          isScout: false
+        }))
+      ])
+      .filter((p) => `${p.name} ${p.household.label}`.toLowerCase().includes(q))
+      .slice(0, 8);
   }, [query, households]);
 
   /** What opens under a job row, depending on how far in the visitor is. */
@@ -269,37 +282,46 @@ export default function SlotFirstForm({
     if (gateState === 'no-household') {
       return (
         <div className={styles.memberPick}>
-          <p className={styles.pickPrompt}>Which family is signing up for “{sl.label}”?</p>
+          <p className={styles.pickPrompt}>Who’s signing up for “{sl.label}”?</p>
           <input
             type="search"
             className={styles.gateInput}
-            placeholder="Start typing your scout’s name…"
+            placeholder="Your name, or your scout’s name…"
             autoComplete="off"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            aria-label="Your scout’s name"
+            aria-label="Your name, or your scout’s name"
           />
           {query.trim().length >= 2 && (
             <ul className={styles.pickerResults}>
               {matches.length === 0 && (
                 <li className={styles.pickerNone}>
-                  No scout by that name — check the spelling, or ask a leader.
+                  Nobody by that name — check the spelling, or ask a leader to add you.
                 </li>
               )}
-              {matches.map(({ household: hh, scout }) => (
-                <li key={scout.id}>
+              {matches.map((p) => (
+                <li key={p.rowKey}>
                   <button
                     type="button"
                     className={styles.pickerBtn}
                     onClick={() =>
-                      router.push(`/events/${eventId}?household=${encodeURIComponent(hh.key)}`)
+                      router.push(
+                        `/events/${eventId}?household=${encodeURIComponent(p.household.key)}`
+                      )
                     }
                   >
-                    <span className={styles.pickerName}>{scout.displayName}</span>
+                    <span className={styles.pickerName}>{p.name}</span>
                     <span className={styles.pickerMeta}>
-                      {hh.scouts.length > 1
-                        ? `${hh.label} household · ${hh.scouts.length} scouts`
-                        : `${hh.label} household`}
+                      {/* A household of one has nothing useful to say about
+                          itself — "the Jane Smith household · 0 scouts" reads
+                          as a bug to the person it describes. */}
+                      {p.household.scouts.length === 0
+                        ? p.isScout
+                          ? 'Scout'
+                          : 'Adult — no scout in the troop'
+                        : p.household.scouts.length > 1
+                          ? `${p.household.label} household · ${p.household.scouts.length} scouts`
+                          : `${p.household.label} household`}
                     </span>
                   </button>
                 </li>
@@ -426,28 +448,32 @@ export default function SlotFirstForm({
                     </span>
                   </button>
 
-                  {/* One click to claim, for a visitor the session already
-                      identifies. Sibling of the row trigger, not inside it —
-                      the trigger is itself a <button> and nesting is invalid.
-                      Hidden once they hold the job (the claimer chip carries
-                      the × to undo) and when they aren't eligible for it. */}
-                  {ready && me && !mine.includes(me.key) && !full && eligible(me, sl) && (
-                    <div className={styles.meRow}>
-                      <button
-                        type="button"
-                        className={styles.meBtn}
-                        onClick={() => toggle(sl.id, me.key)}
-                      >
-                        Sign me up — {me.name}
-                      </button>
-                    </div>
-                  )}
-
                   {fullNote === sl.id && (
                     <p className={styles.fullNote} role="status">
                       <strong>This job is full.</strong> All {sl.needed} spots are taken — pick
                       another job, or ask a leader if you think there’s room.
                     </p>
+                  )}
+
+                  {/* Only once somebody actually holds the job — an empty note
+                      box on all 40 jobs of a rummage sale would be noise. */}
+                  {ready && mine.length > 0 && (
+                    <div className={styles.noteRow}>
+                      <label className={styles.noteLabel} htmlFor={`note-${sl.id}`}>
+                        Anything the organizers should know? (optional)
+                      </label>
+                      <input
+                        id={`note-${sl.id}`}
+                        type="text"
+                        maxLength={300}
+                        className={styles.noteInput}
+                        placeholder="e.g. I have a 6ft table · can only stay until noon"
+                        value={slotComments[sl.id] ?? ''}
+                        onChange={(e) =>
+                          setSlotComments((v) => ({ ...v, [sl.id]: e.target.value }))
+                        }
+                      />
+                    </div>
                   )}
 
                   {mine.length > 0 && (
@@ -550,6 +576,7 @@ export default function SlotFirstForm({
       <input type="hidden" name="householdKey" value={household!.key} />
       <input type="hidden" name="entries" value={JSON.stringify(entries)} />
       <input type="hidden" name="slotClaims" value={JSON.stringify(claimsForSubmit)} />
+      <input type="hidden" name="slotComments" value={JSON.stringify(slotComments)} />
       <input type="hidden" name="next" value={`/events/${eventId}`} />
 
       {statusBar(false)}

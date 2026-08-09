@@ -38,7 +38,10 @@ export interface RosterRow {
   paymentReceived: boolean;
   notes: string | null;
   household: string;
+  /** Pure job labels — the coverage tally matches against these. */
   claims: string[];
+  /** Job labels with each claim's note appended. Display and CSV only. */
+  claimsDisplay: string[];
   answers: string[];
 }
 
@@ -69,7 +72,7 @@ async function load(signupId: number) {
     supabase.from('signup_entries').select('*').eq('event_signup_id', sig.id),
     supabase.from('event_prices').select('*').eq('event_signup_id', sig.id),
     supabase.from('signup_slots').select('*').eq('event_signup_id', sig.id).order('sort'),
-    supabase.from('signup_slot_claims').select('slot_id, signup_entry_id'),
+    supabase.from('signup_slot_claims').select('slot_id, signup_entry_id, comment'),
     supabase.from('signup_answers').select('signup_entry_id, question_id, value'),
     supabase.from('signup_questions').select('id, prompt').eq('event_signup_id', sig.id),
     supabase.from('scouts').select('id, display_name, active, household_id'),
@@ -97,11 +100,24 @@ async function load(signupId: number) {
   );
   const hhById = new Map(((households ?? []) as { id: number; label: string }[]).map((h) => [h.id, h.label]));
   const slotById = new Map(((slots ?? []) as { id: number; label: string }[]).map((s) => [s.id, s.label]));
+  // Two maps on purpose. `claimsByEntry` stays PURE job labels because the
+  // coverage count below matches them exactly (`r.claims.includes(sl.label)`)
+  // — folding the note into the label there would silently zero out every
+  // "covered" figure on the page. `claimsDisplayByEntry` is the one rendered.
   const claimsByEntry = new Map<number, string[]>();
-  for (const c of (claims ?? []) as { slot_id: number; signup_entry_id: number }[]) {
+  const claimsDisplayByEntry = new Map<number, string[]>();
+  for (const c of (claims ?? []) as {
+    slot_id: number;
+    signup_entry_id: number;
+    comment: string | null;
+  }[]) {
     const label = slotById.get(c.slot_id);
     if (!label) continue;
     claimsByEntry.set(c.signup_entry_id, [...(claimsByEntry.get(c.signup_entry_id) ?? []), label]);
+    claimsDisplayByEntry.set(c.signup_entry_id, [
+      ...(claimsDisplayByEntry.get(c.signup_entry_id) ?? []),
+      c.comment ? `${label} — ${c.comment}` : label
+    ]);
   }
 
   const qLabel = new Map(
@@ -151,6 +167,7 @@ async function load(signupId: number) {
       notes: (e.notes as string) ?? null,
       household: e.household_id ? (hhById.get(Number(e.household_id)) ?? '—') : '—',
       claims: claimsByEntry.get(Number(e.id)) ?? [],
+      claimsDisplay: claimsDisplayByEntry.get(Number(e.id)) ?? [],
       answers: ansByEntry.get(Number(e.id)) ?? []
     };
   });

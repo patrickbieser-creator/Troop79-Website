@@ -43,7 +43,7 @@ export function RosterTable({
       r.days ?? '', r.owed, r.guests, r.guestNote ?? '',
       r.drivesOut ? (r.seatsOut ?? '') : '', r.drivesBack ? (r.seatsBack ?? '') : '',
       r.slipReceived ? 'Y' : 'N', r.paymentReceived ? 'Y' : 'N',
-      r.claims.join(' | '), r.answers.join(' | '), r.notes ?? ''
+      r.claimsDisplay.join(' | '), r.answers.join(' | '), r.notes ?? ''
     ]);
     const csv = [head, ...body]
       .map((line) => line.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))
@@ -123,7 +123,7 @@ export function RosterTable({
                       .join(' · ')
                   : '—'}
               </td>
-              <td>{r.claims.join(', ') || '—'}</td>
+              <td>{r.claimsDisplay.join(', ') || '—'}</td>
               {showSlip && (
                 <td>
                   <input

@@ -76,6 +76,7 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
   const householdKey = String(formData.get('householdKey') ?? '');
   const entriesRaw = String(formData.get('entries') ?? '[]');
   const slotClaimsRaw = String(formData.get('slotClaims') ?? '{}');
+  const slotCommentsRaw = String(formData.get('slotComments') ?? '{}');
   const back = `/events/${eventId}?household=${encodeURIComponent(householdKey)}`;
 
   // requireFamilyAccess() now also rejects a revoked identity session (qa-lead
@@ -90,9 +91,15 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
 
   let entries: unknown[];
   let slotClaims: Record<string, string[]>;
+  // slotId -> the household's note about that job. One note per job rather
+  // than per person: the storage grain is (slot, entry) so each claimant's row
+  // gets its own copy, but two people from one family doing the same job share
+  // one thing to say about it, and a box per person-chip would be noise.
+  let slotComments: Record<string, string>;
   try {
     entries = JSON.parse(entriesRaw);
     slotClaims = JSON.parse(slotClaimsRaw);
+    slotComments = JSON.parse(slotCommentsRaw);
   } catch {
     redirect(`${back}&err=${encodeURIComponent('Could not read the form. Please try again.')}`);
   }
@@ -178,9 +185,14 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
     const entryId = byKey.get(personKey);
     if (!entryId) continue;
     for (const slotId of slotIds) {
+      const note = slotComments?.[String(slotId)];
       const { error: claimErr } = await supabase.rpc('claim_signup_slot', {
         p_slot_id: Number(slotId),
-        p_signup_entry_id: entryId
+        p_signup_entry_id: entryId,
+        // Length-capped here as well as in the input: this action is reachable
+        // by anyone who can craft a POST, same reasoning as the eligibility
+        // checks living in the RPC rather than the UI.
+        p_comment: typeof note === 'string' ? note.trim().slice(0, 300) || null : null
       });
       if (claimErr) redirect(`${back}&err=${encodeURIComponent(friendlyError(claimErr.message))}`);
     }
