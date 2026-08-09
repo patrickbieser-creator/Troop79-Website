@@ -27,6 +27,7 @@ interface Props {
 export function MeetingsList({ rows, attendance, defaultDate, onCreate, onDelete }: Props) {
   const router = useRouter();
   const [date, setDate] = useState(defaultDate);
+  const [creating, setCreating] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -149,14 +150,41 @@ export function MeetingsList({ rows, attendance, defaultDate, onCreate, onDelete
         >
           Date {dir === 'desc' ? '↓' : '↑'}
         </button>
-        <label className={styles.dateFieldLabel}>
-          <span className={styles.srOnly}>New meeting date</span>
-          <DatePickerField className={styles.dateField} value={date} onChange={setDate} />
-        </label>
-        <button type="button" className={styles.addBtn} onClick={create} disabled={isPending || !date}>
-          {isPending ? 'Creating…' : '+ New Meeting'}
+        <button
+          type="button"
+          className={styles.addBtn}
+          onClick={() => setCreating((v) => !v)}
+          aria-expanded={creating}
+        >
+          + New Meeting
         </button>
       </div>
+
+      {/* The date used to sit in the toolbar above, between the year filter,
+          the status filter and the sort toggle, with only a screen-reader
+          label to say what it was for. It read as one more filter — so a
+          leader would leave it on its default (the next Sunday), create the
+          meeting, and only then discover it had been dated for them. It now
+          appears only when creating, under a visible label. */}
+      {creating && (
+        <div className={styles.createRow}>
+          <label className={styles.createField}>
+            <span className={styles.createLabel}>Date for the new meeting</span>
+            <DatePickerField className={styles.dateField} value={date} onChange={setDate} />
+          </label>
+          <button
+            type="button"
+            className={styles.addBtn}
+            onClick={create}
+            disabled={isPending || !date}
+          >
+            {isPending ? 'Creating…' : 'Create meeting'}
+          </button>
+          <button type="button" className={styles.editBtn} onClick={() => setCreating(false)}>
+            Cancel
+          </button>
+        </div>
+      )}
       {err && <div className={styles.editError}>{err}</div>}
 
       <table className={styles.table}>

@@ -26,6 +26,11 @@
    (the component has no id/aria-label prop to hook a standalone <label> to);
    display: contents keeps it out of the .toolbar flex layout entirely. */
 .dateFieldLabel { display: contents; }
+/* Create-a-meeting row, revealed by "+ New Meeting". Separated from the
+   filter toolbar on purpose — see the comment at its render site. */
+.createRow { display: flex; align-items: flex-end; justify-content: flex-end; gap: 10px; margin-bottom: 12px; padding: 11px 13px; background: #fff; border: 1px solid var(--admin-gray-200, #e4e4e4); border-radius: 5px; }
+.createField { display: flex; flex-direction: column; gap: 4px; }
+.createLabel { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--admin-gray-600, #666); }
 .srOnly {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
