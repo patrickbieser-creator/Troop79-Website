@@ -14,7 +14,7 @@ import { ArticleBody } from '@/lib/article-body/ArticleBody';
 import { gateAudience } from '@/lib/family-access';
 import { loadNarrative, loadPublishedFor, loadScoutRankProgress } from '@/lib/library-data';
 import { rankReqKey, withViewScout } from '@/lib/library';
-import { resolveLibraryViewer } from '@/lib/library-viewer';
+import { resolveLibraryViewer, viewerIsLeader } from '@/lib/library-viewer';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import { ResourceCard } from '../../../_components/resource-card';
 import { ScoutSwitcher } from '../../../_components/scout-switcher';
@@ -52,7 +52,7 @@ export default async function LibraryRequirementPage({
       .eq('rank_id', rankId)
       .order('sort_order'),
     loadNarrative(createAdminClient(), 'rank_req', targetKey),
-    loadPublishedFor(createAdminClient(), 'rank_req', targetKey),
+    loadPublishedFor(createAdminClient(), 'rank_req', targetKey, await viewerIsLeader()),
     viewer.kind === 'scout' ? loadScoutRankProgress(supabase, viewer.scoutId) : Promise.resolve(null)
   ]);
   if (!rank) notFound();

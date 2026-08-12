@@ -20,7 +20,7 @@ import {
   type SearchHit
 } from '@/lib/library-data';
 import { rankReqKey, splitRankReqKey, withViewScout } from '@/lib/library';
-import { resolveLibraryViewer, type LibraryViewer } from '@/lib/library-viewer';
+import { resolveLibraryViewer, viewerIsLeader, type LibraryViewer } from '@/lib/library-viewer';
 import { ResourceCard, type AlsoOnLink } from './_components/resource-card';
 import { ScoutSwitcher } from './_components/scout-switcher';
 import styles from './library.module.css';
@@ -66,7 +66,7 @@ async function loadHome(viewer: LibraryViewer): Promise<HomeData> {
       .order('sort_order'),
     supabase.from('merit_badges').select('*').order('name'),
     loadTopics(supabase),
-    publishedCountsByTarget(supabase)
+    publishedCountsByTarget(supabase, await viewerIsLeader())
   ]);
 
   const reqsByRank = new Map<string, TopReq[]>();
@@ -105,7 +105,9 @@ export default async function LibraryHomePage({
   const viewer = await resolveLibraryViewer(createAdminClient(), viewScout);
   const data = await loadHome(viewer);
   const query = (q ?? '').trim();
-  const hits = query ? await searchPublishedResources(createAdminClient(), query) : null;
+  const hits = query
+    ? await searchPublishedResources(createAdminClient(), query, await viewerIsLeader())
+    : null;
 
   return (
     <>

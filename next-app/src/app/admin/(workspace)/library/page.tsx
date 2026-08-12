@@ -40,6 +40,7 @@ import {
   approveResourceAction,
   approveSubmissionAction,
   archiveResourceAction,
+  createResourceAction,
   createTopicAction,
   declineResourceAction,
   removePlacementAction,
@@ -49,16 +50,20 @@ import {
   saveResourceAction,
   togglePinAction,
   toggleTopicRetiredAction,
-  updateTopicAction
+  updateTopicAction,
+  uploadResourceDocument
 } from './actions';
+import { ResourceEntryForm, type TargetOptionGroup } from './resource-entry-form';
+import { QuickAddResource } from './quick-add-resource';
 import styles from './library.module.css';
 
 export const metadata = {
   title: 'Resource Library — Troop 79 Admin'
 };
 
-type Tab = 'queue' | 'published' | 'archived' | 'topics' | 'narratives' | 'proof';
+type Tab = 'add' | 'queue' | 'published' | 'archived' | 'topics' | 'narratives' | 'proof';
 const TABS: { key: Tab; label: string }[] = [
+  { key: 'add', label: 'Add Resource' },
   { key: 'queue', label: 'Queue' },
   { key: 'proof', label: 'Proof Queue' },
   { key: 'published', label: 'Published' },
@@ -66,6 +71,37 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'topics', label: 'Topics & Shelves' },
   { key: 'narratives', label: 'Narratives' }
 ];
+
+/**
+ * The placement picker's options, flattened for the client entry form
+ * (Plans/Library-Admin-Resource-Entry.md). Built from the same catalog
+ * TargetSelect renders from, so the two can't offer different targets or
+ * disagree about composite key shape ('{rankId}-{code}', never a bare code).
+ */
+function targetOptionGroups(catalog: Catalog): TargetOptionGroup[] {
+  const groups: TargetOptionGroup[] = [
+    {
+      group: 'Topic shelves',
+      options: catalog.topics
+        .filter((t) => !t.retired_at)
+        .map((t) => ({ value: `topic:${t.slug}`, label: t.title }))
+    }
+  ];
+  for (const rank of catalog.ranks) {
+    groups.push({
+      group: `${rank.display_name} requirements`,
+      options: (catalog.rankReqs.get(rank.id) ?? []).map((req) => ({
+        value: `rank_req:${rankReqKey(rank.id, req.code)}`,
+        label: `${rank.display_name} ${req.code} — ${req.label.slice(0, 50)}`
+      }))
+    });
+  }
+  groups.push({
+    group: 'Merit badges (whole badge)',
+    options: catalog.mbs.map((mb) => ({ value: `mb:${mb.id}`, label: mb.name }))
+  });
+  return groups.filter((g) => g.options.length > 0);
+}
 
 /** One submission plus everything the review row needs, pre-resolved
  *  server-side so the row itself is a plain render. */
@@ -303,6 +339,14 @@ export default async function AdminLibraryPage({
         })}
       </nav>
 
+      {tab === 'add' && (
+        <ResourceEntryForm
+          targetGroups={targetOptionGroups(data.catalog)}
+          onCreate={createResourceAction}
+          onUploadDocument={uploadResourceDocument}
+        />
+      )}
+
       {tab === 'queue' &&
         (pending.length === 0 ? (
           <p className={styles.emptyTab}>The queue is empty — all caught up.</p>
@@ -312,9 +356,21 @@ export default async function AdminLibraryPage({
           ))
         ))}
 
+      {tab === 'published' && (
+        <div className={styles.quickAddRow}>
+          <QuickAddResource
+            targetGroups={targetOptionGroups(data.catalog)}
+            onCreate={createResourceAction}
+            onUploadDocument={uploadResourceDocument}
+          />
+        </div>
+      )}
+
       {tab === 'published' &&
         (published.length === 0 ? (
-          <p className={styles.emptyTab}>Nothing published yet — approve something from the queue.</p>
+          <p className={styles.emptyTab}>
+            Nothing published yet — add one above, or approve something from the queue.
+          </p>
         ) : sp.group ? (
           <>
             <Link className={styles.groupBack} href="/admin/library?tab=published">

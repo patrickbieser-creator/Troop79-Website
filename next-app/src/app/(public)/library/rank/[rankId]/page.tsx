@@ -8,7 +8,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import type { Rank } from '@/lib/supabase/types';
 import { publishedCountsByTarget, loadScoutRankProgress } from '@/lib/library-data';
 import { rankReqKey, withViewScout } from '@/lib/library';
-import { resolveLibraryViewer } from '@/lib/library-viewer';
+import { resolveLibraryViewer, viewerIsLeader } from '@/lib/library-viewer';
 import { ScoutSwitcher } from '../../_components/scout-switcher';
 import styles from '../../library.module.css';
 
@@ -34,7 +34,7 @@ export default async function LibraryRankPage({
       .eq('rank_id', rankId)
       .is('parent_id', null)
       .order('sort_order'),
-    publishedCountsByTarget(createAdminClient()),
+    publishedCountsByTarget(createAdminClient(), await viewerIsLeader()),
     viewer.kind === 'scout' ? loadScoutRankProgress(supabase, viewer.scoutId) : Promise.resolve(null)
   ]);
   if (!rank) notFound();

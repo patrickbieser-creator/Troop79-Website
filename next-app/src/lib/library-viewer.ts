@@ -136,3 +136,18 @@ export async function resolveLibraryViewer(
     isProxy: false
   };
 }
+
+/**
+ * True when the current session is an adult LEADER admin login — the gate for
+ * `visibility='leaders'` resources (Plans/Library-Admin-Resource-Entry.md).
+ *
+ * Deliberately not `role !== null`: the scout admin login is a shared-password
+ * role with no per-person identity, and a leaders-only resource is exactly the
+ * material it must not reach. Family and verified-household sessions are not
+ * leaders either — this is the narrowest of the session checks in this file.
+ */
+export async function viewerIsLeader(): Promise<boolean> {
+  const jar = await cookies();
+  const session = await verifySession(jar.get(LEADER_COOKIE.name)?.value);
+  return session?.role === 'leader';
+}

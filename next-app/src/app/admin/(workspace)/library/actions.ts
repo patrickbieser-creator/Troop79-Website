@@ -13,8 +13,16 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireRole } from '@/lib/require-role';
 import { createAdminClient } from '@/lib/supabase/server';
-import { approveResource, approveSubmission, declineResource, returnSubmission } from '@/lib/library-data';
+import {
+  approveResource,
+  approveSubmission,
+  createResource,
+  declineResource,
+  returnSubmission
+} from '@/lib/library-data';
 import { detectHost, type LibraryTargetKind, type ResourceKind } from '@/lib/library';
+import { DOCUMENT_UPLOAD_TYPES, checkUpload } from '@/lib/upload-limits';
+import { uploadToBunny } from '@/lib/bunny-storage';
 import { slugify } from '@/lib/slugify';
 
 const ADMIN_PATH = '/admin/library';
@@ -319,4 +327,89 @@ export async function saveNarrativeAction(formData: FormData): Promise<void> {
   }
   revalidatePath(ADMIN_PATH);
   redirect(`${ADMIN_PATH}?tab=narratives&target=${encodeURIComponent(target)}&saved=1`);
+}
+
+// ── Admin resource entry (Plans/Library-Admin-Resource-Entry.md) ───────────
+//
+// Until this landed, a library_resources row could only be born on the PUBLIC
+// submit form or the sparkler import script, so stocking the library meant
+// submitting as a family and approving your own submission — and post,
+// document and image kinds were unreachable entirely.
+
+/** Parses the repeated `placement` fields ('kind:key') the entry form sends. */
+function readPlacements(formData: FormData): { targetKind: LibraryTargetKind; targetKey: string }[] {
+  const out: { targetKind: LibraryTargetKind; targetKey: string }[] = [];
+  const seen = new Set<string>();
+  for (const raw of formData.getAll('placement')) {
+    const value = String(raw).trim();
+    const sep = value.indexOf(':');
+    if (sep <= 0) continue;
+    const kind = value.slice(0, sep);
+    const key = value.slice(sep + 1);
+    if (!TARGET_KINDS.has(kind) || !key) continue;
+    // The unique index on (resource_id, target_kind, target_key) would reject
+    // the whole insert on a repeat; dedupe here so picking the same shelf
+    // twice is a no-op rather than an error.
+    if (seen.has(value)) continue;
+    seen.add(value);
+    out.push({ targetKind: kind as LibraryTargetKind, targetKey: key });
+  }
+  return out;
+}
+
+/**
+ * Creates a resource from the Add Resource form. Publishes immediately unless
+ * the draft button was used (Patrick, 2026-08-12) — the queue is for reviewing
+ * what families send in, not for the webmaster to approve their own entry.
+ */
+export async function createResourceAction(formData: FormData): Promise<void> {
+  const reviewer = await guard();
+  const kindRaw = String(formData.get('kind') ?? 'link');
+  const kind: ResourceKind = RESOURCE_KINDS.has(kindRaw) ? (kindRaw as ResourceKind) : 'link';
+  const publish = String(formData.get('intent') ?? 'publish') !== 'draft';
+  const visibilityRaw = String(formData.get('visibility') ?? 'public');
+  const visibility = visibilityRaw === 'leaders' ? 'leaders' : 'public';
+
+  const { error } = await createResource(
+    createAdminClient(),
+    {
+      title: String(formData.get('title') ?? ''),
+      kind,
+      url: String(formData.get('url') ?? '') || null,
+      bodyMd: String(formData.get('body_md') ?? '') || null,
+      blurb: String(formData.get('blurb') ?? '') || null,
+      thumbnailUrl: String(formData.get('thumbnail_url') ?? '') || null,
+      attributionLabel: String(formData.get('attribution_label') ?? '') || null,
+      visibility,
+      publish,
+      placements: readPlacements(formData)
+    },
+    reviewer
+  );
+  if (error) fail('add', error);
+
+  // Land on the tab where the new row now lives, so it's visible straight away.
+  refresh(publish ? 'published' : 'queue');
+}
+
+/**
+ * Uploads a PDF for a document resource and returns its CDN URL for the form
+ * to place in the url field.
+ *
+ * No `media` row on purpose: a PDF there would surface in the image picker
+ * News, photo albums and hero selection share, where every row is assumed to
+ * be a displayable image. The library resource IS this file's index record.
+ */
+export async function uploadResourceDocument(
+  formData: FormData
+): Promise<{ ok: boolean; error?: string; url?: string; filename?: string }> {
+  await guard();
+  const file = formData.get('file');
+  if (!(file instanceof File)) return { ok: false, error: 'No file provided.' };
+  const problem = checkUpload(file, DOCUMENT_UPLOAD_TYPES);
+  if (problem) return { ok: false, error: problem };
+
+  const uploaded = await uploadToBunny(file);
+  if (!uploaded.ok) return { ok: false, error: uploaded.error };
+  return { ok: true, url: uploaded.cdnUrl, filename: file.name };
 }

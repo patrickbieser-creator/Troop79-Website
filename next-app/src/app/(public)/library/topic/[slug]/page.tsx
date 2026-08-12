@@ -8,6 +8,7 @@ import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { LibraryTopic } from '@/lib/supabase/types';
 import { loadPublishedFor } from '@/lib/library-data';
+import { viewerIsLeader } from '@/lib/library-viewer';
 import { ResourceCard } from '../../_components/resource-card';
 import styles from '../../library.module.css';
 
@@ -20,10 +21,11 @@ export default async function LibraryTopicPage({
 }) {
   const { slug } = await params;
   const supabase = createAdminClient();
+  const isLeader = await viewerIsLeader();
 
   const [{ data: topic }, resources] = await Promise.all([
     supabase.from('library_topics').select('*').eq('slug', slug).maybeSingle(),
-    loadPublishedFor(createAdminClient(), 'topic', slug)
+    loadPublishedFor(createAdminClient(), 'topic', slug, isLeader)
   ]);
   if (!topic) notFound();
   const shelf = topic as LibraryTopic;

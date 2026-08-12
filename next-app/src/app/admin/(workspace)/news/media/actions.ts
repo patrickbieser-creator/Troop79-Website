@@ -3,43 +3,16 @@
 import { requireRole } from '@/lib/require-role';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { Media } from '@/lib/supabase/types';
+import { IMAGE_UPLOAD_TYPES, checkUpload } from '@/lib/upload-limits';
+import { BUNNY_NOT_CONFIGURED, bunnyConfig, uploadToBunny } from '@/lib/bunny-storage';
 
-const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
-const MAX_BYTES = 12 * 1024 * 1024; // 12MB — leaves headroom under the 15mb server-action body limit
+/* Upload rules live in lib/upload-limits.ts and the Bunny plumbing in
+   lib/bunny-storage.ts — shared with the Resource Library's document upload so
+   the two paths can't drift on size handling or error wording. Images keep
+   their own allow-list; SYNCABLE_EXTENSIONS stays image-only on purpose, since
+   the Utilities sync sweeps the CDN into `media` and must not pull in library
+   PDFs. */
 const SYNCABLE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
-
-function sanitizeFilename(name: string): string {
-  const base = name.trim().toLowerCase().replace(/[^a-z0-9.\-]+/g, '-');
-  return base || 'upload';
-}
-
-/**
- * Finds an unused path at the Bunny Storage root for this filename's slug,
- * appending -2, -3, ... on a name clash so a same-named upload never
- * silently overwrites an existing file. Root-level + slugged (rather than a
- * uuid-prefixed articles/ subfolder) keeps the CDN text-searchable.
- */
-async function findAvailablePath(
-  storageHost: string,
-  zone: string,
-  apiKey: string,
-  filename: string
-): Promise<string> {
-  const sanitized = sanitizeFilename(filename);
-  const dot = sanitized.lastIndexOf('.');
-  const stem = dot > 0 ? sanitized.slice(0, dot) : sanitized;
-  const ext = dot > 0 ? sanitized.slice(dot) : '';
-
-  for (let n = 0; n < 50; n++) {
-    const candidate = n === 0 ? sanitized : `${stem}-${n + 1}${ext}`;
-    const res = await fetch(`https://${storageHost}/${zone}/${candidate}`, {
-      method: 'HEAD',
-      headers: { AccessKey: apiKey }
-    });
-    if (res.status === 404) return candidate;
-  }
-  return `${stem}-${crypto.randomUUID().slice(0, 8)}${ext}`;
-}
 
 /** Derives a starter alt text from a filename (e.g. "bwca-crew_after six days.jpg" -> "Bwca crew after six days"). */
 function filenameToAltText(path: string): string {
@@ -60,29 +33,10 @@ interface UploadResult {
 export async function uploadMedia(formData: FormData): Promise<UploadResult> {
   const session = await requireRole(['leader', 'scout']);
 
-  const zone = process.env.BUNNY_STORAGE_ZONE;
-  const apiKey = process.env.BUNNY_STORAGE_API_KEY;
-  const pullZoneHost = process.env.BUNNY_PULL_ZONE_HOSTNAME;
-  // Storage Zones only accept requests at their own region's endpoint (e.g.
-  // ny.storage.bunnycdn.com) — the default host below only works for zones
-  // whose primary region is the default (Falkenstein, DE).
-  const storageHost = process.env.BUNNY_STORAGE_HOSTNAME || 'storage.bunnycdn.com';
-  if (!zone || !apiKey || !pullZoneHost) {
-    return {
-      ok: false,
-      error:
-        'Bunny CDN is not configured yet. Set BUNNY_STORAGE_ZONE, BUNNY_STORAGE_API_KEY, and BUNNY_PULL_ZONE_HOSTNAME in .env.local.'
-    };
-  }
-
   const file = formData.get('file');
   if (!(file instanceof File)) return { ok: false, error: 'No file provided.' };
-  if (!ALLOWED_TYPES.has(file.type)) {
-    return { ok: false, error: `Unsupported file type: ${file.type || 'unknown'}. Use JPEG, PNG, WEBP, or GIF.` };
-  }
-  if (file.size > MAX_BYTES) {
-    return { ok: false, error: `File is too large (${Math.round(file.size / 1024 / 1024)}MB). Max is 12MB.` };
-  }
+  const problem = checkUpload(file, IMAGE_UPLOAD_TYPES);
+  if (problem) return { ok: false, error: problem };
 
   const altText = String(formData.get('altText') ?? '').trim();
   if (!altText) return { ok: false, error: 'Alt text is required for accessibility.' };
@@ -90,19 +44,10 @@ export async function uploadMedia(formData: FormData): Promise<UploadResult> {
   const width = Number(formData.get('width')) || null;
   const height = Number(formData.get('height')) || null;
 
-  const path = await findAvailablePath(storageHost, zone, apiKey, file.name);
-  const bytes = new Uint8Array(await file.arrayBuffer());
+  const uploaded = await uploadToBunny(file);
+  if (!uploaded.ok) return { ok: false, error: uploaded.error };
+  const { path, cdnUrl } = uploaded;
 
-  const uploadRes = await fetch(`https://${storageHost}/${zone}/${path}`, {
-    method: 'PUT',
-    headers: { AccessKey: apiKey, 'Content-Type': 'application/octet-stream' },
-    body: bytes
-  });
-  if (!uploadRes.ok) {
-    return { ok: false, error: `Bunny upload failed (${uploadRes.status}).` };
-  }
-
-  const cdnUrl = `https://${pullZoneHost}/${path}`;
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('media')
@@ -209,13 +154,9 @@ interface SyncResult {
 export async function syncBunnyLibrary(): Promise<SyncResult> {
   const session = await requireRole(['leader', 'scout']);
 
-  const zone = process.env.BUNNY_STORAGE_ZONE;
-  const apiKey = process.env.BUNNY_STORAGE_API_KEY;
-  const pullZoneHost = process.env.BUNNY_PULL_ZONE_HOSTNAME;
-  const storageHost = process.env.BUNNY_STORAGE_HOSTNAME || 'storage.bunnycdn.com';
-  if (!zone || !apiKey || !pullZoneHost) {
-    return { ok: false, error: 'Bunny CDN is not configured yet. See .env.example.' };
-  }
+  const cfg = bunnyConfig();
+  if (!cfg) return { ok: false, error: BUNNY_NOT_CONFIGURED };
+  const { zone, apiKey, pullZoneHost, storageHost } = cfg;
 
   let allPaths: string[];
   try {

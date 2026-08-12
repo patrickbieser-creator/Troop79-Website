@@ -497,6 +497,55 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.32.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.32.0</span>
+        <span class="release-date">August 12, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Adding library resources from the admin</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              The Resource Library can now be stocked from <strong>Resource Library &rarr; Add
+              Resource</strong>. Until now the only way in was the family-facing suggestion form,
+              which meant the webmaster had to submit a link as if they were a family and then
+              approve their own submission &mdash; and three kinds of resource had no way in at
+              all.
+            </span>
+          </li>
+          <li>
+            <span>
+              All five kinds are enterable: a <strong>link</strong> or <strong>video</strong> by
+              URL, an <strong>image</strong> from the media library, a <strong>document</strong> by
+              uploading a PDF or pasting a link, and a <strong>troop post</strong> written in
+              markdown with a live preview beside it. Anything entered here publishes on save
+              &mdash; the review queue keeps doing what it was for, which is reviewing what
+              families and scouts send in. &ldquo;Save as draft&rdquo; parks an unfinished one.
+            </span>
+          </li>
+          <li>
+            <span>
+              Where a resource appears is chosen while you enter it &mdash; any number of topic
+              shelves, rank requirements, or merit badges &mdash; so it lands on its pages in one
+              pass. There is also a <strong>+ Add Resource</strong> button on the Published tab for
+              when you are already looking at a shelf.
+            </span>
+          </li>
+          <li>
+            <span>
+              New: a resource can be marked <strong>leaders only</strong>. Those are now hidden
+              from every family-facing page and from search &mdash; the setting existed in the
+              database from the start but nothing had ever acted on it, so it is enforced as of
+              this release.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.31.0 -->
     <div class="release">
       <div class="release-header">

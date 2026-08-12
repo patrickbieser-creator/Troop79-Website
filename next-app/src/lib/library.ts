@@ -154,6 +154,54 @@ export function resourceThumbnail(resource: {
   return id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : null;
 }
 
+/** True for the kinds whose whole point is an address to somewhere else —
+ *  everything except a troop-written post. */
+export function kindNeedsUrl(kind: ResourceKind): boolean {
+  return kind !== 'post';
+}
+
+export interface NewResourceFields {
+  title: string;
+  kind: ResourceKind;
+  url?: string | null;
+  bodyMd?: string | null;
+  /** True = publish now; false = park it in the queue as an admin draft. */
+  publish: boolean;
+}
+
+/**
+ * Completeness rules for a resource the WEBMASTER is entering
+ * (Plans/Library-Admin-Resource-Entry.md). Returns a problem or null.
+ *
+ * Enforced at PUBLISH, not at insert: the schema deliberately leaves
+ * url/body_md nullable so a messy family submission ("my orienteering
+ * powerpoint", no title, no placement) can still land in the queue for the
+ * webmaster to fix up (see the resource_library migration header). An admin
+ * draft gets the same latitude for the same reason — it isn't finished yet.
+ *
+ * The URL scheme check is the exception: it applies to drafts too. A bad
+ * scheme isn't incompleteness to be finished later, it's a value that must
+ * never reach an href (D-060 guards write AND render paths).
+ */
+export function validateNewResource(fields: NewResourceFields): string | null {
+  if (!fields.title.trim()) return 'Title is required.';
+
+  const url = fields.url?.trim();
+  if (url && !/^https?:\/\//i.test(url)) {
+    return 'Links must start with http:// or https://';
+  }
+
+  if (!fields.publish) return null;
+
+  if (fields.kind === 'post' && !fields.bodyMd?.trim()) {
+    return 'A troop post needs a body before it can be published.';
+  }
+  if (kindNeedsUrl(fields.kind) && !url) {
+    return `A ${RESOURCE_KIND_LABEL[fields.kind].toLowerCase()} needs a link or an uploaded file before it can be published.`;
+  }
+  return null;
+}
+
 /** Icon glyph per resource kind — used by both public cards and admin queue. */
 export const RESOURCE_KIND_ICON: Record<ResourceKind, string> = {
   link: '🔗',

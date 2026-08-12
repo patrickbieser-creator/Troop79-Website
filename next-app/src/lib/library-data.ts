@@ -19,12 +19,26 @@ import type {
   RequirementNote,
   RequirementSubmission
 } from '@/lib/supabase/types';
-import type { LibraryTargetKind } from '@/lib/library';
-import { splitRankReqKey } from '@/lib/library';
+import type { LibraryTargetKind, ResourceKind } from '@/lib/library';
+import { detectHost, splitRankReqKey, validateNewResource } from '@/lib/library';
 import { isDuplicateLedgerEntry } from '@/lib/ledger-dedup';
 
 export interface PlacedResource extends LibraryResource {
   placement: Pick<LibraryPlacement, 'id' | 'pinned' | 'sort_order' | 'target_kind' | 'target_key'>;
+}
+
+/**
+ * Which visibilities a viewer may see. `visibility` shipped with the library
+ * but nothing ever filtered on it — every loader below filtered status alone,
+ * so a 'leaders' row would have rendered on family-facing pages. Admin entry
+ * makes the control reachable (Plans/Library-Admin-Resource-Entry.md), so the
+ * filter lands with it.
+ *
+ * Default is the PUBLIC set everywhere: a caller that forgets to pass the flag
+ * under-shares rather than leaking.
+ */
+function visibleTo(viewerIsLeader: boolean): string[] {
+  return viewerIsLeader ? ['public', 'leaders'] : ['public'];
 }
 
 /** Active (non-retired) shelves in webmaster order. */
@@ -41,14 +55,16 @@ export async function loadTopics(supabase: SupabaseClient): Promise<LibraryTopic
 export async function loadPublishedFor(
   supabase: SupabaseClient,
   targetKind: LibraryTargetKind,
-  targetKey: string
+  targetKey: string,
+  viewerIsLeader = false
 ): Promise<PlacedResource[]> {
   const { data } = await supabase
     .from('library_placements')
     .select('id, pinned, sort_order, target_kind, target_key, library_resources!inner(*)')
     .eq('target_kind', targetKind)
     .eq('target_key', targetKey)
-    .eq('library_resources.status', 'published');
+    .eq('library_resources.status', 'published')
+    .in('library_resources.visibility', visibleTo(viewerIsLeader));
   type Row = LibraryPlacement & { library_resources: LibraryResource };
   const placed = ((data ?? []) as unknown as Row[]).map((row) => ({
     ...row.library_resources,
@@ -80,12 +96,14 @@ export async function loadPublishedFor(
  * scale); grouping happens here, not in PostgREST.
  */
 export async function publishedCountsByTarget(
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  viewerIsLeader = false
 ): Promise<Map<string, number>> {
   const { data } = await supabase
     .from('library_placements')
-    .select('target_kind, target_key, library_resources!inner(status)')
-    .eq('library_resources.status', 'published');
+    .select('target_kind, target_key, library_resources!inner(status, visibility)')
+    .eq('library_resources.status', 'published')
+    .in('library_resources.visibility', visibleTo(viewerIsLeader));
   const counts = new Map<string, number>();
   for (const row of (data ?? []) as { target_kind: string; target_key: string }[]) {
     const key = `${row.target_kind}:${row.target_key}`;
@@ -105,22 +123,26 @@ export interface SearchHit extends LibraryResource {
  */
 export async function searchPublishedResources(
   supabase: SupabaseClient,
-  query: string
+  query: string,
+  viewerIsLeader = false
 ): Promise<SearchHit[]> {
   const q = query.trim();
   if (!q) return [];
 
+  const visible = visibleTo(viewerIsLeader);
   const [ftsRes, ilikeRes] = await Promise.all([
     supabase
       .from('library_resources')
       .select('*')
       .eq('status', 'published')
+      .in('visibility', visible)
       .textSearch('fts', q, { type: 'websearch', config: 'english' })
       .limit(50),
     supabase
       .from('library_resources')
       .select('*')
       .eq('status', 'published')
+      .in('visibility', visible)
       .ilike('title', `%${q}%`)
       .limit(50)
   ]);
@@ -165,6 +187,87 @@ export async function loadNarrative(
 }
 
 // ── Admin mutations (called from /admin/library server actions) ────────────
+
+export interface NewResourceInput {
+  title: string;
+  kind: ResourceKind;
+  url?: string | null;
+  bodyMd?: string | null;
+  blurb?: string | null;
+  thumbnailUrl?: string | null;
+  attributionLabel?: string | null;
+  visibility: 'public' | 'leaders';
+  /** True = publish immediately; false = park it in the queue as a draft. */
+  publish: boolean;
+  placements: { targetKind: LibraryTargetKind; targetKey: string }[];
+}
+
+/**
+ * Creates a resource from the admin entry form
+ * (Plans/Library-Admin-Resource-Entry.md).
+ *
+ * Publishes immediately by default (Patrick, 2026-08-12): the queue exists to
+ * review what families and scouts send in, and the webmaster approving their
+ * own entry is a step with no reader. `submitted_by_label` stays null, which
+ * is how the queue tells an admin draft from a family submission — the public
+ * form always requires a name.
+ *
+ * Placements are written with the resource so it lands on its pages in one
+ * pass. A placement that fails is reported rather than silently dropped: a
+ * resource sitting nowhere looks published but is unreachable.
+ */
+export async function createResource(
+  supabase: SupabaseClient,
+  input: NewResourceInput,
+  reviewer: string
+): Promise<{ error: string | null; id?: number }> {
+  const problem = validateNewResource({
+    title: input.title,
+    kind: input.kind,
+    url: input.url,
+    bodyMd: input.bodyMd,
+    publish: input.publish
+  });
+  if (problem) return { error: problem };
+
+  const url = input.url?.trim() || null;
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from('library_resources')
+    .insert({
+      title: input.title.trim(),
+      kind: input.kind,
+      url,
+      body_md: input.bodyMd?.trim() || null,
+      blurb: input.blurb?.trim() || null,
+      thumbnail_url: input.thumbnailUrl?.trim() || null,
+      host: detectHost(url),
+      visibility: input.visibility,
+      status: input.publish ? 'published' : 'pending',
+      attribution_label: input.attributionLabel?.trim() || null,
+      reviewed_by: input.publish ? reviewer : null,
+      reviewed_at: input.publish ? now : null,
+      updated_at: now
+    })
+    .select('id')
+    .single();
+  if (error || !data) return { error: error?.message ?? 'Could not save the resource.' };
+  const id = data.id as number;
+
+  if (input.placements.length > 0) {
+    const { error: placeErr } = await supabase.from('library_placements').insert(
+      input.placements.map((p) => ({
+        resource_id: id,
+        target_kind: p.targetKind,
+        target_key: p.targetKey
+      }))
+    );
+    if (placeErr) {
+      return { error: `Saved, but its placements failed: ${placeErr.message}`, id };
+    }
+  }
+  return { error: null, id };
+}
 
 /** Publishes a queued resource. Attribution defaults from submitted_by_label
  *  unless the webmaster already set one. */

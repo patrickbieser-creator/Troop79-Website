@@ -20,6 +20,7 @@ import { ArticleBody } from '@/lib/article-body/ArticleBody';
 import { flattenLeaves } from '@/lib/mb-helpers';
 import { gateAudience } from '@/lib/family-access';
 import { loadNarrative, loadPublishedFor, type PlacedResource } from '@/lib/library-data';
+import { viewerIsLeader } from '@/lib/library-viewer';
 import { ResourceCard } from '../../_components/resource-card';
 import MbProofPicker from './mb-proof-picker';
 import styles from '../../library.module.css';
@@ -33,19 +34,23 @@ export default async function LibraryMbPage({
 }) {
   const { mbId } = await params;
   const supabase = createAdminClient();
+  const isLeader = await viewerIsLeader();
 
   const [{ data: mb }, reqsRes, narrative, badgeResources, reqPlacementsRes] = await Promise.all([
     supabase.from('merit_badges').select('*').eq('id', mbId).maybeSingle(),
     supabase.from('merit_badge_requirements').select('*').eq('mb_id', mbId),
     loadNarrative(createAdminClient(), 'mb', mbId),
-    loadPublishedFor(createAdminClient(), 'mb', mbId),
+    loadPublishedFor(createAdminClient(), 'mb', mbId, isLeader),
     // All published resources placed on any of this badge's requirements.
+    // Hand-rolled rather than loadPublishedFor (one query for every
+    // requirement at once) — so it carries the visibility filter itself.
     supabase
       .from('library_placements')
       .select('id, pinned, sort_order, target_kind, target_key, library_resources!inner(*)')
       .eq('target_kind', 'mb_req')
       .like('target_key', `${mbId}-%`)
       .eq('library_resources.status', 'published')
+      .in('library_resources.visibility', isLeader ? ['public', 'leaders'] : ['public'])
       .order('pinned', { ascending: false })
       .order('sort_order')
   ]);

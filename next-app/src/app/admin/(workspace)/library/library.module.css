@@ -290,3 +290,91 @@
 .narrList { font-family: var(--font-ui); font-size: 12.5px; margin-top: 14px; line-height: 1.9; }
 .narrList a { color: var(--navy); font-weight: 600; }
 .narrList a:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+/* ── Add Resource entry form (Plans/Library-Admin-Resource-Entry.md) ─────── */
+
+.entryForm {
+  background: var(--warm-white);
+  border: 1px solid var(--border-mid);
+  border-radius: 3px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+.entryHeading {
+  font-family: var(--font-display);
+  font-size: 19px;
+  color: var(--navy);
+  margin: 0 0 12px;
+}
+.fieldHint {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  color: var(--text-meta);
+  margin-top: 4px;
+  line-height: 1.45;
+}
+.entryError {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  /* Same error red as .errBanner above — not a token, that file's convention. */
+  color: #8a3b2e;
+  margin-top: 6px;
+}
+.entryBodyHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+/* Editor and preview side by side, stacking on narrow screens — the same
+   split the News article editor uses, at library scale. */
+.entrySplit { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 860px) { .entrySplit { grid-template-columns: 1fr; } }
+.entryPreview {
+  border: 1px solid var(--border-light);
+  border-radius: 2px;
+  background: var(--cream);
+  padding: 10px 12px;
+  overflow-x: auto;
+  max-height: 420px;
+  overflow-y: auto;
+}
+.entryPreviewLabel {
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-meta);
+  margin-bottom: 8px;
+}
+.entryPlacementRow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.entryPlacementRow .selectInput { flex: 1 1 320px; width: auto; }
+.entryChips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.entryChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  background: var(--cream);
+  border: 1px solid var(--border-mid);
+  border-radius: 2px;
+  padding: 3px 6px 3px 8px;
+}
+.quickAddRow { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+.quickAddDialog {
+  border: 1px solid var(--border-mid);
+  border-radius: 3px;
+  padding: 0;
+  width: min(920px, 94vw);
+  max-height: 90vh;
+  background: var(--cream);
+}
+.quickAddDialog::backdrop { background: rgba(26, 32, 38, 0.45); }
+.quickAddInner { padding: 16px 18px; max-height: 90vh; overflow-y: auto; }
+.quickAddHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.quickAddHead h2 { font-family: var(--font-display); font-size: 20px; color: var(--navy); margin: 0; }
