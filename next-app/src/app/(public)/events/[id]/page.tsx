@@ -11,7 +11,9 @@ import { householdKeyForPerson, loadHouseholds, storedHouseholdId } from '@/lib/
 import { gateAudience, familyGateConfigured, getIdentitySessionIfValid } from '@/lib/family-access';
 import { resolveEffectiveHouseholdKey } from '@/lib/identity-session';
 import { leaderSessionPersonId } from '@/lib/session-person';
-import { formatCalendarDateParts, formatTimeOfDay, categoryColor } from '@/lib/calendar-shared';
+import { formatCalendarDateParts, formatTimeOfDay } from '@/lib/calendar-shared';
+import { loadCalendarCategories } from '@/lib/calendar';
+import { categoryColorMap, colorFor } from '@/lib/calendar-categories';
 import {
   familyGateAction,
   familySignOutAction,
@@ -107,10 +109,11 @@ export default async function EventDetailPage({
   const numeric = parseId(id);
   if (!numeric) notFound();
 
-  const [detail, audience, sp] = await Promise.all([
+  const [detail, audience, sp, categories] = await Promise.all([
     loadEventDetail(numeric),
     gateAudience(),
-    searchParams
+    searchParams,
+    loadCalendarCategories()
   ]);
   if (!detail) notFound();
 
@@ -218,7 +221,7 @@ export default async function EventDetailPage({
 
       <header className={styles.head}>
         <p className={styles.kicker}>
-          <span className={styles.cat} style={{ background: categoryColor(entry.category) }}>
+          <span className={styles.cat} style={{ background: colorFor(categoryColorMap(categories), entry.category) }}>
             {entry.category}
           </span>
         </p>

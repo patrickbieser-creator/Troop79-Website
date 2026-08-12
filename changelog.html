@@ -497,6 +497,45 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.31.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.31.0</span>
+        <span class="release-date">August 12, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Calendar categories are yours to manage</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              The list of event categories &mdash; Campout / Overnight, Fundraiser, Service
+              Project and the rest &mdash; used to be written into the code, so adding
+              &ldquo;Merit Badge Opportunity&rdquo; meant a developer and a deploy. It is now a
+              table you edit under <strong>Lookups &amp; Admin &rarr; Calendar Categories</strong>:
+              add a category, pick its color, set where it sits in the list.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Renaming a category updates every event that used it</strong>, in one step
+              &mdash; and photo albums, which share the same category list, come along
+              automatically. A category still in use can&rsquo;t be deleted; the site says which
+              kind of thing is still using it instead of silently breaking.
+            </span>
+          </li>
+          <li>
+            <span>
+              Two categories do real work behind the scenes &mdash; the weekly troop meeting and a
+              cancelled meeting week, which the Meetings pages key off. Those are now recognized by
+              what they do rather than by their exact spelling, so they stay safe to rename and
+              can&rsquo;t be deleted out from under the Meetings system.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.30.0 -->
     <div class="release">
       <div class="release-header">

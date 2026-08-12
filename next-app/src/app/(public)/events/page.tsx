@@ -1,4 +1,4 @@
-import { loadCalendarEntries, CATEGORIES } from '@/lib/calendar';
+import { loadCalendarEntries, loadCalendarCategories } from '@/lib/calendar';
 import { siteUrl } from '@/lib/site-url';
 import { SubscribeCalendar } from './subscribe-calendar';
 import { CalendarBrowser } from './calendar-browser';
@@ -7,7 +7,10 @@ import styles from './events.module.css';
 export const metadata = { title: 'Calendar — Troop 79' };
 
 export default async function EventsPage() {
-  const { upcoming, past } = await loadCalendarEntries();
+  const [{ upcoming, past }, categories] = await Promise.all([
+    loadCalendarEntries(),
+    loadCalendarCategories()
+  ]);
   const icsUrl = `${siteUrl()}/calendar.ics`;
   const webcalUrl = icsUrl.replace(/^https?:\/\//, 'webcal://');
 
@@ -23,7 +26,7 @@ export default async function EventsPage() {
         <SubscribeCalendar icsUrl={icsUrl} webcalUrl={webcalUrl} />
       </div>
 
-      <CalendarBrowser upcoming={upcoming} past={past} categories={CATEGORIES} />
+      <CalendarBrowser upcoming={upcoming} past={past} categories={categories} />
     </main>
   );
 }

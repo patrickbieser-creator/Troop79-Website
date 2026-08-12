@@ -1166,3 +1166,121 @@ export async function setLibrarySuperusers(formData: FormData): Promise<Result> 
   revalidatePath('/library');
   return { ok: true };
 }
+
+// ── Calendar categories (D-082) ─────────────────────────────────────────────
+//
+// The calendar's vocabulary, editable without a deploy. Unlike the name-only
+// lookups above, `label` IS the key: calendar_entries and photo_albums store
+// the text and reference it by FK, so a rename here cascades to every entry
+// and album (that is the rename tool), and an in-use category cannot be
+// deleted. Categories carrying a behavior flag are undeletable outright — the
+// DB trigger enforces it; this only translates the error.
+
+const HEX_RE = /^#[0-9a-fA-F]{6}$/;
+
+/** Every surface that renders a category name or color. */
+function revalidateCategories() {
+  revalidatePath('/admin/advancement/lookups');
+  revalidatePath('/admin/news/calendar');
+  revalidatePath('/admin/news/photo-albums');
+  revalidatePath('/admin/events');
+  revalidatePath('/admin/rosters');
+  revalidatePath('/events');
+  revalidatePath('/photos');
+  revalidatePath('/calendar.ics');
+  revalidatePath('/meetings');
+  revalidatePath('/');
+}
+
+function readCategoryFields(formData: FormData): { label: string; color: string; sortOrder: number } {
+  return {
+    label: String(formData.get('label') ?? '').trim(),
+    color: String(formData.get('color') ?? '').trim(),
+    sortOrder: Number(formData.get('sort_order'))
+  };
+}
+
+function validateCategory(f: { label: string; color: string; sortOrder: number }): string | null {
+  if (!f.label) return 'Name is required';
+  if (!HEX_RE.test(f.color)) return 'Pick a color';
+  if (!Number.isFinite(f.sortOrder)) return 'Invalid sort order';
+  return null;
+}
+
+export async function createCalendarCategory(formData: FormData): Promise<Result> {
+  try {
+    await ensureLeader();
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  const f = readCategoryFields(formData);
+  const problem = validateCategory(f);
+  if (problem) return { ok: false, error: problem };
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from('calendar_categories')
+    .insert({ label: f.label, color: f.color, sort_order: f.sortOrder });
+  if (error) {
+    if (error.code === '23505') return { ok: false, error: `"${f.label}" already exists.` };
+    return { ok: false, error: error.message };
+  }
+  revalidateCategories();
+  return { ok: true };
+}
+
+/**
+ * Rename / recolor / reorder. The label is the primary key, so `original` is
+ * how the row is found — the new label may differ, and Postgres cascades the
+ * change into calendar_entries and photo_albums as part of the same statement.
+ */
+export async function updateCalendarCategory(formData: FormData): Promise<Result> {
+  try {
+    await ensureLeader();
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  const original = String(formData.get('original_label') ?? '').trim();
+  if (!original) return { ok: false, error: 'Invalid category' };
+  const f = readCategoryFields(formData);
+  const problem = validateCategory(f);
+  if (problem) return { ok: false, error: problem };
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from('calendar_categories')
+    .update({ label: f.label, color: f.color, sort_order: f.sortOrder })
+    .eq('label', original);
+  if (error) {
+    if (error.code === '23505') return { ok: false, error: `"${f.label}" already exists.` };
+    return { ok: false, error: error.message };
+  }
+  revalidateCategories();
+  return { ok: true };
+}
+
+export async function deleteCalendarCategory(formData: FormData): Promise<Result> {
+  try {
+    await ensureLeader();
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  const label = String(formData.get('label') ?? '').trim();
+  if (!label) return { ok: false, error: 'Invalid category' };
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.from('calendar_categories').delete().eq('label', label);
+  if (error) {
+    // 23503 = FK violation: entries or albums still carry this category.
+    if (error.code === '23503') {
+      return {
+        ok: false,
+        error: `"${label}" is still used by events or photo albums. Move them to another category first, or rename this one.`
+      };
+    }
+    // The behavior guard (P0001) already explains itself.
+    return { ok: false, error: error.message };
+  }
+  revalidateCategories();
+  return { ok: true };
+}

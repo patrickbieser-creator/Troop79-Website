@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server';
-import { CATEGORIES } from '@/lib/calendar';
+import { loadCalendarCategories } from '@/lib/calendar';
 import type { CalendarEntry, Media } from '@/lib/supabase/types';
 
 /** Admin rows carry the resolved promotion hero for the editor's preview. */
@@ -30,7 +30,7 @@ async function loadData() {
 }
 
 export default async function CalendarAdminPage() {
-  const { entries } = await loadData();
+  const [{ entries }, categories] = await Promise.all([loadData(), loadCalendarCategories()]);
 
   return (
     <>
@@ -46,7 +46,7 @@ export default async function CalendarAdminPage() {
 
       <CalendarEditor
         rows={entries}
-        categories={CATEGORIES}
+        categories={categories}
         onCreate={createCalendarEntry}
         onUpdate={updateCalendarEntry}
         onDelete={deleteCalendarEntry}

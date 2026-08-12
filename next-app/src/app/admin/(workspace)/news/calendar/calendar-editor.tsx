@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
-import type { CalendarCategory, Media } from '@/lib/supabase/types';
-import { categoryColor } from '@/lib/calendar-shared';
+import type { Media } from '@/lib/supabase/types';
+import { categoryColorMap, colorFor, type CalendarCategoryRow } from '@/lib/calendar-categories';
 import type { CalendarEntryRow } from './page';
 import { MediaPicker } from '../_components/media-picker';
 import type { ImportResult, ImportRowFields, ImportUpdate } from './actions';
@@ -14,7 +14,9 @@ type ActionResult = { ok: boolean; error?: string };
 
 interface Props {
   rows: CalendarEntryRow[];
-  categories: CalendarCategory[];
+  /** The calendar_categories lookup in display order (D-082) — labels, colors
+   *  and all. Managed under Lookups & Admin, not in code. */
+  categories: CalendarCategoryRow[];
   onCreate: (fd: FormData) => Promise<ActionResult>;
   onUpdate: (fd: FormData) => Promise<ActionResult>;
   onDelete: (id: number) => Promise<ActionResult>;
@@ -59,6 +61,7 @@ export function CalendarEditor({ rows, categories, onCreate, onUpdate, onDelete,
   const [rowErr, setRowErr] = useState<{ id: number; msg: string } | null>(null);
   const [, startTransition] = useTransition();
 
+  const colors = categoryColorMap(categories);
   const today = todayLocal();
   const upcoming = rows.filter((r) => lastDay(r) >= today);
   // Past reads newest-first: the most recent thing is what you're usually
@@ -107,7 +110,7 @@ export function CalendarEditor({ rows, categories, onCreate, onUpdate, onDelete,
             Past <span className={styles.tabCount}>{past.length}</span>
           </button>
         </div>
-        <CalendarImport rows={rows} categories={categories} onImport={onImport} />
+        <CalendarImport rows={rows} categories={categories.map((c) => c.label)} onImport={onImport} />
         <button type="button" className={styles.addBtn} onClick={() => setOpenFor('new')}>
           + Add Entry
         </button>
@@ -149,7 +152,7 @@ export function CalendarEditor({ rows, categories, onCreate, onUpdate, onDelete,
                 </td>
                 <td>
                   <span className={styles.catTag}>
-                    <span className={styles.catPip} style={{ background: categoryColor(row.category) }} />
+                    <span className={styles.catPip} style={{ background: colorFor(colors, row.category) }} />
                     {row.category}
                   </span>
                 </td>
@@ -241,7 +244,7 @@ function CalendarEntryForm({
 }: {
   row: CalendarEntryRow | null;
   forceNew?: boolean;
-  categories: CalendarCategory[];
+  categories: CalendarCategoryRow[];
   onCreate: (fd: FormData) => Promise<ActionResult>;
   onUpdate: (fd: FormData) => Promise<ActionResult>;
   onClose: () => void;
@@ -256,7 +259,7 @@ function CalendarEntryForm({
   const [startTime, setStartTime] = useState(row?.start_time?.slice(0, 5) ?? '');
   const [endTime, setEndTime] = useState(row?.end_time?.slice(0, 5) ?? '');
   const [dayNote, setDayNote] = useState(row?.day_note ?? '');
-  const [category, setCategory] = useState<CalendarCategory | ''>(row?.category ?? '');
+  const [category, setCategory] = useState<string>(row?.category ?? '');
   const [title, setTitle] = useState(row?.title ?? '');
   const [description, setDescription] = useState(row?.description ?? '');
   const [location, setLocation] = useState(row?.location ?? '');
@@ -337,13 +340,13 @@ function CalendarEntryForm({
           <select
             className={styles.editInput}
             value={category}
-            onChange={(e) => setCategory(e.target.value as CalendarCategory)}
+            onChange={(e) => setCategory(e.target.value)}
             required
           >
             <option value="">— Select —</option>
             {categories.map((c) => (
-              <option key={c} value={c}>
-                {c}
+              <option key={c.label} value={c.label}>
+                {c.label}
               </option>
             ))}
           </select>

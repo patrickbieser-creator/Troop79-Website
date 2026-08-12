@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { CalendarCategory } from '@/lib/supabase/types';
 import type { CalendarEntryPublic } from '@/lib/calendar';
-import { categoryColor, formatTimeOfDay } from '@/lib/calendar-shared';
+import { colorFor, type CategoryColorMap } from '@/lib/calendar-categories';
+import { formatTimeOfDay } from '@/lib/calendar-shared';
 import styles from './events.module.css';
 
 /*
@@ -154,10 +154,13 @@ interface PopoverPos {
 export function MonthGrid({
   entries,
   activeCategories,
+  colors,
   isActive
 }: {
   entries: CalendarEntryPublic[];
-  activeCategories: Set<CalendarCategory>;
+  activeCategories: Set<string>;
+  /** Category → accent color, from the calendar_categories lookup (D-082). */
+  colors: CategoryColorMap;
   isActive: boolean;
 }) {
   const todayIso = useMemo(() => toISO(new Date()), []);
@@ -468,7 +471,7 @@ export function MonthGrid({
                       </div>
                       <div className={styles.chipList}>
                         {singleDay.slice(0, MAX_CHIPS).map((e) => {
-                          const color = categoryColor(e.category);
+                          const color = colorFor(colors, e.category);
                           return (
                             <button
                               key={e.id}
@@ -497,7 +500,7 @@ export function MonthGrid({
               {laneCount > 0 && (
                 <div className={styles.spansLayer} aria-hidden="true">
                   {placed.map((p) => {
-                    const color = categoryColor(p.entry.category);
+                    const color = colorFor(colors, p.entry.category);
                     return (
                       <button
                         key={p.entry.id}
@@ -570,7 +573,7 @@ export function MonthGrid({
           ) : (
             <div className={styles.dayEventList}>
               {selectedDayEvents.map((e) => {
-                const color = categoryColor(e.category);
+                const color = colorFor(colors, e.category);
                 return (
                   <div
                     key={e.id}

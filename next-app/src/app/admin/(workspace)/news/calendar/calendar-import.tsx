@@ -20,13 +20,15 @@
  */
 
 import { useMemo, useRef, useState, useTransition } from 'react';
-import type { CalendarCategory, CalendarEntry } from '@/lib/supabase/types';
+import type { CalendarEntry } from '@/lib/supabase/types';
 import type { ImportResult, ImportRowFields, ImportUpdate } from './actions';
 import styles from './calendar.module.css';
 
 interface Props {
   rows: CalendarEntry[];
-  categories: CalendarCategory[];
+  /** Current category labels, in display order — the import only matches and
+   *  offers names, so it takes labels rather than the full lookup rows. */
+  categories: string[];
   onImport: (inserts: ImportRowFields[], updates: ImportUpdate[]) => Promise<ImportResult>;
 }
 
@@ -142,7 +144,7 @@ const DIFF_FIELDS: { key: keyof ImportRowFields; label: string; time?: boolean }
   { key: 'location', label: 'Location' }
 ];
 
-function buildPlan(text: string, existing: CalendarEntry[], categories: CalendarCategory[]): Plan {
+function buildPlan(text: string, existing: CalendarEntry[], categories: string[]): Plan {
   const rows = parseCsv(text);
   const errors: string[] = [];
   if (rows.length < 2) return { news: [], changes: [], unchanged: 0, orphans: [], errors: ['CSV is empty.'] };

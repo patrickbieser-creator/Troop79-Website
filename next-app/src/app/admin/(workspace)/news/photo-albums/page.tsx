@@ -7,7 +7,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/server';
-import { CATEGORIES } from '@/lib/calendar';
+import { loadCalendarCategories } from '@/lib/calendar';
 import type { PhotoAlbum } from '@/lib/supabase/types';
 import { AlbumsEditor, type CoverInfo } from './albums-editor';
 import { createPhotoAlbum, updatePhotoAlbum, deletePhotoAlbum } from './actions';
@@ -40,7 +40,7 @@ async function loadData(): Promise<{ albums: PhotoAlbum[]; covers: Record<number
 }
 
 export default async function PhotoAlbumsAdminPage() {
-  const { albums, covers } = await loadData();
+  const [{ albums, covers }, categories] = await Promise.all([loadData(), loadCalendarCategories()]);
 
   return (
     <>
@@ -56,7 +56,7 @@ export default async function PhotoAlbumsAdminPage() {
       <AlbumsEditor
         rows={albums}
         covers={covers}
-        categories={CATEGORIES}
+        categories={categories}
         onCreate={createPhotoAlbum}
         onUpdate={updatePhotoAlbum}
         onDelete={deletePhotoAlbum}

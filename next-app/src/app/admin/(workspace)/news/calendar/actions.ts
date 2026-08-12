@@ -3,8 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireRole } from '@/lib/require-role';
 import { createAdminClient } from '@/lib/supabase/server';
-import { CATEGORIES } from '@/lib/calendar-shared';
-import type { CalendarCategory } from '@/lib/supabase/types';
+import { loadCalendarCategories } from '@/lib/calendar';
 
 type ActionResult = { ok: boolean; error?: string };
 
@@ -18,7 +17,7 @@ function fieldsFromForm(fd: FormData) {
   const entryDate = String(fd.get('entry_date') ?? '').trim();
   const endDate = String(fd.get('end_date') ?? '').trim();
   const dayNote = String(fd.get('day_note') ?? '').trim();
-  const category = String(fd.get('category') ?? '').trim() as CalendarCategory;
+  const category = String(fd.get('category') ?? '').trim();
   const title = String(fd.get('title') ?? '').trim();
   const description = String(fd.get('description') ?? '').trim();
   const location = String(fd.get('location') ?? '').trim();
@@ -84,7 +83,11 @@ export async function updateCalendarEntry(fd: FormData): Promise<ActionResult> {
 
 // ── CSV import ──────────────────────────────────────────────────────────────
 
-const IMPORT_CATEGORIES: string[] = [...CATEGORIES];
+/*
+ * Valid categories are read from the lookup table per import (D-082) rather
+ * than from a build-time constant: a leader can add a category and import a
+ * sheet that uses it in the same sitting, with no deploy in between.
+ */
 
 /**
  * The Bugle's Google Sheet is external and still uses the pre-2026-07-18
@@ -133,12 +136,12 @@ export type ImportResult = { ok: boolean; error?: string; inserted: number; upda
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^\d{2}:\d{2}$/;
 
-function validateImportRow(f: ImportRowFields): string | null {
+function validateImportRow(f: ImportRowFields, validCategories: string[]): string | null {
   if (!DATE_RE.test(f.entry_date)) return `bad date "${f.entry_date}"`;
   if (f.end_date && !DATE_RE.test(f.end_date)) return `bad end date "${f.end_date}"`;
   if (f.start_time && !TIME_RE.test(f.start_time)) return `bad start time "${f.start_time}"`;
   if (f.end_time && !TIME_RE.test(f.end_time)) return `bad end time "${f.end_time}"`;
-  if (!IMPORT_CATEGORIES.includes(normalizeImportCategory(f.category)))
+  if (!validCategories.includes(normalizeImportCategory(f.category)))
     return `unknown category "${f.category}"`;
   if (!f.title.trim()) return 'missing title';
   return null;
@@ -152,11 +155,12 @@ export async function importCalendarEntries(
 ): Promise<ImportResult> {
   await requireRole(['leader']);
 
+  const validCategories = (await loadCalendarCategories()).map((c) => c.label);
   for (const f of [...inserts, ...updates.map((u) => u.fields)]) {
-    const problem = validateImportRow(f);
+    const problem = validateImportRow(f, validCategories);
     if (problem) return { ok: false, error: `Rejected: ${problem}.`, inserted: 0, updated: 0 };
     // Write the canonical name, not the sheet's legacy one — otherwise a valid
-    // row would still trip the calendar_entries category CHECK on insert.
+    // row would still trip the calendar_entries category FK on insert.
     f.category = normalizeImportCategory(f.category);
   }
 

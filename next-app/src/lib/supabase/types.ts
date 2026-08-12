@@ -268,8 +268,9 @@ export interface PhotoAlbum {
   id: number;
   title: string;
   event_date: string;
-  /** Shares the calendar_entries category vocabulary. */
-  category: CalendarCategory;
+  /** Shares the calendar_entries vocabulary — literally: same FK into
+   *  calendar_categories since D-082, so a rename reaches albums too. */
+  category: string;
   google_url: string;
   cover_media_id: number | null;
   description: string | null;
@@ -370,34 +371,22 @@ export interface Tag {
   slug: string;
 }
 
-/**
- * The 13 event types the signup preset matrix keys off, plus 'No Meeting'
- * (calendar-only — signup never applies). Renamed/merged 2026-07-18 by the
- * Event Signup Phase 1 migration; 'Court of Honor' and 'Ceremony' collapsed
- * into 'Ceremony / Recognition'.
+/*
+ * The CalendarCategory union that used to stand here is gone (D-082):
+ * categories are rows in `calendar_categories`, editable from Lookups & Admin,
+ * so a build-time union would be a fourth copy of a vocabulary that already
+ * drifted once (the 2026-07-21 photo-album CHECK bug). `category` is plain
+ * text validated by an FK; the row shape and helpers live in
+ * lib/calendar-categories.ts.
  */
-export type CalendarCategory =
-  | 'Troop Meeting'
-  | 'Campout / Overnight'
-  | 'Day Activity / Outing'
-  | 'High Adventure'
-  | 'Summer Camp'
-  | 'Service Project'
-  | 'Fundraiser'
-  | 'Advancement Event'
-  | 'Training'
-  | 'Ceremony / Recognition'
-  | 'Leadership / Planning'
-  | 'Recruiting / Outreach'
-  | 'Social Event'
-  | 'No Meeting';
 
 export interface CalendarEntry {
   id: number;
   entry_date: string;
   end_date: string | null;
   day_note: string | null;
-  category: CalendarCategory;
+  /** FK to calendar_categories.label (D-082) — validated by the DB, not a union. */
+  category: string;
   title: string;
   description: string | null;
   location: string | null;

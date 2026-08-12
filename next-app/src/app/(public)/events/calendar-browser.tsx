@@ -2,9 +2,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import type { CalendarCategory } from '@/lib/supabase/types';
 import type { CalendarEntryPublic } from '@/lib/calendar';
-import { formatCalendarDateParts, formatTimeOfDay, categoryColor } from '@/lib/calendar-shared';
+import {
+  categoryColorMap,
+  colorFor,
+  type CalendarCategoryRow,
+  type CategoryColorMap
+} from '@/lib/calendar-categories';
+import { formatCalendarDateParts, formatTimeOfDay } from '@/lib/calendar-shared';
 import { MonthGrid } from './month-grid';
 import styles from './events.module.css';
 
@@ -53,9 +58,17 @@ function timeCell(entry: CalendarEntryPublic): React.ReactNode {
   );
 }
 
-function EntryRow({ entry, past }: { entry: CalendarEntryPublic; past?: boolean }) {
+function EntryRow({
+  entry,
+  colors,
+  past
+}: {
+  entry: CalendarEntryPublic;
+  colors: CategoryColorMap;
+  past?: boolean;
+}) {
   const { day } = formatCalendarDateParts(entry.entry_date);
-  const color = categoryColor(entry.category);
+  const color = colorFor(colors, entry.category);
   // articleSlug is gone (Event→News promotion) — an entry's own page is
   // /events/[id]; the "read the story" pattern is retired.
   const title = entry.title;
@@ -112,7 +125,7 @@ function EntryRow({ entry, past }: { entry: CalendarEntryPublic; past?: boolean 
   );
 }
 
-const NO_CATEGORY_FILTER = new Set<CalendarCategory>();
+const NO_CATEGORY_FILTER = new Set<string>();
 
 export function CalendarBrowser({
   upcoming,
@@ -121,7 +134,9 @@ export function CalendarBrowser({
 }: {
   upcoming: CalendarEntryPublic[];
   past: CalendarEntryPublic[];
-  categories: CalendarCategory[];
+  /** The lookup table (D-082), already in display order — carries each
+   *  category's color, so nothing here is hardcoded any more. */
+  categories: CalendarCategoryRow[];
 }) {
   const [category, setCategory] = useState<string>('all');
   const [query, setQuery] = useState('');
@@ -147,6 +162,7 @@ export function CalendarBrowser({
     window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
   }, [category, query]);
 
+  const colors = useMemo(() => categoryColorMap(categories), [categories]);
   const allEntries = useMemo(() => [...upcoming, ...past], [upcoming, past]);
   const counts = useMemo(() => {
     const m = new Map<string, number>();
@@ -217,9 +233,9 @@ export function CalendarBrowser({
             >
               <option value="all">All Categories ({allEntries.length})</option>
               {categories.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                  {counts.has(c) ? ` (${counts.get(c)})` : ''}
+                <option key={c.label} value={c.label}>
+                  {c.label}
+                  {counts.has(c.label) ? ` (${counts.get(c.label)})` : ''}
                 </option>
               ))}
             </select>
@@ -278,7 +294,7 @@ export function CalendarBrowser({
               </div>
               <ul className={styles.list}>
                 {items.map((entry) => (
-                  <EntryRow key={entry.id} entry={entry} />
+                  <EntryRow key={entry.id} entry={entry} colors={colors} />
                 ))}
               </ul>
             </section>
@@ -299,7 +315,7 @@ export function CalendarBrowser({
                 </div>
                 <ul className={styles.list}>
                   {items.map((entry) => (
-                    <EntryRow key={entry.id} entry={entry} past />
+                    <EntryRow key={entry.id} entry={entry} colors={colors} past />
                   ))}
                 </ul>
               </section>
@@ -309,7 +325,12 @@ export function CalendarBrowser({
       </div>
 
       <div style={{ display: view === 'month' ? 'block' : 'none' }}>
-        <MonthGrid entries={monthEntries} activeCategories={NO_CATEGORY_FILTER} isActive={view === 'month'} />
+        <MonthGrid
+          entries={monthEntries}
+          activeCategories={NO_CATEGORY_FILTER}
+          colors={colors}
+          isActive={view === 'month'}
+        />
       </div>
     </>
   );

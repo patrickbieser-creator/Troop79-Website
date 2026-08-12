@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireRole } from '@/lib/require-role';
-import { formatCalendarDateParts, categoryColor } from '@/lib/calendar-shared';
+import { formatCalendarDateParts } from '@/lib/calendar-shared';
+import { loadCalendarCategories } from '@/lib/calendar';
+import { categoryColorMap, colorFor } from '@/lib/calendar-categories';
 import styles from '../events/events-admin.module.css';
 
 export const metadata = { title: 'Event Rosters — Troop 79' };
@@ -126,7 +128,8 @@ async function load(): Promise<RosterSummary[]> {
 }
 
 export default async function EventRostersPage() {
-  const rows = await load();
+  const [rows, categories] = await Promise.all([load(), loadCalendarCategories()]);
+  const colors = categoryColorMap(categories);
 
   return (
     <>
@@ -174,7 +177,7 @@ export default async function EventRostersPage() {
                 <tr key={r.signupId}>
                   <td>
                     <span className={styles.evTitle}>{r.title}</span>
-                    <span className={styles.evCat} style={{ color: categoryColor(r.category) }}>
+                    <span className={styles.evCat} style={{ color: colorFor(colors, r.category) }}>
                       {r.category}
                       {r.status === 'closed' && ' · closed'}
                     </span>

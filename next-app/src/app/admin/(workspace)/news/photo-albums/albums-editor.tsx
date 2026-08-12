@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 /* eslint-disable @next/next/no-img-element -- admin thumbnails; remote sizes vary */
-import type { CalendarCategory, Media, PhotoAlbum } from '@/lib/supabase/types';
-import { categoryColor } from '@/lib/calendar-shared';
+import type { Media, PhotoAlbum } from '@/lib/supabase/types';
+import { categoryColorMap, colorFor, type CalendarCategoryRow } from '@/lib/calendar-categories';
 import { MediaPicker } from '../_components/media-picker';
 import { DatePickerField } from '../../_components/date-picker-field';
 import styles from './albums.module.css';
@@ -18,7 +18,9 @@ export interface CoverInfo {
 interface Props {
   rows: PhotoAlbum[];
   covers: Record<number, CoverInfo>;
-  categories: CalendarCategory[];
+  /** The same calendar_categories lookup the calendar uses — albums share the
+   *  vocabulary by FK now (D-082), not by a hand-synced copy of the list. */
+  categories: CalendarCategoryRow[];
   onCreate: (fd: FormData) => Promise<ActionResult>;
   onUpdate: (fd: FormData) => Promise<ActionResult>;
   onDelete: (id: number) => Promise<ActionResult>;
@@ -38,6 +40,7 @@ export function AlbumsEditor({ rows, covers, categories, onCreate, onUpdate, onD
   const [busyId, setBusyId] = useState<number | null>(null);
   const [rowErr, setRowErr] = useState<{ id: number; msg: string } | null>(null);
   const [, startTransition] = useTransition();
+  const colors = categoryColorMap(categories);
 
   useEffect(() => {
     const dlg = dialogRef.current;
@@ -102,7 +105,7 @@ export function AlbumsEditor({ rows, covers, categories, onCreate, onUpdate, onD
                     <span className={styles.catTag}>
                       <span
                         className={styles.catPip}
-                        style={{ background: categoryColor(row.category) }}
+                        style={{ background: colorFor(colors, row.category) }}
                       />
                       {row.category}
                     </span>
@@ -173,7 +176,7 @@ function AlbumForm({
 }: {
   row: PhotoAlbum | null;
   cover?: CoverInfo;
-  categories: CalendarCategory[];
+  categories: CalendarCategoryRow[];
   onCreate: (fd: FormData) => Promise<ActionResult>;
   onUpdate: (fd: FormData) => Promise<ActionResult>;
   onClose: () => void;
@@ -182,7 +185,7 @@ function AlbumForm({
   const [googleUrl, setGoogleUrl] = useState(row?.google_url ?? '');
   const [title, setTitle] = useState(row?.title ?? '');
   const [eventDate, setEventDate] = useState(row?.event_date ?? '');
-  const [category, setCategory] = useState<CalendarCategory | ''>(row?.category ?? '');
+  const [category, setCategory] = useState<string>(row?.category ?? '');
   const [description, setDescription] = useState(row?.description ?? '');
   const [photoCount, setPhotoCount] = useState(row?.photo_count ? String(row.photo_count) : '');
   const [coverId, setCoverId] = useState<number | null>(row?.cover_media_id ?? null);
@@ -262,13 +265,13 @@ function AlbumForm({
           <select
             className={styles.editInput}
             value={category}
-            onChange={(e) => setCategory(e.target.value as CalendarCategory)}
+            onChange={(e) => setCategory(e.target.value)}
             required
           >
             <option value="">— Select —</option>
             {categories.map((c) => (
-              <option key={c} value={c}>
-                {c}
+              <option key={c.label} value={c.label}>
+                {c.label}
               </option>
             ))}
           </select>

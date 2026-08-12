@@ -7,6 +7,7 @@
 
 import { createAdminClient } from '@/lib/supabase/server';
 import { centralToday } from '@/lib/dates';
+import type { CategoryBehavior } from '@/lib/calendar-categories';
 import type { Meeting, MeetingSession } from '@/lib/supabase/types';
 
 /** A session with the one leader-only field removed. */
@@ -79,16 +80,49 @@ export async function getPublicMeeting(date: string): Promise<PublicMeeting | nu
   };
 }
 
+/** The calendar fields the meeting placeholder renders. */
+interface CalendarMeetingEntry {
+  category: string;
+  title: string;
+  description: string | null;
+  location: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  day_note: string | null;
+}
+
 /** Calendar logistics for a date with no published agenda yet — lets the
- *  public page show "there IS a meeting, agenda coming" instead of a 404. */
+ *  public page show "there IS a meeting, agenda coming" instead of a 404.
+ *
+ *  The two categories this cares about are found by their BEHAVIOR flag, not
+ *  by name (D-082): the labels are Patrick's to rename from Lookups & Admin,
+ *  and the old hardcoded ['Troop Meeting', 'No Meeting'] would have silently
+ *  stopped matching the day he did. `isNoMeeting` is resolved here too, so the
+ *  view never has to compare a category string either. */
 export async function getCalendarMeetingEntry(date: string) {
   const supabase = createAdminClient();
+  const { data: cats } = await supabase
+    .from('calendar_categories')
+    .select('label, behavior')
+    .not('behavior', 'is', null);
+  const behaviors = (cats ?? []) as { label: string; behavior: CategoryBehavior }[];
+  if (behaviors.length === 0) return null;
+
   const { data } = await supabase
     .from('calendar_entries')
     .select('category, title, description, location, start_time, end_time, day_note')
     .eq('entry_date', date)
-    .in('category', ['Troop Meeting', 'No Meeting'])
+    .in(
+      'category',
+      behaviors.map((c) => c.label)
+    )
     .limit(1)
     .maybeSingle();
-  return data ?? null;
+  if (!data) return null;
+
+  const row = data as CalendarMeetingEntry;
+  return {
+    ...row,
+    isNoMeeting: behaviors.find((c) => c.label === row.category)?.behavior === 'no_meeting'
+  };
 }

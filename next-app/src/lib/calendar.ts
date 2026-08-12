@@ -1,8 +1,29 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import type { CalendarEntry } from '@/lib/supabase/types';
+import type { CalendarCategoryRow } from '@/lib/calendar-categories';
 import { isAutoArchivedOn } from '@/lib/feed-logic';
 
-export { CATEGORY_COLORS, CATEGORIES, formatCalendarDateParts, formatTimeOfDay } from '@/lib/calendar-shared';
+export { formatCalendarDateParts, formatTimeOfDay } from '@/lib/calendar-shared';
+
+/**
+ * The category vocabulary (D-082), in display order.
+ *
+ * Every surface that renders a category color or offers a category picker
+ * loads this and passes it down — the old module-level CATEGORY_COLORS /
+ * CATEGORIES constants are gone, because Patrick can now add, rename, recolor
+ * and reorder categories from Lookups & Admin without a deploy.
+ *
+ * 14 rows on a lookup table: cheap enough to fetch per page render, and always
+ * current, which a build-time constant could not be.
+ */
+export async function loadCalendarCategories(): Promise<CalendarCategoryRow[]> {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from('calendar_categories')
+    .select('label, color, sort_order, behavior')
+    .order('sort_order', { ascending: true });
+  return (data ?? []) as CalendarCategoryRow[];
+}
 
 /*
  * The articles(slug) join and articleSlug are gone (Event→News promotion,

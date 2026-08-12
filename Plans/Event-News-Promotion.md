@@ -4,23 +4,40 @@
 
 ## Follow-ups (designed 2026-08-09, Patrick's decisions — build next sessions)
 
-### 1. calendar_categories lookup table (replaces the hardcoded category CHECK)
+### 1. calendar_categories lookup table — BUILT 2026-08-12, not yet deployed
 Patrick: "no more hardcoded categories — a lookup table so I can enter it dynamically."
-- Table: label (unique), color, sort; seeded from the current 14; FK from
-  `calendar_entries.category` by label with ON UPDATE CASCADE (rename tool for
-  free), ON DELETE RESTRICT. Model on OMG's Programs lookup [their D-019:
-  cascade-rename + merge-on-collision].
-- Admin CRUD under Lookups & Admin, with color picker. Patrick then creates
-  "Merit Badge Opportunity"/"Service Opportunity" himself, worded his way.
-- Blast radius mapped 2026-08-09: `CalendarCategory` union → string;
-  CATEGORY_COLORS/CATEGORIES/categoryColor become DB-driven and must be passed
-  down as props (used across ~12 files incl. client components);
-  **photo albums share this taxonomy** (20260721020000) — their category select
-  and CHECK must move to the same lookup or deliberately stay frozen; the CSV
-  import's LEGACY_CATEGORY_ALIASES keeps working (validates against the lookup).
-- Caveat: any code that special-cases a category NAME (e.g. meeting-view's
-  `category === 'No Meeting'`) silently breaks if that row is renamed — either
-  pin those rows as non-renamable or add behavior flags to the lookup.
+
+Built as designed, with both open questions answered by Patrick on 2026-08-12:
+**photo albums SHARE the lookup** (not frozen), and the name-coupled code gets
+**behavior flags** (not pinned rows).
+
+- Migration `20260812000000_calendar_categories_lookup.sql`: table (label PK,
+  color, sort_order, behavior), seeded from the 14 hardcoded categories with
+  their Bugle legend colors; FK from BOTH `calendar_entries.category` and
+  `photo_albums.category` with ON UPDATE CASCADE (the rename tool) / ON DELETE
+  RESTRICT; both old CHECK constraints dropped; FK-column indexes; RLS enabled
+  with a read-all policy, matching the tables it classifies.
+- `behavior` ('meeting' | 'no_meeting', partial-unique, delete-guarded by
+  trigger) replaces the three name comparisons: `lib/meetings.ts`'s hardcoded
+  `['Troop Meeting','No Meeting']`, the Event Signups screen's
+  `.neq('category','No Meeting')`, and meeting-view's `category === 'No Meeting'`
+  (now an `isNoMeeting` flag resolved server-side).
+- `CalendarCategory` union deleted; `CATEGORY_COLORS`/`CATEGORIES`/`categoryColor`
+  replaced by `lib/calendar-categories.ts` (pure helpers) +
+  `loadCalendarCategories()` in `lib/calendar.ts`; 18 files rethreaded to take
+  the rows/color map as props. CSV import validates against the lookup per run,
+  so a new category is importable the moment it's created.
+- Admin CRUD: "Calendar Categories" card in Lookups & Admin (add / rename /
+  recolor / reorder; behavior rows have no Delete button; in-use delete comes
+  back refused with a reason).
+- Tests: `tests/calendar-categories.test.ts`, 13 cases (cascade to entries AND
+  albums, delete-restrict, behavior guard, behavior uniqueness, FK rejection on
+  both tables, color fallback, sort order). Suite 102 → 115.
+- **Deploy order: migration goes to prod BEFORE the code push** — new code
+  queries `calendar_categories` on nearly every page, and old code is unaffected
+  by the table's existence. No second (drop_legacy) migration needed.
+- Still Patrick's to do after deploy: create "Merit Badge Opportunity" /
+  "Service Opportunity" himself, worded his way.
 
 ### 2. Full-page story editor for events (the "big event" layer)
 Approach A confirmed: progressive enhancement on one spine — no event types.

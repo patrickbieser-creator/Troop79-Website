@@ -13,6 +13,9 @@ import styles from './meetings.module.css';
 
 export interface CalendarPlaceholder {
   category: string;
+  /** Resolved from the category's behavior flag by getCalendarMeetingEntry —
+   *  never by comparing the label here, which a rename would break (D-082). */
+  isNoMeeting: boolean;
   title: string;
   description: string | null;
   location: string | null;
@@ -311,7 +314,7 @@ function Placeholder({
   calendarEntry: CalendarPlaceholder | null;
   isPast: boolean;
 }) {
-  const noMeeting = calendarEntry?.category === 'No Meeting';
+  const noMeeting = calendarEntry?.isNoMeeting ?? false;
   return (
     <div className={styles.noMeetingWrap}>
       <div className={styles.noMeetingCard}>

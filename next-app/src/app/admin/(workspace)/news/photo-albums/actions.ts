@@ -3,7 +3,6 @@
 import { revalidatePath } from 'next/cache';
 import { requireRole } from '@/lib/require-role';
 import { createAdminClient } from '@/lib/supabase/server';
-import type { CalendarCategory } from '@/lib/supabase/types';
 
 type ActionResult = { ok: boolean; error?: string };
 
@@ -18,7 +17,7 @@ function fieldsFromForm(fd: FormData) {
   return {
     title: String(fd.get('title') ?? '').trim(),
     event_date: String(fd.get('event_date') ?? '').trim(),
-    category: String(fd.get('category') ?? '').trim() as CalendarCategory,
+    category: String(fd.get('category') ?? '').trim(),
     google_url: String(fd.get('google_url') ?? '').trim(),
     cover_media_id: coverIdRaw ? Number(coverIdRaw) : null,
     description: String(fd.get('description') ?? '').trim() || null,

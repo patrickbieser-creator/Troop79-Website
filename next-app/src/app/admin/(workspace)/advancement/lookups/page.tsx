@@ -28,7 +28,9 @@ import { SkillsEditor, type SkillRow } from './skills-editor';
 import { SkillAssignEditor, type AssignPerson } from './skill-assign-editor';
 import { SuperuserEditor, type SuperuserPerson } from './superuser-editor';
 import { TagsManager } from './tags-manager';
+import { CategoriesEditor } from './categories-editor';
 import type { Tag } from '@/lib/supabase/types';
+import { loadCalendarCategories } from '@/lib/calendar';
 import {
   createEvent,
   updateEvent,
@@ -44,7 +46,10 @@ import {
   deleteSkill,
   setLeaderSkills,
   setScoutInstructorSkills,
-  setLibrarySuperusers
+  setLibrarySuperusers,
+  createCalendarCategory,
+  updateCalendarCategory,
+  deleteCalendarCategory
 } from './actions';
 import styles from './lookups.module.css';
 
@@ -335,6 +340,7 @@ export default async function LookupsPage() {
     householdRows,
     librarySuperuserCodes
   } = await loadLookups();
+  const calendarCategories = await loadCalendarCategories();
   const leadersLite = leaders.map((l) => ({ code: l.code, name: l.name }));
 
   // Classify sign-off initials: youth = linked to an ACTIVE scout; aging out
@@ -498,21 +504,33 @@ export default async function LookupsPage() {
 
       <div className={styles.grid}>
         <Card
+          title="Calendar Categories"
+          sub={`${calendarCategories.length} categories · every event AND photo album picks from this list · renaming one updates every entry that used it · a category in use can't be deleted`}
+        >
+          <CategoriesEditor
+            rows={calendarCategories}
+            onCreate={createCalendarCategory}
+            onUpdate={updateCalendarCategory}
+            onDelete={deleteCalendarCategory}
+          />
+        </Card>
+
+        <Card
           title="Tags"
           sub={`${tags.length} tags · the controlled vocabulary scouts pick from when drafting articles`}
         >
           <TagsManager tags={tags} />
         </Card>
+      </div>
 
+      <div className={styles.grid}>
         <Card
           title="Households"
           sub={`${householdRows.length} households · who belongs to one is set on each person under Roster · two families can share a surname, so name them apart`}
         >
           <HouseholdsManager households={householdRows} />
         </Card>
-      </div>
 
-      <div className={styles.grid}>
         <Card
           title="Resource Library Superusers"
           sub={`${librarySuperuserCodes.size} of ${superuserPeople.length} adult leaders · can view the public Resource Library as if they were any active scout in the troop, for support and testing`}
