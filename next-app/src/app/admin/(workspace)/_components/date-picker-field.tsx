@@ -94,7 +94,7 @@ export interface DatePickerFieldProps {
   disabled?: boolean;
   placeholder?: string;
   /** Hide the calendar-icon button for very narrow table cells — the text
-   *  field alone still opens the popover on click/focus. */
+   *  field alone still opens the popover on click (or ArrowDown). */
   compact?: boolean;
   className?: string;
 }
@@ -130,10 +130,11 @@ export function DatePickerField({
   }
 
   function openPopover() {
-    // The `open` guard matters beyond dedup: this fires from both onFocus
-    // and onClick (see the input's onClick comment), and resetting `pos` to
-    // null while already open — with no `open`/`mobile` change to re-trigger
-    // the positioning effect below — would strand the popover invisible.
+    // The `open` guard matters beyond dedup: this fires from the input's
+    // click and ArrowDown handlers and from the icon button, and resetting
+    // `pos` to null while already open — with no `open`/`mobile` change to
+    // re-trigger the positioning effect below — would strand the popover
+    // invisible.
     if (disabled || open) return;
     setMobile(typeof window !== 'undefined' && window.innerWidth <= MOBILE_BREAKPOINT);
     setPos(null);
@@ -346,16 +347,30 @@ export function DatePickerField({
         value={text}
         placeholder={placeholder}
         disabled={disabled}
-        onFocus={openPopover}
-        // A prior close (outside-click) sets `open` false without blurring
-        // the input — clicking non-focusable page content never moves
-        // focus away — so a second click on an already-focused input never
-        // refires `focus`. onClick covers that case; openPopover() is
-        // idempotent (setOpen(true) on an already-true value is a no-op).
+        /*
+         * Opens on CLICK, not on focus (changed 2026-08-12, Patrick).
+         *
+         * A `<dialog>` shown with showModal() focuses its first focusable
+         * descendant, and in two editors that is a date field — the Events
+         * entry form and the ledger's row-edit modal. Opening on focus meant
+         * the calendar sprang open over the form the instant the editor
+         * launched, covering the fields the user came to edit. It also fired
+         * on every Tab through a form with several date fields.
+         *
+         * Keyboard access is unaffected: ArrowDown (the standard combobox
+         * affordance for this input's role) opens it, as does the calendar
+         * icon button — and typing a date straight into the field, which is
+         * the fastest path, never needed the popover at all.
+         */
         onClick={openPopover}
         onChange={(e) => setText(e.target.value)}
         onBlur={commitText}
         onKeyDown={(e) => {
+          if (e.key === 'ArrowDown' && !open) {
+            e.preventDefault();
+            openPopover();
+            return;
+          }
           if (e.key === 'Enter') {
             e.preventDefault();
             // Only close on a clean commit — an unparseable date leaves the
