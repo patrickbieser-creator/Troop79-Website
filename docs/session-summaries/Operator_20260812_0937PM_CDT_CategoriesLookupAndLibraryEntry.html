@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Categories Lookup &amp; the Library&rsquo;s Front Door — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #2e4530;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #faf6ef;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Categories Lookup &amp; the Library&rsquo;s Front Door</h1>
+        <p class="subtitle">The calendar taxonomy left the codebase, the Resource Library finally got an admin entry form, and a quiet production gap was found and closed along the way</p>
+        <div class="meta">
+            <span>&#128197; August 12, 2026</span>
+            <span>&#129302; Operator</span>
+            <span>&#128204; Troop79-Website</span>
+        </div>
+    </header>
+
+    <div class="container">
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">2</div><div class="label">Releases (v1.31.0&ndash;v1.32.0)</div></div>
+            <div class="stat"><div class="number">131</div><div class="label">Tests (was 102)</div></div>
+            <div class="stat"><div class="number">5</div><div class="label">Decisions recorded</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">Prod migration</div></div>
+            <div class="stat"><div class="number">0</div><div class="label">Lint errors</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <h3>Calendar categories became data (v1.31.0)</h3>
+        <ul>
+            <li><strong>The taxonomy left the codebase.</strong> Categories had lived in three places at once &mdash; a CHECK constraint on <span class="file-path">calendar_entries</span>, a second copy on <span class="file-path">photo_albums</span>, and a TypeScript union &mdash; and that duplication had already drifted once, breaking album creation in July until the two constraints were hand-resynced. They are now rows in <span class="file-path">calendar_categories</span>, editable under Lookups &amp; Admin with a color picker.</li>
+            <li><strong>Renaming is now a one-field edit.</strong> Both tables reference the label by foreign key with cascade-on-update, so a rename rewrites every event <em>and</em> every photo album in one statement. A category still in use cannot be deleted &mdash; the site says what is using it rather than failing quietly.</li>
+            <li><strong>The rename trap was designed out.</strong> Three places in the code compared a category by name (the Meetings system, the Event Signups screen, the meeting placeholder). Renaming &ldquo;No Meeting&rdquo; would have silently broken all three. A <span class="file-path">behavior</span> flag now carries that meaning instead, so labels are free to change.</li>
+            <li>Seeded from the existing 14 categories with their exact printed-legend colors, so nothing shifted visually &mdash; including in the Bugle.</li>
+        </ul>
+
+        <h3>The date picker stopped covering the form it belongs to (v1.31.0)</h3>
+        <ul>
+            <li>Opening an event for editing sprang the calendar open on top of the form. A modal focuses its first field automatically, that field is a date, and the picker opened on focus. It now opens on a deliberate click (or the down-arrow key) &mdash; which also stops a calendar appearing every time you Tab past a date field.</li>
+            <li>Fixed in the shared component rather than the one screen, so the ledger&rsquo;s row-edit box &mdash; which opens onto a date field too &mdash; was fixed in the same change.</li>
+        </ul>
+
+        <h3>The Resource Library got a front door (v1.32.0)</h3>
+        <ul>
+            <li><strong>The library could not be stocked from the admin at all.</strong> Every resource row came from the family-facing suggestion form or a one-purpose import script, so adding one meant submitting a link as if you were a family and then approving your own submission &mdash; and three of the five kinds had no way in whatsoever.</li>
+            <li><strong>All five kinds are now enterable:</strong> link and video by URL, image from the media library, document by uploading a PDF or pasting a link, and a troop post written in markdown with a live preview beside it. Where a resource appears &mdash; any number of shelves, rank requirements, or badges &mdash; is chosen while you enter it, so it lands on its pages in one pass.</li>
+            <li><strong>Anything entered in admin publishes on save.</strong> The review queue keeps doing what it was built for, which is reviewing what families and scouts send in. &ldquo;Save as draft&rdquo; parks an unfinished one.</li>
+            <li><strong>&ldquo;Leaders only&rdquo; started working.</strong> The setting had existed in the database since the library shipped, but no page ever checked it &mdash; a leaders-only resource would have rendered for every family. It is now enforced everywhere, including in one query that bypassed the shared loader and would have leaked on its own.</li>
+        </ul>
+
+        <h2>Blockers Resolved</h2>
+        <div class="callout callout-gold">
+            <strong>Production was quietly degraded, and nothing said so.</strong> The categories migration reached production <em>after</em> its code did &mdash; the earlier commits were pushed from a concurrent session. Because the loader discards its error object, a missing table became an empty list instead of a failure: the calendar&rsquo;s category filter was empty, every category rendered in the neutral grey fallback, and the admin category picker had no options, which blocked adding events and albums. Diagnosed from the live page&rsquo;s HTML, migration applied, and recovery verified &mdash; 15 filter options and real colors back.
+        </div>
+        <div class="callout callout-teal">
+            <strong>Then the page stayed stale anyway.</strong> <span class="file-path">/events</span> was prerendered fully static with no revalidate window, so its HTML was whatever the last build produced &mdash; and it survived the next deploy untouched. It now carries a 30-minute floor, matching Photos and Meetings. On-demand refresh from admin actions is still the fast path; the window is the backstop for data that changes outside the app, which a migration does.
+        </div>
+
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td><span class="badge badge-blue">D-085</span></td><td>Photo albums share the categories lookup by foreign key; a <span class="file-path">behavior</span> flag replaces every name comparison</td></tr>
+                <tr><td><span class="badge badge-blue">D-086</span></td><td>Date pickers open on click or ArrowDown, never on focus</td></tr>
+                <tr><td><span class="badge badge-blue">D-087</span></td><td>Admin-created library resources publish immediately; the queue stays for family submissions</td></tr>
+                <tr><td><span class="badge badge-blue">D-088</span></td><td>Library documents upload to the CDN without a media-library row</td></tr>
+                <tr><td><span class="badge badge-blue">D-089</span></td><td>Public pages that read database data get a revalidate floor</td></tr>
+            </tbody>
+        </table>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li><strong>Verify the PDF upload end to end</strong> &mdash; the one part of the new form deliberately left untested, because exercising it writes a file to the live CDN.</li>
+            <li><strong>Harden the loaders that swallow errors.</strong> A missing table degraded the whole site silently rather than failing loudly; that pattern is used widely, and this is the second time it has hidden a real problem.</li>
+            <li><strong>Create the new off-calendar categories</strong> &mdash; &ldquo;Merit Badge Opportunity&rdquo; and &ldquo;Service Opportunity&rdquo; &mdash; in Lookups &amp; Admin. That was the point of the whole lookup: they are yours to word.</li>
+            <li>Event story-editor workbench (the remaining Event&rarr;News follow-up), and the Rummage Sale promotion for sale week.</li>
+        </ul>
+
+        <div class="callout callout-green">
+            <strong>Quality:</strong> test baseline 102 &rarr; 131, lint 0 errors, every change browser-verified with the test rows deleted afterward. The one deviation from plan &mdash; not extracting the News split-pane editor for reuse &mdash; was taken deliberately rather than risk a working, heavily-used editor, and is recorded as debt with the condition that would justify revisiting it.
+        </div>
+    </div>
+
+    <footer>
+        Session summary &middot; Troop79-Website &middot; Operator &middot; August 12, 2026<br>
+        Generated by /northwoods:end-session
+    </footer>
+</body>
+</html>
