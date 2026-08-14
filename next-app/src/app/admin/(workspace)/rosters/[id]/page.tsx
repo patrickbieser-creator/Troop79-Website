@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireRole } from '@/lib/require-role';
 import { RosterTable } from './roster-table';
+import { AddPerson, type AddCandidate } from './add-person';
 import { EmailPanel } from './email-panel';
 import { emailConfigured } from '@/lib/email';
 import styles from '../../events/events-admin.module.css';
@@ -190,13 +191,48 @@ async function load(signupId: number) {
     }
   );
 
+  /*
+   * Who a leader could still add by hand.
+   *
+   * Excludes anyone with a live entry — and also anyone REMOVED, because
+   * Restore is the right control for them: it revives the original entry with
+   * its payment and job history rather than creating a fresh one.
+   */
+  const alreadyOn = new Set(
+    ((entries ?? []) as { person_id: number | null }[])
+      .map((e) => e.person_id)
+      .filter((id): id is number => id != null)
+  );
+  const { data: directory } = await supabase
+    .from('person_directory')
+    .select('person_id, display_name, scout_id, active')
+    .eq('active', true)
+    .order('display_name');
+
+  const addCandidates: AddCandidate[] = ((directory ?? []) as {
+    person_id: number;
+    display_name: string;
+    scout_id: string | null;
+  }[])
+    .filter((p) => !alreadyOn.has(p.person_id))
+    .map((p) => ({
+      personId: p.person_id,
+      displayName: p.display_name,
+      isScout: p.scout_id != null,
+      // Household is not resolved here: the roster's own household lookup is
+      // built per-ENTRY, and nobody in this list has an entry yet. Scout/Adult
+      // is enough to tell two similar names apart in practice.
+      household: null
+    }));
+
   return {
     signup: sig,
     entry: entry as Record<string, unknown> | null,
     rows: liveRows,
     removedRows,
     nonResponders,
-    slotCoverage
+    slotCoverage,
+    addCandidates
   };
 }
 
@@ -305,6 +341,12 @@ export default async function EventRosterPage({ params }: { params: Promise<{ id
         signupId={signupId}
         calendarEntryId={Number(data.entry.id)}
         showSlip={signup.needs_permission_slip}
+      />
+
+      <AddPerson
+        candidates={data.addCandidates}
+        signupId={signupId}
+        calendarEntryId={Number(data.entry.id)}
       />
 
       {waitlisted.length > 0 && (

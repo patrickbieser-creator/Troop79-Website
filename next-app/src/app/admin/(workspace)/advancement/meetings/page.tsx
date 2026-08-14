@@ -1,102 +1,106 @@
 /**
- * /admin/advancement/meetings — the Roll Call work list.
+ * /admin/advancement/meetings — the Roll Call work list, for EVERY event.
  *
- * Calendar unification: meetings are CREATED from the Calendar workbench, as
- * the agenda layer of the entry for that night. This page is what the screen
- * was actually used for day to day — finding a meeting to take attendance for,
- * and opening an agenda to edit — and it stays under Planning because Roll Call
- * is a data-entry session rather than editing.
+ * It used to list `meetings` rows only, which meant the one screen that
+ * answered "who was at what" could only answer it for Sunday nights. Campouts,
+ * service projects and fundraisers had attendance too — scattered across
+ * ledger rows entered days later — and no screen showed it.
  *
- * The Meeting PLAN (sibling page) suggests candidates; a MEETING here is the
- * leader's published decision — logistics plus a curated agenda, rendered
- * publicly at /events/[entryId].
+ * Rows are now calendar ENTRIES, so every event with attendance appears in one
+ * place, with its count and a way in. Agendas remain a meeting-only layer and
+ * show as a column rather than as the thing the list is made of.
+ *
+ * Entries whose category tracks nothing at all — "No Meeting" — are left out:
+ * a cancelled week has no attendance to take, and listing it would only pad the
+ * screen.
  */
 
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireRole } from '@/lib/require-role';
-import { MeetingsList, type MeetingRow } from './meetings-list';
+import { AttendanceList, type AttendanceListRow } from './meetings-list';
 import { deleteMeeting } from './actions';
 import styles from './meetings.module.css';
 
 export const metadata = {
-  title: 'Meetings — Troop 79'
+  title: 'Roll Call — Troop 79'
 };
 
-/**
- * Meetings with the date of the calendar entry each one is a layer of. The
- * date is JOINED rather than read from meetings.meeting_date — the entry owns
- * it, and that column is on its way out.
- */
-async function loadMeetings(): Promise<MeetingRow[]> {
+async function loadRows(): Promise<AttendanceListRow[]> {
   const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from('meetings')
-    .select('id, title, status, updated_by, calendar_entry_id, calendar_entries!inner(entry_date)')
-    .is('archived_at', null);
-  // Surfaced rather than swallowed: a failed query here would render "No
-  // meetings yet", which is indistinguishable from the true empty state on the
-  // screen a leader uses to answer "does this meeting have an agenda?".
-  if (error) throw new Error(`Meetings failed to load: ${error.message}`);
 
-  const rows = (data ?? []) as unknown as {
-    id: number;
-    title: string;
-    status: string;
-    updated_by: string | null;
-    calendar_entry_id: number;
-    calendar_entries: { entry_date: string } | { entry_date: string }[];
-  }[];
+  const [{ data: entries, error }, { data: categories }, { data: meetings }, { data: attendance }] =
+    await Promise.all([
+      supabase
+        .from('calendar_entries')
+        .select('id, title, entry_date, category')
+        .order('entry_date', { ascending: false }),
+      supabase.from('calendar_categories').select('label, credit_kind, counts_as_activity'),
+      supabase.from('meetings').select('id, status, calendar_entry_id').is('archived_at', null),
+      supabase.from('event_attendance').select('calendar_entry_id, person_id')
+    ]);
+  if (error) throw new Error(`Calendar entries failed to load: ${error.message}`);
 
-  return rows
-    .map((r) => {
-      const joined = Array.isArray(r.calendar_entries) ? r.calendar_entries[0] : r.calendar_entries;
-      return {
-        id: r.id,
-        title: r.title,
-        status: r.status,
-        updated_by: r.updated_by,
-        entry_id: r.calendar_entry_id,
-        entry_date: joined?.entry_date ?? ''
-      };
-    })
-    .filter((r) => r.entry_date !== '')
-    .sort((a, b) => b.entry_date.localeCompare(a.entry_date));
-}
+  // Which people are scouts — the split the roll call list reports.
+  const { data: scouts } = await supabase.from('scouts').select('person_id').not('person_id', 'is', null);
+  const scoutPeople = new Set(
+    ((scouts ?? []) as { person_id: number }[]).map((s) => s.person_id)
+  );
 
-/** meeting_date → "scouts + leaders" attendance counts (see the
- *  meeting_attendance_counts view — computed, never stored). The view is keyed
- *  by date, and attendance is recorded per meeting, so this stays date-keyed
- *  until the view itself is re-keyed. */
-async function loadAttendanceCounts(): Promise<Record<string, { scouts: number; leaders: number }>> {
-  const supabase = createAdminClient();
-  const { data, error } = await supabase.from('meeting_attendance_counts').select('*');
-  if (error) throw new Error(`Attendance counts failed to load: ${error.message}`);
-  const out: Record<string, { scouts: number; leaders: number }> = {};
-  for (const row of data ?? []) {
-    out[row.meeting_date as string] = {
-      scouts: (row.scout_count as number) ?? 0,
-      leaders: (row.leader_count as number) ?? 0
-    };
+  const trackable = new Set(
+    ((categories ?? []) as { label: string; credit_kind: string | null; counts_as_activity: boolean }[])
+      .filter((c) => c.credit_kind !== null || c.counts_as_activity)
+      .map((c) => c.label)
+  );
+
+  const meetingByEntry = new Map(
+    ((meetings ?? []) as { id: number; status: string; calendar_entry_id: number }[]).map((m) => [
+      m.calendar_entry_id,
+      m
+    ])
+  );
+
+  const counts = new Map<number, { scouts: number; adults: number }>();
+  for (const a of (attendance ?? []) as { calendar_entry_id: number; person_id: number }[]) {
+    const c = counts.get(a.calendar_entry_id) ?? { scouts: 0, adults: 0 };
+    if (scoutPeople.has(a.person_id)) c.scouts += 1;
+    else c.adults += 1;
+    counts.set(a.calendar_entry_id, c);
   }
-  return out;
+
+  return ((entries ?? []) as { id: number; title: string; entry_date: string; category: string }[])
+    .filter((e) => trackable.has(e.category))
+    .map((e) => {
+      const meeting = meetingByEntry.get(e.id);
+      const count = counts.get(e.id);
+      return {
+        entryId: e.id,
+        title: e.title,
+        entryDate: e.entry_date,
+        category: e.category,
+        agendaId: meeting?.id ?? null,
+        agendaStatus: meeting?.status ?? null,
+        scoutCount: count?.scouts ?? 0,
+        adultCount: count?.adults ?? 0
+      };
+    });
 }
 
-export default async function MeetingsAdminPage() {
+export default async function RollCallListPage() {
   await requireRole(['leader']);
-  const [meetings, attendance] = await Promise.all([loadMeetings(), loadAttendanceCounts()]);
+  const rows = await loadRows();
 
   return (
     <>
       <div className={styles.pageTitle}>
-        <h1>Meetings</h1>
+        <h1>Roll Call</h1>
         <p>
-          Roll Call and agendas for each troop meeting. A meeting is added from the Calendar, on the
-          entry for that night — open one here to take attendance or edit its agenda. Nothing is
-          public until you hit Publish.
+          Who was at what &mdash; every event that tracks attendance, not just meetings. Open one to
+          take or correct its roll call; marking a scout present grants the ledger credit its
+          category carries. Meetings also carry an agenda, edited separately.
         </p>
       </div>
 
-      <MeetingsList rows={meetings} attendance={attendance} onDelete={deleteMeeting} />
+      <AttendanceList rows={rows} onDeleteAgenda={deleteMeeting} />
     </>
   );
 }
