@@ -336,9 +336,54 @@ alter table public.calendar_categories
   add column counts_as_activity boolean not null default true;
 ```
 
-Seeded false for Troop Meeting, No Meeting, Committee Meeting and Leadership /
-Planning — BSA excludes meetings from 1a by name. "Includes overnight" needs no
-column: it is `credit_kind = 'camping_nights'` **and** granted qty > 0.
+"Includes overnight" needs no column: it is `credit_kind = 'camping_nights'`
+**and** granted qty > 0.
+
+**The dividing line (Patrick, 2026-08-14): is it a meeting, or is it an event?**
+Meetings do not count — BSA excludes them from 1a by name — and several things
+that sound like events are meetings in practice.
+
+| Category | Counts | Why |
+|---|---|---|
+| Troop Meeting | ✗ | meeting |
+| No Meeting | ✗ | meeting |
+| **Ceremony / Recognition** | ✗ | **a meeting, not an event** — Patrick |
+| **Advancement Event** | ✗ | **technically a meeting** — Patrick; see discretion below |
+| Leadership / Planning | ✗ | PLC / committee — a meeting |
+| **Training** | ✓ | **counts as an activity** — Patrick |
+| Campout / Overnight | ✓ | event |
+| Summer Camp | ✓ | event |
+| High Adventure | ✓ | event |
+| Day Activity / Outing | ✓ | event |
+| Service Project | ✓ | event |
+| Fundraiser | ✓ | event |
+| Recruiting / Outreach | ✓ | *inferred* from the meeting-vs-event line — you go somewhere and do something |
+| Social Event | ✓ | *inferred* — same reasoning |
+
+The last two are applications of the stated principle rather than direct
+answers; worth a glance before the seed ships.
+
+### Discretion is free — no per-entry override needed
+
+Patrick: an Advancement Event that was really an out-of-town clinic *"we would
+have the discretion to classify it as a day outing and move it into the event
+counting category."*
+
+That needs **no new mechanism**. The category already carries template, credit
+kind and now activity counting, so reclassifying the entry from Advancement
+Event to Day Activity / Outing moves it into the counting category in a
+one-field edit — and the FK's ON UPDATE CASCADE means nothing downstream has to
+be touched. **No `counts_as_activity_override` column on `calendar_entries`.**
+
+The judgement lives where judgement belongs: in a human picking the category
+that describes what actually happened.
+
+**One edge worth surfacing in the UI:** reclassifying from a meeting-template
+category to an activity-template one hides the Agenda panel, because template
+follows category. The agenda ROW survives — layers are never destroyed by a
+category change (see Calendar-Unification) — and comes straight back if the
+category is changed back. But the editor should say so at the moment of the
+change rather than letting an agenda quietly vanish from view.
 
 ### Transition — the honest wrinkle
 
@@ -369,10 +414,14 @@ calendar entry at all — a 2023 campout may predate the calendar). So:
 - [x] **`day_outing` / `fundraiser`** — they DO count, as activities. See the
       section above; they grant no quantity but their attendance row is the
       activity record. (Patrick, 2026-08-14)
-- [ ] Do **Ceremony / Recognition**, **Training** and **Advancement Event**
-      count as troop activities for 1a? Campout / Outing / Service / Fundraiser
-      are settled; these three are judgment calls that want Patrick's answer
-      before the seed values are written.
+- [x] **Ceremony / Recognition, Training, Advancement Event** — settled by the
+      meeting-vs-event line: ceremonies and advancement events are meetings and
+      do not count; training does. Discretion for the out-of-town-clinic case is
+      exercised by reclassifying the entry's category, which needs no new
+      mechanism. (Patrick, 2026-08-14 — see the seed table above.)
+- [ ] **Recruiting / Outreach** and **Social Event** were seeded ✓ by applying
+      Patrick's meeting-vs-event principle rather than from a direct answer.
+      Worth confirming before the seed migration ships.
 
 ## Notes
 
