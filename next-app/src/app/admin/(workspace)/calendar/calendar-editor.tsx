@@ -333,7 +333,21 @@ export function CalendarEditor({
                     aria-label={`Promote ${row.title} to the homepage`}
                     onChange={(e) => onPromoteToggle(row, e.target.checked)}
                   />
-                  {row.featured && <span className={styles.catTag}> Hero</span>}
+                  {/* "Hero" is a STRONGER form of promoted, not a separate
+                      thing: a featured in-window entry takes the homepage hero
+                      slot for its promo window, and the featured article
+                      resumes when the window closes. Guarded on the checkbox
+                      because a hero flag with promotion off does nothing — it
+                      should never render as if it were in effect. */}
+                  {row.show_on_homepage && row.featured && (
+                    <span
+                      className={styles.catTag}
+                      title="Takes the homepage hero slot for its promotion window"
+                    >
+                      {' '}
+                      Hero
+                    </span>
+                  )}
                 </td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                   {/* "Edit", not "Open" — News calls the same act Edit, and

@@ -106,6 +106,78 @@ export async function createArticle(formData: FormData): Promise<ActionResult> {
 }
 
 /**
+ * Copies a post, prefixing its title with "(Clone) ".
+ *
+ * The Calendar's Clone is the primary way entries get created there, and News
+ * had no equivalent — starting a similar post meant retyping it. Same idea,
+ * smaller job: a post has one layer (its body) plus tags, and no dates hanging
+ * off it to shift.
+ *
+ * What deliberately does NOT come across:
+ *   * `status` — the copy is a DRAFT. Cloning a published post and having the
+ *     copy go live under a near-identical title is the one genuinely bad
+ *     outcome here.
+ *   * `featured` / `featured_order` — homepage curation is a decision about one
+ *     post, not a property to duplicate.
+ *   * `published_at`, `archived_at`, `archived_by` — history belongs to the
+ *     original.
+ *   * `slug` — regenerated from the new title, and uniqueness-checked, because
+ *     it is the public URL.
+ *
+ * Authorship goes to whoever made the copy, matching the Calendar's clone.
+ */
+export async function cloneArticle(id: number): Promise<ActionResult> {
+  const session = await requireRole(['leader', 'scout']);
+  const supabase = createAdminClient();
+
+  const { data: source, error: fetchError } = await supabase
+    .from('articles')
+    .select('*, article_tags(tag_id)')
+    .eq('id', id)
+    .maybeSingle();
+  if (fetchError) return { ok: false, error: fetchError.message };
+  if (!source) return { ok: false, error: 'That post no longer exists.' };
+
+  const src = source as Article & { article_tags: { tag_id: number }[] };
+
+  // A scout may copy their own post, the same rule updateArticle applies —
+  // cloning is a way of authoring, not a way of reaching someone else's draft.
+  if (session.role !== 'leader' && src.author_name !== session.leader) {
+    return { ok: false, error: 'You can only copy your own posts.' };
+  }
+
+  const title = `(Clone) ${src.title}`;
+  const slug = await uniqueSlug(supabase, title);
+
+  const { data: created, error } = await supabase
+    .from('articles')
+    .insert({
+      slug,
+      title,
+      type: src.type,
+      excerpt: src.excerpt,
+      body: src.body,
+      hero_media_id: src.hero_media_id,
+      auto_archive_at: src.auto_archive_at,
+      status: 'draft',
+      featured: false,
+      author_name: session.leader,
+      author_role: session.role
+    })
+    .select('id')
+    .single();
+  if (error || !created) return { ok: false, error: error?.message ?? 'Copy failed.' };
+
+  await setTags(
+    supabase,
+    created.id,
+    (src.article_tags ?? []).map((t) => t.tag_id)
+  );
+  revalidateNews();
+  return { ok: true, id: created.id };
+}
+
+/**
  * Updates an article's content. Scouts may only update their OWN articles,
  * and this action never touches `status` — publishing is a separate,
  * leader-only action (see publishArticle).

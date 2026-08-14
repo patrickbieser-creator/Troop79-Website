@@ -6,7 +6,14 @@ import { useState, useTransition } from 'react';
 import type { SessionRole } from '@/lib/leader-session';
 import type { ArticleStatus } from '@/lib/supabase/types';
 import type { ArticleRowVM } from './page';
-import { publishArticle, archiveArticle, unarchiveArticle, deleteArticle, setFeatured } from './actions';
+import {
+  publishArticle,
+  archiveArticle,
+  unarchiveArticle,
+  deleteArticle,
+  cloneArticle,
+  setFeatured
+} from './actions';
 import styles from './articles.module.css';
 
 type SortKey = 'title' | 'type' | 'status' | 'author' | 'date';
@@ -152,6 +159,21 @@ export function ArticlesTable({ rows, sp, sort, dir, sessionRole, sessionName }:
                       <Link href={`/admin/news/articles/${r.id}`} className={styles.actionBtn}>
                         Edit
                       </Link>
+                    )}
+                    {/* Clone, matching the Calendar's row actions. The copy is
+                        always a draft, so it is offered on published and
+                        archived posts alike — those are the ones most worth
+                        starting from. */}
+                    {canEdit && (
+                      <button
+                        type="button"
+                        className={styles.actionBtn}
+                        disabled={isPending}
+                        title="Copy this post as a new draft"
+                        onClick={() => runAction(r.id, () => cloneArticle(r.id))}
+                      >
+                        Clone
+                      </button>
                     )}
                     {isLeader && r.status === 'draft' && !r.archived_at && (
                       <button

@@ -118,7 +118,12 @@
 .archivedRow { background: var(--admin-gray-50); color: var(--admin-gray-500); font-style: italic; }
 .empty { padding: 36px 16px; text-align: center; color: var(--admin-gray-500); font-style: italic; }
 
-.actionsCell { text-align: right; white-space: nowrap; }
+/* `.table th, .table td { text-align: left }` above is a two-class descendant
+   selector and outranks a bare `.actionsCell`, so the buttons had been sitting
+   left-aligned in a column whose HEADER was right-aligned — the misalignment
+   was quiet enough to survive since this table shipped. Matching the selector's
+   specificity fixes it, and puts the actions where the Calendar's are. */
+.table td.actionsCell { text-align: right; white-space: nowrap; }
 .actionBtn {
   background: none;
   border: 1px solid var(--admin-gray-300);
