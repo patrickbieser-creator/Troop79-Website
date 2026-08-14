@@ -2,15 +2,16 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { loadCalendarCategories } from '@/lib/calendar';
 import type { CalendarEntry, Media } from '@/lib/supabase/types';
 
-/** Admin rows carry the resolved promotion hero for the editor's preview, and
- *  whether the entry has an agenda layer — deleting the entry cascades into
- *  the meeting and its sessions, so the confirm has to say so. */
-export type CalendarEntryRow = CalendarEntry & { hero_media: Media | null; hasAgenda: boolean };
+// The row type moved to entry-form.tsx with the form itself; re-exported so
+// existing importers keep working.
+export type { CalendarEntryRow } from './entry-form';
+import type { CalendarEntryRow } from './entry-form';
 import { CalendarEditor } from './calendar-editor';
 import {
   createCalendarEntry,
   updateCalendarEntry,
   deleteCalendarEntry,
+  cloneCalendarEntry,
   importCalendarEntries
 } from './actions';
 import styles from './calendar.module.css';
@@ -56,7 +57,8 @@ export default async function CalendarAdminPage() {
         <p>
           Everything that happens on a date, whether or not it&rsquo;s on the troop calendar &mdash;
           meetings, campouts, fundraisers, and outside opportunities like district merit badge
-          clinics. Add one here, then <strong>Open</strong> it to add a story, an agenda or a signup;
+          clinics. Add one here, then <strong>Open</strong>{' '}
+          it to add a story, an agenda or a signup;
           the category you pick decides which of those the entry starts with. On-calendar entries
           feed the public calendar and .ics subscription; any entry can promote itself into the
           homepage news feed for a window &mdash; no separate article needed.
@@ -69,6 +71,7 @@ export default async function CalendarAdminPage() {
         onCreate={createCalendarEntry}
         onUpdate={updateCalendarEntry}
         onDelete={deleteCalendarEntry}
+        onClone={cloneCalendarEntry}
         onImport={importCalendarEntries}
       />
     </>

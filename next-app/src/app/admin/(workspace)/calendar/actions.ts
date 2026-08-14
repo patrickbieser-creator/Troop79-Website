@@ -82,6 +82,212 @@ function fieldsFromForm(fd: FormData) {
   };
 }
 
+/* ── deep clone ──────────────────────────────────────────────────────────────
+ *
+ * Cloning is the PRIMARY way a new entry gets created (Patrick, 2026-08-14):
+ * "find a meeting that most closely resembles what we want to do at a future
+ * meeting and then clone most of all the detail, then clean it up". Bulk entry
+ * is over; almost every entry from here needs thought, and the fastest route to
+ * a thoughtful entry is last time's entry.
+ *
+ * So this is not a shallow row copy — it carries every LAYER: the write-up, the
+ * agenda's shape, and the signup's whole structure (jobs, price tiers,
+ * questions, resources). What it never carries is PEOPLE: no claims, no
+ * entries, no payments, no assigned scouts or leaders. A cloned event starts
+ * empty of humans.
+ *
+ * Two rules make the copy land on the new date correctly:
+ *
+ *   1. Date-relative fields SHIFT by the same number of days, so the pattern
+ *      survives. A three-day campout stays three days; a deadline set ten days
+ *      before the event stays ten days before it. Copying them verbatim would
+ *      produce a signup whose deadline had already passed.
+ *   2. The cloned signup starts CLOSED. A clone is by definition not yet
+ *      reviewed — it still says "Devil's Lake" in the details — and families
+ *      must not be able to sign up for it until a leader opens it.
+ */
+
+/** Whole days between two ISO dates, using noon UTC to dodge DST edges. */
+function dayDelta(fromISO: string, toISO: string): number {
+  const a = new Date(`${fromISO}T12:00:00Z`).getTime();
+  const b = new Date(`${toISO}T12:00:00Z`).getTime();
+  return Math.round((b - a) / 86_400_000);
+}
+
+/** Shift an ISO date (yyyy-mm-dd) by N days, preserving null. */
+function shiftDate(iso: string | null, days: number): string | null {
+  if (!iso) return null;
+  const d = new Date(`${iso}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Shift a timestamptz by N days, preserving null AND time of day. */
+function shiftStamp(ts: string | null, days: number): string | null {
+  if (!ts) return null;
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return null;
+  d.setDate(d.getDate() + days);
+  return d.toISOString();
+}
+
+/** Strip the identity/audit columns a copied row must not carry over. */
+function stripRow<T extends Record<string, unknown>>(row: T, ...alsoDrop: string[]): Partial<T> {
+  const out: Record<string, unknown> = { ...row };
+  for (const k of ['id', 'created_at', 'updated_at', ...alsoDrop]) delete out[k];
+  return out as Partial<T>;
+}
+
+export async function cloneCalendarEntry(
+  fd: FormData
+): Promise<{ ok: boolean; error?: string; id?: number }> {
+  await requireRole(['leader', 'scout']);
+  const sourceId = Number(fd.get('source_id'));
+  const newDate = String(fd.get('entry_date') ?? '').trim();
+  if (!Number.isInteger(sourceId) || sourceId <= 0) return { ok: false, error: 'Missing source entry.' };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) return { ok: false, error: 'Pick a date for the copy.' };
+
+  const supabase = createAdminClient();
+
+  const { data: source, error: srcErr } = await supabase
+    .from('calendar_entries')
+    .select('*')
+    .eq('id', sourceId)
+    .maybeSingle();
+  if (srcErr) return { ok: false, error: srcErr.message };
+  if (!source) return { ok: false, error: 'That entry no longer exists.' };
+
+  const shift = dayDelta(source.entry_date as string, newDate);
+
+  // ── the entry itself ──
+  const { data: created, error: entryErr } = await supabase
+    .from('calendar_entries')
+    .insert({
+      ...stripRow(source as Record<string, unknown>),
+      entry_date: newDate,
+      end_date: shiftDate(source.end_date as string | null, shift),
+      promo_start: shiftDate(source.promo_start as string | null, shift),
+      promo_end: shiftDate(source.promo_end as string | null, shift),
+      auto_archive_at: shiftDate(source.auto_archive_at as string | null, shift)
+    })
+    .select('id')
+    .single();
+  if (entryErr || !created) return { ok: false, error: entryErr?.message ?? 'Could not create the copy.' };
+  const newId = created.id as number;
+
+  /*
+   * Layers are copied best-effort from here on. The entry already exists and is
+   * usable; failing the whole clone because one price tier tripped a constraint
+   * would leave the leader worse off than a partial copy they can see and fix.
+   * Any layer that fails is named in the returned error while the new entry id
+   * is still handed back, so the workbench opens on it either way.
+   */
+  const problems: string[] = [];
+
+  // ── resources ──
+  const { data: resources } = await supabase
+    .from('event_resources')
+    .select('*')
+    .eq('calendar_entry_id', sourceId);
+  if (resources?.length) {
+    const { error } = await supabase
+      .from('event_resources')
+      .insert(resources.map((r) => ({ ...stripRow(r), calendar_entry_id: newId })));
+    if (error) problems.push('resources');
+  }
+
+  // ── agenda layer: structure only, every person cleared ──
+  const { data: meeting } = await supabase
+    .from('meetings')
+    .select('*')
+    .eq('calendar_entry_id', sourceId)
+    .is('archived_at', null)
+    .maybeSingle();
+  if (meeting) {
+    const { data: newMeeting, error } = await supabase
+      .from('meetings')
+      .insert({
+        ...stripRow(meeting as Record<string, unknown>),
+        calendar_entry_id: newId,
+        meeting_date: newDate,
+        // Never inherit "published": a cloned agenda has not been reviewed.
+        status: 'draft',
+        archived_at: null
+      })
+      .select('id')
+      .single();
+    if (error || !newMeeting) {
+      problems.push('agenda');
+    } else {
+      const { data: sessions } = await supabase
+        .from('meeting_sessions')
+        .select('*')
+        .eq('meeting_id', meeting.id);
+      if (sessions?.length) {
+        const { error: sErr } = await supabase.from('meeting_sessions').insert(
+          sessions.map((s) => ({
+            ...stripRow(s),
+            meeting_id: newMeeting.id,
+            // Every person is re-assigned deliberately. A stale name published
+            // on next month's agenda is worse than a blank one.
+            leader_name: null,
+            contact_name: null,
+            contact_phone: null,
+            scouts: null
+          }))
+        );
+        if (sErr) problems.push('agenda items');
+      }
+    }
+  }
+
+  // ── signup layer: the whole structure, none of the people, and closed ──
+  const { data: signup } = await supabase
+    .from('event_signups')
+    .select('*')
+    .eq('calendar_entry_id', sourceId)
+    .maybeSingle();
+  if (signup) {
+    const { data: newSignup, error } = await supabase
+      .from('event_signups')
+      .insert({
+        ...stripRow(signup as Record<string, unknown>),
+        calendar_entry_id: newId,
+        status: 'closed',
+        deadline: shiftStamp(signup.deadline as string, shift) ?? signup.deadline
+      })
+      .select('id')
+      .single();
+    if (error || !newSignup) {
+      problems.push('signup');
+    } else {
+      for (const table of ['event_prices', 'signup_slots', 'signup_questions'] as const) {
+        const { data: rows } = await supabase
+          .from(table)
+          .select('*')
+          .eq('event_signup_id', signup.id);
+        if (!rows?.length) continue;
+        const { error: cErr } = await supabase.from(table).insert(
+          rows.map((r) => ({
+            ...stripRow(r),
+            event_signup_id: newSignup.id,
+            // A shift's own date moves with the event; its time of day does not.
+            ...(table === 'signup_slots'
+              ? { slot_date: shiftDate((r as { slot_date: string | null }).slot_date, shift) }
+              : {})
+          }))
+        );
+        if (cErr) problems.push(table.replace('_', ' '));
+      }
+    }
+  }
+
+  revalidateCalendar(newId);
+  return problems.length
+    ? { ok: true, id: newId, error: `Copied, but these did not come across: ${problems.join(', ')}.` }
+    : { ok: true, id: newId };
+}
+
 export async function createCalendarEntry(fd: FormData): Promise<ActionResult> {
   await requireRole(['leader', 'scout']);
   const fields = fieldsFromForm(fd);

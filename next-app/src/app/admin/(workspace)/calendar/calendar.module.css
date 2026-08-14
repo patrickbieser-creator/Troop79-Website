@@ -42,7 +42,16 @@
 .dangerBtn:hover { background: #fdf0ef; border-color: var(--admin-danger); color: var(--admin-danger); }
 
 /* Edit dialog */
-.dialog { padding: 0; border: none; border-radius: 6px; box-shadow: var(--admin-shadow-md); width: 92vw; max-width: 580px; background: var(--admin-white); }
+/* margin:auto is what centres a modal <dialog>; the admin reset zeroes margins
+   globally, so without it the dialog pinned itself to the top-left corner over
+   the page header. Pre-existing — it only became obvious once a short dialog
+   (Clone, one field) stopped filling enough of the screen to hide it.
+   max-height keeps the tall Add Entry form scrollable instead of overflowing. */
+.dialog {
+  padding: 0; border: none; border-radius: 6px; box-shadow: var(--admin-shadow-md);
+  width: 92vw; max-width: 580px; background: var(--admin-white);
+  margin: auto; max-height: 88vh; overflow-y: auto;
+}
 .dialog::backdrop { background: rgba(0, 0, 0, .42); }
 .dialogInner { padding: 22px 26px 18px; font-family: inherit; }
 .dialogHeader { border-bottom: 1px solid var(--admin-gray-200); padding-bottom: 12px; margin-bottom: 16px; }
@@ -153,3 +162,11 @@
 .filterClear:hover { background: var(--admin-gray-100); }
 .filterSpacer { flex: 1; }
 .toolbarRow { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+
+/* The entry form rendered inline in the workbench's Details panel rather than
+   inside a dialog — no dialog chrome, no width cap. */
+/* The dialog capped this form at 580px; inline in the workbench there is no
+   cap, and on a wide screen the two-column grid stretched each field to ~800px
+   — a text input that wide is harder to read, not easier. */
+.formInline { padding: 0; max-width: 760px; }
+.savedNote { font-size: 12px; color: var(--admin-forest, #2d6a4f); margin-right: 10px; align-self: center; }

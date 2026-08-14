@@ -18,7 +18,8 @@ import { requireRole } from '@/lib/require-role';
 import { loadCalendarCategories } from '@/lib/calendar';
 import { categoryColorMap, colorFor, templateOf } from '@/lib/calendar-categories';
 import { createMeeting } from '../../advancement/meetings/actions';
-import { updateEntryStory } from '../actions';
+import { updateEntryStory, updateCalendarEntry, createCalendarEntry } from '../actions';
+import type { CalendarEntryRow } from '../entry-form';
 import { Workbench, type WorkbenchEntry } from './workbench';
 
 export const metadata = { title: 'Calendar Entry — Troop 79' };
@@ -30,12 +31,12 @@ export default async function CalendarEntryPage({ params }: { params: Promise<{ 
   if (!Number.isInteger(entryId) || entryId <= 0) notFound();
 
   const supabase = createAdminClient();
+  // Everything, plus the promotion hero — the Details panel is the full entry
+  // editor now, not a summary.
   const [{ data: entry }, categories] = await Promise.all([
     supabase
       .from('calendar_entries')
-      .select(
-        'id, title, entry_date, end_date, category, location, description, details_md, on_calendar, show_on_homepage'
-      )
+      .select('*, hero_media:hero_media_id(*)')
       .eq('id', entryId)
       .maybeSingle(),
     loadCalendarCategories()
@@ -59,28 +60,35 @@ export default async function CalendarEntryPage({ params }: { params: Promise<{ 
       ])
     : [{ data: null }, { data: null }];
 
+  const row = entry as unknown as CalendarEntryRow;
   const workbenchEntry: WorkbenchEntry = {
-    id: entry.id as number,
-    title: entry.title as string,
-    entry_date: entry.entry_date as string,
-    end_date: (entry.end_date as string) ?? null,
-    category: entry.category as string,
-    categoryColor: colorFor(categoryColorMap(categories), entry.category as string),
-    location: (entry.location as string) ?? null,
-    description: (entry.description as string) ?? null,
-    details_md: (entry.details_md as string) ?? null,
-    on_calendar: entry.on_calendar as boolean,
-    show_on_homepage: (entry.show_on_homepage as boolean) ?? false
+    id: row.id,
+    title: row.title,
+    entry_date: row.entry_date,
+    end_date: row.end_date ?? null,
+    category: row.category,
+    categoryColor: colorFor(categoryColorMap(categories), row.category),
+    location: row.location ?? null,
+    description: row.description ?? null,
+    details_md: row.details_md ?? null,
+    on_calendar: row.on_calendar,
+    show_on_homepage: row.show_on_homepage ?? false
   };
 
   return (
     <Workbench
       entry={workbenchEntry}
+      // The full row feeds the Details panel's form, which is the same
+      // component the list's "+ Add Entry" dialog uses.
+      row={{ ...row, hasAgenda: false }}
+      categories={categories}
+      onSaveDetails={updateCalendarEntry}
       template={templateOf(categories, workbenchEntry.category)}
       meeting={meeting ? { id: meeting.id as number, status: meeting.status as string } : null}
       signupId={signup ? (signup.id as number) : null}
       canManageAgenda={isLeader}
       onSaveStory={updateEntryStory}
+      onCreateEntry={createCalendarEntry}
       // Withheld from a scout session entirely rather than merely unused: the
       // action enforces requireRole(['leader']) itself, so this is hygiene, but
       // a leader-only action reference has no business in a scout's payload.

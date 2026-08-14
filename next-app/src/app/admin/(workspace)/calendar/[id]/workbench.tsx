@@ -17,8 +17,9 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { CategoryTemplate } from '@/lib/calendar-categories';
+import type { CalendarCategoryRow, CategoryTemplate } from '@/lib/calendar-categories';
 import { MarkdownSplitPane } from '../../_components/markdown-split-pane';
+import { CalendarEntryForm, type CalendarEntryRow } from '../entry-form';
 import styles from './workbench.module.css';
 
 type ActionResult = { ok: boolean; error?: string };
@@ -39,6 +40,11 @@ export interface WorkbenchEntry {
 
 interface Props {
   entry: WorkbenchEntry;
+  /** The full row, for the Details panel's form. */
+  row: CalendarEntryRow;
+  categories: CalendarCategoryRow[];
+  onSaveDetails: (fd: FormData) => Promise<ActionResult>;
+  onCreateEntry: (fd: FormData) => Promise<ActionResult>;
   template: CategoryTemplate;
   /** The agenda layer, when one exists. */
   meeting: { id: number; status: string } | null;
@@ -60,6 +66,10 @@ const TEMPLATE_NOTE: Record<CategoryTemplate, string> = {
 
 export function Workbench({
   entry,
+  row,
+  categories,
+  onSaveDetails,
+  onCreateEntry,
   template,
   meeting,
   signupId,
@@ -134,6 +144,24 @@ export function Workbench({
       </div>
 
       {err && <div className={styles.error}>{err}</div>}
+
+      {/* ── the entry's own fields ──
+          Editable here, not read-only. This panel is why "Edit" disappeared
+          from the list: the workbench is the entry's editor, and having to
+          leave it to fix a title was the whole complaint. */}
+      <section className={styles.panel}>
+        <div className={styles.panelHead}>
+          <h2>Details</h2>
+        </div>
+        <CalendarEntryForm
+          row={row}
+          variant="inline"
+          categories={categories}
+          onCreate={onCreateEntry}
+          onUpdate={onSaveDetails}
+          onClose={() => {}}
+        />
+      </section>
 
       {/* ── story layer ── */}
       <section className={styles.panel}>
