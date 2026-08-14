@@ -253,8 +253,13 @@ Vitest against local Postgres, `Subject_Behavior_WhenCondition` convention.
 
 Migrations reach production **before** the code (D-089).
 
-1. **Migration A (additive):** `event_attendance`; `ledger_entries.calendar_entry_id`;
-   `calendar_categories.credit_kind` + `credit_unit` + `default_qty`.
+0. **Fix the activity counting rule** in `activity-thresholds.ts` — include
+   `day_outing`, `fundraiser` and `service_hours`. Independent of everything
+   below, ships on its own, changes real scouts' apparent progress.
+1. **Migration A (additive):** `event_attendance`;
+   `ledger_entries.calendar_entry_id`; `calendar_categories.credit_kind` +
+   `credit_unit` + `counts_as_activity`. Night counts derive from the entry's
+   date span, so no `default_qty` column — the entry already knows.
 2. **Migration B (backfill):** meeting attendance → `event_attendance`, joining
    `ledger_active` (kind='meeting_attendance', code='MTG:<date>') to entries by
    date and resolving `scout_id` → `person_id`; stamp those ledger rows'
@@ -262,7 +267,8 @@ Migrations reach production **before** the code (D-089).
    via `leader_code` → `person_id`. **Guard before constraining**, and report
    counts — 1,249 check-ins must all land.
 3. **Roll Call route** — `/admin/calendar/[id]/roll-call`, linked from the
-   workbench panel. Person picker, signup seeding, mismatch panel.
+   workbench panel **and from the Meeting Plan**, so attendance can be taken
+   beside the agenda's requirements.
 4. **Cascade actions** with the soft-delete rule and idempotency.
 5. **Signup add-person / claim-job-for actions**, sharing the picker.
 6. **Reconciliation audit** in the existing Audits section.
@@ -271,19 +277,102 @@ Migrations reach production **before** the code (D-089).
 8. **qa-lead review** — new write path into the advancement ledger.
 9. **Migration C (guarded drop):** `meeting_attendance_leaders`, after soak.
 
+## Activities: the umbrella, and why attendance is the right place to count it
+
+**Corrects a recorded rule.** `activity-thresholds.ts:7–13` says "Counting rule
+(confirmed with the user)" and then counts only `camping_nights` and
+`hiking_miles`, explicitly excluding `day_outing`, `fundraiser` and
+`service_hours`. Patrick, 2026-08-14: that is wrong.
+
+**An activity is an umbrella** covering campouts, fundraisers, day outings and
+service projects — everything except meetings. Second Class 1a and First Class
+1a both count activities, and an event counts toward its umbrella AND its
+quantity at the same time: a service project is service hours *and* an activity;
+a campout is nights *and* an activity.
+
+So real scouts are under-credited today. Every fundraiser and day outing they
+attended is invisible to the 1a check.
+
+### Why the ledger is the wrong place to count activities
+
+The ledger records **credit kinds**, so the audit has to infer "was this an
+activity?" from the kind — and that inference is lossy in both directions:
+
+- **Under-counts:** a fundraiser IS an activity, but its `fundraiser` row is
+  excluded by the rule above.
+- **Over-counts:** one event can produce TWO ledger rows. A campout with a
+  service component yields `camping_nights` AND `service_hours` — counting rows
+  would score one weekend as two activities. (Today's `scout_id + code` dedup
+  happens to absorb this, but only because both rows share a code — a coincidence
+  of data entry, not a guarantee.)
+
+### Why attendance is the right place
+
+With Roll Call, **the attendance row IS the activity**. `unique
+(calendar_entry_id, person_id)` makes "five *separate* activities" structural
+rather than a dedup heuristic — one event cannot count twice, ever.
+
+Then each table answers the question it is shaped for:
+
+| Question | Counted from |
+|---|---|
+| How many activities has this scout participated in? | `event_attendance` rows on non-meeting entries |
+| How many of those included overnight camping? | ...where the granted qty > 0 nights |
+| How many service hours? Camping nights? Miles? | `ledger_entries`, as today |
+
+Dual counting stops being a special case: the attendance row feeds the activity
+tally, its ledger row feeds the quantity tally, and neither double-counts because
+they are different tables answering different questions.
+
+**A precision the current model cannot express:** a scout who attends a campout
+for the day only, with a per-person qty override of 0 nights, counts as an
+activity but NOT as an overnight. Today that scout either gets full nights or
+gets nothing.
+
+### What the category lookup needs
+
+```sql
+alter table public.calendar_categories
+  add column counts_as_activity boolean not null default true;
+```
+
+Seeded false for Troop Meeting, No Meeting, Committee Meeting and Leadership /
+Planning — BSA excludes meetings from 1a by name. "Includes overnight" needs no
+column: it is `credit_kind = 'camping_nights'` **and** granted qty > 0.
+
+### Transition — the honest wrinkle
+
+Activity counting can only move to attendance once attendance exists, and
+historical campouts have ledger rows but no attendance rows (and sometimes no
+calendar entry at all — a 2023 campout may predate the calendar). So:
+
+1. **Now, independent of Roll Call:** fix the counting rule in
+   `activity-thresholds.ts` to include `day_outing`, `fundraiser` and
+   `service_hours`, still deduped by `scout_id + code`. This is a live bug
+   affecting rank progress and does not need any of this plan.
+   **It will change scouts' apparent progress** — more will cross the 1a
+   thresholds — so it ships as its own reviewed change, not folded into a
+   refactor.
+2. **After Roll Call ships:** counting moves to `event_attendance`, with a
+   transitional union over ledger rows that have no attendance row, until the
+   backfill has caught up.
+
 ## Open Questions
 
-- [ ] Does a **campout's default night count** come from the category, the entry's
-      date span (`end_date - entry_date`), or a field on the entry? The span is
-      the most honest default; a Friday–Sunday campout is two nights.
-- [ ] Should Roll Call be **reachable from the Meeting Plan** so a leader can
-      take attendance and see the agenda's requirements side by side? That is
-      the advancement-alignment payoff, but it is a second screen's worth of
-      work.
-- [ ] `day_outing` and `fundraiser` grant no quantity — should they write a
-      **zero-qty ledger row** for the activity-count audits, or nothing at all?
-      `activity-thresholds.ts:11` says they already don't count toward
-      thresholds, which argues for nothing.
+- [x] **Campout default night count** — from the entry's **date span**
+      (`end_date - entry_date`). A Friday–Sunday campout is two nights, and the
+      entry already knows its dates. Per-person override handles partial stays.
+      (Patrick, 2026-08-14)
+- [x] **Roll Call reachable from the Meeting Plan** — yes. Taking attendance
+      beside the agenda's requirements is the advancement-alignment payoff and
+      the better UX. (Patrick, 2026-08-14)
+- [x] **`day_outing` / `fundraiser`** — they DO count, as activities. See the
+      section above; they grant no quantity but their attendance row is the
+      activity record. (Patrick, 2026-08-14)
+- [ ] Do **Ceremony / Recognition**, **Training** and **Advancement Event**
+      count as troop activities for 1a? Campout / Outing / Service / Fundraiser
+      are settled; these three are judgment calls that want Patrick's answer
+      before the seed values are written.
 
 ## Notes
 
