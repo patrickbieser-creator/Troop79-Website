@@ -296,21 +296,28 @@ attended is invisible to the 1a check.
 ### Why the ledger is the wrong place to count activities
 
 The ledger records **credit kinds**, so the audit has to infer "was this an
-activity?" from the kind — and that inference is lossy in both directions:
+activity?" from the kind. Two problems follow:
 
-- **Under-counts:** a fundraiser IS an activity, but its `fundraiser` row is
-  excluded by the rule above.
-- **Over-counts:** one event can produce TWO ledger rows. A campout with a
-  service component yields `camping_nights` AND `service_hours` — counting rows
-  would score one weekend as two activities. (Today's `scout_id + code` dedup
-  happens to absorb this, but only because both rows share a code — a coincidence
-  of data entry, not a guarantee.)
+- **It under-counted.** A fundraiser IS an activity, but its `fundraiser` row
+  was excluded by the rule above. Fixed in step 0 — four production scouts were
+  affected.
+- **Distinctness is a convention, not a constraint.** "Five *separate*
+  activities" is enforced by deduping on the event `code`, which only works if
+  whoever entered the rows used the same code for the same event and different
+  codes for different ones. Nothing in the schema requires that. The
+  duplicate-records audit found ~436 duplicate groups on production, which is
+  direct evidence that data entry does not always cooperate.
+
+  (A camping-plus-service weekend is *not* a case here — Patrick, 2026-08-14:
+  those are entered as two separate events with two codes and correctly count
+  as two.)
 
 ### Why attendance is the right place
 
 With Roll Call, **the attendance row IS the activity**. `unique
-(calendar_entry_id, person_id)` makes "five *separate* activities" structural
-rather than a dedup heuristic — one event cannot count twice, ever.
+(calendar_entry_id, person_id)` turns distinctness from a data-entry convention
+into a **database constraint** — one event cannot count twice for one person,
+regardless of who typed what.
 
 Then each table answers the question it is shaped for:
 
@@ -357,11 +364,10 @@ that sound like events are meetings in practice.
 | Day Activity / Outing | ✓ | event |
 | Service Project | ✓ | event |
 | Fundraiser | ✓ | event |
-| Recruiting / Outreach | ✓ | *inferred* from the meeting-vs-event line — you go somewhere and do something |
-| Social Event | ✓ | *inferred* — same reasoning |
+| Recruiting / Outreach | ✓ | confirmed — Patrick |
+| Social Event | ✓ | confirmed — Patrick |
 
-The last two are applications of the stated principle rather than direct
-answers; worth a glance before the seed ships.
+All fourteen categories are settled; the seed migration can be written.
 
 ### Discretion is free — no per-entry override needed
 
@@ -419,9 +425,11 @@ calendar entry at all — a 2023 campout may predate the calendar). So:
       do not count; training does. Discretion for the out-of-town-clinic case is
       exercised by reclassifying the entry's category, which needs no new
       mechanism. (Patrick, 2026-08-14 — see the seed table above.)
-- [ ] **Recruiting / Outreach** and **Social Event** were seeded ✓ by applying
-      Patrick's meeting-vs-event principle rather than from a direct answer.
-      Worth confirming before the seed migration ships.
+- [x] **Recruiting / Outreach** and **Social Event** both count. All fourteen
+      categories are settled. (Patrick, 2026-08-14)
+
+**No open questions remain.** Ready to build, pending qa-lead on the new ledger
+write path (step 8).
 
 ## Notes
 

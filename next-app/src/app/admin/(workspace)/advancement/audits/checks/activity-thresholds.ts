@@ -13,9 +13,15 @@
  *   - Counts toward "N campouts" specifically: `camping_nights` rows only.
  *   - Meetings never count — BSA excludes troop and patrol meetings from 1a by
  *     name — so `meeting_attendance` is absent from ACTIVITY_KINDS.
- *   - Counted as distinct events (scout_id + code) ACROSS kinds, so one weekend
- *     that logged both nights and service hours is ONE activity, not two, and
- *     an accidental duplicate entry doesn't inflate the tally.
+ *   - Counted as distinct events (scout_id + code), keyed by CODE rather than
+ *     by kind+code, so an accidental duplicate entry can't inflate the tally.
+ *     That guard does real work: the duplicate-records audit found ~436
+ *     duplicate groups on production.
+ *
+ *     Note a camping-plus-service weekend is NOT the case being defended
+ *     against — Patrick, 2026-08-14: those would be entered as two separate
+ *     events with two codes and SHOULD count as two. Keying by code is simply
+ *     the honest unit of "one event", whatever kinds it logged.
  *
  * This REPLACES a narrower rule that had also been "confirmed with the user":
  * activities were `camping_nights` + `hiking_miles` only, with day outings,
@@ -163,10 +169,11 @@ export async function run(supabase: ReturnType<typeof createAdminClient>): Promi
   }
 
   /*
-   * Dedup by (scout_id, code) ACROSS kinds — this is the correctness point.
-   * A service campout logs `camping_nights` AND `service_hours` under one event
-   * code; that is ONE activity that happens to be a campout, not two
-   * activities. Keying by code and OR-ing isCampout gets both facts right.
+   * Dedup by (scout_id, code) — one CODE is one activity, whatever kinds its
+   * rows carry. The guard is against duplicate data entry, not against
+   * multi-kind events: genuinely distinct events get distinct codes and count
+   * separately. isCampout is OR-ed so a code with any camping_nights row counts
+   * toward the campout threshold.
    */
   const activitiesByScout = new Map<string, Map<string, ScoutActivity>>();
   for (const row of activityRows) {

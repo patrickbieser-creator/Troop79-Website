@@ -15,9 +15,9 @@ import { run } from '@/app/admin/(workspace)/advancement/audits/checks/activity-
  *
  * Two things are worth pinning:
  *   1. the umbrella is wide (the bug), and
- *   2. one event code is ONE activity even when it logs two kinds (the
- *      correctness trap a naive widening would introduce — a service campout
- *      must not score as two).
+ *   2. one event CODE is one activity, so duplicate data entry cannot inflate a
+ *      scout's tally — the duplicate-records audit found ~436 duplicate groups
+ *      on production, so this guard does real work.
  */
 
 const admin = adminClient();
@@ -86,11 +86,11 @@ describe('activity thresholds — the umbrella', () => {
     expect(findingsFor(findings, 'Second Class')[0].contextLine).toContain('6 activities');
   });
 
-  it('OneEventCode_CountsOnce_WhenItLogsBothNightsAndServiceHours', async () => {
-    // A service campout: one weekend, two ledger rows, ONE activity — and it is
-    // a campout. Counting rows instead of codes would score it as two.
-    await logActivity('camping_nights', 'ZZVIT-SERVCAMP', '2026-07-10');
-    await logActivity('service_hours', 'ZZVIT-SERVCAMP', '2026-07-10');
+  it('DuplicateRows_CountOnce_WhenTheyShareAnEventCode', async () => {
+    // The real guard: accidental double entry. Two rows, one code, one campout
+    // — the tally must move by exactly one, not two.
+    await logActivity('camping_nights', 'ZZVIT-CAMP-4', '2026-07-10');
+    await logActivity('camping_nights', 'ZZVIT-CAMP-4', '2026-07-11');
 
     const findings = await run(admin);
     const mine = findingsFor(findings, 'Second Class')[0];
