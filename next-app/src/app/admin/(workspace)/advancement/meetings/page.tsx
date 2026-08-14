@@ -16,6 +16,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/server';
+import { fetchAllRows } from '@/lib/supabase/paginate';
 import { requireRole } from '@/lib/require-role';
 import { AttendanceList, type AttendanceListRow } from './meetings-list';
 import { deleteMeeting } from './actions';
@@ -28,7 +29,7 @@ export const metadata = {
 async function loadRows(): Promise<AttendanceListRow[]> {
   const supabase = createAdminClient();
 
-  const [{ data: entries, error }, { data: categories }, { data: meetings }, { data: attendance }] =
+  const [{ data: entries, error }, { data: categories }, { data: meetings }, attendance] =
     await Promise.all([
       supabase
         .from('calendar_entries')
@@ -36,7 +37,20 @@ async function loadRows(): Promise<AttendanceListRow[]> {
         .order('entry_date', { ascending: false }),
       supabase.from('calendar_categories').select('label, credit_kind, counts_as_activity'),
       supabase.from('meetings').select('id, status, calendar_entry_id').is('archived_at', null),
-      supabase.from('event_attendance').select('calendar_entry_id, person_id')
+      /*
+       * PAGINATED. `event_attendance` passed 1,000 rows the moment the backfill
+       * landed (1,316 on production), and PostgREST caps an unbounded read at
+       * 1,000 SILENTLY — no error, just missing rows. The symptom was an event
+       * whose roll call had plainly been taken still reading "not taken",
+       * because its rows fell in the dropped remainder.
+       *
+       * This table only grows: every event, every person, forever. It belongs
+       * on the same footing as ledger_entries and merit_badge_requirements
+       * (D-028).
+       */
+      fetchAllRows<{ calendar_entry_id: number; person_id: number }>((from, to) =>
+        supabase.from('event_attendance').select('calendar_entry_id, person_id').range(from, to)
+      )
     ]);
   if (error) throw new Error(`Calendar entries failed to load: ${error.message}`);
 
@@ -60,7 +74,7 @@ async function loadRows(): Promise<AttendanceListRow[]> {
   );
 
   const counts = new Map<number, { scouts: number; adults: number }>();
-  for (const a of (attendance ?? []) as { calendar_entry_id: number; person_id: number }[]) {
+  for (const a of attendance) {
     const c = counts.get(a.calendar_entry_id) ?? { scouts: 0, adults: 0 };
     if (scoutPeople.has(a.person_id)) c.scouts += 1;
     else c.adults += 1;

@@ -11,6 +11,12 @@ import type { AttendanceRow, AttendeeCandidate } from '@/lib/attendance-shared';
 
 export * from '@/lib/attendance-shared';
 
+/**
+ * One entry's attendance. Not paginated on purpose: this is scoped to a single
+ * event, and no troop event has 1,000 attendees. Unfiltered reads of this table
+ * DO need `fetchAllRows` — it passed 1,000 rows the day the backfill landed —
+ * see the Roll Call list and the reconciliation audit.
+ */
 export async function loadAttendance(entryId: number): Promise<AttendanceRow[]> {
   const supabase = createAdminClient();
   const { data, error } = await supabase

@@ -71,7 +71,7 @@ interface LedgerRow {
 export async function run(
   supabase: ReturnType<typeof createAdminClient>
 ): Promise<ReconciliationFinding[]> {
-  const [attendanceRows, ledgerRows, entriesRes, categoriesRes, scoutsRes, peopleRes] =
+  const [attendanceRows, ledgerRows, entriesRes, categoriesRes, scouts, people] =
     await Promise.all([
       fetchAllRows<AttendanceRow>((from, to) =>
         supabase.from('event_attendance').select('calendar_entry_id, person_id, qty').range(from, to)
@@ -85,8 +85,19 @@ export async function run(
       ),
       supabase.from('calendar_entries').select('id, title, entry_date, category'),
       supabase.from('calendar_categories').select('label, credit_kind'),
-      supabase.from('scouts').select('id, person_id, display_name'),
-      supabase.from('people').select('id, display_name')
+      /*
+       * Paginated even though both tables are small today. A truncated `scouts`
+       * read does not merely slow this check down — a scout missing from the
+       * map is treated as an ADULT, silently skipped, and their missing credit
+       * never reported. The one screen whose job is catching integrity problems
+       * should not have an integrity problem of its own.
+       */
+      fetchAllRows<{ id: string; person_id: number | null; display_name: string }>((from, to) =>
+        supabase.from('scouts').select('id, person_id, display_name').range(from, to)
+      ),
+      fetchAllRows<{ id: number; display_name: string }>((from, to) =>
+        supabase.from('people').select('id, display_name').range(from, to)
+      )
     ]);
 
   const entryById = new Map(
@@ -100,16 +111,13 @@ export async function run(
       c.credit_kind
     ])
   );
-  const scouts = (scoutsRes.data ?? []) as { id: string; person_id: number | null; display_name: string }[];
   const scoutIdByPerson = new Map(
     scouts.filter((s) => s.person_id != null).map((s) => [s.person_id as number, s.id])
   );
   const personIdByScout = new Map(
     scouts.filter((s) => s.person_id != null).map((s) => [s.id, s.person_id as number])
   );
-  const nameByPerson = new Map(
-    ((peopleRes.data ?? []) as { id: number; display_name: string }[]).map((p) => [p.id, p.display_name])
-  );
+  const nameByPerson = new Map(people.map((p) => [p.id, p.display_name]));
 
   const findings: ReconciliationFinding[] = [];
   const push = (
