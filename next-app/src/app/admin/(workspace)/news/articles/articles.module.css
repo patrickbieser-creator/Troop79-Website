@@ -131,7 +131,13 @@
   cursor: pointer;
   margin-left: 6px;
   transition: all .15s ease;
+  /* Edit is a <Link>, the rest are <button>s — anchors need these to sit on the
+     same baseline and lose their underline. */
+  display: inline-block;
+  text-decoration: none;
+  line-height: normal;
 }
+.actionBtn:first-child { margin-left: 0; }
 .actionBtn:hover { border-color: var(--admin-navy); color: var(--admin-navy); }
 .actionBtn:disabled { opacity: .5; cursor: not-allowed; }
 .actionBtnPrimary { border-color: var(--admin-navy); color: var(--admin-navy); font-weight: 700; }

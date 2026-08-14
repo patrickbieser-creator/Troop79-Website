@@ -57,7 +57,7 @@ export default async function CalendarAdminPage() {
         <p>
           Everything that happens on a date, whether or not it&rsquo;s on the troop calendar &mdash;
           meetings, campouts, fundraisers, and outside opportunities like district merit badge
-          clinics. Add one here, then <strong>Open</strong>{' '}
+          clinics. Add one here, then <strong>Edit</strong>{' '}
           it to add a story, an agenda or a signup;
           the category you pick decides which of those the entry starts with. On-calendar entries
           feed the public calendar and .ics subscription; any entry can promote itself into the

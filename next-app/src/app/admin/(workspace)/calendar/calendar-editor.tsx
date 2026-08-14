@@ -245,8 +245,10 @@ export function CalendarEditor({
                     {row.category}
                   </span>
                 </td>
-                <td>
-                  {row.title}
+                <td className={styles.titleCell}>
+                  {/* The title is the way in, as it is on News. Clicking a row's
+                      subject to edit it is the habit both screens should share. */}
+                  <Link href={`/admin/calendar/${row.id}`}>{row.title}</Link>
                   {!row.on_calendar && <span className={styles.catTag}> off-calendar</span>}
                   {rowErr?.id === row.id && <div className={styles.editError}>{rowErr.msg}</div>}
                 </td>
@@ -259,10 +261,12 @@ export function CalendarEditor({
                   )}
                 </td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  {/* Open is the ONLY editor now — details, story, agenda and
+                  {/* "Edit", not "Open" — News calls the same act Edit, and
+                      these two content screens should not use different words
+                      for it. It is the only editor: details, story, agenda and
                       signup all live in the workbench. */}
                   <Link href={`/admin/calendar/${row.id}`} className={styles.editBtn}>
-                    Open
+                    Edit
                   </Link>
                   <button
                     type="button"

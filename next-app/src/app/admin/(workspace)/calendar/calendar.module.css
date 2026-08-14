@@ -170,3 +170,8 @@
    — a text input that wide is harder to read, not easier. */
 .formInline { padding: 0; max-width: 760px; }
 .savedNote { font-size: 12px; color: var(--admin-forest, #2d6a4f); margin-right: 10px; align-self: center; }
+
+/* Title-as-link, matching the News table: the row's subject is the way into its
+   editor on both screens. */
+.titleCell a { color: var(--admin-navy); font-weight: 600; }
+.titleCell a:hover { text-decoration: underline; }

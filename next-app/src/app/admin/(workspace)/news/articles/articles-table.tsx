@@ -137,6 +137,14 @@ export function ArticlesTable({ rows, sp, sort, dir, sessionRole, sessionName }:
                     )}
                   </td>
                   <td className={styles.actionsCell}>
+                    {/* An explicit Edit, matching the Calendar's row actions.
+                        The title is still a link — both screens now offer the
+                        same two ways in rather than one each. */}
+                    {canEdit && (
+                      <Link href={`/admin/news/articles/${r.id}`} className={styles.actionBtn}>
+                        Edit
+                      </Link>
+                    )}
                     {isLeader && r.status === 'draft' && !r.archived_at && (
                       <button
                         type="button"
