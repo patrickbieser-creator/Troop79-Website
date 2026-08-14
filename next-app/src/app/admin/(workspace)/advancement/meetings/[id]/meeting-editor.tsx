@@ -5,7 +5,6 @@ import Link from 'next/link';
 import type { Meeting, MeetingSection, MeetingSession } from '@/lib/supabase/types';
 import { formatLongDate } from '@/lib/dates';
 import type { PromotePayload } from '../actions';
-import { DatePickerField } from '../../../_components/date-picker-field';
 import styles from '../meetings.module.css';
 
 type ActionResult = { ok: boolean; error?: string };
@@ -26,6 +25,9 @@ export interface Candidate {
 
 interface Props {
   meeting: Meeting;
+  /** The calendar entry this meeting is the agenda layer of. The entry owns the
+   *  date and the public URL — the agenda no longer carries either. */
+  entry: { id: number; entry_date: string };
   sessions: MeetingSession[];
   /** null = engine unavailable (load error) — tray shows a quiet note. */
   candidates: Candidate[] | null;
@@ -40,6 +42,7 @@ interface Props {
 
 export function MeetingEditor({
   meeting,
+  entry,
   sessions,
   candidates,
   onUpdateMeeting,
@@ -52,7 +55,6 @@ export function MeetingEditor({
 }: Props) {
   const [err, setErr] = useState<string | null>(null);
   const [savedNote, setSavedNote] = useState(false);
-  const [meetingDate, setMeetingDate] = useState(meeting.meeting_date);
   const [openFor, setOpenFor] = useState<MeetingSession | { newIn: MeetingSection } | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [addedKeys, setAddedKeys] = useState<Set<number>>(new Set());
@@ -172,7 +174,7 @@ export function MeetingEditor({
             &larr; All meetings
           </Link>
           <h1>
-            {meeting.title} &mdash; {formatLongDate(meeting.meeting_date)}
+            {meeting.title} &mdash; {formatLongDate(entry.entry_date)}
           </h1>
         </div>
         <div className={styles.headActions}>
@@ -182,7 +184,7 @@ export function MeetingEditor({
             {meeting.status}
           </span>
           {published && (
-            <Link href={`/meetings/${meeting.meeting_date}`} className={styles.editBtn}>
+            <Link href={`/events/${entry.id}`} className={styles.editBtn}>
               View public page
             </Link>
           )}
@@ -217,10 +219,16 @@ export function MeetingEditor({
               </button>
             </div>
             <div className={styles.logisticsGrid}>
+              {/* The date belongs to the calendar entry now. Editing it from
+                  the agenda layer is precisely how the two used to drift out of
+                  step, so this is a read-only reference with a way over to the
+                  entry that owns it. */}
               <label className={styles.editField}>
                 <span className={styles.editLabel}>Date</span>
-                <DatePickerField value={meetingDate} onChange={setMeetingDate} />
-                <input type="hidden" name="meeting_date" value={meetingDate} />
+                <span className={styles.readOnlyValue}>
+                  {formatLongDate(entry.entry_date)}{' '}
+                  <Link href={`/admin/calendar/${entry.id}`}>Change on the calendar entry</Link>
+                </span>
               </label>
               <Field label="Title" name="title" defaultValue={meeting.title} />
               <Field label="Time" name="time_range" defaultValue={meeting.time_range ?? ''} placeholder="4:00 – 5:30 PM" />
@@ -273,7 +281,7 @@ export function MeetingEditor({
               <span>Plan Suggestions</span>
             </div>
             <p className={styles.trayNote}>
-              The Meeting Plan engine&rsquo;s suggestions for {formatLongDate(meeting.meeting_date)}.
+              The Meeting Plan engine&rsquo;s suggestions for {formatLongDate(entry.entry_date)}.
               Promoting copies one into the agenda as an editable item &mdash; the plan itself is
               never changed.
             </p>

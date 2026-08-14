@@ -70,6 +70,16 @@ export default async function MeetingEditorPage({ params }: { params: Promise<{ 
     .maybeSingle();
   if (!meeting) notFound();
 
+  // The date comes from the calendar entry this meeting is a layer of — the
+  // entry owns it, and meetings.meeting_date is on its way out.
+  const { data: entry } = await supabase
+    .from('calendar_entries')
+    .select('id, entry_date')
+    .eq('id', meeting.calendar_entry_id as number)
+    .maybeSingle();
+  if (!entry) notFound();
+  const entryDate = entry.entry_date as string;
+
   const [{ data: sessions }, candidates] = await Promise.all([
     supabase
       .from('meeting_sessions')
@@ -77,12 +87,13 @@ export default async function MeetingEditorPage({ params }: { params: Promise<{ 
       .eq('meeting_id', meetingId)
       .order('sort_order', { ascending: true })
       .order('id', { ascending: true }),
-    loadCandidates(meeting.meeting_date as string, meeting.title as string)
+    loadCandidates(entryDate, meeting.title as string)
   ]);
 
   return (
     <MeetingEditor
       meeting={meeting as Meeting}
+      entry={{ id: entry.id as number, entry_date: entryDate }}
       sessions={(sessions ?? []) as MeetingSession[]}
       candidates={candidates}
       onUpdateMeeting={updateMeeting}

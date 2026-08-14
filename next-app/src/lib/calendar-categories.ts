@@ -19,11 +19,37 @@
  */
 export type CategoryBehavior = 'meeting' | 'no_meeting';
 
+/**
+ * Which editor panel set and public renderer a category uses (Calendar
+ * unification). A CLOSED set the code branches on, pointed at by the OPEN set
+ * of categories Patrick manages — the same split as `behavior`, one level up.
+ *
+ * Presentation and composition ONLY. A template never gates which layer tables
+ * may attach to an entry, so a small event that grows into a big one needs no
+ * conversion and no migration — which is what D-081 actually rejected about
+ * typed events.
+ */
+export type CategoryTemplate = 'meeting' | 'activity' | 'announcement';
+
+export const CATEGORY_TEMPLATES: CategoryTemplate[] = ['meeting', 'activity', 'announcement'];
+
+/** The widest template (story + optional signup) — what an unassigned or
+ *  unrecognized category renders as. Same posture as FALLBACK_CATEGORY_COLOR:
+ *  degrade to the most permissive thing rather than throwing. */
+export const FALLBACK_CATEGORY_TEMPLATE: CategoryTemplate = 'activity';
+
+export const TEMPLATE_LABELS: Record<CategoryTemplate, string> = {
+  meeting: 'Meeting (agenda)',
+  activity: 'Activity (story + signup)',
+  announcement: 'Announcement (story only)'
+};
+
 export interface CalendarCategoryRow {
   label: string;
   color: string;
   sort_order: number;
   behavior: CategoryBehavior | null;
+  template: CategoryTemplate | null;
 }
 
 /**
@@ -54,6 +80,19 @@ export function sortedCategoryLabels(rows: CalendarCategoryRow[]): string[] {
 /** The behavior a category carries, or null — tolerant of unknown labels. */
 export function behaviorOf(rows: CalendarCategoryRow[], category: string): CategoryBehavior | null {
   return rows.find((r) => r.label === category)?.behavior ?? null;
+}
+
+/**
+ * The template a category renders through. Tolerant of unknown labels and of a
+ * category whose template was never assigned — both fall back to 'activity'.
+ */
+export function templateOf(rows: CalendarCategoryRow[], category: string): CategoryTemplate {
+  return rows.find((r) => r.label === category)?.template ?? FALLBACK_CATEGORY_TEMPLATE;
+}
+
+/** True when this category's entries carry an agenda layer. */
+export function usesAgenda(rows: CalendarCategoryRow[], category: string): boolean {
+  return templateOf(rows, category) === 'meeting';
 }
 
 /**

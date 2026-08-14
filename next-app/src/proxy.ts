@@ -23,7 +23,16 @@ import { LEADER_COOKIE, verifySession } from './lib/leader-session';
 const SCOUT_ALLOWED_PREFIXES = [
   '/admin/news/articles',
   '/admin/news/media-manager',
-  '/admin/news/calendar',
+  // Was '/admin/news/calendar' — the calendar admin moved out of News in the
+  // calendar unification and is now the single Calendar destination.
+  //
+  // This grants a scout the entry EDITOR, which is what they had before. It
+  // does NOT grant the leader-only layers that now live near it: the agenda and
+  // Roll Call keep their own routes under /admin/advancement/meetings (not
+  // listed here), and the workbench guards those panels itself. Widening a
+  // prefix is how the advancement/* leak happened — this one is deliberately
+  // the same surface under a new path, not a bigger one.
+  '/admin/calendar',
   '/admin/news/photo-albums',
   '/admin/utilities',
   '/admin/advancement/has-needs'

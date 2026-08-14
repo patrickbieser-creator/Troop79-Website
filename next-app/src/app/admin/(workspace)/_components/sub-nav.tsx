@@ -52,7 +52,10 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         matchPath: '/admin/advancement/meeting-plan'
       },
       {
-        label: 'Meetings',
+        // Roll Call deliberately keeps its own route: taking attendance is a
+        // data-entry session, not editing, so it does not fold into the
+        // Calendar workbench. Meetings are CREATED on the calendar entry.
+        label: 'Roll Call & Agendas',
         href: '/admin/advancement/meetings',
         matchPath: '/admin/advancement/meetings'
       },
@@ -111,15 +114,22 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         scoutVisible: true
       },
       {
-        label: 'Events',
-        href: '/admin/news/calendar',
-        matchPath: '/admin/news/calendar',
+        /*
+         * One Calendar destination, replacing the Events / Event Signups /
+         * Meetings triple that all described the same act — "something happens
+         * on a date". Signup building and agenda editing are panels on the
+         * entry now, reached from the workbench at /admin/calendar/[entryId].
+         *
+         * scoutVisible, as Events was. The leader-only surfaces that used to be
+         * protected by keeping this whole destination away from scouts (agenda,
+         * roll call, rosters) are guarded per PANEL inside the workbench and at
+         * their own routes — see SCOUT_ALLOWED_PREFIXES in proxy.ts, which this
+         * list must stay in sync with.
+         */
+        label: 'Calendar',
+        href: '/admin/calendar',
+        matchPath: '/admin/calendar',
         scoutVisible: true
-      },
-      {
-        label: 'Event Signups',
-        href: '/admin/events',
-        matchPath: '/admin/events'
       },
       {
         label: 'Photo Albums',

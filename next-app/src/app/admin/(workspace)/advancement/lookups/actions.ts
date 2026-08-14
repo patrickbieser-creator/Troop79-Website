@@ -6,6 +6,11 @@ import { createAdminClient } from '@/lib/supabase/server';
 import type { LedgerKind } from '@/lib/supabase/types';
 import { slugify } from '@/lib/slugify';
 import { cascadeLibraryReqRename } from '@/lib/library-data';
+import {
+  CATEGORY_TEMPLATES,
+  FALLBACK_CATEGORY_TEMPLATE,
+  type CategoryTemplate
+} from '@/lib/calendar-categories';
 
 /** The event-tab kinds an event can be classified as — Day Outing/Fundraiser
  *  have no natural quantity of their own, Camping/Hiking are implied by
@@ -1181,26 +1186,38 @@ const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 /** Every surface that renders a category name or color. */
 function revalidateCategories() {
   revalidatePath('/admin/advancement/lookups');
-  revalidatePath('/admin/news/calendar');
+  revalidatePath('/admin/calendar');
   revalidatePath('/admin/news/photo-albums');
   revalidatePath('/admin/events');
   revalidatePath('/admin/rosters');
   revalidatePath('/events');
   revalidatePath('/photos');
   revalidatePath('/calendar.ics');
-  revalidatePath('/meetings');
   revalidatePath('/');
 }
 
-function readCategoryFields(formData: FormData): { label: string; color: string; sortOrder: number } {
+interface CategoryFields {
+  label: string;
+  color: string;
+  sortOrder: number;
+  template: CategoryTemplate;
+}
+
+function readCategoryFields(formData: FormData): CategoryFields {
+  const raw = String(formData.get('template') ?? '').trim();
   return {
     label: String(formData.get('label') ?? '').trim(),
     color: String(formData.get('color') ?? '').trim(),
-    sortOrder: Number(formData.get('sort_order'))
+    sortOrder: Number(formData.get('sort_order')),
+    // A template the form didn't send, or one this deploy doesn't know, lands
+    // on the widest template rather than writing a value the CHECK would reject.
+    template: (CATEGORY_TEMPLATES as string[]).includes(raw)
+      ? (raw as CategoryTemplate)
+      : FALLBACK_CATEGORY_TEMPLATE
   };
 }
 
-function validateCategory(f: { label: string; color: string; sortOrder: number }): string | null {
+function validateCategory(f: CategoryFields): string | null {
   if (!f.label) return 'Name is required';
   if (!HEX_RE.test(f.color)) return 'Pick a color';
   if (!Number.isFinite(f.sortOrder)) return 'Invalid sort order';
@@ -1220,7 +1237,7 @@ export async function createCalendarCategory(formData: FormData): Promise<Result
   const supabase = createAdminClient();
   const { error } = await supabase
     .from('calendar_categories')
-    .insert({ label: f.label, color: f.color, sort_order: f.sortOrder });
+    .insert({ label: f.label, color: f.color, sort_order: f.sortOrder, template: f.template });
   if (error) {
     if (error.code === '23505') return { ok: false, error: `"${f.label}" already exists.` };
     return { ok: false, error: error.message };
@@ -1249,7 +1266,7 @@ export async function updateCalendarCategory(formData: FormData): Promise<Result
   const supabase = createAdminClient();
   const { error } = await supabase
     .from('calendar_categories')
-    .update({ label: f.label, color: f.color, sort_order: f.sortOrder })
+    .update({ label: f.label, color: f.color, sort_order: f.sortOrder, template: f.template })
     .eq('label', original);
   if (error) {
     if (error.code === '23505') return { ok: false, error: `"${f.label}" already exists.` };

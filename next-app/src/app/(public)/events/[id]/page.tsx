@@ -13,7 +13,11 @@ import { resolveEffectiveHouseholdKey } from '@/lib/identity-session';
 import { leaderSessionPersonId } from '@/lib/session-person';
 import { formatCalendarDateParts, formatTimeOfDay } from '@/lib/calendar-shared';
 import { loadCalendarCategories } from '@/lib/calendar';
-import { categoryColorMap, colorFor } from '@/lib/calendar-categories';
+import { behaviorOf, categoryColorMap, colorFor, templateOf } from '@/lib/calendar-categories';
+import { getPublicMeetingForEntry, getPublishedMeetingNav } from '@/lib/meetings';
+import { ArticleBody } from '@/lib/article-body/ArticleBody';
+import { centralToday } from '@/lib/dates';
+import { MeetingAgenda } from './meeting-agenda';
 import {
   familyGateAction,
   familySignOutAction,
@@ -26,9 +30,18 @@ import PersonFirstForm from './person-first-form';
 import styles from './event-detail.module.css';
 
 /*
- * ONE generic event page for every event shape (Plans/Event-Signup.md).
- * Blocks render from the event's own configuration — there is no per-category
- * template. Content above the gate is public; anything that could name a
+ * ONE event page for every event shape (Plans/Event-Signup.md), including
+ * meetings since the calendar unification — /meetings/[date] is gone and this
+ * is the single permalink for anything on a date.
+ *
+ * Blocks still render from the event's own configuration: what an entry HAS is
+ * what shows. The category's `template` chooses presentation on top of that —
+ * a meeting gets the agenda shape instead of the fact grid — but it never gates
+ * which layers may exist, so a meeting that grows a signup renders both and
+ * needs no conversion. (That distinction is what D-081 was protecting; a stored
+ * type that forces a migration is still rejected.)
+ *
+ * Content above the gate is public; anything that could name a
  * scout or family sits behind it.
  *
  * Phase 1 slice: READ-ONLY. The gate works and the blocks render; the signup
@@ -213,6 +226,23 @@ export default async function EventDetailPage({
   const times = timeRange(entry.start_time, entry.end_time);
   const backHref = '/events';
 
+  /*
+   * Which template this entry renders through (Calendar unification). The
+   * CATEGORY carries it — there is no type column on calendar_entries, because
+   * the category is already the type and is already FK'd with ON UPDATE
+   * CASCADE, so Patrick can add a category and pick its template without a
+   * deploy.
+   *
+   * A template chooses PRESENTATION only. Every layer this entry actually has
+   * still renders: a meeting with a signup shows its agenda AND its signup
+   * form, which is why the signup block below is outside this branch.
+   */
+  const template = templateOf(categories, entry.category);
+  const isMeeting = template === 'meeting';
+  const [meeting, meetingNav] = isMeeting
+    ? await Promise.all([getPublicMeetingForEntry(entry.id), getPublishedMeetingNav()])
+    : [null, []];
+
   return (
     <main className={styles.page}>
       <p className={styles.breadcrumb}>
@@ -229,6 +259,10 @@ export default async function EventDetailPage({
         {entry.description && <p className={styles.dek}>{entry.description}</p>}
       </header>
 
+      {/* The meeting template's glance card carries when/where in its own
+          shape, so the fact grid would just repeat it. Everything else keeps
+          the standard grid. */}
+      {!isMeeting && (
       <dl className={styles.factGrid}>
         <div className={styles.fact}>
           <dt>When</dt>
@@ -266,13 +300,32 @@ export default async function EventDetailPage({
           </div>
         )}
       </dl>
+      )}
 
+      {/* The story layer. Now rendered through ArticleBody — the same renderer
+          the news editor previews against — so details_md gets real markdown
+          plus the {{gallery}}/{{video}} blocks instead of the naive
+          split-on-blank-lines paragraphs it had before. */}
       {entry.details_md && (
         <section className={styles.body}>
-          {entry.details_md.split(/\n{2,}/).map((para: string, i: number) => (
-            <p key={i}>{para}</p>
-          ))}
+          <ArticleBody body={entry.details_md} />
         </section>
+      )}
+
+      {isMeeting && (
+        <MeetingAgenda
+          entry={{
+            id: entry.id,
+            entry_date: entry.entry_date,
+            title: entry.title,
+            description: entry.description,
+            location: entry.location
+          }}
+          meeting={meeting}
+          isNoMeeting={behaviorOf(categories, entry.category) === 'no_meeting'}
+          nav={meetingNav}
+          today={centralToday()}
+        />
       )}
 
       {resources.length > 0 && (
@@ -290,7 +343,7 @@ export default async function EventDetailPage({
         </section>
       )}
 
-      {!signup && (
+      {!signup && !isMeeting && (
         <p className={styles.noSignup}>
           No signup is needed for this event — just come.
         </p>

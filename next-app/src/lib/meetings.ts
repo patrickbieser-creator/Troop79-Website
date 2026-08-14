@@ -1,13 +1,21 @@
 /**
- * Server loaders for the public Meetings pages. All reads use the
- * service-role client (v0.22 posture — meetings tables have RLS enabled with
- * no anon policies), filter to published + non-archived, and strip
- * contact_phone before anything reaches a public page.
+ * Server loaders for meeting agendas. All reads use the service-role client
+ * (v0.22 posture — meetings tables have RLS enabled with no anon policies),
+ * filter to published + non-archived, and strip contact_phone before anything
+ * reaches a public page.
+ *
+ * ENTRY-KEYED, NOT DATE-KEYED (Calendar unification, 2026-08-14). A meeting is
+ * the agenda LAYER of a calendar entry, reached through
+ * `meetings.calendar_entry_id`. It used to be a parallel row correlated to the
+ * calendar by a matching date string at read time, which meant editing either
+ * side's date silently split the pair — and which could not express two
+ * meetings on one night at all.
+ *
+ * Nothing here reads `meeting_date` any more: the entry owns the date. That is
+ * deliberate, so the column can be dropped once this code has soaked.
  */
 
 import { createAdminClient } from '@/lib/supabase/server';
-import { centralToday } from '@/lib/dates';
-import type { CategoryBehavior } from '@/lib/calendar-categories';
 import type { Meeting, MeetingSession } from '@/lib/supabase/types';
 
 /** A session with the one leader-only field removed. */
@@ -19,25 +27,11 @@ export interface PublicMeeting {
   agenda: PublicSession[];
 }
 
-/** Every published, non-archived meeting date, ascending. Drives the
- *  prev/next strip and default-meeting resolution. */
-export async function getPublishedMeetingDates(): Promise<string[]> {
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from('meetings')
-    .select('meeting_date')
-    .eq('status', 'published')
-    .is('archived_at', null)
-    .order('meeting_date', { ascending: true });
-  if (error || !data) return [];
-  return data.map((r) => r.meeting_date as string);
-}
-
-/** Home-base date for /meetings: the soonest published meeting on/after
- *  today (Central), else the most recent past one, else null. */
-export function resolveDefaultMeetingDate(dates: string[], today = centralToday()): string | null {
-  if (dates.length === 0) return null;
-  return dates.find((d) => d >= today) ?? dates[dates.length - 1];
+/** One published meeting in date order — drives the prev/next strip and the
+ *  "recent meetings" list now that both are keyed by entry rather than date. */
+export interface MeetingNavItem {
+  entryId: number;
+  date: string;
 }
 
 function stripPhone(rows: MeetingSession[]): PublicSession[] {
@@ -48,16 +42,19 @@ function stripPhone(rows: MeetingSession[]): PublicSession[] {
   });
 }
 
-/** One published meeting + its sessions, phone numbers stripped.
- *  Returns null for drafts, archived rows, and unknown dates. */
-export async function getPublicMeeting(date: string): Promise<PublicMeeting | null> {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+/**
+ * The agenda layer of one calendar entry, phone numbers stripped. Returns null
+ * for drafts, archived rows, and entries that simply have no agenda — the
+ * caller renders "agenda coming" from the entry itself, which it already has.
+ */
+export async function getPublicMeetingForEntry(entryId: number): Promise<PublicMeeting | null> {
+  if (!Number.isInteger(entryId) || entryId <= 0) return null;
   const supabase = createAdminClient();
 
   const { data: meeting, error } = await supabase
     .from('meetings')
     .select('*')
-    .eq('meeting_date', date)
+    .eq('calendar_entry_id', entryId)
     .eq('status', 'published')
     .is('archived_at', null)
     .maybeSingle();
@@ -80,49 +77,32 @@ export async function getPublicMeeting(date: string): Promise<PublicMeeting | nu
   };
 }
 
-/** The calendar fields the meeting placeholder renders. */
-interface CalendarMeetingEntry {
-  category: string;
-  title: string;
-  description: string | null;
-  location: string | null;
-  start_time: string | null;
-  end_time: string | null;
-  day_note: string | null;
-}
-
-/** Calendar logistics for a date with no published agenda yet — lets the
- *  public page show "there IS a meeting, agenda coming" instead of a 404.
+/**
+ * Every published, non-archived meeting as {entryId, date}, ascending.
  *
- *  The two categories this cares about are found by their BEHAVIOR flag, not
- *  by name (D-082): the labels are Patrick's to rename from Lookups & Admin,
- *  and the old hardcoded ['Troop Meeting', 'No Meeting'] would have silently
- *  stopped matching the day he did. `isNoMeeting` is resolved here too, so the
- *  view never has to compare a category string either. */
-export async function getCalendarMeetingEntry(date: string) {
+ * The date comes from the joined calendar entry, not from meetings.meeting_date
+ * — the entry is the spine, and reading the date from the layer would reopen
+ * exactly the drift this merge closed.
+ */
+export async function getPublishedMeetingNav(): Promise<MeetingNavItem[]> {
   const supabase = createAdminClient();
-  const { data: cats } = await supabase
-    .from('calendar_categories')
-    .select('label, behavior')
-    .not('behavior', 'is', null);
-  const behaviors = (cats ?? []) as { label: string; behavior: CategoryBehavior }[];
-  if (behaviors.length === 0) return null;
+  const { data, error } = await supabase
+    .from('meetings')
+    .select('calendar_entry_id, calendar_entries!inner(entry_date)')
+    .eq('status', 'published')
+    .is('archived_at', null);
+  if (error || !data) return [];
 
-  const { data } = await supabase
-    .from('calendar_entries')
-    .select('category, title, description, location, start_time, end_time, day_note')
-    .eq('entry_date', date)
-    .in(
-      'category',
-      behaviors.map((c) => c.label)
-    )
-    .limit(1)
-    .maybeSingle();
-  if (!data) return null;
+  const rows = data as unknown as {
+    calendar_entry_id: number;
+    calendar_entries: { entry_date: string } | { entry_date: string }[];
+  }[];
 
-  const row = data as CalendarMeetingEntry;
-  return {
-    ...row,
-    isNoMeeting: behaviors.find((c) => c.label === row.category)?.behavior === 'no_meeting'
-  };
+  return rows
+    .map((r) => {
+      const joined = Array.isArray(r.calendar_entries) ? r.calendar_entries[0] : r.calendar_entries;
+      return { entryId: r.calendar_entry_id, date: joined?.entry_date ?? '' };
+    })
+    .filter((r) => r.date !== '')
+    .sort((a, b) => a.date.localeCompare(b.date));
 }

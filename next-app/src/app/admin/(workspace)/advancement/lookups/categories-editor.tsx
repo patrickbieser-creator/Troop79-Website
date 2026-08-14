@@ -12,7 +12,13 @@
  */
 
 import { useState, useTransition } from 'react';
-import type { CalendarCategoryRow } from '@/lib/calendar-categories';
+import {
+  CATEGORY_TEMPLATES,
+  FALLBACK_CATEGORY_TEMPLATE,
+  TEMPLATE_LABELS,
+  type CalendarCategoryRow,
+  type CategoryTemplate
+} from '@/lib/calendar-categories';
 import { useLookupTable } from './use-lookup-table';
 import styles from './lookups.module.css';
 
@@ -41,10 +47,12 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
   const [adding, setAdding] = useState(false);
   const [newLabel, setNewLabel] = useState('');
   const [newColor, setNewColor] = useState(NEW_COLOR);
+  const [newTemplate, setNewTemplate] = useState<CategoryTemplate>(FALLBACK_CATEGORY_TEMPLATE);
   const [editing, setEditing] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState('');
   const [editColor, setEditColor] = useState(NEW_COLOR);
   const [editSort, setEditSort] = useState('0');
+  const [editTemplate, setEditTemplate] = useState<CategoryTemplate>(FALLBACK_CATEGORY_TEMPLATE);
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const t = useLookupTable(rows, (r) => r.label, { alwaysSearch: true });
@@ -57,6 +65,7 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
     fd.set('label', label);
     fd.set('color', newColor);
     fd.set('sort_order', String(nextSortOrder(rows)));
+    fd.set('template', newTemplate);
     startTransition(async () => {
       const res = await onCreate(fd);
       if (!res.ok) {
@@ -65,6 +74,7 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
       }
       setNewLabel('');
       setNewColor(NEW_COLOR);
+      setNewTemplate(FALLBACK_CATEGORY_TEMPLATE);
       setAdding(false);
     });
   }
@@ -75,6 +85,7 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
     setEditLabel(row.label);
     setEditColor(row.color);
     setEditSort(String(row.sort_order));
+    setEditTemplate(row.template ?? FALLBACK_CATEGORY_TEMPLATE);
   }
 
   function saveEdit(original: string) {
@@ -86,6 +97,7 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
     fd.set('label', label);
     fd.set('color', editColor);
     fd.set('sort_order', editSort);
+    fd.set('template', editTemplate);
     startTransition(async () => {
       const res = await onUpdate(fd);
       if (!res.ok) {
@@ -151,6 +163,19 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
             value={newColor}
             onChange={(e) => setNewColor(e.target.value)}
           />
+          <select
+            className={styles.editInput}
+            style={{ maxWidth: 210 }}
+            aria-label="Entry template"
+            value={newTemplate}
+            onChange={(e) => setNewTemplate(e.target.value as CategoryTemplate)}
+          >
+            {CATEGORY_TEMPLATES.map((t) => (
+              <option key={t} value={t}>
+                {TEMPLATE_LABELS[t]}
+              </option>
+            ))}
+          </select>
           <div className={styles.addPanelActions}>
             <button
               type="button"
@@ -183,6 +208,7 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
           <thead>
             <tr>
               <th>Category</th>
+              <th style={{ width: 170 }}>Template</th>
               <th style={{ width: 70 }}>Order</th>
               <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
@@ -219,6 +245,21 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
                       value={editColor}
                       onChange={(e) => setEditColor(e.target.value)}
                     />
+                  </td>
+                  <td>
+                    <select
+                      className={styles.editInput}
+                      style={{ maxWidth: 165 }}
+                      aria-label={`Entry template for ${row.label}`}
+                      value={editTemplate}
+                      onChange={(e) => setEditTemplate(e.target.value as CategoryTemplate)}
+                    >
+                      {CATEGORY_TEMPLATES.map((t) => (
+                        <option key={t} value={t}>
+                          {TEMPLATE_LABELS[t]}
+                        </option>
+                      ))}
+                    </select>
                   </td>
                   <td>
                     <input
@@ -266,6 +307,9 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
                     />
                     {row.label}
                     {note && <span className={styles.muted}> · {note}</span>}
+                  </td>
+                  <td className={styles.muted}>
+                    {TEMPLATE_LABELS[row.template ?? FALLBACK_CATEGORY_TEMPLATE]}
                   </td>
                   <td className={styles.muted}>{row.sort_order}</td>
                   <td style={{ textAlign: 'right' }}>

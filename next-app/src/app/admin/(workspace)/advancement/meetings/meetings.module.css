@@ -216,3 +216,12 @@ textarea.editInput { resize: vertical; min-height: 64px; }
   .editGrid { grid-template-columns: 1fr; }
   .editFieldFull { grid-column: auto; }
 }
+
+/* Read-only logistics value (the date, which the calendar entry owns). */
+.readOnlyValue {
+  font-family: var(--font-ui, "Open Sans", Arial, sans-serif);
+  font-size: 13px;
+  color: var(--admin-gray-700, #444);
+  padding: 6px 0;
+}
+.readOnlyValue a { color: var(--forest, #2d6a4f); text-decoration: underline; margin-left: 6px; font-size: 12px; }

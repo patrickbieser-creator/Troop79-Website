@@ -20,7 +20,7 @@ export async function loadCalendarCategories(): Promise<CalendarCategoryRow[]> {
   const supabase = createAdminClient();
   const { data } = await supabase
     .from('calendar_categories')
-    .select('label, color, sort_order, behavior')
+    .select('label, color, sort_order, behavior, template')
     .order('sort_order', { ascending: true });
   return (data ?? []) as CalendarCategoryRow[];
 }

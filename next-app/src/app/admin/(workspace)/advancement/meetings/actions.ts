@@ -8,64 +8,96 @@ import type { MeetingSection, SessionRequirementRef } from '@/lib/supabase/types
 type ActionResult = { ok: boolean; error?: string };
 type CreateResult = { ok: boolean; error?: string; id?: number };
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-function revalidateMeetings(meetingId?: number, meetingDate?: string) {
+/*
+ * Calendar unification: a meeting is the agenda layer of a calendar entry, so
+ * its public home is /events/[entryId]. The old /meetings/[date] permalink is
+ * deleted — with several meetings allowed on one date it could not address them
+ * anyway — and nothing here revalidates a date-keyed path any more.
+ */
+function revalidateMeetings(meetingId?: number, entryId?: number) {
   revalidatePath('/admin/advancement/meetings');
+  revalidatePath('/admin/calendar');
   if (meetingId) revalidatePath(`/admin/advancement/meetings/${meetingId}`);
-  revalidatePath('/meetings');
-  if (meetingDate) revalidatePath(`/meetings/${meetingDate}`);
+  if (entryId) {
+    revalidatePath(`/admin/calendar/${entryId}`);
+    revalidatePath(`/events/${entryId}`);
+  }
+  revalidatePath('/events');
 }
 
-/** meeting_date of a meeting row — used to revalidate its public permalink. */
-async function meetingDateOf(meetingId: number): Promise<string | undefined> {
+/** The calendar entry a meeting is the agenda layer of. */
+async function entryIdOf(meetingId: number): Promise<number | undefined> {
   const supabase = createAdminClient();
-  const { data } = await supabase.from('meetings').select('meeting_date').eq('id', meetingId).maybeSingle();
-  return (data?.meeting_date as string) ?? undefined;
+  const { data } = await supabase
+    .from('meetings')
+    .select('calendar_entry_id')
+    .eq('id', meetingId)
+    .maybeSingle();
+  return (data?.calendar_entry_id as number) ?? undefined;
 }
 
 // ── meetings ────────────────────────────────────────────────────────────────
 
-/** Creates a draft with the troop's standing defaults; the editor refines. */
+/**
+ * Adds the agenda layer to a calendar entry, with the troop's standing
+ * defaults; the editor refines. Keyed by ENTRY, not by date — the entry already
+ * exists (it is what the leader is looking at) and it owns the date.
+ *
+ * `meeting_date` is still written because the column is NOT NULL until it is
+ * dropped, but it is copied from the entry rather than supplied by the caller,
+ * so the two can no longer disagree. Nothing reads it.
+ */
 export async function createMeeting(fd: FormData): Promise<CreateResult> {
   const session = await requireRole(['leader']);
-  const meetingDate = String(fd.get('meeting_date') ?? '').trim();
-  if (!DATE_RE.test(meetingDate)) return { ok: false, error: 'Pick a meeting date.' };
+  const entryId = Number(fd.get('calendar_entry_id'));
+  if (!Number.isInteger(entryId) || entryId <= 0) {
+    return { ok: false, error: 'Missing calendar entry.' };
+  }
 
   const supabase = createAdminClient();
+  const { data: entry } = await supabase
+    .from('calendar_entries')
+    .select('entry_date, title, location')
+    .eq('id', entryId)
+    .maybeSingle();
+  if (!entry) return { ok: false, error: 'That calendar entry no longer exists.' };
+
   const { data, error } = await supabase
     .from('meetings')
     .insert({
-      meeting_date: meetingDate,
-      title: String(fd.get('title') ?? '').trim() || 'Troop Meeting',
+      calendar_entry_id: entryId,
+      meeting_date: entry.entry_date,
+      title: String(fd.get('title') ?? '').trim() || entry.title || 'Troop Meeting',
       time_range: '4:00 – 5:30 PM',
-      location: 'Northwoods',
+      location: entry.location ?? 'Northwoods',
       location_address: '1572 E Capitol Drive, Milwaukee, WI',
       updated_by: session.leader
     })
     .select('id')
     .single();
   if (error) {
-    if (error.code === '23505') return { ok: false, error: 'A meeting already exists for that date.' };
+    // 23505 is now the one-agenda-per-entry index, not the old
+    // one-meeting-per-date rule — several meetings on one date are fine.
+    if (error.code === '23505') return { ok: false, error: 'This entry already has an agenda.' };
     return { ok: false, error: error.message };
   }
-  revalidateMeetings(undefined, meetingDate);
+  revalidateMeetings(undefined, entryId);
   return { ok: true, id: data.id as number };
 }
 
+/** Logistics only. The DATE is not editable here any more — it belongs to the
+ *  calendar entry, and letting the layer edit it is exactly how the two used to
+ *  drift apart. */
 export async function updateMeeting(fd: FormData): Promise<ActionResult> {
   const session = await requireRole(['leader']);
   const id = Number(fd.get('id'));
-  const meetingDate = String(fd.get('meeting_date') ?? '').trim();
   if (!id) return { ok: false, error: 'Missing meeting id.' };
-  if (!DATE_RE.test(meetingDate)) return { ok: false, error: 'Pick a meeting date.' };
 
   const str = (name: string) => String(fd.get(name) ?? '').trim() || null;
   const supabase = createAdminClient();
   const { error } = await supabase
     .from('meetings')
     .update({
-      meeting_date: meetingDate,
       title: String(fd.get('title') ?? '').trim() || 'Troop Meeting',
       time_range: str('time_range'),
       uniform: str('uniform'),
@@ -80,7 +112,7 @@ export async function updateMeeting(fd: FormData): Promise<ActionResult> {
     })
     .eq('id', id);
   if (error) return { ok: false, error: error.message };
-  revalidateMeetings(id, meetingDate);
+  revalidateMeetings(id, await entryIdOf(id));
   return { ok: true };
 }
 
@@ -92,18 +124,19 @@ export async function setMeetingStatus(id: number, status: 'draft' | 'published'
     .update({ status, updated_by: session.leader, updated_at: new Date().toISOString() })
     .eq('id', id);
   if (error) return { ok: false, error: error.message };
-  revalidateMeetings(id, await meetingDateOf(id));
+  revalidateMeetings(id, await entryIdOf(id));
   return { ok: true };
 }
 
-/** Hard delete (sessions cascade). The UI confirms first. */
+/** Hard delete of the AGENDA LAYER only (sessions cascade) — the calendar entry
+ *  it hung off survives. The UI confirms first. */
 export async function deleteMeeting(id: number): Promise<ActionResult> {
   await requireRole(['leader']);
-  const meetingDate = await meetingDateOf(id);
+  const entryId = await entryIdOf(id);
   const supabase = createAdminClient();
   const { error } = await supabase.from('meetings').delete().eq('id', id);
   if (error) return { ok: false, error: error.message };
-  revalidateMeetings(undefined, meetingDate);
+  revalidateMeetings(undefined, entryId);
   return { ok: true };
 }
 
@@ -159,7 +192,7 @@ export async function createSession(fd: FormData): Promise<ActionResult> {
     ...fields
   });
   if (error) return { ok: false, error: error.message };
-  revalidateMeetings(meetingId, await meetingDateOf(meetingId));
+  revalidateMeetings(meetingId, await entryIdOf(meetingId));
   return { ok: true };
 }
 
@@ -174,7 +207,7 @@ export async function updateSession(fd: FormData): Promise<ActionResult> {
   const supabase = createAdminClient();
   const { error } = await supabase.from('meeting_sessions').update(fields).eq('id', id);
   if (error) return { ok: false, error: error.message };
-  revalidateMeetings(meetingId, await meetingDateOf(meetingId));
+  revalidateMeetings(meetingId, await entryIdOf(meetingId));
   return { ok: true };
 }
 
@@ -183,7 +216,7 @@ export async function deleteSession(id: number, meetingId: number): Promise<Acti
   const supabase = createAdminClient();
   const { error } = await supabase.from('meeting_sessions').delete().eq('id', id);
   if (error) return { ok: false, error: error.message };
-  revalidateMeetings(meetingId, await meetingDateOf(meetingId));
+  revalidateMeetings(meetingId, await entryIdOf(meetingId));
   return { ok: true };
 }
 
@@ -218,7 +251,7 @@ export async function moveSession(id: number, meetingId: number, direction: 'up'
   ]);
   const error = a.error ?? b.error;
   if (error) return { ok: false, error: error.message };
-  revalidateMeetings(meetingId, await meetingDateOf(meetingId));
+  revalidateMeetings(meetingId, await entryIdOf(meetingId));
   return { ok: true };
 }
 
@@ -258,6 +291,6 @@ export async function promotePlanSession(payload: PromotePayload): Promise<Actio
     scouts: payload.scouts
   });
   if (error) return { ok: false, error: error.message };
-  revalidateMeetings(meetingId, await meetingDateOf(meetingId));
+  revalidateMeetings(meetingId, await entryIdOf(meetingId));
   return { ok: true };
 }

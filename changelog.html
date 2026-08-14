@@ -497,6 +497,95 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.33.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.33.0</span>
+        <span class="release-date">August 14, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">One Calendar, instead of three places to add the same thing</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Adding something to the troop&rsquo;s schedule used to mean choosing between
+              <strong>Events</strong>, <strong>Event Signups</strong> and <strong>Meetings</strong>
+              &mdash; three admin screens that all described the same act. Committee members
+              entering content told us this was confusing, and they were right: putting a troop
+              meeting on the site genuinely required entering it twice, once as a calendar entry and
+              once as a meeting, with nothing but a matching date holding the two together.
+            </span>
+          </li>
+          <li>
+            <span>
+              There is now one <strong>Calendar</strong>. Add an entry, pick its category, and open
+              it to add whatever that entry needs &mdash; a full write-up, a meeting agenda, a
+              signup. The category decides which of those the entry starts with, and nothing is
+              locked: an entry that grows a signup later just grows one.
+            </span>
+          </li>
+          <li>
+            <span>
+              A meeting entered this way is automatically on the calendar and in the
+              <strong>.ics subscription feed</strong>, so Outlook, Google Calendar and Band see it.
+              Previously a meeting entered on the Meetings screen was invisible to all of them.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Meetings read at their own address</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Meeting agendas now live at the same address as every other event, and still render in
+              the agenda layout &mdash; at a glance, before the meeting, then the timeline. The
+              separate Meetings tab has been retired from the main navigation.
+            </span>
+          </li>
+          <li>
+            <span>
+              More than one meeting can now share a date &mdash; a committee meeting and a troop
+              meeting on the same night are two entries, each with its own agenda.
+            </span>
+          </li>
+          <li>
+            <span>
+              Event write-ups now render real formatting &mdash; headings, lists, links and tables
+              &mdash; through the same renderer the news editor uses.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Under the hood</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Meetings are now attached to their calendar entry by a real database link instead of a
+              matching date, so the two can no longer drift apart when either is edited. Every
+              existing meeting was linked, and a check runs before each deploy to prove none were
+              attached to the wrong day.
+            </span>
+          </li>
+          <li>
+            <span>
+              Calendar categories gained a <strong>template</strong>, editable under Lookups &amp;
+              Admin alongside their color &mdash; so a new kind of event can be added without a code
+              change, same as categories themselves.
+            </span>
+          </li>
+          <li>
+            <span>
+              Attendance history is untouched by any of this, and now has a test proving it stays
+              that way. Test coverage rose from 131 to 150.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.32.0 -->
     <div class="release">
       <div class="release-header">

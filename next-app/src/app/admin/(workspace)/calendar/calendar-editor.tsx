@@ -1,13 +1,17 @@
 'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
+import Link from 'next/link';
 import type { Media } from '@/lib/supabase/types';
 import { categoryColorMap, colorFor, type CalendarCategoryRow } from '@/lib/calendar-categories';
+import { splitByTab } from '@/lib/calendar-tabs';
 import type { CalendarEntryRow } from './page';
-import { MediaPicker } from '../_components/media-picker';
+// MediaPicker still lives under news/ — the hero image it picks is the same
+// media library the article editor uses.
+import { MediaPicker } from '../news/_components/media-picker';
 import type { ImportResult, ImportRowFields, ImportUpdate } from './actions';
 import { CalendarImport } from './calendar-import';
-import { DatePickerField } from '../../_components/date-picker-field';
+import { DatePickerField } from '../_components/date-picker-field';
 import styles from './calendar.module.css';
 
 type ActionResult = { ok: boolean; error?: string };
@@ -40,11 +44,6 @@ function todayLocal(): string {
   return `${d.getFullYear()}-${m}-${day}`;
 }
 
-/** A multi-day event counts as upcoming until its LAST day has passed. */
-function lastDay(row: CalendarEntryRow): string {
-  return row.end_date ?? row.entry_date;
-}
-
 function formatTime(hms: string): string {
   return new Date(`2000-01-01T${hms}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
@@ -63,10 +62,10 @@ export function CalendarEditor({ rows, categories, onCreate, onUpdate, onDelete,
 
   const colors = categoryColorMap(categories);
   const today = todayLocal();
-  const upcoming = rows.filter((r) => lastDay(r) >= today);
-  // Past reads newest-first: the most recent thing is what you're usually
-  // looking for when you go back.
-  const past = rows.filter((r) => lastDay(r) < today).slice().reverse();
+  // The multi-day rule and the newest-first Past ordering live in
+  // lib/calendar-tabs.ts so they can be tested — they are retained behavior,
+  // not incidental UI. Meetings now appear in these tabs too.
+  const { upcoming, past } = splitByTab(rows, today);
   const shown = tab === 'upcoming' ? upcoming : past;
 
   useEffect(() => {
@@ -77,7 +76,21 @@ export function CalendarEditor({ rows, categories, onCreate, onUpdate, onDelete,
   }, [openFor]);
 
   function onDeleteClick(row: CalendarEntryRow) {
-    if (!window.confirm(`Delete "${row.title}" (${formatDate(row.entry_date)}) from the calendar?`)) return;
+    // The entry is the spine: deleting it cascades into its agenda layer and
+    // that agenda's sessions. Say so, the way the meetings list already does —
+    // a leader deleting a stale calendar line should not silently lose a
+    // written agenda. (Attendance is date-keyed and survives; the agenda does
+    // not.)
+    const warning = row.hasAgenda
+      ? '\n\nThis entry has a meeting agenda — the agenda and its items go with it. Attendance records are kept.'
+      : '';
+    if (
+      !window.confirm(
+        `Delete "${row.title}" (${formatDate(row.entry_date)}) from the calendar?${warning}`
+      )
+    ) {
+      return;
+    }
     setBusyId(row.id);
     setRowErr(null);
     startTransition(async () => {
@@ -170,6 +183,12 @@ export function CalendarEditor({ rows, categories, onCreate, onUpdate, onDelete,
                   )}
                 </td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  {/* The quick dialog stays 30-second simple; Open escalates to
+                      the workbench, where the story, agenda and signup layers
+                      live. */}
+                  <Link href={`/admin/calendar/${row.id}`} className={styles.editBtn}>
+                    Open
+                  </Link>
                   <button
                     type="button"
                     className={styles.editBtn}

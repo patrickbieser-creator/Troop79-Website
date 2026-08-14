@@ -61,7 +61,6 @@ export function SiteFooter() {
             <FooterLink href="/photos">Photo Albums</FooterLink>
             <FooterLink href="/advancement">Advancement Tracker</FooterLink>
             <FooterLink href="/merit-badges">Merit Badges</FooterLink>
-            <FooterLink href="/meetings">This Week&rsquo;s Meeting</FooterLink>
             <FooterLink href="/about">About the Troop</FooterLink>
           </FooterCol>
           <FooterCol title="Contact">

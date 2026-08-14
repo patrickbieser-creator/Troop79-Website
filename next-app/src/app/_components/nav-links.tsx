@@ -5,8 +5,9 @@ import { usePathname } from 'next/navigation';
 import styles from './site-nav.module.css';
 
 const LINKS: { href: string; label: string }[] = [
+  // Meetings lost its own tab in the calendar unification: a meeting is a
+  // calendar entry now, reached at /events/[id] like everything else on a date.
   { href: '/', label: 'Home' },
-  { href: '/meetings', label: 'Meetings' },
   { href: '/news', label: 'News & Events' },
   { href: '/events', label: 'Calendar' },
   { href: '/photos', label: 'Photos' },

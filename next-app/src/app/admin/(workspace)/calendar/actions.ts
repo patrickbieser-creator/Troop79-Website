@@ -7,10 +7,40 @@ import { loadCalendarCategories } from '@/lib/calendar';
 
 type ActionResult = { ok: boolean; error?: string };
 
-function revalidateCalendar() {
-  revalidatePath('/admin/news/calendar');
+function revalidateCalendar(entryId?: number) {
+  revalidatePath('/admin/calendar');
   revalidatePath('/events');
   revalidatePath('/calendar.ics');
+  if (entryId) {
+    revalidatePath(`/admin/calendar/${entryId}`);
+    revalidatePath(`/events/${entryId}`);
+  }
+}
+
+/**
+ * The story layer — `details_md`, edited in the workbench's split pane and
+ * rendered publicly through ArticleBody (the same renderer the news editor
+ * previews against).
+ *
+ * Scout-writable like the rest of the entry editor: this is the same prose
+ * surface a scout could already write via description, one field over. The
+ * leader-only layers (agenda, roll call, rosters) are guarded at their own
+ * routes, not here.
+ */
+export async function updateEntryStory(fd: FormData): Promise<ActionResult> {
+  await requireRole(['leader', 'scout']);
+  const id = Number(fd.get('id'));
+  if (!Number.isInteger(id) || id <= 0) return { ok: false, error: 'Missing entry.' };
+  const body = String(fd.get('details_md') ?? '');
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from('calendar_entries')
+    .update({ details_md: body.trim() || null })
+    .eq('id', id);
+  if (error) return { ok: false, error: error.message };
+  revalidateCalendar(id);
+  return { ok: true };
 }
 
 function fieldsFromForm(fd: FormData) {

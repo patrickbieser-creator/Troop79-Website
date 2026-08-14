@@ -28,9 +28,8 @@
 
 /* ── date strip ── */
 .dateStrip {
-  max-width: 1180px;
   margin: 0 auto;
-  padding: 14px 24px 0;
+  padding: 14px 0 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -81,9 +80,7 @@
 
 /* ── happened / placeholder banners ── */
 .banner {
-  max-width: 1180px;
   margin: 16px auto 0;
-  padding: 0 24px;
 }
 .bannerInner {
   background: var(--cream, #f6f1e7);
@@ -104,15 +101,24 @@
   grid-template-columns: 1fr 320px;
   gap: 0;
 }
+/* Embedded in /events/[id] rather than owning the page, so the two-column
+   grid and its divider are gone — the event page supplies the width and the
+   surrounding chrome. `.container`/`.sidebar` above are retained only because
+   other rules cascade from them; nothing renders them any more. */
 .mainCol {
-  padding: 24px 28px 24px 0;
-  border-right: 1px solid var(--border-light, #e4dccb);
+  padding: 24px 0;
 }
 .sidebar { padding: 24px 0 24px 28px; }
 @media (max-width: 900px) {
   .container { grid-template-columns: 1fr; }
   .mainCol { border-right: none; padding-right: 0; }
   .sidebar { padding-left: 0; }
+}
+
+.archiveSection {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-light, #e4dccb);
 }
 
 /* ── glance card ── */

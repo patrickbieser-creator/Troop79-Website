@@ -2,11 +2,14 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { adminClient } from './helpers/admin-client';
 import {
   FALLBACK_CATEGORY_COLOR,
+  FALLBACK_CATEGORY_TEMPLATE,
   behaviorOf,
   categoryColorMap,
   colorFor,
   labelsForBehavior,
   sortedCategoryLabels,
+  templateOf,
+  usesAgenda,
   type CalendarCategoryRow
 } from '@/lib/calendar-categories';
 
@@ -68,7 +71,11 @@ describe('calendar_categories lookup', () => {
     const { data } = await admin
       .from('calendar_categories')
       .select('label, color, sort_order, behavior')
-      .neq('label', fixtureLabel);
+      // Excludes EVERY test fixture, not just this file's: vitest runs files in
+      // parallel, so calendar-unification's fixture category is live in the
+      // table while this assertion runs. Matching one label made the count
+      // assertion depend on which file happened to be mid-flight.
+      .not('label', 'like', 'ZZVITEST%');
     const rows = (data ?? []) as CalendarCategoryRow[];
 
     expect(rows).toHaveLength(14);
@@ -144,10 +151,30 @@ describe('calendar_categories lookup', () => {
 
 describe('category presentation helpers', () => {
   const rows: CalendarCategoryRow[] = [
-    { label: 'Troop Meeting', color: '#1e3a4a', sort_order: 10, behavior: 'meeting' },
-    { label: 'Fundraiser', color: '#8b6914', sort_order: 70, behavior: null },
-    { label: 'No Meeting', color: '#a0978a', sort_order: 140, behavior: 'no_meeting' }
+    { label: 'Troop Meeting', color: '#1e3a4a', sort_order: 10, behavior: 'meeting', template: 'meeting' },
+    { label: 'Fundraiser', color: '#8b6914', sort_order: 70, behavior: null, template: 'activity' },
+    // Deliberately left unassigned: a category with no template must still
+    // resolve, the same way an unknown color falls back to neutral.
+    { label: 'No Meeting', color: '#a0978a', sort_order: 140, behavior: 'no_meeting', template: null }
   ];
+
+  it('TemplateOf_ReturnsTheAssignedTemplate_WhenTheCategoryCarriesOne', () => {
+    expect(templateOf(rows, 'Troop Meeting')).toBe('meeting');
+    expect(templateOf(rows, 'Fundraiser')).toBe('activity');
+  });
+
+  it('TemplateOf_FallsBackToActivity_WhenNoTemplateIsAssigned', () => {
+    expect(templateOf(rows, 'No Meeting')).toBe(FALLBACK_CATEGORY_TEMPLATE);
+  });
+
+  it('TemplateOf_FallsBackToActivity_WhenTheCategoryIsUnknownToThisRender', () => {
+    expect(templateOf(rows, 'Invented Yesterday')).toBe(FALLBACK_CATEGORY_TEMPLATE);
+  });
+
+  it('UsesAgenda_IsTrueOnlyForTheMeetingTemplate', () => {
+    expect(usesAgenda(rows, 'Troop Meeting')).toBe(true);
+    expect(usesAgenda(rows, 'Fundraiser')).toBe(false);
+  });
 
   it('ColorFor_ReturnsTheLookupColor_WhenCategoryIsKnown', () => {
     expect(colorFor(categoryColorMap(rows), 'Fundraiser')).toBe('#8b6914');
