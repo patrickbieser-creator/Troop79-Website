@@ -4,15 +4,30 @@
  * activities, 3 campouts), or First Class 1a (10 activities, 6 campouts),
  * but doesn't have that specific requirement signed off yet.
  *
- * Counting rule (confirmed with the user):
- *   - Counts toward "N activities": `camping_nights` and `hiking_miles`
- *     ledger rows only — genuine outings entered through Fast Entry's
- *     Events tab.
- *   - Does NOT count: `day_outing`/`fundraiser` rows (no nights/miles logged)
- *     or `service_hours` (tracked separately elsewhere, e.g. Second Class 8e).
+ * Counting rule (CORRECTED 2026-08-14 — Patrick):
+ *   - "Activity" is an UMBRELLA over campouts, fundraisers, day outings and
+ *     service projects. Everything except meetings counts toward "N
+ *     activities", and an event counts toward its umbrella AND its quantity at
+ *     the same time: a service project is service hours *and* an activity; a
+ *     campout is nights *and* an activity.
  *   - Counts toward "N campouts" specifically: `camping_nights` rows only.
- *   - Counted as distinct events (scout_id + code), not raw rows, so an
- *     accidental duplicate entry doesn't inflate the tally.
+ *   - Meetings never count — BSA excludes troop and patrol meetings from 1a by
+ *     name — so `meeting_attendance` is absent from ACTIVITY_KINDS.
+ *   - Counted as distinct events (scout_id + code) ACROSS kinds, so one weekend
+ *     that logged both nights and service hours is ONE activity, not two, and
+ *     an accidental duplicate entry doesn't inflate the tally.
+ *
+ * This REPLACES a narrower rule that had also been "confirmed with the user":
+ * activities were `camping_nights` + `hiking_miles` only, with day outings,
+ * fundraisers and service projects excluded. That under-counted every scout who
+ * had attended one — their fundraisers and service days were invisible to 1a.
+ * Expect this check to surface MORE scouts than it did before; that is the fix
+ * working, not a regression.
+ *
+ * Longer term the count moves off the ledger entirely and onto attendance
+ * rows, where "five SEPARATE activities" is structural rather than a dedup
+ * heuristic (Plans/Roll-Call.md). Until Roll Call exists, this is the honest
+ * approximation the ledger can support.
  *
  * Tenderfoot 1a's stored requirement text is actually "Pack for Overnight
  * Campout" (a gear-packing skill demo), not a literal campout-count
@@ -37,11 +52,45 @@ const THRESHOLDS: { rankId: string; rankLabel: string; minActivities: number; mi
   { rankId: 'first-class', rankLabel: 'First Class', minActivities: 10, minCampouts: 6 }
 ];
 
+/**
+ * The event-linked kinds. `meeting_attendance` is deliberately absent — BSA
+ * excludes meetings from 1a. `leadership`, the requirement kinds and the award
+ * kinds are not events at all.
+ */
+const ACTIVITY_KINDS = [
+  'camping_nights',
+  'hiking_miles',
+  'day_outing',
+  'fundraiser',
+  'service_hours'
+] as const;
+
 interface LedgerEvent {
   scout_id: string;
   code: string;
   date: string;
+  kind: string;
 }
+
+/** One distinct activity: an event code a scout has at least one ledger row for. */
+interface ScoutActivity {
+  code: string;
+  /** Earliest date on file for this code. */
+  date: string;
+  /** True when ANY row for this code is `camping_nights` — a weekend that
+   *  logged both nights and service hours is one activity that IS a campout. */
+  isCampout: boolean;
+  /** Which kinds contributed, for the finding's detail lines. */
+  kinds: Set<string>;
+}
+
+const KIND_LABEL: Record<string, string> = {
+  camping_nights: 'Campouts',
+  hiking_miles: 'Hikes',
+  day_outing: 'Day outings',
+  fundraiser: 'Fundraisers',
+  service_hours: 'Service projects'
+};
 
 function fmtDate(iso: string): string {
   const [y, m, d] = iso.split('-');
@@ -77,12 +126,15 @@ function qualifyingDateFor(
 }
 
 export async function run(supabase: ReturnType<typeof createAdminClient>): Promise<Finding[]> {
-  const [campingRows, hikingRows, rankReqsRes, existing1aRows, scoutsRes] = await Promise.all([
+  const [activityRows, rankReqsRes, existing1aRows, scoutsRes] = await Promise.all([
+    // One query across every activity kind — they are deduped together below,
+    // so fetching them separately would only make that harder.
     fetchAllRows<LedgerEvent>((from, to) =>
-      supabase.from('ledger_active').select('scout_id, code, date').eq('kind', 'camping_nights').range(from, to)
-    ),
-    fetchAllRows<LedgerEvent>((from, to) =>
-      supabase.from('ledger_active').select('scout_id, code, date').eq('kind', 'hiking_miles').range(from, to)
+      supabase
+        .from('ledger_active')
+        .select('scout_id, code, date, kind')
+        .in('kind', ACTIVITY_KINDS as unknown as string[])
+        .range(from, to)
     ),
     supabase
       .from('rank_requirements')
@@ -110,49 +162,58 @@ export async function run(supabase: ReturnType<typeof createAdminClient>): Promi
     existing1a.add(`${row.scout_id}|||${row.code}`);
   }
 
-  // Dedup by (scout_id, code), keeping the earliest date on file for that code.
-  type CodeDate = Map<string, string>; // code -> earliest date
-  const campoutsByScout = new Map<string, CodeDate>();
-  for (const row of campingRows) {
-    const codes = campoutsByScout.get(row.scout_id) ?? new Map<string, string>();
-    const prev = codes.get(row.code);
-    if (!prev || row.date < prev) codes.set(row.code, row.date);
-    campoutsByScout.set(row.scout_id, codes);
-  }
-  const hikesByScout = new Map<string, CodeDate>();
-  for (const row of hikingRows) {
-    const codes = hikesByScout.get(row.scout_id) ?? new Map<string, string>();
-    const prev = codes.get(row.code);
-    if (!prev || row.date < prev) codes.set(row.code, row.date);
-    hikesByScout.set(row.scout_id, codes);
+  /*
+   * Dedup by (scout_id, code) ACROSS kinds — this is the correctness point.
+   * A service campout logs `camping_nights` AND `service_hours` under one event
+   * code; that is ONE activity that happens to be a campout, not two
+   * activities. Keying by code and OR-ing isCampout gets both facts right.
+   */
+  const activitiesByScout = new Map<string, Map<string, ScoutActivity>>();
+  for (const row of activityRows) {
+    const byCode = activitiesByScout.get(row.scout_id) ?? new Map<string, ScoutActivity>();
+    const prev = byCode.get(row.code);
+    if (prev) {
+      if (row.date < prev.date) prev.date = row.date;
+      if (row.kind === 'camping_nights') prev.isCampout = true;
+      prev.kinds.add(row.kind);
+    } else {
+      byCode.set(row.code, {
+        code: row.code,
+        date: row.date,
+        isCampout: row.kind === 'camping_nights',
+        kinds: new Set([row.kind])
+      });
+    }
+    activitiesByScout.set(row.scout_id, byCode);
   }
 
   const scouts = (scoutsRes.data ?? []) as { id: string; display_name: string }[];
   const findings: Finding[] = [];
   for (const scout of scouts) {
-    const campoutCodes = campoutsByScout.get(scout.id) ?? new Map<string, string>();
-    const hikeCodes = hikesByScout.get(scout.id) ?? new Map<string, string>();
-    const campouts = campoutCodes.size;
-    const hikes = hikeCodes.size;
-    const totalActivities = campouts + hikes;
+    const byCode = activitiesByScout.get(scout.id) ?? new Map<string, ScoutActivity>();
+    const events = [...byCode.values()];
+    const totalActivities = events.length;
+    const campouts = events.filter((e) => e.isCampout).length;
 
     for (const t of THRESHOLDS) {
       if (totalActivities < t.minActivities || campouts < t.minCampouts) continue;
       const code = `${t.rankId}-1a`;
       if (existing1a.has(`${scout.id}|||${code}`)) continue;
 
-      const events = [
-        ...[...campoutCodes.entries()].map(([c, date]) => ({ code: c, date, isCampout: true })),
-        ...[...hikeCodes.entries()].map(([c, date]) => ({ code: c, date, isCampout: false }))
-      ];
       const qualifyingDate = qualifyingDateFor(events, t.minActivities, t.minCampouts);
 
-      const campoutDates = [...campoutCodes.values()].sort();
-      const hikeDates = [...hikeCodes.values()].sort();
-      const detailLines = [
-        `Campouts (${campoutDates.length}): ${campoutDates.map(fmtDate).join(', ')}`,
-        ...(hikeDates.length ? [`Hikes (${hikeDates.length}): ${hikeDates.map(fmtDate).join(', ')}`] : [])
-      ];
+      // Grouped by kind so a leader can see WHAT made up the tally — a campout
+      // appears under Campouts even if it also logged service hours.
+      const detailLines: string[] = [];
+      for (const kind of ACTIVITY_KINDS) {
+        const dates = events
+          .filter((e) => (kind === 'camping_nights' ? e.isCampout : !e.isCampout && e.kinds.has(kind)))
+          .map((e) => e.date)
+          .sort();
+        if (dates.length) {
+          detailLines.push(`${KIND_LABEL[kind]} (${dates.length}): ${dates.map(fmtDate).join(', ')}`);
+        }
+      }
 
       findings.push({
         checkId: 'activity-thresholds',
