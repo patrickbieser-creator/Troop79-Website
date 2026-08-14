@@ -20,6 +20,7 @@ import * as rankTimeInGrade from './checks/rank-time-in-grade';
 import * as rankMeritBadges from './checks/rank-merit-badges';
 import * as rankPor from './checks/rank-por';
 import * as duplicateRecords from './checks/duplicate-records';
+import * as attendanceReconciliation from './checks/attendance-reconciliation';
 import styles from './audits.module.css';
 
 export const metadata = {
@@ -67,9 +68,10 @@ const CHECKS = [
 export default async function AuditsPage() {
   await requireRole(['leader']);
   const supabase = createAdminClient();
-  const [findingsByCheck, duplicateGroups, leadersRes] = await Promise.all([
+  const [findingsByCheck, duplicateGroups, reconciliation, leadersRes] = await Promise.all([
     Promise.all(CHECKS.map((c) => c.run(supabase))),
     duplicateRecords.run(supabase),
+    attendanceReconciliation.run(supabase),
     supabase.from('leaders').select('code, name').order('code')
   ]);
   const leaders = (leadersRes.data ?? []) as { code: string; name: string }[];
@@ -87,6 +89,8 @@ export default async function AuditsPage() {
       </div>
 
       <DuplicateSection groups={duplicateGroups} />
+
+      <ReconciliationSection findings={reconciliation} />
 
       {CHECKS.map((check, i) => (
         <AuditSection
@@ -173,6 +177,70 @@ function AuditSection({
               <AuditCard key={`${f.checkId}-${f.scoutId}-${f.groupLabel}`} finding={f} leaders={leaders} />
             ))}
           </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Roll Call vs. the ledger.
+ *
+ * Read-only on purpose. Every finding here means the two tables disagree, and
+ * the fix is a human decision — re-take the roll call, or correct the ledger —
+ * not something a "resolve" button should guess at. Unlike the duplicate check,
+ * there is no obviously-right row to keep.
+ */
+function ReconciliationSection({
+  findings
+}: {
+  findings: attendanceReconciliation.ReconciliationFinding[];
+}) {
+  const byKind = new Map<attendanceReconciliation.ReconciliationKind, typeof findings>();
+  for (const f of findings) {
+    const list = byKind.get(f.kind) ?? [];
+    list.push(f);
+    byKind.set(f.kind, list);
+  }
+
+  return (
+    <section className={styles.section}>
+      <h2 className={styles.sectionTitle}>Roll Call &amp; Ledger Reconciliation</h2>
+      <p className={styles.sectionDesc}>
+        Marking someone present writes their advancement credit automatically, across two tables.
+        This checks that the two still agree. Credit entered by hand through Fast Entry is
+        deliberately ignored &mdash; only rows stamped with a calendar entry are compared, so a
+        decade of historical entries stays out of the way.
+      </p>
+
+      {findings.length === 0 ? (
+        <div className={styles.empty}>Roll Call and the ledger agree.</div>
+      ) : (
+        <>
+          <div className={styles.summary}>
+            <strong>{findings.length}</strong> discrepanc{findings.length === 1 ? 'y' : 'ies'} found.
+          </div>
+          {[...byKind.entries()].map(([kind, list]) => (
+            <div key={kind} className={styles.list}>
+              <div className={styles.card}>
+                <div className={styles.cardHeader}>
+                  <strong>{attendanceReconciliation.RECONCILIATION_LABEL[kind]}</strong>
+                  <span className={styles.rankTag}>{list.length}</span>
+                </div>
+                <ul className={styles.missingList}>
+                  {list.map((f) => (
+                    <li key={f.key} className={styles.missingRow}>
+                      <Link href={`/admin/calendar/${f.entryId}/roll-call`} className={styles.scoutLink}>
+                        {f.personName}
+                      </Link>{' '}
+                      &mdash; {f.entryTitle} ({f.entryDate})
+                      <div className={styles.detailLines}>{f.detail}</div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          ))}
         </>
       )}
     </section>

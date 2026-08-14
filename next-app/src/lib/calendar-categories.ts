@@ -50,6 +50,13 @@ export interface CalendarCategoryRow {
   sort_order: number;
   behavior: CategoryBehavior | null;
   template: CategoryTemplate | null;
+  /** What Roll Call writes to the ledger for this category, and whether its
+   *  entries count toward the "N troop activities" in 1a. Interpreted by
+   *  `lib/attendance-shared.ts`; carried here so one category load serves
+   *  every consumer. */
+  credit_kind: string | null;
+  credit_unit: string | null;
+  counts_as_activity: boolean;
 }
 
 /**

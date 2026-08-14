@@ -205,7 +205,7 @@ export function MeetingsList({ rows, attendance, onDelete }: Props) {
                   <td className={styles.dateCell}>
                     {att ? (
                       <Link
-                        href={`/admin/advancement/meetings/${row.id}/attendance`}
+                        href={`/admin/calendar/${row.entry_id}/roll-call`}
                         title={`${att.scouts} scouts + ${att.leaders} leaders`}
                       >
                         {att.scouts} + {att.leaders}
@@ -217,7 +217,7 @@ export function MeetingsList({ rows, attendance, onDelete }: Props) {
                   <td className={styles.muted}>{row.updated_by ?? '—'}</td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                     <Link
-                      href={`/admin/advancement/meetings/${row.id}/attendance`}
+                      href={`/admin/calendar/${row.entry_id}/roll-call`}
                       className={styles.editBtn}
                     >
                       Roll Call

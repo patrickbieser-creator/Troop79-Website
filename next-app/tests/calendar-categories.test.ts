@@ -151,11 +151,11 @@ describe('calendar_categories lookup', () => {
 
 describe('category presentation helpers', () => {
   const rows: CalendarCategoryRow[] = [
-    { label: 'Troop Meeting', color: '#1e3a4a', sort_order: 10, behavior: 'meeting', template: 'meeting' },
-    { label: 'Fundraiser', color: '#8b6914', sort_order: 70, behavior: null, template: 'activity' },
+    { label: 'Troop Meeting', color: '#1e3a4a', sort_order: 10, behavior: 'meeting', template: 'meeting', credit_kind: 'meeting_attendance', credit_unit: null, counts_as_activity: false },
+    { label: 'Fundraiser', color: '#8b6914', sort_order: 70, behavior: null, template: 'activity', credit_kind: 'fundraiser', credit_unit: 'each', counts_as_activity: true },
     // Deliberately left unassigned: a category with no template must still
     // resolve, the same way an unknown color falls back to neutral.
-    { label: 'No Meeting', color: '#a0978a', sort_order: 140, behavior: 'no_meeting', template: null }
+    { label: 'No Meeting', color: '#a0978a', sort_order: 140, behavior: 'no_meeting', template: null, credit_kind: null, credit_unit: null, counts_as_activity: false }
   ];
 
   it('TemplateOf_ReturnsTheAssignedTemplate_WhenTheCategoryCarriesOne', () => {

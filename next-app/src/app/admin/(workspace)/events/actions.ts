@@ -663,3 +663,148 @@ export async function disableSignup(
   revalidateEvent(calendarEntryId, signupId);
   return { ok: true, entryCount };
 }
+
+/**
+ * Add a person to a signup by hand.
+ *
+ * The gap this closes: `cancelEntry` above could REMOVE someone, but nothing
+ * could add them. Signups do not all arrive through the website — plenty come
+ * verbally or by email, and some people simply turn up — so a leader could
+ * correct a roster downward and never upward.
+ *
+ * Deliberately NOT routed through `submit_household_signup`: that RPC is the
+ * family-facing path and enforces household membership, payment and capacity
+ * rules appropriate to self-service. A leader adding a known attendee after the
+ * fact is a different act, so this writes the entry directly and then runs the
+ * same waitlist promotion the cancel path does, keeping capacity honest.
+ */
+export async function addSignupEntry(
+  signupId: number,
+  calendarEntryId: number,
+  personId: number,
+  participation: 'full' | 'driver_only' | 'contributor' = 'full'
+): Promise<Result> {
+  const session = await requireRole(['leader']);
+  const supabase = createAdminClient();
+
+  const { data: person } = await supabase
+    .from('people')
+    .select('id, display_name')
+    .eq('id', personId)
+    .maybeSingle();
+  if (!person) return { ok: false, error: 'That person is not in the directory.' };
+
+  /*
+   * person_kind and scout_id are still read by screens that have not migrated
+   * to person_id — pricing eligibility (`applies_to`), rosters, headcounts. An
+   * earlier draft hardcoded 'adult' for everyone, which would have silently
+   * mispriced and miscounted any scout a leader added by hand. Resolve it from
+   * the spine instead of guessing.
+   */
+  const { data: scout } = await supabase
+    .from('scouts')
+    .select('id')
+    .eq('person_id', personId)
+    .maybeSingle();
+  const isScout = scout != null;
+
+  /*
+   * Capacity is enforced the same way restoreEntry enforces it. A leader adding
+   * someone by hand is still adding a body to a capped event; skipping the
+   * check would let the manual path overfill an event the family-facing path
+   * protects.
+   */
+  const { data: sig } = await supabase
+    .from('event_signups')
+    .select('capacity, waitlist_enabled')
+    .eq('id', signupId)
+    .maybeSingle();
+  const cap = sig as unknown as { capacity: number | null; waitlist_enabled: boolean } | null;
+
+  let status = 'yes';
+  if (cap?.capacity != null) {
+    const { data: used } = await supabase.rpc('event_signup_headcount', {
+      p_event_signup_id: signupId
+    });
+    const head = typeof used === 'number' ? used : 0;
+    if (head >= cap.capacity) {
+      if (!cap.waitlist_enabled) {
+        return { ok: false, error: 'The event is full and has no waitlist.' };
+      }
+      status = 'waitlist';
+    }
+  }
+
+  // Someone previously removed is REINSTATED rather than duplicated — a person
+  // must never hold two entries for one event (the D-048 dual-identity lesson).
+  const { data: existing } = await supabase
+    .from('signup_entries')
+    .select('id, status')
+    .eq('event_signup_id', signupId)
+    .eq('person_id', personId)
+    .maybeSingle();
+
+  if (existing) {
+    if (existing.status === 'yes') return { ok: false, error: 'They are already on this roster.' };
+    const { error } = await supabase
+      .from('signup_entries')
+      .update({
+        status,
+        cancelled_at: null,
+        participation,
+        updated_by: session.leader,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', existing.id);
+    if (error) return { ok: false, error: error.message };
+  } else {
+    const { error } = await supabase.from('signup_entries').insert({
+      event_signup_id: signupId,
+      person_id: personId,
+      person_kind: isScout ? 'scout' : 'adult',
+      scout_id: isScout ? scout!.id : null,
+      adult_name: isScout ? null : person.display_name,
+      status,
+      participation,
+      updated_by: session.leader
+    });
+    if (error) return { ok: false, error: error.message };
+  }
+
+  const { error: promoteErr } = await supabase.rpc('promote_waitlist', {
+    p_event_signup_id: signupId
+  });
+  if (promoteErr) return { ok: false, error: promoteErr.message };
+
+  revalidatePath(`/admin/rosters/${signupId}`);
+  revalidateEvent(calendarEntryId, signupId);
+  return { ok: true };
+}
+
+/**
+ * Claim a job for someone else — the verbal "I'll bring a table" that never
+ * reached the website. Same reasoning as addSignupEntry: leaders could unclaim
+ * but not claim.
+ */
+export async function claimSlotFor(
+  slotId: number,
+  entryId: number,
+  signupId: number,
+  calendarEntryId: number,
+  comment: string | null
+): Promise<Result> {
+  await requireRole(['leader']);
+  const supabase = createAdminClient();
+
+  const { error } = await supabase
+    .from('signup_slot_claims')
+    .upsert(
+      { slot_id: slotId, signup_entry_id: entryId, comment: comment?.trim() || null },
+      { onConflict: 'slot_id,signup_entry_id' }
+    );
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/admin/rosters/${signupId}`);
+  revalidateEvent(calendarEntryId, signupId);
+  return { ok: true };
+}

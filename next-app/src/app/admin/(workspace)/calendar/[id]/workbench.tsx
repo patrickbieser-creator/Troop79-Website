@@ -226,6 +226,25 @@ export function Workbench({
         </section>
       )}
 
+      {/* ── attendance layer ──
+          Every entry has one, not just meetings — that is the whole point of
+          Roll Call. Its own route because taking attendance is a data-entry
+          session, not editing. */}
+      <section className={styles.panel}>
+        <div className={styles.panelHead}>
+          <h2>Roll Call</h2>
+          <div>
+            <Link href={`/admin/calendar/${entry.id}/roll-call`} className={styles.btn}>
+              Take Roll Call
+            </Link>
+          </div>
+        </div>
+        <p className={styles.panelNote}>
+          Who was at this event. Seeded from the signup where there is one, and correctable by
+          hand for anyone who told you verbally or turned up on the day.
+        </p>
+      </section>
+
       {/* ── signup layer ── */}
       <section className={styles.panel}>
           <div className={styles.panelHead}>
