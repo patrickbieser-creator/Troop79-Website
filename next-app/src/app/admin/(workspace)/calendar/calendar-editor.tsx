@@ -55,6 +55,8 @@ export function CalendarEditor({ rows, categories, onCreate, onUpdate, onDelete,
     null
   );
   const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
+  const [q, setQ] = useState('');
+  const [category, setCategory] = useState('');
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [rowErr, setRowErr] = useState<{ id: number; msg: string } | null>(null);
@@ -66,7 +68,26 @@ export function CalendarEditor({ rows, categories, onCreate, onUpdate, onDelete,
   // lib/calendar-tabs.ts so they can be tested — they are retained behavior,
   // not incidental UI. Meetings now appear in these tabs too.
   const { upcoming, past } = splitByTab(rows, today);
-  const shown = tab === 'upcoming' ? upcoming : past;
+
+  /*
+   * Search and category filter apply WITHIN the selected tab, and the tab
+   * counts show the filtered totals — so "Upcoming 3" after typing means three
+   * matches ahead, not three entries total. A count that ignored the filter
+   * would be the more confusing of the two options.
+   *
+   * Client-side like the rest of this screen: ~100 entries ship anyway for the
+   * tab split, so filtering them here costs nothing and stays instant.
+   */
+  const needle = q.trim().toLowerCase();
+  const matches = (r: CalendarEntryRow) => {
+    if (category && r.category !== category) return false;
+    if (!needle) return true;
+    return `${r.title} ${r.location ?? ''} ${r.category} ${r.entry_date}`.toLowerCase().includes(needle);
+  };
+  const upcomingShown = upcoming.filter(matches);
+  const pastShown = past.filter(matches);
+  const shown = tab === 'upcoming' ? upcomingShown : pastShown;
+  const filtering = needle !== '' || category !== '';
 
   useEffect(() => {
     const dlg = dialogRef.current;
@@ -111,7 +132,7 @@ export function CalendarEditor({ rows, categories, onCreate, onUpdate, onDelete,
             className={`${styles.tab} ${tab === 'upcoming' ? styles.tabOn : ''}`}
             onClick={() => setTab('upcoming')}
           >
-            Upcoming <span className={styles.tabCount}>{upcoming.length}</span>
+            Upcoming <span className={styles.tabCount}>{upcomingShown.length}</span>
           </button>
           <button
             type="button"
@@ -120,13 +141,50 @@ export function CalendarEditor({ rows, categories, onCreate, onUpdate, onDelete,
             className={`${styles.tab} ${tab === 'past' ? styles.tabOn : ''}`}
             onClick={() => setTab('past')}
           >
-            Past <span className={styles.tabCount}>{past.length}</span>
+            Past <span className={styles.tabCount}>{pastShown.length}</span>
           </button>
         </div>
         <CalendarImport rows={rows} categories={categories.map((c) => c.label)} onImport={onImport} />
         <button type="button" className={styles.addBtn} onClick={() => setOpenFor('new')}>
           + Add Entry
         </button>
+      </div>
+
+      <div className={styles.toolbarRow}>
+        <input
+          type="search"
+          className={styles.filterInput}
+          placeholder="Search title, location…"
+          aria-label="Search calendar entries"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        <select
+          className={styles.filterSelect}
+          aria-label="Filter by category"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+        >
+          <option value="">All categories</option>
+          {categories.map((c) => (
+            <option key={c.label} value={c.label}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+        {filtering && (
+          <button
+            type="button"
+            className={styles.filterClear}
+            onClick={() => {
+              setQ('');
+              setCategory('');
+            }}
+          >
+            Clear
+          </button>
+        )}
+        <span className={styles.filterSpacer} />
       </div>
 
       <table className={styles.table}>
@@ -144,9 +202,14 @@ export function CalendarEditor({ rows, categories, onCreate, onUpdate, onDelete,
           {shown.length === 0 ? (
             <tr>
               <td colSpan={6} className={styles.muted}>
-                {tab === 'upcoming'
-                  ? 'No upcoming entries. Add one above, or clone a past entry from the Past tab.'
-                  : 'No past entries yet.'}
+                {/* A filtered empty tab is a different situation from an empty
+                    one — telling someone to add an entry when they have simply
+                    mistyped a search is the wrong instruction. */}
+                {filtering
+                  ? 'No entries match that search or category in this tab.'
+                  : tab === 'upcoming'
+                    ? 'No upcoming entries. Add one above, or clone a past entry from the Past tab.'
+                    : 'No past entries yet.'}
               </td>
             </tr>
           ) : (

@@ -89,7 +89,11 @@ export function ArticlesTable({ rows, sp, sort, dir, sessionRole, sessionName }:
           {rows.length === 0 ? (
             <tr>
               <td colSpan={7} className={styles.empty}>
-                {sp.q || sp.type || sp.status ? 'No posts match the current filters.' : 'No posts yet.'}
+                {sp.q || sp.type || sp.status
+                  ? 'No posts match the current filters.'
+                  : sp.archived === '1'
+                    ? 'Nothing archived yet. Archiving hides a post from the public site without deleting it.'
+                    : 'No posts yet.'}
               </td>
             </tr>
           ) : (

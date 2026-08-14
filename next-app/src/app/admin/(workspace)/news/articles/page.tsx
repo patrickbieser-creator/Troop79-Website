@@ -8,7 +8,10 @@
  *   q          — search text across title, excerpt
  *   type        — news|event|recognition
  *   status      — draft|published
- *   archived=1  — include archived articles (hidden by default)
+ *   archived=1  — the Archived TAB: shows archived posts INSTEAD of current
+ *                 ones. This used to be a "Show archived" checkbox that mixed
+ *                 the two together, which meant there was no way to look at
+ *                 just the archive.
  *   sort        — title|type|status|author|date
  *   dir         — asc|desc
  *   page        — 1-based page number (25 rows per page)
@@ -19,6 +22,7 @@ import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/server';
 import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
 import type { Article, ArticleType, ArticleStatus } from '@/lib/supabase/types';
+import { ArticlesTabs } from './articles-tabs';
 import { ArticlesToolbar } from './articles-toolbar';
 import { ArticlesTable } from './articles-table';
 import styles from './articles.module.css';
@@ -72,7 +76,8 @@ async function loadArticles(parsed: ReturnType<typeof parseSearch>) {
     .from('articles')
     .select('*, article_tags(tags(id, name))', { count: 'exact' });
 
-  if (!parsed.archived) q = q.is('archived_at', null);
+  // Exclusive, not additive: the Archived tab shows archived posts only.
+  q = parsed.archived ? q.not('archived_at', 'is', null) : q.is('archived_at', null);
   if (parsed.type) q = q.eq('type', parsed.type);
   if (parsed.status) q = q.eq('status', parsed.status);
   if (parsed.q) {
@@ -95,6 +100,32 @@ async function loadArticles(parsed: ReturnType<typeof parseSearch>) {
   return { rows, total: count ?? 0 };
 }
 
+/**
+ * Row counts for both tabs, under the CURRENT search and status filters — so
+ * "Archived 2" after a search means two matches in the archive, not two archived
+ * posts overall. Same rule the Calendar's tab counts follow.
+ *
+ * Two head-only count queries; no rows come back.
+ */
+async function loadTabCounts(parsed: ReturnType<typeof parseSearch>) {
+  const supabase = createAdminClient();
+
+  const build = (archived: boolean) => {
+    let q = supabase.from('articles').select('id', { count: 'exact', head: true });
+    q = archived ? q.not('archived_at', 'is', null) : q.is('archived_at', null);
+    if (parsed.type) q = q.eq('type', parsed.type);
+    if (parsed.status) q = q.eq('status', parsed.status);
+    if (parsed.q) {
+      const pat = `%${parsed.q}%`;
+      q = q.or(`title.ilike.${pat},excerpt.ilike.${pat}`);
+    }
+    return q;
+  };
+
+  const [current, archived] = await Promise.all([build(false), build(true)]);
+  return { current: current.count ?? 0, archived: archived.count ?? 0 };
+}
+
 function urlWith(base: SearchParams, overrides: Partial<SearchParams>): string {
   const merged = { ...base, ...overrides };
   const params = new URLSearchParams();
@@ -112,7 +143,11 @@ export default async function ArticlesPage({
 }) {
   const raw = await searchParams;
   const parsed = parseSearch(raw);
-  const [{ rows, total }, jar] = await Promise.all([loadArticles(parsed), cookies()]);
+  const [{ rows, total }, tabCounts, jar] = await Promise.all([
+    loadArticles(parsed),
+    loadTabCounts(parsed),
+    cookies()
+  ]);
   const session = await verifySession(jar.get(LEADER_COOKIE.name)?.value);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const pageStart = total === 0 ? 0 : (parsed.page - 1) * PAGE_SIZE + 1;
@@ -136,11 +171,19 @@ export default async function ArticlesPage({
         </Link>
       </div>
 
+      <ArticlesTabs
+        archived={parsed.archived}
+        currentCount={tabCounts.current}
+        archivedCount={tabCounts.archived}
+        // Switching tabs keeps search and status but drops the page number —
+        // page 3 of Current is rarely page 3 of Archived.
+        hrefFor={(archived) => urlWith(raw, { archived: archived ? '1' : '', page: '' })}
+      />
+
       <ArticlesToolbar
         q={parsed.q}
         type={parsed.type}
         status={parsed.status}
-        archived={parsed.archived}
         sort={parsed.sort}
         dir={parsed.dir}
       />

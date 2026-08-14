@@ -8,7 +8,6 @@ interface Props {
   q: string;
   type: string;
   status: string;
-  archived: boolean;
   sort: string;
   dir: string;
 }
@@ -19,7 +18,7 @@ const STATUS_OPTIONS = [
   { value: 'published', label: 'Published' }
 ];
 
-export function ArticlesToolbar({ q, status, archived, sort, dir }: Props) {
+export function ArticlesToolbar({ q, status, sort, dir }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [text, setText] = useState(q);
@@ -77,14 +76,9 @@ export function ArticlesToolbar({ q, status, archived, sort, dir }: Props) {
           </option>
         ))}
       </select>
-      <label className={styles.toggleLabel}>
-        <input
-          type="checkbox"
-          checked={archived}
-          onChange={(e) => push({ archived: e.target.checked ? '1' : null })}
-        />{' '}
-        Show archived
-      </label>
+      {/* The "Show archived" checkbox lived here and MIXED archived posts into
+          the list rather than switching to them. It is now a Current/Archived
+          tab pair above, matching the Calendar's Upcoming/Past. */}
       <span className={styles.spacer} />
       <span className={styles.meta}>
         sorted by {sort} {dir === 'asc' ? '↑' : '↓'}

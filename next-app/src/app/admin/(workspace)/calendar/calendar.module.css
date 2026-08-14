@@ -130,3 +130,26 @@
 .tabOn { background: #fff; color: #1e3a4a; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
 .tabCount { font-size: 11px; font-weight: 700; background: var(--admin-gray-200, #e4e4e4); color: var(--admin-gray-700, #444); border-radius: 999px; padding: 1px 7px; }
 .tabOn .tabCount { background: #1e3a4a; color: #fff; }
+
+/* Search + category filter, matching the News toolbar's controls so the two
+   list screens read as one system. */
+.filterInput, .filterSelect {
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm, 3px);
+  padding: 7px 10px;
+  font-family: inherit;
+  font-size: 13px;
+  background: var(--admin-white);
+  color: var(--admin-gray-700);
+  min-height: 34px;
+}
+.filterInput:focus, .filterSelect:focus { outline: none; border-color: var(--admin-navy); }
+.filterInput[type='search'] { width: 240px; }
+.filterClear {
+  font-family: inherit; font-size: 12px; background: none;
+  border: 1px solid var(--admin-gray-300); border-radius: 3px;
+  padding: 6px 10px; cursor: pointer; color: var(--admin-gray-700);
+}
+.filterClear:hover { background: var(--admin-gray-100); }
+.filterSpacer { flex: 1; }
+.toolbarRow { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
