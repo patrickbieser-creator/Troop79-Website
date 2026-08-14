@@ -341,10 +341,9 @@ export function CalendarEditor({
                       should never render as if it were in effect. */}
                   {row.show_on_homepage && row.featured && (
                     <span
-                      className={styles.catTag}
+                      className={styles.heroTag}
                       title="Takes the homepage hero slot for its promotion window"
                     >
-                      {' '}
                       Hero
                     </span>
                   )}

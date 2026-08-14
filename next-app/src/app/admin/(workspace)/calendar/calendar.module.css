@@ -199,3 +199,21 @@
 
 /* The header now holds a button beside the copy. */
 .pageTitle { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+
+/* Hero sits beside the Promoted checkbox — it needs real space, not a stray
+   text node, or the two read as one crowded control. */
+.heroTag {
+  display: inline-block;
+  margin-left: 10px;
+  vertical-align: middle;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #e0e7ef;
+  color: var(--admin-navy);
+  border: 1px solid #c3d0e0;
+  cursor: help;
+}
