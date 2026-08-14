@@ -167,7 +167,9 @@ export default async function ArticlesPage({
           </p>
         </div>
         <Link href="/admin/news/articles/new" className={styles.newBtn}>
-          + New Post
+          {/* "Add Entry" on both screens (Patrick, 2026-08-14) — one label for
+              one act, rather than "New Post" here and "Add Entry" there. */}
+          + Add Entry
         </Link>
       </div>
 

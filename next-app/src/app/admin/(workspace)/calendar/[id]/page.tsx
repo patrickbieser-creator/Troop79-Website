@@ -5,11 +5,12 @@
  * id, so an entry without a signup could not be opened, and `details_md` had no
  * editor anywhere in admin.
  *
- * Panel composition comes from the category's template; panel PERMISSION comes
- * from the session role. A scout reaches this page (the entry editor is the
- * surface they already had at /admin/news/calendar) but never the agenda or
- * roll-call panels — and the routes behind those panels enforce leader-only
- * themselves, so hiding a panel is never the only thing standing in the way.
+ * Panel composition comes from the category's template. Panel PERMISSION no
+ * longer varies: calendar entries became leader-only to edit (Patrick,
+ * 2026-08-14), so the panel-level scout split this page used to carry is gone —
+ * a scout does not reach the calendar admin at all now. The routes behind each
+ * panel still enforce leader-only themselves; hiding a panel was never the only
+ * thing standing in the way, and still isn't.
  */
 
 import { notFound } from 'next/navigation';
@@ -25,7 +26,7 @@ import { Workbench, type WorkbenchEntry } from './workbench';
 export const metadata = { title: 'Calendar Entry — Troop 79' };
 
 export default async function CalendarEntryPage({ params }: { params: Promise<{ id: string }> }) {
-  const session = await requireRole(['leader', 'scout']);
+  await requireRole(['leader']);
   const { id } = await params;
   const entryId = Number(id);
   if (!Number.isInteger(entryId) || entryId <= 0) notFound();
@@ -43,22 +44,16 @@ export default async function CalendarEntryPage({ params }: { params: Promise<{ 
   ]);
   if (!entry) notFound();
 
-  const isLeader = session.role === 'leader';
-
-  // Layer lookups are leader-only queries: a scout is not shown these panels,
-  // so it would be wasted work — and not loading them is one less thing that
-  // could leak into a payload.
-  const [{ data: meeting }, { data: signup }] = isLeader
-    ? await Promise.all([
-        supabase
-          .from('meetings')
-          .select('id, status')
-          .eq('calendar_entry_id', entryId)
-          .is('archived_at', null)
-          .maybeSingle(),
-        supabase.from('event_signups').select('id').eq('calendar_entry_id', entryId).maybeSingle()
-      ])
-    : [{ data: null }, { data: null }];
+  // Unconditional now — everyone who reaches this page is a leader.
+  const [{ data: meeting }, { data: signup }] = await Promise.all([
+    supabase
+      .from('meetings')
+      .select('id, status')
+      .eq('calendar_entry_id', entryId)
+      .is('archived_at', null)
+      .maybeSingle(),
+    supabase.from('event_signups').select('id').eq('calendar_entry_id', entryId).maybeSingle()
+  ]);
 
   const row = entry as unknown as CalendarEntryRow;
   const workbenchEntry: WorkbenchEntry = {
@@ -86,13 +81,9 @@ export default async function CalendarEntryPage({ params }: { params: Promise<{ 
       template={templateOf(categories, workbenchEntry.category)}
       meeting={meeting ? { id: meeting.id as number, status: meeting.status as string } : null}
       signupId={signup ? (signup.id as number) : null}
-      canManageAgenda={isLeader}
       onSaveStory={updateEntryStory}
       onCreateEntry={createCalendarEntry}
-      // Withheld from a scout session entirely rather than merely unused: the
-      // action enforces requireRole(['leader']) itself, so this is hygiene, but
-      // a leader-only action reference has no business in a scout's payload.
-      onAddAgenda={isLeader ? createMeeting : undefined}
+      onAddAgenda={createMeeting}
     />
   );
 }

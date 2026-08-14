@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import type { SessionRole } from '@/lib/leader-session';
 import type { ArticleStatus } from '@/lib/supabase/types';
 import type { ArticleRowVM } from './page';
@@ -48,6 +48,7 @@ interface Props {
 export function ArticlesTable({ rows, sp, sort, dir, sessionRole, sessionName }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [rowErr, setRowErr] = useState<{ id: number; msg: string } | null>(null);
   const isLeader = sessionRole === 'leader';
 
   const sortLink = (key: SortKey, label: string) => {
@@ -60,11 +61,17 @@ export function ArticlesTable({ rows, sp, sort, dir, sessionRole, sessionName }:
     );
   };
 
-  function runAction(action: () => Promise<{ ok: boolean; error?: string }>) {
+  /**
+   * Failures render inline on the offending row, the way the Calendar list
+   * reports them — a window.alert makes you dismiss a modal before you can see
+   * which row it was about, and it disappears the moment you do.
+   */
+  function runAction(id: number, action: () => Promise<{ ok: boolean; error?: string }>) {
+    setRowErr(null);
     startTransition(async () => {
       const res = await action();
       if (!res.ok) {
-        window.alert(res.error ?? 'That action failed.');
+        setRowErr({ id, msg: res.error ?? 'That action failed.' });
         return;
       }
       router.refresh();
@@ -107,6 +114,7 @@ export function ArticlesTable({ rows, sp, sort, dir, sessionRole, sessionName }:
                     ) : (
                       r.title
                     )}
+                    {rowErr?.id === r.id && <div className={styles.rowError}>{rowErr.msg}</div>}
                   </td>
                   <td className={styles.nowrap}>
                     <span className={`${styles.pill} ${r.status === 'published' ? styles.pillPublished : styles.pillDraft}`}>
@@ -127,7 +135,7 @@ export function ArticlesTable({ rows, sp, sort, dir, sessionRole, sessionName }:
                         disabled={isPending}
                         aria-label={`Feature ${r.title}`}
                         onChange={(e) =>
-                          runAction(() => setFeatured(r.id, e.target.checked, r.featured_order ?? 0))
+                          runAction(r.id, () => setFeatured(r.id, e.target.checked, r.featured_order ?? 0))
                         }
                       />
                     ) : r.featured ? (
@@ -150,7 +158,7 @@ export function ArticlesTable({ rows, sp, sort, dir, sessionRole, sessionName }:
                         type="button"
                         className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
                         disabled={isPending}
-                        onClick={() => runAction(() => publishArticle(r.id))}
+                        onClick={() => runAction(r.id, () => publishArticle(r.id))}
                       >
                         Publish
                       </button>
@@ -160,7 +168,7 @@ export function ArticlesTable({ rows, sp, sort, dir, sessionRole, sessionName }:
                         type="button"
                         className={styles.actionBtn}
                         disabled={isPending}
-                        onClick={() => runAction(() => archiveArticle(r.id))}
+                        onClick={() => runAction(r.id, () => archiveArticle(r.id))}
                       >
                         Archive
                       </button>
@@ -170,7 +178,7 @@ export function ArticlesTable({ rows, sp, sort, dir, sessionRole, sessionName }:
                         type="button"
                         className={styles.actionBtn}
                         disabled={isPending}
-                        onClick={() => runAction(() => unarchiveArticle(r.id))}
+                        onClick={() => runAction(r.id, () => unarchiveArticle(r.id))}
                       >
                         Unarchive
                       </button>
@@ -182,7 +190,7 @@ export function ArticlesTable({ rows, sp, sort, dir, sessionRole, sessionName }:
                         disabled={isPending}
                         onClick={() => {
                           if (window.confirm(`Permanently delete "${r.title}"? This cannot be undone.`)) {
-                            runAction(() => deleteArticle(r.id));
+                            runAction(r.id, () => deleteArticle(r.id));
                           }
                         }}
                       >

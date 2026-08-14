@@ -117,16 +117,15 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
          * on a date". Signup building and agenda editing are panels on the
          * entry now, reached from the workbench at /admin/calendar/[entryId].
          *
-         * scoutVisible, as Events was. The leader-only surfaces that used to be
-         * protected by keeping this whole destination away from scouts (agenda,
-         * roll call, rosters) are guarded per PANEL inside the workbench and at
-         * their own routes — see SCOUT_ALLOWED_PREFIXES in proxy.ts, which this
-         * list must stay in sync with.
+         * Leader-only. Calendar entries are not a scout drafting surface the
+         * way News posts are (Patrick, 2026-08-14) — so unlike the Events screen
+         * this replaced, it carries no scoutVisible flag, and the matching
+         * prefix is absent from SCOUT_ALLOWED_PREFIXES in proxy.ts. Those two
+         * must stay in sync.
          */
         label: 'Calendar',
         href: '/admin/calendar',
-        matchPath: '/admin/calendar',
-        scoutVisible: true
+        matchPath: '/admin/calendar'
       },
       {
         label: 'Resource Library',

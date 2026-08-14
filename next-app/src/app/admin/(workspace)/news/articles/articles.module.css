@@ -203,3 +203,10 @@
   padding: 1px 7px;
 }
 .tabOn .tabCount { background: #1e3a4a; color: #fff; }
+
+/* Inline row error, matching the Calendar list — beats a window.alert you have
+   to dismiss before you can see which row it referred to. */
+.rowError {
+  margin-top: 4px; padding: 6px 10px; background: #fdf0ef; border: 1px solid #e8c4c0;
+  color: var(--admin-danger); border-radius: 3px; font-size: 12px; font-weight: 400;
+}

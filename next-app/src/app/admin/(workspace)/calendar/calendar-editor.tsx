@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { categoryColorMap, colorFor, type CalendarCategoryRow } from '@/lib/calendar-categories';
 import { splitByTab } from '@/lib/calendar-tabs';
 import type { ImportResult, ImportRowFields, ImportUpdate } from './actions';
@@ -19,10 +19,17 @@ interface Props {
   /** The calendar_categories lookup in display order (D-082) — labels, colors
    *  and all. Managed under Lookups & Admin, not in code. */
   categories: CalendarCategoryRow[];
+  /** List state, read from the URL by the page — bookmarkable and
+   *  back-button-friendly, matching News. */
+  q: string;
+  category: string;
+  tab: 'upcoming' | 'past';
+  newOpen: boolean;
   onCreate: (fd: FormData) => Promise<ActionResult>;
   onUpdate: (fd: FormData) => Promise<ActionResult>;
   onDelete: (id: number) => Promise<ActionResult>;
   onClone: (fd: FormData) => Promise<CloneResult>;
+  onSetPromoted: (id: number, on: boolean) => Promise<ActionResult>;
   onImport: (inserts: ImportRowFields[], updates: ImportUpdate[]) => Promise<ImportResult>;
 }
 
@@ -50,26 +57,61 @@ function formatTime(hms: string): string {
 export function CalendarEditor({
   rows,
   categories,
+  q,
+  category,
+  tab,
+  newOpen,
   onCreate,
   onUpdate,
   onDelete,
   onClone,
+  onSetPromoted,
   onImport
 }: Props) {
   const router = useRouter();
-  /*
-   * Only two dialogs left. Row EDITING moved into the workbench, which is now
-   * the single editor of record for an entry — "Open" and "Edit" were two
-   * doors to the same thing, and only one of them could reach the story,
-   * agenda and signup.
-   *
-   * 'new'      — from scratch, the less common path now
-   * { clone }  — the PRIMARY path: pick a date, everything else comes along
+  const searchParams = useSearchParams();
+
+  /**
+   * Filter state pushes to the URL rather than living in useState. Search is
+   * debounced so typing doesn't push a history entry per keystroke; the local
+   * `text` mirror keeps the input responsive while that settles. Same shape as
+   * the News toolbar.
    */
-  const [openFor, setOpenFor] = useState<'new' | { clone: CalendarEntryRow } | null>(null);
-  const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
-  const [q, setQ] = useState('');
-  const [category, setCategory] = useState('');
+  const [text, setText] = useState(q);
+  const inputFocusedRef = useRef(false);
+
+  useEffect(() => {
+    if (!inputFocusedRef.current) setText(q);
+  }, [q]);
+
+  const push = useCallback(
+    (updates: Record<string, string | null>) => {
+      const params = new URLSearchParams(searchParams.toString());
+      for (const [k, v] of Object.entries(updates)) {
+        if (v === null || v === '') params.delete(k);
+        else params.set(k, v);
+      }
+      router.push(`/admin/calendar${params.toString() ? `?${params.toString()}` : ''}`, {
+        scroll: false
+      });
+    },
+    [router, searchParams]
+  );
+
+  useEffect(() => {
+    if (text === q) return;
+    const t = setTimeout(() => push({ q: text }), 450);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text]);
+
+  /*
+   * Row EDITING moved into the workbench, which is the single editor of record
+   * for an entry. Two dialogs remain: Add Entry (opened from the page header
+   * via `?new=1`) and Clone — the primary path, where you pick a date and
+   * everything else comes along.
+   */
+  const [cloneFor, setCloneFor] = useState<CalendarEntryRow | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [rowErr, setRowErr] = useState<{ id: number; msg: string } | null>(null);
@@ -102,12 +144,31 @@ export function CalendarEditor({
   const shown = tab === 'upcoming' ? upcomingShown : pastShown;
   const filtering = needle !== '' || category !== '';
 
+  const dialogOpen = newOpen || cloneFor !== null;
   useEffect(() => {
     const dlg = dialogRef.current;
     if (!dlg) return;
-    if (openFor && !dlg.open) dlg.showModal();
-    if (!openFor && dlg.open) dlg.close();
-  }, [openFor]);
+    if (dialogOpen && !dlg.open) dlg.showModal();
+    if (!dialogOpen && dlg.open) dlg.close();
+  }, [dialogOpen]);
+
+  /** Add Entry is opened by the header link (`?new=1`), so closing it has to
+   *  drop that param rather than flip local state. */
+  function closeDialog() {
+    setCloneFor(null);
+    if (newOpen) push({ new: null });
+  }
+
+  function onPromoteToggle(row: CalendarEntryRow, on: boolean) {
+    setBusyId(row.id);
+    setRowErr(null);
+    startTransition(async () => {
+      const res = await onSetPromoted(row.id, on);
+      setBusyId(null);
+      if (!res.ok) setRowErr({ id: row.id, msg: res.error ?? 'Could not change promotion' });
+      else router.refresh();
+    });
+  }
 
   function onDeleteClick(row: CalendarEntryRow) {
     // The entry is the spine: deleting it cascades into its agenda layer and
@@ -143,7 +204,7 @@ export function CalendarEditor({
             role="tab"
             aria-selected={tab === 'upcoming'}
             className={`${styles.tab} ${tab === 'upcoming' ? styles.tabOn : ''}`}
-            onClick={() => setTab('upcoming')}
+            onClick={() => push({ tab: null })}
           >
             Upcoming <span className={styles.tabCount}>{upcomingShown.length}</span>
           </button>
@@ -152,15 +213,12 @@ export function CalendarEditor({
             role="tab"
             aria-selected={tab === 'past'}
             className={`${styles.tab} ${tab === 'past' ? styles.tabOn : ''}`}
-            onClick={() => setTab('past')}
+            onClick={() => push({ tab: 'past' })}
           >
             Past <span className={styles.tabCount}>{pastShown.length}</span>
           </button>
         </div>
         <CalendarImport rows={rows} categories={categories.map((c) => c.label)} onImport={onImport} />
-        <button type="button" className={styles.addBtn} onClick={() => setOpenFor('new')}>
-          + Add Entry
-        </button>
       </div>
 
       <div className={styles.toolbarRow}>
@@ -169,14 +227,20 @@ export function CalendarEditor({
           className={styles.filterInput}
           placeholder="Search title, location…"
           aria-label="Search calendar entries"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onFocus={() => {
+            inputFocusedRef.current = true;
+          }}
+          onBlur={() => {
+            inputFocusedRef.current = false;
+          }}
         />
         <select
           className={styles.filterSelect}
           aria-label="Filter by category"
           value={category}
-          onChange={(e) => setCategory(e.target.value)}
+          onChange={(e) => push({ category: e.target.value })}
         >
           <option value="">All categories</option>
           {categories.map((c) => (
@@ -190,8 +254,8 @@ export function CalendarEditor({
             type="button"
             className={styles.filterClear}
             onClick={() => {
-              setQ('');
-              setCategory('');
+              setText('');
+              push({ q: null, category: null });
             }}
           >
             Clear
@@ -206,15 +270,17 @@ export function CalendarEditor({
             <th>Date</th>
             <th>Category</th>
             <th>Title</th>
+            <th>Status</th>
+            <th>Author</th>
             <th>Location</th>
-            <th>News</th>
+            <th>Promoted</th>
             <th style={{ textAlign: 'right' }}>Actions</th>
           </tr>
         </thead>
         <tbody>
           {shown.length === 0 ? (
             <tr>
-              <td colSpan={6} className={styles.muted}>
+              <td colSpan={8} className={styles.muted}>
                 {/* A filtered empty tab is a different situation from an empty
                     one — telling someone to add an entry when they have simply
                     mistyped a search is the wrong instruction. */}
@@ -249,16 +315,25 @@ export function CalendarEditor({
                   {/* The title is the way in, as it is on News. Clicking a row's
                       subject to edit it is the habit both screens should share. */}
                   <Link href={`/admin/calendar/${row.id}`}>{row.title}</Link>
-                  {!row.on_calendar && <span className={styles.catTag}> off-calendar</span>}
                   {rowErr?.id === row.id && <div className={styles.editError}>{rowErr.msg}</div>}
                 </td>
+                <td className={styles.nowrap}>
+                  <StatusPills row={row} />
+                </td>
+                <td className={styles.muted}>{row.author_name || '—'}</td>
                 <td>{row.location || <span className={styles.muted}>—</span>}</td>
-                <td>
-                  {row.show_on_homepage ? (
-                    <span className={styles.catTag}>{row.featured ? 'Promoted · Hero' : 'Promoted'}</span>
-                  ) : (
-                    <span className={styles.muted}>—</span>
-                  )}
+                <td className={styles.nowrap}>
+                  {/* Flipped straight from the list, the way News flips
+                      Featured. Turning it off parks the promo window rather than
+                      clearing it, so turning it back on restores the setup. */}
+                  <input
+                    type="checkbox"
+                    checked={row.show_on_homepage}
+                    disabled={busyId === row.id}
+                    aria-label={`Promote ${row.title} to the homepage`}
+                    onChange={(e) => onPromoteToggle(row, e.target.checked)}
+                  />
+                  {row.featured && <span className={styles.catTag}> Hero</span>}
                 </td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                   {/* "Edit", not "Open" — News calls the same act Edit, and
@@ -271,7 +346,7 @@ export function CalendarEditor({
                   <button
                     type="button"
                     className={styles.editBtn}
-                    onClick={() => setOpenFor({ clone: row })}
+                    onClick={() => setCloneFor(row)}
                     disabled={busyId === row.id}
                     title="Copy this entry — write-up, agenda and signup structure — onto a new date"
                   >
@@ -295,27 +370,27 @@ export function CalendarEditor({
       <dialog
         ref={dialogRef}
         className={styles.dialog}
-        onClose={() => setOpenFor(null)}
+        onClose={closeDialog}
         onClick={(e) => {
-          if (e.target === dialogRef.current) setOpenFor(null);
+          if (e.target === dialogRef.current) closeDialog();
         }}
       >
-        {openFor === 'new' && (
+        {newOpen && !cloneFor && (
           <CalendarEntryForm
             key="new"
             row={null}
             categories={categories}
             onCreate={onCreate}
             onUpdate={onUpdate}
-            onClose={() => setOpenFor(null)}
+            onClose={closeDialog}
           />
         )}
-        {openFor && openFor !== 'new' && (
+        {cloneFor && (
           <CloneForm
-            key={`clone-${openFor.clone.id}`}
-            source={openFor.clone}
+            key={`clone-${cloneFor.id}`}
+            source={cloneFor}
             onClone={onClone}
-            onClose={() => setOpenFor(null)}
+            onClose={closeDialog}
             onDone={(id) => router.push(`/admin/calendar/${id}`)}
           />
         )}
@@ -404,5 +479,49 @@ function CloneForm({
         </button>
       </div>
     </div>
+  );
+}
+
+/**
+ * What still needs doing on this entry, at a glance.
+ *
+ * News has shown a status pill per row since it shipped; the calendar showed
+ * nothing, even though an entry now carries layers that each have a state —
+ * an agenda can be draft, a signup can be closed, an entry can be off the
+ * calendar entirely. A leader opens this screen asking "what is unfinished?",
+ * and the answer was previously "open each one and see".
+ *
+ * Nothing here means the entry is a plain calendar line with no layers, which
+ * is a perfectly finished state — so it renders as a quiet dash rather than a
+ * pill saying "OK".
+ */
+function StatusPills({ row }: { row: CalendarEntryRow }) {
+  const pills: { label: string; tone: 'draft' | 'closed' | 'muted' }[] = [];
+
+  if (row.agendaStatus === 'draft') pills.push({ label: 'Draft agenda', tone: 'draft' });
+  if (row.agendaStatus === 'published') pills.push({ label: 'Agenda', tone: 'muted' });
+  if (row.signupStatus === 'closed') pills.push({ label: 'Signup closed', tone: 'closed' });
+  if (row.signupStatus === 'open') pills.push({ label: 'Signup open', tone: 'muted' });
+  if (!row.on_calendar) pills.push({ label: 'Off calendar', tone: 'closed' });
+
+  if (pills.length === 0) return <span className={styles.muted}>—</span>;
+
+  return (
+    <>
+      {pills.map((p) => (
+        <span
+          key={p.label}
+          className={`${styles.statusPill} ${
+            p.tone === 'draft'
+              ? styles.statusDraft
+              : p.tone === 'closed'
+                ? styles.statusClosed
+                : styles.statusMuted
+          }`}
+        >
+          {p.label}
+        </span>
+      ))}
+    </>
   );
 }

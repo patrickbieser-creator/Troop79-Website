@@ -22,13 +22,12 @@ function revalidateCalendar(entryId?: number) {
  * rendered publicly through ArticleBody (the same renderer the news editor
  * previews against).
  *
- * Scout-writable like the rest of the entry editor: this is the same prose
- * surface a scout could already write via description, one field over. The
- * leader-only layers (agenda, roll call, rosters) are guarded at their own
- * routes, not here.
+ * Leader-only, like every other write on this screen (Patrick, 2026-08-14).
+ * Calendar entries are not a scout drafting surface the way News posts are —
+ * which is also why the workbench no longer needs a panel-level role split.
  */
 export async function updateEntryStory(fd: FormData): Promise<ActionResult> {
-  await requireRole(['leader', 'scout']);
+  await requireRole(['leader']);
   const id = Number(fd.get('id'));
   if (!Number.isInteger(id) || id <= 0) return { ok: false, error: 'Missing entry.' };
   const body = String(fd.get('details_md') ?? '');
@@ -141,7 +140,7 @@ function stripRow<T extends Record<string, unknown>>(row: T, ...alsoDrop: string
 export async function cloneCalendarEntry(
   fd: FormData
 ): Promise<{ ok: boolean; error?: string; id?: number }> {
-  await requireRole(['leader', 'scout']);
+  const session = await requireRole(['leader']);
   const sourceId = Number(fd.get('source_id'));
   const newDate = String(fd.get('entry_date') ?? '').trim();
   if (!Number.isInteger(sourceId) || sourceId <= 0) return { ok: false, error: 'Missing source entry.' };
@@ -164,6 +163,9 @@ export async function cloneCalendarEntry(
     .from('calendar_entries')
     .insert({
       ...stripRow(source as Record<string, unknown>),
+      // The copy belongs to whoever made it, not to whoever wrote the original
+      // — the clone is a new entry that someone chose to create today.
+      author_name: session.leader,
       entry_date: newDate,
       end_date: shiftDate(source.end_date as string | null, shift),
       promo_start: shiftDate(source.promo_start as string | null, shift),
@@ -289,21 +291,50 @@ export async function cloneCalendarEntry(
 }
 
 export async function createCalendarEntry(fd: FormData): Promise<ActionResult> {
-  await requireRole(['leader', 'scout']);
+  const session = await requireRole(['leader']);
   const fields = fieldsFromForm(fd);
   if (!fields.entry_date) return { ok: false, error: 'Date is required.' };
   if (!fields.category) return { ok: false, error: 'Category is required.' };
   if (!fields.title) return { ok: false, error: 'Title is required.' };
 
   const supabase = createAdminClient();
-  const { error } = await supabase.from('calendar_entries').insert(fields);
+  // Attribution is stamped at creation and never touched again — an edit does
+  // not reassign authorship, same as News.
+  const { error } = await supabase
+    .from('calendar_entries')
+    .insert({ ...fields, author_name: session.leader });
   if (error) return { ok: false, error: error.message };
   revalidateCalendar();
   return { ok: true };
 }
 
+/**
+ * Flip an entry's homepage promotion straight from the list, the way News flips
+ * Featured from its list.
+ *
+ * Deliberately NOT routed through fieldsFromForm/updateCalendarEntry: that path
+ * clears promo_start/promo_end/excerpt/hero whenever the opt-in is off, which is
+ * right when a human is looking at those fields and wrong for a one-click
+ * toggle. Turning promotion off from here parks the window rather than
+ * destroying it, so turning it back on restores what was set up.
+ */
+export async function setEntryPromoted(id: number, on: boolean): Promise<ActionResult> {
+  await requireRole(['leader']);
+  if (!Number.isInteger(id) || id <= 0) return { ok: false, error: 'Missing entry.' };
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from('calendar_entries')
+    .update({ show_on_homepage: on, ...(on ? {} : { featured: false }) })
+    .eq('id', id);
+  if (error) return { ok: false, error: error.message };
+  revalidateCalendar(id);
+  revalidatePath('/');
+  return { ok: true };
+}
+
 export async function updateCalendarEntry(fd: FormData): Promise<ActionResult> {
-  await requireRole(['leader', 'scout']);
+  await requireRole(['leader']);
   const id = Number(fd.get('id'));
   const fields = fieldsFromForm(fd);
   if (!fields.entry_date) return { ok: false, error: 'Date is required.' };

@@ -175,3 +175,27 @@
    editor on both screens. */
 .titleCell a { color: var(--admin-navy); font-weight: 600; }
 .titleCell a:hover { text-decoration: underline; }
+
+/* Status pills — the same idiom News uses for Draft/Published, extended to the
+   entry's layers. */
+.statusPill {
+  display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; padding: 2px 7px; border-radius: 999px;
+  margin-right: 4px; white-space: nowrap;
+}
+.statusDraft { background: #fdf3e3; color: #8b6914; border: 1px solid #e8d5a8; }
+.statusClosed { background: #f3efe9; color: var(--admin-gray-700); border: 1px solid var(--admin-gray-300); }
+.statusMuted { background: var(--admin-gray-50); color: var(--admin-gray-600); border: 1px solid var(--admin-gray-200); }
+.nowrap { white-space: nowrap; }
+
+/* The header's "+ Add Entry", matching the News page header's "+ New Post". */
+.newBtn {
+  font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: .04em;
+  background: var(--admin-navy); color: var(--admin-white); border: 1px solid var(--admin-navy);
+  padding: 8px 14px; border-radius: 3px; cursor: pointer; text-decoration: none;
+  display: inline-block; white-space: nowrap; flex-shrink: 0;
+}
+.newBtn:hover { background: var(--admin-navy-hover); }
+
+/* The header now holds a button beside the copy. */
+.pageTitle { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }

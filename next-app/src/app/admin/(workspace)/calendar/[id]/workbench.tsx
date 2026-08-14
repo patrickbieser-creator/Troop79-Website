@@ -50,11 +50,7 @@ interface Props {
   meeting: { id: number; status: string } | null;
   /** The signup layer, when one exists. */
   signupId: number | null;
-  /** Leader-only panels are omitted entirely for a scout session — the server
-   *  decides this, the client only renders what it was handed. */
-  canManageAgenda: boolean;
   onSaveStory: (fd: FormData) => Promise<ActionResult>;
-  /** Omitted for scout sessions — the panel that uses it is not rendered. */
   onAddAgenda?: (fd: FormData) => Promise<{ ok: boolean; error?: string; id?: number }>;
 }
 
@@ -73,7 +69,6 @@ export function Workbench({
   template,
   meeting,
   signupId,
-  canManageAgenda,
   onSaveStory,
   onAddAgenda
 }: Props) {
@@ -195,7 +190,7 @@ export function Workbench({
       </section>
 
       {/* ── agenda layer (meeting template, leaders only) ── */}
-      {template === 'meeting' && canManageAgenda && (
+      {template === 'meeting' && (
         <section className={styles.panel}>
           <div className={styles.panelHead}>
             <h2>Agenda</h2>
@@ -232,8 +227,7 @@ export function Workbench({
       )}
 
       {/* ── signup layer ── */}
-      {canManageAgenda && (
-        <section className={styles.panel}>
+      <section className={styles.panel}>
           <div className={styles.panelHead}>
             <h2>Signup</h2>
             <div>
@@ -253,13 +247,12 @@ export function Workbench({
               ? 'Jobs, price tiers, capacity and questions for this entry.'
               : 'No signup on this entry. Not every event needs one — some you just come to.'}
           </p>
-          {signupId && (
-            <p className={styles.panelNote}>
-              <Link href={`/admin/rosters/${signupId}`}>Event roster &rarr;</Link>
-            </p>
-          )}
-        </section>
-      )}
+        {signupId && (
+          <p className={styles.panelNote}>
+            <Link href={`/admin/rosters/${signupId}`}>Event roster &rarr;</Link>
+          </p>
+        )}
+      </section>
     </>
   );
 }

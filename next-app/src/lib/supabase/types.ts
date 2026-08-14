@@ -409,6 +409,10 @@ export interface CalendarEntry {
   /** Markdown event details shown on /events/[id]. Added by the Event Signup
    *  Phase 1 migration; null on entries authored before it. */
   details_md: string | null;
+  /** Leader who created the entry. Attribution only — unlike
+   *  articles.author_name it does not gate editing, because calendar entries
+   *  are leader-only to edit outright. Null on entries that predate the column. */
+  author_name: string | null;
   created_at: string;
   updated_at: string;
 }

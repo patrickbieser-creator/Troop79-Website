@@ -26,10 +26,21 @@ import styles from './calendar.module.css';
 
 type ActionResult = { ok: boolean; error?: string };
 
-/** Admin rows carry the resolved promotion hero for the editor's preview, and
- *  whether the entry has an agenda layer — deleting the entry cascades into
- *  the meeting and its sessions, so the confirm has to say so. */
-export type CalendarEntryRow = CalendarEntry & { hero_media: Media | null; hasAgenda: boolean };
+/**
+ * Admin rows carry the resolved promotion hero for the editor's preview, plus
+ * the state of each layer:
+ *   * `hasAgenda` — deleting the entry cascades into the meeting and its
+ *     sessions, so the delete confirm has to say so.
+ *   * `agendaStatus` / `signupStatus` — what the Status column reports. Null
+ *     means the entry has no layer of that kind, which is different from having
+ *     one that is draft or closed.
+ */
+export type CalendarEntryRow = CalendarEntry & {
+  hero_media: Media | null;
+  hasAgenda: boolean;
+  agendaStatus: string | null;
+  signupStatus: string | null;
+};
 
 export function CalendarEntryForm({
   row,
