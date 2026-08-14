@@ -101,16 +101,13 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: 'News & Events',
     items: [
+      // Ordered by what a content editor reaches for, not by URL shape: the two
+      // places things are published (News, Calendar), then the library, then the
+      // two asset managers that support them.
       {
         label: 'News',
         href: '/admin/news/articles',
         matchPath: '/admin/news/articles',
-        scoutVisible: true
-      },
-      {
-        label: 'Media Manager',
-        href: '/admin/news/media-manager',
-        matchPath: '/admin/news/media-manager',
         scoutVisible: true
       },
       {
@@ -132,15 +129,21 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         scoutVisible: true
       },
       {
+        label: 'Resource Library',
+        href: '/admin/library',
+        matchPath: '/admin/library'
+      },
+      {
+        label: 'Media Manager',
+        href: '/admin/news/media-manager',
+        matchPath: '/admin/news/media-manager',
+        scoutVisible: true
+      },
+      {
         label: 'Photo Albums',
         href: '/admin/news/photo-albums',
         matchPath: '/admin/news/photo-albums',
         scoutVisible: true
-      },
-      {
-        label: 'Resource Library',
-        href: '/admin/library',
-        matchPath: '/admin/library'
       }
     ]
   },
