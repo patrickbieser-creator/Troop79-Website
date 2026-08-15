@@ -149,19 +149,41 @@ meantime. Worth landing separately.
 
 ---
 
+## Decisions
+
+- **Anonymous visitors see the signup CTA** (Patrick, 2026-08-15). Same position
+  on the right of the row as for a signed-in family. Label it so the sign-in
+  isn't a surprise — the click leads to the gate, which is fine; a control that
+  silently isn't there reads as a missing feature.
+
+- **The day popover goes when the chips become links.** Its job today is to show
+  what an event actually is, because nothing in the month view links anywhere —
+  step 3 moves that job to the detail page. Its only other job would be
+  overflow, and the data says overflow has never happened: across all 121
+  populated days, 118 hold one event and 3 hold two, against a `MAX_CHIPS` of 2.
+  The "+N more" branch has never rendered.
+
+  So: delete the popover, and raise `MAX_CHIPS` to 4 in the same change. A cell
+  is 96px and typically holds one chip; 4 costs nothing today and removes the
+  need for overflow UI at all rather than leaving a dead-end "+1 more" behind.
+  Revisit only if a day ever genuinely needs more than four.
+
+  Removing it also retires a lot of incidental machinery — edge-clamping,
+  reposition-on-scroll, outside-click and Escape handling, auto-select-today —
+  and the "Nothing scheduled this day" panel that currently appears when you
+  click an empty cell.
+
 ## Open Questions
 
-- **Anonymous visitors and the signup CTA.** Recommend labelling it "Sign up
-  (family sign-in)" rather than hiding it — hiding makes families think it is
-  missing. Needs Patrick's call.
 - **Thin entries.** ~30 "No Troop Meeting" rows will each get a permalink with a
   date and a sentence. Suggest `noindex` on entries whose category behaviour is
   `no_meeting`, so search doesn't index near-empty pages. Not a blocker.
-- **The day popover's fate** (step 3). Decide when the chips are linked and it
-  can be judged in place.
 - **Does anything still link to a pre-unification meeting URL?** A grep found
   only `/meeting-plan`, which is a different leader-facing tool. Worth a second
   look before assuming no redirect is needed.
+- **Day-cell click target.** With the popover gone, does clicking a day's empty
+  space do anything? Options: nothing, or navigate to the list filtered to that
+  date. Decide during step 3 — it is a small addition either way.
 
 ---
 
