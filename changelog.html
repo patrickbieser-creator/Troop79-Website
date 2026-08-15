@@ -497,6 +497,56 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.43.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.43.0</span>
+        <span class="release-date">August 15, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Fix</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">The month view is square again</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Weeks line up with each other.</strong> A long event name &mdash; &ldquo;Troop
+              Meeting - Campout Cleanup&rdquo; &mdash; was stretching its own day box wider and
+              squeezing the other six, so that week sat visibly out of line with the day headings
+              and every other week. Long names now trim to fit instead of shoving the grid around.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Every week is the same height.</strong> A week containing a campout used to
+              stand taller than the weeks around it, because it needed a row for the multi-day
+              bar. All weeks in a month now share the tallest one&rsquo;s height, so the grid reads
+              as a grid.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Calendar links remember where you were</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>The month view can be linked to and bookmarked.</strong> Whether you are on
+              List or Month, and which month you are looking at, now travel in the web address
+              along with the category and search you already had. Send someone
+              &ldquo;October&rdquo; and they land on October &mdash; and coming back from a page
+              returns you to the view you left rather than the top of the list.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Descriptions stop at the Time column</strong> on the list, instead of running
+              underneath Time and Location.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.42.1 -->
     <div class="release">
       <div class="release-header">

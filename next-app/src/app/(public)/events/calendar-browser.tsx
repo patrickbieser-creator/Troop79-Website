@@ -141,26 +141,53 @@ export function CalendarBrowser({
   const [category, setCategory] = useState<string>('all');
   const [query, setQuery] = useState('');
   const [view, setView] = useState<View>('list');
+  /** The month the grid is showing, as 'YYYY-MM'. Null until the grid says. */
+  const [month, setMonth] = useState<string | null>(null);
+  /**
+   * The month asked for in the URL, filled in AFTER mount by the effect below
+   * — never during the first render.
+   *
+   * Reading window.location in a useState initializer instead cost a real
+   * hydration mismatch: the server has no URL, so it rendered "August 2026"
+   * while the client rendered "October 2026" and React threw the subtree away.
+   * Same reason category and query hydrate in an effect rather than inline.
+   */
+  const [urlMonth, setUrlMonth] = useState<string | null>(null);
 
-  // Shareable-link support: hydrate filters from ?category=&q= once on mount
-  // (same pattern as /photos — the page renders without searchParams on the
-  // server, so the URL is only readable here; useSearchParams would force the
-  // whole page behind a Suspense fallback instead).
+  /*
+   * Shareable-link support: hydrate from the query string once on mount (same
+   * pattern as /photos — the page renders without searchParams on the server,
+   * so the URL is only readable here; useSearchParams would force the whole
+   * page behind a Suspense fallback instead).
+   *
+   * `view` and `m` joined `category` and `q` on 2026-08-15. Until then there
+   * was no URL that meant "month view, October" — which made it impossible for
+   * an event page to offer a link back to where the visitor actually was, and
+   * meant a month could not be shared or bookmarked at all.
+   */
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
-    if (!p.get('category') && !p.get('q')) return;
+    if (!p.get('category') && !p.get('q') && !p.get('view') && !p.get('m')) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setCategory(p.get('category') ?? 'all');
     setQuery(p.get('q') ?? '');
+    if (p.get('view') === 'month') setView('month');
+    setUrlMonth(p.get('m'));
   }, []);
 
   useEffect(() => {
     const p = new URLSearchParams();
     if (category !== 'all') p.set('category', category);
     if (query) p.set('q', query);
+    if (view === 'month') {
+      p.set('view', 'month');
+      // Only while the grid is showing: a month in the URL of a list view
+      // would be noise, and would survive a switch back as a stale value.
+      if (month) p.set('m', month);
+    }
     const qs = p.toString();
     window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
-  }, [category, query]);
+  }, [category, query, view, month]);
 
   const colors = useMemo(() => categoryColorMap(categories), [categories]);
   const allEntries = useMemo(() => [...upcoming, ...past], [upcoming, past]);
@@ -330,6 +357,8 @@ export function CalendarBrowser({
           activeCategories={NO_CATEGORY_FILTER}
           colors={colors}
           isActive={view === 'month'}
+          initialMonth={urlMonth}
+          onMonthChange={setMonth}
         />
       </div>
     </>

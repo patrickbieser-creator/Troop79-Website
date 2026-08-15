@@ -63,7 +63,11 @@
    min-width:0 matters: this sits in a grid column, and without it the track
    widens to fit the text instead of the text ellipsing. */
 .itemDesc {
-  grid-column: 2 / -1;
+  /* Column 2 ONLY — it used to run `2 / -1`, sliding under the Time and
+     Location columns, so the ellipsis landed at the right edge of the row and
+     the description read as if it belonged to those columns. Stopping where
+     Time begins keeps the row's four columns legible as columns. */
+  grid-column: 2;
   font-family: var(--font-body);
   font-size: 13px;
   color: var(--text-body);
@@ -243,18 +247,32 @@
    and the day columns beneath them); the small visual inset the bars still
    want comes from margin on .spanBar itself instead. */
 .weekRow { position: relative; }
-.weekRow .cellsGrid { display: grid; grid-template-columns: repeat(7, 1fr); }
+/*
+ * minmax(0, 1fr), NOT 1fr. A bare `1fr` is `minmax(auto, 1fr)`, so a track
+ * cannot shrink below its content's min-content width — and a chip title is
+ * one unbroken string. The week holding "Troop Meeting - Campout Cleanup"
+ * therefore blew its Sunday column out to 211px and squeezed the other six to
+ * 153px, against 161px everywhere else, so two weeks in October 2026 sat
+ * visibly off-grid from the weekday header. Measured before/after 2026-08-15.
+ *
+ * .chipTitle needs min-width: 0 for the same reason one level down: it
+ * ellipsises, but as a flex item its default min-width: auto still reports the
+ * full title as min-content and floors the track from inside.
+ */
+.weekRow .cellsGrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
 
 .cellsGrid .dayCell { border-right: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light); }
 .cellsGrid .dayCell:first-child { border-left: 1px solid var(--border-light); }
 .monthGridWrap .weekRow:first-child .dayCell { border-top: 1px solid var(--border-light); }
 
 .dayCell {
-  /* --lane-count is set on the parent .weekRow per week, based on how many
-     multi-day span "lanes" that week needs — it cascades to every cell and
-     chip list in the row so the row grows uniformly, matching how a real
-     calendar app grows a week that has overlapping multi-day bars. */
-  width: 100%; height: 100%; min-height: calc(96px + var(--lane-count, 0) * 22px);
+  /* Sized by --month-lanes (the MONTH's maximum, set once on .monthGridWrap),
+     not by --lane-count (this week's own). Sizing per week made the week
+     containing a campout 22px taller than its neighbours, which read as a
+     broken grid rather than as a calendar making room. --lane-count still
+     drives the chip offset below, where per-week IS what's wanted. */
+  width: 100%; height: 100%; min-height: calc(96px + var(--month-lanes, 0) * 22px);
+  min-width: 0;
   text-align: left; display: block; cursor: pointer; padding: 6px 6px 4px; position: relative;
   transition: background var(--transition);
 }
@@ -281,13 +299,13 @@
 }
 .chip:hover { filter: brightness(0.97); }
 .chipDot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-.chipTitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chipTitle { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chipMore { font-family: var(--font-ui); font-size: 10px; font-weight: 700; color: var(--text-meta); padding: 2px 5px; text-align: left; }
 .chipMore:hover { color: var(--navy); text-decoration: underline; }
 
 /* Multi-day span overlay — see the alignment note above .weekRow. */
 .spansLayer {
-  position: absolute; inset: 0; top: 28px; display: grid; grid-template-columns: repeat(7, 1fr);
+  position: absolute; inset: 0; top: 28px; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
   grid-auto-rows: 19px; row-gap: 3px; pointer-events: none;
 }
 .spanBar {

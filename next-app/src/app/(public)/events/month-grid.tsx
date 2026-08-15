@@ -151,23 +151,48 @@ interface PopoverPos {
   flipped: boolean;
 }
 
+/** 'YYYY-MM' → the first of that month, or null if it isn't one. Rejects a
+ *  hand-edited ?m= rather than letting `new Date(NaN)` reach the grid. */
+function parseMonthParam(value: string | null | undefined): Date | null {
+  const m = /^(\d{4})-(\d{2})$/.exec((value ?? '').trim());
+  if (!m) return null;
+  const year = Number(m[1]);
+  const monthIndex = Number(m[2]) - 1;
+  if (monthIndex < 0 || monthIndex > 11) return null;
+  const d = new Date(year, monthIndex, 1);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function toMonthParam(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
 export function MonthGrid({
   entries,
   activeCategories,
   colors,
-  isActive
+  isActive,
+  initialMonth,
+  onMonthChange
 }: {
   entries: CalendarEntryPublic[];
   activeCategories: Set<string>;
   /** Category → accent color, from the calendar_categories lookup (D-082). */
   colors: CategoryColorMap;
   isActive: boolean;
+  /** 'YYYY-MM' from the URL, applied ONCE after mount (see the effect below).
+   *  Deliberately not a controlled value, so paging the month doesn't
+   *  round-trip through a parent and back. */
+  initialMonth?: string | null;
+  /** Reports the visible month up so the URL can carry it. */
+  onMonthChange?: (month: string) => void;
 }) {
   const todayIso = useMemo(() => toISO(new Date()), []);
   const [monthCursor, setMonthCursor] = useState(() => {
     const t = new Date();
     return new Date(t.getFullYear(), t.getMonth(), 1);
   });
+  const urlMonthApplied = useRef(false);
   const [selectedIso, setSelectedIso] = useState<string | null>(null);
   const [highlightId, setHighlightId] = useState<number | null>(null);
   const [focusedIso, setFocusedIso] = useState(todayIso);
@@ -205,6 +230,58 @@ export function MonthGrid({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [entries, activeCategories]
   );
+
+  /*
+   * Span lanes, resolved for the WHOLE MONTH before any row renders.
+   *
+   * Each week still gets its own lane count — that's what offsets its chips
+   * below its own span bars. But every row is sized by the month's MAXIMUM,
+   * so the grid keeps square rows instead of the week containing a campout
+   * standing 22px taller than the five around it (reported 2026-08-15 as the
+   * month view "breaking the symmetry of the boxes"; measured at 118px vs
+   * 96px in October 2026).
+   *
+   * The two numbers are deliberately separate: sizing with the max and
+   * offsetting with the max would push every week's chips down to clear span
+   * bars that week doesn't have.
+   */
+  const weekSpans = useMemo(
+    () => weeks.map((week) => computeWeekSpans(week, multiDayVisible)),
+    [weeks, multiDayVisible]
+  );
+  const monthLaneCount = useMemo(
+    () => weekSpans.reduce((max, w) => Math.max(max, w.laneCount), 0),
+    [weekSpans]
+  );
+
+  /*
+   * Apply the URL's month once, after mount.
+   *
+   * It cannot seed useState: the server has no URL, so the two renders would
+   * disagree and React would discard the tree (hydration mismatch, hit for
+   * real on 2026-08-15). The parent reads the query string in its own mount
+   * effect and passes the value down, so this fires on the render after that
+   * — the same one-frame delay category and query already have.
+   *
+   * Guarded by a ref rather than a dependency check because it must not fight
+   * the user: once they page to another month, a re-render carrying the
+   * original ?m= must not yank them back.
+   */
+  useEffect(() => {
+    if (urlMonthApplied.current) return;
+    const fromUrl = parseMonthParam(initialMonth);
+    if (!fromUrl) return;
+    urlMonthApplied.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMonthCursor(fromUrl);
+  }, [initialMonth]);
+
+  // Publish the visible month so the URL can carry it. One-way: this never
+  // reads back down, which is what keeps paging from looping through the
+  // parent's state.
+  useEffect(() => {
+    onMonthChange?.(toMonthParam(monthCursor));
+  }, [monthCursor, onMonthChange]);
 
   function positionPopover(cell: HTMLElement) {
     const pop = popoverRef.current;
@@ -428,9 +505,15 @@ export function MonthGrid({
         ))}
       </div>
 
-      <div className={styles.monthGridWrap} role="grid" aria-labelledby="monthHeaderTitle" ref={gridRef}>
+      <div
+        className={styles.monthGridWrap}
+        role="grid"
+        aria-labelledby="monthHeaderTitle"
+        ref={gridRef}
+        style={{ '--month-lanes': monthLaneCount } as React.CSSProperties}
+      >
         {weeks.map((week, wi) => {
-          const { placed, laneCount } = computeWeekSpans(week, multiDayVisible);
+          const { placed, laneCount } = weekSpans[wi];
           return (
             <div
               key={wi}
