@@ -6,6 +6,7 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { SubNav } from './_components/sub-nav';
+import { ArticleStyleTokens } from '@/lib/article-body/ArticleStyleTokens';
 import { TopBar } from './_components/top-bar';
 import { IS_DEV_DB } from '@/lib/dev-db';
 import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
@@ -23,6 +24,10 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
 
   return (
     <div className={styles.adminRoot}>
+      {/* Same typography tokens the public pages get, so the editors' live
+          preview panes show what will actually publish rather than the
+          stylesheet defaults. */}
+      <ArticleStyleTokens />
       <TopBar />
       <div className={styles.workspace}>
         <SubNav role={role} />

@@ -29,6 +29,8 @@ import { SkillAssignEditor, type AssignPerson } from './skill-assign-editor';
 import { SuperuserEditor, type SuperuserPerson } from './superuser-editor';
 import { TagsManager } from './tags-manager';
 import { CategoriesEditor } from './categories-editor';
+import { ArticleTokensEditor } from './article-tokens-editor';
+import { loadArticleTokens } from '@/lib/article-tokens-server';
 import type { Tag } from '@/lib/supabase/types';
 import { loadCalendarCategories } from '@/lib/calendar';
 import {
@@ -49,7 +51,8 @@ import {
   setLibrarySuperusers,
   createCalendarCategory,
   updateCalendarCategory,
-  deleteCalendarCategory
+  deleteCalendarCategory,
+  saveArticleTokens
 } from './actions';
 import styles from './lookups.module.css';
 
@@ -340,7 +343,10 @@ export default async function LookupsPage() {
     householdRows,
     librarySuperuserCodes
   } = await loadLookups();
-  const calendarCategories = await loadCalendarCategories();
+  const [calendarCategories, articleTokens] = await Promise.all([
+    loadCalendarCategories(),
+    loadArticleTokens()
+  ]);
   const leadersLite = leaders.map((l) => ({ code: l.code, name: l.name }));
 
   // Classify sign-off initials: youth = linked to an ACTIVE scout; aging out
@@ -520,6 +526,13 @@ export default async function LookupsPage() {
           sub={`${tags.length} tags · the controlled vocabulary scouts pick from when drafting articles`}
         >
           <TagsManager tags={tags} />
+        </Card>
+
+        <Card
+          title="Article Typography"
+          sub="how markdown stories are set — news posts, event write-ups and library narratives share it · blank means the built-in default · values only, so a typo can't break the page"
+        >
+          <ArticleTokensEditor values={articleTokens} onSave={saveArticleTokens} />
         </Card>
       </div>
 

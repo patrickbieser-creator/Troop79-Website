@@ -11,6 +11,7 @@ import {
   FALLBACK_CATEGORY_TEMPLATE,
   type CategoryTemplate
 } from '@/lib/calendar-categories';
+import { ARTICLE_TOKENS, isValidTokenValue } from '@/lib/article-tokens';
 
 /** The event-tab kinds an event can be classified as — Day Outing/Fundraiser
  *  have no natural quantity of their own, Camping/Hiking are implied by
@@ -1299,5 +1300,65 @@ export async function deleteCalendarCategory(formData: FormData): Promise<Result
     return { ok: false, error: error.message };
   }
   revalidateCategories();
+  return { ok: true };
+}
+
+// ── Article typography tokens ───────────────────────────────────────────────
+
+/**
+ * Save the prose styling values.
+ *
+ * VALUES ONLY, NEVER RULES. Each is checked against its token's type and a
+ * failure refuses the whole save rather than storing a bad value — that gate,
+ * plus the identical one in tokensToCss() at render time, is what lets these be
+ * user-editable at all. A blank field DELETES the row, which restores the
+ * stylesheet's own default rather than freezing today's default into the
+ * database where it could later drift from the CSS.
+ */
+export async function saveArticleTokens(formData: FormData): Promise<Result> {
+  let session;
+  try {
+    session = await ensureLeader();
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+
+  const supabase = createAdminClient();
+  const upserts: { token: string; value: string; updated_by: string }[] = [];
+  const clears: string[] = [];
+
+  for (const def of ARTICLE_TOKENS) {
+    const raw = String(formData.get(def.key) ?? '').trim();
+    if (raw === '') {
+      clears.push(def.key);
+      continue;
+    }
+    if (!isValidTokenValue(def, raw)) {
+      return {
+        ok: false,
+        error:
+          def.type === 'keyword'
+            ? `${def.label}: pick one of ${(def.options ?? []).join(', ')}.`
+            : def.type === 'number'
+              ? `${def.label}: use a plain number like ${def.fallback}.`
+              : `${def.label}: use a number with a unit, like ${def.fallback}.`
+      };
+    }
+    upserts.push({ token: def.key, value: raw, updated_by: session.leader });
+  }
+
+  if (clears.length) {
+    const { error } = await supabase.from('article_style_tokens').delete().in('token', clears);
+    if (error) return { ok: false, error: error.message };
+  }
+  if (upserts.length) {
+    const { error } = await supabase
+      .from('article_style_tokens')
+      .upsert(upserts, { onConflict: 'token' });
+    if (error) return { ok: false, error: error.message };
+  }
+
+  // Every surface that renders prose.
+  revalidatePath('/', 'layout');
   return { ok: true };
 }

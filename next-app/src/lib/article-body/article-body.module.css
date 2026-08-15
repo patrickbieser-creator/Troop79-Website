@@ -5,15 +5,15 @@
    both the public article page and the editor's live preview pane, so the
    two never visually drift apart. */
 
-.articleBody { max-width: 760px; margin: 0 auto 40px; }
-.articleBody > * + * { margin-top: 20px; }
-.articleBody p { font-size: 17px; line-height: 1.8; color: var(--text-body); }
+.articleBody { max-width: var(--article-measure, 760px); margin: 0 auto 40px; }
+.articleBody > * + * { margin-top: var(--article-block-space, 20px); }
+.articleBody p { font-size: var(--article-body-size, 17px); line-height: var(--article-line-height, 1.8); color: var(--text-body); }
 .articleBody h2 {
-  font-family: var(--font-display); font-size: 26px; font-weight: 700;
+  font-family: var(--font-display); font-size: var(--article-h2-size, 26px); font-weight: 700;
   color: var(--text-head); line-height: 1.3; margin-top: 34px !important; letter-spacing: -.005em;
 }
 .articleBody h3 {
-  font-family: var(--font-ui); font-size: 13px; font-weight: 700;
+  font-family: var(--font-ui); font-size: var(--article-h3-size, 13px); font-weight: 700;
   letter-spacing: .1em; text-transform: uppercase; color: var(--forest); margin-top: 28px !important;
 }
 .articleBody a { color: var(--forest); border-bottom: 1px solid var(--forest); }
@@ -22,17 +22,17 @@
    markdown list rendered here lost its bullets entirely — the padding below was
    indenting items that had no marker to indent. Prose is exactly where the
    default list styling is wanted, so it is restored explicitly. */
-.articleBody ul, .articleBody ol { padding-left: 22px; font-size: 17px; line-height: 1.8; }
-.articleBody ul { list-style: disc outside; }
+.articleBody ul, .articleBody ol { padding-left: 22px; font-size: var(--article-body-size, 17px); line-height: var(--article-line-height, 1.8); }
+.articleBody ul { list-style: var(--article-list-marker, disc) outside; }
 .articleBody ol { list-style: decimal outside; }
 .articleBody ul ul { list-style: circle outside; margin-top: 4px; }
 .articleBody ul ul ul { list-style: square outside; }
 .articleBody ol ol { list-style: lower-alpha outside; margin-top: 4px; }
-.articleBody li { margin-bottom: 6px; }
+.articleBody li { margin-bottom: var(--article-list-item-space, 6px); }
 .articleBody li::marker { color: var(--text-meta); }
 /* A list item holding a full paragraph should not inherit the block spacing
    that separates top-level paragraphs. */
-.articleBody li > p { margin-bottom: 6px !important; }
+.articleBody li > p { margin-bottom: var(--article-list-item-space, 6px) !important; }
 .articleBody blockquote {
   border-left: 3px solid var(--forest); padding-left: 18px; font-style: italic; color: var(--text-meta); font-size: 18px;
 }
@@ -61,7 +61,7 @@
    a centered navy pill. See prototypes/news-cms/assets/news-cms.css. */
 .galleryTile.galleryMore {
   display: flex; align-items: center; justify-content: center; background: var(--navy); color: #fff;
-  font-family: var(--font-ui); font-size: 13px; font-weight: 700;
+  font-family: var(--font-ui); font-size: var(--article-h3-size, 13px); font-weight: 700;
 }
 
 /* Gallery Link block ({{gallerylink: ...}}) — a link-out card for photos
