@@ -356,7 +356,6 @@ export function CalendarBrowser({
           entries={monthEntries}
           activeCategories={NO_CATEGORY_FILTER}
           colors={colors}
-          isActive={view === 'month'}
           initialMonth={urlMonth}
           onMonthChange={setMonth}
         />

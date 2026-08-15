@@ -171,7 +171,6 @@ export function MonthGrid({
   entries,
   activeCategories,
   colors,
-  isActive,
   initialMonth,
   onMonthChange
 }: {
@@ -179,7 +178,9 @@ export function MonthGrid({
   activeCategories: Set<string>;
   /** Category → accent color, from the calendar_categories lookup (D-082). */
   colors: CategoryColorMap;
-  isActive: boolean;
+  /* `isActive` used to live here. Its only job was telling the grid when it
+     first became visible so it could auto-select today — behaviour removed
+     2026-08-15, and the prop with it. */
   /** 'YYYY-MM' from the URL, applied ONCE after mount (see the effect below).
    *  Deliberately not a controlled value, so paging the month doesn't
    *  round-trip through a parent and back. */
@@ -197,7 +198,6 @@ export function MonthGrid({
   const [highlightId, setHighlightId] = useState<number | null>(null);
   const [focusedIso, setFocusedIso] = useState(todayIso);
   const [popoverPos, setPopoverPos] = useState<PopoverPos | null>(null);
-  const autoSelectDone = useRef(false);
   const gridRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -348,16 +348,18 @@ export function MonthGrid({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weeks, selectedIso]);
 
-  // Auto-select today the first time this view is actually shown.
-  useEffect(() => {
-    if (!isActive || autoSelectDone.current) return;
-    autoSelectDone.current = true;
-    const t = new Date();
-    if (t.getFullYear() === monthCursor.getFullYear() && t.getMonth() === monthCursor.getMonth()) {
-      requestAnimationFrame(() => selectDate(todayIso));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isActive]);
+  /*
+   * Today is NOT auto-selected (removed 2026-08-15, Patrick).
+   *
+   * Switching to the month view used to open today's popover on its own, so
+   * the first thing a visitor saw was a floating panel over the grid they had
+   * just asked for — and on a day with nothing on it, that panel read "Nothing
+   * scheduled this day", which is a strange thing to volunteer.
+   *
+   * Today is marked in the grid itself instead (.isToday), which is what a
+   * calendar is expected to do. The popover is now only ever opened by a
+   * deliberate click.
+   */
 
   // Popover follows its anchor on scroll/resize; closes if the anchor scrolls fully off-screen.
   useEffect(() => {

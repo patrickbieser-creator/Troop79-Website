@@ -281,6 +281,17 @@
 .dayCell.isOutside { background: var(--newsprint); }
 .dayCell.isOutside .dayNum { color: var(--border-mid); }
 .dayCell.isOutside:hover { background: #ece5d6; }
+/* Today is marked by the grid itself, not by opening its popover on arrival
+   (removed 2026-08-15 — see the note in month-grid.tsx). A wash behind the
+   cell plus the navy day-number pill below; deliberately quieter than
+   .isSelected, which is a thing the visitor just did rather than a fact about
+   the date.
+
+   Declared BEFORE .isSelected on purpose: same specificity, so source order
+   decides, and clicking today should still look selected. */
+.dayCell.isToday { background: rgba(30, 58, 74, .045); }
+.dayCell.isToday:hover { background: rgba(30, 58, 74, .08); }
+
 .dayCell.isSelected { background: rgba(61, 90, 62, .07); box-shadow: inset 0 0 0 2px var(--forest); z-index: 1; }
 
 .dayNumRow { display: flex; align-items: center; justify-content: flex-start; margin-bottom: 4px; }
