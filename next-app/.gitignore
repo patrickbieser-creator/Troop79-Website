@@ -33,6 +33,13 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...and .env.example is that opt-in. It is the template — every key present,
+# every value blank — so a new checkout can see what needs configuring without
+# reading the source. The blanket rule above was swallowing it, which meant
+# newly added variables (the EMAIL_REDIRECT_TO dev relay, for one) were
+# documented only on the machine that added them. Keep values in here EMPTY;
+# the one exception is the local Supabase URL, which is a localhost default.
+!.env.example
 
 # vercel
 .vercel
