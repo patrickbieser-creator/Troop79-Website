@@ -497,6 +497,228 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.38.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.38.0</span>
+        <span class="release-date">August 14, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Fix</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">News stories now look the way they were written</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              A story&rsquo;s main image is no longer cropped on its own page. A tall poster was
+              being squeezed into a letterbox strip &mdash; the rummage sale flyer was losing
+              roughly two thirds of itself. The image now shows in full at its natural shape. The
+              smaller cropped version on the homepage is unchanged, which is what you want in a
+              list of story cards.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Bulleted lists have their bullets back.</strong> Lists were being indented
+              but rendered without any bullet at all. Numbered lists, nested lists and sub-bullets
+              all render properly now &mdash; on news posts, event write-ups and library pages
+              alike, since they share one style.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Story typography is now adjustable without a developer</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              A new <strong>Article Typography</strong> card under Lookups &amp; Admin sets how all
+              markdown stories are typeset &mdash; text size, line height, column width, spacing,
+              heading sizes and bullet style. Leave a field blank to keep the built-in default.
+              Changes apply everywhere the moment you save, including the live preview inside the
+              editors.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.37.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.37.0</span>
+        <span class="release-date">August 14, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Roll Call, for every event &mdash; not just meetings</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Attendance used to be something you could only record for a Sunday meeting.
+              Campouts, service projects, fundraisers and outings had attendance too, but it was
+              entered later as advancement credit and no screen ever showed who was actually
+              there. <strong>Roll Call</strong> now opens on any event.
+            </span>
+          </li>
+          <li>
+            <span>
+              Marking a scout present grants the credit that event carries &mdash; nights for a
+              campout, hours for a service project &mdash; automatically, with a per-person
+              override for anyone who only came for part of it. A scout who came Saturday for the
+              day can be recorded as present with zero nights, which was not previously possible.
+            </span>
+          </li>
+          <li>
+            <span>
+              Where an event has a signup, Roll Call starts from the list of who said yes, and
+              flags the two mismatches worth knowing about: people who signed up but did not come,
+              and people who came but never signed up.
+            </span>
+          </li>
+          <li>
+            <span>
+              A leader can now <strong>add someone to an event roster by hand</strong>. Signups do
+              not all arrive through the website &mdash; plenty come by email or in conversation,
+              and some people simply turn up. Until now a roster could be corrected downward but
+              never upward.
+            </span>
+          </li>
+          <li>
+            <span>
+              All 1,249 historical meeting check-ins were carried across, so past meetings open
+              with their attendance already in place. Adults now appear alongside scouts in the
+              same list.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.36.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.36.0</span>
+        <span class="release-date">August 14, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Fix</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Fundraisers, day outings and service projects now count toward rank</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Second Class 1a and First Class 1a ask a scout to take part in a number of separate
+              troop activities. The check behind that requirement was only counting campouts and
+              hikes &mdash; so every fundraiser, day outing and service project a scout attended
+              was invisible to it.
+            </span>
+          </li>
+          <li>
+            <span>
+              An <strong>activity</strong> is now correctly treated as an umbrella over campouts,
+              fundraisers, day outings and service projects. Meetings are excluded, as Scouts
+              America intends; ceremonies and advancement nights count as meetings rather than
+              events, and Training counts as an activity.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Four scouts had already met a requirement and were not being credited</strong>
+              &mdash; they now appear in Audits for a leader to review and sign off. Two of them
+              had the required campouts all along and were held back purely by service days and
+              fundraisers that were not being counted.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.35.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.35.0</span>
+        <span class="release-date">August 14, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Improvement</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Calendar and News now work the same way</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              The two screens where content is written had drifted apart. They now share the same
+              habits: click a title or press <strong>Edit</strong> to open it, the same
+              <strong>+ Add Entry</strong> button in the same place, the same row actions in the
+              same order, and errors shown on the row they belong to instead of in a pop-up you
+              have to dismiss before you can see which row it meant.
+            </span>
+          </li>
+          <li>
+            <span>
+              The Calendar gained a <strong>Status</strong> column showing what is still
+              unfinished on each entry &mdash; a draft agenda, a closed signup, an entry kept off
+              the calendar &mdash; plus an <strong>Author</strong> column, and a checkbox to
+              promote an entry to the homepage without opening it.
+            </span>
+          </li>
+          <li>
+            <span>
+              Calendar search, category filter and the Upcoming/Past tab now survive a reload and
+              can be linked to. News swapped its &ldquo;show archived&rdquo; checkbox for
+              <strong>Current</strong> and <strong>Archived</strong> tabs, and gained a
+              <strong>Clone</strong> action for starting a new post from an existing one.
+            </span>
+          </li>
+          <li>
+            <span>
+              Calendar entries are now leader-only to edit, and record who created them.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.34.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.34.0</span>
+        <span class="release-date">August 14, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Clone an event, and edit it all in one place</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Cloning is now the fastest way to add an event.</strong> Find the campout,
+              meeting or service project that most resembles what you are planning, copy it onto a
+              new date, and clean it up. The write-up, the agenda&rsquo;s shape and the whole
+              signup structure &mdash; jobs, price tiers, questions &mdash; all come along.
+            </span>
+          </li>
+          <li>
+            <span>
+              People never come along. No claims, no payments, no assigned scouts or leaders. A
+              copied signup starts closed and a copied agenda starts as a draft, so nothing goes
+              live under last time&rsquo;s details before you have reviewed it.
+            </span>
+          </li>
+          <li>
+            <span>
+              Dates that hang off the event move with it: a three-day campout stays three days,
+              and a signup deadline set ten days before the event stays ten days before it.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Open and Edit are now one thing.</strong> An entry&rsquo;s own details used
+              to be editable only from the list, while its story, agenda and signup lived on the
+              entry&rsquo;s page &mdash; so spotting a typo on that page meant backing out to fix
+              it. Everything is now edited in the same place.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.33.0 -->
     <div class="release">
       <div class="release-header">
