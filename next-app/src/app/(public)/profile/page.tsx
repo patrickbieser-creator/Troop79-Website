@@ -12,6 +12,7 @@ import {
 import {
   submitChangeRequestAction,
   submitPersonChangeRequestAction,
+  withdrawChangeRequestAction,
   addHouseholdMemberAction
 } from './actions';
 import { type ScoutProfileFields } from './profile-editor';
@@ -71,6 +72,7 @@ export default async function ProfilePage({
     err?: string;
     submitted?: string;
     nochange?: string;
+    withdrawn?: string;
     added?: string;
     /** `scout:<id>` or `person:<personId>` — which member to open. */
     member?: string;
@@ -211,10 +213,18 @@ export default async function ProfilePage({
       </header>
 
       {sp.submitted === '1' && (
-        <p className={styles.savedNote}>✓ Your update was submitted for review.</p>
+        <p className={styles.savedNote}>
+          ✓ Your update was submitted for review. It stays on the form below until a leader
+          approves it.
+        </p>
       )}
       {sp.nochange === '1' && (
         <p className={styles.savedNote}>Nothing changed — no update was submitted.</p>
+      )}
+      {sp.withdrawn === '1' && (
+        <p className={styles.savedNote}>
+          ✓ Your pending update was removed from the queue. Nothing on the record changed.
+        </p>
       )}
       {sp.added && (
         <p className={styles.savedNote}>
@@ -273,6 +283,7 @@ export default async function ProfilePage({
           initialKey={sp.member ?? null}
           submitScoutAction={submitChangeRequestAction}
           submitAdultAction={submitPersonChangeRequestAction}
+          withdrawAction={withdrawChangeRequestAction}
           addMemberAction={addHouseholdMemberAction}
           canAddMember={canAddMember}
         />

@@ -497,6 +497,86 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.40.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.40.0</span>
+        <span class="release-date">August 15, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Your Profile updates stay on the page after you send them</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>The form now shows what you submitted, not what it replaced.</strong>
+              Previously, sending an update made it vanish &mdash; the form snapped back to the
+              old information and all you got was a line saying which fields were awaiting
+              review. Switch to another family member and back and your work was nowhere on
+              screen. Now the form keeps what you sent, so you can re-read it, catch a typo, or
+              copy an address from one person&rsquo;s form into the next one&rsquo;s.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>You can still see what the record says.</strong> Every field you have an
+              update pending on is marked &ldquo;awaiting review,&rdquo; with the information
+              currently on file shown underneath it. Nothing is hidden &mdash; you can see both
+              what you asked for and what a leader is still looking at.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>You can take an update back.</strong> If you change your mind before a
+              leader gets to it, &ldquo;Undo pending update&rdquo; removes it from the queue.
+              Nothing on the record changes &mdash; the update had not been applied yet. Editing
+              and submitting again still replaces a pending update, exactly as before.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Submit is greyed out when there is nothing to send.</strong> It only
+              becomes active once something actually differs from what is already on file or
+              already in the queue, so you can tell at a glance whether you have unsaved work.
+              Family members with edits you have not submitted are flagged
+              &ldquo;edited&rdquo; in the list at the top.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Half-finished edits survive switching between people.</strong> Working
+              through a household no longer means losing what you typed every time you click
+              another name. &ldquo;Discard edits&rdquo; throws them away deliberately if you
+              want to start over.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Behind the scenes</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>The site can now test what a page actually renders.</strong> Until now the
+              automated tests only checked the database, which meant a whole class of problem
+              was invisible to them &mdash; last week&rsquo;s bug where one household member
+              showed another member&rsquo;s details had perfectly correct data behind it. Forty
+              new tests cover the Profile page as a real browser would see it. That bug can no
+              longer happen at all, and if anyone reintroduces it, the tests say so.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Fields read correctly to screen readers.</strong> The new
+              &ldquo;awaiting review&rdquo; marks were being read out as part of each
+              field&rsquo;s name (&ldquo;Phone awaiting review record still says&hellip;&rdquo;)
+              rather than as a separate note. Caught by the new tests.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.39.0 -->
     <div class="release">
       <div class="release-header">

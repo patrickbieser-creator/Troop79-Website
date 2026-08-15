@@ -1,8 +1,11 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { fieldLabel, type ChangeRequestRow } from '@/lib/change-requests';
+import { useTransition } from 'react';
+import { EDITABLE_PERSON_FIELDS, type ChangeRequestRow } from '@/lib/change-requests';
+import { displayValue, pendingFields, type DraftValues } from '@/lib/profile-draft';
 import { DatePickerField } from '@/app/admin/(workspace)/_components/date-picker-field';
+import { EditField } from './edit-field';
+import { EditorActions } from './editor-actions';
 import styles from './profile.module.css';
 
 export interface AdultProfileFields {
@@ -27,45 +30,38 @@ export interface AdultProfileFields {
  * ProfileEditor, and the reason /profile lists the whole household rather
  * than only its scouts.
  *
- * Same contract as the scout form: prefilled from the LIVE `people` row, never
- * from a pending proposal, because submitting REPLACES any pending request
- * rather than merging with it. The pending one is surfaced as a warning so
- * that replacement is a choice, not a surprise.
+ * Same contract as the scout form, including the 2026-08-15 reversal: the
+ * fields show the PENDING proposal when one exists, with the live value
+ * underneath, rather than showing the live record and describing the proposal
+ * in a banner. See lib/profile-draft.ts.
  */
 export default function AdultEditor({
   adult,
   pending,
-  submitAction
+  values,
+  dirty,
+  onChange,
+  onDiscard,
+  submitAction,
+  withdrawAction
 }: {
   adult: AdultProfileFields;
   pending: ChangeRequestRow | null;
+  values: DraftValues;
+  /** Whether `values` differs from what is already live-or-queued. */
+  dirty: boolean;
+  onChange: (field: string, value: string) => void;
+  onDiscard: () => void;
   submitAction: (formData: FormData) => Promise<void>;
+  withdrawAction: (formData: FormData) => Promise<void>;
 }) {
-  const [firstName, setFirstName] = useState(adult.first_name ?? '');
-  const [lastName, setLastName] = useState(adult.last_name ?? '');
-  const [birthdate, setBirthdate] = useState(adult.birthdate ?? '');
-  const [email, setEmail] = useState(adult.primary_email ?? '');
-  const [phone, setPhone] = useState(adult.primary_phone ?? '');
-  const [addr1, setAddr1] = useState(adult.address_line1 ?? '');
-  const [addr2, setAddr2] = useState(adult.address_line2 ?? '');
-  const [city, setCity] = useState(adult.city ?? '');
-  const [stateAbbr, setStateAbbr] = useState(adult.state ?? '');
-  const [zip, setZip] = useState(adult.zip ?? '');
-  const [isPending, startTransition] = useTransition();
+  const [isSubmitting, startTransition] = useTransition();
+  const queued = pendingFields(pending);
 
   function submit() {
     const fd = new FormData();
     fd.set('personId', String(adult.personId));
-    fd.set('first_name', firstName);
-    fd.set('last_name', lastName);
-    fd.set('birthdate', birthdate);
-    fd.set('primary_email', email);
-    fd.set('primary_phone', phone);
-    fd.set('address_line1', addr1);
-    fd.set('address_line2', addr2);
-    fd.set('city', city);
-    fd.set('state', stateAbbr);
-    fd.set('zip', zip);
+    for (const field of EDITABLE_PERSON_FIELDS) fd.set(field, values[field] ?? '');
     startTransition(() => submitAction(fd));
   }
 
@@ -73,69 +69,180 @@ export default function AdultEditor({
     <>
       {pending && (
         <p className={styles.warnNote}>
-          An update for {adult.displayName} submitted{' '}
+          The information below is the update you submitted{' '}
           {new Date(pending.submitted_at).toLocaleDateString('en-US', {
             month: 'short',
             day: 'numeric'
-          })}{' '}
-          is still awaiting review (
-          {Object.keys(pending.proposed_changes).map((f) => fieldLabel('adult', f)).join(', ')}).
-          Submitting this form will replace it — the earlier update will not also apply.
+          })}
+          , still awaiting a leader&rsquo;s review. {adult.displayName}&rsquo;s record keeps its
+          current information until then — the fields marked below show what it still says. Edit
+          and submit again to replace this update, or undo it to take it out of the queue.
         </p>
       )}
 
       <div className={styles.editGrid}>
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>First Name</span>
-          <input className={styles.editInput} value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-        </label>
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>Last Name</span>
-          <input className={styles.editInput} value={lastName} onChange={(e) => setLastName(e.target.value)} />
-        </label>
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>Birthdate</span>
-          <DatePickerField value={birthdate} onChange={setBirthdate} />
-        </label>
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>Email</span>
-          <input className={styles.editInput} type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-        </label>
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>Phone</span>
-          <input className={styles.editInput} type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(414) 555-1234" />
-        </label>
-        <label className={styles.editFieldFull}>
-          <span className={styles.editLabel}>Address Line 1</span>
-          <input className={styles.editInput} value={addr1} onChange={(e) => setAddr1(e.target.value)} />
-        </label>
-        <label className={styles.editFieldFull}>
-          <span className={styles.editLabel}>Address Line 2</span>
-          <input className={styles.editInput} value={addr2} onChange={(e) => setAddr2(e.target.value)} placeholder="Apt / unit (optional)" />
-        </label>
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>City</span>
-          <input className={styles.editInput} value={city} onChange={(e) => setCity(e.target.value)} />
-        </label>
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>State</span>
-          <input className={styles.editInput} value={stateAbbr} onChange={(e) => setStateAbbr(e.target.value)} maxLength={2} placeholder="WI" />
-        </label>
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>ZIP</span>
-          <input className={styles.editInput} value={zip} onChange={(e) => setZip(e.target.value)} placeholder="53202" />
-        </label>
+        <EditField
+          label="First Name"
+          name="first_name"
+          queued={queued}
+          previous={displayValue(adult.first_name)}
+        >
+          {(a) => (
+            <input
+              {...a}
+              className={styles.editInput}
+              value={values.first_name ?? ''}
+              onChange={(e) => onChange('first_name', e.target.value)}
+            />
+          )}
+        </EditField>
+        <EditField
+          label="Last Name"
+          name="last_name"
+          queued={queued}
+          previous={displayValue(adult.last_name)}
+        >
+          {(a) => (
+            <input
+              {...a}
+              className={styles.editInput}
+              value={values.last_name ?? ''}
+              onChange={(e) => onChange('last_name', e.target.value)}
+            />
+          )}
+        </EditField>
+        <EditField
+          label="Birthdate"
+          name="birthdate"
+          queued={queued}
+          previous={displayValue(adult.birthdate)}
+        >
+          {(a) => (
+            <DatePickerField
+              {...a}
+              value={values.birthdate ?? ''}
+              onChange={(v) => onChange('birthdate', v)}
+            />
+          )}
+        </EditField>
+        <EditField
+          label="Email"
+          name="primary_email"
+          queued={queued}
+          previous={displayValue(adult.primary_email)}
+        >
+          {(a) => (
+            <input
+              {...a}
+              className={styles.editInput}
+              type="email"
+              value={values.primary_email ?? ''}
+              onChange={(e) => onChange('primary_email', e.target.value)}
+            />
+          )}
+        </EditField>
+        <EditField
+          label="Phone"
+          name="primary_phone"
+          queued={queued}
+          previous={displayValue(adult.primary_phone)}
+        >
+          {(a) => (
+            <input
+              {...a}
+              className={styles.editInput}
+              type="tel"
+              value={values.primary_phone ?? ''}
+              onChange={(e) => onChange('primary_phone', e.target.value)}
+              placeholder="(414) 555-1234"
+            />
+          )}
+        </EditField>
+        <EditField
+          label="Address Line 1"
+          full
+          name="address_line1"
+          queued={queued}
+          previous={displayValue(adult.address_line1)}
+        >
+          {(a) => (
+            <input
+              {...a}
+              className={styles.editInput}
+              value={values.address_line1 ?? ''}
+              onChange={(e) => onChange('address_line1', e.target.value)}
+            />
+          )}
+        </EditField>
+        <EditField
+          label="Address Line 2"
+          full
+          name="address_line2"
+          queued={queued}
+          previous={displayValue(adult.address_line2)}
+        >
+          {(a) => (
+            <input
+              {...a}
+              className={styles.editInput}
+              value={values.address_line2 ?? ''}
+              onChange={(e) => onChange('address_line2', e.target.value)}
+              placeholder="Apt / unit (optional)"
+            />
+          )}
+        </EditField>
+        <EditField label="City" name="city"
+          queued={queued} previous={displayValue(adult.city)}>
+          {(a) => (
+            <input
+              {...a}
+              className={styles.editInput}
+              value={values.city ?? ''}
+              onChange={(e) => onChange('city', e.target.value)}
+            />
+          )}
+        </EditField>
+        <EditField label="State" name="state"
+          queued={queued} previous={displayValue(adult.state)}>
+          {(a) => (
+            <input
+              {...a}
+              className={styles.editInput}
+              value={values.state ?? ''}
+              onChange={(e) => onChange('state', e.target.value)}
+              maxLength={2}
+              placeholder="WI"
+            />
+          )}
+        </EditField>
+        <EditField label="ZIP" name="zip"
+          queued={queued} previous={displayValue(adult.zip)}>
+          {(a) => (
+            <input
+              {...a}
+              className={styles.editInput}
+              value={values.zip ?? ''}
+              onChange={(e) => onChange('zip', e.target.value)}
+              placeholder="53202"
+            />
+          )}
+        </EditField>
       </div>
       <p className={styles.helpText}>
         Changes are reviewed by a leader before they take effect on {adult.displayName}&rsquo;s
-        record — you won&rsquo;t see a change reflected here until it&rsquo;s approved. To change
-        who someone is to a scout, or to remove them from the household, ask a leader.
+        record. To change who someone is to a scout, or to remove them from the household, ask a
+        leader.
       </p>
-      <div className={styles.editActions}>
-        <button type="button" className={styles.editSaveBtn} disabled={isPending} onClick={submit}>
-          {isPending ? 'Submitting…' : 'Submit update'}
-        </button>
-      </div>
+      <EditorActions
+        entityType="adult"
+        entityId={String(adult.personId)}
+        hasPending={pending !== null}
+        dirty={dirty}
+        isSubmitting={isSubmitting}
+        onSubmit={submit}
+        onDiscard={onDiscard}
+        withdrawAction={withdrawAction}
+      />
     </>
   );
 }

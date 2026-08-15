@@ -9,6 +9,7 @@ import {
   diffFields,
   parseFieldValue,
   fieldLabel,
+  isWithdrawable,
   EDITABLE_SCOUT_FIELDS,
   EDITABLE_PERSON_FIELDS,
   type ChangeEntityType,
@@ -38,6 +39,31 @@ const PROFILE_PATH = '/profile';
 /** Query-param key for the member being edited, so a redirect returns to them. */
 function memberParam(entityType: ChangeEntityType, entityId: string): string {
   return entityType === 'adult' ? `person:${entityId}` : `scout:${entityId}`;
+}
+
+/**
+ * Drop one entity's queued proposal, if it has one. Returns whether anything
+ * was actually removed, so a caller can tell a withdrawal from a no-op.
+ *
+ * DELETED, not marked rejected. 'rejected' is a leader's verdict and carries a
+ * rejection_reason the Roster shows; a family taking its own update back is not
+ * that. This table keeps no history either way — a second submission already
+ * overwrites the first in place — so a deleted row is consistent with how the
+ * queue has always behaved.
+ */
+async function deletePendingRequest(
+  supabase: ReturnType<typeof createAdminClient>,
+  entityType: ChangeEntityType,
+  entityId: string
+): Promise<boolean> {
+  const { data } = await supabase
+    .from('change_requests')
+    .delete()
+    .eq('entity_type', entityType)
+    .eq('entity_id', entityId)
+    .eq('status', 'pending')
+    .select('id');
+  return ((data as { id: number }[] | null) ?? []).length > 0;
 }
 
 /**
@@ -82,6 +108,16 @@ async function queueChangeRequest(opts: {
     fields
   );
   if (Object.keys(changed).length === 0) {
+    // The form matches the live record exactly. That is ordinarily a no-op —
+    // but if something was queued, the family has just edited its own proposal
+    // back to what the record already says, which is a withdrawal however it
+    // arrived. Leaving the old row would be worse than either outcome: the
+    // form would show no changes while the queue still held some.
+    const removed = await deletePendingRequest(supabase, entityType, entityId);
+    if (removed) {
+      revalidatePath(PROFILE_PATH);
+      redirect(`${back}&withdrawn=1`);
+    }
     redirect(`${back}&nochange=1`);
   }
 
@@ -217,6 +253,65 @@ export async function submitPersonChangeRequestAction(formData: FormData): Promi
     session,
     subjectLabel: adult.name
   });
+}
+
+/**
+ * Take a queued update back out of the review queue.
+ *
+ * The counterpart to a form that now SHOWS what is pending rather than
+ * describing it: once a family can read its own proposal, it needs a way to
+ * say "never mind" that isn't editing every field back by hand. Nothing has
+ * been applied at this point — withdrawing leaves the live record exactly as
+ * it was, which is the whole reason this is safe to expose without review.
+ *
+ * The type allowlist is WITHDRAWABLE_ENTITY_TYPES — notably NOT 'adult_added',
+ * which is a notice rather than a proposal. See its note in lib/change-requests.
+ */
+export async function withdrawChangeRequestAction(formData: FormData): Promise<void> {
+  const { session, party } = await requireParty();
+  const entityType = String(formData.get('entityType') ?? '');
+  const entityId = String(formData.get('entityId') ?? '');
+
+  if (!isWithdrawable(entityType)) {
+    redirect(`${PROFILE_PATH}?err=${encodeURIComponent('That update cannot be withdrawn here.')}`);
+  }
+
+  // Same household boundary the submit paths enforce, for the same reason: the
+  // id is a form field and the session only vouches for the household.
+  const subject =
+    entityType === 'scout'
+      ? party.scouts.find((s) => s.id === entityId)?.displayName
+      : party.adults.find((a) => a.personId === Number(entityId))?.name;
+  if (!subject) {
+    redirect(
+      `${PROFILE_PATH}?err=${encodeURIComponent('That person is not in your household.')}`
+    );
+  }
+
+  const back = `${PROFILE_PATH}?member=${encodeURIComponent(memberParam(entityType, entityId))}`;
+  const supabase = createAdminClient();
+  const removed = await deletePendingRequest(supabase, entityType, entityId);
+  if (!removed) {
+    redirect(`${back}&err=${encodeURIComponent('There was no pending update to remove.')}`);
+  }
+
+  // A leader was emailed when this was submitted and may be holding that
+  // message — tell them it's gone rather than letting them go looking for a
+  // row the Roster no longer shows.
+  const { html, text } = renderEmail({
+    heading: `Profile update withdrawn — ${party.label}`,
+    intro: `${session.displayName} (${party.label} household) withdrew the pending demographic update for ${subject}. Nothing was applied and there is no longer anything to review.`
+  });
+  await sendEmail({
+    to: [troopEmail()],
+    subject: `Profile update withdrawn — ${party.label}`,
+    html,
+    text,
+    confirm: true
+  });
+
+  revalidatePath(PROFILE_PATH);
+  redirect(`${back}&withdrawn=1`);
 }
 
 /**

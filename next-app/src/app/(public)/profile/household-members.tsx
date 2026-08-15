@@ -1,7 +1,18 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import type { ChangeRequestRow } from '@/lib/change-requests';
+import {
+  EDITABLE_PERSON_FIELDS,
+  EDITABLE_SCOUT_FIELDS,
+  type ChangeRequestRow,
+  type FieldValue
+} from '@/lib/change-requests';
+import {
+  draftDelta,
+  draftFromValues,
+  effectiveValues,
+  type DraftValues
+} from '@/lib/profile-draft';
 import ProfileEditor, { type ScoutProfileFields } from './profile-editor';
 import AdultEditor, { type AdultProfileFields } from './adult-editor';
 import styles from './profile.module.css';
@@ -15,6 +26,14 @@ import styles from './profile.module.css';
  * address but not their own phone number — and with two or three scouts open
  * at once it was never obvious whose form you were typing into. One selected
  * member, one form, is both narrower and more capable.
+ *
+ * IT ALSO OWNS EVERY FORM'S VALUES (2026-08-15). The editors used to hold
+ * their own field state, which meant switching member and back threw away
+ * whatever had been typed — and a parent working through a household switches
+ * constantly, often to copy a corrected address from one member to the next.
+ * Keeping the drafts here, keyed by member, is what makes the forms survive a
+ * switch; keeping them per-member is what stops one member's values appearing
+ * under another's name.
  *
  * Selection is client state seeded from the server (`initialKey`), not a
  * navigation: the page already loads every member's fields, so switching is
@@ -41,10 +60,56 @@ interface Props {
   initialKey: MemberKey | null;
   submitScoutAction: (formData: FormData) => Promise<void>;
   submitAdultAction: (formData: FormData) => Promise<void>;
+  withdrawAction: (formData: FormData) => Promise<void>;
   addMemberAction: (formData: FormData) => Promise<void>;
   /** False when the household has no stored row or no scout — the RPC behind
    *  "add a member" needs both, so the form is hidden rather than failing. */
   canAddMember: boolean;
+}
+
+/** The editable field list for a member's kind. */
+function fieldsFor(kind: 'scout' | 'adult'): readonly string[] {
+  return kind === 'scout' ? EDITABLE_SCOUT_FIELDS : EDITABLE_PERSON_FIELDS;
+}
+
+/**
+ * What one member's form should show before anyone types: the live record with
+ * any pending proposal laid over it (lib/profile-draft.ts). Both profile
+ * shapes key their editable columns by the same names the field lists use, so
+ * they index directly rather than needing a per-field mapping.
+ */
+function seedDrafts(
+  members: HouseholdMemberView[],
+  scouts: Record<MemberKey, ScoutProfileFields>,
+  adults: Record<MemberKey, AdultProfileFields>,
+  pending: Record<MemberKey, ChangeRequestRow>
+): Record<MemberKey, DraftValues> {
+  const out: Record<MemberKey, DraftValues> = {};
+  for (const m of members) {
+    const fields = fieldsFor(m.kind);
+    const live = (m.kind === 'scout' ? scouts[m.key] : adults[m.key]) as unknown as
+      | Record<string, FieldValue>
+      | undefined;
+    out[m.key] = draftFromValues(fields, effectiveValues(fields, live ?? {}, pending[m.key] ?? null));
+  }
+  return out;
+}
+
+/**
+ * A value that changes exactly when the server's answer changes — the members
+ * present, and the identity/timestamp of each pending request. Submitting,
+ * replacing and withdrawing all move it; ordinary navigation does not.
+ */
+function serverStamp(
+  members: HouseholdMemberView[],
+  pending: Record<MemberKey, ChangeRequestRow>
+): string {
+  const keys = members.map((m) => m.key).join(',');
+  const queued = Object.keys(pending)
+    .sort()
+    .map((k) => `${k}#${pending[k].id}@${pending[k].submitted_at}`)
+    .join('|');
+  return `${keys}||${queued}`;
 }
 
 export default function HouseholdMembers({
@@ -55,6 +120,7 @@ export default function HouseholdMembers({
   initialKey,
   submitScoutAction,
   submitAdultAction,
+  withdrawAction,
   addMemberAction,
   canAddMember
 }: Props) {
@@ -62,8 +128,54 @@ export default function HouseholdMembers({
     initialKey && members.some((m) => m.key === initialKey) ? initialKey : (members[0]?.key ?? null)
   );
   const [adding, setAdding] = useState(false);
+  const [drafts, setDrafts] = useState<Record<MemberKey, DraftValues>>(() =>
+    seedDrafts(members, scouts, adults, pending)
+  );
+
+  /*
+   * Re-seed the drafts when the server's answer changes, during render rather
+   * than in an effect — React's documented way to reset state on a prop change.
+   *
+   * Submitting and withdrawing both finish with redirect(), which is a SOFT
+   * navigation back to this same route: the server component re-renders with
+   * new props, but this client component stays mounted and its state would
+   * otherwise survive. Without this the form would keep showing a proposal
+   * that had just been withdrawn, and a replaced one would keep the old
+   * submitted_at. Unsubmitted edits on other members are lost at that point,
+   * which is honest — a round-trip to the server did happen.
+   */
+  const stamp = serverStamp(members, pending);
+  const [seenStamp, setSeenStamp] = useState(stamp);
+  if (seenStamp !== stamp) {
+    setSeenStamp(stamp);
+    setDrafts(seedDrafts(members, scouts, adults, pending));
+  }
+
+  /** Members whose form holds edits that have not been submitted. */
+  const dirtyKeys = new Set<MemberKey>();
+  for (const m of members) {
+    const fields = fieldsFor(m.kind);
+    const live = (m.kind === 'scout' ? scouts[m.key] : adults[m.key]) as unknown as
+      | Record<string, FieldValue>
+      | undefined;
+    const effective = effectiveValues(fields, live ?? {}, pending[m.key] ?? null);
+    if (Object.keys(draftDelta(fields, drafts[m.key] ?? {}, effective)).length > 0) {
+      dirtyKeys.add(m.key);
+    }
+  }
 
   const current = members.find((m) => m.key === selected) ?? null;
+
+  function setField(key: MemberKey, field: string, value: string) {
+    setDrafts((prev) => ({ ...prev, [key]: { ...(prev[key] ?? {}), [field]: value } }));
+  }
+
+  /** Throw away this member's unsubmitted edits — back to live-or-queued. */
+  function discard(key: MemberKey) {
+    const member = members.find((m) => m.key === key);
+    if (!member) return;
+    setDrafts((prev) => ({ ...prev, ...seedDrafts([member], scouts, adults, pending) }));
+  }
 
   return (
     <div className={styles.household}>
@@ -82,10 +194,16 @@ export default function HouseholdMembers({
           >
             <span className={styles.memberName}>{m.name}</span>
             <span className={styles.memberRole}>{m.role}</span>
-            {m.hasPending && (
-              <span className={styles.memberFlag} title="An update is awaiting review">
-                pending
+            {dirtyKeys.has(m.key) ? (
+              <span className={styles.memberEditFlag} title="You have edits you haven't submitted">
+                edited
               </span>
+            ) : (
+              m.hasPending && (
+                <span className={styles.memberFlag} title="An update is awaiting review">
+                  pending
+                </span>
+              )
             )}
           </button>
         ))}
@@ -106,20 +224,16 @@ export default function HouseholdMembers({
 
       {!adding && current && (
         /*
-         * key={current.key} IS LOAD-BEARING — do not remove it.
+         * key={current.key} is belt-and-braces since the field values moved up
+         * here — the editors no longer seed anything from props, so the bug it
+         * was added for (a props-seeded form reusing its instance and showing
+         * the PREVIOUS member's values, reported 2026-08-14 as "Patrick and
+         * Jamie Lynn show Maya's profile") can no longer happen at all.
          *
-         * Both editors seed every field with useState(member.field ?? ''),
-         * which runs only on mount. Without a key, selecting a second member
-         * of the SAME kind reuses the mounted instance at this position and
-         * React keeps its state, so the form shows the PREVIOUS member's
-         * values under the new member's name — reported 2026-08-14 as
-         * "Patrick and Jamie Lynn show Maya's profile".
-         *
-         * The old page rendered one editor per scout inside separate keyed
-         * <details> elements, so each member had its own instance and the
-         * problem could not arise. Collapsing them into one switcher position
-         * is what made the key necessary. Keying the section (rather than each
-         * editor) resets the whole panel, so it holds for both branches.
+         * KEEP IT ANYWAY. It still resets the transient UI inside an editor —
+         * DatePickerField's open popover, EditorActions' undo confirmation —
+         * which would otherwise carry across a switch, and it is the guard if
+         * an editor ever grows internal state again.
          */
         <section
           key={current.key}
@@ -131,13 +245,23 @@ export default function HouseholdMembers({
             <ProfileEditor
               scout={scouts[current.key]}
               pending={pending[current.key] ?? null}
+              values={drafts[current.key] ?? {}}
+              dirty={dirtyKeys.has(current.key)}
+              onChange={(field, value) => setField(current.key, field, value)}
+              onDiscard={() => discard(current.key)}
               submitAction={submitScoutAction}
+              withdrawAction={withdrawAction}
             />
           ) : (
             <AdultEditor
               adult={adults[current.key]}
               pending={pending[current.key] ?? null}
+              values={drafts[current.key] ?? {}}
+              dirty={dirtyKeys.has(current.key)}
+              onChange={(field, value) => setField(current.key, field, value)}
+              onDiscard={() => discard(current.key)}
               submitAction={submitAdultAction}
+              withdrawAction={withdrawAction}
             />
           )}
         </section>

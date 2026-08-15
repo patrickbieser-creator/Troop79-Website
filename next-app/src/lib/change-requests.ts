@@ -113,6 +113,24 @@ export function isNoticeOnly(entityType: ChangeEntityType): boolean {
   return entityType === 'adult_added';
 }
 
+/**
+ * The types a FAMILY may take back out of the queue itself, from /profile.
+ *
+ * A proposal is withdrawable because nothing has been applied — taking it back
+ * leaves the record exactly as it was. A NOTICE is not: 'adult_added' records
+ * that a family put someone on the roster (D-099), and letting the family that
+ * raised it delete it would undo the only thing making that addition visible
+ * to a leader. The entity type arrives in a form field, so this is an
+ * allowlist, not a filter on what the UI happens to send.
+ */
+export const WITHDRAWABLE_ENTITY_TYPES = ['scout', 'adult'] as const;
+
+export type WithdrawableEntityType = (typeof WITHDRAWABLE_ENTITY_TYPES)[number];
+
+export function isWithdrawable(entityType: string): entityType is WithdrawableEntityType {
+  return (WITHDRAWABLE_ENTITY_TYPES as readonly string[]).includes(entityType);
+}
+
 /** Field allowlist for an entity type. The privileged apply step re-filters
  *  through this, so it must be the same list the submit side used. A
  *  notice-only type writes nothing, so it allows nothing. */

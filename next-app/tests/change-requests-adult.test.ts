@@ -7,6 +7,8 @@ import {
   editableFieldsFor,
   fieldLabel,
   isNoticeOnly,
+  isWithdrawable,
+  WITHDRAWABLE_ENTITY_TYPES,
   EDITABLE_PERSON_FIELDS,
   EDITABLE_SCOUT_FIELDS
 } from '../src/lib/change-requests';
@@ -85,6 +87,35 @@ describe("'adult_added' — the notice a family leaves when adding a member", ()
     expect(fieldLabel('adult_added', 'name')).toBe('Name');
     expect(fieldLabel('adult_added', 'relationship')).toBe('Relationship');
     expect(fieldLabel('adult_added', 'primary_email')).toBe('Email');
+  });
+
+  it('CANNOT be withdrawn by the family that raised it', () => {
+    // The security property behind withdrawChangeRequestAction's allowlist. A
+    // family withdrawing its own demographic proposal is harmless — nothing
+    // was applied. Deleting THIS row would erase the only trace that someone
+    // was added to the roster, which is the entire point of D-099.
+    expect(isWithdrawable('adult_added')).toBe(false);
+  });
+});
+
+describe('what a family may withdraw from the queue', () => {
+  it('allows the two proposal types, since nothing has been applied yet', () => {
+    expect(isWithdrawable('scout')).toBe(true);
+    expect(isWithdrawable('adult')).toBe(true);
+  });
+
+  it('allows nothing else — the type arrives in a form field', () => {
+    for (const forged of ['adult_added', 'leader', '', 'scouts', 'SCOUT']) {
+      expect(isWithdrawable(forged)).toBe(false);
+    }
+  });
+
+  it('never lets a notice type become withdrawable as new types are added', () => {
+    // Pairs the two lists so a future notice-only type can't be added to one
+    // without someone reading this.
+    for (const type of WITHDRAWABLE_ENTITY_TYPES) {
+      expect(isNoticeOnly(type)).toBe(false);
+    }
   });
 });
 

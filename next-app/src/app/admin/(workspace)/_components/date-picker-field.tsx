@@ -99,6 +99,9 @@ export interface DatePickerFieldProps {
   className?: string;
   /** Put an id on the visible input so an external <label htmlFor> binds to it. */
   id?: string;
+  /** Id of an element describing this field — /profile uses it to announce
+   *  "awaiting review, record still says X" after the field's name. */
+  'aria-describedby'?: string;
   /**
    * Submit the ISO value under this name via a hidden input. The visible field
    * holds a FORMATTED date ('Aug 14, 2026'), so it can never be the submitted
@@ -116,7 +119,8 @@ export function DatePickerField({
   compact = false,
   className,
   id,
-  name
+  name,
+  'aria-describedby': describedBy
 }: DatePickerFieldProps) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState(() => formatDisplay(value));
@@ -355,6 +359,7 @@ export function DatePickerField({
       {name && <input type="hidden" name={name} value={value} />}
       <input
         id={id}
+        aria-describedby={describedBy}
         type="text"
         className={styles.input}
         value={text}
