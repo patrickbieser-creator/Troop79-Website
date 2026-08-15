@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Form Remembers, and the Calendar Connects — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #2e4530;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #faf6ef;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>The Form Remembers, and the Calendar Connects</h1>
+        <p class="subtitle">A submitted profile update stops vanishing, a table held back since July finally drops, and every date on the calendar gets an address of its own</p>
+        <div class="meta">
+            <span>&#128197; August 15, 2026</span>
+            <span>&#129302; Operator</span>
+            <span>&#128204; Troop79-Website</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <div class="stats">
+            <div class="stat"><div class="number">9</div><div class="label">Decisions</div></div>
+            <div class="stat"><div class="number">9</div><div class="label">Commits</div></div>
+            <div class="stat"><div class="number">293</div><div class="label">Tests (from 220)</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">Prod migration</div></div>
+            <div class="stat"><div class="number">6</div><div class="label">Releases</div></div>
+        </div>
+
+        <div class="callout callout-teal">
+            <strong>Everything is pushed and the migration is applied to production &mdash; but none of it has been used on the live site.</strong>
+            That is the single most important thing to carry into the next session. Nine commits and a schema change went out
+            today, verified by tests, by measurement in a browser against a copy of production, and at the data level on
+            production itself. Not verified: a real family walking through it.
+        </div>
+
+        <h2>What was accomplished</h2>
+
+        <h3>A /profile form is now the record of what is pending</h3>
+        <p>
+            Submitting a demographic update used to make the family's own edit disappear. The form seeded every field from the
+            live record, so it snapped back the moment the change was queued &mdash; the proposal survived only as a banner naming
+            <em>which</em> fields had changed, never what they had changed to. A parent could not proofread what they had sent,
+            could not copy a corrected address from one household member into the next, and lost it from view entirely on
+            switching member.
+        </p>
+        <p>
+            A field now has three values rather than two: what the record says, what is queued, and what is in the input. Measuring
+            against the queued value is what makes the rest fall out of one rule &mdash; the submit button disables itself when there
+            is nothing new to send, &ldquo;discard edits&rdquo; returns to what was submitted, and editing every field back to the
+            record's own values withdraws the request rather than reporting &ldquo;nothing changed&rdquo; while a stale proposal sits
+            invisibly in the queue. Each pending field shows the live value underneath, because once the form displays the proposal,
+            the value a leader is still looking at is visible nowhere else.
+        </p>
+
+        <h3>A test stack for the bugs that data cannot show you</h3>
+        <p>
+            Every test in this project ran against a real local Postgres, which meant a whole class of bug was structurally
+            uncatchable: last week's member-switcher fault had perfectly correct data behind it and was purely a rendering
+            fault. A second Vitest project renders components in a simulated browser.
+        </p>
+        <div class="callout callout-green">
+            <strong>It paid for itself the same hour.</strong> Two real defects surfaced immediately &mdash; an
+            &ldquo;awaiting review&rdquo; marker that had been folding itself into every field's spoken name (so a screen
+            reader announced the field as &ldquo;Phone awaiting review record still says 414-555-0101&rdquo;), and the one
+            date field that was dropping its description entirely.
+        </div>
+
+        <h3>A table held back since July finally dropped &mdash; after its own safety check turned out to have expired</h3>
+        <p>
+            Parents used to be stored twice: once as a person, and once as a row attached to each child, so a parent of two scouts
+            existed twice with no link between the copies. The retirement was prepared on July 25th and deliberately held.
+        </p>
+        <div class="callout callout-gold">
+            <strong>The reason it was held had quietly stopped being true.</strong> July's note recorded that each parent's
+            &ldquo;Mom&rdquo; or &ldquo;Dad&rdquo; wording was safely duplicated elsewhere. Re-checked against production before
+            dropping anything: that other field holds raw imported text (&ldquo;Mom Melissa Kingston / Dad Kevin&rdquo;,
+            &ldquo;Maya &amp; Anjali&rdquo;, and three blanks), while the clean word families actually see lived only in the table
+            about to be deleted. <strong>11 of 36 rows would have lost it.</strong> The words were given a proper home and
+            migrated first &mdash; 36 of 36 preserved and checked against the right people &mdash; and only then did the table drop.
+        </div>
+        <p>
+            The two other worries from July were false alarms, which is worth recording as clearly as the real one: the
+            &ldquo;missing&rdquo; phone numbers were the same numbers formatted better on the surviving record, and every
+            &ldquo;missing&rdquo; email address was already stored on the person.
+        </p>
+
+        <h3>The calendar became something you can navigate</h3>
+        <p>
+            Only events with a signup carried a link, and only on their title &mdash; so a meeting agenda, which lost its dedicated
+            page in an earlier merge, could not be opened, shared, or bookmarked at all. Every entry now has its own address,
+            reachable from the list and from the month grid, and leaving one returns you to the exact view you left: the right
+            month, the right filter, not the top of the list.
+        </p>
+        <p>
+            Signing up moved to its own page. Reading about an event and committing to it are different decisions, and putting a
+            form under every description made the description feel like paperwork. The event page now states who is already signed
+            up, by name, before you open anything.
+        </p>
+
+        <h3>The month grid stopped being crooked</h3>
+        <p>
+            Reported as &ldquo;a mess.&rdquo; Measured, it was two separate faults wearing one costume: a long event name was
+            stretching its own day box wider and squeezing the other six, throwing two of six weeks out of alignment with the day
+            headings; and any week containing a campout stood taller than the weeks around it. Both fixed, and the pop-up panel
+            that used to open on today's date without being asked is gone entirely &mdash; the chips lead somewhere better now.
+        </p>
+
+        <h2>Blockers resolved</h2>
+        <table>
+            <thead><tr><th>Problem</th><th>Diagnosis</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td><strong>A test person could not be deleted</strong></td>
+                    <td>The check refused on a record type and said &ldquo;unlink those records first&rdquo; &mdash; but no screen in the site could unlink one. The person was undeletable by any route the interface offered. Separately, it checked four things while six could actually block, so a person holding only a sign-in code sailed past the check and died on a raw database error.</td>
+                </tr>
+                <tr>
+                    <td><strong>Signup looped after entering the troop password</strong></td>
+                    <td>Introduced by the signup split earlier the same session, reported within the hour. Both name pickers still navigated to the event page &mdash; correct until that moment &mdash; and the event page's Sign up button dropped the name just chosen, closing the circuit.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Decisions recorded</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td><strong>D-102</strong></td><td>A /profile form shows the pending proposal, not the live record</td></tr>
+                <tr><td><strong>D-103</strong></td><td>Withdrawing a change request deletes the row; a notice cannot be withdrawn</td></tr>
+                <tr><td><strong>D-104</strong></td><td>A second Vitest project (jsdom) for the bugs only a renderer can see</td></tr>
+                <tr><td><strong>D-105</strong></td><td>scout_parents retired &mdash; but its own precondition had decayed first</td></tr>
+                <tr><td><strong>D-106</strong></td><td>deletePerson blocks on what means something and clears what doesn't</td></tr>
+                <tr><td><strong>D-107</strong></td><td>Description length is handled at display, not by rationing input</td></tr>
+                <tr><td><strong>D-108</strong></td><td>One stretched link per calendar row, never three</td></tr>
+                <tr><td><strong>D-109</strong></td><td>Signup is its own route; the event page states signup status</td></tr>
+                <tr><td><strong>D-110</strong></td><td>The month grid is sized by the month's maximum lanes, and its tracks are minmax(0, 1fr)</td></tr>
+            </tbody>
+        </table>
+
+        <h2>What the QA pass caught that nothing else would have</h2>
+        <p>
+            The table drop was followed by a deliberate sweep for things the type checker cannot see. It found four:
+        </p>
+        <ul>
+            <li>A database <strong>view</strong> counting the dropped table's rows &mdash; found only because the drop was written
+                without <span class="file-path">CASCADE</span>, so it refused rather than silently taking the view with it.</li>
+            <li>A one-shot <strong>import script</strong> that existed to populate the table, already marked
+                &ldquo;do not re-run,&rdquo; which would now crash. Removed.</li>
+            <li>Two columns that <em>look</em> like the legacy half of a pair &mdash; but the data says the opposite: all 34 rows
+                carry the old-looking ones and zero carry the modern-looking ones. <strong>Dropping the wrong pair would have
+                blanked the roster's &ldquo;entered by&rdquo; column.</strong></li>
+            <li>A test that borrowed whatever leader record happened to exist, so it passed only on a machine with troop data
+                loaded and failed on any empty one.</li>
+        </ul>
+
+        <h2>Next steps</h2>
+        <ol>
+            <li><strong>Verify v1.40&ndash;v1.45 on the live site.</strong> Especially the password &rarr; find-yourself &rarr; form
+                path, since that is exactly where a loop shipped today.</li>
+            <li><strong>Rotate the two credentials in BLOCKERS.md</strong> (B-002, B-003) &mdash; both still open, both flagged
+                again today without being done.</li>
+            <li><strong>The two dead columns</strong> found during the table drop &mdash; wire them up or remove them, because
+                the pair as it stands is a trap for whoever reads that table next.</li>
+            <li>Month-view polish: category colour on chips, cell density, and the tiny continuation arrows that make a campout
+                crossing a week boundary read as two events.</li>
+            <li>Extend browser-level test coverage beyond /profile to the markdown editors and date controls.</li>
+        </ol>
+
+        <div class="callout callout-teal">
+            <strong>A note on how today went.</strong> Three separate layout faults this session shared one cause &mdash; a column
+            that cannot shrink below its content &mdash; and each looked like an unrelated bug until measured. That pattern is now
+            written down. The one regression that reached Patrick was a navigation target that had been correct for its entire
+            life until the page it pointed at moved: each of the three states around it was verified, and the transition between
+            them was not.
+        </div>
+
+    </div>
+
+    <footer>
+        Session summary &middot; Troop 79 Website &middot; Generated by Operator, August 15, 2026
+    </footer>
+</body>
+</html>
