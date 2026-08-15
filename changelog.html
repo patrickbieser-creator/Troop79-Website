@@ -497,6 +497,63 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.41.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.41.0</span>
+        <span class="release-date">August 15, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Fix</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Household members can be removed again</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Deleting a person no longer hits a dead end.</strong> Removing someone from
+              the roster could refuse with &ldquo;this person still holds a parent record &mdash;
+              unlink those records first,&rdquo; when no screen in the site could unlink one. The
+              check was looking at an old table that nothing on the page could edit, so the person
+              was undeletable by any route. That table is now retired and the check with it.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Deletion explains itself instead of showing a database error.</strong> A
+              person holding only a sign-in code passed the check and then failed with a raw error
+              message. Deletion now checks everything that can actually stop it &mdash; a scout
+              record, a leader record, an event signup, a signup entered for someone else, a
+              library submission &mdash; and names whichever one applies. Leftovers that mean
+              nothing on their own, like an expired sign-in code or a notice about the person, are
+              cleared as part of the deletion rather than blocking it.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Any household can add an adult now.</strong> The &ldquo;Add a member&rdquo;
+              form on Profile required the household to still have a scout in the troop, so a
+              family whose scouts had aged out could not add anyone. That requirement existed only
+              to satisfy the old table and is gone.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Behind the scenes</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>The old parent table is retired.</strong> Parents used to be stored twice
+              &mdash; once as a person and once as a row attached to each child, so a parent of
+              two scouts existed twice with no link between the copies. Everything has run off the
+              single person record for weeks; this removes the duplicate. Each parent&rsquo;s
+              &ldquo;Mom&rdquo; or &ldquo;Dad&rdquo; wording was moved across first &mdash; it was
+              the one detail that lived nowhere else.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.40.0 -->
     <div class="release">
       <div class="release-header">

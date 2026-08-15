@@ -28,7 +28,6 @@ const HOUSEHOLDS: Household[] = [
       {
         key: 'a1',
         personId: 82,
-        scoutParentId: 40,
         leaderCode: 'PB',
         name: 'Patrick Bieser',
         relationship: 'Parent',
@@ -44,7 +43,6 @@ const HOUSEHOLDS: Household[] = [
       {
         key: 'a1',
         personId: 99,
-        scoutParentId: null,
         leaderCode: 'CM',
         name: 'Committee Member',
         relationship: null,

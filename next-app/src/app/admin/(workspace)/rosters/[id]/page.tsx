@@ -66,8 +66,8 @@ async function load(signupId: number) {
 
   const [{ data: entry }, { data: entries }, { data: prices }, { data: slots }, { data: claims },
          { data: answerRows }, { data: questionRows },
-         { data: scouts }, { data: parents }, { data: households },
-         { data: leaders }, { data: people }] = await Promise.all([
+         { data: scouts }, { data: households },
+         { data: people }] = await Promise.all([
     supabase.from('calendar_entries').select('id, title, entry_date, category')
       .eq('id', sig.calendar_entry_id).maybeSingle(),
     supabase.from('signup_entries').select('*').eq('event_signup_id', sig.id),
@@ -77,24 +77,12 @@ async function load(signupId: number) {
     supabase.from('signup_answers').select('signup_entry_id, question_id, value'),
     supabase.from('signup_questions').select('id, prompt').eq('event_signup_id', sig.id),
     supabase.from('scouts').select('id, display_name, active, household_id'),
-    supabase.from('scout_parents').select('id, name'),
-    supabase.from('households').select('id, label'),
-    // Legacy fallback only — every signup_entries row has a person_id now.
-    supabase.from('leaders').select('code, name'),
+    supabase.from('households').select('id, label'),
     supabase.from('people').select('id, display_name')
   ]);
 
   const priceById = new Map(
     ((prices ?? []) as { id: number; label: string; amount: number; per: string }[]).map((p) => [p.id, p])
-  );
-  const scoutById = new Map(
-    ((scouts ?? []) as { id: string; display_name: string }[]).map((s) => [s.id, s.display_name])
-  );
-  const parentById = new Map(
-    ((parents ?? []) as { id: number; name: string }[]).map((p) => [p.id, p.name])
-  );
-  const leaderByCode = new Map(
-    ((leaders ?? []) as { code: string; name: string }[]).map((l) => [l.code, l.name])
   );
   const peopleById = new Map(
     ((people ?? []) as { id: number; display_name: string }[]).map((p) => [p.id, p.display_name])
@@ -142,12 +130,10 @@ async function load(signupId: number) {
     const tier = e.price_id ? priceById.get(Number(e.price_id)) : undefined;
     const days = e.days ? Number(e.days) : null;
     const owed = tier ? Number(tier.amount) * (tier.per === 'day' ? (days ?? 1) : 1) : 0;
-    const name =
-      (e.person_id ? peopleById.get(Number(e.person_id)) : null) ??
-      (e.scout_id ? scoutById.get(String(e.scout_id)) : null) ??
-      (e.scout_parent_id ? parentById.get(Number(e.scout_parent_id)) : null) ??
-      (e.leader_code ? leaderByCode.get(String(e.leader_code)) : null) ??
-      String(e.adult_name ?? 'Unknown');
+    // person_id is NOT NULL and every row has one, so the legacy name
+    // fallbacks went with their columns (D-066). 'Unknown' stays as the
+    // last resort for a person row that was deleted out from under an entry.
+    const name = (e.person_id ? peopleById.get(Number(e.person_id)) : null) ?? 'Unknown';
     return {
       id: Number(e.id),
       name,

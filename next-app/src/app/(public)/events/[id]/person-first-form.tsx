@@ -65,18 +65,11 @@ export default function PersonFirstForm({
    *  parties that stand alone. Gates anything that needs a household id. */
   const hasStoredHousehold = /^\d+$/.test(household.key);
 
+  /* person_id is the whole match — the scout_id / scout_parent_id /
+     leader_code fallbacks went with their columns (D-066). */
   const priorScout = (s: { id: string; personId: number | null }) =>
-    existing.find((e) => e.person_id === s.personId || e.scout_id === s.id);
-  /* person_id is the real identity now; legacy columns stay as a fallback for
-     any entry a not-yet-migrated write path left without a scout_parent_id/
-     leader_code match. */
-  const priorAdult = (a: HouseholdAdult) =>
-    existing.find(
-      (e) =>
-        e.person_id === a.personId ||
-        (a.scoutParentId != null && e.scout_parent_id === a.scoutParentId) ||
-        (a.leaderCode != null && e.leader_code === a.leaderCode)
-    );
+    existing.find((e) => e.person_id === s.personId);
+  const priorAdult = (a: HouseholdAdult) => existing.find((e) => e.person_id === a.personId);
 
   const [scoutChoice, setScoutChoice] = useState<Record<string, ScoutChoice>>(() =>
     Object.fromEntries(
@@ -124,11 +117,12 @@ export default function PersonFirstForm({
   const [answers, setAnswers] = useState<Record<string, Record<number, string>>>(() => {
     const init: Record<string, Record<number, string>> = {};
     for (const e of existing) {
-      // person_id is the real identity now — matched against the household
-      // adult list rather than read off e.scout_parent_id, which forms stop
-      // sending on submit (2026-07-25) and would otherwise go null on reload.
+      // Both halves key off person_id. The scout half used to read e.scout_id
+      // directly; that column is gone (D-066), so a scout is resolved through
+      // the household list exactly as an adult already was.
       const adult = e.person_kind === 'adult' ? adults.find((a) => a.personId === e.person_id) : null;
-      const key = e.scout_id ? `s:${e.scout_id}` : adult ? `a:${adult.key}` : null;
+      const scout = e.person_kind === 'scout' ? scouts.find((s) => s.personId === e.person_id) : null;
+      const key = scout ? `s:${scout.id}` : adult ? `a:${adult.key}` : null;
       if (!key) continue;
       init[key] = Object.fromEntries((e.answers ?? []).map((x) => [x.question_id, x.value]));
     }
@@ -528,11 +522,12 @@ export default function PersonFirstForm({
 
           {/* Parent contact info is hard to collect ahead of time; this is often
               the first moment a second adult's details exist. Saved as a real
-              scout_parents row so the roster improves instead of staying stale.
+              person so the roster improves instead of staying stale.
 
               Offered only to parties that HAVE a stored household: a new adult
-              is written by add_parent_to_household, which needs a household id
-              and raises HOUSEHOLD_HAS_NO_SCOUTS without one. Showing the field
+              is written by add_parent_to_household, which needs a household id.
+              (It no longer needs that household to contain a SCOUT — that
+              requirement went with scout_parents in D-066.) Showing the field
               to a standalone adult would take their input and silently drop it
               on submit, since the action skips the add step when there's no
               household. Growing a committee-only household is a real want, but

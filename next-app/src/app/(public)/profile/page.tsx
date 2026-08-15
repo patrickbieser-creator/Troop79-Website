@@ -110,10 +110,11 @@ export default async function ProfilePage({
     const adultPersonIds = household?.adults.map((a) => a.personId) ?? [];
     householdEmpty = scoutIds.length === 0 && adultPersonIds.length === 0;
 
-    // add_parent_to_household attaches the new adult through a scout, so it
-    // needs a stored household that has one. Rather than let the action fail,
-    // the form is simply not offered when it couldn't succeed.
-    canAddMember = storedHouseholdId(household?.key) != null && scoutIds.length > 0;
+    // A stored household is the only requirement now. The extra "and it has a
+    // scout" test went with scout_parents (D-066) — that column was the only
+    // reason add_parent_to_household needed one, and requiring it hid this
+    // form from any family whose scouts had all aged out.
+    canAddMember = storedHouseholdId(household?.key) != null;
 
     const [{ data: scoutRows }, { data: personRows }, { data: pendingRows }] = await Promise.all([
       scoutIds.length > 0

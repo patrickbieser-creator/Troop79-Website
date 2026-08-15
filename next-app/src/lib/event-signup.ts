@@ -107,10 +107,6 @@ export interface HouseholdEntry {
   id: number;
   person_kind: 'scout' | 'adult';
   person_id: number;
-  scout_id: string | null;
-  scout_parent_id: number | null;
-  leader_code: string | null;
-  adult_name: string | null;
   status: 'yes' | 'no' | 'waitlist' | 'cancelled';
   participation: 'full' | 'driver_only' | 'contributor';
   price_id: number | null;
@@ -134,18 +130,15 @@ export interface HouseholdEntry {
  *  in the troop — have no `households` row, so their entries carry a null
  *  household_id and can't be found by the household filter.
  *
- *  personIds is the real identity filter now; the legacy arrays stay as a
- *  fallback for any row written before the person_id cutover (or, in
- *  principle, a caller that hasn't been updated yet). */
+ *  person ids are the whole filter. The scoutIds / scoutParentIds /
+ *  leaderCodes arrays that used to ride along were already dead weight — the
+ *  filter below never read them — and their columns are gone with D-066. */
 export interface PartyIdentities {
   personIds: number[];
-  scoutIds: string[];
-  scoutParentIds: number[];
-  leaderCodes: string[];
 }
 
 const ENTRY_COLUMNS =
-  'id, person_kind, person_id, scout_id, scout_parent_id, leader_code, adult_name, status, participation, ' +
+  'id, person_kind, person_id, status, participation, ' +
   'price_id, days, guest_count, guest_note, notes, permission_slip_received, payment_received';
 
 /**

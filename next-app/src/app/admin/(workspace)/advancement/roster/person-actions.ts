@@ -590,44 +590,82 @@ export async function mergePersonInto(loserId: number, survivorId: number): Prom
 /**
  * Delete a person outright.
  *
- * REFUSES while anything still points at them, because the foreign keys would
- * hide the damage rather than prevent it: scouts.person_id, leaders.person_id
- * and scout_parents.person_id are all ON DELETE SET NULL, so deleting a person
- * attached to a scout silently blanks that scout's link — and person_directory
- * is built from `people`, so the scout would vanish from the Roster entirely
- * with no error anywhere. signup_entries is RESTRICT and would at least fail
+ * REFUSES while a record that MEANS something still points at them, because
+ * those foreign keys hide the damage rather than prevent it: scouts.person_id
+ * and leaders.person_id are ON DELETE SET NULL, so deleting a person attached
+ * to a scout silently blanks that scout's link — and person_directory is built
+ * from `people`, so the scout would vanish from the Roster with no error
+ * anywhere. signup_entries.person_id is RESTRICT and would at least fail
  * loudly, but a raw constraint message is not an explanation.
  *
- * Deletion is therefore for records that stand alone — a duplicate person the
- * import created that nothing has been attached to yet. Anything else should be
- * merged, which moves the links rather than orphaning them.
+ * REWRITTEN 2026-08-15, after a leader hit a dead end this could not talk its
+ * way out of. Two faults, both from the guard's list having drifted away from
+ * the database's:
+ *
+ *   1. It blocked on a `scout_parents` row and told the leader to "unlink
+ *      those records first" — but no screen in the admin could unlink one. The
+ *      scout editor's unlink writes `relationships`, a different table. The
+ *      person was undeletable by any route the UI offered. That table is gone
+ *      now (D-066) and the check with it.
+ *   2. It checked four things while SIX foreign keys could actually block, so
+ *      a person holding only login tokens sailed past the guard and died on a
+ *      raw Postgres constraint error instead.
+ *
+ * The list below is now split by what the reference MEANS, which is the thing
+ * the guard was always trying to express:
+ *
+ *   blocking   a real record that would be orphaned — a human has to decide.
+ *   worthless  rows that exist only to serve the person and mean nothing once
+ *              they are gone. Deleted here rather than reported, because
+ *              "cannot delete: they have a login code" is not a decision
+ *              anyone can act on.
+ *
+ * Anything blocking should be MERGED, which moves the links rather than
+ * orphaning them.
  */
 export async function deletePerson(personId: number): Promise<Result> {
   await requireRole(['leader']);
   const supabase = createAdminClient();
 
-  const [scoutRes, leaderRes, parentRes, signupRes] = await Promise.all([
+  const [scoutRes, leaderRes, signupRes, enteredRes, libraryRes] = await Promise.all([
     supabase.from('scouts').select('id').eq('person_id', personId).limit(1),
     supabase.from('leaders').select('code').eq('person_id', personId).limit(1),
-    supabase.from('scout_parents').select('id').eq('person_id', personId).limit(1),
-    supabase.from('signup_entries').select('id').eq('person_id', personId).limit(1)
+    supabase.from('signup_entries').select('id').eq('person_id', personId).limit(1),
+    // Both NO ACTION, both previously unchecked — these are the ones that used
+    // to surface as a database error rather than a sentence.
+    supabase.from('signup_entries').select('id').eq('entered_by_person_id', personId).limit(1),
+    supabase.from('library_resources').select('id').eq('submitted_person_id', personId).limit(1)
   ]);
 
   const blockers: string[] = [];
   if (scoutRes.data?.length) blockers.push(`a scout record (${scoutRes.data[0].id})`);
   if (leaderRes.data?.length) blockers.push(`a leader record (${leaderRes.data[0].code})`);
-  if (parentRes.data?.length) blockers.push('a parent record on a scout');
   if (signupRes.data?.length) blockers.push('an event signup');
+  if (enteredRes.data?.length) blockers.push('an event signup they entered for someone else');
+  if (libraryRes.data?.length) blockers.push('a resource they submitted to the library');
 
   if (blockers.length > 0) {
     return {
       ok: false,
       error:
         `Cannot delete — this person still holds ${blockers.join(', ')}. ` +
-        `Deleting would leave that record pointing at nobody. Merge them into the person they duplicate instead, ` +
-        `which moves everything across, or unlink those records first.`
+        `Deleting would leave that record pointing at nobody. Merge them into the person they ` +
+        `duplicate instead, which moves everything across.`
     };
   }
+
+  // Worthless without the person, and all NO ACTION — so they must go first or
+  // the delete below fails on a constraint. A pending change request is
+  // included deliberately: `change_requests.entity_id` is a generic text key
+  // with no foreign key at all, so a notice about someone deleted would
+  // otherwise sit on the leader dashboard forever, pointing at nobody.
+  await supabase.from('login_tokens').delete().eq('person_id', personId);
+  await supabase
+    .from('change_requests')
+    .delete()
+    .in('entity_type', ['adult', 'adult_added'])
+    .eq('entity_id', String(personId));
+  await supabase.from('change_requests').delete().eq('submitted_by_person_id', personId);
 
   // Household membership, roles, relationships and import suggestions all
   // cascade; none of them mean anything without the person.

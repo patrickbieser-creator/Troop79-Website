@@ -107,9 +107,9 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
   const supabase = createAdminClient();
   const actor = `family:${audience}`;
 
-  // Adults added on the fly become real scout_parents rows, not throwaway names
-  // on one entry — that's what makes the roster improve over time. Done BEFORE
-  // the entries submit so their new parent ids can be referenced immediately.
+  // Adults added on the fly become real people, not throwaway names on one
+  // entry — that's what makes the roster improve over time. Done BEFORE the
+  // entries submit so the new person ids can be referenced immediately.
   // Null for the two party shapes with no stored household row (`scout:<id>`,
   // `leader:<code>`). The submit RPC already accepts a null household.
   const householdId = storedHouseholdId(householdKey);
@@ -225,11 +225,8 @@ export async function cancelSignupAction(formData: FormData): Promise<void> {
     p_event_signup_id: signupId,
     p_actor: `family:${audience}`,
     p_household_id: storedHouseholdId(householdKey),
-    p_scout_ids: party?.scouts.map((s) => s.id) ?? [],
-    p_scout_parent_ids:
-      party?.adults.map((a) => a.scoutParentId).filter((v): v is number => v != null) ?? [],
-    p_leader_codes:
-      party?.adults.map((a) => a.leaderCode).filter((v): v is string => v != null) ?? [],
+    // Person ids only — cancel_party_signup dropped its scout / parent-row /
+    // leader-code arrays with the columns they matched on (D-066).
     p_person_ids: [
       ...(party?.scouts.map((s) => s.personId).filter((v): v is number => v != null) ?? []),
       ...(party?.adults.map((a) => a.personId) ?? [])

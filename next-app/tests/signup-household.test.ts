@@ -16,8 +16,9 @@ import {
  * identity columns to signup_entries.person_id.
  *
  * Test 1 is the genuinely NEW, currently-failing test — it is the exact
- * shape of the historical bug (D-042: one human reachable through two
- * different legacy identity columns gets listed, and can sign up, twice).
+ * shape of the historical bug (D-042: one human reachable two ways gets
+ * listed, and can sign up, twice). The two ways were legacy identity columns
+ * until D-066 removed them; the dedup rule they proved still holds.
  * Tests 2 and 3 are REGRESSIONS: D-033's capacity lock and waitlist
  * promotion already work today and must keep working, unchanged, through
  * the person_id cutover.
@@ -29,10 +30,16 @@ describe('submit_household_signup — person_id migration', () => {
     const adult = await createDualIdentityAdult(admin, 'Dedup');
 
     try {
+      // Two separate submissions for the same human, arriving under different
+      // entry keys — which is what two routes to the same person produced
+      // before D-066 removed the columns that made those routes possible.
+      // The dedup itself is unchanged and still worth pinning: one person,
+      // one row, enforced by signup_entries_person_uniq and backstopped by
+      // the RPC's own existing-row lookup.
       const { error: err1 } = await admin.rpc('submit_household_signup', {
         p_event_signup_id: event.eventSignupId,
         p_entries: [
-          { key: 'via-leader', person_kind: 'adult', leader_code: adult.leaderCode, status: 'yes' }
+          { key: 'first-route', person_kind: 'adult', person_id: adult.personId, status: 'yes' }
         ],
         p_actor: 'test:dedup',
         p_household_id: null
@@ -42,26 +49,16 @@ describe('submit_household_signup — person_id migration', () => {
       const { error: err2 } = await admin.rpc('submit_household_signup', {
         p_event_signup_id: event.eventSignupId,
         p_entries: [
-          {
-            key: 'via-parent',
-            person_kind: 'adult',
-            scout_parent_id: adult.scoutParentId,
-            status: 'yes'
-          }
+          { key: 'second-route', person_kind: 'adult', person_id: adult.personId, status: 'yes' }
         ],
         p_actor: 'test:dedup',
         p_household_id: null
       });
       expect(err2).toBeNull();
 
-      // Same real human, reached through two different legacy identity
-      // columns. Post-migration, both submissions must resolve to the SAME
-      // signup_entries row via person_id — this is the DB-enforced half of
-      // the fix (signup_entries_person_uniq), backstopping the RPC's own
-      // person_id-aware existing-row lookup.
       const { data: rows, error: readErr } = await admin
         .from('signup_entries')
-        .select('id, person_id, leader_code, scout_parent_id, status')
+        .select('id, person_id, status')
         .eq('event_signup_id', event.eventSignupId)
         .neq('status', 'cancelled');
       expect(readErr).toBeNull();
@@ -69,7 +66,7 @@ describe('submit_household_signup — person_id migration', () => {
       expect(rows?.[0].person_id).toBe(adult.personId);
     } finally {
       // Event FIRST: deleting it cascades away the signup_entries rows that
-      // hold a FK on scout_id/scout_parent_id/leader_code — deleting the
+      // hold a RESTRICT FK on person_id — deleting the
       // scout/adult before that leaves those FKs dangling and the delete
       // silently fails (no error thrown), orphaning the test fixture.
       await deleteTestEvent(admin, event);
@@ -94,13 +91,13 @@ describe('submit_household_signup — person_id migration', () => {
       const [resA, resB] = await Promise.all([
         clientA.rpc('submit_household_signup', {
           p_event_signup_id: event.eventSignupId,
-          p_entries: [{ key: 's', person_kind: 'scout', scout_id: scoutA.scoutId, status: 'yes' }],
+          p_entries: [{ key: 's', person_kind: 'scout', person_id: scoutA.personId, status: 'yes' }],
           p_actor: 'test:concurrentA',
           p_household_id: null
         }),
         clientB.rpc('submit_household_signup', {
           p_event_signup_id: event.eventSignupId,
-          p_entries: [{ key: 's', person_kind: 'scout', scout_id: scoutB.scoutId, status: 'yes' }],
+          p_entries: [{ key: 's', person_kind: 'scout', person_id: scoutB.personId, status: 'yes' }],
           p_actor: 'test:concurrentB',
           p_household_id: null
         })
@@ -110,7 +107,7 @@ describe('submit_household_signup — person_id migration', () => {
 
       const { data: rows } = await admin
         .from('signup_entries')
-        .select('scout_id, status')
+        .select('person_id, status')
         .eq('event_signup_id', event.eventSignupId)
         .neq('status', 'cancelled');
 
@@ -133,22 +130,22 @@ describe('submit_household_signup — person_id migration', () => {
     try {
       await admin.rpc('submit_household_signup', {
         p_event_signup_id: event.eventSignupId,
-        p_entries: [{ key: 's', person_kind: 'scout', scout_id: scoutA.scoutId, status: 'yes' }],
+        p_entries: [{ key: 's', person_kind: 'scout', person_id: scoutA.personId, status: 'yes' }],
         p_actor: 'test:promoteA',
         p_household_id: null
       });
       await admin.rpc('submit_household_signup', {
         p_event_signup_id: event.eventSignupId,
-        p_entries: [{ key: 's', person_kind: 'scout', scout_id: scoutB.scoutId, status: 'yes' }],
+        p_entries: [{ key: 's', person_kind: 'scout', person_id: scoutB.personId, status: 'yes' }],
         p_actor: 'test:promoteB',
         p_household_id: null
       });
 
       const { data: before } = await admin
         .from('signup_entries')
-        .select('scout_id, status')
+        .select('person_id, status')
         .eq('event_signup_id', event.eventSignupId)
-        .eq('scout_id', scoutB.scoutId)
+        .eq('person_id', scoutB.personId)
         .single();
       expect(before?.status).toBe('waitlist');
 
@@ -156,17 +153,15 @@ describe('submit_household_signup — person_id migration', () => {
         p_event_signup_id: event.eventSignupId,
         p_actor: 'test:promote-cancel',
         p_household_id: null,
-        p_scout_ids: [scoutA.scoutId],
-        p_scout_parent_ids: [],
-        p_leader_codes: []
+        p_person_ids: [scoutA.personId]
       });
       expect(cancelErr).toBeNull();
 
       const { data: after } = await admin
         .from('signup_entries')
-        .select('scout_id, status')
+        .select('person_id, status')
         .eq('event_signup_id', event.eventSignupId)
-        .eq('scout_id', scoutB.scoutId)
+        .eq('person_id', scoutB.personId)
         .single();
       expect(after?.status).toBe('yes');
     } finally {
@@ -180,7 +175,7 @@ describe('submit_household_signup — person_id migration', () => {
   it('Signup_Cancels_ViaPersonId_WhichIsWhatProductionCodeActuallySends', async () => {
     // cancelSignupAction (actions.ts) always sends p_person_ids now — this is
     // the live path, not the legacy arrays, which is why it earns its own
-    // test rather than relying on the scout_ids coverage above.
+    // test rather than relying on the coverage above.
     const admin = adminClient();
     const event = await createTestEvent(admin);
     const scout = await createTestScout(admin, 'CancelByPersonId');
@@ -188,7 +183,7 @@ describe('submit_household_signup — person_id migration', () => {
     try {
       await admin.rpc('submit_household_signup', {
         p_event_signup_id: event.eventSignupId,
-        p_entries: [{ key: 's', person_kind: 'scout', scout_id: scout.scoutId, status: 'yes' }],
+        p_entries: [{ key: 's', person_kind: 'scout', person_id: scout.personId, status: 'yes' }],
         p_actor: 'test:cancel-by-person',
         p_household_id: null
       });
@@ -197,9 +192,6 @@ describe('submit_household_signup — person_id migration', () => {
         p_event_signup_id: event.eventSignupId,
         p_actor: 'test:cancel-by-person',
         p_household_id: null,
-        p_scout_ids: [],
-        p_scout_parent_ids: [],
-        p_leader_codes: [],
         p_person_ids: [scout.personId]
       });
       expect(cancelErr).toBeNull();
@@ -208,7 +200,7 @@ describe('submit_household_signup — person_id migration', () => {
         .from('signup_entries')
         .select('status')
         .eq('event_signup_id', event.eventSignupId)
-        .eq('scout_id', scout.scoutId)
+        .eq('person_id', scout.personId)
         .single();
       expect(after?.status).toBe('cancelled');
     } finally {

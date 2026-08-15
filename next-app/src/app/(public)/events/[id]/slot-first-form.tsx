@@ -31,11 +31,9 @@ interface Person {
   name: string;
   sub: string;
   scoutId?: string;
-  /** people.id — the real identity (signup_entries_person_uniq). */
+  /** people.id — the identity (signup_entries_person_uniq). */
   personId: number | null;
-  /** scout_parents.id, or null when this adult came from the leader roster. */
-  parentId?: number | null;
-  /** leaders.code, or null when this adult is a parent row. */
+  /** leaders.code, or null when this adult is not on the adult roster. */
   leaderCode?: string | null;
 }
 
@@ -107,7 +105,6 @@ export default function SlotFirstForm({
                  them "Parent" would be wrong, sometimes conspicuously so. */
               sub: a.relationship || (a.leaderCode ? 'Adult' : 'Parent'),
               personId: a.personId,
-              parentId: a.scoutParentId,
               leaderCode: a.leaderCode
             }))
           ]

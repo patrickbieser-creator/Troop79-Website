@@ -60,24 +60,19 @@ export async function recipientsForScouts(scoutIds: string[]): Promise<Recipient
   }
   const parentPersonIds = [...scoutIdsByParentPerson.keys()];
 
-  const [{ data: people }, { data: parents }, { data: addresses }] = await Promise.all([
+  // The scout_parents.email safety net that used to sit between the tracked
+  // address and people.primary_email is gone with the table (D-066). It cost
+  // nothing to remove: every address it held was already on
+  // people.primary_email, checked against production before the drop, and that
+  // is still the last fallback below.
+  const [{ data: people }, { data: addresses }] = await Promise.all([
     supabase.from('people').select('id, display_name, primary_email').in('id', parentPersonIds),
-    // Legacy fallback only — a parent with a scout_parents.email but no
-    // scout_parent_emails row yet (shouldn't happen post-backfill, but cheap
-    // to keep as a safety net during rollout).
-    supabase.from('scout_parents').select('person_id, email').in('person_id', parentPersonIds),
     supabase
       .from('scout_parent_emails')
       .select('person_id, email, is_primary, bounced_at, unsubscribed_at')
       .in('person_id', parentPersonIds)
   ]);
   const peopleRows = (people ?? []) as { id: number; display_name: string; primary_email: string | null }[];
-  const legacyEmailByPerson = new Map<number, string>();
-  for (const p of (parents ?? []) as { person_id: number | null; email: string | null }[]) {
-    if (p.person_id != null && p.email && !legacyEmailByPerson.has(p.person_id)) {
-      legacyEmailByPerson.set(p.person_id, p.email);
-    }
-  }
   const addressRows = (addresses ?? []) as {
     person_id: number;
     email: string;
@@ -93,13 +88,11 @@ export async function recipientsForScouts(scoutIds: string[]): Promise<Recipient
   const out = new Map<string, Recipient>();
   for (const person of peopleRows) {
     const addrs = (byPersonId.get(person.id) ?? []).filter(isDeliverable);
-    // Prefer a live, tracked address; fall back to the parent row's own email,
-    // then people.primary_email for a relationship-only parent with neither.
-    const legacyEmail = legacyEmailByPerson.get(person.id);
+    // Prefer a live, tracked address; fall back to people.primary_email for a
+    // relationship-only parent who has none.
     const chosen =
       addrs.find((a) => a.is_primary)?.email ??
       addrs[0]?.email ??
-      (legacyEmail ? legacyEmail.trim().toLowerCase() : null) ??
       (person.primary_email ? person.primary_email.trim().toLowerCase() : null);
     if (!chosen) continue;
 

@@ -7,7 +7,7 @@
  *
  * WHAT THIS DOES AND DOES NOT DO
  * Writes ONLY to import_batches / import_rows / merge_suggestions. It never
- * touches people, scouts, leaders, or scout_parents. Its output is a review
+ * touches people, scouts, or leaders. Its output is a review
  * queue; a human accepts suggestions, and a separate apply step (not this
  * script) performs the actual writes.
  *
@@ -399,7 +399,7 @@ async function main() {
   if (sugErr) throw new Error(`inserting suggestions: ${sugErr.message}`);
 
   console.log(`\nStaged batch ${batch.id}: ${inserted.length} rows, ${suggestions.length} suggestions.`);
-  console.log('Nothing in people/scouts/leaders/scout_parents was modified.');
+  console.log('Nothing in people/scouts/leaders was modified.');
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

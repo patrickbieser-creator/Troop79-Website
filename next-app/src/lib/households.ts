@@ -45,15 +45,15 @@ import { isAdultPerson, type LeaderLite } from '@/lib/authorized-adults';
 export interface HouseholdAdult {
   /** Stable identity for form state and React keys. */
   key: string;
-  /** people.id — the real identity. Everything below is a legacy pointer kept
-   *  because signup_entries still records a participant as one of three
-   *  nullable columns rather than a person. */
+  /** people.id — the only identity a signup entry records (D-066). */
   personId: number;
-  /** scout_parents.id — set when this adult also holds a parent row. */
-  scoutParentId: number | null;
-  /** leaders.code — set when this adult also holds an adult-roster row. */
+  /** leaders.code — set when this adult also holds an adult-roster row. Kept
+   *  because the leader roster is a real record with its own login, not a
+   *  legacy pointer like scout_parents.id was. */
   leaderCode: string | null;
   name: string;
+  /** The family word — "Mom", "Dad". From relationships.role_label since
+   *  scout_parents was retired. */
   relationship: string | null;
   email: string | null;
 }
@@ -103,11 +103,12 @@ interface ScoutRow {
   inactive_reason: string | null;
   birthdate: string | null;
 }
-interface ParentRow {
+/** A parent_of edge, for the family word it carries. Replaced ParentRow when
+ *  scout_parents was retired — the word moved to relationships.role_label. */
+interface RelationRow {
   id: number;
-  person_id: number | null;
-  relationship: string | null;
-  email: string | null;
+  person_id: number;
+  role_label: string | null;
 }
 interface LeaderRow extends LeaderLite {
   email: string | null;
@@ -139,7 +140,10 @@ export async function loadHouseholds(): Promise<Household[]> {
     supabase
       .from('scouts')
       .select('id, display_name, last_name, household_id, active, person_id, inactive_reason, birthdate'),
-    supabase.from('scout_parents').select('id, person_id, relationship, email'),
+    supabase
+      .from('relationships')
+      .select('id, person_id, role_label')
+      .in('type', ['parent_of', 'guardian_of']),
     supabase
       .from('leaders')
       .select('code, name, is_person, scout_id, can_login, login_name, email, person_id')
@@ -151,23 +155,22 @@ export async function loadHouseholds(): Promise<Household[]> {
   const members = (memberData ?? []) as MemberRow[];
   const people = new Map(((peopleData ?? []) as PersonRow[]).map((p) => [p.id, p]));
   const scouts = (scoutData ?? []) as ScoutRow[];
-  const parents = (parentData ?? []) as ParentRow[];
+  const relations = (parentData ?? []) as RelationRow[];
   const leaders = (leaderData ?? []) as LeaderRow[];
   const activeScoutIds = new Set(scouts.filter((s) => s.active).map((s) => s.id));
 
-  // person_id → the legacy pointers signup_entries still needs. A person may
-  // hold both; the parent row is preferred because it carries the relationship
-  // wording families recognise ("Mom", "Dad").
   const scoutByPerson = new Map<number, ScoutRow>();
   for (const s of scouts) if (s.person_id != null) scoutByPerson.set(s.person_id, s);
 
-  const parentByPerson = new Map<number, ParentRow>();
-  for (const p of parents) {
-    if (p.person_id == null) continue;
-    const existing = parentByPerson.get(p.person_id);
-    // Siblings each carry a row for the same adult; lowest id wins so the
-    // choice is stable between page loads.
-    if (!existing || p.id < existing.id) parentByPerson.set(p.person_id, p);
+  // person_id → the family word to show beside their name. An adult with
+  // several children holds one edge per child; lowest id wins so the choice is
+  // stable between page loads, which is the rule the scout_parents version
+  // used for exactly the same reason.
+  const relationByPerson = new Map<number, RelationRow>();
+  for (const r of relations) {
+    if (!r.role_label) continue;
+    const existing = relationByPerson.get(r.person_id);
+    if (!existing || r.id < existing.id) relationByPerson.set(r.person_id, r);
   }
 
   const leaderByPerson = new Map<number, LeaderRow>();
@@ -199,18 +202,20 @@ export async function loadHouseholds(): Promise<Household[]> {
     if (scout && scout.active) return null; // listed as a scout instead
     if (scout && !scout.active && !noLongerYouth(scout)) return null; // youth who left
 
-    const parent = parentByPerson.get(personId);
+    const relation = relationByPerson.get(personId);
     const leader = leaderByPerson.get(personId);
     const leaderIsAdult = leader ? isAdultPerson(leader, activeScoutIds) : false;
 
     return {
       key: `pe${personId}`,
       personId,
-      scoutParentId: parent?.id ?? null,
       leaderCode: leaderIsAdult ? (leader?.code ?? null) : null,
       name: person.display_name,
-      relationship: parent?.relationship ?? null,
-      email: person.primary_email ?? parent?.email ?? leader?.email ?? null
+      relationship: relation?.role_label ?? null,
+      // scout_parents.email used to sit between these two. It is gone with the
+      // table and nothing is lost: every address it held is already on
+      // people.primary_email (verified against production before the drop).
+      email: person.primary_email ?? leader?.email ?? null
     };
   }
 

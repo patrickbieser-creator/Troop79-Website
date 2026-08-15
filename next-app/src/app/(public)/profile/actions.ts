@@ -339,7 +339,10 @@ export async function addHouseholdMemberAction(formData: FormData): Promise<void
   }
 
   const householdId = storedHouseholdId(party.key);
-  if (householdId == null || party.scouts.length === 0) {
+  // A scout is no longer required. add_parent_to_household only ever needed
+  // one to fill scout_parents.scout_id, and that table is gone (D-066) — so a
+  // household whose scouts have all aged out can add an adult like any other.
+  if (householdId == null) {
     redirect(
       `${back}?err=${encodeURIComponent(
         'This household cannot add members from here yet — please ask a leader.'
@@ -348,7 +351,7 @@ export async function addHouseholdMemberAction(formData: FormData): Promise<void
   }
 
   const supabase = createAdminClient();
-  const { data: parentId, error } = await supabase.rpc('add_parent_to_household', {
+  const { data: newPersonId, error } = await supabase.rpc('add_parent_to_household', {
     p_household_id: householdId,
     p_name: name,
     p_email: email || null,
@@ -369,16 +372,14 @@ export async function addHouseholdMemberAction(formData: FormData): Promise<void
   // Best-effort: the member IS added and the family should not be told
   // otherwise because a notification failed. A missing notice degrades to the
   // email that already went out.
-  const { data: parentRow } = await supabase
-    .from('scout_parents')
-    .select('person_id')
-    .eq('id', parentId as number)
-    .maybeSingle();
-  const newPersonId = (parentRow as { person_id: number | null } | null)?.person_id ?? null;
+  //
+  // The RPC returns people.id directly since D-066. It used to return
+  // scout_parents.id, which cost a second SELECT here just to trade one id for
+  // the other.
   if (newPersonId != null) {
     await supabase.from('change_requests').insert({
       entity_type: 'adult_added',
-      entity_id: String(newPersonId),
+      entity_id: String(newPersonId as number),
       submitted_by_person_id: session.personId,
       proposed_changes: {
         name,

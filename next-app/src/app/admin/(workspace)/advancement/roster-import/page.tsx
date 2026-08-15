@@ -6,7 +6,7 @@
  * from — the page gate below is the second, independent layer (D-037).
  *
  * Reads staged rows and suggestions only. Nothing on this page's load path
- * writes to people / scouts / leaders / scout_parents; every mutation lives in
+ * writes to people / scouts / leaders; every mutation lives in
  * ./actions.ts behind an explicit click.
  */
 

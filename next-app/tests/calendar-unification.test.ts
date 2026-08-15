@@ -128,10 +128,16 @@ describe('meetings as a layer on calendar_entries', () => {
       .from('meetings')
       .insert({ calendar_entry_id: entryId, meeting_date: attendanceDate, title: `${FIXTURE} attended` });
 
-    // leader_code is an FK to leaders — borrow a real one rather than inventing
-    // a code, so this exercises the actual table shape.
-    const { data: someLeader } = await admin.from('leaders').select('code').limit(1).single();
-    const leaderCode = someLeader!.code as string;
+    // leader_code is an FK to leaders, so this needs a real one — but it makes
+    // its OWN rather than borrowing whatever row happens to be in the database.
+    // Borrowing passed only on a machine with troop data loaded and failed on
+    // any empty one (`supabase db reset`, a fresh clone, CI), which is the
+    // dependence Tests/CLAUDE.md rules out.
+    const leaderCode = `VT${Date.now().toString().slice(-6)}`;
+    const { error: leaderErr } = await admin
+      .from('leaders')
+      .insert({ code: leaderCode, name: `${FIXTURE} leader`, is_person: false });
+    expect(leaderErr).toBeNull();
 
     const { error: attErr } = await admin
       .from('meeting_attendance_leaders')
@@ -149,6 +155,7 @@ describe('meetings as a layer on calendar_entries', () => {
     expect(survivors ?? []).toHaveLength(1);
 
     await admin.from('meeting_attendance_leaders').delete().eq('meeting_date', attendanceDate);
+    await admin.from('leaders').delete().eq('code', leaderCode);
   });
 
   it('EveryMeeting_PointsAtAnEntryOnItsOwnDate', async () => {

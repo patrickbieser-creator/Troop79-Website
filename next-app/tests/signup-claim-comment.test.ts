@@ -51,7 +51,6 @@ describe('Per-claim comment', () => {
         event_signup_id: event.eventSignupId,
         person_kind: 'scout',
         person_id: scout.personId,
-        scout_id: scout.scoutId,
         status: 'yes',
         participation: 'full'
       })

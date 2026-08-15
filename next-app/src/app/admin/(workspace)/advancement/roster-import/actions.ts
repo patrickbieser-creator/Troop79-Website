@@ -9,7 +9,7 @@ import { createAdminClient } from '@/lib/supabase/server';
  *
  * THE RULE THIS FILE ENFORCES: a suggestion is a proposal until a leader
  * accepts it. Nothing in the matcher, and nothing on page load, writes to
- * people / scouts / leaders / scout_parents. Every mutation below is the
+ * people / scouts / leaders. Every mutation below is the
  * direct result of an explicit click.
  *
  * Field values are applied per-field from what the reviewer chose. The source

@@ -60,9 +60,8 @@ export async function createTestEvent(
 
 /** Deleting the calendar entry cascades away event_signups/prices/slots/entries.
  *  Callers must delete the event BEFORE any scout/person it references —
- *  signup_entries.scout_id/scout_parent_id/leader_code have no ON DELETE
- *  CASCADE, so deleting the person first leaves the FK dangling and that
- *  delete fails. */
+ *  signup_entries.person_id is ON DELETE RESTRICT, so deleting the person
+ *  first fails on that constraint. */
 export async function deleteTestEvent(admin: SupabaseClient, event: TestEvent): Promise<void> {
   const { error } = await admin.from('calendar_entries').delete().eq('id', event.calendarEntryId);
   if (error) throw new Error(`fixture cleanup: calendar_entries delete failed: ${error.message}`);
@@ -109,15 +108,24 @@ export async function deleteTestScout(admin: SupabaseClient, scout: TestScout): 
 
 export interface TestDualIdentityAdult {
   personId: number;
-  scoutParentId: number;
+  relationshipId: number;
   leaderCode: string;
-  /** The scout scout_parents hangs off of — required by its schema, not
-   *  meaningful to the test itself. */
+  /** The scout this adult is a parent of — the other end of the relationship,
+   *  not meaningful to the test itself. */
   anchorScout: TestScout;
 }
 
-/** The exact shape of the historical bug (D-042): one adult reachable through
- *  BOTH a scout_parents row and a leaders row, sharing one person_id. */
+/**
+ * The exact shape of the historical bug (D-042): one adult reachable two ways
+ * at once, sharing a single person_id.
+ *
+ * The two ways used to be a `scout_parents` row and a `leaders` row. With
+ * scout_parents retired (D-066) the parent half is a `relationships` edge
+ * instead — same premise, surviving tables. Worth keeping rather than
+ * deleting with the table: the bug was never about scout_parents specifically,
+ * it was about one person being findable by more than one route, and `leaders`
+ * still provides a second route.
+ */
 export async function createDualIdentityAdult(
   admin: SupabaseClient,
   label: string
@@ -131,16 +139,17 @@ export async function createDualIdentityAdult(
     .single();
   if (personErr || !person) throw new Error(`fixture: people insert failed: ${personErr?.message}`);
 
-  const { data: parent, error: parentErr } = await admin
-    .from('scout_parents')
+  const { data: relation, error: relErr } = await admin
+    .from('relationships')
     .insert({
-      scout_id: anchorScout.scoutId,
-      name: `${TEST_PREFIX} Adult ${label}`,
-      person_id: person.id
+      person_id: person.id,
+      related_person_id: anchorScout.personId,
+      type: 'parent_of',
+      role_label: 'Parent'
     })
     .select('id')
     .single();
-  if (parentErr || !parent) throw new Error(`fixture: scout_parents insert failed: ${parentErr?.message}`);
+  if (relErr || !relation) throw new Error(`fixture: relationships insert failed: ${relErr?.message}`);
 
   const leaderCode = nextId().slice(-8);
   const { error: leaderErr } = await admin.from('leaders').insert({
@@ -151,14 +160,14 @@ export async function createDualIdentityAdult(
   });
   if (leaderErr) throw new Error(`fixture: leaders insert failed: ${leaderErr.message}`);
 
-  return { personId: person.id, scoutParentId: parent.id, leaderCode, anchorScout };
+  return { personId: person.id, relationshipId: relation.id, leaderCode, anchorScout };
 }
 
 export async function deleteDualIdentityAdult(admin: SupabaseClient, adult: TestDualIdentityAdult): Promise<void> {
   const { error: leaderErr } = await admin.from('leaders').delete().eq('code', adult.leaderCode);
   if (leaderErr) throw new Error(`fixture cleanup: leaders delete failed: ${leaderErr.message}`);
-  const { error: parentErr } = await admin.from('scout_parents').delete().eq('id', adult.scoutParentId);
-  if (parentErr) throw new Error(`fixture cleanup: scout_parents delete failed: ${parentErr.message}`);
+  const { error: relErr } = await admin.from('relationships').delete().eq('id', adult.relationshipId);
+  if (relErr) throw new Error(`fixture cleanup: relationships delete failed: ${relErr.message}`);
   const { error: personErr } = await admin.from('people').delete().eq('id', adult.personId);
   if (personErr) throw new Error(`fixture cleanup: people delete failed: ${personErr.message}`);
   await deleteTestScout(admin, adult.anchorScout);

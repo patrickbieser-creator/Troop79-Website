@@ -177,33 +177,20 @@ export default async function EventDetailPage({
           personIds: [
             ...household.scouts.map((s) => s.personId).filter((v): v is number => v != null),
             ...household.adults.map((a) => a.personId)
-          ],
-          scoutIds: household.scouts.map((s) => s.id),
-          scoutParentIds: household.adults
-            .map((a) => a.scoutParentId)
-            .filter((v): v is number => v != null),
-          leaderCodes: household.adults
-            .map((a) => a.leaderCode)
-            .filter((v): v is string => v != null)
+          ]
         })
       : [];
 
   // Map stored entries back to the form's person keys (s0/s1…, a0/a1…).
-  // person_id first (the real identity); legacy columns as a fallback for
-  // any entry a not-yet-migrated write path left without one.
+  // person_id is the whole match now — the scout_id / scout_parent_id /
+  // leader_code fallbacks went with their columns (D-066), and every entry has
+  // carried a person_id since the re-key made it NOT NULL.
   const existingClaims = household
     ? existing.flatMap((e) => {
         let key: string | null = null;
-        const si = household.scouts.findIndex(
-          (s) => s.personId === e.person_id || s.id === e.scout_id
-        );
+        const si = household.scouts.findIndex((s) => s.personId === e.person_id);
         if (si >= 0) key = `s${si}`;
-        const ai = household.adults.findIndex(
-          (a) =>
-            a.personId === e.person_id ||
-            (a.scoutParentId != null && a.scoutParentId === e.scout_parent_id) ||
-            (a.leaderCode != null && a.leaderCode === e.leader_code)
-        );
+        const ai = household.adults.findIndex((a) => a.personId === e.person_id);
         if (ai >= 0) key = `a${ai}`;
         return key
           ? e.claims.map((slotId) => ({

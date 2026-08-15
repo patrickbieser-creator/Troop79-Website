@@ -26,7 +26,6 @@ describe('backfillEventPrices', () => {
         event_signup_id: event.eventSignupId,
         person_kind: 'scout',
         person_id: scout.personId,
-        scout_id: scout.scoutId,
         status: 'yes'
       })
       .select('id')
@@ -65,7 +64,6 @@ describe('backfillEventPrices', () => {
         event_signup_id: event.eventSignupId,
         person_kind: 'scout',
         person_id: scout.personId,
-        scout_id: scout.scoutId,
         status: 'yes'
       })
       .select('id')
@@ -98,7 +96,6 @@ describe('backfillEventPrices', () => {
         event_signup_id: event.eventSignupId,
         person_kind: 'scout',
         person_id: scout.personId,
-        scout_id: scout.scoutId,
         status: 'yes'
       })
       .select('id')
@@ -135,7 +132,6 @@ describe('backfillEventPrices', () => {
         event_signup_id: event.eventSignupId,
         person_kind: 'adult',
         person_id: driver.personId,
-        scout_id: driver.scoutId,
         status: 'yes',
         participation: 'driver_only',
         // signup_entries_driver_only requires an actual leg driven.
@@ -151,7 +147,6 @@ describe('backfillEventPrices', () => {
         event_signup_id: event.eventSignupId,
         person_kind: 'scout',
         person_id: contributor.personId,
-        scout_id: contributor.scoutId,
         status: 'yes',
         participation: 'contributor'
       })
@@ -176,7 +171,6 @@ describe('backfillEventPrices', () => {
         event_signup_id: event.eventSignupId,
         person_kind: 'adult',
         person_id: payableAdult.personId,
-        scout_id: payableAdult.scoutId,
         status: 'yes',
         participation: 'full'
       })
@@ -223,7 +217,6 @@ describe('backfillEventPrices', () => {
         event_signup_id: event.eventSignupId,
         person_kind: 'scout',
         person_id: scout.personId,
-        scout_id: scout.scoutId,
         status: 'yes',
         price_id: originalTier!.id
       })
@@ -278,7 +271,6 @@ describe('slotClaimants', () => {
         event_signup_id: event.eventSignupId,
         person_kind: 'scout',
         person_id: scout.personId,
-        scout_id: scout.scoutId,
         status: 'yes'
       })
       .select('id')
@@ -342,7 +334,6 @@ describe('questionAnswers', () => {
         event_signup_id: event.eventSignupId,
         person_kind: 'scout',
         person_id: scout.personId,
-        scout_id: scout.scoutId,
         status: 'yes'
       })
       .select('id')
