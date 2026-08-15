@@ -77,7 +77,7 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
   const entriesRaw = String(formData.get('entries') ?? '[]');
   const slotClaimsRaw = String(formData.get('slotClaims') ?? '{}');
   const slotCommentsRaw = String(formData.get('slotComments') ?? '{}');
-  const back = `/events/${eventId}?household=${encodeURIComponent(householdKey)}`;
+  const back = `/events/${eventId}/signup?household=${encodeURIComponent(householdKey)}`;
 
   // requireFamilyAccess() now also rejects a revoked identity session (qa-lead
   // 2026-08-06) — caught here rather than left to crash the request, same
@@ -207,7 +207,7 @@ export async function cancelSignupAction(formData: FormData): Promise<void> {
   const eventId = Number(formData.get('eventId'));
   const signupId = Number(formData.get('signupId'));
   const householdKey = String(formData.get('householdKey') ?? '');
-  const back = `/events/${eventId}?household=${encodeURIComponent(householdKey)}`;
+  const back = `/events/${eventId}/signup?household=${encodeURIComponent(householdKey)}`;
 
   let audience;
   try {

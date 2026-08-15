@@ -1,16 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import {
-  loadEventDetail,
-  loadPartySignup,
-  isSlotFirst,
-  signupLocked
-} from '@/lib/event-signup';
-import { householdKeyForPerson, loadHouseholds, storedHouseholdId } from '@/lib/households';
-import { gateAudience, familyGateConfigured, getIdentitySessionIfValid } from '@/lib/family-access';
-import { resolveEffectiveHouseholdKey } from '@/lib/identity-session';
-import { leaderSessionPersonId } from '@/lib/session-person';
+import { loadEventDetail } from '@/lib/event-signup';
+import { loadSignupContext, signedUpNames } from './signup-context';
 import { formatCalendarDateParts, formatTimeOfDay } from '@/lib/calendar-shared';
 import { loadCalendarCategories } from '@/lib/calendar';
 import { plainSummary } from '@/lib/feed-logic';
@@ -20,15 +12,6 @@ import { getPublicMeetingForEntry, getPublishedMeetingNav } from '@/lib/meetings
 import { ArticleBody } from '@/lib/article-body/ArticleBody';
 import { centralToday } from '@/lib/dates';
 import { MeetingAgenda } from './meeting-agenda';
-import {
-  familyGateAction,
-  familySignOutAction,
-  submitSignupAction,
-  cancelSignupAction
-} from './actions';
-import HouseholdPicker from './household-picker';
-import SlotFirstForm from './slot-first-form';
-import PersonFirstForm from './person-first-form';
 import styles from './event-detail.module.css';
 
 /*
@@ -134,94 +117,15 @@ export default async function EventDetailPage({
   const numeric = parseId(id);
   if (!numeric) notFound();
 
-  const [detail, audience, sp, categories] = await Promise.all([
-    loadEventDetail(numeric),
-    gateAudience(),
-    searchParams,
-    loadCalendarCategories()
-  ]);
-  if (!detail) notFound();
+  const [sp, categories] = await Promise.all([searchParams, loadCalendarCategories()]);
+  const ctx = await loadSignupContext(numeric, sp.household);
+  if (!ctx) notFound();
 
-  const {
-    gate: gateError,
-    household: householdKeyParam,
-    err: formError,
-    saved,
-    cancelled,
-    signedout
-  } = sp;
-  const { entry, signup, prices, slots, questions, resources, headcount } = detail;
-  const gatedIn = audience !== null;
-  const slotFirst = isSlotFirst(signup, slots);
-
-  // Household roster and any existing entries are gate-only: they carry names.
-  const households = gatedIn && signup ? await loadHouseholds() : [];
-
-  // Identity prefill (Plans/Family-Identity-Auth.md Phase 2) — see
-  // resolveEffectiveHouseholdKey()'s own doc for the undefined-vs-empty
-  // distinction that keeps the "Not you? Change" switch affordance working.
-  //
-  // Both session shapes that identify a PERSON feed this, not just the
-  // verified-household one. gateAudience() checks the leader cookie FIRST and
-  // returns its role, so a signed-in leader is 'leader' and never 'household'
-  // — which meant the prefill was skipped for the most strongly authenticated
-  // visitor on the site. A leader logs in by matching the authorized-adults
-  // roster, so the system knows exactly who they are, yet the job board still
-  // opened on "choose your family" with no way to just sign themselves up.
-  const verifiedSession = audience === 'household' ? await getIdentitySessionIfValid() : null;
-  const sessionPersonId = verifiedSession?.personId ?? (audience === 'leader' ? await leaderSessionPersonId() : null);
-  // Resolved against the already-loaded roster rather than
-  // resolveHouseholdKeyForPerson(), which would load every household a second
-  // time on a page that has them in hand.
-  const sessionHouseholdKey =
-    verifiedSession?.householdKey ??
-    (sessionPersonId != null ? householdKeyForPerson(households, sessionPersonId) : null);
-  const householdKey = resolveEffectiveHouseholdKey(householdKeyParam, sessionHouseholdKey);
-
-  const household = householdKey ? (households.find((h) => h.key === householdKey) ?? null) : null;
-  // "scout:<id>" (unassigned scout) and "leader:<code>" (adult with no scout in
-  // the troop) parties have no stored household row, so their entries carry a
-  // null household_id and are found by identity instead.
-  const householdIdNum = storedHouseholdId(household?.key);
-  const existing =
-    household && signup
-      ? await loadPartySignup(signup.id, householdIdNum, {
-          personIds: [
-            ...household.scouts.map((s) => s.personId).filter((v): v is number => v != null),
-            ...household.adults.map((a) => a.personId)
-          ]
-        })
-      : [];
-
-  // Map stored entries back to the form's person keys (s0/s1…, a0/a1…).
-  // person_id is the whole match now — the scout_id / scout_parent_id /
-  // leader_code fallbacks went with their columns (D-066), and every entry has
-  // carried a person_id since the re-key made it NOT NULL.
-  const existingClaims = household
-    ? existing.flatMap((e) => {
-        let key: string | null = null;
-        const si = household.scouts.findIndex((s) => s.personId === e.person_id);
-        if (si >= 0) key = `s${si}`;
-        const ai = household.adults.findIndex((a) => a.personId === e.person_id);
-        if (ai >= 0) key = `a${ai}`;
-        return key
-          ? e.claims.map((slotId) => ({
-              slotId,
-              personKey: key!,
-              comment: e.claimComments[slotId] ?? null
-            }))
-          : [];
-      })
-    : [];
-  // How far into the flow this visitor is — the job board renders the right
-  // prompt inline at whichever job they click, instead of sending them to
-  // the bottom of a 30-job page.
-  const gateState: 'anon' | 'no-household' | 'ready' = !gatedIn
-    ? 'anon'
-    : household
-      ? 'ready'
-      : 'no-household';
-  const locked = signup ? signupLocked(signup) : false;
+  const { detail, gatedIn, household, slotFirst, locked } = ctx;
+  const { entry, signup, prices, slots, resources, headcount } = detail;
+  /* Who in this party already has a live entry — the question the form used to
+     answer just by being on this page. See signup-context.ts. */
+  const signedUp = signedUpNames(ctx);
   const times = timeRange(entry.start_time, entry.end_time);
   /* Back to the exact view the visitor left — month or list, which month,
      which filter — rather than the top of the calendar. See lib/calendar-return
@@ -420,38 +324,20 @@ export default async function EventDetailPage({
             </section>
           )}
 
-      {signup && slotFirst && !locked && (
-        /* #signup is what the calendar's "Sign up" control targets. It becomes
-           a route of its own in step 4 of
-           Plans/Calendar-Detail-And-Signup-Split.md; until then the control
-           jumps to the form here rather than pointing at a page that does not
-           exist yet. */
-        <section className={styles.block} id="signup">
-          <h2 className={styles.blockHead}>{signup.slots_title ?? 'Jobs — pick one to sign up'}</h2>
-          <SlotFirstForm
-            eventId={entry.id}
-            signupId={signup.id}
-            household={household}
-            households={households}
-            slots={slots}
-            allowGuests={signup.allow_guests}
-            guestPrompt={signup.guest_prompt}
-            existingClaims={existingClaims}
-            hasExisting={existing.length > 0}
-            submitAction={submitSignupAction}
-            cancelAction={cancelSignupAction}
-            gateAction={familyGateAction}
-            signOutAction={familySignOutAction}
-            gateState={gateState}
-            isFamilySession={audience === 'family'}
-            gateError={gateError}
-            gateConfigured={familyGateConfigured()}
-          />
-        </section>
-      )}
+          {/*
+            THE SIGNUP SUMMARY — status and a door, never the form itself.
+            The form moved to /events/[id]/signup (step 4 of
+            Plans/Calendar-Detail-And-Signup-Split.md).
 
+            The status line is not decoration. The form used to answer "are we
+            already signed up?" simply by being here with the family's entries
+            in it. Take the form away and a family scanning the calendar has no
+            way to tell they already responded — and the predictable result of
+            that is a second submission.
+          */}
           <section className={styles.block} id="signup">
             <h2 className={styles.blockHead}>Signing up</h2>
+
             {signup.capacity != null && (
               <p className={styles.capacity}>
                 {headcount} of {signup.capacity} spots taken
@@ -464,142 +350,27 @@ export default async function EventDetailPage({
                 <strong>Signups are closed for this event.</strong> Contact the Scoutmaster if you
                 need to make a change.
               </p>
-            ) : gatedIn ? (
-              <div className={styles.gatedIn}>
-                {saved && (
-                  <p className={styles.savedNote}>
-                    ✓ Your signup is saved. You can come back and change it until the deadline.
-                  </p>
-                )}
-                {signedout && (
-                  <p className={styles.savedNote}>
-                    ✓ Signed out of the family gate on this device.
-                  </p>
-                )}
-                {cancelled && (
-                  <p className={styles.savedNote}>
-                    Your signup was cancelled and your spots went back to the pool.
-                  </p>
-                )}
-                {formError && <p className={styles.gateErr}>{formError}</p>}
-
-                {!household ? (
-                  <>
-                    <p className={styles.gateOk}>
-                      ✓ You’re signed in
-                      {slotFirst ? ' — pick a job above to find yourself.' : ' — now find yourself.'}
-                    </p>
-                    {!slotFirst && <HouseholdPicker households={households} eventId={entry.id} />}
-                  </>
-                ) : (
-                  <>
-                    <p className={styles.householdBar}>
-                      <span>
-                        {/* A standalone adult has no household to name — saying
-                            "the Jane Smith household" would read as a bug. */}
-                        {household.scouts.length === 0 ? (
-                          <>
-                            Signing up <strong>{household.label}</strong>
-                          </>
-                        ) : (
-                          <>
-                            Signing up the <strong>{household.label}</strong> household
-                          </>
-                        )}
-                      </span>
-                      {/* Explicit ?household= (empty) rather than a bare link — a
-                          verified visitor's household prefill only fires when the
-                          param is absent (see the page's householdKey resolution
-                          above); an EXPLICIT empty value is how "switching" stays
-                          possible instead of the prefill immediately winning it
-                          back on the very next render. */}
-                      <Link href={`/events/${entry.id}?household=`} className={styles.linkBtn}>
-                        Not you? Change
-                      </Link>
-                    </p>
-
-                    {slotFirst ? (
-                      <p className={styles.stub}>
-                        Your jobs are in the list above — pick any job to add or change who’s
-                        doing it.
-                      </p>
-                    ) : (
-                      <PersonFirstForm
-                        eventId={entry.id}
-                        signup={signup}
-                        household={household}
-                        prices={prices}
-                        questions={questions}
-                        slots={slots}
-                        existingClaims={existingClaims}
-                        existing={existing}
-                        submitAction={submitSignupAction}
-                        cancelAction={cancelSignupAction}
-                      />
-                    )}
-                  </>
-                )}
-
-                {audience === 'family' ? (
-                  <form action={familySignOutAction} className={styles.signOutRow}>
-                    <input type="hidden" name="next" value={`/events/${entry.id}`} />
-                    <button type="submit" className={styles.linkBtn}>
-                      Sign out of the family gate
-                    </button>
-                  </form>
-                ) : (
-                  /* A leader/scout session already clears the gate, so signing
-                     out of the FAMILY cookie would change nothing visible —
-                     the button would look broken. Say so instead. */
-                  <p className={styles.signOutRow}>
-                    <span className={styles.linkBtnQuiet}>
-                      You&rsquo;re seeing this as a signed-in {audience}, not through the family
-                      gate. To view it as a family would, use a private window or sign out of the
-                      admin area.
-                    </span>
-                  </p>
-                )}
-              </div>
-            ) : !familyGateConfigured() ? (
-              <p className={styles.locked}>
-                The family signup gate isn’t configured on this server
-                (<code>FAMILY_PASSWORD</code> is unset).
-              </p>
             ) : (
-              <form action={familyGateAction} className={styles.gate}>
-                <p className={styles.gateLede}>
-                  One shared password for the whole troop — it’s printed in the Bugle each week, or
-                  ask any leader. You’ll only enter it once on this device. No account, no email.
-                </p>
-                <input type="hidden" name="next" value={`/events/${entry.id}`} />
-                <label className={styles.gateLabel} htmlFor="family-password">
-                  Troop password
-                </label>
-                <div className={styles.gateRow}>
-                  <input
-                    id="family-password"
-                    name="password"
-                    type="password"
-                    autoComplete="off"
-                    className={styles.gateInput}
-                    placeholder="Enter the troop password"
-                  />
-                  <button type="submit" className={styles.gateBtn}>
-                    Continue
-                  </button>
-                </div>
-                {gateError === 'bad-password' && (
-                  <p className={styles.gateErr}>That password didn’t match. Try again.</p>
-                )}
-                {gateError === 'missing' && (
-                  <p className={styles.gateErr}>Please enter the troop password.</p>
-                )}
-                {gateError === 'not-configured' && (
-                  <p className={styles.gateErr}>
-                    The family gate isn’t configured on this server.
+              <>
+                {signedUp.length > 0 && (
+                  <p className={styles.savedNote}>
+                    ✓ You&rsquo;re signed up: <strong>{signedUp.join(', ')}</strong>
                   </p>
                 )}
-              </form>
+                <p className={styles.signupCta}>
+                  <Link href={`/events/${entry.id}/signup`} className={styles.gateBtn}>
+                    {signedUp.length > 0 ? 'Change your signup' : 'Sign up'}
+                  </Link>
+                </p>
+                {!gatedIn && (
+                  /* Said plainly rather than hiding the button (Patrick): the
+                     gate is one shared password, and a family that can't see
+                     the control assumes the feature is missing. */
+                  <p className={styles.helpNote}>
+                    Families sign in with the troop password on the next page.
+                  </p>
+                )}
+              </>
             )}
           </section>
         </>

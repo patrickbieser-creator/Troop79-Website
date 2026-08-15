@@ -1,6 +1,7 @@
 # Calendar Detail Pages and the Signup Split
 
-**Status:** Planned — steps 1 and 2 of the four-part sequence already shipped (2eb567d)
+**Status:** COMPLETE — all four steps shipped 2026-08-15
+(2eb567d URL state + month symmetry, a48fabe linking, this commit the signup split)
 **Created:** 2026-08-15
 **Owner:** Patrick
 

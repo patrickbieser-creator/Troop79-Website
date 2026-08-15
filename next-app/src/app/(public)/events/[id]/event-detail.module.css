@@ -326,6 +326,13 @@
   outline: 2px solid var(--forest);
   outline-offset: 1px;
 }
+/* The event page's door to the signup form, which lives at
+   /events/[id]/signup since step 4. inline-block because .gateBtn was written
+   for a <button> and this is a link. */
+.signupCta { margin-top: 12px; }
+.signupCta .gateBtn { display: inline-block; text-decoration: none; }
+.helpNote { font-family: var(--font-ui); font-size: 12.5px; color: var(--text-meta); margin-top: 8px; }
+
 .gateBtn {
   background: var(--navy);
   color: #fff;

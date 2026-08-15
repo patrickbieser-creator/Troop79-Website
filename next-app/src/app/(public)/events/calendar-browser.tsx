@@ -146,11 +146,10 @@ function EntryRow({
            * a control that silently isn't there reads as a missing feature, and
            * the majority of visitors are here to read rather than to sign up.
            *
-           * Points at #signup on the event page for now. It becomes
-           * /events/[id]/signup in step 4 of the plan; linking there today
-           * would ship a 404 for the sake of a URL that isn't built yet.
+           * Its own route since step 4 — a form deserves an address, and a
+           * family part-way through one should be able to bookmark it.
            */
-          <Link href={`${href}#signup`} className={styles.rowAction}>
+          <Link href={`/events/${entry.id}/signup`} className={styles.rowAction}>
             Sign up
           </Link>
         )}
