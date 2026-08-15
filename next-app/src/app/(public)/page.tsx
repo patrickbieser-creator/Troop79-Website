@@ -74,7 +74,19 @@ export default async function Home({
                 (() => {
                   const e = hero.entry;
                   const media = entryHeroMedia(e);
-                  const excerpt = eventCardExcerpt(e);
+                  /*
+                   * THE HERO PRINTS THE DESCRIPTION IN FULL (Patrick,
+                   * 2026-08-15). Everywhere else an event summary is one line
+                   * in a row of many and has to be cut to fit; the hero is a
+                   * single story given the width of the page, so cutting it at
+                   * 160 characters was rationing space that isn't scarce.
+                   *
+                   * Description first, card summary only as a fallback: the
+                   * summary field exists to give SHORT surfaces something
+                   * tighter than the description, which is the opposite of
+                   * what this position wants.
+                   */
+                  const summary = e.description?.trim() || eventCardExcerpt(e);
                   return (
                     <article className={styles.heroStory}>
                       {media && (
@@ -88,7 +100,7 @@ export default async function Home({
                         <Link href={`/events/${e.id}`}>{e.title}</Link>
                       </h2>
                       <p className={styles.storyByline}>{entryDateLine(e)}</p>
-                      {excerpt && <p className={styles.heroSummary}>{excerpt}</p>}
+                      {summary && <p className={styles.heroSummary}>{summary}</p>}
                       <Link href={`/events/${e.id}`} className={styles.readMore}>
                         Details &amp; Signup →
                       </Link>

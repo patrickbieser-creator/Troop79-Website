@@ -37,7 +37,10 @@
 .heroHeadline a:hover { color: var(--navy); }
 .storyByline { font-family: var(--font-ui); font-size: 11px; color: var(--text-meta); margin-bottom: 12px; letter-spacing: .02em; }
 .storyByline strong { color: var(--text-body); font-weight: 600; }
-.heroSummary { font-size: 15px; line-height: 1.7; color: var(--text-body); margin-bottom: 14px; }
+/* pre-line so a hero EVENT's description keeps the paragraphs a leader typed —
+   this position prints it in full rather than truncating (see page.tsx). Inert
+   for a hero article, whose excerpt is a single line either way. */
+.heroSummary { font-size: 15px; line-height: 1.7; color: var(--text-body); margin-bottom: 14px; white-space: pre-line; }
 .readMore {
   font-family: var(--font-ui); font-size: 12px; font-weight: 700; color: var(--forest);
   letter-spacing: .06em; text-transform: uppercase; border-bottom: 1px solid var(--forest);
