@@ -53,6 +53,12 @@
   font-size: 17px;
   line-height: 1.55;
   color: var(--text-body);
+  /* pre-line, because this is the ONE surface that prints the description in
+     full and descriptions can be several paragraphs since the admin field
+     became a textarea (2026-08-15). Without it every line break a leader typed
+     collapses into one run-on paragraph. `pre-line` and not `pre`: it honours
+     newlines while still wrapping long lines and folding stray indentation. */
+  white-space: pre-line;
 }
 
 .factGrid {

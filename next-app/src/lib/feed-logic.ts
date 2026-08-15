@@ -132,15 +132,20 @@ export function pickHero<A extends FeedArticleBase, E extends PromotedEntryBase>
 const EXCERPT_MAX = 160;
 
 /**
- * Card summary for a promoted entry: the explicit excerpt, else the
- * description flattened to plain text and truncated at a word boundary.
+ * Any multi-line, possibly-marked-up text as one flat line, cut at a word
+ * boundary. The `\s+` collapse is what makes it safe for single-line
+ * surfaces — descriptions have been free-length since the admin field became
+ * a textarea (2026-08-15), so newlines reach here routinely.
+ *
+ * Exported because a `<meta name="description">` needs exactly the same
+ * treatment as a homepage card and for the same reason: both are one line of
+ * summary, not the place to print the whole thing.
  */
-export function eventCardExcerpt(entry: PromotedEntryBase): string | null {
-  if (entry.excerpt?.trim()) return entry.excerpt.trim();
-  const desc = entry.description?.trim();
-  if (!desc) return null;
+export function plainSummary(text: string | null, max = EXCERPT_MAX): string | null {
+  const trimmed = text?.trim();
+  if (!trimmed) return null;
 
-  const plain = desc
+  const plain = trimmed
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '') // images
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1') // links → text
     .replace(/^#{1,6}\s+/gm, '') // headings
@@ -148,9 +153,18 @@ export function eventCardExcerpt(entry: PromotedEntryBase): string | null {
     .replace(/\s+/g, ' ')
     .trim();
   if (!plain) return null;
-  if (plain.length <= EXCERPT_MAX) return plain;
+  if (plain.length <= max) return plain;
 
-  const cut = plain.slice(0, EXCERPT_MAX);
+  const cut = plain.slice(0, max);
   const lastSpace = cut.lastIndexOf(' ');
-  return `${cut.slice(0, lastSpace > 0 ? lastSpace : EXCERPT_MAX).trimEnd()}…`;
+  return `${cut.slice(0, lastSpace > 0 ? lastSpace : max).trimEnd()}…`;
+}
+
+/**
+ * Card summary for a promoted entry: the explicit excerpt, else the
+ * description flattened to plain text and truncated at a word boundary.
+ */
+export function eventCardExcerpt(entry: PromotedEntryBase): string | null {
+  if (entry.excerpt?.trim()) return entry.excerpt.trim();
+  return plainSummary(entry.description);
 }

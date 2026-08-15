@@ -58,7 +58,22 @@
 }
 .metaEmpty { color: var(--border-mid); }
 .mobileMeta { display: none; }
-.itemDesc { grid-column: 2 / -1; font-family: var(--font-body); font-size: 13px; color: var(--text-body); margin-top: 4px; line-height: 1.5; }
+/* ONE LINE, always — descriptions became free-length in the admin editor
+   (2026-08-15) and a list row is a scanning surface, not a reading one. The
+   min-width:0 matters: this sits in a grid column, and without it the track
+   widens to fit the text instead of the text ellipsing. */
+.itemDesc {
+  grid-column: 2 / -1;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-body);
+  margin-top: 4px;
+  line-height: 1.5;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .pastItem { opacity: .7; }
 .pastItem .dateBlock { background: var(--border-mid); }
 
@@ -323,7 +338,22 @@
 .dayEventCardCat { font-family: var(--font-ui); font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin: 3px 0 6px; }
 .dayEventCardMeta { font-family: var(--font-ui); font-size: 12.5px; color: var(--text-meta); display: flex; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 4px; }
 .dayEventCardMeta span { display: inline-flex; align-items: center; gap: 5px; }
-.dayEventCardDesc { font-family: var(--font-body); font-size: 13px; color: var(--text-body); line-height: 1.55; margin-top: 4px; }
+/* Two lines here rather than the list's one: this card sits inside a day cell
+   whose height feeds the month grid's row sizing, so an unbounded description
+   would stretch one week's row out of proportion with the rest of the month.
+   Two lines is enough to be useful and bounded enough to keep the grid even. */
+.dayEventCardDesc {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-body);
+  line-height: 1.55;
+  margin-top: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 
 @media (max-width: 900px) {
   .monthHeaderTitle { min-width: 0; font-size: 19px; }

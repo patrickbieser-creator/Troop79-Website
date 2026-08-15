@@ -13,6 +13,7 @@ import { resolveEffectiveHouseholdKey } from '@/lib/identity-session';
 import { leaderSessionPersonId } from '@/lib/session-person';
 import { formatCalendarDateParts, formatTimeOfDay } from '@/lib/calendar-shared';
 import { loadCalendarCategories } from '@/lib/calendar';
+import { plainSummary } from '@/lib/feed-logic';
 import { behaviorOf, categoryColorMap, colorFor, templateOf } from '@/lib/calendar-categories';
 import { getPublicMeetingForEntry, getPublishedMeetingNav } from '@/lib/meetings';
 import { ArticleBody } from '@/lib/article-body/ArticleBody';
@@ -64,7 +65,10 @@ export async function generateMetadata({
   if (!detail) return { title: 'Event — Scout Troop 79' };
   return {
     title: `${detail.entry.title} — Scout Troop 79`,
-    description: detail.entry.description ?? undefined
+    // Flattened and cut, not the raw column: a description can now run to
+    // paragraphs, and a meta description carrying newlines and 800 characters
+    // is worse than one good sentence.
+    description: plainSummary(detail.entry.description) ?? undefined
   };
 }
 

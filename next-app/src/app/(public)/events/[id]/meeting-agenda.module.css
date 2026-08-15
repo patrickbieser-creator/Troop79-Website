@@ -451,4 +451,7 @@
   font-size: 16px;
   line-height: 1.65;
   color: var(--text-body);
+  /* Prints the entry's description verbatim when a "no meeting" week explains
+     itself, so it honours typed line breaks for the same reason .dek does. */
+  white-space: pre-line;
 }

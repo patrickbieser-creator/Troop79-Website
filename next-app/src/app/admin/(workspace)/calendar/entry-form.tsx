@@ -187,13 +187,30 @@ export function CalendarEntryForm({
 
         <label className={styles.editFieldFull}>
           <span className={styles.editLabel}>Description (optional)</span>
-          <input
-            type="text"
+          {/*
+            A textarea, not a single-line input (Patrick, 2026-08-15). The
+            column has always been unbounded `text` — the one-line input was
+            the only thing keeping descriptions short, and a real event needs
+            room to explain itself.
+
+            Every surface that shows this is sized for a summary, so length is
+            handled at the point of DISPLAY rather than by rationing input:
+            the calendar list clamps to one line, the month-grid day card to
+            two, and the homepage card runs it through eventCardExcerpt (160
+            chars, flattened to plain text at a word boundary). The event's own
+            page is the one place it prints in full, newlines and all.
+          */}
+          <textarea
             className={styles.editInput}
+            rows={4}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Totin' Chip, Open Advancement, Citizen in World"
           />
+          <span className={styles.fieldHint}>
+            Shown in full on the event&rsquo;s own page. The calendar and homepage show the
+            beginning of it — put what matters first.
+          </span>
         </label>
 
         <label className={styles.editField}>

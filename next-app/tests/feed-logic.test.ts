@@ -5,6 +5,7 @@ import {
   mergeFeed,
   pickHero,
   eventCardExcerpt,
+  plainSummary,
   type PromotedEntryBase,
   type FeedArticleBase
 } from '../src/lib/feed-logic';
@@ -157,5 +158,44 @@ describe('event card excerpt', () => {
     expect(eventCardExcerpt(entry({ description: '# Big\n**sale** [link](http://x)' }))).toBe(
       'Big sale link'
     );
+  });
+});
+
+/**
+ * The admin description field became a textarea on 2026-08-15, so a
+ * description can now be several paragraphs. Every single-line surface — the
+ * homepage card, the page's meta description — leans on this collapsing
+ * newlines rather than on the input being short.
+ */
+describe('plainSummary — one line out of many', () => {
+  it('Summary_CollapsesNewlines_WhenTheDescriptionHasParagraphs', () => {
+    expect(plainSummary('First line.\n\nSecond line.\nThird.')).toBe(
+      'First line. Second line. Third.'
+    );
+  });
+
+  it('Summary_CollapsesWindowsLineEndings_WhichIsWhatAPastedDescriptionCarries', () => {
+    expect(plainSummary('One.\r\nTwo.')).toBe('One. Two.');
+  });
+
+  it('Summary_CutsAtAWordBoundary_WhenLongerThanTheLimit', () => {
+    const out = plainSummary('alpha bravo charlie delta echo', 12);
+    // Never mid-word, and never longer than the limit plus the ellipsis.
+    expect(out).toBe('alpha bravo…');
+  });
+
+  it('Summary_KeepsShortTextWhole_WithoutAnEllipsis', () => {
+    expect(plainSummary('Bring a mess kit.')).toBe('Bring a mess kit.');
+  });
+
+  it('Summary_IsNull_WhenTheTextIsAbsentOrOnlyWhitespace', () => {
+    expect(plainSummary(null)).toBeNull();
+    expect(plainSummary('   \n\n  ')).toBeNull();
+  });
+
+  it('Summary_IsNull_WhenMarkupStripsAwayToNothing', () => {
+    // An image-only description leaves no words behind — better no summary
+    // than an empty string rendered as a blank line on the card.
+    expect(plainSummary('![photo](http://x/y.jpg)')).toBeNull();
   });
 });

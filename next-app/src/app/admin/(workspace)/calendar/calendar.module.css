@@ -70,6 +70,11 @@
   font-family: inherit; font-size: 13px; background: var(--admin-white); color: var(--admin-gray-900); outline: none;
 }
 .editInput:focus { border-color: var(--admin-navy); }
+/* Shared by input and textarea. Vertical-only resize: a textarea free to grow
+   sideways escapes the dialog's grid column. */
+textarea.editInput { resize: vertical; min-height: 68px; line-height: 1.5; }
+
+.fieldHint { display: block; margin-top: 4px; font-size: 11px; line-height: 1.45; color: var(--admin-gray-500); }
 
 .editError {
   margin-top: 4px; padding: 8px 12px; background: #fdf0ef; border: 1px solid #e8c4c0;
