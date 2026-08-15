@@ -55,8 +55,19 @@
   text-transform: uppercase; color: var(--navy); border-bottom: 2px solid var(--navy); padding-bottom: 6px; margin-bottom: 14px;
 }
 .eventList { list-style: none; }
-.eventItem { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--border-light); }
+/* position: relative is the containing block for .stretchItem's overlay —
+   without it the overlay measures against the page and covers everything. */
+.eventItem { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--border-light); position: relative; }
 .eventItem:last-child { border-bottom: none; }
+.eventItem:hover { background: var(--newsprint); }
+.eventItem:focus-within { background: var(--newsprint); }
+
+/* One link over the whole item (see page.tsx). Identical in intent to
+   .stretch on the calendar list — kept as its own rule because these two
+   live in different stylesheets and one is a flex row, not a grid. */
+.stretchItem { color: inherit; }
+.stretchItem::after { content: ''; position: absolute; inset: 0; }
+.stretchItem:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; border-radius: 2px; }
 .eventDateBlock { flex-shrink: 0; background: var(--navy); color: #fff; width: 40px; text-align: center; padding: 4px 4px 5px; border-radius: 2px; }
 .eventDateBlock .eMonth { font-family: var(--font-ui); font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
 .eventDateBlock .eDay { font-family: var(--font-display); font-size: 20px; font-weight: 700; line-height: 1.1; }

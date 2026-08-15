@@ -497,6 +497,42 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.45.1 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.45.1</span>
+        <span class="release-date">August 15, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Fix</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Signup no longer loops after you find your name</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Entering the troop password and picking your name took you back to the
+              start.</strong> Both &ldquo;find yourself&rdquo; pickers still sent you to the
+              event&rsquo;s description page &mdash; which was correct until the signup form moved
+              to its own page earlier today. From there the Sign up button dropped the name you
+              had just picked, so you landed back at the picker. Picking a name now goes straight
+              to the form, with your household already filled in.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Homepage calendar</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Every entry in the Troop Calendar box is clickable</strong> &mdash; the whole
+              row, date and location included, not just the titles of events that happened to have
+              a signup. Meetings in that list previously led nowhere.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.45.0 -->
     <div class="release">
       <div class="release-header">

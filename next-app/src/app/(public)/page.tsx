@@ -119,6 +119,18 @@ export default async function Home({
                       {sidebarEvents.map((ev) => {
                         const { month, day } = formatCalendarDateParts(ev.entry_date);
                         return (
+                          /*
+                           * The WHOLE item is the link — date block, title and
+                           * location (Patrick, 2026-08-15). Only entries with a
+                           * signup used to be clickable, and only on their
+                           * title, so a meeting in this teaser led nowhere.
+                           *
+                           * Same stretched-link shape as the calendar list: one
+                           * real <a> on the title supplies the accessible name,
+                           * its ::after covers the row, and the rest is plain
+                           * text under a transparent overlay — clickable
+                           * without becoming a second tab stop.
+                           */
                           <li key={ev.id} className={styles.eventItem}>
                             <div className={styles.eventDateBlock}>
                               <div className={styles.eMonth}>{month}</div>
@@ -126,11 +138,9 @@ export default async function Home({
                             </div>
                             <div>
                               <p className={styles.eventTitle}>
-                                {ev.hasSignup ? (
-                                  <Link href={`/events/${ev.id}`}>{ev.title}</Link>
-                                ) : (
-                                  ev.title
-                                )}
+                                <Link href={`/events/${ev.id}`} className={styles.stretchItem}>
+                                  {ev.title}
+                                </Link>
                               </p>
                               {ev.location && <p className={styles.eventMeta}>{ev.location}</p>}
                             </div>
