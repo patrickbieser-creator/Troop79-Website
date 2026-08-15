@@ -14,6 +14,7 @@ import { leaderSessionPersonId } from '@/lib/session-person';
 import { formatCalendarDateParts, formatTimeOfDay } from '@/lib/calendar-shared';
 import { loadCalendarCategories } from '@/lib/calendar';
 import { plainSummary } from '@/lib/feed-logic';
+import { calendarReturn } from '@/lib/calendar-return';
 import { behaviorOf, categoryColorMap, colorFor, templateOf } from '@/lib/calendar-categories';
 import { getPublicMeetingForEntry, getPublishedMeetingNav } from '@/lib/meetings';
 import { ArticleBody } from '@/lib/article-body/ArticleBody';
@@ -120,6 +121,13 @@ export default async function EventDetailPage({
     saved?: string;
     cancelled?: string;
     signedout?: string;
+    /* The calendar position the visitor arrived from — carried by every link
+       out of /events so this page can offer a way back to it. Read only by
+       calendarReturn(), which allowlists exactly these four. */
+    view?: string;
+    m?: string;
+    category?: string;
+    q?: string;
   }>;
 }) {
   const { id } = await params;
@@ -215,7 +223,10 @@ export default async function EventDetailPage({
       : 'no-household';
   const locked = signup ? signupLocked(signup) : false;
   const times = timeRange(entry.start_time, entry.end_time);
-  const backHref = '/events';
+  /* Back to the exact view the visitor left — month or list, which month,
+     which filter — rather than the top of the calendar. See lib/calendar-return
+     for why this is a pure function over params and not history.back(). */
+  const back = calendarReturn(sp);
 
   /*
    * Which template this entry renders through (Calendar unification). The
@@ -237,7 +248,7 @@ export default async function EventDetailPage({
   return (
     <main className={styles.page}>
       <p className={styles.breadcrumb}>
-        <Link href={backHref}>← All events</Link>
+        <Link href={back.href}>← {back.label}</Link>
       </p>
 
       <header className={styles.head}>
@@ -410,7 +421,12 @@ export default async function EventDetailPage({
           )}
 
       {signup && slotFirst && !locked && (
-        <section className={styles.block}>
+        /* #signup is what the calendar's "Sign up" control targets. It becomes
+           a route of its own in step 4 of
+           Plans/Calendar-Detail-And-Signup-Split.md; until then the control
+           jumps to the form here rather than pointing at a page that does not
+           exist yet. */
+        <section className={styles.block} id="signup">
           <h2 className={styles.blockHead}>{signup.slots_title ?? 'Jobs — pick one to sign up'}</h2>
           <SlotFirstForm
             eventId={entry.id}
@@ -434,7 +450,7 @@ export default async function EventDetailPage({
         </section>
       )}
 
-          <section className={styles.block}>
+          <section className={styles.block} id="signup">
             <h2 className={styles.blockHead}>Signing up</h2>
             {signup.capacity != null && (
               <p className={styles.capacity}>

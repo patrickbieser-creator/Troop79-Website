@@ -497,6 +497,59 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.44.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.44.0</span>
+        <span class="release-date">August 15, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Every calendar entry opens its own page</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Anything on the calendar is now clickable</strong> &mdash; in the list and in
+              the month grid. Only events with a signup used to have a link at all, which meant a
+              meeting agenda could not be opened, shared or bookmarked. Clicking anywhere on a list
+              row &mdash; the date, the title, the category, the empty space &mdash; opens that
+              event. In the month view, the coloured chips and the multi-day bars do the same.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Leaving an event puts you back where you were.</strong> The link at the top
+              of an event page reads &ldquo;Back to October 2026&rdquo; when that is where you came
+              from, and returns you to that month, that view and that filter &mdash; instead of the
+              top of the list.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Sign up has its own button on the right.</strong> Reading about an event and
+              committing to it are different decisions, so they are now different clicks. Everyone
+              sees the button, whether signed in or not &mdash; families sign in when they get
+              there.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Clicking an empty day does nothing now.</strong> The pop-up panel it used to
+              open is gone entirely; the chips lead somewhere better. Days can show up to four
+              events before running out of room, which no day on the calendar has ever done.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Campouts are readable by screen readers</strong> for the first time. A
+              multi-day event appears only as the bar spanning its days, and that whole layer was
+              hidden from assistive technology &mdash; so a campout was invisible.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.43.0 -->
     <div class="release">
       <div class="release-header">

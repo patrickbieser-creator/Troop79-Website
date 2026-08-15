@@ -61,11 +61,15 @@ function timeCell(entry: CalendarEntryPublic): React.ReactNode {
 function EntryRow({
   entry,
   colors,
-  past
+  past,
+  search
 }: {
   entry: CalendarEntryPublic;
   colors: CategoryColorMap;
   past?: boolean;
+  /** The browsing position, already encoded — travels into the event link so
+   *  the event page can offer a way back to exactly this view. */
+  search: string;
 }) {
   const { day } = formatCalendarDateParts(entry.entry_date);
   const color = colorFor(colors, entry.category);
@@ -92,6 +96,23 @@ function EntryRow({
     ? `${formatTimeOfDay(entry.start_time)}${entry.end_time ? ` – ${formatTimeOfDay(entry.end_time)}` : ''}`
     : null;
 
+  /*
+   * ONE link per row, stretched over the whole thing.
+   *
+   * Patrick asked for the date pill, the title and the category all to open the
+   * event. Done as three <a>s that would be three identical tab stops on every
+   * one of ~105 rows, and a screen reader would read the same destination three
+   * times per entry. Instead: one real <a> on the title — which supplies the
+   * accessible name — with .stretch making its ::after cover the row. The pill
+   * and category become plain text under a transparent overlay: clickable, not
+   * separately focusable.
+   *
+   * It is also the only way the row can be a link AND hold the signup link,
+   * since nesting <a> inside <a> is invalid. .rowAction lifts the signup out of
+   * the overlay with position/z-index rather than nesting under it.
+   */
+  const href = `/events/${entry.id}${search ? `?${search}` : ''}`;
+
   return (
     <li className={`${styles.item} ${past ? styles.pastItem : ''}`}>
       <div className={styles.dateBlock} style={past ? undefined : { background: color }}>
@@ -100,16 +121,13 @@ function EntryRow({
       </div>
       <div className={styles.itemBody}>
         <p className={styles.itemTitle}>
-          {title}
+          <Link href={href} className={styles.stretch}>
+            {title}
+          </Link>
           {entry.day_note && <span className={styles.dayNote}>{entry.day_note}</span>}
         </p>
         <p className={styles.itemCategory} style={{ color }}>
           {entry.category}
-          {entry.hasSignup && (
-            <Link href={`/events/${entry.id}`} className={styles.readStory}>
-              Details &amp; signup &rarr;
-            </Link>
-          )}
         </p>
         {spanNote && <p className={styles.spanNote}>{spanNote}</p>}
         <p className={styles.mobileMeta}>
@@ -119,6 +137,23 @@ function EntryRow({
       <div className={styles.colTime}>{timeCell(entry)}</div>
       <div className={styles.colLoc} title={entry.location ?? undefined}>
         {entry.location || <span className={styles.metaEmpty}>&mdash;</span>}
+      </div>
+      <div className={styles.colAction}>
+        {entry.hasSignup && !past && (
+          /*
+           * Shown to everyone, signed in or not (Patrick, 2026-08-15). It leads
+           * to the family gate for a visitor without a session, which is fine —
+           * a control that silently isn't there reads as a missing feature, and
+           * the majority of visitors are here to read rather than to sign up.
+           *
+           * Points at #signup on the event page for now. It becomes
+           * /events/[id]/signup in step 4 of the plan; linking there today
+           * would ship a 404 for the sake of a URL that isn't built yet.
+           */
+          <Link href={`${href}#signup`} className={styles.rowAction}>
+            Sign up
+          </Link>
+        )}
       </div>
       {!past && entry.description && <p className={styles.itemDesc}>{entry.description}</p>}
     </li>
@@ -175,7 +210,12 @@ export function CalendarBrowser({
     setUrlMonth(p.get('m'));
   }, []);
 
-  useEffect(() => {
+  /**
+   * The browsing position as a query string — the single source for both the
+   * address bar and the links out to each event, so a visitor's way back can
+   * never disagree with where they actually are.
+   */
+  const search = useMemo(() => {
     const p = new URLSearchParams();
     if (category !== 'all') p.set('category', category);
     if (query) p.set('q', query);
@@ -185,9 +225,12 @@ export function CalendarBrowser({
       // would be noise, and would survive a switch back as a stale value.
       if (month) p.set('m', month);
     }
-    const qs = p.toString();
-    window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
+    return p.toString();
   }, [category, query, view, month]);
+
+  useEffect(() => {
+    window.history.replaceState(null, '', search ? `?${search}` : window.location.pathname);
+  }, [search]);
 
   const colors = useMemo(() => categoryColorMap(categories), [categories]);
   const allEntries = useMemo(() => [...upcoming, ...past], [upcoming, past]);
@@ -321,7 +364,7 @@ export function CalendarBrowser({
               </div>
               <ul className={styles.list}>
                 {items.map((entry) => (
-                  <EntryRow key={entry.id} entry={entry} colors={colors} />
+                  <EntryRow key={entry.id} entry={entry} colors={colors} search={search} />
                 ))}
               </ul>
             </section>
@@ -342,7 +385,7 @@ export function CalendarBrowser({
                 </div>
                 <ul className={styles.list}>
                   {items.map((entry) => (
-                    <EntryRow key={entry.id} entry={entry} colors={colors} past />
+                    <EntryRow key={entry.id} entry={entry} colors={colors} past search={search} />
                   ))}
                 </ul>
               </section>
@@ -358,6 +401,7 @@ export function CalendarBrowser({
           colors={colors}
           initialMonth={urlMonth}
           onMonthChange={setMonth}
+          search={search}
         />
       </div>
     </>

@@ -173,6 +173,11 @@ meantime. Worth landing separately.
   and the "Nothing scheduled this day" panel that currently appears when you
   click an empty cell.
 
+- **An empty day cell does nothing** (Patrick, 2026-08-15). Not clickable, no
+  hover affordance, no cursor change — the chips are the interactive things in
+  the grid, and a cell that responds to clicks without having anything to show
+  is what produced "Nothing scheduled this day" in the first place.
+
 ## Open Questions
 
 - **Thin entries.** ~30 "No Troop Meeting" rows will each get a permalink with a
@@ -181,9 +186,7 @@ meantime. Worth landing separately.
 - **Does anything still link to a pre-unification meeting URL?** A grep found
   only `/meeting-plan`, which is a different leader-facing tool. Worth a second
   look before assuming no redirect is needed.
-- **Day-cell click target.** With the popover gone, does clicking a day's empty
-  space do anything? Options: nothing, or navigate to the list filtered to that
-  date. Decide during step 3 — it is a small addition either way.
+*(Day-cell click target resolved — see Decisions.)*
 
 ---
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import type { CalendarEntryPublic } from '@/lib/calendar';
 import { colorFor, type CategoryColorMap } from '@/lib/calendar-categories';
 import { formatTimeOfDay } from '@/lib/calendar-shared';
@@ -28,7 +29,7 @@ const MONTH_NAMES = [
 ];
 const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const WEEKDAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MAX_CHIPS = 2;
+const MAX_CHIPS = 4;
 
 function toISO(d: Date): string {
   const y = d.getFullYear();
@@ -144,13 +145,6 @@ function computeWeekSpans(
   return { placed, laneCount: laneEndCols.length };
 }
 
-interface PopoverPos {
-  left: number;
-  top: number;
-  caretX: number;
-  flipped: boolean;
-}
-
 /** 'YYYY-MM' → the first of that month, or null if it isn't one. Rejects a
  *  hand-edited ?m= rather than letting `new Date(NaN)` reach the grid. */
 function parseMonthParam(value: string | null | undefined): Date | null {
@@ -172,7 +166,8 @@ export function MonthGrid({
   activeCategories,
   colors,
   initialMonth,
-  onMonthChange
+  onMonthChange,
+  search
 }: {
   entries: CalendarEntryPublic[];
   activeCategories: Set<string>;
@@ -187,6 +182,9 @@ export function MonthGrid({
   initialMonth?: string | null;
   /** Reports the visible month up so the URL can carry it. */
   onMonthChange?: (month: string) => void;
+  /** The browsing position, already encoded — travels into every chip's link
+   *  so an event page can offer a way back to this exact month and filter. */
+  search: string;
 }) {
   const todayIso = useMemo(() => toISO(new Date()), []);
   const [monthCursor, setMonthCursor] = useState(() => {
@@ -194,12 +192,8 @@ export function MonthGrid({
     return new Date(t.getFullYear(), t.getMonth(), 1);
   });
   const urlMonthApplied = useRef(false);
-  const [selectedIso, setSelectedIso] = useState<string | null>(null);
-  const [highlightId, setHighlightId] = useState<number | null>(null);
   const [focusedIso, setFocusedIso] = useState(todayIso);
-  const [popoverPos, setPopoverPos] = useState<PopoverPos | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
-  const popoverRef = useRef<HTMLDivElement>(null);
 
   function matchesFilter(e: CalendarEntryPublic) {
     return activeCategories.size === 0 || activeCategories.has(e.category);
@@ -283,136 +277,31 @@ export function MonthGrid({
     onMonthChange?.(toMonthParam(monthCursor));
   }, [monthCursor, onMonthChange]);
 
-  function positionPopover(cell: HTMLElement) {
-    const pop = popoverRef.current;
-    if (!pop) return;
-    const margin = 12;
-    const gap = 6;
-    const vw = document.documentElement.clientWidth;
-    const vh = document.documentElement.clientHeight;
-    const popRect = pop.getBoundingClientRect();
-    const cellRect = cell.getBoundingClientRect();
-
-    let left = cellRect.left;
-    if (left + popRect.width > vw - margin) left = vw - margin - popRect.width;
-    if (left < margin) left = margin;
-
-    let top = cellRect.bottom + gap;
-    let flipped = false;
-    if (top + popRect.height > vh - margin) {
-      const aboveTop = cellRect.top - gap - popRect.height;
-      if (aboveTop >= margin) {
-        top = aboveTop;
-        flipped = true;
-      } else {
-        top = margin;
-      }
-    }
-    const cellCenter = cellRect.left + cellRect.width / 2;
-    const caretX = Math.min(Math.max(cellCenter - left, 16), Math.max(popRect.width - 16, 16));
-    setPopoverPos({ left: Math.round(left), top: Math.round(top), caretX: Math.round(caretX), flipped });
-  }
-
-  function showPopoverFor(iso: string) {
-    const cell = gridRef.current?.querySelector<HTMLElement>(`[data-iso="${iso}"]`);
-    if (!cell) return;
-    cell.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' });
-    requestAnimationFrame(() => positionPopover(cell));
-  }
-
-  function selectDate(iso: string, eventId?: number) {
-    setSelectedIso(iso);
-    setHighlightId(eventId ?? null);
-    setFocusedIso(iso);
-    const d = parseLocal(iso);
-    const needsNav = d.getFullYear() !== monthCursor.getFullYear() || d.getMonth() !== monthCursor.getMonth();
-    if (needsNav) {
-      setMonthCursor(new Date(d.getFullYear(), d.getMonth(), 1));
-      return; // the effect below re-anchors once the new grid renders
-    }
-    showPopoverFor(iso);
-  }
-
-  function deselect() {
-    setSelectedIso(null);
-    setHighlightId(null);
-    setPopoverPos(null);
-  }
-
-  // Re-anchor whenever the grid rebuilds under an existing selection (month nav via selectDate, filter changes).
-  useEffect(() => {
-    if (!selectedIso) return;
-    const cell = gridRef.current?.querySelector<HTMLElement>(`[data-iso="${selectedIso}"]`);
-    if (cell) showPopoverFor(selectedIso);
-    else setPopoverPos(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weeks, selectedIso]);
-
   /*
-   * Today is NOT auto-selected (removed 2026-08-15, Patrick).
+   * THE DAY POPOVER IS GONE (2026-08-15, Patrick — see
+   * Plans/Calendar-Detail-And-Signup-Split.md).
    *
-   * Switching to the month view used to open today's popover on its own, so
-   * the first thing a visitor saw was a floating panel over the grid they had
-   * just asked for — and on a day with nothing on it, that panel read "Nothing
-   * scheduled this day", which is a strange thing to volunteer.
+   * It existed because nothing in this grid linked anywhere, so clicking a day
+   * was the only way to learn what an event was. The chips are links to the
+   * event's own page now, which is a better answer to the same question, and
+   * the popover's only remaining job would have been overflow for days with
+   * more chips than fit. That has never happened: of 121 populated days, 118
+   * hold one event and 3 hold two, against a MAX_CHIPS that is now 4.
    *
-   * Today is marked in the grid itself instead (.isToday), which is what a
-   * calendar is expected to do. The popover is now only ever opened by a
-   * deliberate click.
+   * Removed with it: anchor positioning and edge-clamping, reposition-on-
+   * scroll, click-outside and Escape handling, the selected-day state, and the
+   * "Nothing scheduled this day" panel that appeared when you clicked an empty
+   * cell. An empty cell now does nothing at all, which is the whole point.
    */
 
-  // Popover follows its anchor on scroll/resize; closes if the anchor scrolls fully off-screen.
-  useEffect(() => {
-    if (!selectedIso) return;
-    let scheduled = false;
-    function onScrollOrResize() {
-      if (scheduled) return;
-      scheduled = true;
-      requestAnimationFrame(() => {
-        scheduled = false;
-        const cell = gridRef.current?.querySelector<HTMLElement>(`[data-iso="${selectedIso}"]`);
-        if (!cell) {
-          deselect();
-          return;
-        }
-        const r = cell.getBoundingClientRect();
-        if (r.bottom < 0 || r.top > window.innerHeight) {
-          deselect();
-          return;
-        }
-        positionPopover(cell);
-      });
-    }
-    window.addEventListener('scroll', onScrollOrResize, { passive: true });
-    window.addEventListener('resize', onScrollOrResize);
-    return () => {
-      window.removeEventListener('scroll', onScrollOrResize);
-      window.removeEventListener('resize', onScrollOrResize);
-    };
-  }, [selectedIso]);
-
-  // Click-outside (capture phase — a bubble-phase listener would fire after
-  // whatever click OPENED the popover, e.g. the Today button, immediately
-  // closing it again) + Escape close.
-  useEffect(() => {
-    function onDocClick(e: MouseEvent) {
-      if (!popoverPos) return;
-      const target = e.target as HTMLElement;
-      if (popoverRef.current?.contains(target)) return;
-      if (target.closest(`.${styles.dayCell}, .${styles.chip}, .${styles.spanBar}`)) return;
-      deselect();
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' && popoverPos) deselect();
-    }
-    document.addEventListener('click', onDocClick, true);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('click', onDocClick, true);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [popoverPos]);
-
+  /**
+   * Arrow-key traversal of the grid, kept.
+   *
+   * The cells no longer DO anything when activated, but they still carry the
+   * date and event count in their aria-label, so being able to walk the month
+   * is worth having — and the chips inside them are ordinary links that Tab
+   * reaches. The Enter/Space branch that used to open the popover is gone.
+   */
   function handleCellKeyDown(e: React.KeyboardEvent, iso: string) {
     const idx = flatIsos.indexOf(iso);
     let nextIdx: number | null = null;
@@ -435,11 +324,6 @@ export function MonthGrid({
       case 'End':
         nextIdx = idx - (idx % 7) + 6;
         break;
-      case 'Enter':
-      case ' ':
-        e.preventDefault();
-        selectDate(iso);
-        return;
       default:
         return;
     }
@@ -453,13 +337,6 @@ export function MonthGrid({
     }
   }
 
-  const selectedDayEvents = selectedIso ? visibleEventsOnDate(selectedIso) : [];
-  const selectedHiddenByFilter =
-    !!selectedIso &&
-    activeCategories.size > 0 &&
-    eventsOnDate(selectedIso).length > 0 &&
-    selectedDayEvents.length === 0;
-
   return (
     <div className={styles.monthCard}>
       <div className={styles.monthHeader}>
@@ -468,10 +345,7 @@ export function MonthGrid({
             type="button"
             className={styles.monthNavBtn}
             aria-label="Previous month"
-            onClick={() => {
-              deselect();
-              setMonthCursor((c) => addMonths(c, -1));
-            }}
+            onClick={() => setMonthCursor((c) => addMonths(c, -1))}
           >
             <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
@@ -481,10 +355,7 @@ export function MonthGrid({
             type="button"
             className={styles.monthNavBtn}
             aria-label="Next month"
-            onClick={() => {
-              deselect();
-              setMonthCursor((c) => addMonths(c, 1));
-            }}
+            onClick={() => setMonthCursor((c) => addMonths(c, 1))}
           >
             <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12z" />
@@ -494,7 +365,11 @@ export function MonthGrid({
         <h2 className={styles.monthHeaderTitle} id="monthHeaderTitle">
           {formatMonthYear(monthCursor)}
         </h2>
-        <button type="button" className={styles.todayBtn} onClick={() => selectDate(todayIso)}>
+        <button type="button" className={styles.todayBtn} onClick={() => {
+            const t = new Date();
+            setMonthCursor(new Date(t.getFullYear(), t.getMonth(), 1));
+            setFocusedIso(todayIso);
+          }}>
           Today
         </button>
       </div>
@@ -528,7 +403,6 @@ export function MonthGrid({
                   const dayEvents = visibleEventsOnDate(day.iso);
                   const singleDay = dayEvents.filter((e) => !isMultiDay(e));
                   const isToday = day.iso === todayIso;
-                  const isSelected = day.iso === selectedIso;
                   const total = dayEvents.length;
                   return (
                     <div
@@ -539,16 +413,15 @@ export function MonthGrid({
                       className={[
                         styles.dayCell,
                         !day.inMonth ? styles.isOutside : '',
-                        isToday ? styles.isToday : '',
-                        isSelected ? styles.isSelected : ''
+                        isToday ? styles.isToday : ''
                       ]
                         .filter(Boolean)
                         .join(' ')}
-                      aria-selected={isSelected}
                       aria-label={`${formatFullDate(day.iso)}${
                         !day.inMonth ? ' (' + MONTH_NAMES[day.date.getMonth()] + ')' : ''
                       } — ${total === 0 ? 'no events' : total + ' event' + (total > 1 ? 's' : '')}`}
-                      onClick={() => selectDate(day.iso)}
+                      /* No onClick — an empty cell does nothing (Patrick,
+                         2026-08-15). The chips below are the interactive part. */
                       onKeyDown={(e) => handleCellKeyDown(e, day.iso)}
                     >
                       <div className={styles.dayNumRow}>
@@ -558,20 +431,16 @@ export function MonthGrid({
                         {singleDay.slice(0, MAX_CHIPS).map((e) => {
                           const color = colorFor(colors, e.category);
                           return (
-                            <button
+                            <Link
                               key={e.id}
-                              type="button"
+                              href={`/events/${e.id}${search ? `?${search}` : ''}`}
                               className={styles.chip}
                               style={{ borderLeftColor: color, background: hexToRgba(color, 0.14) }}
                               aria-label={`${e.title}${e.start_time ? ` at ${formatTimeOfDay(e.start_time)}` : ''} — ${e.category}`}
-                              onClick={(evt) => {
-                                evt.stopPropagation();
-                                selectDate(e.entry_date, e.id);
-                              }}
                             >
                               <span className={styles.chipDot} style={{ background: color }} />
                               <span className={styles.chipTitle}>{e.title}</span>
-                            </button>
+                            </Link>
                           );
                         })}
                         {singleDay.length > MAX_CHIPS && (
@@ -583,13 +452,26 @@ export function MonthGrid({
                 })}
               </div>
               {laneCount > 0 && (
-                <div className={styles.spansLayer} aria-hidden="true">
+                /*
+                 * No longer aria-hidden. A multi-day event appears ONLY as a
+                 * span bar — never as a chip — so hiding this layer meant a
+                 * campout was invisible to a screen reader entirely. As inert
+                 * buttons that was merely bad; as links it would be a whole
+                 * class of event unreachable without a mouse.
+                 *
+                 * A bar that continues into the next week renders once per
+                 * week, so the same event can appear twice in a month. The
+                 * chevrons say which end is a continuation; the aria-label
+                 * carries the full date range so the repeat reads as one event
+                 * spanning weeks rather than two separate ones.
+                 */
+                <div className={styles.spansLayer}>
                   {placed.map((p) => {
                     const color = colorFor(colors, p.entry.category);
                     return (
-                      <button
+                      <Link
                         key={p.entry.id}
-                        type="button"
+                        href={`/events/${p.entry.id}${search ? `?${search}` : ''}`}
                         className={[styles.spanBar, p.isTrueStart ? styles.capStart : '', p.isTrueEnd ? styles.capEnd : '']
                           .filter(Boolean)
                           .join(' ')}
@@ -600,15 +482,11 @@ export function MonthGrid({
                           borderColor: color
                         }}
                         aria-label={`${p.entry.title}, ${formatDateRange(p.entry)} — ${p.entry.category}`}
-                        onClick={(evt) => {
-                          evt.stopPropagation();
-                          selectDate(p.entry.entry_date, p.entry.id);
-                        }}
                       >
-                        {!p.isTrueStart && <span className={styles.spanChevron}>‹</span>}
+                        {!p.isTrueStart && <span className={styles.spanChevron} aria-hidden="true">‹</span>}
                         <span className={styles.spanTitle}>{p.entry.title}</span>
-                        {!p.isTrueEnd && <span className={styles.spanChevron}>›</span>}
-                      </button>
+                        {!p.isTrueEnd && <span className={styles.spanChevron} aria-hidden="true">›</span>}
+                      </Link>
                     );
                   })}
                 </div>
@@ -618,80 +496,6 @@ export function MonthGrid({
         })}
       </div>
 
-      {selectedIso && (
-        <div
-          ref={popoverRef}
-          className={`${styles.dayPopover} ${popoverPos?.flipped ? styles.isFlipped : ''}`}
-          role="dialog"
-          aria-modal="false"
-          aria-live="polite"
-          style={
-            popoverPos
-              ? { left: popoverPos.left, top: popoverPos.top, visibility: 'visible' }
-              // Rendered-but-unmeasured on the very first paint after selection —
-              // positionPopover() needs this element mounted (via popoverRef) to
-              // read its size before it can compute real coordinates, so it can't
-              // be gated on popoverPos itself without a chicken-and-egg deadlock.
-              : { left: 0, top: 0, visibility: 'hidden' }
-          }
-        >
-          <div className={styles.dayPopoverCaret} style={{ left: popoverPos?.caretX ?? 0 }} />
-          <div className={styles.dayPopoverHeader}>
-            <h2 className={styles.dayPopoverDate}>{formatFullDate(selectedIso)}</h2>
-            <button
-              type="button"
-              className={styles.dayPopoverClose}
-              aria-label="Close"
-              onClick={() => {
-                const cell = gridRef.current?.querySelector<HTMLElement>(`[data-iso="${selectedIso}"]`);
-                deselect();
-                cell?.focus();
-              }}
-            >
-              &times;
-            </button>
-          </div>
-          {selectedDayEvents.length === 0 ? (
-            <p className={styles.dayPopoverEmpty}>
-              {selectedHiddenByFilter ? 'No events match the current filter this day.' : 'Nothing scheduled this day.'}
-            </p>
-          ) : (
-            <div className={styles.dayEventList}>
-              {selectedDayEvents.map((e) => {
-                const color = colorFor(colors, e.category);
-                return (
-                  <div
-                    key={e.id}
-                    className={`${styles.dayEventCard} ${highlightId === e.id ? styles.isHighlighted : ''}`}
-                    style={{ borderLeftColor: color }}
-                  >
-                    <p className={styles.dayEventCardTitle}>
-                      {e.title}
-                      {e.day_note && <span className={styles.dayNote}>{e.day_note}</span>}
-                    </p>
-                    <p className={styles.dayEventCardCat} style={{ color }}>
-                      {e.category}
-                      {isMultiDay(e) ? ` · ${formatDateRange(e)}` : ''}
-                    </p>
-                    <div className={styles.dayEventCardMeta}>
-                      {e.start_time ? (
-                        <span>
-                          {formatTimeOfDay(e.start_time)}
-                          {e.end_time && <> – {formatTimeOfDay(e.end_time)}</>}
-                        </span>
-                      ) : (
-                        <span>All day</span>
-                      )}
-                      {e.location && <span>{e.location}</span>}
-                    </div>
-                    {e.description && <p className={styles.dayEventCardDesc}>{e.description}</p>}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

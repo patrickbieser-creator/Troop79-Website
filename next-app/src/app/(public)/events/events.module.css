@@ -28,11 +28,14 @@
    no description, so they stay one line tall — that's the density win. */
 .item {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr) 150px 220px;
+  grid-template-columns: 64px minmax(0, 1fr) 150px 220px 110px;
   column-gap: 16px;
   align-items: start;
   padding: 12px 20px;
   border-bottom: 1px solid var(--border-light);
+  /* Containing block for .stretch's overlay — without it the overlay sizes
+     itself against the page and covers everything. */
+  position: relative;
 }
 .item:last-child { border-bottom: none; }
 .item:hover { background: var(--newsprint); }
@@ -48,8 +51,40 @@
   color: var(--text-meta); background: var(--newsprint); border: 1px solid var(--border-light); border-radius: 999px; padding: 2px 8px;
 }
 .itemCategory { font-family: var(--font-ui); font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
-.readStory { margin-left: 10px; }
-.readStory:hover { text-decoration: underline; }
+/*
+ * The stretched link. Its ::after covers the whole row, so clicking the date
+ * pill, the category or any empty space opens the event — while the row has
+ * exactly ONE focusable link, named by the title inside it. Three separate
+ * <a>s would have been three identical tab stops on each of ~105 rows.
+ */
+.stretch { color: inherit; }
+.stretch::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  /* Below .rowAction's z-index so the signup link stays clickable on top. */
+  z-index: 0;
+}
+.stretch:hover { color: var(--navy); }
+.item:focus-within { background: var(--newsprint); }
+.stretch:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; border-radius: 2px; }
+
+/* Signup lives in its own column on the right, out from under the overlay —
+   the click a committed family is looking for, kept distinct from the read
+   the rest of the row offers. */
+.colAction { display: flex; justify-content: flex-end; padding-top: 2px; }
+.rowAction {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-ui); font-size: 11.5px; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase;
+  color: var(--forest); background: var(--warm-white);
+  border: 1px solid var(--forest); border-radius: 2px;
+  padding: 5px 12px; white-space: nowrap;
+  transition: background var(--transition), color var(--transition);
+}
+.rowAction:hover { background: var(--forest); color: #fff; }
+.rowAction:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
 .spanNote { font-family: var(--font-ui); font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--text-meta); margin-top: 2px; }
 .colTime { font-family: var(--font-ui); font-size: 12px; color: var(--text-body); padding-top: 4px; white-space: nowrap; }
 .colLoc {
@@ -82,7 +117,7 @@
 .pastItem .dateBlock { background: var(--border-mid); }
 
 @media (max-width: 860px) {
-  .item { grid-template-columns: 60px minmax(0, 1fr) 110px 150px; }
+  .item { grid-template-columns: 60px minmax(0, 1fr) 110px 150px 96px; }
 }
 
 @media (max-width: 640px) {
@@ -90,6 +125,10 @@
   .colTime, .colLoc { display: none; }
   .mobileMeta { display: block; font-family: var(--font-ui); font-size: 12px; color: var(--text-meta); margin-top: 3px; }
   .itemDesc { grid-column: 2; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+  /* Explicit column 2: with Time and Location hidden this would otherwise
+     auto-place under the date pill. Signup drops below the row's text rather
+     than competing with the title for a narrow line. */
+  .colAction { grid-column: 2; justify-content: flex-start; padding-top: 8px; }
 }
 
 .empty { padding: 40px 20px; text-align: center; color: var(--text-meta); font-family: var(--font-body); font-style: italic; }
@@ -273,26 +312,16 @@
      drives the chip offset below, where per-week IS what's wanted. */
   width: 100%; height: 100%; min-height: calc(96px + var(--month-lanes, 0) * 22px);
   min-width: 0;
-  text-align: left; display: block; cursor: pointer; padding: 6px 6px 4px; position: relative;
+  text-align: left; display: block; padding: 6px 6px 4px; position: relative;
   transition: background var(--transition);
 }
-.dayCell:hover { background: var(--newsprint); }
 .dayCell:focus-visible { outline: 2px solid var(--forest); outline-offset: -2px; z-index: 2; }
 .dayCell.isOutside { background: var(--newsprint); }
 .dayCell.isOutside .dayNum { color: var(--border-mid); }
-.dayCell.isOutside:hover { background: #ece5d6; }
 /* Today is marked by the grid itself, not by opening its popover on arrival
-   (removed 2026-08-15 — see the note in month-grid.tsx). A wash behind the
-   cell plus the navy day-number pill below; deliberately quieter than
-   .isSelected, which is a thing the visitor just did rather than a fact about
-   the date.
-
-   Declared BEFORE .isSelected on purpose: same specificity, so source order
-   decides, and clicking today should still look selected. */
+   (the popover is gone entirely — see month-grid.tsx). A wash behind the cell
+   plus the navy day-number pill below. */
 .dayCell.isToday { background: rgba(30, 58, 74, .045); }
-.dayCell.isToday:hover { background: rgba(30, 58, 74, .08); }
-
-.dayCell.isSelected { background: rgba(61, 90, 62, .07); box-shadow: inset 0 0 0 2px var(--forest); z-index: 1; }
 
 .dayNumRow { display: flex; align-items: center; justify-content: flex-start; margin-bottom: 4px; }
 .dayNum {
@@ -332,58 +361,6 @@
 .spanBar:not(.capEnd) { margin-right: 0; }
 .spanChevron { flex-shrink: 0; font-size: 10px; opacity: .65; }
 .spanTitle { overflow: hidden; text-overflow: ellipsis; }
-
-/* Day popover — anchored to the clicked day cell; position:fixed so it
-   floats above the grid regardless of scroll, re-anchored by JS on
-   scroll/resize (see month-grid.tsx's positionPopover()). */
-.dayPopover {
-  position: fixed; z-index: 1000; width: 320px; max-width: calc(100vw - 24px);
-  max-height: min(70vh, 520px); overflow-y: auto;
-  border: 1px solid var(--border-light); border-top: 3px solid var(--forest);
-  background: var(--warm-white); border-radius: 3px; box-shadow: var(--shadow-hover); padding: 18px 20px;
-}
-.dayPopoverCaret {
-  position: absolute; top: -6px; width: 11px; height: 11px; background: var(--warm-white);
-  border-left: 1px solid var(--border-light); border-top: 3px solid var(--forest);
-  transform: rotate(45deg); border-radius: 1px 0 0 0;
-}
-.dayPopover.isFlipped .dayPopoverCaret {
-  top: auto; bottom: -6px; border-left: none; border-top: none;
-  border-right: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light); border-radius: 0 0 1px 0;
-}
-.dayPopoverHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
-.dayPopoverDate { font-family: var(--font-display); font-size: 19px; font-weight: 700; color: var(--text-head); }
-.dayPopoverClose {
-  flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
-  color: var(--text-meta); transition: background var(--transition), color var(--transition);
-}
-.dayPopoverClose:hover { background: var(--newsprint); color: var(--navy); }
-.dayPopoverEmpty { font-family: var(--font-body); color: var(--text-meta); font-size: 14px; padding: 4px 0 2px; }
-
-.dayEventList { display: flex; flex-direction: column; gap: 12px; }
-.dayEventCard { border-left: 3px solid var(--border-mid); background: var(--newsprint); border-radius: 2px; padding: 12px 14px; transition: box-shadow var(--transition); }
-.dayEventCard.isHighlighted { box-shadow: 0 0 0 2px var(--forest) inset; }
-.dayEventCardTitle { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--text-head); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.dayEventCardCat { font-family: var(--font-ui); font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin: 3px 0 6px; }
-.dayEventCardMeta { font-family: var(--font-ui); font-size: 12.5px; color: var(--text-meta); display: flex; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 4px; }
-.dayEventCardMeta span { display: inline-flex; align-items: center; gap: 5px; }
-/* Two lines here rather than the list's one: this card sits inside a day cell
-   whose height feeds the month grid's row sizing, so an unbounded description
-   would stretch one week's row out of proportion with the rest of the month.
-   Two lines is enough to be useful and bounded enough to keep the grid even. */
-.dayEventCardDesc {
-  font-family: var(--font-body);
-  font-size: 13px;
-  color: var(--text-body);
-  line-height: 1.55;
-  margin-top: 4px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
 @media (max-width: 900px) {
   .monthHeaderTitle { min-width: 0; font-size: 19px; }
   .dayCell { min-height: calc(84px + var(--lane-count, 0) * 22px); }
@@ -413,6 +390,4 @@
   .spanBar.capStart, .spanBar.capEnd { padding: 0; }
   .spanTitle, .spanChevron { display: none; }
 
-  .dayPopover { padding: 14px 16px; }
-  .dayEventCardMeta { flex-direction: column; gap: 2px; }
 }
