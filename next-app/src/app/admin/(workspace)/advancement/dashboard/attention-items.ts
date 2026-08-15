@@ -158,9 +158,75 @@ async function loadPendingProofSubmissions(): Promise<AttentionCategory> {
   return { key: 'proof-submissions', label: 'Proof submissions awaiting review', items };
 }
 
+/**
+ * People a FAMILY put on the roster from /profile.
+ *
+ * Its own category rather than a row in the profile-updates list: those are
+ * proposals waiting on a decision, whereas this already happened and only
+ * needs a leader's eyes. Lumping them together would have made "awaiting
+ * review" mean two different things in one list. Without this the only trace
+ * of a new adult is an email — Patrick, 2026-08-14: "otherwise these are
+ * going in undetected".
+ */
+async function loadNewHouseholdMembers(): Promise<AttentionCategory> {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from('change_requests')
+    .select('id, entity_id, submitted_at, proposed_changes, submitted_by_person_id')
+    .eq('entity_type', 'adult_added')
+    .eq('status', 'pending')
+    .order('submitted_at', { ascending: true });
+
+  const rows = (data ?? []) as Pick<
+    ChangeRequestRow,
+    'id' | 'entity_id' | 'submitted_at' | 'proposed_changes' | 'submitted_by_person_id'
+  >[];
+  if (rows.length === 0) return { key: 'new-members', label: 'New household members', items: [] };
+
+  // One lookup for both the added person (which roster tab holds them) and
+  // whoever added them (shown so a leader knows who to ask).
+  const ids = [
+    ...new Set([
+      ...rows.map((r) => Number(r.entity_id)),
+      ...rows.map((r) => r.submitted_by_person_id).filter((v): v is number => v != null)
+    ])
+  ];
+  const { data: people } = await supabase
+    .from('person_directory')
+    .select('person_id, display_name, tab')
+    .in('person_id', ids);
+  const byId = new Map(
+    ((people ?? []) as { person_id: number; display_name: string; tab: string }[]).map((p) => [
+      p.person_id,
+      p
+    ])
+  );
+
+  const items: AttentionItem[] = rows.map((r) => {
+    const added = byId.get(Number(r.entity_id));
+    const by = r.submitted_by_person_id != null ? byId.get(r.submitted_by_person_id) : undefined;
+    const relationship = r.proposed_changes.relationship;
+    const tab = added?.tab === 'leader' ? 'leader' : 'adult';
+    return {
+      label: added?.display_name ?? String(r.proposed_changes.name ?? `Person ${r.entity_id}`),
+      meta: [
+        relationship ? String(relationship) : null,
+        by ? `added by ${by.display_name}` : 'added from the Profile page',
+        shortDate(r.submitted_at)
+      ]
+        .filter(Boolean)
+        .join(' · '),
+      href: `/admin/advancement/roster?tab=${tab}&open=${encodeURIComponent(r.entity_id)}`
+    };
+  });
+
+  return { key: 'new-members', label: 'New household members', items };
+}
+
 export async function loadAttentionCategories(): Promise<AttentionCategory[]> {
   const categories = await Promise.all([
     loadPendingProfileUpdates(),
+    loadNewHouseholdMembers(),
     loadPendingLibrarySubmissions(),
     loadPendingProofSubmissions()
   ]);

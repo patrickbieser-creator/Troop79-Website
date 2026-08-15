@@ -6,6 +6,7 @@ import {
   parseFieldValue,
   editableFieldsFor,
   fieldLabel,
+  isNoticeOnly,
   EDITABLE_PERSON_FIELDS,
   EDITABLE_SCOUT_FIELDS
 } from '../src/lib/change-requests';
@@ -60,6 +61,30 @@ describe('change-request field contract', () => {
 
   it('falls back to the raw key for an unknown field rather than rendering undefined', () => {
     expect(fieldLabel('adult', 'not_a_column')).toBe('not_a_column');
+  });
+});
+
+describe("'adult_added' — the notice a family leaves when adding a member", () => {
+  it('is notice-only, so approving it never writes to a record', () => {
+    expect(isNoticeOnly('adult_added')).toBe(true);
+  });
+
+  it('allows NO editable fields — the guard that keeps it from writing', () => {
+    // approveChangeRequest filters proposed_changes through this list before
+    // any update. An empty list is what makes a stray key harmless even if
+    // one reached the row.
+    expect(editableFieldsFor('adult_added')).toEqual([]);
+  });
+
+  it('is not confused with a real change request type', () => {
+    expect(isNoticeOnly('adult')).toBe(false);
+    expect(isNoticeOnly('scout')).toBe(false);
+  });
+
+  it('labels the fields a family actually submitted when adding someone', () => {
+    expect(fieldLabel('adult_added', 'name')).toBe('Name');
+    expect(fieldLabel('adult_added', 'relationship')).toBe('Relationship');
+    expect(fieldLabel('adult_added', 'primary_email')).toBe('Email');
   });
 });
 

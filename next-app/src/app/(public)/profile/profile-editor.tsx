@@ -3,10 +3,12 @@
 import { useState, useTransition } from 'react';
 import { gradeFromGradYear, gradeLabel, gradYearFromGrade } from '@/lib/demographics';
 import { fieldLabel, type ChangeRequestRow } from '@/lib/change-requests';
-// First use outside admin. The control is generic — its stylesheet reads every
-// --admin-* token through a fallback, and the popover portal falls back to
-// document.body when #admin-popover-root isn't on the page. Left where it
-// lives rather than relocated: one public consumer isn't yet a pattern.
+// First use outside admin. Its popover portal falls back to document.body
+// when #admin-popover-root isn't on the page, and its stylesheet now chains
+// every --admin-* read through the public token to a literal — it did NOT
+// when this import was added, which is why the field rendered unstyled here
+// until 2026-08-14. Left where it lives rather than relocated: one public
+// consumer isn't yet a pattern.
 import { DatePickerField } from '@/app/admin/(workspace)/_components/date-picker-field';
 import styles from './profile.module.css';
 

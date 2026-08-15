@@ -253,7 +253,7 @@ export async function addHouseholdMemberAction(formData: FormData): Promise<void
   }
 
   const supabase = createAdminClient();
-  const { error } = await supabase.rpc('add_parent_to_household', {
+  const { data: parentId, error } = await supabase.rpc('add_parent_to_household', {
     p_household_id: householdId,
     p_name: name,
     p_email: email || null,
@@ -262,6 +262,37 @@ export async function addHouseholdMemberAction(formData: FormData): Promise<void
   });
   if (error) {
     redirect(`${back}?err=${encodeURIComponent(`Could not add ${name}: ${error.message}`)}`);
+  }
+
+  // Leave a NOTICE on the dashboard, not just an email.
+  //
+  // This path writes the person immediately, so unlike a demographic edit
+  // there is no pending row to make it visible — and an email alone means a
+  // family can put someone on the roster with nobody noticing. The notice is
+  // acknowledged (not approved) by a leader from the person's own editor.
+  //
+  // Best-effort: the member IS added and the family should not be told
+  // otherwise because a notification failed. A missing notice degrades to the
+  // email that already went out.
+  const { data: parentRow } = await supabase
+    .from('scout_parents')
+    .select('person_id')
+    .eq('id', parentId as number)
+    .maybeSingle();
+  const newPersonId = (parentRow as { person_id: number | null } | null)?.person_id ?? null;
+  if (newPersonId != null) {
+    await supabase.from('change_requests').insert({
+      entity_type: 'adult_added',
+      entity_id: String(newPersonId),
+      submitted_by_person_id: session.personId,
+      proposed_changes: {
+        name,
+        relationship: relationship || null,
+        primary_email: email || null,
+        primary_phone: phone || null
+      },
+      status: 'pending'
+    });
   }
 
   const { html, text } = renderEmail({

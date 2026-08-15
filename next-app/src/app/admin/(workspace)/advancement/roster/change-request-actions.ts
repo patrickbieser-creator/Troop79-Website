@@ -19,8 +19,15 @@ import {
  * table and field allowlist, so a new type can't quietly skip the allowlist.
  */
 
-/** Where an approved request writes, per entity type. */
-const APPLY_TARGET: Record<ChangeEntityType, { table: 'scouts' | 'people'; numericId: boolean }> = {
+/**
+ * Where an approved request writes, per entity type. Deliberately PARTIAL:
+ * 'adult_added' is a notice with nothing to apply (the person already exists),
+ * so approving it only marks it acknowledged. A type absent from this map
+ * writes nothing rather than failing.
+ */
+const APPLY_TARGET: Partial<
+  Record<ChangeEntityType, { table: 'scouts' | 'people'; numericId: boolean }>
+> = {
   scout: { table: 'scouts', numericId: false },
   adult: { table: 'people', numericId: true }
 };

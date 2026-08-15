@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { getPendingChangeRequest, approveChangeRequest, rejectChangeRequest, type ChangeRequestWithSubmitter } from './change-request-actions';
-import { fieldLabel, type ChangeEntityType, type FieldValue } from '@/lib/change-requests';
+import {
+  fieldLabel,
+  isNoticeOnly,
+  type ChangeEntityType,
+  type FieldValue
+} from '@/lib/change-requests';
 import styles from '../lookups/lookups.module.css';
 
 /**
@@ -74,14 +79,23 @@ export function PendingUpdatePanel({
 
   const fields = Object.keys(request.proposed_changes);
 
+  // A notice reports something that ALREADY happened — a family added this
+  // person to their household, and the person exists. There is nothing to
+  // apply and, crucially, nothing to reject: "Reject" here would read as
+  // "remove this person", which this panel must not do silently. Only the
+  // acknowledgement is offered; a leader who disagrees uses the ordinary
+  // person tools below (deactivate, change household, merge, delete).
+  const notice = isNoticeOnly(entityType);
+
   return (
     <div className={styles.editSection}>
       <div className={styles.editSectionHeader}>
-        <h4>Pending Update — awaiting review</h4>
+        <h4>{notice ? 'Added by a family — not yet acknowledged' : 'Pending Update — awaiting review'}</h4>
       </div>
       {error && <p className={styles.editError}>{error}</p>}
       <p className={styles.helpText}>
-        Submitted {new Date(request.submitted_at).toLocaleString('en-US', {
+        {notice ? 'Added ' : 'Submitted '}
+        {new Date(request.submitted_at).toLocaleString('en-US', {
           month: 'short',
           day: 'numeric',
           hour: 'numeric',
@@ -94,20 +108,24 @@ export function PendingUpdatePanel({
         ) : (
           '.'
         )}
+        {notice &&
+          ' They are already on the roster. Acknowledging clears this from the dashboard — it does not change the record.'}
       </p>
       <table className={styles.table}>
         <thead>
           <tr>
             <th>Field</th>
-            <th>Current</th>
-            <th>Proposed</th>
+            {!notice && <th>Current</th>}
+            <th>{notice ? 'Submitted' : 'Proposed'}</th>
           </tr>
         </thead>
         <tbody>
           {fields.map((field) => (
             <tr key={field}>
               <td>{fieldLabel(entityType, field)}</td>
-              <td className={styles.muted}>{String(currentValues[field] ?? '—')}</td>
+              {!notice && (
+                <td className={styles.muted}>{String(currentValues[field] ?? '—')}</td>
+              )}
               <td><strong>{String(request.proposed_changes[field] ?? '—')}</strong></td>
             </tr>
           ))}
@@ -144,15 +162,23 @@ export function PendingUpdatePanel({
           </>
         ) : (
           <>
-            <button
-              className={`${styles.editBtn} ${styles.dangerBtn}`}
-              disabled={busy}
-              onClick={() => setRejecting(true)}
-            >
-              Reject
-            </button>
+            {!notice && (
+              <button
+                className={`${styles.editBtn} ${styles.dangerBtn}`}
+                disabled={busy}
+                onClick={() => setRejecting(true)}
+              >
+                Reject
+              </button>
+            )}
             <button className={styles.editSaveBtn} disabled={busy} onClick={approve}>
-              {busy ? 'Applying…' : 'Approve'}
+              {notice
+                ? busy
+                  ? 'Acknowledging…'
+                  : 'Acknowledge'
+                : busy
+                  ? 'Applying…'
+                  : 'Approve'}
             </button>
           </>
         )}

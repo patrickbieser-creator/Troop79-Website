@@ -386,6 +386,16 @@ function PersonEditor({
           }}
         />
 
+        {/* "A family added this person" — a notice, not a proposal. Separate
+            panel because the two can coexist: someone added last week may
+            already have a pending demographic edit. */}
+        <PendingUpdatePanel
+          scoutId={String(person.person_id)}
+          entityType="adult_added"
+          currentValues={{}}
+          onApplied={onChanged}
+        />
+
         {currentTab && detail.tab !== currentTab && (
           <div className={styles.savedNote}>
             {person.display_name} now appears under{' '}

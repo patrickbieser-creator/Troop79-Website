@@ -86,18 +86,49 @@ export const PERSON_FIELD_LABEL: Record<EditablePersonField, string> = {
   zip: 'ZIP'
 };
 
-/** The `change_requests.entity_type` values this app writes and reviews. */
-export type ChangeEntityType = 'scout' | 'adult';
+/**
+ * The `change_requests.entity_type` values this app writes and reviews.
+ *
+ * 'adult_added' is not a proposed change — it is a NOTICE. Adding a household
+ * member from /profile writes the person immediately, so there is nothing to
+ * approve; without a row here the only trace would be an email, and a family
+ * quietly adding someone to the roster would otherwise go unnoticed. It rides
+ * this table because the dashboard's attention list and the leader-side panel
+ * already read it, and because "one pending per (entity_type, entity_id)" is
+ * exactly the right rule: one unacknowledged notice per person.
+ */
+export type ChangeEntityType = 'scout' | 'adult' | 'adult_added';
+
+/** What a family submitted when adding a member. Not editable fields — these
+ *  keys exist only so the notice can be rendered with readable labels. */
+export const ADDED_MEMBER_FIELD_LABEL: Record<string, string> = {
+  name: 'Name',
+  relationship: 'Relationship',
+  primary_email: 'Email',
+  primary_phone: 'Phone'
+};
+
+/** Whether a type is acknowledged rather than applied — see 'adult_added'. */
+export function isNoticeOnly(entityType: ChangeEntityType): boolean {
+  return entityType === 'adult_added';
+}
 
 /** Field allowlist for an entity type. The privileged apply step re-filters
- *  through this, so it must be the same list the submit side used. */
+ *  through this, so it must be the same list the submit side used. A
+ *  notice-only type writes nothing, so it allows nothing. */
 export function editableFieldsFor(entityType: ChangeEntityType): readonly string[] {
-  return entityType === 'adult' ? EDITABLE_PERSON_FIELDS : EDITABLE_SCOUT_FIELDS;
+  if (entityType === 'adult') return EDITABLE_PERSON_FIELDS;
+  if (entityType === 'scout') return EDITABLE_SCOUT_FIELDS;
+  return [];
 }
 
 export function fieldLabel(entityType: ChangeEntityType, field: string): string {
   const map: Record<string, string> =
-    entityType === 'adult' ? PERSON_FIELD_LABEL : FIELD_LABEL;
+    entityType === 'adult'
+      ? PERSON_FIELD_LABEL
+      : entityType === 'adult_added'
+        ? ADDED_MEMBER_FIELD_LABEL
+        : FIELD_LABEL;
   return map[field] ?? field;
 }
 

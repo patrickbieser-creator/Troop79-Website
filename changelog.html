@@ -542,6 +542,16 @@ py -m http.server 8000</pre>
           </li>
           <li>
             <span>
+              <strong>The Dashboard tells you when a family adds someone.</strong> A new
+              household member shows up under &ldquo;New household members&rdquo; on the leader
+              dashboard &mdash; who was added, how they are related, and who added them &mdash;
+              with a link straight to their record. Acknowledging it clears the notice without
+              changing anything. Adding a member takes effect immediately, so without this the
+              only trace was an email and new people could go in unnoticed.
+            </span>
+          </li>
+          <li>
+            <span>
               <strong>Each scout&rsquo;s internal ID is shown on the roster.</strong> The short
               code (A02, D07) that the ledger, the Scoutbook export and page links all use is
               now a column you can read and sort, instead of something you had to dig a URL for.
@@ -574,6 +584,14 @@ py -m http.server 8000</pre>
               <strong>Signup deadlines were showing the wrong time.</strong> A deadline saved as
               6:00 PM was displayed as 11:00 PM, and shifted a further six hours every time the
               field was touched. Deadlines now show and save the time you actually meant.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>The birthday picker on Profile had lost its styling.</strong> The date
+              field was borrowed from the admin screens and quietly relied on colours that only
+              exist there, so on the public Profile page it rendered with no border or
+              background at all. It now matches the rest of the form.
             </span>
           </li>
           <li>
