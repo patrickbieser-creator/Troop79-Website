@@ -21,6 +21,13 @@ import styles from './event-detail.module.css';
  * Selection is carried in the URL (?household=<key>) rather than client state,
  * so the choice survives a reload and the form can be server-rendered with that
  * household's existing entries.
+ *
+ * It navigates to /events/[id]/SIGNUP, not to the event page. This picker only
+ * appears partway through signing up, and sending someone back to the
+ * description after they'd named themselves was an infinite loop: the event
+ * page's "Sign up" button dropped the ?household= they had just chosen, which
+ * landed them back on this picker (reported 2026-08-15, the day signup moved
+ * to its own route).
  */
 export default function HouseholdPicker({
   households,
@@ -86,7 +93,9 @@ export default function HouseholdPicker({
                 type="button"
                 className={styles.pickerBtn}
                 onClick={() =>
-                  router.push(`/events/${eventId}?household=${encodeURIComponent(household.key)}`)
+                  router.push(
+                    `/events/${eventId}/signup?household=${encodeURIComponent(household.key)}`
+                  )
                 }
               >
                 <span className={styles.pickerName}>{name}</span>

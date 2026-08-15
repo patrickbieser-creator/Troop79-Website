@@ -303,7 +303,7 @@ export default function SlotFirstForm({
                     className={styles.pickerBtn}
                     onClick={() =>
                       router.push(
-                        `/events/${eventId}?household=${encodeURIComponent(p.household.key)}`
+                        `/events/${eventId}/signup?household=${encodeURIComponent(p.household.key)}`
                       )
                     }
                   >
