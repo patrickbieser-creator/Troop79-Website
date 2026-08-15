@@ -2,7 +2,12 @@
 
 import { useState, useTransition } from 'react';
 import { gradeFromGradYear, gradeLabel, gradYearFromGrade } from '@/lib/demographics';
-import { FIELD_LABEL, type ChangeRequestRow } from '@/lib/change-requests';
+import { fieldLabel, type ChangeRequestRow } from '@/lib/change-requests';
+// First use outside admin. The control is generic — its stylesheet reads every
+// --admin-* token through a fallback, and the popover portal falls back to
+// document.body when #admin-popover-root isn't on the page. Left where it
+// lives rather than relocated: one public consumer isn't yet a pattern.
+import { DatePickerField } from '@/app/admin/(workspace)/_components/date-picker-field';
 import styles from './profile.module.css';
 
 export interface ScoutProfileFields {
@@ -81,7 +86,7 @@ export default function ProfileEditor({
             month: 'short',
             day: 'numeric'
           })}{' '}
-          is still awaiting review ({Object.keys(pending.proposed_changes).map((f) => FIELD_LABEL[f as keyof typeof FIELD_LABEL]).join(', ')}).
+          is still awaiting review ({Object.keys(pending.proposed_changes).map((f) => fieldLabel('scout', f)).join(', ')}).
           Submitting this form will replace it — the earlier update will not also apply.
         </p>
       )}
@@ -139,7 +144,7 @@ export default function ProfileEditor({
         </label>
         <label className={styles.editField}>
           <span className={styles.editLabel}>Birthdate</span>
-          <input className={styles.editInput} type="date" value={birthdate} onChange={(e) => setBirthdate(e.target.value)} />
+          <DatePickerField value={birthdate} onChange={setBirthdate} />
         </label>
         <label className={styles.editFieldFull}>
           <span className={styles.editLabel}>Things We Should Know — food allergies, medical conditions, special needs</span>

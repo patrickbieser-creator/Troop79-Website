@@ -3,10 +3,20 @@ import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getIdentitySessionIfValid } from '@/lib/family-access';
 import { isEpochCurrent } from '@/lib/identity-session';
-import { loadHouseholdByKey } from '@/lib/households';
-import { EDITABLE_SCOUT_FIELDS, type ChangeRequestRow } from '@/lib/change-requests';
-import { submitChangeRequestAction } from './actions';
-import ProfileEditor, { type ScoutProfileFields } from './profile-editor';
+import { loadHouseholdByKey, storedHouseholdId } from '@/lib/households';
+import {
+  EDITABLE_SCOUT_FIELDS,
+  EDITABLE_PERSON_FIELDS,
+  type ChangeRequestRow
+} from '@/lib/change-requests';
+import {
+  submitChangeRequestAction,
+  submitPersonChangeRequestAction,
+  addHouseholdMemberAction
+} from './actions';
+import { type ScoutProfileFields } from './profile-editor';
+import { type AdultProfileFields } from './adult-editor';
+import HouseholdMembers, { type HouseholdMemberView } from './household-members';
 import styles from './profile.module.css';
 
 /*
@@ -39,6 +49,21 @@ interface ScoutFieldRow {
   things_we_should_know: string | null;
 }
 
+interface PersonFieldRow {
+  id: number;
+  display_name: string;
+  first_name: string | null;
+  last_name: string | null;
+  birthdate: string | null;
+  primary_email: string | null;
+  primary_phone: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+}
+
 export default async function ProfilePage({
   searchParams
 }: {
@@ -46,6 +71,9 @@ export default async function ProfilePage({
     err?: string;
     submitted?: string;
     nochange?: string;
+    added?: string;
+    /** `scout:<id>` or `person:<personId>` — which member to open. */
+    member?: string;
   }>;
 }) {
   const sp = await searchParams;
@@ -62,31 +90,62 @@ export default async function ProfilePage({
         ? 'scout-blocked'
         : 'ready';
 
-  let scouts: ScoutProfileFields[] = [];
-  let householdHasNoScouts = false;
+  // Everything the member switcher needs, keyed the way it selects: a member
+  // key is `scout:<id>` or `person:<personId>`, which is also what ?member=
+  // carries back after a submit.
+  const members: HouseholdMemberView[] = [];
+  const scoutsByKey: Record<string, ScoutProfileFields> = {};
+  const adultsByKey: Record<string, AdultProfileFields> = {};
+  const pendingByKey: Record<string, ChangeRequestRow> = {};
+  let householdEmpty = false;
   let householdLabel = '';
-  const pendingByScout = new Map<string, ChangeRequestRow>();
+  let canAddMember = false;
 
   if (state === 'ready' && session) {
     const household = await loadHouseholdByKey(session.householdKey);
     householdLabel = household?.label ?? session.displayName;
     const scoutIds = household?.scouts.map((s) => s.id) ?? [];
-    householdHasNoScouts = scoutIds.length === 0;
+    const adultPersonIds = household?.adults.map((a) => a.personId) ?? [];
+    householdEmpty = scoutIds.length === 0 && adultPersonIds.length === 0;
 
-    if (scoutIds.length > 0) {
-      const [{ data: scoutRows }, { data: pendingRows }] = await Promise.all([
-        supabase
-          .from('scouts')
-          .select(`id, display_name, ${EDITABLE_SCOUT_FIELDS.join(', ')}`)
-          .in('id', scoutIds),
-        supabase
-          .from('change_requests')
-          .select('*')
-          .eq('entity_type', 'scout')
-          .eq('status', 'pending')
-          .in('entity_id', scoutIds)
-      ]);
-      scouts = ((scoutRows ?? []) as unknown as ScoutFieldRow[]).map((r) => ({
+    // add_parent_to_household attaches the new adult through a scout, so it
+    // needs a stored household that has one. Rather than let the action fail,
+    // the form is simply not offered when it couldn't succeed.
+    canAddMember = storedHouseholdId(household?.key) != null && scoutIds.length > 0;
+
+    const [{ data: scoutRows }, { data: personRows }, { data: pendingRows }] = await Promise.all([
+      scoutIds.length > 0
+        ? supabase
+            .from('scouts')
+            .select(`id, display_name, ${EDITABLE_SCOUT_FIELDS.join(', ')}`)
+            .in('id', scoutIds)
+        : Promise.resolve({ data: [] }),
+      adultPersonIds.length > 0
+        ? supabase
+            .from('people')
+            .select(`id, display_name, ${EDITABLE_PERSON_FIELDS.join(', ')}`)
+            .in('id', adultPersonIds)
+        : Promise.resolve({ data: [] }),
+      // One query for both entity types — the (entity_type, entity_id) pairs
+      // can't collide, since a scout id is text like 'jsmith' and an adult's
+      // is a stringified people.id.
+      scoutIds.length + adultPersonIds.length > 0
+        ? supabase
+            .from('change_requests')
+            .select('*')
+            .eq('status', 'pending')
+            .in('entity_id', [...scoutIds, ...adultPersonIds.map(String)])
+            .in('entity_type', ['scout', 'adult'])
+        : Promise.resolve({ data: [] })
+    ]);
+
+    for (const row of (pendingRows ?? []) as ChangeRequestRow[]) {
+      pendingByKey[`${row.entity_type === 'adult' ? 'person' : 'scout'}:${row.entity_id}`] = row;
+    }
+
+    for (const r of (scoutRows ?? []) as unknown as ScoutFieldRow[]) {
+      const key = `scout:${r.id}`;
+      scoutsByKey[key] = {
         id: r.id,
         displayName: r.display_name,
         address_line1: r.address_line1,
@@ -101,10 +160,43 @@ export default async function ProfilePage({
         swim_class: r.swim_class,
         birthdate: r.birthdate,
         things_we_should_know: r.things_we_should_know
-      }));
-      for (const row of (pendingRows ?? []) as ChangeRequestRow[]) {
-        pendingByScout.set(row.entity_id, row);
-      }
+      };
+      members.push({
+        key,
+        name: r.display_name,
+        role: 'Scout',
+        kind: 'scout',
+        hasPending: key in pendingByKey
+      });
+    }
+
+    const relationshipByPerson = new Map(
+      (household?.adults ?? []).map((a) => [a.personId, a.relationship])
+    );
+    for (const r of (personRows ?? []) as unknown as PersonFieldRow[]) {
+      const key = `person:${r.id}`;
+      adultsByKey[key] = {
+        personId: r.id,
+        displayName: r.display_name,
+        relationship: relationshipByPerson.get(r.id) ?? null,
+        first_name: r.first_name,
+        last_name: r.last_name,
+        birthdate: r.birthdate,
+        primary_email: r.primary_email,
+        primary_phone: r.primary_phone,
+        address_line1: r.address_line1,
+        address_line2: r.address_line2,
+        city: r.city,
+        state: r.state,
+        zip: r.zip
+      };
+      members.push({
+        key,
+        name: r.display_name,
+        role: relationshipByPerson.get(r.id) || 'Adult',
+        kind: 'adult',
+        hasPending: key in pendingByKey
+      });
     }
   }
 
@@ -113,8 +205,8 @@ export default async function ProfilePage({
       <header className={styles.head}>
         <h1 className={styles.title}>Profile</h1>
         <p className={styles.dek}>
-          Update your scout&rsquo;s contact info and things leaders should know. Changes are
-          reviewed before they take effect.
+          Update contact info for anyone in your household — scouts and grown-ups — and the things
+          leaders should know. Changes are reviewed before they take effect.
         </p>
       </header>
 
@@ -123,6 +215,11 @@ export default async function ProfilePage({
       )}
       {sp.nochange === '1' && (
         <p className={styles.savedNote}>Nothing changed — no update was submitted.</p>
+      )}
+      {sp.added && (
+        <p className={styles.savedNote}>
+          ✓ {decodeURIComponent(sp.added)} was added to your household.
+        </p>
       )}
       {sp.err && <p className={styles.errNote}>{decodeURIComponent(sp.err)}</p>}
 
@@ -161,25 +258,25 @@ export default async function ProfilePage({
         </p>
       )}
 
-      {state === 'ready' && householdHasNoScouts && (
+      {state === 'ready' && householdEmpty && (
         <p className={styles.dek}>
-          No scouts are linked to this household yet — ask a leader if this looks wrong.
+          Nobody is linked to this household yet — ask a leader if this looks wrong.
         </p>
       )}
 
-      {state === 'ready' &&
-        scouts.map((scout) => (
-          <details key={scout.id} className={styles.scoutCard} open={scouts.length === 1}>
-            <summary className={styles.scoutSummary}>{scout.displayName}</summary>
-            <div className={styles.scoutBody}>
-              <ProfileEditor
-                scout={scout}
-                pending={pendingByScout.get(scout.id) ?? null}
-                submitAction={submitChangeRequestAction}
-              />
-            </div>
-          </details>
-        ))}
+      {state === 'ready' && !householdEmpty && (
+        <HouseholdMembers
+          members={members}
+          scouts={scoutsByKey}
+          adults={adultsByKey}
+          pending={pendingByKey}
+          initialKey={sp.member ?? null}
+          submitScoutAction={submitChangeRequestAction}
+          submitAdultAction={submitPersonChangeRequestAction}
+          addMemberAction={addHouseholdMemberAction}
+          canAddMember={canAddMember}
+        />
+      )}
     </main>
   );
 }

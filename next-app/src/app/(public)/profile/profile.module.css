@@ -111,10 +111,95 @@
 .errNote { font-family: var(--font-ui); font-size: 13.5px; font-weight: 700; color: #a04a3d; background: #fbf0ee; border-left: 3px solid #a04a3d; padding: 10px 13px; border-radius: 0 3px 3px 0; margin-bottom: 18px; }
 .warnNote { font-family: var(--font-ui); font-size: 13px; line-height: 1.5; color: #6b5514; background: #fdf6e3; border: 1px solid #e6d5a3; border-radius: 3px; padding: 10px 13px; margin-bottom: 12px; }
 
-.scoutCard { border: 1px solid var(--border-light); border-radius: 4px; margin-bottom: 16px; }
-.scoutSummary { font-family: var(--font-ui); font-size: 15px; font-weight: 700; color: var(--text-head); padding: 14px 16px; cursor: pointer; list-style: none; }
-.scoutSummary::-webkit-details-marker { display: none; }
-.scoutBody { padding: 4px 16px 18px; }
+/* ── Household member switcher ─────────────────────────────────────────────
+   Replaces the per-scout <details> accordions: everyone in the household is a
+   chip, one is selected, and one form shows at a time. */
+
+.household { font-family: var(--font-ui); }
+
+.memberBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 16px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.memberChip,
+.memberChipActive,
+.memberAddChip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 120px;
+  padding: 9px 14px;
+  border-radius: 4px;
+  border: 1px solid var(--border-light);
+  background: var(--warm-white);
+  font-family: var(--font-ui);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color .15s, background .15s;
+}
+.memberChip:hover,
+.memberAddChip:hover { border-color: var(--forest); background: var(--cream); }
+.memberChipActive {
+  border-color: var(--navy);
+  background: var(--navy);
+}
+.memberChipActive .memberName,
+.memberChipActive .memberRole { color: #fff; }
+.memberChipActive .memberFlag { background: rgba(255, 255, 255, .22); color: #fff; border-color: transparent; }
+
+.memberName { font-size: 14px; font-weight: 700; color: var(--text-head); }
+.memberRole { font-size: 11px; color: var(--text-meta); }
+
+.memberFlag {
+  margin-top: 3px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #6b5514;
+  background: #fdf6e3;
+  border: 1px solid #e6d5a3;
+  border-radius: 2px;
+  padding: 1px 5px;
+}
+
+/* The add-a-member chip carries no name/role rows, so it centres instead. */
+.memberAddChip {
+  justify-content: center;
+  align-items: center;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--navy);
+  border-style: dashed;
+}
+
+.memberPanel { margin-bottom: 8px; }
+.memberPanelTitle {
+  font-family: var(--font-display);
+  font-size: 21px;
+  color: var(--text-head);
+  margin-bottom: 14px;
+}
+
+.editCancelBtn {
+  background: none;
+  color: var(--text-meta);
+  border: 1px solid var(--border-mid);
+  border-radius: 3px;
+  padding: 8px 16px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.editCancelBtn:hover { color: var(--navy); border-color: var(--navy); }
 
 .editGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; font-family: var(--font-ui); }
 .editField { display: block; }
@@ -127,7 +212,7 @@
 .editInput:focus-visible { outline: 2px solid var(--forest); outline-offset: 1px; }
 .helpText { font-size: 11.5px; color: var(--text-meta); line-height: 1.5; margin-top: 6px; }
 
-.editActions { margin-top: 14px; display: flex; justify-content: flex-end; }
+.editActions { margin-top: 14px; display: flex; justify-content: flex-end; gap: 8px; }
 .editSaveBtn {
   background: var(--navy); color: #fff; border: none; border-radius: 3px; padding: 8px 18px;
   font-family: var(--font-ui); font-size: 13px; font-weight: 700; cursor: pointer;

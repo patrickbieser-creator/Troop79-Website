@@ -1,0 +1,19 @@
+.row {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+.row > *:first-child { flex: 1; min-width: 0; }
+
+.time {
+  flex-shrink: 0;
+  border: 1px solid var(--admin-gray-300, #ccc);
+  border-radius: 3px;
+  background: var(--admin-white, #fff);
+  color: var(--admin-gray-900, #222);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 7px 9px;
+}
+.time:focus { outline: none; border-color: var(--admin-navy, #1f3a5f); }
+.time:disabled { background: var(--admin-gray-100, #f2f2f2); color: var(--admin-gray-500, #888); }

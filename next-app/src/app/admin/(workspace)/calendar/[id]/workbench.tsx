@@ -14,11 +14,15 @@
  * model does not.
  */
 
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { CalendarCategoryRow, CategoryTemplate } from '@/lib/calendar-categories';
-import { MarkdownSplitPane } from '../../_components/markdown-split-pane';
+import {
+  MarkdownSplitPane,
+  type MarkdownEditorHandle
+} from '../../_components/markdown-split-pane';
+import { useMarkdownBlockTools } from '../../_components/markdown-block-tools';
 import { CalendarEntryForm, type CalendarEntryRow } from '../entry-form';
 import styles from './workbench.module.css';
 
@@ -77,6 +81,12 @@ export function Workbench({
   const [err, setErr] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [isPending, startTransition] = useTransition();
+  // D-081's promise was that `details_md` gets the NEWS EDITOR's experience,
+  // not merely a textarea with a preview — so the story panel takes the same
+  // insert toolbar, inline prompts and click-to-edit blocks the article
+  // editor has, from the same shared hook.
+  const storyRef = useRef<MarkdownEditorHandle>(null);
+  const blockTools = useMarkdownBlockTools(storyRef);
 
   function saveStory() {
     setErr(null);
@@ -179,14 +189,21 @@ export function Workbench({
           says everything — the rule of thumb is whether a family has to DECIDE something.
         </p>
         <MarkdownSplitPane
+          ref={storyRef}
           value={story}
           onChange={(v) => {
             setStory(v);
             setSaved(false);
           }}
           label="Story"
+          cheatSheet
+          toolbar={blockTools.toolbar}
+          onEditBlock={blockTools.onEditBlock}
           placeholder="What is this, who is it for, what should families bring or decide?"
-        />
+        >
+          {blockTools.prompts}
+        </MarkdownSplitPane>
+        {blockTools.pickers}
       </section>
 
       {/* ── agenda layer (meeting template, leaders only) ── */}

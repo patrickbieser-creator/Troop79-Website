@@ -176,7 +176,7 @@ export function ReqFirstCard({ scouts, leaders, catalog }: Props) {
   }
 
   return (
-    <div className={`${styles.card} ${styles.reqFirstCard}`}>
+    <div className={styles.card}>
       <h3>Requirement-First Bulk Entry</h3>
 
       <div className={`${styles.field} ${styles.reqFirstFlexField}`}>

@@ -97,6 +97,15 @@ export interface DatePickerFieldProps {
    *  field alone still opens the popover on click (or ArrowDown). */
   compact?: boolean;
   className?: string;
+  /** Put an id on the visible input so an external <label htmlFor> binds to it. */
+  id?: string;
+  /**
+   * Submit the ISO value under this name via a hidden input. The visible field
+   * holds a FORMATTED date ('Aug 14, 2026'), so it can never be the submitted
+   * one — this is what lets the plain `method="get"` report forms (Scoutbook
+   * Export, the meeting attendance report) use this control at all.
+   */
+  name?: string;
 }
 
 export function DatePickerField({
@@ -105,7 +114,9 @@ export function DatePickerField({
   disabled,
   placeholder = 'Select date',
   compact = false,
-  className
+  className,
+  id,
+  name
 }: DatePickerFieldProps) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState(() => formatDisplay(value));
@@ -341,7 +352,9 @@ export function DatePickerField({
       ref={wrapRef}
       className={`${styles.wrapper} ${disabled ? styles.wrapperDisabled : ''} ${className ?? ''}`}
     >
+      {name && <input type="hidden" name={name} value={value} />}
       <input
+        id={id}
         type="text"
         className={styles.input}
         value={text}

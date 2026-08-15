@@ -21,12 +21,26 @@ import { Resend } from 'resend';
  * 4. Addresses that bounced or unsubscribed are filtered out at the source
  *    (lib/email-recipients.ts), because the mail provider will penalise a
  *    sender that keeps mailing dead addresses.
+ *
+ * 5. EMAIL_REDIRECT_TO is the dev relay. Rules 1-3 protect production by
+ *    keeping mail manual; they do NOT protect a developer running a real
+ *    Resend key against a database full of real family addresses, which is
+ *    exactly what testing the sign-in flow requires (a login code is the one
+ *    message that MUST auto-send, so no amount of dry-run discipline covers
+ *    it). With EMAIL_REDIRECT_TO set, every recipient is rewritten to that
+ *    one address and the intended recipient is preserved in the subject, so
+ *    a test send is fully exercised end to end and still cannot reach a
+ *    family. Left set in production it would misroute mail loudly to a
+ *    single inbox rather than silently to the wrong people — the safer of
+ *    the two failure modes, and the reason it is opt-IN by presence.
  */
 
 export interface SendResult {
   status: 'sent' | 'skipped' | 'dry-run' | 'error';
   to: string[];
   detail?: string;
+  /** Set when the dev relay rewrote the recipients (see rule 5). */
+  redirectedFrom?: string[];
 }
 
 function client(): Resend | null {
@@ -36,6 +50,46 @@ function client(): Resend | null {
 
 export function emailConfigured(): boolean {
   return !!process.env.RESEND_API_KEY && !!process.env.EMAIL_FROM;
+}
+
+/**
+ * Where leader-facing notifications go (submissions, profile updates).
+ *
+ * Was hardcoded in three separate action files. It reads from the
+ * environment now so a dev box can point it somewhere harmless, and so the
+ * troop can change its own address without a code change — the literal
+ * default keeps production behaving exactly as before.
+ */
+export function troopEmail(): string {
+  return process.env.TROOP_NOTIFICATION_EMAIL || 'bsatroop79bg@gmail.com';
+}
+
+/**
+ * Applies the dev relay. Pure, and exported for tests: this is the guard that
+ * stands between a developer with a live API key and 25 real families.
+ *
+ * `redirectTo` is a REQUIRED parameter rather than defaulting to
+ * `process.env.EMAIL_REDIRECT_TO`. A default would be read on every call where
+ * the argument is `undefined` — including a test passing `undefined` to mean
+ * "no relay configured", which then silently picked up the developer's own
+ * .env value and asserted nothing. Reading the environment is the caller's
+ * job; this function only decides.
+ */
+export function applyRedirect(
+  to: string[],
+  subject: string,
+  redirectTo: string | undefined
+): { to: string[]; subject: string; redirectedFrom?: string[] } {
+  const target = (redirectTo ?? '').trim().toLowerCase();
+  if (!target) return { to, subject };
+  // The intended recipients ride along in the subject — without it, a run
+  // that fans out to a dozen people lands as a dozen identical messages in
+  // one inbox with no way to tell which was which.
+  return {
+    to: [target],
+    subject: `[test→${to.join(', ')}] ${subject}`,
+    redirectedFrom: to
+  };
 }
 
 /**
@@ -50,10 +104,20 @@ export async function sendEmail(opts: {
   text: string;
   confirm: boolean;
 }): Promise<SendResult> {
-  const to = [...new Set(opts.to.map((e) => e.trim().toLowerCase()).filter(Boolean))];
-  if (to.length === 0) return { status: 'skipped', to: [], detail: 'No deliverable addresses.' };
+  const intended = [...new Set(opts.to.map((e) => e.trim().toLowerCase()).filter(Boolean))];
+  if (intended.length === 0)
+    return { status: 'skipped', to: [], detail: 'No deliverable addresses.' };
 
-  if (!opts.confirm) return { status: 'dry-run', to };
+  // Redirect BEFORE the dry-run return, so a dry run reports the addresses
+  // that would actually be written to rather than the ones it would have
+  // without the relay — otherwise the preview lies about where mail goes.
+  const { to, subject, redirectedFrom } = applyRedirect(
+    intended,
+    opts.subject,
+    process.env.EMAIL_REDIRECT_TO
+  );
+
+  if (!opts.confirm) return { status: 'dry-run', to, redirectedFrom };
 
   const resend = client();
   const from = process.env.EMAIL_FROM;
@@ -61,6 +125,7 @@ export async function sendEmail(opts: {
     return {
       status: 'skipped',
       to,
+      redirectedFrom,
       detail: 'Email is not configured on this server (RESEND_API_KEY / EMAIL_FROM unset).'
     };
   }
@@ -77,7 +142,7 @@ export async function sendEmail(opts: {
       const { error } = await resend.emails.send({
         from,
         to: [recipient],
-        subject: opts.subject,
+        subject,
         html: opts.html,
         text: opts.text,
         replyTo: process.env.EMAIL_REPLY_TO || undefined
@@ -89,16 +154,17 @@ export async function sendEmail(opts: {
   }
 
   if (failures.length === to.length) {
-    return { status: 'error', to, detail: failures[0] };
+    return { status: 'error', to, redirectedFrom, detail: failures[0] };
   }
   if (failures.length > 0) {
     return {
       status: 'sent',
       to,
+      redirectedFrom,
       detail: `${to.length - failures.length} sent, ${failures.length} failed: ${failures.join('; ')}`
     };
   }
-  return { status: 'sent', to };
+  return { status: 'sent', to, redirectedFrom };
 }
 
 /** Minimal, readable HTML — troop mail lands in Gmail and phone clients, and

@@ -14,6 +14,7 @@ import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
 import { createAdminClient } from '@/lib/supabase/server';
 import { centralToday } from '@/lib/dates';
 import { loadScoutbookExport } from '@/lib/scoutbook-export';
+import { DateParamField } from '../../_components/date-param-field';
 import { MarkSubmittedButton } from './mark-submitted-button';
 import styles from './scoutbook-export.module.css';
 
@@ -72,11 +73,11 @@ export default async function ScoutbookExportPage({
       <form className={styles.form} method="get">
         <label className={styles.field}>
           <span className={styles.fieldLabel}>From</span>
-          <input type="date" name="from" defaultValue={from} className={styles.fieldInput} />
+          <DateParamField name="from" defaultValue={from} />
         </label>
         <label className={styles.field}>
           <span className={styles.fieldLabel}>To</span>
-          <input type="date" name="to" defaultValue={to} className={styles.fieldInput} />
+          <DateParamField name="to" defaultValue={to} />
         </label>
         <button type="submit" className={styles.updateBtn}>
           Update

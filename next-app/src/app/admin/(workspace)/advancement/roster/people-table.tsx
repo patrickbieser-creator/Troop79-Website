@@ -20,6 +20,8 @@ import {
   type RelationshipInput,
   type PersonDetail
 } from './person-actions';
+import { PendingUpdatePanel } from './pending-update-panel';
+import { AdultForm } from './adult-form';
 import styles from './roster.module.css';
 
 export interface DirectoryPerson {
@@ -91,7 +93,8 @@ export function PeopleTable({
   households,
   householdByPerson,
   householdMembers,
-  nameById
+  nameById,
+  openPersonId
 }: {
   people: DirectoryPerson[];
   roles: PersonRoleRow[];
@@ -100,6 +103,9 @@ export function PeopleTable({
   householdByPerson: Record<number, number>;
   householdMembers: Record<number, string[]>;
   nameById: Record<number, string>;
+  /** ?open=<people.id> — deep link from the dashboard's pending-update list,
+   *  matching ScoutsTable's openScoutId. */
+  openPersonId?: string;
 }) {
   const router = useRouter();
   // The whole row, not just an id. Adding a role moves someone from Adults to
@@ -109,7 +115,17 @@ export function PeopleTable({
   // page-load error: the save succeeded, then the dialog crashed rendering a
   // person who was no longer on the tab.
   const [openPerson, setOpenPerson] = useState<DirectoryPerson | null>(null);
+  const [adding, setAdding] = useState(false);
   const [q, setQ] = useState('');
+
+  useEffect(() => {
+    if (!openPersonId) return;
+    const match = people.find((p) => String(p.person_id) === openPersonId);
+    // Prefilling from the URL's ?open= param (external to render) on mount —
+    // same pattern as scouts-table.tsx.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (match) setOpenPerson(match);
+  }, [openPersonId, people]);
 
   const visible = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -133,7 +149,20 @@ export function PeopleTable({
         <span className={styles.toolbarCount}>
           {visible.length} of {people.length}
         </span>
+        {/* The front door adults never had — same toolbar position as the
+            Scouts tab's "+ Add Scout". */}
+        <button type="button" className={styles.addBtn} onClick={() => setAdding(true)}>
+          + Add Adult
+        </button>
       </div>
+
+      {adding && (
+        <AdultForm
+          households={households}
+          onClose={() => setAdding(false)}
+          onCreated={() => router.refresh()}
+        />
+      )}
 
       <table className={styles.table}>
         <thead>
@@ -222,6 +251,10 @@ export function PeopleTable({
             inactiveReason: openPerson.person_inactive_reason,
             tab: openPerson.tab,
             householdId: householdByPerson[openPerson.person_id] ?? null,
+            // The seed is what the table row already knows; demographics are
+            // not on it. The editor's own getPersonDetail() fills them in on
+            // open, which is when the Pending Update diff needs them.
+            fields: {},
             roles: roles
               .filter((r) => r.person_id === openPerson.person_id)
               .map((r) => ({ id: r.id, role: r.role, start_date: r.start_date, end_date: r.end_date })),
@@ -339,6 +372,20 @@ function PersonEditor({
 
         {error && <div className={styles.rowError}>{error}</div>}
         {saved && <div className={styles.savedNote}>{saved}</div>}
+
+        {/* A family can propose changes to an adult's own record from
+            /profile now, not just their scouts' — this is where a leader sees
+            and applies them. Renders nothing when there's nothing pending. */}
+        <PendingUpdatePanel
+          scoutId={String(person.person_id)}
+          entityType="adult"
+          currentValues={detail.fields}
+          onApplied={() => {
+            getPersonDetail(person.person_id).then(setDetail).catch(() => {});
+            onChanged();
+          }}
+        />
+
         {currentTab && detail.tab !== currentTab && (
           <div className={styles.savedNote}>
             {person.display_name} now appears under{' '}

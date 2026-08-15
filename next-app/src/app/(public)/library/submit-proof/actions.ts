@@ -49,10 +49,9 @@ import { loadHouseholdByKey } from '@/lib/households';
 import { proofSubmissionAllowedFor } from '@/lib/library';
 import { resolveRequirementLabel } from '@/lib/library-data';
 import { uploadProofMedia } from '@/lib/proof-media';
-import { sendEmail, renderEmail } from '@/lib/email';
+import { sendEmail, renderEmail, troopEmail } from '@/lib/email';
 
 const SUBMIT_PROOF_PATH = '/library/submit-proof';
-const TROOP_EMAIL = 'bsatroop79bg@gmail.com';
 const VALID_TARGET_KINDS: ReadonlySet<string> = new Set(['rank_req', 'mb_req']);
 
 function proofUrl(params: Record<string, string | undefined>): string {
@@ -273,7 +272,7 @@ export async function submitProofAction(formData: FormData): Promise<void> {
     outro: 'Review it from the Leader Workspace → Resource Library → Proof Queue.'
   });
   await sendEmail({
-    to: [TROOP_EMAIL],
+    to: [troopEmail()],
     subject: `Proof submission pending review — ${scoutName}`,
     html,
     text,

@@ -15,10 +15,10 @@
  */
 
 import { useRef, useState, useTransition } from 'react';
-import { ArticleBody } from '@/lib/article-body/ArticleBody';
 import type { Media } from '@/lib/supabase/types';
 import { RESOURCE_KIND_ICON, RESOURCE_KIND_LABEL, type ResourceKind } from '@/lib/library';
 import { MediaPicker } from '../news/_components/media-picker';
+import { MarkdownSplitPane, type MarkdownEditorHandle } from '../_components/markdown-split-pane';
 import styles from './library.module.css';
 
 export interface TargetOptionGroup {
@@ -57,7 +57,7 @@ export function ResourceEntryForm({ targetGroups, onCreate, onUploadDocument, em
   const [uploadedName, setUploadedName] = useState<string | null>(null);
   const [isUploading, startUpload] = useTransition();
   const targetRef = useRef<HTMLSelectElement>(null);
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const bodyRef = useRef<MarkdownEditorHandle>(null);
 
   const needsUrl = kind !== 'post';
 
@@ -87,13 +87,13 @@ export function ResourceEntryForm({ targetGroups, onCreate, onUploadDocument, em
     });
   }
 
-  /** Inserts markdown for a picked image at the end of the post body. */
+  /** Inserts markdown for a picked image at the caret in the post body —
+   *  previously appended to the end, which was wrong once a post grew past a
+   *  paragraph. The shared editor owns the cursor math now. */
   function insertImage(media: Media[]) {
     const first = media[0];
     if (!first) return;
-    const md = `\n\n![${first.alt_text ?? ''}](${first.cdn_url})\n\n`;
-    setBody((prev) => prev + md);
-    bodyRef.current?.focus();
+    bodyRef.current?.insertAtCursor(`![${first.alt_text ?? ''}](${first.cdn_url})`);
   }
 
   return (
@@ -180,29 +180,20 @@ export function ResourceEntryForm({ targetGroups, onCreate, onUploadDocument, em
 
         {kind === 'post' && (
           <div className={styles.fieldFull}>
-            <div className={styles.entryBodyHead}>
-              <span className={styles.fieldLabel}>Body</span>
-              <button type="button" className={styles.btnSecondary} onClick={() => setPicker('body')}>
-                Insert image
-              </button>
-            </div>
-            <div className={styles.entrySplit}>
-              <textarea
-                ref={bodyRef}
-                className={`${styles.textArea} ${styles.narrArea}`}
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                placeholder="Write in markdown — ## heading, **bold**, - list…"
-              />
-              <div className={styles.entryPreview}>
-                <div className={styles.entryPreviewLabel}>Live preview</div>
-                {body.trim() ? (
-                  <ArticleBody body={body} />
-                ) : (
-                  <p className={styles.fieldHint}>Nothing to preview yet.</p>
-                )}
-              </div>
-            </div>
+            <MarkdownSplitPane
+              ref={bodyRef}
+              value={body}
+              onChange={setBody}
+              label="Body"
+              rows={14}
+              cheatSheet
+              placeholder="Write in markdown — ## heading, **bold**, - list…"
+              toolbar={
+                <button type="button" className={styles.btnSecondary} onClick={() => setPicker('body')}>
+                  Insert image
+                </button>
+              }
+            />
             <input type="hidden" name="body_md" value={body} />
           </div>
         )}

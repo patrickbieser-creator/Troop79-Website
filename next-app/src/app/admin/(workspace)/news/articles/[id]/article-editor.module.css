@@ -51,7 +51,6 @@
 }
 .field .hint { font-family: var(--font-ui); font-size: 11px; color: var(--text-meta); margin-top: 5px; font-style: italic; }
 .field input[type='text'],
-.field input[type='datetime-local'],
 .field input[type='url'],
 .field select,
 .field textarea {
@@ -88,30 +87,8 @@
 .tagChip:hover { border-color: var(--forest); color: var(--forest); }
 .tagChipSelected { background: var(--forest); border-color: var(--forest); color: #fff; }
 
-.insertToolbar { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
-.insertBtn {
-  display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-ui); font-size: 11px;
-  font-weight: 600; color: var(--navy); background: var(--newsprint); border: 1px solid var(--border-mid);
-  padding: 6px 10px; border-radius: 2px; cursor: pointer; transition: all var(--transition);
-}
-.insertBtn:hover { background: var(--navy); color: #fff; border-color: var(--navy); }
-
 .mdTextarea { min-height: 320px; font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 13px; line-height: 1.6; resize: vertical; }
 
-.cheatSheet { margin-top: 10px; border: 1px solid var(--border-light); border-radius: 2px; background: var(--cream); }
-.cheatSheet summary {
-  cursor: pointer; padding: 8px 12px; font-family: var(--font-ui); font-size: 11px; font-weight: 700;
-  letter-spacing: .04em; color: var(--navy); text-transform: uppercase; list-style: none;
-}
-.cheatSheet summary::-webkit-details-marker { display: none; }
-.cheatSheetGrid { padding: 4px 12px 12px; display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-family: 'SFMono-Regular', Consolas, Menlo, monospace; font-size: 11.5px; }
-.cheatSheetGrid code { background: var(--warm-white); border: 1px solid var(--border-light); padding: 1px 6px; border-radius: 2px; color: var(--forest); white-space: nowrap; }
-.cheatSheetGrid span { font-family: var(--font-ui); color: var(--text-meta); align-self: center; }
-
-/* Inline mini-forms for Insert Gallery Link / Insert Video */
-.inlinePrompt { border: 1px solid var(--border-mid); border-radius: 2px; background: var(--cream); padding: 12px; margin-bottom: 8px; }
-.inlinePrompt .field { margin-bottom: 10px; }
-.inlinePromptActions { display: flex; gap: 8px; justify-content: flex-end; }
 
 .previewPane { background: var(--newsprint); padding: 30px 40px 60px; overflow-y: auto; max-height: calc(100vh - 240px); }
 .previewPaneLabel {

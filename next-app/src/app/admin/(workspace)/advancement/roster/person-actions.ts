@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireRole } from '@/lib/require-role';
 import { createAdminClient } from '@/lib/supabase/server';
+import { EDITABLE_PERSON_FIELDS, type FieldValue } from '@/lib/change-requests';
 
 /**
  * Person-level edits behind the Roster's Leaders and Adults tabs.
@@ -39,6 +40,118 @@ export type GrantableRole =
   | 'chartered_org_rep'
   | 'merit_badge_counselor'
   | 'external_contact';
+
+/**
+ * Create an adult from the Roster — the counterpart to createScout, and the
+ * answer to "a committee member joined; where do I put them?"
+ *
+ * Until now an adult could only ENTER the system sideways: through the roster
+ * import, or as a parent added on the fly during an event signup. There was no
+ * front door, so a merit badge counselor with no scout in the troop could not
+ * be added at all.
+ *
+ * A person with no role lands on the Adults tab; granting a role at creation
+ * puts them on Leaders. Both are projections of `person_roles`, so neither is
+ * set directly — the same rule the rest of this file follows.
+ *
+ * Email is the de-duplication key, as it is everywhere else in the people
+ * spine. A collision REPORTS rather than linking silently: this is a leader
+ * deliberately creating a record, and "that email already belongs to Dana
+ * Ruiz" is the answer they need — unlike add_parent_to_household, where a
+ * family typing a known email means "this is that person".
+ */
+export async function createPerson(formData: FormData): Promise<Result & { personId?: number }> {
+  await requireRole(['leader']);
+
+  const firstName = String(formData.get('first_name') ?? '').trim();
+  const lastName = String(formData.get('last_name') ?? '').trim();
+  if (!firstName || !lastName) {
+    return { ok: false, error: 'First name and last name are required.' };
+  }
+
+  const email = String(formData.get('primary_email') ?? '').trim().toLowerCase() || null;
+  const phone = String(formData.get('primary_phone') ?? '').trim() || null;
+  const roleRaw = String(formData.get('role') ?? '').trim();
+  const householdRaw = String(formData.get('household_id') ?? '').trim();
+
+  const VALID_ROLES = new Set<string>([
+    'adult_leader',
+    'committee_member',
+    'chartered_org_rep',
+    'merit_badge_counselor',
+    'external_contact'
+  ]);
+  if (roleRaw && !VALID_ROLES.has(roleRaw)) {
+    return { ok: false, error: `Invalid role: ${roleRaw}` };
+  }
+
+  const supabase = createAdminClient();
+
+  if (email) {
+    const { data: clash } = await supabase
+      .from('people')
+      .select('id, display_name')
+      .is('merged_into_person_id', null)
+      .ilike('primary_email', email)
+      .maybeSingle();
+    if (clash) {
+      const found = clash as { id: number; display_name: string };
+      return {
+        ok: false,
+        error: `${found.display_name} already uses ${email}. Open their record instead of creating a second one.`
+      };
+    }
+  }
+
+  const { data: created, error } = await supabase
+    .from('people')
+    .insert({
+      first_name: firstName,
+      last_name: lastName,
+      display_name: `${firstName} ${lastName}`,
+      primary_email: email,
+      primary_phone: phone,
+      address_line1: String(formData.get('address_line1') ?? '').trim() || null,
+      address_line2: String(formData.get('address_line2') ?? '').trim() || null,
+      city: String(formData.get('city') ?? '').trim() || null,
+      state: String(formData.get('state') ?? '').trim() || null,
+      zip: String(formData.get('zip') ?? '').trim() || null,
+      active: true
+    })
+    .select('id')
+    .single();
+  if (error || !created) {
+    return { ok: false, error: error?.message ?? 'Could not create the person.' };
+  }
+  const personId = (created as { id: number }).id;
+
+  // Role and household are best-effort follow-ups: the person now exists and
+  // is findable, so a failure here names itself rather than discarding the
+  // record and making the leader retype everything.
+  if (roleRaw) {
+    const { error: roleErr } = await supabase
+      .from('person_roles')
+      .insert({ person_id: personId, role: roleRaw, start_date: new Date().toISOString().slice(0, 10) });
+    if (roleErr) {
+      revalidatePath('/admin/advancement/roster');
+      return { ok: false, error: `Created, but the role did not stick: ${roleErr.message}`, personId };
+    }
+  }
+
+  if (householdRaw) {
+    const { error: hhErr } = await supabase
+      .from('household_members')
+      .insert({ household_id: Number(householdRaw), person_id: personId });
+    if (hhErr) {
+      revalidatePath('/admin/advancement/roster');
+      return { ok: false, error: `Created, but the household did not stick: ${hhErr.message}`, personId };
+    }
+  }
+
+  revalidatePath('/admin/advancement/roster');
+  revalidatePath('/admin/advancement/lookups');
+  return { ok: true, personId };
+}
 
 export async function addRole(personId: number, role: GrantableRole): Promise<Result> {
   await requireRole(['leader']);
@@ -223,13 +336,17 @@ export interface PersonDetail {
     isGuardian: boolean;
     otherName: string;
   }[];
+  /** The person's current editable demographics, for the Pending Update diff —
+   *  a family can now propose changes to an adult's record from /profile, and
+   *  this editor has no demographics form of its own to read them off. */
+  fields: Record<string, FieldValue>;
 }
 
 export async function getPersonDetail(personId: number): Promise<PersonDetail> {
   await requireRole(['leader']);
   const supabase = createAdminClient();
 
-  const [{ data: person }, { data: member }, { data: roles }, { data: rels }] = await Promise.all([
+  const [{ data: person }, { data: member }, { data: roles }, { data: rels }, { data: fieldRow }] = await Promise.all([
     supabase.from('person_directory').select('active, person_inactive_reason, tab').eq('person_id', personId).maybeSingle(),
     supabase.from('household_members').select('household_id').eq('person_id', personId).maybeSingle(),
     supabase
@@ -244,7 +361,12 @@ export async function getPersonDetail(personId: number): Promise<PersonDetail> {
           'person:people!relationships_person_id_fkey(display_name),' +
           'related:people!relationships_related_person_id_fkey(display_name)'
       )
-      .or(`person_id.eq.${personId},related_person_id.eq.${personId}`)
+      .or(`person_id.eq.${personId},related_person_id.eq.${personId}`),
+    supabase
+      .from('people')
+      .select(EDITABLE_PERSON_FIELDS.join(', '))
+      .eq('id', personId)
+      .maybeSingle()
   ]);
 
   type RawRel = {
@@ -272,7 +394,8 @@ export async function getPersonDetail(personId: number): Promise<PersonDetail> {
         isGuardian: r.is_guardian,
         otherName: (outgoing ? r.related?.display_name : r.person?.display_name) ?? 'someone'
       };
-    })
+    }),
+    fields: (fieldRow ?? {}) as unknown as Record<string, FieldValue>
   };
 }
 

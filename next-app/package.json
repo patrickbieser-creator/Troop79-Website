@@ -22,7 +22,8 @@
     "supabase:reset": "supabase db reset",
     "import-roster-csv": "tsx --env-file=.env.local scripts/import-roster-csv.ts",
     "test": "vitest run",
-    "import-sparkler": "tsx --env-file=.env.local scripts/import-sparkler.ts"
+    "import-sparkler": "tsx --env-file=.env.local scripts/import-sparkler.ts",
+    "send-test-email": "tsx --env-file=.env.local scripts/send-test-email.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",

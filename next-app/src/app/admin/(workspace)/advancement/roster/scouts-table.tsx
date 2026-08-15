@@ -20,6 +20,7 @@ import styles from './roster.module.css';
  */
 
 type ColKey =
+  | 'id'
   | 'name'
   | 'age'
   | 'birthday'
@@ -49,6 +50,8 @@ type SortableScout = ScoutRow & { _today: string; _rankLabel: Record<string, str
 /** Module scope on purpose — see the note on useSortable. */
 function scoutValue(s: SortableScout, key: ColKey): unknown {
   switch (key) {
+    case 'id':
+      return s.id;
     case 'name':
       return s.display_name;
     case 'age':
@@ -189,6 +192,7 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId
       <table className={styles.table}>
         <thead>
           <tr>
+            {head('ID', 'id')}
             {head('Scout', 'name')}
             {head('Age', 'age')}
             {head('Birthday', 'birthday')}
@@ -206,7 +210,7 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId
         <tbody>
           {sorted.length === 0 && (
             <tr>
-              <td colSpan={12} className={styles.muted}>
+              <td colSpan={13} className={styles.muted}>
                 {tab === 'active'
                   ? 'No active scouts.'
                   : 'No inactive scouts — nobody has been marked dropped, transferred, moved, or aged out.'}
@@ -219,6 +223,11 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId
             const dash = <span className={styles.muted}>—</span>;
             return (
               <tr key={s.id}>
+                {/* The internal scout id (A02, …). It is the key every other
+                    system here uses — the ledger, the Scoutbook export, the
+                    ?open= deep links — so it belongs where a leader can read
+                    it off, not only in a URL. */}
+                <td className={styles.scoutId}>{s.id}</td>
                 <td>
                   <button
                     type="button"

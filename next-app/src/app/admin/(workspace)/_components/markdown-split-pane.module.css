@@ -44,10 +44,33 @@
   .panes { grid-template-columns: 1fr; }
 }
 
+/* The source column. Only carries the divider when it is actually one half of
+   a split — standalone consumers (the article editor's page shell) drop it. */
+.sourceCol {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.panes > .sourceCol { border-right: 1px solid var(--admin-gray-200, #ddd); }
+@media (max-width: 900px) {
+  .panes > .sourceCol { border-right: none; }
+}
+
+/* Standalone (the article editor's page shell): the caller's own field wrapper
+   supplies the surrounding padding, so the toolbar adds none of its own. Inside
+   a split pane there is no such wrapper, so the pane insets it. */
+.toolbar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.panes .toolbar,
+.panesSingle .toolbar { padding: 8px 10px 0; margin-bottom: 0; }
+
 .source {
   width: 100%;
   border: none;
-  border-right: 1px solid var(--admin-gray-200, #ddd);
   padding: 12px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 13px;
@@ -55,10 +78,9 @@
   resize: vertical;
   background: transparent;
   color: inherit;
+  flex: 1;
 }
 .source:focus { outline: 2px solid var(--forest, #2d6a4f); outline-offset: -2px; }
-
-.panesSingle .source { border-right: none; }
 
 .preview {
   padding: 12px 14px;
@@ -67,9 +89,64 @@
   overflow-y: auto;
 }
 
+.previewTitle {
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-head, #1a1a1a);
+  margin-bottom: 14px;
+}
+
 .previewEmpty {
   font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
   font-size: 13px;
   font-style: italic;
   color: var(--admin-gray-500, #888);
+}
+
+/* Markdown cheat sheet — moved here from the article editor so every
+   markdown surface offers the same reference. */
+/* Full width when the caller owns the surrounding padding (the article
+   editor's field wrapper); inset by the pane when it doesn't. Same split as
+   .toolbar above. */
+.cheatSheet {
+  margin: 10px 0 0;
+  border: 1px solid var(--border-light, #e5e2dc);
+  border-radius: 2px;
+  background: var(--cream, #faf8f4);
+}
+.cheatSheet summary {
+  cursor: pointer;
+  padding: 8px 12px;
+  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  color: var(--navy, #1f3a5f);
+  text-transform: uppercase;
+  list-style: none;
+}
+.cheatSheet summary::-webkit-details-marker { display: none; }
+.panes .cheatSheet,
+.panesSingle .cheatSheet { margin: 10px; }
+.cheatSheetGrid {
+  padding: 4px 12px 12px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 14px;
+  font-family: 'SFMono-Regular', Consolas, Menlo, monospace;
+  font-size: 11.5px;
+}
+.cheatSheetGrid code {
+  background: var(--warm-white, #fff);
+  border: 1px solid var(--border-light, #e5e2dc);
+  padding: 1px 6px;
+  border-radius: 2px;
+  color: var(--forest, #2d6a4f);
+  white-space: nowrap;
+}
+.cheatSheetGrid span {
+  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  color: var(--text-meta, #6b6b6b);
+  align-self: center;
 }

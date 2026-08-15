@@ -5,20 +5,16 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { SessionRole } from '@/lib/leader-session';
 import type { Article, Media, Tag } from '@/lib/supabase/types';
-import { ArticleBody, type EditableBlockInfo } from '@/lib/article-body/ArticleBody';
-import {
-  buildGalleryLinkToken,
-  buildGalleryToken,
-  buildVideoToken,
-  parseGalleryToken,
-  parseGalleryLinkToken,
-  parseVideoToken
-} from '@/lib/article-body/tokens';
 import { MediaPicker } from '../../_components/media-picker';
+import { DatePickerField } from '../../../_components/date-picker-field';
+import {
+  MarkdownPreview,
+  MarkdownSource,
+  type MarkdownEditorHandle
+} from '../../../_components/markdown-split-pane';
+import { useMarkdownBlockTools } from '../../../_components/markdown-block-tools';
 import { createArticle, updateArticle, publishArticle } from '../actions';
 import styles from './article-editor.module.css';
-
-type PickerMode = 'hero' | 'image' | 'gallery' | 'gallerylink-cover' | null;
 
 interface Props {
   article: Article | null;
@@ -27,29 +23,6 @@ interface Props {
   allTags: Tag[];
   sessionRole: SessionRole;
   sessionName: string;
-}
-
-let stubMediaId = 0;
-
-/**
- * Custom blocks only ever store a raw cdn_url + alt text in the markdown
- * token, not a media id — when editing an existing block, this fakes just
- * enough of a `Media` row (only `cdn_url`/`alt_text` are ever read back off
- * it) so the picker/forms can reuse the same state shape as a fresh insert.
- */
-function stubMedia(cdnUrl: string, altText: string | null): Media {
-  stubMediaId -= 1;
-  return {
-    id: stubMediaId,
-    bunny_path: '',
-    cdn_url: cdnUrl,
-    alt_text: altText,
-    caption: null,
-    uploaded_by: '',
-    width: null,
-    height: null,
-    created_at: ''
-  };
 }
 
 export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags, sessionRole }: Props) {
@@ -68,66 +41,15 @@ export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags, ses
   // entry promoted from the Calendar editor, never an article.
   const [autoArchiveAt, setAutoArchiveAt] = useState(article?.auto_archive_at ?? '');
 
-  const [pickerMode, setPickerMode] = useState<PickerMode>(null);
-  const [galleryLinkForm, setGalleryLinkForm] = useState<{ url: string; caption: string; coverMedia: Media | null } | null>(null);
-  const [videoForm, setVideoForm] = useState<{ url: string; caption: string } | null>(null);
-  const [gallerySeed, setGallerySeed] = useState<Media[] | null>(null);
-  // Set only when a form/picker was opened by clicking "Edit" on an existing
-  // block — Insert/onInsert then splices the rebuilt token back into this
-  // exact source range instead of inserting a new one at the cursor.
-  const [editingRange, setEditingRange] = useState<{ start: number; end: number } | null>(null);
-
-  function replaceOrInsert(token: string) {
-    if (editingRange) {
-      setBody((b) => b.slice(0, editingRange.start) + token + b.slice(editingRange.end));
-      setEditingRange(null);
-    } else {
-      insertAtCursor(token);
-    }
-  }
-
-  function handleEditBlock(info: EditableBlockInfo) {
-    setEditingRange({ start: info.start, end: info.end });
-    if (info.type === 'gallerylink') {
-      const parsed = parseGalleryLinkToken(info.raw);
-      setVideoForm(null);
-      setGalleryLinkForm({
-        url: parsed.url,
-        caption: parsed.caption ?? '',
-        coverMedia: parsed.coverUrl ? stubMedia(parsed.coverUrl, null) : null
-      });
-    } else if (info.type === 'video') {
-      const parsed = parseVideoToken(info.raw);
-      setGalleryLinkForm(null);
-      setVideoForm({ url: parsed.url, caption: parsed.caption ?? '' });
-    } else if (info.type === 'gallery') {
-      setGalleryLinkForm(null);
-      setVideoForm(null);
-      setGallerySeed(parseGalleryToken(info.raw).map((img) => stubMedia(img.url, img.alt || null)));
-      setPickerMode('gallery');
-    }
-  }
+  // The hero picker is article-only — every other insert (image, gallery,
+  // gallery link, video, table) plus edit-in-place moved to the shared block
+  // tools (D-088), which the library form and the event story panel share.
+  const [heroPicking, setHeroPicking] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
   const [isSaving, startTransition] = useTransition();
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
-
-  function insertAtCursor(token: string) {
-    const el = bodyRef.current;
-    const start = el?.selectionStart ?? body.length;
-    const end = el?.selectionEnd ?? body.length;
-    const before = body.slice(0, start).replace(/\n*$/, '');
-    const after = body.slice(end).replace(/^\n*/, '');
-    const beforePart = before ? before + '\n\n' : '';
-    const afterPart = after ? '\n\n' + after : '';
-    const next = beforePart + token + afterPart;
-    setBody(next);
-    const cursorPos = beforePart.length + token.length;
-    requestAnimationFrame(() => {
-      el?.focus();
-      el?.setSelectionRange(cursorPos, cursorPos);
-    });
-  }
+  const bodyRef = useRef<MarkdownEditorHandle>(null);
+  const blockTools = useMarkdownBlockTools(bodyRef);
 
   function toggleTag(id: number) {
     setTagIds((prev) => {
@@ -205,12 +127,7 @@ export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags, ses
           <div className={styles.fieldRow}>
             <div className={styles.field}>
               <label htmlFor="autoArchiveAt">Auto-archive on (optional)</label>
-              <input
-                id="autoArchiveAt"
-                type="date"
-                value={autoArchiveAt}
-                onChange={(e) => setAutoArchiveAt(e.target.value)}
-              />
+              <DatePickerField id="autoArchiveAt" value={autoArchiveAt} onChange={setAutoArchiveAt} />
             </div>
             {isLeader && (
               <div className={styles.field}>
@@ -235,7 +152,7 @@ export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags, ses
                 <img src={hero.cdn_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               )}
             </div>
-            <button type="button" className={styles.chooseBtn} onClick={() => setPickerMode('hero')}>
+            <button type="button" className={styles.chooseBtn} onClick={() => setHeroPicking(true)}>
               {hero ? 'Change Hero Image' : 'Choose Hero Image'}
             </button>
           </div>
@@ -270,179 +187,19 @@ export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags, ses
 
           <div className={styles.field}>
             <label htmlFor="body">Body</label>
-            <div className={styles.insertToolbar}>
-              <button type="button" className={styles.insertBtn} onClick={() => setPickerMode('image')}>
-                Insert Image
-              </button>
-              <button
-                type="button"
-                className={styles.insertBtn}
-                onClick={() => {
-                  setEditingRange(null);
-                  setGallerySeed(null);
-                  setPickerMode('gallery');
-                }}
-              >
-                Insert Gallery
-              </button>
-              <button
-                type="button"
-                className={styles.insertBtn}
-                onClick={() => {
-                  setEditingRange(null);
-                  setGalleryLinkForm({ url: '', caption: '', coverMedia: null });
-                }}
-              >
-                Insert Gallery Link
-              </button>
-              <button
-                type="button"
-                className={styles.insertBtn}
-                onClick={() => {
-                  setEditingRange(null);
-                  setVideoForm({ url: '', caption: '' });
-                }}
-              >
-                Insert Video
-              </button>
-              <button
-                type="button"
-                className={styles.insertBtn}
-                onClick={() =>
-                  insertAtCursor('| Column 1 | Column 2 |\n| --- | --- |\n| Row 1 | Row 1 |\n| Row 2 | Row 2 |')
-                }
-              >
-                Insert Table
-              </button>
-            </div>
-
-            {galleryLinkForm && (
-              <div className={styles.inlinePrompt}>
-                {editingRange && <div className={styles.hint}>Editing existing gallery link</div>}
-                <div className={styles.field}>
-                  <label>Album URL</label>
-                  <input
-                    type="url"
-                    value={galleryLinkForm.url}
-                    onChange={(e) => setGalleryLinkForm({ ...galleryLinkForm, url: e.target.value })}
-                    placeholder="https://photos.app.goo.gl/..."
-                  />
-                </div>
-                <div className={styles.field}>
-                  <label>Caption (optional)</label>
-                  <input
-                    type="text"
-                    value={galleryLinkForm.caption}
-                    onChange={(e) => setGalleryLinkForm({ ...galleryLinkForm, caption: e.target.value })}
-                  />
-                </div>
-                <button type="button" className={styles.chooseBtn} onClick={() => setPickerMode('gallerylink-cover')}>
-                  {galleryLinkForm.coverMedia ? 'Change cover photo' : 'Choose cover photo (optional)'}
-                </button>
-                <div className={styles.inlinePromptActions}>
-                  <button
-                    type="button"
-                    className={styles.btnSecondary}
-                    onClick={() => {
-                      setGalleryLinkForm(null);
-                      setEditingRange(null);
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.btnPrimary}
-                    disabled={!galleryLinkForm.url.trim()}
-                    onClick={() => {
-                      replaceOrInsert(
-                        buildGalleryLinkToken(
-                          galleryLinkForm.url.trim(),
-                          galleryLinkForm.caption.trim() || undefined,
-                          galleryLinkForm.coverMedia?.cdn_url
-                        )
-                      );
-                      setGalleryLinkForm(null);
-                    }}
-                  >
-                    {editingRange ? 'Save changes' : 'Insert'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {videoForm && (
-              <div className={styles.inlinePrompt}>
-                {editingRange && <div className={styles.hint}>Editing existing video</div>}
-                <div className={styles.field}>
-                  <label>Video URL (YouTube or Vimeo)</label>
-                  <input
-                    type="url"
-                    value={videoForm.url}
-                    onChange={(e) => setVideoForm({ ...videoForm, url: e.target.value })}
-                    placeholder="https://www.youtube.com/watch?v=..."
-                  />
-                </div>
-                <div className={styles.field}>
-                  <label>Caption (optional)</label>
-                  <input
-                    type="text"
-                    value={videoForm.caption}
-                    onChange={(e) => setVideoForm({ ...videoForm, caption: e.target.value })}
-                  />
-                </div>
-                <div className={styles.inlinePromptActions}>
-                  <button
-                    type="button"
-                    className={styles.btnSecondary}
-                    onClick={() => {
-                      setVideoForm(null);
-                      setEditingRange(null);
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.btnPrimary}
-                    disabled={!videoForm.url.trim()}
-                    onClick={() => {
-                      replaceOrInsert(buildVideoToken(videoForm.url.trim(), videoForm.caption.trim() || undefined));
-                      setVideoForm(null);
-                    }}
-                  >
-                    {editingRange ? 'Save changes' : 'Insert'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <textarea
+            <MarkdownSource
               id="body"
               ref={bodyRef}
-              className={styles.mdTextarea}
               value={body}
-              onChange={(e) => setBody(e.target.value)}
+              onChange={setBody}
+              textareaClassName={styles.mdTextarea}
               placeholder="Write your article in markdown…"
-            />
-
-            <details className={styles.cheatSheet}>
-              <summary>Markdown cheat sheet</summary>
-              <div className={styles.cheatSheetGrid}>
-                <code>## Heading</code>
-                <span>Section heading</span>
-                <code>**bold**</code>
-                <span>Bold text</span>
-                <code>*italic*</code>
-                <span>Italic text</span>
-                <code>[text](url)</code>
-                <span>Link</span>
-                <code>- item</code>
-                <span>Bulleted list</span>
-                <code>{'| a | b |\\n| --- | --- |'}</code>
-                <span>Table (use the Insert Table button)</span>
-              </div>
-            </details>
+              ariaLabel="Article body markdown source"
+              cheatSheet
+              toolbar={blockTools.toolbar}
+            >
+              {blockTools.prompts}
+            </MarkdownSource>
           </div>
 
           <div className={styles.formActions}>
@@ -465,68 +222,27 @@ export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags, ses
             <span className={styles.liveDot} aria-hidden="true" />
             Live Preview
           </div>
-          <div className={styles.previewSurface}>
-            <div className={styles.previewTitle}>{title || 'Untitled article'}</div>
-            <ArticleBody body={body} onEditBlock={handleEditBlock} />
-          </div>
+          <MarkdownPreview
+            className={styles.previewSurface}
+            value={body}
+            title={title || 'Untitled article'}
+            onEditBlock={blockTools.onEditBlock}
+            emptyNote="Nothing written yet — the preview fills in as you type."
+          />
         </div>
       </div>
 
-      {pickerMode === 'hero' && (
+      {heroPicking && (
         <MediaPicker
           mode="single"
-          onClose={() => setPickerMode(null)}
+          onClose={() => setHeroPicking(false)}
           onInsert={(media) => {
             setHero(media[0] ?? null);
-            setPickerMode(null);
+            setHeroPicking(false);
           }}
         />
       )}
-      {pickerMode === 'image' && (
-        <MediaPicker
-          mode="single"
-          onClose={() => setPickerMode(null)}
-          onInsert={(media) => {
-            const m = media[0];
-            if (m) {
-              const caption = window.prompt('Optional caption for this image:') ?? '';
-              const md = caption.trim()
-                ? `![${m.alt_text ?? ''}](${m.cdn_url} "${caption.trim()}")`
-                : `![${m.alt_text ?? ''}](${m.cdn_url})`;
-              insertAtCursor(md);
-            }
-            setPickerMode(null);
-          }}
-        />
-      )}
-      {pickerMode === 'gallery' && (
-        <MediaPicker
-          mode="multi"
-          initialSelected={gallerySeed ?? undefined}
-          onClose={() => {
-            setPickerMode(null);
-            setGallerySeed(null);
-            setEditingRange(null);
-          }}
-          onInsert={(media) => {
-            if (media.length > 0) {
-              replaceOrInsert(buildGalleryToken(media.map((m) => ({ url: m.cdn_url, alt: m.alt_text ?? '' }))));
-            }
-            setPickerMode(null);
-            setGallerySeed(null);
-          }}
-        />
-      )}
-      {pickerMode === 'gallerylink-cover' && (
-        <MediaPicker
-          mode="single"
-          onClose={() => setPickerMode(null)}
-          onInsert={(media) => {
-            setGalleryLinkForm((f) => (f ? { ...f, coverMedia: media[0] ?? null } : f));
-            setPickerMode(null);
-          }}
-        />
-      )}
+      {blockTools.pickers}
     </>
   );
 }

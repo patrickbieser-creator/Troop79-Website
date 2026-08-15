@@ -16,10 +16,9 @@ import { FAMILY_COOKIE, signFamilySession } from '@/lib/family-session';
 import { gateAudience } from '@/lib/family-access';
 import { secretMatches } from '@/lib/signed-cookie';
 import { detectHost, inferKind, type LibraryTargetKind } from '@/lib/library';
-import { sendEmail, renderEmail } from '@/lib/email';
+import { sendEmail, renderEmail, troopEmail } from '@/lib/email';
 
 const SUBMIT_PATH = '/library/submit';
-const TROOP_EMAIL = 'bsatroop79bg@gmail.com';
 
 const TARGET_KINDS: ReadonlySet<string> = new Set(['rank_req', 'mb', 'mb_req', 'topic']);
 
@@ -124,7 +123,7 @@ export async function submitLibraryResourceAction(formData: FormData): Promise<v
     outro: 'Review it from the Leader Workspace → Resource Library.'
   });
   await sendEmail({
-    to: [TROOP_EMAIL],
+    to: [troopEmail()],
     subject: `Library submission pending review — ${name}`,
     html,
     text,

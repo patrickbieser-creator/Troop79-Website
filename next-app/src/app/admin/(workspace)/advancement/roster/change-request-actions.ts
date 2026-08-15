@@ -3,13 +3,27 @@
 import { revalidatePath } from 'next/cache';
 import { requireRole } from '@/lib/require-role';
 import { createAdminClient } from '@/lib/supabase/server';
-import { EDITABLE_SCOUT_FIELDS, type ChangeRequestRow, type EditableScoutField } from '@/lib/change-requests';
+import {
+  editableFieldsFor,
+  type ChangeEntityType,
+  type ChangeRequestRow
+} from '@/lib/change-requests';
 
 /**
  * Leader-side review for family-submitted change requests
  * (Plans/Scout-Self-Service-Demographics.md). Nothing a family submits from
- * /profile touches the live `scouts` row until approveChangeRequest runs it.
+ * /profile touches the live record until approveChangeRequest runs it.
+ *
+ * Two entity types now: 'scout' applies to `scouts`, 'adult' applies to the
+ * `people` spine. The apply step is one code path parameterised by the type's
+ * table and field allowlist, so a new type can't quietly skip the allowlist.
  */
+
+/** Where an approved request writes, per entity type. */
+const APPLY_TARGET: Record<ChangeEntityType, { table: 'scouts' | 'people'; numericId: boolean }> = {
+  scout: { table: 'scouts', numericId: false },
+  adult: { table: 'people', numericId: true }
+};
 
 interface Result {
   ok: boolean;
@@ -18,14 +32,17 @@ interface Result {
 
 export type ChangeRequestWithSubmitter = ChangeRequestRow & { submittedByName: string | null };
 
-export async function getPendingChangeRequest(scoutId: string): Promise<ChangeRequestWithSubmitter | null> {
+export async function getPendingChangeRequest(
+  entityId: string,
+  entityType: ChangeEntityType = 'scout'
+): Promise<ChangeRequestWithSubmitter | null> {
   await requireRole(['leader']);
   const supabase = createAdminClient();
   const { data } = await supabase
     .from('change_requests')
     .select('*')
-    .eq('entity_type', 'scout')
-    .eq('entity_id', scoutId)
+    .eq('entity_type', entityType)
+    .eq('entity_id', entityId)
     .eq('status', 'pending')
     .maybeSingle();
   const row = (data as ChangeRequestRow | null) ?? null;
@@ -62,19 +79,28 @@ export async function approveChangeRequest(id: number): Promise<Result> {
   }
   const row = request as ChangeRequestRow;
 
-  if (row.entity_type === 'scout') {
+  const target = APPLY_TARGET[row.entity_type as ChangeEntityType];
+  if (target) {
     // Re-filter through the allowlist here, at the privileged apply step —
-    // not just trusting that the write side (submitChangeRequestAction)
-    // already allowlisted it. proposed_changes is jsonb read back from the
-    // DB; this is the code that actually mutates scouts with service-role
-    // privileges, so it shouldn't blindly trust a key set it didn't produce
-    // (qa-lead review, 2026-07-21).
-    const allowed: Partial<Record<EditableScoutField, unknown>> = {};
-    for (const field of EDITABLE_SCOUT_FIELDS) {
+    // not just trusting that the write side already allowlisted it.
+    // proposed_changes is jsonb read back from the DB; this is the code that
+    // actually mutates the record with service-role privileges, so it
+    // shouldn't blindly trust a key set it didn't produce (qa-lead review,
+    // 2026-07-21).
+    const allowed: Record<string, unknown> = {};
+    for (const field of editableFieldsFor(row.entity_type as ChangeEntityType)) {
       if (field in row.proposed_changes) allowed[field] = row.proposed_changes[field];
     }
-    const { error: updErr } = await supabase.from('scouts').update(allowed).eq('id', row.entity_id);
-    if (updErr) return { ok: false, error: updErr.message };
+    if (Object.keys(allowed).length > 0) {
+      // `scouts.id` is text, `people.id` an int — cast so PostgREST filters on
+      // the column's real type rather than a stringified id.
+      const idValue = target.numericId ? Number(row.entity_id) : row.entity_id;
+      const { error: updErr } = await supabase
+        .from(target.table)
+        .update(allowed)
+        .eq('id', idValue);
+      if (updErr) return { ok: false, error: updErr.message };
+    }
   }
 
   const { error } = await supabase

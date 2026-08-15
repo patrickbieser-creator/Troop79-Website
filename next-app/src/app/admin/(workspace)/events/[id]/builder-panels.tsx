@@ -9,6 +9,7 @@ import {
 } from '../actions';
 import type { SlotClaimant, QuestionAnswerRow } from '@/lib/event-signup-admin';
 import { DatePickerField } from '../../_components/date-picker-field';
+import { DateTimeField } from '../../_components/date-time-field';
 import styles from '../events-admin.module.css';
 
 /*
@@ -262,12 +263,10 @@ export function BuilderPanels({
         <div className={styles.fieldGrid}>
           <label>
             <span className={styles.fieldLabel}>Signup deadline</span>
-            <input
-              type="datetime-local"
-              defaultValue={s(signup.deadline).slice(0, 16)}
-              onBlur={(e) =>
-                e.target.value && save({ deadline: new Date(e.target.value).toISOString() })
-              }
+            <DateTimeField
+              value={s(signup.deadline)}
+              disabled={pending}
+              onChange={(iso) => save({ deadline: iso || null })}
             />
           </label>
           <label>

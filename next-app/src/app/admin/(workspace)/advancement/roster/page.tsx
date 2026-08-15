@@ -212,6 +212,7 @@ export default async function RosterPage({
           householdByPerson={householdByPerson}
           householdMembers={householdMembers}
           nameById={nameById}
+          openPersonId={openScoutId}
         />
       )}
     </>

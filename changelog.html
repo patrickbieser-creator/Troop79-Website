@@ -497,6 +497,96 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.39.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.39.0</span>
+        <span class="release-date">August 14, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Your Profile page now covers the whole family</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Grown-ups can be edited too, not just scouts.</strong> Signing in at
+              Profile now lists everyone in your household &mdash; scouts and parents alike
+              &mdash; and you pick one person at a time to update. Previously a parent could
+              correct their child&rsquo;s address but had no way to fix their own phone number.
+              Adult details cover name, birthday, email, phone and address; as with scouts, a
+              leader reviews every change before it takes effect.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>You can add a member to your household.</strong> For a second parent, a
+              guardian, or an adult who helps with pickup. They go on the troop roster right
+              away so they can be signed up for events. If the email address already belongs to
+              someone on record, they are linked to your household rather than a second copy
+              being created. Scouts are still added by a leader &mdash; ask if one is missing.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Behind the scenes, for leaders</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Adults and leaders can be added from the Roster.</strong> There was no
+              front door for this before &mdash; a committee member or merit badge counselor
+              with no scout in the troop could only arrive through a spreadsheet import or by
+              being attached to an event signup. The new form matches the one for adding a
+              scout, and warns you if the email address already belongs to someone.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Each scout&rsquo;s internal ID is shown on the roster.</strong> The short
+              code (A02, D07) that the ledger, the Scoutbook export and page links all use is
+              now a column you can read and sort, instead of something you had to dig a URL for.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Event stories get the full writing tools.</strong> The story panel on a
+              calendar entry now has the same toolbar the News editor has &mdash; insert an
+              image, a photo gallery, a gallery link, a video or a table, with a live preview
+              beside it and click-to-edit on any block you have already placed.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Fixes and polish</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Every date field now uses the same calendar picker.</strong> Six places
+              were still using the browser&rsquo;s built-in date box, which looks and behaves
+              differently on every device. Scoutbook Export, the meeting attendance report, the
+              article and calendar auto-archive dates, the signup deadline and your scout&rsquo;s
+              birthday on Profile all now match the rest of the site.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Signup deadlines were showing the wrong time.</strong> A deadline saved as
+              6:00 PM was displayed as 11:00 PM, and shifted a further six hours every time the
+              field was touched. Deadlines now show and save the time you actually meant.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Three form fields that had no styling.</strong> The Name, Phone and Email
+              boxes for adding a parent or guardian to a scout rendered as bare, unstyled inputs,
+              and the roster&rsquo;s tab strip had lost its layout.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.38.0 -->
     <div class="release">
       <div class="release-header">

@@ -12,7 +12,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/server';
-import { FIELD_LABEL, type ChangeRequestRow, type EditableScoutField } from '@/lib/change-requests';
+import { fieldLabel, type ChangeEntityType, type ChangeRequestRow } from '@/lib/change-requests';
 
 export interface AttentionItem {
   label: string;
@@ -30,39 +30,76 @@ function shortDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-/** Family-submitted profile updates awaiting review (Plans/Scout-Self-Service-Demographics.md). */
+/**
+ * Family-submitted profile updates awaiting review
+ * (Plans/Scout-Self-Service-Demographics.md).
+ *
+ * Covers ADULT requests as well as scout ones — /profile edits the whole
+ * household now, and an adult update that only ever produced an email would
+ * have sat unreviewed forever. Each deep-links into the Roster tab that
+ * actually holds the record.
+ */
 async function loadPendingProfileUpdates(): Promise<AttentionCategory> {
   const supabase = createAdminClient();
   const { data: requests } = await supabase
     .from('change_requests')
-    .select('id, entity_id, submitted_at, proposed_changes')
-    .eq('entity_type', 'scout')
+    .select('id, entity_type, entity_id, submitted_at, proposed_changes')
+    .in('entity_type', ['scout', 'adult'])
     .eq('status', 'pending')
     .order('submitted_at', { ascending: true });
 
   const rows = (requests ?? []) as Pick<
     ChangeRequestRow,
-    'id' | 'entity_id' | 'submitted_at' | 'proposed_changes'
+    'id' | 'entity_type' | 'entity_id' | 'submitted_at' | 'proposed_changes'
   >[];
 
-  const scoutIds = [...new Set(rows.map((r) => r.entity_id))];
-  const { data: scouts } =
+  const scoutIds = [...new Set(rows.filter((r) => r.entity_type === 'scout').map((r) => r.entity_id))];
+  const personIds = [
+    ...new Set(rows.filter((r) => r.entity_type === 'adult').map((r) => Number(r.entity_id)))
+  ];
+
+  const [{ data: scouts }, { data: people }] = await Promise.all([
     scoutIds.length > 0
-      ? await supabase.from('scouts').select('id, display_name, active').in('id', scoutIds)
-      : { data: [] as { id: string; display_name: string; active: boolean }[] };
+      ? supabase.from('scouts').select('id, display_name, active').in('id', scoutIds)
+      : Promise.resolve({ data: [] }),
+    personIds.length > 0
+      ? supabase.from('person_directory').select('person_id, display_name, tab').in('person_id', personIds)
+      : Promise.resolve({ data: [] })
+  ]);
+
   const scoutById = new Map(
     ((scouts ?? []) as { id: string; display_name: string; active: boolean }[]).map((s) => [s.id, s])
   );
+  const personById = new Map(
+    ((people ?? []) as { person_id: number; display_name: string; tab: string }[]).map((p) => [
+      String(p.person_id),
+      p
+    ])
+  );
 
   const items: AttentionItem[] = rows.map((r) => {
+    const type = r.entity_type as ChangeEntityType;
+    const fieldLabels = Object.keys(r.proposed_changes)
+      .map((f) => fieldLabel(type, f))
+      .join(', ');
+
+    if (type === 'adult') {
+      const person = personById.get(r.entity_id);
+      // Leaders and Adults are separate roster tabs; open the one the person
+      // is actually on, same idea as the scout branch below.
+      const tab = person?.tab === 'leader' ? 'leader' : 'adult';
+      return {
+        label: person?.display_name ?? `Person ${r.entity_id}`,
+        meta: `${fieldLabels} · submitted ${shortDate(r.submitted_at)}`,
+        href: `/admin/advancement/roster?tab=${tab}&open=${encodeURIComponent(r.entity_id)}`
+      };
+    }
+
     const scout = scoutById.get(r.entity_id);
     // Deep-links into the Roster's scout editor (Active or Inactive tab,
     // whichever the scout is actually on) — see scouts-table.tsx's
     // openScoutId prop.
     const tab = scout?.active === false ? 'inactive_scout' : 'active_scout';
-    const fieldLabels = Object.keys(r.proposed_changes)
-      .map((f) => FIELD_LABEL[f as EditableScoutField] ?? f)
-      .join(', ');
     return {
       label: scout?.display_name ?? r.entity_id,
       meta: `${fieldLabels} · submitted ${shortDate(r.submitted_at)}`,

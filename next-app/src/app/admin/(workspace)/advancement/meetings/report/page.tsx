@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import { requireRole } from '@/lib/require-role';
+import { DateParamField } from '../../../_components/date-param-field';
 import styles from '../meetings.module.css';
 
 export const metadata = {
@@ -114,11 +115,11 @@ export default async function AttendanceReportPage({
         <label className={styles.muted} style={{ fontStyle: 'normal', fontSize: 11.5 }} htmlFor="from">
           From
         </label>
-        <input type="date" id="from" name="from" defaultValue={from} className={styles.dateInput} />
+        <DateParamField id="from" name="from" defaultValue={from} />
         <label className={styles.muted} style={{ fontStyle: 'normal', fontSize: 11.5 }} htmlFor="to">
           To
         </label>
-        <input type="date" id="to" name="to" defaultValue={to} className={styles.dateInput} />
+        <DateParamField id="to" name="to" defaultValue={to} />
         {sort !== 'pct' && <input type="hidden" name="sort" value={sort} />}
         <button type="submit" className={styles.addBtn}>
           Apply

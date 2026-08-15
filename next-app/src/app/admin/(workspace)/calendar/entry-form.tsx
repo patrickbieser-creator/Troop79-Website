@@ -207,12 +207,7 @@ export function CalendarEntryForm({
         </label>
         <label className={styles.editField}>
           <span className={styles.editLabel}>Auto-archive on (optional)</span>
-          <input
-            type="date"
-            className={styles.editInput}
-            value={autoArchiveAt}
-            onChange={(e) => setAutoArchiveAt(e.target.value)}
-          />
+          <DatePickerField value={autoArchiveAt} onChange={setAutoArchiveAt} />
         </label>
 
         <label className={styles.editFieldFull}>

@@ -132,6 +132,18 @@
 }
 
 .tabs { display: inline-flex; gap: 2px; }
+/* The page-level Scouts / Adults / People strip. Same chips as .tabs (its
+   children are .tab/.tabActive), but it sits under the page header rather than
+   inside a table toolbar, so it carries its own separation and rule. Was
+   referenced with no rule at all — the strip had no layout. */
+.tabBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin: 0 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--admin-gray-200);
+}
 .tab, .tabActive {
   background: none; border: 1px solid transparent; border-radius: 5px;
   padding: 5px 12px; font: inherit; font-size: 12px; font-weight: 600;
@@ -205,6 +217,25 @@
 .editField { display: block; }
 .editFieldFull { display: block; grid-column: 1 / -1; }
 .editLabel { display: block; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--admin-gray-500); margin-bottom: 4px; }
+/* The text input to go with .editField/.editLabel above. It was referenced by
+   the add-a-parent/guardian form in the Scout editor but never defined, so
+   those three fields rendered as bare browser inputs (and emitted a literal
+   "undefined" class). Matches .select below, plus full width — it always sits
+   in an .editGrid cell. */
+.editInput {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--admin-gray-300);
+  border-radius: 3px;
+  padding: 6px 9px;
+  font-family: inherit;
+  font-size: 13px;
+  background: var(--admin-white);
+  color: var(--admin-gray-900);
+}
+.editInput:focus { outline: none; border-color: var(--admin-navy); }
+.editInput:disabled { background: var(--admin-gray-100); color: var(--admin-gray-500); }
+.editInput::placeholder { color: var(--admin-gray-400); }
 .parentRow { background: var(--admin-gray-50); border: 1px solid var(--admin-gray-200); border-radius: 3px; padding: 10px 12px; margin-bottom: 8px; }
 .parentRowHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .parentRowLabel { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--admin-gray-500); }
@@ -218,6 +249,15 @@
 .smallBtn { font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: .03em; background: var(--admin-white); border: 1px solid var(--admin-gray-300); color: var(--admin-gray-700); border-radius: 3px; padding: 4px 10px; cursor: pointer; }
 .smallBtn:disabled { opacity: .5; cursor: default; }
 .muted { color: var(--admin-gray-500); }
+/* The internal scout id column — a short code (A02), read as a key rather than
+   as prose, so it gets the monospace treatment and stays narrow. */
+.scoutId {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  color: var(--admin-gray-600);
+  white-space: nowrap;
+  width: 1%;
+}
 .warnTag { margin-left: 8px; font-size: 10px; font-weight: 700; background: #fdf6e3; color: #8a6d1f; border: 1px solid #e6d5a3; border-radius: 2px; padding: 1px 6px; }
 .searchInput { border: 1px solid var(--admin-gray-300); border-radius: 3px; padding: 6px 9px; font-family: inherit; font-size: 13px; min-width: 240px; }
 .toolbarCount { font-size: 12px; color: var(--admin-gray-500); }
@@ -257,6 +297,18 @@
 .readValue a { color: var(--admin-navy); }
 .dangerSection { margin-top: 26px; padding-top: 16px; border-top: 1px solid #e5b3b3; }
 .dangerSection h3 { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #8c2f2f; margin: 0 0 6px; }
+/* Footer actions for the create-an-adult dialog — the Scout editor's pair,
+   which lives in lookups.module.css, restated here so this module is
+   self-contained rather than importing another screen's stylesheet. */
+.editActions { margin-top: 16px; display: flex; justify-content: flex-end; gap: 8px; }
+.editSaveBtn {
+  font-family: inherit; font-size: 12px; font-weight: 700; letter-spacing: .04em;
+  background: var(--admin-navy); color: var(--admin-white); border: 1px solid var(--admin-navy);
+  border-radius: 3px; padding: 7px 16px; cursor: pointer;
+}
+.editSaveBtn:hover:not(:disabled) { filter: brightness(1.12); }
+.editSaveBtn:disabled { opacity: .5; cursor: default; }
+
 .dangerBtn { font-family: inherit; font-size: 12px; font-weight: 700; letter-spacing: .04em; background: var(--admin-white); color: #8c2f2f; border: 1px solid #c98b8b; border-radius: 3px; padding: 7px 14px; cursor: pointer; }
 .dangerBtn:hover { background: #fdf2f2; }
 .dangerBtn:disabled { opacity: .5; cursor: default; }

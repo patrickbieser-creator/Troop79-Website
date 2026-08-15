@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getPendingChangeRequest, approveChangeRequest, rejectChangeRequest, type ChangeRequestWithSubmitter } from './change-request-actions';
-import { FIELD_LABEL, type EditableScoutField } from '@/lib/change-requests';
+import { fieldLabel, type ChangeEntityType, type FieldValue } from '@/lib/change-requests';
 import styles from '../lookups/lookups.module.css';
 
 /**
@@ -10,14 +10,23 @@ import styles from '../lookups/lookups.module.css';
  * — folded into the existing editor rather than a new admin screen, same
  * pattern as D-020/D-038. Fetches on mount (same pattern as scout-relations.tsx)
  * since ScoutForm has no other data-loading of its own.
+ *
+ * Also serves the Person editor now that /profile lets a family edit the
+ * ADULTS of their household, not just its scouts — same diff, same two
+ * buttons, different field labels. The Person editor has no demographics form
+ * of its own, so this panel is where an adult's proposed values are seen at
+ * all; `currentValues` comes from the person row behind it.
  */
 export function PendingUpdatePanel({
   scoutId,
+  entityType = 'scout',
   currentValues,
   onApplied
 }: {
+  /** The entity id — a scout id, or a stringified people.id for an adult. */
   scoutId: string;
-  currentValues: Partial<Record<EditableScoutField, string | number | null>>;
+  entityType?: ChangeEntityType;
+  currentValues: Record<string, FieldValue>;
   onApplied: () => void;
 }) {
   // undefined = still loading, null = nothing pending — kept distinct so the
@@ -30,11 +39,11 @@ export function PendingUpdatePanel({
 
   useEffect(() => {
     let live = true;
-    getPendingChangeRequest(scoutId)
+    getPendingChangeRequest(scoutId, entityType)
       .then((r) => { if (live) setRequest(r); })
       .catch(() => { if (live) setRequest(null); });
     return () => { live = false; };
-  }, [scoutId]);
+  }, [scoutId, entityType]);
 
   if (!request) return null;
 
@@ -63,7 +72,7 @@ export function PendingUpdatePanel({
       .finally(() => setBusy(false));
   }
 
-  const fields = Object.keys(request.proposed_changes) as EditableScoutField[];
+  const fields = Object.keys(request.proposed_changes);
 
   return (
     <div className={styles.editSection}>
@@ -97,7 +106,7 @@ export function PendingUpdatePanel({
         <tbody>
           {fields.map((field) => (
             <tr key={field}>
-              <td>{FIELD_LABEL[field]}</td>
+              <td>{fieldLabel(entityType, field)}</td>
               <td className={styles.muted}>{String(currentValues[field] ?? '—')}</td>
               <td><strong>{String(request.proposed_changes[field] ?? '—')}</strong></td>
             </tr>
