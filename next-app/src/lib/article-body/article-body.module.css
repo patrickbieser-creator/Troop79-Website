@@ -18,7 +18,21 @@
 }
 .articleBody a { color: var(--forest); border-bottom: 1px solid var(--forest); }
 .articleBody a:hover { color: var(--navy); border-color: var(--navy); }
+/* Tailwind v4's preflight resets `ol, ul, menu { list-style: none }`, so a
+   markdown list rendered here lost its bullets entirely — the padding below was
+   indenting items that had no marker to indent. Prose is exactly where the
+   default list styling is wanted, so it is restored explicitly. */
 .articleBody ul, .articleBody ol { padding-left: 22px; font-size: 17px; line-height: 1.8; }
+.articleBody ul { list-style: disc outside; }
+.articleBody ol { list-style: decimal outside; }
+.articleBody ul ul { list-style: circle outside; margin-top: 4px; }
+.articleBody ul ul ul { list-style: square outside; }
+.articleBody ol ol { list-style: lower-alpha outside; margin-top: 4px; }
+.articleBody li { margin-bottom: 6px; }
+.articleBody li::marker { color: var(--text-meta); }
+/* A list item holding a full paragraph should not inherit the block spacing
+   that separates top-level paragraphs. */
+.articleBody li > p { margin-bottom: 6px !important; }
 .articleBody blockquote {
   border-left: 3px solid var(--forest); padding-left: 18px; font-style: italic; color: var(--text-meta); font-size: 18px;
 }

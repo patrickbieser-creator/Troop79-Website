@@ -18,8 +18,15 @@
 .articleByline strong { color: var(--text-body); font-weight: 600; }
 .articleByline .dot { opacity: .5; }
 
-.articleHero { max-width: 980px; margin: 0 auto 32px; width: 100%; aspect-ratio: 16/7.2; border-radius: 2px; overflow: hidden; position: relative; background: var(--border-light); }
-.articleHero img { width: 100%; height: 100%; object-fit: cover; }
+/* Width fixed, HEIGHT FREE (Patrick, 2026-08-14).
+   This used to force `aspect-ratio: 16/7.2` with `object-fit: cover`, which
+   CROPPED a tall image to a letterbox — the rummage-sale poster lost most of
+   itself. On a single landing page there is nothing below to protect from a
+   tall image, so the whole picture shows at its own proportions.
+   The homepage card keeps its crop; a feed of mixed-height cards is a
+   different problem. */
+.articleHero { max-width: 980px; margin: 0 auto 32px; width: 100%; border-radius: 2px; overflow: hidden; position: relative; background: var(--border-light); }
+.articleHero img { width: 100%; height: auto; display: block; }
 
 .catTag {
   display: inline-block; font-family: var(--font-ui); font-size: 10px; font-weight: 700;
@@ -60,7 +67,8 @@
 
 @media (max-width: 600px) {
   .articleHeadline { font-size: 24px; }
-  .articleHero { aspect-ratio: 4/3; }
+  /* No aspect-ratio here either — it would reinstate the crop on phones, which
+     is where a tall poster is most readable. */
   .eventPanel { flex-direction: column; align-items: stretch; text-align: left; }
   .eventPanelActions { width: 100%; }
   .btnRegister { width: 100%; justify-content: center; }
