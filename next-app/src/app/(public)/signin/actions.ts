@@ -24,6 +24,8 @@ import {
   redeemToken
 } from '@/lib/identity-challenge';
 import { FAMILY_COOKIE, signFamilySession } from '@/lib/family-session';
+import { hasFamilyAccess } from '@/lib/family-access';
+import { searchSignInCandidates, type SignInSearchResult } from '@/lib/signin-roster';
 import { IDENTITY_COOKIE, signIdentitySession } from '@/lib/identity-session';
 import { safeInternalPath } from '@/lib/safe-redirect';
 
@@ -224,4 +226,21 @@ export async function verifyCodeForPersonAction(formData: FormData): Promise<voi
 
   await setIdentityCookie(result.identity);
   redirect(safeInternalPath(result.identity.nextPath, '/profile'));
+}
+
+/**
+ * Type-ahead search over the roster.
+ *
+ * GATED IN ITS OWN RIGHT. This is a second door onto the same data as the
+ * /signin page, and a Server Action is callable directly — checking the gate
+ * only when rendering the page would leave the roster readable by anyone who
+ * posts to this endpoint. hasFamilyAccess() covers the troop-password cookie
+ * and every stronger session.
+ *
+ * Returns nothing below the two-character floor; see lib/signin-roster.ts for
+ * why the roster is searchable rather than browsable.
+ */
+export async function searchRosterAction(query: string): Promise<SignInSearchResult> {
+  if (!(await hasFamilyAccess())) return { candidates: [], truncated: false };
+  return searchSignInCandidates(query);
 }

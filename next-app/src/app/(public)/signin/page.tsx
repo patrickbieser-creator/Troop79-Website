@@ -10,13 +10,14 @@
 import Link from 'next/link';
 import { emailConfigured } from '@/lib/email';
 import { hasFamilyAccess } from '@/lib/family-access';
-import { loadSignInCandidates, type SignInCandidate } from '@/lib/signin-roster';
+import { NameSearch } from './name-search';
 import {
   requestSignInAction,
   verifyCodeAction,
   unlockRosterAction,
   requestForPersonAction,
-  verifyCodeForPersonAction
+  verifyCodeForPersonAction,
+  searchRosterAction
 } from './actions';
 import styles from '../library/library.module.css';
 import pick from './signin.module.css';
@@ -58,7 +59,6 @@ export default async function SignInPage({
   const configured = emailConfigured();
   // The troop password gates the roster, nothing else (Phase D, decision 3).
   const rosterUnlocked = pick === '1' || (await hasFamilyAccess());
-  const candidates = rosterUnlocked && sent !== '1' ? await loadSignInCandidates() : [];
 
   return (
     <>
@@ -87,7 +87,7 @@ export default async function SignInPage({
             <CodeForm email={email} next={next} err={err} />
           )
         ) : rosterUnlocked ? (
-          <NamePicker candidates={candidates} next={next} err={err} configured={configured} />
+          <NamePicker next={next} err={err} configured={configured} />
         ) : (
           <PasswordGate next={next} err={err} />
         )}
@@ -206,87 +206,46 @@ function PasswordGate({ next, err }: { next?: string; err?: string }) {
   );
 }
 
-function CandidateRow({
-  candidate,
-  next,
-  configured
-}: {
-  candidate: SignInCandidate;
-  next?: string;
-  configured: boolean;
-}) {
-  if (!candidate.maskedEmail) {
-    // Listed, not hidden. Hiding someone with no address recreates the dead
-    // end this whole change removes: they need to see their own name and be
-    // told what to do, not fail to find themselves and assume it is broken.
-    return (
-      <div className={pick.pickRowEmpty}>
-        <span>{candidate.displayName}</span>
-        <span className={pick.pickMeta}>no email on file &mdash; ask a leader</span>
-      </div>
-    );
-  }
-  return (
-    <form action={requestForPersonAction}>
-      {next && <input type="hidden" name="next" value={next} />}
-      <input type="hidden" name="personId" value={candidate.personId} />
-      <button type="submit" className={pick.pickRow} disabled={!configured}>
-        <span className={pick.pickName}>{candidate.displayName}</span>
-        <span className={pick.pickMeta}>{candidate.maskedEmail}</span>
-      </button>
-    </form>
-  );
-}
 
 /**
  * Step 2 — "find yourself".
  *
- * The destination is shown MASKED, resolved server-side (lib/signin-roster.ts).
- * Showing it is the whole point: the failure this replaces is a parent who
- * cannot remember which address the troop holds, and a masked hint answers
- * that without handing out contact details.
+ * A search box, not a list (Patrick, 2026-08-16). The first cut rendered
+ * every eligible person; it did not resolve well on a phone, and it handed
+ * the whole roster to anyone with the troop password. Nothing appears until
+ * two characters are typed, and the matching happens server-side, so the
+ * roster never reaches the browser at all.
+ *
+ * Matching runs against the FULL name — typing "Bieser" finds "Patrick B." —
+ * while only the abbreviated label comes back. The surname is a search key
+ * the server holds, never a value the client is handed.
  */
 function NamePicker({
-  candidates,
   next,
   err,
   configured
 }: {
-  candidates: SignInCandidate[];
   next?: string;
   err?: string;
   configured: boolean;
 }) {
-  const groups: [string, SignInCandidate[]][] = [
-    ['Parents & leaders', candidates.filter((c) => !c.isScout)],
-    ['Scouts', candidates.filter((c) => c.isScout)]
-  ];
-
   return (
     <div className={styles.formCard}>
       {err && ERR_MESSAGES[err] && <p className={styles.fieldError}>{ERR_MESSAGES[err]}</p>}
       <p className={styles.fieldHint} style={{ marginTop: 0 }}>
-        Tap your name. We&rsquo;ll send a one-time code to the address shown &mdash; you
-        don&rsquo;t need to remember which one it is.
+        Find your name and we&rsquo;ll send a one-time code to the address we already have for you
+        &mdash; you don&rsquo;t need to remember which one it is.
       </p>
 
-      {groups.map(([label, rows]) =>
-        rows.length === 0 ? null : (
-          <div key={label} className={pick.pickGroup}>
-            <p className={styles.fieldLabel}>{label}</p>
-            <ul className={pick.pickList}>
-              {rows.map((c) => (
-                <li key={c.personId}>
-                  <CandidateRow candidate={c} next={next} configured={configured} />
-                </li>
-              ))}
-            </ul>
-          </div>
-        )
-      )}
+      <NameSearch
+        next={next}
+        configured={configured}
+        search={searchRosterAction}
+        onPick={requestForPersonAction}
+      />
 
       <details className={pick.pickFallback}>
-        <summary>Not on the list, or the address shown is wrong?</summary>
+        <summary>Can&rsquo;t find yourself, or the address shown is wrong?</summary>
         <p className={styles.fieldHint}>
           Type an address instead &mdash; or ask a leader, who can fix what we have on file.
         </p>

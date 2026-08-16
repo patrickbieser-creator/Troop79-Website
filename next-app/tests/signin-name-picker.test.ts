@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { adminClient } from './helpers/admin-client';
 import { maskEmail, requestChallengeForPerson, redeemCodeForPerson } from '../src/lib/identity-challenge';
-import { loadSignInCandidates } from '../src/lib/signin-roster';
+import { searchSignInCandidates, MIN_QUERY_LENGTH, MAX_RESULTS } from '../src/lib/signin-roster';
 
 /**
  * Name-picker sign-in (Plans/Unified-Identity-And-Capabilities.md Phase D).
@@ -138,55 +138,94 @@ describe('sign-in name picker', () => {
     expect(result.ok).toBe(false);
   });
 
-  // ── the roster the picker renders ────────────────────────────────────────
+  // ── the search contract ─────────────────────────────────────────────────
 
-  it('Candidates_CarryMaskedEmailsOnly_NeverRawAddresses', async () => {
+  it('Search_ReturnsNothing_BelowTheTwoCharacterFloor', async () => {
+    // The roster must not be browsable. An empty or one-character query is
+    // how someone would try to dump it.
+    for (const q of ['', ' ', 'a', ' b ']) {
+      const { candidates } = await searchSignInCandidates(q);
+      expect(candidates, `query ${JSON.stringify(q)} returned rows`).toEqual([]);
+    }
+    expect(MIN_QUERY_LENGTH).toBe(2);
+  });
+
+  it('Search_MatchesTheFullSurname_ButNeverReturnsIt', async () => {
+    const hh = await makeHousehold('Surname Match');
+    const personId = await makePerson(hh, 'Zephaniah Quibblesworth', `vitest-sur-${Date.now()}@example.com`);
+
+    // Typing the surname finds them...
+    const { candidates } = await searchSignInCandidates('quibblesworth');
+    const mine = candidates.find((c) => c.personId === personId);
+    expect(mine, 'surname search did not match').toBeDefined();
+
+    // ...but the surname is a server-side key, not a returned value.
+    expect(mine!.displayName).toContain('Zephaniah');
+    expect(mine!.displayName).not.toContain('Quibblesworth');
+    expect(JSON.stringify(candidates)).not.toContain('Quibblesworth');
+  });
+
+  it('Search_MatchesOnFirstNameToo_AndIsCaseInsensitive', async () => {
+    const hh = await makeHousehold('First Name Match');
+    const personId = await makePerson(hh, 'Zephaniah Quibblesworth', `vitest-first-${Date.now()}@example.com`);
+    const lower = await searchSignInCandidates('zeph');
+    const upper = await searchSignInCandidates('ZEPH');
+    expect(lower.candidates.map((c) => c.personId)).toContain(personId);
+    expect(upper.candidates.map((c) => c.personId)).toContain(personId);
+  });
+
+  it('Search_ReturnsMaskedEmailsOnly_NeverRawAddresses', async () => {
     const hh = await makeHousehold('Masking Probe');
     const raw = `vitest-visible-${Date.now()}@example.com`;
-    const personId = await makePerson(hh, '[TEST] Masking Probe', raw);
+    const personId = await makePerson(hh, 'Xanthe Vandersnoot', raw);
 
-    const candidates = await loadSignInCandidates();
+    const { candidates } = await searchSignInCandidates('vandersnoot');
     const mine = candidates.find((c) => c.personId === personId);
     expect(mine).toBeDefined();
-    // Nothing in the payload that reaches the browser may contain the address.
     expect(JSON.stringify(candidates)).not.toContain(raw);
     expect(mine!.maskedEmail).toContain('@example.com');
   });
 
-  it('Candidates_NeverShowAFullSurname_EvenWhenDisambiguated', async () => {
-    // First name + last initial is already Tier 0 public on the advancement
-    // pages; a full surname is not. Disambiguation may extend the initial
-    // ("Michael Ba.") but must never spell the whole name out, so the bound
-    // is a short prefix rather than exactly one letter.
-    const candidates = await loadSignInCandidates();
-    expect(candidates.length).toBeGreaterThan(0);
-    for (const c of candidates) {
-      const parts = c.displayName.trim().split(/\s+/);
-      if (parts.length < 2) continue;
-      const last = parts[parts.length - 1];
-      expect(last.endsWith('.'), `${c.displayName} does not end in an abbreviated surname`).toBe(true);
-      expect(last.length, `${c.displayName} exposes too much of the surname`).toBeLessThanOrEqual(5);
-    }
+  it('Search_CapsResults_AndSaysSoWhenItDid', async () => {
+    // "e" is too short; a common two-letter run should still be bounded so a
+    // broad query cannot page through the troop.
+    const { candidates, truncated } = await searchSignInCandidates('an');
+    expect(candidates.length).toBeLessThanOrEqual(MAX_RESULTS);
+    if (truncated) expect(candidates.length).toBe(MAX_RESULTS);
   });
 
-  it('Candidates_HaveUniqueLabels_WhenTwoPeopleShareAFirstNameAndInitial', async () => {
-    // Found in browser verification: two literal "Michael B." rows. Picking
-    // the wrong one sends a sign-in code to a different family's inbox, so a
-    // hint in the masked address is not good enough — the NAME has to differ.
-    const candidates = await loadSignInCandidates();
-    const seen = new Map<string, number>();
-    for (const c of candidates) seen.set(c.displayName, (seen.get(c.displayName) ?? 0) + 1);
-    const dupes = [...seen.entries()].filter(([, n]) => n > 1).map(([label]) => label);
-    expect(dupes, `ambiguous picker labels: ${dupes.join(', ')}`).toEqual([]);
-  });
-
-  it('Candidates_StillListSomeoneWithNoEmail_RatherThanHidingThem', async () => {
+  it('Search_StillListsSomeoneWithNoEmail_RatherThanHidingThem', async () => {
     const hh = await makeHousehold('Listed Anyway');
-    const personId = await makePerson(hh, '[TEST] Listed Anyway', null);
-    const candidates = await loadSignInCandidates();
+    const personId = await makePerson(hh, 'Wilhelmina Nocontact', null);
+    const { candidates } = await searchSignInCandidates('nocontact');
     const mine = candidates.find((c) => c.personId === personId);
     // Hiding them recreates the dead end the picker exists to remove.
     expect(mine).toBeDefined();
     expect(mine!.maskedEmail).toBeNull();
+  });
+
+  it('Search_KeepsLabelsUnique_WhenTwoPeopleShareAFirstNameAndInitial', async () => {
+    const hh = await makeHousehold('Same Name');
+    const a = await makePerson(hh, 'Thaddeus Farnsworth', `vitest-a-${Date.now()}@example.com`);
+    const b = await makePerson(hh, 'Thaddeus Fenwick', `vitest-b-${Date.now()}@example.com`);
+    const { candidates } = await searchSignInCandidates('thaddeus');
+    const labels = candidates.filter((c) => [a, b].includes(c.personId)).map((c) => c.displayName);
+    expect(labels).toHaveLength(2);
+    expect(new Set(labels).size, `ambiguous labels: ${labels.join(', ')}`).toBe(2);
+  });
+
+  it('Search_LabelsDoNotChange_WhenOnlyOneOfThePairMatches', async () => {
+    // Disambiguation is computed across the whole roster BEFORE filtering.
+    // Doing it post-filter would make a person's name depend on what you
+    // typed, which is worse than the ambiguity it fixes.
+    const hh = await makeHousehold('Stable Label');
+    const a = await makePerson(hh, 'Thaddeus Farnsworth', `vitest-c-${Date.now()}@example.com`);
+    await makePerson(hh, 'Thaddeus Fenwick', `vitest-d-${Date.now()}@example.com`);
+
+    const both = await searchSignInCandidates('thaddeus');
+    const one = await searchSignInCandidates('farnsworth');
+    const inBoth = both.candidates.find((c) => c.personId === a)!.displayName;
+    const alone = one.candidates.find((c) => c.personId === a)!.displayName;
+    expect(alone).toBe(inBoth);
   });
 });

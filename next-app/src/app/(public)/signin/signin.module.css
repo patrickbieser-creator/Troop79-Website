@@ -2,10 +2,6 @@
    its form furniture; these are the only classes specific to /signin, kept
    here rather than pushed into a shared sheet. */
 
-.pickGroup {
-  margin-bottom: 1.1rem;
-}
-
 .pickList {
   list-style: none;
   margin: 0.35rem 0 0;
@@ -92,4 +88,64 @@
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
+}
+
+/* Search box (Phase D reshape). The list only ever holds matches, so it needs
+   no group headings — the input is the primary control. */
+.searchField {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.searchLabel {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--navy, #22333b);
+  margin-bottom: 0.35rem;
+}
+
+.searchInput {
+  width: 100%;
+  border: 1px solid #d8ccb4;
+  border-radius: 4px;
+  /* 16px keeps iOS from zooming the viewport on focus — this flow is
+     phone-first, and the zoom is what made the old list unusable. */
+  font-size: 16px;
+  padding: 0.6rem 0.7rem;
+  background: #fff;
+  color: inherit;
+}
+.searchInput:focus {
+  outline: 2px solid #3d7a4a;
+  outline-offset: 1px;
+}
+
+.searchHint {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.82rem;
+  color: var(--text-meta, #857c6c);
+}
+
+.searchNote {
+  margin: 0.75rem 0 0;
+  font-size: 0.88rem;
+  color: var(--text-meta, #857c6c);
+  line-height: 1.5;
+}
+
+.scoutTag {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 3px;
+  background: #e8efe4;
+  color: #46603a;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
