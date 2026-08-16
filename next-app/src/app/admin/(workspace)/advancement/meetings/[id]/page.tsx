@@ -9,7 +9,7 @@
 
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import type { Meeting, MeetingSession } from '@/lib/supabase/types';
 import { buildMeetingPlan } from '../../meeting-plan/engine';
 import { loadEngineInput } from '../../meeting-plan/load-input';
@@ -56,7 +56,7 @@ async function loadCandidates(meetingDate: string, title: string): Promise<Candi
 }
 
 export default async function MeetingEditorPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireRole(['leader']);
+  await requireCapability('advancement.write');
   const { id } = await params;
   const meetingId = Number(id);
   if (!Number.isInteger(meetingId)) notFound();

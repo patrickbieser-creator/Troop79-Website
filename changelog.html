@@ -497,6 +497,85 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.46.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.46.0</span>
+        <span class="release-date">August 16, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Groundwork</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">One sign-in, and permissions that belong to a person</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>A leader who is also a parent no longer signs in twice.</strong> Until now the
+              site knew you two different ways &mdash; as whoever typed the troop leader password,
+              and separately as a verified member of your household. Those are now the same sign-in.
+              Sign in as yourself once and the Leader Workspace and your family&rsquo;s own pages
+              both open, with no second password and no switching back and forth.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>What someone can do is now set per person, not by which password they
+              know.</strong> Seven separate permissions &mdash; recording advancement, managing the
+              roster, the calendar, news, meeting plans, the Resource Library, and viewing the
+              Library as a scout &mdash; are granted to a named human on a new Access &amp;
+              Permissions screen. Removing one takes effect the next time that person does anything;
+              nobody has to sign out.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Managing the roster is deliberately held by only a few people.</strong> It is
+              the heaviest permission on the list &mdash; every family&rsquo;s address, birthdates
+              and the notes families share about their scouts &mdash; so it is handed out by name
+              rather than coming bundled with everything else. Someone who runs the calendar or
+              writes news never needs it.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>A leader can now sign a lost phone out of the site.</strong> One button
+              revokes every session a person holds. The shared password never had an answer for
+              that short of changing it for everyone.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>The old leader password still works exactly as before.</strong> Nothing about
+              signing in changed for anyone who does not want it to yet; the two ways run side by
+              side while the remaining screens are moved over.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Under the hood</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Advancement, the roster, meeting plans and the Scoutbook export now check the
+              individual permission they actually need rather than a single catch-all
+              &ldquo;leader&rdquo; flag &mdash; 58 checks across 23 files. The workspace menu hides
+              what a person cannot open instead of showing links that fail.
+            </span>
+          </li>
+          <li>
+            <span>
+              Training scripts for families and for leaders are now kept with the site.
+            </span>
+          </li>
+          <li>
+            <span>
+              41 new automated tests, bringing the suite to 334.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.45.1 -->
     <div class="release">
       <div class="release-header">

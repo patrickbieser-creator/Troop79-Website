@@ -10,7 +10,7 @@
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import type { LedgerEntry, LedgerKind } from '@/lib/supabase/types';
 import { loadAttentionCategories } from './attention-items';
 import styles from './dashboard.module.css';
@@ -262,7 +262,7 @@ function shortDate(s: string | null): string {
 }
 
 export default async function DashboardPage() {
-  await requireRole(['leader']);
+  await requireCapability('advancement.write');
   const [data, attentionCategories] = await Promise.all([loadDashboard(), loadAttentionCategories()]);
 
   return (

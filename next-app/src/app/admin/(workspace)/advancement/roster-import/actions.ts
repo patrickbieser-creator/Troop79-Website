@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 
 /**
@@ -64,7 +64,7 @@ export async function acceptSuggestion(
   chosenFields: string[],
   note?: string
 ): Promise<Result> {
-  const session = await requireRole(['leader']);
+  const session = await requireCapability('roster.manage');
 
   const supabase = createAdminClient();
 
@@ -75,7 +75,7 @@ export async function acceptSuggestion(
   const { error } = await supabase.rpc('accept_merge_suggestion', {
     p_suggestion_id: suggestionId,
     p_fields: chosenFields.filter((f) => APPLIABLE.has(f)),
-    p_decided_by: session.leader,
+    p_decided_by: session.label,
     p_note: note ?? null
   });
   if (error) return { ok: false, error: error.message };
@@ -85,7 +85,7 @@ export async function acceptSuggestion(
 }
 
 export async function rejectSuggestion(suggestionId: number, note?: string): Promise<Result> {
-  const session = await requireRole(['leader']);
+  const session = await requireCapability('roster.manage');
 
   const supabase = createAdminClient();
   const { error } = await supabase
@@ -93,7 +93,7 @@ export async function rejectSuggestion(suggestionId: number, note?: string): Pro
     .update({
       status: 'rejected',
       decided_at: new Date().toISOString(),
-      decided_by: session.leader,
+      decided_by: session.label,
       decision_note: note || null
     })
     .eq('id', suggestionId)
@@ -115,7 +115,7 @@ export async function rejectSuggestion(suggestionId: number, note?: string): Pro
  * to prevent.
  */
 export async function retargetRow(importRowId: number, personId: number): Promise<Result> {
-  const session = await requireRole(['leader']);
+  const session = await requireCapability('roster.manage');
 
   const supabase = createAdminClient();
 
@@ -166,7 +166,7 @@ export async function retargetRow(importRowId: number, personId: number): Promis
       import_row_id: importRowId,
       person_id: personId,
       confidence: 'manual',
-      evidence: { matched_on: 'manual', chosen_by: session.leader },
+      evidence: { matched_on: 'manual', chosen_by: session.label },
       field_changes,
       status: 'pending'
     },
@@ -180,7 +180,7 @@ export async function retargetRow(importRowId: number, personId: number): Promis
 
 /** Create a brand-new person from a source row, and accept that as its resolution. */
 export async function createPersonFromRow(importRowId: number): Promise<Result> {
-  const session = await requireRole(['leader']);
+  const session = await requireCapability('roster.manage');
 
   const supabase = createAdminClient();
 
@@ -217,11 +217,11 @@ export async function createPersonFromRow(importRowId: number): Promise<Result> 
     import_row_id: importRowId,
     person_id: person.id,
     confidence: 'manual',
-    evidence: { created_new: true, chosen_by: session.leader },
+    evidence: { created_new: true, chosen_by: session.label },
     field_changes: [],
     status: 'accepted',
     decided_at: new Date().toISOString(),
-    decided_by: session.leader
+    decided_by: session.label
   });
   if (accErr) return { ok: false, error: `Recording decision: ${accErr.message}` };
 
@@ -233,7 +233,7 @@ export async function createPersonFromRow(importRowId: number): Promise<Result> 
 export async function searchPeople(
   q: string
 ): Promise<{ id: number; display_name: string; primary_email: string | null }[]> {
-  await requireRole(['leader']);
+  await requireCapability('roster.manage');
   const term = q.trim();
   if (term.length < 2) return [];
 
@@ -263,7 +263,7 @@ export async function addRelationship(
   isGuardian: boolean,
   sourceLabel?: string
 ): Promise<Result> {
-  await requireRole(['leader']);
+  await requireCapability('roster.manage');
   if (personId === relatedPersonId) return { ok: false, error: 'A person cannot relate to themselves.' };
 
   // "Child of" is stored as the parent's parent_of edge with the two people
@@ -296,7 +296,7 @@ export async function addRelationship(
 /** Undo a relationship recorded by mistake. Deletes the edge only — neither
  *  person is touched. */
 export async function removeRelationship(relationshipId: number): Promise<Result> {
-  await requireRole(['leader']);
+  await requireCapability('roster.manage');
 
   const supabase = createAdminClient();
   const { error } = await supabase.from('relationships').delete().eq('id', relationshipId);
@@ -315,14 +315,14 @@ export async function removeRelationship(relationshipId: number): Promise<Result
  * so a wrong merge stays visible and can be unpicked.
  */
 export async function mergePeople(survivorId: number, loserId: number): Promise<Result> {
-  const session = await requireRole(['leader']);
+  const session = await requireCapability('roster.manage');
   if (survivorId === loserId) return { ok: false, error: 'Pick two different records.' };
 
   const supabase = createAdminClient();
   const { error } = await supabase.rpc('merge_people', {
     p_survivor: survivorId,
     p_loser: loserId,
-    p_decided_by: session.leader
+    p_decided_by: session.label
   });
   if (error) return { ok: false, error: error.message };
 
@@ -339,12 +339,12 @@ export async function mergePeople(survivorId: number, loserId: number): Promise<
  * need judgement. Name-only and no-match rows are deliberately excluded.
  */
 export async function acceptAllClean(batchId: number): Promise<Result & { count?: number }> {
-  const session = await requireRole(['leader']);
+  const session = await requireCapability('roster.manage');
 
   const supabase = createAdminClient();
   const { data, error } = await supabase.rpc('accept_clean_suggestions', {
     p_batch_id: batchId,
-    p_decided_by: session.leader
+    p_decided_by: session.label
   });
   if (error) return { ok: false, error: error.message };
 

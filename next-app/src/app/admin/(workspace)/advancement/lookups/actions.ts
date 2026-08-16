@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { LedgerKind } from '@/lib/supabase/types';
 import { slugify } from '@/lib/slugify';
@@ -133,10 +133,6 @@ function readReqTree(formData: FormData): ReqInput[] | null {
   }
 }
 
-async function ensureLeader() {
-  return requireRole(['leader']);
-}
-
 function revalidateAll() {
   revalidatePath('/admin/advancement/lookups');
   // Scout/adult management moved to the Roster in v1.12 — without this, an
@@ -152,7 +148,7 @@ function revalidateAll() {
 
 export async function createScout(formData: FormData): Promise<Result> {
   try {
-    await ensureLeader();
+    await requireCapability('roster.manage');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -202,7 +198,7 @@ export async function createScout(formData: FormData): Promise<Result> {
 
 export async function updateScout(formData: FormData): Promise<Result> {
   try {
-    await ensureLeader();
+    await requireCapability('roster.manage');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -267,7 +263,7 @@ function readLeaderLoginFields(formData: FormData) {
 
 export async function createLeader(formData: FormData): Promise<Result> {
   try {
-    await ensureLeader();
+    await requireCapability('roster.manage');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -304,7 +300,7 @@ const LEADER_CODE_REFERRERS = [
 
 export async function updateLeader(formData: FormData): Promise<Result> {
   try {
-    await ensureLeader();
+    await requireCapability('roster.manage');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -389,7 +385,7 @@ export async function updateLeader(formData: FormData): Promise<Result> {
 
 export async function deleteLeader(formData: FormData): Promise<Result> {
   try {
-    await ensureLeader();
+    await requireCapability('roster.manage');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -420,7 +416,7 @@ export async function deleteLeader(formData: FormData): Promise<Result> {
 
 export async function updateMeritBadge(formData: FormData): Promise<Result> {
   try {
-    await ensureLeader();
+    await requireCapability('roster.manage');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -517,7 +513,7 @@ function collectRenames(
  */
 export async function createEvent(formData: FormData): Promise<Result> {
   try {
-    await ensureLeader();
+    await requireCapability('roster.manage');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -546,7 +542,7 @@ export async function createEvent(formData: FormData): Promise<Result> {
 
 export async function updateEvent(formData: FormData): Promise<Result> {
   try {
-    await ensureLeader();
+    await requireCapability('roster.manage');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -589,7 +585,7 @@ export async function updateEvent(formData: FormData): Promise<Result> {
  */
 export async function deleteEvent(formData: FormData): Promise<Result> {
   try {
-    await ensureLeader();
+    await requireCapability('roster.manage');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -613,7 +609,7 @@ async function insertNamedLookup(
   formData: FormData
 ): Promise<Result> {
   try {
-    await ensureLeader();
+    await requireCapability('roster.manage');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -636,7 +632,7 @@ async function updateNamedLookup(
   formData: FormData
 ): Promise<Result> {
   try {
-    await ensureLeader();
+    await requireCapability('roster.manage');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -661,7 +657,7 @@ async function deleteNamedLookup(
   formData: FormData
 ): Promise<Result> {
   try {
-    await ensureLeader();
+    await requireCapability('roster.manage');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -736,7 +732,7 @@ function slugifySkillId(name: string): string {
 
 export async function createSkill(formData: FormData): Promise<Result> {
   try {
-    await ensureLeader();
+    await requireCapability('roster.manage');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -769,7 +765,7 @@ export async function createSkill(formData: FormData): Promise<Result> {
 
 export async function updateSkill(formData: FormData): Promise<Result> {
   try {
-    await ensureLeader();
+    await requireCapability('roster.manage');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -791,7 +787,7 @@ export async function updateSkill(formData: FormData): Promise<Result> {
 
 export async function deleteSkill(formData: FormData): Promise<Result> {
   try {
-    await ensureLeader();
+    await requireCapability('roster.manage');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -826,7 +822,7 @@ function readSkillIds(formData: FormData): string[] | null {
 /** Replace a leader's full skill set (delete + insert). */
 export async function setLeaderSkills(formData: FormData): Promise<Result> {
   try {
-    await ensureLeader();
+    await requireCapability('roster.manage');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -855,7 +851,7 @@ export async function setLeaderSkills(formData: FormData): Promise<Result> {
 export async function setScoutInstructorSkills(formData: FormData): Promise<Result> {
   const session = await (async () => {
     try {
-      return await ensureLeader();
+      return await requireCapability('roster.manage');
     } catch {
       return null;
     }
@@ -893,7 +889,7 @@ export async function setScoutInstructorSkills(formData: FormData): Promise<Resu
       skillIds.map((skill_id) => ({
         scout_id: scoutId,
         skill_id,
-        authorized_by: session.leader ?? null
+        authorized_by: session.label ?? null
       }))
     );
     if (error) return { ok: false, error: error.message };
@@ -919,7 +915,7 @@ export async function setScoutInstructorSkills(formData: FormData): Promise<Resu
  */
 export async function promoteScoutToAdult(formData: FormData): Promise<Result> {
   try {
-    await ensureLeader();
+    await requireCapability('roster.manage');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -978,7 +974,7 @@ export async function promoteScoutToAdult(formData: FormData): Promise<Result> {
 
 export async function createTag(formData: FormData): Promise<Result> {
   try {
-    await ensureLeader();
+    await requireCapability('roster.manage');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -995,7 +991,7 @@ export async function createTag(formData: FormData): Promise<Result> {
 /** Deletes a tag. Cascades to remove it from any article that had it (article_tags FK). */
 export async function deleteTag(id: number): Promise<Result> {
   try {
-    await ensureLeader();
+    await requireCapability('roster.manage');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -1018,7 +1014,7 @@ export async function deleteTag(id: number): Promise<Result> {
  */
 export async function updateReqCode(formData: FormData): Promise<Result> {
   try {
-    await ensureLeader();
+    await requireCapability('roster.manage');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -1139,7 +1135,7 @@ function readLeaderCodes(formData: FormData): string[] | null {
 export async function setLibrarySuperusers(formData: FormData): Promise<Result> {
   let session;
   try {
-    session = await ensureLeader();
+    session = await requireCapability('roster.manage');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -1164,7 +1160,7 @@ export async function setLibrarySuperusers(formData: FormData): Promise<Result> 
   if (toAdd.length > 0) {
     const { error } = await supabase
       .from('library_superusers')
-      .insert(toAdd.map((leader_code) => ({ leader_code, granted_by: session.leader })));
+      .insert(toAdd.map((leader_code) => ({ leader_code, granted_by: session.label })));
     if (error) return { ok: false, error: error.message };
   }
 
@@ -1227,7 +1223,7 @@ function validateCategory(f: CategoryFields): string | null {
 
 export async function createCalendarCategory(formData: FormData): Promise<Result> {
   try {
-    await ensureLeader();
+    await requireCapability('roster.manage');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -1254,7 +1250,7 @@ export async function createCalendarCategory(formData: FormData): Promise<Result
  */
 export async function updateCalendarCategory(formData: FormData): Promise<Result> {
   try {
-    await ensureLeader();
+    await requireCapability('roster.manage');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -1279,7 +1275,7 @@ export async function updateCalendarCategory(formData: FormData): Promise<Result
 
 export async function deleteCalendarCategory(formData: FormData): Promise<Result> {
   try {
-    await ensureLeader();
+    await requireCapability('roster.manage');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -1318,7 +1314,7 @@ export async function deleteCalendarCategory(formData: FormData): Promise<Result
 export async function saveArticleTokens(formData: FormData): Promise<Result> {
   let session;
   try {
-    session = await ensureLeader();
+    session = await requireCapability('roster.manage');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -1344,7 +1340,7 @@ export async function saveArticleTokens(formData: FormData): Promise<Result> {
               : `${def.label}: use a number with a unit, like ${def.fallback}.`
       };
     }
-    upserts.push({ token: def.key, value: raw, updated_by: session.leader });
+    upserts.push({ token: def.key, value: raw, updated_by: session.label });
   }
 
   if (clears.length) {

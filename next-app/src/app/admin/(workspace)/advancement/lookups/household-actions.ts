@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 
 /**
@@ -30,7 +30,7 @@ function revalidate() {
 }
 
 export async function createHousehold(label: string): Promise<Result> {
-  await requireRole(['leader']);
+  await requireCapability('roster.manage');
   const trimmed = label.trim();
   if (!trimmed) return { ok: false, error: 'Give the household a name.' };
 
@@ -49,7 +49,7 @@ export async function createHousehold(label: string): Promise<Result> {
  * each, not constraining what they may be called.
  */
 export async function renameHousehold(id: number, label: string): Promise<Result> {
-  await requireRole(['leader']);
+  await requireCapability('roster.manage');
   const trimmed = label.trim();
   if (!trimmed) return { ok: false, error: 'A household needs a name.' };
 
@@ -74,7 +74,7 @@ export async function renameHousehold(id: number, label: string): Promise<Result
  * never lose that.
  */
 export async function deleteHousehold(id: number): Promise<Result> {
-  await requireRole(['leader']);
+  await requireCapability('roster.manage');
   const supabase = createAdminClient();
 
   const [memberRes, scoutRes, signupRes] = await Promise.all([

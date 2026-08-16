@@ -10,7 +10,7 @@
 
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import { AuditCard } from './audit-card';
 import { DuplicateAuditCard } from './duplicate-audit-card';
 import type { Finding } from './types';
@@ -66,7 +66,7 @@ const CHECKS = [
 ] as const;
 
 export default async function AuditsPage() {
-  await requireRole(['leader']);
+  await requireCapability('advancement.write');
   const supabase = createAdminClient();
   const [findingsByCheck, duplicateGroups, reconciliation, leadersRes] = await Promise.all([
     Promise.all(CHECKS.map((c) => c.run(supabase))),

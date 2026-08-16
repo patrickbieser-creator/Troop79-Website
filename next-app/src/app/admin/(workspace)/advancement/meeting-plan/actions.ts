@@ -1,16 +1,12 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { MeetingPlanPayload } from '@/lib/meeting-plan-types';
 import { retargetPlan } from '@/lib/meeting-plan-publish';
 import { buildMeetingPlan } from './engine';
 import { loadEngineInput } from './load-input';
-
-async function ensureLeader() {
-  return requireRole(['leader']);
-}
 
 interface GenerateResult {
   ok: boolean;
@@ -24,7 +20,7 @@ interface GenerateResult {
  */
 export async function generatePlan(formData: FormData): Promise<GenerateResult> {
   try {
-    await ensureLeader();
+    await requireCapability('meeting_plan.use');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -53,7 +49,7 @@ interface PublishResult {
 export async function publishPlan(formData: FormData): Promise<PublishResult> {
   let session;
   try {
-    session = await ensureLeader();
+    session = await requireCapability('meeting_plan.use');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -88,7 +84,7 @@ export async function publishPlan(formData: FormData): Promise<PublishResult> {
       status: 'published',
       payload,
       generated_at: payload.generatedAt,
-      generated_by: session.leader ?? null
+      generated_by: session.label ?? null
     },
     { onConflict: 'meeting_date' }
   );
@@ -102,7 +98,7 @@ export async function publishPlan(formData: FormData): Promise<PublishResult> {
 /** Remove a published snapshot (e.g., meeting theme changed to an MB night). */
 export async function unpublishPlan(formData: FormData): Promise<PublishResult> {
   try {
-    await ensureLeader();
+    await requireCapability('meeting_plan.use');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }

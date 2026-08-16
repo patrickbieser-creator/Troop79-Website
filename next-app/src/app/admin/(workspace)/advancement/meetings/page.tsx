@@ -17,7 +17,7 @@
 
 import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import { AttendanceList, type AttendanceListRow } from './meetings-list';
 import { deleteMeeting } from './actions';
 import styles from './meetings.module.css';
@@ -100,7 +100,7 @@ async function loadRows(): Promise<AttendanceListRow[]> {
 }
 
 export default async function RollCallListPage() {
-  await requireRole(['leader']);
+  await requireCapability('advancement.write');
   const rows = await loadRows();
 
   return (

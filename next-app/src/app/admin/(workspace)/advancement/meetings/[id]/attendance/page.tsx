@@ -29,14 +29,14 @@
 
 import { notFound, redirect } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 
 export default async function RetiredAttendancePage({
   params
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireRole(['leader']);
+  await requireCapability('advancement.write');
   const { id } = await params;
   const meetingId = Number(id);
   if (!Number.isInteger(meetingId)) notFound();

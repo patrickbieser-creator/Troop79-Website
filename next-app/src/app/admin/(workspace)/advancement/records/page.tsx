@@ -13,7 +13,7 @@
 
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import type { LedgerEntry, LedgerKind, Scout } from '@/lib/supabase/types';
 import { RecordsTable } from './records-table';
 import styles from './records.module.css';
@@ -109,7 +109,7 @@ export default async function RecordsPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  await requireRole(['leader']);
+  await requireCapability('advancement.write');
   const raw = await searchParams;
   const parsed = parseSearch(raw);
   const { rows, total } = await loadRecords(parsed);

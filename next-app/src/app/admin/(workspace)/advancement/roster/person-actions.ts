@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { EDITABLE_PERSON_FIELDS, type FieldValue } from '@/lib/change-requests';
 
@@ -61,7 +61,7 @@ export type GrantableRole =
  * family typing a known email means "this is that person".
  */
 export async function createPerson(formData: FormData): Promise<Result & { personId?: number }> {
-  await requireRole(['leader']);
+  await requireCapability('roster.manage');
 
   const firstName = String(formData.get('first_name') ?? '').trim();
   const lastName = String(formData.get('last_name') ?? '').trim();
@@ -154,7 +154,7 @@ export async function createPerson(formData: FormData): Promise<Result & { perso
 }
 
 export async function addRole(personId: number, role: GrantableRole): Promise<Result> {
-  await requireRole(['leader']);
+  await requireCapability('roster.manage');
 
   const supabase = createAdminClient();
   // A person may have held this role before and ended it; the partial unique
@@ -181,7 +181,7 @@ export async function addRole(personId: number, role: GrantableRole): Promise<Re
 /** Ends a role rather than deleting it — "stopped helping out in 2026" is a
  *  fact worth keeping, and it is what moves someone back to the Adults tab. */
 export async function endRole(roleId: number): Promise<Result> {
-  await requireRole(['leader']);
+  await requireCapability('roster.manage');
 
   const supabase = createAdminClient();
   const { error } = await supabase
@@ -197,7 +197,7 @@ export async function endRole(roleId: number): Promise<Result> {
 
 /** Deletes an ended role outright, for one recorded in error. */
 export async function deleteRole(roleId: number): Promise<Result> {
-  await requireRole(['leader']);
+  await requireCapability('roster.manage');
 
   const supabase = createAdminClient();
   const { error } = await supabase.from('person_roles').delete().eq('id', roleId);
@@ -216,7 +216,7 @@ export async function deleteRole(roleId: number): Promise<Result> {
  * record a fact the signup flow would silently ignore.
  */
 export async function setHousehold(personId: number, householdId: number | null): Promise<Result> {
-  await requireRole(['leader']);
+  await requireCapability('roster.manage');
 
   const supabase = createAdminClient();
   const { error: delErr } = await supabase
@@ -256,7 +256,7 @@ export async function addRelationship(
   type: RelationshipInput,
   isGuardian: boolean
 ): Promise<Result> {
-  await requireRole(['leader']);
+  await requireCapability('roster.manage');
   if (personId === relatedPersonId) {
     return { ok: false, error: 'A person cannot relate to themselves.' };
   }
@@ -280,7 +280,7 @@ export async function addRelationship(
 }
 
 export async function removeRelationship(relationshipId: number): Promise<Result> {
-  await requireRole(['leader']);
+  await requireCapability('roster.manage');
 
   const supabase = createAdminClient();
   const { error } = await supabase.from('relationships').delete().eq('id', relationshipId);
@@ -294,7 +294,7 @@ export async function removeRelationship(relationshipId: number): Promise<Result
 export async function searchPeople(
   q: string
 ): Promise<{ id: number; display_name: string; primary_email: string | null }[]> {
-  await requireRole(['leader']);
+  await requireCapability('roster.manage');
   const term = q.trim();
   if (term.length < 2) return [];
 
@@ -343,7 +343,7 @@ export interface PersonDetail {
 }
 
 export async function getPersonDetail(personId: number): Promise<PersonDetail> {
-  await requireRole(['leader']);
+  await requireCapability('roster.manage');
   const supabase = createAdminClient();
 
   const [{ data: person }, { data: member }, { data: roles }, { data: rels }, { data: fieldRow }] = await Promise.all([
@@ -413,7 +413,7 @@ export async function setPersonActive(
   active: boolean,
   reason?: string
 ): Promise<Result> {
-  await requireRole(['leader']);
+  await requireCapability('roster.manage');
 
   const supabase = createAdminClient();
   const { error } = await supabase
@@ -452,7 +452,7 @@ export interface ScoutRelation {
 }
 
 export async function getScoutRelations(scoutPersonId: number): Promise<ScoutRelation[]> {
-  await requireRole(['leader']);
+  await requireCapability('roster.manage');
   const supabase = createAdminClient();
 
   const { data } = await supabase
@@ -516,7 +516,7 @@ export async function createAdultForScout(
   type: 'parent_of' | 'guardian_of' | 'emergency_contact_for',
   isGuardian: boolean
 ): Promise<Result & { personId?: number }> {
-  await requireRole(['leader']);
+  await requireCapability('roster.manage');
   const trimmed = name.trim();
   if (!trimmed) return { ok: false, error: 'A name is required.' };
 
@@ -572,14 +572,14 @@ export async function createAdultForScout(
  * re-entering by hand loses whichever of those the eye misses.
  */
 export async function mergePersonInto(loserId: number, survivorId: number): Promise<Result> {
-  const session = await requireRole(['leader']);
+  const session = await requireCapability('roster.manage');
   if (loserId === survivorId) return { ok: false, error: 'Pick two different people.' };
 
   const supabase = createAdminClient();
   const { error } = await supabase.rpc('merge_people', {
     p_survivor: survivorId,
     p_loser: loserId,
-    p_decided_by: session.leader
+    p_decided_by: session.label
   });
   if (error) return { ok: false, error: error.message };
 
@@ -624,7 +624,7 @@ export async function mergePersonInto(loserId: number, survivorId: number): Prom
  * orphaning them.
  */
 export async function deletePerson(personId: number): Promise<Result> {
-  await requireRole(['leader']);
+  await requireCapability('roster.manage');
   const supabase = createAdminClient();
 
   const [scoutRes, leaderRes, signupRes, enteredRes, libraryRes] = await Promise.all([
@@ -690,7 +690,7 @@ export async function createHouseholdForPerson(
   personId: number,
   label: string
 ): Promise<Result & { householdId?: number }> {
-  await requireRole(['leader']);
+  await requireCapability('roster.manage');
   const trimmed = label.trim();
   if (!trimmed) return { ok: false, error: 'Give the household a name.' };
 
@@ -716,7 +716,7 @@ export async function createHouseholdForPerson(
  * genuinely share a name, and rejecting that would be wrong.
  */
 export async function renameHousehold(householdId: number, label: string): Promise<Result> {
-  await requireRole(['leader']);
+  await requireCapability('roster.manage');
   const trimmed = label.trim();
   if (!trimmed) return { ok: false, error: 'A household needs a name.' };
 

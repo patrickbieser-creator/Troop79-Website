@@ -2,7 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { LedgerKind } from '@/lib/supabase/types';
@@ -35,12 +35,8 @@ async function leaderInitials(): Promise<string> {
   return session?.leader ?? 'admin';
 }
 
-async function ensureLeader() {
-  return requireRole(['leader']);
-}
-
 export async function archiveLedgerEntry(formData: FormData): Promise<void> {
-  await ensureLeader();
+  await requireCapability('advancement.write');
   const id = Number(formData.get('id'));
   const reason = String(formData.get('reason') ?? '').trim() || null;
   if (!Number.isFinite(id) || id <= 0) throw new Error('Invalid id');
@@ -59,7 +55,7 @@ export async function archiveLedgerEntry(formData: FormData): Promise<void> {
 }
 
 export async function softDeleteLedgerEntry(formData: FormData): Promise<void> {
-  await ensureLeader();
+  await requireCapability('advancement.write');
   const id = Number(formData.get('id'));
   const reason = String(formData.get('reason') ?? '').trim();
   if (!Number.isFinite(id) || id <= 0) throw new Error('Invalid id');
@@ -91,7 +87,7 @@ interface UpdateResult {
  */
 export async function updateLedgerEntry(formData: FormData): Promise<UpdateResult> {
   try {
-    await ensureLeader();
+    await requireCapability('advancement.write');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -165,7 +161,7 @@ function parseIds(formData: FormData): number[] {
  */
 export async function bulkUpdateLedgerEntries(formData: FormData): Promise<BulkResult> {
   try {
-    await ensureLeader();
+    await requireCapability('advancement.write');
   } catch {
     return { ok: false, updated: 0, error: 'Not authenticated' };
   }
@@ -230,7 +226,7 @@ export async function bulkUpdateLedgerEntries(formData: FormData): Promise<BulkR
 /** Bulk archive — soft, reason optional (matches the single-row action). */
 export async function bulkArchiveLedgerEntries(formData: FormData): Promise<BulkResult> {
   try {
-    await ensureLeader();
+    await requireCapability('advancement.write');
   } catch {
     return { ok: false, updated: 0, error: 'Not authenticated' };
   }
@@ -261,7 +257,7 @@ export async function bulkArchiveLedgerEntries(formData: FormData): Promise<Bulk
 /** Bulk delete — soft, reason REQUIRED (matches the single-row action). */
 export async function bulkDeleteLedgerEntries(formData: FormData): Promise<BulkResult> {
   try {
-    await ensureLeader();
+    await requireCapability('advancement.write');
   } catch {
     return { ok: false, updated: 0, error: 'Not authenticated' };
   }
@@ -291,7 +287,7 @@ export async function bulkDeleteLedgerEntries(formData: FormData): Promise<BulkR
 }
 
 export async function restoreLedgerEntry(formData: FormData): Promise<void> {
-  await ensureLeader();
+  await requireCapability('advancement.write');
   const id = Number(formData.get('id'));
   if (!Number.isFinite(id) || id <= 0) throw new Error('Invalid id');
 
@@ -332,7 +328,7 @@ function revalidateAwardViews() {
  */
 export async function setScoutbookSubmitted(formData: FormData): Promise<ConfirmResult> {
   try {
-    await ensureLeader();
+    await requireCapability('advancement.write');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -357,7 +353,7 @@ export async function setScoutbookSubmitted(formData: FormData): Promise<Confirm
 
 export async function setPresented(formData: FormData): Promise<ConfirmResult> {
   try {
-    await ensureLeader();
+    await requireCapability('advancement.write');
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -384,7 +380,7 @@ export async function setPresented(formData: FormData): Promise<ConfirmResult> {
  *  right after a successful upload, over every row in the current preview. */
 export async function bulkSetScoutbookSubmitted(formData: FormData): Promise<BulkResult> {
   try {
-    await ensureLeader();
+    await requireCapability('advancement.write');
   } catch {
     return { ok: false, updated: 0, error: 'Not authenticated' };
   }

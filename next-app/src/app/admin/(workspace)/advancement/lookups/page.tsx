@@ -12,7 +12,7 @@
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 // Scout and adult MANAGEMENT moved to /admin/advancement/roster in v1.12 —
 // this page still READS both to build the merit-badge counselor and skill
 // assignment pickers, so the row types come from there.
@@ -324,7 +324,7 @@ async function loadLookups() {
 }
 
 export default async function LookupsPage() {
-  await requireRole(['leader']);
+  await requireCapability('roster.manage');
   const {
     leaders,
     scouts,

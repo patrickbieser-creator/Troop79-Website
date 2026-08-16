@@ -1,13 +1,13 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 
 /**
  * The Audits section's one write path, shared by every check: backfilling
  * requirement rows a leader confirms were actually completed but never
- * logged. Same ensureLeader()/createAdminClient() gate as every other
+ * logged. Same requireCapability('advancement.write')/createAdminClient() gate as every other
  * advancement actions file.
  */
 
@@ -22,14 +22,10 @@ interface MissingItem {
   label: string;
 }
 
-async function ensureLeader() {
-  return requireRole(['leader']);
-}
-
 export async function fillMissingRankRequirements(formData: FormData): Promise<Result> {
   let session;
   try {
-    session = await ensureLeader();
+    session = await requireCapability('advancement.write');
   } catch {
     return { ok: false, error: 'Not authenticated', inserted: 0 };
   }
@@ -61,7 +57,7 @@ export async function fillMissingRankRequirements(formData: FormData): Promise<R
     code: it.code,
     label: it.label,
     by,
-    entered_by: session.leader,
+    entered_by: session.label,
     entered_at: new Date().toISOString()
   }));
 
@@ -91,7 +87,7 @@ interface ResolveResult {
 export async function resolveDuplicateLedgerEntries(formData: FormData): Promise<ResolveResult> {
   let session;
   try {
-    session = await ensureLeader();
+    session = await requireCapability('advancement.write');
   } catch {
     return { ok: false, error: 'Not authenticated', deleted: 0 };
   }
@@ -119,7 +115,7 @@ export async function resolveDuplicateLedgerEntries(formData: FormData): Promise
     .update(
       {
         deleted_at: new Date().toISOString(),
-        deleted_by: session.leader,
+        deleted_by: session.label,
         deleted_reason: `Duplicate — kept #${keepId} via Audits`
       },
       { count: 'exact' }

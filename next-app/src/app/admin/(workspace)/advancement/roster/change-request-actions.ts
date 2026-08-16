@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import {
   editableFieldsFor,
@@ -43,7 +43,7 @@ export async function getPendingChangeRequest(
   entityId: string,
   entityType: ChangeEntityType = 'scout'
 ): Promise<ChangeRequestWithSubmitter | null> {
-  await requireRole(['leader']);
+  await requireCapability('roster.manage');
   const supabase = createAdminClient();
   const { data } = await supabase
     .from('change_requests')
@@ -72,7 +72,7 @@ export async function getPendingChangeRequest(
 }
 
 export async function approveChangeRequest(id: number): Promise<Result> {
-  const session = await requireRole(['leader']);
+  const session = await requireCapability('roster.manage');
   const supabase = createAdminClient();
 
   const { data: request, error: fetchErr } = await supabase
@@ -112,7 +112,7 @@ export async function approveChangeRequest(id: number): Promise<Result> {
 
   const { error } = await supabase
     .from('change_requests')
-    .update({ status: 'approved', reviewed_by: session.leader, reviewed_at: new Date().toISOString() })
+    .update({ status: 'approved', reviewed_by: session.label, reviewed_at: new Date().toISOString() })
     .eq('id', id);
   if (error) return { ok: false, error: error.message };
 
@@ -123,13 +123,13 @@ export async function approveChangeRequest(id: number): Promise<Result> {
 }
 
 export async function rejectChangeRequest(id: number, reason: string): Promise<Result> {
-  const session = await requireRole(['leader']);
+  const session = await requireCapability('roster.manage');
   const supabase = createAdminClient();
   const { error } = await supabase
     .from('change_requests')
     .update({
       status: 'rejected',
-      reviewed_by: session.leader,
+      reviewed_by: session.label,
       reviewed_at: new Date().toISOString(),
       rejection_reason: reason.trim() || null
     })

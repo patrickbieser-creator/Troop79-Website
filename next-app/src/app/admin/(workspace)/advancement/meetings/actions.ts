@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { MeetingSection, SessionRequirementRef } from '@/lib/supabase/types';
 
@@ -48,7 +48,7 @@ async function entryIdOf(meetingId: number): Promise<number | undefined> {
  * so the two can no longer disagree. Nothing reads it.
  */
 export async function createMeeting(fd: FormData): Promise<CreateResult> {
-  const session = await requireRole(['leader']);
+  const session = await requireCapability('advancement.write');
   const entryId = Number(fd.get('calendar_entry_id'));
   if (!Number.isInteger(entryId) || entryId <= 0) {
     return { ok: false, error: 'Missing calendar entry.' };
@@ -71,7 +71,7 @@ export async function createMeeting(fd: FormData): Promise<CreateResult> {
       time_range: '4:00 – 5:30 PM',
       location: entry.location ?? 'Northwoods',
       location_address: '1572 E Capitol Drive, Milwaukee, WI',
-      updated_by: session.leader
+      updated_by: session.label
     })
     .select('id')
     .single();
@@ -89,7 +89,7 @@ export async function createMeeting(fd: FormData): Promise<CreateResult> {
  *  calendar entry, and letting the layer edit it is exactly how the two used to
  *  drift apart. */
 export async function updateMeeting(fd: FormData): Promise<ActionResult> {
-  const session = await requireRole(['leader']);
+  const session = await requireCapability('advancement.write');
   const id = Number(fd.get('id'));
   if (!id) return { ok: false, error: 'Missing meeting id.' };
 
@@ -107,7 +107,7 @@ export async function updateMeeting(fd: FormData): Promise<ActionResult> {
       flag_ceremony: str('flag_ceremony'),
       cleanup: str('cleanup'),
       duty_roster_url: str('duty_roster_url'),
-      updated_by: session.leader,
+      updated_by: session.label,
       updated_at: new Date().toISOString()
     })
     .eq('id', id);
@@ -117,11 +117,11 @@ export async function updateMeeting(fd: FormData): Promise<ActionResult> {
 }
 
 export async function setMeetingStatus(id: number, status: 'draft' | 'published'): Promise<ActionResult> {
-  const session = await requireRole(['leader']);
+  const session = await requireCapability('advancement.write');
   const supabase = createAdminClient();
   const { error } = await supabase
     .from('meetings')
-    .update({ status, updated_by: session.leader, updated_at: new Date().toISOString() })
+    .update({ status, updated_by: session.label, updated_at: new Date().toISOString() })
     .eq('id', id);
   if (error) return { ok: false, error: error.message };
   revalidateMeetings(id, await entryIdOf(id));
@@ -131,7 +131,7 @@ export async function setMeetingStatus(id: number, status: 'draft' | 'published'
 /** Hard delete of the AGENDA LAYER only (sessions cascade) — the calendar entry
  *  it hung off survives. The UI confirms first. */
 export async function deleteMeeting(id: number): Promise<ActionResult> {
-  await requireRole(['leader']);
+  await requireCapability('advancement.write');
   const entryId = await entryIdOf(id);
   const supabase = createAdminClient();
   const { error } = await supabase.from('meetings').delete().eq('id', id);
@@ -179,7 +179,7 @@ async function nextSortOrder(meetingId: number, section: string): Promise<number
 }
 
 export async function createSession(fd: FormData): Promise<ActionResult> {
-  await requireRole(['leader']);
+  await requireCapability('advancement.write');
   const meetingId = Number(fd.get('meeting_id'));
   const fields = sessionFieldsFromForm(fd);
   if (!meetingId) return { ok: false, error: 'Missing meeting id.' };
@@ -197,7 +197,7 @@ export async function createSession(fd: FormData): Promise<ActionResult> {
 }
 
 export async function updateSession(fd: FormData): Promise<ActionResult> {
-  await requireRole(['leader']);
+  await requireCapability('advancement.write');
   const id = Number(fd.get('id'));
   const meetingId = Number(fd.get('meeting_id'));
   const fields = sessionFieldsFromForm(fd);
@@ -212,7 +212,7 @@ export async function updateSession(fd: FormData): Promise<ActionResult> {
 }
 
 export async function deleteSession(id: number, meetingId: number): Promise<ActionResult> {
-  await requireRole(['leader']);
+  await requireCapability('advancement.write');
   const supabase = createAdminClient();
   const { error } = await supabase.from('meeting_sessions').delete().eq('id', id);
   if (error) return { ok: false, error: error.message };
@@ -222,7 +222,7 @@ export async function deleteSession(id: number, meetingId: number): Promise<Acti
 
 /** Swaps sort_order with the neighbor above/below within the same section. */
 export async function moveSession(id: number, meetingId: number, direction: 'up' | 'down'): Promise<ActionResult> {
-  await requireRole(['leader']);
+  await requireCapability('advancement.write');
   const supabase = createAdminClient();
 
   const { data: row } = await supabase
@@ -273,7 +273,7 @@ export interface PromotePayload {
  * One-way: the plan snapshot and engine data are never touched.
  */
 export async function promotePlanSession(payload: PromotePayload): Promise<ActionResult> {
-  await requireRole(['leader']);
+  await requireCapability('advancement.write');
   const { meetingId, title } = payload;
   if (!meetingId || !title.trim()) return { ok: false, error: 'Malformed candidate.' };
 

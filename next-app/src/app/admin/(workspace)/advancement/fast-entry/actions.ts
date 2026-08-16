@@ -2,16 +2,12 @@
 
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { LedgerKind } from '@/lib/supabase/types';
 import { DEDUP_KINDS, queryExistingSet, filterOutExisting as filterOutExistingGeneric } from '@/lib/ledger-dedup';
 import { keyForLedgerRow } from './picker-types';
-
-async function ensureLeader() {
-  return requireRole(['leader']);
-}
 
 interface EntryToInsert {
   scout_id: string;
@@ -68,7 +64,7 @@ async function filterOutExisting(
  */
 export async function checkExistingCompletions(formData: FormData): Promise<SkippedEntry[]> {
   try {
-    await ensureLeader();
+    await requireCapability('advancement.write');
   } catch {
     return [];
   }
@@ -97,7 +93,7 @@ export async function checkExistingCompletions(formData: FormData): Promise<Skip
 export async function addLedgerEntries(formData: FormData): Promise<SaveResult> {
   let session;
   try {
-    session = await ensureLeader();
+    session = await requireCapability('advancement.write');
   } catch {
     return { ok: false, inserted: 0, error: 'Not authenticated' };
   }
@@ -165,7 +161,7 @@ export async function addLedgerEntries(formData: FormData): Promise<SaveResult> 
             : 1,
     unit: it.unit,
     notes,
-    entered_by: session.leader,
+    entered_by: session.label,
     entered_at: new Date().toISOString()
   }));
 
@@ -380,7 +376,7 @@ function targetN(node: CatalogReqWithChildren): number {
  */
 export async function undoCompletion(formData: FormData): Promise<SaveResult> {
   try {
-    await ensureLeader();
+    await requireCapability('advancement.write');
   } catch {
     return { ok: false, inserted: 0, error: 'Not authenticated' };
   }
@@ -435,7 +431,7 @@ export async function loadScoutHistory(scoutId: string): Promise<{
   leadership: Array<{ id: number; date: string | null; by: string | null; code: string; label: string | null; qty: number; unit: string }>;
 }> {
   try {
-    await ensureLeader();
+    await requireCapability('advancement.write');
   } catch {
     return { service: [], events: [], leadership: [] };
   }
@@ -475,7 +471,7 @@ export async function loadScoutCompletion(
   scoutId: string
 ): Promise<Array<{ key: string; entryId: number; date: string | null; by: string | null; code: string }>> {
   try {
-    await ensureLeader();
+    await requireCapability('advancement.write');
   } catch {
     return [];
   }
