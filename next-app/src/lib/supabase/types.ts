@@ -350,7 +350,10 @@ export interface MeetingSession {
    calendar_entries row promoted into the feed, never an article. Rows are
    converted by the drop_legacy migration. */
 export type ArticleType = 'news' | 'recognition';
-export type ArticleStatus = 'draft' | 'published';
+/** 'pending' = proposed from /news/submit by a verified family member or
+ *  scout, awaiting a leader's review (20260816170000). 'draft' remains a
+ *  leader's own work in progress. */
+export type ArticleStatus = 'pending' | 'draft' | 'published';
 export type AuthorRole = 'leader' | 'scout';
 
 export interface Media {

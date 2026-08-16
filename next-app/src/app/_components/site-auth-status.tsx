@@ -101,6 +101,11 @@ export function SiteAuthStatus() {
         )}{' '}
         &middot; {status.level}
       </span>
+      {status.canSubmitStory && (
+        <Link href="/news/submit" style={LINK_STYLE}>
+          Submit a Story
+        </Link>
+      )}
       {status.canViewProfile && (
         <Link href="/profile" style={LINK_STYLE}>
           Profile

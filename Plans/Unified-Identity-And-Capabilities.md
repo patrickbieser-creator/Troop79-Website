@@ -1,6 +1,6 @@
 # Unified Identity & Capabilities
 
-**Status:** Ready to implement — all open questions resolved 2026-08-16
+**Status:** Phases A, B1, B2 and C SHIPPED 2026-08-16. Phase D (reach) and E (retirement) remain.
 **Created:** 2026-08-16
 **Priority:** High
 **Supersedes on completion:** the shared-password half of `Plans/Family-Identity-Auth.md`. That plan
@@ -632,7 +632,7 @@ workspace. Nobody is ever granted more than they should have at any point in the
       the whole plan** — structurally true after B1 for a full troop admin, but unverified in a
       browser and not yet true for a partially-granted leader.
 
-### Phase C — scout surfaces move off /admin
+### Phase C — scout surfaces move off /admin — **SHIPPED 2026-08-16**
 
 - [ ] Migration: `articles.status` gains `'pending'`; `calendar_entries` gains
       `status text not null default 'published' check (status in ('draft','published'))`.

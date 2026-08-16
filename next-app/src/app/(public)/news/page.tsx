@@ -44,9 +44,21 @@ export default async function NewsIndexPage({
     <>
       <div className={styles.sectionHeader}>
         <span className={styles.sectionLabel}>{archive ? 'News Archive' : 'News & Events'}</span>
-        <Link href={archive ? '/news' : '/news?archive=1'} className={styles.viewAllLink}>
-          {archive ? '← Back to current news' : 'View archive →'}
-        </Link>
+        <span className={styles.viewAllLink}>
+          {/* Shown to everyone, signed in or not — /news/submit explains the
+              sign-in itself. Hiding it from signed-out visitors would hide it
+              from exactly the scouts who have never signed in and therefore
+              never discover it exists (Phase C). */}
+          {!archive && (
+            <>
+              <Link href="/news/submit">Submit a story</Link>
+              {' · '}
+            </>
+          )}
+          <Link href={archive ? '/news' : '/news?archive=1'}>
+            {archive ? '← Back to current news' : 'View archive →'}
+          </Link>
+        </span>
       </div>
 
       <main className={styles.mainContent}>

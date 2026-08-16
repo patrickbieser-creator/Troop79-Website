@@ -113,6 +113,7 @@
 .pillRecognition { background: #e0e7ef; color: var(--admin-navy); }
 .pillDraft       { background: var(--admin-gray-100); color: var(--admin-gray-700); }
 .pillPublished   { background: #dcefe0; color: #1e6b3a; }
+.pillPending     { background: #fbeecd; color: #7a5410; }
 .pillArchived    { background: var(--admin-gray-100); color: var(--admin-gray-500); }
 
 .archivedRow { background: var(--admin-gray-50); color: var(--admin-gray-500); font-style: italic; }
@@ -215,3 +216,15 @@
   margin-top: 4px; padding: 6px 10px; background: #fdf0ef; border: 1px solid #e8c4c0;
   color: var(--admin-danger); border-radius: 3px; font-size: 12px; font-weight: 400;
 }
+
+.pendingNotice {
+  background: #fdf6e6;
+  border: 1px solid #e6d3a3;
+  border-left: 4px solid #c99a2e;
+  border-radius: 4px;
+  padding: 0.7rem 0.9rem;
+  margin-bottom: 0.9rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+.pendingNotice strong { color: #6b4e0f; }

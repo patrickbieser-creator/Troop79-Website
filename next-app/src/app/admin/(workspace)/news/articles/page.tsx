@@ -106,6 +106,24 @@ async function loadArticles(parsed: ReturnType<typeof parseSearch>) {
  *
  * Two head-only count queries; no rows come back.
  */
+/**
+ * Stories submitted from /news/submit and not yet dealt with.
+ *
+ * Deliberately NOT filtered by the current search or tab, unlike the tab
+ * counts: this is a "something is waiting for you" signal, and a signal that
+ * disappears when you happen to be searching for something else is not a
+ * signal. Same reasoning as the dashboard's pending change-requests notice.
+ */
+async function countPending(): Promise<number> {
+  const supabase = createAdminClient();
+  const { count } = await supabase
+    .from('articles')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'pending')
+    .is('archived_at', null);
+  return count ?? 0;
+}
+
 async function loadTabCounts(parsed: ReturnType<typeof parseSearch>) {
   const supabase = createAdminClient();
 
@@ -145,10 +163,11 @@ export default async function ArticlesPage({
   // This page previously had no guard of its own — it leaned on the proxy and
   // then read the leader cookie for a display name. Both are now the actor
   // (Phase C, 2026-08-16).
-  const [{ rows, total }, tabCounts, actor] = await Promise.all([
+  const [{ rows, total }, tabCounts, actor, pendingCount] = await Promise.all([
     loadArticles(parsed),
     loadTabCounts(parsed),
-    requireCapability('news.write')
+    requireCapability('news.write'),
+    countPending()
   ]);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const pageStart = total === 0 ? 0 : (parsed.page - 1) * PAGE_SIZE + 1;
@@ -173,6 +192,18 @@ export default async function ArticlesPage({
           + Add Entry
         </Link>
       </div>
+
+      {pendingCount > 0 && parsed.status !== 'pending' && (
+        <div className={styles.pendingNotice}>
+          <strong>
+            {pendingCount} {pendingCount === 1 ? 'story' : 'stories'} submitted for review
+          </strong>{' '}
+          &mdash; sent in from the family side of the site. Open one to edit it, then Publish.{' '}
+          <Link href={urlWith(raw, { status: 'pending', archived: '', page: '' })}>
+            Review {pendingCount === 1 ? 'it' : 'them'} →
+          </Link>
+        </div>
+      )}
 
       <ArticlesTabs
         archived={parsed.archived}

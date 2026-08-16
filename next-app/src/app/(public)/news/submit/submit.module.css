@@ -1,0 +1,132 @@
+.intro {
+  max-width: 60ch;
+  margin: 0 0 1.75rem;
+  color: var(--text-meta, #5b5347);
+  line-height: 1.6;
+}
+
+.form {
+  max-width: 62ch;
+}
+
+.byline {
+  margin: 0 0 1.25rem;
+  font-size: 0.9rem;
+  color: var(--text-meta, #5b5347);
+}
+
+.field {
+  display: block;
+  margin-bottom: 1.25rem;
+}
+
+.label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--navy, #22333b);
+  margin-bottom: 0.35rem;
+}
+
+.input,
+.textarea {
+  width: 100%;
+  border: 1px solid #d8ccb4;
+  border-radius: 4px;
+  padding: 0.6rem 0.7rem;
+  font: inherit;
+  background: #fff;
+  color: inherit;
+}
+
+.textarea {
+  line-height: 1.6;
+  resize: vertical;
+  min-height: 14rem;
+}
+
+.input:focus,
+.textarea:focus {
+  outline: 2px solid #3d7a4a;
+  outline-offset: 1px;
+}
+
+.hint {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--text-meta, #857c6c);
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.submitBtn {
+  background: #3d7a4a;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.65rem 1.2rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+.submitBtn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.cancel {
+  font-size: 0.9rem;
+  color: var(--text-meta, #5b5347);
+}
+
+.error {
+  color: #8c3b3b;
+  font-size: 0.9rem;
+  margin: 0.75rem 0 0;
+}
+
+.done {
+  max-width: 60ch;
+}
+.done h2 {
+  margin-top: 0;
+}
+.done p {
+  line-height: 1.6;
+  color: var(--text-meta, #5b5347);
+}
+.doneActions {
+  display: flex;
+  gap: 1.25rem;
+  align-items: center;
+  margin-top: 1.5rem;
+}
+
+.linkBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: #3d7a4a;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.gate {
+  max-width: 60ch;
+  line-height: 1.6;
+}
+.gate p {
+  color: var(--text-meta, #5b5347);
+}

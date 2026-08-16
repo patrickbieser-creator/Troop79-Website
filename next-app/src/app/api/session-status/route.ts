@@ -48,6 +48,10 @@ export interface SessionStatus {
   /** True only for a verified adult identity session (Tier 2) — the one
    *  audience /profile is actually built for. */
   canViewProfile: boolean;
+  /** Verified identity (adult OR scout) — the people who may propose a news
+   *  story. Proposing is baseline, not a capability: the article lands
+   *  'pending' and a leader publishes it, so there is nothing to grant. */
+  canSubmitStory: boolean;
 }
 
 export async function GET() {
@@ -65,21 +69,25 @@ export async function GET() {
   if (leaderSession) {
     status = {
       loggedIn: true,
-      level: leaderSession.role === 'leader' ? 'Admin' : 'Scout',
+      level: 'Admin',
       label: leaderSession.leader,
-      canViewProfile: false
+      canViewProfile: false,
+      // A leader on the shared password authors in /admin, not through the
+      // proposal form — and the form binds authorship to a verified person.
+      canSubmitStory: false
     };
   } else if (identitySession) {
     status = {
       loggedIn: true,
       level: identitySession.subjectKind === 'adult' ? 'Family' : 'Scout',
       label: identitySession.displayName,
-      canViewProfile: identitySession.subjectKind === 'adult'
+      canViewProfile: identitySession.subjectKind === 'adult',
+      canSubmitStory: true
     };
   } else if (familySession) {
-    status = { loggedIn: true, level: 'Family', label: null, canViewProfile: false };
+    status = { loggedIn: true, level: 'Family', label: null, canViewProfile: false, canSubmitStory: false };
   } else {
-    status = { loggedIn: false, level: null, label: null, canViewProfile: false };
+    status = { loggedIn: false, level: null, label: null, canViewProfile: false, canSubmitStory: false };
   }
 
   return NextResponse.json(status, { headers: { 'Cache-Control': 'no-store' } });

@@ -28,6 +28,7 @@ interface SearchParams {
 }
 
 const STATUS_LABEL: Record<ArticleStatus, string> = {
+  pending: 'Submitted',
   draft: 'Draft',
   published: 'Published'
 };
@@ -124,7 +125,15 @@ export function ArticlesTable({ rows, sp, sort, dir, sessionName }: Props) {
                     {rowErr?.id === r.id && <div className={styles.rowError}>{rowErr.msg}</div>}
                   </td>
                   <td className={styles.nowrap}>
-                    <span className={`${styles.pill} ${r.status === 'published' ? styles.pillPublished : styles.pillDraft}`}>
+                    <span
+                      className={`${styles.pill} ${
+                        r.status === 'published'
+                          ? styles.pillPublished
+                          : r.status === 'pending'
+                            ? styles.pillPending
+                            : styles.pillDraft
+                      }`}
+                    >
                       {STATUS_LABEL[r.status]}
                     </span>
                     {r.archived_at && <span className={`${styles.pill} ${styles.pillArchived}`}> Archived</span>}
@@ -175,7 +184,7 @@ export function ArticlesTable({ rows, sp, sort, dir, sessionName }: Props) {
                         Clone
                       </button>
                     )}
-                    {isLeader && r.status === 'draft' && !r.archived_at && (
+                    {isLeader && r.status !== 'published' && !r.archived_at && (
                       <button
                         type="button"
                         className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
