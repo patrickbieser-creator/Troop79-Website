@@ -1,0 +1,192 @@
+.pageTitle {
+  margin-bottom: 1.25rem;
+}
+.pageTitle h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.5rem;
+}
+.pageTitle p {
+  margin: 0;
+  color: #5b5347;
+  font-size: 0.9rem;
+  max-width: 62ch;
+}
+
+.note {
+  background: #fdf8ef;
+  border: 1px solid #e4d9c4;
+  border-radius: 6px;
+  padding: 0.75rem 0.9rem;
+  font-size: 0.85rem;
+  color: #5b5347;
+  margin-bottom: 1.25rem;
+  max-width: 78ch;
+}
+.note strong {
+  color: #3d3830;
+}
+
+.tableWrap {
+  overflow: auto;
+  /* An explicit height is what makes the sticky header work. `overflow-x: auto`
+     alone computes overflow-y to `auto` too, so this element is already a
+     scroll container in both axes — without a height cap it never scrolls
+     vertically, and `position: sticky` on the thead anchors to a scrollport
+     that never moves. Verified broken in the browser 2026-08-16. */
+  max-height: calc(100vh - 20rem);
+  min-height: 12rem;
+  border: 1px solid #e4d9c4;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.85rem;
+}
+.table th,
+.table td {
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid #efe7d8;
+  text-align: left;
+  vertical-align: middle;
+}
+.table thead th {
+  position: sticky;
+  top: 0;
+  background: #f7f1e6;
+  font-weight: 600;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #6b6355;
+}
+.table tbody tr:hover {
+  background: #fbf7f0;
+}
+
+.capCol {
+  text-align: center;
+  width: 5.5rem;
+}
+.capCell {
+  text-align: center;
+}
+
+.person {
+  font-weight: 600;
+  color: #2f2b25;
+  white-space: nowrap;
+}
+.personMeta {
+  display: block;
+  font-weight: 400;
+  font-size: 0.75rem;
+  color: #857c6c;
+}
+.youthTag {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 3px;
+  background: #e8efe4;
+  color: #46603a;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.toggle {
+  border: 1px solid #d8ccb4;
+  background: #fff;
+  border-radius: 4px;
+  width: 1.65rem;
+  height: 1.65rem;
+  cursor: pointer;
+  color: #b3a894;
+  line-height: 1;
+  font-size: 0.9rem;
+}
+.toggleOn {
+  background: #3f6b3a;
+  border-color: #3f6b3a;
+  color: #fff;
+  font-weight: 700;
+}
+.toggle:disabled {
+  opacity: 0.45;
+  cursor: progress;
+}
+
+.rowActions {
+  display: flex;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+.smallBtn {
+  border: 1px solid #d8ccb4;
+  background: #fff;
+  border-radius: 4px;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  color: #5b5347;
+}
+.smallBtn:hover {
+  background: #f7f1e6;
+}
+.dangerBtn {
+  border-color: #d9bcbc;
+  color: #8c3b3b;
+}
+.dangerBtn:hover {
+  background: #fbf0f0;
+}
+
+.bundleBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  margin: 1.25rem 0 0.75rem;
+}
+.bundleBar label {
+  font-size: 0.85rem;
+  color: #5b5347;
+}
+.select {
+  border: 1px solid #d8ccb4;
+  border-radius: 4px;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.85rem;
+  background: #fff;
+}
+
+.addRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e4d9c4;
+}
+.addRow h2 {
+  width: 100%;
+  margin: 0;
+  font-size: 1rem;
+}
+.addRow p {
+  width: 100%;
+  margin: 0;
+  font-size: 0.82rem;
+  color: #857c6c;
+}
+
+.error {
+  margin-top: 0.75rem;
+  color: #8c3b3b;
+  font-size: 0.85rem;
+}
