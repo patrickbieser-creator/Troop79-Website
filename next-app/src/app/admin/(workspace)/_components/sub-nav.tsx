@@ -54,7 +54,8 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
       {
         label: 'Event Rosters',
         href: '/admin/rosters',
-        matchPath: '/admin/rosters'
+        matchPath: '/admin/rosters',
+        capability: 'calendar.write'
       }
     ]
   },
@@ -147,12 +148,14 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
          */
         label: 'Calendar',
         href: '/admin/calendar',
-        matchPath: '/admin/calendar'
+        matchPath: '/admin/calendar',
+        capability: 'calendar.write'
       },
       {
         label: 'Resource Library',
         href: '/admin/library',
-        matchPath: '/admin/library'
+        matchPath: '/admin/library',
+        capability: 'library.moderate'
       },
       {
         label: 'Media Manager',

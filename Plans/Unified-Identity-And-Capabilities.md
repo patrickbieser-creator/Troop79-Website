@@ -582,9 +582,43 @@ workspace. Nobody is ever granted more than they should have at any point in the
       Also re-verified: the sticky table header now works (the `max-height` fix), and the legacy
       `LEADER_PASSWORD` session still sees the full workspace.
 
-- [ ] Convert the remaining sections: News, Calendar, Resource Library, Media Manager, Photo Albums,
-      Event Rosters, Utilities, `/admin/access` itself. Add each one's `capability` to its nav item
-      in the same commit as its guards.
+- [x] **Calendar, Resource Library and Event Rosters converted — SHIPPED 2026-08-16.** 17 guards
+      across 8 files. `calendar/[id]/roll-call/*` went to **`advancement.write`, not
+      `calendar.write`** — taking attendance is the same act as `/admin/advancement/meetings`, and
+      someone who manages the calendar is not automatically someone who records attendance.
+
+      | Surface | Capability |
+      |---|---|
+      | calendar, calendar/[id], Event Rosters | `calendar.write` |
+      | calendar/[id]/roll-call | `advancement.write` |
+      | library | `library.moderate` |
+
+- [ ] **News, Media Manager, Photo Albums and Utilities are BLOCKED on Phase C — do not convert
+      them.** Not deferred for effort; converting them is actively unsafe today.
+
+      Phase B1's shim maps a legacy `SCOUT_PASSWORD` session to `news.write`, because drafting news
+      is the only thing scouts do in `/admin`. `news.author` + `news.publish` were then collapsed
+      into one `news.write`. Together those mean that converting `publishArticle` — or
+      `archiveArticle` / `deleteArticle` / `setFeatured`, all currently `requireRole(['leader'])` in
+      the same file as the scout-visible drafting actions — **hands a bare `SCOUT_PASSWORD` session
+      the ability to publish and delete articles.** The change would look identical to the 58 safe
+      conversions already made in Advancement, which is exactly what makes it dangerous.
+
+      Utilities is in the same bucket: it has no guards of its own but calls `syncBunnyLibrary` from
+      `news/media/actions.ts`, which is scout-visible.
+
+      Guarded by `tests/news-scout-shim-guard.test.ts`, which fails with an explanation if anyone
+      converts a News action while `SCOUT_PASSWORD` still exists. Falsified by converting
+      `publishArticle` and confirming it fires.
+
+      **Phase C is the unblock**, and it dissolves the problem rather than working around it: scout
+      drafting moves to the public side as a baseline action landing in `'pending'`, `SCOUT_PASSWORD`
+      and `SCOUT_ALLOWED_PREFIXES` are deleted, and the shim goes with them. After that, News
+      converts trivially.
+
+- [ ] `/admin/access` itself — convert to `requireCapability('roster.manage')`. Left for last on
+      purpose: it is the tool used to hand out the first grants, so it should not change hands until
+      the rest is settled.
 - [ ] Delete `satisfiesLegacyRole()`'s identity branch and the layout's "Not switched on yet" panel
       once the last call site is converted.
 - [ ] Audit stamps (`ledger_entries.entered_by`, `change_requests.submitted_by_person_id`,

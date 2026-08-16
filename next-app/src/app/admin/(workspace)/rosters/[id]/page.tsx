@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import { RosterTable } from './roster-table';
 import { AddPerson, type AddCandidate } from './add-person';
 import { EmailPanel } from './email-panel';
@@ -49,7 +49,7 @@ export interface RosterRow {
 async function load(signupId: number) {
   // Leader-only: rosters carry guest notes, driving arrangements, payment
   // status and household composition. A scout-role session must not see them.
-  await requireRole(['leader']);
+  await requireCapability('calendar.write');
   const supabase = createAdminClient();
   const { data: signup } = await supabase
     .from('event_signups')
@@ -77,7 +77,8 @@ async function load(signupId: number) {
     supabase.from('signup_answers').select('signup_entry_id, question_id, value'),
     supabase.from('signup_questions').select('id, prompt').eq('event_signup_id', sig.id),
     supabase.from('scouts').select('id, display_name, active, household_id'),
-    supabase.from('households').select('id, label'),
+    supabase.from('households').select('id, label'),
+
     supabase.from('people').select('id, display_name')
   ]);
 

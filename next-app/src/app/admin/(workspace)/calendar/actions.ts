@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { loadCalendarCategories } from '@/lib/calendar';
 
@@ -27,7 +27,7 @@ function revalidateCalendar(entryId?: number) {
  * which is also why the workbench no longer needs a panel-level role split.
  */
 export async function updateEntryStory(fd: FormData): Promise<ActionResult> {
-  await requireRole(['leader']);
+  await requireCapability('calendar.write');
   const id = Number(fd.get('id'));
   if (!Number.isInteger(id) || id <= 0) return { ok: false, error: 'Missing entry.' };
   const body = String(fd.get('details_md') ?? '');
@@ -140,7 +140,7 @@ function stripRow<T extends Record<string, unknown>>(row: T, ...alsoDrop: string
 export async function cloneCalendarEntry(
   fd: FormData
 ): Promise<{ ok: boolean; error?: string; id?: number }> {
-  const session = await requireRole(['leader']);
+  const session = await requireCapability('calendar.write');
   const sourceId = Number(fd.get('source_id'));
   const newDate = String(fd.get('entry_date') ?? '').trim();
   if (!Number.isInteger(sourceId) || sourceId <= 0) return { ok: false, error: 'Missing source entry.' };
@@ -165,7 +165,7 @@ export async function cloneCalendarEntry(
       ...stripRow(source as Record<string, unknown>),
       // The copy belongs to whoever made it, not to whoever wrote the original
       // — the clone is a new entry that someone chose to create today.
-      author_name: session.leader,
+      author_name: session.label,
       entry_date: newDate,
       end_date: shiftDate(source.end_date as string | null, shift),
       promo_start: shiftDate(source.promo_start as string | null, shift),
@@ -291,7 +291,7 @@ export async function cloneCalendarEntry(
 }
 
 export async function createCalendarEntry(fd: FormData): Promise<ActionResult> {
-  const session = await requireRole(['leader']);
+  const session = await requireCapability('calendar.write');
   const fields = fieldsFromForm(fd);
   if (!fields.entry_date) return { ok: false, error: 'Date is required.' };
   if (!fields.category) return { ok: false, error: 'Category is required.' };
@@ -302,7 +302,7 @@ export async function createCalendarEntry(fd: FormData): Promise<ActionResult> {
   // not reassign authorship, same as News.
   const { error } = await supabase
     .from('calendar_entries')
-    .insert({ ...fields, author_name: session.leader });
+    .insert({ ...fields, author_name: session.label });
   if (error) return { ok: false, error: error.message };
   revalidateCalendar();
   return { ok: true };
@@ -319,7 +319,7 @@ export async function createCalendarEntry(fd: FormData): Promise<ActionResult> {
  * destroying it, so turning it back on restores what was set up.
  */
 export async function setEntryPromoted(id: number, on: boolean): Promise<ActionResult> {
-  await requireRole(['leader']);
+  await requireCapability('calendar.write');
   if (!Number.isInteger(id) || id <= 0) return { ok: false, error: 'Missing entry.' };
 
   const supabase = createAdminClient();
@@ -334,7 +334,7 @@ export async function setEntryPromoted(id: number, on: boolean): Promise<ActionR
 }
 
 export async function updateCalendarEntry(fd: FormData): Promise<ActionResult> {
-  await requireRole(['leader']);
+  await requireCapability('calendar.write');
   const id = Number(fd.get('id'));
   const fields = fieldsFromForm(fd);
   if (!fields.entry_date) return { ok: false, error: 'Date is required.' };
@@ -420,7 +420,7 @@ export async function importCalendarEntries(
   inserts: ImportRowFields[],
   updates: ImportUpdate[]
 ): Promise<ImportResult> {
-  await requireRole(['leader']);
+  await requireCapability('calendar.write');
 
   const validCategories = (await loadCalendarCategories()).map((c) => c.label);
   for (const f of [...inserts, ...updates.map((u) => u.fields)]) {
@@ -454,7 +454,7 @@ export async function importCalendarEntries(
 
 /** Leader-only, matching every other destructive News & Events action. */
 export async function deleteCalendarEntry(id: number): Promise<ActionResult> {
-  await requireRole(['leader']);
+  await requireCapability('calendar.write');
   const supabase = createAdminClient();
   const { error } = await supabase.from('calendar_entries').delete().eq('id', id);
   if (error) return { ok: false, error: error.message };

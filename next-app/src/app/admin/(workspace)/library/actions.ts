@@ -11,7 +11,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import {
   approveResource,
@@ -46,8 +46,8 @@ function fail(tab: string, message: string): never {
 }
 
 async function guard(): Promise<string> {
-  const session = await requireRole(['leader']);
-  return session.leader;
+  const session = await requireCapability('library.moderate');
+  return session.label;
 }
 
 /** Shared field-save for both the queue and published editors. Returns an

@@ -14,7 +14,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import { loadCalendarCategories } from '@/lib/calendar';
 import { creditRuleFor, defaultQtyFor, loadAttendance, loadCandidates } from '@/lib/attendance';
 import { markAttended, markAbsent, setAttendanceQty, seedFromSignup } from './actions';
@@ -24,7 +24,7 @@ import styles from './roll-call.module.css';
 export const metadata = { title: 'Roll Call — Troop 79' };
 
 export default async function RollCallPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireRole(['leader']);
+  await requireCapability('advancement.write');
   const { id } = await params;
   const entryId = Number(id);
   if (!Number.isInteger(entryId) || entryId <= 0) notFound();

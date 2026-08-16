@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import { formatCalendarDateParts } from '@/lib/calendar-shared';
 import { loadCalendarCategories } from '@/lib/calendar';
 import { categoryColorMap, colorFor } from '@/lib/calendar-categories';
@@ -43,7 +43,7 @@ interface RosterSummary {
 async function load(): Promise<RosterSummary[]> {
   // Leader-only: rosters carry guest notes, driving arrangements, payment
   // status and household composition. A scout-role session must not see them.
-  await requireRole(['leader']);
+  await requireCapability('calendar.write');
   const supabase = createAdminClient();
   const today = new Date().toISOString().slice(0, 10);
 

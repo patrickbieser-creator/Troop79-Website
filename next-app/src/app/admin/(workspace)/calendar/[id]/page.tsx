@@ -15,7 +15,7 @@
 
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import { loadCalendarCategories } from '@/lib/calendar';
 import { categoryColorMap, colorFor, templateOf } from '@/lib/calendar-categories';
 import { createMeeting } from '../../advancement/meetings/actions';
@@ -26,7 +26,7 @@ import { Workbench, type WorkbenchEntry } from './workbench';
 export const metadata = { title: 'Calendar Entry — Troop 79' };
 
 export default async function CalendarEntryPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireRole(['leader']);
+  await requireCapability('calendar.write');
   const { id } = await params;
   const entryId = Number(id);
   if (!Number.isInteger(entryId) || entryId <= 0) notFound();

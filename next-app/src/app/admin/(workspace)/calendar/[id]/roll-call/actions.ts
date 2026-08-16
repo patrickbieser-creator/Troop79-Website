@@ -10,7 +10,7 @@
  */
 
 import { revalidatePath } from 'next/cache';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { loadCalendarCategories } from '@/lib/calendar';
 import { creditRuleFor, defaultQtyFor } from '@/lib/attendance-shared';
@@ -62,7 +62,7 @@ export async function markAttended(
   qty?: number | null,
   source: 'manual' | 'signup' = 'manual'
 ): Promise<Result> {
-  const session = await requireRole(['leader']);
+  const session = await requireCapability('advancement.write');
   const ctx = await loadEntryContext(entryId);
   if (!ctx) return { ok: false, error: 'That entry no longer exists.' };
 
@@ -75,7 +75,7 @@ export async function markAttended(
       person_id: personId,
       qty: effectiveQty,
       source,
-      recorded_by: session.leader
+      recorded_by: session.label
     },
     { onConflict: 'calendar_entry_id,person_id' }
   );
@@ -94,13 +94,13 @@ export async function markAttended(
     return { ok: false, error: (e as Error).message };
   }
 
-  const creditResult = await syncCredit(supabase, ctx, personId, effectiveQty, session.leader);
+  const creditResult = await syncCredit(supabase, ctx, personId, effectiveQty, session.label);
   revalidateRollCall(entryId);
   return creditResult;
 }
 
 export async function markAbsent(entryId: number, personId: number): Promise<Result> {
-  const session = await requireRole(['leader']);
+  const session = await requireCapability('advancement.write');
   const ctx = await loadEntryContext(entryId);
   if (!ctx) return { ok: false, error: 'That entry no longer exists.' };
 
@@ -115,7 +115,7 @@ export async function markAbsent(entryId: number, personId: number): Promise<Res
    * were removed from). Deleting the attendance row first would produce exactly
    * the failure this design exists to avoid — flagged by qa-lead.
    */
-  const creditResult = await retireCredit(supabase, ctx, personId, session.leader);
+  const creditResult = await retireCredit(supabase, ctx, personId, session.label);
   if (!creditResult.ok) return creditResult;
 
   const { error } = await supabase
@@ -136,7 +136,7 @@ export async function setAttendanceQty(
   personId: number,
   qty: number
 ): Promise<Result> {
-  const session = await requireRole(['leader']);
+  const session = await requireCapability('advancement.write');
   const ctx = await loadEntryContext(entryId);
   if (!ctx) return { ok: false, error: 'That entry no longer exists.' };
   if (!Number.isFinite(qty) || qty < 0) return { ok: false, error: 'Quantity must be zero or more.' };
@@ -149,7 +149,7 @@ export async function setAttendanceQty(
     .eq('person_id', personId);
   if (error) return { ok: false, error: error.message };
 
-  const result = await syncCredit(supabase, ctx, personId, qty, session.leader);
+  const result = await syncCredit(supabase, ctx, personId, qty, session.label);
   revalidateRollCall(entryId);
   return result;
 }
@@ -162,7 +162,7 @@ export async function setAttendanceQty(
  * never touched by anything on this screen.
  */
 export async function seedFromSignup(entryId: number): Promise<Result & { added?: number }> {
-  await requireRole(['leader']);
+  await requireCapability('advancement.write');
   const supabase = createAdminClient();
 
   const { data: signup } = await supabase

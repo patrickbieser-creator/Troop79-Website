@@ -12,7 +12,7 @@
  */
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import type {
   LibraryPlacement,
   LibraryResource,
@@ -291,7 +291,7 @@ export default async function AdminLibraryPage({
 }: {
   searchParams: Promise<{ tab?: string; err?: string; target?: string; saved?: string; group?: string }>;
 }) {
-  await requireRole(['leader']);
+  await requireCapability('library.moderate');
   const sp = await searchParams;
   const tab: Tab = (TABS.find((t) => t.key === sp.tab)?.key ?? 'queue') as Tab;
   const data = await loadWorkstation();
