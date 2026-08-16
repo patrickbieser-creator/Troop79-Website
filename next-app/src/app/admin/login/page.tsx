@@ -138,11 +138,39 @@ export default async function LoginPage({
           </button>
         </form>
 
+        {/* The other door (Plans/Unified-Identity-And-Capabilities.md Phase B).
+            A leader whose person record holds capabilities can sign in as
+            themselves and skip the shared password entirely — and lands with
+            their family surface attached, rather than a second session. This
+            link is how anyone discovers that; the password form above retires
+            in Phase E. */}
         <p
           style={{
             fontSize: 12,
             color: '#9ba1aa',
-            marginTop: 20,
+            marginTop: 22,
+            paddingTop: 16,
+            borderTop: '1px solid #2a2f36',
+            textAlign: 'center',
+            lineHeight: 1.6
+          }}
+        >
+          Or{' '}
+          <Link
+            href={`/signin?next=${encodeURIComponent(next ?? '/admin/advancement')}`}
+            style={{ color: '#3d7a4a', fontWeight: 600 }}
+          >
+            sign in as yourself
+          </Link>{' '}
+          with an emailed code — no shared password, and no second sign-in for
+          your own family&rsquo;s pages.
+        </p>
+
+        <p
+          style={{
+            fontSize: 12,
+            color: '#9ba1aa',
+            marginTop: 14,
             textAlign: 'center'
           }}
         >

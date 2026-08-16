@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { IS_DEV_DB } from '@/lib/dev-db';
 import type { SessionRole } from '@/lib/leader-session';
+import type { Capability } from '@/lib/capabilities';
 import styles from '../admin.module.css';
 
 interface NavItem {
@@ -15,6 +16,18 @@ interface NavItem {
    *  SCOUT_ALLOWED_PREFIXES in proxy.ts, which this list must stay in sync
    *  with. Everything else defaults to leader-only. */
   scoutVisible?: boolean;
+  /**
+   * The capability this surface requires, once its pages have been converted
+   * from requireRole() to requireCapability()
+   * (Plans/Unified-Identity-And-Capabilities.md Phase B2).
+   *
+   * ABSENT MEANS NOT YET CONVERTED, and is treated as full-admin-only. That
+   * default is what makes it safe to relax the workspace gate to
+   * "any capability": a partially-granted person sees only the sections whose
+   * pages can actually admit them, instead of nav links that throw. Add the
+   * capability here in the same commit that converts the section's guards.
+   */
+  capability?: Capability;
 }
 
 const SECTIONS: { title: string; items: NavItem[] }[] = [
@@ -24,7 +37,8 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
       {
         label: 'Dashboard',
         href: '/admin/advancement/dashboard',
-        matchPath: '/admin/advancement/dashboard'
+        matchPath: '/admin/advancement/dashboard',
+        capability: 'advancement.write'
       }
     ]
   },
@@ -34,7 +48,8 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
       {
         label: 'Fast Entry',
         href: '/admin/advancement/fast-entry',
-        matchPath: '/admin/advancement/fast-entry'
+        matchPath: '/admin/advancement/fast-entry',
+        capability: 'advancement.write'
       },
       {
         label: 'Event Rosters',
@@ -49,7 +64,8 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
       {
         label: 'Meeting Plan',
         href: '/admin/advancement/meeting-plan',
-        matchPath: '/admin/advancement/meeting-plan'
+        matchPath: '/admin/advancement/meeting-plan',
+        capability: 'meeting_plan.use'
       },
       {
         // Roll Call deliberately keeps its own route: taking attendance is a
@@ -57,7 +73,8 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         // Calendar workbench. Meetings are CREATED on the calendar entry.
         label: 'Roll Call & Agendas',
         href: '/admin/advancement/meetings',
-        matchPath: '/admin/advancement/meetings'
+        matchPath: '/admin/advancement/meetings',
+        capability: 'advancement.write'
       },
       {
         label: 'Has/Needs Tool',
@@ -73,27 +90,32 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
       {
         label: 'Universal Ledger',
         href: '/admin/advancement/ledger',
-        matchPath: '/admin/advancement/ledger'
+        matchPath: '/admin/advancement/ledger',
+        capability: 'advancement.write'
       },
       {
         label: 'Submit & Present',
         href: '/admin/advancement/records',
-        matchPath: '/admin/advancement/records'
+        matchPath: '/admin/advancement/records',
+        capability: 'advancement.write'
       },
       {
         label: 'MB Progress',
         href: '/admin/advancement/mb-progress',
-        matchPath: '/admin/advancement/mb-progress'
+        matchPath: '/admin/advancement/mb-progress',
+        capability: 'advancement.write'
       },
       {
         label: 'Audits',
         href: '/admin/advancement/audits',
-        matchPath: '/admin/advancement/audits'
+        matchPath: '/admin/advancement/audits',
+        capability: 'advancement.write'
       },
       {
         label: 'Roster',
         href: '/admin/advancement/roster',
-        matchPath: '/admin/advancement/roster'
+        matchPath: '/admin/advancement/roster',
+        capability: 'roster.manage'
       },
       { label: 'Court of Honor', disabled: true }
     ]
@@ -152,7 +174,8 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
       {
         label: 'Scoutbook Export',
         href: '/admin/advancement/scoutbook-export',
-        matchPath: '/admin/advancement/scoutbook-export'
+        matchPath: '/admin/advancement/scoutbook-export',
+        capability: 'advancement.write'
       }
     ]
   },
@@ -162,12 +185,19 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
       {
         label: 'Lookups & Admin',
         href: '/admin/advancement/lookups',
-        matchPath: '/admin/advancement/lookups'
+        matchPath: '/admin/advancement/lookups',
+        capability: 'roster.manage'
       },
       {
         label: 'Roster Import',
         href: '/admin/advancement/roster-import',
-        matchPath: '/admin/advancement/roster-import'
+        matchPath: '/admin/advancement/roster-import',
+        capability: 'roster.manage'
+      },
+      {
+        label: 'Access & Permissions',
+        href: '/admin/access',
+        matchPath: '/admin/access'
       },
       {
         label: 'Utilities',
@@ -179,15 +209,52 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
   }
 ];
 
-export function SubNav({ role }: { role: SessionRole }) {
+/**
+ * Which nav items this actor should see.
+ *
+ * `fullAdmin` covers both a legacy leader session and an identity actor
+ * holding every capability — they see everything, including the sections not
+ * yet converted to capability checks.
+ *
+ * A partially-granted identity actor sees only converted items they hold. An
+ * unconverted item (no `capability`) is hidden from them, because its page
+ * still guards with requireRole() and would throw. Hiding it is not the
+ * security boundary — the page guard is; this just stops the nav from
+ * offering links that cannot work.
+ */
+export function visibleNavSections(
+  sections: typeof SECTIONS,
+  opts: { fullAdmin: boolean; legacyScout: boolean; capabilities: ReadonlySet<Capability> }
+) {
+  if (opts.legacyScout) {
+    return sections
+      .map((s) => ({ ...s, items: s.items.filter((i) => i.scoutVisible) }))
+      .filter((s) => s.items.length > 0);
+  }
+  if (opts.fullAdmin) return sections;
+  return sections
+    .map((s) => ({
+      ...s,
+      items: s.items.filter((i) => i.capability != null && opts.capabilities.has(i.capability))
+    }))
+    .filter((s) => s.items.length > 0);
+}
+
+export function SubNav({
+  role,
+  fullAdmin,
+  capabilities
+}: {
+  role: SessionRole;
+  fullAdmin: boolean;
+  capabilities: Capability[];
+}) {
   const pathname = usePathname();
-  const visibleSections =
-    role === 'leader'
-      ? SECTIONS
-      : SECTIONS.map((section) => ({
-          ...section,
-          items: section.items.filter((item) => item.scoutVisible)
-        })).filter((section) => section.items.length > 0);
+  const visibleSections = visibleNavSections(SECTIONS, {
+    fullAdmin,
+    legacyScout: role === 'scout',
+    capabilities: new Set(capabilities)
+  });
 
   return (
     <nav
