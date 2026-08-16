@@ -16,7 +16,14 @@
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
-import { requestChallenge, redeemCode, redeemToken } from '@/lib/identity-challenge';
+import {
+  requestChallenge,
+  requestChallengeForPerson,
+  redeemCode,
+  redeemCodeForPerson,
+  redeemToken
+} from '@/lib/identity-challenge';
+import { FAMILY_COOKIE, signFamilySession } from '@/lib/family-session';
 import { IDENTITY_COOKIE, signIdentitySession } from '@/lib/identity-session';
 import { safeInternalPath } from '@/lib/safe-redirect';
 
@@ -120,4 +127,101 @@ export async function confirmTokenAction(formData: FormData): Promise<void> {
 
   await setIdentityCookie(identity);
   redirect(safeInternalPath(identity.nextPath, '/profile'));
+}
+
+
+/**
+ * The troop password, in its NEW job (Plans/Unified-Identity-And-Capabilities.md
+ * Phase D, decision 3).
+ *
+ * It no longer grants access to anything. It unlocks the "find yourself"
+ * roster on /signin and nothing else — the output of that flow is still a
+ * bound, revocable, per-person identity session. Families keep the one-string
+ * simplicity they already have; what changes is that knowing the string stops
+ * BEING access and starts being a way to reach the list of names.
+ */
+export async function unlockRosterAction(formData: FormData): Promise<void> {
+  const password = String(formData.get('password') ?? '');
+  const next = String(formData.get('next') ?? '');
+  const keep = { next: next || undefined };
+
+  const expected = process.env.FAMILY_PASSWORD;
+  if (!expected) redirect(signinUrl({ ...keep, err: 'not-configured' }));
+  if (password !== expected) redirect(signinUrl({ ...keep, err: 'bad-password' }));
+
+  const token = await signFamilySession({ role: 'family', iat: Date.now() });
+  const jar = await cookies();
+  jar.set(FAMILY_COOKIE.name, token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: FAMILY_COOKIE.maxAgeSeconds
+  });
+  redirect(signinUrl({ ...keep, pick: '1' }));
+}
+
+/**
+ * Start a challenge for a person picked off the roster.
+ *
+ * NOT enumeration-safe, and it does not need to be: the caller has already
+ * cleared the troop-password gate and chosen a name from a list we showed
+ * them, so "does this person exist" is not a secret at this point. Saying
+ * plainly "we have no address for you, ask a leader" is worth more here than
+ * a uniform response that leaves someone staring at a screen wondering.
+ *
+ * The person id is the input — never an email. A scout can share a parent's
+ * address, and resolving by address would sign the scout in as the parent
+ * (see requestChallengeForPerson's header).
+ */
+export async function requestForPersonAction(formData: FormData): Promise<void> {
+  const personId = Number(formData.get('personId'));
+  const next = String(formData.get('next') ?? '');
+  const keep = { next: next || undefined };
+  if (!Number.isInteger(personId) || personId <= 0) {
+    redirect(signinUrl({ ...keep, pick: '1', err: 'invalid' }));
+  }
+
+  const supabase = createAdminClient();
+  const result = await requestChallengeForPerson(supabase, personId, {
+    nextPath: next || null,
+    ip: await callerIp()
+  });
+
+  if (!result.sent) {
+    redirect(signinUrl({ ...keep, pick: '1', err: 'unreachable', person: String(personId) }));
+  }
+  redirect(signinUrl({ ...keep, sent: '1', person: String(personId), masked: result.masked }));
+}
+
+/**
+ * Verify a code that was sent via the name picker. Keyed on the person we
+ * already identified, not on an address — see redeemCodeForPerson.
+ *
+ * Keeps the collapsed 'invalid' error of the email path: the picker is not
+ * enumeration-safe by design, but the number of code guesses someone gets is
+ * still worth not leaking.
+ */
+export async function verifyCodeForPersonAction(formData: FormData): Promise<void> {
+  const personId = Number(formData.get('personId'));
+  const code = String(formData.get('code') ?? '').trim();
+  const next = String(formData.get('next') ?? '');
+  const masked = String(formData.get('masked') ?? '');
+  const keep = {
+    next: next || undefined,
+    sent: '1',
+    person: Number.isInteger(personId) ? String(personId) : undefined,
+    masked: masked || undefined
+  };
+
+  if (!Number.isInteger(personId) || personId <= 0 || !code) {
+    redirect(signinUrl({ ...keep, err: 'invalid' }));
+  }
+
+  const supabase = createAdminClient();
+  const result = await redeemCodeForPerson(supabase, personId, code);
+  if (!result.ok) redirect(signinUrl({ ...keep, err: 'invalid' }));
+
+  await setIdentityCookie(result.identity);
+  redirect(safeInternalPath(result.identity.nextPath, '/profile'));
 }

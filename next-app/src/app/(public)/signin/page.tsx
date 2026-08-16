@@ -9,8 +9,17 @@
  */
 import Link from 'next/link';
 import { emailConfigured } from '@/lib/email';
-import { requestSignInAction, verifyCodeAction } from './actions';
+import { hasFamilyAccess } from '@/lib/family-access';
+import { loadSignInCandidates, type SignInCandidate } from '@/lib/signin-roster';
+import {
+  requestSignInAction,
+  verifyCodeAction,
+  unlockRosterAction,
+  requestForPersonAction,
+  verifyCodeForPersonAction
+} from './actions';
 import styles from '../library/library.module.css';
+import pick from './signin.module.css';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +29,10 @@ export const metadata = {
 
 const ERR_MESSAGES: Record<string, string> = {
   missing: 'Enter your email to continue.',
+  'bad-password': 'That isn’t the troop password — check the Bugle, or ask a leader.',
+  'not-configured': 'The troop password isn’t set on this server yet — ask a leader.',
+  unreachable:
+    'We don’t have an email address on file for you, so there’s nothing to send. Ask a leader — they can add one, or sign you in another way.',
   // Deliberately the SAME message whether the code was simply wrong or the
   // token is now locked out after too many attempts — a distinguishable
   // ?err= value between the two would let a guesser learn whether an email
@@ -31,10 +44,21 @@ const ERR_MESSAGES: Record<string, string> = {
 export default async function SignInPage({
   searchParams
 }: {
-  searchParams: Promise<{ sent?: string; email?: string; next?: string; err?: string }>;
+  searchParams: Promise<{
+    sent?: string;
+    email?: string;
+    next?: string;
+    err?: string;
+    pick?: string;
+    person?: string;
+    masked?: string;
+  }>;
 }) {
-  const { sent, email, next, err } = await searchParams;
+  const { sent, email, next, err, pick, person, masked } = await searchParams;
   const configured = emailConfigured();
+  // The troop password gates the roster, nothing else (Phase D, decision 3).
+  const rosterUnlocked = pick === '1' || (await hasFamilyAccess());
+  const candidates = rosterUnlocked && sent !== '1' ? await loadSignInCandidates() : [];
 
   return (
     <>
@@ -42,8 +66,8 @@ export default async function SignInPage({
         <p className={styles.kicker}>Sign In</p>
         <h1 className={styles.pageTitle}>Sign In</h1>
         <p className={styles.pageLede}>
-          No password to remember — enter your email and we&rsquo;ll send you a one-time code
-          and link.
+          No password to remember — find your name and we&rsquo;ll send a one-time code to the
+          email we already have for you.
         </p>
         <div className={styles.headRule} />
       </div>
@@ -57,9 +81,15 @@ export default async function SignInPage({
         )}
 
         {sent === '1' ? (
-          <CodeForm email={email} next={next} err={err} />
+          person ? (
+            <PersonCodeForm personId={person} masked={masked} next={next} err={err} />
+          ) : (
+            <CodeForm email={email} next={next} err={err} />
+          )
+        ) : rosterUnlocked ? (
+          <NamePicker candidates={candidates} next={next} err={err} configured={configured} />
         ) : (
-          <RequestForm email={email} next={next} err={err} configured={configured} />
+          <PasswordGate next={next} err={err} />
         )}
 
         {/* Consolidated nav login (Patrick, 2026-08-06: "Consolidate all
@@ -79,48 +109,6 @@ export default async function SignInPage({
   );
 }
 
-function RequestForm({
-  email,
-  next,
-  err,
-  configured
-}: {
-  email?: string;
-  next?: string;
-  err?: string;
-  configured: boolean;
-}) {
-  return (
-    <form className={styles.formCard} action={requestSignInAction}>
-      {next && <input type="hidden" name="next" value={next} />}
-      {err && ERR_MESSAGES[err] && <p className={styles.fieldError}>{ERR_MESSAGES[err]}</p>}
-
-      <div className={styles.fieldRow}>
-        <label className={styles.fieldLabel} htmlFor="email">
-          Email
-        </label>
-        <input
-          className={styles.textInput}
-          type="email"
-          id="email"
-          name="email"
-          autoComplete="email"
-          defaultValue={email}
-          placeholder="you@example.com"
-          disabled={!configured}
-        />
-        <p className={styles.fieldHint}>
-          If that address is on our roster, a code is on its way. Nothing happens for an
-          address we don&rsquo;t recognize — no error either way.
-        </p>
-      </div>
-
-      <button className={styles.btnPrimary} type="submit" disabled={!configured}>
-        Send Code
-      </button>
-    </form>
-  );
-}
 
 function CodeForm({ email, next, err }: { email?: string; next?: string; err?: string }) {
   return (
@@ -177,5 +165,205 @@ function CodeForm({ email, next, err }: { email?: string; next?: string; err?: s
         </Link>
       </p>
     </>
+  );
+}
+
+/**
+ * Step 1 — the troop password, in its new job.
+ *
+ * It grants nothing. It unlocks the roster on the next screen, and the thing
+ * you leave that screen with is still a per-person, revocable identity
+ * session. Kept as a familiar single string so nothing gets harder for a
+ * family that already knows it.
+ */
+function PasswordGate({ next, err }: { next?: string; err?: string }) {
+  return (
+    <form className={styles.formCard} action={unlockRosterAction}>
+      {next && <input type="hidden" name="next" value={next} />}
+      {err && ERR_MESSAGES[err] && <p className={styles.fieldError}>{ERR_MESSAGES[err]}</p>}
+
+      <div className={styles.fieldRow}>
+        <label className={styles.fieldLabel} htmlFor="password">
+          Troop password
+        </label>
+        <input
+          className={styles.textInput}
+          type="password"
+          id="password"
+          name="password"
+          autoComplete="off"
+        />
+        <p className={styles.fieldHint}>
+          The one from the Bugle. This just brings up the list of names &mdash; you&rsquo;ll still
+          sign in as yourself on the next screen.
+        </p>
+      </div>
+
+      <button className={styles.btnPrimary} type="submit">
+        Find my name
+      </button>
+    </form>
+  );
+}
+
+function CandidateRow({
+  candidate,
+  next,
+  configured
+}: {
+  candidate: SignInCandidate;
+  next?: string;
+  configured: boolean;
+}) {
+  if (!candidate.maskedEmail) {
+    // Listed, not hidden. Hiding someone with no address recreates the dead
+    // end this whole change removes: they need to see their own name and be
+    // told what to do, not fail to find themselves and assume it is broken.
+    return (
+      <div className={pick.pickRowEmpty}>
+        <span>{candidate.displayName}</span>
+        <span className={pick.pickMeta}>no email on file &mdash; ask a leader</span>
+      </div>
+    );
+  }
+  return (
+    <form action={requestForPersonAction}>
+      {next && <input type="hidden" name="next" value={next} />}
+      <input type="hidden" name="personId" value={candidate.personId} />
+      <button type="submit" className={pick.pickRow} disabled={!configured}>
+        <span className={pick.pickName}>{candidate.displayName}</span>
+        <span className={pick.pickMeta}>{candidate.maskedEmail}</span>
+      </button>
+    </form>
+  );
+}
+
+/**
+ * Step 2 — "find yourself".
+ *
+ * The destination is shown MASKED, resolved server-side (lib/signin-roster.ts).
+ * Showing it is the whole point: the failure this replaces is a parent who
+ * cannot remember which address the troop holds, and a masked hint answers
+ * that without handing out contact details.
+ */
+function NamePicker({
+  candidates,
+  next,
+  err,
+  configured
+}: {
+  candidates: SignInCandidate[];
+  next?: string;
+  err?: string;
+  configured: boolean;
+}) {
+  const groups: [string, SignInCandidate[]][] = [
+    ['Parents & leaders', candidates.filter((c) => !c.isScout)],
+    ['Scouts', candidates.filter((c) => c.isScout)]
+  ];
+
+  return (
+    <div className={styles.formCard}>
+      {err && ERR_MESSAGES[err] && <p className={styles.fieldError}>{ERR_MESSAGES[err]}</p>}
+      <p className={styles.fieldHint} style={{ marginTop: 0 }}>
+        Tap your name. We&rsquo;ll send a one-time code to the address shown &mdash; you
+        don&rsquo;t need to remember which one it is.
+      </p>
+
+      {groups.map(([label, rows]) =>
+        rows.length === 0 ? null : (
+          <div key={label} className={pick.pickGroup}>
+            <p className={styles.fieldLabel}>{label}</p>
+            <ul className={pick.pickList}>
+              {rows.map((c) => (
+                <li key={c.personId}>
+                  <CandidateRow candidate={c} next={next} configured={configured} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      )}
+
+      <details className={pick.pickFallback}>
+        <summary>Not on the list, or the address shown is wrong?</summary>
+        <p className={styles.fieldHint}>
+          Type an address instead &mdash; or ask a leader, who can fix what we have on file.
+        </p>
+        <form action={requestSignInAction}>
+          {next && <input type="hidden" name="next" value={next} />}
+          <input
+            className={styles.textInput}
+            type="email"
+            name="email"
+            autoComplete="email"
+            placeholder="you@example.com"
+            disabled={!configured}
+          />
+          <button className={styles.btnPrimary} type="submit" disabled={!configured}>
+            Send Code
+          </button>
+        </form>
+      </details>
+    </div>
+  );
+}
+
+/** Code entry for the picker path — keyed on the person, not an address. */
+function PersonCodeForm({
+  personId,
+  masked,
+  next,
+  err
+}: {
+  personId: string;
+  masked?: string;
+  next?: string;
+  err?: string;
+}) {
+  return (
+    <div className={styles.formCard}>
+      <div className={styles.confirmDone}>
+        <div className={styles.bigCheck} aria-hidden="true">
+          &#10003;
+        </div>
+        <p>
+          Code sent{masked ? <> to <strong>{masked}</strong></> : null}. It expires in 15 minutes.
+        </p>
+      </div>
+
+      {err && ERR_MESSAGES[err] && <p className={styles.fieldError}>{ERR_MESSAGES[err]}</p>}
+
+      <form action={verifyCodeForPersonAction}>
+        <input type="hidden" name="personId" value={personId} />
+        {masked && <input type="hidden" name="masked" value={masked} />}
+        {next && <input type="hidden" name="next" value={next} />}
+        <div className={styles.fieldRow}>
+          <label className={styles.fieldLabel} htmlFor="code">
+            6-digit code
+          </label>
+          <input
+            className={styles.textInput}
+            id="code"
+            name="code"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            placeholder="123456"
+          />
+        </div>
+        <button className={styles.btnPrimary} type="submit">
+          Sign In
+        </button>
+      </form>
+
+      <form action={requestForPersonAction} className={pick.resendRow}>
+        <input type="hidden" name="personId" value={personId} />
+        {next && <input type="hidden" name="next" value={next} />}
+        <button type="submit" className={pick.resendBtn}>
+          Send another code
+        </button>
+      </form>
+    </div>
   );
 }

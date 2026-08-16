@@ -157,6 +157,92 @@ async function resolveChallengeTarget(
   };
 }
 
+
+/**
+ * MASKING HAPPENS SERVER-SIDE, ALWAYS. The raw address never crosses the wire
+ * to the name picker — masking in the browser would defeat the entire point
+ * of showing a hint instead of the value.
+ *
+ * Keeps the first character and the domain: "d****@gmail.com". Enough for a
+ * parent to recognise their own address, not enough to reconstruct someone
+ * else's. The padding is clamped so the mask does not advertise how long the
+ * real local part is.
+ */
+export function maskEmail(email: string): string {
+  const at = email.lastIndexOf('@');
+  if (at <= 0) return '\u2022\u2022\u2022';
+  const local = email.slice(0, at);
+  const domain = email.slice(at + 1);
+  const head = local[0] ?? '';
+  const pad = '\u2022'.repeat(Math.max(2, Math.min(5, local.length - 1)));
+  return `${head}${pad}@${domain}`;
+}
+
+/** The address a challenge for this person would actually go to, honouring
+ *  the same bounce/unsubscribe rule as the contact-string path. Null when we
+ *  hold no deliverable way to reach them. */
+async function deliverableEmailFor(
+  supabase: SupabaseClient,
+  personId: number
+): Promise<string | null> {
+  const { data: person } = await supabase
+    .from('people')
+    .select('primary_email')
+    .eq('id', personId)
+    .eq('active', true)
+    .maybeSingle();
+  const primary = (person as { primary_email: string | null } | null)?.primary_email?.trim();
+  if (primary) return primary;
+
+  const { data: rows } = await supabase
+    .from('scout_parent_emails')
+    .select('email, bounced_at, unsubscribed_at')
+    .eq('person_id', personId);
+  for (const r of (rows ?? []) as {
+    email: string;
+    bounced_at: string | null;
+    unsubscribed_at: string | null;
+  }[]) {
+    if (r.email?.trim() && isDeliverable(r)) return r.email.trim();
+  }
+  return null;
+}
+
+/** ChallengeTarget for a known person id — the picker's equivalent of
+ *  resolveChallengeTarget(), minus the ambiguous email lookup. Keeps every one
+ *  of that function's defence-in-depth checks (active, directory row,
+ *  household) so the two paths cannot drift apart on who may sign in. */
+async function targetForPerson(
+  supabase: SupabaseClient,
+  personId: number
+): Promise<ChallengeTarget | null> {
+  const { data: activeCheck } = await supabase
+    .from('people')
+    .select('id')
+    .eq('id', personId)
+    .eq('active', true)
+    .maybeSingle();
+  if (!activeCheck) return null;
+
+  const { data: directoryRow } = await supabase
+    .from('person_directory')
+    .select('person_id, display_name, tab')
+    .eq('person_id', personId)
+    .maybeSingle();
+  const directory = directoryRow as { person_id: number; display_name: string; tab: string } | null;
+  if (!directory) return null;
+
+  const householdKey = await resolveHouseholdKeyForPerson(personId);
+  if (!householdKey) return null;
+
+  return {
+    personId,
+    displayName: directory.display_name,
+    subjectKind: directory.tab === 'active_scout' ? 'scout' : 'adult',
+    householdKey
+  };
+}
+
 /**
  * Mints a challenge and emails it, IF the contact resolves to a real,
  * reachable person — silently no-ops otherwise (rate-limited, not found, or
@@ -171,6 +257,48 @@ export async function requestChallenge(
 ): Promise<void> {
   const target = await resolveChallengeTarget(supabase, contact);
   if (!target) return;
+  return mintAndSend(supabase, target, contact, opts);
+}
+
+/**
+ * Same challenge, but for a person we ALREADY know — the name-picker path
+ * (Plans/Unified-Identity-And-Capabilities.md Phase D).
+ *
+ * WHY THIS EXISTS RATHER THAN LOOKING UP THE EMAIL AND CALLING
+ * requestChallenge(): a scout can share a parent's address (see
+ * resolveChallengeTarget's own note), and that resolver takes the FIRST match.
+ * Routing the picker through a contact string would mint a token for the
+ * PARENT when a scout picked their own name, and sign the scout in as their
+ * parent. The picker knows who this is; it must not throw that away and
+ * re-derive it from an ambiguous key.
+ *
+ * Returns the masked destination actually used, or {sent:false} when the
+ * person has no deliverable address — the caller needs to distinguish "sent"
+ * from "we have no way to reach you", which is a legitimate thing to say to
+ * someone who already cleared the troop-password gate and picked themselves
+ * off a list we showed them.
+ */
+export async function requestChallengeForPerson(
+  supabase: SupabaseClient,
+  personId: number,
+  opts: { nextPath?: string | null; ip?: string | null } = {}
+): Promise<{ sent: true; masked: string } | { sent: false }> {
+  const target = await targetForPerson(supabase, personId);
+  if (!target) return { sent: false };
+
+  const address = await deliverableEmailFor(supabase, personId);
+  if (!address) return { sent: false };
+
+  await mintAndSend(supabase, target, address, opts);
+  return { sent: true, masked: maskEmail(address) };
+}
+
+async function mintAndSend(
+  supabase: SupabaseClient,
+  target: ChallengeTarget,
+  contact: string,
+  opts: { nextPath?: string | null; ip?: string | null }
+): Promise<void> {
 
   const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
   const { count: personCount } = await supabase
@@ -370,6 +498,33 @@ export async function redeemCode(
   // does but the code is wrong — a wrong-code guesser learns nothing about
   // which is true.
   if (!target) return { ok: false, reason: 'invalid' };
+  return redeemCodeForTarget(supabase, target, code);
+}
+
+/**
+ * Redeem by PERSON rather than by contact string — the name-picker path.
+ *
+ * Same reason requestChallengeForPerson exists: a scout can share a parent's
+ * address, and resolving a code by that address would consume the parent's
+ * token and sign the scout in as the parent. Once the picker has told us who
+ * this is, that identity must survive to redemption rather than being
+ * re-derived from an ambiguous key.
+ */
+export async function redeemCodeForPerson(
+  supabase: SupabaseClient,
+  personId: number,
+  code: string
+): Promise<RedeemCodeResult> {
+  const target = await targetForPerson(supabase, personId);
+  if (!target) return { ok: false, reason: 'invalid' };
+  return redeemCodeForTarget(supabase, target, code);
+}
+
+async function redeemCodeForTarget(
+  supabase: SupabaseClient,
+  target: ChallengeTarget,
+  code: string
+): Promise<RedeemCodeResult> {
 
   const { data } = await supabase
     .from('login_tokens')

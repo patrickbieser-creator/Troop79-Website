@@ -1,0 +1,95 @@
+/* Name-picker styles (Phase D). The page borrows the Library stylesheet for
+   its form furniture; these are the only classes specific to /signin, kept
+   here rather than pushed into a shared sheet. */
+
+.pickGroup {
+  margin-bottom: 1.1rem;
+}
+
+.pickList {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  border-top: 1px solid var(--rule, #e4d9c4);
+}
+
+.pickList > li {
+  border-bottom: 1px solid var(--rule, #e4d9c4);
+}
+
+/* The row IS the button — a whole-row target is what makes this usable on a
+   phone, which is where a parent standing in a parking lot will use it. */
+.pickRow,
+.pickRowEmpty {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.7rem 0.15rem;
+  font: inherit;
+  text-align: left;
+  background: none;
+  border: none;
+}
+
+.pickRow {
+  cursor: pointer;
+}
+.pickRow:hover,
+.pickRow:focus-visible {
+  background: var(--cream-2, #f7f1e6);
+}
+.pickRow:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pickName {
+  font-weight: 600;
+  color: var(--navy, #22333b);
+}
+
+.pickMeta {
+  font-size: 0.85em;
+  color: var(--text-meta, #857c6c);
+  white-space: nowrap;
+}
+
+.pickRowEmpty {
+  color: var(--text-meta, #857c6c);
+}
+
+.pickFallback {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--rule, #e4d9c4);
+}
+.pickFallback > summary {
+  cursor: pointer;
+  font-size: 0.9em;
+  color: var(--text-meta, #5b5347);
+}
+.pickFallback form {
+  margin-top: 0.6rem;
+}
+.pickFallback button {
+  margin-top: 0.6rem;
+}
+
+.resendRow {
+  margin-top: 0.85rem;
+  text-align: center;
+}
+
+.resendBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.9em;
+  color: var(--forest, #3d7a4a);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
