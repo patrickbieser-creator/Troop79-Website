@@ -153,14 +153,31 @@ describe('sign-in name picker', () => {
     expect(mine!.maskedEmail).toContain('@example.com');
   });
 
-  it('Candidates_ShowFirstNameAndLastInitial_NotFullNames', async () => {
+  it('Candidates_NeverShowAFullSurname_EvenWhenDisambiguated', async () => {
+    // First name + last initial is already Tier 0 public on the advancement
+    // pages; a full surname is not. Disambiguation may extend the initial
+    // ("Michael Ba.") but must never spell the whole name out, so the bound
+    // is a short prefix rather than exactly one letter.
     const candidates = await loadSignInCandidates();
-    // Already Tier 0 public on the advancement pages; full surnames are not.
-    for (const c of candidates.slice(0, 25)) {
+    expect(candidates.length).toBeGreaterThan(0);
+    for (const c of candidates) {
       const parts = c.displayName.trim().split(/\s+/);
+      if (parts.length < 2) continue;
       const last = parts[parts.length - 1];
-      if (parts.length > 1) expect(last.length).toBeLessThanOrEqual(2);
+      expect(last.endsWith('.'), `${c.displayName} does not end in an abbreviated surname`).toBe(true);
+      expect(last.length, `${c.displayName} exposes too much of the surname`).toBeLessThanOrEqual(5);
     }
+  });
+
+  it('Candidates_HaveUniqueLabels_WhenTwoPeopleShareAFirstNameAndInitial', async () => {
+    // Found in browser verification: two literal "Michael B." rows. Picking
+    // the wrong one sends a sign-in code to a different family's inbox, so a
+    // hint in the masked address is not good enough — the NAME has to differ.
+    const candidates = await loadSignInCandidates();
+    const seen = new Map<string, number>();
+    for (const c of candidates) seen.set(c.displayName, (seen.get(c.displayName) ?? 0) + 1);
+    const dupes = [...seen.entries()].filter(([, n]) => n > 1).map(([label]) => label);
+    expect(dupes, `ambiguous picker labels: ${dupes.join(', ')}`).toEqual([]);
   });
 
   it('Candidates_StillListSomeoneWithNoEmail_RatherThanHidingThem', async () => {

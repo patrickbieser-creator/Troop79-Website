@@ -25,6 +25,7 @@
 
 import { createAdminClient } from '@/lib/supabase/server';
 import { maskEmail } from '@/lib/identity-challenge';
+import { autoLoginLabels } from '@/lib/authorized-adults';
 
 export interface SignInCandidate {
   personId: number;
@@ -35,13 +36,23 @@ export interface SignInCandidate {
   maskedEmail: string | null;
 }
 
-/** First name + last initial, matching how names appear on the public
- *  advancement pages. person_directory.display_name is the full name. */
-function shortName(full: string): string {
-  const parts = full.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0];
-  const last = parts[parts.length - 1];
-  return `${parts.slice(0, -1).join(' ')} ${last[0]}.`;
+/**
+ * First name + last initial, matching the public advancement pages — but
+ * DISAMBIGUATED, via the same algorithm the admin login pool already uses
+ * (lib/authorized-adults.ts): two "Michael B."s become "Michael Ba." and
+ * "Michael Bl.".
+ *
+ * Found in browser verification 2026-08-16, with two literal "Michael B."
+ * rows on the picker. Non-unique labels are worse here than on a roster
+ * listing: picking the wrong one sends a sign-in code to a different family's
+ * inbox. The masked address differs between them, but a hint is not a
+ * substitute for a distinct name.
+ */
+function shortNames(people: { personId: number; fullName: string }[]): Map<number, string> {
+  const labels = autoLoginLabels(
+    people.map((p) => ({ code: String(p.personId), name: p.fullName }))
+  );
+  return new Map(people.map((p) => [p.personId, labels.get(String(p.personId)) ?? p.fullName]));
 }
 
 /**
@@ -72,18 +83,25 @@ export async function loadSignInCandidates(): Promise<SignInCandidate[]> {
     ((members ?? []) as { person_id: number }[]).map((m) => m.person_id)
   );
 
-  const rows = ((directory ?? []) as { person_id: number; display_name: string; tab: string }[])
+  const eligible = ((directory ?? []) as { person_id: number; display_name: string; tab: string }[])
     // A person with no household cannot be issued an identity session at all
     // (targetForPerson requires a household key), so listing them would offer
     // a name that can never work.
-    .filter((d) => emailById.has(d.person_id) && inHousehold.has(d.person_id))
-    .map((d) => ({
-      personId: d.person_id,
-      displayName: shortName(d.display_name),
-      isScout: d.tab === 'active_scout',
-      // Masked here, on the server. See the module header.
-      maskedEmail: emailById.get(d.person_id) ? maskEmail(emailById.get(d.person_id)!) : null
-    }));
+    .filter((d) => emailById.has(d.person_id) && inHousehold.has(d.person_id));
+
+  // Disambiguate across the WHOLE list, not per group — an adult and a scout
+  // who share a name are just as confusable as two adults.
+  const names = shortNames(
+    eligible.map((d) => ({ personId: d.person_id, fullName: d.display_name }))
+  );
+
+  const rows = eligible.map((d) => ({
+    personId: d.person_id,
+    displayName: names.get(d.person_id) ?? d.display_name,
+    isScout: d.tab === 'active_scout',
+    // Masked here, on the server. See the module header.
+    maskedEmail: emailById.get(d.person_id) ? maskEmail(emailById.get(d.person_id)!) : null
+  }));
 
   rows.sort((a, b) => a.displayName.localeCompare(b.displayName));
   return rows;
