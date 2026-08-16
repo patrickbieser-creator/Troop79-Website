@@ -7,3 +7,6 @@ Agents/
 
 # Production DB backups — contain real family PII, never commit
 backups/
+
+# Office lock/owner files
+~$*
