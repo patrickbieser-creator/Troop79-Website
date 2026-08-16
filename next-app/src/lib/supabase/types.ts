@@ -399,6 +399,11 @@ export interface CalendarEntry {
   /** Off = external opportunity: keeps its /events page and news promotion,
    *  never appears on the troop calendar/ICS/homepage sidebar. */
   on_calendar: boolean;
+  /** 'draft' = staged by a leader, invisible on every public surface.
+   *  INDEPENDENT of on_calendar, which is a month-grid display filter — a
+   *  published entry with on_calendar=false is the normal news-shaped case
+   *  (20260816170000). */
+  status: 'draft' | 'published';
   show_on_homepage: boolean;
   featured: boolean;
   promo_start: string | null;

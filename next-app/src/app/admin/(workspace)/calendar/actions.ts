@@ -69,6 +69,11 @@ function fieldsFromForm(fd: FormData) {
     // Default ON: troop events are the common case; unchecking is the
     // explicit act for an outside opportunity.
     on_calendar: String(fd.get('on_calendar') ?? '1') === '1',
+    // Independent of on_calendar (20260816170000): 'draft' stages an entry
+    // whose details are still moving, invisible on every public surface.
+    // Defaults to published so the existing "save and it's live" flow is
+    // unchanged for anyone who ignores the control.
+    status: String(fd.get('status') ?? 'published') === 'draft' ? 'draft' : 'published',
     show_on_homepage: showOnHomepage,
     // Promotion sub-fields are cleared when the opt-in is off, so stale
     // windows/excerpts can't linger invisibly and spring back later.

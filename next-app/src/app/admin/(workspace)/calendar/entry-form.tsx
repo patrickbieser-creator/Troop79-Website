@@ -72,6 +72,7 @@ export function CalendarEntryForm({
   const [description, setDescription] = useState(row?.description ?? '');
   const [location, setLocation] = useState(row?.location ?? '');
   const [onCalendar, setOnCalendar] = useState(row?.on_calendar ?? true);
+  const [isDraft, setIsDraft] = useState((row?.status ?? 'published') === 'draft');
   const [showOnHomepage, setShowOnHomepage] = useState(row?.show_on_homepage ?? false);
   const [featured, setFeatured] = useState(row?.featured ?? false);
   const [promoStart, setPromoStart] = useState(forceNew ? '' : (row?.promo_start ?? ''));
@@ -99,6 +100,7 @@ export function CalendarEntryForm({
     fd.set('description', description);
     fd.set('location', location);
     fd.set('on_calendar', onCalendar ? '1' : '');
+    fd.set('status', isDraft ? 'draft' : 'published');
     fd.set('show_on_homepage', showOnHomepage ? '1' : '');
     fd.set('featured', featured ? '1' : '');
     fd.set('promo_start', promoStart);
@@ -239,6 +241,20 @@ export function CalendarEntryForm({
               {' '}&mdash; uncheck for outside opportunities (district merit badge clinics, external
               service days): they keep their event page and can appear in the news feed, but never
               on our calendar.
+            </span>
+          </span>
+        </label>
+
+        {/* Independent of the checkbox above: that one controls the month
+            grid, this one controls whether the entry is live at all. Kept
+            adjacent so the difference is visible rather than inferred. */}
+        <label className={styles.editFieldFull}>
+          <span className={styles.editLabel}>
+            <input type="checkbox" checked={isDraft} onChange={(e) => setIsDraft(e.target.checked)} />{' '}
+            Save as a draft
+            <span className={styles.muted}>
+              {' '}&mdash; nobody but a leader can see it: no calendar, no event page, no signup, no
+              .ics feed. Use it while dates or details are still moving, then uncheck to publish.
             </span>
           </span>
         </label>

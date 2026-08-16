@@ -74,6 +74,12 @@ export async function loadCalendarEntries(): Promise<{
     supabase
       .from('calendar_entries')
       .select('*')
+      // Two INDEPENDENT axes, both required (20260816170000):
+      //   status      — is this live at all?
+      //   on_calendar — should it appear on the month grid?
+      // A published entry with on_calendar=false is a normal, existing case
+      // (the D-011 news-shaped entry). Dropping either filter leaks something.
+      .eq('status', 'published')
       .eq('on_calendar', true)
       .order('entry_date', { ascending: true }),
     signupEnabledIds(supabase)
@@ -94,6 +100,9 @@ export async function loadAllCalendarEntries(): Promise<CalendarEntryPublic[]> {
   const { data } = await supabase
     .from('calendar_entries')
     .select('*')
+    // The .ics feed is a PUBLIC subscription URL — a draft leaking here would
+    // land in someone's phone calendar and never be noticed.
+    .eq('status', 'published')
     .eq('on_calendar', true)
     .order('entry_date', { ascending: true });
   return ((data ?? []) as CalendarEntry[]).filter(notAutoArchived).map((r) => toEntry(r));

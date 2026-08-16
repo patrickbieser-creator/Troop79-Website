@@ -230,6 +230,9 @@ export async function loadEventDetail(entryId: number): Promise<EventDetail | nu
     .from('calendar_entries')
     .select('*')
     .eq('id', entryId)
+    // A draft's permalink must 404 rather than render — every entry has had a
+    // guessable /events/[id] URL since D-108.
+    .eq('status', 'published')
     .maybeSingle();
   if (!entry) return null;
 

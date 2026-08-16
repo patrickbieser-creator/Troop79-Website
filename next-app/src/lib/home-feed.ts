@@ -30,6 +30,7 @@ export async function loadPromotedEntries(today: Date = new Date()): Promise<Pro
   const { data } = await supabase
     .from('calendar_entries')
     .select('*, hero_media:hero_media_id(*)')
+    .eq('status', 'published')
     .eq('show_on_homepage', true);
   return ((data ?? []) as unknown as PromotedEntry[]).filter((e) => isPromoActive(e, today));
 }
