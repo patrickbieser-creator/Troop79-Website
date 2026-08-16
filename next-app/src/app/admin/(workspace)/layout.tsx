@@ -81,11 +81,7 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
       <ArticleStyleTokens />
       <TopBar actorLabel={actor.label} actorKind={actor.kind} />
       <div className={styles.workspace}>
-        <SubNav
-          role={actor.legacyRole ?? 'leader'}
-          fullAdmin={fullAdmin}
-          capabilities={[...actor.capabilities]}
-        />
+        <SubNav fullAdmin={fullAdmin} capabilities={[...actor.capabilities]} />
         <main className={styles.main}>{children}</main>
       </div>
       {/* Portal target for admin components (e.g. DatePickerField) that need

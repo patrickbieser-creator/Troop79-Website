@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { Media } from '@/lib/supabase/types';
 
@@ -20,7 +20,7 @@ interface ListResult {
 
 /** Paginated browse/list of the whole media library (unlike the picker's fixed 60-row `listMedia`). */
 export async function listMediaManager(search: string, offset: number, limit: number): Promise<ListResult> {
-  await requireRole(['leader', 'scout']);
+  await requireCapability('news.write');
 
   const supabase = createAdminClient();
   let query = supabase
@@ -69,7 +69,7 @@ async function findMediaUsage(
 }
 
 export async function getMediaUsage(id: number): Promise<{ ok: boolean; error?: string; articles: MediaUsage[] }> {
-  await requireRole(['leader', 'scout']);
+  await requireCapability('news.write');
   const supabase = createAdminClient();
   const { data: media, error } = await supabase.from('media').select('id, cdn_url').eq('id', id).single();
   if (error || !media) return { ok: false, error: error?.message ?? 'Photo not found.', articles: [] };
@@ -87,7 +87,7 @@ export async function updateMediaMetadata(
   altText: string,
   caption: string
 ): Promise<UpdateResult> {
-  await requireRole(['leader', 'scout']);
+  await requireCapability('news.write');
   const trimmedAlt = altText.trim();
   if (!trimmedAlt) return { ok: false, error: 'Alt text is required for accessibility.' };
 
@@ -120,7 +120,7 @@ interface DeleteResult {
  * stays in Bunny storage; a Bunny Library Sync will re-index it if needed.
  */
 export async function deleteMedia(id: number): Promise<DeleteResult> {
-  await requireRole(['leader']);
+  await requireCapability('news.write');
   const supabase = createAdminClient();
 
   const { data: media, error: fetchError } = await supabase

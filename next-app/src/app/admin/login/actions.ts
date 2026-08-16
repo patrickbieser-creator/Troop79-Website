@@ -3,7 +3,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { LEADER_COOKIE, signSession, type SessionRole } from '@/lib/leader-session';
+import { LEADER_COOKIE, signSession } from '@/lib/leader-session';
 import { createAdminClient } from '@/lib/supabase/server';
 import { loadAuthorizedAdults, matchAuthorizedAdult } from '@/lib/authorized-adults';
 import { safeInternalPath } from '@/lib/safe-redirect';
@@ -18,16 +18,19 @@ function secretMatches(input: string, secret: string | undefined): boolean {
 }
 
 /**
- * Shared-password auth: LEADER_PASSWORD grants the leader role,
- * SCOUT_PASSWORD (optional) grants the scout role. The matched password
- * determines the role — there is no role picker to talk your way past.
- * Per-user Supabase Auth remains the Phase 4 replacement for this.
+ * Shared-password auth: LEADER_PASSWORD, and nothing else.
  *
- * The leader role additionally requires the typed name to match the
- * authorized-adults pool (see lib/authorized-adults.ts) — this is what makes
- * ledger_entries.entered_by a trustworthy "who really did this" stamp rather
- * than any string someone typed. Scout logins keep free-text names; they
- * aren't part of that pool.
+ * SCOUT_PASSWORD was removed 2026-08-16
+ * (Plans/Unified-Identity-And-Capabilities.md Phase C). No scout ever used it,
+ * and keeping it was actively costly: the Phase B1 shim had to map a scout
+ * session to `news.write`, which meant every News guard had to stay on
+ * requireRole() or a shared-password holder would gain publish and delete.
+ * Scouts contributing news is being rebuilt properly — verified identity, on
+ * the public side, landing in review.
+ *
+ * Login requires the typed name to match the authorized-adults pool (see
+ * lib/authorized-adults.ts) — this is what makes ledger_entries.entered_by a
+ * trustworthy "who really did this" stamp rather than any string someone typed.
  */
 export async function loginAction(formData: FormData): Promise<void> {
   const username = String(formData.get('username') ?? '').trim();
@@ -44,25 +47,17 @@ export async function loginAction(formData: FormData): Promise<void> {
   if (!password) back('missing-password');
   if (!process.env.LEADER_PASSWORD) back('not-configured');
 
-  let role: SessionRole;
-  if (secretMatches(password, process.env.LEADER_PASSWORD)) {
-    role = 'leader';
-  } else if (secretMatches(password, process.env.SCOUT_PASSWORD)) {
-    role = 'scout';
-  } else {
+  if (!secretMatches(password, process.env.LEADER_PASSWORD)) {
     back('bad-password');
     return; // unreachable — redirect throws — but keeps TS happy
   }
 
-  let leaderName = username;
-  if (role === 'leader') {
-    const adults = await loadAuthorizedAdults(createAdminClient());
-    const matched = matchAuthorizedAdult(adults, username);
-    if (!matched) back('bad-username');
-    leaderName = matched!.label;
-  }
+  const adults = await loadAuthorizedAdults(createAdminClient());
+  const matched = matchAuthorizedAdult(adults, username);
+  if (!matched) back('bad-username');
+  const leaderName = matched!.label;
 
-  const token = await signSession({ leader: leaderName, iat: Date.now(), role });
+  const token = await signSession({ leader: leaderName, iat: Date.now(), role: 'leader' });
   const jar = await cookies();
   jar.set(LEADER_COOKIE.name, token, {
     httpOnly: true,
@@ -72,19 +67,15 @@ export async function loginAction(formData: FormData): Promise<void> {
     maxAge: LEADER_COOKIE.maxAgeSeconds
   });
 
-  // Default landing differs by role — /admin/advancement is leader-only, so a
-  // scout with no explicit `next` (the common case: visiting /admin/login
-  // directly) would otherwise land straight on an access-denied error.
-  const roleDefault = role === 'scout' ? '/admin/news/articles' : '/admin/advancement';
+  const roleDefault = '/admin/advancement';
 
   // Defense-in-depth: only allow same-origin redirects. A startsWith('/')
   // check used to live here, which "/\evil.com" defeats — see lib/safe-redirect.ts.
   //
-  // An explicit `next` isn't checked for role-appropriateness here (e.g. a
-  // scout bounced from /admin/advancement/ledger keeps that as its target) —
-  // that's intentionally left to proxy.ts, which re-validates role on the
+  // An explicit `next` isn't checked for capability-appropriateness here —
+  // that's left to the page's own guard, which re-checks on the
   // very next request and redirects a scout session away from anything
-  // outside SCOUT_ALLOWED_PREFIXES before the page ever renders.
+  // very next request, before the page renders anything.
   redirect(safeInternalPath(next ?? roleDefault, roleDefault));
 }
 

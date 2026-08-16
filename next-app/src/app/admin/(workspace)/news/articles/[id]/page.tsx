@@ -1,15 +1,14 @@
-import { cookies } from 'next/headers';
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
-import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
+import { requireCapability } from '@/lib/require-capability';
 import type { Article, Media, Tag } from '@/lib/supabase/types';
 import { ArticleEditor } from './article-editor';
 
 export default async function ArticleEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const jar = await cookies();
-  const session = await verifySession(jar.get(LEADER_COOKIE.name)?.value);
-  if (!session) redirect('/admin/login');
+  // Was reading the leader cookie directly, which bounced an identity actor
+  // to /admin/login even when they held news.write (Phase C, 2026-08-16).
+  const session = await requireCapability('news.write');
 
   const supabase = createAdminClient();
   const { data: tags } = await supabase.from('tags').select('*').order('name');
@@ -21,8 +20,7 @@ export default async function ArticleEditPage({ params }: { params: Promise<{ id
         selectedTagIds={[]}
         heroMedia={null}
         allTags={(tags ?? []) as Tag[]}
-        sessionRole={session.role}
-        sessionName={session.leader}
+        sessionName={session.label}
       />
     );
   }
@@ -37,9 +35,6 @@ export default async function ArticleEditPage({ params }: { params: Promise<{ id
     .single();
   if (error || !article) notFound();
 
-  const canEdit = session.role === 'leader' || article.author_name === session.leader;
-  if (!canEdit) redirect('/admin/news/articles');
-
   const { article_tags, hero_media, ...articleFields } = article as Article & {
     article_tags: { tag_id: number }[];
     hero_media: Media | null;
@@ -52,8 +47,7 @@ export default async function ArticleEditPage({ params }: { params: Promise<{ id
       selectedTagIds={selectedTagIds}
       heroMedia={hero_media}
       allTags={(tags ?? []) as Tag[]}
-      sessionRole={session.role}
-      sessionName={session.leader}
+      sessionName={session.label}
     />
   );
 }

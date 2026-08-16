@@ -132,12 +132,7 @@ describe('capabilities — Phase B', () => {
     expect(satisfiesLegacyRole(identityActor([...allButOne]), 'leader')).toBe(false);
   });
 
-  it('LegacyScoutRole_IsSatisfied_WhenIdentityActorHoldsNewsWrite', () => {
-    expect(satisfiesLegacyRole(identityActor(['news.write']), 'scout')).toBe(true);
-    expect(satisfiesLegacyRole(identityActor(['calendar.write']), 'scout')).toBe(false);
-  });
-
-  it('LegacyActor_MatchesOnItsOwnRole_AndNotTheOther', () => {
+  it('LegacyLeaderActor_Matches_WhileAPartiallyGrantedIdentityActorDoesNot', () => {
     const leader: AdminActor = {
       kind: 'legacy',
       label: 'Patrick B',
@@ -146,19 +141,16 @@ describe('capabilities — Phase B', () => {
       legacyRole: 'leader'
     };
     expect(satisfiesLegacyRole(leader, 'leader')).toBe(true);
-    expect(satisfiesLegacyRole(leader, 'scout')).toBe(false);
 
-    const scout: AdminActor = {
-      kind: 'legacy',
-      label: 'Some Scout',
-      personId: null,
+    // 'leader' is the only role left — SCOUT_PASSWORD was retired in Phase C.
+    const partial: AdminActor = {
+      kind: 'identity',
+      label: 'Partly Granted',
+      personId: 2,
       capabilities: new Set<Capability>(['news.write']),
-      legacyRole: 'scout'
+      legacyRole: null
     };
-    // A legacy scout must NOT be admitted to leader surfaces just because the
-    // shim gives them news.write — the role is the authority on that path.
-    expect(satisfiesLegacyRole(scout, 'leader')).toBe(false);
-    expect(satisfiesLegacyRole(scout, 'scout')).toBe(true);
+    expect(satisfiesLegacyRole(partial, 'leader')).toBe(false);
   });
 
   // ── seed-wide invariant: nothing is orphaned right now ───────────────────

@@ -18,9 +18,8 @@
  */
 
 import Link from 'next/link';
-import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/server';
-import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
+import { requireCapability } from '@/lib/require-capability';
 import type { Article, ArticleType, ArticleStatus } from '@/lib/supabase/types';
 import { ArticlesTabs } from './articles-tabs';
 import { ArticlesToolbar } from './articles-toolbar';
@@ -143,12 +142,14 @@ export default async function ArticlesPage({
 }) {
   const raw = await searchParams;
   const parsed = parseSearch(raw);
-  const [{ rows, total }, tabCounts, jar] = await Promise.all([
+  // This page previously had no guard of its own — it leaned on the proxy and
+  // then read the leader cookie for a display name. Both are now the actor
+  // (Phase C, 2026-08-16).
+  const [{ rows, total }, tabCounts, actor] = await Promise.all([
     loadArticles(parsed),
     loadTabCounts(parsed),
-    cookies()
+    requireCapability('news.write')
   ]);
-  const session = await verifySession(jar.get(LEADER_COOKIE.name)?.value);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const pageStart = total === 0 ? 0 : (parsed.page - 1) * PAGE_SIZE + 1;
   const pageEnd = Math.min(parsed.page * PAGE_SIZE, total);
@@ -195,8 +196,7 @@ export default async function ArticlesPage({
         sp={raw}
         sort={parsed.sort}
         dir={parsed.dir}
-        sessionRole={session?.role ?? 'scout'}
-        sessionName={session?.leader ?? ''}
+        sessionName={actor.label}
       />
 
       <div className={styles.pager}>

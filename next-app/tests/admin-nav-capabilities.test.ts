@@ -25,7 +25,7 @@ const SECTIONS = [
     title: 'Setup',
     items: [
       { label: 'Roster Import', href: '/c', capability: 'roster.manage' as Capability },
-      { label: 'Utilities', href: '/d', scoutVisible: true }
+      { label: 'Utilities', href: '/d' }
     ]
   }
 ];
@@ -38,7 +38,6 @@ describe('admin sub-nav capability filtering', () => {
   it('FullAdmin_SeesEverySection_IncludingUnconvertedOnes', () => {
     const out = visibleNavSections(SECTIONS, {
       fullAdmin: true,
-      legacyScout: false,
       capabilities: new Set<Capability>()
     });
     expect(labels(out)).toEqual(['Fast Entry', 'Event Rosters', 'Roster Import', 'Utilities']);
@@ -47,7 +46,6 @@ describe('admin sub-nav capability filtering', () => {
   it('PartialActor_SeesOnlyConvertedSections_TheyHold', () => {
     const out = visibleNavSections(SECTIONS, {
       fullAdmin: false,
-      legacyScout: false,
       capabilities: new Set<Capability>(['advancement.write'])
     });
     expect(labels(out)).toEqual(['Fast Entry']);
@@ -58,7 +56,6 @@ describe('admin sub-nav capability filtering', () => {
     // would hand a partially-granted person a link that throws.
     const out = visibleNavSections(SECTIONS, {
       fullAdmin: false,
-      legacyScout: false,
       capabilities: new Set<Capability>(['advancement.write', 'roster.manage'])
     });
     expect(labels(out)).toEqual(['Fast Entry', 'Roster Import']);
@@ -67,7 +64,6 @@ describe('admin sub-nav capability filtering', () => {
   it('PartialActor_SeesNothing_WhenHoldingOnlyUnmappedCapabilities', () => {
     const out = visibleNavSections(SECTIONS, {
       fullAdmin: false,
-      legacyScout: false,
       capabilities: new Set<Capability>(['library.proxy_view'])
     });
     expect(out).toEqual([]);
@@ -76,21 +72,10 @@ describe('admin sub-nav capability filtering', () => {
   it('EmptySections_AreDropped_RatherThanRenderedAsHeadings', () => {
     const out = visibleNavSections(SECTIONS, {
       fullAdmin: false,
-      legacyScout: false,
       capabilities: new Set<Capability>(['roster.manage'])
     });
     expect(out).toHaveLength(1);
     expect(out[0].title).toBe('Setup');
   });
 
-  it('LegacyScout_StillSeesOnlyScoutVisibleItems_RegardlessOfCapabilities', () => {
-    // The legacy scout path is unchanged by B2 and stays in sync with
-    // SCOUT_ALLOWED_PREFIXES in proxy.ts until Phase C deletes both.
-    const out = visibleNavSections(SECTIONS, {
-      fullAdmin: false,
-      legacyScout: true,
-      capabilities: new Set<Capability>(['advancement.write', 'roster.manage'])
-    });
-    expect(labels(out)).toEqual(['Utilities']);
-  });
 });

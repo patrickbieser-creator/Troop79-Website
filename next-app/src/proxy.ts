@@ -15,35 +15,19 @@
  *   - layout:        "does this person hold any capability?"          — one query
  *   - page/action:   "does this person hold THIS capability?"         — same query
  *
- * Also enforces the scout/leader boundary at the edge, not just per-page:
- * legacy scout sessions may only reach the News drafting surface (see
- * SCOUT_ALLOWED_PREFIXES below). This is defense-in-depth on top of the
- * requireRole()/requireCapability() checks already in each leader-only page
- * and Server Action — it exists so a *new* page can't accidentally ship
- * readable-by-scout just because nobody remembered to add the per-page
- * check (that's exactly how the advancement/* pages leaked before this).
- * Phase C deletes the list entirely by moving the scout-facing surfaces off
- * /admin, at which point this file reduces to "credential, or bounce."
+ * SCOUT_ALLOWED_PREFIXES IS GONE (Phase C, 2026-08-16). It was an
+ * allowlist of paths a shared-password scout session could reach — a
+ * deny-by-omission list whose own comment recorded that the advancement/*
+ * pages had once leaked through it. No scout ever used that login, and
+ * keeping it forced every News guard to stay on requireRole(). Deleting the
+ * role deleted the bug class with it: this file no longer has a partial-access
+ * tier to enforce, and per-page capability checks are the only authority.
  *
  * Next 16+ uses the "proxy" file convention (renamed from "middleware").
  */
 import { NextResponse, type NextRequest } from 'next/server';
 import { LEADER_COOKIE, verifySession } from './lib/leader-session';
 import { IDENTITY_COOKIE, verifyIdentitySession } from './lib/identity-session';
-
-const SCOUT_ALLOWED_PREFIXES = [
-  '/admin/news/articles',
-  '/admin/news/media-manager',
-  // The calendar admin is NOT here. It briefly was — '/admin/news/calendar'
-  // had been scout-visible for as long as it lived under News — but calendar
-  // entries became leader-only to edit (Patrick, 2026-08-14), so a scout has no
-  // business on that screen at all. Removing the prefix is the whole enforcement
-  // at this layer; every write action behind it also requires 'leader'.
-  '/admin/news/photo-albums',
-  '/admin/utilities',
-  '/admin/advancement/has-needs'
-];
-const SCOUT_LANDING = '/admin/news/articles';
 
 export async function proxy(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
@@ -53,15 +37,7 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = req.cookies.get(LEADER_COOKIE.name)?.value;
-  const session = await verifySession(token);
-  if (session) {
-    if (session.role === 'scout' && !SCOUT_ALLOWED_PREFIXES.some((p) => pathname.startsWith(p))) {
-      const scoutUrl = req.nextUrl.clone();
-      scoutUrl.pathname = SCOUT_LANDING;
-      scoutUrl.search = '';
-      return NextResponse.redirect(scoutUrl);
-    }
+  if (await verifySession(req.cookies.get(LEADER_COOKIE.name)?.value)) {
     return NextResponse.next();
   }
 
@@ -70,8 +46,9 @@ export async function proxy(req: NextRequest) {
   // still current — is settled by the workspace layout, which can afford the
   // query. An identity holder with no grants therefore reaches the layout and
   // is told so, rather than being bounced to a login they already completed.
-  const identity = await verifyIdentitySession(req.cookies.get(IDENTITY_COOKIE.name)?.value);
-  if (identity) return NextResponse.next();
+  if (await verifyIdentitySession(req.cookies.get(IDENTITY_COOKIE.name)?.value)) {
+    return NextResponse.next();
+  }
 
   const loginUrl = req.nextUrl.clone();
   loginUrl.pathname = '/admin/login';

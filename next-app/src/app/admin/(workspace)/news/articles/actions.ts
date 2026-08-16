@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { slugify } from '@/lib/slugify';
 import type { Article } from '@/lib/supabase/types';
@@ -72,7 +72,7 @@ interface ActionResult {
 
 /** Creates a draft. Any logged-in session (scout or leader) may author one. */
 export async function createArticle(formData: FormData): Promise<ActionResult> {
-  const session = await requireRole(['leader', 'scout']);
+  const session = await requireCapability('news.write');
   const fields = parseFields(formData);
   if (!fields.title) return { ok: false, error: 'Title is required.' };
 
@@ -90,10 +90,10 @@ export async function createArticle(formData: FormData): Promise<ActionResult> {
       excerpt: fields.excerpt || null,
       body: fields.body,
       hero_media_id: fields.heroMediaId,
-      featured: session.role === 'leader' ? fields.featured : false,
+      featured: fields.featured,
       status: 'draft',
-      author_name: session.leader,
-      author_role: session.role,
+      author_name: session.label,
+      author_role: 'leader',
       auto_archive_at: fields.autoArchiveAt
     })
     .select('id')
@@ -127,7 +127,7 @@ export async function createArticle(formData: FormData): Promise<ActionResult> {
  * Authorship goes to whoever made the copy, matching the Calendar's clone.
  */
 export async function cloneArticle(id: number): Promise<ActionResult> {
-  const session = await requireRole(['leader', 'scout']);
+  const session = await requireCapability('news.write');
   const supabase = createAdminClient();
 
   const { data: source, error: fetchError } = await supabase
@@ -139,12 +139,6 @@ export async function cloneArticle(id: number): Promise<ActionResult> {
   if (!source) return { ok: false, error: 'That post no longer exists.' };
 
   const src = source as Article & { article_tags: { tag_id: number }[] };
-
-  // A scout may copy their own post, the same rule updateArticle applies —
-  // cloning is a way of authoring, not a way of reaching someone else's draft.
-  if (session.role !== 'leader' && src.author_name !== session.leader) {
-    return { ok: false, error: 'You can only copy your own posts.' };
-  }
 
   const title = `(Clone) ${src.title}`;
   const slug = await uniqueSlug(supabase, title);
@@ -161,8 +155,8 @@ export async function cloneArticle(id: number): Promise<ActionResult> {
       auto_archive_at: src.auto_archive_at,
       status: 'draft',
       featured: false,
-      author_name: session.leader,
-      author_role: session.role
+      author_name: session.label,
+      author_role: 'leader'
     })
     .select('id')
     .single();
@@ -183,7 +177,7 @@ export async function cloneArticle(id: number): Promise<ActionResult> {
  * leader-only action (see publishArticle).
  */
 export async function updateArticle(id: number, formData: FormData): Promise<ActionResult> {
-  const session = await requireRole(['leader', 'scout']);
+  await requireCapability('news.write');
   const supabase = createAdminClient();
 
   const { data: existing, error: fetchError } = await supabase
@@ -192,10 +186,6 @@ export async function updateArticle(id: number, formData: FormData): Promise<Act
     .eq('id', id)
     .single();
   if (fetchError || !existing) return { ok: false, error: 'Article not found.' };
-  if (session.role === 'scout' && existing.author_name !== session.leader) {
-    return { ok: false, error: 'You can only edit your own drafts.' };
-  }
-
   const fields = parseFields(formData);
   if (!fields.title) return { ok: false, error: 'Title is required.' };
   const slug = await uniqueSlug(supabase, fields.title, id);
@@ -209,7 +199,7 @@ export async function updateArticle(id: number, formData: FormData): Promise<Act
       body: fields.body,
       hero_media_id: fields.heroMediaId,
       auto_archive_at: fields.autoArchiveAt,
-      ...(session.role === 'leader' ? { featured: fields.featured } : {}),
+      featured: fields.featured,
       updated_at: new Date().toISOString()
     })
     .eq('id', id);
@@ -223,7 +213,7 @@ export async function updateArticle(id: number, formData: FormData): Promise<Act
 
 /** Leader-only: publishes a draft. Sets published_at on first publish. */
 export async function publishArticle(id: number): Promise<ActionResult> {
-  await requireRole(['leader']);
+  await requireCapability('news.write');
   const supabase = createAdminClient();
 
   const { data: existing } = await supabase.from('articles').select('published_at').eq('id', id).single();
@@ -251,17 +241,17 @@ async function setArchived(id: number, archivedBy: string | null): Promise<Actio
 }
 
 export async function archiveArticle(id: number): Promise<ActionResult> {
-  const session = await requireRole(['leader']);
-  return setArchived(id, session.leader);
+  const session = await requireCapability('news.write');
+  return setArchived(id, session.label);
 }
 
 export async function unarchiveArticle(id: number): Promise<ActionResult> {
-  await requireRole(['leader']);
+  await requireCapability('news.write');
   return setArchived(id, null);
 }
 
 export async function deleteArticle(id: number): Promise<ActionResult> {
-  await requireRole(['leader']);
+  await requireCapability('news.write');
   const supabase = createAdminClient();
   const { error } = await supabase.from('articles').delete().eq('id', id);
   if (error) return { ok: false, error: error.message };
@@ -271,7 +261,7 @@ export async function deleteArticle(id: number): Promise<ActionResult> {
 
 /** Leader-only: pin/unpin an article and set its manual order among pinned articles. */
 export async function setFeatured(id: number, featured: boolean, order: number | null): Promise<ActionResult> {
-  await requireRole(['leader']);
+  await requireCapability('news.write');
   const supabase = createAdminClient();
   const { error } = await supabase
     .from('articles')

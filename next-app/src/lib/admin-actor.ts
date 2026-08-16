@@ -31,31 +31,34 @@ export interface AdminActor {
   kind: 'legacy' | 'identity';
   /** Display label for the top bar. */
   label: string;
-  /** people.id. Null only for a legacy scout session, which stores an
-   *  unmatched free-text username and therefore has no person behind it. */
+  /** people.id. Null when a legacy session's typed label cannot be matched
+   *  back to a person — lossy by nature, which is why identity sessions carry
+   *  the id outright. */
   personId: number | null;
   capabilities: Set<Capability>;
-  /** Legacy role when kind === 'legacy'; null for identity actors. Retained
-   *  only for SubNav's scout filtering, which Phase C deletes. */
+  /** 'leader' when kind === 'legacy'; null for identity actors. The only
+   *  remaining reader is the workspace layout's full-admin check — a legacy
+   *  password session sees everything. Goes away in Phase E. */
   legacyRole: SessionRole | null;
 }
 
 /**
- * TRANSITION SHIM — legacy sessions get a synthetic capability set.
+ * TRANSITION SHIM — a legacy session gets a synthetic capability set.
  *
  * A LEADER_PASSWORD session grants full admin today, so it maps to every
- * capability; otherwise converting a page to requireCapability() in Phase B2
- * would lock out the people currently using the site. A SCOUT_PASSWORD
- * session maps to news.write alone, matching the only thing scouts actually
- * do in /admin.
+ * capability; otherwise converting a page to requireCapability() would lock
+ * out the people currently using the site. This is the reason the switchover
+ * is safe to do one page at a time rather than in one commit. It dies in
+ * Phase E with the password.
  *
- * Both mappings die in Phase C/E along with the passwords. They are the
- * reason the switchover is safe to do one page at a time rather than in one
- * commit.
+ * The SCOUT_PASSWORD half of this shim is gone (Phase C, 2026-08-16). It
+ * mapped a scout session to `news.write`, which — once news.author and
+ * news.publish collapsed into one capability — meant converting any News
+ * guard would have handed a shared-password holder publish and delete. The
+ * role was retired rather than the guard kept.
  */
-function legacyCapabilities(role: SessionRole): Set<Capability> {
-  if (role === 'leader') return new Set(CAPABILITIES);
-  return new Set<Capability>(['news.write']);
+function legacyCapabilities(): Set<Capability> {
+  return new Set(CAPABILITIES);
 }
 
 /**
@@ -77,8 +80,8 @@ export async function resolveAdminActor(): Promise<AdminActor | null> {
       label: legacy.leader,
       // Resolved by reverse label match — lossy in principle, which is why
       // identity sessions carry the id outright. See session-person.ts.
-      personId: legacy.role === 'leader' ? await leaderSessionPersonId() : null,
-      capabilities: legacyCapabilities(legacy.role),
+      personId: await leaderSessionPersonId(),
+      capabilities: legacyCapabilities(),
       legacyRole: legacy.role
     };
   }

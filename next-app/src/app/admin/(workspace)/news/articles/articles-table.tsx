@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import type { SessionRole } from '@/lib/leader-session';
 import type { ArticleStatus } from '@/lib/supabase/types';
 import type { ArticleRowVM } from './page';
 import {
@@ -48,15 +47,16 @@ interface Props {
   sp: SearchParams;
   sort: SortKey;
   dir: 'asc' | 'desc';
-  sessionRole: SessionRole;
   sessionName: string;
 }
 
-export function ArticlesTable({ rows, sp, sort, dir, sessionRole, sessionName }: Props) {
+export function ArticlesTable({ rows, sp, sort, dir, sessionName }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [rowErr, setRowErr] = useState<{ id: number; msg: string } | null>(null);
-  const isLeader = sessionRole === 'leader';
+  // Everyone who reaches this screen holds news.write; the scout tier that
+  // this once distinguished was retired in Phase C (2026-08-16).
+  const isLeader = true;
 
   const sortLink = (key: SortKey, label: string) => {
     const isActive = sort === key;

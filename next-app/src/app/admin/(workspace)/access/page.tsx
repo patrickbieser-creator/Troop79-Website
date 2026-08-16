@@ -12,7 +12,7 @@
  * requireCapability('roster.manage').
  */
 
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { loadAccessScreen } from '@/lib/capabilities-admin';
 import { AccessTable } from './access-table';
@@ -30,7 +30,7 @@ export const metadata = {
 };
 
 export default async function AccessPage() {
-  await requireRole(['leader']);
+  await requireCapability('roster.manage');
   const { rows, addable } = await loadAccessScreen(createAdminClient());
 
   return (

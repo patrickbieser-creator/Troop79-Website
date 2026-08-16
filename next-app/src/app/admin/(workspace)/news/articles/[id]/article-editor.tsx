@@ -3,7 +3,6 @@
 import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import type { SessionRole } from '@/lib/leader-session';
 import type { Article, Media, Tag } from '@/lib/supabase/types';
 import { MediaPicker } from '../../_components/media-picker';
 import { DatePickerField } from '../../../_components/date-picker-field';
@@ -21,13 +20,13 @@ interface Props {
   selectedTagIds: number[];
   heroMedia: Media | null;
   allTags: Tag[];
-  sessionRole: SessionRole;
   sessionName: string;
 }
 
-export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags, sessionRole }: Props) {
+export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags }: Props) {
   const router = useRouter();
-  const isLeader = sessionRole === 'leader';
+  // See ArticlesTable: news.write is the only way onto this screen now.
+  const isLeader = true;
   const isNew = !article;
 
   const [title, setTitle] = useState(article?.title ?? '');

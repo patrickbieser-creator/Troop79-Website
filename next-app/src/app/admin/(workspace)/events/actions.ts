@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { sendEmail, renderEmail } from '@/lib/email';
 import { recipientsForScouts } from '@/lib/email-recipients';
@@ -17,7 +17,7 @@ import {
 
 /*
  * Event Signup builder actions. House pattern throughout:
- *   'use server' → requireRole(['leader']) → createAdminClient() → revalidate.
+ *   'use server' → requireCapability('calendar.write') → createAdminClient() → revalidate.
  *
  * Every export must be async — this is a 'use server' module.
  */
@@ -56,7 +56,7 @@ const PRESETS: Record<
 
 /** Enable signup on a calendar entry, seeded from its category preset. */
 export async function enableSignup(calendarEntryId: number): Promise<Result> {
-  await requireRole(['leader']);
+  await requireCapability('calendar.write');
   const supabase = createAdminClient();
 
   const { data: entry } = await supabase
@@ -99,7 +99,7 @@ export async function updateSignup(
   calendarEntryId: number,
   fields: Record<string, unknown>
 ): Promise<Result> {
-  await requireRole(['leader']);
+  await requireCapability('calendar.write');
   const supabase = createAdminClient();
   const { error } = await supabase
     .from('event_signups')
@@ -135,7 +135,7 @@ export async function addPrice(
   per: 'event' | 'day',
   appliesTo: 'scouts' | 'adults' | 'both'
 ): Promise<Result & { note?: string }> {
-  await requireRole(['leader']);
+  await requireCapability('calendar.write');
   if (!label.trim()) return { ok: false, error: 'Give the tier a label.' };
   const supabase = createAdminClient();
   const { error } = await supabase
@@ -168,7 +168,7 @@ export async function deletePrice(
   signupId: number,
   calendarEntryId: number
 ): Promise<Result> {
-  await requireRole(['leader']);
+  await requireCapability('calendar.write');
   const supabase = createAdminClient();
   const { error } = await supabase.from('event_prices').delete().eq('id', priceId);
   if (error) {
@@ -191,7 +191,7 @@ export async function backfillPrices(
   signupId: number,
   calendarEntryId: number
 ): Promise<Result & { note?: string }> {
-  await requireRole(['leader']);
+  await requireCapability('calendar.write');
   const supabase = createAdminClient();
   const backfill = await backfillEventPrices(supabase, signupId);
   revalidateEvent(calendarEntryId, signupId);
@@ -216,7 +216,7 @@ export async function addSlot(
     attendance_required: boolean;
   }
 ): Promise<Result> {
-  await requireRole(['leader']);
+  await requireCapability('calendar.write');
   if (!slot.label.trim()) return { ok: false, error: 'Give the job a name.' };
   if (slot.kind === 'shift' && (!slot.starts_at || !slot.ends_at)) {
     return { ok: false, error: 'A shift needs both a start and an end time.' };
@@ -253,7 +253,7 @@ export async function deleteSlot(
   calendarEntryId: number,
   confirm = false
 ): Promise<Result & { needsConfirm?: boolean; claimants?: SlotClaimant[] }> {
-  await requireRole(['leader']);
+  await requireCapability('calendar.write');
   const supabase = createAdminClient();
 
   if (!confirm) {
@@ -282,11 +282,11 @@ export async function setEntryFlag(
   signupId: number,
   calendarEntryId: number
 ): Promise<Result> {
-  const session = await requireRole(['leader']);
+  const session = await requireCapability('calendar.write');
   const supabase = createAdminClient();
   const { error } = await supabase
     .from('signup_entries')
-    .update({ [field]: value, updated_by: session.leader, updated_at: new Date().toISOString() })
+    .update({ [field]: value, updated_by: session.label, updated_at: new Date().toISOString() })
     .eq('id', entryId);
   if (error) return { ok: false, error: error.message };
   revalidatePath(`/admin/rosters/${signupId}`);
@@ -305,7 +305,7 @@ export async function addQuestion(
     required: boolean;
   }
 ): Promise<Result> {
-  await requireRole(['leader']);
+  await requireCapability('calendar.write');
   if (!q.prompt.trim()) return { ok: false, error: 'Give the question a prompt.' };
   if (q.input_type === 'choice' && q.choices.length === 0) {
     return { ok: false, error: 'A choice question needs at least one option.' };
@@ -337,7 +337,7 @@ export async function deleteQuestion(
   calendarEntryId: number,
   confirm = false
 ): Promise<Result & { needsConfirm?: boolean; answers?: QuestionAnswerRow[] }> {
-  await requireRole(['leader']);
+  await requireCapability('calendar.write');
   const supabase = createAdminClient();
 
   if (!confirm) {
@@ -370,7 +370,7 @@ export async function emailNonResponders(
   signupId: number,
   confirm: boolean
 ): Promise<{ ok: boolean; error?: string; status?: string; to?: string[] }> {
-  await requireRole(['leader']);
+  await requireCapability('calendar.write');
   const supabase = createAdminClient();
 
   const { data: signup } = await supabase
@@ -438,7 +438,7 @@ export async function updateSlot(
     attendance_required: boolean;
   }
 ): Promise<Result> {
-  await requireRole(['leader']);
+  await requireCapability('calendar.write');
   if (!slot.label.trim()) return { ok: false, error: 'Give the job a name.' };
 
   const supabase = createAdminClient();
@@ -498,7 +498,7 @@ export async function updatePrice(
   calendarEntryId: number,
   fields: { label: string; amount: number; per: 'event' | 'day'; applies_to: 'scouts' | 'adults' | 'both' }
 ): Promise<Result & { note?: string }> {
-  await requireRole(['leader']);
+  await requireCapability('calendar.write');
   if (!fields.label.trim()) return { ok: false, error: 'Give the tier a label.' };
   const supabase = createAdminClient();
   const { error } = await supabase
@@ -541,7 +541,7 @@ export async function cancelEntry(
   signupId: number,
   calendarEntryId: number
 ): Promise<Result> {
-  const session = await requireRole(['leader']);
+  const session = await requireCapability('calendar.write');
   const supabase = createAdminClient();
 
   const { error } = await supabase
@@ -549,7 +549,7 @@ export async function cancelEntry(
     .update({
       status: 'cancelled',
       cancelled_at: new Date().toISOString(),
-      updated_by: session.leader,
+      updated_by: session.label,
       updated_at: new Date().toISOString()
     })
     .eq('id', entryId);
@@ -572,7 +572,7 @@ export async function restoreEntry(
   signupId: number,
   calendarEntryId: number
 ): Promise<Result> {
-  const session = await requireRole(['leader']);
+  const session = await requireCapability('calendar.write');
   const supabase = createAdminClient();
 
   const { data: sig } = await supabase
@@ -601,7 +601,7 @@ export async function restoreEntry(
     .update({
       status,
       cancelled_at: null,
-      updated_by: session.leader,
+      updated_by: session.label,
       updated_at: new Date().toISOString()
     })
     .eq('id', entryId);
@@ -631,7 +631,7 @@ export async function disableSignup(
   calendarEntryId: number,
   confirm: boolean
 ): Promise<Result & { entryCount?: number; needsConfirm?: boolean }> {
-  await requireRole(['leader']);
+  await requireCapability('calendar.write');
   const supabase = createAdminClient();
 
   const { data: entries } = await supabase
@@ -684,7 +684,7 @@ export async function addSignupEntry(
   personId: number,
   participation: 'full' | 'driver_only' | 'contributor' = 'full'
 ): Promise<Result> {
-  const session = await requireRole(['leader']);
+  const session = await requireCapability('calendar.write');
   const supabase = createAdminClient();
 
   const { data: person } = await supabase
@@ -752,7 +752,7 @@ export async function addSignupEntry(
         status,
         cancelled_at: null,
         participation,
-        updated_by: session.leader,
+        updated_by: session.label,
         updated_at: new Date().toISOString()
       })
       .eq('id', existing.id);
@@ -766,7 +766,7 @@ export async function addSignupEntry(
       adult_name: isScout ? null : person.display_name,
       status,
       participation,
-      updated_by: session.leader
+      updated_by: session.label
     });
     if (error) return { ok: false, error: error.message };
   }
@@ -793,7 +793,7 @@ export async function claimSlotFor(
   calendarEntryId: number,
   comment: string | null
 ): Promise<Result> {
-  await requireRole(['leader']);
+  await requireCapability('calendar.write');
   const supabase = createAdminClient();
 
   const { error } = await supabase

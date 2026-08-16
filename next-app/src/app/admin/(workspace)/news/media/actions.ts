@@ -1,6 +1,6 @@
 'use server';
 
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { Media } from '@/lib/supabase/types';
 import { IMAGE_UPLOAD_TYPES, checkUpload } from '@/lib/upload-limits';
@@ -31,7 +31,7 @@ interface UploadResult {
 
 /** Uploads an image to Bunny Storage and records it in the `media` table. */
 export async function uploadMedia(formData: FormData): Promise<UploadResult> {
-  const session = await requireRole(['leader', 'scout']);
+  const session = await requireCapability('news.write');
 
   const file = formData.get('file');
   if (!(file instanceof File)) return { ok: false, error: 'No file provided.' };
@@ -56,7 +56,7 @@ export async function uploadMedia(formData: FormData): Promise<UploadResult> {
       cdn_url: cdnUrl,
       alt_text: altText,
       caption,
-      uploaded_by: session.leader,
+      uploaded_by: session.label,
       width,
       height
     })
@@ -75,7 +75,7 @@ interface ListMediaResult {
 
 /** Browse/search already-uploaded media for the "Browse Existing" picker tab. */
 export async function listMedia(search: string): Promise<ListMediaResult> {
-  await requireRole(['leader', 'scout']);
+  await requireCapability('news.write');
 
   const supabase = createAdminClient();
   let query = supabase.from('media').select('*').order('created_at', { ascending: false }).limit(60);
@@ -97,7 +97,7 @@ export async function setMediaAltText(
   id: number,
   altText: string
 ): Promise<{ ok: boolean; error?: string }> {
-  await requireRole(['leader', 'scout']);
+  await requireCapability('news.write');
   const trimmed = altText.trim();
   if (!trimmed) return { ok: false, error: 'Alt text is required.' };
 
@@ -152,7 +152,7 @@ interface SyncResult {
  * already-indexed paths are skipped.
  */
 export async function syncBunnyLibrary(): Promise<SyncResult> {
-  const session = await requireRole(['leader', 'scout']);
+  const session = await requireCapability('news.write');
 
   const cfg = bunnyConfig();
   if (!cfg) return { ok: false, error: BUNNY_NOT_CONFIGURED };
@@ -182,7 +182,7 @@ export async function syncBunnyLibrary(): Promise<SyncResult> {
       cdn_url: `https://${pullZoneHost}/${path}`,
       alt_text: filenameToAltText(path),
       caption: null,
-      uploaded_by: session.leader
+      uploaded_by: session.label
     }))
   );
   if (insertError) return { ok: false, error: insertError.message };

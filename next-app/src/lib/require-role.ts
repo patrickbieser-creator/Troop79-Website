@@ -30,11 +30,15 @@ import { resolveAdminActor } from '@/lib/admin-actor';
 import { CAPABILITIES } from '@/lib/capabilities';
 import type { AdminActor } from '@/lib/admin-actor';
 
-/** Conservative legacy-role equivalence for an identity actor. See header. */
+/**
+ * Conservative legacy-role equivalence for an identity actor. See header.
+ *
+ * 'leader' is the only role left (the scout login was retired in Phase C), and
+ * an identity actor satisfies it only by holding EVERY capability.
+ */
 export function satisfiesLegacyRole(actor: AdminActor, role: SessionRole): boolean {
   if (actor.kind === 'legacy') return actor.legacyRole === role;
-  if (role === 'leader') return CAPABILITIES.every((c) => actor.capabilities.has(c));
-  return actor.capabilities.has('news.write');
+  return CAPABILITIES.every((c) => actor.capabilities.has(c));
 }
 
 export async function requireRole(allowed: SessionRole[]): Promise<LeaderSession> {

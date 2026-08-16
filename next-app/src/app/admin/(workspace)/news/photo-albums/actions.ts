@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 
 type ActionResult = { ok: boolean; error?: string };
@@ -36,7 +36,7 @@ function validate(f: ReturnType<typeof fieldsFromForm>): string | null {
 }
 
 export async function createPhotoAlbum(fd: FormData): Promise<ActionResult> {
-  await requireRole(['leader', 'scout']);
+  await requireCapability('news.write');
   const fields = fieldsFromForm(fd);
   const invalid = validate(fields);
   if (invalid) return { ok: false, error: invalid };
@@ -49,7 +49,7 @@ export async function createPhotoAlbum(fd: FormData): Promise<ActionResult> {
 }
 
 export async function updatePhotoAlbum(fd: FormData): Promise<ActionResult> {
-  await requireRole(['leader', 'scout']);
+  await requireCapability('news.write');
   const id = Number(fd.get('id'));
   const fields = fieldsFromForm(fd);
   const invalid = validate(fields);
@@ -64,7 +64,7 @@ export async function updatePhotoAlbum(fd: FormData): Promise<ActionResult> {
 
 /** Leader-only, matching every other destructive News & Events action. */
 export async function deletePhotoAlbum(id: number): Promise<ActionResult> {
-  await requireRole(['leader']);
+  await requireCapability('news.write');
   const supabase = createAdminClient();
   const { error } = await supabase.from('photo_albums').delete().eq('id', id);
   if (error) return { ok: false, error: error.message };

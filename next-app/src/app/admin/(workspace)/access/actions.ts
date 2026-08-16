@@ -1,9 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireRole } from '@/lib/require-role';
+import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
-import { leaderSessionPersonId } from '@/lib/session-person';
 import {
   expandBundle,
   isCapability,
@@ -14,21 +13,22 @@ import {
 
 /**
  * Access & Permissions mutations
- * (Plans/Unified-Identity-And-Capabilities.md Phase A).
+ * (Plans/Unified-Identity-And-Capabilities.md Phase A, guard tightened in C).
  *
- * GUARD: requireRole(['leader']) for now, NOT requireCapability('roster.manage').
- * Phase A ships dark — nothing issues an identity session with capabilities
- * yet, so gating this screen on a capability would make it unreachable and
- * brick the very tool used to hand out the first grants. Phase B swaps this
- * for requireCapability('roster.manage') once /admin accepts identity
- * sessions.
+ * GUARD: requireCapability('roster.manage') — the last surface converted, on
+ * purpose. It is the tool that hands out every other grant, so it should not
+ * change hands until the rest of the admin is settled.
  *
- * Accepted for now, stated plainly: roster.manage will let its holder grant
- * themselves anything else. That is a real escalation path, but a small one —
- * roster.manage already exposes every family's address, birthdate, and
- * medical-adjacent notes, which is the most sensitive thing in the system. If
- * that stops being acceptable, add an `access.manage` capability rather than
- * relying on nobody noticing.
+ * Stated plainly: roster.manage lets its holder grant themselves anything
+ * else. That is a real escalation path, but a small one — roster.manage
+ * already exposes every family's address, birthdate, and medical-adjacent
+ * notes, which is the most sensitive thing in the system, so the escalation
+ * buys access to strictly less than the holder already has. If that stops
+ * being acceptable, add an `access.manage` capability rather than relying on
+ * nobody noticing.
+ *
+ * The last-holder guard below is what keeps this screen from locking itself
+ * out now that it gates on a capability it can also revoke.
  */
 
 function revalidateAccess() {
@@ -51,10 +51,10 @@ function parseCapability(formData: FormData): Capability {
 }
 
 export async function grantCapabilityAction(formData: FormData): Promise<void> {
-  await requireRole(['leader']);
+  const actor = await requireCapability('roster.manage');
   const personId = parsePersonId(formData);
   const capability = parseCapability(formData);
-  const grantedBy = await leaderSessionPersonId();
+  const grantedBy = actor.personId;
 
   const supabase = createAdminClient();
   const { error } = await supabase
@@ -98,7 +98,7 @@ async function refuseIfLastHolder(
 }
 
 export async function revokeCapabilityAction(formData: FormData): Promise<void> {
-  await requireRole(['leader']);
+  await requireCapability('roster.manage');
   const personId = parsePersonId(formData);
   const capability = parseCapability(formData);
 
@@ -121,12 +121,12 @@ export async function revokeCapabilityAction(formData: FormData): Promise<void> 
  * news.write.
  */
 export async function applyBundleAction(formData: FormData): Promise<void> {
-  await requireRole(['leader']);
+  const actor = await requireCapability('roster.manage');
   const personId = parsePersonId(formData);
   const bundleKey = String(formData.get('bundle') ?? '');
   const capabilities = expandBundle(bundleKey);
   if (capabilities.length === 0) throw new Error(`Unknown bundle: ${bundleKey}`);
-  const grantedBy = await leaderSessionPersonId();
+  const grantedBy = actor.personId;
 
   const supabase = createAdminClient();
   const { error } = await supabase.from('person_capabilities').upsert(
@@ -138,7 +138,7 @@ export async function applyBundleAction(formData: FormData): Promise<void> {
 }
 
 export async function revokeAllCapabilitiesAction(formData: FormData): Promise<void> {
-  await requireRole(['leader']);
+  await requireCapability('roster.manage');
   const personId = parsePersonId(formData);
 
   const supabase = createAdminClient();
@@ -162,7 +162,7 @@ export async function revokeAllCapabilitiesAction(formData: FormData): Promise<v
  * their cookie.
  */
 export async function revokeSessionsAction(formData: FormData): Promise<void> {
-  await requireRole(['leader']);
+  await requireCapability('roster.manage');
   const personId = parsePersonId(formData);
 
   const supabase = createAdminClient();

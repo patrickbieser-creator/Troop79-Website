@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { IS_DEV_DB } from '@/lib/dev-db';
-import type { SessionRole } from '@/lib/leader-session';
 import type { Capability } from '@/lib/capabilities';
 import styles from '../admin.module.css';
 
@@ -12,20 +11,15 @@ interface NavItem {
   href?: string;
   matchPath?: string;
   disabled?: boolean;
-  /** Scout-role sessions can only reach the News drafting surface — see
-   *  SCOUT_ALLOWED_PREFIXES in proxy.ts, which this list must stay in sync
-   *  with. Everything else defaults to leader-only. */
-  scoutVisible?: boolean;
   /**
-   * The capability this surface requires, once its pages have been converted
-   * from requireRole() to requireCapability()
-   * (Plans/Unified-Identity-And-Capabilities.md Phase B2).
+   * The capability this surface's pages require. Must match the
+   * requireCapability() call in the page and its actions — this list is a
+   * convenience for the reader, not the security boundary.
    *
-   * ABSENT MEANS NOT YET CONVERTED, and is treated as full-admin-only. That
-   * default is what makes it safe to relax the workspace gate to
-   * "any capability": a partially-granted person sees only the sections whose
-   * pages can actually admit them, instead of nav links that throw. Add the
-   * capability here in the same commit that converts the section's guards.
+   * Every live item now has one (Phase B2 completed 2026-08-16). Absent means
+   * a partially-granted person will not see the item, which is the right
+   * default for anything unbuilt or unconverted: better a missing link than
+   * one that throws.
    */
   capability?: Capability;
 }
@@ -81,7 +75,7 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         label: 'Has/Needs Tool',
         href: '/admin/advancement/has-needs',
         matchPath: '/admin/advancement/has-needs',
-        scoutVisible: true
+        capability: 'advancement.write'
       }
     ]
   },
@@ -131,7 +125,7 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         label: 'News',
         href: '/admin/news/articles',
         matchPath: '/admin/news/articles',
-        scoutVisible: true
+        capability: 'news.write'
       },
       {
         /*
@@ -140,11 +134,9 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
          * on a date". Signup building and agenda editing are panels on the
          * entry now, reached from the workbench at /admin/calendar/[entryId].
          *
-         * Leader-only. Calendar entries are not a scout drafting surface the
-         * way News posts are (Patrick, 2026-08-14) — so unlike the Events screen
-         * this replaced, it carries no scoutVisible flag, and the matching
-         * prefix is absent from SCOUT_ALLOWED_PREFIXES in proxy.ts. Those two
-         * must stay in sync.
+         * Gated on calendar.write. Editing calendar entries was made
+         * leader-only in 2026-08-14; the shared-password scout tier that
+         * distinction was drawn against no longer exists at all (Phase C).
          */
         label: 'Calendar',
         href: '/admin/calendar',
@@ -161,13 +153,13 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         label: 'Media Manager',
         href: '/admin/news/media-manager',
         matchPath: '/admin/news/media-manager',
-        scoutVisible: true
+        capability: 'news.write'
       },
       {
         label: 'Photo Albums',
         href: '/admin/news/photo-albums',
         matchPath: '/admin/news/photo-albums',
-        scoutVisible: true
+        capability: 'news.write'
       }
     ]
   },
@@ -200,13 +192,14 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
       {
         label: 'Access & Permissions',
         href: '/admin/access',
-        matchPath: '/admin/access'
+        matchPath: '/admin/access',
+        capability: 'roster.manage'
       },
       {
         label: 'Utilities',
         href: '/admin/utilities',
         matchPath: '/admin/utilities',
-        scoutVisible: true
+        capability: 'news.write'
       }
     ]
   }
@@ -215,25 +208,18 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
 /**
  * Which nav items this actor should see.
  *
- * `fullAdmin` covers both a legacy leader session and an identity actor
- * holding every capability — they see everything, including the sections not
- * yet converted to capability checks.
+ * `fullAdmin` covers both a legacy LEADER_PASSWORD session and an identity
+ * actor holding every capability — they see everything, including the
+ * disabled "Soon" placeholders that carry no capability of their own.
  *
- * A partially-granted identity actor sees only converted items they hold. An
- * unconverted item (no `capability`) is hidden from them, because its page
- * still guards with requireRole() and would throw. Hiding it is not the
- * security boundary — the page guard is; this just stops the nav from
- * offering links that cannot work.
+ * Everyone else sees exactly the items whose capability they hold. This is
+ * NOT the security boundary — each page's requireCapability() is; the nav
+ * just stops offering links that would refuse.
  */
 export function visibleNavSections(
   sections: typeof SECTIONS,
-  opts: { fullAdmin: boolean; legacyScout: boolean; capabilities: ReadonlySet<Capability> }
+  opts: { fullAdmin: boolean; capabilities: ReadonlySet<Capability> }
 ) {
-  if (opts.legacyScout) {
-    return sections
-      .map((s) => ({ ...s, items: s.items.filter((i) => i.scoutVisible) }))
-      .filter((s) => s.items.length > 0);
-  }
   if (opts.fullAdmin) return sections;
   return sections
     .map((s) => ({
@@ -244,18 +230,15 @@ export function visibleNavSections(
 }
 
 export function SubNav({
-  role,
   fullAdmin,
   capabilities
 }: {
-  role: SessionRole;
   fullAdmin: boolean;
   capabilities: Capability[];
 }) {
   const pathname = usePathname();
   const visibleSections = visibleNavSections(SECTIONS, {
     fullAdmin,
-    legacyScout: role === 'scout',
     capabilities: new Set(capabilities)
   });
 
