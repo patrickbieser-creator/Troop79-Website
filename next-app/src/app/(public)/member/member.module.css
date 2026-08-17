@@ -103,16 +103,51 @@
   color: #fff;
 }
 
-.signOutBtn {
-  background: none;
-  border: 1px solid var(--rule, #d8ccb4);
-  border-radius: 4px;
-  padding: 0.4rem 0.9rem;
-  font: inherit;
-  font-size: 0.85rem;
-  color: var(--text-meta, #5b5347);
-  cursor: pointer;
+.identityRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
 }
-.signOutBtn:hover {
-  background: #f7f1e6;
+.identityRow .intro {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.signOutForm {
+  flex-shrink: 0;
+}
+
+.signOutBtn {
+  background: #fff;
+  border: 2px solid var(--forest, #3d7a4a);
+  border-radius: 4px;
+  padding: 0.5rem 1.1rem;
+  font-family: var(--font-ui), inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--forest, #3d7a4a);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.signOutBtn:hover,
+.signOutBtn:focus-visible {
+  background: var(--forest, #3d7a4a);
+  color: #fff;
+}
+
+@media (max-width: 34rem) {
+  /* Stacks on a phone — a nowrap button beside wrapping prose squeezes the
+     text into a column two words wide. */
+  .identityRow {
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+  .signOutBtn {
+    width: 100%;
+  }
 }

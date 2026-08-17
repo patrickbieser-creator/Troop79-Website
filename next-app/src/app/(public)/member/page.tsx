@@ -123,11 +123,22 @@ export default async function MemberPage() {
         <div className={shell.headRule} />
       </div>
       <main className={shell.main}>
-        <p className={styles.intro}>
-        Signed in as <strong>{session.displayName}</strong>. Everything here is yours &mdash; your
-        household&rsquo;s details, and, as we build them out, the rest of the things families ask us
-        for.
-      </p>
+        <div className={styles.identityRow}>
+          <p className={styles.intro}>
+            Signed in as <strong>{session.displayName}</strong>. Everything here is yours &mdash;
+            your household&rsquo;s details, and, as we build them out, the rest of the things
+            families ask us for.
+          </p>
+          {/* Paired with the identity it acts on, rather than stranded at the
+              bottom of the page — "this is who you are" and "stop being them"
+              belong on the same line. */}
+          <form action={logOutEverywhereAction} className={styles.signOutForm}>
+            <input type="hidden" name="next" value="/" />
+            <button type="submit" className={styles.signOutBtn}>
+              Sign Out
+            </button>
+          </form>
+        </div>
 
       <div className={styles.grid}>
         {CARDS.map((card) => {
@@ -161,15 +172,6 @@ export default async function MemberPage() {
           );
         })}
       </div>
-
-      {/* Sign out lives here now rather than in the utility bar — same reason
-          sign in does. */}
-      <form action={logOutEverywhereAction} style={{ marginBottom: '1.5rem' }}>
-        <input type="hidden" name="next" value="/" />
-        <button type="submit" className={styles.signOutBtn}>
-          Sign out
-        </button>
-      </form>
 
       <p className={styles.note}>
           The greyed-out cards aren&rsquo;t built yet. They&rsquo;re listed so you can see

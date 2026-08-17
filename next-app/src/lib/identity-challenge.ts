@@ -23,7 +23,6 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { b64UrlEncode } from '@/lib/signed-cookie';
 import { isDeliverable } from '@/lib/email-recipients';
 import { resolveHouseholdKeyForPerson } from '@/lib/households';
 import { sendEmail, renderEmail } from '@/lib/email';
@@ -69,10 +68,29 @@ async function hashSecret(raw: string): Promise<string> {
   return sha256Hex(`${raw}${getPepper()}`);
 }
 
+/**
+ * LOWERCASE HEX, NOT BASE64URL — and the case-insensitivity is the point.
+ *
+ * Reported 2026-08-16: the 6-digit code from an email worked while the link
+ * in the same email did not, and the link reported "unknown" rather than
+ * expired or consumed. Same row, same pepper, so only the raw token differed
+ * between what was minted and what arrived. Codes are digits and survive
+ * anything; base64url is CASE-SENSITIVE, so any link rewriter or mail
+ * gateway that normalises a URL to lowercase silently destroys it while
+ * leaving the code untouched. That is exactly the observed asymmetry.
+ *
+ * 16 bytes is 128 bits, which is plenty for a single-use credential that
+ * lives 15 minutes and is rate-limited to three per person per 15 minutes.
+ * It also makes the URL 11 characters shorter, which matters because the
+ * plain-text part of the email puts the whole link on one line and mail
+ * transports wrap at 78 columns.
+ */
 function randomLinkToken(): string {
-  const bytes = new Uint8Array(32);
+  const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);
-  return b64UrlEncode(bytes);
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 function randomCode(): string {
@@ -468,6 +486,36 @@ export async function peekTokenChallenge(
  * Distinguishing them leaks nothing a link-holder does not already have: they
  * hold the token, so "this token was used" tells them only about themselves.
  */
+/**
+ * Look the token up exactly as it arrived, then again normalised.
+ *
+ * The normalised retry is what makes a lowercasing URL rewriter survivable
+ * for tokens minted before the switch to hex, and costs one extra query only
+ * on a miss. Trimming guards against a stray space picked up when a link
+ * wraps in a plain-text email.
+ */
+async function findTokenRow(
+  supabase: SupabaseClient,
+  rawToken: string,
+  columns = 'id, person_id, expires_at, consumed_at'
+) {
+  const exact = rawToken.trim();
+  const first = await supabase
+    .from('login_tokens')
+    .select(columns)
+    .eq('token_hash', await hashSecret(exact))
+    .maybeSingle();
+  if (first.data) return first;
+
+  const normalised = exact.toLowerCase();
+  if (normalised === exact) return first;
+  return supabase
+    .from('login_tokens')
+    .select(columns)
+    .eq('token_hash', await hashSecret(normalised))
+    .maybeSingle();
+}
+
 export type TokenState = 'valid' | 'consumed' | 'expired' | 'unknown';
 
 export async function inspectTokenChallenge(
@@ -475,12 +523,7 @@ export async function inspectTokenChallenge(
   rawToken: string
 ): Promise<{ state: TokenState; target: { displayName: string } | null }> {
   if (!rawToken) return { state: 'unknown', target: null };
-  const tokenHash = await hashSecret(rawToken);
-  const { data } = await supabase
-    .from('login_tokens')
-    .select('id, person_id, expires_at, consumed_at')
-    .eq('token_hash', tokenHash)
-    .maybeSingle();
+  const { data } = await findTokenRow(supabase, rawToken);
   const row = data as Pick<TokenRow, 'id' | 'person_id' | 'expires_at' | 'consumed_at'> | null;
   if (!row) {
     // DIAGNOSTIC (2026-08-16): a link reported "unknown" in production —
@@ -523,12 +566,9 @@ export async function redeemToken(
   rawToken: string
 ): Promise<RedeemedIdentity | null> {
   if (!rawToken) return null;
-  const tokenHash = await hashSecret(rawToken);
-  const { data } = await supabase
-    .from('login_tokens')
-    .select('id, person_id, next_path, expires_at, consumed_at, attempts')
-    .eq('token_hash', tokenHash)
-    .maybeSingle();
+  // Same tolerant lookup as the GET side — otherwise the landing page would
+  // say "Continue as …" and then fail on submit.
+  const { data } = await findTokenRow(supabase, rawToken, 'id, person_id, next_path, expires_at, consumed_at, attempts');
   const row = data as TokenRow | null;
   if (!row || row.consumed_at || new Date(row.expires_at) < new Date()) return null;
 

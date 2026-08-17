@@ -1,6 +1,12 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { adminClient } from './helpers/admin-client';
-import { maskEmail, requestChallengeForPerson, redeemCodeForPerson } from '../src/lib/identity-challenge';
+import {
+  maskEmail,
+  requestChallengeForPerson,
+  redeemCodeForPerson,
+  inspectTokenChallenge
+} from '../src/lib/identity-challenge';
+import { readFileSync } from 'node:fs';
 import { searchSignInCandidates, MIN_QUERY_LENGTH, MAX_RESULTS } from '../src/lib/signin-roster';
 
 /**
@@ -136,6 +142,67 @@ describe('sign-in name picker', () => {
     await requestChallengeForPerson(admin, personId);
     const result = await redeemCodeForPerson(admin, personId, '000000');
     expect(result.ok).toBe(false);
+  });
+
+  // ── the link token survives URL rewriting ──────────────────────────────
+
+  async function mintTokenFor(personId: number, rawToken: string) {
+    const admin = adminClient();
+    const pepper = process.env.IDENTITY_TOKEN_PEPPER;
+    if (!pepper) throw new Error('IDENTITY_TOKEN_PEPPER missing');
+    const digest = await crypto.subtle.digest(
+      'SHA-256',
+      new TextEncoder().encode(`${rawToken}${pepper}`)
+    );
+    const hash = Array.from(new Uint8Array(digest))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+    const { error } = await admin.from('login_tokens').insert({
+      person_id: personId,
+      channel: 'email',
+      sent_to: 'probe@example.com',
+      token_hash: hash,
+      code_hash: hash,
+      expires_at: new Date(Date.now() + 15 * 60_000).toISOString()
+    });
+    if (error) throw new Error(`fixture: token: ${error.message}`);
+  }
+
+  it('LinkToken_IsRecognised_WhenAMailGatewayUppercasesTheUrl', async () => {
+    // Reported 2026-08-16: the 6-digit code worked and the link in the SAME
+    // email did not, reporting "unknown" rather than expired or consumed.
+    // Codes are digits and survive anything; the link token was base64url,
+    // which is CASE-SENSITIVE, so any rewriter that normalises a URL to
+    // lowercase destroyed it while leaving the code untouched — exactly that
+    // asymmetry.
+    const hh = await makeHousehold('Case Probe');
+    const personId = await makePerson(hh, 'Casey Probe', `vitest-case-${Date.now()}@example.com`);
+    const raw = 'abcdef0123456789abcdef0123456789';
+    await mintTokenFor(personId, raw);
+
+    const asSent = await inspectTokenChallenge(adminClient(), raw);
+    expect(asSent.state).toBe('valid');
+
+    const rewritten = await inspectTokenChallenge(adminClient(), raw.toUpperCase());
+    expect(rewritten.state, 'an uppercased link must still resolve').toBe('valid');
+  });
+
+  it('LinkToken_IsRecognised_WhenTheUrlPicksUpSurroundingWhitespace', async () => {
+    // A wrapped line in the plain-text part of an email.
+    const hh = await makeHousehold('Whitespace Probe');
+    const personId = await makePerson(hh, 'Wanda Probe', `vitest-ws-${Date.now()}@example.com`);
+    const raw = 'fedcba9876543210fedcba9876543210';
+    await mintTokenFor(personId, raw);
+    expect((await inspectTokenChallenge(adminClient(), ` ${raw} `)).state).toBe('valid');
+  });
+
+  it('LinkToken_UsesACaseInsensitiveAlphabet_SoRewritersCannotBreakIt', () => {
+    // Guards the generator itself: reverting to base64url would reintroduce
+    // the bug while every behavioural test above still passed, because those
+    // mint their own lowercase tokens.
+    const src = readFileSync('src/lib/identity-challenge.ts', 'utf8');
+    expect(src).not.toMatch(/function randomLinkToken[\s\S]{0,200}b64UrlEncode/);
+    expect(src).toMatch(/function randomLinkToken[\s\S]{0,300}toString\(16\)/);
   });
 
   // ── the search contract ─────────────────────────────────────────────────
