@@ -123,12 +123,35 @@ export function PasskeyManager({
                 if (result.ok) setDone(true);
                 else setError(result.error ?? 'That didn’t work.');
               } catch (e) {
+                // startRegistration() wraps native errors as WebAuthnError
+                // (@simplewebauthn/browser), which carries a stable `.code`
+                // alongside the message — sturdier to branch on than message
+                // text, whose wording varies by platform (the library's own
+                // helpers/identifyRegistrationError.js comment: "Platforms
+                // are overloading this error beyond what the spec defines").
+                const code = e instanceof Error && 'code' in e ? (e as { code?: string }).code : undefined;
                 const msg = e instanceof Error ? e.message : '';
-                if (/abort|cancel|NotAllowed/i.test(msg)) return;
-                if (/already registered|excluded/i.test(msg)) {
+                // The gap userVerification: 'required' opens up (found
+                // 2026-08-16 — see Registration_RequiresUserVerification):
+                // an authenticator with no PIN/biometric/fingerprint
+                // configured can no longer silently create a weak passkey,
+                // but it also can't silently succeed at all — say why,
+                // rather than leaving "Set up one-tap sign in" reset with
+                // nothing explained.
+                if (
+                  code === 'ERROR_AUTHENTICATOR_MISSING_USER_VERIFICATION_SUPPORT' ||
+                  code === 'ERROR_AUTO_REGISTER_USER_VERIFICATION_FAILURE'
+                ) {
+                  setError(
+                    'This device needs a fingerprint, PIN, or passcode set up before it can be used as a passkey here.'
+                  );
+                  return;
+                }
+                if (code === 'ERROR_AUTHENTICATOR_PREVIOUSLY_REGISTERED' || /already registered|excluded/i.test(msg)) {
                   setError('This device already has a passkey for your account.');
                   return;
                 }
+                if (code === 'ERROR_CEREMONY_ABORTED' || /abort|cancel|NotAllowed/i.test(msg)) return;
                 setError('Your device didn’t complete that — try again.');
               }
             });

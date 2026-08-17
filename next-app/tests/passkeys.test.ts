@@ -198,6 +198,45 @@ describe('passkeys', () => {
     expect(src).not.toMatch(/throw[^\n]*counter/i);
   });
 
+  it('Registration_RequiresUserVerification', () => {
+    // Found the hard way 2026-08-16: asked for 'preferred', Dashlane created
+    // a passkey with NO verification prompt at all and didn't set the UV
+    // flag — a second browser's authenticator, asked the identical
+    // 'preferred', DID prompt. 'preferred' leaves it to the authenticator's
+    // own discretion, and at least one real one exercises that discretion by
+    // doing nothing. 'required' is the only value that makes the card's
+    // promise ("signs you in with a fingerprint or your face") actually true.
+    //
+    // Scoped to beginRegistration alone: beginAuthentication legitimately
+    // keeps 'preferred' — that's the ongoing sign-in path, deliberately left
+    // lenient (see SignCount_ above) — so a whole-file check would be wrong
+    // in the same way the pre-existing requireUserVerification check was.
+    const src = readFileSync('src/lib/passkeys.ts', 'utf8');
+    const start = src.indexOf('export async function beginRegistration');
+    expect(start).toBeGreaterThan(-1);
+    const nextExport = src.indexOf('\nexport ', start + 1);
+    const body = src.slice(start, nextExport === -1 ? undefined : nextExport);
+    expect(body).toContain("userVerification: 'required'");
+    expect(body).not.toContain("userVerification: 'preferred'");
+  });
+
+  it('FinishRegistration_DoesNotWeakenTheUserVerificationCheck', () => {
+    // A whole-file grep for 'requireUserVerification: false' is not enough:
+    // that string is legitimately present in finishAuthentication() (ongoing
+    // sign-ins stay lenient on purpose — see SignCount_ above). This is the
+    // exact regression that shipped once already, so it's scoped to JUST
+    // finishRegistration's body — the one place that string must never
+    // reappear, since verifyRegistrationResponse defaults
+    // requireUserVerification to true and that default is load-bearing now
+    // that beginRegistration asks for 'required'.
+    const src = readFileSync('src/lib/passkeys.ts', 'utf8');
+    const start = src.indexOf('export async function finishRegistration');
+    expect(start).toBeGreaterThan(-1);
+    const nextExport = src.indexOf('\nexport ', start + 1);
+    const body = src.slice(start, nextExport === -1 ? undefined : nextExport);
+    expect(body).not.toContain('requireUserVerification: false');
+  });
+
   it('Passkeys_AreAdultsOnly_AndTheEmailedCodePathIsNeverRemoved', () => {
     const actions = readFileSync('src/app/(public)/signin/actions.ts', 'utf8');
     // Scouts stay on codes: a passkey on a shared school Chromebook is a mess.

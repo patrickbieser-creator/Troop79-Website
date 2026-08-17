@@ -146,7 +146,20 @@ export async function beginRegistration(
     userDisplayName: person.displayName,
     // Discoverable credentials (resident keys) are what make returning sign-in
     // "tap Sign in" with no email typed at all — the entire point.
-    authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
+    //
+    // userVerification: 'required', not 'preferred' — found the hard way
+    // 2026-08-16. Dashlane, asked for 'preferred', silently created a passkey
+    // with NO fingerprint/PIN/vault prompt at all, no user-facing sign that
+    // anything was skipped. A second browser's platform authenticator, asked
+    // the identical 'preferred', DID prompt for a PIN — so "preferred" isn't
+    // unreliable in some abstract way, it is UNDER THE AUTHENTICATOR'S OWN
+    // DISCRETION, and at least one real one we tested exercises that
+    // discretion by doing nothing. That's a materially weaker credential than
+    // the card's own promise ("signs you in with a fingerprint or your
+    // face") — a stolen unlocked device would be enough, no biometric or PIN
+    // required. 'required' forces the authenticator to refuse creation
+    // rather than silently downgrade it.
+    authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
     // Stops a second credential being registered on a device that already has
     // one, which would otherwise silently accumulate duplicates.
     excludeCredentials: existing.map((c) => ({
@@ -188,6 +201,12 @@ export async function finishRegistration(
       expectedChallenge: challenge,
       expectedOrigin: cfg.origin,
       expectedRPID: cfg.rpId
+      // requireUserVerification defaults to true (library default) and is
+      // deliberately left there — beginRegistration() now asks for
+      // userVerification: 'required', so an authenticator that still skips
+      // it (like Dashlane did under 'preferred') is a real authenticator
+      // ignoring what was asked, not an authenticator making a permitted
+      // choice. That should fail loudly here, not be waved through.
     });
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Could not verify that passkey.' };
