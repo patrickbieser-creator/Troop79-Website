@@ -45,6 +45,21 @@ export const RANK_ORDER = [
   'eagle'
 ] as const;
 
+/** Static, not DB-sourced — BSA rank names are a fixed 7-item taxonomy, same
+ *  spirit as RANK_ORDER itself. Requirement rows only ever carry the rank id
+ *  (never a display name — see loadAdvancementEntries), so this is the only
+ *  way buildReport (pure, no DB access) can show "Second Class" instead of
+ *  "second-class" in a section header. */
+export const RANK_LABELS: Record<string, string> = {
+  scout: 'Scout',
+  tenderfoot: 'Tenderfoot',
+  'second-class': 'Second Class',
+  'first-class': 'First Class',
+  star: 'Star',
+  life: 'Life',
+  eagle: 'Eagle'
+};
+
 /** kind values that make up Section 5 — Leadership & Other (Decision 3,
  *  2026-08-17: logistics kinds ARE in scope, not "advancement only"). */
 const SECTION5_KINDS = [
@@ -306,22 +321,45 @@ export function datesOutOfRange(entries: AdvancementEntry[], range: ReportRange)
 
 /** Build the full report content model from filtered, shaped rows. */
 export function buildReport(rows: AdvancementEntry[]): AdvancementReport {
-  const ranksEarned = groupAward(rows.filter((r) => rowIsRankAward(r)), RANK_ORDER, false);
-  const badgesEarned = groupAward(rows.filter((r) => rowIsBadgeAward(r)), null, true);
+  const rankAwardRows = rows.filter((r) => rowIsRankAward(r));
+  const badgeAwardRows = rows.filter((r) => rowIsBadgeAward(r));
+  // groupAward keys/orders ranksEarned on RANK_ORDER's id space (loader
+  // guarantees rank_award rows' `group` is the rank id, matching
+  // rank_requirement) — remap to the pretty label only after grouping, so
+  // the RANK_ORDER intersection above still matches.
+  const ranksEarned = groupAward(rankAwardRows, RANK_ORDER, false).map((g) => ({
+    ...g,
+    name: RANK_LABELS[g.name] ?? g.name
+  }));
+  const badgesEarned = groupAward(badgeAwardRows, null, true);
 
-  const rankReqRows = rows.filter((r) => rowIsRankReq(r));
+  // Noise reduction (Patrick, 2026-08-17): once a scout has earned the full
+  // rank/badge in THIS SAME reporting period, their individual requirement
+  // sign-offs for it are redundant — the earned-award line already says
+  // they finished it. Suppress only that scout's requirement rows for that
+  // specific rank/badge; a requirement completed toward a rank/badge not
+  // also earned this period (the normal in-progress case), a different
+  // scout in the same group, or the same scout's requirements for a
+  // DIFFERENT rank/badge are untouched. Keyed on the raw (pre-label-remap)
+  // `group` value — both award and requirement rows share that id/name
+  // space; see RANK_LABELS remap above for why ranksEarned can't be used
+  // directly here.
+  const earnedRankKeys = new Set(rankAwardRows.map((r) => `${r.scoutId}::${r.group}`));
+  const earnedBadgeKeys = new Set(badgeAwardRows.map((r) => `${r.scoutId}::${r.group}`));
+
+  const rankReqRows = rows.filter((r) => rowIsRankReq(r) && !earnedRankKeys.has(`${r.scoutId}::${r.group}`));
   const rankReqs: RankReqGroup[] = (RANK_ORDER as readonly string[])
     .map((rank) => {
       const rankRows = rankReqRows.filter((r) => r.group === rank);
       return {
         rank,
-        rankLabel: rankRows[0]?.group ?? rank,
+        rankLabel: RANK_LABELS[rank] ?? rank,
         lines: consolidateGroup(rankRows)
       };
     })
     .filter((g) => g.lines.length > 0);
 
-  const badgeReqRows = rows.filter((r) => rowIsBadgeReq(r));
+  const badgeReqRows = rows.filter((r) => rowIsBadgeReq(r) && !earnedBadgeKeys.has(`${r.scoutId}::${r.group}`));
   const badgesWithReqs = Array.from(new Set(badgeReqRows.map((r) => r.group))).sort();
   const badgeReqs: BadgeReqGroup[] = badgesWithReqs.map((badge) => {
     const badgeRows = badgeReqRows.filter((r) => r.group === badge);
@@ -344,12 +382,17 @@ export function buildReport(rows: AdvancementEntry[]): AdvancementReport {
   const counts = {
     mbReq: badgeReqRows.length,
     rankReq: rankReqRows.length,
-    mbAward: rows.filter((r) => rowIsBadgeAward(r)).length,
-    rankAward: rows.filter((r) => rowIsRankAward(r)).length,
+    mbAward: badgeAwardRows.length,
+    rankAward: rankAwardRows.length,
     leadership: rows.filter((r) => rowIsKind(r, 'leadership')).length,
     other: rows.filter((r) => rowIsKind(r, 'award')).length + logisticsRows.length,
-    total: rows.length
+    total: 0
   };
+  // Sum-of-parts, not rows.length — suppression means the two can now
+  // legitimately differ (a suppressed requirement row is still in `rows`
+  // but no longer counted anywhere in the visible report).
+  counts.total =
+    counts.mbReq + counts.rankReq + counts.mbAward + counts.rankAward + counts.leadership + counts.other;
 
   return {
     ranksEarned,
@@ -818,7 +861,12 @@ export async function loadAdvancementEntries(
             scoutName,
             code: r.code,
             label: rankLabelById.get(r.code) ?? r.code,
-            group: rankLabelById.get(r.code) ?? r.code,
+            // Rank id — MUST match rank_requirement's group (split.rankId),
+            // not the display name. Bug found 2026-08-17: using the display
+            // name here silently emptied ranksEarned for every real rank
+            // award, since groupAward()'s RANK_ORDER intersection needs the
+            // id space. buildReport() remaps to the display label for you.
+            group: r.code,
             eagle: false,
             enteredAt,
             date,

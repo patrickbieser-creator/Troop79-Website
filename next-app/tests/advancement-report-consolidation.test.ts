@@ -10,7 +10,8 @@ import {
   toMarkdown,
   tagKind,
   removeScoutFromReport,
-  type AdvancementEntry
+  type AdvancementEntry,
+  type AdvancementReport
 } from '../src/lib/advancement-report';
 
 /**
@@ -213,13 +214,16 @@ describe('buildReport', () => {
   });
 
   it('TagsEagleRequiredBadges_OnBadgesEarnedAndBadgeReqGroups', () => {
+    // Different scouts (S1 earned it, S2 is still working requirements) —
+    // same scout in both would now be suppressed by the "noise reduction"
+    // rule below, which isn't what this test is about.
     const rows = [
       tagKind(
         entry({ scoutId: 'S1', scoutName: 'A', code: 'first-aid', group: 'First Aid', eagle: true }),
         'merit_badge_award'
       ),
       tagKind(
-        entry({ scoutId: 'S1', scoutName: 'A', code: '1a', group: 'First Aid', eagle: true }),
+        entry({ scoutId: 'S2', scoutName: 'B', code: '1a', group: 'First Aid', eagle: true }),
         'merit_badge_requirement'
       )
     ];
@@ -258,6 +262,110 @@ describe('buildReport', () => {
     expect(report.otherAwards).toHaveLength(1);
     expect(report.otherAwards[0].name).toBe('Summer Camp - Tesomas');
     expect(report.otherAwards[0].entries.map((e) => e.detail)).toEqual(['6 nights', '4 nights']);
+  });
+
+  it('ShowsThePrettyRankLabel_NotTheRawId_ForARankEarned', () => {
+    // Real-loader bug found 2026-08-17: rank_award rows must group on the
+    // same id space as rank_requirement rows (RANK_ORDER's lowercase ids)
+    // for the RANK_ORDER intersection in groupAward() to match anything at
+    // all — group on the display name instead (the loader's old behavior)
+    // and ranksEarned is silently empty for every real rank award. The
+    // display text still needs to read "Second Class", not "second-class".
+    const rows = [
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: 'second-class', group: 'second-class' }), 'rank_award')
+    ];
+    const report = buildReport(rows);
+    expect(report.ranksEarned).toHaveLength(1);
+    expect(report.ranksEarned[0].name).toBe('Second Class');
+  });
+
+  it('ShowsThePrettyRankLabel_ForARankRequirementsHeading_EvenWhenNoAwardRowExistsThisPeriod', () => {
+    // The sibling bug: rankLabel was sourced from the requirement row's own
+    // `group` (the raw id) rather than a real label lookup — must resolve
+    // correctly even when nobody in this period earned the rank outright.
+    const rows = [
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: '1a', group: 'second-class' }), 'rank_requirement')
+    ];
+    const report = buildReport(rows);
+    expect(report.rankReqs[0].rankLabel).toBe('Second Class');
+  });
+});
+
+describe('buildReport — suppresses requirements the scout also earned as a full award this period', () => {
+  it('DropsRankRequirementLines_ForAScoutWhoAlsoEarnedThatRankThisSamePeriod', () => {
+    const rows = [
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: 'star', group: 'star' }), 'rank_award'),
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: '1a', group: 'star', label: 'Req 1a' }), 'rank_requirement')
+    ];
+    const report = buildReport(rows);
+    expect(report.ranksEarned).toHaveLength(1);
+    expect(report.rankReqs).toEqual([]);
+    expect(report.counts.rankReq).toBe(0);
+  });
+
+  it('DropsBadgeRequirementLines_ForAScoutWhoAlsoEarnedThatBadgeThisSamePeriod', () => {
+    const rows = [
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: 'MB:camping', group: 'Camping' }), 'merit_badge_award'),
+      tagKind(
+        entry({ scoutId: 'S1', scoutName: 'A', code: '1a', group: 'Camping', label: 'Req 1a' }),
+        'merit_badge_requirement'
+      )
+    ];
+    const report = buildReport(rows);
+    expect(report.badgesEarned).toHaveLength(1);
+    expect(report.badgeReqs).toEqual([]);
+    expect(report.counts.mbReq).toBe(0);
+  });
+
+  it('KeepsRankRequirementLines_WhenTheScoutDidNotEarnThatRankThisPeriod', () => {
+    // No award row at all — normal "in progress toward a rank" case, the
+    // vast majority of requirement lines in any given report.
+    const rows = [
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: '1a', group: 'star', label: 'Req 1a' }), 'rank_requirement')
+    ];
+    const report = buildReport(rows);
+    expect(report.rankReqs).toHaveLength(1);
+    expect(report.counts.rankReq).toBe(1);
+  });
+
+  it('KeepsRankRequirementLines_ForAnotherScoutInTheSameRankGroup_WhoDidNotEarnTheRank', () => {
+    const rows = [
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: 'star', group: 'star' }), 'rank_award'),
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: '1a', group: 'star', label: 'Req 1a' }), 'rank_requirement'),
+      tagKind(entry({ scoutId: 'S2', scoutName: 'B', code: '1a', group: 'star', label: 'Req 1a' }), 'rank_requirement')
+    ];
+    const report = buildReport(rows);
+    const line = report.rankReqs[0].lines.find((l) => l.codes.includes('1a'))!;
+    expect(line.scoutIds).toEqual(['S2']);
+  });
+
+  it('KeepsRankRequirementLines_ForADifferentRank_TheSameScoutDidNotEarnThisPeriod', () => {
+    const rows = [
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: 'star', group: 'star' }), 'rank_award'),
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: '1a', group: 'star', label: 'Star req' }), 'rank_requirement'),
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: '5a', group: 'life', label: 'Life req' }), 'rank_requirement')
+    ];
+    const report = buildReport(rows);
+    expect(report.rankReqs.find((g) => g.rank === 'star')).toBeUndefined();
+    const lifeGroup = report.rankReqs.find((g) => g.rank === 'life')!;
+    expect(lifeGroup.lines[0].scoutIds).toEqual(['S1']);
+  });
+
+  it('KeepsBadgeRequirementLines_ForAnotherScoutInTheSameBadge_WhoDidNotEarnTheBadge', () => {
+    const rows = [
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: 'MB:camping', group: 'Camping' }), 'merit_badge_award'),
+      tagKind(
+        entry({ scoutId: 'S1', scoutName: 'A', code: '1a', group: 'Camping', label: 'Req 1a' }),
+        'merit_badge_requirement'
+      ),
+      tagKind(
+        entry({ scoutId: 'S2', scoutName: 'B', code: '1a', group: 'Camping', label: 'Req 1a' }),
+        'merit_badge_requirement'
+      )
+    ];
+    const report = buildReport(rows);
+    const line = report.badgeReqs[0].lines.find((l) => l.codes.includes('1a'))!;
+    expect(line.scoutIds).toEqual(['S2']);
   });
 });
 
@@ -309,7 +417,10 @@ describe('removeScoutFromReport', () => {
       tagKind(entry({ scoutId: 'S2', scoutName: 'B', code: 'star', group: 'star' }), 'rank_award')
     ];
     const report = buildReport(rows);
-    removeScoutFromReport(report, { scoutId: 'S1', section: 'ranksEarned', groupKey: 'star' });
+    // groupKey matches AwardGroup.name as actually rendered/clicked — for
+    // ranksEarned that's the pretty label (RANK_LABELS remap), not the raw
+    // id the rows were built from.
+    removeScoutFromReport(report, { scoutId: 'S1', section: 'ranksEarned', groupKey: 'Star' });
     expect(report.ranksEarned[0].scoutIds).toEqual(['S2']);
     expect(report.counts.rankAward).toBe(1);
     expect(report.counts.total).toBe(1);
@@ -318,29 +429,51 @@ describe('removeScoutFromReport', () => {
   it('DropsTheGroupEntirely_WhenItsLastScoutIsRemoved', () => {
     const rows = [tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: 'star', group: 'star' }), 'rank_award')];
     const report = buildReport(rows);
-    removeScoutFromReport(report, { scoutId: 'S1', section: 'ranksEarned', groupKey: 'star' });
+    removeScoutFromReport(report, { scoutId: 'S1', section: 'ranksEarned', groupKey: 'Star' });
     expect(report.ranksEarned).toEqual([]);
     expect(report.isEmpty).toBe(true);
     expect(report.counts.rankAward).toBe(0);
     expect(report.counts.total).toBe(0);
   });
 
+  // CRITICAL bug found by qa-lead review, 2026-08-17: a scout who finishes
+  // a badge's last requirement AND earns that badge in the same report
+  // period appeared in both badgeReqs['Camping'] and badgesEarned['Camping']
+  // — removing the requirement line fell through to the earned-badge group
+  // just because the group key matched. buildReport() now suppresses this
+  // exact scenario at generation time (see the "suppresses requirements"
+  // describe block above), so it can no longer arise from a freshly
+  // generated report — but a report GENERATED AND PUBLISHED before that fix
+  // shipped still has this shape frozen in its content_json snapshot. These
+  // two tests hand-construct that legacy shape directly (bypassing
+  // buildReport, which would now refuse to produce it) to prove
+  // removeScoutFromReport's section discriminator still defends existing
+  // published reports, not just newly generated ones.
+  function legacyDualSectionReport(): AdvancementReport {
+    const reqEntry = entry({ scoutId: 'S1', scoutName: 'A', code: '1a', group: 'Camping', label: 'Req 1a' });
+    const awardEntry = entry({ scoutId: 'S1', scoutName: 'A', code: 'camping', group: 'Camping' });
+    return {
+      ranksEarned: [],
+      badgesEarned: [{ name: 'Camping', eagle: false, scoutIds: ['S1'], scoutNames: ['A'], entries: [awardEntry] }],
+      rankReqs: [],
+      badgeReqs: [
+        {
+          badge: 'Camping',
+          badgeLabel: 'Camping',
+          eagle: false,
+          lines: [{ codes: ['1a'], labels: ['Req 1a'], scoutIds: ['S1'], scoutNames: ['A'], entries: [reqEntry] }]
+        }
+      ],
+      leadership: [],
+      otherAwards: [],
+      counts: { mbReq: 1, rankReq: 0, mbAward: 1, rankAward: 0, leadership: 0, other: 0, total: 2 },
+      isEmpty: false
+    };
+  }
+
   it('NeverTouchesBadgesEarned_WhenRemovingFromBadgeReqs_ForTheSameBadgeName', () => {
-    // CRITICAL bug found by qa-lead review, 2026-08-17: a scout who
-    // finishes a badge's last requirement AND earns that badge in the
-    // same report period appears in both badgeReqs['Camping'] and
-    // badgesEarned['Camping'] — the exact "heavy week" case this feature
-    // exists for. Removing the requirement line must never fall through
-    // to the earned-badge group just because the group key matches.
-    const rows = [
-      tagKind(
-        entry({ scoutId: 'S1', scoutName: 'A', code: 'camping-1a', group: 'Camping', label: 'Req 1a' }),
-        'merit_badge_requirement'
-      ),
-      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: 'MB:camping', group: 'Camping' }), 'merit_badge_award')
-    ];
-    const report = buildReport(rows);
-    removeScoutFromReport(report, { scoutId: 'S1', section: 'badgeReqs', groupKey: 'Camping', lineKey: 'camping-1a' });
+    const report = legacyDualSectionReport();
+    removeScoutFromReport(report, { scoutId: 'S1', section: 'badgeReqs', groupKey: 'Camping', lineKey: '1a' });
     // The requirement line is gone...
     expect(report.badgeReqs).toEqual([]);
     // ...but the earned badge is completely untouched.
@@ -352,16 +485,7 @@ describe('removeScoutFromReport', () => {
   });
 
   it('NeverTouchesBadgeReqs_WhenRemovingFromBadgesEarned_ForTheSameBadgeName', () => {
-    // The mirror image of the above — removing the earned badge must not
-    // reach into the requirement group of the same name either.
-    const rows = [
-      tagKind(
-        entry({ scoutId: 'S1', scoutName: 'A', code: 'camping-1a', group: 'Camping', label: 'Req 1a' }),
-        'merit_badge_requirement'
-      ),
-      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: 'MB:camping', group: 'Camping' }), 'merit_badge_award')
-    ];
-    const report = buildReport(rows);
+    const report = legacyDualSectionReport();
     removeScoutFromReport(report, { scoutId: 'S1', section: 'badgesEarned', groupKey: 'Camping' });
     expect(report.badgesEarned).toEqual([]);
     expect(report.badgeReqs).toHaveLength(1);
@@ -395,7 +519,7 @@ describe('removeScoutFromReport', () => {
   it('IsANoOp_WhenTheScoutIsNotInThatGroup', () => {
     const rows = [tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: 'star', group: 'star' }), 'rank_award')];
     const report = buildReport(rows);
-    removeScoutFromReport(report, { scoutId: 'S999', section: 'ranksEarned', groupKey: 'star' });
+    removeScoutFromReport(report, { scoutId: 'S999', section: 'ranksEarned', groupKey: 'Star' });
     expect(report.ranksEarned[0].scoutIds).toEqual(['S1']);
     expect(report.counts.rankAward).toBe(1);
   });

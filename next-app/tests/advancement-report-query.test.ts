@@ -221,6 +221,59 @@ describe('advancement report — query', () => {
     expect(line.scoutIds).toEqual(expect.arrayContaining([scoutA, scoutB]));
   });
 
+  it('ResolvesRankAwardGroup_OnTheSameIdSpaceAsRankRequirements_SoRanksEarnedActuallyPopulates', async () => {
+    // Real bug found 2026-08-17: the loader keyed rank_award's `group` on
+    // ranks.display_name ("Tenderfoot") while rank_requirement keyed on
+    // ranks.id ("tenderfoot") — groupAward()'s RANK_ORDER intersection needs
+    // the id space, so ranksEarned was silently empty for every real rank
+    // award ever generated. Assert both the join-key AND the display label.
+    const admin = adminClient();
+    const scout = await makeScout(admin, `rankaward-${Date.now()}`);
+    await makeEntry(admin, {
+      scoutId: scout,
+      kind: 'rank_award',
+      code: 'second-class',
+      date: '2026-08-12',
+      enteredAt: '2026-08-12T10:00:00Z'
+    });
+
+    const entries = await loadAdvancementEntries(admin, { startDate: '2026-08-10', endDate: '2026-08-17' });
+    const mine = entries.find((e) => e.scoutId === scout)!;
+    expect(mine.group).toBe('second-class');
+
+    const report = await generateAdvancementReport(admin, { startDate: '2026-08-10', endDate: '2026-08-17' });
+    const mineGroup = report.ranksEarned.find((g) => g.scoutIds.includes(scout))!;
+    expect(mineGroup).toBeDefined();
+    expect(mineGroup.name).toBe('Second Class');
+  });
+
+  it('SuppressesRankRequirementLines_WhenTheScoutAlsoEarnedThatRankInTheSamePeriod_AgainstRealData', async () => {
+    const admin = adminClient();
+    const scout = await makeScout(admin, `suppress-${Date.now()}`);
+    await makeEntry(admin, {
+      scoutId: scout,
+      kind: 'rank_award',
+      code: 'tenderfoot',
+      date: '2026-08-14',
+      enteredAt: '2026-08-14T10:00:00Z'
+    });
+    await makeEntry(admin, {
+      scoutId: scout,
+      kind: 'rank_requirement',
+      code: 'tenderfoot-1a',
+      date: '2026-08-12',
+      enteredAt: '2026-08-12T10:00:00Z'
+    });
+
+    const report = await generateAdvancementReport(admin, { startDate: '2026-08-10', endDate: '2026-08-17' });
+    expect(report.ranksEarned.some((g) => g.scoutIds.includes(scout))).toBe(true);
+    const tenderfootGroup = report.rankReqs.find((g) => g.rank === 'tenderfoot');
+    if (tenderfootGroup) {
+      const line = tenderfootGroup.lines.find((l) => l.codes.includes('1a'));
+      expect(line?.scoutIds.includes(scout)).not.toBe(true);
+    }
+  });
+
   it('ReturnsAnEmptyReport_ForADateRangeWithNothingEntered', async () => {
     const report = await generateAdvancementReport(adminClient(), { startDate: '1999-01-01', endDate: '1999-01-02' });
     expect(report.isEmpty).toBe(true);
