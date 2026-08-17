@@ -346,6 +346,20 @@ async function FamilySubmitForm({ target, err }: { target: string; err?: string 
           target={target}
           pickHouseholdAction={pickProofHouseholdAction}
         />
+        {/* GateCard (the troop-password screen one step back) already offers
+            this nudge; this is the only remaining Tier 1 screen that didn't
+            (troop79-specialist review, 2026-08-17, ahead of retiring this
+            fallback outright — Plans/Family-Identity-Auth.md Phase 3's
+            leader-issued-code safety net isn't built yet, so the fallback
+            stays until then, but every screen on the path to it should at
+            least point at the now-much-cheaper verified alternative). */}
+        <p className={styles.fieldHint} style={{ marginTop: 14, fontSize: 13 }}>
+          Prefer not to use the shared password? You can{' '}
+          <Link href={`/signin?next=${encodeURIComponent(`/library/submit-proof?target=${target}`)}`}>
+            sign in with your email instead
+          </Link>
+          .
+        </p>
       </>
     );
   }
