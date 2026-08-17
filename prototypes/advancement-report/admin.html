@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weekly Advancement Report — Admin — Troop 79 Leader Workspace</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/advancement-report.css" />
+</head>
+<body>
+
+  <div class="proto-banner">
+    <div class="proto-banner-inner">
+      <p><strong>Prototype v1</strong> Weekly Advancement Report — admin generate/edit/publish flow (Plans/Weekly-Advancement-Report.md). All names fictional; volume calibrated to sampled production data.</p>
+      <nav class="protoLinks">
+        <a href="index.html">Prototype index</a>
+        <a href="report.html">Public page &rarr;</a>
+        <a href="archive.html">Archive &rarr;</a>
+      </nav>
+    </div>
+  </div>
+
+  <div class="adminBar">
+    <div class="adminBarInner">
+      <span class="adminBrand">Troop 79 &middot; Leader Workspace</span>
+      <span class="adminCrumb">Records &amp; Site &rarr; <strong style="color:#fff;">Weekly Advancement Report</strong></span>
+    </div>
+  </div>
+
+  <main class="page page--wide">
+
+    <header style="margin-top: 10px;">
+      <p class="kicker">Advancement</p>
+      <h1 class="pageTitle">Weekly Advancement Report</h1>
+      <p class="pageDek">Pick a date range, generate the consolidated summary, review or fix anything by hand, then publish. The same generated content becomes both the styled page families see and the markdown you paste into the Bugle.</p>
+    </header>
+
+    <!-- ══ PROTOTYPE LAB — demo controls (open questions now settled) ══ -->
+    <div class="protoLab">
+      <h2>Prototype Lab — demo controls</h2>
+      <p>Patrick settled all six of v1&rsquo;s open questions on 2026-08-17 (see the plan&rsquo;s
+        &ldquo;Decisions&rdquo; section) — placement, archive, section 5 scope, per-entry dates, the
+        correction path, and first-run are all baked into the real UI below now, not toggles here
+        anymore. These two remain only as scaffolding to explore data volume and the first-run edge case.</p>
+      <div class="protoLabGrid">
+        <div class="protoLabItem">
+          <span class="plLabel">Data scenario</span>
+          <div class="segControl" id="scenarioControl">
+            <button type="button" data-scenario="heavy" class="isOn">Heavy week</button>
+            <button type="button" data-scenario="light">Normal week</button>
+            <button type="button" data-scenario="empty">Quiet week</button>
+          </div>
+          <span class="plHint">Heavy = the real post&ndash;Summer&nbsp;Camp volume cited in the plan (~680 MB reqs, ~110 rank reqs, ~21 badges). This is the scenario that actually stress-tests consolidation — and now the By Scout view.</span>
+        </div>
+        <div class="protoLabItem">
+          <span class="plLabel">First-ever report</span>
+          <label class="plCheck"><input type="checkbox" id="firstRunToggle" /> No prior published report exists</label>
+          <span class="plHint">Decision #6, agreed as prototyped: with nothing to default from, both date fields start blank and Generate is disabled until a range is picked.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ GENERATE PANEL ═══════════════════════════════════════════════ -->
+    <div class="genPanel">
+      <div class="genRow">
+        <div class="fieldRow">
+          <label class="fieldLabel" for="startDate">Start date</label>
+          <input class="textInput" type="date" id="startDate" />
+        </div>
+        <div class="fieldRow">
+          <label class="fieldLabel" for="endDate">End date</label>
+          <input class="textInput" type="date" id="endDate" />
+        </div>
+        <div class="fieldRow" style="flex: 0 0 auto;">
+          <button type="button" class="btn btn--primary" id="generateBtn">Generate Report</button>
+        </div>
+      </div>
+      <p class="genDefaultNote" id="defaultNote"></p>
+      <p class="fieldHint" id="rangeError" style="color:#8a3b2e; font-weight:600;" hidden></p>
+      <div class="matchSummary" id="matchSummary" hidden>
+        <div class="msItem"><strong id="msMbReq">0</strong>MB requirements</div>
+        <div class="msItem"><strong id="msRankReq">0</strong>rank requirements</div>
+        <div class="msItem"><strong id="msMbAward">0</strong>badges earned</div>
+        <div class="msItem"><strong id="msRankAward">0</strong>ranks earned</div>
+        <div class="msItem"><strong id="msOther">0</strong>leadership / other / logistics</div>
+        <div class="msItem"><strong id="msTotal">0</strong>total entries in range</div>
+      </div>
+    </div>
+
+    <p class="proto-note" id="lateEntryNote">
+      <strong>Notice</strong> — two entries in the Heavy scenario demonstrate Decision #4&rsquo;s date rule.
+      <em>Ines Rocha &middot; First Class 9a</em> was earned Jul 22 (just before this report&rsquo;s Jul 28
+      start) but entered today — it lands in this report because every query filters on
+      <code>entered_at</code>, never <code>date</code>, and it shows &ldquo;earned Jul 22&rdquo; automatically
+      since that date falls outside the report&rsquo;s own range. <em>Marcus Whitfield &middot; Camping
+      req 1</em> is the more extreme case Patrick described — credited today for something completed
+      June 2025, over a year ago — and shows &ldquo;earned June 2, 2025&rdquo; the same way, with no
+      toggle needed. Every other line in this report was earned within the dateline, so none of them
+      show a date at all.
+    </p>
+
+    <!-- ══ PUBLISH STATE BANNERS ═════════════════════════════════════════ -->
+    <div id="publishedBanner" hidden></div>
+    <div id="correctionBanner" hidden></div>
+
+    <!-- ══ EDITOR'S NOTE ═══════════════════════════════════════════════ -->
+    <div class="editorNoteBox" id="noteBox" hidden>
+      <label class="fieldLabel" for="editorNote">Editor&rsquo;s note (optional, shows at the top of the report)</label>
+      <textarea class="textArea" id="editorNote" placeholder="e.g. A few Summer Camp sign-offs are still being transcribed and will appear next week."></textarea>
+    </div>
+
+    <!-- ══ EDITOR TABS ═══════════════════════════════════════════════════ -->
+    <div id="editorWrap" hidden>
+      <nav class="editorTabs" role="tablist">
+        <button class="editorTab isOn" role="tab" data-tab="preview" id="tabBtnPreview">Styled Preview</button>
+        <button class="editorTab" role="tab" data-tab="markdown" id="tabBtnMarkdown">Markdown Export</button>
+      </nav>
+
+      <section id="panelPreview" role="tabpanel">
+        <p class="proto-note">
+          <strong>Editing</strong> — click any bold requirement/badge label to fix a typo (Category view)
+          or a scout name (Category view only). Use <strong>Remove</strong> to drop a scout from a line at
+          a family&rsquo;s request — works in either view, since both read/write the same underlying
+          report. Edits only apply to this report&rsquo;s copy — the underlying catalog and roster are untouched.
+        </p>
+        <div class="viewTabsRow">
+          <div class="viewTabs" id="reportViewTabs" role="tablist" aria-label="Report organization">
+            <button type="button" role="tab" data-view="category" class="isOn" aria-selected="true">By Category</button>
+            <button type="button" role="tab" data-view="scout" aria-selected="false">By Scout</button>
+          </div>
+          <div class="scoutFilterBox" id="scoutFilterBox" hidden>
+            <input type="search" id="scoutFilterInput" placeholder="Find a scout&hellip;" aria-label="Filter by scout name" />
+          </div>
+        </div>
+        <p class="scoutFilterHint" id="scoutViewHint" hidden>New 2026-08-17: same consolidated content, reorganized alphabetically by scout — no separate query, just a different read of the same generated report. Useful on a heavy week when most visitors want to find one kid, not scan five sections.</p>
+        <div class="scoutBulkControls" id="scoutBulkControls" hidden>
+          <button type="button" id="expandAllBtn">Expand all</button>
+          <span class="sep" aria-hidden="true">&middot;</span>
+          <button type="button" id="collapseAllBtn">Collapse all</button>
+        </div>
+        <div id="previewBody"></div>
+      </section>
+
+      <section id="panelMarkdown" role="tabpanel" hidden>
+        <p class="proto-note">
+          <strong>Read-only</strong> — reflects your latest Preview-tab edits automatically. This exact text
+          is what gets published as <code>content_md</code> and is what you&rsquo;d paste into the Bugle tool.
+        </p>
+        <div class="mdToolbar">
+          <span class="fieldHint" style="margin-top:0;">Ready to paste into the Bugle</span>
+          <button type="button" class="btn btn--secondary btn--small" id="copyMdBtn">Copy Markdown</button>
+        </div>
+        <textarea class="mdPane" id="mdPane" readonly spellcheck="false"></textarea>
+      </section>
+    </div>
+
+    <!-- ══ STATUS BAR ════════════════════════════════════════════════════ -->
+    <div class="statusBar" id="statusBar" hidden>
+      <span class="statusPill statusPill--draft" id="statusPill">Draft</span>
+      <span class="sbInfo" id="sbInfo"></span>
+      <div class="sbActions" id="sbActions"></div>
+    </div>
+
+    <nav class="protoFooterNav" style="margin-top:36px; display:flex; gap:16px; font-family:var(--font-ui); font-size:12px;">
+      <a href="index.html" style="color:var(--navy); font-weight:700;">&larr; Prototype index</a>
+      <a href="report.html" style="color:var(--navy); font-weight:700;">Public report page &rarr;</a>
+      <a href="archive.html" style="color:var(--navy); font-weight:700;">Archive &rarr;</a>
+    </nav>
+  </main>
+
+  <div class="copyToast" id="copyToast">Copied to clipboard</div>
+
+<script src="assets/advancement-data.js"></script>
+<script>
+  const state = {
+    scenarioKey: 'heavy',
+    firstRun: false,
+    startDate: '', endDate: '',
+    ledgerRows: [],
+    report: null,
+    meta: { note: '' },
+    status: 'draft',            // draft | published
+    generatedAt: null, generatedBy: 'Mrs. Weber',
+    publishedAt: null, correctedAt: null,
+    liveId: null,
+    correctionUnlocked: false,
+    activeTab: 'preview',       // preview | markdown
+    previewView: 'category',    // category | scout
+    dirty: false,
+  };
+
+  const $ = (sel) => document.querySelector(sel);
+
+  function loadScenario(key) {
+    state.scenarioKey = key;
+    state.ledgerRows = AdvRpt.buildLedger(key).rows;
+    state.report = null;
+    state.status = 'draft';
+    state.publishedAt = null; state.correctedAt = null; state.liveId = null; state.correctionUnlocked = false;
+    applyDefaultRange();
+    updateMatchSummary();
+    renderShell();
+    $('#lateEntryNote').hidden = key !== 'heavy';
+  }
+
+  function applyDefaultRange() {
+    const sc = AdvRpt.SCENARIOS[state.scenarioKey];
+    if (state.firstRun) {
+      state.startDate = ''; state.endDate = '';
+    } else {
+      state.startDate = sc.lastPublishedEnd;
+      state.endDate = sc.today;
+    }
+    $('#startDate').value = state.startDate;
+    $('#endDate').value = state.endDate;
+    const note = state.firstRun
+      ? '<strong>No prior published report</strong> — nothing to default from. Pick a start date manually.'
+      : `Defaulted to <strong>${AdvRpt.fmtDate(sc.lastPublishedEnd)}</strong> (last published report&rsquo;s end date) through <strong>${AdvRpt.fmtDate(sc.today)}</strong> (today). Fully editable.`;
+    $('#defaultNote').innerHTML = note;
+  }
+
+  function updateMatchSummary() {
+    const s = $('#startDate').value, e = $('#endDate').value;
+    const errEl = $('#rangeError'), sumEl = $('#matchSummary'), genBtn = $('#generateBtn');
+    if (!s || !e) {
+      sumEl.hidden = true; errEl.hidden = true; genBtn.disabled = !s || !e;
+      return;
+    }
+    if (s > e) {
+      errEl.textContent = 'Start date is after end date.'; errEl.hidden = false; sumEl.hidden = true; genBtn.disabled = true;
+      return;
+    }
+    errEl.hidden = true; genBtn.disabled = false;
+    const rows = AdvRpt.filterByEnteredAt(state.ledgerRows, s, e);
+    const c = { mbReq: 0, rankReq: 0, mbAward: 0, rankAward: 0, other: 0, total: rows.length };
+    rows.forEach(r => {
+      if (r.kind === 'merit_badge_requirement') c.mbReq++;
+      else if (r.kind === 'rank_requirement') c.rankReq++;
+      else if (r.kind === 'merit_badge_award') c.mbAward++;
+      else if (r.kind === 'rank_award') c.rankAward++;
+      else c.other++;
+    });
+    $('#msMbReq').textContent = c.mbReq; $('#msRankReq').textContent = c.rankReq;
+    $('#msMbAward').textContent = c.mbAward; $('#msRankAward').textContent = c.rankAward;
+    $('#msOther').textContent = c.other; $('#msTotal').textContent = c.total;
+    sumEl.hidden = false;
+  }
+
+  function generate() {
+    if (state.dirty && state.report) {
+      if (!confirm('Regenerating will discard your manual edits to the current draft. Continue?')) return false;
+    }
+    state.startDate = $('#startDate').value; state.endDate = $('#endDate').value;
+    const rows = AdvRpt.filterByEnteredAt(state.ledgerRows, state.startDate, state.endDate);
+    state.report = AdvRpt.buildReport(rows);
+    state.generatedAt = new Date().toISOString();
+    state.status = 'draft'; state.publishedAt = null; state.correctedAt = null; state.liveId = null; state.correctionUnlocked = false;
+    state.dirty = false;
+    state.meta.note = $('#editorNote') && $('#editorNote').value ? $('#editorNote').value : '';
+    renderAll();
+    return true;
+  }
+
+  /* ── Sync any inline edits (label / scout-name text) from the DOM back
+     into the report model. Called at every commit point (tab switch,
+     copy, save, publish) — see write-up for why this beats a raw
+     markdown textarea as the editable surface. ─────────────────────── */
+  function syncModelFromDom() {
+    if (!state.report) return;
+    // Label edits carry data-group/data-line directly on themselves (not
+    // just on a wrapping .reqLine), so this one query covers Category AND
+    // Scout view — both renderers stamp the same attributes on the same
+    // underlying line objects.
+    document.querySelectorAll('#previewBody [data-line-label]').forEach(span => {
+      const group = span.getAttribute('data-group'), lineKey = span.getAttribute('data-line');
+      const line = findLine(group, lineKey);
+      if (line) line.labels = [span.textContent.trim()];
+    });
+    // Scout-name edits only render as Category view's <ul class="rlScouts">
+    // lists — Scout view doesn't repeat the scout's own name per row.
+    document.querySelectorAll('#previewBody .reqLine').forEach(el => {
+      const group = el.getAttribute('data-group'), lineKey = el.getAttribute('data-line');
+      const line = findLine(group, lineKey);
+      if (!line) return;
+      el.querySelectorAll('.rlScouts li [data-scout-name]').forEach((span, i) => {
+        if (line.scouts[i] !== undefined) {
+          const t = span.textContent.trim();
+          if (t && t !== line.scouts[i]) { line.entries[i] = Object.assign({}, line.entries[i], { scout: t }); line.scouts[i] = t; }
+        }
+      });
+    });
+    document.querySelectorAll('#previewBody .awardGroup').forEach(el => {
+      const group = findAwardGroup(el.getAttribute('data-group'));
+      if (!group) return;
+      el.querySelectorAll('.agScouts li [data-scout-name]').forEach((span, i) => {
+        if (group.scouts[i] !== undefined) {
+          const t = span.textContent.trim();
+          if (t && t !== group.scouts[i]) { group.entries[i] = Object.assign({}, group.entries[i], { scout: t }); group.scouts[i] = t; }
+        }
+      });
+    });
+    const noteEl = $('#editorNote'); if (noteEl) state.meta.note = noteEl.value;
+  }
+  function findLine(group, lineKey) {
+    const r = state.report;
+    for (const g of r.rankReqs) if (g.rank === group) for (const l of g.lines) if (l.codes.join(',') === lineKey) return l;
+    for (const g of r.badgeReqs) if (g.badge === group) for (const l of g.lines) if (l.codes.join(',') === lineKey) return l;
+    return null;
+  }
+  function findAwardGroup(name) {
+    const r = state.report;
+    return r.ranksEarned.find(g => g.name === name) || r.badgesEarned.find(g => g.name === name) ||
+      r.leadership.find(g => g.name === name) || r.otherAwards.find(g => g.name === name) || null;
+  }
+
+  function handleRemoveClick(e) {
+    const btn = e.target.closest('.scoutRemove'); if (!btn) return;
+    syncModelFromDom();
+    const scout = btn.getAttribute('data-remove-scout');
+    const group = btn.getAttribute('data-remove-group');
+    const line = btn.getAttribute('data-remove-line');
+    if (!confirm(`Remove ${scout} from this line? This only affects this report's copy.`)) return;
+    AdvRpt.removeScoutFromReport(state.report, group, line || null, scout);
+    state.dirty = true;
+    renderPreview();
+  }
+  document.addEventListener('click', handleRemoveClick);
+  document.addEventListener('focusin', (e) => { if (e.target.matches('[data-line-label],[data-scout-name]')) { /* mark editing */ } });
+  document.addEventListener('blur', (e) => { if (e.target.matches('[data-line-label],[data-scout-name]')) state.dirty = true; }, true);
+
+  function meta() {
+    return { startDate: state.startDate, endDate: state.endDate, note: state.meta.note };
+  }
+
+  function renderPreview() {
+    const editable = state.status === 'draft' || state.correctionUnlocked;
+    if (state.previewView === 'scout') {
+      const scoutView = AdvRpt.buildScoutView(state.report);
+      $('#previewBody').innerHTML = AdvRpt.renderScoutViewHtml(scoutView, meta(), { editable });
+      applyScoutFilter();
+    } else {
+      $('#previewBody').innerHTML = AdvRpt.renderReportHtml(state.report, meta(), { editable });
+    }
+  }
+  function applyScoutFilter() {
+    const input = $('#scoutFilterInput');
+    const q = (input && input.value || '').trim().toLowerCase();
+    const visible = [];
+    document.querySelectorAll('#previewBody .scoutCard').forEach(card => {
+      const name = (card.getAttribute('data-scout-card') || '').toLowerCase();
+      const show = !q || name.includes(q);
+      card.hidden = !show;
+      if (show) visible.push(card);
+    });
+    // Narrowing to exactly one match is almost always "find my kid" — open
+    // it automatically so there's no second click after searching.
+    if (q && visible.length === 1) setCardOpen(visible[0], true);
+  }
+  function setCardOpen(card, open) {
+    const head = card.querySelector('[data-scout-head]'); if (!head) return;
+    head.setAttribute('aria-expanded', String(open));
+    head.nextElementSibling.hidden = !open;
+  }
+  // Accordion toggle — delegated on the stable #previewBody container so
+  // it survives full re-renders. Plain button + hidden div, not
+  // <details>/<summary> (see D-070 — a closed <details>'s content was
+  // silently hidden in a way CSS couldn't override; reverted twice).
+  $('#previewBody').addEventListener('click', (e) => {
+    const head = e.target.closest('[data-scout-head]'); if (!head) return;
+    const open = head.getAttribute('aria-expanded') === 'true';
+    setCardOpen(head.closest('.scoutCard'), !open);
+  });
+  $('#expandAllBtn').addEventListener('click', () => document.querySelectorAll('#previewBody .scoutCard').forEach(c => setCardOpen(c, true)));
+  $('#collapseAllBtn').addEventListener('click', () => document.querySelectorAll('#previewBody .scoutCard').forEach(c => setCardOpen(c, false)));
+  function renderMarkdown() {
+    syncModelFromDom();
+    $('#mdPane').value = AdvRpt.toMarkdown(state.report, meta());
+  }
+
+  function switchTab(tab) {
+    if (state.activeTab === 'preview' && tab === 'markdown') syncModelFromDom();
+    state.activeTab = tab;
+    $('#tabBtnPreview').classList.toggle('isOn', tab === 'preview');
+    $('#tabBtnMarkdown').classList.toggle('isOn', tab === 'markdown');
+    $('#panelPreview').hidden = tab !== 'preview';
+    $('#panelMarkdown').hidden = tab !== 'markdown';
+    if (tab === 'markdown') renderMarkdown();
+  }
+  $('#tabBtnPreview').addEventListener('click', () => switchTab('preview'));
+  $('#tabBtnMarkdown').addEventListener('click', () => switchTab('markdown'));
+
+  function showToast(msg) {
+    const t = $('#copyToast'); t.textContent = msg; t.classList.add('isOn');
+    setTimeout(() => t.classList.remove('isOn'), 1800);
+  }
+  $('#copyMdBtn').addEventListener('click', () => {
+    renderMarkdown();
+    const text = $('#mdPane').value;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => showToast('Markdown copied — paste into the Bugle')).catch(() => fallbackCopy());
+    } else fallbackCopy();
+    function fallbackCopy() { $('#mdPane').select(); document.execCommand('copy'); showToast('Markdown copied — paste into the Bugle'); }
+  });
+
+  function publish() {
+    syncModelFromDom();
+    if (state.report.isEmpty && !confirm('This report has no content for the selected range — publish an empty report anyway? (Open question: should the tool discourage this instead?)')) return;
+    const md = AdvRpt.toMarkdown(state.report, meta());
+    const now = new Date().toISOString();
+    if (state.correctionUnlocked && state.liveId) {
+      AdvRpt.updateLiveRecord(state.liveId, Object.assign({}, meta(), { status: 'published', publishedAt: state.publishedAt, generatedBy: state.generatedBy }), state.report, md);
+      state.correctedAt = now; state.correctionUnlocked = false;
+      showToast('Correction saved — public page updated');
+    } else {
+      const record = AdvRpt.publishToArchive(Object.assign({}, meta(), { status: 'published', publishedAt: now, generatedBy: state.generatedBy }), state.report, md);
+      state.liveId = record.id; state.publishedAt = now; state.status = 'published';
+      showToast('Published — now live on the public site');
+    }
+    renderAll();
+  }
+  function unpublish() {
+    if (!confirm('Unpublish this report? It will disappear from the public site immediately; the draft stays here for further editing.')) return;
+    AdvRpt.unpublishLive(state.liveId);
+    state.status = 'draft'; state.publishedAt = null; state.correctedAt = null; state.correctionUnlocked = false;
+    showToast('Unpublished — back to draft');
+    renderAll();
+  }
+  function unlockCorrection() {
+    if (!confirm('Unlock this published report to correct it? There is no separate revision trail in this prototype — saving will update the live public copy in place. The original "Published" time stays; a "Last corrected" time is added. Continue?')) return;
+    state.correctionUnlocked = true;
+    renderAll();
+  }
+
+  function renderBanners() {
+    const pub = $('#publishedBanner'), corr = $('#correctionBanner');
+    if (state.status === 'published' && !state.correctionUnlocked) {
+      pub.hidden = false;
+      pub.innerHTML = `<div class="publishedNotice"><span aria-hidden="true">&#10003;</span>
+        <span><strong>Live on the public site.</strong> Published ${fmtWhen(state.publishedAt)} by ${state.generatedBy}.
+        ${state.correctedAt ? ` Last corrected ${fmtWhen(state.correctedAt)}.` : ''}
+        Editing is locked — use &ldquo;Unlock to Correct&rdquo; below if something needs fixing.</span></div>`;
+    } else { pub.hidden = true; }
+    if (state.correctionUnlocked) {
+      corr.hidden = false;
+      corr.innerHTML = `<div class="correctionNotice"><span aria-hidden="true">&#9888;</span>
+        <span><strong>Correcting a live report.</strong> The public page still shows the previous
+        version until you Save Correction. Published time (${fmtWhen(state.publishedAt)}) won&rsquo;t change.</span></div>`;
+    } else { corr.hidden = true; }
+  }
+  function fmtWhen(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' at ' +
+      d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+
+  function renderStatusBar() {
+    const bar = $('#statusBar'); if (!state.report) { bar.hidden = true; return; }
+    bar.hidden = false;
+    const pill = $('#statusPill');
+    pill.className = 'statusPill ' + (state.status === 'published' ? 'statusPill--published' : 'statusPill--draft');
+    pill.textContent = state.status === 'published' ? (state.correctionUnlocked ? 'Published (editing)' : 'Published') : 'Draft';
+    $('#sbInfo').textContent = state.report.isEmpty
+      ? `${AdvRpt.fmtDate(state.startDate)}–${AdvRpt.fmtDate(state.endDate)} · nothing to report`
+      : `${AdvRpt.fmtDate(state.startDate)}–${AdvRpt.fmtDate(state.endDate)} · ${state.report.counts.total} entries · generated ${fmtWhen(state.generatedAt)}`;
+
+    const actions = $('#sbActions'); actions.innerHTML = '';
+    if (state.status === 'draft') {
+      actions.appendChild(mkBtn('Publish', 'btn--primary', publish));
+    } else if (state.correctionUnlocked) {
+      actions.appendChild(mkBtn('Save Correction', 'btn--primary', publish));
+      actions.appendChild(mkBtn('Cancel', 'btn--secondary', () => { state.correctionUnlocked = false; renderAll(); }));
+    } else {
+      actions.appendChild(mkBtn('Unlock to Correct', 'btn--secondary', unlockCorrection));
+      actions.appendChild(mkBtn('Unpublish', 'btn--danger', unpublish));
+    }
+  }
+  function mkBtn(label, cls, fn) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn--small ' + cls;
+    b.textContent = label; b.addEventListener('click', fn); return b;
+  }
+
+  function renderShell() {
+    $('#noteBox').hidden = true; $('#editorWrap').hidden = true; $('#statusBar').hidden = true;
+    $('#publishedBanner').hidden = true; $('#correctionBanner').hidden = true;
+  }
+  function renderAll() {
+    if (!state.report) { renderShell(); return; }
+    $('#noteBox').hidden = false;
+    $('#editorNote').value = state.meta.note || '';
+    $('#editorNote').disabled = state.status === 'published' && !state.correctionUnlocked;
+    $('#editorWrap').hidden = false;
+    renderPreview();
+    if (state.activeTab === 'markdown') renderMarkdown();
+    renderBanners();
+    renderStatusBar();
+  }
+
+  /* ── Wiring: scenario / first-run demo controls ────────────────────── */
+  document.querySelectorAll('#scenarioControl button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#scenarioControl button').forEach(b => b.classList.remove('isOn'));
+      btn.classList.add('isOn');
+      loadScenario(btn.getAttribute('data-scenario'));
+    });
+  });
+  $('#firstRunToggle').addEventListener('change', (e) => { state.firstRun = e.target.checked; applyDefaultRange(); updateMatchSummary(); });
+
+  /* ── Wiring: By Category / By Scout view tabs (real, permanent) ───── */
+  document.querySelectorAll('#reportViewTabs button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (state.report) syncModelFromDom(); // preserve pending edits before re-rendering the other layout
+      document.querySelectorAll('#reportViewTabs button').forEach(b => { b.classList.remove('isOn'); b.setAttribute('aria-selected', 'false'); });
+      btn.classList.add('isOn'); btn.setAttribute('aria-selected', 'true');
+      state.previewView = btn.getAttribute('data-view');
+      $('#scoutFilterBox').hidden = state.previewView !== 'scout';
+      $('#scoutViewHint').hidden = state.previewView !== 'scout';
+      $('#scoutBulkControls').hidden = state.previewView !== 'scout';
+      if (state.report) renderPreview();
+    });
+  });
+  $('#scoutFilterInput').addEventListener('input', applyScoutFilter);
+
+  $('#startDate').addEventListener('input', updateMatchSummary);
+  $('#endDate').addEventListener('input', updateMatchSummary);
+  $('#generateBtn').addEventListener('click', generate);
+
+  /* ── Init ───────────────────────────────────────────────────────── */
+  loadScenario('heavy');
+  generate();
+</script>
+</body>
+</html>

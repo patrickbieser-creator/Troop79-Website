@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weekly Advancement Report — Prototype Index — Scout Troop 79</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/advancement-report.css" />
+</head>
+<body>
+
+  <div class="proto-banner">
+    <div class="proto-banner-inner">
+      <p><strong>Prototype v1.1</strong> Weekly Advancement Report — v1 open questions settled 2026-08-17 (see the plan&rsquo;s &ldquo;Decisions&rdquo; section); this pass adds the new scout-centric view Patrick requested.</p>
+    </div>
+  </div>
+
+  <main class="page page--narrow">
+    <header>
+      <p class="kicker">Scout Troop 79 &middot; Prototype</p>
+      <h1 class="pageTitle">Weekly Advancement Report</h1>
+      <p class="pageDek">Two surfaces, one generated document: a leader-only admin flow that generates, edits, and publishes the week&rsquo;s consolidated advancement summary, and a public page where families see it without waiting for the Bugle. Every report — admin and public, including each archived permalink — now reads two ways: by category, or by scout.</p>
+    </header>
+
+    <div class="sectionDivider"><span class="divLabel">Start here</span><span class="divRule"></span></div>
+
+    <div style="display:flex; flex-direction:column; gap:10px; margin-bottom: 26px;">
+      <a class="archiveCard" href="admin.html">
+        <span class="acRange">Admin — Generate &amp; Publish</span>
+        <span class="acSummary">Date-range picker, generate, styled preview (By Category / By Scout) with inline editing, markdown export, draft &rarr; published, correction flow.</span>
+        <span class="acCta">Open &rarr;</span>
+      </a>
+      <a class="archiveCard" href="report.html">
+        <span class="acRange">Public — Latest Report</span>
+        <span class="acSummary">What a family visitor sees. No admin chrome. Try the By Scout toggle — the URL updates so you can link straight to it.</span>
+        <span class="acCta">Open &rarr;</span>
+      </a>
+      <a class="archiveCard" href="archive.html">
+        <span class="acRange">Public — Archive</span>
+        <span class="acSummary">Every past published report, permalinked — confirmed as a permanent feature, not a fallback.</span>
+        <span class="acCta">Open &rarr;</span>
+      </a>
+    </div>
+
+    <div class="sectionDivider"><span class="divLabel">What&rsquo;s settled (2026-08-17)</span><span class="divRule"></span></div>
+    <ul style="font-family: var(--font-body); font-size: 15px; line-height: 1.85; padding-left: 22px; margin-bottom: 24px;">
+      <li><strong>Placement:</strong> under <code>/advancement</code>, both surfaces. No more IA toggle.</li>
+      <li><strong>Archive:</strong> yes, permanently — <code>archive.html</code> is real, not optional.</li>
+      <li><strong>Section 5 scope:</strong> leadership, award, <em>and now</em> service hours / camping nights / hiking miles — always included.</li>
+      <li><strong>Per-entry dates:</strong> automatic, not a toggle — shown only when an entry&rsquo;s earned date falls outside the report&rsquo;s own range (a backfilled correction or old credit). Everything earned within the period stays date-free.</li>
+      <li><strong>Correction path:</strong> confirmed as prototyped — unlock, edit, re-save; <code>published_at</code> stays, <code>correctedAt</code> is added.</li>
+      <li><strong>First-run default:</strong> confirmed as prototyped — blank dates, Generate disabled until picked.</li>
+      <li><strong>★ EAGLE inline tag:</strong> confirmed and praised — no changes.</li>
+    </ul>
+
+    <div class="sectionDivider"><span class="divLabel">New this pass — scout-centric view</span><span class="divRule"></span></div>
+    <p style="font-family: var(--font-body); font-size: 15px; line-height: 1.8; margin-bottom: 16px;">
+      Every report now has a <strong>By Scout</strong> tab alongside <strong>By Category</strong> — same
+      consolidated content, reorganized alphabetically by scout instead of by rank/badge, so a parent
+      can find their kid and confirm everything got recorded without hunting across five sections.
+      It reuses the exact same generated lines (no second query), and on the admin side, editing works
+      identically in either view since both read and write the same underlying report. Each scout
+      collapses to just their name and item count by default (an accordion — a plain button + hidden
+      div, deliberately not <code>&lt;details&gt;</code>, see D-070) with Expand&nbsp;all/Collapse&nbsp;all
+      controls and a filter box that auto-opens a single match. A shared link like
+      <code>report.html?view=scout&amp;scout=Marcus+Whitfield</code> opens straight to one scout, expanded
+      and scrolled into view — everyone else stays collapsed.
+    </p>
+
+    <div class="sectionDivider"><span class="divLabel">What to look at</span><span class="divRule"></span></div>
+    <ol style="font-family: var(--font-body); font-size: 15px; line-height: 1.8; padding-left: 22px; margin-bottom: 24px;">
+      <li>In <strong>Admin</strong>, leave the scenario on <strong>Heavy week</strong> and switch to <strong>By Scout</strong> — with ~28 scouts and ~800 entries, does scanning for one kid actually work better than the category view? Try the filter box.</li>
+      <li>Find <strong>Marcus Whitfield</strong> in By Scout view (or search his name under Camping in By Category) — his Camping requirement shows &ldquo;earned June 2, 2025&rdquo; automatically, Patrick&rsquo;s exact motivating case for Decision #4.</li>
+      <li>Edit a label or remove a scout in <strong>By Scout</strong> view, then switch to <strong>By Category</strong> — same edit should be there, since it&rsquo;s the same model.</li>
+      <li>Publish, then open the <strong>Public</strong> page in another tab (same browser) — click <strong>By Scout</strong> there and watch the URL pick up <code>?view=scout</code>.</li>
+      <li>Back in Admin, use <strong>Unlock to Correct</strong> to see the proposed correction path (unchanged from last pass).</li>
+    </ol>
+
+    <div class="proto-note">
+      <strong>Note</strong> — the remaining &ldquo;Prototype Lab&rdquo; panel in admin.html (dashed bark
+      border) is now just data-scenario and first-run demo controls, not open questions — those are
+      settled. The rest of each page is meant to read as the real thing.
+    </div>
+  </main>
+</body>
+</html>

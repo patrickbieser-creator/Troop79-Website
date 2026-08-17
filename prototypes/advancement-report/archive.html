@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weekly Advancement Reports — Archive — Scout Troop 79</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/advancement-report.css" />
+</head>
+<body>
+
+  <div class="proto-banner">
+    <div class="proto-banner-inner">
+      <p><strong>Prototype v1.1</strong> Public archive of past Weekly Advancement Reports — confirmed as a permanent feature (Decision #2, 2026-08-17), not the latest-only fallback.</p>
+      <nav class="protoLinks">
+        <a href="index.html">Prototype index</a>
+        <a href="admin.html">Admin &rarr;</a>
+        <a href="report.html">Latest report &rarr;</a>
+      </nav>
+    </div>
+  </div>
+
+  <!-- MASTHEAD -->
+  <header class="masthead" role="banner">
+    <div class="masthead-inner">
+      <div class="masthead-logo-mark" aria-hidden="true">79</div>
+      <div class="masthead-wordmark">
+        <h1 class="site-name">Scout Troop 79</h1>
+        <p class="site-sub">Milwaukee, Wisconsin</p>
+      </div>
+    </div>
+  </header>
+
+  <nav class="main-nav" role="navigation" aria-label="Main navigation">
+    <div class="nav-inner">
+      <ul class="nav-links">
+        <li><a href="#">Home</a></li>
+        <li><a href="#">Meeting</a></li>
+        <li><a href="#">News Archive</a></li>
+        <li><a href="#">Events</a></li>
+        <li><a href="#">Resources</a></li>
+        <li><a href="#" class="active" aria-current="page">Advancement</a></li>
+        <li><a href="#">About &amp; Join</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <ol>
+      <li><a href="#">Home</a></li>
+      <li><a href="#">Advancement</a></li>
+      <li aria-current="page">Weekly Reports</li>
+    </ol>
+  </nav>
+
+  <main class="page page--narrow">
+    <div class="article-head" style="max-width:none;">
+      <span class="cat-tag">Advancement</span>
+      <h1 class="article-headline" style="font-size: 32px;">Weekly Advancement Reports</h1>
+      <p class="article-dek">Every week&rsquo;s consolidated sign-off list, in one place. Pick a week to see who earned what.</p>
+    </div>
+
+    <div class="archiveList" id="archiveList"></div>
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <div class="footer-inner">
+      <div class="footer-bottom">
+        <p>&copy; 2026 Scout Troop 79 &middot; Milwaukee, Wisconsin</p>
+        <p><a href="#">Privacy</a> &middot; <a href="#">Accessibility</a></p>
+      </div>
+    </div>
+  </footer>
+
+<script src="assets/advancement-data.js"></script>
+<script>
+  const list = AdvRpt.listArchive();
+  const el = document.getElementById('archiveList');
+  if (!list.length) {
+    el.innerHTML = '<p class="fieldHint">No reports published yet.</p>';
+  } else {
+    el.innerHTML = list.map(rec => {
+      const { meta, report } = rec;
+      const range = `${AdvRpt.fmtDate(meta.startDate)} – ${AdvRpt.fmtDateLong(meta.endDate)}`;
+      let summary;
+      if (report.isEmpty) {
+        summary = 'Nothing to report this week';
+      } else {
+        const bits = [];
+        if (report.counts.rankAward) bits.push(`${report.counts.rankAward} rank${report.counts.rankAward === 1 ? '' : 's'} earned`);
+        if (report.counts.mbAward) bits.push(`${report.counts.mbAward} badge${report.counts.mbAward === 1 ? '' : 's'} earned`);
+        const reqTotal = report.counts.rankReq + report.counts.mbReq;
+        if (reqTotal) bits.push(`${reqTotal} requirement${reqTotal === 1 ? '' : 's'}`);
+        summary = bits.join(' · ') || 'Nothing to report this week';
+      }
+      return `<a class="archiveCard" href="report.html?id=${encodeURIComponent(rec.id)}">
+        <span class="acRange">${range}</span>
+        <span class="acSummary">${summary}</span>
+        <span class="acCta">Read report &rarr;</span>
+      </a>`;
+    }).join('');
+  }
+</script>
+</body>
+</html>
