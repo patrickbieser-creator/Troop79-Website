@@ -21,7 +21,7 @@ import { requireCapability } from '@/lib/require-capability';
  * counselor and skill-assignment pickers below, not the full leader
  * demographic shape (that lived on the now-deleted roster/leader-form.tsx;
  * editing an adult's demographics moved to the Roster's PersonEditor on the
- * `people` spine, 2026-08-17 — see person-actions.ts's LEADER_PERSON_FIELDS).
+ * `people` spine, 2026-08-17 — see change-requests.ts's LEADER_PERSON_FIELDS).
  */
 interface LeaderRow {
   code: string;

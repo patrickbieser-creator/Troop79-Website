@@ -3,31 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
-import { EDITABLE_PERSON_FIELDS, type FieldValue } from '@/lib/change-requests';
-
-/**
- * Demographics a LEADER may edit directly from the Roster, vs.
- * EDITABLE_PERSON_FIELDS (the narrower set a FAMILY may propose from
- * /profile). Leaders get four more:
- *   - bsa_member_id — EDITABLE_PERSON_FIELDS excludes it because a family
- *     correction could drift from what Scouting America issued; a leader
- *     typing it is the same trust level as the roster import that already
- *     writes it directly.
- *   - ypt_completed, health_form_date, things_we_should_know — lived on the
- *     legacy `leaders` table and were editable through the old Lookups
- *     "Adults and Instructors" card until the Roster moved to the
- *     person-spine model; that card's replacement never grew a demographics
- *     section, so these went silently unmanageable. Migrated onto `people`
- *     (`20260817120000_people_ypt_health_notes.sql`, backfilled from
- *     `leaders`) and restored here (Patrick's report, 2026-08-17).
- */
-export const LEADER_PERSON_FIELDS = [
-  ...EDITABLE_PERSON_FIELDS,
-  'bsa_member_id',
-  'ypt_completed',
-  'health_form_date',
-  'things_we_should_know'
-] as const;
+import { LEADER_PERSON_FIELDS, type FieldValue } from '@/lib/change-requests';
 
 /**
  * Person-level edits behind the Roster's Leaders and Adults tabs.

@@ -73,6 +73,38 @@ export const EDITABLE_PERSON_FIELDS = [
 
 export type EditablePersonField = (typeof EDITABLE_PERSON_FIELDS)[number];
 
+/**
+ * Demographics a LEADER may edit directly from the Roster (people-table.tsx's
+ * PersonEditor), vs. EDITABLE_PERSON_FIELDS above (the narrower set a FAMILY
+ * may propose from /profile). Leaders get four more:
+ *   - bsa_member_id — EDITABLE_PERSON_FIELDS excludes it because a family
+ *     correction could drift from what Scouting America issued; a leader
+ *     typing it is the same trust level as the roster import that already
+ *     writes it directly.
+ *   - ypt_completed, health_form_date, things_we_should_know — lived on the
+ *     legacy `leaders` table and were editable through the old Lookups
+ *     "Adults and Instructors" card until the Roster moved to the
+ *     person-spine model; that card's replacement never grew a demographics
+ *     section, so these went silently unmanageable. Migrated onto `people`
+ *     (`20260817120000_people_ypt_health_notes.sql`, backfilled from
+ *     `leaders`) and restored (Patrick's report, 2026-08-17).
+ *
+ * Lives here, NOT in roster/person-actions.ts, even though only that file
+ * uses it: person-actions.ts has `'use server'` at module scope, and a
+ * 'use server' file may only export async functions — a plain constant
+ * export there is invalid and crashes at request time (the exact bug this
+ * comment is here to prevent repeating; caught live on production 2026-08-17,
+ * every Demographics field silently blank because getPersonDetail() 500'd
+ * and the client discarded the error).
+ */
+export const LEADER_PERSON_FIELDS = [
+  ...EDITABLE_PERSON_FIELDS,
+  'bsa_member_id',
+  'ypt_completed',
+  'health_form_date',
+  'things_we_should_know'
+] as const;
+
 export const PERSON_FIELD_LABEL: Record<EditablePersonField, string> = {
   first_name: 'First Name',
   last_name: 'Last Name',
