@@ -497,6 +497,107 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.48.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.48.0</span>
+        <span class="release-date">August 16, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">A Members area, and one place to sign in</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>There&rsquo;s a Members tab now.</strong> It&rsquo;s where your own troop
+              information lives &mdash; your household&rsquo;s details today, and, as they get
+              built, your scout account, paying for a campout, your registration with the national
+              office, health forms and the wreath sale. Those are listed greyed-out so you can see
+              what&rsquo;s coming; if one of them would save you a phone call, tell a leader and
+              it&rsquo;ll move up the list.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Signing in and out moved there too.</strong> The links in the top bar are
+              gone; Members is the one door, and it&rsquo;s always in the menu whether you&rsquo;re
+              signed in or not. The top bar still tells you who you&rsquo;re signed in as, and
+              clicking your name takes you to Members.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">One-tap sign in, if you want it</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>You can set up a passkey and sign in with a fingerprint or your face.</strong>
+              Nothing to type, and nothing to wait for in your inbox. Set it up from the Members
+              page on the device you actually use &mdash; on a phone it usually covers your laptop
+              and tablet as well.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Emailed codes keep working, always.</strong> A passkey is an extra way in, not
+              a replacement: if you lose the phone, get a new one, or it just doesn&rsquo;t
+              cooperate, the code goes to your email exactly as before. Signing out doesn&rsquo;t
+              remove the passkey either &mdash; the next visit is still one tap, and the code path
+              is there if you need to sign in as somebody else.
+            </span>
+          </li>
+          <li>
+            <span>
+              Passkeys are for parents and leaders. Scouts sign in with a code, because a passkey on
+              a shared school laptop causes more problems than it solves.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">The shared leader password is gone</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Leaders sign in as themselves now.</strong> No shared secret to remember or
+              pass around, and no separate login for the admin: sign in once and you get both the
+              parts of the admin you&rsquo;re responsible for and your own family&rsquo;s pages. A
+              leader who is also a parent used to have to sign in twice.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Fixed</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>The link in the sign-in email didn&rsquo;t work</strong> &mdash; it said the
+              code had expired even when it hadn&rsquo;t, while the 6-digit code in the same email
+              worked fine. Some mail systems rewrite links and change their capitalisation, which
+              was enough to break the link but not the code. Sign-in links no longer care about
+              capitalisation.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>The troop name wrapped onto three lines on a phone.</strong> The header
+              now resizes properly, and the Join Troop 79 button sits with it rather than in the
+              menu bar.
+            </span>
+          </li>
+          <li>
+            <span>
+              The top of the page said &ldquo;Signed in&rdquo; to anyone who had typed the troop
+              password, even though they hadn&rsquo;t signed in as anybody. It only says that for a
+              real sign-in now.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.47.0 -->
     <div class="release">
       <div class="release-header">
