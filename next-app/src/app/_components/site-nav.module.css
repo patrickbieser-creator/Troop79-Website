@@ -49,3 +49,121 @@
     padding: 13px 11px;
   }
 }
+
+
+/* ── Masthead ───────────────────────────────────────────────────────────────
+   Was entirely inline styles, which meant no media queries and no way to
+   respond to a phone. At 390px the title wrapped to three lines ("Scout /
+   Troop / 79") — already cramped by the tagline before the Join button moved
+   up here, and tipped over by it. Found in the mobile QA pass 2026-08-16.
+
+   Order of sacrifice as width drops: the tagline and its rule go first (pure
+   decoration), then the layout wraps and Join takes its own full-width row,
+   which is a better tap target on a phone anyway. */
+.mastheadInner {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.mastheadLogo {
+  flex-shrink: 0;
+}
+.mastheadLogoImg {
+  height: 72px;
+  width: auto;
+  display: block;
+}
+
+/* min-width:0 is what actually lets the title shrink instead of forcing the
+   row wider than the viewport — a flex item's default min-width is auto. */
+.mastheadTitleBlock {
+  flex: 1;
+  min-width: 0;
+}
+
+.mastheadTitle {
+  font-family: var(--font-display);
+  font-size: 38px;
+  font-weight: 700;
+  color: var(--navy);
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.mastheadPlace {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-meta);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-top: 3px;
+  white-space: nowrap;
+}
+
+.mastheadJoin {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--forest);
+  color: #fff;
+  padding: 7px 16px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.mastheadRule {
+  width: 1px;
+  height: 52px;
+  background: var(--border-mid);
+  flex-shrink: 0;
+}
+
+.mastheadTagline {
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--text-meta);
+  max-width: 180px;
+  line-height: 1.5;
+  flex-shrink: 0;
+}
+
+@media (max-width: 62rem) {
+  .mastheadRule,
+  .mastheadTagline {
+    display: none;
+  }
+}
+
+@media (max-width: 34rem) {
+  .mastheadInner {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 0 16px;
+  }
+  .mastheadLogoImg {
+    height: 52px;
+  }
+  .mastheadTitle {
+    font-size: 26px;
+  }
+  .mastheadPlace {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+  }
+  .mastheadJoin {
+    /* Own row, full width: the recruiting CTA is worth a real tap target, and
+       squeezing it beside a 26px wordmark leaves neither legible. */
+    width: 100%;
+    text-align: center;
+    padding: 10px 16px;
+  }
+}

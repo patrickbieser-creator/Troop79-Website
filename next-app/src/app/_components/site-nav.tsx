@@ -54,89 +54,31 @@ export function SiteNav() {
           padding: '18px 0 14px'
         }}
       >
-        <div
-          style={{
-            maxWidth: 1180,
-            margin: '0 auto',
-            padding: '0 24px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 20
-          }}
-        >
-          <Link href="/" aria-label="Troop 79 Home">
+        <div className={styles.mastheadInner}>
+          <Link href="/" aria-label="Troop 79 Home" className={styles.mastheadLogo}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/troop-79-logo.png"
               alt="Scout Troop 79 — Milwaukee, WI"
-              style={{ height: 72, width: 'auto' }}
+              className={styles.mastheadLogoImg}
             />
           </Link>
-          <div style={{ flex: 1 }}>
-            <h1
-              style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: 38,
-                fontWeight: 700,
-                color: 'var(--navy)',
-                letterSpacing: '-.01em',
-                lineHeight: 1.1
-              }}
-            >
+          <div className={styles.mastheadTitleBlock}>
+            <h1 className={styles.mastheadTitle}>
               <Link href="/">Scout Troop 79</Link>
             </h1>
-            <p
-              style={{
-                fontFamily: 'var(--font-ui)',
-                fontSize: 12,
-                color: 'var(--text-meta)',
-                letterSpacing: '.12em',
-                textTransform: 'uppercase',
-                marginTop: 3
-              }}
-            >
+            <p className={styles.mastheadPlace}>
               Milwaukee, Wisconsin &nbsp;·&nbsp; Est. 2022
             </p>
           </div>
           {/* Moved out of the nav strip (Patrick, 2026-08-16) so the nav is
               purely navigation and the recruiting call to action sits with the
               masthead's identity block, left of the tagline. */}
-          <Link
-            href="/join"
-            style={{
-              fontFamily: 'var(--font-ui)',
-              fontSize: 12,
-              fontWeight: 700,
-              letterSpacing: '.06em',
-              textTransform: 'uppercase',
-              background: 'var(--forest)',
-              color: '#fff',
-              padding: '7px 16px',
-              borderRadius: 2,
-              flexShrink: 0,
-              whiteSpace: 'nowrap'
-            }}
-          >
+          <Link href="/join" className={styles.mastheadJoin}>
             Join Troop 79
           </Link>
-          <div
-            style={{
-              width: 1,
-              height: 52,
-              background: 'var(--border-mid)',
-              flexShrink: 0
-            }}
-          />
-          <p
-            style={{
-              fontFamily: 'var(--font-body)',
-              fontStyle: 'italic',
-              fontSize: 13,
-              color: 'var(--text-meta)',
-              maxWidth: 180,
-              lineHeight: 1.5
-            }}
-          >
+          <div className={styles.mastheadRule} />
+          <p className={styles.mastheadTagline}>
             Prepared. Courageous.
             <br />
             Ready for anything.

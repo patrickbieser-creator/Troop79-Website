@@ -482,7 +482,27 @@ export async function inspectTokenChallenge(
     .eq('token_hash', tokenHash)
     .maybeSingle();
   const row = data as Pick<TokenRow, 'id' | 'person_id' | 'expires_at' | 'consumed_at'> | null;
-  if (!row) return { state: 'unknown', target: null };
+  if (!row) {
+    // DIAGNOSTIC (2026-08-16): a link reported "unknown" in production —
+    // the hash was not in the table at all, which means the token that
+    // arrived is not the token that was minted. Logs the SHAPE of what
+    // arrived, never the token itself: a 32-byte base64url token is exactly
+    // 43 chars from [A-Za-z0-9_-], so a different length or a stray
+    // character identifies truncation or line-wrapping by the mail client,
+    // and a correct shape points at the pepper instead.
+    console.warn(
+      '[signin] unknown token',
+      JSON.stringify({
+        length: rawToken.length,
+        expectedLength: 43,
+        charsetOk: /^[A-Za-z0-9_-]+$/.test(rawToken),
+        hasWhitespace: /\s/.test(rawToken),
+        head: rawToken.slice(0, 4),
+        tail: rawToken.slice(-4)
+      })
+    );
+    return { state: 'unknown', target: null };
+  }
   if (row.consumed_at) return { state: 'consumed', target: null };
   if (new Date(row.expires_at) < new Date()) return { state: 'expired', target: null };
 
