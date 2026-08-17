@@ -16,6 +16,7 @@ import Link from 'next/link';
 import { getIdentitySessionIfValid } from '@/lib/family-access';
 import { SubmitStoryForm } from './submit-form';
 import { submitStoryAction } from './actions';
+import shell from '../../library/library.module.css';
 import styles from './submit.module.css';
 
 export const metadata = {
@@ -27,8 +28,13 @@ export default async function SubmitStoryPage() {
   const session = await getIdentitySessionIfValid();
 
   return (
-    <main style={{ padding: '1.5rem 0 3rem' }}>
-      <h1>Submit a story</h1>
+    <>
+      <div className={shell.pageHeader}>
+        <p className={shell.kicker}>News &amp; Events</p>
+        <h1 className={shell.pageTitle}>Submit a Story</h1>
+        <div className={shell.headRule} />
+      </div>
+      <main className={`${shell.main} ${shell.mainNarrow}`}>
 
       {session ? (
         <>
@@ -57,6 +63,7 @@ export default async function SubmitStoryPage() {
           </p>
         </div>
       )}
-    </main>
+      </main>
+    </>
   );
 }

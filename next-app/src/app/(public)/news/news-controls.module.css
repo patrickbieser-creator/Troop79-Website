@@ -1,0 +1,90 @@
+/* News page header controls (Patrick, 2026-08-16): the tag filter and the
+   Submit a Story button both live on the section-header line rather than
+   stacking above the stories. */
+
+.headerRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+}
+
+/* Pushes the controls to the right of the "News & Events" label, and lets
+   them wrap underneath it on a narrow screen instead of squeezing. */
+.headerControls {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 0.9rem;
+}
+
+.tagFilter {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.tagFilterLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-meta, #857c6c);
+}
+
+.tagSelect {
+  border: 1px solid var(--rule, #d8ccb4);
+  border-radius: 4px;
+  background: #fff;
+  color: inherit;
+  /* 16px stops iOS zooming the viewport when the select is focused. */
+  font-size: 16px;
+  padding: 0.3rem 0.5rem;
+  max-width: 14rem;
+}
+.tagSelect:focus {
+  outline: 2px solid var(--forest, #3d7a4a);
+  outline-offset: 1px;
+}
+
+/* The submit call to action. Only rendered for a signed-in member, so it can
+   afford to be loud — it is not clutter for a visitor who cannot use it. */
+.submitBtn {
+  display: inline-block;
+  background: var(--forest, #3d7a4a);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.submitBtn:hover,
+.submitBtn:focus-visible {
+  background: #2f5f39;
+  color: #fff;
+}
+
+.archiveLink {
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 34rem) {
+  .headerControls {
+    width: 100%;
+    margin-left: 0;
+    justify-content: space-between;
+  }
+  .submitBtn {
+    /* Full width on a phone: it is the primary action on this page for a
+       signed-in scout, and a small right-aligned button gets missed. */
+    width: 100%;
+    text-align: center;
+  }
+}

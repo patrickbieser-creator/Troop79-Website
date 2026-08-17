@@ -191,7 +191,10 @@ export async function requestForPersonAction(formData: FormData): Promise<void> 
   });
 
   if (!result.sent) {
-    redirect(signinUrl({ ...keep, pick: '1', err: 'unreachable', person: String(personId) }));
+    // Distinct reasons, distinct advice. Telling a rate-limited person "we
+    // have no address for you" would send them to a leader for a problem that
+    // fixes itself in a few minutes.
+    redirect(signinUrl({ ...keep, pick: '1', err: result.reason, person: String(personId) }));
   }
   redirect(signinUrl({ ...keep, sent: '1', person: String(personId), masked: result.masked }));
 }

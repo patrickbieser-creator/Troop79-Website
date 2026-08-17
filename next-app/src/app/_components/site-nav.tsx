@@ -6,14 +6,18 @@
 import Link from 'next/link';
 import { NavLinks } from './nav-links';
 import { UtilityDate } from './utility-date';
-import { SiteAuthStatus } from './site-auth-status';
+import { SignedInAs } from './signed-in-as';
 import styles from './site-nav.module.css';
 
 // Deliberately NOT async and does not read cookies()/headers() — this layout
 // wraps every public page, and doing either here would bail every one of
 // them out of static/ISR generation (caught in build output, 2026-08-06).
-// SiteAuthStatus checks session state itself, client-side, via
-// /api/session-status — see that route's comment for the full story.
+//
+// Sign in / sign out used to live in the utility bar; both moved to /member,
+// the single front door for authentication (Patrick, 2026-08-16). What stays
+// is SignedInAs — display only — because "whose information am I looking at"
+// is still worth answering at the top of every page. It checks session state
+// itself, client-side, via /api/session-status.
 export function SiteNav() {
   return (
     <div id="site-nav-root">
@@ -37,7 +41,7 @@ export function SiteNav() {
         >
           <UtilityDate />
           <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-            <SiteAuthStatus />
+            <SignedInAs />
           </div>
         </div>
       </div>
@@ -94,6 +98,27 @@ export function SiteNav() {
               Milwaukee, Wisconsin &nbsp;·&nbsp; Est. 2022
             </p>
           </div>
+          {/* Moved out of the nav strip (Patrick, 2026-08-16) so the nav is
+              purely navigation and the recruiting call to action sits with the
+              masthead's identity block, left of the tagline. */}
+          <Link
+            href="/join"
+            style={{
+              fontFamily: 'var(--font-ui)',
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: '.06em',
+              textTransform: 'uppercase',
+              background: 'var(--forest)',
+              color: '#fff',
+              padding: '7px 16px',
+              borderRadius: 2,
+              flexShrink: 0,
+              whiteSpace: 'nowrap'
+            }}
+          >
+            Join Troop 79
+          </Link>
           <div
             style={{
               width: 1,
@@ -133,24 +158,6 @@ export function SiteNav() {
       >
         <div className={styles.navInner}>
           <NavLinks />
-          <Link
-            href="/join"
-            style={{
-              fontFamily: 'var(--font-ui)',
-              fontSize: 12,
-              fontWeight: 700,
-              letterSpacing: '.06em',
-              textTransform: 'uppercase',
-              background: 'var(--forest)',
-              color: '#fff',
-              padding: '7px 16px',
-              borderRadius: 2,
-              margin: '7px 0',
-              flexShrink: 0
-            }}
-          >
-            Join Troop 79
-          </Link>
         </div>
       </nav>
     </div>

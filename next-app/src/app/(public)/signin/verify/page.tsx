@@ -7,7 +7,7 @@
  */
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
-import { peekTokenChallenge } from '@/lib/identity-challenge';
+import { inspectTokenChallenge } from '@/lib/identity-challenge';
 import { confirmTokenAction } from '../actions';
 import styles from '../../library/library.module.css';
 
@@ -23,7 +23,9 @@ export default async function SignInVerifyPage({
   searchParams: Promise<{ token?: string; err?: string }>;
 }) {
   const { token, err } = await searchParams;
-  const target = token ? await peekTokenChallenge(createAdminClient(), token) : null;
+  const { state, target } = token
+    ? await inspectTokenChallenge(createAdminClient(), token)
+    : ({ state: 'unknown', target: null } as const);
 
   return (
     <>
@@ -49,10 +51,19 @@ export default async function SignInVerifyPage({
             </>
           ) : (
             <>
+              {/* One message per state. "Expired or already used" covered
+                  three situations, and the commonest — you already signed in
+                  with the code from this same email — is not an error at all.
+                  Reported as a bug 2026-08-16 by someone who read it as the
+                  site being broken. */}
               <p className={styles.fieldError}>
                 {err
                   ? 'Something went wrong confirming that sign-in — try the code instead.'
-                  : 'This link has expired or was already used.'}
+                  : state === 'consumed'
+                    ? 'This link has already been used. If you signed in with the 6-digit code from the same email, that used it up — you may already be signed in.'
+                    : state === 'expired'
+                      ? 'This link has expired. Sign-in links last 15 minutes; request a fresh one and it’ll work.'
+                      : 'We don’t recognise that link. It may have been broken across two lines by your email app — request a fresh one, or use the 6-digit code instead.'}
               </p>
               <p style={{ marginTop: 12 }}>
                 <Link className={styles.btnSecondary} href="/signin">

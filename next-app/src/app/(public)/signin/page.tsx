@@ -34,6 +34,9 @@ const ERR_MESSAGES: Record<string, string> = {
   'not-configured': 'The troop password isn’t set on this server yet — ask a leader.',
   unreachable:
     'We don’t have an email address on file for you, so there’s nothing to send. Ask a leader — they can add one, or sign you in another way.',
+  'rate-limited':
+    'You’ve asked for several codes in a short time, so we’ve paused sending. Use the most recent email you received, or wait a few minutes and try again.',
+  failed: 'Something went wrong sending that code. Try again in a moment.',
   // Deliberately the SAME message whether the code was simply wrong or the
   // token is now locked out after too many attempts — a distinguishable
   // ?err= value between the two would let a guesser learn whether an email

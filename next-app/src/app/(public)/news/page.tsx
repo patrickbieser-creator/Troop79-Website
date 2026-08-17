@@ -1,5 +1,8 @@
 import Link from 'next/link';
+import { TagFilter } from './tag-filter';
+import controls from './news-controls.module.css';
 import { loadNewsIndex, loadAllTags } from '@/lib/news-feed';
+import { getIdentitySessionIfValid } from '@/lib/family-access';
 import { loadPromotedEntries, type FeedItem } from '@/lib/home-feed';
 import { mergeFeed } from '@/lib/feed-logic';
 import { FeedCard } from '../../_components/feed-cards';
@@ -30,11 +33,17 @@ export default async function NewsIndexPage({
   const page = Math.max(1, parseInt(pageRaw ?? '1', 10) || 1);
   const archive = archiveRaw === '1';
 
-  const [{ rows, totalPages }, tags, promoted] = await Promise.all([
+  const [{ rows, totalPages }, tags, promoted, identity] = await Promise.all([
     loadNewsIndex(page, archive),
     loadAllTags(),
-    !archive && page === 1 ? loadPromotedEntries() : Promise.resolve([])
+    !archive && page === 1 ? loadPromotedEntries() : Promise.resolve([]),
+    getIdentitySessionIfValid()
   ]);
+
+  // Same rule the submit page itself enforces: a VERIFIED person, adult or
+  // scout. The troop password alone is not enough, because a story publishes
+  // under the author's name.
+  const canSubmit = identity !== null;
 
   const items: FeedItem[] = mergeFeed(rows, promoted);
 
@@ -42,35 +51,32 @@ export default async function NewsIndexPage({
 
   return (
     <>
-      <div className={styles.sectionHeader}>
+      <div className={`${styles.sectionHeader} ${controls.headerRow}`}>
         <span className={styles.sectionLabel}>{archive ? 'News Archive' : 'News & Events'}</span>
-        <span className={styles.viewAllLink}>
-          {/* Shown to everyone, signed in or not — /news/submit explains the
-              sign-in itself. Hiding it from signed-out visitors would hide it
-              from exactly the scouts who have never signed in and therefore
-              never discover it exists (Phase C). */}
-          {!archive && (
-            <>
-              <Link href="/news/submit">Submit a story</Link>
-              {' · '}
-            </>
-          )}
-          <Link href={archive ? '/news' : '/news?archive=1'}>
+
+        <span className={controls.headerControls}>
+          {/* Filter and submit both sit on this line now, rather than a wall of
+              tag pills stacked above the stories (Patrick, 2026-08-16). */}
+          {tags.length > 0 && !archive && <TagFilter tags={tags} />}
+
+          <Link href={archive ? '/news' : '/news?archive=1'} className={controls.archiveLink}>
             {archive ? '← Back to current news' : 'View archive →'}
           </Link>
+
+          {/* Signed-in members only. The earlier version showed this to
+              everyone on the theory that a scout who has never signed in would
+              not otherwise discover it; Patrick's call is that a prominent
+              button beats a discoverable-but-dead link, and a visitor who
+              cannot submit should not be offered the option. */}
+          {canSubmit && !archive && (
+            <Link href="/news/submit" className={controls.submitBtn}>
+              Submit a Story
+            </Link>
+          )}
         </span>
       </div>
 
       <main className={styles.mainContent}>
-        {tags.length > 0 && !archive && (
-          <div className={styles.tagListSidebar} style={{ marginBottom: 18 }}>
-            {tags.map((t) => (
-              <Link key={t.id} href={`/tags/${t.slug}`} className={styles.tagChipSidebar}>
-                {t.name}
-              </Link>
-            ))}
-          </div>
-        )}
 
         {items.length === 0 ? (
           <p className={styles.empty}>

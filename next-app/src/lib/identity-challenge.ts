@@ -257,7 +257,9 @@ export async function requestChallenge(
 ): Promise<void> {
   const target = await resolveChallengeTarget(supabase, contact);
   if (!target) return;
-  return mintAndSend(supabase, target, contact, opts);
+  // Outcome deliberately discarded — see MintOutcome. This path must look
+  // identical whether or not the address is on the roster.
+  await mintAndSend(supabase, target, contact, opts);
 }
 
 /**
@@ -282,23 +284,38 @@ export async function requestChallengeForPerson(
   supabase: SupabaseClient,
   personId: number,
   opts: { nextPath?: string | null; ip?: string | null } = {}
-): Promise<{ sent: true; masked: string } | { sent: false }> {
+): Promise<
+  { sent: true; masked: string } | { sent: false; reason: 'unreachable' | 'rate-limited' | 'failed' }
+> {
   const target = await targetForPerson(supabase, personId);
-  if (!target) return { sent: false };
+  if (!target) return { sent: false, reason: 'unreachable' };
 
   const address = await deliverableEmailFor(supabase, personId);
-  if (!address) return { sent: false };
+  if (!address) return { sent: false, reason: 'unreachable' };
 
-  await mintAndSend(supabase, target, address, opts);
+  const outcome = await mintAndSend(supabase, target, address, opts);
+  if (outcome !== 'sent') return { sent: false, reason: outcome };
   return { sent: true, masked: maskEmail(address) };
 }
+
+/**
+ * Returns WHY nothing was sent, when nothing was sent.
+ *
+ * requestChallenge() throws the reason away on purpose — that path must be
+ * enumeration-safe, so every outcome has to look identical. The picker path
+ * is already past the troop-password gate and is not enumeration-safe, so it
+ * can and should tell the truth: claiming "code sent" when the rate limiter
+ * silently dropped it sends someone to their inbox to wait for mail that will
+ * never arrive, and then to an older email whose link is dead.
+ */
+type MintOutcome = 'sent' | 'rate-limited' | 'failed';
 
 async function mintAndSend(
   supabase: SupabaseClient,
   target: ChallengeTarget,
   contact: string,
   opts: { nextPath?: string | null; ip?: string | null }
-): Promise<void> {
+): Promise<MintOutcome> {
 
   const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
   const { count: personCount } = await supabase
@@ -306,7 +323,7 @@ async function mintAndSend(
     .select('id', { count: 'exact', head: true })
     .eq('person_id', target.personId)
     .gte('created_at', fifteenMinAgo);
-  if ((personCount ?? 0) >= MAX_PER_PERSON_15MIN) return;
+  if ((personCount ?? 0) >= MAX_PER_PERSON_15MIN) return 'rate-limited';
 
   if (opts.ip) {
     const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
@@ -315,7 +332,7 @@ async function mintAndSend(
       .select('id', { count: 'exact', head: true })
       .eq('created_ip', opts.ip)
       .gte('created_at', hourAgo);
-    if ((ipCount ?? 0) >= MAX_PER_IP_HOUR) return;
+    if ((ipCount ?? 0) >= MAX_PER_IP_HOUR) return 'rate-limited';
   }
 
   const rawToken = randomLinkToken();
@@ -332,7 +349,7 @@ async function mintAndSend(
     expires_at: new Date(Date.now() + TOKEN_TTL_MINUTES * 60 * 1000).toISOString(),
     created_ip: opts.ip || null
   });
-  if (error) return;
+  if (error) return 'failed';
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
   const link = `${siteUrl}/signin/verify?token=${encodeURIComponent(rawToken)}`;
@@ -357,6 +374,7 @@ async function mintAndSend(
   // address already on the roster, triggered by that person's own action,
   // rate-limited above, and useless to anyone who didn't ask for it.
   await sendEmail({ to: [contact], subject: 'Your Troop 79 sign-in code', html, text, confirm: true });
+  return 'sent';
 }
 
 /** Re-resolves the CURRENT identity for a person at redemption time — never
@@ -435,7 +453,28 @@ export async function peekTokenChallenge(
   supabase: SupabaseClient,
   rawToken: string
 ): Promise<{ displayName: string } | null> {
-  if (!rawToken) return null;
+  return (await inspectTokenChallenge(supabase, rawToken)).target;
+}
+
+/**
+ * Why a link did not work, not just that it didn't.
+ *
+ * The landing page said "This link has expired or was already used" for THREE
+ * different states — expired, consumed, and never-existed — and the commonest
+ * of them is the least alarming: you already signed in with the code from the
+ * same email, which invalidates its link. Reported as a bug 2026-08-16 by
+ * someone who had done exactly that, and read it as the site being broken.
+ *
+ * Distinguishing them leaks nothing a link-holder does not already have: they
+ * hold the token, so "this token was used" tells them only about themselves.
+ */
+export type TokenState = 'valid' | 'consumed' | 'expired' | 'unknown';
+
+export async function inspectTokenChallenge(
+  supabase: SupabaseClient,
+  rawToken: string
+): Promise<{ state: TokenState; target: { displayName: string } | null }> {
+  if (!rawToken) return { state: 'unknown', target: null };
   const tokenHash = await hashSecret(rawToken);
   const { data } = await supabase
     .from('login_tokens')
@@ -443,7 +482,9 @@ export async function peekTokenChallenge(
     .eq('token_hash', tokenHash)
     .maybeSingle();
   const row = data as Pick<TokenRow, 'id' | 'person_id' | 'expires_at' | 'consumed_at'> | null;
-  if (!row || row.consumed_at || new Date(row.expires_at) < new Date()) return null;
+  if (!row) return { state: 'unknown', target: null };
+  if (row.consumed_at) return { state: 'consumed', target: null };
+  if (new Date(row.expires_at) < new Date()) return { state: 'expired', target: null };
 
   const { data: directoryRow } = await supabase
     .from('person_directory')
@@ -451,7 +492,9 @@ export async function peekTokenChallenge(
     .eq('person_id', row.person_id)
     .maybeSingle();
   const displayName = (directoryRow as { display_name: string } | null)?.display_name;
-  return displayName ? { displayName } : null;
+  // No directory row means the person is no longer listable — treat it as an
+  // unknown token rather than inventing a name to confirm.
+  return displayName ? { state: 'valid', target: { displayName } } : { state: 'unknown', target: null };
 }
 
 /** POST-consume by the raw link token. */

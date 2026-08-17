@@ -13,7 +13,12 @@ const LINKS: { href: string; label: string }[] = [
   { href: '/photos', label: 'Photos' },
   { href: '/advancement', label: 'Advancement' },
   { href: '/library', label: 'Library' },
-  { href: '/about', label: 'About' }
+  { href: '/about', label: 'About' },
+  // ALWAYS shown, signed in or not (Patrick, 2026-08-16). /member is the
+  // site's front door for signing in — it dead-ends in a sign-in prompt for a
+  // visitor, which is exactly what makes it discoverable. A link that only
+  // appears once you are already signed in cannot be how you sign in.
+  { href: '/member', label: 'Members' }
 ];
 
 export function NavLinks() {
