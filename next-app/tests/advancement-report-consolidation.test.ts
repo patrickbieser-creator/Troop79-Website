@@ -3,11 +3,13 @@ import {
   cmpCode,
   consolidateGroup,
   datesOutOfRange,
+  isDateOutOfRange,
   entriesForScoutSlot,
   buildReport,
   buildScoutView,
   toMarkdown,
   tagKind,
+  removeScoutFromReport,
   type AdvancementEntry
 } from '../src/lib/advancement-report';
 
@@ -300,6 +302,129 @@ describe('buildScoutView (Decision 8, 2026-08-17)', () => {
   });
 });
 
+describe('removeScoutFromReport', () => {
+  it('RemovesOnlyTheNamedScout_FromAnAwardGroup_LeavingOthersIntact', () => {
+    const rows = [
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: 'star', group: 'star' }), 'rank_award'),
+      tagKind(entry({ scoutId: 'S2', scoutName: 'B', code: 'star', group: 'star' }), 'rank_award')
+    ];
+    const report = buildReport(rows);
+    removeScoutFromReport(report, { scoutId: 'S1', section: 'ranksEarned', groupKey: 'star' });
+    expect(report.ranksEarned[0].scoutIds).toEqual(['S2']);
+    expect(report.counts.rankAward).toBe(1);
+    expect(report.counts.total).toBe(1);
+  });
+
+  it('DropsTheGroupEntirely_WhenItsLastScoutIsRemoved', () => {
+    const rows = [tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: 'star', group: 'star' }), 'rank_award')];
+    const report = buildReport(rows);
+    removeScoutFromReport(report, { scoutId: 'S1', section: 'ranksEarned', groupKey: 'star' });
+    expect(report.ranksEarned).toEqual([]);
+    expect(report.isEmpty).toBe(true);
+    expect(report.counts.rankAward).toBe(0);
+    expect(report.counts.total).toBe(0);
+  });
+
+  it('NeverTouchesBadgesEarned_WhenRemovingFromBadgeReqs_ForTheSameBadgeName', () => {
+    // CRITICAL bug found by qa-lead review, 2026-08-17: a scout who
+    // finishes a badge's last requirement AND earns that badge in the
+    // same report period appears in both badgeReqs['Camping'] and
+    // badgesEarned['Camping'] — the exact "heavy week" case this feature
+    // exists for. Removing the requirement line must never fall through
+    // to the earned-badge group just because the group key matches.
+    const rows = [
+      tagKind(
+        entry({ scoutId: 'S1', scoutName: 'A', code: 'camping-1a', group: 'Camping', label: 'Req 1a' }),
+        'merit_badge_requirement'
+      ),
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: 'MB:camping', group: 'Camping' }), 'merit_badge_award')
+    ];
+    const report = buildReport(rows);
+    removeScoutFromReport(report, { scoutId: 'S1', section: 'badgeReqs', groupKey: 'Camping', lineKey: 'camping-1a' });
+    // The requirement line is gone...
+    expect(report.badgeReqs).toEqual([]);
+    // ...but the earned badge is completely untouched.
+    expect(report.badgesEarned).toHaveLength(1);
+    expect(report.badgesEarned[0].scoutIds).toEqual(['S1']);
+    expect(report.counts.mbReq).toBe(0);
+    expect(report.counts.mbAward).toBe(1);
+    expect(report.counts.total).toBe(1);
+  });
+
+  it('NeverTouchesBadgeReqs_WhenRemovingFromBadgesEarned_ForTheSameBadgeName', () => {
+    // The mirror image of the above — removing the earned badge must not
+    // reach into the requirement group of the same name either.
+    const rows = [
+      tagKind(
+        entry({ scoutId: 'S1', scoutName: 'A', code: 'camping-1a', group: 'Camping', label: 'Req 1a' }),
+        'merit_badge_requirement'
+      ),
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: 'MB:camping', group: 'Camping' }), 'merit_badge_award')
+    ];
+    const report = buildReport(rows);
+    removeScoutFromReport(report, { scoutId: 'S1', section: 'badgesEarned', groupKey: 'Camping' });
+    expect(report.badgesEarned).toEqual([]);
+    expect(report.badgeReqs).toHaveLength(1);
+    expect(report.badgeReqs[0].lines[0].scoutIds).toEqual(['S1']);
+    expect(report.counts.mbAward).toBe(0);
+    expect(report.counts.mbReq).toBe(1);
+    expect(report.counts.total).toBe(1);
+  });
+
+  it('RemovesFromOnlyTheNamedLine_WhenTheSameScoutHoldsAConsolidatedLineToo', () => {
+    const rows = [
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: '1a', group: 'scout', label: 'Shared' }), 'rank_requirement'),
+      tagKind(entry({ scoutId: 'S2', scoutName: 'B', code: '1a', group: 'scout', label: 'Shared' }), 'rank_requirement'),
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: '2a', group: 'scout', label: 'Solo A' }), 'rank_requirement'),
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: '2b', group: 'scout', label: 'Solo B' }), 'rank_requirement')
+    ];
+    const report = buildReport(rows);
+    // Remove scout A from the SHARED 1a line only — the consolidated 2a,2b
+    // line must survive untouched.
+    removeScoutFromReport(report, { scoutId: 'S1', section: 'rankReqs', groupKey: 'scout', lineKey: '1a' });
+    const rankGroup = report.rankReqs.find((g) => g.rank === 'scout')!;
+    // 1a's line survives (B still holds it), now with only B.
+    const remaining1a = rankGroup.lines.find((l) => l.codes.includes('1a'));
+    expect(remaining1a?.scoutIds).toEqual(['S2']);
+    // A's consolidated 2a,2b line is untouched.
+    const consolidated = rankGroup.lines.find((l) => l.codes.length > 1);
+    expect(consolidated?.codes).toEqual(['2a', '2b']);
+    expect(consolidated?.scoutIds).toEqual(['S1']);
+  });
+
+  it('IsANoOp_WhenTheScoutIsNotInThatGroup', () => {
+    const rows = [tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: 'star', group: 'star' }), 'rank_award')];
+    const report = buildReport(rows);
+    removeScoutFromReport(report, { scoutId: 'S999', section: 'ranksEarned', groupKey: 'star' });
+    expect(report.ranksEarned[0].scoutIds).toEqual(['S1']);
+    expect(report.counts.rankAward).toBe(1);
+  });
+});
+
+describe('isDateOutOfRange', () => {
+  const range = { startDate: '2026-08-10', endDate: '2026-08-17' };
+
+  it('IsFalse_ForTheStartBoundary_Inclusive', () => {
+    expect(isDateOutOfRange('2026-08-10', range)).toBe(false);
+  });
+
+  it('IsFalse_ForTheEndBoundary_Inclusive', () => {
+    expect(isDateOutOfRange('2026-08-17', range)).toBe(false);
+  });
+
+  it('IsFalse_ForADateInsideTheRange', () => {
+    expect(isDateOutOfRange('2026-08-13', range)).toBe(false);
+  });
+
+  it('IsTrue_ForADateBeforeTheRange', () => {
+    expect(isDateOutOfRange('2026-08-09', range)).toBe(true);
+  });
+
+  it('IsTrue_ForADateAfterTheRange', () => {
+    expect(isDateOutOfRange('2026-08-18', range)).toBe(true);
+  });
+});
+
 describe('toMarkdown', () => {
   const range = { startDate: '2026-08-10', endDate: '2026-08-17' };
 
@@ -319,6 +444,24 @@ describe('toMarkdown', () => {
     expect(md).toContain('## Ranks Earned');
     expect(md).not.toContain('## Merit Badges Earned');
     expect(md).not.toContain('## Rank Requirements Completed');
+  });
+
+  it('OmitsTheTitleDateAndNotePreamble_WhenIncludeHeaderIsFalse', () => {
+    // On-site rendering: the page already shows its own title/dateline/note,
+    // so the category view must not duplicate them (found live-testing the
+    // real page before shipping).
+    const rows = [tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: 'star', group: 'star' }), 'rank_award')];
+    const md = toMarkdown(buildReport(rows), range, 'A note', { includeHeader: false });
+    expect(md).not.toContain('# Weekly Advancement Report');
+    expect(md).not.toContain('A note');
+    expect(md).toContain('## Ranks Earned');
+  });
+
+  it('IncludesTheHeaderByDefault_ForTheStandaloneBugleExport', () => {
+    const rows = [tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: 'star', group: 'star' }), 'rank_award')];
+    const md = toMarkdown(buildReport(rows), range, 'A note');
+    expect(md).toContain('# Weekly Advancement Report');
+    expect(md).toContain('A note');
   });
 
   it('ShowsTheEarnedDate_OnlyOnTheOutOfRangeLine_NotOnInRangeLines', () => {

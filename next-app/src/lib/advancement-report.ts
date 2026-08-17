@@ -287,6 +287,13 @@ export function entriesForScoutSlot(line: ReqLine, scoutIdx: number): Advancemen
  * period. Everything earned inside the period (the vast majority of lines)
  * stays date-free.
  */
+/** Single-date convenience over the same rule, for a group award line
+ *  (rank/badge earned, leadership, other) where there's exactly one entry
+ *  and no join to a ReqLine to route through entriesForScoutSlot(). */
+export function isDateOutOfRange(date: string, range: ReportRange): boolean {
+  return date < range.startDate || date > range.endDate;
+}
+
 export function datesOutOfRange(entries: AdvancementEntry[], range: ReportRange): string[] {
   const out: string[] = [];
   for (const e of entries) {
@@ -468,9 +475,113 @@ export function buildScoutView(report: AdvancementReport): ScoutViewRecord[] {
   return records.sort((a, b) => a.scoutName.localeCompare(b.scoutName));
 }
 
+// ── editing: remove a scout from a group/line ──────────────────────────────
+// Ported from the prototype's removeScoutFromReport(), keyed on scoutId
+// (see module header) instead of scout name. Mutates the report in place —
+// the caller (a Server Action) re-derives content_md from the result before
+// saving, same "regenerate, never hand-edit markdown" rule as everywhere
+// else in this module.
+
+// A group's key (badge/rank display name) is NOT unique across sections —
+// e.g. a scout finishing a badge's last requirement in the same report
+// period they're awarded that badge shows up in both badgeReqs['Camping']
+// and badgesEarned['Camping']. `section` is required (not inferred by
+// probing sections in order) so a Remove click can never hit the wrong
+// section for a same-named group — found via qa-lead review 2026-08-17
+// before this shipped: probing order silently deleted the wrong entry.
+export type RemoveScoutSection = 'ranksEarned' | 'badgesEarned' | 'rankReqs' | 'badgeReqs' | 'leadership' | 'otherAwards';
+
+export interface RemoveScoutTarget {
+  scoutId: string;
+  section: RemoveScoutSection;
+  groupKey: string;
+  /** Present only for a req-line removal (rank/badge requirements); absent
+   *  for an award/leadership/other group, which has no lines to disambiguate. */
+  lineKey?: string;
+}
+
+export function removeScoutFromReport(report: AdvancementReport, target: RemoveScoutTarget): void {
+  function stripFromAwardGroups(groups: AwardGroup[]): boolean {
+    for (const g of groups) {
+      if (g.name !== target.groupKey) continue;
+      const idx = g.scoutIds.indexOf(target.scoutId);
+      if (idx > -1) {
+        g.scoutIds.splice(idx, 1);
+        g.scoutNames.splice(idx, 1);
+        g.entries.splice(idx, 1);
+        return true;
+      }
+    }
+    return false;
+  }
+  function stripFromReqGroups(groups: (RankReqGroup | BadgeReqGroup)[]): boolean {
+    for (const g of groups) {
+      const key = 'rank' in g ? g.rank : g.badge;
+      if (key !== target.groupKey) continue;
+      for (const line of g.lines) {
+        if (target.lineKey && line.codes.join(',') !== target.lineKey) continue;
+        const idx = line.scoutIds.indexOf(target.scoutId);
+        if (idx > -1) {
+          line.scoutIds.splice(idx, 1);
+          line.scoutNames.splice(idx, 1);
+          line.entries.splice(idx, 1);
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  let removed = false;
+  switch (target.section) {
+    case 'ranksEarned':
+      removed = stripFromAwardGroups(report.ranksEarned);
+      if (removed) report.counts.rankAward--;
+      break;
+    case 'badgesEarned':
+      removed = stripFromAwardGroups(report.badgesEarned);
+      if (removed) report.counts.mbAward--;
+      break;
+    case 'rankReqs':
+      removed = stripFromReqGroups(report.rankReqs);
+      if (removed) report.counts.rankReq--;
+      break;
+    case 'badgeReqs':
+      removed = stripFromReqGroups(report.badgeReqs);
+      if (removed) report.counts.mbReq--;
+      break;
+    case 'leadership':
+      removed = stripFromAwardGroups(report.leadership);
+      if (removed) report.counts.leadership--;
+      break;
+    case 'otherAwards':
+      removed = stripFromAwardGroups(report.otherAwards);
+      if (removed) report.counts.other--;
+      break;
+  }
+  if (removed) report.counts.total--;
+
+  // Prune now-empty lines/groups.
+  for (const g of report.rankReqs) g.lines = g.lines.filter((l) => l.scoutIds.length > 0);
+  for (const g of report.badgeReqs) g.lines = g.lines.filter((l) => l.scoutIds.length > 0);
+  report.rankReqs = report.rankReqs.filter((g) => g.lines.length > 0);
+  report.badgeReqs = report.badgeReqs.filter((g) => g.lines.length > 0);
+  report.ranksEarned = report.ranksEarned.filter((g) => g.scoutIds.length > 0);
+  report.badgesEarned = report.badgesEarned.filter((g) => g.scoutIds.length > 0);
+  report.leadership = report.leadership.filter((g) => g.scoutIds.length > 0);
+  report.otherAwards = report.otherAwards.filter((g) => g.scoutIds.length > 0);
+  report.isEmpty =
+    !report.ranksEarned.length &&
+    !report.badgesEarned.length &&
+    !report.rankReqs.length &&
+    !report.badgeReqs.length &&
+    !report.leadership.length &&
+    !report.otherAwards.length;
+}
+
 // ── markdown rendering (the single derived-cache format) ──────────────────
 
-function formatMonthDayYear(iso: string): string {
+export function formatMonthDayYear(iso: string): string {
   return new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(
     new Date(`${iso}T12:00:00Z`)
   );
@@ -484,14 +595,32 @@ function scoutLineMd(name: string, entries: AdvancementEntry[], range: ReportRan
     : `  - ${name}${detailBit}`;
 }
 
-export function toMarkdown(report: AdvancementReport, range: ReportRange, note: string | null): string {
+export interface ToMarkdownOptions {
+  /** Default true. The title/date/note preamble belongs in the Bugle
+   *  export (a standalone document) but is redundant on-site, where the
+   *  page itself already renders its own H1, dateline, and note box —
+   *  found live testing the real page before shipping: without this, the
+   *  category view showed the date range and note twice. Pass false when
+   *  rendering the category view in either React surface. */
+  includeHeader?: boolean;
+}
+
+export function toMarkdown(
+  report: AdvancementReport,
+  range: ReportRange,
+  note: string | null,
+  opts: ToMarkdownOptions = {}
+): string {
+  const includeHeader = opts.includeHeader ?? true;
   const lines: string[] = [];
-  const rangeLabel = `${formatMonthDayYear(range.startDate)} – ${formatMonthDayYear(range.endDate)}`;
-  lines.push('# Weekly Advancement Report');
-  lines.push(`*${rangeLabel}*`);
-  if (note) {
-    lines.push('');
-    lines.push(`> ${note}`);
+  if (includeHeader) {
+    const rangeLabel = `${formatMonthDayYear(range.startDate)} – ${formatMonthDayYear(range.endDate)}`;
+    lines.push('# Weekly Advancement Report');
+    lines.push(`*${rangeLabel}*`);
+    if (note) {
+      lines.push('');
+      lines.push(`> ${note}`);
+    }
   }
 
   if (report.isEmpty) {

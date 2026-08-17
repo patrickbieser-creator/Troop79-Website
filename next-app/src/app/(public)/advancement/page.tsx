@@ -94,6 +94,7 @@ export default async function AdvancementPage() {
             <RankGrid data={data} />
             <SectionDivider label="Merit Badge Progress" />
             <MbProgressCta />
+            <WeeklyReportCta />
             <SectionDivider label="Troop Roster" />
             <Roster data={data} />
             <LeaderCta />
@@ -195,6 +196,23 @@ function LeaderCta() {
         Open Leader Workspace &rarr;
       </Link>
     </div>
+  );
+}
+
+function WeeklyReportCta() {
+  return (
+    <Link href="/advancement/report" className={styles.mbCta}>
+      <div className={styles.mbCtaInner}>
+        <div>
+          <div className={styles.mbCtaTitle}>This week&rsquo;s advancement &rarr;</div>
+          <div className={styles.mbCtaLede}>
+            The same consolidated summary published in the Bugle &mdash; ranks, merit badges, and
+            requirements signed off, organized by category or by scout.
+          </div>
+        </div>
+        <div className={styles.mbCtaPill}>Open Report</div>
+      </div>
+    </Link>
   );
 }
 
