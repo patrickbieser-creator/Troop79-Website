@@ -135,7 +135,30 @@ if (error) {
   process.exit(1);
 }
 
-const site = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+// Found the hard way 2026-08-16: the web app's sign-in email had this exact
+// bug — a silent `|| 'http://localhost:3000'` fallback — and it pointed at
+// localhost in production for over a week with no server-side trace,
+// because a link to localhost never reaches production logs at all. This
+// script is a bad place to repeat that guess: it's read down a phone line
+// or texted to someone locked out, at exactly the moment a broken link is
+// least likely to be caught before it's used. Local dev (the common case —
+// .env.local's Supabase URL is the local Docker stack) still needs no
+// configuration; production only reaches this branch when the operator has
+// already pointed the Supabase vars at it on purpose (this file's own
+// header), and at that point guessing wrong is worse than refusing.
+let site = process.env.NEXT_PUBLIC_SITE_URL;
+if (!site) {
+  if (url.includes('127.0.0.1') || url.includes('localhost')) {
+    site = 'http://localhost:3000';
+  } else {
+    console.error(
+      'NEXT_PUBLIC_SITE_URL must be set when pointing this script at production — ' +
+        'otherwise the printed link is unusable. Set it to https://www.troop-79.com ' +
+        'for this one invocation.'
+    );
+    process.exit(1);
+  }
+}
 console.log(`
   Person : ${target.display_name} (${target.person_id})
   Code   : ${rawCode}
