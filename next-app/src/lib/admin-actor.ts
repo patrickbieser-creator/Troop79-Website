@@ -22,7 +22,7 @@
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/server';
 import { LEADER_COOKIE, verifySession, type SessionRole } from '@/lib/leader-session';
-import { IDENTITY_COOKIE, verifyIdentitySession } from '@/lib/identity-session';
+import { IDENTITY_COOKIE, verifyIdentitySession, type IdentitySubjectKind } from '@/lib/identity-session';
 import { leaderSessionPersonId } from '@/lib/session-person';
 import { CAPABILITIES, loadPersonAuthz, type Capability } from '@/lib/capabilities';
 
@@ -40,6 +40,15 @@ export interface AdminActor {
    *  remaining reader is the workspace layout's full-admin check — a legacy
    *  password session sees everything. Goes away in Phase E. */
   legacyRole: SessionRole | null;
+  /** 'adult' | 'scout' for an identity actor; null for a legacy session
+   *  (SCOUT_PASSWORD is retired, so a legacy actor is never a scout).
+   *  Needed anywhere a check must exclude a verified scout even though they
+   *  hold a real capability — e.g. lib/library-viewer.ts's viewerIsLeader(),
+   *  which must not treat a youth leader's narrow `meeting_plan.use` grant
+   *  as license to see leaders-only material. Don't infer this from
+   *  `capabilities` alone — a scout can legitimately hold a capability
+   *  (the youth_leader bundle) without becoming an adult leader. */
+  subjectKind: IdentitySubjectKind | null;
 }
 
 /**
@@ -82,7 +91,8 @@ export async function resolveAdminActor(): Promise<AdminActor | null> {
       // identity sessions carry the id outright. See session-person.ts.
       personId: await leaderSessionPersonId(),
       capabilities: legacyCapabilities(),
-      legacyRole: legacy.role
+      legacyRole: legacy.role,
+      subjectKind: null
     };
   }
 
@@ -100,7 +110,8 @@ export async function resolveAdminActor(): Promise<AdminActor | null> {
     label: identity.displayName,
     personId: identity.personId,
     capabilities: authz.capabilities,
-    legacyRole: null
+    legacyRole: null,
+    subjectKind: identity.subjectKind
   };
 }
 

@@ -44,12 +44,12 @@ export default async function AccessPage() {
       </div>
 
       <div className={styles.note}>
-        <strong>Not live yet.</strong> Nothing on the site reads these grants — the admin still runs
-        on the shared leader password. This screen exists so the grants are right{' '}
-        <em>before</em> anything depends on them. Two things worth setting now:{' '}
         {/* Explicit {' '} — the space after </strong> is dropped when the text
             that follows wraps to the next source line (next-app/AGENTS.md).
             Caught in browser verification 2026-08-16: "roster(every". */}
+        These grants are live — most of /admin, the public Resource Library&rsquo;s superuser proxy,
+        and more now read this table directly. A removed grant takes effect on the person&rsquo;s
+        next action, with no sign-out needed.{' '}
         <strong>Manage the roster</strong>{' '}
         (every family&rsquo;s address, birthdates, and medical notes) is deliberately held by only a
         few people, and{' '}

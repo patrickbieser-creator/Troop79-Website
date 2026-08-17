@@ -1,12 +1,9 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { adminClient } from './helpers/admin-client';
-import {
-  loadScoutRankProgress,
-  loadScoutMbAwardMap,
-  loadActiveScoutsList,
-  loadLibrarySuperuserCodes
-} from '../src/lib/library-data';
-import { loadAuthorizedAdults, matchAuthorizedAdult } from '../src/lib/authorized-adults';
+import { loadScoutRankProgress, loadScoutMbAwardMap, loadActiveScoutsList } from '../src/lib/library-data';
+import { loadPersonAuthz, type Capability } from '../src/lib/capabilities';
+import { actorCanProxyLibrary, actorIsLibraryLeader } from '../src/lib/library-viewer';
+import type { AdminActor } from '../src/lib/admin-actor';
 import { rankReqKey } from '../src/lib/library';
 
 /**
@@ -17,34 +14,50 @@ import { rankReqKey } from '../src/lib/library';
  * functions aren't unit-testable here, so this proves the underlying rules
  * they compose instead).
  *
- * The one thing worth a dedicated test even without cookie mocking: the
- * leader-LABEL-to-CODE resolution tech-lead flagged as the real risk in this
- * feature's design review — `library_superusers.leader_code` is keyed on
- * `leaders.code`, but a leader session only ever carries a display LABEL
- * ("Mike Ba."), never the code. Getting that resolution wrong would silently
- * disable every superuser grant.
+ * The superuser-proxy tests below moved onto `person_capabilities` /
+ * `library.proxy_view` on 2026-08-17 (Plans/Unified-Identity-And-Capabilities.md)
+ * — they used to exercise the leader-LABEL-to-CODE resolution against the now
+ * -dead `library_superusers` table, which nothing in lib/library-viewer.ts
+ * reads anymore. The real risk in the new model isn't label resolution
+ * (resolveAdminActor() carries personId directly) — it's that
+ * `library.proxy_view` is grantable to ANY person_id, including a scout's
+ * (the 'librarian' bundle pairs it with library.moderate, and "Librarian" is
+ * a real youth position of responsibility), so actorCanProxyLibrary() must
+ * refuse a scout actor even when the grant is present (qa-lead review,
+ * 2026-08-17, the bug this file's tests originally missed).
  */
 describe('Resource Library scout progress', () => {
   let scoutIds: string[] = [];
   let ledgerEntryIds: number[] = [];
-  let leaderCodes: string[] = [];
+  let personIds: number[] = [];
 
   afterEach(async () => {
     const admin = adminClient();
     if (ledgerEntryIds.length > 0) {
       await admin.from('ledger_entries').delete().in('id', ledgerEntryIds);
     }
-    if (leaderCodes.length > 0) {
-      await admin.from('library_superusers').delete().in('leader_code', leaderCodes);
-      await admin.from('leaders').delete().in('code', leaderCodes);
+    if (personIds.length > 0) {
+      await admin.from('person_capabilities').delete().in('person_id', personIds);
+      await admin.from('people').delete().in('id', personIds);
     }
     if (scoutIds.length > 0) {
       await admin.from('scouts').delete().in('id', scoutIds);
     }
     scoutIds = [];
     ledgerEntryIds = [];
-    leaderCodes = [];
+    personIds = [];
   });
+
+  async function makePerson(admin: ReturnType<typeof adminClient>): Promise<number> {
+    const { data, error } = await admin
+      .from('people')
+      .insert({ display_name: '[TEST] Library Vitest', active: true })
+      .select('id')
+      .single();
+    if (error || !data) throw new Error(`fixture: people insert failed: ${error?.message}`);
+    personIds.push(data.id as number);
+    return data.id as number;
+  }
 
   async function makeScout(
     admin: ReturnType<typeof adminClient>,
@@ -126,52 +139,92 @@ describe('Resource Library scout progress', () => {
     expect(ids).not.toContain(inactive);
   });
 
-  it('SuperuserLabel_ResolvesToCode_ThenMatchesTheGrant', async () => {
-    // The exact chain lib/library-viewer.ts runs: a leader session carries
-    // ONLY session.leader (a display label like "Mike Ba."), never
-    // leaders.code — resolveLibraryViewer must resolve label -> code via
-    // matchAuthorizedAdult() BEFORE checking library_superusers, or every
-    // grant silently fails to gate anyone in.
+  it('PersonAuthz_HoldsLibraryProxyView_WhenGranted', async () => {
     const admin = adminClient();
-    const code = `VT${Date.now() % 100000}`;
-    leaderCodes.push(code);
-    const { error: leaderErr } = await admin.from('leaders').insert({
-      code,
-      name: '[TEST] Superuser Vitest',
-      is_person: true,
-      can_login: true
-    });
-    if (leaderErr) throw new Error(`fixture: leader insert failed: ${leaderErr.message}`);
-    const { error: suErr } = await admin.from('library_superusers').insert({ leader_code: code });
-    if (suErr) throw new Error(`fixture: library_superusers insert failed: ${suErr.message}`);
+    const personId = await makePerson(admin);
+    const { error } = await admin
+      .from('person_capabilities')
+      .insert({ person_id: personId, capability: 'library.proxy_view' });
+    if (error) throw new Error(`fixture: person_capabilities insert failed: ${error.message}`);
 
-    const adults = await loadAuthorizedAdults(admin);
-    const fixture = adults.find((a) => a.code === code);
-    expect(fixture).toBeTruthy();
-
-    // Simulates the session carrying the auto-derived LABEL, same as what
-    // admin/login/actions.ts stores at login time (matched.label).
-    const matched = matchAuthorizedAdult(adults, fixture!.label);
-    expect(matched?.code).toBe(code);
-
-    const superuserCodes = await loadLibrarySuperuserCodes(admin);
-    expect(superuserCodes.has(matched!.code)).toBe(true);
+    const authz = await loadPersonAuthz(admin, personId);
+    expect(authz?.capabilities.has('library.proxy_view')).toBe(true);
   });
 
-  it('NonSuperuserLeader_IsNotInTheGrantSet', async () => {
+  it('PersonAuthz_LacksLibraryProxyView_WhenNotGranted', async () => {
     const admin = adminClient();
-    const code = `VT${(Date.now() + 1) % 100000}`;
-    leaderCodes.push(code);
-    const { error } = await admin.from('leaders').insert({
-      code,
-      name: '[TEST] Plain Leader Vitest',
-      is_person: true,
-      can_login: true
-    });
-    if (error) throw new Error(`fixture: leader insert failed: ${error.message}`);
-    // Deliberately no library_superusers row for this leader.
+    const personId = await makePerson(admin);
+    // Deliberately no person_capabilities row for this person.
 
-    const superuserCodes = await loadLibrarySuperuserCodes(admin);
-    expect(superuserCodes.has(code)).toBe(false);
+    const authz = await loadPersonAuthz(admin, personId);
+    expect(authz?.capabilities.has('library.proxy_view')).toBe(false);
+  });
+
+  // ── actorCanProxyLibrary / actorIsLibraryLeader (pure — no DB) ───────────
+  //
+  // These are the exact decision resolveLibraryViewer()/viewerIsLeader() run
+  // behind their cookie-reading boundary (same D-049 split as
+  // satisfiesLegacyRole() in tests/capabilities-phase-b.test.ts). The scout
+  // cases are the actual regression this file exists to guard now: a scout
+  // CAN legitimately hold `library.proxy_view` (the 'librarian' bundle pairs
+  // it with library.moderate, and Librarian is a real youth position of
+  // responsibility) — the guard must refuse them anyway.
+
+  function actor(overrides: Partial<AdminActor> & { capabilities?: Set<Capability> }): AdminActor {
+    return {
+      kind: 'identity',
+      label: '[TEST] Actor',
+      personId: 999,
+      capabilities: new Set<Capability>(),
+      legacyRole: null,
+      subjectKind: 'adult',
+      ...overrides
+    };
+  }
+
+  it('ActorCanProxyLibrary_IsFalse_WhenActorIsNull', () => {
+    expect(actorCanProxyLibrary(null)).toBe(false);
+  });
+
+  it('ActorCanProxyLibrary_IsFalse_WhenGrantIsMissing', () => {
+    expect(actorCanProxyLibrary(actor({ capabilities: new Set<Capability>() }))).toBe(false);
+  });
+
+  it('ActorCanProxyLibrary_IsTrue_ForAnAdultHoldingTheGrant', () => {
+    expect(
+      actorCanProxyLibrary(actor({ capabilities: new Set<Capability>(['library.proxy_view']) }))
+    ).toBe(true);
+  });
+
+  it('ActorCanProxyLibrary_IsFalse_ForAScoutHoldingTheGrant', () => {
+    // The bug: a scout granted the 'librarian' bundle (library.moderate +
+    // library.proxy_view) must never be able to proxy every active scout's
+    // advancement progress just because the grant is present.
+    expect(
+      actorCanProxyLibrary(
+        actor({ subjectKind: 'scout', capabilities: new Set<Capability>(['library.proxy_view']) })
+      )
+    ).toBe(false);
+  });
+
+  it('ActorIsLibraryLeader_IsFalse_ForAScoutHoldingAnyCapability', () => {
+    // A youth leader (SPL/PL) can legitimately hold meeting_plan.use via the
+    // youth_leader bundle without becoming an adult leader for the purposes
+    // of leaders-only Library material.
+    expect(
+      actorIsLibraryLeader(
+        actor({ subjectKind: 'scout', capabilities: new Set<Capability>(['meeting_plan.use']) })
+      )
+    ).toBe(false);
+  });
+
+  it('ActorIsLibraryLeader_IsTrue_ForAnAdultHoldingAnyCapability', () => {
+    expect(
+      actorIsLibraryLeader(actor({ capabilities: new Set<Capability>(['meeting_plan.use']) }))
+    ).toBe(true);
+  });
+
+  it('ActorIsLibraryLeader_IsFalse_WhenActorHoldsNoCapability', () => {
+    expect(actorIsLibraryLeader(actor({ capabilities: new Set<Capability>() }))).toBe(false);
   });
 });

@@ -3,17 +3,23 @@
 /**
  * The "which scout's progress is showing" control at the top of /library
  * (Patrick, 2026-08-07). Renders nothing for a 'none' viewer (anonymous,
- * Tier 1 family, unauthorized leader) or a Tier 2-S scout (one scout, no
- * toggle) or a Tier 2 adult with exactly one scout (nothing to switch to).
+ * Tier 1 family, unauthorized leader).
  *
- * Two distinct render modes, matching lib/library-viewer.ts's two "someone
- * COULD see more than default" cases:
+ * Three render modes, matching lib/library-viewer.ts's outcomes:
  *   - 'scout' with switchOptions.length > 1 — a signed-in household with
- *     more than one scout. Pre-selected to whoever's showing now.
+ *     more than one scout. Dropdown, pre-selected to whoever's showing now.
  *   - 'proxy-available' — an authorized superuser leader who hasn't picked
  *     anyone yet. No pre-selection (a leader has no "default" scout) — the
  *     placeholder option is real, not just a label, so navigating away
  *     without choosing does nothing rather than silently picking #1.
+ *   - 'scout' with switchOptions.length <= 1 (a Tier 2-S scout viewing
+ *     themselves, or a Tier 2 adult with exactly one scout) — plain text,
+ *     no dropdown (nothing to switch to). Always shown, not just implied by
+ *     completion badges elsewhere on the page: a parent or scout should
+ *     never have to infer whose progress they're looking at (Patrick,
+ *     2026-08-17 — this was silently dropped for the single-scout case
+ *     since the feature's original build, not a regression from any one
+ *     change).
  *
  * Only ever renders on /library itself — a plain <select onChange> that
  * navigates, only a type import from the server-only viewer module (types
@@ -78,7 +84,17 @@ export function ScoutSwitcher({ viewer }: { viewer: LibraryViewer }) {
     );
   }
 
-  if (viewer.switchOptions.length <= 1) return null;
+  if (viewer.switchOptions.length <= 1) {
+    // Nothing to switch to (a verified scout viewing themselves, or a
+    // household with exactly one scout) — still say whose progress this is,
+    // just without a dropdown.
+    return (
+      <div className={styles.scoutSwitcher}>
+        <span className={styles.scoutSwitcherLabel}>Showing progress for</span>
+        <strong>{viewer.scoutName}</strong>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.scoutSwitcher}>

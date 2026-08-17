@@ -109,7 +109,8 @@ describe('capabilities — Phase B', () => {
       label: '[TEST] Actor',
       personId: 999,
       capabilities: new Set(caps),
-      legacyRole: null
+      legacyRole: null,
+      subjectKind: 'adult'
     };
   }
 
@@ -138,7 +139,8 @@ describe('capabilities — Phase B', () => {
       label: 'Patrick B',
       personId: 82,
       capabilities: new Set(CAPABILITIES),
-      legacyRole: 'leader'
+      legacyRole: 'leader',
+      subjectKind: null
     };
     expect(satisfiesLegacyRole(leader, 'leader')).toBe(true);
 
@@ -148,7 +150,8 @@ describe('capabilities — Phase B', () => {
       label: 'Partly Granted',
       personId: 2,
       capabilities: new Set<Capability>(['news.write']),
-      legacyRole: null
+      legacyRole: null,
+      subjectKind: 'adult'
     };
     expect(satisfiesLegacyRole(partial, 'leader')).toBe(false);
   });

@@ -463,13 +463,6 @@ export async function loadActiveScoutsList(
   }));
 }
 
-/** Leader codes authorized to proxy the Resource Library as any active scout
- *  (lib/library-viewer.ts). Tiny table — no pagination needed. */
-export async function loadLibrarySuperuserCodes(supabase: SupabaseClient): Promise<Set<string>> {
-  const { data } = await supabase.from('library_superusers').select('leader_code');
-  return new Set(((data ?? []) as { leader_code: string }[]).map((r) => r.leader_code));
-}
-
 /**
  * Approves a pending proof submission: writes exactly the ledger row Fast
  * Entry would (same dup-blocked path, D-041) and back-links ledger_entry_id.

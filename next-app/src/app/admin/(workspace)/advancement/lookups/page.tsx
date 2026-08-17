@@ -26,7 +26,6 @@ import { LookupCard } from './lookup-card';
 import { HouseholdsManager, type HouseholdRow } from './households-manager';
 import { SkillsEditor, type SkillRow } from './skills-editor';
 import { SkillAssignEditor, type AssignPerson } from './skill-assign-editor';
-import { SuperuserEditor, type SuperuserPerson } from './superuser-editor';
 import { TagsManager } from './tags-manager';
 import { CategoriesEditor } from './categories-editor';
 import { ArticleTokensEditor } from './article-tokens-editor';
@@ -48,7 +47,6 @@ import {
   deleteSkill,
   setLeaderSkills,
   setScoutInstructorSkills,
-  setLibrarySuperusers,
   createCalendarCategory,
   updateCalendarCategory,
   deleteCalendarCategory,
@@ -177,14 +175,12 @@ async function loadLookups() {
     leaderSkillsRes,
     scoutInstructorsRes,
     householdsRes,
-    librarySuperusersRes,
     hhMembersRes
   ] = await Promise.all([
     supabase.from('skills').select('id, name, youth_teachable, sort_order').order('sort_order'),
     supabase.from('leader_skills').select('leader_code, skill_id'),
     supabase.from('scout_instructors').select('scout_id, skill_id'),
     supabase.from('households').select('id, label').order('label'),
-    supabase.from('library_superusers').select('leader_code'),
     // Members carried through so each household can be told apart by WHO is
     // in it. Two families sharing a surname is normal — the troop has two
     // Stollenwerk households — and the label alone cannot distinguish them.
@@ -316,10 +312,7 @@ async function loadLookups() {
     skillIdsByLeader,
     skillIdsByScout,
     tags: (tagsRes.data ?? []) as Tag[],
-    householdRows,
-    librarySuperuserCodes: new Set(
-      ((librarySuperusersRes.data ?? []) as { leader_code: string }[]).map((r) => r.leader_code)
-    )
+    householdRows
   };
 }
 
@@ -340,8 +333,7 @@ export default async function LookupsPage() {
     skillIdsByLeader,
     skillIdsByScout,
     tags,
-    householdRows,
-    librarySuperuserCodes
+    householdRows
   } = await loadLookups();
   const [calendarCategories, articleTokens] = await Promise.all([
     loadCalendarCategories(),
@@ -384,12 +376,6 @@ export default async function LookupsPage() {
       skillIds: skillIdsByScout.get(s.id) ?? []
     }));
   const youthSkills = skills.filter((s) => s.youth_teachable);
-
-  // Resource Library superuser picker: same adult-leader pool as Leader
-  // Skills above (real people, minus active youth-leader initials).
-  const superuserPeople: SuperuserPerson[] = leaders
-    .filter((l) => leaderType(l) === 'adult')
-    .map((l) => ({ code: l.code, name: l.name, sub: l.role ?? null }));
 
   return (
     <>
@@ -543,18 +529,15 @@ export default async function LookupsPage() {
         >
           <HouseholdsManager households={householdRows} />
         </Card>
-
-        <Card
-          title="Resource Library Superusers"
-          sub={`${librarySuperuserCodes.size} of ${superuserPeople.length} adult leaders · can view the public Resource Library as if they were any active scout in the troop, for support and testing`}
-        >
-          <SuperuserEditor
-            people={superuserPeople}
-            initialCodes={[...librarySuperuserCodes]}
-            onSave={setLibrarySuperusers}
-          />
-        </Card>
       </div>
+
+      {/* Resource Library superuser access ("view the Library as any active
+          scout") moved to /admin/access — it's a person_capabilities grant
+          (`library.proxy_view`) like every other capability now, not a
+          bespoke leader_code table with its own editor
+          (Plans/Unified-Identity-And-Capabilities.md). A second, purpose-built
+          editor here would just be a stale copy of what /admin/access already
+          shows correctly. */}
     </>
   );
 }

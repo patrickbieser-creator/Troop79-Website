@@ -1112,62 +1112,11 @@ export async function updateReqCode(formData: FormData): Promise<Result> {
   return { ok: true };
 }
 
-function readLeaderCodes(formData: FormData): string[] | null {
-  try {
-    const arr = JSON.parse(String(formData.get('leader_codes') ?? '[]')) as unknown;
-    if (!Array.isArray(arr)) return null;
-    return arr.filter((c): c is string => typeof c === 'string' && c.trim() !== '');
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Replace the full Resource Library superuser set (diff + targeted
- * delete/insert, not a blind delete-all — this table has no existing
- * "clear everything" precedent elsewhere in the codebase to follow, and a
- * diff is no more code while avoiding a moment where the table is briefly
- * empty). Superusers can proxy the public Resource Library as any active
- * scout in the troop (lib/library-viewer.ts) — a real capability grant, so
- * `granted_by` records the acting leader's typed name, same convention as
- * ledger_entries.by/entered_by.
- */
-export async function setLibrarySuperusers(formData: FormData): Promise<Result> {
-  let session;
-  try {
-    session = await requireCapability('roster.manage');
-  } catch {
-    return { ok: false, error: 'Not authenticated' };
-  }
-  const codes = readLeaderCodes(formData);
-  if (codes === null) return { ok: false, error: 'Malformed payload' };
-
-  const supabase = createAdminClient();
-  const { data: current, error: readErr } = await supabase
-    .from('library_superusers')
-    .select('leader_code');
-  if (readErr) return { ok: false, error: readErr.message };
-
-  const currentCodes = new Set(((current ?? []) as { leader_code: string }[]).map((r) => r.leader_code));
-  const nextCodes = new Set(codes);
-  const toRemove = [...currentCodes].filter((c) => !nextCodes.has(c));
-  const toAdd = [...nextCodes].filter((c) => !currentCodes.has(c));
-
-  if (toRemove.length > 0) {
-    const { error } = await supabase.from('library_superusers').delete().in('leader_code', toRemove);
-    if (error) return { ok: false, error: error.message };
-  }
-  if (toAdd.length > 0) {
-    const { error } = await supabase
-      .from('library_superusers')
-      .insert(toAdd.map((leader_code) => ({ leader_code, granted_by: session.label })));
-    if (error) return { ok: false, error: error.message };
-  }
-
-  revalidatePath('/admin/advancement/lookups');
-  revalidatePath('/library');
-  return { ok: true };
-}
+// Resource Library superuser access ("view the Library as any active scout")
+// moved to /admin/access as a `library.proxy_view` person_capabilities grant
+// (Plans/Unified-Identity-And-Capabilities.md). This used to write a bespoke
+// `library_superusers` table that lib/library-viewer.ts no longer reads —
+// grant/revoke it from /admin/access instead.
 
 // ── Calendar categories (D-082) ─────────────────────────────────────────────
 //

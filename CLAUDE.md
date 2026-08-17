@@ -26,9 +26,11 @@
 ## Build Commands
 
 ```bash
-cd next-app && npm run build        # Build the production app
-npm run lint                        # Closest quality gate — no test suite configured yet
-cd next-app && npm run dev          # Run locally
+cd next-app && npm run build        # Build the production app (Next's typecheck is scoped to the app, NOT tests/)
+npm run typecheck                   # Full-project tsc --noEmit, incl. tests/ — build alone misses test-file type errors
+npm run test                        # Vitest — 397 tests across the db + dom projects
+npm run lint                        # ESLint
+npm run dev                         # Run locally
 ```
 
 ---
@@ -59,7 +61,7 @@ Troop79-Website/
   <!-- Inherit global constraints (security, TDD, quality gates) from ~/.claude/CLAUDE.md -->
   <!-- Add only project-specific rules below -->
   <constraint>Personal/family project, not a client engagement — client-id "personal" in the shared Project-Agents repo.</constraint>
-  <constraint>No automated test suite is configured yet in next-app/. Rely on `npm run lint` + `npm run build` (typecheck) as the quality gate until tests exist.</constraint>
+  <constraint>next-app/ has a Vitest suite (397 tests, `db` + `dom` projects — see Tests/CLAUDE.md). Quality gate is `npm run lint` + `npm run typecheck` + `npm run test` + `npm run build` — `next build`'s typecheck is scoped to the app and does NOT catch type errors in tests/, so `npm run typecheck` (full-project `tsc --noEmit`) is required separately, not implied by a clean build (found the hard way 2026-08-17: a clean build shipped 2 real test failures + 4 test-file type errors).</constraint>
   <constraint>next-app/CLAUDE.md and next-app/AGENTS.md carry additional Next.js-16-specific API/convention warnings — read them before touching next-app/ code.</constraint>
 </constraints>
 

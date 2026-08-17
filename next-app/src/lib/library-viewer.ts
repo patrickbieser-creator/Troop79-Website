@@ -30,14 +30,39 @@
  *                          explicit picker instead of a default.
  *   - 'scout'             — personalization active, one scoutId resolved.
  */
-import { cookies } from 'next/headers';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
-import { loadAuthorizedAdults, matchAuthorizedAdult } from '@/lib/authorized-adults';
+import { resolveAdminActor, actorHas, type AdminActor } from '@/lib/admin-actor';
 import { getIdentitySessionIfValid } from '@/lib/family-access';
 import { isEpochCurrent } from '@/lib/identity-session';
 import { loadHouseholdByKey } from '@/lib/households';
-import { loadActiveScoutsList, loadLibrarySuperuserCodes } from '@/lib/library-data';
+import { loadActiveScoutsList } from '@/lib/library-data';
+
+/**
+ * Pure decision, split out of resolveLibraryViewer()/viewerIsLeader() so it's
+ * unit-testable without this file's cookie-reading boundary (same reason
+ * lib/require-role.ts extracted satisfiesLegacyRole() — see its header).
+ *
+ * `library.proxy_view` is grantable — individually or via the 'librarian'
+ * bundle — to ANY person_id, and "Librarian" is a real youth position of
+ * responsibility. Without the `subjectKind !== 'scout'` guard, applying that
+ * bundle to a scout would hand them every active scout's advancement
+ * progress in the troop (qa-lead review, 2026-08-17) — the resolver must
+ * refuse that regardless of what the grants table says.
+ */
+export function actorCanProxyLibrary(actor: AdminActor | null): boolean {
+  return !!actor && actor.subjectKind !== 'scout' && actorHas(actor, 'library.proxy_view');
+}
+
+/**
+ * Pure decision behind viewerIsLeader() — see that function's header for the
+ * full rationale. Deliberately not `actor !== null`: a verified scout
+ * identity can hold a real capability (the youth_leader bundle grants
+ * `meeting_plan.use`) without being an adult leader, so `capabilities.size`
+ * alone is not enough to gate leaders-only material.
+ */
+export function actorIsLibraryLeader(actor: AdminActor | null): boolean {
+  return !!actor && actor.subjectKind !== 'scout' && actor.capabilities.size > 0;
+}
 
 export interface SwitchOption {
   id: string;
@@ -61,30 +86,29 @@ export async function resolveLibraryViewer(
   supabase: SupabaseClient,
   viewScoutParam: string | undefined
 ): Promise<LibraryViewer> {
-  const jar = await cookies();
-
-  // Leader/admin session — the ONLY path that can reach 'proxy-available'.
-  // Checked first: a leader session and a verified identity session are
-  // independent cookies (a leader can also be signed in as a verified
-  // parent), but the leader session is the stronger, more specific
-  // credential — same precedence gateAudience() already uses.
-  // A scout-role admin login (SCOUT_PASSWORD) falls through to the identity
-  // check below rather than short-circuiting to 'none' here — it's a
-  // separate, independent credential from a verified Tier 2-S identity
-  // cookie, and a scout who happens to hold both shouldn't lose their own
-  // legitimate personalization just because they're also signed into
-  // /admin (qa-lead review, 2026-08-07).
-  const leaderSession = await verifySession(jar.get(LEADER_COOKIE.name)?.value);
-  if (leaderSession?.role === 'leader') {
-    // leaderSession.leader is a display LABEL ("Mike Ba."), not leaders.code —
-    // must resolve it the same way admin/login/actions.ts does before it can
-    // be checked against a code-keyed table.
-    const adults = await loadAuthorizedAdults(supabase);
-    const matched = matchAuthorizedAdult(adults, leaderSession.leader);
-    if (!matched) return { kind: 'none' };
-    const superuserCodes = await loadLibrarySuperuserCodes(supabase);
-    if (!superuserCodes.has(matched.code)) return { kind: 'none' };
-
+  // Admin actor holding `library.proxy_view` — the ONLY path that can reach
+  // 'proxy-available' (Plans/Unified-Identity-And-Capabilities.md). Checked
+  // first via the same AdminActor abstraction every other admin surface
+  // uses — resolveAdminActor() covers both an outstanding legacy
+  // `t79_leader_session` cookie and the current `t79_identity` cookie, so
+  // this file never has to branch on which credential arrived (that's the
+  // whole point of the abstraction — see lib/admin-actor.ts's header).
+  //
+  // Previously this checked ONLY the legacy leader cookie against the
+  // `library_superusers` table directly — dead since LEADER_PASSWORD
+  // retired 2026-08-16, because nothing mints that cookie anymore. The
+  // superuser proxy silently stopped working for every leader from that
+  // date until this fix; `library_superusers`' rows were already migrated
+  // into `person_capabilities` as `library.proxy_view` grants by the same
+  // migration, so this file just needed to start reading them.
+  //
+  // An admin actor who does NOT hold the grant falls through to the
+  // identity check below rather than short-circuiting to 'none' — under
+  // the unified session model a leader and a verified parent are often the
+  // SAME `t79_identity` cookie, and a leader with no library grant must
+  // still see their own scout's personalization as a parent.
+  const actor = await resolveAdminActor();
+  if (actorCanProxyLibrary(actor)) {
     const activeScouts = await loadActiveScoutsList(supabase);
     if (activeScouts.length === 0) return { kind: 'none' };
     const options: SwitchOption[] = activeScouts.map((s) => ({ id: s.id, name: s.displayName }));
@@ -138,16 +162,20 @@ export async function resolveLibraryViewer(
 }
 
 /**
- * True when the current session is an adult LEADER admin login — the gate for
+ * True when the current session is an adult admin actor — the gate for
  * `visibility='leaders'` resources (Plans/Library-Admin-Resource-Entry.md).
  *
- * Deliberately not `role !== null`: the scout admin login is a shared-password
- * role with no per-person identity, and a leaders-only resource is exactly the
- * material it must not reach. Family and verified-household sessions are not
- * leaders either — this is the narrowest of the session checks in this file.
+ * Same dead-cookie bug as resolveLibraryViewer() above: this checked ONLY
+ * the legacy `t79_leader_session` cookie, which nothing has minted since
+ * LEADER_PASSWORD retired 2026-08-16 — leaders-only Library material was
+ * invisible to every leader from that date until this fix. Now goes through
+ * the same AdminActor abstraction as the rest of /admin.
+ *
+ * See actorIsLibraryLeader() above for the decision itself. Family and
+ * verified-household (non-admin) sessions are excluded the same way they
+ * always were: they hold no capability at all, so `capabilities.size === 0`
+ * already excludes them.
  */
 export async function viewerIsLeader(): Promise<boolean> {
-  const jar = await cookies();
-  const session = await verifySession(jar.get(LEADER_COOKIE.name)?.value);
-  return session?.role === 'leader';
+  return actorIsLibraryLeader(await resolveAdminActor());
 }
