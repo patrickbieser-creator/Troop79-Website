@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>One Sign-In Per Person — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #2e4530;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #faf6ef;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+</head>
+<body>
+<header>
+    <h1>One Sign-In Per Person</h1>
+    <div class="subtitle">Scout Troop 79 &mdash; the identity rebuild, end to end</div>
+    <div class="meta">
+        <span>August 16, 2026</span>
+        <span>v1.46.0 &rarr; v1.48.0</span>
+        <span>15 commits</span>
+        <span>4 production migrations</span>
+    </div>
+</header>
+
+<div class="container">
+
+    <div class="stats">
+        <div class="stat"><div class="number">386</div><div class="label">Tests passing</div></div>
+        <div class="stat"><div class="number">+93</div><div class="label">Tests added</div></div>
+        <div class="stat"><div class="number">12</div><div class="label">Decisions</div></div>
+        <div class="stat"><div class="number">182</div><div class="label">Guards converted</div></div>
+        <div class="stat"><div class="number">2</div><div class="label">Passwords retired</div></div>
+    </div>
+
+    <h2>What changed</h2>
+    <p>
+        The site had five ways to grant access across two identity spaces, which is why a leader who
+        was also a parent had to sign in twice. It now has one: a capability granted to a named
+        person. Both shared passwords are gone, publishing became a property of the record rather
+        than a permission, and passkeys landed.
+    </p>
+
+    <h3>Capabilities replaced roles</h3>
+    <ul>
+        <li>A capability is a row keyed to a <span class="file-path">people.id</span>, granted on a new Access &amp; Permissions screen. Knowing a password grants nothing; appearing in a table grants nothing.</li>
+        <li><strong>182 guards converted</strong> across the admin &mdash; 129 <span class="file-path">requireRole</span> call sites plus 53 <span class="file-path">ensureLeader</span>, the latter inlined rather than renamed so each site states its own authority.</li>
+        <li><span class="file-path">person_authz()</span> returns the session epoch and the grants in one round trip, so authorization costs nothing beyond the revocation read already being paid.</li>
+    </ul>
+
+    <div class="callout callout-gold">
+        <strong>The seed nearly handed a youth the roster.</strong> <span class="file-path">leaders.can_login</span>
+        is true for 21 rows &mdash; including non-person codes like Summer Camp, and an active scout
+        who teaches. Seeding from that flag would have granted a minor <span class="file-path">roster.manage</span>:
+        every family's address, birthdates and medical-adjacent notes. The seed replicates the
+        existing adult-person rule instead, guarded by a property test that names nobody.
+    </div>
+
+    <h3>Both shared passwords retired</h3>
+    <ul>
+        <li><strong>SCOUT_PASSWORD</strong> &mdash; never used by a single scout, and the one thing blocking the rest of the conversion. Deleting the role deleted a whole bug class with it: the deny-by-omission allowlist whose own comment recorded that the advancement pages had leaked through it once.</li>
+        <li><strong>LEADER_PASSWORD</strong> &mdash; retired behind a break-glass CLI that mints a code straight against the database. A script rather than a web path, because an emergency password is a permanently-live endpoint guarding total access. Run and verified before anything was removed.</li>
+    </ul>
+
+    <h3>Publishing is a filter, not a permission</h3>
+    <p>
+        Patrick's reframing, and the better design: whether something is live is a property of the
+        record. Scouts and parents propose a story from the public side, it lands pending, a leader
+        publishes it. Not a new mechanism &mdash; change requests, library submissions, proofs and
+        meeting plans all already worked this way. News and the calendar were the odd ones out.
+    </p>
+
+    <h3>Signing in</h3>
+    <ul>
+        <li><strong>Find your name</strong> instead of remembering your email &mdash; the measured blocker was recall, not reachability (all 41 adults in active households are reachable). Search runs server-side and matches the full surname while returning only &ldquo;Patrick B.&rdquo;</li>
+        <li><strong>Passkeys</strong> &mdash; discoverable credentials, adults only, with the emailed code kept permanently as the recovery path.</li>
+        <li><strong>A Members area</strong> as the single front door, with the household live and five future services listed openly.</li>
+    </ul>
+
+    <h2>Blockers resolved</h2>
+    <table>
+        <thead><tr><th>Problem</th><th>Diagnosis</th></tr></thead>
+        <tbody>
+        <tr>
+            <td>Sign-in link failed while the code in the same email worked</td>
+            <td>Codes are digits; link tokens were base64url, which is <strong>case-sensitive</strong>. A mail gateway normalising URL case destroyed one and not the other. Tokens are lowercase hex now.</td>
+        </tr>
+        <tr>
+            <td>Public calendar empty everywhere, HTTP 200</td>
+            <td>Migrations shipped behind the code needing them; loaders dropped <span class="file-path">error</span> and rendered &ldquo;no events&rdquo;. Self-inflicted, ~1 hour, fixed.</td>
+        </tr>
+        <tr>
+            <td>Two identical &ldquo;Michael B.&rdquo; rows on the sign-in picker</td>
+            <td>On a directory that is cosmetic; on a picker it sends a code to another family's inbox. Reuses the disambiguation the admin login pool already had.</td>
+        </tr>
+        <tr>
+            <td>Troop name wrapped to three lines on a phone</td>
+            <td>The masthead was entirely inline styles &mdash; no media queries, so it could not respond at all.</td>
+        </tr>
+        <tr>
+            <td>&ldquo;Signed in &middot; Family&rdquo; shown to people who had not signed in</td>
+            <td>Leftover from demoting the troop password to a gate. The tell was the missing name.</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <div class="callout callout-teal">
+        <strong>The outage is the lesson worth keeping.</strong> An empty page is the worst failure
+        mode available: a 500 is noticed in minutes, an empty calendar looks like the truth. Public
+        list loaders now throw rather than return nothing &mdash; with enumeration-safe lookups
+        deliberately exempt, and a test asserting that exemption so a later sweep does not
+        &ldquo;helpfully&rdquo; harden them.
+    </div>
+
+    <h2>Decisions recorded</h2>
+    <table>
+        <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+        <tbody>
+        <tr><td>D-111</td><td>Capabilities keyed to people.id replace roles</td></tr>
+        <tr><td>D-112</td><td>Epoch and grants resolve in one round trip</td></tr>
+        <tr><td>D-113</td><td>Publishing is a status filter, not a permission</td></tr>
+        <tr><td>D-114</td><td>Calendar gets draft/published but deliberately not pending</td></tr>
+        <tr><td>D-115</td><td>Troop password demoted to the name-picker gate</td></tr>
+        <tr><td>D-116</td><td>The picker filters server-side, matching the full surname</td></tr>
+        <tr><td>D-117</td><td>SCOUT_PASSWORD retired rather than guarded</td></tr>
+        <tr><td>D-118</td><td>Break-glass is a CLI, never a web path</td></tr>
+        <tr><td>D-119</td><td>Passkeys: adults only, apex RP ID, code path permanent</td></tr>
+        <tr><td>D-120</td><td>Public list loaders fail loudly</td></tr>
+        <tr><td>D-121</td><td>/member is the single front door</td></tr>
+        <tr><td>D-122</td><td>Link tokens use case-insensitive hex</td></tr>
+        </tbody>
+    </table>
+
+    <h2>Next</h2>
+    <ul>
+        <li><strong>Try a passkey on a phone.</strong> The live config is verified and the server issues valid challenges; completing a ceremony needs real hardware, so this is the one thing tests cannot cover.</li>
+        <li><strong>Rotate B-002 and B-003.</strong> Two credential exposures, now open across three sessions. Worth doing before anything else on this list.</li>
+        <li>Assign <span class="file-path">library.moderate</span>, and confirm who should hold <span class="file-path">roster.manage</span>.</li>
+        <li>The aged-out sweep &mdash; a scout turning 18 writes no row, so no trigger fires, and under capabilities they keep whatever grants they hold.</li>
+        <li>Add a &ldquo;migrations applied to production&rdquo; step to the commit process, ideally one that fails the deploy rather than one someone remembers.</li>
+    </ul>
+
+    <div class="callout callout-green">
+        <strong>Deferred deliberately, with reasons.</strong> SMS was measured rather than assumed:
+        it adds two people of raw reach, so it is a deliverability feature and not the onboarding
+        fix it looked like. Leader-issued codes and printed claim cards solve the same gap for no
+        money and no third party.
+    </div>
+
+</div>
+
+<footer>
+    Scout Troop 79 &mdash; Milwaukee, Wisconsin &middot; Session summary generated August 16, 2026
+</footer>
+</body>
+</html>
