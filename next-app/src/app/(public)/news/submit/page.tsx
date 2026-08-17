@@ -47,17 +47,25 @@ export default async function SubmitStoryPage() {
         </>
       ) : (
         <div className={styles.gate}>
-          <p>
-            Stories are published with your name on them, so we need to know who you are before you
-            write one. Signing in takes a code sent to the email or phone the troop already has for
-            you &mdash; no password to remember.
+          <p className={styles.gateLede}>
+            Tell the troop what you got up to &mdash; a campout, a project, a skill you finally
+            nailed. A leader reads it, adds photos, and it goes on the news page with your name on
+            it.
           </p>
-          <p>
-            <Link href={`/signin?next=${encodeURIComponent('/news/submit')}`}>
-              Sign in to submit a story →
+          <p className={styles.gateWhy}>
+            Because your name goes on it, we need to know who you are first. There&rsquo;s no
+            password to remember: find your name and we&rsquo;ll send a one-time code to the
+            address the troop already has for you.
+          </p>
+          <p className={styles.gateAction}>
+            <Link
+              className={styles.gateBtn}
+              href={`/signin?next=${encodeURIComponent('/news/submit')}`}
+            >
+              Sign in to write one
             </Link>
           </p>
-          <p style={{ fontSize: '0.9rem' }}>
+          <p className={styles.gateNote}>
             No luck signing in? Ask a leader &mdash; they can give you a code, or take your story
             the old-fashioned way.
           </p>
