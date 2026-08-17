@@ -175,7 +175,10 @@ export async function unlockRosterAction(formData: FormData): Promise<void> {
     path: '/',
     maxAge: FAMILY_COOKIE.maxAgeSeconds
   });
-  redirect(signinUrl({ ...keep, pick: '1' }));
+  // `pick` is no longer read by anything (page.tsx, 2026-08-17) — the picker
+  // renders because hasFamilyAccess() now sees the cookie just set above.
+  // Left the redirect target otherwise unchanged.
+  redirect(signinUrl(keep));
 }
 
 /**
@@ -190,13 +193,23 @@ export async function unlockRosterAction(formData: FormData): Promise<void> {
  * The person id is the input — never an email. A scout can share a parent's
  * address, and resolving by address would sign the scout in as the parent
  * (see requestChallengeForPerson's header).
+ *
+ * GATED IN ITS OWN RIGHT, same reasoning as searchRosterAction above — a
+ * Server Action is callable directly, independent of what the rendering page
+ * checked. This was missing entirely until qa-lead's review of the `pick=1`
+ * bypass fix (2026-08-17) traced this action and found it: any personId
+ * could be POSTed here with NO password, ever, and it would still send a
+ * real one-time code — worse than the bug being fixed, since it needed no
+ * forged URL at all, just direct knowledge of this action's name.
  */
 export async function requestForPersonAction(formData: FormData): Promise<void> {
-  const personId = Number(formData.get('personId'));
   const next = String(formData.get('next') ?? '');
   const keep = { next: next || undefined };
+  if (!(await hasFamilyAccess())) redirect(signinUrl(keep));
+
+  const personId = Number(formData.get('personId'));
   if (!Number.isInteger(personId) || personId <= 0) {
-    redirect(signinUrl({ ...keep, pick: '1', err: 'invalid' }));
+    redirect(signinUrl({ ...keep, err: 'invalid' }));
   }
 
   const supabase = createAdminClient();
@@ -209,7 +222,7 @@ export async function requestForPersonAction(formData: FormData): Promise<void> 
     // Distinct reasons, distinct advice. Telling a rate-limited person "we
     // have no address for you" would send them to a leader for a problem that
     // fixes itself in a few minutes.
-    redirect(signinUrl({ ...keep, pick: '1', err: result.reason, person: String(personId) }));
+    redirect(signinUrl({ ...keep, err: result.reason, person: String(personId) }));
   }
   redirect(signinUrl({ ...keep, sent: '1', person: String(personId), masked: result.masked }));
 }
@@ -221,6 +234,16 @@ export async function requestForPersonAction(formData: FormData): Promise<void> 
  * Keeps the collapsed 'invalid' error of the email path: the picker is not
  * enumeration-safe by design, but the number of code guesses someone gets is
  * still worth not leaking.
+ *
+ * DELIBERATELY NOT gated on hasFamilyAccess(), unlike requestForPersonAction
+ * above (qa-lead review, 2026-08-17) — redeeming a code requires possessing
+ * the actual 6-digit secret (hash-compared, MAX_WRONG_ATTEMPTS-limited,
+ * single-use, 15-minute TTL), which is real authentication in its own right.
+ * Adding the gate here would risk locking out someone whose FAMILY_COOKIE
+ * lapsed between requesting a code and typing it in — a real, foreseeable
+ * case now that requestForPersonAction refuses to send a code at all without
+ * the gate, so reaching this form already implies the gate was satisfied at
+ * request time.
  */
 export async function verifyCodeForPersonAction(formData: FormData): Promise<void> {
   const personId = Number(formData.get('personId'));

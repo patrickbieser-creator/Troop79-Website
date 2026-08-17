@@ -57,15 +57,30 @@ export default async function SignInPage({
     email?: string;
     next?: string;
     err?: string;
-    pick?: string;
+    // `pick=1` still arrives on the redirect unlockRosterAction issues
+    // (harmless — it's cosmetic now) and on old bookmarked/history URLs, but
+    // it is deliberately NOT read here anymore. See the security note on
+    // rosterUnlocked below.
     person?: string;
     masked?: string;
   }>;
 }) {
-  const { sent, email, next, err, pick, person, masked } = await searchParams;
+  const { sent, email, next, err, person, masked } = await searchParams;
   const configured = emailConfigured();
   // The troop password gates the roster, nothing else (Phase D, decision 3).
-  const rosterUnlocked = pick === '1' || (await hasFamilyAccess());
+  //
+  // SECURITY: this must be the ONLY check. It used to be `pick === '1' ||
+  // hasFamilyAccess()` — unlockRosterAction sets the real session cookie
+  // and THEN redirects to `?pick=1` so the picker renders on the very next
+  // request, but `pick=1` is a public URL parameter with no relationship to
+  // that cookie. Once it's in the address bar or browser history, anyone
+  // who revisits it — no cookie, no password, ever — skipped the gate
+  // entirely (found live in production 2026-08-17, reported as recurring:
+  // "this has happened several times"). hasFamilyAccess() alone is
+  // sufficient — the cookie unlockRosterAction sets is already present by
+  // the time this redirect lands, so dropping the `pick` branch changes
+  // nothing for the legitimate flow and closes the forgery.
+  const rosterUnlocked = await hasFamilyAccess();
   const passkeys = passkeysConfigured();
 
   return (
