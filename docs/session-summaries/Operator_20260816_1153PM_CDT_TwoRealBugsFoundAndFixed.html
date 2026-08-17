@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Two Real Bugs, Found and Closed — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #2e4530;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #faf6ef;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul, ol { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+</head>
+<body>
+<header>
+    <h1>Two Real Bugs, Found and Closed</h1>
+    <div class="subtitle">Scout Troop 79 &mdash; both diagnosed from server evidence, not guessed at</div>
+    <div class="meta">
+        <span>August 16, 2026</span>
+        <span>Second session, continued</span>
+        <span>3 commits</span>
+        <span>390 tests passing</span>
+    </div>
+</header>
+
+<div class="container">
+
+    <div class="stats">
+        <div class="stat"><div class="number">2</div><div class="label">Real bugs closed</div></div>
+        <div class="stat"><div class="number">4</div><div class="label">Tests added</div></div>
+        <div class="stat"><div class="number">3</div><div class="label">Files fixed</div></div>
+        <div class="stat"><div class="number">2</div><div class="label">qa-lead reviews</div></div>
+    </div>
+
+    <div class="callout callout-green">
+        <strong>Both bugs are closed and verified end to end &mdash; from real server evidence, not
+        re-testing and hoping.</strong> Neither was guessed at: one came from a Vercel runtime-log
+        error message matched byte-for-byte against a library's source; the other came from a direct
+        SQL query proving a fresh token existed while zero requests ever reached the server for it.
+    </div>
+
+    <h2>Bug 1 &mdash; Passkey registration silently accepted no verification at all</h2>
+
+    <p>
+        The first real passkey attempt failed. Dashlane, asked for
+        <span class="file-path">userVerification: 'preferred'</span>, created a passkey with
+        <strong>no fingerprint, PIN, or vault prompt at all</strong> &mdash; and no on-screen sign
+        that anything had been skipped. The deciding evidence: a second browser&rsquo;s platform
+        authenticator, asked the <em>identical</em> <span class="file-path">'preferred'</span>
+        request, correctly prompted for a PIN. That comparison settled it &mdash; &lsquo;preferred&rsquo;
+        isn&rsquo;t unreliable in the abstract, it hands the decision to the authenticator&rsquo;s own
+        discretion, and at least one real one exercises that by doing nothing.
+    </p>
+
+    <div class="callout callout-gold">
+        <strong>Why this mattered.</strong> A discoverable passkey created with zero verification
+        grants full account access on device possession alone &mdash; materially weaker than the
+        feature&rsquo;s own promise, &ldquo;signs you in with a fingerprint or your face.&rdquo;
+    </div>
+
+    <table>
+        <thead><tr><th>Change</th><th>What</th></tr></thead>
+        <tbody>
+            <tr><td>Client request</td><td><span class="file-path">userVerification: 'preferred'</span> &rarr; <span class="file-path">'required'</span></td></tr>
+            <tr><td>Server check</td><td>Left at the library default (<span class="file-path">requireUserVerification: true</span>) &mdash; enforces what the client now asks for</td></tr>
+            <tr><td>Sign-in path</td><td>Deliberately untouched &mdash; a separate, already-justified leniency for ongoing sign-ins vs. one-time registration trust</td></tr>
+        </tbody>
+    </table>
+
+    <p>
+        <strong>Verified before shipping, not assumed:</strong> a direct SQL query against production
+        <span class="file-path">passkey_credentials</span> came back empty both before and after the
+        fix &mdash; no weak credential from the vulnerable window ever reached the database.
+        <strong>Verified after shipping:</strong> the user completed a real registration and sign-in
+        on desktop Chrome + Dashlane, confirmed working.
+    </p>
+
+    <h2>Bug 2 &mdash; The sign-in email link had been pointing at localhost since launch of the feature</h2>
+
+    <p>
+        A user reported the emailed sign-in link didn&rsquo;t work. Investigation ruled out the
+        obvious suspects one at a time, from evidence: the token itself was fine (a fresh, valid,
+        unconsumed row existed in <span class="file-path">login_tokens</span>, confirmed by direct
+        query); Vercel&rsquo;s warning-level logs showed zero &ldquo;unknown token&rdquo; events in
+        24 hours; and a live-tailed log search showed <strong>zero requests ever reaching
+        <span class="file-path">/signin/verify</span></strong> at all, even while the same
+        browser&rsquo;s session-status poll kept firing every 10&ndash;15 seconds. A link that
+        never leaves the device explains all of it at once &mdash; and the user confirmed directly:
+        <em>&ldquo;the link is going to localhost:3000.&rdquo;</em>
+    </p>
+
+    <div class="callout callout-teal">
+        <strong>The root cause was a repeat, not a new mistake.</strong> <span class="file-path">NEXT_PUBLIC_SITE_URL</span>
+        has never been set in Vercel &mdash; confirmed directly on the live Environment Variables
+        page (&ldquo;No Results Found&rdquo;). This is the exact same bug that shipped once already,
+        on launch day 2026-07-12, in the <span class="file-path">.ics</span> feed&rsquo;s Subscribe
+        links &mdash; <span class="file-path">lib/site-url.ts</span> was purpose-built as the fix at
+        the time. The sign-in link, written later for a different feature, never adopted that shared
+        helper and independently reinvented the same naive fallback that had already caused one
+        production incident.
+    </div>
+
+    <p>
+        A qa-lead review of the fix then found a <strong>third</strong> live instance of the identical
+        pattern in <span class="file-path">scripts/break-glass.mjs</span> &mdash; the emergency
+        account-recovery script, arguably the worst place to repeat the mistake, since its output is
+        read down a phone line or texted to someone already locked out. Closed in the same pass.
+    </p>
+
+    <table>
+        <thead><tr><th>File</th><th>Fix</th></tr></thead>
+        <tbody>
+            <tr><td><span class="file-path">identity-challenge.ts</span></td><td>Now imports and calls the shared <span class="file-path">siteUrl()</span> helper instead of its own fallback</td></tr>
+            <tr><td><span class="file-path">break-glass.mjs</span></td><td>Different fix &mdash; it&rsquo;s a standalone script outside Next&rsquo;s build, so <span class="file-path">NODE_ENV</span> isn&rsquo;t reliably <span class="file-path">'production'</span> there. Refuses to guess when pointed at non-local Supabase creds with no site URL set.</td></tr>
+            <tr><td><span class="file-path">site-url-fallback.test.ts</span></td><td>New systemic guard walking BOTH <span class="file-path">src/</span> and <span class="file-path">scripts/</span> &mdash; the first version only covered <span class="file-path">src/</span>, exactly why it couldn&rsquo;t have caught the third instance</td></tr>
+        </tbody>
+    </table>
+
+    <p>
+        <strong>Verified end to end from real server logs after deploy:</strong> a fresh token was
+        minted, a real <span class="file-path">GET /signin/verify</span> hit landed on
+        <span class="file-path">www.troop-79.com</span> (nine requests total), the
+        <span class="file-path">POST</span> (the &ldquo;Continue&rdquo; button) returned
+        <strong>303</strong>, and <span class="file-path">GET /member</span> returned
+        <strong>200</strong> one second later &mdash; the actual redirect chain of a working sign-in,
+        not a re-test that merely looked successful.
+    </p>
+
+    <h2>Decisions recorded</h2>
+
+    <ul>
+        <li><strong>[D-124]</strong> Passkey registration requires <span class="file-path">userVerification: 'required'</span>, not <span class="file-path">'preferred'</span> &mdash; found from a real authenticator exercising the discretion `'preferred'` grants it.</li>
+        <li><strong>[D-125]</strong> Every absolute-URL builder must use the shared <span class="file-path">siteUrl()</span> helper, never its own fallback &mdash; this is the second independent recurrence of the same bug class, and a systemic test now exists specifically because one narrow test wasn&rsquo;t enough the first time either.</li>
+    </ul>
+
+    <h2>Test coverage added</h2>
+
+    <p>Both scoped deliberately narrower than a whole-file check &mdash; the existing whole-file check for this exact pattern would NOT have caught either regression, since both bugs' "wrong" values legitimately exist elsewhere in the same files for different, correct reasons:</p>
+    <ul>
+        <li><span class="file-path">Registration_RequiresUserVerification</span> &amp; <span class="file-path">FinishRegistration_DoesNotWeakenTheUserVerificationCheck</span> &mdash; each slices just the one function's body</li>
+        <li><span class="file-path">site-url-fallback.test.ts</span> &mdash; walks the whole tree (both <span class="file-path">src/</span> and <span class="file-path">scripts/</span>) with an explicit, documented allowlist</li>
+    </ul>
+    <p>Baseline: 386 &rarr; 390. Lint 0 errors / 3 known warnings throughout. Both fixes qa-lead reviewed (VERDICT CONDITIONAL, no blockers) before shipping &mdash; auth-surface changes get that review regardless of how small the diff is, per standing project rule.</p>
+
+    <h2>Next steps</h2>
+
+    <ol>
+        <li>Assign <span class="file-path">roster.manage</span> and <span class="file-path">library.moderate</span> deliberately &mdash; the latter still held by nobody but Patrick.</li>
+        <li>The aged-out sweep &mdash; a scout turning 18 keeps whatever capability grants they hold under the new model.</li>
+        <li><strong>Downgraded, not dropped:</strong> trying a passkey on an actual phone. The critical unknown &mdash; does a live WebAuthn ceremony actually work against production &mdash; is now answered, confirmed tonight on desktop Chrome + Dashlane. A phone/native biometric is a different authenticator class still worth trying, just no longer urgent.</li>
+        <li>New, minor: preview deployments' sign-in emails will link to production rather than the preview URL (inherited from <span class="file-path">site-url.ts</span>'s NODE_ENV check, now extended to this surface) &mdash; not urgent.</li>
+    </ol>
+
+</div>
+
+<footer>
+    Scout Troop 79 &mdash; Session summary generated August 16, 2026 at 11:53 PM CDT
+</footer>
+
+</body>
+</html>
