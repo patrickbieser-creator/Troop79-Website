@@ -26,6 +26,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { isDeliverable } from '@/lib/email-recipients';
 import { resolveHouseholdKeyForPerson } from '@/lib/households';
 import { sendEmail, renderEmail } from '@/lib/email';
+import { siteUrl } from '@/lib/site-url';
 import type { IdentitySubjectKind } from '@/lib/identity-session';
 
 const TOKEN_TTL_MINUTES = 15;
@@ -369,8 +370,15 @@ async function mintAndSend(
   });
   if (error) return 'failed';
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-  const link = `${siteUrl}/signin/verify?token=${encodeURIComponent(rawToken)}`;
+  // Found the hard way 2026-08-16 — the exact same class of bug lib/site-url.ts
+  // was built to fix on 2026-07-12 (NEXT_PUBLIC_SITE_URL was never set in
+  // Vercel; a naive dev-server fallback shipped a dead link to a family).
+  // This file had its own un-migrated copy of that fallback,
+  // never updated to use the shared helper — the sign-in email link was
+  // pointing at localhost in production the whole time, with no server-side
+  // trace: a link to localhost never reaches this app's logs at all, which is
+  // exactly what made it invisible until someone described watching it fail.
+  const link = `${siteUrl()}/signin/verify?token=${encodeURIComponent(rawToken)}`;
 
   // Minimal content by policy (Technical Approach) — troop name and the code
   // itself, nothing that names a scout, a household, or what this sign-in is
