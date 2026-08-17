@@ -35,6 +35,7 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { maskEmail } from '@/lib/identity-challenge';
 import { autoLoginLabels } from '@/lib/authorized-adults';
+import { loadHouseholds } from '@/lib/households';
 
 export interface SignInCandidate {
   personId: number;
@@ -75,10 +76,10 @@ interface InternalCandidate extends SignInCandidate {
 async function loadAllCandidates(): Promise<InternalCandidate[]> {
   const supabase = createAdminClient();
 
-  const [{ data: directory }, { data: people }, { data: members }] = await Promise.all([
+  const [{ data: directory }, { data: people }, households] = await Promise.all([
     supabase.from('person_directory').select('person_id, display_name, tab'),
     supabase.from('people').select('id, primary_email').eq('active', true),
-    supabase.from('household_members').select('person_id')
+    loadHouseholds()
   ]);
 
   const emailById = new Map<number, string | null>(
@@ -87,13 +88,27 @@ async function loadAllCandidates(): Promise<InternalCandidate[]> {
       p.primary_email?.trim() || null
     ])
   );
-  const inHousehold = new Set(((members ?? []) as { person_id: number }[]).map((m) => m.person_id));
+
+  // Reachable = "resolveHouseholdKeyForPerson() would return a key" — NOT
+  // "has a stored household_members row". loadHouseholds() already gives a
+  // synthetic household-of-one to any adult with no stored row (households.ts:
+  // "so nobody is unreachable in the picker"), and a leader with no scout in
+  // the troop is exactly that case. Checking household_members directly here
+  // (the bug, found live 2026-08-17: Alex Schaapveld, a leader with no scout
+  // in the troop, had a real email but never surfaced in the picker at all)
+  // silently excluded everyone that fallback exists to cover.
+  const reachable = new Set<number>();
+  for (const h of households) {
+    for (const s of h.scouts) if (s.personId !== null) reachable.add(s.personId);
+    for (const a of h.adults) reachable.add(a.personId);
+  }
 
   const eligible = ((directory ?? []) as { person_id: number; display_name: string; tab: string }[])
-    // A person with no household cannot be issued an identity session at all
-    // (targetForPerson requires a household key), so offering their name would
-    // offer something that can never work.
-    .filter((d) => emailById.has(d.person_id) && inHousehold.has(d.person_id));
+    // A person who resolveHouseholdKeyForPerson() can't place cannot be
+    // issued an identity session at all (targetForPerson requires a
+    // household key), so offering their name would offer something that can
+    // never work — but that's a narrower exclusion than "no stored row".
+    .filter((d) => emailById.has(d.person_id) && reachable.has(d.person_id));
 
   // Same algorithm the admin login pool uses (lib/authorized-adults.ts): the
   // surname prefix extends only as far as uniqueness requires, so two

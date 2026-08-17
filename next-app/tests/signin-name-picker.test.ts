@@ -62,6 +62,21 @@ describe('sign-in name picker', () => {
     return data.id as number;
   }
 
+  /** No household_members row at all — an adult leader with no scout in the
+   *  troop, the exact shape loadHouseholds()'s synthetic "household of one"
+   *  fallback exists for. */
+  async function makePersonNoHousehold(name: string, email: string | null): Promise<number> {
+    const admin = adminClient();
+    const { data, error } = await admin
+      .from('people')
+      .insert({ display_name: name, primary_email: email, active: true })
+      .select('id')
+      .single();
+    if (error || !data) throw new Error(`fixture: person: ${error?.message}`);
+    personIds.push(data.id as number);
+    return data.id as number;
+  }
+
   // ── masking (pure) ───────────────────────────────────────────────────────
 
   it('MaskedEmail_KeepsFirstCharAndDomain_AndHidesTheRest', () => {
@@ -269,6 +284,22 @@ describe('sign-in name picker', () => {
     // Hiding them recreates the dead end the picker exists to remove.
     expect(mine).toBeDefined();
     expect(mine!.maskedEmail).toBeNull();
+  });
+
+  it('Search_FindsAnAdultWithNoHouseholdRowAtAll_ViaTheSyntheticFallback', async () => {
+    // Reported live 2026-08-17: Alex Schaapveld, a leader with no scout in
+    // the troop, had a real email on file and still never surfaced in the
+    // picker. loadAllCandidates() was checking household_members directly
+    // instead of reusing loadHouseholds()'s "household of one" fallback for
+    // exactly this case — resolveHouseholdKeyForPerson() (what actually
+    // issues the sign-in) would have worked fine; the picker just never
+    // offered the name.
+    const personId = await makePersonNoHousehold(
+      'Alton Nofamily',
+      `vitest-nohh-${Date.now()}@example.com`
+    );
+    const { candidates } = await searchSignInCandidates('nofamily');
+    expect(candidates.find((c) => c.personId === personId)).toBeDefined();
   });
 
   it('Search_KeepsLabelsUnique_WhenTwoPeopleShareAFirstNameAndInitial', async () => {
