@@ -149,3 +149,45 @@
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
+
+/* Passkey sign-in sits ABOVE the password gate: it is the fastest route for
+   anyone who has one, and hides itself entirely for anyone who hasn't. */
+.passkeyBlock {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--rule, #e4d9c4);
+}
+
+.passkeyBtn {
+  width: 100%;
+  background: var(--navy, #22333b);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.75rem 1.2rem;
+  font-family: var(--font-ui), inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+.passkeyBtn:hover:not(:disabled) {
+  background: #17262d;
+}
+.passkeyBtn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.passkeyHint {
+  margin: 0.5rem 0 0;
+  font-size: 0.82rem;
+  color: var(--text-meta, #857c6c);
+  line-height: 1.5;
+}
+
+.passkeyError {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: #8c3b3b;
+}

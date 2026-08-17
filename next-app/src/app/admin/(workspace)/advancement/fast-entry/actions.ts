@@ -1,9 +1,8 @@
 'use server';
 
-import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
-import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
+import { adminActorLabel } from '@/lib/admin-actor';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { LedgerKind } from '@/lib/supabase/types';
 import { DEDUP_KINDS, queryExistingSet, filterOutExisting as filterOutExistingGeneric } from '@/lib/ledger-dedup';
@@ -407,9 +406,7 @@ export async function undoCompletion(formData: FormData): Promise<SaveResult> {
 }
 
 async function getLeaderInitials(): Promise<string | null> {
-  const jar = await cookies();
-  const session = await verifySession(jar.get(LEADER_COOKIE.name)?.value);
-  return session?.leader ?? null;
+  return adminActorLabel('');
 }
 
 /**

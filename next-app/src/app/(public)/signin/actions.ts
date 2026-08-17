@@ -24,9 +24,24 @@ import {
   redeemToken
 } from '@/lib/identity-challenge';
 import { FAMILY_COOKIE, signFamilySession } from '@/lib/family-session';
+import { revalidatePath } from 'next/cache';
+import { identityForPerson } from '@/lib/identity-challenge';
+import { getIdentitySessionIfValid } from '@/lib/family-access';
+import { isEpochCurrent } from '@/lib/identity-session';
+import {
+  beginAuthentication,
+  finishAuthentication,
+  beginRegistration,
+  finishRegistration,
+  deletePasskey
+} from '@/lib/passkeys';
+import type {
+  AuthenticationResponseJSON,
+  RegistrationResponseJSON
+} from '@simplewebauthn/server';
 import { hasFamilyAccess } from '@/lib/family-access';
 import { searchSignInCandidates, type SignInSearchResult } from '@/lib/signin-roster';
-import { IDENTITY_COOKIE, signIdentitySession } from '@/lib/identity-session';
+import { IDENTITY_COOKIE, signIdentitySession, sessionMaxAgeFor } from '@/lib/identity-session';
 import { safeInternalPath } from '@/lib/safe-redirect';
 
 const SIGNIN_PATH = '/signin';
@@ -59,7 +74,7 @@ async function setIdentityCookie(identity: {
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
     path: '/',
-    maxAge: IDENTITY_COOKIE.maxAgeSeconds
+    maxAge: sessionMaxAgeFor(identity.subjectKind)
   });
 }
 
@@ -246,4 +261,100 @@ export async function verifyCodeForPersonAction(formData: FormData): Promise<voi
 export async function searchRosterAction(query: string): Promise<SignInSearchResult> {
   if (!(await hasFamilyAccess())) return { candidates: [], truncated: false };
   return searchSignInCandidates(query);
+}
+
+/* ── Passkeys (Family-Identity-Auth.md Phase 4) ───────────────────────────
+ *
+ * Two ceremonies, four actions. Both halves of each ceremony are server
+ * actions because the challenge must be minted, remembered and verified
+ * server-side — a challenge the client chose proves nothing.
+ *
+ * SIGNING OUT DOES NOT REMOVE A PASSKEY. Logging out clears the session
+ * cookie; the credential stays registered on the device, so the next visit is
+ * one tap. Signing in as somebody else — a second parent on a shared iPad —
+ * means using the code path instead, which is why both routes stay on the
+ * page permanently rather than the passkey replacing the link.
+ */
+
+export async function passkeyAuthOptionsAction(): Promise<string | null> {
+  const options = await beginAuthentication(createAdminClient());
+  return options ? JSON.stringify(options) : null;
+}
+
+export async function passkeyAuthVerifyAction(
+  responseJson: string,
+  next: string
+): Promise<{ ok: boolean; error?: string; redirectTo?: string }> {
+  const supabase = createAdminClient();
+  let parsed: AuthenticationResponseJSON;
+  try {
+    parsed = JSON.parse(responseJson) as AuthenticationResponseJSON;
+  } catch {
+    return { ok: false, error: 'That sign-in was malformed.' };
+  }
+
+  const result = await finishAuthentication(supabase, parsed);
+  if (!result.ok) return { ok: false, error: result.error };
+
+  // Re-resolve identity from the person id, exactly as a redeemed code does:
+  // the credential proves WHO, never what they are still entitled to.
+  const identity = await identityForPerson(supabase, result.personId, next || null);
+  if (!identity) {
+    return { ok: false, error: 'That account is no longer active — ask a leader.' };
+  }
+
+  await setIdentityCookie(identity);
+  return { ok: true, redirectTo: safeInternalPath(identity.nextPath, '/member') };
+}
+
+/** Adults only — a scout registering a passkey on a shared school Chromebook
+ *  is a foreseeable mess, so Tier 2-S stays on emailed codes. */
+async function requireAdultForPasskey() {
+  const session = await getIdentitySessionIfValid();
+  if (!session) throw new Error('Please sign in first.');
+  if (session.subjectKind !== 'adult') {
+    throw new Error('Passkeys are for parents and leaders — scouts sign in with a code.');
+  }
+  if (!(await isEpochCurrent(createAdminClient(), session))) {
+    throw new Error('Your sign-in has been revoked — please sign in again.');
+  }
+  return session;
+}
+
+export async function passkeyRegisterOptionsAction(): Promise<string | null> {
+  const session = await requireAdultForPasskey();
+  const options = await beginRegistration(createAdminClient(), {
+    personId: session.personId,
+    displayName: session.displayName
+  });
+  return options ? JSON.stringify(options) : null;
+}
+
+export async function passkeyRegisterVerifyAction(
+  responseJson: string,
+  nickname: string
+): Promise<{ ok: boolean; error?: string }> {
+  const session = await requireAdultForPasskey();
+  let parsed: RegistrationResponseJSON;
+  try {
+    parsed = JSON.parse(responseJson) as RegistrationResponseJSON;
+  } catch {
+    return { ok: false, error: 'That registration was malformed.' };
+  }
+  const result = await finishRegistration(
+    createAdminClient(),
+    session.personId,
+    parsed,
+    nickname || null
+  );
+  revalidatePath('/member');
+  return result.ok ? { ok: true } : { ok: false, error: result.error };
+}
+
+export async function deletePasskeyAction(formData: FormData): Promise<void> {
+  const session = await requireAdultForPasskey();
+  const id = Number(formData.get('credentialId'));
+  if (!Number.isInteger(id)) return;
+  await deletePasskey(createAdminClient(), session.personId, id);
+  revalidatePath('/member');
 }

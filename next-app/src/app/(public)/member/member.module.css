@@ -151,3 +151,90 @@
     width: 100%;
   }
 }
+
+.passkeySection {
+  border: 1px solid var(--rule, #e4d9c4);
+  border-radius: 6px;
+  background: #fff;
+  padding: 1.1rem 1.2rem;
+  margin-bottom: 1.75rem;
+  max-width: 46rem;
+}
+
+.passkeyHeading {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+  color: var(--navy, #22333b);
+}
+
+.passkeyIntro {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text-meta, #5b5347);
+}
+
+.passkeyList {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  border-top: 1px solid var(--rule, #efe7d8);
+}
+.passkeyItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--rule, #efe7d8);
+  font-size: 0.9rem;
+}
+
+.passkeyMeta {
+  color: var(--text-meta, #857c6c);
+  font-size: 0.85em;
+}
+
+.passkeyRemove {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.85rem;
+  color: #8c3b3b;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.passkeyAdd {
+  background: var(--navy, #22333b);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.6rem 1.2rem;
+  font-family: var(--font-ui), inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+.passkeyAdd:hover:not(:disabled) {
+  background: #17262d;
+}
+.passkeyAdd:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.passkeyDone {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #1e6b3a;
+}
+
+.passkeyError {
+  margin: 0.6rem 0 0;
+  font-size: 0.85rem;
+  color: #8c3b3b;
+}

@@ -1,232 +1,81 @@
+/**
+ * /admin/login — no longer a login.
+ *
+ * LEADER_PASSWORD retired 2026-08-16 (Plans/Unified-Identity-And-Capabilities.md
+ * Phase E). Leaders sign in as themselves at /signin and get exactly the
+ * capabilities attached to their person record; there is no shared secret to
+ * know, and no second identity to reconcile.
+ *
+ * The route survives because proxy.ts still redirects unauthenticated /admin
+ * requests here with ?next=, and because bookmarks and muscle memory exist.
+ * It forwards that ?next= into the real sign-in so a bookmarked deep link
+ * still lands where it meant to.
+ *
+ * Recovery, when email itself is broken: next-app/scripts/break-glass.mjs
+ * mints a code straight against the database. Deliberately a script and not a
+ * web path — see its header.
+ */
 import Link from 'next/link';
-import { loginAction } from './actions';
 import { IS_DEV_DB } from '@/lib/dev-db';
-import { createAdminClient } from '@/lib/supabase/server';
-import { loadAuthorizedAdults } from '@/lib/authorized-adults';
+import { safeInternalPath } from '@/lib/safe-redirect';
 
 export const metadata = {
   title: IS_DEV_DB ? '[DEV] Sign In — Troop 79 Admin' : 'Sign In — Troop 79 Admin'
 };
 
-export default async function LoginPage({
+export default async function AdminLoginPage({
   searchParams
 }: {
   searchParams: Promise<{ next?: string; error?: string }>;
 }) {
-  const { next, error } = await searchParams;
-  const errMessage =
-    error === 'missing-username'
-      ? 'Name is required.'
-      : error === 'missing-password'
-        ? 'Password is required.'
-        : error === 'bad-password'
-          ? 'That password isn’t right — check with the Scoutmaster.'
-          : error === 'bad-username'
-            ? 'That name isn’t on the authorized-adult list — check spelling, or use the scout password if you’re signing in as a scout.'
-            : error === 'not-configured'
-              ? 'Sign-in isn’t configured on this server (LEADER_PASSWORD is unset).'
-              : null;
-  const adults = await loadAuthorizedAdults(createAdminClient());
+  const { next } = await searchParams;
+  const target = safeInternalPath(next ?? '/admin/advancement', '/admin/advancement');
 
   return (
     <main
       style={{
         minHeight: '100vh',
-        background: '#f5f6f8',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 24,
-        fontFamily: 'var(--font-ui), Arial, sans-serif'
+        background: '#1b2027',
+        padding: 24
       }}
     >
-      <div
-        style={{
-          width: '100%',
-          maxWidth: 420,
-          background: '#fff',
-          border: '1px solid #e2e4e8',
-          borderRadius: 6,
-          boxShadow: '0 4px 16px rgba(0,0,0,.08)',
-          padding: '28px 32px'
-        }}
-      >
-        <div
-          style={{
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: '.14em',
-            textTransform: 'uppercase',
-            color: '#6d7580',
-            marginBottom: 6
-          }}
-        >
-          Troop 79 Admin
-        </div>
-        <h1
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 26,
-            fontWeight: 700,
-            color: '#1e3a4a',
-            marginBottom: 8
-          }}
-        >
-          Sign in
-        </h1>
-        <p
-          style={{
-            fontSize: 13,
-            color: '#6d7580',
-            marginBottom: 20,
-            lineHeight: 1.5
-          }}
-        >
-          Sign in with your name and the troop password. The leader password
-          opens the full workspace; the scout password opens scout drafting.
+      <div style={{ maxWidth: 420, width: '100%', color: '#c9ced6', textAlign: 'center' }}>
+        <h1 style={{ color: '#fff', fontSize: 22, marginBottom: 12 }}>Sign in to Troop 79</h1>
+        <p style={{ fontSize: 14, lineHeight: 1.6, marginBottom: 20 }}>
+          The shared leader password is gone. Sign in as yourself and you&rsquo;ll get the parts of
+          the admin you&rsquo;re responsible for &mdash; and your own family&rsquo;s pages, without
+          a second sign-in.
         </p>
-
-        <form action={loginAction}>
-          {next && <input type="hidden" name="next" value={next} />}
-          <Field
-            label="Your name"
-            name="username"
-            placeholder="e.g. Patrick B."
-            listId="adults-list"
-          />
-          <datalist id="adults-list">
-            {adults.map((a) => (
-              <option key={a.code} value={a.label} />
-            ))}
-          </datalist>
-          <Field
-            label="Troop password"
-            name="password"
-            type="password"
-            placeholder=""
-          />
-
-          {errMessage && (
-            <div
-              role="alert"
-              style={{
-                fontSize: 12,
-                color: '#c0392b',
-                marginBottom: 12
-              }}
-            >
-              {errMessage}
-            </div>
-          )}
-
-          <button
-            type="submit"
+        <p>
+          <Link
+            href={`/signin?next=${encodeURIComponent(target)}`}
             style={{
-              width: '100%',
-              background: '#1e3a4a',
+              display: 'inline-block',
+              background: '#3d7a4a',
               color: '#fff',
-              border: 'none',
-              borderRadius: 4,
-              padding: '11px 14px',
+              padding: '11px 22px',
+              borderRadius: 3,
               fontWeight: 700,
               fontSize: 13,
               letterSpacing: '.04em',
-              cursor: 'pointer'
+              textTransform: 'uppercase'
             }}
           >
-            Sign in
-          </button>
-        </form>
-
-        {/* The other door (Plans/Unified-Identity-And-Capabilities.md Phase B).
-            A leader whose person record holds capabilities can sign in as
-            themselves and skip the shared password entirely — and lands with
-            their family surface attached, rather than a second session. This
-            link is how anyone discovers that; the password form above retires
-            in Phase E. */}
-        <p
-          style={{
-            fontSize: 12,
-            color: '#9ba1aa',
-            marginTop: 22,
-            paddingTop: 16,
-            borderTop: '1px solid #2a2f36',
-            textAlign: 'center',
-            lineHeight: 1.6
-          }}
-        >
-          Or{' '}
-          <Link
-            href={`/signin?next=${encodeURIComponent(next ?? '/admin/advancement')}`}
-            style={{ color: '#3d7a4a', fontWeight: 600 }}
-          >
-            sign in as yourself
-          </Link>{' '}
-          with an emailed code — no shared password, and no second sign-in for
-          your own family&rsquo;s pages.
+            Continue to sign in
+          </Link>
         </p>
-
-        <p
-          style={{
-            fontSize: 12,
-            color: '#9ba1aa',
-            marginTop: 14,
-            textAlign: 'center'
-          }}
-        >
+        <p style={{ fontSize: 12, color: '#9ba1aa', marginTop: 22, lineHeight: 1.6 }}>
+          No access after signing in? A troop admin grants it on Access &amp; Permissions.
+        </p>
+        <p style={{ fontSize: 12, marginTop: 14 }}>
           <Link href="/" style={{ color: '#3d7a4a', fontWeight: 600 }}>
             &larr; Back to public site
           </Link>
         </p>
       </div>
     </main>
-  );
-}
-
-function Field({
-  label,
-  name,
-  type = 'text',
-  placeholder,
-  listId
-}: {
-  label: string;
-  name: string;
-  type?: string;
-  placeholder?: string;
-  listId?: string;
-}) {
-  return (
-    <label style={{ display: 'block', marginBottom: 14 }}>
-      <span
-        style={{
-          display: 'block',
-          fontSize: 11,
-          fontWeight: 700,
-          letterSpacing: '.08em',
-          textTransform: 'uppercase',
-          color: '#3a3f47',
-          marginBottom: 6
-        }}
-      >
-        {label}
-      </span>
-      <input
-        name={name}
-        type={type}
-        placeholder={placeholder}
-        list={listId}
-        autoComplete={type === 'password' ? 'current-password' : 'username'}
-        style={{
-          width: '100%',
-          border: '1px solid #cdd1d6',
-          borderRadius: 4,
-          padding: '9px 11px',
-          fontSize: 14,
-          fontFamily: 'inherit',
-          outline: 'none'
-        }}
-      />
-    </label>
   );
 }

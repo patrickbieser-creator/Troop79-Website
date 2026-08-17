@@ -22,6 +22,14 @@
 import Link from 'next/link';
 import { getIdentitySessionIfValid } from '@/lib/family-access';
 import { logOutEverywhereAction } from '@/app/_components/site-nav-actions';
+import { createAdminClient } from '@/lib/supabase/server';
+import { listPasskeys, passkeysConfigured } from '@/lib/passkeys';
+import { PasskeyManager } from './passkey-manager';
+import {
+  passkeyRegisterOptionsAction,
+  passkeyRegisterVerifyAction,
+  deletePasskeyAction
+} from '../signin/actions';
 // Page furniture (kicker, title, rule, column widths) comes from the same
 // stylesheet /signin and /library use — a bare <main> renders unstyled
 // against this shell, which is exactly how this page first shipped.
@@ -114,6 +122,8 @@ export default async function MemberPage() {
   }
 
   const isAdult = session.subjectKind === 'adult';
+  // Adults only — see PasskeyManager's header for why scouts stay on codes.
+  const passkeys = isAdult ? await listPasskeys(createAdminClient(), session.personId) : [];
 
   return (
     <>
@@ -172,6 +182,16 @@ export default async function MemberPage() {
           );
         })}
       </div>
+
+      {isAdult && (
+        <PasskeyManager
+          passkeys={passkeys}
+          configured={passkeysConfigured()}
+          getOptions={passkeyRegisterOptionsAction}
+          verify={passkeyRegisterVerifyAction}
+          remove={deletePasskeyAction}
+        />
+      )}
 
       <p className={styles.note}>
           The greyed-out cards aren&rsquo;t built yet. They&rsquo;re listed so you can see

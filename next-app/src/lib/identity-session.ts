@@ -56,11 +56,28 @@ export interface IdentitySession {
 }
 
 const COOKIE_NAME = 't79_identity';
-const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 120; // 120 days, matching FAMILY_COOKIE (D-005: revocation, not expiry, is the safety lever)
+const ADULT_MAX_AGE_SECONDS = 60 * 60 * 24 * 120; // 120 days
+/**
+ * Scouts get 30 days, not 120 (Open Question 5, resolved 2026-08-16).
+ *
+ * A scout signs in from a shared school Chromebook far more often than a
+ * parent signs in from a shared anything. The grant behind a scout session is
+ * also narrower — no PII, no household demographics — so the cost of asking
+ * them to re-verify is small, and at 94% scout phone coverage it is a
+ * 20-second text. Revocation remains the real safety lever (D-005); this just
+ * shortens the window for the population most likely to leave a session
+ * behind on someone else's machine.
+ */
+const SCOUT_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
+
+export function sessionMaxAgeFor(subjectKind: IdentitySubjectKind): number {
+  return subjectKind === 'scout' ? SCOUT_MAX_AGE_SECONDS : ADULT_MAX_AGE_SECONDS;
+}
 
 export const IDENTITY_COOKIE = {
   name: COOKIE_NAME,
-  maxAgeSeconds: SESSION_MAX_AGE_SECONDS
+  /** Adult default. Use sessionMaxAgeFor() when issuing — a scout gets less. */
+  maxAgeSeconds: ADULT_MAX_AGE_SECONDS
 };
 
 export async function signIdentitySession(session: Omit<IdentitySession, 'role'>): Promise<string> {

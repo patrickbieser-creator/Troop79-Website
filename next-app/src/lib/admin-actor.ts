@@ -107,3 +107,15 @@ export async function resolveAdminActor(): Promise<AdminActor | null> {
 export function actorHas(actor: AdminActor | null, capability: Capability): boolean {
   return actor?.capabilities.has(capability) ?? false;
 }
+
+/**
+ * The acting person's display name, for audit stamps and bylines.
+ *
+ * Replaces reading `t79_leader_session` directly, which several screens did
+ * for a name. Those reads returned null for an identity actor, so they would
+ * have quietly lost the byline the moment LEADER_PASSWORD retired.
+ */
+export async function adminActorLabel(fallback = 'admin'): Promise<string> {
+  const actor = await resolveAdminActor();
+  return actor?.label ?? fallback;
+}

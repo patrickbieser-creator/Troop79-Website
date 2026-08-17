@@ -19,10 +19,9 @@
  * nothing else. Their household and relationships are untouched by it.
  */
 
-import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
-import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
+import { resolveAdminActor } from '@/lib/admin-actor';
 import { centralToday } from '@/lib/dates';
 import type { Rank } from '@/lib/supabase/types';
 import { PrintButton } from './print-button';
@@ -71,9 +70,11 @@ export default async function RosterPage({
 }: {
   searchParams: Promise<{ tab?: string; open?: string }>;
 }) {
-  const jar = await cookies();
-  const session = await verifySession(jar.get(LEADER_COOKIE.name)?.value);
-  if (!session || session.role !== 'leader') {
+  // Belt and braces behind requireCapability('roster.manage') above — this
+  // used to read the leader cookie directly and would have refused every
+  // identity actor once LEADER_PASSWORD retired.
+  const actor = await resolveAdminActor();
+  if (!actor?.capabilities.has('roster.manage')) {
     return <div className={styles.gate}>The roster is available to adult leaders only.</div>;
   }
 

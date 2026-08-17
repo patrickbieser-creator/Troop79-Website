@@ -1,9 +1,8 @@
 'use server';
 
-import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
-import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
+import { adminActorLabel } from '@/lib/admin-actor';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { LedgerKind } from '@/lib/supabase/types';
 
@@ -30,9 +29,7 @@ const VALID_KINDS: ReadonlySet<LedgerKind> = new Set<LedgerKind>([
  */
 
 async function leaderInitials(): Promise<string> {
-  const jar = await cookies();
-  const session = await verifySession(jar.get(LEADER_COOKIE.name)?.value);
-  return session?.leader ?? 'admin';
+  return adminActorLabel('admin');
 }
 
 export async function archiveLedgerEntry(formData: FormData): Promise<void> {

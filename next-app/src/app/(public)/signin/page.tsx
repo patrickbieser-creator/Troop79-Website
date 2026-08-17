@@ -11,7 +11,11 @@ import Link from 'next/link';
 import { emailConfigured } from '@/lib/email';
 import { hasFamilyAccess } from '@/lib/family-access';
 import { NameSearch } from './name-search';
+import { PasskeyButton } from './passkey-button';
+import { passkeysConfigured } from '@/lib/passkeys';
 import {
+  passkeyAuthOptionsAction,
+  passkeyAuthVerifyAction,
   requestSignInAction,
   verifyCodeAction,
   unlockRosterAction,
@@ -62,6 +66,7 @@ export default async function SignInPage({
   const configured = emailConfigured();
   // The troop password gates the roster, nothing else (Phase D, decision 3).
   const rosterUnlocked = pick === '1' || (await hasFamilyAccess());
+  const passkeys = passkeysConfigured();
 
   return (
     <>
@@ -81,6 +86,14 @@ export default async function SignInPage({
             Email sign-in isn&rsquo;t configured on this server yet — ask a leader for a
             one-time code instead.
           </p>
+        )}
+
+        {sent !== '1' && passkeys && (
+          <PasskeyButton
+            next={next}
+            getOptions={passkeyAuthOptionsAction}
+            verify={passkeyAuthVerifyAction}
+          />
         )}
 
         {sent === '1' ? (

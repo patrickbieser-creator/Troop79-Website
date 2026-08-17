@@ -397,6 +397,19 @@ async function mintAndSend(
 
 /** Re-resolves the CURRENT identity for a person at redemption time — never
  *  trust anything except person_id off the stored token row. */
+/**
+ * Exported for the passkey path, which arrives at a person_id without any
+ * login_tokens row and needs the same identity resolution — including the
+ * active check and the household lookup — as a redeemed code.
+ */
+export async function identityForPerson(
+  supabase: SupabaseClient,
+  personId: number,
+  nextPath: string | null
+): Promise<RedeemedIdentity | null> {
+  return currentIdentityFor(supabase, personId, nextPath);
+}
+
 async function currentIdentityFor(
   supabase: SupabaseClient,
   personId: number,

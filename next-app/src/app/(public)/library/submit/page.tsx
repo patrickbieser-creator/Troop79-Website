@@ -5,10 +5,9 @@
  * for webmaster review — nothing publishes from here.
  */
 import Link from 'next/link';
-import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/server';
 import { gateAudience, familyGateConfigured } from '@/lib/family-access';
-import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
+import { resolveAdminActor } from '@/lib/admin-actor';
 import type { LibraryTopic, MeritBadge, Rank } from '@/lib/supabase/types';
 import { rankReqKey } from '@/lib/library';
 import { libraryGateAction, submitLibraryResourceAction } from './actions';
@@ -172,9 +171,8 @@ async function SubmitForm({ target, err }: { target?: string; err?: string }) {
 
   // Leaders/scouts get their login name prefilled as the "who are you" —
   // editable, since the label is display-only (sessions aren't identity).
-  const jar = await cookies();
-  const adminSession = await verifySession(jar.get(LEADER_COOKIE.name)?.value);
-  const namePrefill = adminSession?.leader ?? '';
+  const adminActor = await resolveAdminActor();
+  const namePrefill = adminActor?.label ?? '';
 
   return (
     <form className={styles.formCard} action={submitLibraryResourceAction}>
