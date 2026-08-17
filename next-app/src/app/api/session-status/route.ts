@@ -30,7 +30,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
-import { FAMILY_COOKIE, verifyFamilySession } from '@/lib/family-session';
 import { IDENTITY_COOKIE, verifyIdentitySession } from '@/lib/identity-session';
 
 export type SessionLevel = 'Admin' | 'Scout' | 'Family';
@@ -57,15 +56,22 @@ export interface SessionStatus {
 
 export async function GET() {
   const jar = await cookies();
-  const [leaderSession, familySession, identitySession] = await Promise.all([
+  // The family cookie is deliberately NOT read here any more — see below.
+  const [leaderSession, identitySession] = await Promise.all([
     verifySession(jar.get(LEADER_COOKIE.name)?.value),
-    verifyFamilySession(jar.get(FAMILY_COOKIE.name)?.value),
     verifyIdentitySession(jar.get(IDENTITY_COOKIE.name)?.value)
   ]);
 
   // Precedence mirrors lib/family-access.ts's gateAudience(): a leader/admin
-  // session is the strongest and most specific signal, then verified
-  // identity, then the plain shared-password family cookie.
+  // session is the strongest and most specific signal, then verified identity.
+  //
+  // THE SHARED-PASSWORD FAMILY COOKIE IS NOT A SIGN-IN (Patrick, 2026-08-16).
+  // It used to be, and this route still said so — reporting "Signed in ·
+  // Family" to anyone who had merely typed the troop password. Phase D
+  // demoted FAMILY_PASSWORD to the gate on the name picker: it unlocks a list
+  // of names and grants nothing, and the thing you leave that screen with is
+  // a per-person identity session. Someone holding only that cookie has not
+  // signed in as anybody, so the bar must say nothing at all.
   let status: SessionStatus;
   if (leaderSession) {
     status = {
@@ -85,9 +91,8 @@ export async function GET() {
       canViewProfile: identitySession.subjectKind === 'adult',
       isVerifiedMember: true
     };
-  } else if (familySession) {
-    status = { loggedIn: true, level: 'Family', label: null, canViewProfile: false, isVerifiedMember: false };
   } else {
+    // Covers "no cookies at all" AND "troop password only" — see above.
     status = { loggedIn: false, level: null, label: null, canViewProfile: false, isVerifiedMember: false };
   }
 
