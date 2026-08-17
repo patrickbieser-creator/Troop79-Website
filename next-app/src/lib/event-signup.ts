@@ -12,6 +12,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/server';
+import { mustMaybe } from '@/lib/db';
 import type { CalendarEntry } from '@/lib/supabase/types';
 
 export interface EventPrice {
@@ -226,7 +227,7 @@ export async function loadPartySignup(
 export async function loadEventDetail(entryId: number): Promise<EventDetail | null> {
   const supabase = createAdminClient();
 
-  const { data: entry } = await supabase
+  const entryRes = await supabase
     .from('calendar_entries')
     .select('*')
     .eq('id', entryId)
@@ -234,6 +235,11 @@ export async function loadEventDetail(entryId: number): Promise<EventDetail | nu
     // guessable /events/[id] URL since D-108.
     .eq('status', 'published')
     .maybeSingle();
+  // mustMaybe, not mustList: "no such event" is an ordinary answer that should
+  // 404, while "the query broke" must not masquerade as one. `const { data }`
+  // collapsed those two into the same null, which is how a schema mismatch
+  // turned every event page into a not-found on 2026-08-16.
+  const entry = mustMaybe(entryRes, `event ${entryId}: detail`);
   if (!entry) return null;
 
   const { data: resources } = await supabase

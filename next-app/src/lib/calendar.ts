@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import { mustList } from '@/lib/db';
 import type { CalendarEntry } from '@/lib/supabase/types';
 import type { CalendarCategoryRow } from '@/lib/calendar-categories';
 import { isAutoArchivedOn } from '@/lib/feed-logic';
@@ -18,11 +19,13 @@ export { formatCalendarDateParts, formatTimeOfDay } from '@/lib/calendar-shared'
  */
 export async function loadCalendarCategories(): Promise<CalendarCategoryRow[]> {
   const supabase = createAdminClient();
-  const { data } = await supabase
+  const res = await supabase
     .from('calendar_categories')
     .select('label, color, sort_order, behavior, template, credit_kind, credit_unit, counts_as_activity')
     .order('sort_order', { ascending: true });
-  return (data ?? []) as CalendarCategoryRow[];
+  // Named in the backlog as the original example of this bug: a missing table
+  // here greys out the whole site rather than erroring.
+  return mustList(res, 'calendar: category vocabulary') as CalendarCategoryRow[];
 }
 
 /*
@@ -48,8 +51,15 @@ export interface CalendarEntryPublic extends CalendarEntry {
 async function signupEnabledIds(
   supabase: ReturnType<typeof createAdminClient>
 ): Promise<Set<number>> {
-  const { data } = await supabase.from('event_signups').select('calendar_entry_id');
-  return new Set(((data ?? []) as { calendar_entry_id: number }[]).map((r) => r.calendar_entry_id));
+  const res = await supabase.from('event_signups').select('calendar_entry_id');
+  // Failing quietly here would strip the Sign Up control from every event on
+  // the calendar while the pages themselves still rendered — the same
+  // looks-fine-but-isn't shape as the entries read above.
+  return new Set(
+    mustList<{ calendar_entry_id: number }>(res, 'calendar: signup-enabled entry ids').map(
+      (r) => r.calendar_entry_id
+    )
+  );
 }
 
 function toEntry(row: CalendarEntry, signupIds?: Set<number>): CalendarEntryPublic {
@@ -70,7 +80,7 @@ export async function loadCalendarEntries(): Promise<{
   past: CalendarEntryPublic[];
 }> {
   const supabase = createAdminClient();
-  const [{ data }, signupIds] = await Promise.all([
+  const [entriesRes, signupIds] = await Promise.all([
     supabase
       .from('calendar_entries')
       .select('*')
@@ -84,7 +94,9 @@ export async function loadCalendarEntries(): Promise<{
       .order('entry_date', { ascending: true }),
     signupEnabledIds(supabase)
   ]);
-  const all = ((data ?? []) as CalendarEntry[]).filter(notAutoArchived).map((r) => toEntry(r, signupIds));
+  const all = mustList<CalendarEntry>(entriesRes, 'calendar: upcoming and past entries')
+    .filter(notAutoArchived)
+    .map((r) => toEntry(r, signupIds));
 
   const today = new Date().toISOString().slice(0, 10);
   const upcoming = all.filter((e) => lastDay(e) >= today);
@@ -97,7 +109,7 @@ export async function loadCalendarEntries(): Promise<{
 /** Every entry, past and future — feeds the .ics subscription route. */
 export async function loadAllCalendarEntries(): Promise<CalendarEntryPublic[]> {
   const supabase = createAdminClient();
-  const { data } = await supabase
+  const res = await supabase
     .from('calendar_entries')
     .select('*')
     // The .ics feed is a PUBLIC subscription URL — a draft leaking here would
@@ -105,5 +117,9 @@ export async function loadAllCalendarEntries(): Promise<CalendarEntryPublic[]> {
     .eq('status', 'published')
     .eq('on_calendar', true)
     .order('entry_date', { ascending: true });
-  return ((data ?? []) as CalendarEntry[]).filter(notAutoArchived).map((r) => toEntry(r));
+  // An empty .ics is the least visible failure on the site: subscribers just
+  // stop seeing troop events appear, with nothing to click and no error.
+  return mustList<CalendarEntry>(res, 'calendar: .ics subscription feed')
+    .filter(notAutoArchived)
+    .map((r) => toEntry(r));
 }

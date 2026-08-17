@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import { mustList } from '@/lib/db';
 import type { Article, Media, Tag } from '@/lib/supabase/types';
 
 const PAGE_SIZE = 10;
@@ -71,21 +72,22 @@ export async function loadNewsIndex(page: number, archive: boolean) {
   const supabase = createAdminClient();
   const view = archive ? 'articles_archived' : 'articles_public';
   const from = (page - 1) * PAGE_SIZE;
-  const { data, count } = await supabase
+  const res = await supabase
     .from(view)
     .select(CARD_SELECT, { count: 'exact' })
     .order('published_at', { ascending: false })
     .range(from, from + PAGE_SIZE - 1);
+  const { count } = res;
   return {
-    rows: ((data ?? []) as RawArticleRow[]).map(toCard),
+    rows: mustList<RawArticleRow>(res, `news: ${archive ? 'archive' : 'index'} page ${page}`).map(toCard),
     totalPages: Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE))
   };
 }
 
 export async function loadAllTags() {
   const supabase = createAdminClient();
-  const { data } = await supabase.from('tags').select('*').order('name');
-  return (data ?? []) as Tag[];
+  const res = await supabase.from('tags').select('*').order('name');
+  return mustList(res, 'news: tag list') as Tag[];
 }
 
 export async function loadArticleBySlug(slug: string): Promise<ArticleCard | null> {
@@ -109,14 +111,15 @@ export async function loadArticlesByTag(slug: string, page: number) {
   if (articleIds.length === 0) return { tag: tag as Tag, rows: [] as ArticleCard[], totalPages: 1 };
 
   const from = (page - 1) * PAGE_SIZE;
-  const { data, count } = await supabase
+  const res = await supabase
     .from('articles_public')
     .select(CARD_SELECT, { count: 'exact' })
     .in('id', articleIds)
     .order('published_at', { ascending: false })
     .range(from, from + PAGE_SIZE - 1);
+  const { count } = res;
 
-  const rows = ((data ?? []) as RawArticleRow[]).map(toCard);
+  const rows = mustList<RawArticleRow>(res, `news: tag page ${page}`).map(toCard);
   const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE));
   return { tag: tag as Tag, rows, totalPages };
 }

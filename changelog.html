@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 6, 2026</strong></p>
+      <p>Last updated: <strong>August 16, 2026</strong></p>
     </div>
   </div>
 
@@ -494,6 +494,109 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.47.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.47.0</span>
+        <span class="release-date">August 16, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Signing in: find your name, don&rsquo;t remember your email</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>You no longer have to remember which email address the troop has for
+              you.</strong> That was the single most common reason a family started signing in and
+              never finished. Enter the troop password, type two letters of your name, and pick
+              yourself from the matches &mdash; the code goes to the address already on file, shown
+              as a hint like <em>d&bull;&bull;&bull;&bull;&bull;@gmail.com</em> so you can tell it&rsquo;s
+              yours without us printing anyone&rsquo;s address on a screen.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Nothing appears until you type.</strong> The list isn&rsquo;t browsable, and
+              searching happens on the server, so the troop roster never gets sent to your browser.
+              Searching works on your full last name even though only your first name and initial
+              are ever shown &mdash; type &ldquo;Bieser&rdquo; and you&rsquo;ll find
+              &ldquo;Patrick B.&rdquo;
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>The troop password changed jobs.</strong> It used to be the thing that let
+              you in. Now it only brings up the name search &mdash; you still sign in as yourself,
+              and what you end up with is your own session, which a leader can end for a lost phone
+              without changing anything for anyone else.
+            </span>
+          </li>
+          <li>
+            <span>
+              If we don&rsquo;t have an email for you, your name still appears, saying so. Ask a
+              leader &mdash; they can add one. Prefer typing your address? That still works, under
+              &ldquo;Can&rsquo;t find yourself?&rdquo;
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Scouts and parents can send in a story</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>There&rsquo;s a &ldquo;Submit a story&rdquo; link on the News page.</strong>
+              Been on a campout, finished a project, learned something worth passing on? Write it
+              up and send it in. Scouts and parents are both welcome.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>A leader reads everything before it goes on the site.</strong> A submitted
+              story doesn&rsquo;t publish itself &mdash; it waits for review, and the leaders see a
+              note telling them something is waiting. If they publish it, it appears with your name
+              on it.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Calendar</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Leaders can save a calendar entry as a draft.</strong> Until now an event
+              went live the moment it was saved, which made it awkward to pencil in a campout whose
+              dates were still moving. A draft is invisible everywhere &mdash; calendar, event page,
+              signups, and the subscribe-by-calendar feed &mdash; until it&rsquo;s published.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Fixed</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>The calendar was empty for about an hour this afternoon.</strong> A database
+              change went out after the code that needed it, and every calendar view &mdash;
+              homepage, events page, and the subscribe feed &mdash; came up blank instead of showing
+              an error. Fixed, and the pages that read the calendar now fail loudly rather than
+              quietly showing nothing, so an empty page can&rsquo;t be mistaken for an empty
+              calendar again.
+            </span>
+          </li>
+          <li>
+            <span>
+              Two people with the same first name and last initial could appear identically on the
+              sign-in list. They&rsquo;re now told apart, so a code can&rsquo;t go to the wrong
+              family.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

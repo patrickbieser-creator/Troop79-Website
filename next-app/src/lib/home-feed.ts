@@ -6,6 +6,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/server';
+import { mustList } from '@/lib/db';
 import type { CalendarEntry, Media } from '@/lib/supabase/types';
 import {
   isPromoActive,
@@ -27,12 +28,14 @@ export type FeedItem = FeedItemG<ArticleCard, PromotedEntry>;
  */
 export async function loadPromotedEntries(today: Date = new Date()): Promise<PromotedEntry[]> {
   const supabase = createAdminClient();
-  const { data } = await supabase
+  const res = await supabase
     .from('calendar_entries')
     .select('*, hero_media:hero_media_id(*)')
     .eq('status', 'published')
     .eq('show_on_homepage', true);
-  return ((data ?? []) as unknown as PromotedEntry[]).filter((e) => isPromoActive(e, today));
+  return (mustList(res, 'homepage: promoted entries') as unknown as PromotedEntry[]).filter((e) =>
+    isPromoActive(e, today)
+  );
 }
 
 export interface MergedHomeFeed {
