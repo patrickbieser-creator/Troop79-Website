@@ -6,6 +6,30 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { EDITABLE_PERSON_FIELDS, type FieldValue } from '@/lib/change-requests';
 
 /**
+ * Demographics a LEADER may edit directly from the Roster, vs.
+ * EDITABLE_PERSON_FIELDS (the narrower set a FAMILY may propose from
+ * /profile). Leaders get four more:
+ *   - bsa_member_id — EDITABLE_PERSON_FIELDS excludes it because a family
+ *     correction could drift from what Scouting America issued; a leader
+ *     typing it is the same trust level as the roster import that already
+ *     writes it directly.
+ *   - ypt_completed, health_form_date, things_we_should_know — lived on the
+ *     legacy `leaders` table and were editable through the old Lookups
+ *     "Adults and Instructors" card until the Roster moved to the
+ *     person-spine model; that card's replacement never grew a demographics
+ *     section, so these went silently unmanageable. Migrated onto `people`
+ *     (`20260817120000_people_ypt_health_notes.sql`, backfilled from
+ *     `leaders`) and restored here (Patrick's report, 2026-08-17).
+ */
+export const LEADER_PERSON_FIELDS = [
+  ...EDITABLE_PERSON_FIELDS,
+  'bsa_member_id',
+  'ypt_completed',
+  'health_form_date',
+  'things_we_should_know'
+] as const;
+
+/**
  * Person-level edits behind the Roster's Leaders and Adults tabs.
  *
  * WHICH TAB SOMEONE APPEARS ON IS NOT EDITABLE, and there is deliberately no
@@ -336,9 +360,10 @@ export interface PersonDetail {
     isGuardian: boolean;
     otherName: string;
   }[];
-  /** The person's current editable demographics, for the Pending Update diff —
-   *  a family can now propose changes to an adult's record from /profile, and
-   *  this editor has no demographics form of its own to read them off. */
+  /** The person's current demographics (LEADER_PERSON_FIELDS — the leader
+   *  superset of what a family may propose from /profile). Seeds the
+   *  editor's own Demographics form AND feeds the Pending Update diff
+   *  against a family's proposed change. */
   fields: Record<string, FieldValue>;
 }
 
@@ -364,7 +389,7 @@ export async function getPersonDetail(personId: number): Promise<PersonDetail> {
       .or(`person_id.eq.${personId},related_person_id.eq.${personId}`),
     supabase
       .from('people')
-      .select(EDITABLE_PERSON_FIELDS.join(', '))
+      .select(LEADER_PERSON_FIELDS.join(', '))
       .eq('id', personId)
       .maybeSingle()
   ]);
@@ -397,6 +422,74 @@ export async function getPersonDetail(personId: number): Promise<PersonDetail> {
     }),
     fields: (fieldRow ?? {}) as unknown as Record<string, FieldValue>
   };
+}
+
+/**
+ * A leader's direct edit of an adult's demographics — writes `people`
+ * immediately, unlike the family self-service flow (which lands in
+ * `change_requests` for review). A leader editing from the Roster IS the
+ * review; there is nobody else to approve it.
+ *
+ * Same required-fields and email-collision rules as createPerson(), since
+ * this is the same row shape post-creation. `neq('id', personId)` on the
+ * collision check is the one difference — the person's own email must not
+ * collide with itself.
+ */
+export async function updatePersonDemographics(personId: number, formData: FormData): Promise<Result> {
+  await requireCapability('roster.manage');
+
+  const firstName = String(formData.get('first_name') ?? '').trim();
+  const lastName = String(formData.get('last_name') ?? '').trim();
+  if (!firstName || !lastName) {
+    return { ok: false, error: 'First name and last name are required.' };
+  }
+
+  const supabase = createAdminClient();
+  const email = String(formData.get('primary_email') ?? '').trim().toLowerCase() || null;
+
+  if (email) {
+    const { data: clash } = await supabase
+      .from('people')
+      .select('id, display_name')
+      .is('merged_into_person_id', null)
+      .neq('id', personId)
+      .ilike('primary_email', email)
+      .maybeSingle();
+    if (clash) {
+      const found = clash as { id: number; display_name: string };
+      return {
+        ok: false,
+        error: `${found.display_name} already uses ${email}. Merge these records instead of duplicating the address.`
+      };
+    }
+  }
+
+  const text = (key: string) => String(formData.get(key) ?? '').trim() || null;
+
+  const { error } = await supabase
+    .from('people')
+    .update({
+      first_name: firstName,
+      last_name: lastName,
+      display_name: `${firstName} ${lastName}`,
+      birthdate: text('birthdate'),
+      primary_email: email,
+      primary_phone: text('primary_phone'),
+      address_line1: text('address_line1'),
+      address_line2: text('address_line2'),
+      city: text('city'),
+      state: text('state'),
+      zip: text('zip'),
+      bsa_member_id: text('bsa_member_id'),
+      ypt_completed: text('ypt_completed'),
+      health_form_date: text('health_form_date'),
+      things_we_should_know: text('things_we_should_know')
+    })
+    .eq('id', personId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidate();
+  return { ok: true };
 }
 
 /**

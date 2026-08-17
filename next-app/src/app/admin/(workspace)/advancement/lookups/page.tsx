@@ -16,7 +16,20 @@ import { requireCapability } from '@/lib/require-capability';
 // Scout and adult MANAGEMENT moved to /admin/advancement/roster in v1.12 —
 // this page still READS both to build the merit-badge counselor and skill
 // assignment pickers, so the row types come from there.
-import type { LeaderRow } from '../roster/leader-form';
+/**
+ * The `leaders` row shape this page actually reads — just enough for the
+ * counselor and skill-assignment pickers below, not the full leader
+ * demographic shape (that lived on the now-deleted roster/leader-form.tsx;
+ * editing an adult's demographics moved to the Roster's PersonEditor on the
+ * `people` spine, 2026-08-17 — see person-actions.ts's LEADER_PERSON_FIELDS).
+ */
+interface LeaderRow {
+  code: string;
+  name: string;
+  role: string | null;
+  is_person: boolean;
+  scout_id: string | null;
+}
 import type { ScoutRow } from '../roster/scout-form';
 import { MbEditor, type MbRow, type CounselorRow, type EditReqNode } from './mb-editor';
 import { NameLookupEditor, type NameRow } from './name-lookup-editor';

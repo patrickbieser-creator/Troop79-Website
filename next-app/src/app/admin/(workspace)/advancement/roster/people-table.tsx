@@ -11,6 +11,7 @@ import {
   removeRelationship,
   searchPeople,
   getPersonDetail,
+  updatePersonDemographics,
   setPersonActive,
   mergePersonInto,
   deletePerson,
@@ -22,6 +23,8 @@ import {
 } from './person-actions';
 import { PendingUpdatePanel } from './pending-update-panel';
 import { AdultForm } from './adult-form';
+import { DatePickerField } from '../../_components/date-picker-field';
+import { ageOn, yptStatus } from '@/lib/demographics';
 import styles from './roster.module.css';
 
 export interface DirectoryPerson {
@@ -58,6 +61,25 @@ export interface RelationshipRow {
 export interface HouseholdOption {
   id: number;
   label: string;
+}
+
+/** PersonEditor's Demographics form state — one object per LEADER_PERSON_FIELDS
+ *  field, all strings (dates included; DatePickerField's own value shape). */
+interface DemoForm {
+  firstName: string;
+  lastName: string;
+  birthdate: string;
+  email: string;
+  phone: string;
+  addr1: string;
+  addr2: string;
+  city: string;
+  state: string;
+  zip: string;
+  bsaMemberId: string;
+  yptCompleted: string;
+  healthFormDate: string;
+  thingsWeShouldKnow: string;
 }
 
 const ROLE_LABEL: Record<string, string> = {
@@ -313,6 +335,12 @@ function PersonEditor({
   const [newHouseholdLabel, setNewHouseholdLabel] = useState('');
   const [renaming, setRenaming] = useState(false);
   const [renameLabel, setRenameLabel] = useState('');
+  // Collapsed by default — read far more rarely than every other section here,
+  // and the dialog is long enough without it open by default. A plain
+  // useState toggle, not <details>/<summary>: a closed <details> silently hid
+  // its content in a way CSS couldn't override and shipped broken to
+  // production twice (D-070, 2026-07-19) — not a mechanism to reach for here.
+  const [showDanger, setShowDanger] = useState(false);
 
   // The editor renders what the SERVER says this person is, re-read after every
   // change. Relying on revalidatePath + router.refresh() to feed new props into
@@ -323,6 +351,33 @@ function PersonEditor({
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
 
+  // Demographics form — one state object rather than 14 separate fields, so
+  // re-seeding it from a fresh `detail` read is a single setState call, not
+  // fourteen. Re-seeded whenever `detail` is re-read from the server (open,
+  // and after any save in this dialog, including a household/role/relationship
+  // change elsewhere in the same session — those also refetch `detail`).
+  // Trade-off accepted: an in-progress, unsaved demographics edit would be
+  // overwritten by an unrelated action's refetch. Not worth a dirty-tracking
+  // guard for a dialog this short-lived; re-typing a stomped field is cheap.
+  const str = (v: unknown) => (typeof v === 'string' || typeof v === 'number' ? String(v) : '');
+  const demoFromFields = (fields: PersonDetail['fields']): DemoForm => ({
+    firstName: str(fields.first_name),
+    lastName: str(fields.last_name),
+    birthdate: str(fields.birthdate),
+    email: str(fields.primary_email),
+    phone: str(fields.primary_phone),
+    addr1: str(fields.address_line1),
+    addr2: str(fields.address_line2),
+    city: str(fields.city),
+    state: str(fields.state),
+    zip: str(fields.zip),
+    bsaMemberId: str(fields.bsa_member_id),
+    yptCompleted: str(fields.ypt_completed),
+    healthFormDate: str(fields.health_form_date),
+    thingsWeShouldKnow: str(fields.things_we_should_know)
+  });
+  const [demo, setDemo] = useState<DemoForm>(demoFromFields(seed.fields));
+
   // Fresh read on open, so a dialog opened after someone else's edit is current.
   useEffect(() => {
     let live = true;
@@ -331,6 +386,35 @@ function PersonEditor({
       .catch(() => {});
     return () => { live = false; };
   }, [person.person_id]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDemo(demoFromFields(detail.fields));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detail.fields]);
+
+  function setDemoField<K extends keyof DemoForm>(key: K, value: DemoForm[K]) {
+    setDemo((d) => ({ ...d, [key]: value }));
+  }
+
+  function saveDemographics() {
+    const fd = new FormData();
+    fd.set('first_name', demo.firstName);
+    fd.set('last_name', demo.lastName);
+    fd.set('birthdate', demo.birthdate);
+    fd.set('primary_email', demo.email);
+    fd.set('primary_phone', demo.phone);
+    fd.set('address_line1', demo.addr1);
+    fd.set('address_line2', demo.addr2);
+    fd.set('city', demo.city);
+    fd.set('state', demo.state);
+    fd.set('zip', demo.zip);
+    fd.set('bsa_member_id', demo.bsaMemberId);
+    fd.set('ypt_completed', demo.yptCompleted);
+    fd.set('health_form_date', demo.healthFormDate);
+    fd.set('things_we_should_know', demo.thingsWeShouldKnow);
+    act(() => updatePersonDemographics(person.person_id, fd), 'Demographics saved.');
+  }
 
   function act(fn: () => Promise<{ ok: boolean; error?: string }>, okMessage: string) {
     setError(null);
@@ -471,6 +555,161 @@ function PersonEditor({
               </button>
             </div>
           )}
+        </section>
+
+        {/* ── Demographics ──────────────────────────────────────────── */}
+        <section className={styles.editorSection}>
+          <h3>Demographics</h3>
+          <p className={styles.editorHint}>
+            Contact info, YPT and health form dates, and anything leaders should know. A family can
+            also propose changes to some of this from their own /profile — those land above as a
+            Pending Update rather than here, so nothing you type is ever silently overwritten by a
+            family submission.
+          </p>
+          <div className={styles.editGrid}>
+            <label className={styles.editField}>
+              <span className={styles.editLabel}>First Name</span>
+              <input
+                className={styles.editInput}
+                value={demo.firstName}
+                disabled={disabled}
+                onChange={(e) => setDemoField('firstName', e.target.value)}
+              />
+            </label>
+            <label className={styles.editField}>
+              <span className={styles.editLabel}>Last Name</span>
+              <input
+                className={styles.editInput}
+                value={demo.lastName}
+                disabled={disabled}
+                onChange={(e) => setDemoField('lastName', e.target.value)}
+              />
+            </label>
+            <label className={styles.editField}>
+              <span className={styles.editLabel}>
+                Birthdate
+                {ageOn(demo.birthdate || null) !== null ? ` · age ${ageOn(demo.birthdate || null)}` : ''}
+              </span>
+              <DatePickerField value={demo.birthdate} onChange={(v) => setDemoField('birthdate', v)} />
+            </label>
+            <label className={styles.editField}>
+              <span className={styles.editLabel}>Email</span>
+              <input
+                className={styles.editInput}
+                type="email"
+                value={demo.email}
+                disabled={disabled}
+                onChange={(e) => setDemoField('email', e.target.value)}
+              />
+            </label>
+            <label className={styles.editField}>
+              <span className={styles.editLabel}>Phone</span>
+              <input
+                className={styles.editInput}
+                type="tel"
+                value={demo.phone}
+                disabled={disabled}
+                onChange={(e) => setDemoField('phone', e.target.value)}
+              />
+            </label>
+            <label className={styles.editFieldFull}>
+              <span className={styles.editLabel}>Address Line 1</span>
+              <input
+                className={styles.editInput}
+                value={demo.addr1}
+                disabled={disabled}
+                onChange={(e) => setDemoField('addr1', e.target.value)}
+              />
+            </label>
+            <label className={styles.editFieldFull}>
+              <span className={styles.editLabel}>Address Line 2</span>
+              <input
+                className={styles.editInput}
+                value={demo.addr2}
+                disabled={disabled}
+                onChange={(e) => setDemoField('addr2', e.target.value)}
+                placeholder="Apt / unit (optional)"
+              />
+            </label>
+            <label className={styles.editField}>
+              <span className={styles.editLabel}>City</span>
+              <input
+                className={styles.editInput}
+                value={demo.city}
+                disabled={disabled}
+                onChange={(e) => setDemoField('city', e.target.value)}
+              />
+            </label>
+            <label className={styles.editField}>
+              <span className={styles.editLabel}>State</span>
+              <input
+                className={styles.editInput}
+                value={demo.state}
+                maxLength={2}
+                disabled={disabled}
+                onChange={(e) => setDemoField('state', e.target.value)}
+                placeholder="WI"
+              />
+            </label>
+            <label className={styles.editField}>
+              <span className={styles.editLabel}>ZIP</span>
+              <input
+                className={styles.editInput}
+                value={demo.zip}
+                disabled={disabled}
+                onChange={(e) => setDemoField('zip', e.target.value)}
+              />
+            </label>
+            <label className={styles.editField}>
+              <span className={styles.editLabel}>BSA Member ID</span>
+              <input
+                className={styles.editInput}
+                value={demo.bsaMemberId}
+                disabled={disabled}
+                onChange={(e) => setDemoField('bsaMemberId', e.target.value)}
+                placeholder="(optional)"
+              />
+            </label>
+            <label className={styles.editField}>
+              <span className={styles.editLabel}>
+                YPT Completed
+                {demo.yptCompleted
+                  ? ` · ${yptStatus(demo.yptCompleted).status} (expires ${yptStatus(demo.yptCompleted).expires})`
+                  : ''}
+              </span>
+              <DatePickerField
+                value={demo.yptCompleted}
+                onChange={(v) => setDemoField('yptCompleted', v)}
+              />
+            </label>
+            <label className={styles.editField}>
+              <span className={styles.editLabel}>Health Form Date</span>
+              <DatePickerField
+                value={demo.healthFormDate}
+                onChange={(v) => setDemoField('healthFormDate', v)}
+              />
+            </label>
+            <label className={styles.editFieldFull}>
+              <span className={styles.editLabel}>Things We Should Know</span>
+              <textarea
+                className={styles.editInput}
+                value={demo.thingsWeShouldKnow}
+                disabled={disabled}
+                onChange={(e) => setDemoField('thingsWeShouldKnow', e.target.value)}
+                rows={3}
+                placeholder="e.g. Peanut allergy (EpiPen in backpack), asthma inhaler"
+              />
+            </label>
+          </div>
+          <div className={styles.inlineRow}>
+            <button
+              className={styles.editSaveBtn}
+              disabled={disabled || !demo.firstName.trim() || !demo.lastName.trim()}
+              onClick={saveDemographics}
+            >
+              Save demographics
+            </button>
+          </div>
         </section>
 
         {/* ── Household ─────────────────────────────────────────────── */}
@@ -710,47 +949,62 @@ function PersonEditor({
 
         {/* ── Duplicates and removal ─────────────────────────────────── */}
         <section className={styles.dangerSection}>
-          <h3>This is a duplicate, or should not exist</h3>
-          <p className={styles.editorHint}>
-            <strong>Merging is almost always the right choice.</strong> It moves every link — scout,
-            leader and parent records, household, roles, relationships — onto the person you keep,
-            fills their blanks from this one, and keeps this record flagged rather than destroying
-            it. Deleting keeps nothing, so anything attached here has to be re-entered by hand.
-          </p>
-          <PersonPicker
-            label="Merge this person into…"
-            disabled={disabled}
-            onPick={(survivorId) =>
-              act(
-                () => mergePersonInto(person.person_id, survivorId),
-                'Merged. Everything moved to the person you kept.'
-              )
-            }
-          />
-
-          <div className={styles.inlineRow}>
+          <div className={styles.inlineRow} style={{ marginTop: 0, justifyContent: 'space-between' }}>
+            <h3 style={{ margin: 0 }}>This is a duplicate, or should not exist</h3>
             <button
-              className={styles.dangerBtn}
-              disabled={disabled}
-              onClick={() => {
-                if (
-                  !window.confirm(
-                    `Delete ${person.display_name} permanently?\n\n` +
-                      'Their household, roles and relationships go with them. This cannot be undone, ' +
-                      'and is refused outright if they still hold a scout, leader or parent record.'
-                  )
-                ) {
-                  return;
-                }
-                act(() => deletePerson(person.person_id), 'Deleted.');
-              }}
+              type="button"
+              className={styles.smallBtn}
+              onClick={() => setShowDanger((v) => !v)}
+              aria-expanded={showDanger}
             >
-              Delete this person
+              {showDanger ? 'Hide' : 'Show'}
             </button>
-            <span className={styles.editorHint}>
-              Only possible for a record nothing is attached to yet.
-            </span>
           </div>
+          {showDanger && (
+            <>
+              <p className={styles.editorHint}>
+                <strong>Merging is almost always the right choice.</strong> It moves every link —
+                scout, leader and parent records, household, roles, relationships — onto the person
+                you keep, fills their blanks from this one, and keeps this record flagged rather than
+                destroying it. Deleting keeps nothing, so anything attached here has to be re-entered
+                by hand.
+              </p>
+              <PersonPicker
+                label="Merge this person into…"
+                disabled={disabled}
+                onPick={(survivorId) =>
+                  act(
+                    () => mergePersonInto(person.person_id, survivorId),
+                    'Merged. Everything moved to the person you kept.'
+                  )
+                }
+              />
+
+              <div className={styles.inlineRow}>
+                <button
+                  className={styles.dangerBtn}
+                  disabled={disabled}
+                  onClick={() => {
+                    if (
+                      !window.confirm(
+                        `Delete ${person.display_name} permanently?\n\n` +
+                          'Their household, roles and relationships go with them. This cannot be undone, ' +
+                          'and is refused outright if they still hold a scout, leader or parent record.'
+                      )
+                    ) {
+                      return;
+                    }
+                    act(() => deletePerson(person.person_id), 'Deleted.');
+                  }}
+                >
+                  Delete this person
+                </button>
+                <span className={styles.editorHint}>
+                  Only possible for a record nothing is attached to yet.
+                </span>
+              </div>
+            </>
+          )}
         </section>
       </div>
     </div>
