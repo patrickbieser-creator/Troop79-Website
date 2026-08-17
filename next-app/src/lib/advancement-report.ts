@@ -753,6 +753,28 @@ function cleanLabel(label: string): string {
 }
 
 /**
+ * `entered_by` values known to mark a historical migration/backfill batch
+ * rather than a real leader recording something in real time (Patrick,
+ * 2026-08-17 investigation: ~75% of the active ledger — 7,164 of 9,565 rows
+ * — carries one of these, confirmed by every one of them landing on an
+ * exact round-hour timestamp, which real usage essentially never does).
+ * `entered_at` on these rows reflects when the data was migrated into
+ * Supabase, not when it was recorded — exactly the distinction this
+ * feature's whole "filter on entered, not earned" design depends on, so a
+ * report generated over a range spanning one of these migration dates would
+ * otherwise surface the ENTIRE historical batch as if it happened that
+ * week. Excluded at the query level — this is a report-scoping concern, not
+ * part of the ledger's own correctness, so nothing else about these rows
+ * (the fast-entry ledger, scout profiles, MB progress) is touched.
+ *
+ * A `NOT IN` filter against this list also excludes NULL entered_by rows
+ * for free (confirmed empirically, 2026-08-17: SQL's three-valued logic —
+ * neither `x IN (...)` nor `NOT (x IN (...))` is ever TRUE for NULL x — no
+ * separate `.not.is(null)` clause needed).
+ */
+const IMPORT_BATCH_ENTERED_BY = ['PB', 'Import', 'pbieser-import'];
+
+/**
  * Loads and shapes every ledger row entered in [startDate, endDate]
  * (inclusive) into AdvancementEntry rows, ready for buildReport().
  * Every query uses fetchAllRows() — none of these are scoped to a single
@@ -784,6 +806,7 @@ export async function loadAdvancementEntries(
       .lte('entered_at', endExclusive)
       .is('archived_at', null)
       .is('deleted_at', null)
+      .not('entered_by', 'in', `(${IMPORT_BATCH_ENTERED_BY.join(',')})`)
       .order('id', { ascending: true })
       .range(from, to)
   );

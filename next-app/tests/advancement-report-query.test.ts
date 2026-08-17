@@ -54,6 +54,7 @@ describe('advancement report — query', () => {
       label?: string | null;
       date: string;
       enteredAt: string;
+      enteredBy?: string | null;
       qty?: number;
       unit?: string;
       archived?: boolean;
@@ -69,6 +70,11 @@ describe('advancement report — query', () => {
         label: row.label ?? null,
         date: row.date,
         entered_at: row.enteredAt,
+        // `?? 'vitest'` would also swallow an explicitly-passed `null`
+        // (nullish coalescing doesn't distinguish "omitted" from "null") —
+        // this test file deliberately exercises a real null entered_by, so
+        // only default when the key is truly absent.
+        entered_by: 'enteredBy' in row ? row.enteredBy : 'vitest',
         qty: row.qty ?? 1,
         unit: row.unit ?? 'complete'
       })
@@ -272,6 +278,42 @@ describe('advancement report — query', () => {
       const line = tenderfootGroup.lines.find((l) => l.codes.includes('1a'));
       expect(line?.scoutIds.includes(scout)).not.toBe(true);
     }
+  });
+
+  it('ExcludesKnownImportBatchMarkers_EvenWhenEnteredAtFallsInRange', async () => {
+    // Data-quality investigation, 2026-08-17 (Patrick): ~75% of the active
+    // ledger carries entered_by = 'PB'/'Import'/'pbieser-import' or NULL,
+    // every one of them landing on an exact round-hour entered_at — the
+    // fingerprint of a historical migration/backfill, not a leader
+    // recording something in real time. A report whose date range happens
+    // to span one of those migration dates must not surface the entire
+    // historical batch as if it were this week's news.
+    const admin = adminClient();
+    const scout = await makeScout(admin, `importmark-${Date.now()}`);
+    for (const enteredBy of ['PB', 'Import', 'pbieser-import', null]) {
+      await makeEntry(admin, {
+        scoutId: scout,
+        kind: 'rank_requirement',
+        code: 'tenderfoot-1a',
+        date: '2026-08-12',
+        enteredAt: '2026-08-12T10:00:00Z',
+        enteredBy
+      });
+    }
+    // A genuine leader entry, same scout/code/date range — must still show.
+    await makeEntry(admin, {
+      scoutId: scout,
+      kind: 'rank_requirement',
+      code: 'tenderfoot-1b',
+      date: '2026-08-12',
+      enteredAt: '2026-08-12T10:00:00Z',
+      enteredBy: 'Melissa R'
+    });
+
+    const entries = await loadAdvancementEntries(admin, { startDate: '2026-08-10', endDate: '2026-08-17' });
+    const mine = entries.filter((e) => e.scoutId === scout);
+    expect(mine).toHaveLength(1);
+    expect(mine[0].code).toBe('1b');
   });
 
   it('ReturnsAnEmptyReport_ForADateRangeWithNothingEntered', async () => {
