@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { GoogleAnalytics } from '@next/third-parties/google';
+import { GoogleAnalytics, GoogleTagManager } from '@next/third-parties/google';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -9,6 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const gtmId = process.env.NEXT_PUBLIC_GTM_CONTAINER_ID;
   const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
   return (
@@ -22,8 +23,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>{children}</body>
-      {/* Only loads when the env var is set — keeps local dev/preview traffic out of real GA data. */}
-      {gaId && <GoogleAnalytics gaId={gaId} />}
+      {/* Mutually exclusive by design: once GTM is configured (its container owns the GA4
+          config tag), the direct gtag.js snippet stops rendering entirely so pageviews are
+          never counted twice. Only loads when its env var is set — keeps local dev/preview
+          traffic out of real analytics. */}
+      {gtmId ? <GoogleTagManager gtmId={gtmId} /> : gaId && <GoogleAnalytics gaId={gaId} />}
     </html>
   );
 }
