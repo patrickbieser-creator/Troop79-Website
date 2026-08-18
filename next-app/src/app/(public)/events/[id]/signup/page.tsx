@@ -14,6 +14,7 @@ import {
 import HouseholdPicker from '../household-picker';
 import SlotFirstForm from '../slot-first-form';
 import PersonFirstForm from '../person-first-form';
+import { TrackOnMount } from '../../../_components/track-on-mount';
 import styles from '../event-detail.module.css';
 
 /*
@@ -136,6 +137,7 @@ export default async function EventSignupPage({
 
   return (
     <main className={styles.page}>
+      <TrackOnMount event="event_signup_view" params={{ event_id: entry.id }} />
       <p className={styles.breadcrumb}>
         <Link href={eventHref}>← {entry.title}</Link>
       </p>
@@ -214,9 +216,12 @@ export default async function EventSignupPage({
       ) : (
         <div className={styles.gatedIn}>
           {sp.saved && (
-            <p className={styles.savedNote}>
-              ✓ Your signup is saved. You can come back and change it until the deadline.
-            </p>
+            <>
+              <TrackOnMount event="event_signup_complete" params={{ event_id: entry.id }} />
+              <p className={styles.savedNote}>
+                ✓ Your signup is saved. You can come back and change it until the deadline.
+              </p>
+            </>
           )}
           {sp.signedout && (
             <p className={styles.savedNote}>✓ Signed out of the family gate on this device.</p>
@@ -264,6 +269,7 @@ export default async function EventSignupPage({
           {slotFirst ? (
             <section className={styles.block}>
               <h2 className={styles.blockHead}>{signup.slots_title ?? 'Jobs — pick one to sign up'}</h2>
+              <TrackOnMount event="event_signup_start" params={{ event_id: entry.id }} />
               <SlotFirstForm
                 eventId={entry.id}
                 signupId={signup.id}
@@ -286,18 +292,21 @@ export default async function EventSignupPage({
             </section>
           ) : (
             household && (
-              <PersonFirstForm
-                eventId={entry.id}
-                signup={signup}
-                household={household}
-                prices={prices}
-                questions={questions}
-                slots={slots}
-                existingClaims={existingClaims}
-                existing={existing}
-                submitAction={submitSignupAction}
-                cancelAction={cancelSignupAction}
-              />
+              <>
+                <TrackOnMount event="event_signup_start" params={{ event_id: entry.id }} />
+                <PersonFirstForm
+                  eventId={entry.id}
+                  signup={signup}
+                  household={household}
+                  prices={prices}
+                  questions={questions}
+                  slots={slots}
+                  existingClaims={existingClaims}
+                  existing={existing}
+                  submitAction={submitSignupAction}
+                  cancelAction={cancelSignupAction}
+                />
+              </>
             )
           )}
 

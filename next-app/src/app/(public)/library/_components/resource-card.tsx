@@ -10,6 +10,7 @@ import { ArticleBody } from '@/lib/article-body/ArticleBody';
 import type { PlacedResource } from '@/lib/library-data';
 import type { LibraryResource } from '@/lib/supabase/types';
 import { detectHost, resourceThumbnail, RESOURCE_KIND_ICON, RESOURCE_KIND_LABEL } from '@/lib/library';
+import { TrackedExternalLink } from '../../_components/tracked-external-link';
 import styles from '../library.module.css';
 
 export interface AlsoOnLink {
@@ -57,14 +58,14 @@ export function ResourceCard({
   // become clickable — anything else displays as a plain title.
   const safeUrl = resource.url && /^https?:\/\//i.test(resource.url) ? resource.url : null;
   const title = safeUrl ? (
-    <a
+    <TrackedExternalLink
       className={styles.resTitleLink}
       href={safeUrl}
-      target="_blank"
-      rel="noopener noreferrer"
+      event="library_resource_click"
+      params={{ resource_id: resource.id, resource_kind: resource.kind }}
     >
       <h3 className={styles.resTitle}>{resource.title} ↗</h3>
-    </a>
+    </TrackedExternalLink>
   ) : (
     <h3 className={styles.resTitle}>{resource.title}</h3>
   );

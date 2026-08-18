@@ -10,6 +10,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
+import { TrackedExternalLink } from '../../_components/tracked-external-link';
 import {
   buildReqTree,
   flattenLeaves,
@@ -182,8 +183,12 @@ export default async function MeritBadgeDetailPage({
           in-progress work shown below, scout-by-scout, requirement-by-requirement.
         </p>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 14 }}>
-          <ExternLink href={bsaPageUrl(mb)}>Official BSA page ↗</ExternLink>
-          <ExternLink href={workbookUrl(mb)}>Workbook (PDF) ↗</ExternLink>
+          <ExternLink href={bsaPageUrl(mb)} mbId={mb.id} linkType="official">
+            Official BSA page ↗
+          </ExternLink>
+          <ExternLink href={workbookUrl(mb)} mbId={mb.id} linkType="workbook">
+            Workbook (PDF) ↗
+          </ExternLink>
           <Link
             href={`/library/mb/${mbId}`}
             style={{
@@ -357,12 +362,22 @@ export default async function MeritBadgeDetailPage({
 
 // ── Pieces ────────────────────────────────────────────────────────────────
 
-function ExternLink({ href, children }: { href: string; children: React.ReactNode }) {
+function ExternLink({
+  href,
+  mbId,
+  linkType,
+  children
+}: {
+  href: string;
+  mbId: string;
+  linkType: 'official' | 'workbook';
+  children: React.ReactNode;
+}) {
   return (
-    <a
+    <TrackedExternalLink
       href={href}
-      target="_blank"
-      rel="noopener noreferrer"
+      event="outbound_bsa_click"
+      params={{ mb_id: mbId, link_type: linkType }}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -379,7 +394,7 @@ function ExternLink({ href, children }: { href: string; children: React.ReactNod
       }}
     >
       {children}
-    </a>
+    </TrackedExternalLink>
   );
 }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { trackEvent } from '@/lib/analytics';
 import styles from './events.module.css';
 
 const CALENDAR_NAME = 'Troop 79 Bugle Calendar';
@@ -37,6 +38,7 @@ export function SubscribeCalendar({ icsUrl, webcalUrl }: { icsUrl: string; webca
   async function copyLink() {
     await navigator.clipboard.writeText(icsUrl);
     setCopied(true);
+    trackEvent('ics_subscribe_click', { provider: 'copy_link' });
     setTimeout(() => setCopied(false), 2000);
   }
 
@@ -69,16 +71,38 @@ export function SubscribeCalendar({ icsUrl, webcalUrl }: { icsUrl: string; webca
             Syncs automatically whenever we publish changes.
           </p>
           <div className={styles.subscribeGrid}>
-            <a className={styles.subscribeBtn} href={googleUrl} target="_blank" rel="noopener noreferrer">
+            <a
+              className={styles.subscribeBtn}
+              href={googleUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => trackEvent('ics_subscribe_click', { provider: 'google' })}
+            >
               Google Calendar
             </a>
-            <a className={styles.subscribeBtn} href={webcalUrl}>
+            <a
+              className={styles.subscribeBtn}
+              href={webcalUrl}
+              onClick={() => trackEvent('ics_subscribe_click', { provider: 'apple' })}
+            >
               Apple Calendar
             </a>
-            <a className={styles.subscribeBtn} href={outlookComUrl} target="_blank" rel="noopener noreferrer">
+            <a
+              className={styles.subscribeBtn}
+              href={outlookComUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => trackEvent('ics_subscribe_click', { provider: 'outlook_com' })}
+            >
               Outlook.com
             </a>
-            <a className={styles.subscribeBtn} href={outlook365Url} target="_blank" rel="noopener noreferrer">
+            <a
+              className={styles.subscribeBtn}
+              href={outlook365Url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => trackEvent('ics_subscribe_click', { provider: 'outlook_365' })}
+            >
               Outlook 365
             </a>
           </div>

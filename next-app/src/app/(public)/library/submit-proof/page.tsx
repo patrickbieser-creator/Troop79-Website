@@ -23,6 +23,7 @@ import {
   switchProofHouseholdAction
 } from './actions';
 import ProofHouseholdPicker from './proof-household-picker';
+import { TrackOnMount } from '../../_components/track-on-mount';
 import styles from '../library.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -107,7 +108,10 @@ export default async function SubmitProofPage({
 
       <main className={`${styles.main} ${styles.mainNarrow}`} style={{ maxWidth: 720 }}>
         {sent === '1' ? (
-          <SentConfirmation backHref={context?.backHref ?? '/library'} />
+          <SentConfirmation
+            backHref={context?.backHref ?? '/library'}
+            targetKind={target.startsWith('mb_req:') ? 'mb_req' : 'rank_req'}
+          />
         ) : audience === null ? (
           <GateCard target={target} gate={gate} />
         ) : audience === 'leader' ? (
@@ -124,9 +128,16 @@ export default async function SubmitProofPage({
   );
 }
 
-function SentConfirmation({ backHref }: { backHref: string }) {
+function SentConfirmation({
+  backHref,
+  targetKind
+}: {
+  backHref: string;
+  targetKind: 'rank_req' | 'mb_req';
+}) {
   return (
     <div className={styles.formCard}>
+      <TrackOnMount event="proof_submitted" params={{ target_kind: targetKind }} />
       <div className={styles.confirmDone}>
         <div className={styles.bigCheck} aria-hidden="true">
           ✓
