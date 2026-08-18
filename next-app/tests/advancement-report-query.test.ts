@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { adminClient } from './helpers/admin-client';
-import { loadAdvancementEntries, generateAdvancementReport } from '../src/lib/advancement-report';
+import { loadAdvancementEntries, generateAdvancementReport, loadScoutStanding } from '../src/lib/advancement-report';
 
 /**
  * Weekly Advancement Report — the real query against real ledger_entries,
@@ -314,6 +314,74 @@ describe('advancement report — query', () => {
     const mine = entries.filter((e) => e.scoutId === scout);
     expect(mine).toHaveLength(1);
     expect(mine[0].code).toBe('1b');
+  });
+
+  it('SuppressesARankRequirement_WhenTheScoutsRealCurrentRankAlreadyCoversIt_EvenThoughTheAwardIsOutsideThisWindow', async () => {
+    // Patrick's exact report: a leader backfills a Tenderfoot requirement
+    // signoff long after the scout actually made Tenderfoot. The award
+    // itself is entered_at OUTSIDE this report's window (so the existing
+    // this-period check can't catch it) — only the real
+    // recompute_scout_current_rank trigger firing off the rank_award
+    // insert, then loadScoutStanding reading scouts.current_rank, catches
+    // this end to end.
+    const admin = adminClient();
+    const scout = await makeScout(admin, `standing-rank-${Date.now()}`);
+    await makeEntry(admin, {
+      scoutId: scout,
+      kind: 'rank_award',
+      code: 'tenderfoot',
+      date: '2026-01-05',
+      enteredAt: '2026-01-05T10:00:00Z' // well outside the report window below
+    });
+    await makeEntry(admin, {
+      scoutId: scout,
+      kind: 'rank_requirement',
+      code: 'tenderfoot-1a',
+      date: '2026-01-04',
+      enteredAt: '2026-08-12T10:00:00Z' // backfilled THIS week
+    });
+
+    const report = await generateAdvancementReport(admin, { startDate: '2026-08-10', endDate: '2026-08-17' });
+    const tenderfootGroup = report.rankReqs.find((g) => g.rank === 'tenderfoot');
+    if (tenderfootGroup) {
+      const line = tenderfootGroup.lines.find((l) => l.codes.includes('1a'));
+      expect(line?.scoutIds.includes(scout)).not.toBe(true);
+    }
+    // And the award itself, entered outside this window, correctly does
+    // NOT show up in ranksEarned either — it's not part of THIS report.
+    expect(report.ranksEarned.some((g) => g.scoutIds.includes(scout))).toBe(false);
+  });
+
+  it('SuppressesABadgeRequirement_WhenTheScoutHasEverEarnedTheBadge_EvenThoughTheAwardIsOutsideThisWindow', async () => {
+    const admin = adminClient();
+    const scout = await makeScout(admin, `standing-badge-${Date.now()}`);
+    await makeEntry(admin, {
+      scoutId: scout,
+      kind: 'merit_badge_award',
+      code: 'MB:first-aid',
+      date: '2026-01-05',
+      enteredAt: '2026-01-05T10:00:00Z'
+    });
+    await makeEntry(admin, {
+      scoutId: scout,
+      kind: 'merit_badge_requirement',
+      code: 'first-aid-1a',
+      date: '2026-01-04',
+      enteredAt: '2026-08-12T10:00:00Z'
+    });
+
+    const report = await generateAdvancementReport(admin, { startDate: '2026-08-10', endDate: '2026-08-17' });
+    const firstAidGroup = report.badgeReqs.find((g) => g.badge === 'First Aid');
+    if (firstAidGroup) {
+      const line = firstAidGroup.lines.find((l) => l.codes.includes('1a'));
+      expect(line?.scoutIds.includes(scout)).not.toBe(true);
+    }
+  });
+
+  it('loadScoutStanding_ReturnsEmptyMaps_ForAnEmptyScoutIdList', async () => {
+    const standing = await loadScoutStanding(adminClient(), []);
+    expect(standing.currentRank.size).toBe(0);
+    expect(standing.everEarnedBadges.size).toBe(0);
   });
 
   it('ReturnsAnEmptyReport_ForADateRangeWithNothingEntered', async () => {

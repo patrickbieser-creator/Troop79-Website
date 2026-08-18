@@ -11,7 +11,8 @@ import {
   tagKind,
   removeScoutFromReport,
   type AdvancementEntry,
-  type AdvancementReport
+  type AdvancementReport,
+  type ScoutStanding
 } from '../src/lib/advancement-report';
 
 /**
@@ -366,6 +367,87 @@ describe('buildReport — suppresses requirements the scout also earned as a ful
     const report = buildReport(rows);
     const line = report.badgeReqs[0].lines.find((l) => l.codes.includes('1a'))!;
     expect(line.scoutIds).toEqual(['S2']);
+  });
+});
+
+describe('buildReport — suppresses requirements via standing, not just this-period awards (Patrick, 2026-08-17)', () => {
+  // The gap Patrick reported: a leader backfills a requirement signoff for
+  // a rank/badge the scout completed long before this report's window —
+  // there's no award row in THIS period to match against, so only a
+  // standing check (current_rank / everEarnedBadges, both un-scoped by
+  // report window) catches it.
+
+  it('DropsRankRequirementLines_WhenTheScoutsCurrentRankIsAtOrAboveIt_EvenWithNoAwardRowThisPeriod', () => {
+    const rows = [
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: '1a', group: 'tenderfoot', label: 'Old req' }), 'rank_requirement')
+    ];
+    const standing: ScoutStanding = { currentRank: new Map([['S1', 'star']]), everEarnedBadges: new Set() };
+    const report = buildReport(rows, standing);
+    expect(report.rankReqs).toEqual([]);
+    expect(report.counts.rankReq).toBe(0);
+  });
+
+  it('DropsRankRequirementLines_ForEveryRankAtOrBelowCurrentRank_NotJustTheMostRecentOne', () => {
+    // Sequential progression: currently Star proves Scout, Tenderfoot,
+    // Second Class, First Class, AND Star are all already done.
+    const rows = [
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: '1a', group: 'scout', label: 'Scout req' }), 'rank_requirement'),
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: '1a', group: 'tenderfoot', label: 'TF req' }), 'rank_requirement'),
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: '1a', group: 'star', label: 'Star req' }), 'rank_requirement')
+    ];
+    const standing: ScoutStanding = { currentRank: new Map([['S1', 'star']]), everEarnedBadges: new Set() };
+    const report = buildReport(rows, standing);
+    expect(report.rankReqs).toEqual([]);
+  });
+
+  it('KeepsRankRequirementLines_ForARankAboveTheScoutsCurrentRank', () => {
+    // Currently Star — Life and Eagle requirements are still genuinely open.
+    const rows = [
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: '1a', group: 'life', label: 'Life req' }), 'rank_requirement')
+    ];
+    const standing: ScoutStanding = { currentRank: new Map([['S1', 'star']]), everEarnedBadges: new Set() };
+    const report = buildReport(rows, standing);
+    expect(report.rankReqs).toHaveLength(1);
+  });
+
+  it('KeepsRankRequirementLines_WhenStandingHasNoCurrentRankForThatScout', () => {
+    // Standing provided, but this scout isn't in it (e.g. no rank yet) —
+    // must not throw, must not suppress.
+    const rows = [
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: '1a', group: 'tenderfoot', label: 'Req' }), 'rank_requirement')
+    ];
+    const standing: ScoutStanding = { currentRank: new Map(), everEarnedBadges: new Set() };
+    const report = buildReport(rows, standing);
+    expect(report.rankReqs).toHaveLength(1);
+  });
+
+  it('DropsBadgeRequirementLines_WhenTheScoutHasEverEarnedTheBadge_EvenWithNoAwardRowThisPeriod', () => {
+    const rows = [
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: '1a', group: 'Camping', label: 'Old req' }), 'merit_badge_requirement')
+    ];
+    const standing: ScoutStanding = { currentRank: new Map(), everEarnedBadges: new Set(['S1::Camping']) };
+    const report = buildReport(rows, standing);
+    expect(report.badgeReqs).toEqual([]);
+    expect(report.counts.mbReq).toBe(0);
+  });
+
+  it('KeepsBadgeRequirementLines_WhenTheScoutHasNotEverEarnedThatBadge', () => {
+    const rows = [
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: '1a', group: 'Camping', label: 'Req' }), 'merit_badge_requirement')
+    ];
+    const standing: ScoutStanding = { currentRank: new Map(), everEarnedBadges: new Set(['S1::First Aid']) };
+    const report = buildReport(rows, standing);
+    expect(report.badgeReqs).toHaveLength(1);
+  });
+
+  it('IsBackwardCompatible_WhenNoStandingIsPassed_FallingBackToThisPeriodOnly', () => {
+    // buildReport(rows) with no second argument must keep working exactly
+    // as before this change — every pre-existing caller/test relies on it.
+    const rows = [
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: '1a', group: 'tenderfoot', label: 'Req' }), 'rank_requirement')
+    ];
+    const report = buildReport(rows);
+    expect(report.rankReqs).toHaveLength(1);
   });
 });
 

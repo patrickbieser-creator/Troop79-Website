@@ -115,6 +115,26 @@ export interface AwardGroup {
   entries: AdvancementEntry[];
 }
 
+/**
+ * Standing facts about a scout that outlive any single report period —
+ * "have they EVER earned this rank/badge, full stop" — as distinct from
+ * "did they earn it in the same window this report happens to cover."
+ * Patrick, 2026-08-17: the period-scoped check alone (rows.ts's own award
+ * rows) missed the common case of a leader backfilling an old requirement
+ * signoff for a rank/badge the scout completed long ago, in an unrelated
+ * report period — that's still noise, and standing is what actually
+ * answers "has this scout already earned it," not the report's own window.
+ */
+export interface ScoutStanding {
+  /** scoutId -> current rank id (a RANK_ORDER member), trigger-maintained
+   *  live off rank_award ledger rows (see recompute_scout_current_rank) —
+   *  reliable, never manually set. Absent scoutId = no rank earned yet. */
+  currentRank: Map<string, string>;
+  /** "scoutId::badgeGroupName" — every merit badge this scout has EVER
+   *  been awarded, any date, not scoped to this report's window. */
+  everEarnedBadges: Set<string>;
+}
+
 export interface RankReqGroup {
   rank: string;
   rankLabel: string;
@@ -320,7 +340,7 @@ export function datesOutOfRange(entries: AdvancementEntry[], range: ReportRange)
 }
 
 /** Build the full report content model from filtered, shaped rows. */
-export function buildReport(rows: AdvancementEntry[]): AdvancementReport {
+export function buildReport(rows: AdvancementEntry[], standing?: ScoutStanding): AdvancementReport {
   const rankAwardRows = rows.filter((r) => rowIsRankAward(r));
   const badgeAwardRows = rows.filter((r) => rowIsBadgeAward(r));
   // groupAward keys/orders ranksEarned on RANK_ORDER's id space (loader
@@ -333,21 +353,39 @@ export function buildReport(rows: AdvancementEntry[]): AdvancementReport {
   }));
   const badgesEarned = groupAward(badgeAwardRows, null, true);
 
-  // Noise reduction (Patrick, 2026-08-17): once a scout has earned the full
-  // rank/badge in THIS SAME reporting period, their individual requirement
-  // sign-offs for it are redundant — the earned-award line already says
-  // they finished it. Suppress only that scout's requirement rows for that
-  // specific rank/badge; a requirement completed toward a rank/badge not
-  // also earned this period (the normal in-progress case), a different
-  // scout in the same group, or the same scout's requirements for a
-  // DIFFERENT rank/badge are untouched. Keyed on the raw (pre-label-remap)
-  // `group` value — both award and requirement rows share that id/name
-  // space; see RANK_LABELS remap above for why ranksEarned can't be used
-  // directly here.
+  // Noise reduction (Patrick, 2026-08-17, corrected same day per Patrick's
+  // "still seeing individual requirements" report): an individual
+  // requirement sign-off is redundant once the scout has earned the full
+  // rank/badge it belongs to — EVER, not just in this same reporting
+  // period. The period-scoped check below (this period's own award rows)
+  // is kept as a fast-path/fallback, but `standing` (current_rank + an
+  // all-time badge-award set, both un-scoped by report window — see
+  // ScoutStanding) is the check that actually matches what Patrick asked
+  // for: a leader backfilling a Tenderfoot requirement signoff eight
+  // months after the scout made Tenderfoot must not resurrect that
+  // requirement as if it were still open. Suppress only that scout's rows
+  // for that specific rank/badge; a different scout in the same group, or
+  // the same scout's requirements for a rank/badge they have NOT earned
+  // (the normal in-progress case), are untouched.
   const earnedRankKeys = new Set(rankAwardRows.map((r) => `${r.scoutId}::${r.group}`));
   const earnedBadgeKeys = new Set(badgeAwardRows.map((r) => `${r.scoutId}::${r.group}`));
+  const rankOrderIds = RANK_ORDER as readonly string[];
 
-  const rankReqRows = rows.filter((r) => rowIsRankReq(r) && !earnedRankKeys.has(`${r.scoutId}::${r.group}`));
+  function rankAlreadyEarned(scoutId: string, rankId: string): boolean {
+    if (earnedRankKeys.has(`${scoutId}::${rankId}`)) return true;
+    const current = standing?.currentRank.get(scoutId);
+    if (!current) return false;
+    const currentIdx = rankOrderIds.indexOf(current);
+    const reqIdx = rankOrderIds.indexOf(rankId);
+    // Sequential progression: holding a later rank proves every earlier
+    // one (including this one) is already done.
+    return currentIdx >= 0 && reqIdx >= 0 && reqIdx <= currentIdx;
+  }
+  function badgeAlreadyEarned(scoutId: string, badgeGroup: string): boolean {
+    return earnedBadgeKeys.has(`${scoutId}::${badgeGroup}`) || (standing?.everEarnedBadges.has(`${scoutId}::${badgeGroup}`) ?? false);
+  }
+
+  const rankReqRows = rows.filter((r) => rowIsRankReq(r) && !rankAlreadyEarned(r.scoutId, r.group));
   const rankReqs: RankReqGroup[] = (RANK_ORDER as readonly string[])
     .map((rank) => {
       const rankRows = rankReqRows.filter((r) => r.group === rank);
@@ -359,7 +397,7 @@ export function buildReport(rows: AdvancementEntry[]): AdvancementReport {
     })
     .filter((g) => g.lines.length > 0);
 
-  const badgeReqRows = rows.filter((r) => rowIsBadgeReq(r) && !earnedBadgeKeys.has(`${r.scoutId}::${r.group}`));
+  const badgeReqRows = rows.filter((r) => rowIsBadgeReq(r) && !badgeAlreadyEarned(r.scoutId, r.group));
   const badgesWithReqs = Array.from(new Set(badgeReqRows.map((r) => r.group))).sort();
   const badgeReqs: BadgeReqGroup[] = badgesWithReqs.map((badge) => {
     const badgeRows = badgeReqRows.filter((r) => r.group === badge);
@@ -982,11 +1020,57 @@ export async function loadAdvancementEntries(
   return out;
 }
 
+/**
+ * Standing facts for the noise-reduction rule (see ScoutStanding) —
+ * deliberately un-scoped by report window: current_rank (trigger-maintained
+ * off rank_award ledger rows, see recompute_scout_current_rank) and every
+ * merit badge ever awarded to these scouts, any date. Same
+ * archived/deleted-null convention as loadAdvancementEntries and every
+ * other query in this module (Convention confirmed against scout_summary
+ * view and the MB progress page — no date bound is the established pattern
+ * for "has this scout ever earned X," not something invented here).
+ */
+export async function loadScoutStanding(supabase: SupabaseClient, scoutIds: string[]): Promise<ScoutStanding> {
+  if (scoutIds.length === 0) return { currentRank: new Map(), everEarnedBadges: new Set() };
+
+  const [{ data: scoutRows }, mbAwardRows, { data: mbRows }] = await Promise.all([
+    supabase.from('scouts').select('id, current_rank').in('id', scoutIds),
+    fetchAllRows<{ scout_id: string; code: string }>((from, to) =>
+      supabase
+        .from('ledger_entries')
+        .select('scout_id, code')
+        .eq('kind', 'merit_badge_award')
+        .in('scout_id', scoutIds)
+        .is('archived_at', null)
+        .is('deleted_at', null)
+        .range(from, to)
+    ),
+    supabase.from('merit_badges').select('id, name')
+  ]);
+
+  const currentRank = new Map<string, string>();
+  for (const s of (scoutRows ?? []) as { id: string; current_rank: string | null }[]) {
+    if (s.current_rank) currentRank.set(s.id, s.current_rank);
+  }
+
+  const mbNameById = new Map(((mbRows ?? []) as { id: string; name: string }[]).map((m) => [m.id, m.name]));
+  const everEarnedBadges = new Set<string>();
+  for (const r of mbAwardRows) {
+    const mbId = r.code.startsWith('MB:') ? r.code.slice(3) : r.code;
+    const name = mbNameById.get(mbId);
+    if (name) everEarnedBadges.add(`${r.scout_id}::${name}`);
+  }
+
+  return { currentRank, everEarnedBadges };
+}
+
 /** One-shot: load + build, what the admin's "Generate" action calls. */
 export async function generateAdvancementReport(
   supabase: SupabaseClient,
   range: ReportRange
 ): Promise<AdvancementReport> {
   const entries = await loadAdvancementEntries(supabase, range);
-  return buildReport(entries);
+  const scoutIds = Array.from(new Set(entries.map((e) => e.scoutId)));
+  const standing = await loadScoutStanding(supabase, scoutIds);
+  return buildReport(entries, standing);
 }
