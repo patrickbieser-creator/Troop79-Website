@@ -737,7 +737,17 @@ export function toMarkdown(
     lines.push('');
     lines.push('## Rank Requirements Completed');
     for (const g of report.rankReqs) {
-      lines.push(`_${g.rankLabel}_`);
+      // Blank line + a real heading (not a bare italic line) — found live,
+      // 2026-08-17 (Patrick): with no blank line before it, a line
+      // immediately following a list is "lazy continuation" in CommonMark
+      // and gets silently absorbed into the previous rank's last requirement
+      // line instead of starting a new block, so the report read as one
+      // undifferentiated wall going straight from e.g. Archery into
+      // Astronomy into Chess with no visible header change. A heading
+      // always breaks out of the preceding list regardless of spacing —
+      // more robust than just adding the blank line alone.
+      lines.push('');
+      lines.push(`### ${g.rankLabel}`);
       g.lines.forEach(reqLineMd);
     }
   }
@@ -745,7 +755,8 @@ export function toMarkdown(
     lines.push('');
     lines.push('## Merit Badge Requirements Completed');
     for (const g of report.badgeReqs) {
-      lines.push(`_${g.badgeLabel}${g.eagle ? ' (Eagle-required)' : ''}_`);
+      lines.push('');
+      lines.push(`### ${g.badgeLabel}${g.eagle ? ' (Eagle-required)' : ''}`);
       g.lines.forEach(reqLineMd);
     }
   }

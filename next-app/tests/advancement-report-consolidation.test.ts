@@ -686,4 +686,39 @@ describe('toMarkdown', () => {
     expect(md).toMatch(/- In Range\s*$/m);
     expect(md).toContain('Backfilled Scout *(earned June 2, 2025)*');
   });
+
+  it('SeparatesConsecutiveMeritBadgeGroups_WithABlankLineAndARealHeading_NotABareItalicLine', () => {
+    // Found live, 2026-08-17 (Patrick): with no blank line before it, a line
+    // immediately following a markdown list is "lazy continuation" and gets
+    // silently absorbed into the previous list item instead of starting a
+    // new block — the report read as one undifferentiated wall going
+    // straight from Archery into Astronomy into Chess with no visible
+    // header change between them.
+    const rows = [
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: '1a', group: 'Archery', label: 'Req' }), 'merit_badge_requirement'),
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: '1a', group: 'Astronomy', label: 'Req' }), 'merit_badge_requirement'),
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: '1a', group: 'Chess', label: 'Req' }), 'merit_badge_requirement')
+    ];
+    const md = toMarkdown(buildReport(rows), range, null);
+    // A real heading (### ), not a bare italic (_Label_) line — headings
+    // always break out of a preceding list regardless of blank-line
+    // spacing, so this is robust even if a future edit drops the blank line.
+    expect(md).toContain('### Archery');
+    expect(md).toContain('### Astronomy');
+    expect(md).toContain('### Chess');
+    // And each one is preceded by a real blank line — the actual bug.
+    expect(md).toMatch(/\n\n### Archery\n/);
+    expect(md).toMatch(/\n\n### Astronomy\n/);
+    expect(md).toMatch(/\n\n### Chess\n/);
+  });
+
+  it('SeparatesConsecutiveRankReqGroups_WithABlankLineAndARealHeading', () => {
+    const rows = [
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: '1a', group: 'scout', label: 'Req' }), 'rank_requirement'),
+      tagKind(entry({ scoutId: 'S1', scoutName: 'A', code: '1a', group: 'tenderfoot', label: 'Req' }), 'rank_requirement')
+    ];
+    const md = toMarkdown(buildReport(rows), range, null);
+    expect(md).toMatch(/\n\n### Scout\n/);
+    expect(md).toMatch(/\n\n### Tenderfoot\n/);
+  });
 });
