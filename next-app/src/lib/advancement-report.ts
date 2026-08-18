@@ -71,6 +71,11 @@ const SECTION5_KINDS = [
 ] as const;
 
 export interface AdvancementEntry {
+  /** The underlying ledger_entries.id — threaded through so a downstream
+   *  action (e.g. Court of Honor's "mark presented on publish") can target
+   *  the exact row, not re-derive it by re-querying scout/kind/code/date at
+   *  a later point in time when the ledger may have changed. */
+  id: number;
   scoutId: string;
   scoutName: string;
   /** Bare requirement code ("9a") for req lines; rank/badge id for award
@@ -783,7 +788,8 @@ export function toMarkdown(
 
 // ── loading real ledger rows ───────────────────────────────────────────────
 
-interface RawLedgerRow {
+export interface RawLedgerRow {
+  id: number;
   scout_id: string;
   kind: string;
   code: string;
@@ -792,6 +798,60 @@ interface RawLedgerRow {
   unit: string;
   date: string;
   entered_at: string;
+}
+
+/** Shared by loadAdvancementEntries and the Court of Honor loader — a
+ *  rank_award/merit_badge_award row shapes the SAME way regardless of which
+ *  report is asking for it, and this is exactly the logic that had a real
+ *  bug (2026-08-17: display name vs id in `group`) — one implementation
+ *  means that class of bug can only exist in one place, not silently
+ *  diverge between two copies. */
+export function shapeRankAwardRow(
+  r: RawLedgerRow,
+  scoutName: string,
+  rankLabelById: Map<string, string>
+): AdvancementEntry {
+  return tagKind(
+    {
+      id: r.id,
+      scoutId: r.scout_id,
+      scoutName,
+      code: r.code,
+      label: rankLabelById.get(r.code) ?? r.code,
+      // Rank id — MUST match rank_requirement's group (split.rankId), not
+      // the display name (see the loader's own note on this exact bug).
+      group: r.code,
+      eagle: false,
+      enteredAt: r.entered_at.slice(0, 10),
+      date: r.date,
+      detail: null
+    },
+    'rank_award'
+  );
+}
+
+export function shapeBadgeAwardRow(
+  r: RawLedgerRow,
+  scoutName: string,
+  mbById: Map<string, { name: string; eagle: boolean }>
+): AdvancementEntry {
+  const mbId = r.code.startsWith('MB:') ? r.code.slice(3) : r.code;
+  const mb = mbById.get(mbId);
+  return tagKind(
+    {
+      id: r.id,
+      scoutId: r.scout_id,
+      scoutName,
+      code: mbId,
+      label: mb?.name ?? mbId,
+      group: mb?.name ?? mbId,
+      eagle: mb?.eagle ?? false,
+      enteredAt: r.entered_at.slice(0, 10),
+      date: r.date,
+      detail: null
+    },
+    'merit_badge_award'
+  );
 }
 
 /** Strip trailing junk punctuation left over from historical spreadsheet
@@ -849,7 +909,7 @@ export async function loadAdvancementEntries(
   const rawRows = await fetchAllRows<RawLedgerRow>((from, to) =>
     supabase
       .from('ledger_entries')
-      .select('scout_id, kind, code, label, qty, unit, date, entered_at')
+      .select('id, scout_id, kind, code, label, qty, unit, date, entered_at')
       .in('kind', kinds)
       .gte('entered_at', startInclusive)
       .lte('entered_at', endExclusive)
@@ -926,52 +986,16 @@ export async function loadAdvancementEntries(
     const date = r.date;
 
     if (r.kind === 'rank_award') {
-      out.push(
-        tagKind(
-          {
-            scoutId: r.scout_id,
-            scoutName,
-            code: r.code,
-            label: rankLabelById.get(r.code) ?? r.code,
-            // Rank id — MUST match rank_requirement's group (split.rankId),
-            // not the display name. Bug found 2026-08-17: using the display
-            // name here silently emptied ranksEarned for every real rank
-            // award, since groupAward()'s RANK_ORDER intersection needs the
-            // id space. buildReport() remaps to the display label for you.
-            group: r.code,
-            eagle: false,
-            enteredAt,
-            date,
-            detail: null
-          },
-          'rank_award'
-        )
-      );
+      out.push(shapeRankAwardRow(r, scoutName, rankLabelById));
     } else if (r.kind === 'merit_badge_award') {
-      const mbId = r.code.startsWith('MB:') ? r.code.slice(3) : r.code;
-      const mb = mbById.get(mbId);
-      out.push(
-        tagKind(
-          {
-            scoutId: r.scout_id,
-            scoutName,
-            code: mbId,
-            label: mb?.name ?? mbId,
-            group: mb?.name ?? mbId,
-            eagle: mb?.eagle ?? false,
-            enteredAt,
-            date,
-            detail: null
-          },
-          'merit_badge_award'
-        )
-      );
+      out.push(shapeBadgeAwardRow(r, scoutName, mbById));
     } else if (r.kind === 'rank_requirement') {
       const split = splitRankCode(r.code);
       if (!split) continue;
       out.push(
         tagKind(
           {
+            id: r.id,
             scoutId: r.scout_id,
             scoutName,
             code: split.reqCode,
@@ -992,6 +1016,7 @@ export async function loadAdvancementEntries(
       out.push(
         tagKind(
           {
+            id: r.id,
             scoutId: r.scout_id,
             scoutName,
             code: split.reqCode,
@@ -1013,6 +1038,7 @@ export async function loadAdvancementEntries(
       out.push(
         tagKind(
           {
+            id: r.id,
             scoutId: r.scout_id,
             scoutName,
             code: r.code,

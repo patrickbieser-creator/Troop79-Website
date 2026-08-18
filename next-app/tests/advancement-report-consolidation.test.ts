@@ -32,6 +32,7 @@ let seq = 0;
 function entry(overrides: Partial<AdvancementEntry> & { scoutId: string; scoutName: string }): AdvancementEntry {
   seq++;
   return {
+    id: seq,
     code: `c${seq}`,
     label: `Label ${seq}`,
     group: 'group',

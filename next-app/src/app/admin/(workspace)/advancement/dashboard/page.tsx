@@ -263,7 +263,11 @@ function shortDate(s: string | null): string {
 }
 
 function shortDateTime(iso: string): string {
+  // Explicit timeZone — Patrick, 2026-08-17: without it, toLocaleString()
+  // renders in the SERVER's runtime timezone (UTC on Vercel), not Central,
+  // which read as "six hours ahead" for every login timestamp.
   return new Date(iso).toLocaleString('en-US', {
+    timeZone: 'America/Chicago',
     month: 'numeric',
     day: 'numeric',
     year: '2-digit',

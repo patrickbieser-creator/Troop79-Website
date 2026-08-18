@@ -118,7 +118,12 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         matchPath: '/admin/advancement/roster',
         capability: 'roster.manage'
       },
-      { label: 'Court of Honor', disabled: true }
+      {
+        label: 'Court of Honor',
+        href: '/admin/advancement/court-of-honor',
+        matchPath: '/admin/advancement/court-of-honor',
+        capability: 'advancement.write'
+      }
     ]
   },
   {

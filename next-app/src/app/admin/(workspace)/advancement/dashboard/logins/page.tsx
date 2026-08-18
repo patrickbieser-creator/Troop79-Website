@@ -22,7 +22,9 @@ const METHOD_LABEL: Record<LoginMethod, string> = {
 };
 
 function fullDateTime(iso: string): string {
+  // Explicit timeZone — see dashboard/page.tsx's shortDateTime for why.
   return new Date(iso).toLocaleString('en-US', {
+    timeZone: 'America/Chicago',
     month: 'short',
     day: 'numeric',
     year: 'numeric',
