@@ -500,6 +500,16 @@ export default async function DashboardPage() {
             </table>
           )}
         </div>
+
+        <div className={styles.card}>
+          <div className={styles.cardHeader}>
+            <h3>Site Analytics</h3>
+            <Link href="/admin/advancement/dashboard/analytics" className={styles.cardHeaderLink}>
+              View analytics →
+            </Link>
+          </div>
+          <div className={styles.empty}>Traffic and engagement, via Google Analytics 4.</div>
+        </div>
       </div>
     </>
   );
