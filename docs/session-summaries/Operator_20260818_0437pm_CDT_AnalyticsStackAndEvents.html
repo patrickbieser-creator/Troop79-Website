@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Stack &amp; Custom Events — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #8b6914;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #faf6ef;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); }
+        tr:hover { background: var(--nw-sage); }
+
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+
+        @media print {
+            body { background: white; }
+            header { padding: 1.5rem; }
+            .container { padding: 1rem; }
+            .stat { break-inside: avoid; }
+        }
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.5rem; }
+            .stats { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Analytics Stack &amp; Custom Events</h1>
+        <p class="subtitle">GA4 + GTM wired end-to-end, 7 custom events, and an admin-facing traffic dashboard</p>
+        <div class="meta">
+            <span>&#128197; 2026-08-18</span>
+            <span>&#129302; Operator</span>
+            <span>&#128204; Troop79-Website</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">4</div><div class="label">Commits Shipped</div></div>
+            <div class="stat"><div class="number">7</div><div class="label">Custom Events Wired</div></div>
+            <div class="stat"><div class="number">9</div><div class="label">GTM Objects Built</div></div>
+            <div class="stat"><div class="number">+5</div><div class="label">Tests Added (509&rarr;514)</div></div>
+            <div class="stat"><div class="number">3</div><div class="label">Decisions Recorded</div></div>
+            <div class="stat"><div class="number">3</div><div class="label">Report Bugs Fixed</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <h3>GA4, then GTM, cut over cleanly</h3>
+        <p>Google Analytics 4 shipped first via <code>@next/third-parties/google</code>&rsquo;s <code>GoogleAnalytics</code> component — verified live not by assumption but by capturing a real <code>POST /g/collect &rarr; 204</code> network request from the browser. Google Tag Manager was added the same session; the root layout now renders GTM <em>or</em> direct GA4, never both, by construction &mdash; ruling out double-counted pageviews entirely rather than just avoiding the mistake.</p>
+        <div class="callout callout-teal"><strong>Verification discipline:</strong> every claim in this session was checked against a real signal &mdash; a live network capture, a published GTM version, or a rendered page &mdash; not just "the code looks right."</div>
+
+        <h3>7 custom events, 1 trigger, 1 tag</h3>
+        <p>Signup funnel (view/start/complete), library resource clicks, proof submissions, outbound BSA links, and <code>.ics</code> subscribe clicks now all flow through GTM as real named GA4 events. Rather than building 7 separate trigger/tag pairs, one regex-matched Custom Event trigger and one GA4 Event tag with a dynamic <code>{{Event}}</code> name cover all of them &mdash; extensible to future events without new GTM objects. A new <span class="file-path">src/lib/analytics.ts</span> helper no-ops safely when GTM isn&rsquo;t loaded, and params are type-constrained to prevent any PII from being spread into an event by accident.</p>
+
+        <h3>Site Analytics admin page</h3>
+        <p>New <span class="file-path">/admin/advancement/dashboard/analytics</span> embeds a Looker Studio report &mdash; the only Google-sanctioned way to embed GA4 data, since Google disallows iframing the Reports UI itself. Getting there surfaced three real bugs baked into Google&rsquo;s own auto-generated report template (see Blockers Resolved below).</p>
+
+        <h2>Blockers Resolved</h2>
+        <table>
+            <thead><tr><th>Issue</th><th>Root Cause</th><th>Fix</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td>GA4 code verified working locally but nothing showed in production</td>
+                    <td>Code was edited but never committed/pushed &mdash; a prior redeploy just rebuilt the old code</td>
+                    <td>Committed, pushed, confirmed live via direct network capture</td>
+                </tr>
+                <tr>
+                    <td>Test browser showed <code>gtm.js</code>/<code>gtag.js</code> as blocked (503s)</td>
+                    <td>Malwarebytes and Bitdefender both intercept Google&rsquo;s tag domains as trackers</td>
+                    <td>Confirmed real delivery via a direct <code>/g/collect</code> capture once the security software was disabled for the test</td>
+                </tr>
+                <tr>
+                    <td>Looker Studio report showed &ldquo;Data Set Configuration Error&rdquo; on every page</td>
+                    <td>Report-level default data source was Google&rsquo;s own demo &ldquo;Google Merchandise Store&rdquo; property, not the real Troop79 connection</td>
+                    <td>Added the real GA4 connection, set as report default, removed the broken per-viewer data-source picker</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Decisions</h2>
+        <h3>[D-131] GA4 + GTM analytics stack, mutually exclusive by design</h3>
+        <p>Root layout renders GTM or direct GA4, never both &mdash; eliminates double-counting risk structurally rather than by convention.</p>
+        <h3>[D-132] Custom events via one generic trigger + dynamic-name tag</h3>
+        <p>One Custom Event trigger (regex-matched) and one GA4 Event tag with <code>Event Name = {{Event}}</code> cover all 7 current events and any future ones, instead of a tag-per-event pattern.</p>
+        <h3>[D-133] Site Analytics embeds Looker Studio, not a native GA4-API card</h3>
+        <p>Chose the lower-effort, Google-sanctioned embedding path over building a new GA4 Data API integration &mdash; proportionate to a project this size. Sharing set to Public per Patrick&rsquo;s explicit choice; report contains only aggregate traffic data, no scout PII.</p>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li><strong>New:</strong> <span class="file-path">/library</span> shows no custom-event tag firing in GTM &mdash; investigate whether <code>library_resource_click</code>&rsquo;s coverage misses the index page, or a dedicated view event is needed.</li>
+            <li>Assign <code>library.moderate</code> and confirm the <code>roster.manage</code> holder list deliberately.</li>
+            <li>The aged-out sweep &mdash; scouts turning 18 keep whatever capability grants they held.</li>
+            <li>Retire <span class="file-path">profile-household-session.ts</span> &mdash; blocked on Family-Identity-Auth Phase 3.</li>
+            <li>Verify Recent Logins and Court of Honor end-to-end in production (from the prior session, still open).</li>
+        </ul>
+
+        <h2>Files Changed</h2>
+        <p>
+            <span class="badge badge-green">NEW</span> <span class="file-path">src/lib/analytics.ts</span><br>
+            <span class="badge badge-green">NEW</span> <span class="file-path">src/app/(public)/_components/track-on-mount.tsx</span><br>
+            <span class="badge badge-green">NEW</span> <span class="file-path">src/app/(public)/_components/tracked-external-link.tsx</span><br>
+            <span class="badge badge-green">NEW</span> <span class="file-path">src/app/admin/(workspace)/advancement/dashboard/analytics/page.tsx</span><br>
+            <span class="badge badge-green">NEW</span> <span class="file-path">tests/analytics.test.tsx</span><br>
+            <span class="badge badge-gold">MODIFIED</span> <span class="file-path">src/app/layout.tsx</span> (GA4/GTM wiring)<br>
+            <span class="badge badge-gold">MODIFIED</span> <span class="file-path">events/[id]/signup/page.tsx, subscribe-calendar.tsx</span><br>
+            <span class="badge badge-gold">MODIFIED</span> <span class="file-path">library/_components/resource-card.tsx, submit-proof/page.tsx</span><br>
+            <span class="badge badge-gold">MODIFIED</span> <span class="file-path">merit-badges/[mbId]/page.tsx, .env.example</span>
+        </p>
+
+    </div>
+
+    <footer>
+        <strong>Troop 79</strong> — Scouts BSA, Milwaukee WI<br>
+        Session Summary — 2026-08-18 — Operator
+    </footer>
+</body>
+</html>
