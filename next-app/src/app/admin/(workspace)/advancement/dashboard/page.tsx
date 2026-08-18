@@ -13,6 +13,7 @@ import { fetchAllRows } from '@/lib/supabase/paginate';
 import { requireCapability } from '@/lib/require-capability';
 import type { LedgerEntry, LedgerKind } from '@/lib/supabase/types';
 import { loadAttentionCategories } from './attention-items';
+import { loadRecentLogins } from '@/lib/login-events';
 import styles from './dashboard.module.css';
 
 const RECENT_LIMIT = 10;
@@ -261,9 +262,29 @@ function shortDate(s: string | null): string {
   return `${m}/${d}/${String(y).slice(2)}`;
 }
 
+function shortDateTime(iso: string): string {
+  return new Date(iso).toLocaleString('en-US', {
+    month: 'numeric',
+    day: 'numeric',
+    year: '2-digit',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+}
+
+const METHOD_LABEL: Record<'link' | 'code' | 'passkey', string> = {
+  link: 'Email link',
+  code: 'Code',
+  passkey: 'Passkey'
+};
+
 export default async function DashboardPage() {
   await requireCapability('advancement.write');
-  const [data, attentionCategories] = await Promise.all([loadDashboard(), loadAttentionCategories()]);
+  const [data, attentionCategories, recentLogins] = await Promise.all([
+    loadDashboard(),
+    loadAttentionCategories(),
+    loadRecentLogins(createAdminClient(), 15)
+  ]);
 
   return (
     <>
@@ -431,6 +452,46 @@ export default async function DashboardPage() {
                     </tr>
                   );
                 })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <div className={`${styles.card} ${styles.cardWide}`}>
+          <div className={styles.cardHeader}>
+            <h3>Recent Logins</h3>
+            <Link href="/admin/advancement/dashboard/logins" className={styles.cardHeaderLink}>
+              View all →
+            </Link>
+          </div>
+          {recentLogins.length === 0 ? (
+            <div className={styles.empty}>No logins recorded yet.</div>
+          ) : (
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>Person</th>
+                  <th>Role</th>
+                  <th>Method</th>
+                  <th>Device</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentLogins.map((e) => (
+                  <tr key={e.id}>
+                    <td className={styles.dateCell}>{shortDateTime(e.createdAt)}</td>
+                    <td className={styles.scoutCell}>
+                      {e.personName ?? 'Unknown'}
+                      {e.isFirstLogin && <span className={styles.kindPill}>First login</span>}
+                    </td>
+                    <td>{e.roleSnapshot === 'leader' ? 'Leader' : 'Family'}</td>
+                    <td>
+                      <span className={styles.kindPill}>{METHOD_LABEL[e.method]}</span>
+                    </td>
+                    <td>{e.deviceLabel}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           )}

@@ -160,6 +160,10 @@
   .stats { grid-template-columns: repeat(2, 1fr); }
 }
 
+.cardWide {
+  grid-column: 1 / -1;
+}
+
 .card {
   background: var(--admin-white);
   border: 1px solid var(--admin-gray-200);

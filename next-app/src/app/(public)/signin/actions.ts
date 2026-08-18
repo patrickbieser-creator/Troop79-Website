@@ -43,6 +43,7 @@ import { hasFamilyAccess } from '@/lib/family-access';
 import { searchSignInCandidates, type SignInSearchResult } from '@/lib/signin-roster';
 import { IDENTITY_COOKIE, signIdentitySession, sessionMaxAgeFor } from '@/lib/identity-session';
 import { safeInternalPath } from '@/lib/safe-redirect';
+import { recordLoginEvent, type LoginMethod } from '@/lib/login-events';
 
 const SIGNIN_PATH = '/signin';
 
@@ -53,13 +54,37 @@ function signinUrl(params: Record<string, string | undefined>): string {
   return qs ? `${SIGNIN_PATH}?${qs}` : SIGNIN_PATH;
 }
 
-async function setIdentityCookie(identity: {
-  personId: number;
-  displayName: string;
-  subjectKind: 'adult' | 'scout';
-  householdKey: string;
-  epoch: number;
-}): Promise<void> {
+/** Best-effort caller IP for the per-IP rate limit — Vercel sets
+ *  x-forwarded-for at the edge; local dev has none, so that limit simply
+ *  never triggers there (per-person limiting still applies everywhere).
+ *  Caught missing entirely in qa-lead review 2026-08-06 — opts.ip was never
+ *  populated, so MAX_PER_IP_HOUR was dead code in production. Reused below
+ *  for the Recent Logins audit trail (Plans/Recent-Logins-Dashboard.md). */
+async function callerIp(): Promise<string | null> {
+  const h = await headers();
+  const forwarded = h.get('x-forwarded-for');
+  return forwarded ? forwarded.split(',')[0].trim() : null;
+}
+
+async function callerUserAgent(): Promise<string | null> {
+  const h = await headers();
+  return h.get('user-agent');
+}
+
+/** The single choke point every successful sign-in passes through
+ *  (link/code/code-for-person/passkey) — recording the login event here,
+ *  once, is why none of the four call sites needed their own duplicate
+ *  logging (Plans/Recent-Logins-Dashboard.md, Patrick 2026-08-17). */
+async function setIdentityCookie(
+  identity: {
+    personId: number;
+    displayName: string;
+    subjectKind: 'adult' | 'scout';
+    householdKey: string;
+    epoch: number;
+  },
+  method: LoginMethod
+): Promise<void> {
   const token = await signIdentitySession({
     subjectKind: identity.subjectKind,
     personId: identity.personId,
@@ -76,17 +101,49 @@ async function setIdentityCookie(identity: {
     path: '/',
     maxAge: sessionMaxAgeFor(identity.subjectKind)
   });
+  // The whole block (client construction, header reads, insert) is wrapped
+  // here, not just recordLoginEvent()'s own body — qa-lead review 2026-08-17:
+  // createAdminClient()/headers() are evaluated as call-site arguments and
+  // can throw synchronously before recordLoginEvent() is ever entered, which
+  // would defeat "a logging failure must never break a real sign-in" if left
+  // outside a try/catch. The identity cookie is already set above by the
+  // time this runs, so a swallowed failure here costs only the audit row,
+  // never the sign-in itself.
+  try {
+    await recordLoginEvent(createAdminClient(), {
+      personId: identity.personId,
+      method,
+      success: true,
+      userAgent: await callerUserAgent(),
+      ip: await callerIp()
+    });
+  } catch (err) {
+    console.error('login-event logging failed (non-fatal, sign-in already succeeded):', err);
+  }
 }
 
-/** Best-effort caller IP for the per-IP rate limit — Vercel sets
- *  x-forwarded-for at the edge; local dev has none, so that limit simply
- *  never triggers there (per-person limiting still applies everywhere).
- *  Caught missing entirely in qa-lead review 2026-08-06 — opts.ip was never
- *  populated, so MAX_PER_IP_HOUR was dead code in production. */
-async function callerIp(): Promise<string | null> {
-  const h = await headers();
-  const forwarded = h.get('x-forwarded-for');
-  return forwarded ? forwarded.split(',')[0].trim() : null;
+/** Failed-attempt logging (Plans/Recent-Logins-Dashboard.md) — a distinct
+ *  signal from successful logins, never shown mixed into the same list.
+ *  personId is null when the attempt never resolved to a real person (e.g.
+ *  a wrong email on the code path) — enumeration safety is about what the
+ *  RESPONSE to the attempter reveals, not what gets logged server-side to
+ *  an admin-only table, so this never changes any redirect/error shown to
+ *  the person attempting the login. Wrapped for the same reason as
+ *  setIdentityCookie above — a logging failure must never block the
+ *  redirect the caller is about to make. */
+async function recordFailedLogin(personId: number | null, method: LoginMethod, reason: string): Promise<void> {
+  try {
+    await recordLoginEvent(createAdminClient(), {
+      personId,
+      method,
+      success: false,
+      failureReason: reason,
+      userAgent: await callerUserAgent(),
+      ip: await callerIp()
+    });
+  } catch (err) {
+    console.error('login-event logging failed (non-fatal):', err);
+  }
 }
 
 /** Step 1: request a challenge. ALWAYS redirects to the same `?sent=1`
@@ -125,9 +182,15 @@ export async function verifyCodeAction(formData: FormData): Promise<void> {
   // rendered message) would otherwise let a guesser distinguish "on roster"
   // from "not" by whether five wrong codes ever flip the state. Resending
   // works the same regardless of which internal reason applies.
-  if (!result.ok) redirect(signinUrl({ ...keep, err: 'invalid' }));
+  if (!result.ok) {
+    // personId unknown here by design (redeemCode's failure never exposes
+    // whether the email resolved to anyone — same enumeration-safety
+    // reasoning as the collapsed ?err= above).
+    await recordFailedLogin(null, 'code', result.reason);
+    redirect(signinUrl({ ...keep, err: 'invalid' }));
+  }
 
-  await setIdentityCookie(result.identity);
+  await setIdentityCookie(result.identity, 'code');
   redirect(safeInternalPath(result.identity.nextPath, '/profile'));
 }
 
@@ -140,9 +203,12 @@ export async function confirmTokenAction(formData: FormData): Promise<void> {
 
   const supabase = createAdminClient();
   const identity = await redeemToken(supabase, token);
-  if (!identity) redirect(`/signin/verify?token=${encodeURIComponent(token)}&err=1`);
+  if (!identity) {
+    await recordFailedLogin(null, 'link', 'invalid-or-expired');
+    redirect(`/signin/verify?token=${encodeURIComponent(token)}&err=1`);
+  }
 
-  await setIdentityCookie(identity);
+  await setIdentityCookie(identity, 'link');
   redirect(safeInternalPath(identity.nextPath, '/profile'));
 }
 
@@ -263,9 +329,12 @@ export async function verifyCodeForPersonAction(formData: FormData): Promise<voi
 
   const supabase = createAdminClient();
   const result = await redeemCodeForPerson(supabase, personId, code);
-  if (!result.ok) redirect(signinUrl({ ...keep, err: 'invalid' }));
+  if (!result.ok) {
+    await recordFailedLogin(personId, 'code', result.reason);
+    redirect(signinUrl({ ...keep, err: 'invalid' }));
+  }
 
-  await setIdentityCookie(result.identity);
+  await setIdentityCookie(result.identity, 'code');
   redirect(safeInternalPath(result.identity.nextPath, '/profile'));
 }
 
@@ -317,16 +386,20 @@ export async function passkeyAuthVerifyAction(
   }
 
   const result = await finishAuthentication(supabase, parsed);
-  if (!result.ok) return { ok: false, error: result.error };
+  if (!result.ok) {
+    await recordFailedLogin(null, 'passkey', result.error);
+    return { ok: false, error: result.error };
+  }
 
   // Re-resolve identity from the person id, exactly as a redeemed code does:
   // the credential proves WHO, never what they are still entitled to.
   const identity = await identityForPerson(supabase, result.personId, next || null);
   if (!identity) {
+    await recordFailedLogin(result.personId, 'passkey', 'account-inactive');
     return { ok: false, error: 'That account is no longer active — ask a leader.' };
   }
 
-  await setIdentityCookie(identity);
+  await setIdentityCookie(identity, 'passkey');
   return { ok: true, redirectTo: safeInternalPath(identity.nextPath, '/member') };
 }
 
