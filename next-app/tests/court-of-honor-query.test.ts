@@ -161,4 +161,21 @@ describe('court of honor — query', () => {
     expect(badgeRow.presented_by).toBe('Someone Else'); // untouched
     expect(badgeRow.presented_at?.startsWith('2020-01-01')).toBe(true); // untouched
   });
+
+  it('markItemsPresented_UsesTheGivenPresentationDate_NotTheReportsOwnEndDate', async () => {
+    // The whole point of the fix (Patrick, 2026-08-17): a rained-out
+    // ceremony reschedules to a real date that isn't the report's original
+    // end_date — the caller must be able to say so.
+    const admin = adminClient();
+    const scout = await makeScout(admin, `reschedule-${Date.now()}`);
+    await makeEntry(admin, { scoutId: scout, kind: 'rank_award', code: 'tenderfoot', date: '2026-08-12', enteredAt: '2026-08-12T10:00:00Z' });
+
+    const range = { startDate: '2026-08-10', endDate: '2026-08-17' };
+    const report = await generateCourtOfHonor(admin, range);
+    // Rescheduled a week later — deliberately NOT range.endDate.
+    await markItemsPresented(admin, report, '2026-08-24', 'Test Leader');
+
+    const { data } = await admin.from('ledger_entries').select('presented_at').in('id', ledgerEntryIds).single();
+    expect((data as { presented_at: string }).presented_at.startsWith('2026-08-24')).toBe(true);
+  });
 });

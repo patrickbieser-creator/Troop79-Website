@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArticleBody } from '@/lib/article-body/ArticleBody';
 import { ScoutAccordion, type RemoveTarget } from '@/app/_components/ScoutAccordion';
@@ -12,6 +12,7 @@ import {
   removeScoutFromCohAction,
   saveCohNoteAction,
   publishCourtOfHonorAction,
+  markCourtOfHonorPresentedAction,
   type CourtOfHonorRow
 } from './actions';
 import styles from './court-of-honor.module.css';
@@ -37,6 +38,7 @@ export function CourtOfHonorWorkspace({
   const [endDate, setEndDate] = useState(initialReport?.endDate ?? todayIso());
   const [view, setView] = useState<'category' | 'markdown' | 'scout'>('category');
   const [note, setNote] = useState(initialReport?.note ?? '');
+  const [presentationDate, setPresentationDate] = useState(initialReport?.endDate ?? todayIso());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
@@ -53,6 +55,20 @@ export function CourtOfHonorWorkspace({
     () => (report && range ? toMarkdown(report.contentJson, range, null, { includeHeader: false }) : ''),
     [report, range]
   );
+
+  // Re-seed the presentation-date default whenever a DIFFERENT report loads
+  // (useState's initializer only runs once, and a report generated during
+  // this session — as opposed to one present on first page load — needs
+  // this too). Still just a default; always editable before confirming.
+  useEffect(() => {
+    // Resetting a default when a DIFFERENT report loads, not synchronizing
+    // every render.
+    if (report) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPresentationDate(report.endDate);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [report?.id]);
 
   function act(fn: () => Promise<{ ok: boolean; error?: string; report?: CourtOfHonorRow }>, okMessage: string) {
     setError(null);
@@ -96,6 +112,11 @@ export function CourtOfHonorWorkspace({
   function publish() {
     if (!report) return;
     act(() => publishCourtOfHonorAction(report.id), 'Published.');
+  }
+
+  function markPresented() {
+    if (!report) return;
+    act(() => markCourtOfHonorPresentedAction(report.id, presentationDate), 'Marked as presented.');
   }
 
   function copyMarkdown() {
@@ -228,7 +249,47 @@ export function CourtOfHonorWorkspace({
                   Nothing was earned in this date range — publishing is disabled. Widen the range.
                 </p>
               )}
+              {report.status === 'draft' && (
+                <p className={styles.hint} style={{ marginTop: 8 }}>
+                  Publishing finalizes this report&rsquo;s content — it does NOT mark anything as presented.
+                  That&rsquo;s a separate step below, once published.
+                </p>
+              )}
             </section>
+
+            {report.status === 'published' && (
+              <section className={styles.card}>
+                <h2 className={styles.cardTitle}>Confirm the ceremony happened</h2>
+                <p className={styles.hint}>
+                  Publishing above just locks in the content for printing and prep — it does{' '}
+                  <strong>not</strong> mark anything as presented. Only click this once the ceremony has
+                  actually happened, since Court of Honors are outdoors and do get rained out. If it&rsquo;s
+                  rescheduled, just enter the real date when you do click it.
+                </p>
+                <div className={styles.dateRow}>
+                  <label className={styles.dateField}>
+                    <span className={styles.dateLabel}>Date presented</span>
+                    <DatePickerField value={presentationDate} onChange={setPresentationDate} disabled={disabled} />
+                  </label>
+                  <button
+                    type="button"
+                    className={styles.publishBtn}
+                    onClick={markPresented}
+                    disabled={disabled || !presentationDate}
+                  >
+                    Mark items as Presented
+                  </button>
+                </div>
+                {report.presentedAt && (
+                  <p className={styles.publishedNote}>
+                    Confirmed presented{' '}
+                    {new Date(report.presentedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    {report.presentedBy ? ` by ${report.presentedBy}` : ''}. Safe to run again — e.g. after
+                    adding a scout back in — it only fills in items not already marked.
+                  </p>
+                )}
+              </section>
+            )}
           </>
         )}
 

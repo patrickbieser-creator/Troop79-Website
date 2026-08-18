@@ -13,11 +13,22 @@ import {
 import { generateCourtOfHonor, markItemsPresented } from '@/lib/court-of-honor';
 
 /**
- * Court of Honor — admin generate/edit/publish/correct (Patrick,
+ * Court of Honor — admin generate/edit/publish/present (Patrick,
  * 2026-08-17). Sibling of the Weekly Advancement Report's actions.ts —
  * same shape, minus ScoutStanding (nothing to suppress; this report never
- * shows individual requirements in the first place) and plus a coh_history
- * upsert on publish (see publishCourtOfHonorAction).
+ * shows individual requirements in the first place).
+ *
+ * PUBLISH and PRESENT ARE DELIBERATELY SEPARATE ACTIONS, not one step
+ * (Patrick, 2026-08-17, after the first version bundled them): Court of
+ * Honor ceremonies happen outdoors and get rained out/rescheduled.
+ * Publishing finalizes the report's content — useful for printing and prep
+ * ahead of the actual ceremony, and nothing about it should imply the
+ * ceremony happened. Only markCourtOfHonorPresentedAction, an explicit
+ * separate click a leader makes AFTER the ceremony actually occurred,
+ * stamps ledger_entries.presented_at/presented_by (via
+ * lib/court-of-honor.ts's markItemsPresented). It takes the presentation
+ * date as an argument rather than assuming the report's own end_date, so a
+ * reschedule doesn't leave the wrong date on record.
  */
 
 const PATHS = ['/admin/advancement/court-of-honor'];
@@ -44,6 +55,8 @@ export interface CourtOfHonorRow {
   publishedBy: string | null;
   correctedAt: string | null;
   correctedBy: string | null;
+  presentedAt: string | null;
+  presentedBy: string | null;
 }
 
 interface RawRow {
@@ -60,6 +73,8 @@ interface RawRow {
   published_by: string | null;
   corrected_at: string | null;
   corrected_by: string | null;
+  presented_at: string | null;
+  presented_by: string | null;
 }
 
 function mapRow(row: RawRow): CourtOfHonorRow {
@@ -76,12 +91,14 @@ function mapRow(row: RawRow): CourtOfHonorRow {
     publishedAt: row.published_at,
     publishedBy: row.published_by,
     correctedAt: row.corrected_at,
-    correctedBy: row.corrected_by
+    correctedBy: row.corrected_by,
+    presentedAt: row.presented_at,
+    presentedBy: row.presented_by
   };
 }
 
 const SELECT_COLUMNS =
-  'id, start_date, end_date, status, content_json, content_md, note, generated_at, generated_by, published_at, published_by, corrected_at, corrected_by';
+  'id, start_date, end_date, status, content_json, content_md, note, generated_at, generated_by, published_at, published_by, corrected_at, corrected_by, presented_at, presented_by';
 
 export async function generateCourtOfHonorAction(
   startDate: string,
@@ -227,9 +244,10 @@ export async function saveCohNoteAction(reportId: number, note: string): Promise
 }
 
 /** Publish a draft. Refuses if its date range overlaps an already-published
- *  COH (same reasoning as the Weekly Report's publishReportAction) — and,
- *  on success, marks every item it includes as presented in the existing
- *  Submit & Present system (see markItemsPresented in lib/court-of-honor.ts). */
+ *  COH (same reasoning as the Weekly Report's publishReportAction).
+ *  Finalizes the report's CONTENT only — never touches
+ *  ledger_entries.presented_at. See markCourtOfHonorPresentedAction below
+ *  for the separate, explicit confirmation that the ceremony happened. */
 export async function publishCourtOfHonorAction(reportId: number): Promise<Result & { report?: CourtOfHonorRow }> {
   const actor = await requireCapability('advancement.write');
   const supabase = createAdminClient();
@@ -264,11 +282,53 @@ export async function publishCourtOfHonorAction(reportId: number): Promise<Resul
     .single();
   if (error || !data) return { ok: false, error: error?.message ?? 'Could not publish the report.' };
 
-  const published = data as unknown as RawRow;
-  await markItemsPresented(supabase, published.content_json, published.end_date, actor.label);
+  revalidate();
+  return { ok: true, report: mapRow(data as unknown as RawRow) };
+}
+
+/**
+ * The explicit, separate confirmation that the ceremony actually happened
+ * (Patrick, 2026-08-17 — see the module header for why this is not folded
+ * into publish). Only callable on an already-published report — presenting
+ * something whose content isn't even finalized yet doesn't make sense.
+ * `presentationDate` defaults to the report's own end_date in the UI but is
+ * a real argument here, not re-derived, so a rain-delay reschedule can be
+ * confirmed with the ACTUAL date the awards went out. Safe to click more
+ * than once (e.g. after a late correction adds a scout back in) — the
+ * underlying markItemsPresented only fills ledger rows not already marked.
+ */
+export async function markCourtOfHonorPresentedAction(
+  reportId: number,
+  presentationDate: string
+): Promise<Result & { report?: CourtOfHonorRow }> {
+  const actor = await requireCapability('advancement.write');
+  if (!presentationDate) return { ok: false, error: 'Pick the date the awards were actually presented.' };
+
+  const supabase = createAdminClient();
+  const { data: existing } = await supabase
+    .from('court_of_honor_reports')
+    .select(SELECT_COLUMNS)
+    .eq('id', reportId)
+    .maybeSingle();
+  if (!existing) return { ok: false, error: 'Report not found.' };
+
+  const row = existing as unknown as RawRow;
+  if (row.status !== 'published') {
+    return { ok: false, error: 'Publish this report before confirming it was presented.' };
+  }
+
+  await markItemsPresented(supabase, row.content_json, presentationDate, actor.label);
+
+  const { data, error } = await supabase
+    .from('court_of_honor_reports')
+    .update({ presented_at: new Date().toISOString(), presented_by: actor.label })
+    .eq('id', reportId)
+    .select(SELECT_COLUMNS)
+    .single();
+  if (error || !data) return { ok: false, error: error?.message ?? 'Marked the items, but could not save the confirmation.' };
 
   revalidate();
-  return { ok: true, report: mapRow(published) };
+  return { ok: true, report: mapRow(data as unknown as RawRow) };
 }
 
 export async function listCourtOfHonorReportsAction(): Promise<CourtOfHonorRow[]> {
