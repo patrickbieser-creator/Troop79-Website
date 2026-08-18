@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports and Recent Logins — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #5a6e3c;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); }
+        tr:hover { background: var(--nw-sage); }
+
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+
+        @media print {
+            body { background: white; }
+            header { padding: 1.5rem; }
+            .container { padding: 1rem; }
+            .stat { break-inside: avoid; }
+        }
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.5rem; }
+            .stats { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Reports, Recent Logins &amp; a Court of Honor Tool</h1>
+        <p class="subtitle">Advancement report data-quality fixes, a new Leader Dashboard login history, and a full Court of Honor report — built, reviewed, and shipped.</p>
+        <div class="meta">
+            <span>&#128197; 2026-08-17</span>
+            <span>&#129302; Operator</span>
+            <span>&#128204; Troop79-Website</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">9</div><div class="label">Commits Shipped</div></div>
+            <div class="stat"><div class="number">5</div><div class="label">Prod Migrations</div></div>
+            <div class="stat"><div class="number">509</div><div class="label">Tests (from 390)</div></div>
+            <div class="stat"><div class="number">3</div><div class="label">qa-lead Reviews</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">Opus Risk Review</div></div>
+            <div class="stat"><div class="number">2</div><div class="label">Real Bugs Fixed Live</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <h3>Weekly Advancement Report — noise reduction and data quality</h3>
+        <p>The report's "don't show individual requirements for something already earned" rule only checked awards within the same reporting period — missed a leader backfilling an old requirement long after the rank or badge was actually earned. Fixed by checking the scout's real standing instead: current rank (trigger-maintained, verified reliable before trusting it) plus an all-time merit badge history, not just this week's rows.</p>
+        <p>Also found and fixed a missing-header bug between consecutive rank/badge requirement groups in the category view — a CommonMark quirk where a heading with no blank line before it silently merges into the previous list instead of rendering as its own line.</p>
+        <div class="callout callout-orange">
+            <strong>Data quality, investigated then fixed:</strong> ~75% of the active ledger (7,164 of 9,565 rows) carries a synthetic migration timestamp instead of a real recording time — confirmed via a round-hour signature no organic usage produces. Excluded from the report query immediately; then, after an Opus risk assessment flagged a real (since-resolved) risk to the duplicate-records audit tool, backfilled those rows' recorded time to their actual earned date via a reversible, self-validating migration.
+        </div>
+
+        <h3>Recent Logins — a new Leader Dashboard section</h3>
+        <p>Investigated before building: admin and family logins are already one event stream since the identity system's unification, not two sources to merge. But the two sign-in methods had incompatible history — email/code links kept a real per-event trail, passkeys only ever remembered the single most recent login. Built a new unified table both methods write to, with device/browser detection, a first-login flag, and a role snapshot at the moment of login. Landed on the real Leader Dashboard (found the bare <span class="file-path">/admin</span> route was just a redirect stub) with a "view all" page and a separate failed-attempts view.</p>
+        <div class="callout-gold callout">
+            <strong>qa-lead caught one real gap</strong> before shipping: the error-swallowing safety net around the new logging only covered part of the code path, so a rare failure there could in theory have broken an otherwise-successful sign-in. Fixed before merge.
+        </div>
+
+        <h3>Court of Honor — a new ceremony report</h3>
+        <p>Completed ranks, merit badges, and special awards for a date range, by type and by scout, with CSV export — reusing the Weekly Report's engine directly rather than duplicating it. Deliberately filters by the date something was <em>earned</em>, not entered — the opposite rule from the Weekly Report, since a ceremony recognizes what actually happened in the period.</p>
+        <div class="callout callout-orange">
+            <strong>Caught and corrected mid-build:</strong> the first version auto-marked every item as "presented" the moment a report was published. Flagged that Court of Honor ceremonies happen outdoors and get rained out — publishing and confirming the ceremony happened are now two separate, explicit actions, and the presentation date is never assumed.
+        </div>
+        <p>Along the way: corrected a stale backlog claim that two ledger columns were dead code (they're not — verified live, just not yet exercised), and deleted two ledger history rows confirmed to be fictitious placeholder data, not real ceremonies.</p>
+
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>Decision</th><th>Why</th></tr></thead>
+            <tbody>
+                <tr><td>D-126: Suppression checks scout standing, not just this-period awards</td><td>Catches backfilled requirements for long-since-earned ranks/badges</td></tr>
+                <tr><td>D-127: Import-batch rows excluded from reports AND backfilled to their earned date</td><td>Two-part fix — immediate query exclusion, then a reviewed, reversible data correction</td></tr>
+                <tr><td>D-128: Court of Honor is its own report, reusing the Weekly Report's engine</td><td>Different date-filter rule and overlap namespace justified a separate table</td></tr>
+                <tr><td>D-129: Publish and "confirm presented" are separate Court of Honor actions</td><td>Outdoor ceremonies get rained out — nothing should imply presentation happened except a deliberate second click</td></tr>
+                <tr><td>D-130: Recent Logins backed by one new unified events table</td><td>The two existing login-history sources were individually insufficient, not just inconvenient to merge</td></tr>
+            </tbody>
+        </table>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Verify Recent Logins and Court of Honor end-to-end in production with real leader credentials — both shipped on automated tests + qa-lead review only</li>
+            <li>Decide whether login/IP/failed-attempt history needs its own capability instead of riding on the advancement-write grant (qa-lead judgment call, not yet decided)</li>
+            <li>Court of Honor: add a delete option for a published report (explicitly parked at Patrick's request — not to be designed or built yet)</li>
+            <li><span class="file-path">changelog.html</span> was not updated for this session's 9 commits — same recurring drift already tracked in the backlog</li>
+        </ul>
+
+    </div>
+
+    <footer>
+        <strong>Troop 79 Website</strong> — Personal Project<br>
+        Session Summary — 2026-08-17 — Operator
+    </footer>
+</body>
+</html>
