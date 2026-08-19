@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MB Picker &amp; Ledger Tweaks — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #2e4530;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f0f2; }
+        .callout strong { font-weight: 600; }
+
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+
+        @media print {
+            body { background: white; }
+            header { padding: 1.5rem; }
+            .container { padding: 1rem; }
+            .stat { break-inside: avoid; }
+        }
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.5rem; }
+            .stats { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>MB Picker Redesign &amp; Ledger Tweaks Batch</h1>
+        <p class="subtitle">v1.51.1 &amp; v1.52.0 — shipped, tested, and deployed to production</p>
+        <div class="meta">
+            <span>&#128197; August 19, 2026</span>
+            <span>&#129302; Operator</span>
+            <span>&#128204; Troop79-Website</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">50</div><div class="label">Tests Added</div></div>
+            <div class="stat"><div class="number">631</div><div class="label">Total Tests Passing</div></div>
+            <div class="stat"><div class="number">2</div><div class="label">Production Deploys</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">Data Backfill (74 rows)</div></div>
+            <div class="stat"><div class="number">3</div><div class="label">Real Bugs Found &amp; Fixed Pre-Deploy</div></div>
+            <div class="stat"><div class="number">6</div><div class="label">Decisions Recorded</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <h3>Merit badge "I did this" picker — v1.51.1</h3>
+        <p>Patrick reported the picker showed only high-level requirements. Investigation found the sub-requirements
+        were already there — hidden behind a second "Which part?" dropdown that only appeared after a top-level
+        pick. Redesigned as an always-expanded fieldset/radio list (ux-lead recommendation) so the full requirement
+        tree is visible on load, no click-to-reveal step. Verified live on production against real badges (Cooking,
+        Citizenship in the Community).</p>
+
+        <h3>Ledger Tweaks — a checked, not assumed, batch</h3>
+        <p>Patrick handed over an 11-item list of ledger tweaks and discussion questions for the Troop Finances
+        module. Every item was investigated against real code, schema, and production data before anything was
+        built — two assumptions going in turned out wrong, both caught by Patrick looking closely at real data
+        rather than trusting a first-pass analysis.</p>
+
+        <table>
+            <thead><tr><th>Item</th><th>Outcome</th></tr></thead>
+            <tbody>
+                <tr><td>Actor stamp ("who entered this")</td><td>Already existed in the schema, never rendered — surfaced on the ledger table and CSV export.</td></tr>
+                <tr><td>Historical "Who" backfill</td><td>74 checking/savings rows matched to a real person and backfilled directly on production (dry-run reviewed first). 11 ambiguous name matches deliberately left untouched.</td></tr>
+                <tr><td>Who editable on every account</td><td>Was scout_account-only in the UI. Fixing this caught a real bug: the old code would have silently wiped the 74 just-backfilled rows the moment anyone edited an unrelated field on one.</td></tr>
+                <tr><td>Rename / merge an Activity</td><td>One feature covers both — a merge is a rename whose target already exists. Two-step preview-then-apply panel, includes voided rows.</td></tr>
+                <tr><td>Activity Report drill-down</td><td>Dedicated modal per Patrick's pick; links straight to the specific calendar event when a real signup link exists.</td></tr>
+                <tr><td>Kind vs. Direction overlap</td><td>Rejected converting Kind to a lookup table (would break consistency with Account/Method). Kind now defaults Direction for 6 of 9 values; non-blocking warning on mismatch.</td></tr>
+                <tr><td>Memo field, reconciliation warning, "Event" label</td><td>Multi-line textarea; toned-down quiet note instead of bold red; <span class="file-path">event_fee</span> now displays as "Event".</td></tr>
+            </tbody>
+        </table>
+
+        <div class="callout callout-gold">
+            <strong>Assumption corrected #1:</strong> a first-pass check claimed no historical "Who" data could be
+            inferred from memo text. The check had a shell-escaping bug that silently reported zero matches
+            everywhere. Patrick caught it by pointing at real data (High Adventure Trip '26) — rewritten properly,
+            corrected finding: 85 candidates, 74 unambiguous, now backfilled.
+        </div>
+
+        <div class="callout callout-gold">
+            <strong>Assumption corrected #2:</strong> Opus's pre-deploy review caught that the rename/merge preview
+            and apply queries had drifted on trim behavior for the source activity label — would have shown a
+            nonzero preview count and then silently updated zero rows for any label carrying real whitespace.
+            Fixed before push, with a regression test.
+        </div>
+
+        <h2>Blockers Resolved</h2>
+        <table>
+            <thead><tr><th>Issue</th><th>Root Cause</th><th>Fix</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td>Who silently wiped on edit</td>
+                    <td>Submit handlers unconditionally nulled <span class="file-path">personId</span> for any non-scout_account row</td>
+                    <td>Now passes through whatever's selected regardless of account; caught via a falsified regression test before any deploy</td>
+                </tr>
+                <tr>
+                    <td>Historical name-matching script reported zero matches</td>
+                    <td>Shell-escaping bug in a Bash-wrapped Node one-liner (nested backslashes)</td>
+                    <td>Rewritten as a real script file; corrected count 85 candidates / 74 unambiguous</td>
+                </tr>
+                <tr>
+                    <td>Rename preview/apply could silently disagree</td>
+                    <td>Preview matched the source label untrimmed, apply matched it trimmed</td>
+                    <td>Both now match exactly, untrimmed — only the free-typed target is trimmed before writing</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Investigated, Turned Out Fine</h2>
+        <div class="callout callout-teal">
+            <strong>The SoFi "false alarm."</strong> Patrick flagged a large number of transactions appearing
+            attributed to the retired SoFi account. Investigation traced the account itself as real and correctly
+            closed (2026-04-23, sweep to checking, both legs correctly paired) — but surfaced a genuine, separate
+            finding along the way: 36 of the 41 SoFi-coded rows look like misfiled checking-account event-fee
+            payments (same shape as sibling rows for the identical camps that correctly went to checking). Patrick's
+            original alarm was a UI filter artifact, not this — but the 36-row pattern is real and independent of
+            it, and is now on the backlog pending his confirmation before any correction (money records, no
+            unilateral fix).
+        </div>
+
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-145</td><td>MB proof picker: always-expanded list, not cascading dropdowns</td></tr>
+                <tr><td>D-146</td><td>Activity rename/merge is one feature, no lookup table — doesn't reopen the prior no-normalized-table decision</td></tr>
+                <tr><td>D-147</td><td>Kind/Direction overlap fixed by implication + warning, not a Kind lookup table</td></tr>
+                <tr><td>D-148</td><td>Activity Report drill-down is a dedicated modal, precise via the FK chain when possible</td></tr>
+                <tr><td>D-149</td><td>"Who" stays one unified field, now editable on every account</td></tr>
+                <tr><td>D-150</td><td>Aged-out capability sweep: not building it, handled manually</td></tr>
+            </tbody>
+        </table>
+
+        <h2>Also Verified Live This Session</h2>
+        <ul>
+            <li>Scoutbook Export — real pull confirmed working</li>
+            <li>Merit badge / rank / Scout-terminal award gating — confirmed with real test scouts</li>
+            <li>Roster editor rail nav — confirmed on production</li>
+            <li><span class="file-path">roster.manage</span> short list — confirmed deliberate</li>
+        </ul>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Verify the admin nav mobile fix on a real device — the one item left unconfirmed from the sixth session's trio</li>
+            <li>Work through the Ledger Tweaks post-push checklist (<span class="file-path">Plans/Ledger-Tweaks.md</span>) — Who-survives-edit check, Who dropdown coverage, rename/merge on a throwaway label first (irreversible), drill-down modal, event link resolution</li>
+            <li>Patrick: confirm whether the 36 suspect SoFi-coded rows should move to checking</li>
+            <li>Resolve the 11 ambiguous Who-backfill rows by hand, now that the edit UI exists</li>
+            <li>Assign <span class="file-path">library.moderate</span> deliberately — still held by nobody but Patrick</li>
+            <li>Build out the remaining Members "Soon" cards — campout payments, registration, health forms, wreath sale</li>
+        </ul>
+
+        <h2>Files Changed</h2>
+        <p>MB picker: <span class="badge badge-blue">REWRITTEN</span> <span class="file-path">mb-proof-picker.tsx</span>,
+        <span class="badge badge-gold">MODIFIED</span> <span class="file-path">library.module.css</span></p>
+        <p>Ledger Tweaks: <span class="badge badge-gold">MODIFIED</span> <span class="file-path">lib/finance.ts</span>,
+        <span class="file-path">finance/actions.ts</span>, <span class="file-path">edit-transaction-dialog.tsx</span>,
+        <span class="file-path">finance-workspace.tsx</span>, <span class="file-path">report/activity-report.tsx</span>,
+        <span class="file-path">report/page.tsx</span> &nbsp;
+        <span class="badge badge-green">NEW</span> <span class="file-path">entered-by-cell.tsx</span>,
+        <span class="file-path">report/rename-activity-panel.tsx</span>,
+        <span class="file-path">report/activity-drilldown.tsx</span></p>
+        <p>20 files total across both releases, plus 8 new/modified test files and a jsdom
+        <span class="file-path">&lt;dialog&gt;</span> polyfill added to <span class="file-path">tests/setup-dom.ts</span>
+        (first suite to render a dialog-based component — reusable for every future one).</p>
+
+    </div>
+
+    <footer>
+        <strong>Scout Troop 79</strong> — Milwaukee, WI<br>
+        Session Summary — August 19, 2026 — Operator
+    </footer>
+</body>
+</html>
