@@ -340,6 +340,33 @@ function Clipboard({ detail }: { detail: ScoutDetail }) {
   for (const [rankId, rows] of rowsByRank) {
     catalogByRank.set(rankId, buildReqTree(rows));
   }
+  // Synthesize the BoR row rather than reading it from the catalog — the
+  // real rank_requirements "BoR" leaf that used to supply this row was
+  // removed 2026-08-19 (it was a redundant, ungated side door around
+  // Fast Entry's award-gating check; see
+  // 20260819120000_remove_redundant_bor_catalog_rows.sql). This mirrors how
+  // Fast Entry's own picker has always synthesized its award row rather than
+  // reading it from the catalog (picker.tsx's rankAwardItem) — sourced
+  // straight from the rank_award ledger row via ledgerByCode's `<rank>-BoR`
+  // re-key above, same as before. Scout rank has no BoR (Scoutmaster
+  // Conference caps it instead, per BSA) and is deliberately excluded.
+  for (const r of detail.ranks) {
+    if (r.id === 'scout') continue;
+    const node: ReqNode<RankReqCatalogRow> = {
+      id: -1,
+      rank_id: r.id,
+      parent_id: null,
+      code: 'BoR',
+      label: `Board of Review - ${r.display_name}`,
+      complete_rule: 'all',
+      complete_n: null,
+      sort_order: Number.MAX_SAFE_INTEGER,
+      children: []
+    };
+    const list = catalogByRank.get(r.id) ?? [];
+    list.push(node);
+    catalogByRank.set(r.id, list);
+  }
   // Show every rank that has any catalog entries — the same set for every
   // scout, so a "needs to do" report is complete.
   const ranksToShow = detail.ranks.filter((r) => (catalogByRank.get(r.id)?.length ?? 0) > 0);

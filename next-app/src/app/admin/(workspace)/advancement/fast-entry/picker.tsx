@@ -530,11 +530,29 @@ function RankPanel({
   const keyFor = (code: string) => itemKey.rankReq(rank.id, code);
   const reqs = rank.requirements;
   const q = search.trim().toLowerCase();
-  // Award (BoR) row at the top if rank > Scout (Scout has no BoR catalog row).
+  // Award (BoR) row at the BOTTOM if rank > Scout (Scout has no BoR catalog
+  // row) — was at the top; moved 2026-08-19 (Patrick) so it's the last thing
+  // a leader sees, matching the real workflow (finish every requirement,
+  // THEN the Board of Review), and to stop reading as a shortcut past the
+  // checklist above it. This is the ONLY "Board of Review" row in the
+  // picker now — the redundant catalog leaf that used to render a second
+  // one at the bottom (ungated, via the ledger_auto_rank_award trigger) was
+  // removed in 20260819120000_remove_redundant_bor_catalog_rows.sql.
   const showAward = rank.id !== 'scout';
 
   return (
     <>
+      <ReqTreeRender
+        nodes={reqs}
+        keyForCode={keyFor}
+        depth={0}
+        search={q}
+        completion={completion}
+        statusFor={statusFor}
+        onLeafClick={(node) =>
+          onLeafClick(rankReqItem(rank.id, rank.display_name, node.code, node.label))
+        }
+      />
       {showAward && (
         <ItemRow
           item={rankAwardItem(rank.id, rank.display_name)}
@@ -550,17 +568,6 @@ function RankPanel({
           isAward
         />
       )}
-      <ReqTreeRender
-        nodes={reqs}
-        keyForCode={keyFor}
-        depth={0}
-        search={q}
-        completion={completion}
-        statusFor={statusFor}
-        onLeafClick={(node) =>
-          onLeafClick(rankReqItem(rank.id, rank.display_name, node.code, node.label))
-        }
-      />
     </>
   );
 }

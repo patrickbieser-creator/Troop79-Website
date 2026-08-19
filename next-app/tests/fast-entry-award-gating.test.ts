@@ -28,6 +28,17 @@ const SCOUT_ID = `zzvitest-mbgate-${process.pid}`;
 const MB_ID = `zzvitest-mb-${process.pid}`;
 const MB_PARTIAL_ID = `zzvitest-mbpartial-${process.pid}`;
 
+// Scout rank's other 16 top-level requirement codes (everything except the
+// terminal "7" / Scoutmaster Conference) — real catalog codes, since Scout
+// rank is a fixed, permanent part of the BSA catalog, not fixture data.
+const SCOUT_OTHER_CODES = [
+  '1a', '1b', '1c', '1d', '1e', '1f',
+  '2a', '2b', '2c', '2d',
+  '3a', '3b',
+  '4a', '4b',
+  '5', '6'
+];
+
 beforeAll(async () => {
   await admin.from('scouts').insert({
     id: SCOUT_ID,
@@ -141,5 +152,39 @@ describe('validateAwardRows — merit badge vs rank gating', () => {
     ]);
     expect(errors.length).toBeGreaterThan(0);
     expect(errors[0].awardLabel).toBe('tenderfoot rank');
+  });
+
+  it('ScoutRankTerminal_FailsGating_WhenOtherRequirementsAreIncomplete', async () => {
+    // Scout rank has no Board of Review row in the picker — requirement 7
+    // (Scoutmaster Conference) is its stand-in terminal step. Checking it
+    // alone, with all 16 other Scout requirements untouched, must be denied
+    // exactly like an ungated rank_award would be (Patrick, 2026-08-19:
+    // "There's never a scenario where a requirement is missing and a BoR is
+    // valid").
+    const errors = await validateAwardRows(admin, [
+      { scout_id: SCOUT_ID, kind: 'rank_requirement', code: 'scout-7', label: 'Scoutmaster Conference', unit: 'requirement' }
+    ]);
+    expect(errors.length).toBe(SCOUT_OTHER_CODES.length);
+    expect(errors[0].awardLabel).toBe('Scoutmaster Conference (Scout rank)');
+    // Requirement 7 itself is never one of the flagged codes — it's the
+    // thing being submitted, not a dependency of itself.
+    expect(errors.some((e) => e.parentCode === '7')).toBe(false);
+  });
+
+  it('ScoutRankTerminal_PassesGating_WhenAllOtherRequirementsArePendingInTheSameBatch', async () => {
+    // Realistic one-shot Scout-First submission: a leader checks every
+    // requirement including the Scoutmaster Conference on the same visit.
+    const items = [
+      ...SCOUT_OTHER_CODES.map((code) => ({
+        scout_id: SCOUT_ID,
+        kind: 'rank_requirement' as const,
+        code: `scout-${code}`,
+        label: code,
+        unit: 'requirement'
+      })),
+      { scout_id: SCOUT_ID, kind: 'rank_requirement' as const, code: 'scout-7', label: 'Scoutmaster Conference', unit: 'requirement' }
+    ];
+    const errors = await validateAwardRows(admin, items);
+    expect(errors).toEqual([]);
   });
 });

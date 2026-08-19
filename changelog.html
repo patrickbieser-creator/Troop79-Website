@@ -497,6 +497,50 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.51.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.51.0</span>
+        <span class="release-date">August 19, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Fix</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Board of Review: one path, fully checked, every time</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Closed a side door around requirement checking.</strong> Every rank with a
+              real Board of Review had two ways to record it in Fast Entry &mdash; one properly
+              checked every other requirement first, the other (a leftover catalog entry) skipped
+              that check entirely and could award a rank with nothing else done. The leftover has
+              been removed. There is now exactly one Board of Review checkbox per rank, and it
+              always requires every other requirement to be complete first &mdash; no exceptions.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Scout rank gets the same protection.</strong> Scout has no formal Board of
+              Review &mdash; a Scoutmaster Conference caps it instead &mdash; but that checkbox now
+              requires the same thing: every other Scout requirement complete first.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Board of Review moved to the bottom of the list</strong> in Fast Entry, so
+              it&rsquo;s the last thing checked off &mdash; matching how the work actually happens.
+            </span>
+          </li>
+          <li>
+            <span>
+              A full sweep of existing ledger and Library data confirmed nothing on record is
+              affected by this change &mdash; every already-recorded rank stays exactly as
+              recorded, including a family-submitted Board of Review proof from earlier this month.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.50.2 -->
     <div class="release">
       <div class="release-header">

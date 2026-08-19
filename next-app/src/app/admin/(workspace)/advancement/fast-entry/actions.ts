@@ -222,12 +222,25 @@ interface CatalogReqWithChildren extends CatalogReqRow {
  * scout), not a clean "earned as one fact" case — Patrick's own framing, not
  * an inferred rule.
  *
- * Rank awards keep the leaf gate unconditionally: unlike an MB counselor's
- * sign-off, this app's rank model is that requirements are signed off
- * progressively and the Board of Review reviews already-completed work (see
- * the ledger_auto_rank_award trigger), so an ungated rank award would be a
- * real skip-the-work path in a way an MB award checked by a leader who
- * already holds the blue card is not.
+ * Rank awards keep the leaf gate unconditionally, no clean-slate bypass, ever
+ * (Patrick, 2026-08-19, explicit — a mirror of the MB fix was proposed and
+ * rejected): unlike an MB counselor's sign-off, this app's rank model is that
+ * requirements are signed off progressively and the Board of Review reviews
+ * already-completed work (see the ledger_auto_rank_award trigger), so an
+ * ungated rank award would be a real skip-the-work path in a way an MB award
+ * checked by a leader who already holds the blue card is not. "There's never
+ * a scenario where a requirement is missing and a BoR is valid" — his words.
+ * This detail also feeds the Clipboard and other reports, which display
+ * per-requirement completion independent of current_rank and would show a
+ * gap against an award that skipped the gate.
+ *
+ * SCOUT rank is the one case that needs its own check to enforce the same
+ * rule: it has no Board of Review (picker.tsx's showAward = rank.id !==
+ * 'scout'), so there's no rank_award row for the loop above to gate at all.
+ * Its terminal requirement 7 ("Scoutmaster Conference") is the functional
+ * equivalent — checked below against every OTHER top-level Scout
+ * requirement, exactly as the BoR/rank_award case is checked against a
+ * rank's full tree.
  */
 export async function validateAwardRows(
   supabase: ReturnType<typeof createAdminClient>,
@@ -250,7 +263,23 @@ export async function validateAwardRows(
       });
     }
   }
-  if (awards.length === 0) return [];
+
+  // Scout rank has no Board of Review — showAward = rank.id !== 'scout' in
+  // picker.tsx means the picker never shows an award/BoR row for it at all.
+  // Requirement 7 ("Scoutmaster Conference") is Scout's functional
+  // equivalent of that terminal sign-off step. Without a special case here,
+  // it's just another leaf requirement — nothing stops a leader from
+  // checking it alone with the other 16 requirements untouched (Patrick,
+  // 2026-08-19: "There's never a scenario where a requirement is missing and
+  // a BoR is valid" — this is the one rank where that check has to be
+  // hand-written instead of falling out of the award-row gate below).
+  const SCOUT_RANK_ID = 'scout';
+  const SCOUT_TERMINAL_CODE = '7';
+  const scoutTerminalItems = items.filter(
+    (it) => it.kind === 'rank_requirement' && it.code === `${SCOUT_RANK_ID}-${SCOUT_TERMINAL_CODE}`
+  );
+
+  if (awards.length === 0 && scoutTerminalItems.length === 0) return [];
 
   // Track pending leaf codes per scout, drawn from the OTHER (non-award) rows
   // in this same batch.
@@ -294,9 +323,12 @@ export async function validateAwardRows(
     return byParent.get(null) ?? [];
   }
 
-  // For each unique scout in awards, load their completed leaf codes once.
+  // For each unique scout in awards (or checking the Scout-rank terminal
+  // requirement), load their completed leaf codes once.
   const completedByScout = new Map<string, Set<string>>();
-  const uniqueScouts = Array.from(new Set(awards.map((a) => a.scoutId)));
+  const uniqueScouts = Array.from(
+    new Set([...awards.map((a) => a.scoutId), ...scoutTerminalItems.map((it) => it.scout_id)])
+  );
   for (const sid of uniqueScouts) {
     const { data } = await supabase
       .from('ledger_active')
@@ -373,6 +405,39 @@ export async function validateAwardRows(
       }
     }
   }
+
+  // Scout rank's terminal requirement (see header comment above) — gated the
+  // same way a rank_award would be, against every OTHER top-level Scout
+  // requirement. Grouped by scout in case a Requirement-First bulk batch
+  // checks it for more than one scout at once.
+  if (scoutTerminalItems.length > 0) {
+    let scoutTree = rankTrees.get(SCOUT_RANK_ID);
+    if (!scoutTree) {
+      scoutTree = await loadTree('rank_requirements', 'rank_id', SCOUT_RANK_ID);
+      rankTrees.set(SCOUT_RANK_ID, scoutTree);
+    }
+    const otherTop = scoutTree.filter((top) => top.code !== SCOUT_TERMINAL_CODE);
+    const uniqueTerminalScouts = Array.from(new Set(scoutTerminalItems.map((it) => it.scout_id)));
+    for (const scoutId of uniqueTerminalScouts) {
+      const completed = completedByScout.get(scoutId) ?? new Set();
+      const pending = pendingByScout.get(scoutId) ?? new Set();
+      const hasKey = (rawCode: string) =>
+        completed.has(`${SCOUT_RANK_ID}-${rawCode}`) || pending.has(`${SCOUT_RANK_ID}-${rawCode}`);
+      for (const top of otherTop) {
+        if (!treeSatisfied(top, hasKey)) {
+          errors.push({
+            awardLabel: 'Scoutmaster Conference (Scout rank)',
+            scoutId,
+            parentCode: top.code,
+            parentLabel: top.label,
+            satisfied: countTopSat(top, hasKey),
+            required: targetN(top)
+          });
+        }
+      }
+    }
+  }
+
   return errors;
 }
 
