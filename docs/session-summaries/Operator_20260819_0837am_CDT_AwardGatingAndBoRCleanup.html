@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Award Gating &amp; Board of Review Cleanup — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #5a6e3c;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); }
+        tr:hover { background: var(--nw-sage); }
+
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+
+        @media print {
+            body { background: white; }
+            header { padding: 1.5rem; }
+            .container { padding: 1rem; }
+            .stat { break-inside: avoid; }
+        }
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.5rem; }
+            .stats { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Award Gating &amp; Board of Review Cleanup</h1>
+        <p class="subtitle">Admin UX pass, a dead-auth-gate sweep, and closing a real side door around advancement rules</p>
+        <div class="meta">
+            <span>&#128197; August 19, 2026</span>
+            <span>&#129302; Operator</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.50.0 &rarr; v1.51.0</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">4</div><div class="label">Production Pushes</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">DB Migration</div></div>
+            <div class="stat"><div class="number">7</div><div class="label">Decisions Recorded</div></div>
+            <div class="stat"><div class="number">581</div><div class="label">Tests (from 572)</div></div>
+            <div class="stat"><div class="number">4</div><div class="label">Opus Risk Reviews</div></div>
+            <div class="stat"><div class="number">2</div><div class="label">Pages Restored to Reachable</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <h3>Admin nav reorg &amp; roster editor treatment (v1.50.0)</h3>
+        <p>Planned and prototyped by Brad (UX/UI). Records — grown to 7 items, nearly twice any other
+        section — split into <strong>Records</strong> (Universal Ledger, Roster, Submit &amp; Present,
+        MB Progress) and a new <strong>Reports &amp; Exports</strong> section (Audits, Weekly Report,
+        Court of Honor, Scoutbook Export), absorbing the old orphaned single-item Output section.
+        Roster moved up to sit directly under Universal Ledger, Patrick's own call over Brad's original
+        placement. A real mobile bug was fixed along the way: section labels had been fully
+        <code>display: none</code> below 800px, collapsing the whole sidebar into one undifferentiated
+        row of chips for anyone on a phone or tablet — exactly where several leaders actually use this
+        nav at troop meetings.</p>
+        <p><code>scout-form.tsx</code>'s six sections (Identity, Demographics, Contact, Things We Should
+        Know, Parents/Guardians, Status) moved from a plain dashed-divider treatment to numbered
+        section-card chrome plus a sticky scroll-spy rail — additive-only CSS, so none of the ~7 other
+        Lookups editors sharing the same stylesheet were touched.</p>
+
+        <h3>Dead-auth-gate sweep</h3>
+        <div class="callout callout-orange">
+            <strong>Real production bug, found and closed:</strong> Scoutbook Export and Roster Import
+            were both still gated on the fully-retired shared-password session check — a leftover from
+            before the app's capability system existed. Both pages were completely unreachable via any
+            grant on Access &amp; Permissions, even though every mutation behind them was already
+            correctly capability-gated. Converted both to <code>requireCapability()</code>, matching
+            every already-converted sibling page. Every other reference to the legacy check in the
+            codebase was swept and confirmed either a legitimate dual-path fallback or dead comment
+            text — no further instances remain.
+        </div>
+
+        <h3>Access &amp; Permissions and Media Manager fixes</h3>
+        <p>The Access &amp; Permissions table sorted by "most capabilities held first" — a single grant
+        or revoke could reshuffle the whole table mid-edit. Now stable alphabetical order, always. The
+        Media Manager's thumbnail hover overlay had its metadata text rendering in the transparent half
+        of its own darkening gradient, unreadable over any light-colored photo — anchored to the dark
+        edge instead. qa-lead reviewed the access-control changes: <strong>SHIP, no blockers.</strong></p>
+
+        <h3>Merit badge award gating made conditional</h3>
+        <p>Checking "Full merit badge earned" used to be rejected unless every catalog requirement was
+        already completed or also checked in the same batch — forcing a leader to hand-check every
+        individual requirement (cluttering the ledger with extra rows) just to record a badge earned as
+        one fact, e.g. a summer-camp blue card. Fixed through two rounds of Patrick's own clarification:
+        a <strong>clean slate</strong> (zero requirement activity for that badge) now bypasses the gate
+        entirely; <strong>partial progress</strong> still requires full satisfaction, unchanged. Rank
+        award gating was deliberately left untouched — a mirrored fix was proposed and explicitly
+        rejected, since ranks are signed off progressively and a Board of Review reviews already-completed
+        work, unlike a merit badge counselor's sign-off.</p>
+
+        <h3>Board of Review side door closed</h3>
+        <div class="callout callout-gold">
+            <strong>The deeper find:</strong> every rank with a real Board of Review had TWO independent
+            ways to record it — a properly-gated synthesized award row in the picker, and a real
+            leftover <code>rank_requirements</code> catalog row that auto-created the award via a
+            database trigger with <em>zero</em> leaf-satisfaction check of its own. Checking that
+            leftover row was a complete side door around Patrick's stated rule: "There's never a
+            scenario where a requirement is missing and a BoR is valid."
+        </div>
+        <p>Removed the redundant catalog row (all 6 ranks) and its matching descriptive-text row via a
+        production migration, verified directly against production data before and after — not just
+        local. 4 historical scouts using the old code path all already had their own correctly-dated
+        award, completely unaffected; 1 approved family Board of Review proof submission was left in
+        place. A rollback dump of the exact pre-migration production values was taken first, as a safety
+        net, per an Opus pre-deploy review. Two more things were fixed along the way: Scout rank's
+        terminal requirement (Scoutmaster Conference — Scout has no real BoR) had no equivalent gate at
+        all and now does; and the public Clipboard, which had its own separate dependency on the same
+        catalog row, would have silently lost its "Board of Review" line for all 6 ranks — now
+        synthesizes it from the award record directly instead.</p>
+
+        <h2>Blockers Resolved</h2>
+        <table>
+            <thead><tr><th>Issue</th><th>Root Cause</th><th>Fix</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td>Scoutbook Export &amp; Roster Import unreachable</td>
+                    <td>Still checking the fully-retired shared-password session, missed by the original
+                    capability-system conversion sweep</td>
+                    <td>Converted both to <code>requireCapability()</code></td>
+                </tr>
+                <tr>
+                    <td>Access &amp; Permissions table reshuffled on every edit</td>
+                    <td>Sorted by capability count, not name</td>
+                    <td>Stable alphabetical sort</td>
+                </tr>
+                <tr>
+                    <td>Media Manager hover text unreadable</td>
+                    <td>Text rendered in the transparent half of its own gradient</td>
+                    <td>Anchored text to the gradient's dark edge</td>
+                </tr>
+                <tr>
+                    <td>Merit badge awards blocked without proof</td>
+                    <td>Gate required every leaf requirement checked, even for badges earned as one
+                    external fact</td>
+                    <td>Conditional bypass on a clean slate only; partial progress still fully gated</td>
+                </tr>
+                <tr>
+                    <td>Rank award side door</td>
+                    <td>Redundant catalog "BoR" row auto-created the award with zero leaf-satisfaction
+                    check</td>
+                    <td>Removed via production migration; one gated path remains</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Decisions</h2>
+        <ul>
+            <li><strong>D-138</strong> — Admin nav rebalanced: Records split into Records + Reports &amp;
+            Exports, Roster repositioned</li>
+            <li><strong>D-139</strong> — Roster/person editor gets section-card + rail-nav treatment,
+            opt-in and additive only</li>
+            <li><strong>D-140</strong> — Legacy session-check page gates are dead; sweep and convert to
+            capability checks on discovery</li>
+            <li><strong>D-141</strong> — Access &amp; Permissions table sorts alphabetically by name,
+            always</li>
+            <li><strong>D-142</strong> — Merit badge award gating is conditional (clean-slate bypass
+            only); rank award gating stays unconditional — deliberately asymmetric</li>
+            <li><strong>D-143</strong> — Scout rank's terminal requirement gated the same way as every
+            other rank's Board of Review</li>
+            <li><strong>D-144</strong> — One gated path to Board of Review: the redundant catalog leaf
+            is removed, verified against real production data before and after</li>
+        </ul>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li><strong>Patrick:</strong> verify Scoutbook Export with a real pull, test merit
+            badge/rank/Scout-terminal gating with the two test scouts on hand, and confirm the nav
+            mobile fix + roster editor rail visually — none of this could be browser-verified without
+            leader credentials in this environment</li>
+            <li>Two small qa-lead cleanup notes: an orphaned CSS class in
+            <span class="file-path">scoutbook-export.module.css</span>, and a stale future-tense
+            comment in <span class="file-path">admin-actor.ts</span></li>
+            <li>Cross-module consistency sweep (dialog mechanism, sort-header duplication, truncation
+            gaps across ~9 editor surfaces) — planned by Brad, not yet activated</li>
+            <li>Decide whether <span class="file-path">adult-form.tsx</span> should move onto the same
+            stylesheet as <span class="file-path">scout-form.tsx</span></li>
+        </ul>
+
+        <h2>Files Changed</h2>
+        <p>
+            <span class="badge badge-gold">MODIFIED</span> <span class="file-path">sub-nav.tsx, admin.module.css</span> — nav reorg + mobile fix<br>
+            <span class="badge badge-gold">MODIFIED</span> <span class="file-path">scout-form.tsx, scouts-table.tsx, lookups.module.css, roster.module.css</span> — section-card/rail treatment<br>
+            <span class="badge badge-gold">MODIFIED</span> <span class="file-path">scoutbook-export/page.tsx, download/route.ts, roster-import/page.tsx</span> — dead-gate conversion<br>
+            <span class="badge badge-gold">MODIFIED</span> <span class="file-path">capabilities-admin.ts</span> — stable sort<br>
+            <span class="badge badge-gold">MODIFIED</span> <span class="file-path">media-manager.module.css</span> — contrast fix<br>
+            <span class="badge badge-gold">MODIFIED</span> <span class="file-path">fast-entry/actions.ts, picker.tsx</span> — award gating overhaul<br>
+            <span class="badge badge-gold">MODIFIED</span> <span class="file-path">scouts/[id]/page.tsx</span> — Clipboard BoR synthesis<br>
+            <span class="badge badge-green">NEW</span> <span class="file-path">20260819120000_remove_redundant_bor_catalog_rows.sql</span> — production migration<br>
+            <span class="badge badge-green">NEW</span> <span class="file-path">Plans/bor-rollback-2026-08-19.sql</span> — rollback safety net<br>
+            <span class="badge badge-green">NEW</span> <span class="file-path">tests/capabilities-admin.test.ts, fast-entry-award-gating.test.ts</span> — 9 new tests
+        </p>
+
+    </div>
+
+    <footer>
+        <strong>Troop 79</strong> — Troop79-Website<br>
+        Session Summary — August 19, 2026 — Operator
+    </footer>
+</body>
+</html>
