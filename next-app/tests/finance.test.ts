@@ -4,12 +4,16 @@ import {
   ACCOUNTS,
   TRANSACTION_KINDS,
   TRANSACTION_METHODS,
+  TRANSACTION_KIND_LABELS,
+  KIND_IMPLIED_DIRECTION,
+  kindDirectionMismatch,
   isAccount,
   computeBalance,
   computeScoutAccountBalances,
   ledgerToCsv,
   summarizeByActivity,
   editTransactionGuard,
+  validateActivityRename,
   type FinancialTransactionRow,
   type LedgerCsvRow,
   type ActivityTransactionRow
@@ -41,6 +45,18 @@ describe('finance — vocabulary (pure)', () => {
     expect(TRANSACTION_METHODS.length).toBeGreaterThan(0);
     // No 'online' method — no payment processing in this build.
     expect(TRANSACTION_METHODS).not.toContain('online');
+  });
+
+  it('TransactionKindLabels_CoversEveryKind_WithANonEmptyLabel', () => {
+    // Every UI surface renders TRANSACTION_KIND_LABELS[k], not k itself —
+    // a kind missing from this map would render "undefined" in a <select>.
+    for (const k of TRANSACTION_KINDS) {
+      expect(TRANSACTION_KIND_LABELS[k]).toBeTruthy();
+    }
+  });
+
+  it('TransactionKindLabels_RendersEventFeeAsEvent_NotTheInternalValue', () => {
+    expect(TRANSACTION_KIND_LABELS.event_fee).toBe('Event');
   });
 });
 
@@ -115,13 +131,28 @@ describe('finance — ledgerToCsv (pure)', () => {
       memo: null,
       activity_label: null,
       voided_at: null,
+      enteredByName: null,
+      enteredAt: null,
       ...partial
     };
   }
 
   it('LedgerToCsv_IncludesHeaderRow_BeforeAnyData', () => {
     const csv = ledgerToCsv([]);
-    expect(csv).toBe('Date,Account,Kind,Method,Who,Memo,Activity,Amount,Voided');
+    expect(csv).toBe('Date,Account,Kind,Method,Who,Memo,Activity,Amount,Voided,Entered By,Entered At');
+  });
+
+  it('LedgerToCsv_IncludesEnteredByAndAt_WhenPresent', () => {
+    const csv = ledgerToCsv([row({ enteredByName: 'Patrick Bieser', enteredAt: '2026-08-19T14:00:00Z' })]);
+    const dataLine = csv.split('\n')[1];
+    expect(dataLine).toContain('Patrick Bieser');
+    expect(dataLine).toContain('2026-08-19T14:00:00Z');
+  });
+
+  it('LedgerToCsv_LeavesEnteredByAndAtBlank_ForHistoricalImportRows', () => {
+    const csv = ledgerToCsv([row({ enteredByName: null, enteredAt: null })]);
+    const fields = csv.split('\n')[1].split(',');
+    expect(fields.slice(-2)).toEqual(['', '']);
   });
 
   it('LedgerToCsv_EscapesEmbeddedCommaAndQuote_PerRfc4180', () => {
@@ -131,8 +162,8 @@ describe('finance — ledgerToCsv (pure)', () => {
 
   it('LedgerToCsv_MarksVoidedRows_WithoutDroppingThem', () => {
     const csv = ledgerToCsv([row({ voided_at: '2026-08-18T00:00:00Z' })]);
-    const dataLine = csv.split('\n')[1];
-    expect(dataLine.endsWith(',yes')).toBe(true);
+    const fields = csv.split('\n')[1].split(',');
+    expect(fields[8]).toBe('yes'); // Voided is the 9th column
   });
 
   it('LedgerToCsv_FormatsAmountToTwoDecimals_EvenForWholeDollarValues', () => {
@@ -248,6 +279,72 @@ describe('editTransactionGuard (pure)', () => {
   });
 });
 
+/**
+ * validateActivityRename (pure) — the rename/merge feature (Patrick,
+ * 2026-08-19: rename-with-cascade collapsed into the same operation as
+ * merge, since activity_label is free text with no FK — see the item's
+ * writeup in Plans/Ledger-Tweaks.md).
+ */
+describe('kindDirectionMismatch (pure)', () => {
+  it('KindDirectionMismatch_IsFalse_WhenDirectionMatchesTheImpliedOne', () => {
+    expect(kindDirectionMismatch('expense', 'out')).toBe(false);
+    expect(kindDirectionMismatch('income', 'in')).toBe(false);
+  });
+
+  it('KindDirectionMismatch_IsTrue_WhenDirectionContradictsTheImpliedOne', () => {
+    // The exact overlap complaint (Patrick, 2026-08-19): Kind=expense with
+    // Direction=in was previously possible with nothing to flag it.
+    expect(kindDirectionMismatch('expense', 'in')).toBe(true);
+    expect(kindDirectionMismatch('income', 'out')).toBe(true);
+  });
+
+  it('KindDirectionMismatch_IsAlwaysFalse_ForTransferAndAdjustment', () => {
+    // Legitimately ambiguous — no implied direction to contradict.
+    expect(kindDirectionMismatch('transfer', 'in')).toBe(false);
+    expect(kindDirectionMismatch('transfer', 'out')).toBe(false);
+    expect(kindDirectionMismatch('adjustment', 'in')).toBe(false);
+    expect(kindDirectionMismatch('adjustment', 'out')).toBe(false);
+  });
+
+  it('KindImpliedDirection_HasNoEntry_ForTransferOrAdjustment', () => {
+    expect(KIND_IMPLIED_DIRECTION.transfer).toBeUndefined();
+    expect(KIND_IMPLIED_DIRECTION.adjustment).toBeUndefined();
+  });
+});
+
+describe('validateActivityRename (pure)', () => {
+  it('ValidateRename_RefusesEmptySource', () => {
+    expect(validateActivityRename('  ', 'New Label')).toMatch(/source and a target/i);
+  });
+
+  it('ValidateRename_RefusesEmptyTarget', () => {
+    expect(validateActivityRename('Old Label', '  ')).toMatch(/source and a target/i);
+  });
+
+  it('ValidateRename_RefusesIdenticalSourceAndTarget', () => {
+    expect(validateActivityRename('Can Drive', 'Can Drive')).toMatch(/already the same/i);
+  });
+
+  it('ValidateRename_AllowsCleaningStrayWhitespace_FromAStoredLabel', () => {
+    // sourceLabel is a real stored activity_label value that may itself
+    // carry whitespace (an import-era typo, say) — "Can Drive " -> "Can Drive"
+    // is exactly the rename being asked for, not a no-op to refuse. Trimming
+    // sourceLabel before comparing (the old, wrong behavior) would have
+    // blocked this legitimate cleanup.
+    expect(validateActivityRename('Can Drive ', 'Can Drive')).toBeNull();
+  });
+
+  it('ValidateRename_RefusesWhenSourceExactlyEqualsTrimmedTarget', () => {
+    // The real no-op: source has no padding, target (after its own trim)
+    // is byte-identical to it.
+    expect(validateActivityRename('Can Drive', ' Can Drive ')).toMatch(/already the same/i);
+  });
+
+  it('ValidateRename_AllowsADistinctSourceAndTarget', () => {
+    expect(validateActivityRename('Can Drive', 'Wreath Sale')).toBeNull();
+  });
+});
+
 describe('finance — schema constraints (requires local Supabase)', () => {
   let transactionIds: number[] = [];
   let personIds: number[] = [];
@@ -360,17 +457,24 @@ describe('finance — Phase 2 write-pattern constraints (requires local Supabase
   // the 'use server' wrapper itself isn't exercised.
   let transactionIds: number[] = [];
   let reconciliationKeys: { account: string; as_of: string }[] = [];
+  let personIds: number[] = [];
 
   afterEach(async () => {
     const admin = adminClient();
+    // Transactions first — person_id is a real FK, so a person can only be
+    // deleted after nothing still references it.
     if (transactionIds.length > 0) {
       await admin.from('financial_transactions').delete().in('id', transactionIds);
     }
     for (const k of reconciliationKeys) {
       await admin.from('account_reconciliations').delete().eq('account', k.account).eq('as_of', k.as_of);
     }
+    if (personIds.length > 0) {
+      await admin.from('people').delete().in('id', personIds);
+    }
     transactionIds = [];
     reconciliationKeys = [];
+    personIds = [];
   });
 
   it('TransferPair_NetsToZero_AcrossCheckingAndSavings', async () => {
@@ -439,6 +543,132 @@ describe('finance — Phase 2 write-pattern constraints (requires local Supabase
       .from('financial_transactions')
       .insert({ occurred_on: '2026-08-18', account: 'checking', amount: 30, kind: 'event_fee', signup_entry_id: signupEntryId });
     expect(secondError).not.toBeNull();
+  });
+
+  it('RenameActivity_UpdatesEveryMatchingRow_AcrossAllAccounts', async () => {
+    // Same update shape as renameActivityAction: .eq('activity_label', source)
+    // with no account filter — a rename/merge is account-blind by design
+    // (the label groups activity across checking/savings/scout_account alike).
+    const admin = adminClient();
+    const source = `[TEST] Can Drive ${crypto.randomUUID()}`;
+    const target = `[TEST] Wreath Sale ${crypto.randomUUID()}`;
+    const { data: person, error: personError } = await admin
+      .from('people')
+      .insert({ display_name: '[TEST] Rename Probe' })
+      .select('id')
+      .single();
+    expect(personError).toBeNull();
+    const personId = (person as { id: number }).id;
+    personIds.push(personId);
+    const { data: inserted, error: insertError } = await admin
+      .from('financial_transactions')
+      .insert([
+        { occurred_on: '2026-08-19', account: 'checking', amount: 50, kind: 'income', activity_label: source },
+        {
+          occurred_on: '2026-08-19',
+          account: 'scout_account',
+          amount: 10,
+          kind: 'fundraiser',
+          person_id: personId,
+          activity_label: source
+        }
+      ])
+      .select('id');
+    expect(insertError).toBeNull();
+    for (const row of inserted ?? []) transactionIds.push((row as { id: number }).id);
+
+    const { data: updated, error: updateError } = await admin
+      .from('financial_transactions')
+      .update({ activity_label: target })
+      .eq('activity_label', source)
+      .select('id');
+    expect(updateError).toBeNull();
+    expect((updated ?? []).length).toBe(2);
+
+    const { data: remaining } = await admin.from('financial_transactions').select('id').eq('activity_label', source);
+    expect((remaining ?? []).length).toBe(0);
+  });
+
+  it('RenameActivity_IncludesVoidedRows_SoHistoryNeverSplits', async () => {
+    const admin = adminClient();
+    const source = `[TEST] Old Label ${crypto.randomUUID()}`;
+    const target = `[TEST] New Label ${crypto.randomUUID()}`;
+    const { data: row } = await admin
+      .from('financial_transactions')
+      .insert({
+        occurred_on: '2026-08-19',
+        account: 'checking',
+        amount: 20,
+        kind: 'donation',
+        activity_label: source,
+        voided_at: new Date().toISOString()
+      })
+      .select('id')
+      .single();
+    const id = (row as { id: number }).id;
+    transactionIds.push(id);
+
+    await admin.from('financial_transactions').update({ activity_label: target }).eq('activity_label', source);
+
+    const { data: after } = await admin.from('financial_transactions').select('activity_label').eq('id', id).single();
+    expect((after as { activity_label: string }).activity_label).toBe(target);
+  });
+
+  it('RenameActivity_PreviewMatchesApply_ForAStoredLabelWithStrayWhitespace', async () => {
+    // Opus pre-deploy review (2026-08-19): previewRenameActivityAction and
+    // renameActivityAction's WHERE clauses had drifted (one trimmed
+    // sourceLabel, the other didn't) — a stored label with real whitespace
+    // would preview a nonzero count and then silently update zero rows on
+    // apply. Both now match sourceLabel untrimmed and exactly — this proves
+    // that exact query shape stays in sync between the two actions, using a
+    // label that genuinely carries whitespace the way an import-era row might.
+    const admin = adminClient();
+    const paddedSource = `[TEST] Padded Label ${crypto.randomUUID()} `; // real trailing space, as stored
+    const { data: row, error } = await admin
+      .from('financial_transactions')
+      .insert({ occurred_on: '2026-08-19', account: 'checking', amount: 10, kind: 'income', activity_label: paddedSource })
+      .select('id')
+      .single();
+    expect(error).toBeNull();
+    transactionIds.push((row as { id: number }).id);
+
+    // previewRenameActivityAction's exact query shape (untrimmed).
+    const { count: previewCount } = await admin
+      .from('financial_transactions')
+      .select('id', { count: 'exact', head: true })
+      .eq('activity_label', paddedSource);
+    // renameActivityAction's exact query shape (untrimmed WHERE).
+    const { data: updated } = await admin
+      .from('financial_transactions')
+      .update({ activity_label: 'irrelevant' })
+      .eq('activity_label', paddedSource)
+      .select('id');
+
+    expect(previewCount).toBe(1);
+    expect((updated ?? []).length).toBe(previewCount);
+  });
+
+  it('RenameActivity_MergesIntoExistingLabel_WhenTargetAlreadyInUse', async () => {
+    // A "merge" is just a rename whose target happens to already be in use
+    // elsewhere — no separate code path, confirmed here: both the renamed
+    // row and the pre-existing target-labeled row end up under one label.
+    const admin = adminClient();
+    const source = `[TEST] Duplicate A ${crypto.randomUUID()}`;
+    const target = `[TEST] Duplicate B ${crypto.randomUUID()}`;
+    const { data: rows, error } = await admin
+      .from('financial_transactions')
+      .insert([
+        { occurred_on: '2026-08-19', account: 'checking', amount: 15, kind: 'income', activity_label: source },
+        { occurred_on: '2026-08-19', account: 'checking', amount: 30, kind: 'income', activity_label: target }
+      ])
+      .select('id');
+    expect(error).toBeNull();
+    for (const r of rows ?? []) transactionIds.push((r as { id: number }).id);
+
+    await admin.from('financial_transactions').update({ activity_label: target }).eq('activity_label', source);
+
+    const { data: merged } = await admin.from('financial_transactions').select('id').eq('activity_label', target);
+    expect((merged ?? []).length).toBe(2);
   });
 
   it('AccountReconciliations_UpsertsOnAccountAndAsOf_RatherThanDuplicating', async () => {

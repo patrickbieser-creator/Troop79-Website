@@ -9,6 +9,8 @@
  * both the header and every row keeps them aligned by construction.
  */
 import type { ActivitySummary } from '@/lib/finance';
+import type { ActivityDrilldownRow } from '../actions';
+import { ActivityDrilldownButton } from './activity-drilldown';
 import parentStyles from '../finance.module.css';
 import styles from './report.module.css';
 
@@ -28,7 +30,13 @@ function dateRange(first: string, last: string): string {
   return first === last ? first : `${first} – ${last}`;
 }
 
-export function ActivityReport({ summary }: { summary: ActivitySummary[] }) {
+export function ActivityReport({
+  summary,
+  getActivityTransactions
+}: {
+  summary: ActivitySummary[];
+  getActivityTransactions: (activityLabel: string) => Promise<ActivityDrilldownRow[]>;
+}) {
   if (summary.length === 0) {
     return <p className={parentStyles.empty}>No transactions carry an activity label yet.</p>;
   }
@@ -61,6 +69,12 @@ export function ActivityReport({ summary }: { summary: ActivitySummary[] }) {
                 </li>
               ))}
             </ul>
+            <div className={styles.breakdownActions}>
+              <ActivityDrilldownButton
+                activityLabel={s.activityLabel}
+                getActivityTransactions={getActivityTransactions}
+              />
+            </div>
           </details>
         </div>
       ))}

@@ -497,6 +497,74 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.52.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.52.0</span>
+        <span class="release-date">August 19, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Treasurer ledger: who entered it, who it's about, rename/merge activities, and drill-down</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Every ledger row now shows who entered it and when</strong> &mdash;
+              a small info icon next to the date, blank for the historical spreadsheet
+              import (as intended) and populated on everything entered since. The CSV
+              backup export carries the same two columns.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>&ldquo;Who&rdquo; can now be attributed &mdash; and corrected &mdash; on any
+              transaction, not just scout accounts.</strong> A checking or savings
+              transaction can now name a person, and an existing one can be changed
+              after the fact. Along the way, 74 historical rows (mostly High Adventure
+              Trip and Summer Camp fee payments, where the old spreadsheet recorded a
+              payer&rsquo;s name as a memo rather than a real link) were matched to the
+              real person and backfilled.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Rename or merge an Activity, with every transaction following.</strong>
+              New panel on the Activity Report: pick an activity, type a new name (or
+              an existing one, to fold two activities into one), preview how many
+              transactions it touches, then apply. Includes voided rows, so active and
+              voided history never end up under two different names.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Drill into an activity&rsquo;s actual transactions</strong> right from
+              the Activity Report &mdash; a &ldquo;View transactions&rdquo; button on each row opens
+              the full list. A transaction tied to a real event signup links straight
+              to that event; everything else lists by the shared activity name.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Kind and Direction stopped disagreeing silently.</strong> Picking a
+              Kind like Expense or Income now sets Direction to match automatically;
+              Transfer and Adjustment are left for a manual pick, since either can
+              legitimately go either way. A quiet note appears (never blocking) if
+              Direction is changed against what the Kind implies. &ldquo;Event&rdquo; replaces
+              the internal &ldquo;event_fee&rdquo; label throughout.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Smaller fixes:</strong> the Memo field is a multi-line box on every
+              transaction form now, not a single cramped line; the reconciliation
+              warning on Edit Transaction is a quiet note instead of a bold red
+              paragraph.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.51.1 -->
     <div class="release">
       <div class="release-header">

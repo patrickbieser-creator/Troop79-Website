@@ -20,6 +20,7 @@ import {
   computeScoutAccountBalances,
   ledgerToCsv,
   editTransactionGuard,
+  validateActivityRename,
   type Account,
   type TransactionKind,
   type TransactionMethod,
@@ -66,6 +67,13 @@ export interface LedgerRow {
   memo: string | null;
   activity_label: string | null;
   voided_at: string | null;
+  /** Who entered this row and when (surfaced 2026-08-19). Both null for
+   *  every historical import row — the import script never stamped an
+   *  actor, and that's correct, not a gap: "existing entries that are
+   *  blank are fine" (Patrick). */
+  entered_by_person_id: number | null;
+  enteredByName: string | null;
+  created_at: string;
 }
 
 /** One page of transactions, newest first. This is a DISPLAY page (`.range()`
@@ -80,7 +88,7 @@ export async function listFinancialTransactionsAction(
   let q = supabase
     .from('financial_transactions')
     .select(
-      'id, occurred_on, account, amount, kind, method, person_id, memo, activity_label, voided_at',
+      'id, occurred_on, account, amount, kind, method, person_id, memo, activity_label, voided_at, entered_by_person_id, created_at',
       { count: 'exact' }
     );
   if (filters.account) q = q.eq('account', filters.account);
@@ -95,13 +103,19 @@ export async function listFinancialTransactionsAction(
   const { data, count, error } = await q.range(from, from + FINANCE_PAGE_SIZE - 1);
   if (error) throw new Error(`listFinancialTransactionsAction failed: ${error.message}`);
 
-  const rawRows = (data ?? []) as Omit<LedgerRow, 'personName'>[];
-  const personIds = [...new Set(rawRows.map((r) => r.person_id).filter((id): id is number => id != null))];
+  const rawRows = (data ?? []) as Omit<LedgerRow, 'personName' | 'enteredByName'>[];
+  const personIds = [
+    ...new Set(
+      rawRows.flatMap((r) => [r.person_id, r.entered_by_person_id]).filter((id): id is number => id != null)
+    )
+  ];
   const nameMap = await loadNames(supabase, personIds);
 
   const rows: LedgerRow[] = rawRows.map((r) => ({
     ...r,
-    personName: r.person_id != null ? (nameMap.get(r.person_id) ?? `#${r.person_id}`) : null
+    personName: r.person_id != null ? (nameMap.get(r.person_id) ?? `#${r.person_id}`) : null,
+    enteredByName:
+      r.entered_by_person_id != null ? (nameMap.get(r.entered_by_person_id) ?? `#${r.entered_by_person_id}`) : null
   }));
 
   return { rows, total: count ?? 0 };
@@ -535,20 +549,29 @@ export async function exportLedgerAction(): Promise<LedgerCsvRow[]> {
     memo: string | null;
     activity_label: string | null;
     voided_at: string | null;
+    entered_by_person_id: number | null;
+    created_at: string | null;
   }>((from, to) =>
     supabase
       .from('financial_transactions')
-      .select('occurred_on, account, amount, kind, method, person_id, memo, activity_label, voided_at')
+      .select(
+        'occurred_on, account, amount, kind, method, person_id, memo, activity_label, voided_at, entered_by_person_id, created_at'
+      )
       .order('occurred_on', { ascending: true })
       .range(from, to)
   );
 
-  const personIds = [...new Set(rows.map((r) => r.person_id).filter((id): id is number => id != null))];
+  const personIds = [
+    ...new Set(rows.flatMap((r) => [r.person_id, r.entered_by_person_id]).filter((id): id is number => id != null))
+  ];
   const nameMap = await loadNames(supabase, personIds);
 
   return rows.map((r) => ({
     ...r,
-    personName: r.person_id != null ? (nameMap.get(r.person_id) ?? `#${r.person_id}`) : null
+    personName: r.person_id != null ? (nameMap.get(r.person_id) ?? `#${r.person_id}`) : null,
+    enteredByName:
+      r.entered_by_person_id != null ? (nameMap.get(r.entered_by_person_id) ?? `#${r.entered_by_person_id}`) : null,
+    enteredAt: r.created_at
   }));
 }
 
@@ -709,6 +732,157 @@ export async function listDistinctActivityLabelsAction(): Promise<string[]> {
     supabase.from('financial_transactions').select('activity_label').not('activity_label', 'is', null).range(from, to)
   );
   return [...new Set(rows.map((r) => r.activity_label).filter((v): v is string => !!v))].sort();
+}
+
+export interface RenameActivityPreview {
+  affectedCount: number;
+}
+
+/** Preview-only: how many rows a rename/merge from `sourceLabel` to
+ *  `targetLabel` would touch, before committing. Counts EVERY matching row,
+ *  including voided ones (Patrick, 2026-08-19: no split label sets between
+ *  active and voided history). */
+export async function previewRenameActivityAction(sourceLabel: string): Promise<RenameActivityPreview> {
+  await requireCapability('finance.manage');
+  const supabase = createAdminClient();
+  // Untrimmed, deliberately — must match renameActivityAction's WHERE clause
+  // exactly (Opus pre-deploy review, 2026-08-19: these two drifting apart
+  // would preview a nonzero count and then silently match zero rows on
+  // apply). sourceLabel always comes from RenameActivityPanel's <select>
+  // of real, already-stored activity_label values — never free-typed — so
+  // an exact untrimmed match is correct: it's comparing against data that
+  // may itself carry stray whitespace, and trimming here would make a
+  // padded stored label permanently unmatchable by either the preview or
+  // the apply.
+  const { count, error } = await supabase
+    .from('financial_transactions')
+    .select('id', { count: 'exact', head: true })
+    .eq('activity_label', sourceLabel);
+  if (error) throw new Error(`previewRenameActivityAction failed: ${error.message}`);
+  return { affectedCount: count ?? 0 };
+}
+
+/** Bulk rename (or merge, when targetLabel already names another activity)
+ *  — a rename is `UPDATE ... SET activity_label = target WHERE activity_label
+ *  = source`; a merge is the identical statement when target happens to
+ *  already be in use. Deliberately a plain bulk edit on the free-text
+ *  activity_label column, NOT a lookup table — Plans/Troop-Finances.md's
+ *  2026-08-18 decision against a normalized activities table still holds;
+ *  this doesn't reopen it, it operates on the column as it already exists.
+ *  Applies to every matching row regardless of voided status (2026-08-19). */
+export async function renameActivityAction(sourceLabel: string, targetLabel: string): Promise<Result & { affectedCount?: number }> {
+  await requireCapability('finance.manage');
+  const guardError = validateActivityRename(sourceLabel, targetLabel);
+  if (guardError) return { ok: false, error: guardError };
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from('financial_transactions')
+    // WHERE clause on the untrimmed sourceLabel (see previewRenameActivityAction's
+    // comment) — source is a controlled <select> value, matched exactly.
+    // Only the free-typed target gets trimmed before being written, so a
+    // stray-whitespace typo doesn't mint a new near-duplicate label.
+    .update({ activity_label: targetLabel.trim() })
+    .eq('activity_label', sourceLabel)
+    .select('id');
+  if (error) return { ok: false, error: error.message };
+
+  revalidateFinance();
+  revalidatePath('/admin/finance/report');
+  return { ok: true, affectedCount: data?.length ?? 0 };
+}
+
+export interface ActivityDrilldownRow {
+  id: number;
+  occurred_on: string;
+  account: Account;
+  amount: number;
+  kind: string;
+  memo: string | null;
+  personName: string | null;
+  voided_at: string | null;
+  /** Link to the specific calendar event this row came from, when it
+   *  carries a real signup_entry_id — precise per-event drill-down (via
+   *  signup_entries -> event_signups -> calendar_entries), not just a
+   *  same-activity_label text match. Null for every row without one
+   *  (checking-account expenses, fundraiser income, etc.) — those only
+   *  ever had the label match to begin with. */
+  eventHref: string | null;
+}
+
+/** Every transaction carrying a given activity_label — the Activity
+ *  Report's drill-down (Patrick, 2026-08-19: "I need to drill in to see the
+ *  details of any activities in the report"). Read-only, same
+ *  finance.manage-OR-finance.view gate as the report itself. */
+export async function getActivityTransactionsAction(activityLabel: string): Promise<ActivityDrilldownRow[]> {
+  await requireAnyOf(['finance.manage', 'finance.view']);
+  const supabase = createAdminClient();
+
+  const { data, error } = await supabase
+    .from('financial_transactions')
+    .select('id, occurred_on, account, amount, kind, memo, person_id, voided_at, signup_entry_id')
+    .eq('activity_label', activityLabel)
+    .order('occurred_on', { ascending: true });
+  if (error) throw new Error(`getActivityTransactionsAction failed: ${error.message}`);
+
+  type Row = {
+    id: number;
+    occurred_on: string;
+    account: Account;
+    amount: number;
+    kind: string;
+    memo: string | null;
+    person_id: number | null;
+    voided_at: string | null;
+    signup_entry_id: number | null;
+  };
+  const rows = (data ?? []) as Row[];
+
+  const personIds = [...new Set(rows.map((r) => r.person_id).filter((id): id is number => id != null))];
+  const nameMap = await loadNames(supabase, personIds);
+
+  const signupEntryIds = [...new Set(rows.map((r) => r.signup_entry_id).filter((id): id is number => id != null))];
+  const eventHrefBySignupEntry = new Map<number, string>();
+  if (signupEntryIds.length > 0) {
+    const { data: entries } = await supabase
+      .from('signup_entries')
+      .select('id, event_signup_id')
+      .in('id', signupEntryIds);
+    const signupIds = [
+      ...new Set((entries ?? []).map((e) => (e as { event_signup_id: number }).event_signup_id))
+    ];
+    if (signupIds.length > 0) {
+      const { data: signups } = await supabase
+        .from('event_signups')
+        .select('id, calendar_entry_id')
+        .in('id', signupIds);
+      const calendarBySignup = new Map(
+        (signups ?? []).map((s) => [
+          (s as { id: number }).id,
+          (s as { calendar_entry_id: number }).calendar_entry_id
+        ])
+      );
+      for (const e of entries ?? []) {
+        const entry = e as { id: number; event_signup_id: number };
+        const calendarEntryId = calendarBySignup.get(entry.event_signup_id);
+        if (calendarEntryId != null) {
+          eventHrefBySignupEntry.set(entry.id, `/admin/calendar/${calendarEntryId}`);
+        }
+      }
+    }
+  }
+
+  return rows.map((r) => ({
+    id: r.id,
+    occurred_on: r.occurred_on,
+    account: r.account,
+    amount: r.amount,
+    kind: r.kind,
+    memo: r.memo,
+    personName: r.person_id != null ? (nameMap.get(r.person_id) ?? `#${r.person_id}`) : null,
+    voided_at: r.voided_at,
+    eventHref: r.signup_entry_id != null ? (eventHrefBySignupEntry.get(r.signup_entry_id) ?? null) : null
+  }));
 }
 
 export async function getActivityReportAction(): Promise<

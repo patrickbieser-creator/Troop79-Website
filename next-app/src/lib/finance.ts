@@ -32,6 +32,24 @@ export const TRANSACTION_KINDS = [
 ] as const;
 export type TransactionKind = (typeof TRANSACTION_KINDS)[number];
 
+/** Display label for a Kind value — deliberately distinct from the stored
+ *  value, so the DB CHECK constraint and the one write site that sets
+ *  'event_fee' (recordEventFeePaymentAction) stay untouched while the UI
+ *  reads "Event" instead of internal-jargon "event_fee" (Patrick,
+ *  2026-08-19). Every other kind defaults to its own value — add a real
+ *  override here only when a kind needs one, same pattern going forward. */
+export const TRANSACTION_KIND_LABELS: Record<TransactionKind, string> = {
+  event_fee: 'Event',
+  fundraiser: 'fundraiser',
+  donation: 'donation',
+  expense: 'expense',
+  reimbursement: 'reimbursement',
+  transfer: 'transfer',
+  interest: 'interest',
+  adjustment: 'adjustment',
+  income: 'income'
+};
+
 /** Must stay in lockstep with financial_transactions' `method` check constraint.
  *  No 'online' value — no payment processing in this build (deferred, not rejected). */
 export const TRANSACTION_METHODS = ['venmo', 'check', 'cash', 'scout_account', 'bank', 'other'] as const;
@@ -39,6 +57,31 @@ export type TransactionMethod = (typeof TRANSACTION_METHODS)[number];
 
 export function isAccount(value: string): value is Account {
   return (ACCOUNTS as readonly string[]).includes(value);
+}
+
+/** The direction a Kind implies, when unambiguous — used to default the
+ *  Direction field and to warn (never block) when a treasurer picks a
+ *  combination that contradicts it (Patrick, 2026-08-19: "there is an
+ *  overlap between Kind and direction... Expense should not be listed in
+ *  both places"). `transfer` and `adjustment` are legitimately ambiguous —
+ *  a transfer's two legs go opposite ways, an adjustment corrects either
+ *  direction — and stay manually picked with no entry here. */
+export const KIND_IMPLIED_DIRECTION: Partial<Record<TransactionKind, 'in' | 'out'>> = {
+  income: 'in',
+  donation: 'in',
+  event_fee: 'in',
+  interest: 'in',
+  expense: 'out',
+  reimbursement: 'out'
+};
+
+/** True when the chosen Kind has an implied direction AND the picked sign
+ *  contradicts it. Always false for transfer/adjustment (no implied
+ *  direction to contradict). The Record/Edit forms show a warning — never
+ *  a block — when this is true; save still proceeds. */
+export function kindDirectionMismatch(kind: TransactionKind, sign: 'in' | 'out'): boolean {
+  const implied = KIND_IMPLIED_DIRECTION[kind];
+  return implied != null && implied !== sign;
 }
 
 export interface FinancialTransactionRow {
@@ -102,6 +145,11 @@ export interface LedgerCsvRow {
   memo: string | null;
   activity_label: string | null;
   voided_at: string | null;
+  /** Who entered this row and when — surfaced 2026-08-19. Both null for
+   *  every historical import row (the import script never stamped an
+   *  actor); populated on everything entered through the app since. */
+  enteredByName: string | null;
+  enteredAt: string | null;
 }
 
 /** One field, RFC-4180 escaped: wrap in quotes and double any embedded
@@ -201,7 +249,19 @@ export function summarizeByActivity(transactions: readonly ActivityTransactionRo
  *  Voided rows are included and clearly marked, not silently dropped —
  *  this is the offline disaster-recovery copy, so it needs to be complete. */
 export function ledgerToCsv(rows: readonly LedgerCsvRow[]): string {
-  const header = ['Date', 'Account', 'Kind', 'Method', 'Who', 'Memo', 'Activity', 'Amount', 'Voided'];
+  const header = [
+    'Date',
+    'Account',
+    'Kind',
+    'Method',
+    'Who',
+    'Memo',
+    'Activity',
+    'Amount',
+    'Voided',
+    'Entered By',
+    'Entered At'
+  ];
   const lines = [header.map(csvField).join(',')];
   for (const r of rows) {
     lines.push(
@@ -214,7 +274,9 @@ export function ledgerToCsv(rows: readonly LedgerCsvRow[]): string {
         r.memo ?? '',
         r.activity_label ?? '',
         r.amount.toFixed(2),
-        r.voided_at ? 'yes' : ''
+        r.voided_at ? 'yes' : '',
+        r.enteredByName ?? '',
+        r.enteredAt ?? ''
       ]
         .map((v) => csvField(String(v)))
         .join(',')
@@ -248,5 +310,24 @@ export function editTransactionGuard(existing: EditableRowState | null): string 
   if (existing.voided_at) return "A voided row can't be edited — record a new transaction instead.";
   if (existing.signup_entry_id) return 'This is an event-fee payment — edit it from the event roster, not here.';
   if (existing.reimbursement_id) return "This is a reimbursement payout — it's tied to the request, not editable here.";
+  return null;
+}
+
+/** Pure validation for renameActivityAction (finance/actions.ts) — same
+ *  D-049 split as editTransactionGuard, and the same reason: every export
+ *  from a 'use server' file must itself be a Server Action, so the part
+ *  that decides whether a rename/merge is even sensible lives here where it
+ *  can be tested directly, not only indirectly through a DB call.
+ *  Returns an error string, or null when the rename/merge may proceed. */
+export function validateActivityRename(sourceLabel: string, targetLabel: string): string | null {
+  const target = targetLabel.trim();
+  if (!sourceLabel.trim() || !target) return 'Both a source and a target activity are required.';
+  // Compared the same way the rename itself matches (renameActivityAction:
+  // untrimmed source, trimmed target) — NOT trim(source) === trim(target).
+  // sourceLabel is a real stored activity_label value that may itself carry
+  // stray whitespace; trimming it here before comparing would wrongly
+  // refuse a legitimate whitespace-cleanup rename ("Can Drive " -> "Can Drive")
+  // as a no-op, when it's exactly the rename being asked for.
+  if (sourceLabel === target) return 'Source and target are already the same.';
   return null;
 }

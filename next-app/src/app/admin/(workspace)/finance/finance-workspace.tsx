@@ -20,7 +20,10 @@ import Link from 'next/link';
 import {
   ACCOUNTS,
   TRANSACTION_KINDS,
+  TRANSACTION_KIND_LABELS,
   TRANSACTION_METHODS,
+  KIND_IMPLIED_DIRECTION,
+  kindDirectionMismatch,
   type Account,
   type TransactionKind,
   type TransactionMethod
@@ -36,6 +39,7 @@ import {
   type ReconciliationSummaryRow
 } from './actions';
 import { MemoCell } from './memo-cell';
+import { EnteredByCell } from './entered-by-cell';
 import { EditTransactionDialog } from './edit-transaction-dialog';
 import styles from './finance.module.css';
 
@@ -183,10 +187,12 @@ export function FinanceWorkspace({
             )}
             {rows.map((r) => (
               <tr key={r.id} className={r.voided_at ? styles.voidedRow : undefined}>
-                <td className={styles.nowrap}>{r.occurred_on}</td>
+                <td className={styles.nowrap}>
+                  <EnteredByCell occurredOn={r.occurred_on} enteredByName={r.enteredByName} createdAt={r.created_at} />
+                </td>
                 <td>{r.account}</td>
                 <td>
-                  <span className={styles.kindPill}>{r.kind}</span>
+                  <span className={styles.kindPill}>{TRANSACTION_KIND_LABELS[r.kind as TransactionKind] ?? r.kind}</span>
                 </td>
                 <td>{r.personName ?? '—'}</td>
                 <td>{r.activity_label || '—'}</td>
@@ -269,7 +275,7 @@ interface TransactionFormState {
   activity: string;
 }
 
-function RecordTransactionForm({
+export function RecordTransactionForm({
   people,
   activityLabels,
   pending,
@@ -311,7 +317,9 @@ function RecordTransactionForm({
       amount: f.sign === 'out' ? -amountAbs : amountAbs,
       kind: f.kind,
       method: f.method || null,
-      personId: f.account === 'scout_account' && f.personId ? Number(f.personId) : null,
+      // Who applies beyond scout_account — see edit-transaction-dialog.tsx's
+      // matching comment (2026-08-19).
+      personId: f.personId ? Number(f.personId) : null,
       memo: f.memo.trim() || null,
       activityLabel: f.activity.trim() || null
     });
@@ -341,25 +349,34 @@ function RecordTransactionForm({
             ))}
           </select>
         </label>
-        {f.account === 'scout_account' && (
-          <label>
-            Scout
-            <select required value={f.personId} onChange={(e) => setF((s) => ({ ...s, personId: e.target.value }))}>
-              <option value="">Select a scout&hellip;</option>
-              {people.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.display_name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
+        <label>
+          Who
+          <select
+            required={f.account === 'scout_account'}
+            value={f.personId}
+            onChange={(e) => setF((s) => ({ ...s, personId: e.target.value }))}
+          >
+            <option value="">{f.account === 'scout_account' ? 'Select a scout…' : '— unattributed —'}</option>
+            {people.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.display_name}
+              </option>
+            ))}
+          </select>
+        </label>
         <label>
           Kind
-          <select value={f.kind} onChange={(e) => setF((s) => ({ ...s, kind: e.target.value as TransactionKind }))}>
+          <select
+            value={f.kind}
+            onChange={(e) => {
+              const kind = e.target.value as TransactionKind;
+              const implied = KIND_IMPLIED_DIRECTION[kind];
+              setF((s) => ({ ...s, kind, sign: implied ?? s.sign }));
+            }}
+          >
             {TRANSACTION_KINDS.map((k) => (
               <option key={k} value={k}>
-                {k}
+                {TRANSACTION_KIND_LABELS[k]}
               </option>
             ))}
           </select>
@@ -385,6 +402,11 @@ function RecordTransactionForm({
             <option value="in">Money in (income)</option>
           </select>
         </label>
+        {kindDirectionMismatch(f.kind, f.sign) && (
+          <p className={`${styles.formGridWide} ${styles.staleWarnNote}`}>
+            {TRANSACTION_KIND_LABELS[f.kind]} usually goes {KIND_IMPLIED_DIRECTION[f.kind] === 'in' ? 'in' : 'out'} — double-check the direction.
+          </p>
+        )}
         <label>
           Amount
           <input
@@ -416,7 +438,11 @@ function RecordTransactionForm({
         </label>
         <label className={styles.formGridWide}>
           Memo
-          <input type="text" value={f.memo} onChange={(e) => setF((s) => ({ ...s, memo: e.target.value }))} />
+          <textarea
+            rows={2}
+            value={f.memo}
+            onChange={(e) => setF((s) => ({ ...s, memo: e.target.value }))}
+          />
         </label>
         <button type="submit" className={styles.pagerBtn} disabled={pending}>
           Add transaction
@@ -489,7 +515,7 @@ function TransferForm({
         </label>
         <label className={styles.formGridWide}>
           Memo
-          <input type="text" value={memo} onChange={(e) => setMemo(e.target.value)} />
+          <textarea rows={2} value={memo} onChange={(e) => setMemo(e.target.value)} />
         </label>
         <button type="submit" className={styles.pagerBtn} disabled={pending || fromAccount === toAccount}>
           Record transfer

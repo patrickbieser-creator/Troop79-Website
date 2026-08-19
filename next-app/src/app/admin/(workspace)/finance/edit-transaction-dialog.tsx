@@ -21,7 +21,10 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ACCOUNTS,
   TRANSACTION_KINDS,
+  TRANSACTION_KIND_LABELS,
   TRANSACTION_METHODS,
+  KIND_IMPLIED_DIRECTION,
+  kindDirectionMismatch,
   type Account,
   type TransactionKind,
   type TransactionMethod
@@ -131,7 +134,14 @@ function EditTransactionForm({
       amount: sign === 'out' ? -amountAbs : amountAbs,
       kind,
       method: method || null,
-      personId: account === 'scout_account' && personId ? Number(personId) : null,
+      // Whatever's picked, regardless of account — Who applies beyond
+      // scout_account (event-fee and reimbursement rows already carry it;
+      // 2026-08-19's historical backfill gave 74 checking/savings rows a
+      // real person too). Gating this on account === 'scout_account' used
+      // to silently NULL OUT an existing Who the moment any other field on
+      // a non-scout-account row was edited — exactly the rows that backfill
+      // just populated.
+      personId: personId ? Number(personId) : null,
       memo: memo.trim() || null,
       activityLabel: activity.trim() || null
     });
@@ -141,9 +151,8 @@ function EditTransactionForm({
     <form className={styles.formGrid} onSubmit={submit}>
       <h3 className={styles.editDialogTitle}>Edit transaction</h3>
       {staleWarning && (
-        <p className={styles.driftWarn}>
-          This account was reconciled on {lastReconciled} — this row is dated on or before that. Saving changes
-          it, so that reconciliation will no longer match. Consider a new reconciliation after.
+        <p className={`${styles.formGridWide} ${styles.staleWarnNote}`}>
+          Reconciled on {lastReconciled} — saving will drift that reconciliation. Consider redoing it after.
         </p>
       )}
       <label>
@@ -160,25 +169,31 @@ function EditTransactionForm({
           ))}
         </select>
       </label>
-      {account === 'scout_account' && (
-        <label>
-          Scout
-          <select required value={personId} onChange={(e) => setPersonId(e.target.value)}>
-            <option value="">Select a scout&hellip;</option>
-            {people.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.display_name}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
+      <label>
+        Who
+        <select required={account === 'scout_account'} value={personId} onChange={(e) => setPersonId(e.target.value)}>
+          <option value="">{account === 'scout_account' ? 'Select a scout…' : '— unattributed —'}</option>
+          {people.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.display_name}
+            </option>
+          ))}
+        </select>
+      </label>
       <label>
         Kind
-        <select value={kind} onChange={(e) => setKind(e.target.value as TransactionKind)}>
+        <select
+          value={kind}
+          onChange={(e) => {
+            const k = e.target.value as TransactionKind;
+            const implied = KIND_IMPLIED_DIRECTION[k];
+            setKind(k);
+            if (implied) setSign(implied);
+          }}
+        >
           {TRANSACTION_KINDS.map((k) => (
             <option key={k} value={k}>
-              {k}
+              {TRANSACTION_KIND_LABELS[k]}
             </option>
           ))}
         </select>
@@ -201,6 +216,12 @@ function EditTransactionForm({
           <option value="in">Money in (income)</option>
         </select>
       </label>
+      {kindDirectionMismatch(kind, sign) && (
+        <p className={`${styles.formGridWide} ${styles.staleWarnNote}`}>
+          {TRANSACTION_KIND_LABELS[kind]} usually goes {KIND_IMPLIED_DIRECTION[kind] === 'in' ? 'in' : 'out'} —
+          double-check the direction.
+        </p>
+      )}
       <label>
         Amount
         <input
@@ -218,7 +239,7 @@ function EditTransactionForm({
       </label>
       <label className={styles.formGridWide}>
         Memo
-        <input type="text" value={memo} onChange={(e) => setMemo(e.target.value)} />
+        <textarea rows={2} value={memo} onChange={(e) => setMemo(e.target.value)} />
       </label>
       <div className={styles.editDialogActions}>
         <button type="button" className={styles.pagerBtn} onClick={onClose}>

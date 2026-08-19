@@ -155,6 +155,16 @@
   color: var(--admin-danger);
   font-style: normal;
 }
+.fieldError {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--admin-danger);
+  background: #fbeceb;
+  border: 1px solid var(--admin-danger);
+  border-radius: var(--admin-radius-sm);
+  padding: 8px 12px;
+  margin: 8px 0;
+}
 .empty {
   padding: 36px 16px;
   text-align: center;
@@ -194,7 +204,8 @@
   color: var(--admin-gray-500);
 }
 .formGrid input,
-.formGrid select {
+.formGrid select,
+.formGrid textarea {
   border: 1px solid var(--admin-gray-300);
   border-radius: var(--admin-radius-sm);
   padding: 7px 9px;
@@ -205,6 +216,11 @@
   letter-spacing: normal;
   color: var(--admin-gray-900);
   background: var(--admin-white);
+}
+.formGrid textarea {
+  resize: vertical;
+  min-height: 52px;
+  line-height: 1.4;
 }
 .formGridWide {
   grid-column: span 2;
@@ -261,6 +277,20 @@
 .driftWarn {
   color: var(--admin-danger);
   font-weight: 700;
+}
+/* Toned down from the full-red/bold .driftWarn treatment (2026-08-19,
+   Patrick: "too loud... not taking up half the screen") — same left-border
+   warning-card language as advancement/audits' stale-audit cards, sized to
+   read as a note, not an alarm. */
+.staleWarnNote {
+  border-left: 3px solid var(--admin-warning);
+  background: var(--admin-gray-50);
+  padding: 6px 10px;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--admin-gray-700);
+  line-height: 1.4;
 }
 
 .infoCell {

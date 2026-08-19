@@ -10,9 +10,16 @@
  * gate as the ledger — this is a report, not a write surface.
  */
 import { requireAnyOf } from '@/lib/require-capability';
-import { getActivityReportAction } from '../actions';
+import {
+  getActivityReportAction,
+  getActivityTransactionsAction,
+  listDistinctActivityLabelsAction,
+  previewRenameActivityAction,
+  renameActivityAction
+} from '../actions';
 import { summarizeByActivity } from '@/lib/finance';
 import { ActivityReport } from './activity-report';
+import { RenameActivityPanel } from './rename-activity-panel';
 import styles from '../finance.module.css';
 
 export const metadata = {
@@ -20,8 +27,12 @@ export const metadata = {
 };
 
 export default async function FinanceReportPage() {
-  await requireAnyOf(['finance.manage', 'finance.view']);
-  const rows = await getActivityReportAction();
+  const actor = await requireAnyOf(['finance.manage', 'finance.view']);
+  const canManage = actor.capabilities.has('finance.manage');
+  const [rows, activityLabels] = await Promise.all([
+    getActivityReportAction(),
+    canManage ? listDistinctActivityLabelsAction() : Promise.resolve([])
+  ]);
   const summary = summarizeByActivity(rows);
 
   return (
@@ -36,7 +47,14 @@ export default async function FinanceReportPage() {
           </p>
         </div>
       </div>
-      <ActivityReport summary={summary} />
+      {canManage && (
+        <RenameActivityPanel
+          activityLabels={activityLabels}
+          previewRenameActivity={previewRenameActivityAction}
+          renameActivity={renameActivityAction}
+        />
+      )}
+      <ActivityReport summary={summary} getActivityTransactions={getActivityTransactionsAction} />
     </>
   );
 }

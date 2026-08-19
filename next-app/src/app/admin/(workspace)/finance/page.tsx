@@ -10,7 +10,7 @@
 import Link from 'next/link';
 import { requireAnyOf } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
-import { ACCOUNTS, TRANSACTION_KINDS, FINANCE_PAGE_SIZE, type Account } from '@/lib/finance';
+import { ACCOUNTS, TRANSACTION_KINDS, TRANSACTION_KIND_LABELS, FINANCE_PAGE_SIZE, type Account } from '@/lib/finance';
 import {
   listFinancialTransactionsAction,
   getAccountBalancesAction,
@@ -166,7 +166,7 @@ export default async function FinancePage({
           <option value="">All kinds</option>
           {TRANSACTION_KINDS.map((k) => (
             <option key={k} value={k}>
-              {k}
+              {TRANSACTION_KIND_LABELS[k]}
             </option>
           ))}
         </select>
