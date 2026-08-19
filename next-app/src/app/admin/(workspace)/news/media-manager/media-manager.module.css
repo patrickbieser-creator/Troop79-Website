@@ -79,19 +79,34 @@
 .thumbOverlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, .78) 0%, rgba(0, 0, 0, 0) 60%);
+  /* Was dark-at-bottom/transparent-at-top while .thumbMeta rendered at the
+     TOP (first flex child) — the metadata text sat directly over the bare
+     photo with almost no backing on anything but a dark image (Patrick,
+     2026-08-19: "not readable in most cases"). column-reverse below anchors
+     the metadata to this dark edge instead of moving it in markup; the
+     gradient is also widened/darkened so 1-2 lines of text always have a
+     solid backing regardless of thumbnail size. */
+  background: linear-gradient(to top, rgba(0, 0, 0, .88) 0%, rgba(0, 0, 0, .88) 38%, rgba(0, 0, 0, 0) 82%);
   opacity: 0;
   transition: opacity .15s ease;
   display: flex;
-  flex-direction: column;
+  flex-direction: column-reverse;
   justify-content: space-between;
   padding: 8px;
 }
 .thumb:hover .thumbOverlay, .thumb:focus-within .thumbOverlay { opacity: 1; }
-.thumbMeta { color: #fff; font-size: 10px; line-height: 1.4; }
+.thumbMeta {
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.45;
+  /* Second line of defense on top of the gradient — the darkest part of the
+     gradient is still a photo, not a flat fill, so a large bright patch
+     right behind the text is still possible. */
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .9), 0 0 2px rgba(0, 0, 0, .9);
+}
 .thumbMeta .fn { display: block; font-weight: 700; overflow-wrap: anywhere; }
-.thumbMeta .alt { display: block; opacity: .8; margin-top: 2px; }
-.thumbAltMissing { color: #ffcf5c; font-weight: 700; }
+.thumbMeta .alt { display: block; opacity: .9; margin-top: 2px; }
+.thumbAltMissing { color: #ffd873; font-weight: 700; }
 .thumbActions { display: flex; gap: 6px; align-self: flex-end; }
 
 /* List view */

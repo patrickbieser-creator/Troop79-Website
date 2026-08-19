@@ -1,15 +1,13 @@
-import { cookies } from 'next/headers';
-import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
+import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { centralToday } from '@/lib/dates';
 import { loadScoutbookExport, formatScoutbookFile } from '@/lib/scoutbook-export';
 
+// Same legacy-check-never-converted bug as ../page.tsx — see that file's
+// header comment. Route Handlers have no error.tsx boundary, so a refusal
+// here surfaces as an uncaught-error 500, same as court-of-honor/export/route.ts.
 export async function GET(request: Request) {
-  const jar = await cookies();
-  const session = await verifySession(jar.get(LEADER_COOKIE.name)?.value);
-  if (!session || session.role !== 'leader') {
-    return new Response('Leaders only', { status: 403 });
-  }
+  await requireCapability('advancement.write');
 
   const url = new URL(request.url);
   const today = centralToday();

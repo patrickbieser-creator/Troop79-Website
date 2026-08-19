@@ -3,14 +3,23 @@
  * bulk-upload file Scoutbook's admin advancement import accepts, for every
  * merit badge and rank award recorded in a date range.
  *
- * LEADER-ONLY (same gate as Roster). Query-param date range (?from=&to=) so
- * the preview and the actual download (./download/route.ts) agree on
- * exactly the same window without any client-side state.
+ * Query-param date range (?from=&to=) so the preview and the actual download
+ * (./download/route.ts) agree on exactly the same window without any
+ * client-side state.
+ *
+ * Was still gated on the legacy verifySession()/LEADER_COOKIE check straight
+ * from lib/leader-session.ts — never converted during the Phase B2 sweep (the
+ * 129-call-site conversion looked for requireRole() call sites; this page
+ * called the session primitives directly instead, so it didn't match).
+ * LEADER_PASSWORD is fully retired (Phase E), so nobody could reach this page
+ * through Access & Permissions capability grants at all — reported by
+ * Patrick 2026-08-19. Converted to requireCapability('advancement.write'),
+ * matching every sibling advancement page (Audits, Court of Honor, Weekly
+ * Report). The error boundary (../../error.tsx) renders the refusal.
  */
 
-import { cookies } from 'next/headers';
 import Link from 'next/link';
-import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
+import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { centralToday } from '@/lib/dates';
 import { loadScoutbookExport } from '@/lib/scoutbook-export';
@@ -42,11 +51,7 @@ export default async function ScoutbookExportPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
-  const jar = await cookies();
-  const session = await verifySession(jar.get(LEADER_COOKIE.name)?.value);
-  if (!session || session.role !== 'leader') {
-    return <div className={styles.gate}>The Scoutbook export is available to adult leaders only.</div>;
-  }
+  await requireCapability('advancement.write');
 
   const today = centralToday();
   const { from: fromParam, to: toParam } = await searchParams;

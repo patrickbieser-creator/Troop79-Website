@@ -65,14 +65,11 @@ export function buildGrantRows(
     );
   }
 
-  // Anyone holding a grant first (most grants first), then the rest by name —
-  // the screen's job is "who can do what", so people with access lead.
-  return [...byPerson.values()].sort((a, b) => {
-    if (a.capabilities.length !== b.capabilities.length) {
-      return b.capabilities.length - a.capabilities.length;
-    }
-    return a.name.localeCompare(b.name);
-  });
+  // Always alphabetical by name — was "most grants first, then name" (Patrick,
+  // 2026-08-19: toggling one person's capability changed their grant count,
+  // which reshuffled the whole table on every click). A stable order matters
+  // more here than grouping by grant count.
+  return [...byPerson.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export interface AccessScreenData {

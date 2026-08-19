@@ -1,17 +1,22 @@
 /**
  * /admin/advancement/roster-import — review queue for staged roster imports.
  *
- * LEADER-ONLY (same gate as Roster and Scoutbook Export). Scouts are also
- * blocked at the edge by proxy.ts's allowlist, which this route is absent
- * from — the page gate below is the second, independent layer (D-037).
- *
  * Reads staged rows and suggestions only. Nothing on this page's load path
- * writes to people / scouts / leaders; every mutation lives in
- * ./actions.ts behind an explicit click.
+ * writes to people / scouts / leaders; every mutation lives in ./actions.ts
+ * behind an explicit click (already gated on requireCapability('roster.manage')
+ * there, and has been throughout).
+ *
+ * This page's own gate was, until 2026-08-19, still the legacy
+ * verifySession()/LEADER_COOKIE check — the same never-converted-during-
+ * Phase-B2 bug found in scoutbook-export/page.tsx (see that file's header for
+ * the full story). LEADER_PASSWORD is fully retired, so this page was
+ * unreachable via any Access & Permissions grant despite every mutation
+ * behind it already working correctly. Converted to
+ * requireCapability('roster.manage'), matching the nav item (sub-nav.tsx)
+ * and every action in ./actions.ts.
  */
 
-import { cookies } from 'next/headers';
-import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
+import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import {
   ReviewClient,
@@ -42,11 +47,7 @@ export default async function RosterImportPage({
 }: {
   searchParams: Promise<{ batch?: string }>;
 }) {
-  const jar = await cookies();
-  const session = await verifySession(jar.get(LEADER_COOKIE.name)?.value);
-  if (!session || session.role !== 'leader') {
-    return <div className={styles.gate}>Roster Import is available to adult leaders only.</div>;
-  }
+  await requireCapability('roster.manage');
 
   const { batch: batchParam } = await searchParams;
   const supabase = createAdminClient();

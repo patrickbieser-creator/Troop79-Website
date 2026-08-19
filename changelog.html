@@ -497,6 +497,46 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.50.1 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.50.1</span>
+        <span class="release-date">August 19, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Fix</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Scoutbook Export restored, Access table stopped resorting, media thumbnails readable on hover</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Scoutbook Export and Roster Import were both completely unreachable.</strong>
+              Both pages were still checking the shared leader password, which has been fully retired
+              for months &mdash; so no grant on <strong>Access &amp; Permissions</strong> could ever
+              open either one, regardless of what a leader was given, even though every button behind
+              them already worked correctly. Roster Import turned up during a sweep for any other page
+              with the same leftover check. Both now gated the same way as every other converted
+              admin page.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Access &amp; Permissions no longer reshuffles itself.</strong> The table was
+              sorted by how many capabilities each person held, so granting or revoking just one
+              flipped everyone&rsquo;s position &mdash; disorienting mid-edit. Now a stable
+              alphabetical order, full stop.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Media Manager thumbnail hover text is readable now.</strong> The filename and
+              alt-text overlay sat in the transparent half of its darkening gradient, so it was
+              invisible against any light-colored photo. Anchored to the dark edge instead.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.50.0 -->
     <div class="release">
       <div class="release-header">
