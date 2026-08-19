@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import styles from '../../library.module.css';
 
 /**
@@ -13,6 +13,26 @@ import styles from '../../library.module.css';
  * granularity the ledger and Has/Needs tracking use everywhere else — so
  * this picker asks "which requirement, then which part of it" before
  * linking into /library/submit-proof.
+ *
+ * Redesigned 2026-08-19 (Patrick + ux-lead): the original shipped as two
+ * cascading <select>s — pick a top-level requirement, THEN a second "Which
+ * part?" dropdown revealed the sub-requirements. Patrick read that as
+ * "sub-requirements aren't shown at all," because the second control simply
+ * doesn't exist until you've already picked a group. Replaced with an
+ * always-expanded list: one <fieldset>/<legend> per top-level requirement,
+ * one radio per leaf, all visible on first paint. Still resolves to exactly
+ * one leaf code via native radio-group semantics (one shared `name` across
+ * every group). A single-leaf group (no real lettered sub-parts — the leaf
+ * IS the top-level requirement) renders as one row, not a heading plus a
+ * redundant single radio repeating the same text.
+ *
+ * Deliberately NOT an accordion/<details> — D-070 (2026-07-25, Scout
+ * Clipboard) found a closed native <details>'s content can't be reliably
+ * forced open via CSS override on this browser stack; it shipped blank rank
+ * blocks in production twice before being reverted. A long tree (First Aid
+ * runs ~83 leaves across 15 groups) is contained with a scrolling box
+ * instead — scrolling to see more is not the same failure mode as content
+ * being hidden until clicked.
  */
 
 interface Leaf {
@@ -38,18 +58,7 @@ export default function MbProofPicker({
    *  scout pick a requirement only to be refused on submit. */
   scoutBlocked?: boolean;
 }) {
-  const [topCode, setTopCode] = useState('');
   const [leafCode, setLeafCode] = useState('');
-
-  const selectedGroup = useMemo(() => groups.find((g) => g.code === topCode) ?? null, [groups, topCode]);
-
-  function onTopChange(code: string) {
-    setTopCode(code);
-    const group = groups.find((g) => g.code === code);
-    // A group with exactly one leaf (the top-level code itself has no
-    // children) needs no second pick.
-    setLeafCode(group && group.leaves.length === 1 ? group.leaves[0].code : '');
-  }
 
   const proofHref =
     leafCode && `/library/submit-proof?target=${encodeURIComponent(`mb_req:${mbId}-${leafCode}`)}`;
@@ -78,54 +87,51 @@ export default function MbProofPicker({
         counts.
       </p>
 
-      <div className={styles.fieldRow}>
-        <label className={styles.fieldLabel} htmlFor="mb-proof-top">
-          Requirement
-        </label>
-        <select
-          id="mb-proof-top"
-          className={styles.selectInput}
-          value={topCode}
-          onChange={(e) => onTopChange(e.target.value)}
-        >
-          <option value="">— pick a requirement —</option>
-          {groups.map((g) => (
-            <option key={g.code} value={g.code}>
-              {g.code} — {g.label.slice(0, 70)}
-              {g.label.length > 70 ? '…' : ''}
-            </option>
-          ))}
-        </select>
+      <div className={styles.proofGroupList}>
+        {groups.map((g) =>
+          g.leaves.length <= 1 ? (
+            <label key={g.code} className={styles.proofRadioRow}>
+              <input
+                type="radio"
+                name="leafCode"
+                value={g.leaves[0]?.code ?? g.code}
+                checked={leafCode === (g.leaves[0]?.code ?? g.code)}
+                onChange={() => setLeafCode(g.leaves[0]?.code ?? g.code)}
+              />
+              <span>
+                {g.code} — {g.leaves[0]?.label ?? g.label}
+              </span>
+            </label>
+          ) : (
+            <fieldset key={g.code} className={styles.proofGroup}>
+              <legend className={styles.proofLegend}>
+                {g.code} — {g.label}
+              </legend>
+              {g.leaves.map((l) => (
+                <label key={l.code} className={styles.proofRadioRow}>
+                  <input
+                    type="radio"
+                    name="leafCode"
+                    value={l.code}
+                    checked={leafCode === l.code}
+                    onChange={() => setLeafCode(l.code)}
+                  />
+                  <span>
+                    {l.code} — {l.label}
+                  </span>
+                </label>
+              ))}
+            </fieldset>
+          )
+        )}
       </div>
 
-      {selectedGroup && selectedGroup.leaves.length > 1 && (
-        <div className={styles.fieldRow}>
-          <label className={styles.fieldLabel} htmlFor="mb-proof-leaf">
-            Which part?
-          </label>
-          <select
-            id="mb-proof-leaf"
-            className={styles.selectInput}
-            value={leafCode}
-            onChange={(e) => setLeafCode(e.target.value)}
-          >
-            <option value="">— pick one —</option>
-            {selectedGroup.leaves.map((l) => (
-              <option key={l.code} value={l.code}>
-                {l.code} — {l.label.slice(0, 70)}
-                {l.label.length > 70 ? '…' : ''}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
       {proofHref ? (
-        <a className={styles.btnPrimary} href={proofHref}>
+        <a className={styles.btnPrimary} href={proofHref} style={{ marginTop: 14 }}>
           Continue →
         </a>
       ) : (
-        <button className={styles.btnSecondary} type="button" disabled>
+        <button className={styles.btnSecondary} type="button" disabled style={{ marginTop: 14 }}>
           Continue →
         </button>
       )}
