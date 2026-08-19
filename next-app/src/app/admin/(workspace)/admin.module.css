@@ -119,6 +119,9 @@
   background: #fbe4e1;
   border-right-color: #eab8b1;
 }
+.subNavGroup {
+  display: block;
+}
 .subNavSection {
   font-size: 10px;
   font-weight: 700;
@@ -188,13 +191,37 @@
 @media (max-width: 800px) {
   .workspace { grid-template-columns: 1fr; }
   .subNav {
-    display: flex;
-    flex-wrap: wrap;
     border-right: none;
     border-bottom: 1px solid var(--admin-gray-200);
     padding: 8px;
   }
-  .subNavSection { display: none; }
+  /* Each section's wrapper (title + its items) becomes its own wrapped chip
+     row instead of one undifferentiated mass of buttons — a compact label
+     replaces the desktop block header rather than disappearing (was
+     `display: none`, which dropped all grouping on phones/tablets, exactly
+     where several leaders actually use this nav — see Plans/Admin-Nav-And-
+     Consistency.md). */
+  .subNavGroup {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--admin-gray-100);
+  }
+  .subNavGroup:last-child { border-bottom: none; }
+  .subNavSection {
+    display: block;
+    flex: 0 0 auto;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--admin-gray-400);
+    padding: 0 8px 0 2px;
+    margin: 0 2px 0 0;
+    border-right: 1px solid var(--admin-gray-200);
+  }
   .subNavBtn {
     width: auto;
     padding: 7px 12px;

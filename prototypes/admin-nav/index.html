@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin Nav Reorg — Prototype — Scout Troop 79</title>
+<style>
+  :root {
+    --admin-navy:        #1e3a4a;
+    --admin-navy-light:  #2a5068;
+    --admin-navy-hover:  #163040;
+    --admin-forest:      #3d7a4a;
+    --admin-forest-dark: #2e6038;
+    --admin-danger:      #c0392b;
+    --admin-warning:     #d4a017;
+    --admin-bg:          #f5f6f8;
+    --admin-white:       #ffffff;
+    --admin-gray-50:     #fafbfc;
+    --admin-gray-100:    #f0f1f3;
+    --admin-gray-200:    #e2e4e8;
+    --admin-gray-300:    #cdd1d6;
+    --admin-gray-400:    #9ba1aa;
+    --admin-gray-500:    #6d7580;
+    --admin-gray-700:    #3a3f47;
+    --admin-gray-900:    #1a1d21;
+    --admin-radius:      4px;
+    --admin-shadow-sm:   0 1px 3px rgba(0,0,0,.08);
+    --admin-shadow-md:   0 2px 8px rgba(0,0,0,.1);
+    --accent-new:        #8b6914;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--admin-bg);
+    color: var(--admin-gray-900);
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 14px;
+  }
+  .proto-banner {
+    background: var(--admin-navy);
+    color: #fff;
+    padding: 10px 24px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .proto-banner strong { color: var(--admin-warning); }
+  main { max-width: 1240px; margin: 0 auto; padding: 28px 24px 80px; }
+  h1 { font-size: 24px; color: var(--admin-navy); margin: 0 0 6px; }
+  .dek { font-size: 14px; color: var(--admin-gray-500); max-width: 760px; line-height: 1.6; margin-bottom: 24px; }
+  h2 { font-size: 17px; color: var(--admin-navy); border-bottom: 1px solid var(--admin-gray-200); padding-bottom: 8px; margin: 40px 0 14px; }
+  h3 { font-size: 13px; color: var(--admin-navy); text-transform: uppercase; letter-spacing: .05em; margin: 0 0 10px; }
+  p.note { font-size: 13px; color: var(--admin-gray-500); line-height: 1.6; max-width: 780px; }
+  .callout {
+    background: #fdf3dc; border: 1px solid #ecd9a0; border-left: 4px solid #c9a227;
+    border-radius: 4px; padding: 12px 16px; margin: 14px 0 24px; font-size: 13px; line-height: 1.6;
+  }
+  .callout.bad { background: #fdf0ef; border-color: #e8c4c0; border-left-color: var(--admin-danger); }
+  .callout.good { background: #eef6ee; border-color: #c7e0c9; border-left-color: var(--admin-forest); }
+
+  /* ── role switcher ── */
+  .roleSwitcher {
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+    background: var(--admin-white); border: 1px solid var(--admin-gray-200); border-radius: var(--admin-radius);
+    padding: 12px 14px; margin-bottom: 20px; box-shadow: var(--admin-shadow-sm);
+  }
+  .roleSwitcher span.lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--admin-gray-500); margin-right: 4px; }
+  .roleBtn {
+    font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+    background: var(--admin-white); border: 1px solid var(--admin-gray-300); color: var(--admin-gray-700);
+    padding: 6px 12px; border-radius: 3px;
+  }
+  .roleBtn:hover { border-color: var(--admin-navy); color: var(--admin-navy); }
+  .roleBtn.active { background: var(--admin-navy); border-color: var(--admin-navy); color: #fff; }
+  .roleCaps { font-size: 11.5px; color: var(--admin-gray-500); margin-left: auto; }
+  .roleCaps code { background: var(--admin-gray-100); padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+
+  /* ── side-by-side desktop frames ── */
+  .compareGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .compareGrid { grid-template-columns: 1fr; } }
+  .frameCol .frameLabel {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--admin-gray-500); margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
+  }
+  .frameLabel .tag { font-size: 9.5px; padding: 2px 7px; border-radius: 8px; font-weight: 700; letter-spacing: .03em; }
+  .tag.tagCurrent { background: var(--admin-gray-100); color: var(--admin-gray-700); }
+  .tag.tagProposed { background: #fdf3d6; color: var(--accent-new); }
+
+  .deviceFrame {
+    background: var(--admin-white); border: 1px solid var(--admin-gray-200); border-radius: 6px;
+    box-shadow: var(--admin-shadow-md); overflow: hidden;
+  }
+  .miniTopBar {
+    background: var(--admin-navy); color: #fff; padding: 8px 14px; font-size: 11px; font-weight: 700;
+    letter-spacing: .05em; display: flex; justify-content: space-between; align-items: center;
+  }
+  .miniTopBar .u { color: rgba(255,255,255,.7); font-weight: 400; }
+
+  .deskWorkspace { display: flex; min-height: 560px; }
+  .navPane { width: 220px; background: var(--admin-white); border-right: 1px solid var(--admin-gray-200); padding: 10px 0; overflow-y: auto; flex-shrink: 0; }
+  .navSection { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--admin-gray-500); padding: 12px 16px 5px; margin-top: 8px; }
+  .navSection:first-child { margin-top: 0; }
+  .navSection.newSection { color: var(--accent-new); }
+  .navSection .badge-new { font-size: 8.5px; background: #fdf3d6; color: var(--accent-new); padding: 1px 5px; border-radius: 6px; margin-left: 6px; letter-spacing: .02em; text-transform: none; font-weight: 700; }
+  .navBtn {
+    display: block; width: 100%; text-align: left; background: none; border: none; font-family: inherit;
+    font-size: 12.5px; font-weight: 600; color: var(--admin-gray-700); padding: 7px 16px; cursor: default;
+    border-left: 3px solid transparent;
+  }
+  .navBtn.isActive { background: var(--admin-navy); color: #fff; border-left-color: var(--admin-warning); }
+  .emptyNav { padding: 30px 18px; text-align: center; color: var(--admin-gray-400); font-size: 12px; font-style: italic; }
+  .navMain { flex: 1; padding: 20px; color: var(--admin-gray-400); font-size: 12.5px; font-style: italic; }
+
+  /* ── mobile frame ── */
+  .mobileWrap { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; margin-top: 10px; }
+  .phone { width: 375px; max-width: 100%; }
+  .phoneScreen { background: var(--admin-white); border: 1px solid var(--admin-gray-200); border-radius: 14px; overflow: hidden; box-shadow: var(--admin-shadow-md); }
+  .phoneChips { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; }
+  .phoneDivider { flex-basis: 100%; display: flex; align-items: center; gap: 8px; margin: 6px 2px 0; }
+  .phoneDivider .line { flex: 1; height: 1px; background: var(--admin-gray-200); }
+  .phoneDivider .lbl { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--admin-gray-500); white-space: nowrap; }
+  .chip {
+    background: none; border: none; font-family: inherit; font-size: 12px; font-weight: 600;
+    color: var(--admin-gray-700); padding: 7px 12px; border-radius: 3px; cursor: default;
+  }
+  .chip.isActive { background: var(--admin-navy); color: #fff; }
+
+  footer.legend { margin-top: 10px; font-size: 11.5px; color: var(--admin-gray-500); }
+  .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+
+  table.diffTable { width: 100%; border-collapse: collapse; font-size: 13px; margin: 10px 0 28px; background: var(--admin-white); border: 1px solid var(--admin-gray-200); border-radius: 4px; overflow: hidden; }
+  table.diffTable th, table.diffTable td { padding: 8px 12px; border-bottom: 1px solid var(--admin-gray-100); text-align: left; vertical-align: top; }
+  table.diffTable th { background: var(--admin-gray-50); font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--admin-gray-700); }
+  table.diffTable tr:last-child td { border-bottom: none; }
+  table.diffTable code { background: var(--admin-gray-100); padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div class="proto-banner">
+  <strong>Prototype — Admin Nav Reorg.</strong> Companion to Plans/Admin-Nav-And-Consistency.md. Static HTML, no build step. Click a role button below to see the same reorg through a narrow-capability leader&rsquo;s eyes — that&rsquo;s the actual interaction sub-nav.tsx performs today via <code>visibleNavSections()</code>.
+</div>
+
+<main>
+  <h1>Admin Navigation — Current vs. Proposed</h1>
+  <p class="dek">Same flat-section pattern sub-nav.tsx already uses (a section list has earned its keep for 10 volunteer leaders — see the plan for alternatives considered and rejected). The change is <strong>redistribution</strong>, not fewer clicks: the 7-item &ldquo;Records&rdquo; bucket splits into day-to-day recording vs. review/output, and the orphaned 1-item &ldquo;Output&rdquo; section folds into the new group instead of standing alone.</p>
+
+  <div class="roleSwitcher" id="roleSwitcher">
+    <span class="lbl">View as:</span>
+    <!-- buttons injected by JS -->
+    <span class="roleCaps" id="roleCaps"></span>
+  </div>
+
+  <h2>Desktop sidebar (1280px)</h2>
+  <div class="compareGrid">
+    <div class="frameCol">
+      <div class="frameLabel"><span class="tag tagCurrent">Current</span> 8 sections &middot; Records has 7 items</div>
+      <div class="deviceFrame">
+        <div class="miniTopBar">TROOP 79 ADMIN <span class="u" id="curUser">Full Admin</span></div>
+        <div class="deskWorkspace">
+          <nav class="navPane" id="navCurrent"></nav>
+          <div class="navMain">Page content would render here.</div>
+        </div>
+      </div>
+    </div>
+    <div class="frameCol">
+      <div class="frameLabel"><span class="tag tagProposed">Proposed</span> 8 sections &middot; rebalanced, max 5 items</div>
+      <div class="deviceFrame">
+        <div class="miniTopBar">TROOP 79 ADMIN <span class="u" id="propUser">Full Admin</span></div>
+        <div class="deskWorkspace">
+          <nav class="navPane" id="navProposed"></nav>
+          <div class="navMain">Page content would render here.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout" id="roleExplain"></div>
+
+  <h2>Mobile (375px) &mdash; the hidden bug</h2>
+  <p class="note">At 800px, <code>admin.module.css</code> sets <code>.subNavSection { display: none; }</code> so the sidebar becomes a flat wrapped row of chips for a phone/tablet at a troop meeting. <strong>All grouping disappears</strong> &mdash; today that means all 20 items (or however many the leader's role grants) sit in one undifferentiated wrap with no way to tell Finance from Setup. The proposed version keeps a compact inline divider so the groups survive the breakpoint.</p>
+
+  <div class="mobileWrap">
+    <div class="phone">
+      <div class="frameLabel" style="justify-content:center; display:flex;"><span class="tag tagCurrent">Current</span> section labels vanish</div>
+      <div class="phoneScreen">
+        <div class="miniTopBar" style="font-size:10px;">TROOP 79 ADMIN</div>
+        <div class="phoneChips" id="mobileCurrent"></div>
+      </div>
+    </div>
+    <div class="phone">
+      <div class="frameLabel" style="justify-content:center; display:flex;"><span class="tag tagProposed">Proposed</span> dividers survive the breakpoint</div>
+      <div class="phoneScreen">
+        <div class="miniTopBar" style="font-size:10px;">TROOP 79 ADMIN</div>
+        <div class="phoneChips" id="mobileProposed"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="legend">
+    <span class="swatch" style="background:var(--admin-navy);"></span>active/current page &nbsp;&nbsp;
+    <span class="swatch" style="background:var(--admin-gray-200);"></span>visible, inactive &nbsp;&nbsp;
+    <em>Items with no matching capability for the selected role are omitted entirely, exactly like production &mdash; nothing here is disabled/greyed, because the nav's real behavior is to not offer a link a page would refuse.</em>
+  </footer>
+
+  <h2>What moved, and why</h2>
+  <table class="diffTable">
+    <thead><tr><th>Item</th><th>Current section</th><th>Proposed section</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>Audits</td><td>Records</td><td><strong>Reports &amp; Exports</strong> <em>(new)</em></td><td rowspan="4">These four are read/review/hand-off actions, not day-to-day data entry &mdash; grouping them separates &ldquo;record it&rdquo; from &ldquo;report on it&rdquo; and takes Records from 7 items down to 4.</td></tr>
+      <tr><td>Weekly Advancement Report</td><td>Records</td><td><strong>Reports &amp; Exports</strong></td></tr>
+      <tr><td>Court of Honor</td><td>Records</td><td><strong>Reports &amp; Exports</strong></td></tr>
+      <tr><td>Scoutbook Export</td><td>Output <em>(alone)</em></td><td><strong>Reports &amp; Exports</strong></td></tr>
+    </tbody>
+  </table>
+  <p class="note">Everything else &mdash; Overview, Entry, Planning, News &amp; Events, Finance, Setup &mdash; is untouched: those sections were already reasonably sized (1&ndash;5 items) and their in-code comments document real intent (e.g. why Roll Call stays off the Calendar workbench) that a reorg shouldn't disturb without a concrete reason. Dashboard stays alone at the top deliberately &mdash; it's the landing page, not an orphaned item like Output was.</p>
+
+  <h2>Alternatives considered</h2>
+  <table class="diffTable">
+    <thead><tr><th>Option</th><th>Verdict</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>Collapsible/accordion sections</td><td>Rejected</td><td>This codebase has a documented production failure with <code>&lt;details&gt;</code>-based collapse (D-070, v1.19.0) &mdash; closed content became browser-internal &ldquo;skipped content&rdquo; that CSS <code>!important</code> couldn't override, and shipped broken twice before revert. A JS-driven (non-<code>&lt;details&gt;</code>) expand/collapse could avoid that specific failure, but with sections now capped at 5 items there's no scroll-length problem left to justify the added interaction cost.</td></tr>
+      <tr><td>Command palette / search (Cmd+K)</td><td>Rejected</td><td>Solves a discovery problem this audience doesn't have &mdash; 10 people who each use the same 3&ndash;5 items weekly. Adds a keyboard-first affordance to a non-technical, often-on-a-tablet user base.</td></tr>
+      <tr><td>Top-level tabs instead of sections</td><td>Rejected</td><td>Makes the narrow-capability collapse <em>worse</em>, not better: a <code>calendar.write</code>-only leader would land on a mostly-empty tab instead of a short, honest 2-item list. Also a bigger engineering lift (routing/state) for a site this size.</td></tr>
+      <tr><td>Icons per section</td><td>Held / optional</td><td>Could aid scanning, but is a real ongoing maintenance surface (every future nav item needs an icon decision) for a marginal gain over the existing 3px active-border accent. Flagged as an open question, not built into this prototype.</td></tr>
+    </tbody>
+  </table>
+</main>
+
+<script>
+(function () {
+  // Mirrors sub-nav.tsx's SECTIONS + visibleNavSections() exactly enough to demo the real gating behavior.
+  var CURRENT = [
+    { title: 'Overview', items: [
+      { label: 'Dashboard', cap: 'advancement.write' }
+    ]},
+    { title: 'Entry', items: [
+      { label: 'Fast Entry', cap: 'advancement.write' },
+      { label: 'Event Rosters', cap: 'calendar.write' }
+    ]},
+    { title: 'Planning', items: [
+      { label: 'Meeting Plan', cap: 'meeting_plan.use' },
+      { label: 'Roll Call & Agendas', cap: 'advancement.write' },
+      { label: 'Has/Needs Tool', cap: 'advancement.write' }
+    ]},
+    { title: 'Records', items: [
+      { label: 'Universal Ledger', cap: 'advancement.write' },
+      { label: 'Submit & Present', cap: 'advancement.write' },
+      { label: 'MB Progress', cap: 'advancement.write' },
+      { label: 'Audits', cap: 'advancement.write' },
+      { label: 'Weekly Advancement Report', cap: 'advancement.write' },
+      { label: 'Roster', cap: 'roster.manage' },
+      { label: 'Court of Honor', cap: 'advancement.write' }
+    ]},
+    { title: 'News & Events', items: [
+      { label: 'News', cap: 'news.write' },
+      { label: 'Calendar', cap: 'calendar.write' },
+      { label: 'Resource Library', cap: 'library.moderate' },
+      { label: 'Media Manager', cap: 'news.write' },
+      { label: 'Photo Albums', cap: 'news.write' }
+    ]},
+    { title: 'Finance', items: [
+      { label: 'Ledger', cap: 'finance.manage' },
+      { label: 'Reimbursements', cap: 'finance.manage' },
+      { label: 'Activity Report', cap: 'finance.manage' }
+    ]},
+    { title: 'Output', items: [
+      { label: 'Scoutbook Export', cap: 'advancement.write' }
+    ]},
+    { title: 'Setup', items: [
+      { label: 'Lookups & Admin', cap: 'roster.manage' },
+      { label: 'Roster Import', cap: 'roster.manage' },
+      { label: 'Access & Permissions', cap: 'roster.manage' },
+      { label: 'Utilities', cap: 'news.write' }
+    ]}
+  ];
+
+  var PROPOSED = [
+    { title: 'Overview', items: [
+      { label: 'Dashboard', cap: 'advancement.write' }
+    ]},
+    { title: 'Entry', items: [
+      { label: 'Fast Entry', cap: 'advancement.write' },
+      { label: 'Event Rosters', cap: 'calendar.write' }
+    ]},
+    { title: 'Planning', items: [
+      { label: 'Meeting Plan', cap: 'meeting_plan.use' },
+      { label: 'Roll Call & Agendas', cap: 'advancement.write' },
+      { label: 'Has/Needs Tool', cap: 'advancement.write' }
+    ]},
+    { title: 'Records', items: [
+      { label: 'Universal Ledger', cap: 'advancement.write' },
+      { label: 'Submit & Present', cap: 'advancement.write' },
+      { label: 'MB Progress', cap: 'advancement.write' },
+      { label: 'Roster', cap: 'roster.manage' }
+    ]},
+    { title: 'Reports & Exports', isNew: true, items: [
+      { label: 'Audits', cap: 'advancement.write' },
+      { label: 'Weekly Advancement Report', cap: 'advancement.write' },
+      { label: 'Court of Honor', cap: 'advancement.write' },
+      { label: 'Scoutbook Export', cap: 'advancement.write' }
+    ]},
+    { title: 'News & Events', items: [
+      { label: 'News', cap: 'news.write' },
+      { label: 'Calendar', cap: 'calendar.write' },
+      { label: 'Resource Library', cap: 'library.moderate' },
+      { label: 'Media Manager', cap: 'news.write' },
+      { label: 'Photo Albums', cap: 'news.write' }
+    ]},
+    { title: 'Finance', items: [
+      { label: 'Ledger', cap: 'finance.manage' },
+      { label: 'Reimbursements', cap: 'finance.manage' },
+      { label: 'Activity Report', cap: 'finance.manage' }
+    ]},
+    { title: 'Setup', items: [
+      { label: 'Lookups & Admin', cap: 'roster.manage' },
+      { label: 'Roster Import', cap: 'roster.manage' },
+      { label: 'Access & Permissions', cap: 'roster.manage' },
+      { label: 'Utilities', cap: 'news.write' }
+    ]}
+  ];
+
+  var ROLES = [
+    { key: 'full', label: 'Full Admin', caps: null, explain: 'Full Admin (a legacy LEADER_PASSWORD session, or an identity actor holding every capability) sees everything, in both versions. This is the view most likely to feel &ldquo;cluttered&rdquo; &mdash; it is also the ONLY role that ever sees all 8 sections at once, which is exactly why the redistribution matters here: nothing to hide, but Records going from 7 items to a max of 5 anywhere is a real scan-time win for whoever holds this role (in practice: Patrick).' },
+    { key: 'calendar', label: 'Calendar-only leader', caps: ['calendar.write'], explain: 'A leader who only holds <code>calendar.write</code> (e.g. manages event signups but doesn\'t touch advancement) sees exactly 2 sections, 1 item each, in both Current and Proposed &mdash; unchanged, because neither Event Rosters nor Calendar moved. This confirms the reorg doesn\'t regress the narrow case: it only rebalances items that were already all advancement.write-gated.' },
+    { key: 'rosterAdv', label: 'Roster & Advancement leader', caps: ['roster.manage', 'advancement.write'], explain: 'A leader holding <code>roster.manage</code> + <code>advancement.write</code> (a typical committee-level advancement chair) sees the split clearly: Records now shows 4 tight items, and the new Reports &amp; Exports section holds the other 4 &mdash; instead of one 7-item wall of links under &ldquo;Records.&rdquo; Setup also partially collapses (Utilities needs news.write, which this role lacks) &mdash; exactly the graceful degradation the brief asked to verify.' }
+  ];
+
+  var state = { role: 'full' };
+
+  function hasCap(caps, cap) {
+    return caps === null || caps.indexOf(cap) !== -1;
+  }
+
+  function visibleSections(sections, caps) {
+    return sections
+      .map(function (s) {
+        return { title: s.title, isNew: s.isNew, items: s.items.filter(function (i) { return hasCap(caps, i.cap); }) };
+      })
+      .filter(function (s) { return s.items.length > 0; });
+  }
+
+  function renderDesktopNav(el, sections, caps) {
+    var vis = visibleSections(sections, caps);
+    el.innerHTML = '';
+    if (vis.length === 0) {
+      el.innerHTML = '<div class="emptyNav">No nav items match this role.</div>';
+      return;
+    }
+    vis.forEach(function (s, si) {
+      var head = document.createElement('div');
+      head.className = 'navSection' + (s.isNew ? ' newSection' : '');
+      head.innerHTML = s.title + (s.isNew ? '<span class="badge-new">NEW</span>' : '');
+      el.appendChild(head);
+      s.items.forEach(function (it, ii) {
+        var btn = document.createElement('div');
+        btn.className = 'navBtn' + (si === 0 && ii === 0 ? ' isActive' : '');
+        btn.textContent = it.label;
+        el.appendChild(btn);
+      });
+    });
+  }
+
+  function renderMobileChips(el, sections, caps, withDividers) {
+    var vis = visibleSections(sections, caps);
+    el.innerHTML = '';
+    vis.forEach(function (s, si) {
+      if (withDividers) {
+        var div = document.createElement('div');
+        div.className = 'phoneDivider';
+        div.innerHTML = '<span class="lbl">' + s.title + '</span><span class="line"></span>';
+        el.appendChild(div);
+      }
+      s.items.forEach(function (it, ii) {
+        var chip = document.createElement('button');
+        chip.className = 'chip' + (si === 0 && ii === 0 ? ' isActive' : '');
+        chip.type = 'button';
+        chip.textContent = it.label;
+        el.appendChild(chip);
+      });
+    });
+  }
+
+  function render() {
+    var role = ROLES.filter(function (r) { return r.key === state.role; })[0];
+    renderDesktopNav(document.getElementById('navCurrent'), CURRENT, role.caps);
+    renderDesktopNav(document.getElementById('navProposed'), PROPOSED, role.caps);
+    renderMobileChips(document.getElementById('mobileCurrent'), CURRENT, role.caps, false);
+    renderMobileChips(document.getElementById('mobileProposed'), PROPOSED, role.caps, true);
+    document.getElementById('curUser').textContent = role.label;
+    document.getElementById('propUser').textContent = role.label;
+    document.getElementById('roleExplain').innerHTML = '<strong>' + role.label + ':</strong> ' + role.explain;
+    document.getElementById('roleCaps').innerHTML = role.caps === null ? 'capabilities: <code>ALL</code>' : 'capabilities: ' + role.caps.map(function (c) { return '<code>' + c + '</code>'; }).join(' ');
+    document.querySelectorAll('.roleBtn').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.role === state.role);
+    });
+  }
+
+  var switcher = document.getElementById('roleSwitcher');
+  ROLES.forEach(function (r) {
+    var b = document.createElement('button');
+    b.className = 'roleBtn';
+    b.type = 'button';
+    b.dataset.role = r.key;
+    b.textContent = r.label;
+    b.addEventListener('click', function () { state.role = r.key; render(); });
+    switcher.insertBefore(b, document.getElementById('roleCaps'));
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

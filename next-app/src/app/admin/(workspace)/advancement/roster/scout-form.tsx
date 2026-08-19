@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { createScout, promoteScoutToAdult, updateScout } from '../lookups/actions';
 import { INACTIVE_REASON_LABEL, type InactiveReason } from '@/lib/supabase/types';
 import { ScoutRelations } from './scout-relations';
@@ -64,6 +64,17 @@ const REASON_ORDER: InactiveReason[] = [
   'other'
 ];
 
+/** Section order for the rail nav + numbered section cards (Plans/Admin-Nav-And-
+ *  Consistency.md, Section 3). Must match the FormSection calls below 1:1. */
+const SECTION_TITLES = [
+  'Identity',
+  'Demographics',
+  'Contact',
+  'Things We Should Know',
+  'Parents / Guardians',
+  'Status'
+];
+
 export function ScoutForm({
   row,
   ranks,
@@ -102,6 +113,34 @@ export function ScoutForm({
   const [swimClass, setSwimClass] = useState<string>(row?.swim_class ?? '');
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  // Rail nav + scroll-spy (Plans/Admin-Nav-And-Consistency.md, Section 3) — purely
+  // additive wayfinding. Nothing is ever hidden: every section stays in the DOM and
+  // visible, so this can't hit the <details> "skipped content" failure mode (D-070).
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [activeSection, setActiveSection] = useState(0);
+
+  useEffect(() => {
+    const root = scrollAreaRef.current;
+    if (!root || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const idx = Number((entry.target as HTMLElement).dataset.section);
+          if (!Number.isNaN(idx)) setActiveSection(idx);
+        });
+      },
+      { root, threshold: 0.5 }
+    );
+    sectionRefs.current.forEach((el) => el && observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
+
+  function scrollToSection(i: number) {
+    sectionRefs.current[i]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 
   const currentRankLabel = row?.current_rank
     ? ranks.find((r) => r.id === row.current_rank)?.display_name ?? row.current_rank
@@ -167,7 +206,7 @@ export function ScoutForm({
 
 
   return (
-    <div className={styles.editDialogInner}>
+    <div className={styles.editDialogRosterInner}>
       <div className={styles.editDialogHeader}>
         <h3>{isNew ? 'Add Scout' : `Edit ${row?.display_name}`}</h3>
         <p>
@@ -178,10 +217,37 @@ export function ScoutForm({
       </div>
 
       {!isNew && row && (
-        <PendingUpdatePanel scoutId={row.id} currentValues={currentValues} onApplied={onClose} />
+        <div className={styles.editDialogBanner}>
+          <PendingUpdatePanel scoutId={row.id} currentValues={currentValues} onApplied={onClose} />
+        </div>
       )}
 
-      <FormSection title="Identity">
+      <div className={styles.editRailBody}>
+        <nav className={styles.editRail} aria-label="Jump to section">
+          {SECTION_TITLES.map((title, i) => (
+            <button
+              key={title}
+              type="button"
+              className={`${styles.editRailItem} ${
+                activeSection === i ? styles.editRailItemActive : ''
+              }`}
+              onClick={() => scrollToSection(i)}
+            >
+              <span className={styles.editRailNum}>{i + 1}</span>
+              <span>{title}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className={styles.editScrollArea} ref={scrollAreaRef}>
+
+      <FormSection
+        num={1}
+        title="Identity"
+        sectionRef={(el) => {
+          sectionRefs.current[0] = el;
+        }}
+      >
         <div className={styles.editGrid}>
           <label className={styles.editField}>
             <span className={styles.editLabel}>Internal ID</span>
@@ -244,7 +310,13 @@ export function ScoutForm({
         </div>
       </FormSection>
 
-      <FormSection title="Demographics">
+      <FormSection
+        num={2}
+        title="Demographics"
+        sectionRef={(el) => {
+          sectionRefs.current[1] = el;
+        }}
+      >
         <div className={styles.editGrid}>
           <label className={styles.editField}>
             <span className={styles.editLabel}>
@@ -297,7 +369,13 @@ export function ScoutForm({
         </p>
       </FormSection>
 
-      <FormSection title="Contact">
+      <FormSection
+        num={3}
+        title="Contact"
+        sectionRef={(el) => {
+          sectionRefs.current[2] = el;
+        }}
+      >
         <div className={styles.editGrid}>
           <label className={styles.editFieldFull}>
             <span className={styles.editLabel}>Address Line 1</span>
@@ -376,7 +454,13 @@ export function ScoutForm({
         </div>
       </FormSection>
 
-      <FormSection title="Things We Should Know">
+      <FormSection
+        num={4}
+        title="Things We Should Know"
+        sectionRef={(el) => {
+          sectionRefs.current[3] = el;
+        }}
+      >
         <label className={styles.editFieldFull}>
           <span className={styles.editLabel}>Food allergies, medical conditions, special needs</span>
           <textarea
@@ -393,11 +477,23 @@ export function ScoutForm({
         </p>
       </FormSection>
 
-      <FormSection title="Parents / Guardians">
+      <FormSection
+        num={5}
+        title="Parents / Guardians"
+        sectionRef={(el) => {
+          sectionRefs.current[4] = el;
+        }}
+      >
         <ScoutRelations scoutPersonId={row?.person_id ?? null} />
       </FormSection>
 
-      <FormSection title="Status">
+      <FormSection
+        num={6}
+        title="Status"
+        sectionRef={(el) => {
+          sectionRefs.current[5] = el;
+        }}
+      >
         <div className={styles.statusRadioRow}>
           <label className={styles.statusRadio}>
             <input
@@ -443,9 +539,12 @@ export function ScoutForm({
         </p>
       </FormSection>
 
-      {err && <div className={styles.editError}>{err}</div>}
+        </div>
+      </div>
 
-      <div className={styles.editActions}>
+      {err && <div className={styles.editError} style={{ margin: '0 20px' }}>{err}</div>}
+
+      <div className={styles.editActionsRow}>
         {!isNew && row?.active && (
           <button
             type="button"
@@ -514,19 +613,24 @@ export function ScoutForm({
 }
 
 function FormSection({
+  num,
   title,
   actions,
+  sectionRef,
   children
 }: {
+  num: number;
   title: string;
   actions?: React.ReactNode;
+  sectionRef?: (el: HTMLDivElement | null) => void;
   children: React.ReactNode;
 }) {
   return (
-    <div className={styles.editSection}>
-      <div className={styles.editSectionHeader}>
+    <div className={styles.editSectionCard} ref={sectionRef} data-section={num - 1}>
+      <div className={styles.editSectionCardHead}>
+        <span className={styles.editSectionNum}>{num}</span>
         <h4>{title}</h4>
-        {actions}
+        {actions && <div style={{ marginLeft: 'auto' }}>{actions}</div>}
       </div>
       {children}
     </div>

@@ -337,6 +337,135 @@
   gap: 8px;
 }
 
+/* ── Section-card + rail treatment (Plans/Admin-Nav-And-Consistency.md, Section 3) ──
+   Additive, alongside .editSection above — nothing here changes what the ~7 other
+   lookups.module.css editors render. Only scout-form.tsx opts in today. Field-level
+   classes (.editGrid/.editField/.editLabel/.editInput) are untouched and reused as-is.
+   Dialog-level sizing (width/max-height) lives on roster.module.css's .editDialog —
+   this file only owns the inner layout, since scout-form.tsx renders inside that
+   dialog but scouts-table.tsx (the <dialog> owner) imports roster.module.css, not
+   this file. See .editDialogRosterFixed in roster.module.css for the paired rule
+   that stops the outer <dialog> from double-scrolling against .editScrollArea below. */
+.editDialogRosterInner {
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  font-family: inherit;
+}
+/* .editDialogHeader normally gets its horizontal inset from .editDialogInner's own
+   padding (see that rule above) — this wrapper has none (each child controls its
+   own), so restore it scoped to this wrapper only. Doesn't touch the ~7 other
+   editors still using .editDialogHeader inside .editDialogInner. */
+.editDialogRosterInner > .editDialogHeader {
+  padding-left: 20px;
+  padding-right: 20px;
+  padding-top: 18px;
+}
+.editDialogBanner {
+  padding: 14px 20px 0;
+}
+.editRailBody {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.editRail {
+  width: 168px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--admin-gray-200);
+  padding: 14px 8px;
+  overflow-y: auto;
+}
+.editRailItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--admin-gray-500);
+  padding: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-bottom: 2px;
+}
+.editRailItem:hover { background: var(--admin-gray-50); color: var(--admin-navy); }
+.editRailItemActive { background: #eaf0f4; color: var(--admin-navy); }
+.editRailNum {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--admin-gray-200);
+  color: var(--admin-gray-600);
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.editRailItemActive .editRailNum { background: var(--admin-navy); color: var(--admin-white); }
+.editScrollArea {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 16px 20px;
+  scroll-behavior: smooth;
+}
+.editSectionCard {
+  background: var(--admin-gray-50);
+  border: 1px solid var(--admin-gray-200);
+  border-left: 4px solid var(--admin-navy);
+  border-radius: 6px;
+  padding: 16px 18px;
+  margin-bottom: 14px;
+}
+.editSectionCard:last-child { margin-bottom: 0; }
+.editSectionCard .editInput,
+.editSectionCard .readOnlyValue { background: var(--admin-white); }
+.editSectionCardHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.editSectionCardHead h4 {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--admin-navy);
+}
+.editSectionNum {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--admin-navy);
+  color: var(--admin-white);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.editActionsRow {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--admin-gray-200);
+}
+
+@media (max-width: 560px) {
+  .editRail { display: none; }
+}
+
 /* Read-only computed value */
 .readOnlyValue {
   padding: 7px 9px;

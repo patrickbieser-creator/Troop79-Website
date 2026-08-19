@@ -270,7 +270,7 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId
 
       <dialog
         ref={dialogRef}
-        className={styles.editDialog}
+        className={`${styles.editDialog} ${styles.editDialogRosterFixed}`}
         onClose={() => setOpenFor(null)}
         onClick={(e) => {
           if (e.target === dialogRef.current) setOpenFor(null);

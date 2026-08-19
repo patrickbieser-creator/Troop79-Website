@@ -80,6 +80,10 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
     ]
   },
   {
+    // Split from a single 7-item Records section (Plans/Admin-Nav-And-Consistency.md,
+    // Section 1) — day-to-day recording stays here; generate-and-hand-off actions moved to
+    // Reports & Exports below. Roster sits right under Universal Ledger (rather than at the
+    // end, where it landed by accretion): the two are what a leader reaches for most.
     title: 'Records',
     items: [
       {
@@ -87,6 +91,12 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         href: '/admin/advancement/ledger',
         matchPath: '/admin/advancement/ledger',
         capability: 'advancement.write'
+      },
+      {
+        label: 'Roster',
+        href: '/admin/advancement/roster',
+        matchPath: '/admin/advancement/roster',
+        capability: 'roster.manage'
       },
       {
         label: 'Submit & Present',
@@ -99,7 +109,15 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         href: '/admin/advancement/mb-progress',
         matchPath: '/admin/advancement/mb-progress',
         capability: 'advancement.write'
-      },
+      }
+    ]
+  },
+  {
+    // New section (Plans/Admin-Nav-And-Consistency.md, Section 1) — review/hand-off actions
+    // split out of Records, absorbing the old single-item Output section (Scoutbook Export)
+    // so nothing sits alone under its own full-width header.
+    title: 'Reports & Exports',
+    items: [
       {
         label: 'Audits',
         href: '/admin/advancement/audits',
@@ -113,15 +131,15 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         capability: 'advancement.write'
       },
       {
-        label: 'Roster',
-        href: '/admin/advancement/roster',
-        matchPath: '/admin/advancement/roster',
-        capability: 'roster.manage'
-      },
-      {
         label: 'Court of Honor',
         href: '/admin/advancement/court-of-honor',
         matchPath: '/admin/advancement/court-of-honor',
+        capability: 'advancement.write'
+      },
+      {
+        label: 'Scoutbook Export',
+        href: '/admin/advancement/scoutbook-export',
+        matchPath: '/admin/advancement/scoutbook-export',
         capability: 'advancement.write'
       }
     ]
@@ -203,17 +221,6 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         href: '/admin/finance/report',
         matchPath: '/admin/finance/report',
         capability: 'finance.manage'
-      }
-    ]
-  },
-  {
-    title: 'Output',
-    items: [
-      {
-        label: 'Scoutbook Export',
-        href: '/admin/advancement/scoutbook-export',
-        matchPath: '/admin/advancement/scoutbook-export',
-        capability: 'advancement.write'
       }
     ]
   },
@@ -317,7 +324,7 @@ export function SubNav({
       aria-label="Leader Workspace navigation"
     >
       {visibleSections.map((section) => (
-        <div key={section.title}>
+        <div key={section.title} className={styles.subNavGroup}>
           <div className={styles.subNavSection}>{section.title}</div>
           {section.items.map((item) =>
             item.disabled ? (

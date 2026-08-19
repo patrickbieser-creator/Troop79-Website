@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Roster Editor Treatment — Prototype — Scout Troop 79</title>
+<style>
+  :root {
+    --admin-navy:        #1e3a4a;
+    --admin-navy-hover:  #163040;
+    --admin-forest:      #3d7a4a;
+    --admin-danger:      #c0392b;
+    --admin-warning:     #d4a017;
+    --admin-bg:          #f5f6f8;
+    --admin-white:       #ffffff;
+    --admin-gray-50:     #fafbfc;
+    --admin-gray-100:    #f0f1f3;
+    --admin-gray-200:    #e2e4e8;
+    --admin-gray-300:    #cdd1d6;
+    --admin-gray-400:    #9ba1aa;
+    --admin-gray-500:    #6d7580;
+    --admin-gray-700:    #3a3f47;
+    --admin-gray-900:    #1a1d21;
+    --admin-shadow-sm:   0 1px 3px rgba(0,0,0,.08);
+    --admin-shadow-md:   0 2px 8px rgba(0,0,0,.1);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--admin-bg); color: var(--admin-gray-900); font-family: Arial, Helvetica, sans-serif; font-size: 14px; }
+  .proto-banner { background: var(--admin-navy); color: #fff; padding: 10px 24px; font-size: 13px; line-height: 1.5; }
+  .proto-banner strong { color: var(--admin-warning); }
+  main { max-width: 1080px; margin: 0 auto; padding: 28px 24px 80px; }
+  h1 { font-size: 24px; color: var(--admin-navy); margin: 0 0 6px; }
+  .dek { font-size: 14px; color: var(--admin-gray-500); max-width: 780px; line-height: 1.6; margin-bottom: 20px; }
+  h2 { font-size: 17px; color: var(--admin-navy); border-bottom: 1px solid var(--admin-gray-200); padding-bottom: 8px; margin: 40px 0 14px; }
+  p.note { font-size: 13px; color: var(--admin-gray-500); line-height: 1.6; max-width: 780px; }
+  .callout { background: #fdf3dc; border: 1px solid #ecd9a0; border-left: 4px solid #c9a227; border-radius: 4px; padding: 12px 16px; margin: 14px 0 24px; font-size: 13px; line-height: 1.6; }
+  .callout.good { background: #eef6ee; border-color: #c7e0c9; border-left-color: var(--admin-forest); }
+  .callout code { background: rgba(0,0,0,.06); padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+
+  .tabRow { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tabBtn { font-family: inherit; font-size: 13px; font-weight: 700; letter-spacing: .02em; cursor: pointer;
+    background: var(--admin-white); border: 1px solid var(--admin-gray-300); color: var(--admin-gray-700);
+    padding: 8px 16px; border-radius: 5px; }
+  .tabBtn.active { background: var(--admin-navy); border-color: var(--admin-navy); color: #fff; }
+  .protoNote { font-size: 11.5px; color: var(--admin-gray-500); margin: -8px 0 16px; font-style: italic; }
+
+  /* ── shared dialog chrome ── */
+  .dialogShell { background: var(--admin-white); border: 1px solid var(--admin-gray-200); border-radius: 6px; box-shadow: var(--admin-shadow-md); max-width: 860px; margin: 0 auto; }
+  .dialogHeader { border-bottom: 1px solid var(--admin-gray-200); padding: 22px 26px 14px; }
+  .dialogHeader h3 { font-size: 16px; font-weight: 700; color: var(--admin-navy); margin: 0 0 4px; }
+  .dialogHeader p { font-size: 12px; color: var(--admin-gray-500); line-height: 1.4; margin: 0; }
+  .editGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+  .editField { display: block; }
+  .editFieldFull { grid-column: 1 / -1; }
+  .editLabel { display: block; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--admin-gray-500); margin-bottom: 4px; }
+  .editInput { width: 100%; border: 1px solid var(--admin-gray-300); border-radius: 3px; padding: 7px 9px; font-family: inherit; font-size: 13px; background: var(--admin-white); color: var(--admin-gray-900); }
+  .readOnlyValue { padding: 7px 9px; border: 1px dashed var(--admin-gray-300); border-radius: 3px; background: var(--admin-gray-50); font-size: 13px; color: var(--admin-gray-700); }
+  .editTinyGrid { display: grid; grid-template-columns: 70px 1fr; gap: 8px; }
+  .helpText { font-size: 11px; color: var(--admin-gray-500); line-height: 1.45; margin-top: 6px; }
+  .statusRadioRow { display: flex; gap: 18px; }
+  .statusRadio { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+  .parentCard { background: var(--admin-gray-50); border: 1px solid var(--admin-gray-200); border-radius: 3px; padding: 10px 12px; margin-bottom: 8px; }
+  .parentCard:last-child { margin-bottom: 0; }
+  .parentCardLabel { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--admin-gray-500); margin-bottom: 4px; }
+  .parentCardName { font-size: 13px; font-weight: 700; color: var(--admin-gray-900); }
+  .parentCardMeta { font-size: 12px; color: var(--admin-gray-700); }
+  .editActionsRow { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 26px 20px; border-top: 1px solid var(--admin-gray-200); }
+  .btnGhost { font-family: inherit; font-size: 12px; font-weight: 600; background: var(--admin-white); border: 1px solid var(--admin-gray-300); color: var(--admin-gray-700); padding: 6px 14px; border-radius: 3px; cursor: pointer; }
+  .btnPrimary { font-family: inherit; font-size: 12px; font-weight: 700; letter-spacing: .04em; background: var(--admin-navy); color: #fff; border: 1px solid var(--admin-navy); padding: 6px 14px; border-radius: 3px; cursor: pointer; }
+
+  /* ── CURRENT: today's treatment ── */
+  #panelCurrent .editSection { padding: 22px 26px; border-bottom: 1px dashed var(--admin-gray-200); }
+  #panelCurrent .editSection:last-of-type { border-bottom: none; }
+  #panelCurrent .editSection h4 { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--admin-navy); margin: 0 0 10px; }
+
+  /* ── PROPOSED: rail + card chrome ── */
+  #panelProposed .body { display: flex; }
+  .rail { width: 168px; flex-shrink: 0; border-right: 1px solid var(--admin-gray-200); padding: 18px 10px; position: sticky; top: 0; align-self: flex-start; }
+  .railItem { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; background: none; border: none; font-family: inherit;
+    font-size: 12px; font-weight: 600; color: var(--admin-gray-500); padding: 8px 8px; border-radius: 4px; cursor: pointer; margin-bottom: 2px; }
+  .railItem .num { width: 18px; height: 18px; border-radius: 50%; background: var(--admin-gray-200); color: var(--admin-gray-600); font-size: 10px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .railItem:hover { background: var(--admin-gray-50); color: var(--admin-navy); }
+  .railItem.railActive { background: #eaf0f4; color: var(--admin-navy); }
+  .railItem.railActive .num { background: var(--admin-navy); color: #fff; }
+
+  .proposedScroll { flex: 1; max-height: 640px; overflow-y: auto; padding: 18px 22px; scroll-behavior: smooth; }
+  .sectionCard { background: var(--admin-gray-50); border: 1px solid var(--admin-gray-200); border-left: 4px solid var(--admin-navy); border-radius: 6px; padding: 16px 18px; margin-bottom: 14px; }
+  .sectionCard:last-child { margin-bottom: 0; }
+  .sectionCardHead { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .sectionCardHead .num { width: 22px; height: 22px; border-radius: 50%; background: var(--admin-navy); color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .sectionCardHead h4 { font-size: 12.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--admin-navy); margin: 0; }
+  .sectionCard .editInput, .sectionCard .readOnlyValue { background: var(--admin-white); }
+
+  table.diffTable { width: 100%; border-collapse: collapse; font-size: 13px; margin: 10px 0 28px; background: var(--admin-white); border: 1px solid var(--admin-gray-200); border-radius: 4px; overflow: hidden; }
+  table.diffTable th, table.diffTable td { padding: 8px 12px; border-bottom: 1px solid var(--admin-gray-100); text-align: left; vertical-align: top; }
+  table.diffTable th { background: var(--admin-gray-50); font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--admin-gray-700); }
+  table.diffTable tr:last-child td { border-bottom: none; }
+  table.diffTable code { background: var(--admin-gray-100); padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div class="proto-banner">
+  <strong>Prototype — Roster / Person Editor Treatment.</strong> Companion to Plans/Admin-Nav-And-Consistency.md, Section 3. Static mock of <code>scout-form.tsx</code> using invented data (Owen Kaczmarek is not a real scout).
+</div>
+
+<main>
+  <h1>Scout Editor — Section Chrome &amp; Wayfinding</h1>
+  <p class="dek">Today, all 6 sections (Identity, Demographics, Contact, Things We Should Know, Parents/Guardians, Status) use the exact same dashed 1px divider and an 11px uppercase label &mdash; that&rsquo;s the entire visual distinction between them in a dialog dense enough to need scrolling. The proposed version keeps every field visible in one scroll (no hide/collapse of any kind &mdash; see the callout below on why) and adds a sticky left-rail jump-nav plus stronger per-section chrome.</p>
+
+  <div class="tabRow">
+    <button class="tabBtn active" id="btnCurrent" onclick="showPanel('current')">Current</button>
+    <button class="tabBtn" id="btnProposed" onclick="showPanel('proposed')">Proposed</button>
+  </div>
+  <p class="protoNote">This tab toggle is prototype-comparison chrome only, not part of the recommendation &mdash; both mocks render the full form; the button just swaps which one is on screen for you to compare.</p>
+
+  <div id="panelCurrent" class="dialogShell">
+    <div class="dialogHeader">
+      <h3>Edit Owen Kaczmarek</h3>
+      <p>Internal ID is permanent once created. Current Rank is derived from the ledger&rsquo;s rank-award entries and updates automatically when a BoR is recorded.</p>
+    </div>
+
+    <div class="editSection">
+      <h4>Identity</h4>
+      <div class="editGrid">
+        <div class="editField"><span class="editLabel">Internal ID</span><input class="editInput" value="F04" disabled></div>
+        <div class="editField"><span class="editLabel">BSA Member ID</span><input class="editInput" value="13847205"></div>
+        <div class="editField"><span class="editLabel">First Name</span><input class="editInput" value="Owen"></div>
+        <div class="editField"><span class="editLabel">Last Name</span><input class="editInput" value="Kaczmarek"></div>
+        <div class="editField"><span class="editLabel">Patrol</span><input class="editInput" value="Hawk"></div>
+        <div class="editField"><span class="editLabel">Current Rank · derived</span><div class="readOnlyValue">Star</div></div>
+      </div>
+    </div>
+
+    <div class="editSection">
+      <h4>Demographics</h4>
+      <div class="editGrid">
+        <div class="editField"><span class="editLabel">Birthdate · age 14</span><input class="editInput" value="2012-03-11"></div>
+        <div class="editField"><span class="editLabel">Gender</span><input class="editInput" value="Male"></div>
+        <div class="editField"><span class="editLabel">School</span><input class="editInput" value="Milwaukee German Immersion"></div>
+        <div class="editField"><span class="editLabel">Grade · class of 2030</span><input class="editInput" value="9th grade"></div>
+        <div class="editField"><span class="editLabel">Swim classification</span><input class="editInput" value="Swimmer"></div>
+      </div>
+      <p class="helpText">Age and grade are derived automatically (grade advances each August 1) &mdash; the stored value is the graduation class year.</p>
+    </div>
+
+    <div class="editSection">
+      <h4>Contact</h4>
+      <div class="editGrid">
+        <div class="editFieldFull"><span class="editLabel">Address Line 1</span><input class="editInput" value="4218 W Oklahoma Ave"></div>
+        <div class="editFieldFull"><span class="editLabel">Address Line 2</span><input class="editInput" placeholder="Apt / unit (optional)"></div>
+        <div class="editField"><span class="editLabel">City</span><input class="editInput" value="Milwaukee"></div>
+        <div class="editTinyGrid">
+          <div><span class="editLabel">State</span><input class="editInput" value="WI"></div>
+          <div><span class="editLabel">ZIP</span><input class="editInput" value="53219"></div>
+        </div>
+        <div class="editField"><span class="editLabel">Phone</span><input class="editInput" value="(414) 555-0148"></div>
+        <div class="editField"><span class="editLabel">Email</span><input class="editInput" value="owen.k.scout@gmail.com"></div>
+        <div class="editField"><span class="editLabel">Health Form Date</span><input class="editInput" value="2026-06-02"></div>
+      </div>
+    </div>
+
+    <div class="editSection">
+      <h4>Things We Should Know</h4>
+      <div class="editFieldFull"><span class="editLabel">Food allergies, medical conditions, special needs</span>
+        <textarea class="editInput" rows="2">Tree nut allergy (EpiPen in backpack). Wears glasses.</textarea>
+      </div>
+      <p class="helpText">Visible to leaders only. Feeds a future per-event report listing special needs for attending Scouts and adults.</p>
+    </div>
+
+    <div class="editSection">
+      <h4>Parents / Guardians</h4>
+      <div class="parentCard">
+        <div class="parentCardLabel">Primary</div>
+        <div class="parentCardName">Dana Kaczmarek</div>
+        <div class="parentCardMeta">Mother &middot; (414) 555-0149 &middot; dana.kaczmarek@gmail.com</div>
+      </div>
+      <div class="parentCard">
+        <div class="parentCardLabel">Secondary</div>
+        <div class="parentCardName">Rob Kaczmarek</div>
+        <div class="parentCardMeta">Father &middot; (414) 555-0150 &middot; rkaczmarek@outlook.com</div>
+      </div>
+    </div>
+
+    <div class="editSection">
+      <h4>Status</h4>
+      <div class="statusRadioRow">
+        <label class="statusRadio"><input type="radio" name="status-cur" checked> Active</label>
+        <label class="statusRadio"><input type="radio" name="status-cur"> Inactive</label>
+      </div>
+      <p class="helpText">Inactive scouts disappear from rosters, dashboards, and the Fast Entry picker. Their ledger history is preserved.</p>
+    </div>
+
+    <div class="editActionsRow">
+      <button class="btnGhost">Cancel</button>
+      <button class="btnPrimary">Save changes</button>
+    </div>
+  </div>
+
+  <div id="panelProposed" class="dialogShell" style="display:none; max-width: 920px;">
+    <div class="dialogHeader">
+      <h3>Edit Owen Kaczmarek</h3>
+      <p>Internal ID is permanent once created. Current Rank is derived from the ledger&rsquo;s rank-award entries and updates automatically when a BoR is recorded.</p>
+    </div>
+    <div class="body">
+      <div class="rail" id="rail"></div>
+      <div class="proposedScroll" id="scrollArea">
+
+        <div class="sectionCard" data-sec="0" id="sec-0">
+          <div class="sectionCardHead"><span class="num">1</span><h4>Identity</h4></div>
+          <div class="editGrid">
+            <div class="editField"><span class="editLabel">Internal ID</span><input class="editInput" value="F04" disabled></div>
+            <div class="editField"><span class="editLabel">BSA Member ID</span><input class="editInput" value="13847205"></div>
+            <div class="editField"><span class="editLabel">First Name</span><input class="editInput" value="Owen"></div>
+            <div class="editField"><span class="editLabel">Last Name</span><input class="editInput" value="Kaczmarek"></div>
+            <div class="editField"><span class="editLabel">Patrol</span><input class="editInput" value="Hawk"></div>
+            <div class="editField"><span class="editLabel">Current Rank · derived</span><div class="readOnlyValue">Star</div></div>
+          </div>
+        </div>
+
+        <div class="sectionCard" data-sec="1" id="sec-1">
+          <div class="sectionCardHead"><span class="num">2</span><h4>Demographics</h4></div>
+          <div class="editGrid">
+            <div class="editField"><span class="editLabel">Birthdate · age 14</span><input class="editInput" value="2012-03-11"></div>
+            <div class="editField"><span class="editLabel">Gender</span><input class="editInput" value="Male"></div>
+            <div class="editField"><span class="editLabel">School</span><input class="editInput" value="Milwaukee German Immersion"></div>
+            <div class="editField"><span class="editLabel">Grade · class of 2030</span><input class="editInput" value="9th grade"></div>
+            <div class="editField"><span class="editLabel">Swim classification</span><input class="editInput" value="Swimmer"></div>
+          </div>
+          <p class="helpText">Age and grade are derived automatically (grade advances each August 1) &mdash; the stored value is the graduation class year.</p>
+        </div>
+
+        <div class="sectionCard" data-sec="2" id="sec-2">
+          <div class="sectionCardHead"><span class="num">3</span><h4>Contact</h4></div>
+          <div class="editGrid">
+            <div class="editFieldFull"><span class="editLabel">Address Line 1</span><input class="editInput" value="4218 W Oklahoma Ave"></div>
+            <div class="editFieldFull"><span class="editLabel">Address Line 2</span><input class="editInput" placeholder="Apt / unit (optional)"></div>
+            <div class="editField"><span class="editLabel">City</span><input class="editInput" value="Milwaukee"></div>
+            <div class="editTinyGrid">
+              <div><span class="editLabel">State</span><input class="editInput" value="WI"></div>
+              <div><span class="editLabel">ZIP</span><input class="editInput" value="53219"></div>
+            </div>
+            <div class="editField"><span class="editLabel">Phone</span><input class="editInput" value="(414) 555-0148"></div>
+            <div class="editField"><span class="editLabel">Email</span><input class="editInput" value="owen.k.scout@gmail.com"></div>
+            <div class="editField"><span class="editLabel">Health Form Date</span><input class="editInput" value="2026-06-02"></div>
+          </div>
+        </div>
+
+        <div class="sectionCard" data-sec="3" id="sec-3">
+          <div class="sectionCardHead"><span class="num">4</span><h4>Things We Should Know</h4></div>
+          <div class="editFieldFull"><span class="editLabel">Food allergies, medical conditions, special needs</span>
+            <textarea class="editInput" rows="2">Tree nut allergy (EpiPen in backpack). Wears glasses.</textarea>
+          </div>
+          <p class="helpText">Visible to leaders only. Feeds a future per-event report listing special needs for attending Scouts and adults.</p>
+        </div>
+
+        <div class="sectionCard" data-sec="4" id="sec-4">
+          <div class="sectionCardHead"><span class="num">5</span><h4>Parents / Guardians</h4></div>
+          <div class="parentCard">
+            <div class="parentCardLabel">Primary</div>
+            <div class="parentCardName">Dana Kaczmarek</div>
+            <div class="parentCardMeta">Mother &middot; (414) 555-0149 &middot; dana.kaczmarek@gmail.com</div>
+          </div>
+          <div class="parentCard">
+            <div class="parentCardLabel">Secondary</div>
+            <div class="parentCardName">Rob Kaczmarek</div>
+            <div class="parentCardMeta">Father &middot; (414) 555-0150 &middot; rkaczmarek@outlook.com</div>
+          </div>
+        </div>
+
+        <div class="sectionCard" data-sec="5" id="sec-5">
+          <div class="sectionCardHead"><span class="num">6</span><h4>Status</h4></div>
+          <div class="statusRadioRow">
+            <label class="statusRadio"><input type="radio" name="status-prop" checked> Active</label>
+            <label class="statusRadio"><input type="radio" name="status-prop"> Inactive</label>
+          </div>
+          <p class="helpText">Inactive scouts disappear from rosters, dashboards, and the Fast Entry picker. Their ledger history is preserved.</p>
+        </div>
+
+      </div>
+    </div>
+    <div class="editActionsRow">
+      <button class="btnGhost">Cancel</button>
+      <button class="btnPrimary">Save changes</button>
+    </div>
+  </div>
+
+  <div class="callout good">
+    <strong>Why not an accordion?</strong> Tracker memory (v1.19.0, D-070) documents a production incident where a per-rank <code>&lt;details&gt;</code> accordion shipped broken twice: a closed <code>&lt;details&gt;</code>&rsquo;s content is browser-internal &ldquo;skipped content,&rdquo; not a normal CSS value &mdash; <code>display: block !important</code> and <code>content-visibility: visible !important</code> both failed to force it visible, and every rank but the current one rendered blank in production. The proposed treatment above never hides a section at all &mdash; the rail is pure additive wayfinding (scroll-to / highlight-on-scroll), so every field stays in the DOM, visible, and part of the one native <code>&lt;dialog&gt;</code> form the whole time. If a tabbed variant (one section visible, others hidden) is wanted instead, that's a different, riskier trade &mdash; flagged as an open question in the plan, not built here.
+  </div>
+
+  <h2>What changed, field by field</h2>
+  <table class="diffTable">
+    <thead><tr><th>Element</th><th>Current</th><th>Proposed</th></tr></thead>
+    <tbody>
+      <tr><td>Section separator</td><td>1px dashed line, 16px margin</td><td>Full card: light tint background, 4px navy left border, 6px radius, 14px gap between cards</td></tr>
+      <tr><td>Section header</td><td>11px uppercase text only</td><td>12.5px uppercase text + numbered circle badge (1&ndash;6), matching the rail</td></tr>
+      <tr><td>Orientation while scrolling</td><td>None &mdash; no indication of how many sections remain or which one you're in</td><td>Sticky left rail lists all 6 sections; the one in view is highlighted (scroll-linked, not click-only)</td></tr>
+      <tr><td>Fields hidden at any time</td><td>None</td><td>None &mdash; unchanged. All 6 sections stay rendered; nothing is collapsed or tab-hidden</td></tr>
+      <tr><td>Field grid, labels, inputs</td><td><code>.editGrid</code> / <code>.editLabel</code> / <code>.editInput</code></td><td>Unchanged &mdash; same classes, same markup. Only the section wrapper changes</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Ripple effect on the ~7 shared <code>lookups.module.css</code> editors</h2>
+  <p class="note">This treatment is designed to be low-blast-radius by construction, not by accident:</p>
+  <table class="diffTable">
+    <thead><tr><th>Change</th><th>Scope</th><th>Why it doesn't ripple</th></tr></thead>
+    <tbody>
+      <tr><td>Section card chrome (tint / left border / numbered badge)</td><td>New opt-in class, e.g. <code>.editSectionCard</code>, added <em>alongside</em> the existing <code>.editSection</code> in <code>lookups.module.css</code></td><td>Existing dialogs (MB editor, Event editor, etc.) keep rendering with today's dashed-divider <code>.editSection</code> unless a component explicitly switches classes. Nothing changes for them until Patrick decides to.</td></tr>
+      <tr><td>Sticky rail + scroll-spy</td><td>New markup + a small script, scoped to <code>scout-form.tsx</code> only (candidate: <code>adult-form.tsx</code> if it grows past ~1 section)</td><td>Not a shared CSS class at all &mdash; it's specific to dialogs dense enough to need it. A 1&ndash;2-section lookup editor (most of the 7) has nothing to jump between.</td></tr>
+      <tr><td><code>.editGrid</code> / <code>.editField</code> / <code>.editLabel</code> / <code>.editInput</code></td><td>Unchanged</td><td>The field-level markup that every one of the ~7 other editors relies on is untouched by this proposal.</td></tr>
+    </tbody>
+  </table>
+  <p class="note"><strong>Recommendation stated explicitly (per the brief's ask):</strong> roll the stronger section-card chrome out to <em>all</em> multi-section editors eventually &mdash; it's a strict visual upgrade and costs little even on a 1-section dialog &mdash; but gate the rail nav on a threshold (4+ sections) rather than rolling it out module-wide. Most Lookups editors have 1&ndash;2 sections and would gain nothing from a rail; <code>scout-form.tsx</code> (6 sections) and possibly <code>people-table.tsx</code>'s PersonEditor (also dense, per the consistency audit) are the real candidates.</p>
+</main>
+
+<script>
+  function showPanel(which) {
+    document.getElementById('panelCurrent').style.display = which === 'current' ? '' : 'none';
+    document.getElementById('panelProposed').style.display = which === 'proposed' ? '' : 'none';
+    document.getElementById('btnCurrent').classList.toggle('active', which === 'current');
+    document.getElementById('btnProposed').classList.toggle('active', which === 'proposed');
+  }
+
+  // Build the rail + scroll-spy for the proposed panel.
+  (function () {
+    var titles = ['Identity', 'Demographics', 'Contact', 'Things We Should Know', 'Parents / Guardians', 'Status'];
+    var rail = document.getElementById('rail');
+    titles.forEach(function (t, i) {
+      var b = document.createElement('button');
+      b.className = 'railItem' + (i === 0 ? ' railActive' : '');
+      b.type = 'button';
+      b.dataset.sec = i;
+      b.innerHTML = '<span class="num">' + (i + 1) + '</span><span>' + t + '</span>';
+      b.addEventListener('click', function () {
+        document.getElementById('sec-' + i).scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      rail.appendChild(b);
+    });
+
+    var scrollArea = document.getElementById('scrollArea');
+    var railItems = rail.querySelectorAll('.railItem');
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          var idx = entry.target.dataset.sec;
+          railItems.forEach(function (ri) { ri.classList.toggle('railActive', ri.dataset.sec === idx); });
+        }
+      });
+    }, { root: scrollArea, threshold: 0.5 });
+    document.querySelectorAll('.sectionCard').forEach(function (sc) { observer.observe(sc); });
+  })();
+</script>
+</body>
+</html>

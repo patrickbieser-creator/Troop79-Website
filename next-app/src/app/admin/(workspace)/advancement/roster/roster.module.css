@@ -198,6 +198,13 @@
 }
 .editDialog::backdrop { background: rgba(0, 0, 0, .42); }
 
+/* Modifier for the section-card + rail treatment (Plans/Admin-Nav-And-Consistency.md,
+   Section 3) — the rail needs to stay in view while only the section cards scroll
+   underneath it, so this dialog scrolls internally (.editScrollArea, in
+   lookups.module.css, imported by scout-form.tsx) instead of at the <dialog> level.
+   Applied alongside .editDialog, not replacing it — width/max-height are unchanged. */
+.editDialogRosterFixed { overflow: hidden; }
+
 .deleteBtn {
   background: var(--admin-white); color: var(--admin-gray-600);
   border: 1px solid var(--admin-gray-200); border-radius: 5px;
