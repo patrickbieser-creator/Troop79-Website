@@ -65,9 +65,23 @@ export interface AdminActor {
  * news.publish collapsed into one capability — meant converting any News
  * guard would have handed a shared-password holder publish and delete. The
  * role was retired rather than the guard kept.
+ *
+ * finance.manage / finance.view are EXCLUDED here (qa-lead, 2026-08-18,
+ * pre-production BLOCK finding) — the "grants full admin today" rationale
+ * above only holds for capabilities LEADER_PASSWORD already implicitly
+ * granted before capabilities existed. Troop Finances did not exist under
+ * the old system; nothing was ever "already granted" for it. Auto-including
+ * it here would hand every one of the troop's ~10 leaders full financial
+ * write/export access through one shared password, directly contradicting
+ * the explicit, hand-picked grant list (Patrick, Jason, Mindy —
+ * Plans/Troop-Finances.md Decisions §3). A future capability added to this
+ * codebase should default to the SAME exclusion unless it genuinely was
+ * part of what the legacy password already did.
  */
+const LEGACY_EXCLUDED: ReadonlySet<Capability> = new Set(['finance.manage', 'finance.view']);
+
 function legacyCapabilities(): Set<Capability> {
-  return new Set(CAPABILITIES);
+  return new Set(CAPABILITIES.filter((c) => !LEGACY_EXCLUDED.has(c)));
 }
 
 /**

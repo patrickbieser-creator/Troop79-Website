@@ -13,7 +13,9 @@ const SHORT: Record<Capability, string> = {
   'news.write': 'News',
   'meeting_plan.use': 'Mtg Plan',
   'library.moderate': 'Library',
-  'library.proxy_view': 'Proxy'
+  'library.proxy_view': 'Proxy',
+  'finance.manage': 'Finance',
+  'finance.view': 'Fin. View'
 };
 
 export interface AccessTableProps {

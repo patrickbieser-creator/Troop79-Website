@@ -1,0 +1,146 @@
+.success {
+  background: #eef2ee;
+  border-left: 3px solid #3d7a4a;
+  padding: 0.6rem 0.9rem;
+  border-radius: 0 4px 4px 0;
+  color: #2f5f39;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.error {
+  background: #fdf0ef;
+  border-left: 3px solid #8c3b3b;
+  padding: 0.6rem 0.9rem;
+  border-radius: 0 4px 4px 0;
+  color: #8c3b3b;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.9rem;
+  border: 1px solid var(--rule, #e4d9c4);
+  border-radius: 6px;
+  background: #fff;
+  padding: 1.1rem 1.2rem;
+  margin-bottom: 2rem;
+  align-items: end;
+}
+.form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-meta, #857c6c);
+}
+.form input,
+.form textarea {
+  border: 1px solid var(--rule, #e4d9c4);
+  border-radius: 4px;
+  padding: 0.5rem 0.6rem;
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 400;
+  color: #1a1a1a;
+  resize: vertical;
+}
+.wide {
+  grid-column: 1 / -1;
+}
+
+.historyHeading {
+  font-size: 1.1rem;
+  color: var(--navy, #22333b);
+  margin: 0 0 0.9rem;
+}
+
+.requestList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.requestItem {
+  border: 1px solid var(--rule, #e4d9c4);
+  border-radius: 6px;
+  background: #fff;
+  padding: 0.85rem 1rem;
+}
+
+.requestHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.3rem;
+}
+
+.requestAmount {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--navy, #22333b);
+}
+
+.requestDesc {
+  margin: 0;
+  font-size: 0.92rem;
+  color: #444;
+  line-height: 1.5;
+}
+
+.denialReason {
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
+  color: #8c3b3b;
+}
+
+.statusTag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+  background: #ece5d6;
+  color: #6b6355;
+}
+.status_submitted {
+  background: #fdf3d6;
+  color: #8b6914;
+}
+.status_approved {
+  background: #e3eee5;
+  color: #3d7a4a;
+}
+.status_paid {
+  background: #e0e7ef;
+  color: #22333b;
+}
+.status_denied {
+  background: #fdece9;
+  color: #8c3b3b;
+}
+.status_withdrawn {
+  background: #ece5d6;
+  color: #857c6c;
+}
+
+.withdrawBtn {
+  margin-top: 0.5rem;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.85rem;
+  color: #8c3b3b;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}

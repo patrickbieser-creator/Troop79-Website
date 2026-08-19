@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { setEntryFlag, cancelEntry, restoreEntry } from '../../events/actions';
+import { recordEventFeePaymentAction, voidEventFeePaymentAction } from '../../finance/actions';
+import type { TransactionMethod } from '@/lib/finance';
 import type { RosterRow } from './page';
 import styles from '../../events/events-admin.module.css';
 
@@ -27,6 +29,71 @@ export function RosterTable({
   // Two-click confirm rather than a modal: a stray click shouldn't drop
   // someone from a trip, but a dialog for every removal is heavy.
   const [confirming, setConfirming] = useState<number | null>(null);
+
+  // Marking payment received needs a method + amount, which a bare
+  // checkbox can't collect (Plans/Troop-Finances.md Phase 2 event-fee
+  // integration) — checking the box opens this dialog instead of writing
+  // the flag directly; un-checking voids the linked transaction and needs
+  // no prompt.
+  const [payingRow, setPayingRow] = useState<RosterRow | null>(null);
+  const [payMethod, setPayMethod] = useState<TransactionMethod>('venmo');
+  const [payAmountText, setPayAmountText] = useState('');
+  const payDialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dlg = payDialogRef.current;
+    if (!dlg) return;
+    if (payingRow && !dlg.open) dlg.showModal();
+    if (!payingRow && dlg.open) dlg.close();
+  }, [payingRow]);
+
+  function openPayDialog(r: RosterRow) {
+    setPayMethod('venmo');
+    setPayAmountText(String(r.owed));
+    setPayingRow(r);
+  }
+
+  function confirmPayment() {
+    if (!payingRow) return;
+    const amount = Number(payAmountText);
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    const row = payingRow;
+    start(async () => {
+      setError(null);
+      try {
+        // requireAnyOf() throws (rather than returning ok:false) when the
+        // actor lacks calendar.write/finance.manage entirely — a leader
+        // without either capability shouldn't see this button, but the
+        // server action re-checks regardless, and a bare throw here would
+        // otherwise surface as an unhandled rejection instead of the same
+        // friendly error banner every other failure uses.
+        const res = await recordEventFeePaymentAction({
+          signupEntryId: row.id,
+          amount,
+          method: payMethod,
+          signupId
+        });
+        if (!res.ok) setError(res.error ?? 'Could not record payment.');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Could not record payment.');
+      }
+      setPayingRow(null);
+      router.refresh();
+    });
+  }
+
+  function unmarkPayment(r: RosterRow) {
+    start(async () => {
+      setError(null);
+      try {
+        const res = await voidEventFeePaymentAction(r.id, signupId);
+        if (!res.ok) setError(res.error ?? 'Could not undo payment.');
+        else router.refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Could not undo payment.');
+      }
+    });
+  }
 
   const sorted = [...rows].sort(
     (a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name)
@@ -141,7 +208,7 @@ export function RosterTable({
                   checked={r.paymentReceived}
                   disabled={pending || r.owed === 0}
                   aria-label={`Payment received — ${r.name}`}
-                  onChange={(e) => toggle(r, 'payment_received', e.target.checked)}
+                  onChange={(e) => (e.target.checked ? openPayDialog(r) : unmarkPayment(r))}
                 />
               </td>
               <td className={styles.nowrap}>
@@ -226,6 +293,50 @@ export function RosterTable({
           </ul>
         </div>
       )}
+
+      <dialog
+        ref={payDialogRef}
+        className={styles.payDialog}
+        onClose={() => setPayingRow(null)}
+        onClick={(e) => {
+          if (e.target === payDialogRef.current) setPayingRow(null);
+        }}
+      >
+        {payingRow && (
+          <div className={styles.payDialogInner}>
+            <h3>Record payment — {payingRow.name}</h3>
+            <label className={styles.payField}>
+              Method
+              <select value={payMethod} onChange={(e) => setPayMethod(e.target.value as TransactionMethod)}>
+                <option value="venmo">Venmo</option>
+                <option value="check">Check</option>
+                <option value="cash">Cash</option>
+                <option value="scout_account">Scout account balance</option>
+                <option value="bank">Bank transfer</option>
+                <option value="other">Other</option>
+              </select>
+            </label>
+            <label className={styles.payField}>
+              Amount
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={payAmountText}
+                onChange={(e) => setPayAmountText(e.target.value)}
+              />
+            </label>
+            <div className={styles.payDialogActions}>
+              <button type="button" className={styles.rowEdit} onClick={() => setPayingRow(null)}>
+                Cancel
+              </button>
+              <button type="button" className={styles.enableBtn} disabled={pending} onClick={confirmPayment}>
+                Record payment
+              </button>
+            </div>
+          </div>
+        )}
+      </dialog>
     </section>
   );
 }

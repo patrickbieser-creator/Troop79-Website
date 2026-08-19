@@ -78,4 +78,34 @@ describe('admin sub-nav capability filtering', () => {
     expect(out[0].title).toBe('Setup');
   });
 
+  // Troop Finances (Plans/Troop-Finances.md) — qa-lead, 2026-08-18: a legacy
+  // LEADER_PASSWORD session is fullAdmin but was never granted finance.manage
+  // (see lib/admin-actor.ts's LEGACY_EXCLUDED). Without this exclusion the
+  // nav would show a Ledger link that throws when a legacy leader clicks it.
+  const FINANCE_SECTIONS = [
+    {
+      title: 'Finance',
+      items: [{ label: 'Ledger', href: '/e', capability: 'finance.manage' as Capability }]
+    },
+    {
+      title: 'Entry',
+      items: [{ label: 'Fast Entry', href: '/a', capability: 'advancement.write' as Capability }]
+    }
+  ];
+
+  it('FullAdmin_HidesFinanceLink_WhenActorLacksFinanceCapability', () => {
+    const out = visibleNavSections(FINANCE_SECTIONS, {
+      fullAdmin: true,
+      capabilities: new Set<Capability>() // e.g. a legacy LEADER_PASSWORD actor
+    });
+    expect(labels(out)).toEqual(['Fast Entry']);
+  });
+
+  it('FullAdmin_ShowsFinanceLink_WhenActorGenuinelyHoldsFinanceCapability', () => {
+    const out = visibleNavSections(FINANCE_SECTIONS, {
+      fullAdmin: true,
+      capabilities: new Set<Capability>(['finance.manage'])
+    });
+    expect(labels(out)).toEqual(['Ledger', 'Fast Entry']);
+  });
 });

@@ -1,0 +1,83 @@
+/* Header and rows share this exact grid definition — the previous version
+   mixed a native <table> header with a CSS-grid <details> body and the two
+   layout systems never guaranteed matching column boundaries (Patrick,
+   2026-08-18: "headers and data do not align"). One shared class, used by
+   both, fixes that by construction rather than by tuning widths to match. */
+.reportGrid {
+  display: grid;
+  grid-template-columns: 2fr 1.4fr 1fr 1fr 1fr 1fr;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.wrap {
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow-sm);
+  overflow: hidden;
+}
+
+.headerRow {
+  padding: 10px 12px;
+  background: var(--admin-gray-50);
+  border-bottom: 2px solid var(--admin-gray-200);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--admin-gray-700);
+}
+
+.row {
+  border-bottom: 1px solid var(--admin-gray-100);
+}
+.row:last-child {
+  border-bottom: none;
+}
+
+.summaryRow {
+  cursor: pointer;
+  padding: 10px 12px;
+  list-style: none;
+}
+.summaryRow::-webkit-details-marker {
+  display: none;
+}
+.summaryRow:hover {
+  background: var(--admin-gray-50);
+}
+
+.numCell {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.activityName {
+  font-weight: 600;
+  color: var(--admin-gray-900);
+}
+
+.dateRange {
+  font-size: 12px;
+  color: var(--admin-gray-500);
+  white-space: nowrap;
+}
+
+.negative {
+  color: var(--admin-danger);
+}
+
+.breakdown {
+  list-style: none;
+  margin: 0;
+  padding: 8px 12px 12px 24px;
+  font-size: 12px;
+  color: var(--admin-gray-700);
+  background: var(--admin-gray-50);
+  border-top: 1px solid var(--admin-gray-100);
+}
+.breakdown li {
+  padding: 2px 0;
+}

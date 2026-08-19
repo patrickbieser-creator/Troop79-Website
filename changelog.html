@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 17, 2026</strong></p>
+      <p>Last updated: <strong>August 18, 2026</strong></p>
     </div>
   </div>
 
@@ -494,6 +494,76 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.49.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.49.0</span>
+        <span class="release-date">August 18, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Troop Finances &mdash; the treasurer&rsquo;s spreadsheet is retired</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>One ledger for every dollar the troop moves</strong> &mdash; Landmark checking,
+              Landmark savings, and the notional per-scout and Scholarship Fund sub-balances all live
+              in a single table now, derived from summed transactions rather than a stored running
+              total. Treasurers (Patrick, Jason, Mindy) get a full write surface at
+              <strong>Leader Workspace &rarr; Finance &rarr; Ledger</strong>: record a transaction,
+              transfer between checking and savings, run a monthly reconciliation against the bank
+              statement, void a mistake without ever hard-deleting it, edit a typo in place, sort and
+              filter the ledger, and export a full CSV backup.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>646 historical transactions imported</strong> &mdash; the entire CashFlow history
+              from the old spreadsheet, cross-checked against the spreadsheet&rsquo;s own Dashboard
+              totals for checking, savings, and every scout&rsquo;s balance before going live. No
+              online payment collection in this build (deferred, not rejected) and no dues/registration
+              tracking &mdash; the troop doesn&rsquo;t collect dues, and BSA registration already lives
+              in a separate system.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Every family can see their scout&rsquo;s account</strong> at
+              <strong>My Family &rarr; Scout Account</strong> &mdash; balance, running history, what
+              they owe or are owed. Event-fee payments now write a real linked transaction instead of
+              just flipping a checkbox, so the roster&rsquo;s &ldquo;payment received&rdquo; tick and
+              the ledger can never quietly drift apart.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Reimbursement requests, start to finish</strong> &mdash; a family or leader
+              submits an expense with a photographed receipt at
+              <strong>My Family &rarr; Reimbursements</strong>; treasurers approve, deny, or mark paid
+              from a dedicated queue. Marking paid writes the payout transaction and closes the request
+              atomically &mdash; there is no way for one to happen without the other.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Activity Report</strong> groups income and expense by event (Fall Campout, Can
+              Drive, and so on), with a date range and a per-account breakdown for each &mdash; the
+              answer to &ldquo;how did this fundraiser actually do?&rdquo; without opening a
+              spreadsheet.
+            </span>
+          </li>
+          <li>
+            <span>
+              Dashboard gained <strong>Total Funds</strong> and <strong>Available Funds</strong> cards
+              (Available = Total Funds minus scout &amp; scholarship balances &mdash; the money that&rsquo;s
+              actually the troop&rsquo;s to spend), and merged the Scout Accounts / Scholarship Fund
+              cards into one, since Scholarship is earmarked scout money, not troop-discretionary cash.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

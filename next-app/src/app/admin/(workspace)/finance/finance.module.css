@@ -1,0 +1,366 @@
+/* Troop Finances — read-only ledger (Phase 1). Mirrors the Universal
+   Ledger's table/pager patterns for visual consistency across /admin. */
+
+.pageTitle {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  border-bottom: 1px solid var(--admin-gray-200);
+  padding-bottom: 14px;
+  margin-bottom: 20px;
+}
+.pageTitle h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--admin-navy);
+  margin-bottom: 4px;
+}
+.pageTitle p {
+  font-size: 13px;
+  color: var(--admin-gray-500);
+  max-width: 720px;
+  line-height: 1.5;
+}
+
+.balanceGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.balanceCard {
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow-sm);
+  padding: 12px 14px;
+}
+.balanceLabel {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--admin-gray-500);
+  margin-bottom: 4px;
+}
+.balanceValue {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--admin-navy);
+  font-variant-numeric: tabular-nums;
+}
+.balanceCardEmphasis {
+  border-color: var(--admin-navy);
+  border-width: 2px;
+}
+.balanceSubtext {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--admin-gray-500);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.select {
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  padding: 7px 10px;
+  font-family: inherit;
+  font-size: 13px;
+  background: var(--admin-white);
+  color: var(--admin-gray-700);
+  min-height: 34px;
+}
+.select:focus {
+  outline: none;
+  border-color: var(--admin-navy);
+}
+
+.tableWrap {
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow-sm);
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.table th,
+.table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--admin-gray-100);
+  text-align: left;
+}
+.table th {
+  background: var(--admin-gray-50);
+  border-bottom: 2px solid var(--admin-gray-200);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--admin-gray-700);
+  white-space: nowrap;
+}
+.table th a {
+  color: inherit;
+  text-decoration: none;
+}
+.table th a:hover {
+  color: var(--admin-navy);
+}
+.sortAsc::after {
+  content: ' \25B2';
+  font-size: 9px;
+  opacity: 0.65;
+}
+.sortDesc::after {
+  content: ' \25BC';
+  font-size: 9px;
+  opacity: 0.65;
+}
+.numCell {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.nowrap {
+  white-space: nowrap;
+}
+.kindPill {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 8px;
+  background: var(--admin-gray-100);
+  color: var(--admin-gray-700);
+}
+.voidedRow {
+  background: var(--admin-gray-50);
+  color: var(--admin-gray-500);
+  font-style: italic;
+}
+.voidedRow td:first-child::before {
+  content: '⊘ ';
+  color: var(--admin-danger);
+  font-style: normal;
+}
+.empty {
+  padding: 36px 16px;
+  text-align: center;
+  color: var(--admin-gray-500);
+  font-style: italic;
+}
+
+.formPanel {
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow-sm);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+.formPanel summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--admin-navy);
+}
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px 14px;
+  margin-top: 12px;
+  align-items: end;
+}
+.formGrid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--admin-gray-500);
+}
+.formGrid input,
+.formGrid select {
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  padding: 7px 9px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--admin-gray-900);
+  background: var(--admin-white);
+}
+.formGridWide {
+  grid-column: span 2;
+}
+.headerActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+.optionalHint {
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+}
+
+.editDialog {
+  padding: 18px 20px;
+  border: none;
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow-md);
+  width: 92vw;
+  max-width: 640px;
+  background: var(--admin-white);
+}
+.editDialog::backdrop {
+  background: rgba(0, 0, 0, 0.4);
+}
+.editDialogTitle {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--admin-navy);
+}
+.editDialogActions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.reconList {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  font-size: 13px;
+  color: var(--admin-gray-700);
+}
+.reconList li {
+  padding: 4px 0;
+}
+.driftWarn {
+  color: var(--admin-danger);
+  font-weight: 700;
+}
+
+.infoCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.infoBubble {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid var(--admin-gray-300);
+  background: var(--admin-white);
+  color: var(--admin-gray-500);
+  font-family: 'Georgia', serif;
+  font-style: italic;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+.infoBubble:hover {
+  background: var(--admin-navy);
+  border-color: var(--admin-navy);
+  color: var(--admin-white);
+}
+.infoDialog {
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  box-shadow: var(--admin-shadow-md);
+  max-width: 560px;
+  width: 92vw;
+}
+.infoDialog::backdrop {
+  background: rgba(0, 0, 0, 0.4);
+}
+.infoDialogInner {
+  padding: 24px 28px 18px;
+  font-family: inherit;
+}
+.infoDialogFull {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--admin-gray-900);
+  margin-bottom: 18px;
+  white-space: pre-wrap;
+}
+.infoDialogActions {
+  display: flex;
+  justify-content: flex-end;
+}
+.infoDialogClose {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: var(--admin-navy);
+  color: var(--admin-white);
+  border: none;
+  padding: 8px 18px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.infoDialogClose:hover {
+  background: var(--admin-navy-hover);
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--admin-gray-500);
+}
+.pagerBtn {
+  display: inline-block;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  color: var(--admin-gray-700);
+  background: var(--admin-white);
+  cursor: pointer;
+}
+.pagerBtn:hover {
+  border-color: var(--admin-navy);
+  color: var(--admin-navy);
+}
+.pagerBtnDisabled {
+  pointer-events: none;
+  opacity: 0.5;
+}

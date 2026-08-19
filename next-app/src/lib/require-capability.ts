@@ -29,6 +29,22 @@ export async function requireCapability(capability: Capability): Promise<AdminAc
   return actor;
 }
 
+/**
+ * Any ONE of a specific set — for a screen with a read/write split
+ * (finance.manage OR finance.view can both reach the ledger; only
+ * finance.manage can post to it). Distinct from requireAnyCapability(),
+ * which means "any capability at all, i.e. may this person be in /admin".
+ */
+export async function requireAnyOf(capabilities: readonly Capability[]): Promise<AdminActor> {
+  const actor = await resolveAdminActor();
+  if (!actor) throw new Error('Not authenticated');
+  if (!capabilities.some((c) => actor.capabilities.has(c))) {
+    const labels = capabilities.map((c) => CAPABILITY_LABEL[c]).join(' or ');
+    throw new Error(`This action requires: ${labels}.`);
+  }
+  return actor;
+}
+
 /** Any capability at all — the "may this person be in /admin" question. */
 export async function requireAnyCapability(): Promise<AdminActor> {
   const actor = await resolveAdminActor();

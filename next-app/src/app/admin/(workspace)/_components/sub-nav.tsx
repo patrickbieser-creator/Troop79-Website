@@ -175,6 +175,38 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
     ]
   },
   {
+    title: 'Finance',
+    items: [
+      {
+        // Ships dark in Phase 1 (Plans/Troop-Finances.md) — read-only ledger
+        // only, no write UI yet. Gated on finance.manage for nav visibility;
+        // the page itself also accepts finance.view (nobody holds it at
+        // launch, so this is a distinction without a difference for now —
+        // see the page's requireAnyOf call, which is the real boundary).
+        label: 'Ledger',
+        href: '/admin/finance',
+        matchPath: '/admin/finance',
+        capability: 'finance.manage'
+      },
+      {
+        // Phase 4 — approve/deny/pay queue. Same finance.manage gate.
+        label: 'Reimbursements',
+        href: '/admin/finance/reimbursements',
+        matchPath: '/admin/finance/reimbursements',
+        capability: 'finance.manage'
+      },
+      {
+        // Phase 6 — read-only, so also reachable by finance.view; nav
+        // visibility still keys off finance.manage like the rest of this
+        // section (nobody holds finance.view at launch — see Ledger's note).
+        label: 'Activity Report',
+        href: '/admin/finance/report',
+        matchPath: '/admin/finance/report',
+        capability: 'finance.manage'
+      }
+    ]
+  },
+  {
     title: 'Output',
     items: [
       {
@@ -217,11 +249,25 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
 ];
 
 /**
+ * finance.manage / finance.view never come "for free" with fullAdmin, even
+ * though every other capability does (qa-lead, 2026-08-18, pre-production
+ * BLOCK finding, same root cause as admin-actor.ts's LEGACY_EXCLUDED — a
+ * legacy LEADER_PASSWORD session was never granted these, so showing the
+ * link is a dead end that throws when clicked, not a real capability). Kept
+ * as its own list rather than reusing admin-actor.ts's, deliberately: this
+ * one drives nav VISIBILITY, that one drives the actual grant — a future
+ * capability could reasonably need different treatment in each.
+ */
+const NEVER_IMPLIED_BY_FULL_ADMIN: ReadonlySet<Capability> = new Set(['finance.manage', 'finance.view']);
+
+/**
  * Which nav items this actor should see.
  *
  * `fullAdmin` covers both a legacy LEADER_PASSWORD session and an identity
  * actor holding every capability — they see everything, including the
  * disabled "Soon" placeholders that carry no capability of their own.
+ * Exception: NEVER_IMPLIED_BY_FULL_ADMIN items still need the actor's real
+ * capability set even under fullAdmin.
  *
  * Everyone else sees exactly the items whose capability they hold. This is
  * NOT the security boundary — each page's requireCapability() is; the nav
@@ -231,7 +277,19 @@ export function visibleNavSections(
   sections: typeof SECTIONS,
   opts: { fullAdmin: boolean; capabilities: ReadonlySet<Capability> }
 ) {
-  if (opts.fullAdmin) return sections;
+  if (opts.fullAdmin) {
+    return sections
+      .map((s) => ({
+        ...s,
+        items: s.items.filter(
+          (i) =>
+            i.capability == null ||
+            !NEVER_IMPLIED_BY_FULL_ADMIN.has(i.capability) ||
+            opts.capabilities.has(i.capability)
+        )
+      }))
+      .filter((s) => s.items.length > 0);
+  }
   return sections
     .map((s) => ({
       ...s,

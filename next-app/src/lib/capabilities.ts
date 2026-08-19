@@ -25,7 +25,9 @@ export const CAPABILITIES = [
   'news.write',
   'meeting_plan.use',
   'library.moderate',
-  'library.proxy_view'
+  'library.proxy_view',
+  'finance.manage',
+  'finance.view'
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];
@@ -42,7 +44,9 @@ export const CAPABILITY_LABEL: Record<Capability, string> = {
   'news.write': 'Publish news',
   'meeting_plan.use': 'Generate meeting plans',
   'library.moderate': 'Moderate the Library',
-  'library.proxy_view': 'View the Library as a scout'
+  'library.proxy_view': 'View the Library as a scout',
+  'finance.manage': 'Manage troop finances',
+  'finance.view': 'View troop finances (read-only)'
 };
 
 /**
@@ -79,6 +83,10 @@ export const BUNDLES: Record<string, { label: string; capabilities: readonly Cap
   librarian: {
     label: 'Librarian',
     capabilities: ['library.moderate', 'library.proxy_view']
+  },
+  treasurer: {
+    label: 'Treasurer',
+    capabilities: ['finance.manage']
   },
   troop_admin: {
     label: 'Troop admin',

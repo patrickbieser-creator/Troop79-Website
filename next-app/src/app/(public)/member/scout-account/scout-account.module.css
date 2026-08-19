@@ -1,0 +1,115 @@
+.proxyForm {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.proxyForm select {
+  border: 1px solid var(--rule, #e4d9c4);
+  border-radius: 4px;
+  padding: 0.4rem 0.6rem;
+  font-family: inherit;
+  font-size: 0.88rem;
+}
+.proxyForm button {
+  background: var(--navy, #22333b);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.45rem 0.9rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.proxyBanner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: #fdf6e3;
+  border: 1px solid #e8d9a8;
+  border-radius: 6px;
+  padding: 0.7rem 1rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.9rem;
+}
+
+.balanceGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.balanceCard {
+  border: 1px solid var(--rule, #e4d9c4);
+  border-radius: 6px;
+  background: #fff;
+  padding: 1rem 1.1rem;
+}
+
+.balanceLabel {
+  margin: 0 0 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-meta, #857c6c);
+}
+
+.balanceValue {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--navy, #22333b);
+  font-variant-numeric: tabular-nums;
+}
+
+.tableWrap {
+  border: 1px solid var(--rule, #e4d9c4);
+  border-radius: 6px;
+  background: #fff;
+  overflow-x: auto;
+  margin-bottom: 1.5rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.table th,
+.table td {
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid var(--rule, #efe7d8);
+  text-align: left;
+}
+
+.table th {
+  background: #faf7f1;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-meta, #857c6c);
+  white-space: nowrap;
+}
+
+.numCell {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--text-meta, #857c6c);
+  font-style: italic;
+}

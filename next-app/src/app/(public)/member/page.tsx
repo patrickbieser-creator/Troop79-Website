@@ -3,11 +3,12 @@
  *
  * One place a family lands after signing in, rather than having to know that
  * their household details live at /profile and nothing else has a home yet.
- * Most of what belongs here does not exist: Scout account balances, paying
- * for a campout, national registration status, health form dates, wreath
- * sale. Those are listed as "coming soon" ON PURPOSE — a member who can see
- * what is planned stops asking whether the site does it, and it costs nothing
- * to say.
+ * Scout account balances now live at /member/scout-account
+ * (Plans/Troop-Finances.md Phase 3) — the rest of what belongs here still
+ * does not exist: paying for a campout, national registration status,
+ * health form dates, wreath sale. Those stay listed as "coming soon" ON
+ * PURPOSE — a member who can see what is planned stops asking whether the
+ * site does it, and it costs nothing to say.
  *
  * Access is a VERIFIED identity, adult or scout. The troop password is not
  * enough: everything reachable from here is that person's own record.
@@ -59,7 +60,13 @@ const CARDS: Card[] = [
   },
   {
     title: 'Scout account',
-    body: 'What’s in your scout’s account from fundraising, and what it has been spent on.'
+    body: 'What’s in your scout’s account from fundraising, and what it has been spent on.',
+    href: '/member/scout-account'
+  },
+  {
+    title: 'Reimbursements',
+    body: 'Paid for something out of pocket for the troop? Submit it with a receipt and track it here.',
+    href: '/member/reimbursements'
   },
   {
     title: 'Pay for a campout',
