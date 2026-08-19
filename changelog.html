@@ -497,6 +497,40 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.50.2 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.50.2</span>
+        <span class="release-date">August 19, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Fix</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Full merit badge no longer requires re-checking every requirement</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Checking &ldquo;Full merit badge earned&rdquo; is sufficient on its own now</strong>
+              &mdash; in Scout-First and bulk entry alike, for a scout with no individual
+              requirements already touched for that badge. Previously the save was rejected
+              unless every requirement was also checked in the same batch, forcing a leader to
+              hand-check (or &ldquo;Select all&rdquo;) every requirement just to record a badge
+              earned as one fact &mdash; a summer-camp blue card, for instance &mdash; and
+              cluttering the ledger with every individual requirement alongside it.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Partial progress still gets the full check.</strong> A scout who already
+              has some (not all) requirements signed off individually still needs every
+              requirement satisfied before the badge can be awarded, exactly as before &mdash;
+              only a clean slate skips the requirement-by-requirement gate. Rank awards are
+              untouched either way.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.50.1 -->
     <div class="release">
       <div class="release-header">

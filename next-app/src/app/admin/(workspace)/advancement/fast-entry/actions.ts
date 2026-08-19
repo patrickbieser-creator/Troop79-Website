@@ -197,13 +197,39 @@ interface CatalogReqWithChildren extends CatalogReqRow {
 }
 
 /**
- * Server-side award-gating validator. For each MB/rank award row in the
+ * Server-side award-gating validator. For each award row (MB or rank) in the
  * batch, loads the catalog tree + the scout's already-completed leaf codes
- * (from ledger_active) and checks every top-level parent is satisfied per
- * its complete_rule. Pending non-award rows in this same batch count toward
+ * (from ledger_active) and checks every top-level parent is satisfied per its
+ * complete_rule. Pending non-award rows in this same batch count toward
  * satisfaction.
+ *
+ * MERIT BADGE awards are conditionally leaf-gated (Patrick, 2026-08-19, refined
+ * same day). Checking "Full merit badge earned" in the picker used to force a
+ * leader to also check (or "Select all") every individual requirement just to
+ * pass this gate — cluttering the ledger with N extra `merit_badge_requirement`
+ * rows for a badge that was earned as one fact (e.g. a summer-camp blue card,
+ * signed by an authorized counselor who has already verified every
+ * requirement). This matches how the rest of the app already treats a
+ * merit_badge_award row: `mb_progress` (20260719060000) derives `awarded`
+ * purely from the award row's presence, independent of whether any
+ * `has_any_req` leaf rows exist at all.
+ *
+ * BUT: the bypass only applies on a clean slate — zero completed AND zero
+ * pending leaf rows for that badge. If the scout already has SOME (not all)
+ * requirements signed off individually, the full leaf-satisfaction check
+ * below still runs, same as before the fix. Partial progress abandoned in
+ * favor of a one-click award reads as a mistake (premature click, wrong
+ * scout), not a clean "earned as one fact" case — Patrick's own framing, not
+ * an inferred rule.
+ *
+ * Rank awards keep the leaf gate unconditionally: unlike an MB counselor's
+ * sign-off, this app's rank model is that requirements are signed off
+ * progressively and the Board of Review reviews already-completed work (see
+ * the ledger_auto_rank_award trigger), so an ungated rank award would be a
+ * real skip-the-work path in a way an MB award checked by a leader who
+ * already holds the blue card is not.
  */
-async function validateAwardRows(
+export async function validateAwardRows(
   supabase: ReturnType<typeof createAdminClient>,
   items: EntryToInsert[]
 ): Promise<AwardGateError[]> {
@@ -226,8 +252,8 @@ async function validateAwardRows(
   }
   if (awards.length === 0) return [];
 
-  // Track pending leaf codes per scout, drawn from the OTHER (non-award)
-  // rows in this same batch.
+  // Track pending leaf codes per scout, drawn from the OTHER (non-award) rows
+  // in this same batch.
   const pendingByScout = new Map<string, Set<string>>();
   for (const it of items) {
     if (it.kind === 'merit_badge_requirement' || it.kind === 'rank_requirement') {
@@ -287,13 +313,27 @@ async function validateAwardRows(
   for (const a of awards) {
     if (a.kind === 'merit_badge_award') {
       const mbId = a.code.startsWith('MB:') ? a.code.slice(3) : a.code;
+      const completed = completedByScout.get(a.scoutId) ?? new Set();
+      const pending = pendingByScout.get(a.scoutId) ?? new Set();
+      const prefix = `${mbId}-`;
+      const hasAnyLeafActivity =
+        [...completed].some((c) => c.startsWith(prefix)) || [...pending].some((c) => c.startsWith(prefix));
+
+      if (!hasAnyLeafActivity) {
+        // Clean slate — no individual requirement touched at all. Trust the
+        // explicit "Full merit badge earned" check as sufficient on its own
+        // (see this function's header comment).
+        continue;
+      }
+
+      // Partial progress already exists for this badge — fall back to the
+      // full leaf-satisfaction check, same as before the fix (Patrick's
+      // clarification, 2026-08-19).
       let tree = mbTrees.get(mbId);
       if (!tree) {
         tree = await loadTree('merit_badge_requirements', 'mb_id', mbId);
         mbTrees.set(mbId, tree);
       }
-      const completed = completedByScout.get(a.scoutId) ?? new Set();
-      const pending = pendingByScout.get(a.scoutId) ?? new Set();
       const hasKey = (rawCode: string) =>
         completed.has(`${mbId}-${rawCode}`) || pending.has(`${mbId}-${rawCode}`);
       for (const top of tree) {
