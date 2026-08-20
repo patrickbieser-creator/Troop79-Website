@@ -22,8 +22,6 @@ import {
   TRANSACTION_KINDS,
   TRANSACTION_KIND_LABELS,
   TRANSACTION_METHODS,
-  KIND_IMPLIED_DIRECTION,
-  kindDirectionMismatch,
   type Account,
   type TransactionKind,
   type TransactionMethod
@@ -199,8 +197,8 @@ export function FinanceWorkspace({
                 <td>
                   <MemoCell memo={r.memo} />
                 </td>
-                <td className={styles.numCell}>
-                  {r.amount < 0 ? `-$${Math.abs(r.amount).toFixed(2)}` : `$${r.amount.toFixed(2)}`}
+                <td className={r.amount < 0 ? `${styles.numCell} ${styles.amountOut}` : styles.numCell}>
+                  {r.amount < 0 ? `($${Math.abs(r.amount).toFixed(2)})` : `$${r.amount.toFixed(2)}`}
                 </td>
                 {canManage && (
                   <td className={styles.numCell}>
@@ -368,11 +366,7 @@ export function RecordTransactionForm({
           Kind
           <select
             value={f.kind}
-            onChange={(e) => {
-              const kind = e.target.value as TransactionKind;
-              const implied = KIND_IMPLIED_DIRECTION[kind];
-              setF((s) => ({ ...s, kind, sign: implied ?? s.sign }));
-            }}
+            onChange={(e) => setF((s) => ({ ...s, kind: e.target.value as TransactionKind }))}
           >
             {TRANSACTION_KINDS.map((k) => (
               <option key={k} value={k}>
@@ -402,11 +396,6 @@ export function RecordTransactionForm({
             <option value="in">Money in (income)</option>
           </select>
         </label>
-        {kindDirectionMismatch(f.kind, f.sign) && (
-          <p className={`${styles.formGridWide} ${styles.staleWarnNote}`}>
-            {TRANSACTION_KIND_LABELS[f.kind]} usually goes {KIND_IMPLIED_DIRECTION[f.kind] === 'in' ? 'in' : 'out'} — double-check the direction.
-          </p>
-        )}
         <label>
           Amount
           <input

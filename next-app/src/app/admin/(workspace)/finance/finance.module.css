@@ -145,6 +145,14 @@
   background: var(--admin-gray-100);
   color: var(--admin-gray-700);
 }
+/* Direction — the sign of `amount`, and nothing else (Kind carries no
+   direction of its own, 2026-08-20). Expenses (negative amounts) are the
+   minority row and get the accounting-standard treatment — red, in
+   parentheses — so they pop against a page mostly full of income. */
+.amountOut {
+  color: var(--admin-danger);
+  font-weight: 600;
+}
 .voidedRow {
   background: var(--admin-gray-50);
   color: var(--admin-gray-500);

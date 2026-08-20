@@ -23,8 +23,6 @@ import {
   TRANSACTION_KINDS,
   TRANSACTION_KIND_LABELS,
   TRANSACTION_METHODS,
-  KIND_IMPLIED_DIRECTION,
-  kindDirectionMismatch,
   type Account,
   type TransactionKind,
   type TransactionMethod
@@ -182,15 +180,7 @@ function EditTransactionForm({
       </label>
       <label>
         Kind
-        <select
-          value={kind}
-          onChange={(e) => {
-            const k = e.target.value as TransactionKind;
-            const implied = KIND_IMPLIED_DIRECTION[k];
-            setKind(k);
-            if (implied) setSign(implied);
-          }}
-        >
+        <select value={kind} onChange={(e) => setKind(e.target.value as TransactionKind)}>
           {TRANSACTION_KINDS.map((k) => (
             <option key={k} value={k}>
               {TRANSACTION_KIND_LABELS[k]}
@@ -216,12 +206,6 @@ function EditTransactionForm({
           <option value="in">Money in (income)</option>
         </select>
       </label>
-      {kindDirectionMismatch(kind, sign) && (
-        <p className={`${styles.formGridWide} ${styles.staleWarnNote}`}>
-          {TRANSACTION_KIND_LABELS[kind]} usually goes {KIND_IMPLIED_DIRECTION[kind] === 'in' ? 'in' : 'out'} —
-          double-check the direction.
-        </p>
-      )}
       <label>
         Amount
         <input

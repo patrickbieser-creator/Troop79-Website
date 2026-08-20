@@ -148,15 +148,20 @@ describe('EditTransactionDialog — Who field', () => {
   });
 });
 
-describe('EditTransactionDialog — Kind/Direction overlap', () => {
-  it('KindChange_AutoSetsDirection_ToTheImpliedOne', async () => {
-    // Row starts as event_fee/in; switching Kind to Expense should flip
-    // Direction to "out" without the treasurer touching it (Patrick,
-    // 2026-08-19: "there is an overlap between Kind and direction").
+describe('EditTransactionDialog — Kind and Direction are independent', () => {
+  /**
+   * Kind used to auto-set Direction when the picked Kind had an "implied"
+   * one — removed 2026-08-20 after it silently flipped a real transaction's
+   * signed amount when a treasurer only meant to fix its category. Kind is
+   * now purely a label; changing it must never touch Direction, and there's
+   * no more mismatch warning to show (a warning implies a "usual" direction
+   * per kind, which is exactly the coupling being removed).
+   */
+  it('KindChange_NeverTouchesDirection_RegardlessOfWhichKindIsPicked', async () => {
     const user = userEvent.setup();
     render(
       <EditTransactionDialog
-        row={checkingRow()}
+        row={checkingRow()} // event_fee, positive amount → Direction starts 'in'
         people={PEOPLE}
         reconciliation={RECONCILIATION}
         pending={false}
@@ -165,29 +170,12 @@ describe('EditTransactionDialog — Kind/Direction overlap', () => {
       />
     );
 
+    // Switching to a kind that used to imply 'out' must leave Direction at 'in'.
     await user.selectOptions(screen.getByLabelText('Kind'), 'expense');
-    expect(screen.getByLabelText('Direction')).toHaveProperty('value', 'out');
-  });
-
-  it('KindChange_LeavesDirectionAlone_ForTransferAndAdjustment', async () => {
-    const user = userEvent.setup();
-    render(
-      <EditTransactionDialog
-        row={checkingRow({ kind: 'income', amount: 100 })}
-        people={PEOPLE}
-        reconciliation={RECONCILIATION}
-        pending={false}
-        onClose={vi.fn()}
-        onSave={vi.fn()}
-      />
-    );
-    // Starts as income/in (implied 'in' matches the initial sign).
-    await user.selectOptions(screen.getByLabelText('Kind'), 'transfer');
-    // Ambiguous kind — direction stays whatever it already was ('in').
     expect(screen.getByLabelText('Direction')).toHaveProperty('value', 'in');
   });
 
-  it('Warning_AppearsWhenDirectionIsManuallySetAgainstTheKind', async () => {
+  it('NoMismatchWarning_EverAppears_ForAnyKindAndDirectionCombination', async () => {
     const user = userEvent.setup();
     render(
       <EditTransactionDialog
@@ -201,11 +189,11 @@ describe('EditTransactionDialog — Kind/Direction overlap', () => {
     );
     expect(screen.queryByText(/usually goes/i)).toBeNull();
     await user.selectOptions(screen.getByLabelText('Direction'), 'in');
-    expect(screen.getByText(/usually goes/i)).toBeTruthy();
+    // Still nothing — there is no "usual" direction for a kind anymore.
+    expect(screen.queryByText(/usually goes/i)).toBeNull();
   });
 
-  it('Warning_NeverBlocksSave_EvenWhenKindAndDirectionDisagree', async () => {
-    // Nudge, not a block — same pattern as the reconciliation warning (#7).
+  it('Save_ProceedsWithWhateverKindAndDirectionAreSelected_NeverBlocked', async () => {
     const user = userEvent.setup();
     const onSave = vi.fn();
     render(
@@ -220,6 +208,6 @@ describe('EditTransactionDialog — Kind/Direction overlap', () => {
     );
     await user.selectOptions(screen.getByLabelText('Direction'), 'in');
     await user.click(screen.getByRole('button', { name: /save changes/i }));
-    expect(onSave).toHaveBeenCalled();
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ kind: 'expense', amount: 50 }));
   });
 });

@@ -5,8 +5,6 @@ import {
   TRANSACTION_KINDS,
   TRANSACTION_METHODS,
   TRANSACTION_KIND_LABELS,
-  KIND_IMPLIED_DIRECTION,
-  kindDirectionMismatch,
   isAccount,
   computeBalance,
   computeScoutAccountBalances,
@@ -285,33 +283,6 @@ describe('editTransactionGuard (pure)', () => {
  * merge, since activity_label is free text with no FK — see the item's
  * writeup in Plans/Ledger-Tweaks.md).
  */
-describe('kindDirectionMismatch (pure)', () => {
-  it('KindDirectionMismatch_IsFalse_WhenDirectionMatchesTheImpliedOne', () => {
-    expect(kindDirectionMismatch('expense', 'out')).toBe(false);
-    expect(kindDirectionMismatch('income', 'in')).toBe(false);
-  });
-
-  it('KindDirectionMismatch_IsTrue_WhenDirectionContradictsTheImpliedOne', () => {
-    // The exact overlap complaint (Patrick, 2026-08-19): Kind=expense with
-    // Direction=in was previously possible with nothing to flag it.
-    expect(kindDirectionMismatch('expense', 'in')).toBe(true);
-    expect(kindDirectionMismatch('income', 'out')).toBe(true);
-  });
-
-  it('KindDirectionMismatch_IsAlwaysFalse_ForTransferAndAdjustment', () => {
-    // Legitimately ambiguous — no implied direction to contradict.
-    expect(kindDirectionMismatch('transfer', 'in')).toBe(false);
-    expect(kindDirectionMismatch('transfer', 'out')).toBe(false);
-    expect(kindDirectionMismatch('adjustment', 'in')).toBe(false);
-    expect(kindDirectionMismatch('adjustment', 'out')).toBe(false);
-  });
-
-  it('KindImpliedDirection_HasNoEntry_ForTransferOrAdjustment', () => {
-    expect(KIND_IMPLIED_DIRECTION.transfer).toBeUndefined();
-    expect(KIND_IMPLIED_DIRECTION.adjustment).toBeUndefined();
-  });
-});
-
 describe('validateActivityRename (pure)', () => {
   it('ValidateRename_RefusesEmptySource', () => {
     expect(validateActivityRename('  ', 'New Label')).toMatch(/source and a target/i);

@@ -59,30 +59,24 @@ export function isAccount(value: string): value is Account {
   return (ACCOUNTS as readonly string[]).includes(value);
 }
 
-/** The direction a Kind implies, when unambiguous — used to default the
- *  Direction field and to warn (never block) when a treasurer picks a
- *  combination that contradicts it (Patrick, 2026-08-19: "there is an
- *  overlap between Kind and direction... Expense should not be listed in
- *  both places"). `transfer` and `adjustment` are legitimately ambiguous —
- *  a transfer's two legs go opposite ways, an adjustment corrects either
- *  direction — and stay manually picked with no entry here. */
-export const KIND_IMPLIED_DIRECTION: Partial<Record<TransactionKind, 'in' | 'out'>> = {
-  income: 'in',
-  donation: 'in',
-  event_fee: 'in',
-  interest: 'in',
-  expense: 'out',
-  reimbursement: 'out'
-};
-
-/** True when the chosen Kind has an implied direction AND the picked sign
- *  contradicts it. Always false for transfer/adjustment (no implied
- *  direction to contradict). The Record/Edit forms show a warning — never
- *  a block — when this is true; save still proceeds. */
-export function kindDirectionMismatch(kind: TransactionKind, sign: 'in' | 'out'): boolean {
-  const implied = KIND_IMPLIED_DIRECTION[kind];
-  return implied != null && implied !== sign;
-}
+/**
+ * Kind carries NO implied direction, on purpose — removed 2026-08-20 after
+ * it caused a real bug. Kind and Direction used to overlap (Patrick,
+ * 2026-08-19: "there is an overlap between Kind and direction... Expense
+ * should not be listed in both places"), and the fix at the time was to
+ * have the Record/Edit forms auto-set Direction from Kind and warn on a
+ * mismatch. That auto-set was itself the bug: it meant recategorizing a
+ * transaction's Kind (a pure label change) could silently flip its signed
+ * amount — and did, on a real transaction, corrupting the computed balance
+ * with no warning at all (the auto-set fires FROM the mismatch, so there was
+ * never a moment to see one).
+ *
+ * The balance (computeBalance, below) has only ever summed the signed
+ * `amount` — Kind was already irrelevant to it. Removing the auto-set makes
+ * that true in the UI too: Kind is purely a tag for reconciliation and
+ * sorting; Direction (the sign of `amount`) is the only thing that decides
+ * money in vs. out, full stop, everywhere.
+ */
 
 export interface FinancialTransactionRow {
   account: Account;

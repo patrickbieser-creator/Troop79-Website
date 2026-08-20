@@ -40,36 +40,37 @@ describe('RecordTransactionForm — Who field', () => {
   });
 });
 
-describe('RecordTransactionForm — Kind/Direction overlap', () => {
-  it('KindChange_AutoSetsDirection_ToTheImpliedOne', async () => {
-    // Default state is account=checking, kind=expense, direction=out
-    // (already matching) — switch to Income and Direction should flip to in.
+describe('RecordTransactionForm — Kind and Direction are independent', () => {
+  /** Same removal as edit-transaction-dialog.test.tsx — Kind no longer
+   *  implies or auto-sets a Direction, and there is no more mismatch
+   *  warning (2026-08-20). */
+  it('KindChange_NeverTouchesDirection', async () => {
     const user = userEvent.setup();
     render(<RecordTransactionForm people={PEOPLE} activityLabels={[]} pending={false} onSubmit={vi.fn()} />);
+    // Default is kind='expense', direction='out'. Deliberately set Direction
+    // to 'in' first so a Kind change has something to (wrongly) overwrite if
+    // the coupling ever crept back in.
+    await user.selectOptions(screen.getByLabelText('Direction'), 'in');
     await user.selectOptions(screen.getByLabelText('Kind'), 'income');
     expect(screen.getByLabelText('Direction')).toHaveProperty('value', 'in');
   });
 
-  it('Warning_AppearsWhenDirectionContradictsTheKind_AndDisappearsWhenFixed', async () => {
+  it('NoMismatchWarning_EverAppears_ForAnyKindAndDirectionCombination', async () => {
     const user = userEvent.setup();
     render(<RecordTransactionForm people={PEOPLE} activityLabels={[]} pending={false} onSubmit={vi.fn()} />);
-    // Default kind='expense' auto-implies direction='out' already — no warning.
-    expect(screen.queryByText(/usually goes/i)).toBeNull();
-
+    await user.selectOptions(screen.getByLabelText('Kind'), 'expense');
     await user.selectOptions(screen.getByLabelText('Direction'), 'in');
-    expect(screen.getByText(/usually goes/i)).toBeTruthy();
-
-    await user.selectOptions(screen.getByLabelText('Direction'), 'out');
     expect(screen.queryByText(/usually goes/i)).toBeNull();
   });
 
-  it('Warning_NeverAppears_ForTransferOrAdjustment_RegardlessOfDirection', async () => {
+  it('Submit_UsesWhateverKindAndDirectionAreSelected_NeverBlocked', async () => {
     const user = userEvent.setup();
-    render(<RecordTransactionForm people={PEOPLE} activityLabels={[]} pending={false} onSubmit={vi.fn()} />);
-    await user.selectOptions(screen.getByLabelText('Kind'), 'adjustment');
-    await user.selectOptions(screen.getByLabelText('Direction'), 'in');
-    expect(screen.queryByText(/usually goes/i)).toBeNull();
+    const onSubmit = vi.fn();
+    render(<RecordTransactionForm people={PEOPLE} activityLabels={[]} pending={false} onSubmit={onSubmit} />);
+    await user.selectOptions(screen.getByLabelText('Kind'), 'income');
     await user.selectOptions(screen.getByLabelText('Direction'), 'out');
-    expect(screen.queryByText(/usually goes/i)).toBeNull();
+    await user.type(screen.getByLabelText('Amount'), '25');
+    await user.click(screen.getByRole('button', { name: /add transaction/i }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ kind: 'income', amount: -25 }));
   });
 });
