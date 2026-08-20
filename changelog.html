@@ -497,6 +497,30 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.53.1 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.53.1</span>
+        <span class="release-date">August 20, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Fix</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">&ldquo;Write the missing credit&rdquo; is clickable on pre-Roll-Call attendance rows</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              The audit&rsquo;s new resolve button required Roll Call to already have a
+              quantity on record, which historical imported attendance rows never
+              had &mdash; the button sat there disabled with no explanation. It now
+              falls back to the same default a fresh Roll Call check-in would use
+              (a meeting is 1, a campout is its own date span); only service hours,
+              which truly has no safe default, still points you back to Roll Call.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.53.0 -->
     <div class="release">
       <div class="release-header">
