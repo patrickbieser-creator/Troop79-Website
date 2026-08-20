@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { categoryColorMap, colorFor, type CalendarCategoryRow } from '@/lib/calendar-categories';
@@ -9,10 +9,12 @@ import type { ImportResult, ImportRowFields, ImportUpdate } from './actions';
 import { CalendarImport } from './calendar-import';
 import { DatePickerField } from '../_components/date-picker-field';
 import { CalendarEntryForm, type CalendarEntryRow } from './entry-form';
+import type { CalendarEntryMergePlan } from '@/lib/calendar-admin';
 import styles from './calendar.module.css';
 
 type ActionResult = { ok: boolean; error?: string };
 type CloneResult = { ok: boolean; error?: string; id?: number };
+type MergeResult = ActionResult & { needsConfirm?: boolean; plan?: CalendarEntryMergePlan };
 
 interface Props {
   rows: CalendarEntryRow[];
@@ -27,7 +29,11 @@ interface Props {
   newOpen: boolean;
   onCreate: (fd: FormData) => Promise<ActionResult>;
   onUpdate: (fd: FormData) => Promise<ActionResult>;
-  onDelete: (id: number) => Promise<ActionResult>;
+  onDelete: (
+    id: number,
+    confirm?: boolean
+  ) => Promise<ActionResult & { needsConfirm?: boolean }>;
+  onMerge: (keepId: number, loseId: number, confirm?: boolean) => Promise<MergeResult>;
   onClone: (fd: FormData) => Promise<CloneResult>;
   onSetPromoted: (id: number, on: boolean) => Promise<ActionResult>;
   onImport: (inserts: ImportRowFields[], updates: ImportUpdate[]) => Promise<ImportResult>;
@@ -64,6 +70,7 @@ export function CalendarEditor({
   onCreate,
   onUpdate,
   onDelete,
+  onMerge,
   onClone,
   onSetPromoted,
   onImport
@@ -116,6 +123,19 @@ export function CalendarEditor({
   const [busyId, setBusyId] = useState<number | null>(null);
   const [rowErr, setRowErr] = useState<{ id: number; msg: string } | null>(null);
   const [, startTransition] = useTransition();
+
+  /**
+   * Merge — the alternative to Delete for genuine duplicates. The row being
+   * acted on is always the one that goes away (loseId); mergeTarget is the
+   * entry it merges into (keepId). Two stages, like the delete confirm:
+   * a preview (plan=null → plan set) reports exactly what would move before
+   * anything happens, then a second click actually executes it.
+   */
+  const [mergeFor, setMergeFor] = useState<CalendarEntryRow | null>(null);
+  const [mergeTarget, setMergeTarget] = useState<number | ''>('');
+  const [mergePreview, setMergePreview] = useState<string | null>(null);
+  const [mergeErr, setMergeErr] = useState<string | null>(null);
+  const [mergeBusy, setMergeBusy] = useState(false);
 
   const colors = categoryColorMap(categories);
   const today = todayLocal();
@@ -189,9 +209,70 @@ export function CalendarEditor({
     setBusyId(row.id);
     setRowErr(null);
     startTransition(async () => {
-      const res = await onDelete(row.id);
+      // Dry run first: the server reports who/what is actually attached
+      // (attendance + ledger credit) before anything is destroyed. Only a
+      // second, explicit confirm proceeds past a non-empty dependency set —
+      // see deleteCalendarEntry's own comment for why (2026-08-20 incident).
+      const res = await onDelete(row.id, false);
+      if (res.ok) {
+        setBusyId(null);
+        return;
+      }
+      if (res.needsConfirm) {
+        if (!window.confirm(`${res.error}\n\nDelete anyway?`)) {
+          setBusyId(null);
+          return;
+        }
+        const confirmed = await onDelete(row.id, true);
+        setBusyId(null);
+        if (!confirmed.ok) setRowErr({ id: row.id, msg: confirmed.error ?? 'Delete failed' });
+        return;
+      }
       setBusyId(null);
-      if (!res.ok) setRowErr({ id: row.id, msg: res.error ?? 'Delete failed' });
+      setRowErr({ id: row.id, msg: res.error ?? 'Delete failed' });
+    });
+  }
+
+  function onMergeClick(row: CalendarEntryRow) {
+    setMergeFor(row);
+    setMergeTarget('');
+    setMergePreview(null);
+    setMergeErr(null);
+  }
+
+  function onMergeCancel() {
+    setMergeFor(null);
+    setMergeTarget('');
+    setMergePreview(null);
+    setMergeErr(null);
+  }
+
+  /** First click previews (dry run); once a plan is showing, the same
+   *  button becomes the real confirm — mirrors the delete flow's two
+   *  stages, just laid out inline instead of via window.confirm since the
+   *  target picker already needs its own row. */
+  function onMergeSubmit() {
+    if (!mergeFor || mergeTarget === '') return;
+    const loseId = mergeFor.id;
+    const keepId = mergeTarget;
+    setMergeBusy(true);
+    setMergeErr(null);
+    startTransition(async () => {
+      const res = await onMerge(keepId, loseId, mergePreview !== null);
+      setMergeBusy(false);
+      if (res.ok) {
+        onMergeCancel();
+        router.refresh();
+        return;
+      }
+      if (res.needsConfirm) {
+        setMergePreview(res.error ?? 'Ready to merge.');
+        return;
+      }
+      // A real conflict (e.g. both sides have their own signup) — blocking,
+      // no confirm step to offer.
+      setMergePreview(null);
+      setMergeErr(res.error ?? 'Could not merge.');
     });
   }
 
@@ -293,7 +374,8 @@ export function CalendarEditor({
             </tr>
           ) : (
             shown.map((row) => (
-              <tr key={row.id}>
+              <Fragment key={row.id}>
+              <tr>
                 <td className={styles.dateCell}>
                   {formatDate(row.entry_date)}
                   {row.end_date && <> &rarr; {formatDate(row.end_date)}</>}
@@ -367,6 +449,15 @@ export function CalendarEditor({
                   </button>
                   <button
                     type="button"
+                    className={styles.editBtn}
+                    onClick={() => onMergeClick(row)}
+                    disabled={busyId === row.id || mergeFor !== null}
+                    title="Fold this entry into another one — attendance and ledger credit come along, this row goes away"
+                  >
+                    Merge…
+                  </button>
+                  <button
+                    type="button"
                     className={`${styles.editBtn} ${styles.dangerBtn}`}
                     onClick={() => onDeleteClick(row)}
                     disabled={busyId === row.id}
@@ -375,6 +466,52 @@ export function CalendarEditor({
                   </button>
                 </td>
               </tr>
+              {mergeFor?.id === row.id && (
+                <tr className={styles.editRow}>
+                  <td colSpan={8}>
+                    <p>
+                      Merge <strong>&ldquo;{mergeFor.title}&rdquo;</strong> into another entry. Its
+                      attendance and ledger credit move onto the entry you pick below (duplicates are
+                      dropped/superseded, not doubled); &ldquo;{mergeFor.title}&rdquo; is then removed.
+                    </p>
+                    <div className={styles.addRow}>
+                      <select
+                        value={mergeTarget}
+                        disabled={mergeBusy || mergePreview !== null}
+                        onChange={(e) => {
+                          setMergeTarget(e.target.value ? Number(e.target.value) : '');
+                          setMergePreview(null);
+                          setMergeErr(null);
+                        }}
+                      >
+                        <option value="">Merge into…</option>
+                        {rows
+                          .filter((r) => r.id !== mergeFor.id)
+                          .sort((a, b) => (a.entry_date < b.entry_date ? 1 : -1))
+                          .map((r) => (
+                            <option key={r.id} value={r.id}>
+                              {r.title} — {formatDate(r.entry_date)}
+                            </option>
+                          ))}
+                      </select>
+                      <button
+                        type="button"
+                        className={styles.editBtn}
+                        onClick={onMergeSubmit}
+                        disabled={mergeTarget === '' || mergeBusy}
+                      >
+                        {mergeBusy ? '…' : mergePreview !== null ? 'Confirm merge' : 'Preview merge'}
+                      </button>
+                      <button type="button" className={styles.editBtn} onClick={onMergeCancel} disabled={mergeBusy}>
+                        Cancel
+                      </button>
+                    </div>
+                    {mergePreview !== null && <p className={styles.panelHint}>{mergePreview}</p>}
+                    {mergeErr && <p className={styles.err}>{mergeErr}</p>}
+                  </td>
+                </tr>
+              )}
+              </Fragment>
             ))
           )}
         </tbody>

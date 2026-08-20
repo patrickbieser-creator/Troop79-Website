@@ -12,6 +12,7 @@ import {
   createCalendarEntry,
   updateCalendarEntry,
   deleteCalendarEntry,
+  mergeCalendarEntries,
   cloneCalendarEntry,
   setEntryPromoted,
   importCalendarEntries
@@ -146,6 +147,7 @@ export default async function CalendarAdminPage({
         onCreate={createCalendarEntry}
         onUpdate={updateCalendarEntry}
         onDelete={deleteCalendarEntry}
+        onMerge={mergeCalendarEntries}
         onClone={cloneCalendarEntry}
         onImport={importCalendarEntries}
       />

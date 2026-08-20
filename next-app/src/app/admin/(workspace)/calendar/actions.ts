@@ -4,6 +4,13 @@ import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { loadCalendarCategories } from '@/lib/calendar';
+import {
+  calendarEntryDependents,
+  planCalendarEntryMerge,
+  executeCalendarEntryMerge,
+  type CalendarEntryDependents,
+  type CalendarEntryMergePlan
+} from '@/lib/calendar-admin';
 
 type ActionResult = { ok: boolean; error?: string };
 
@@ -457,12 +464,102 @@ export async function importCalendarEntries(
   return { ok: true, inserted: inserts.length, updated };
 }
 
-/** Leader-only, matching every other destructive News & Events action. */
-export async function deleteCalendarEntry(id: number): Promise<ActionResult> {
+/**
+ * Leader-only, matching every other destructive News & Events action.
+ *
+ * Same confirm=false dry-run pattern as deleteSlot/deleteQuestion in
+ * events/actions.ts: a first call reports who/what is attached before
+ * anything is destroyed, rather than deleting outright. Added 2026-08-20
+ * after a deleted duplicate entry orphaned its ledger credit (SET NULL,
+ * survives but unlinked) while its attendance vanished (CASCADE) — the
+ * orphaned credit then read as a stray duplicate in the Universal Ledger and
+ * got deleted for real. See calendarEntryDependents() for the FK asymmetry
+ * this exists to surface before it fires.
+ */
+export async function deleteCalendarEntry(
+  id: number,
+  confirm = false
+): Promise<ActionResult & { needsConfirm?: boolean; dependents?: CalendarEntryDependents }> {
   await requireCapability('calendar.write');
   const supabase = createAdminClient();
+
+  if (!confirm) {
+    const dependents = await calendarEntryDependents(supabase, id);
+    if (dependents.attendanceCount > 0 || dependents.creditCount > 0) {
+      const parts: string[] = [];
+      if (dependents.attendanceCount > 0) {
+        parts.push(
+          `${dependents.attendanceCount} attendance ${dependents.attendanceCount === 1 ? 'record' : 'records'}`
+        );
+      }
+      if (dependents.creditCount > 0) {
+        parts.push(`${dependents.creditCount} ledger ${dependents.creditCount === 1 ? 'credit' : 'credits'}`);
+      }
+      return {
+        ok: false,
+        needsConfirm: true,
+        dependents,
+        error:
+          `${parts.join(' and ')} reference this entry: ${dependents.names.join(', ')}. ` +
+          `Attendance is deleted outright; ledger credit survives but loses its link to this event ` +
+          `and drops off the reconciliation audit. If this is a duplicate of another entry, reassign ` +
+          `or re-run Roll Call on the real one first rather than deleting this one blind.`
+      };
+    }
+  }
+
   const { error } = await supabase.from('calendar_entries').delete().eq('id', id);
   if (error) return { ok: false, error: error.message };
   revalidateCalendar();
   return { ok: true };
+}
+
+/**
+ * Merge two calendar entries — the alternative to deleteCalendarEntry when
+ * the entries are genuine duplicates of the same real-world event. Every
+ * dependent row (attendance, ledger credit, resources, signup, meeting
+ * agenda) is reassigned from `loseId` onto `keepId` before `loseId` is
+ * removed, so nothing is ever silently orphaned the way a raw delete could.
+ *
+ * Same confirm=false dry-run shape as deleteCalendarEntry: the first call
+ * returns a plan for the leader to review. A plan with conflicts can never
+ * proceed, confirm or not — see planCalendarEntryMerge for why (there's no
+ * right answer to guess when both entries have their own signup or agenda).
+ */
+export async function mergeCalendarEntries(
+  keepId: number,
+  loseId: number,
+  confirm = false
+): Promise<ActionResult & { needsConfirm?: boolean; plan?: CalendarEntryMergePlan }> {
+  const session = await requireCapability('calendar.write');
+  const supabase = createAdminClient();
+
+  if (keepId === loseId) return { ok: false, error: 'Pick two different entries.' };
+
+  const plan = await planCalendarEntryMerge(supabase, keepId, loseId);
+  if (plan.conflicts.length > 0) {
+    return { ok: false, plan, error: plan.conflicts.map((c) => c.detail).join(' ') };
+  }
+  if (!confirm) {
+    return { ok: false, needsConfirm: true, plan, error: describeMergePlan(plan) };
+  }
+
+  const result = await executeCalendarEntryMerge(supabase, keepId, loseId, session.label);
+  if (!result.ok) return { ok: false, error: result.error };
+  revalidateCalendar(keepId);
+  return { ok: true };
+}
+
+function describeMergePlan(plan: CalendarEntryMergePlan): string {
+  const parts: string[] = [];
+  if (plan.attendanceMoved > 0) parts.push(`${plan.attendanceMoved} attendance record(s) move`);
+  if (plan.attendanceSuperseded > 0) parts.push(`${plan.attendanceSuperseded} duplicate attendance row(s) dropped`);
+  if (plan.creditMoved > 0) parts.push(`${plan.creditMoved} ledger credit(s) move and get relabeled to the kept entry`);
+  if (plan.creditSuperseded > 0)
+    parts.push(`${plan.creditSuperseded} duplicate credit row(s) soft-deleted (kept entry already has that scout's credit)`);
+  if (plan.resourcesMoved > 0) parts.push(`${plan.resourcesMoved} resource(s) move`);
+  if (plan.signupMoved) parts.push('the signup moves onto the kept entry');
+  if (plan.meetingMoved) parts.push('the meeting agenda moves onto the kept entry');
+  if (parts.length === 0) return 'Nothing is attached to the entry being removed — this is a plain delete.';
+  return `${parts.join('; ')}. The other entry is then removed.`;
 }

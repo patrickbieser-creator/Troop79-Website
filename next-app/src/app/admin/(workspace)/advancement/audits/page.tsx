@@ -13,6 +13,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { requireCapability } from '@/lib/require-capability';
 import { AuditCard } from './audit-card';
 import { DuplicateAuditCard } from './duplicate-audit-card';
+import { ReconciliationFindingRow } from './reconciliation-finding-row';
 import type { Finding } from './types';
 import * as borRequirements from './checks/bor-requirements';
 import * as activityThresholds from './checks/activity-thresholds';
@@ -186,10 +187,13 @@ function AuditSection({
 /**
  * Roll Call vs. the ledger.
  *
- * Read-only on purpose. Every finding here means the two tables disagree, and
- * the fix is a human decision — re-take the roll call, or correct the ledger —
- * not something a "resolve" button should guess at. Unlike the duplicate check,
- * there is no obviously-right row to keep.
+ * Each finding means the two tables disagree, and originally this section
+ * stayed read-only on the reasoning that there's no obviously-right row to
+ * keep. That's still true for two of the four kinds — credit_orphaned and
+ * qty_mismatch offer BOTH choices rather than one being guessed — but
+ * credit_missing and date_drift each have exactly one right answer (write
+ * what Roll Call should have written; follow the event's own date), so those
+ * resolve in one click. See ReconciliationFindingRow and audits/actions.ts.
  */
 function ReconciliationSection({
   findings
@@ -229,13 +233,7 @@ function ReconciliationSection({
                 </div>
                 <ul className={styles.missingList}>
                   {list.map((f) => (
-                    <li key={f.key} className={styles.missingRow}>
-                      <Link href={`/admin/calendar/${f.entryId}/roll-call`} className={styles.scoutLink}>
-                        {f.personName}
-                      </Link>{' '}
-                      &mdash; {f.entryTitle} ({f.entryDate})
-                      <div className={styles.detailLines}>{f.detail}</div>
-                    </li>
+                    <ReconciliationFindingRow key={f.key} finding={f} />
                   ))}
                 </ul>
               </div>

@@ -37,8 +37,19 @@ export interface ReconciliationFinding {
   entryId: number;
   entryTitle: string;
   entryDate: string;
+  personId: number | null;
   personName: string;
   detail: string;
+  /** The ledger row this finding is about, when one exists (every kind but
+   *  credit_missing, which is exactly the case where it doesn't yet). Needed
+   *  to resolve — a display string isn't enough to write to the right row. */
+  ledgerEntryId?: number;
+  /** The credit kind Roll Call would write for this entry's category — null
+   *  means the category grants nothing, which credit_missing never fires for
+   *  anyway, but qty_mismatch/date_drift can still see it null on an old row. */
+  creditKind: string | null;
+  rollCallQty?: number | null;
+  ledgerQty?: number;
 }
 
 const KIND_ORDER: ReconciliationKind[] = [
@@ -124,7 +135,12 @@ export async function run(
     kind: ReconciliationKind,
     entryId: number,
     personId: number | null,
-    detail: string
+    detail: string,
+    extra: {
+      ledgerEntryId?: number;
+      rollCallQty?: number | null;
+      ledgerQty?: number;
+    } = {}
   ) => {
     const entry = entryById.get(entryId);
     findings.push({
@@ -133,8 +149,11 @@ export async function run(
       entryId,
       entryTitle: entry?.title ?? `Entry ${entryId}`,
       entryDate: entry?.entry_date ?? '',
+      personId,
       personName: personId != null ? (nameByPerson.get(personId) ?? `Person ${personId}`) : '—',
-      detail
+      detail,
+      creditKind: (entry && creditByCategory.get(entry.category)) ?? null,
+      ...extra
     });
   };
 
@@ -162,7 +181,8 @@ export async function run(
         'credit_missing',
         att.calendar_entry_id,
         att.person_id,
-        'Marked present, but no ledger credit was written. The scout is short this event.'
+        'Marked present, but no ledger credit was written. The scout is short this event.',
+        { rollCallQty: att.qty }
       );
       continue;
     }
@@ -171,7 +191,8 @@ export async function run(
         'qty_mismatch',
         att.calendar_entry_id,
         att.person_id,
-        `Roll Call says ${att.qty}, the ledger says ${led.qty}. An edit reached one side only.`
+        `Roll Call says ${att.qty}, the ledger says ${led.qty}. An edit reached one side only.`,
+        { ledgerEntryId: led.id, rollCallQty: att.qty, ledgerQty: led.qty }
       );
     }
     if (led.date !== entry.entry_date) {
@@ -179,7 +200,8 @@ export async function run(
         'date_drift',
         att.calendar_entry_id,
         att.person_id,
-        `Credit is dated ${led.date} but the event is ${entry.entry_date}. The entry moved and the credit did not follow.`
+        `Credit is dated ${led.date} but the event is ${entry.entry_date}. The entry moved and the credit did not follow.`,
+        { ledgerEntryId: led.id }
       );
     }
   }
@@ -193,7 +215,8 @@ export async function run(
       'credit_orphaned',
       row.calendar_entry_id,
       personIdByScout.get(row.scout_id) ?? null,
-      'Holds credit stamped with this event, but is not on its Roll Call. An uncheck did not cascade.'
+      'Holds credit stamped with this event, but is not on its Roll Call. An uncheck did not cascade.',
+      { ledgerEntryId: row.id, ledgerQty: row.qty }
     );
   }
 
