@@ -125,7 +125,7 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         capability: 'advancement.write'
       },
       {
-        label: 'Weekly Advancement Report',
+        label: 'Advancement Report',
         href: '/admin/advancement/report',
         matchPath: '/admin/advancement/report',
         capability: 'advancement.write'
