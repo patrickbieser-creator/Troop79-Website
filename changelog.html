@@ -528,6 +528,50 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.53.4 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.53.4</span>
+        <span class="release-date">August 20, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Kind is now a real, extensible list &mdash; plus bulk reassignment, Activity autocomplete on Edit, and &ldquo;Who&rdquo; renamed</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Kind can be extended without a deploy.</strong> The old
+              fixed 9-value list is now a real table &mdash; add a new Kind
+              right from the ledger&rsquo;s bulk bar (&ldquo;+ New Kind&rdquo;), and it&rsquo;s
+              immediately usable everywhere. Renaming one updates every
+              transaction that uses it automatically; one still in use can&rsquo;t
+              be deleted by mistake.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>New: bulk-select rows on the ledger and reassign Kind
+              and/or Activity at once.</strong> Filter to a Kind, check the rows,
+              pick what they should become, apply. Built to retire the
+              confusing &lsquo;income&rsquo;/&lsquo;expense&rsquo; Kind values &mdash; 138 rows currently
+              carry one of those two.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Fixed: the Edit Transaction dialog&rsquo;s Activity field had
+              no suggestions at all</strong> &mdash; it never got the autocomplete list
+              the Record form already has, which made it easy to introduce a
+              near-duplicate activity name by typo while editing.
+            </span>
+          </li>
+          <li>
+            <span>&ldquo;Who&rdquo; is now labeled &ldquo;Scout/Adult&rdquo; everywhere it appears.</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.53.1 -->
     <div class="release">
       <div class="release-header">
