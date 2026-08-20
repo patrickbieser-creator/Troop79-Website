@@ -18,37 +18,25 @@ export const FINANCE_PAGE_SIZE = 50;
 export const ACCOUNTS = ['checking', 'savings', 'scout_account', 'scholarship', 'sofi'] as const;
 export type Account = (typeof ACCOUNTS)[number];
 
-/** Must stay in lockstep with financial_transactions' `kind` check constraint. */
-export const TRANSACTION_KINDS = [
-  'event_fee',
-  'fundraiser',
-  'donation',
-  'expense',
-  'reimbursement',
-  'transfer',
-  'interest',
-  'adjustment',
-  'income'
-] as const;
-export type TransactionKind = (typeof TRANSACTION_KINDS)[number];
+/**
+ * A governed lookup (`transaction_kinds`, 2026-08-20), not a hardcoded set —
+ * same pattern as calendar_categories: a real DB table, code as primary key
+ * AND the value stored on financial_transactions.kind (ON UPDATE CASCADE, so
+ * a rename propagates for free; ON DELETE RESTRICT, so a kind still in use
+ * can't be removed). Kind carries no direction/behavior of its own — a
+ * reconciliation/reporting tag only — so unlike Account (a truly fixed,
+ * small set baked into application logic), new Kinds can be added from the
+ * admin UI without a deploy. `string`, not a literal union: the set is no
+ * longer known at compile time. Load the current rows with
+ * listTransactionKindsAction() (finance/actions.ts).
+ */
+export type TransactionKind = string;
 
-/** Display label for a Kind value — deliberately distinct from the stored
- *  value, so the DB CHECK constraint and the one write site that sets
- *  'event_fee' (recordEventFeePaymentAction) stay untouched while the UI
- *  reads "Event" instead of internal-jargon "event_fee" (Patrick,
- *  2026-08-19). Every other kind defaults to its own value — add a real
- *  override here only when a kind needs one, same pattern going forward. */
-export const TRANSACTION_KIND_LABELS: Record<TransactionKind, string> = {
-  event_fee: 'Event',
-  fundraiser: 'fundraiser',
-  donation: 'donation',
-  expense: 'expense',
-  reimbursement: 'reimbursement',
-  transfer: 'transfer',
-  interest: 'interest',
-  adjustment: 'adjustment',
-  income: 'income'
-};
+export interface TransactionKindRow {
+  code: string;
+  label: string;
+  sort_order: number;
+}
 
 /** Must stay in lockstep with financial_transactions' `method` check constraint.
  *  No 'online' value — no payment processing in this build (deferred, not rejected). */

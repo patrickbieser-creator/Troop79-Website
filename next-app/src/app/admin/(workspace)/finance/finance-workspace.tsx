@@ -19,18 +19,18 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   ACCOUNTS,
-  TRANSACTION_KINDS,
-  TRANSACTION_KIND_LABELS,
   TRANSACTION_METHODS,
   type Account,
   type TransactionKind,
+  type TransactionKindRow,
   type TransactionMethod
 } from '@/lib/finance';
 import {
   addTransactionAction,
   voidTransactionAction,
   editTransactionAction,
-  bulkReassignKindAction,
+  bulkReassignAction,
+  createTransactionKindAction,
   addTransferAction,
   addReconciliationAction,
   type LedgerRow,
@@ -80,7 +80,8 @@ export function FinanceWorkspace({
   sort,
   dir,
   filters,
-  activityLabels
+  activityLabels,
+  kinds
 }: {
   canManage: boolean;
   rows: LedgerRow[];
@@ -90,11 +91,18 @@ export function FinanceWorkspace({
   dir: 'asc' | 'desc';
   filters: { account?: string; kind?: string; person?: string };
   activityLabels: string[];
+  kinds: TransactionKindRow[];
 }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [editingRow, setEditingRow] = useState<LedgerRow | null>(null);
   const router = useRouter();
+
+  // kinds is the DB-loaded, governed vocabulary (transaction_kinds,
+  // 2026-08-20) — no more hardcoded TRANSACTION_KIND_LABELS. `?? code` keeps
+  // any already-selected/optimistic value legible even before a refresh
+  // catches up (e.g. right after createKind, below).
+  const kindLabel = (code: string) => kinds.find((k) => k.code === code)?.label ?? code;
 
   /**
    * Bulk Kind reassignment — built for retiring the 'income'/'expense' Kind
@@ -106,8 +114,34 @@ export function FinanceWorkspace({
    */
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkKind, setBulkKind] = useState<TransactionKind | ''>('');
+  const [bulkActivity, setBulkActivity] = useState('');
   const [bulkStatus, setBulkStatus] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
   const allSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
+
+  // "+ New Kind" — the governed list is extensible without a deploy
+  // (Patrick, 2026-08-20), same as calendar_categories: add a row, it's
+  // immediately selectable. No local optimistic list — router.refresh()
+  // re-loads `kinds` from the DB, same as every other write on this page.
+  const [addingKind, setAddingKind] = useState(false);
+  const [newKindName, setNewKindName] = useState('');
+  function createKind() {
+    const name = newKindName.trim();
+    if (!name) return;
+    const fd = new FormData();
+    fd.set('code', name);
+    fd.set('label', name);
+    start(async () => {
+      const res = await createTransactionKindAction(fd);
+      if (!res.ok) {
+        setBulkStatus({ kind: 'err', msg: res.error ?? 'Could not add Kind.' });
+        return;
+      }
+      setNewKindName('');
+      setAddingKind(false);
+      if (res.code) setBulkKind(res.code);
+      router.refresh();
+    });
+  }
 
   function toggleAll() {
     setSelectedIds(allSelected ? new Set() : new Set(rows.map((r) => r.id)));
@@ -120,19 +154,27 @@ export function FinanceWorkspace({
       return next;
     });
   }
-  function applyBulkKind() {
-    if (!bulkKind || selectedIds.size === 0) return;
+  function applyBulkReassign() {
+    const trimmedActivity = bulkActivity.trim();
+    if ((!bulkKind && !trimmedActivity) || selectedIds.size === 0) return;
     const ids = [...selectedIds];
     setBulkStatus(null);
     start(async () => {
-      const res = await bulkReassignKindAction(ids, bulkKind);
+      const res = await bulkReassignAction(ids, {
+        ...(bulkKind ? { kind: bulkKind } : {}),
+        ...(trimmedActivity ? { activityLabel: trimmedActivity } : {})
+      });
       if (!res.ok) {
         setBulkStatus({ kind: 'err', msg: res.error ?? 'Could not reassign.' });
         return;
       }
+      const parts: string[] = [];
+      if (bulkKind) parts.push(`Kind → ${kindLabel(bulkKind)}`);
+      if (trimmedActivity) parts.push(`Activity → "${trimmedActivity}"`);
       setSelectedIds(new Set());
       setBulkKind('');
-      setBulkStatus({ kind: 'ok', msg: `Reassigned ${res.updated} to ${TRANSACTION_KIND_LABELS[bulkKind]}.` });
+      setBulkActivity('');
+      setBulkStatus({ kind: 'ok', msg: `Updated ${res.updated}: ${parts.join(', ')}.` });
       router.refresh();
     });
   }
@@ -160,6 +202,7 @@ export function FinanceWorkspace({
           <RecordTransactionForm
             people={people}
             activityLabels={activityLabels}
+            kinds={kinds}
             pending={pending}
             onSubmit={(input) =>
               start(async () => {
@@ -199,20 +242,76 @@ export function FinanceWorkspace({
       {canManage && selectedIds.size > 0 && (
         <div className={styles.bulkBar}>
           <span>{selectedIds.size} selected</span>
-          <select value={bulkKind} onChange={(e) => setBulkKind(e.target.value as TransactionKind | '')}>
-            <option value="">Reassign Kind to…</option>
-            {TRANSACTION_KINDS.map((k) => (
-              <option key={k} value={k}>
-                {TRANSACTION_KIND_LABELS[k]}
-              </option>
-            ))}
-          </select>
-          <button type="button" className={styles.saveBtn} onClick={applyBulkKind} disabled={!bulkKind || pending}>
-            {pending ? '…' : 'Apply'}
-          </button>
-          <button type="button" className={styles.saveBtnAlt} onClick={() => setSelectedIds(new Set())} disabled={pending}>
-            Clear selection
-          </button>
+          {addingKind ? (
+            <>
+              <input
+                type="text"
+                placeholder="New Kind name"
+                value={newKindName}
+                autoFocus
+                onChange={(e) => setNewKindName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    createKind();
+                  }
+                  if (e.key === 'Escape') {
+                    e.preventDefault();
+                    setAddingKind(false);
+                    setNewKindName('');
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className={styles.saveBtn}
+                onClick={createKind}
+                disabled={!newKindName.trim() || pending}
+              >
+                Add
+              </button>
+              <button type="button" className={styles.saveBtnAlt} onClick={() => setAddingKind(false)} disabled={pending}>
+                Cancel
+              </button>
+            </>
+          ) : (
+            <>
+              <select value={bulkKind} onChange={(e) => setBulkKind(e.target.value)}>
+                <option value="">Reassign Kind to…</option>
+                {kinds.map((k) => (
+                  <option key={k.code} value={k.code}>
+                    {k.label}
+                  </option>
+                ))}
+              </select>
+              <button type="button" className={styles.saveBtnAlt} onClick={() => setAddingKind(true)} disabled={pending}>
+                + New Kind
+              </button>
+              <input
+                type="text"
+                list="activity-labels"
+                placeholder="Reassign Activity to…"
+                value={bulkActivity}
+                onChange={(e) => setBulkActivity(e.target.value)}
+              />
+              <button
+                type="button"
+                className={styles.saveBtn}
+                onClick={applyBulkReassign}
+                disabled={(!bulkKind && !bulkActivity.trim()) || pending}
+              >
+                {pending ? '…' : 'Apply'}
+              </button>
+              <button
+                type="button"
+                className={styles.saveBtnAlt}
+                onClick={() => setSelectedIds(new Set())}
+                disabled={pending}
+              >
+                Clear selection
+              </button>
+            </>
+          )}
           {bulkStatus && <span className={bulkStatus.kind === 'ok' ? styles.statusOk : styles.statusErr}>{bulkStatus.msg}</span>}
         </div>
       )}
@@ -273,7 +372,7 @@ export function FinanceWorkspace({
                 </td>
                 <td>{r.account}</td>
                 <td>
-                  <span className={styles.kindPill}>{TRANSACTION_KIND_LABELS[r.kind as TransactionKind] ?? r.kind}</span>
+                  <span className={styles.kindPill}>{kindLabel(r.kind)}</span>
                 </td>
                 <td>{r.personName ?? '—'}</td>
                 <td>{r.activity_label || '—'}</td>
@@ -325,6 +424,8 @@ export function FinanceWorkspace({
           row={editingRow}
           people={people}
           reconciliation={reconciliation}
+          activityLabels={activityLabels}
+          kinds={kinds}
           pending={pending}
           onClose={() => setEditingRow(null)}
           onSave={(input) =>
@@ -359,11 +460,13 @@ interface TransactionFormState {
 export function RecordTransactionForm({
   people,
   activityLabels,
+  kinds,
   pending,
   onSubmit
 }: {
   people: { id: number; display_name: string }[];
   activityLabels: string[];
+  kinds: TransactionKindRow[];
   pending: boolean;
   onSubmit: (input: {
     occurredOn: string;
@@ -451,9 +554,9 @@ export function RecordTransactionForm({
             value={f.kind}
             onChange={(e) => setF((s) => ({ ...s, kind: e.target.value as TransactionKind }))}
           >
-            {TRANSACTION_KINDS.map((k) => (
-              <option key={k} value={k}>
-                {TRANSACTION_KIND_LABELS[k]}
+            {kinds.map((k) => (
+              <option key={k.code} value={k.code}>
+                {k.label}
               </option>
             ))}
           </select>

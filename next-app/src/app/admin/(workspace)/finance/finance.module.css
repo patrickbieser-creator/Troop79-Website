@@ -141,7 +141,8 @@
   border-radius: var(--admin-radius-sm);
   font-size: 13px;
 }
-.bulkBar select {
+.bulkBar select,
+.bulkBar input {
   font-family: inherit;
   font-size: 13px;
   padding: 5px 8px;

@@ -20,11 +20,10 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ACCOUNTS,
-  TRANSACTION_KINDS,
-  TRANSACTION_KIND_LABELS,
   TRANSACTION_METHODS,
   type Account,
   type TransactionKind,
+  type TransactionKindRow,
   type TransactionMethod
 } from '@/lib/finance';
 import type { LedgerRow, ReconciliationSummaryRow } from './actions';
@@ -46,6 +45,8 @@ export function EditTransactionDialog({
   row,
   people,
   reconciliation,
+  activityLabels,
+  kinds,
   pending,
   onClose,
   onSave
@@ -53,6 +54,8 @@ export function EditTransactionDialog({
   row: LedgerRow | null;
   people: { id: number; display_name: string }[];
   reconciliation: ReconciliationSummaryRow[];
+  activityLabels: string[];
+  kinds: TransactionKindRow[];
   pending: boolean;
   onClose: () => void;
   onSave: (input: EditTransactionSaveInput) => void;
@@ -84,6 +87,8 @@ export function EditTransactionDialog({
           row={row}
           people={people}
           reconciliation={reconciliation}
+          activityLabels={activityLabels}
+          kinds={kinds}
           pending={pending}
           onClose={onClose}
           onSave={onSave}
@@ -97,6 +102,8 @@ function EditTransactionForm({
   row,
   people,
   reconciliation,
+  activityLabels,
+  kinds,
   pending,
   onClose,
   onSave
@@ -104,6 +111,8 @@ function EditTransactionForm({
   row: LedgerRow;
   people: { id: number; display_name: string }[];
   reconciliation: ReconciliationSummaryRow[];
+  activityLabels: string[];
+  kinds: TransactionKindRow[];
   pending: boolean;
   onClose: () => void;
   onSave: (input: EditTransactionSaveInput) => void;
@@ -181,9 +190,9 @@ function EditTransactionForm({
       <label>
         Kind
         <select value={kind} onChange={(e) => setKind(e.target.value as TransactionKind)}>
-          {TRANSACTION_KINDS.map((k) => (
-            <option key={k} value={k}>
-              {TRANSACTION_KIND_LABELS[k]}
+          {kinds.map((k) => (
+            <option key={k.code} value={k.code}>
+              {k.label}
             </option>
           ))}
         </select>
@@ -219,7 +228,17 @@ function EditTransactionForm({
       </label>
       <label>
         Activity
-        <input type="text" value={activity} onChange={(e) => setActivity(e.target.value)} />
+        <input
+          type="text"
+          list="activity-labels-edit"
+          value={activity}
+          onChange={(e) => setActivity(e.target.value)}
+        />
+        <datalist id="activity-labels-edit">
+          {activityLabels.map((label) => (
+            <option key={label} value={label} />
+          ))}
+        </datalist>
       </label>
       <label className={styles.formGridWide}>
         Memo

@@ -2,9 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { adminClient } from './helpers/admin-client';
 import {
   ACCOUNTS,
-  TRANSACTION_KINDS,
   TRANSACTION_METHODS,
-  TRANSACTION_KIND_LABELS,
   isAccount,
   computeBalance,
   computeScoutAccountBalances,
@@ -35,26 +33,35 @@ describe('finance — vocabulary (pure)', () => {
     expect(isAccount('checking-but-typo')).toBe(false);
   });
 
-  it('TransactionKindsAndMethods_AreNonEmptyFlatLists', () => {
-    // Guards against an accidental empty array from a bad edit — these two
-    // lists are the TS-side mirror of the migration's CHECK constraints and
-    // must never silently go empty.
-    expect(TRANSACTION_KINDS.length).toBeGreaterThan(0);
+  it('TransactionMethods_IsANonEmptyFlatList', () => {
+    // Guards against an accidental empty array from a bad edit — the
+    // TS-side mirror of the migration's CHECK constraint and must never
+    // silently go empty.
     expect(TRANSACTION_METHODS.length).toBeGreaterThan(0);
     // No 'online' method — no payment processing in this build.
     expect(TRANSACTION_METHODS).not.toContain('online');
   });
+});
 
-  it('TransactionKindLabels_CoversEveryKind_WithANonEmptyLabel', () => {
-    // Every UI surface renders TRANSACTION_KIND_LABELS[k], not k itself —
-    // a kind missing from this map would render "undefined" in a <select>.
-    for (const k of TRANSACTION_KINDS) {
-      expect(TRANSACTION_KIND_LABELS[k]).toBeTruthy();
+describe('finance — transaction_kinds lookup (db)', () => {
+  const admin = adminClient();
+
+  it('TransactionKinds_IsNonEmpty_AndEveryRowHasANonEmptyLabel', async () => {
+    // Kind became a governed lookup table 2026-08-20 (same pattern as
+    // calendar_categories) — this is the DB-level equivalent of the old
+    // TRANSACTION_KIND_LABELS-covers-every-kind pure test, since the set
+    // is no longer known at compile time.
+    const { data, error } = await admin.from('transaction_kinds').select('code, label');
+    expect(error).toBeNull();
+    expect((data ?? []).length).toBeGreaterThan(0);
+    for (const row of data ?? []) {
+      expect((row as { label: string }).label).toBeTruthy();
     }
   });
 
-  it('TransactionKindLabels_RendersEventFeeAsEvent_NotTheInternalValue', () => {
-    expect(TRANSACTION_KIND_LABELS.event_fee).toBe('Event');
+  it('TransactionKinds_RendersEventFeeAsEvent_NotTheInternalValue', async () => {
+    const { data } = await admin.from('transaction_kinds').select('label').eq('code', 'event_fee').single();
+    expect((data as { label: string } | null)?.label).toBe('Event');
   });
 });
 

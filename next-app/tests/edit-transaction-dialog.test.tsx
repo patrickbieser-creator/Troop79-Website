@@ -23,6 +23,19 @@ const PEOPLE = [
   { id: 2, display_name: 'Hazel Stollenwerk' }
 ];
 
+// Mirrors the transaction_kinds seed (20260820220000_transaction_kinds_lookup.sql).
+const KINDS = [
+  { code: 'event_fee', label: 'Event', sort_order: 10 },
+  { code: 'fundraiser', label: 'fundraiser', sort_order: 20 },
+  { code: 'donation', label: 'donation', sort_order: 30 },
+  { code: 'expense', label: 'expense', sort_order: 40 },
+  { code: 'reimbursement', label: 'reimbursement', sort_order: 50 },
+  { code: 'transfer', label: 'transfer', sort_order: 60 },
+  { code: 'interest', label: 'interest', sort_order: 70 },
+  { code: 'adjustment', label: 'adjustment', sort_order: 80 },
+  { code: 'income', label: 'income', sort_order: 90 }
+];
+
 function checkingRow(over: Partial<LedgerRow> = {}): LedgerRow {
   return {
     id: 101,
@@ -65,6 +78,8 @@ describe('EditTransactionDialog — Who field', () => {
         row={checkingRow()}
         people={PEOPLE}
         reconciliation={RECONCILIATION}
+        activityLabels={[]}
+        kinds={KINDS}
         pending={false}
         onClose={vi.fn()}
         onSave={onSave}
@@ -87,6 +102,8 @@ describe('EditTransactionDialog — Who field', () => {
         row={checkingRow()}
         people={PEOPLE}
         reconciliation={RECONCILIATION}
+        activityLabels={[]}
+        kinds={KINDS}
         pending={false}
         onClose={vi.fn()}
         onSave={onSave}
@@ -107,6 +124,8 @@ describe('EditTransactionDialog — Who field', () => {
         row={checkingRow()}
         people={PEOPLE}
         reconciliation={RECONCILIATION}
+        activityLabels={[]}
+        kinds={KINDS}
         pending={false}
         onClose={vi.fn()}
         onSave={onSave}
@@ -125,6 +144,8 @@ describe('EditTransactionDialog — Who field', () => {
         row={scoutAccountRow()}
         people={PEOPLE}
         reconciliation={RECONCILIATION}
+        activityLabels={[]}
+        kinds={KINDS}
         pending={false}
         onClose={vi.fn()}
         onSave={vi.fn()}
@@ -139,6 +160,8 @@ describe('EditTransactionDialog — Who field', () => {
         row={checkingRow()}
         people={PEOPLE}
         reconciliation={RECONCILIATION}
+        activityLabels={[]}
+        kinds={KINDS}
         pending={false}
         onClose={vi.fn()}
         onSave={vi.fn()}
@@ -164,6 +187,8 @@ describe('EditTransactionDialog — Kind and Direction are independent', () => {
         row={checkingRow()} // event_fee, positive amount → Direction starts 'in'
         people={PEOPLE}
         reconciliation={RECONCILIATION}
+        activityLabels={[]}
+        kinds={KINDS}
         pending={false}
         onClose={vi.fn()}
         onSave={vi.fn()}
@@ -182,6 +207,8 @@ describe('EditTransactionDialog — Kind and Direction are independent', () => {
         row={checkingRow({ kind: 'expense', amount: -50 })}
         people={PEOPLE}
         reconciliation={RECONCILIATION}
+        activityLabels={[]}
+        kinds={KINDS}
         pending={false}
         onClose={vi.fn()}
         onSave={vi.fn()}
@@ -201,6 +228,8 @@ describe('EditTransactionDialog — Kind and Direction are independent', () => {
         row={checkingRow({ kind: 'expense', amount: -50 })}
         people={PEOPLE}
         reconciliation={RECONCILIATION}
+        activityLabels={[]}
+        kinds={KINDS}
         pending={false}
         onClose={vi.fn()}
         onSave={onSave}

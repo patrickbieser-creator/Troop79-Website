@@ -10,13 +10,14 @@
 import Link from 'next/link';
 import { requireAnyOf } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
-import { ACCOUNTS, TRANSACTION_KINDS, TRANSACTION_KIND_LABELS, FINANCE_PAGE_SIZE, type Account } from '@/lib/finance';
+import { ACCOUNTS, FINANCE_PAGE_SIZE, type Account } from '@/lib/finance';
 import {
   listFinancialTransactionsAction,
   getAccountBalancesAction,
   getScoutAccountBalancesAction,
   getReconciliationSummaryAction,
   listDistinctActivityLabelsAction,
+  listTransactionKindsAction,
   type LedgerSortKey
 } from './actions';
 import { FinanceWorkspace } from './finance-workspace';
@@ -71,14 +72,15 @@ export default async function FinancePage({
   const page = Math.max(1, parseInt(raw.page ?? '1', 10) || 1);
 
   const supabase = createAdminClient();
-  const [{ rows, total }, accountBalances, scoutBalances, reconciliation, peopleRes, activityLabels] =
+  const [{ rows, total }, accountBalances, scoutBalances, reconciliation, peopleRes, activityLabels, kinds] =
     await Promise.all([
       listFinancialTransactionsAction({ account, kind, personId, sort, dir, page }),
       getAccountBalancesAction(),
       getScoutAccountBalancesAction(),
       getReconciliationSummaryAction(),
       supabase.from('people_active').select('id, display_name').order('display_name'),
-      listDistinctActivityLabelsAction()
+      listDistinctActivityLabelsAction(),
+      listTransactionKindsAction()
     ]);
 
   const totalPages = Math.max(1, Math.ceil(total / FINANCE_PAGE_SIZE));
@@ -164,9 +166,9 @@ export default async function FinancePage({
         </select>
         <select name="kind" defaultValue={kind ?? ''} className={styles.select} aria-label="Filter by kind">
           <option value="">All kinds</option>
-          {TRANSACTION_KINDS.map((k) => (
-            <option key={k} value={k}>
-              {TRANSACTION_KIND_LABELS[k]}
+          {kinds.map((k) => (
+            <option key={k.code} value={k.code}>
+              {k.label}
             </option>
           ))}
         </select>
@@ -202,6 +204,7 @@ export default async function FinancePage({
         dir={dir}
         filters={{ account, kind, person: personId ? String(personId) : undefined }}
         activityLabels={activityLabels}
+        kinds={kinds}
       />
 
       <div className={styles.pager}>

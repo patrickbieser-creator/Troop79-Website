@@ -21,9 +21,9 @@ import {
   ledgerToCsv,
   editTransactionGuard,
   validateActivityRename,
-  TRANSACTION_KINDS,
   type Account,
   type TransactionKind,
+  type TransactionKindRow,
   type TransactionMethod,
   type FinancialTransactionRow,
   type LedgerCsvRow
@@ -308,39 +308,70 @@ export async function editTransactionAction(input: EditTransactionInput): Promis
   return { ok: true };
 }
 
-export interface BulkReassignKindResult extends Result {
+export interface BulkReassignResult extends Result {
   updated: number;
 }
 
+export interface BulkReassignUpdates {
+  kind?: TransactionKind;
+  /** Undefined = leave activity_label alone. A real string = set it —
+   *  there is no bulk "clear" here; that's the one case still left to a
+   *  single-row edit, since blanking a batch of activities at once has no
+   *  legitimate everyday use the way reassigning one does. */
+  activityLabel?: string;
+}
+
 /**
- * Reassign Kind on a batch of transactions at once — a pure label change,
- * unlike editTransactionAction (which also touches amount/account and so
- * carries the signup/reimbursement guard). Nothing here can affect the
- * balance (Kind carries no direction, 2026-08-20), so no guard beyond
- * capability + a real Kind value is needed.
+ * Reassign Kind and/or Activity on a batch of transactions at once — a pure
+ * label change, unlike editTransactionAction (which also touches
+ * amount/account and so carries the signup/reimbursement guard). Neither
+ * field can affect the balance (Kind carries no direction, 2026-08-20;
+ * Activity never did), so no guard beyond capability + valid values is
+ * needed.
  *
  * Built for the 'income'/'expense' Kind retirement (Patrick, 2026-08-20):
  * filter the ledger to Kind=income or Kind=expense, select a page's worth,
  * reassign to a real category, repeat until both are empty — then those two
- * values come out of TRANSACTION_KINDS for good.
+ * values can be deleted from transaction_kinds for good (deleteTransactionKindAction,
+ * below). Activity rides along in the
+ * same bar for the same workflow: fixing several mis-tagged/blank-activity
+ * rows found while doing that pass, without leaving this tool and using the
+ * separate global Rename/Merge Activity tool (which renames EVERY row under
+ * a label, not just the ones selected here).
  */
-export async function bulkReassignKindAction(ids: number[], kind: TransactionKind): Promise<BulkReassignKindResult> {
+export async function bulkReassignAction(ids: number[], updates: BulkReassignUpdates): Promise<BulkReassignResult> {
   try {
     await requireCapability('finance.manage');
   } catch {
     return { ok: false, error: 'Not authenticated', updated: 0 };
   }
   if (!Array.isArray(ids) || ids.length === 0) return { ok: false, error: 'Nothing selected.', updated: 0 };
-  if (!(TRANSACTION_KINDS as readonly string[]).includes(kind)) {
-    return { ok: false, error: 'Not a real Kind.', updated: 0 };
+  if (updates.kind == null && updates.activityLabel == null) {
+    return { ok: false, error: 'Pick a Kind and/or an Activity to apply.', updated: 0 };
+  }
+
+  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (updates.kind != null) patch.kind = updates.kind;
+  if (updates.activityLabel != null) {
+    const trimmed = updates.activityLabel.trim();
+    if (!trimmed) return { ok: false, error: 'Activity cannot be blank.', updated: 0 };
+    patch.activity_label = trimmed;
   }
 
   const supabase = createAdminClient();
   const { error, count } = await supabase
     .from('financial_transactions')
-    .update({ kind, updated_at: new Date().toISOString() }, { count: 'exact' })
+    .update(patch, { count: 'exact' })
     .in('id', ids);
-  if (error) return { ok: false, error: error.message, updated: 0 };
+  if (error) {
+    // 23503 = FK violation — transaction_kinds no longer has the code
+    // typed in, which happens if it was deleted from another tab mid-edit.
+    return {
+      ok: false,
+      error: error.code === '23503' ? 'Not a real Kind — it may have just been removed.' : error.message,
+      updated: 0
+    };
+  }
 
   revalidateFinance();
   return { ok: true, updated: count ?? ids.length };
@@ -771,6 +802,116 @@ export async function listDistinctActivityLabelsAction(): Promise<string[]> {
     supabase.from('financial_transactions').select('activity_label').not('activity_label', 'is', null).range(from, to)
   );
   return [...new Set(rows.map((r) => r.activity_label).filter((v): v is string => !!v))].sort();
+}
+
+/** The governed Kind vocabulary (transaction_kinds, 2026-08-20) — powers
+ *  every Kind picker (Record, Edit, bulk reassign). Unlike Activity, this
+ *  IS an enforced FK (financial_transactions_kind_fkey), so a value not in
+ *  this list is rejected by the database, not just unsuggested. */
+export async function listTransactionKindsAction(): Promise<TransactionKindRow[]> {
+  await requireAnyOf(['finance.manage', 'finance.view']);
+  const supabase = createAdminClient();
+  const { data, error } = await supabase.from('transaction_kinds').select('code, label, sort_order').order('sort_order');
+  if (error) throw new Error(`transaction_kinds lookup failed: ${error.message}`);
+  return (data ?? []) as TransactionKindRow[];
+}
+
+export interface KindActionResult extends Result {
+  code?: string;
+}
+
+/** Add a new Kind — "governed, extensible without a deploy" (Patrick,
+ *  2026-08-20). Same everyday need as calendar_categories: a treasurer
+ *  reassigning the retired 'income'/'expense' rows may find no existing
+ *  category fits and needs a new one on the spot, not a deploy. */
+export async function createTransactionKindAction(formData: FormData): Promise<KindActionResult> {
+  try {
+    await requireCapability('finance.manage');
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  const code = String(formData.get('code') ?? '').trim();
+  const label = String(formData.get('label') ?? '').trim() || code;
+  if (!code) return { ok: false, error: 'Give the new Kind a name.' };
+  // Matches the seeded values' shape (lowercase, underscore) so a
+  // hand-typed code reads consistently with the original 9 — not enforced
+  // by the DB, just a light nudge before it round-trips through a <select>.
+  const normalized = code.toLowerCase().replace(/\s+/g, '_');
+
+  const supabase = createAdminClient();
+  const { count } = await supabase.from('transaction_kinds').select('code', { count: 'exact', head: true });
+  const { error } = await supabase
+    .from('transaction_kinds')
+    .insert({ code: normalized, label, sort_order: ((count ?? 0) + 1) * 10 });
+  if (error) {
+    return {
+      ok: false,
+      error: error.code === '23505' ? `"${normalized}" already exists.` : error.message
+    };
+  }
+
+  revalidateFinance();
+  return { ok: true, code: normalized };
+}
+
+/** Rename a Kind's code — cascades to every transaction that uses it via
+ *  ON UPDATE CASCADE, the same free rename calendar_categories gets. */
+export async function renameTransactionKindAction(formData: FormData): Promise<Result> {
+  try {
+    await requireCapability('finance.manage');
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  const originalCode = String(formData.get('original_code') ?? '').trim();
+  const code = String(formData.get('code') ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_');
+  const label = String(formData.get('label') ?? '').trim();
+  if (!originalCode || !code || !label) return { ok: false, error: 'Malformed request.' };
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from('transaction_kinds')
+    .update({ code, label })
+    .eq('code', originalCode);
+  if (error) {
+    return {
+      ok: false,
+      error: error.code === '23505' ? `"${code}" already exists.` : error.message
+    };
+  }
+
+  revalidateFinance();
+  return { ok: true };
+}
+
+/** Delete a Kind — refused by the database (ON DELETE RESTRICT) if any
+ *  transaction still uses it, same protection calendar_categories has for
+ *  a category still in use on a calendar entry. */
+export async function deleteTransactionKindAction(formData: FormData): Promise<Result> {
+  try {
+    await requireCapability('finance.manage');
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  const code = String(formData.get('code') ?? '').trim();
+  if (!code) return { ok: false, error: 'Malformed request.' };
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.from('transaction_kinds').delete().eq('code', code);
+  if (error) {
+    return {
+      ok: false,
+      error:
+        error.code === '23503'
+          ? 'Still in use on at least one transaction — reassign those first (the bulk Kind tool on the ledger).'
+          : error.message
+    };
+  }
+
+  revalidateFinance();
+  return { ok: true };
 }
 
 export interface RenameActivityPreview {
