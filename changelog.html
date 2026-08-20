@@ -528,6 +528,44 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.53.9 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.53.9</span>
+        <span class="release-date">August 20, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Activity search filter, more of the Finance page tucked into Actions, and a nav highlighting bug fixed</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>New Activity filter</strong> on the ledger search &mdash;
+              type part of an activity name (autocomplete included) to find
+              every matching transaction.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Activity Report, Reimbursements, and Export CSV moved
+              into the Actions pull-down</strong>, alongside Record/Transfer/
+              Reconciliation/Manage Kinds &mdash; the page header is down to just
+              the title now.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Fixed:</strong> the admin sub-nav could light up two
+              items at once (e.g. both &ldquo;Ledger&rdquo; and &ldquo;Activity Report&rdquo;
+              highlighted together) whenever one item&rsquo;s page path was a
+              prefix of another&rsquo;s. General fix, not just Finance &mdash; applies
+              anywhere this shape exists in the nav.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.53.7 -->
     <div class="release">
       <div class="release-header">
