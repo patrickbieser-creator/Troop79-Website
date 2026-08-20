@@ -2,28 +2,52 @@
 
 /**
  * Manage Kinds — the self-service half of the transaction_kinds lookup
- * (2026-08-20). "+ New Kind" already lived in the bulk-reassign bar; this is
- * where a Kind gets renamed or removed once nothing references it anymore
- * (Patrick, after retiring 'income': "How do I make Income not appear in
- * the kind pull-down?"). Same governance shape as calendar_categories:
- * rename cascades to every transaction automatically (ON UPDATE CASCADE);
- * delete is refused by the database, not guessed at here, when a
- * transaction still uses it (ON DELETE RESTRICT) — the friendly translation
- * of that error lives in deleteTransactionKindAction.
+ * (2026-08-20). Add, rename, or remove a Kind (Patrick, after retiring
+ * 'income': "How do I make Income not appear in the kind pull-down?"). Same
+ * governance shape as calendar_categories: rename cascades to every
+ * transaction automatically (ON UPDATE CASCADE); delete is refused by the
+ * database, not guessed at here, when a transaction still uses it (ON
+ * DELETE RESTRICT) — the friendly translation of that error lives in
+ * deleteTransactionKindAction. Content only, no dialog/details chrome of
+ * its own — hosted inside FinanceWorkspace's shared Actions modal, which
+ * owns show/hide. The bulk-reassign bar's own "+ New Kind" (same
+ * createTransactionKindAction) stays separate — that one exists to keep a
+ * treasurer from leaving the reassignment flow mid-task, this one is for
+ * general list upkeep.
  */
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { renameTransactionKindAction, deleteTransactionKindAction } from './actions';
+import { createTransactionKindAction, renameTransactionKindAction, deleteTransactionKindAction } from './actions';
 import type { TransactionKindRow } from '@/lib/finance';
 import styles from './finance.module.css';
 
 export function KindManager({ kinds }: { kinds: TransactionKindRow[] }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
   const [busyCode, setBusyCode] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [isPending, start] = useTransition();
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState('');
+
+  function add() {
+    const name = newName.trim();
+    if (!name) return;
+    setErr(null);
+    const fd = new FormData();
+    fd.set('code', name);
+    fd.set('label', name);
+    start(async () => {
+      const res = await createTransactionKindAction(fd);
+      if (!res.ok) {
+        setErr(res.error ?? 'Add failed.');
+        return;
+      }
+      setNewName('');
+      setAdding(false);
+      router.refresh();
+    });
+  }
 
   function rename(row: TransactionKindRow) {
     const nextLabel = window.prompt(`Rename "${row.label}" to:`, row.label);
@@ -70,8 +94,7 @@ export function KindManager({ kinds }: { kinds: TransactionKindRow[] }) {
   }
 
   return (
-    <details className={styles.kindManager} open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
-      <summary>Manage Kinds ({kinds.length})</summary>
+    <div className={styles.kindManager}>
       {err && <p className={styles.empty}>{err}</p>}
       <ul className={styles.kindManagerList}>
         {kinds.map((k) => (
@@ -101,6 +124,38 @@ export function KindManager({ kinds }: { kinds: TransactionKindRow[] }) {
           </li>
         ))}
       </ul>
-    </details>
+      {adding ? (
+        <div className={styles.kindManagerAddRow}>
+          <input
+            type="text"
+            placeholder="New Kind name"
+            value={newName}
+            autoFocus
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                add();
+              }
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                setAdding(false);
+                setNewName('');
+              }
+            }}
+          />
+          <button type="button" className={styles.saveBtn} onClick={add} disabled={!newName.trim() || isPending}>
+            Add
+          </button>
+          <button type="button" className={styles.saveBtnAlt} onClick={() => setAdding(false)} disabled={isPending}>
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <button type="button" className={styles.saveBtnAlt} onClick={() => setAdding(true)} disabled={isPending}>
+          + Add Kind
+        </button>
+      )}
+    </div>
   );
 }

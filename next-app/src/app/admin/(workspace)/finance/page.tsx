@@ -21,7 +21,6 @@ import {
   type LedgerSortKey
 } from './actions';
 import { FinanceWorkspace } from './finance-workspace';
-import { KindManager } from './kind-manager';
 import styles from './finance.module.css';
 
 export const metadata = {
@@ -165,8 +164,6 @@ export default async function FinancePage({
           <p className={styles.balanceSubtext}>Total funds minus scout &amp; scholarship accounts</p>
         </div>
       </div>
-
-      {canManage && <KindManager kinds={kinds} />}
 
       <form className={styles.toolbar} method="get">
         <select name="account" defaultValue={account ?? ''} className={styles.select} aria-label="Filter by account">

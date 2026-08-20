@@ -9,12 +9,15 @@
  * server actions re-check the capability regardless (this hiding a button
  * is convenience, not the security boundary).
  *
- * <details> elements for the three forms, not a JS-driven accordion —
- * keyboard-fast (Tab/Enter reach everything), no extra state to manage, and
- * it matches this codebase's plain-HTML-first bias elsewhere in /admin.
+ * The four write surfaces (Record, Transfer, Reconciliation, Manage Kinds)
+ * live behind ONE "Actions" pull-down at the top (Patrick, 2026-08-20:
+ * "too many buttons if we keep adding functionality") rather than their own
+ * button/section each — picking one opens it in a shared modal. Adding a
+ * fifth surface later means one more <option>, not one more permanent
+ * on-page control.
  */
 
-import { useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -40,7 +43,16 @@ import {
 import { MemoCell } from './memo-cell';
 import { EnteredByCell } from './entered-by-cell';
 import { EditTransactionDialog } from './edit-transaction-dialog';
+import { KindManager } from './kind-manager';
 import styles from './finance.module.css';
+
+type FinanceModal = 'record' | 'transfer' | 'reconcile' | 'kinds';
+const MODAL_TITLES: Record<FinanceModal, string> = {
+  record: 'Record a transaction',
+  transfer: 'Transfer between checking and savings',
+  reconcile: 'Monthly reconciliation',
+  kinds: 'Manage Kinds'
+};
 
 const TODAY = () => new Date().toISOString().slice(0, 10);
 
@@ -105,6 +117,19 @@ export function FinanceWorkspace({
   const [error, setError] = useState<string | null>(null);
   const [editingRow, setEditingRow] = useState<LedgerRow | null>(null);
   const router = useRouter();
+
+  // The single Actions modal (Record/Transfer/Reconcile/Manage Kinds) —
+  // same imperative <dialog> sync pattern as edit-transaction-dialog.tsx's
+  // own useEffect: no setState-in-effect, just mirroring `activeModal` onto
+  // the DOM element's real open/closed state.
+  const [activeModal, setActiveModal] = useState<FinanceModal | null>(null);
+  const actionModalRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dlg = actionModalRef.current;
+    if (!dlg) return;
+    if (activeModal && !dlg.open) dlg.showModal();
+    if (!activeModal && dlg.open) dlg.close();
+  }, [activeModal]);
 
   // kinds is the DB-loaded, governed vocabulary (transaction_kinds,
   // 2026-08-20) — no more hardcoded TRANSACTION_KIND_LABELS. `?? code` keeps
@@ -211,43 +236,86 @@ export function FinanceWorkspace({
 
       {canManage && (
         <>
-          <RecordTransactionForm
-            people={people}
-            activityLabels={activityLabels}
-            kinds={kinds}
-            pending={pending}
-            onSubmit={(input) =>
-              start(async () => {
-                setError(null);
-                const res = await addTransactionAction(input);
-                if (!res.ok) setError(res.error ?? 'Could not record transaction.');
-                else router.refresh();
-              })
-            }
-          />
-          <TransferForm
-            pending={pending}
-            onSubmit={(input) =>
-              start(async () => {
-                setError(null);
-                const res = await addTransferAction(input);
-                if (!res.ok) setError(res.error ?? 'Could not record transfer.');
-                else router.refresh();
-              })
-            }
-          />
-          <ReconciliationPanel
-            summary={reconciliation}
-            pending={pending}
-            onSubmit={(input) =>
-              start(async () => {
-                setError(null);
-                const res = await addReconciliationAction(input);
-                if (!res.ok) setError(res.error ?? 'Could not save reconciliation.');
-                else router.refresh();
-              })
-            }
-          />
+          <div className={styles.actionsBar}>
+            <select
+              value=""
+              className={styles.select}
+              aria-label="Finance actions"
+              onChange={(e) => {
+                const v = e.target.value as FinanceModal | '';
+                if (v) setActiveModal(v);
+                e.target.value = '';
+              }}
+            >
+              <option value="">Actions…</option>
+              <option value="record">Record a transaction</option>
+              <option value="transfer">Transfer between accounts</option>
+              <option value="reconcile">Monthly reconciliation</option>
+              <option value="kinds">Manage Kinds</option>
+            </select>
+          </div>
+
+          <dialog ref={actionModalRef} className={styles.actionModal} onClose={() => setActiveModal(null)}>
+            <div className={styles.actionModalHeader}>
+              <h3>{activeModal && MODAL_TITLES[activeModal]}</h3>
+              <button type="button" className={styles.saveBtnAlt} onClick={() => setActiveModal(null)}>
+                Close
+              </button>
+            </div>
+            {activeModal === 'record' && (
+              <RecordTransactionForm
+                people={people}
+                activityLabels={activityLabels}
+                kinds={kinds}
+                pending={pending}
+                onSubmit={(input) =>
+                  start(async () => {
+                    setError(null);
+                    const res = await addTransactionAction(input);
+                    if (!res.ok) setError(res.error ?? 'Could not record transaction.');
+                    else {
+                      setActiveModal(null);
+                      router.refresh();
+                    }
+                  })
+                }
+              />
+            )}
+            {activeModal === 'transfer' && (
+              <TransferForm
+                pending={pending}
+                onSubmit={(input) =>
+                  start(async () => {
+                    setError(null);
+                    const res = await addTransferAction(input);
+                    if (!res.ok) setError(res.error ?? 'Could not record transfer.');
+                    else {
+                      setActiveModal(null);
+                      router.refresh();
+                    }
+                  })
+                }
+              />
+            )}
+            {activeModal === 'reconcile' && (
+              <ReconciliationPanel
+                summary={reconciliation}
+                pending={pending}
+                onSubmit={(input) =>
+                  start(async () => {
+                    setError(null);
+                    const res = await addReconciliationAction(input);
+                    if (!res.ok) setError(res.error ?? 'Could not save reconciliation.');
+                    else {
+                      setActiveModal(null);
+                      router.refresh();
+                    }
+                  })
+                }
+              />
+            )}
+            {activeModal === 'kinds' && <KindManager kinds={kinds} />}
+          </dialog>
         </>
       )}
 
@@ -523,8 +591,7 @@ export function RecordTransactionForm({
   };
 
   return (
-    <details className={styles.formPanel}>
-      <summary>Record a transaction</summary>
+    <>
       <form className={styles.formGrid} onSubmit={submit}>
         <label>
           Date
@@ -635,7 +702,7 @@ export function RecordTransactionForm({
           Add transaction
         </button>
       </form>
-    </details>
+    </>
   );
 }
 
@@ -668,8 +735,7 @@ function TransferForm({
   };
 
   return (
-    <details className={styles.formPanel}>
-      <summary>Transfer between checking and savings</summary>
+    <>
       <form className={styles.formGrid} onSubmit={submit}>
         <label>
           Date
@@ -708,7 +774,7 @@ function TransferForm({
           Record transfer
         </button>
       </form>
-    </details>
+    </>
   );
 }
 
@@ -741,8 +807,7 @@ function ReconciliationPanel({
   };
 
   return (
-    <details className={styles.formPanel}>
-      <summary>Monthly reconciliation</summary>
+    <>
       <ul className={styles.reconList}>
         {summary.map((s) => (
           <li key={s.account}>
@@ -791,6 +856,6 @@ function ReconciliationPanel({
           Save reconciliation
         </button>
       </form>
-    </details>
+    </>
   );
 }

@@ -131,6 +131,19 @@
   border-radius: var(--admin-radius-sm);
   background: var(--admin-gray-50);
 }
+.kindManagerAddRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.kindManagerAddRow input {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid var(--admin-gray-300);
+  border-radius: 3px;
+}
 .muted {
   color: var(--admin-gray-500);
   font-size: 11px;
@@ -317,6 +330,35 @@
   font-weight: 400;
 }
 
+.actionsBar {
+  margin-bottom: 14px;
+}
+.actionModal {
+  padding: 18px 20px;
+  border: none;
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow-md);
+  width: 92vw;
+  max-width: 640px;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--admin-white);
+}
+.actionModal::backdrop {
+  background: rgba(0, 0, 0, 0.4);
+}
+.actionModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.actionModalHeader h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--admin-navy);
+}
 .editDialog {
   padding: 18px 20px;
   border: none;
