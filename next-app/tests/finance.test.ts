@@ -10,6 +10,7 @@ import {
   summarizeByActivity,
   editTransactionGuard,
   validateActivityRename,
+  amountRangeOrFilter,
   type FinancialTransactionRow,
   type LedgerCsvRow,
   type ActivityTransactionRow
@@ -62,6 +63,34 @@ describe('finance — transaction_kinds lookup (db)', () => {
   it('TransactionKinds_RendersEventFeeAsEvent_NotTheInternalValue', async () => {
     const { data } = await admin.from('transaction_kinds').select('label').eq('code', 'event_fee').single();
     expect((data as { label: string } | null)?.label).toBe('Event');
+  });
+});
+
+/**
+ * amountRangeOrFilter (pure) — the ledger's Min $/Max $ filter (2026-08-20).
+ * A magnitude search, not a signed one: "between $50 and $200" must match a
+ * $75 EXPENSE (stored as -75) as readily as a $75 payment (stored as +75) —
+ * a treasurer looking for a dollar figure shouldn't have to think about
+ * Direction to find it. This is a hand-built PostgREST filter string, so
+ * it's pinned here rather than trusted on inspection.
+ */
+describe('amountRangeOrFilter (pure)', () => {
+  it('ReturnsNull_WhenMinIsZeroOrNegative_NoOrNeeded', () => {
+    // A symmetric .gte(-max).lte(max) already covers this case — see the
+    // caller in actions.ts. Nothing here to build an OR filter for.
+    expect(amountRangeOrFilter(0, 200)).toBeNull();
+    expect(amountRangeOrFilter(-10, 200)).toBeNull();
+  });
+
+  it('BuildsTwoDisjointRanges_WhenBothMinAndMaxArePositive', () => {
+    // Must match +50..+200 (a payment) OR -200..-50 (an expense) — NOT the
+    // dead zone in between where a signed .gte(50).lte(200) alone would
+    // silently exclude every matching expense.
+    expect(amountRangeOrFilter(50, 200)).toBe('and(amount.gte.50,amount.lte.200),and(amount.gte.-200,amount.lte.-50)');
+  });
+
+  it('BuildsAnOpenUpperBound_WhenOnlyMinIsGiven', () => {
+    expect(amountRangeOrFilter(50, null)).toBe('amount.gte.50,amount.lte.-50');
   });
 });
 

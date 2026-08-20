@@ -89,7 +89,15 @@ export function FinanceWorkspace({
   reconciliation: ReconciliationSummaryRow[];
   sort: LedgerSortKey;
   dir: 'asc' | 'desc';
-  filters: { account?: string; kind?: string; person?: string };
+  filters: {
+    account?: string;
+    kind?: string;
+    person?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    amountMin?: string;
+    amountMax?: string;
+  };
   activityLabels: string[];
   kinds: TransactionKindRow[];
 }) {
@@ -188,6 +196,10 @@ export function FinanceWorkspace({
     if (filters.account) params.set('account', filters.account);
     if (filters.kind) params.set('kind', filters.kind);
     if (filters.person) params.set('person', filters.person);
+    if (filters.dateFrom) params.set('dateFrom', filters.dateFrom);
+    if (filters.dateTo) params.set('dateTo', filters.dateTo);
+    if (filters.amountMin) params.set('amountMin', filters.amountMin);
+    if (filters.amountMax) params.set('amountMax', filters.amountMax);
     params.set('sort', key);
     params.set('dir', nextDir);
     return `/admin/finance?${params.toString()}`;

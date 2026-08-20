@@ -21,6 +21,7 @@ import {
   ledgerToCsv,
   editTransactionGuard,
   validateActivityRename,
+  amountRangeOrFilter,
   type Account,
   type TransactionKind,
   type TransactionKindRow,
@@ -51,6 +52,17 @@ export interface LedgerFilters {
   account?: Account;
   kind?: string;
   personId?: number;
+  /** occurred_on range, both inclusive, both optional, YYYY-MM-DD. */
+  dateFrom?: string;
+  dateTo?: string;
+  /**
+   * Amount range by MAGNITUDE, not signed value — "between $50 and $200"
+   * means a $75 expense or a $75 payment both match, not just one side of
+   * zero. A treasurer searching for a specific dollar figure shouldn't have
+   * to think about Direction to find it. Both optional, both non-negative.
+   */
+  amountMin?: number;
+  amountMax?: number;
   sort?: LedgerSortKey;
   dir?: 'asc' | 'desc';
   page: number;
@@ -95,6 +107,15 @@ export async function listFinancialTransactionsAction(
   if (filters.account) q = q.eq('account', filters.account);
   if (filters.kind) q = q.eq('kind', filters.kind);
   if (filters.personId) q = q.eq('person_id', filters.personId);
+  if (filters.dateFrom) q = q.gte('occurred_on', filters.dateFrom);
+  if (filters.dateTo) q = q.lte('occurred_on', filters.dateTo);
+  if (filters.amountMin != null || filters.amountMax != null) {
+    const min = filters.amountMin ?? 0;
+    const max = filters.amountMax ?? null;
+    const orFilter = amountRangeOrFilter(min, max);
+    if (orFilter) q = q.or(orFilter);
+    else if (max != null) q = q.gte('amount', -max).lte('amount', max);
+  }
 
   const sortColumn = SORT_TO_COLUMN[filters.sort ?? 'date'];
   const ascending = filters.dir === 'asc';

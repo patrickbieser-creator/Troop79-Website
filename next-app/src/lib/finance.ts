@@ -14,6 +14,24 @@
  *  plain constant can't live alongside the Server Actions it's used with. */
 export const FINANCE_PAGE_SIZE = 50;
 
+/**
+ * The PostgREST `.or()` filter string for an amount MAGNITUDE range search
+ * (the ledger's Min $/Max $ filter, 2026-08-20) — "between $50 and $200"
+ * means a $75 expense or a $75 payment both match, not just one side of
+ * zero. `null` return means the caller needs no OR: a non-positive `min`
+ * has nothing to exclude near zero, so a plain symmetric
+ * `.gte(-max).lte(max)` already expresses "magnitude at most max" — the OR
+ * form is only needed once there's a real lower bound pushing the match
+ * away from zero in both directions. Split out for testability: this is a
+ * hand-built PostgREST filter string, exactly the kind of thing that's
+ * silently wrong in a way tests catch and manual review doesn't.
+ */
+export function amountRangeOrFilter(min: number, max: number | null): string | null {
+  if (min <= 0) return null;
+  if (max != null) return `and(amount.gte.${min},amount.lte.${max}),and(amount.gte.${-max},amount.lte.${-min})`;
+  return `amount.gte.${min},amount.lte.${-min}`;
+}
+
 /** Must stay in lockstep with financial_transactions' `account` check constraint. */
 export const ACCOUNTS = ['checking', 'savings', 'scout_account', 'scholarship', 'sofi'] as const;
 export type Account = (typeof ACCOUNTS)[number];

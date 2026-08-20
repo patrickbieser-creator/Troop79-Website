@@ -81,6 +81,30 @@
   outline: none;
   border-color: var(--admin-navy);
 }
+.toolbarField {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--admin-gray-500);
+}
+.toolbarField input {
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  padding: 6px 8px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  background: var(--admin-white);
+  color: var(--admin-gray-700);
+  min-height: 34px;
+  box-sizing: border-box;
+}
+.toolbarField input:focus {
+  outline: none;
+  border-color: var(--admin-navy);
+}
 
 .tableWrap {
   background: var(--admin-white);

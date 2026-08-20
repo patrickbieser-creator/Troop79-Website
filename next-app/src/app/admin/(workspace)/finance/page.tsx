@@ -31,6 +31,10 @@ interface SearchParams {
   account?: string;
   kind?: string;
   person?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  amountMin?: string;
+  amountMax?: string;
   sort?: string;
   dir?: string;
   page?: string;
@@ -67,6 +71,12 @@ export default async function FinancePage({
   const account = raw.account && isKnownAccount(raw.account) ? raw.account : undefined;
   const kind = raw.kind?.trim() || undefined;
   const personId = raw.person ? Number(raw.person) : undefined;
+  // YYYY-MM-DD only — an occurred_on comparison, so anything else is
+  // silently dropped rather than sent to Postgres and rejected mid-query.
+  const dateFrom = raw.dateFrom && /^\d{4}-\d{2}-\d{2}$/.test(raw.dateFrom) ? raw.dateFrom : undefined;
+  const dateTo = raw.dateTo && /^\d{4}-\d{2}-\d{2}$/.test(raw.dateTo) ? raw.dateTo : undefined;
+  const amountMin = raw.amountMin && Number.isFinite(Number(raw.amountMin)) ? Number(raw.amountMin) : undefined;
+  const amountMax = raw.amountMax && Number.isFinite(Number(raw.amountMax)) ? Number(raw.amountMax) : undefined;
   const sort = raw.sort && isSortKey(raw.sort) ? raw.sort : 'date';
   const dir: 'asc' | 'desc' = raw.dir === 'asc' ? 'asc' : 'desc';
   const page = Math.max(1, parseInt(raw.page ?? '1', 10) || 1);
@@ -74,7 +84,7 @@ export default async function FinancePage({
   const supabase = createAdminClient();
   const [{ rows, total }, accountBalances, scoutBalances, reconciliation, peopleRes, activityLabels, kinds] =
     await Promise.all([
-      listFinancialTransactionsAction({ account, kind, personId, sort, dir, page }),
+      listFinancialTransactionsAction({ account, kind, personId, dateFrom, dateTo, amountMin, amountMax, sort, dir, page }),
       getAccountBalancesAction(),
       getScoutAccountBalancesAction(),
       getReconciliationSummaryAction(),
@@ -180,6 +190,40 @@ export default async function FinancePage({
             </option>
           ))}
         </select>
+        <label className={styles.toolbarField}>
+          From
+          <input type="date" name="dateFrom" defaultValue={dateFrom ?? ''} aria-label="Filter: date from" />
+        </label>
+        <label className={styles.toolbarField}>
+          To
+          <input type="date" name="dateTo" defaultValue={dateTo ?? ''} aria-label="Filter: date to" />
+        </label>
+        <label className={styles.toolbarField}>
+          Min $
+          <input
+            type="number"
+            name="amountMin"
+            step="0.01"
+            min="0"
+            placeholder="0.00"
+            defaultValue={amountMin ?? ''}
+            aria-label="Filter: minimum amount"
+            style={{ width: '5.5rem' }}
+          />
+        </label>
+        <label className={styles.toolbarField}>
+          Max $
+          <input
+            type="number"
+            name="amountMax"
+            step="0.01"
+            min="0"
+            placeholder="any"
+            defaultValue={amountMax ?? ''}
+            aria-label="Filter: maximum amount"
+            style={{ width: '5.5rem' }}
+          />
+        </label>
         {/* Sort survives a filter change — carried as hidden fields rather
             than reset, so adjusting a filter doesn't silently undo a sort
             the treasurer just picked. */}
@@ -188,7 +232,7 @@ export default async function FinancePage({
         <button type="submit" className={styles.pagerBtn}>
           Filter
         </button>
-        {(account || kind || personId) && (
+        {(account || kind || personId || dateFrom || dateTo || amountMin != null || amountMax != null) && (
           <Link href="/admin/finance" className={styles.pagerBtn}>
             Clear
           </Link>
@@ -202,7 +246,15 @@ export default async function FinancePage({
         reconciliation={reconciliation}
         sort={sort}
         dir={dir}
-        filters={{ account, kind, person: personId ? String(personId) : undefined }}
+        filters={{
+          account,
+          kind,
+          person: personId ? String(personId) : undefined,
+          dateFrom,
+          dateTo,
+          amountMin: amountMin != null ? String(amountMin) : undefined,
+          amountMax: amountMax != null ? String(amountMax) : undefined
+        }}
         activityLabels={activityLabels}
         kinds={kinds}
       />
