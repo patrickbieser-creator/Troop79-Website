@@ -4,34 +4,66 @@
  * (Plans/Troop-Finances.md Phase 1).
  *
  * Run:
- *   npm run import-troop-finances -- --xlsx="d:/path/Troop Accounts.xlsx"            (dry run)
- *   npm run import-troop-finances -- --xlsx="d:/path/Troop Accounts.xlsx" --commit   (mutates)
+ *   npm run import-troop-finances -- --xlsx="d:/path/Troop Accounts.xlsx" --people-csv="d:/path/people.csv"
+ *     (dry run — validates, reports, writes nothing)
+ *   npm run import-troop-finances -- --xlsx="..." --people-csv="..." --commit --sql-out="d:/path/reimport.sql"
+ *     (writes a DELETE + INSERT .sql file — apply it yourself against the
+ *     real database; this script never connects to Supabase at all)
+ *
+ * REWRITTEN 2026-08-20 to drop the supabase-js dependency entirely. The
+ * original version read `people` and wrote `financial_transactions` both via
+ * supabase-js against whatever NEXT_PUBLIC_SUPABASE_URL/SERVICE_ROLE_KEY
+ * .env.local pointed at — which is the LOCAL dev database, not production
+ * (see project memory: "local Docker = dev snapshot"). Person IDs resolved
+ * against local dev would not match production at all. `--people-csv` takes
+ * a plain `id,display_name` export (one query, read-only, run directly
+ * against production via psql) instead, and `--sql-out` writes the mutation
+ * as a file for a human (or an agent with an already-open DB connection) to
+ * apply — nobody needs the production service role key for this at all.
  *
  * Same shape as scripts/import-spreadsheet.ts (the advancement-ledger
  * importer): dry-run by default, explicit dictionaries for the messy
  * free-text columns, a written report of anything that needed a judgment
  * call rather than a silent guess.
  *
- * TWO PASSES, per Plans/Troop-Finances.md — this file does BOTH, but keeps
- * them as clearly separate functions rather than one blur:
+ * THREE PASSES, per Plans/Troop-Finances.md (now with resolve() unconditional
+ * rather than commit-only, so a dry run validates the exact numbers a commit
+ * would write — the two paths were previously computing different things):
  *   1. normalize()  — raw sheet row -> typed NormalizedRow (no DB access)
- *   2. resolve()     — name -> person_id, self-verification against the
- *                       sheet's own running-balance columns (DB reads only)
- * INSERT happens only with --commit, and only after resolve() has run
- * cleanly for every row — see main().
+ *   2. resolve()     — name -> person_id, memo formula, scholarship-fund
+ *                       reclassification, against the --people-csv snapshot
+ *   3. validate()    — self-verification against the sheet's own
+ *                       running-balance columns AND the target balances
+ *                       below (Patrick, 2026-08-20)
+ * The .sql file is written only after resolve() has run cleanly for every
+ * scout_account row — see main().
  *
- * Idempotent via import_batch: a --commit run first deletes any existing
- * financial_transactions rows tagged with IMPORT_BATCH, so this script is
- * safe to re-run while the mapping dictionaries are still being tuned.
+ * Idempotent: the generated SQL first deletes any existing
+ * financial_transactions rows tagged IMPORT_BATCH, so re-running (after
+ * tuning a mapping dictionary) replaces cleanly rather than duplicating.
  */
 
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import * as XLSX from 'xlsx';
-import type { Account, TransactionKind, TransactionMethod } from '../src/lib/finance';
+import { ACCOUNTS, type Account, type TransactionKind, type TransactionMethod } from '../src/lib/finance';
 
 const IMPORT_BATCH = 'cashflow-2026';
+
+/**
+ * What the final balances should be once everything imports correctly
+ * (Patrick, 2026-08-20 — "assuming that my spreadsheet is accurate"). Only
+ * checking/savings/scholarship were given; sofi has no target here. Compared
+ * against the IMPORT ALONE, not the app's current displayed balance — three
+ * small `source='app'` rows (two rounding adjustments, one voided) exist
+ * outside this import batch and are reported separately, since it's not
+ * obvious without asking whether they're already folded into these targets.
+ */
+const BALANCE_TARGETS: Partial<Record<Account, number>> = {
+  checking: 2288.11,
+  savings: 3079.39,
+  scholarship: 760.77
+};
 
 // ── Args ──────────────────────────────────────────────────────────────────
 
@@ -50,21 +82,15 @@ function parseArgs(argv: string[]): Record<string, string | boolean> {
 const args = parseArgs(process.argv.slice(2));
 const COMMIT = args.commit === true;
 const XLSX_PATH = args.xlsx as string | undefined;
-if (!XLSX_PATH) {
-  console.error('Usage: import-troop-finances --xlsx="<path-to-xlsx>" [--commit]');
+const PEOPLE_CSV_PATH = args['people-csv'] as string | undefined;
+if (!XLSX_PATH || !PEOPLE_CSV_PATH) {
+  console.error(
+    'Usage: import-troop-finances --xlsx="<path>" --people-csv="<path>" [--commit --sql-out="<path>"]'
+  );
   process.exit(1);
 }
 const REPORTS_DIR = (args['reports-dir'] as string | undefined) ?? join(dirname(XLSX_PATH), 'import-reports');
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://127.0.0.1:54321';
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-if (!SERVICE_KEY) {
-  console.error('SUPABASE_SERVICE_ROLE_KEY env var is required (see next-app/.env.local).');
-  process.exit(1);
-}
-const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
-  auth: { persistSession: false, autoRefreshToken: false }
-});
+const SQL_OUT_PATH = (args['sql-out'] as string | undefined) ?? join(REPORTS_DIR, 'troop-finances-reimport.sql');
 
 // ── Mapping dictionaries (Category/Method/Code -> our vocabulary) ──────────
 // Every value below was read off the real spreadsheet's own distinct-value
@@ -89,7 +115,10 @@ const CATEGORY_MAP: Record<string, TransactionKind | 'REVIEW_INCOME'> = {
 interface ClassifyResult {
   kind: TransactionKind;
   /** false = a best-effort guess, ALWAYS flagged for manual review — never
-   *  trusted silently, no matter how plausible the keyword match looks. */
+   *  trusted silently, no matter how plausible the keyword match looks.
+   *  Kind carries no direction of its own (2026-08-20) — a wrong guess here
+   *  affects only the category tag, never the balance, which is why 229
+   *  such flags on 646 rows is tolerable rather than alarming. */
   confident: boolean;
 }
 
@@ -100,15 +129,6 @@ interface ClassifyResult {
  * distinct-value counts) or it was the catch-all 'Income' label. Handles
  * BOTH cases with one function since, in practice, the same keyword
  * patterns show up in each.
- *
- * A large share of the blank rows are unambiguous (Can Drive / Wreaths /
- * Dividends line items repeated hundreds of times) — those are classified
- * confidently and skip manual review. The rest are raw bank/payment-
- * processor statement lines the treasurer evidently pasted in bulk without
- * ever filling in a category ("VENMO 250526PPZZER - PAYMENT", "Check #
- * 1033: Completed") — a script has no reliable way to know what those were
- * for, so every one of them gets a best-effort guess AND a mandatory review
- * flag. Never silently trust a guess on real financial history.
  */
 function classifyUnlabeledRow(eventText: string, whoText: string, notesText: string, amount: number): ClassifyResult {
   const s = `${eventText} ${whoText} ${notesText}`.toLowerCase();
@@ -212,18 +232,29 @@ const NAME_ALIAS: Record<string, string> = {
  * Row 568 ("Transfer In From Patrick as Debbie Takes over Treasurer", coded
  * BLS +$974.78) was investigated and is CORRECTLY coded — confirmed by
  * Patrick: a real initial funding of the savings account at the treasurer
- * handoff, not a miscoded checking wash. (An earlier version of this
- * override incorrectly recoded it to checking based on the adjacent row
- * 569's "Scouts' fundraising acct" label — that label belongs to row 569's
- * own miscount, not row 568's account code. Left here as a note, not a
- * ROW_ACCOUNT_OVERRIDE entry, so the mistake doesn't get quietly repeated.)
- * The resulting ~$974.78 checking-side drift from here forward is known,
- * expected, and deliberately NOT chased further — Patrick: "we will
- * reconcile the whole thing when we're done" (the Phase 2 monthly
- * reconciliation flow is the intended mechanism for that).
+ * handoff, not a miscoded checking wash. The resulting ~$974.78
+ * checking-side drift from here forward is known, expected, and
+ * deliberately NOT chased further — Patrick: "we will reconcile the whole
+ * thing when we're done" (the Phase 2 monthly reconciliation flow is the
+ * intended mechanism for that).
  */
 const ROW_ACCOUNT_OVERRIDE: Record<number, Account> = {
   258: 'checking'
+};
+
+/**
+ * Row-number amount corrections — same "confirmed wrong, not just missing"
+ * standard as ROW_ACCOUNT_OVERRIDE, above.
+ *
+ *  - 4: High Cliff 2 Group Site reservation. The sheet has -$208.60; the
+ *    real figure is -$218.60 (Patrick, 2026-08-20 — "an error I recently
+ *    caught" in the spreadsheet itself, not in this script). Applied AFTER
+ *    the debit/credit read so a future spreadsheet fix (whenever the sheet
+ *    itself gets corrected) needs this entry removed, not silently
+ *    overridden forever.
+ */
+const ROW_AMOUNT_OVERRIDE: Record<number, number> = {
+  4: -218.6
 };
 
 // ── Sheet reading ────────────────────────────────────────────────────────
@@ -235,9 +266,9 @@ interface NormalizedRow {
   amount: number; // signed
   kind: TransactionKind;
   method: TransactionMethod | null;
-  whoRaw: string;
-  isScoutAccountRow: boolean;
-  memo: string | null;
+  whoRaw: string; // column B, verbatim (trimmed)
+  notesRaw: string | null; // column L, verbatim (trimmed) — was silently
+  // dropped before 2026-08-20; see computeMemo().
   activityLabel: string | null;
   needsReview: boolean;
   sheetBalances: { blc: number | null; bls: number | null; sa: number | null };
@@ -296,7 +327,7 @@ function readCashFlow(workbook: XLSX.WorkBook): NormalizedRow[] {
 
     const debit = debitRaw != null && debitRaw !== '' ? Number(debitRaw) : 0;
     const credit = creditRaw != null && creditRaw !== '' ? Number(creditRaw) : 0;
-    const amount = credit - debit;
+    const amount = ROW_AMOUNT_OVERRIDE[rowNumber] ?? credit - debit;
     if (amount === 0) continue; // both blank, or a $0 row — nothing to import
 
     const codeStr = String(code ?? '').trim();
@@ -350,8 +381,7 @@ function readCashFlow(workbook: XLSX.WorkBook): NormalizedRow[] {
       kind,
       method: mappedMethod ?? null,
       whoRaw: String(who ?? '').trim(),
-      isScoutAccountRow: account === 'scout_account',
-      memo: account === 'scout_account' ? null : String(who ?? '').trim() || null,
+      notesRaw: String(notes ?? '').trim() || null,
       activityLabel: String(event ?? '').trim() || null,
       needsReview,
       sheetBalances: {
@@ -408,21 +438,85 @@ function readScoutAccounts(workbook: XLSX.WorkBook): ScoutAccountRawRow[] {
   return out;
 }
 
-// ── Person resolution ───────────────────────────────────────────────────
+// ── Person resolution (offline — from --people-csv, never supabase-js) ────
 
-async function loadPeopleByName(client: SupabaseClient): Promise<Map<string, number>> {
-  const { data, error } = await client.from('people').select('id, display_name');
-  if (error) throw new Error(`people lookup failed: ${error.message}`);
+/** `id,display_name` per line, no header — exactly what
+ *  `psql -t -A -F',' -c "select id, display_name from people order by id"`
+ *  produces. Read-only production query; nothing in this script ever writes
+ *  through a live connection. */
+function loadPeopleFromCsv(path: string): Map<string, number> {
+  const text = readFileSync(path, 'utf8');
   const map = new Map<string, number>();
-  for (const p of (data ?? []) as { id: number; display_name: string }[]) {
-    map.set(p.display_name.trim().toLowerCase(), p.id);
+  for (const line of text.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const comma = trimmed.indexOf(',');
+    if (comma < 0) continue;
+    const id = Number(trimmed.slice(0, comma));
+    const name = trimmed.slice(comma + 1).trim();
+    if (!Number.isFinite(id) || !name) continue;
+    map.set(name.toLowerCase(), id);
   }
   return map;
 }
 
 function resolvePersonId(rawName: string, nameMap: Map<string, number>): number | null {
+  if (!rawName) return null;
   const aliased = NAME_ALIAS[rawName] ?? rawName;
   return nameMap.get(aliased.trim().toLowerCase()) ?? null;
+}
+
+/**
+ * The memo formula (Patrick, 2026-08-20):
+ *   1. Column L (notes), verbatim, if present.
+ *   2. Column B (who) is appended too, UNLESS it resolved to a real person —
+ *      in that case it's already captured by person_id (shown as "Who" in
+ *      the UI), and repeating the name in memo is exactly the redundant
+ *      pattern being removed. "Other than a name, or in addition to a
+ *      name" (e.g. "Reimb Amy Joyce - Signs VENMO - PAYMENT") never matches
+ *      a person exactly, so it falls through to this branch and the WHOLE
+ *      cell is kept — the rule doesn't ask for partial name-extraction from
+ *      a mixed string, just a binary "did this resolve cleanly or not".
+ *   Joined with "; " when both parts are present.
+ */
+function computeMemo(notesRaw: string | null, whoRaw: string, personResolved: boolean): string | null {
+  const parts: string[] = [];
+  if (notesRaw) parts.push(notesRaw);
+  if (!personResolved && whoRaw) parts.push(whoRaw);
+  return parts.length > 0 ? parts.join('; ') : null;
+}
+
+interface ResolvedRow extends NormalizedRow {
+  personId: number | null;
+  memo: string | null;
+}
+
+/**
+ * Runs unconditionally now (dry run AND commit) — previously person
+ * resolution only happened inside the --commit branch, which meant a dry
+ * run validated different numbers than a commit would actually write. Also
+ * where "Scholarship Fund" rows get reclassified off scout_account, so a
+ * dry run's balance report can verify the scholarship figure at all (the
+ * old validate() silently hardcoded it to 0 — never actually checked).
+ */
+function resolveRows(
+  rows: NormalizedRow[],
+  nameMap: Map<string, number>
+): { resolved: ResolvedRow[]; unresolvedScoutNames: Set<string> } {
+  const unresolvedScoutNames = new Set<string>();
+  const resolved = rows.map((r): ResolvedRow => {
+    const isScholarship = r.account === 'scout_account' && r.whoRaw.toLowerCase() === 'scholarship fund';
+    const account: Account = isScholarship ? 'scholarship' : r.account;
+    // Scholarship is a fund, not a person — there is no "Scholarship Fund"
+    // person record to resolve, and none should be attempted.
+    const personId = isScholarship ? null : resolvePersonId(r.whoRaw, nameMap);
+    if (account === 'scout_account' && personId == null && r.whoRaw) {
+      unresolvedScoutNames.add(r.whoRaw);
+    }
+    const memo = computeMemo(r.notesRaw, r.whoRaw, personId != null);
+    return { ...r, account, personId, memo };
+  });
+  return { resolved, unresolvedScoutNames };
 }
 
 // ── Validation ───────────────────────────────────────────────────────────
@@ -434,33 +528,31 @@ interface ValidationResult {
   finalByPerson: Map<string, number>; // keyed by raw sheet name
 }
 
-function validate(rows: NormalizedRow[], scoutAccounts: ScoutAccountRawRow[]): ValidationResult {
+function validate(rows: ResolvedRow[], scoutAccounts: ScoutAccountRawRow[]): ValidationResult {
   const mismatches: string[] = [];
-  const running: Record<'checking' | 'savings' | 'scout_account', number> = {
-    checking: 0,
-    savings: 0,
-    scout_account: 0
-  };
+  const running = Object.fromEntries(ACCOUNTS.map((a) => [a, 0])) as Record<Account, number>;
   const perPerson = new Map<string, number>();
 
   for (const r of rows) {
-    if (r.account === 'checking' || r.account === 'savings' || r.account === 'scout_account') {
-      running[r.account] = Math.round((running[r.account] + r.amount) * 100) / 100;
-    }
+    running[r.account] = Math.round((running[r.account] + r.amount) * 100) / 100;
     if (r.account === 'scout_account') {
       const prior = perPerson.get(r.whoRaw) ?? 0;
       perPerson.set(r.whoRaw, Math.round((prior + r.amount) * 100) / 100);
     }
     const sheetVal =
       r.account === 'checking' ? r.sheetBalances.blc : r.account === 'savings' ? r.sheetBalances.bls : null;
-    if (sheetVal != null && Math.abs(sheetVal - running[r.account as 'checking' | 'savings']) > 0.01) {
+    if (sheetVal != null && Math.abs(sheetVal - running[r.account]) > 0.01) {
       mismatches.push(
-        `Row ${r.rowNumber} (${r.account}): computed running total ${running[r.account as 'checking' | 'savings']} vs sheet ${sheetVal}`
+        `Row ${r.rowNumber} (${r.account}): computed running total ${running[r.account]} vs sheet ${sheetVal}`
       );
     }
   }
 
   for (const sa of scoutAccounts) {
+    // Scholarship Fund is reclassified out of scout_account entirely
+    // (resolveRows) — it will never appear in perPerson, and comparing it
+    // here would be a guaranteed false-positive, not a real mismatch.
+    if (sa.name.toLowerCase() === 'scholarship fund') continue;
     const computed = perPerson.get(sa.name) ?? perPerson.get(Object.keys(NAME_ALIAS).find((k) => NAME_ALIAS[k] === sa.name) ?? '') ?? 0;
     if (Math.abs(computed - sa.balance) > 0.01) {
       mismatches.push(
@@ -469,15 +561,65 @@ function validate(rows: NormalizedRow[], scoutAccounts: ScoutAccountRawRow[]): V
     }
   }
 
-  const total = Object.values(Object.fromEntries(perPerson)).reduce((s, v) => s + v, 0);
+  const total = [...perPerson.values()].reduce((s, v) => s + v, 0);
   console.log(`Derived scout-account total: $${total.toFixed(2)} (sheet total: $2,942.85).`);
 
-  return {
-    ok: mismatches.length === 0,
-    mismatches,
-    finalByAccount: { checking: running.checking, savings: running.savings, scout_account: running.scout_account, scholarship: 0, sofi: 0 },
-    finalByPerson: perPerson
-  };
+  return { ok: mismatches.length === 0, mismatches, finalByAccount: running, finalByPerson: perPerson };
+}
+
+// ── SQL generation ──────────────────────────────────────────────────────
+
+function sqlString(value: string | null): string {
+  if (value == null) return 'NULL';
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
+function sqlNumber(value: number | null): string {
+  return value == null ? 'NULL' : String(value);
+}
+
+function buildSql(rows: ResolvedRow[]): string {
+  const lines: string[] = [
+    '-- Troop Finances reimport — generated by scripts/import-troop-finances.ts',
+    `-- ${new Date().toISOString()}`,
+    'BEGIN;',
+    '',
+    `DELETE FROM financial_transactions WHERE import_batch = ${sqlString(IMPORT_BATCH)};`,
+    ''
+  ];
+  const cols = [
+    'occurred_on',
+    'account',
+    'amount',
+    'kind',
+    'method',
+    'person_id',
+    'memo',
+    'activity_label',
+    'source',
+    'import_row',
+    'import_batch'
+  ];
+  lines.push(`INSERT INTO financial_transactions (${cols.join(', ')}) VALUES`);
+  const valueLines = rows.map((r) => {
+    const vals = [
+      sqlString(r.occurredOn),
+      sqlString(r.account),
+      sqlNumber(r.amount),
+      sqlString(r.kind),
+      sqlString(r.method),
+      sqlNumber(r.personId),
+      sqlString(r.memo),
+      sqlString(r.activityLabel),
+      sqlString('import'),
+      sqlNumber(r.rowNumber),
+      sqlString(IMPORT_BATCH)
+    ];
+    return `  (${vals.join(', ')})`;
+  });
+  lines.push(valueLines.join(',\n') + ';');
+  lines.push('', 'COMMIT;', '');
+  return lines.join('\n');
 }
 
 // ── Main ───────────────────────────────────────────────────────────────
@@ -487,25 +629,52 @@ async function main() {
   const cashFlowRows = readCashFlow(workbook);
   const scoutAccounts = readScoutAccounts(workbook);
 
-  const validation = validate(cashFlowRows, scoutAccounts);
+  const nameMap = loadPeopleFromCsv(PEOPLE_CSV_PATH!);
+  const { resolved, unresolvedScoutNames } = resolveRows(cashFlowRows, nameMap);
+
+  if (unresolvedScoutNames.size > 0) {
+    console.error(`\n${unresolvedScoutNames.size} scout name(s) did not resolve to a person:`);
+    for (const name of unresolvedScoutNames) console.error(`  - "${name}"`);
+    console.error('Add a NAME_ALIAS entry (or fix the person record) and re-run — even a dry run needs this.');
+    process.exit(1);
+  }
+
+  const validation = validate(resolved, scoutAccounts);
 
   mkdirSync(REPORTS_DIR, { recursive: true });
   const reportPath = join(REPORTS_DIR, 'troop-finances-import-report.txt');
-  const reviewRows = cashFlowRows.filter((r) => r.needsReview);
+  const reviewRows = resolved.filter((r) => r.needsReview);
+  const balanceLines = (Object.keys(BALANCE_TARGETS) as Account[]).map((account) => {
+    const computed = validation.finalByAccount[account];
+    const target = BALANCE_TARGETS[account]!;
+    const diff = Math.round((computed - target) * 100) / 100;
+    const pass = Math.abs(diff) <= 0.01;
+    return `  ${account}: computed $${computed.toFixed(2)} vs target $${target.toFixed(2)} — ${
+      pass ? 'MATCH' : `OFF BY $${diff.toFixed(2)}`
+    }`;
+  });
   const reportLines = [
     `Troop Finances import — ${new Date().toISOString()}`,
     `Source: ${XLSX_PATH}`,
     `Rows read: ${cashFlowRows.length}`,
-    `Rows flagged for manual review (best-effort kind guess, not confidently mapped): ${reviewRows.length}`,
+    '',
+    `Balance check (import rows only — does not include the 3 source='app' rows outside this batch):`,
+    ...balanceLines,
+    '',
+    `Rows flagged for manual review (best-effort kind guess, not confidently mapped — the SIGN is always read directly from the sheet, never guessed, so these never affect balance): ${reviewRows.length}`,
     ...reviewRows.map(
       (r) => `  Row ${r.rowNumber}: ${r.occurredOn} "${r.whoRaw}" / "${r.activityLabel}" $${r.amount} — guessed kind='${r.kind}'`
     ),
     '',
-    `Validation mismatches: ${validation.mismatches.length}`,
+    `Validation mismatches (running-balance vs. sheet's own columns): ${validation.mismatches.length}`,
     ...validation.mismatches.map((m) => `  - ${m}`)
   ];
   writeFileSync(reportPath, reportLines.join('\n'));
   console.log(`Report written: ${reportPath}`);
+  console.log('\nAll computed account totals (import rows only):');
+  for (const a of ACCOUNTS) console.log(`  ${a}: $${validation.finalByAccount[a].toFixed(2)}`);
+  console.log('\nBalance check:');
+  for (const line of balanceLines) console.log(line);
 
   if (!validation.ok) {
     // Historically accumulated drift (mostly 2023-2024 rows where the
@@ -525,60 +694,13 @@ async function main() {
   }
 
   if (!COMMIT) {
-    console.log(`\nDRY RUN — no rows written. Re-run with --commit to import ${cashFlowRows.length} transactions.`);
+    console.log(`\nDRY RUN — no SQL written. Re-run with --commit --sql-out="<path>" to generate the reimport SQL.`);
     return;
   }
 
-  const nameMap = await loadPeopleByName(supabase);
-  const unresolved = new Set<string>();
-
-  const insertRows = cashFlowRows.map((r) => {
-    let personId: number | null = null;
-    if (r.account === 'scout_account') {
-      if (r.whoRaw.toLowerCase() === 'scholarship fund') {
-        return { ...r, account: 'scholarship' as Account, personId: null };
-      }
-      personId = resolvePersonId(r.whoRaw, nameMap);
-      if (personId == null) unresolved.add(r.whoRaw);
-    }
-    return { ...r, personId };
-  });
-
-  if (unresolved.size > 0) {
-    console.error(`\nCannot commit — ${unresolved.size} scout name(s) did not resolve to a person:`);
-    for (const name of unresolved) console.error(`  - "${name}"`);
-    console.error('Add a NAME_ALIAS entry (or fix the person record) and re-run.');
-    process.exit(1);
-  }
-
-  console.log(`\nDeleting any existing rows tagged import_batch='${IMPORT_BATCH}' (idempotent re-run)...`);
-  const { error: delErr } = await supabase.from('financial_transactions').delete().eq('import_batch', IMPORT_BATCH);
-  if (delErr) throw new Error(`cleanup delete failed: ${delErr.message}`);
-
-  const payload = insertRows.map((r) => ({
-    occurred_on: r.occurredOn,
-    account: r.account,
-    amount: r.amount,
-    kind: r.kind,
-    method: r.method,
-    person_id: r.personId,
-    memo: r.memo,
-    activity_label: r.activityLabel,
-    source: 'import',
-    import_row: r.rowNumber,
-    import_batch: IMPORT_BATCH
-  }));
-
-  console.log(`Inserting ${payload.length} rows...`);
-  const CHUNK = 500;
-  for (let i = 0; i < payload.length; i += CHUNK) {
-    const { error } = await supabase.from('financial_transactions').insert(payload.slice(i, i + CHUNK));
-    if (error) throw new Error(`insert failed at offset ${i}: ${error.message}`);
-  }
-
-  console.log(`Done. ${payload.length} rows imported under import_batch='${IMPORT_BATCH}'.`);
-  console.log('NOTE: pre-2022 opening-balance adjustment rows (if the validation report flagged any) are NOT');
-  console.log('auto-created — insert those manually with kind=\'adjustment\' after reviewing the report.');
+  const sql = buildSql(resolved);
+  writeFileSync(SQL_OUT_PATH, sql);
+  console.log(`\nSQL written: ${SQL_OUT_PATH} (${resolved.length} rows). Apply it against the real database — this script does not connect to one.`);
 }
 
 main().catch((err) => {
