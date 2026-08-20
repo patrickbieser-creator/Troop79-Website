@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Forms Upload Design — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #8b6914;
+            --nw-gold: #8b6914;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #faf6ef;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); }
+        tr:hover { background: var(--nw-sage); }
+
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+
+        @media print {
+            body { background: white; }
+            header { padding: 1.5rem; }
+            .container { padding: 1rem; }
+            .stat { break-inside: avoid; }
+        }
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.5rem; }
+            .stats { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Health Forms Upload Design</h1>
+        <p class="subtitle">Investigated and parked a secure design for family-uploaded BSA health forms — no code shipped this session.</p>
+        <div class="meta">
+            <span>&#128197; August 20, 2026</span>
+            <span>&#129302; Operator</span>
+            <span>&#128204; Troop 79</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">2</div><div class="label">SMEs Consulted</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">Plan Written</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">Backlog Item</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">Commit (docs-only)</div></div>
+            <div class="stat"><div class="number">0</div><div class="label">Code Changes</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <h3>Question: how to secure family-uploaded health forms</h3>
+        <p>Patrick asked how families could safely upload BSA Annual Health and Medical Record (AHMR)
+        forms so a scoped subset of adult leaders could view them — without turning sensitive medical
+        PII into a liability. Rather than answer from general best-practice knowledge, two specialists
+        were consulted in parallel:</p>
+        <ul>
+            <li><strong>troop79-specialist</strong> mapped the actual current architecture — auth
+            tiers, the <span class="file-path">person_capabilities</span> permission model, the two
+            existing storage mechanisms (public Bunny CDN vs. private Supabase Storage buckets), and
+            prior decisions on sensitive fields.</li>
+            <li><strong>qa-lead</strong> produced concrete, scale-appropriate security guidance —
+            storage pattern, access-control model, retention, audit trail, and common mistakes to
+            avoid — grounded directly in this codebase's existing patterns rather than a generic
+            PII whitepaper.</li>
+        </ul>
+
+        <div class="callout callout-gold">
+            <strong>Key finding:</strong> this feature reverses a prior, on-the-record decision.
+            <span class="file-path">20260713000000_demographics.sql</span> states medical conditions
+            and allergies are "deliberately NOT tracked — health form dates only, the forms themselves
+            stay on paper with the health officer." Building this is a deliberate policy change, not
+            an incidental side effect — flagged for Patrick's explicit sign-off before implementation.
+        </div>
+
+        <h3>Recommended design (reuse, don't invent)</h3>
+        <p>The codebase already has two proven implementations of "sensitive file, scoped access, no
+        public URL" — merit badge proof photos and finance reimbursement receipts. The recommendation
+        is a third instance of the same pattern:</p>
+        <table>
+            <thead><tr><th>Concern</th><th>Approach</th></tr></thead>
+            <tbody>
+                <tr><td>Storage</td><td>New private Supabase Storage bucket (<span class="file-path">health-forms</span>), zero RLS policies, signed URLs only (5&ndash;10 min TTL). No Bunny CDN.</td></tr>
+                <tr><td>Access control</td><td>New <span class="file-path">health_forms.view</span> capability, excluded from the legacy <span class="file-path">LEADER_PASSWORD</span> auto-grant — same pattern as <span class="file-path">finance.manage</span>.</td></tr>
+                <tr><td>Metadata</td><td>New <span class="file-path">health_forms</span> table with <span class="file-path">expires_at</span>; reconcile against the existing <span class="file-path">people.health_form_date</span>.</td></tr>
+                <tr><td>Retention</td><td>~1-year expiry, surfaced via the existing <span class="file-path">attention-items.ts</span> dashboard pattern. No auto-delete.</td></tr>
+                <tr><td>Audit trail</td><td>Lightweight access log, one row per signed-URL issuance, mirroring <span class="file-path">login_events</span>.</td></tr>
+            </tbody>
+        </table>
+
+        <h3>Written up and parked</h3>
+        <p>The full design was captured as <span class="file-path">Plans/Health-Forms.md</span> —
+        overview, problem/opportunity, architecture facts (with file:line citations), recommended
+        design, acceptance criteria, named test stubs, implementation steps, and open questions. Not
+        activated; ready to pick up alongside the existing Members "Soon" cards backlog item.</p>
+
+        <h2>Decisions</h2>
+        <p>None recorded as architectural decisions this session — this was investigation and design
+        parked for later, not a decision to build. The design itself lives in the plan file.</p>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Patrick to decide whether to activate <span class="file-path">Plans/Health-Forms.md</span> and explicitly sign off on reversing the no-medical-content decision</li>
+            <li>Open questions in the plan: extend vs. supersede <span class="file-path">people.health_form_date</span>; who initially holds <span class="file-path">health_forms.view</span>; whether scouts can view their own form; hardcoded vs. configurable expiry window</li>
+            <li>Existing backlog carries on unchanged — Ledger Tweaks post-push checklist, admin nav mobile verification, and the other Members "Soon" card conversions</li>
+        </ul>
+
+        <h2>Files Changed</h2>
+        <p><span class="badge badge-green">NEW</span> <span class="file-path">Plans/Health-Forms.md</span> — design doc, committed and pushed to main (docs-only, no build/test required)</p>
+
+    </div>
+
+    <footer>
+        <strong>Troop 79</strong> — Troop79-Website<br>
+        Session Summary — August 20, 2026 — Operator
+    </footer>
+</body>
+</html>
