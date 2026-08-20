@@ -52,6 +52,10 @@ export interface LedgerFilters {
   account?: Account;
   kind?: string;
   personId?: number;
+  /** Case-insensitive substring match against activity_label — "contains",
+   *  not "equals", so "camp" finds every camping-related activity without
+   *  needing the exact full label (which drift makes hard to type anyway). */
+  activityLabel?: string;
   /** occurred_on range, both inclusive, both optional, YYYY-MM-DD. */
   dateFrom?: string;
   dateTo?: string;
@@ -107,6 +111,7 @@ export async function listFinancialTransactionsAction(
   if (filters.account) q = q.eq('account', filters.account);
   if (filters.kind) q = q.eq('kind', filters.kind);
   if (filters.personId) q = q.eq('person_id', filters.personId);
+  if (filters.activityLabel) q = q.ilike('activity_label', `%${filters.activityLabel}%`);
   if (filters.dateFrom) q = q.gte('occurred_on', filters.dateFrom);
   if (filters.dateTo) q = q.lte('occurred_on', filters.dateTo);
   if (filters.amountMin != null || filters.amountMax != null) {

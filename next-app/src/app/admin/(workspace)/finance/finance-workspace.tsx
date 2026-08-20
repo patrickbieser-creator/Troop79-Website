@@ -105,6 +105,7 @@ export function FinanceWorkspace({
     account?: string;
     kind?: string;
     person?: string;
+    activity?: string;
     dateFrom?: string;
     dateTo?: string;
     amountMin?: string;
@@ -221,6 +222,7 @@ export function FinanceWorkspace({
     if (filters.account) params.set('account', filters.account);
     if (filters.kind) params.set('kind', filters.kind);
     if (filters.person) params.set('person', filters.person);
+    if (filters.activity) params.set('activity', filters.activity);
     if (filters.dateFrom) params.set('dateFrom', filters.dateFrom);
     if (filters.dateTo) params.set('dateTo', filters.dateTo);
     if (filters.amountMin) params.set('amountMin', filters.amountMin);
@@ -234,28 +236,43 @@ export function FinanceWorkspace({
     <>
       {error && <p className={styles.empty}>{error}</p>}
 
-      {canManage && (
-        <>
-          <div className={styles.actionsBar}>
-            <select
-              value=""
-              className={styles.select}
-              aria-label="Finance actions"
-              onChange={(e) => {
-                const v = e.target.value as FinanceModal | '';
-                if (v) setActiveModal(v);
-                e.target.value = '';
-              }}
-            >
-              <option value="">Actions…</option>
+      <div className={styles.actionsBar}>
+        {/* Available to a finance.view-only actor too — Activity Report is
+            read-only, so it's the one option that doesn't need canManage.
+            Prefixed values navigate (router.push); bare values open the
+            modal below. */}
+        <select
+          value=""
+          className={styles.select}
+          aria-label="Finance actions"
+          onChange={(e) => {
+            const v = e.target.value;
+            e.target.value = '';
+            if (!v) return;
+            if (v.startsWith('nav:')) {
+              router.push(v.slice(4));
+              return;
+            }
+            setActiveModal(v as FinanceModal);
+          }}
+        >
+          <option value="">Actions…</option>
+          <option value="nav:/admin/finance/report">Activity Report</option>
+          {canManage && (
+            <>
               <option value="record">Record a transaction</option>
               <option value="transfer">Transfer between accounts</option>
               <option value="reconcile">Monthly reconciliation</option>
               <option value="kinds">Manage Kinds</option>
-            </select>
-          </div>
+              <option value="nav:/admin/finance/reimbursements">Reimbursements</option>
+              <option value="nav:/admin/finance/export">Export CSV (backup)</option>
+            </>
+          )}
+        </select>
+      </div>
 
-          <dialog ref={actionModalRef} className={styles.actionModal} onClose={() => setActiveModal(null)}>
+      {canManage && (
+        <dialog ref={actionModalRef} className={styles.actionModal} onClose={() => setActiveModal(null)}>
             <div className={styles.actionModalHeader}>
               <h3>{activeModal && MODAL_TITLES[activeModal]}</h3>
               <button type="button" className={styles.saveBtnAlt} onClick={() => setActiveModal(null)}>
@@ -315,8 +332,7 @@ export function FinanceWorkspace({
               />
             )}
             {activeModal === 'kinds' && <KindManager kinds={kinds} />}
-          </dialog>
-        </>
+        </dialog>
       )}
 
       {canManage && selectedIds.size > 0 && (

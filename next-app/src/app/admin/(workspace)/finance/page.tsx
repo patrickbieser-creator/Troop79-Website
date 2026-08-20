@@ -31,6 +31,7 @@ interface SearchParams {
   account?: string;
   kind?: string;
   person?: string;
+  activity?: string;
   dateFrom?: string;
   dateTo?: string;
   amountMin?: string;
@@ -71,6 +72,7 @@ export default async function FinancePage({
   const account = raw.account && isKnownAccount(raw.account) ? raw.account : undefined;
   const kind = raw.kind?.trim() || undefined;
   const personId = raw.person ? Number(raw.person) : undefined;
+  const activity = raw.activity?.trim() || undefined;
   // YYYY-MM-DD only — an occurred_on comparison, so anything else is
   // silently dropped rather than sent to Postgres and rejected mid-query.
   const dateFrom = raw.dateFrom && /^\d{4}-\d{2}-\d{2}$/.test(raw.dateFrom) ? raw.dateFrom : undefined;
@@ -84,7 +86,19 @@ export default async function FinancePage({
   const supabase = createAdminClient();
   const [{ rows, total }, accountBalances, scoutBalances, reconciliation, peopleRes, activityLabels, kinds] =
     await Promise.all([
-      listFinancialTransactionsAction({ account, kind, personId, dateFrom, dateTo, amountMin, amountMax, sort, dir, page }),
+      listFinancialTransactionsAction({
+        account,
+        kind,
+        personId,
+        activityLabel: activity,
+        dateFrom,
+        dateTo,
+        amountMin,
+        amountMax,
+        sort,
+        dir,
+        page
+      }),
       getAccountBalancesAction(),
       getScoutAccountBalancesAction(),
       getReconciliationSummaryAction(),
@@ -118,21 +132,6 @@ export default async function FinancePage({
               ? 'The books of record — checking, savings, and every scout account, derived from full transaction history (never a stored total).'
               : 'Read-only view of troop finances — every historical transaction and current balances.'}
           </p>
-        </div>
-        <div className={styles.headerActions}>
-          <Link href="/admin/finance/report" className={styles.pagerBtn}>
-            Activity Report
-          </Link>
-          {canManage && (
-            <>
-              <Link href="/admin/finance/reimbursements" className={styles.pagerBtn}>
-                Reimbursements
-              </Link>
-              <Link href="/admin/finance/export" className={styles.pagerBtn}>
-                Export CSV (backup)
-              </Link>
-            </>
-          )}
         </div>
       </div>
 
@@ -191,6 +190,22 @@ export default async function FinancePage({
           ))}
         </select>
         <label className={styles.toolbarField}>
+          Activity
+          <input
+            type="text"
+            name="activity"
+            list="activity-labels-filter"
+            placeholder="contains…"
+            defaultValue={activity ?? ''}
+            aria-label="Filter: activity contains"
+          />
+          <datalist id="activity-labels-filter">
+            {activityLabels.map((label) => (
+              <option key={label} value={label} />
+            ))}
+          </datalist>
+        </label>
+        <label className={styles.toolbarField}>
           From
           <input type="date" name="dateFrom" defaultValue={dateFrom ?? ''} aria-label="Filter: date from" />
         </label>
@@ -232,7 +247,7 @@ export default async function FinancePage({
         <button type="submit" className={styles.pagerBtn}>
           Filter
         </button>
-        {(account || kind || personId || dateFrom || dateTo || amountMin != null || amountMax != null) && (
+        {(account || kind || personId || activity || dateFrom || dateTo || amountMin != null || amountMax != null) && (
           <Link href="/admin/finance" className={styles.pagerBtn}>
             Clear
           </Link>
@@ -250,6 +265,7 @@ export default async function FinancePage({
           account,
           kind,
           person: personId ? String(personId) : undefined,
+          activity,
           dateFrom,
           dateTo,
           amountMin: amountMin != null ? String(amountMin) : undefined,
