@@ -497,6 +497,37 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.53.2 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.53.2</span>
+        <span class="release-date">August 20, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Fix</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Kind no longer silently overwrites Direction on the treasurer ledger</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              A real transaction exposed it: recategorizing a transaction&rsquo;s
+              Kind used to auto-flip its Direction (and therefore its signed
+              amount) whenever the new Kind had a &ldquo;usual&rdquo; direction &mdash; so a
+              pure label fix could quietly corrupt the balance. Kind is now
+              strictly a tag for sorting and reconciliation; the signed amount
+              is the only thing that ever decides money in vs. out.
+            </span>
+          </li>
+          <li>
+            <span>
+              Expense rows on the ledger now show in red with parentheses
+              &mdash; ($218.60) instead of &minus;$218.60 &mdash; so they stand out on a
+              page that&rsquo;s mostly income.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.53.1 -->
     <div class="release">
       <div class="release-header">
