@@ -5,6 +5,7 @@ import {
   creditRuleFor,
   ledgerCodeFor,
   reconcileWithSignup,
+  qtyForMissingCreditResolution,
   type AttendeeCandidate
 } from '@/lib/attendance-shared';
 import { syncCredit, retireCredit, adoptLegacyCredit } from '@/lib/attendance-admin';
@@ -185,6 +186,31 @@ describe('credit rules', () => {
     expect(ledgerCodeFor('meeting_attendance', 42, '2026-07-19')).toBe('MTG:2026-07-19');
     // Everything else keys by entry id, which survives a rename or date move.
     expect(ledgerCodeFor('camping_nights', 42, '2026-07-19')).toBe('EVT:42');
+  });
+
+  describe('qtyForMissingCreditResolution', () => {
+    it('UsesTheRecordedQty_WhenRollCallHasOne', () => {
+      expect(qtyForMissingCreditResolution('camping_nights', 3, '2027-09-10', '2027-09-12')).toEqual({ qty: 3 });
+    });
+
+    it('FallsBackToTheEntrysDefault_WhenRollCallNeverRecordedOne', () => {
+      // The exact 2026-08-20 case: an imported meeting_attendance row with no
+      // qty at all — meetings always grant 1, so there's no reason to refuse.
+      expect(qtyForMissingCreditResolution('meeting_attendance', null, '2026-07-19', null)).toEqual({ qty: 1 });
+      // A camping entry with no recorded qty still knows its own night count.
+      expect(qtyForMissingCreditResolution('camping_nights', null, '2027-09-10', '2027-09-12')).toEqual({ qty: 2 });
+    });
+
+    it('Refuses_ForServiceHoursWithNoRecordedQty_BecauseThereIsNoSafeDefault', () => {
+      const result = qtyForMissingCreditResolution('service_hours', null, '2027-09-10', null);
+      expect('error' in result).toBe(true);
+    });
+
+    it('IgnoresAZeroOrNegativeRecordedQty_AndFallsBackInstead', () => {
+      // Defensive: a stray 0 shouldn't silently write a zero-quantity credit
+      // when a real default is available.
+      expect(qtyForMissingCreditResolution('meeting_attendance', 0, '2026-07-19', null)).toEqual({ qty: 1 });
+    });
   });
 });
 

@@ -68,7 +68,12 @@ export function ReconciliationFindingRow({ finding }: { finding: ReconciliationF
             <button
               type="button"
               className={styles.saveBtn}
-              disabled={disabled || finding.rollCallQty == null}
+              disabled={disabled}
+              title={
+                finding.rollCallQty == null
+                  ? "Roll Call never recorded a quantity for this person (a pre-Roll-Call imported row) — the entry's own default will be used instead."
+                  : undefined
+              }
               onClick={() =>
                 run(
                   () =>
@@ -76,14 +81,23 @@ export function ReconciliationFindingRow({ finding }: { finding: ReconciliationF
                       fd({
                         calendar_entry_id: finding.entryId,
                         person_id: finding.personId!,
-                        qty: finding.rollCallQty ?? 0
+                        // Omit entirely when unknown rather than sending a
+                        // guessed 0 — resolveMissingCredit falls back to the
+                        // entry's own default (qtyForMissingCreditResolution).
+                        ...(finding.rollCallQty != null ? { qty: finding.rollCallQty } : {})
                       })
                     ),
-                  `Credit written (${finding.rollCallQty}).`
+                  finding.rollCallQty != null
+                    ? `Credit written (${finding.rollCallQty}).`
+                    : 'Credit written.'
                 )
               }
             >
-              {isPending ? '…' : `Write the missing credit (${finding.rollCallQty ?? '?'})`}
+              {isPending
+                ? '…'
+                : finding.rollCallQty != null
+                  ? `Write the missing credit (${finding.rollCallQty})`
+                  : 'Write the missing credit'}
             </button>
           )}
 

@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { syncCredit } from '@/lib/attendance-admin';
-import { ledgerCodeFor, type CreditKind } from '@/lib/attendance-shared';
+import { ledgerCodeFor, qtyForMissingCreditResolution, type CreditKind } from '@/lib/attendance-shared';
 
 /**
  * The Audits section's one write path, shared by every check: backfilling
@@ -174,18 +174,19 @@ export async function resolveMissingCredit(formData: FormData): Promise<Reconcil
 
   const calendarEntryId = Number(formData.get('calendar_entry_id'));
   const personId = Number(formData.get('person_id'));
-  const qty = Number(formData.get('qty'));
+  // Absent/blank when Roll Call never recorded one — pre-Roll-Call imported
+  // attendance rows carry no qty at all. Not fatal on its own; see
+  // qtyForMissingCreditResolution.
+  const qtyRaw = formData.get('qty');
+  const recordedQty = qtyRaw != null && qtyRaw !== '' ? Number(qtyRaw) : null;
   if (!Number.isFinite(calendarEntryId) || !Number.isFinite(personId)) {
     return { ok: false, error: 'Malformed request' };
-  }
-  if (!Number.isFinite(qty) || qty <= 0) {
-    return { ok: false, error: 'Roll Call has no quantity recorded for this person — fix it there first.' };
   }
 
   const supabase = createAdminClient();
   const { data: entry } = await supabase
     .from('calendar_entries')
-    .select('id, entry_date, title, category')
+    .select('id, entry_date, end_date, title, category')
     .eq('id', calendarEntryId)
     .single();
   if (!entry) return { ok: false, error: 'Calendar entry no longer exists.' };
@@ -195,6 +196,10 @@ export async function resolveMissingCredit(formData: FormData): Promise<Reconcil
     .eq('label', entry.category)
     .maybeSingle();
   const creditKind = (cat?.credit_kind ?? null) as CreditKind | null;
+
+  const resolved = qtyForMissingCreditResolution(creditKind, recordedQty, entry.entry_date, entry.end_date);
+  if ('error' in resolved) return { ok: false, error: resolved.error };
+  const qty = resolved.qty;
 
   const res = await syncCredit(
     supabase,

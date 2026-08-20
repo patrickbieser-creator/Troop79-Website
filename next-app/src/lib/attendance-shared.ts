@@ -75,6 +75,37 @@ export function defaultQtyFor(
   return 1;
 }
 
+/**
+ * What quantity to write when resolving a "present, but no credit" audit
+ * finding. Roll Call's own qty is used when it's on record; otherwise falls
+ * back to the same default() Roll Call would use for a fresh check-in today.
+ *
+ * Found the hard way 2026-08-20: pre-Roll-Call imported attendance rows
+ * (source='import', the historical spreadsheet backfill) never had a qty at
+ * all — the resolve button required one and just sat there disabled with no
+ * explanation. For every kind but service_hours, defaultQtyFor already knows
+ * the right answer (nights from the entry's own date span, or 1) — no need
+ * to leave the leader stuck. service_hours truly has no safe default (nobody
+ * can guess how long a project ran), so that one still refuses and points at
+ * Roll Call instead of guessing.
+ */
+export function qtyForMissingCreditResolution(
+  creditKind: CreditKind | null,
+  recordedQty: number | null | undefined,
+  entryDate: string,
+  endDate: string | null
+): { qty: number } | { error: string } {
+  if (recordedQty != null && recordedQty > 0) return { qty: recordedQty };
+  const fallback = defaultQtyFor(creditKind, entryDate, endDate);
+  if (fallback <= 0) {
+    return {
+      error:
+        "Roll Call never recorded a quantity for this person, and this category has no safe default — set it from Roll Call directly."
+    };
+  }
+  return { qty: fallback };
+}
+
 /** The credit rule a category carries. Tolerant of a category this render
  *  doesn't know, the same way colorFor() and templateOf() are. */
 export function creditRuleFor(
