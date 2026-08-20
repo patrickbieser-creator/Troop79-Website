@@ -131,6 +131,23 @@
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+.bulkBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: var(--admin-gray-100);
+  border-radius: var(--admin-radius-sm);
+  font-size: 13px;
+}
+.bulkBar select {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 5px 8px;
+  border: 1px solid var(--admin-gray-300);
+  border-radius: 3px;
+}
 .nowrap {
   white-space: nowrap;
 }

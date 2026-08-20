@@ -168,7 +168,7 @@ function EditTransactionForm({
         </select>
       </label>
       <label>
-        Who
+        Scout/Adult
         <select required={account === 'scout_account'} value={personId} onChange={(e) => setPersonId(e.target.value)}>
           <option value="">{account === 'scout_account' ? 'Select a scout…' : '— unattributed —'}</option>
           {people.map((p) => (

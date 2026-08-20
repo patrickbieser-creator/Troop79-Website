@@ -21,6 +21,7 @@ import {
   ledgerToCsv,
   editTransactionGuard,
   validateActivityRename,
+  TRANSACTION_KINDS,
   type Account,
   type TransactionKind,
   type TransactionMethod,
@@ -305,6 +306,44 @@ export async function editTransactionAction(input: EditTransactionInput): Promis
 
   revalidateFinance();
   return { ok: true };
+}
+
+export interface BulkReassignKindResult extends Result {
+  updated: number;
+}
+
+/**
+ * Reassign Kind on a batch of transactions at once — a pure label change,
+ * unlike editTransactionAction (which also touches amount/account and so
+ * carries the signup/reimbursement guard). Nothing here can affect the
+ * balance (Kind carries no direction, 2026-08-20), so no guard beyond
+ * capability + a real Kind value is needed.
+ *
+ * Built for the 'income'/'expense' Kind retirement (Patrick, 2026-08-20):
+ * filter the ledger to Kind=income or Kind=expense, select a page's worth,
+ * reassign to a real category, repeat until both are empty — then those two
+ * values come out of TRANSACTION_KINDS for good.
+ */
+export async function bulkReassignKindAction(ids: number[], kind: TransactionKind): Promise<BulkReassignKindResult> {
+  try {
+    await requireCapability('finance.manage');
+  } catch {
+    return { ok: false, error: 'Not authenticated', updated: 0 };
+  }
+  if (!Array.isArray(ids) || ids.length === 0) return { ok: false, error: 'Nothing selected.', updated: 0 };
+  if (!(TRANSACTION_KINDS as readonly string[]).includes(kind)) {
+    return { ok: false, error: 'Not a real Kind.', updated: 0 };
+  }
+
+  const supabase = createAdminClient();
+  const { error, count } = await supabase
+    .from('financial_transactions')
+    .update({ kind, updated_at: new Date().toISOString() }, { count: 'exact' })
+    .in('id', ids);
+  if (error) return { ok: false, error: error.message, updated: 0 };
+
+  revalidateFinance();
+  return { ok: true, updated: count ?? ids.length };
 }
 
 export interface AddTransferInput {

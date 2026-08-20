@@ -93,7 +93,7 @@ describe('EditTransactionDialog — Who field', () => {
       />
     );
 
-    await user.selectOptions(screen.getByLabelText('Who'), '2');
+    await user.selectOptions(screen.getByLabelText('Scout/Adult'), '2');
     await user.click(screen.getByRole('button', { name: /save changes/i }));
 
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ personId: 2 }));
@@ -113,7 +113,7 @@ describe('EditTransactionDialog — Who field', () => {
       />
     );
 
-    await user.selectOptions(screen.getByLabelText('Who'), '');
+    await user.selectOptions(screen.getByLabelText('Scout/Adult'), '');
     await user.click(screen.getByRole('button', { name: /save changes/i }));
 
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ personId: null }));
@@ -130,7 +130,7 @@ describe('EditTransactionDialog — Who field', () => {
         onSave={vi.fn()}
       />
     );
-    expect(screen.getByLabelText('Who')).toHaveProperty('required', true);
+    expect(screen.getByLabelText('Scout/Adult')).toHaveProperty('required', true);
   });
 
   it('Who_IsOptional_OnANonScoutAccountRow', () => {
@@ -144,7 +144,7 @@ describe('EditTransactionDialog — Who field', () => {
         onSave={vi.fn()}
       />
     );
-    expect(screen.getByLabelText('Who')).toHaveProperty('required', false);
+    expect(screen.getByLabelText('Scout/Adult')).toHaveProperty('required', false);
   });
 });
 

@@ -63,7 +63,7 @@ export function ReimbursementQueue({ requests }: { requests: ReimbursementQueueR
           <thead>
             <tr>
               <th>Submitted</th>
-              <th>Who</th>
+              <th>Scout/Adult</th>
               <th>Description</th>
               <th className={styles.numCell}>Amount</th>
               <th>Status</th>

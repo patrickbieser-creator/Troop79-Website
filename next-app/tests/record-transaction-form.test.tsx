@@ -20,7 +20,7 @@ describe('RecordTransactionForm — Who field', () => {
     render(<RecordTransactionForm people={PEOPLE} activityLabels={[]} pending={false} onSubmit={onSubmit} />);
 
     // Default account is 'checking' (see the component's initial state).
-    await user.selectOptions(screen.getByLabelText('Who'), '2');
+    await user.selectOptions(screen.getByLabelText('Scout/Adult'), '2');
     await user.type(screen.getByLabelText('Amount'), '25');
     await user.click(screen.getByRole('button', { name: /add transaction/i }));
 
@@ -29,14 +29,14 @@ describe('RecordTransactionForm — Who field', () => {
 
   it('Who_IsOptional_ForANonScoutAccountTransaction', () => {
     render(<RecordTransactionForm people={PEOPLE} activityLabels={[]} pending={false} onSubmit={vi.fn()} />);
-    expect(screen.getByLabelText('Who')).toHaveProperty('required', false);
+    expect(screen.getByLabelText('Scout/Adult')).toHaveProperty('required', false);
   });
 
   it('Who_IsRequired_WhenAccountIsScoutAccount', async () => {
     const user = userEvent.setup();
     render(<RecordTransactionForm people={PEOPLE} activityLabels={[]} pending={false} onSubmit={vi.fn()} />);
     await user.selectOptions(screen.getByLabelText('Account'), 'scout_account');
-    expect(screen.getByLabelText('Who')).toHaveProperty('required', true);
+    expect(screen.getByLabelText('Scout/Adult')).toHaveProperty('required', true);
   });
 });
 

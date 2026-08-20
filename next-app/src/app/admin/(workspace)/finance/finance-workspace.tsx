@@ -30,6 +30,7 @@ import {
   addTransactionAction,
   voidTransactionAction,
   editTransactionAction,
+  bulkReassignKindAction,
   addTransferAction,
   addReconciliationAction,
   type LedgerRow,
@@ -95,6 +96,47 @@ export function FinanceWorkspace({
   const [editingRow, setEditingRow] = useState<LedgerRow | null>(null);
   const router = useRouter();
 
+  /**
+   * Bulk Kind reassignment — built for retiring the 'income'/'expense' Kind
+   * values (Patrick, 2026-08-20): filter to Kind=income or Kind=expense,
+   * select a page's worth, reassign to a real category, repeat until both
+   * are empty. Selection is page-scoped on purpose — it clears on a
+   * successful apply rather than trying to survive a page/filter change,
+   * since the whole workflow is "select what's visible, act, move on".
+   */
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkKind, setBulkKind] = useState<TransactionKind | ''>('');
+  const [bulkStatus, setBulkStatus] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
+  const allSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
+
+  function toggleAll() {
+    setSelectedIds(allSelected ? new Set() : new Set(rows.map((r) => r.id)));
+  }
+  function toggleOne(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  function applyBulkKind() {
+    if (!bulkKind || selectedIds.size === 0) return;
+    const ids = [...selectedIds];
+    setBulkStatus(null);
+    start(async () => {
+      const res = await bulkReassignKindAction(ids, bulkKind);
+      if (!res.ok) {
+        setBulkStatus({ kind: 'err', msg: res.error ?? 'Could not reassign.' });
+        return;
+      }
+      setSelectedIds(new Set());
+      setBulkKind('');
+      setBulkStatus({ kind: 'ok', msg: `Reassigned ${res.updated} to ${TRANSACTION_KIND_LABELS[bulkKind]}.` });
+      router.refresh();
+    });
+  }
+
   // Plain values in, string built here — a Server Component can't hand a
   // Client Component a closure (functions aren't serializable across the
   // RSC boundary), so the URL gets built on this side instead of passed in.
@@ -154,14 +196,45 @@ export function FinanceWorkspace({
         </>
       )}
 
+      {canManage && selectedIds.size > 0 && (
+        <div className={styles.bulkBar}>
+          <span>{selectedIds.size} selected</span>
+          <select value={bulkKind} onChange={(e) => setBulkKind(e.target.value as TransactionKind | '')}>
+            <option value="">Reassign Kind to…</option>
+            {TRANSACTION_KINDS.map((k) => (
+              <option key={k} value={k}>
+                {TRANSACTION_KIND_LABELS[k]}
+              </option>
+            ))}
+          </select>
+          <button type="button" className={styles.saveBtn} onClick={applyBulkKind} disabled={!bulkKind || pending}>
+            {pending ? '…' : 'Apply'}
+          </button>
+          <button type="button" className={styles.saveBtnAlt} onClick={() => setSelectedIds(new Set())} disabled={pending}>
+            Clear selection
+          </button>
+          {bulkStatus && <span className={bulkStatus.kind === 'ok' ? styles.statusOk : styles.statusErr}>{bulkStatus.msg}</span>}
+        </div>
+      )}
+
       <div className={styles.tableWrap}>
         <table className={styles.table}>
           <thead>
             <tr>
+              {canManage && (
+                <th>
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleAll}
+                    aria-label="Select all rows on this page"
+                  />
+                </th>
+              )}
               <SortHeader label="Date" sortKey="date" currentSort={sort} currentDir={dir} sortUrl={sortUrl} />
               <SortHeader label="Account" sortKey="account" currentSort={sort} currentDir={dir} sortUrl={sortUrl} />
               <SortHeader label="Kind" sortKey="kind" currentSort={sort} currentDir={dir} sortUrl={sortUrl} />
-              <th>Who</th>
+              <th>Scout/Adult</th>
               <th>Activity</th>
               <th>Memo</th>
               <SortHeader
@@ -178,13 +251,23 @@ export function FinanceWorkspace({
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={canManage ? 8 : 7} className={styles.empty}>
+                <td colSpan={canManage ? 9 : 7} className={styles.empty}>
                   No transactions match this filter.
                 </td>
               </tr>
             )}
             {rows.map((r) => (
               <tr key={r.id} className={r.voided_at ? styles.voidedRow : undefined}>
+                {canManage && (
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(r.id)}
+                      onChange={() => toggleOne(r.id)}
+                      aria-label={`Select transaction ${r.id}`}
+                    />
+                  </td>
+                )}
                 <td className={styles.nowrap}>
                   <EnteredByCell occurredOn={r.occurred_on} enteredByName={r.enteredByName} createdAt={r.created_at} />
                 </td>
@@ -348,7 +431,7 @@ export function RecordTransactionForm({
           </select>
         </label>
         <label>
-          Who
+          Scout/Adult
           <select
             required={f.account === 'scout_account'}
             value={f.personId}
