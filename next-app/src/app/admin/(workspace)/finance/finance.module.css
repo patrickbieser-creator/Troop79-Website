@@ -105,6 +105,36 @@
   outline: none;
   border-color: var(--admin-navy);
 }
+.kindManager {
+  margin-bottom: 14px;
+  font-size: 13px;
+}
+.kindManager summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--admin-gray-700);
+}
+.kindManagerList {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 420px;
+}
+.kindManagerList li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-gray-50);
+}
+.muted {
+  color: var(--admin-gray-500);
+  font-size: 11px;
+}
 
 .tableWrap {
   background: var(--admin-white);
