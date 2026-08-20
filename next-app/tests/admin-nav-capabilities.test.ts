@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { visibleNavSections } from '../src/app/admin/(workspace)/_components/sub-nav';
+import { visibleNavSections, activeMatchPathFor } from '../src/app/admin/(workspace)/_components/sub-nav';
 import type { Capability } from '../src/lib/capabilities';
 
 /**
@@ -107,5 +107,47 @@ describe('admin sub-nav capability filtering', () => {
       capabilities: new Set<Capability>(['finance.manage'])
     });
     expect(labels(out)).toEqual(['Ledger', 'Fast Entry']);
+  });
+});
+
+/**
+ * activeMatchPathFor (pure) — which single nav item lights up as "current".
+ * A section root's matchPath is often a prefix of a sibling's (Finance's
+ * "Ledger" -> /admin/finance, "Activity Report" -> /admin/finance/report);
+ * a plain startsWith per item lit up both at once on the more specific page
+ * (screenshot, 2026-08-20). Longest-match-wins picks exactly one.
+ */
+describe('activeMatchPathFor', () => {
+  const FINANCE_NAV = [
+    {
+      items: [
+        { label: 'Ledger', matchPath: '/admin/finance' },
+        { label: 'Reimbursements', matchPath: '/admin/finance/reimbursements' },
+        { label: 'Activity Report', matchPath: '/admin/finance/report' }
+      ]
+    }
+  ];
+
+  it('PicksTheLedgerRoot_WhenOnTheLedgerPageItself', () => {
+    expect(activeMatchPathFor(FINANCE_NAV, '/admin/finance')).toBe('/admin/finance');
+  });
+
+  it('PicksTheMoreSpecificSibling_NotTheSectionRootItsAPrefixOf', () => {
+    // The exact bug: /admin/finance/report starts with BOTH /admin/finance
+    // (Ledger) and /admin/finance/report (Activity Report) — only the
+    // longer, more specific one should win.
+    expect(activeMatchPathFor(FINANCE_NAV, '/admin/finance/report')).toBe('/admin/finance/report');
+    expect(activeMatchPathFor(FINANCE_NAV, '/admin/finance/reimbursements')).toBe('/admin/finance/reimbursements');
+  });
+
+  it('ReturnsNull_WhenNothingMatches', () => {
+    expect(activeMatchPathFor(FINANCE_NAV, '/admin/library')).toBeNull();
+  });
+
+  it('IgnoresDisabledItems', () => {
+    const withDisabled = [
+      { items: [{ label: 'Soon', matchPath: '/admin/finance', disabled: true }] }
+    ];
+    expect(activeMatchPathFor(withDisabled, '/admin/finance')).toBeNull();
   });
 });

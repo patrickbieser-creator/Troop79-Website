@@ -305,6 +305,32 @@ export function visibleNavSections(
     .filter((s) => s.items.length > 0);
 }
 
+/**
+ * Which single item's matchPath is "active" for the current pathname — the
+ * LONGEST matchPath the path starts with, never every prefix match. Split
+ * out for testability, same reason as visibleNavSections above.
+ *
+ * A section root's matchPath is often itself a prefix of a sibling's — e.g.
+ * Finance's "Ledger" -> /admin/finance, "Activity Report" ->
+ * /admin/finance/report. `pathname.startsWith(item.matchPath)` alone would
+ * match BOTH on /admin/finance/report and light up two nav items at once
+ * (screenshot, 2026-08-20). Longest-match-wins picks the more specific one.
+ */
+export function activeMatchPathFor(
+  sections: { items: { disabled?: boolean; matchPath?: string }[] }[],
+  pathname: string
+): string | null {
+  let active: string | null = null;
+  for (const section of sections) {
+    for (const item of section.items) {
+      if (item.disabled || !item.matchPath) continue;
+      if (!pathname.startsWith(item.matchPath)) continue;
+      if (active === null || item.matchPath.length > active.length) active = item.matchPath;
+    }
+  }
+  return active;
+}
+
 export function SubNav({
   fullAdmin,
   capabilities
@@ -317,6 +343,8 @@ export function SubNav({
     fullAdmin,
     capabilities: new Set(capabilities)
   });
+
+  const activeMatchPath = activeMatchPathFor(visibleSections, pathname);
 
   return (
     <nav
@@ -341,9 +369,7 @@ export function SubNav({
               <Link
                 key={item.label}
                 href={item.href!}
-                className={`${styles.subNavBtn} ${
-                  pathname.startsWith(item.matchPath!) ? styles.subNavBtnActive : ''
-                }`}
+                className={`${styles.subNavBtn} ${item.matchPath === activeMatchPath ? styles.subNavBtnActive : ''}`}
               >
                 {item.label}
               </Link>
