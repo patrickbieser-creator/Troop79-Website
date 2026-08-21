@@ -171,7 +171,7 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId
               className={tab === 'active' ? styles.tabActive : styles.tab}
               onClick={() => setTab('active')}
             >
-              Active ({activeCount})
+              Active <span className={styles.tabCount}>{activeCount}</span>
             </button>
             <button
               type="button"
@@ -180,7 +180,7 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId
               className={tab === 'inactive' ? styles.tabActive : styles.tab}
               onClick={() => setTab('inactive')}
             >
-              Inactive ({inactiveCount})
+              Inactive <span className={styles.tabCount}>{inactiveCount}</span>
             </button>
           </div>
         )}

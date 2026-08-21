@@ -224,26 +224,29 @@ export function CourtOfHonorWorkspace({
             </section>
 
             <section className={styles.card}>
-              <div className={styles.exportRow}>
-                <a
-                  className={styles.smallBtn}
-                  href={`/admin/advancement/court-of-honor/export?id=${report.id}`}
-                  download
-                >
-                  Download CSV
-                </a>
-                {report.status === 'draft' && (
-                  <button
-                    type="button"
-                    className={styles.publishBtn}
-                    onClick={publish}
-                    disabled={disabled || report.contentJson.isEmpty}
-                    title={report.contentJson.isEmpty ? 'Nothing to publish — this date range is empty.' : undefined}
-                  >
-                    Publish
-                  </button>
+              {/* Actions ▾ (2026-08-20, D-156 shape) — Download CSV and
+                  Publish are both field-free, discrete steps; Generate/
+                  Regenerate, Save note, and Mark Presented stay inline
+                  above/below since each sits next to a field or a warning
+                  it depends on (ux-lead, 2026-08-20). */}
+              <select
+                value=""
+                className={styles.select}
+                aria-label="Court of Honor actions"
+                disabled={disabled}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  e.target.value = '';
+                  if (v === 'download') router.push(`/admin/advancement/court-of-honor/export?id=${report.id}`);
+                  else if (v === 'publish') publish();
+                }}
+              >
+                <option value="">Actions…</option>
+                <option value="download">Download CSV</option>
+                {report.status === 'draft' && !report.contentJson.isEmpty && (
+                  <option value="publish">Publish</option>
                 )}
-              </div>
+              </select>
               {report.contentJson.isEmpty && report.status === 'draft' && (
                 <p className={styles.hint} style={{ marginTop: 8 }}>
                   Nothing was earned in this date range — publishing is disabled. Widen the range.

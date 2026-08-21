@@ -11,11 +11,7 @@
 .pageTitle h1 { font-size: 22px; font-weight: 700; color: var(--admin-navy); margin-bottom: 4px; }
 .pageTitle p { font-size: 13px; color: var(--admin-gray-500); max-width: 720px; line-height: 1.5; }
 
-.printBtn {
-  font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: .04em;
-  background: var(--admin-navy); color: var(--admin-white); border: 1px solid var(--admin-navy);
-  padding: 7px 14px; border-radius: 3px; cursor: pointer; white-space: nowrap;
-}
+.actionsBar { flex-shrink: 0; }
 
 .section { margin-bottom: 28px; }
 .sectionHead {
@@ -105,7 +101,7 @@
 .parentCard:last-child { margin-bottom: 0; }
 
 @media print {
-  .printBtn { display: none; }
+  .actionsBar { display: none; }
   .table { font-size: 10.5px; }
   .table th, .table td { padding: 4px 6px; }
   .nameBtn { color: inherit; text-decoration: none; cursor: default; }
@@ -131,29 +127,34 @@
   padding: 0 0 10px;
 }
 
-.tabs { display: inline-flex; gap: 2px; }
-/* The page-level Scouts / Adults / People strip. Same chips as .tabs (its
-   children are .tab/.tabActive), but it sits under the page header rather than
-   inside a table toolbar, so it carries its own separation and rule. Was
-   referenced with no rule at all — the strip had no layout. */
-.tabBar {
-  display: flex;
+/* Pill tab strip — same layout, color and count-badge treatment as
+   Calendar's Upcoming/Past and News's Current/Archived (Patrick,
+   2026-08-20: use this style everywhere a number is shown in a tab strip).
+   .tabs is the inner Scouts/Adults sub-strip (scouts-table.tsx); .tabBar is
+   this page's own Active Scouts/Inactive/Leaders/Adults strip — two
+   containers, same child classes, same look. */
+.tabs, .tabBar {
+  display: inline-flex;
   flex-wrap: wrap;
   gap: 2px;
-  margin: 0 0 14px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--admin-gray-200);
+  background: var(--admin-gray-100, #f0f0f0);
+  border-radius: 4px;
+  padding: 2px;
+  margin-bottom: 14px;
 }
 .tab, .tabActive {
-  background: none; border: 1px solid transparent; border-radius: 5px;
-  padding: 5px 12px; font: inherit; font-size: 12px; font-weight: 600;
+  background: none; border: none; border-radius: 3px;
+  padding: 6px 14px; font: inherit; font-size: 13px; font-weight: 600;
   color: var(--admin-gray-600); cursor: pointer;
 }
-.tab:hover { background: var(--admin-gray-50); color: var(--admin-navy); }
-.tabActive {
-  background: var(--admin-white); border-color: var(--admin-gray-200);
-  color: var(--admin-navy); box-shadow: var(--admin-shadow-sm);
+.tab:hover { color: var(--admin-gray-900); }
+.tabActive { background: #fff; color: #1e3a4a; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.tabCount {
+  font-size: 11px; font-weight: 700;
+  background: var(--admin-gray-200, #e4e4e4); color: var(--admin-gray-700, #444);
+  border-radius: 999px; padding: 1px 7px; margin-left: 4px;
 }
+.tabActive .tabCount { background: #1e3a4a; color: #fff; }
 
 .addBtn {
   background: var(--admin-navy); color: var(--admin-white);

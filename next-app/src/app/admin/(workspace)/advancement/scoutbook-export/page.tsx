@@ -24,7 +24,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { centralToday } from '@/lib/dates';
 import { loadScoutbookExport } from '@/lib/scoutbook-export';
 import { DateParamField } from '../../_components/date-param-field';
-import { MarkSubmittedButton } from './mark-submitted-button';
+import { ScoutbookActions } from './scoutbook-actions';
 import styles from './scoutbook-export.module.css';
 
 export const metadata = {
@@ -87,16 +87,15 @@ export default async function ScoutbookExportPage({
         <button type="submit" className={styles.updateBtn}>
           Update
         </button>
-        <a
-          href={`/admin/advancement/scoutbook-export/download?from=${from}&to=${to}`}
-          className={`${styles.downloadBtn} ${rows.length === 0 ? styles.downloadBtnDisabled : ''}`}
-        >
-          Download .txt ({rows.length})
-        </a>
-        <MarkSubmittedButton ids={unsubmittedIds} />
       </form>
 
-      <p className={styles.muted} style={{ fontSize: 12, marginTop: -12, marginBottom: 14 }}>
+      <ScoutbookActions
+        downloadHref={`/admin/advancement/scoutbook-export/download?from=${from}&to=${to}`}
+        downloadCount={rows.length}
+        unsubmittedIds={unsubmittedIds}
+      />
+
+      <p className={styles.muted} style={{ fontSize: 12, marginTop: -6, marginBottom: 14 }}>
         Only mark rows as submitted after the downloaded file has been uploaded to Scoutbook and the
         upload confirmed successful — this is a record-keeping flag, not part of the upload itself.
       </p>

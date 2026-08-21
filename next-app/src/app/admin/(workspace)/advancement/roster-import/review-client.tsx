@@ -170,13 +170,13 @@ export function ReviewClient({
           className={tab === 'queue' ? styles.tabActive : styles.tab}
           onClick={() => setTab('queue')}
         >
-          Import queue {rows.length}
+          Import queue <span className={styles.tabCount}>{rows.length}</span>
         </button>
         <button
           className={tab === 'duplicates' ? styles.tabActive : styles.tab}
           onClick={() => setTab('duplicates')}
         >
-          Duplicate people {candidates.length}
+          Duplicate people <span className={styles.tabCount}>{candidates.length}</span>
         </button>
       </div>
 

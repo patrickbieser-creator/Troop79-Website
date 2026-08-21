@@ -12,6 +12,7 @@
  */
 
 import { useMemo, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatLongDate } from '@/lib/dates';
 import styles from './meetings.module.css';
@@ -36,6 +37,7 @@ interface Props {
 }
 
 export function AttendanceList({ rows, onDeleteAgenda }: Props) {
+  const router = useRouter();
   const [err, setErr] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [, startTransition] = useTransition();
@@ -102,9 +104,22 @@ export function AttendanceList({ rows, onDeleteAgenda }: Props) {
   return (
     <>
       <div className={styles.toolbar}>
-        <Link href="/admin/advancement/meetings/report" className={styles.editBtn}>
-          Attendance Report
-        </Link>
+        {/* Attendance Report isn't reachable from the main nav — kept as a
+            nav: option here. "Calendar →" was dropped (2026-08-20): it
+            just duplicated the main nav's own Calendar link. */}
+        <select
+          value=""
+          className={styles.dateInput}
+          aria-label="Meetings actions"
+          onChange={(e) => {
+            const v = e.target.value;
+            e.target.value = '';
+            if (v) router.push(v);
+          }}
+        >
+          <option value="">Actions…</option>
+          <option value="/admin/advancement/meetings/report">Attendance Report</option>
+        </select>
         <span style={{ flex: 1 }} />
         <input
           type="search"
@@ -170,9 +185,6 @@ export function AttendanceList({ rows, onDeleteAgenda }: Props) {
         >
           Date {dir === 'desc' ? '↓' : '↑'}
         </button>
-        <Link href="/admin/calendar" className={styles.addBtn}>
-          Calendar &rarr;
-        </Link>
       </div>
 
       {err && <div className={styles.editError}>{err}</div>}

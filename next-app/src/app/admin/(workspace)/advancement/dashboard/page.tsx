@@ -323,14 +323,6 @@ export default async function DashboardPage() {
             from the universal ledger.
           </p>
         </div>
-        <div className={styles.actions}>
-          <Link href="/admin/advancement/ledger" className={styles.btn}>
-            View Ledger
-          </Link>
-          <Link href="/admin/advancement/lookups" className={styles.btn}>
-            Lookups
-          </Link>
-        </div>
       </div>
 
       <div className={styles.stats}>

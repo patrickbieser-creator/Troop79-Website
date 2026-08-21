@@ -211,15 +211,24 @@ export function ReportWorkspace({
 
             {report.status === 'draft' && (
               <section className={styles.card}>
-                <button
-                  type="button"
-                  className={styles.publishBtn}
-                  onClick={publish}
-                  disabled={disabled || report.contentJson.isEmpty}
-                  title={report.contentJson.isEmpty ? 'Nothing to publish — this date range is empty.' : undefined}
+                {/* Actions ▾ (2026-08-20, D-156 shape) — Publish is the one
+                    field-free, discrete step here; Generate/Regenerate and
+                    Save note stay inline above since each sits directly next
+                    to the field it acts on (ux-lead, 2026-08-20). */}
+                <select
+                  value=""
+                  className={styles.select}
+                  aria-label="Report actions"
+                  disabled={disabled}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    e.target.value = '';
+                    if (v === 'publish') publish();
+                  }}
                 >
-                  Publish
-                </button>
+                  <option value="">Actions…</option>
+                  {!report.contentJson.isEmpty && <option value="publish">Publish</option>}
+                </select>
                 {report.contentJson.isEmpty && (
                   <p className={styles.hint} style={{ marginTop: 8 }}>
                     Nothing was logged in this date range — publishing is disabled. Widen the range,

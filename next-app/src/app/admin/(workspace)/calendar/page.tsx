@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import { loadCalendarCategories } from '@/lib/calendar';
 import type { CalendarEntry, Media } from '@/lib/supabase/types';
@@ -79,17 +78,9 @@ interface SearchParams {
   q?: string;
   category?: string;
   tab?: string;
-  /** '1' opens the Add Entry dialog — see the header link below. */
+  /** '1' opens the Add Entry dialog — set by the Actions ▾ "+ Add Entry"
+   *  option inside CalendarEditor (2026-08-20; used to be a header link). */
   new?: string;
-}
-
-function urlWith(base: SearchParams, overrides: Partial<SearchParams>): string {
-  const params = new URLSearchParams();
-  for (const [k, v] of Object.entries({ ...base, ...overrides })) {
-    if (v !== undefined && v !== '' && v !== null) params.set(k, String(v));
-  }
-  const qs = params.toString();
-  return `/admin/calendar${qs ? `?${qs}` : ''}`;
 }
 
 /**
@@ -126,14 +117,6 @@ export default async function CalendarAdminPage({
           homepage news feed for a window &mdash; no separate article needed.
         </p>
         </div>
-        {/* Top-right of the page header, where News puts "+ New Post" — same
-            act, same place, same shape of button.
-            It is a link rather than a button because the dialog it opens lives
-            inside the client list; `new=1` is how the header reaches it without
-            lifting state out of a Server Component. */}
-        <Link href={urlWith(sp, { new: '1' })} className={styles.newBtn}>
-          + Add Entry
-        </Link>
       </div>
 
       <CalendarEditor

@@ -23,20 +23,29 @@
   max-width: 720px;
   line-height: 1.5;
 }
-.newBtn {
+/* Add buttons are green, everywhere (Patrick, 2026-08-20) — same values as
+   Photo Albums' .addBtn and Calendar's .addBtn, so every "Add X" button in
+   the admin is pixel-identical regardless of which module.css it lives in.
+   (A shared component is the real fix for this duplication — parked as a
+   future design-system pass, not done ad hoc mid-task.) */
+.addBtn {
   font-family: inherit;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: .04em;
-  background: var(--admin-navy);
+  background: var(--admin-forest);
   color: var(--admin-white);
-  border: 1px solid var(--admin-navy);
-  padding: 8px 16px;
-  border-radius: var(--admin-radius-sm);
+  border: 1px solid var(--admin-forest);
+  padding: 7px 14px;
+  border-radius: 3px;
   cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
   white-space: nowrap;
+  flex-shrink: 0;
 }
-.newBtn:hover { background: var(--admin-navy-hover); }
+.addBtn:hover { background: var(--admin-forest-dark); }
+.tabsRow { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
 
 .toolbar {
   display: flex;

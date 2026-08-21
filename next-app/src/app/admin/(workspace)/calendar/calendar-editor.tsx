@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { categoryColorMap, colorFor, type CalendarCategoryRow } from '@/lib/calendar-categories';
 import { splitByTab } from '@/lib/calendar-tabs';
 import type { ImportResult, ImportRowFields, ImportUpdate } from './actions';
-import { CalendarImport } from './calendar-import';
+import { CalendarImport, type CalendarImportHandle } from './calendar-import';
 import { DatePickerField } from '../_components/date-picker-field';
 import { CalendarEntryForm, type CalendarEntryRow } from './entry-form';
 import type { CalendarEntryMergePlan } from '@/lib/calendar-admin';
@@ -120,6 +120,7 @@ export function CalendarEditor({
    */
   const [cloneFor, setCloneFor] = useState<CalendarEntryRow | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const importRef = useRef<CalendarImportHandle>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [rowErr, setRowErr] = useState<{ id: number; msg: string } | null>(null);
   const [, startTransition] = useTransition();
@@ -299,7 +300,39 @@ export function CalendarEditor({
             Past <span className={styles.tabCount}>{pastShown.length}</span>
           </button>
         </div>
-        <CalendarImport rows={rows} categories={categories.map((c) => c.label)} onImport={onImport} />
+        {/* Green Add button, far right (Patrick, 2026-08-20 — corrected same
+            day: right, not left, matching Photo Albums' own placement).
+            "Add" is the most-clicked action here, so it's a direct link, not
+            an extra click through Actions ▾. Same .addBtn values as News and
+            Photo Albums. */}
+        <button type="button" className={styles.addBtn} onClick={() => push({ new: '1' })}>
+          + Add Event
+        </button>
+        {/* Actions ▾ (2026-08-20) — same shape as Finance's (D-156). Add
+            Event is a direct button (above); Import CSV is the only thing
+            left here — CalendarImport's own visible trigger is gone, its
+            file input + review overlay unchanged, just opened via ref now.
+            Per-row Promote/Clone/Merge/Delete stay on the table, out of
+            this menu. */}
+        <select
+          value=""
+          className={styles.filterSelect}
+          aria-label="Calendar actions"
+          onChange={(e) => {
+            const v = e.target.value;
+            e.target.value = '';
+            if (v === 'import') importRef.current?.open();
+          }}
+        >
+          <option value="">Actions…</option>
+          <option value="import">Import CSV</option>
+        </select>
+        <CalendarImport
+          ref={importRef}
+          rows={rows}
+          categories={categories.map((c) => c.label)}
+          onImport={onImport}
+        />
       </div>
 
       <div className={styles.toolbarRow}>

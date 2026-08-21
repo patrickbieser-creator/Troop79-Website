@@ -112,9 +112,25 @@ export function PlanView({ published, defaultDate }: Props) {
           {isPending ? 'Working…' : 'Generate Plan'}
         </button>
         {payload && (
-          <button type="button" className={styles.publishBtn} onClick={publish} disabled={isPending}>
-            Publish to Site
-          </button>
+          // Actions ▾ (2026-08-20, D-156 shape) — Generate Plan stays inline
+          // next to its date field; Publish to Site is the one field-free
+          // step, so it's the only thing here. The whole control is omitted
+          // (not shown disabled) until a plan exists, same signal the
+          // standalone button used to give (ux-lead, 2026-08-20).
+          <select
+            value=""
+            className={styles.select}
+            aria-label="Meeting Plan actions"
+            disabled={isPending}
+            onChange={(e) => {
+              const v = e.target.value;
+              e.target.value = '';
+              if (v === 'publish') publish();
+            }}
+          >
+            <option value="">Actions…</option>
+            <option value="publish">Publish to Site</option>
+          </select>
         )}
         {status && (
           <span className={status.ok ? styles.statusOk : styles.statusErr}>{status.msg}</span>

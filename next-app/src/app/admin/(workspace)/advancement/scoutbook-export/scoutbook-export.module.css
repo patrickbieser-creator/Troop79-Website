@@ -29,6 +29,19 @@
 }
 .downloadBtnDisabled { opacity: .5; pointer-events: none; }
 
+.actionsBar { margin-bottom: 14px; }
+.select {
+  border: 1px solid var(--admin-gray-300);
+  border-radius: 3px;
+  padding: 7px 10px;
+  font-family: inherit;
+  font-size: 13px;
+  background: var(--admin-white);
+  color: var(--admin-gray-700);
+  min-height: 34px;
+}
+.select:focus { outline: none; border-color: var(--admin-navy); }
+
 .summary { font-size: 13px; color: var(--admin-gray-700); margin-bottom: 14px; }
 
 .section { margin-bottom: 28px; }

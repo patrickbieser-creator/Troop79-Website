@@ -186,11 +186,6 @@ export default async function ArticlesPage({
             public site without deleting it.
           </p>
         </div>
-        <Link href="/admin/news/articles/new" className={styles.newBtn}>
-          {/* "Add Entry" on both screens (Patrick, 2026-08-14) — one label for
-              one act, rather than "New Post" here and "Add Entry" there. */}
-          + Add Entry
-        </Link>
       </div>
 
       {pendingCount > 0 && parsed.status !== 'pending' && (
@@ -205,14 +200,25 @@ export default async function ArticlesPage({
         </div>
       )}
 
-      <ArticlesTabs
-        archived={parsed.archived}
-        currentCount={tabCounts.current}
-        archivedCount={tabCounts.archived}
-        // Switching tabs keeps search and status but drops the page number —
-        // page 3 of Current is rarely page 3 of Archived.
-        hrefFor={(archived) => urlWith(raw, { archived: archived ? '1' : '', page: '' })}
-      />
+      <div className={styles.tabsRow}>
+        <ArticlesTabs
+          archived={parsed.archived}
+          currentCount={tabCounts.current}
+          archivedCount={tabCounts.archived}
+          // Switching tabs keeps search and status but drops the page number —
+          // page 3 of Current is rarely page 3 of Archived.
+          hrefFor={(archived) => urlWith(raw, { archived: archived ? '1' : '', page: '' })}
+        />
+        {/* Green Add button, far right (Patrick, 2026-08-20 — corrected same
+            day: right, not left, matching Photo Albums' own placement).
+            "Add" is the most-clicked action here, so it's a direct link, not
+            an extra click through an Actions ▾. "+Add Entry" (shared News/
+            Calendar label) reverted to a per-item name, matching Photo
+            Albums' "Add Album". */}
+        <Link href="/admin/news/articles/new" className={styles.addBtn}>
+          + Add News
+        </Link>
+      </div>
 
       <ArticlesToolbar
         q={parsed.q}

@@ -19,7 +19,7 @@
  * day_note and article_id aren't in the sheet, so updates never touch them.
  */
 
-import { useMemo, useRef, useState, useTransition } from 'react';
+import { forwardRef, useImperativeHandle, useMemo, useRef, useState, useTransition } from 'react';
 import type { CalendarEntry } from '@/lib/supabase/types';
 import type { ImportResult, ImportRowFields, ImportUpdate } from './actions';
 import styles from './calendar.module.css';
@@ -30,6 +30,13 @@ interface Props {
    *  offers names, so it takes labels rather than the full lookup rows. */
   categories: string[];
   onImport: (inserts: ImportRowFields[], updates: ImportUpdate[]) => Promise<ImportResult>;
+}
+
+/** Imperative handle exposed via ref — the trigger now lives in the page's
+ *  Actions ▾ dropdown (2026-08-20) rather than this component's own button,
+ *  so the parent needs a way to open the (still-internal) file picker. */
+export interface CalendarImportHandle {
+  open: () => void;
 }
 
 // ── CSV plumbing ──────────────────────────────────────────────────────────
@@ -264,8 +271,12 @@ function buildPlan(text: string, existing: CalendarEntry[], categories: string[]
 
 // ── Component ─────────────────────────────────────────────────────────────
 
-export function CalendarImport({ rows, categories, onImport }: Props) {
+export const CalendarImport = forwardRef<CalendarImportHandle, Props>(function CalendarImport(
+  { rows, categories, onImport },
+  ref
+) {
   const fileRef = useRef<HTMLInputElement>(null);
+  useImperativeHandle(ref, () => ({ open: () => fileRef.current?.click() }), []);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [fileName, setFileName] = useState('');
   const [checkedNew, setCheckedNew] = useState<Set<number>>(new Set());
@@ -348,10 +359,6 @@ export function CalendarImport({ rows, categories, onImport }: Props) {
           e.target.value = '';
         }}
       />
-      <button type="button" className={styles.editBtn} onClick={() => fileRef.current?.click()}>
-        Import CSV
-      </button>
-
       {plan && (
         <div className={styles.importOverlay} role="dialog" aria-modal="true" aria-label="CSV import review">
           <div className={styles.importPanel}>
@@ -554,4 +561,4 @@ export function CalendarImport({ rows, categories, onImport }: Props) {
       )}
     </>
   );
-}
+});

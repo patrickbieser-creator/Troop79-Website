@@ -19,7 +19,7 @@ import {
 } from '../actions';
 import { summarizeByActivity } from '@/lib/finance';
 import { ActivityReport } from './activity-report';
-import { RenameActivityPanel } from './rename-activity-panel';
+import { ReportActions } from './report-actions';
 import styles from '../finance.module.css';
 
 export const metadata = {
@@ -48,7 +48,7 @@ export default async function FinanceReportPage() {
         </div>
       </div>
       {canManage && (
-        <RenameActivityPanel
+        <ReportActions
           activityLabels={activityLabels}
           previewRenameActivity={previewRenameActivityAction}
           renameActivity={renameActivityAction}

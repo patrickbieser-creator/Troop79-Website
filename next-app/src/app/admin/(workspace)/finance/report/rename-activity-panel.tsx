@@ -10,6 +10,11 @@
  * merge is the identical UPDATE where the target happens to already be in
  * use. Two-step: preview the affected row count, then apply — same
  * discipline as the original historical import's dry-run-before-commit.
+ *
+ * Plain content now (2026-08-20) — used to be its own <details> disclosure;
+ * report-actions.tsx's Actions ▾ dropdown opens it in a shared <dialog>
+ * instead (D-156 shape), so this component no longer manages its own
+ * show/hide.
  */
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
@@ -71,77 +76,74 @@ export function RenameActivityPanel({
   }
 
   return (
-    <details className={parentStyles.formPanel}>
-      <summary>Rename or merge an activity</summary>
-      <div className={styles.renamePanel}>
-        <label>
-          Rename this activity
-          <select
-            value={source}
-            onChange={(e) => {
-              setSource(e.target.value);
-              resetAfterChange();
-            }}
-          >
-            <option value="">— pick an activity —</option>
-            {activityLabels.map((label) => (
-              <option key={label} value={label}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          To
-          <input
-            type="text"
-            list="rename-activity-target-labels"
-            placeholder="New name, or an existing one to merge into"
-            value={target}
-            onChange={(e) => {
-              setTarget(e.target.value);
-              resetAfterChange();
-            }}
-          />
-          <datalist id="rename-activity-target-labels">
-            {activityLabels.map((label) => (
-              <option key={label} value={label} />
-            ))}
-          </datalist>
-        </label>
+    <div className={styles.renamePanel}>
+      <label>
+        Rename this activity
+        <select
+          value={source}
+          onChange={(e) => {
+            setSource(e.target.value);
+            resetAfterChange();
+          }}
+        >
+          <option value="">— pick an activity —</option>
+          {activityLabels.map((label) => (
+            <option key={label} value={label}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        To
+        <input
+          type="text"
+          list="rename-activity-target-labels"
+          placeholder="New name, or an existing one to merge into"
+          value={target}
+          onChange={(e) => {
+            setTarget(e.target.value);
+            resetAfterChange();
+          }}
+        />
+        <datalist id="rename-activity-target-labels">
+          {activityLabels.map((label) => (
+            <option key={label} value={label} />
+          ))}
+        </datalist>
+      </label>
 
-        {error && <p className={parentStyles.fieldError}>{error}</p>}
-        {done && <p>{done}</p>}
+      {error && <p className={parentStyles.fieldError}>{error}</p>}
+      {done && <p>{done}</p>}
 
-        {previewCount === null ? (
+      {previewCount === null ? (
+        <button
+          type="button"
+          className={parentStyles.pagerBtn}
+          disabled={pending || !source || !target}
+          onClick={preview}
+        >
+          Preview
+        </button>
+      ) : (
+        <>
+          <p>
+            This will update <strong>{previewCount}</strong> transaction{previewCount === 1 ? '' : 's'} — including
+            voided ones — from &ldquo;{source}&rdquo; to &ldquo;{target}&rdquo;.
+          </p>
+          <button type="button" className={parentStyles.pagerBtn} disabled={pending} onClick={apply}>
+            Apply
+          </button>{' '}
           <button
             type="button"
             className={parentStyles.pagerBtn}
-            disabled={pending || !source || !target}
-            onClick={preview}
+            disabled={pending}
+            onClick={() => setPreviewCount(null)}
           >
-            Preview
+            Cancel
           </button>
-        ) : (
-          <>
-            <p>
-              This will update <strong>{previewCount}</strong> transaction{previewCount === 1 ? '' : 's'} — including
-              voided ones — from &ldquo;{source}&rdquo; to &ldquo;{target}&rdquo;.
-            </p>
-            <button type="button" className={parentStyles.pagerBtn} disabled={pending} onClick={apply}>
-              Apply
-            </button>{' '}
-            <button
-              type="button"
-              className={parentStyles.pagerBtn}
-              disabled={pending}
-              onClick={() => setPreviewCount(null)}
-            >
-              Cancel
-            </button>
-          </>
-        )}
-      </div>
-    </details>
+        </>
+      )}
+    </div>
   );
 }

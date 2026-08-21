@@ -24,7 +24,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { resolveAdminActor } from '@/lib/admin-actor';
 import { centralToday } from '@/lib/dates';
 import type { Rank } from '@/lib/supabase/types';
-import { PrintButton } from './print-button';
+import { RosterActions } from './roster-actions';
 import { ScoutsTable } from './scouts-table';
 import {
   PeopleTable,
@@ -163,7 +163,7 @@ export default async function RosterPage({
             them, and never changes their household or relationships.
           </p>
         </div>
-        <PrintButton className={styles.printBtn} />
+        <RosterActions className={styles.actionsBar} />
       </div>
 
       <div className={styles.tabBar}>
@@ -173,7 +173,7 @@ export default async function RosterPage({
             href={`/admin/advancement/roster?tab=${t.key}`}
             className={tab === t.key ? styles.tabActive : styles.tab}
           >
-            {t.label} ({t.n})
+            {t.label} <span className={styles.tabCount}>{t.n}</span>
           </Link>
         ))}
       </div>

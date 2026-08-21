@@ -236,40 +236,39 @@ export function FinanceWorkspace({
     <>
       {error && <p className={styles.empty}>{error}</p>}
 
-      <div className={styles.actionsBar}>
-        {/* Available to a finance.view-only actor too — Activity Report is
-            read-only, so it's the one option that doesn't need canManage.
-            Prefixed values navigate (router.push); bare values open the
-            modal below. */}
-        <select
-          value=""
-          className={styles.select}
-          aria-label="Finance actions"
-          onChange={(e) => {
-            const v = e.target.value;
-            e.target.value = '';
-            if (!v) return;
-            if (v.startsWith('nav:')) {
-              router.push(v.slice(4));
-              return;
-            }
-            setActiveModal(v as FinanceModal);
-          }}
-        >
-          <option value="">Actions…</option>
-          <option value="nav:/admin/finance/report">Activity Report</option>
-          {canManage && (
-            <>
-              <option value="record">Record a transaction</option>
-              <option value="transfer">Transfer between accounts</option>
-              <option value="reconcile">Monthly reconciliation</option>
-              <option value="kinds">Manage Kinds</option>
-              <option value="nav:/admin/finance/reimbursements">Reimbursements</option>
-              <option value="nav:/admin/finance/export">Export CSV (backup)</option>
-            </>
-          )}
-        </select>
-      </div>
+      {canManage && (
+        <div className={styles.actionsBar}>
+          {/* Activity Report and Reimbursements dropped 2026-08-20 — both
+              duplicate the main nav's Finance section already. Everything
+              left here is a write action, so the whole bar is canManage-only
+              now (a finance.view-only actor has nothing left to pick here;
+              Activity Report is still reachable — see Backlog re: the
+              sub-nav's finance.view visibility gap). Prefixed values
+              navigate (router.push); bare values open the modal below. */}
+          <select
+            value=""
+            className={styles.select}
+            aria-label="Finance actions"
+            onChange={(e) => {
+              const v = e.target.value;
+              e.target.value = '';
+              if (!v) return;
+              if (v.startsWith('nav:')) {
+                router.push(v.slice(4));
+                return;
+              }
+              setActiveModal(v as FinanceModal);
+            }}
+          >
+            <option value="">Actions…</option>
+            <option value="record">Record a transaction</option>
+            <option value="transfer">Transfer between accounts</option>
+            <option value="reconcile">Monthly reconciliation</option>
+            <option value="kinds">Manage Kinds</option>
+            <option value="nav:/admin/finance/export">Export CSV (backup)</option>
+          </select>
+        </div>
+      )}
 
       {canManage && (
         <dialog ref={actionModalRef} className={styles.actionModal} onClose={() => setActiveModal(null)}>
