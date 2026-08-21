@@ -1,31 +1,13 @@
-/* Admin workspace chrome — port of admin/editor-shared.css :root tokens
-   plus the prototype's left-sidebar layout. Scoped to /admin/* routes
-   so the public site keeps its NYT-style editorial palette. */
+/* Admin workspace chrome — the left-sidebar layout shell.
+
+   The --admin-* design tokens USED to be defined here on .adminRoot; they
+   moved to :root in ./admin.css (2026-08-21, Plans/Admin-Design-System.md)
+   so portaled components and every admin module resolve them without
+   needing to sit inside this class's DOM subtree. This file keeps only the
+   chrome layout. The public site keeps its own separate editorial palette
+   (globals.css) — the --admin- prefix is what keeps the two apart. */
 
 .adminRoot {
-  --admin-navy:        #1e3a4a;
-  --admin-navy-light:  #2a5068;
-  --admin-navy-hover:  #163040;
-  --admin-forest:      #3d7a4a;
-  --admin-forest-dark: #2e6038;
-  --admin-danger:      #c0392b;
-  --admin-danger-hover:#a93226;
-  --admin-warning:     #d4a017;
-  --admin-bg:          #f5f6f8;
-  --admin-white:       #ffffff;
-  --admin-gray-50:     #fafbfc;
-  --admin-gray-100:    #f0f1f3;
-  --admin-gray-200:    #e2e4e8;
-  --admin-gray-300:    #cdd1d6;
-  --admin-gray-400:    #9ba1aa;
-  --admin-gray-500:    #6d7580;
-  --admin-gray-700:    #3a3f47;
-  --admin-gray-900:    #1a1d21;
-  --admin-radius:      4px;
-  --admin-radius-sm:   3px;
-  --admin-shadow-sm:   0 1px 3px rgba(0,0,0,.08);
-  --admin-shadow-md:   0 2px 8px rgba(0,0,0,.1);
-
   background: var(--admin-bg);
   color: var(--admin-gray-900);
   font-family: var(--font-ui), Arial, sans-serif;

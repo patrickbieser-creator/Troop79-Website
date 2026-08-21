@@ -1,0 +1,331 @@
+/* /admin/styleguide chrome — deliberately written 100% on the --admin-*
+   tokens (admin.css) with zero raw hex and zero off-scale values, so this
+   file doubles as the reference implementation of the rules the page
+   documents (Plans/Admin-Design-System.md). */
+
+.pageTitle {
+  margin-bottom: var(--admin-space-10);
+  border-bottom: 1px solid var(--admin-gray-200);
+  padding-bottom: var(--admin-space-7);
+}
+.pageTitle h1 {
+  margin: 0 0 var(--admin-space-2);
+  font-size: var(--admin-text-2xl);
+  color: var(--admin-navy);
+}
+.pageTitle p {
+  margin: 0;
+  font-size: var(--admin-text-md);
+  color: var(--admin-gray-500);
+  max-width: 72ch;
+}
+
+.section {
+  margin-bottom: var(--admin-space-13);
+}
+.sectionHead {
+  font-size: var(--admin-text-sm);
+  font-weight: var(--admin-weight-bold);
+  letter-spacing: var(--admin-tracking-wider);
+  text-transform: uppercase;
+  color: var(--admin-navy);
+  border-bottom: 2px solid var(--admin-navy);
+  padding-bottom: var(--admin-space-2);
+  margin-bottom: var(--admin-space-6);
+}
+.sectionNote {
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-500);
+  margin: calc(-1 * var(--admin-space-3)) 0 var(--admin-space-6);
+  max-width: 80ch;
+}
+
+/* ── Token swatches ── */
+.swatchGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--admin-space-4);
+  margin-bottom: var(--admin-space-8);
+}
+.swatch {
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  overflow: hidden;
+  box-shadow: var(--admin-shadow-sm);
+}
+.swatchColor {
+  height: var(--admin-space-14);
+  border-bottom: 1px solid var(--admin-gray-100);
+}
+.swatchMeta {
+  padding: var(--admin-space-3) var(--admin-space-4);
+}
+.swatchName {
+  display: block;
+  font-family: monospace;
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-900);
+}
+.swatchValue {
+  display: block;
+  font-family: monospace;
+  font-size: var(--admin-text-xs);
+  color: var(--admin-gray-500);
+  margin-top: var(--admin-space-1);
+}
+.swatchNew {
+  display: inline-block;
+  font-size: var(--admin-text-2xs);
+  font-weight: var(--admin-weight-bold);
+  letter-spacing: var(--admin-tracking-wider);
+  text-transform: uppercase;
+  background: var(--admin-forest);
+  color: var(--admin-white);
+  border-radius: var(--admin-radius-pill);
+  padding: var(--admin-space-1) var(--admin-space-3);
+  margin-left: var(--admin-space-2);
+}
+
+/* ── Scale rows (type / spacing) ── */
+.scaleRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--admin-space-6);
+  padding: var(--admin-space-2) 0;
+  border-bottom: 1px solid var(--admin-gray-100);
+}
+.scaleName {
+  flex: 0 0 160px;
+  font-family: monospace;
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-500);
+}
+.spaceBar {
+  background: var(--admin-navy-light);
+  height: var(--admin-space-5);
+  border-radius: var(--admin-radius-sm);
+}
+
+/* ── Pattern specimens ── */
+.specimenGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--admin-space-6);
+}
+.specimen {
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  padding: var(--admin-space-6);
+}
+.specimenCanonical {
+  border-color: var(--admin-forest);
+  border-width: 2px;
+}
+.specimenLabel {
+  font-size: var(--admin-text-xs);
+  font-weight: var(--admin-weight-bold);
+  letter-spacing: var(--admin-tracking-wide);
+  text-transform: uppercase;
+  color: var(--admin-gray-500);
+  margin-bottom: var(--admin-space-4);
+}
+.specimenCanonical .specimenLabel {
+  color: var(--admin-forest);
+}
+/* Standalone approved-spec label (used outside a .specimenCanonical card). */
+.specimenLabelApproved {
+  color: var(--admin-forest);
+}
+.specimenBody {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--admin-space-4);
+  margin-bottom: var(--admin-space-4);
+}
+.specimenNote {
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-500);
+  line-height: 1.5;
+}
+.specimenNote code {
+  font-size: var(--admin-text-xs);
+  background: var(--admin-gray-100);
+  border-radius: var(--admin-radius-sm);
+  padding: 0 var(--admin-space-1);
+}
+
+/* ── Scoreboard + defect tables ── */
+.scoreTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--admin-text-base);
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+}
+.scoreTable th {
+  text-align: left;
+  font-size: var(--admin-text-xs);
+  font-weight: var(--admin-weight-bold);
+  letter-spacing: var(--admin-tracking-wide);
+  text-transform: uppercase;
+  color: var(--admin-gray-500);
+  background: var(--admin-gray-50);
+  padding: var(--admin-space-3) var(--admin-space-5);
+  border-bottom: 1px solid var(--admin-gray-200);
+}
+.scoreTable td {
+  padding: var(--admin-space-3) var(--admin-space-5);
+  border-bottom: 1px solid var(--admin-gray-100);
+  vertical-align: top;
+}
+.scoreTable tr:last-child td { border-bottom: none; }
+.countPill {
+  display: inline-block;
+  font-size: var(--admin-text-sm);
+  font-weight: var(--admin-weight-bold);
+  background: var(--admin-status-warning-bg);
+  color: var(--admin-accent-gold);
+  border-radius: var(--admin-radius-pill);
+  padding: var(--admin-space-1) var(--admin-space-3);
+}
+
+/* ── THE approved dialog spec (proposed and approved by Patrick 2026-08-21) ──
+   This is what every admin dialog converges on. Production dialogs haven't
+   converted yet — Phase A (Plans/Admin-Design-System.md) extracts these
+   classes into the shared Dialog component and migrates the screens; until
+   then this page is the spec's only home. New dialogs built before Phase A
+   should copy this spec, not the legacy calendar .dialog.
+   Vs legacy: shadow-md→lg, radius 6px→radius-lg, navy-tinted blurred
+   backdrop, @starting-style entry motion, banded header/footer, danger
+   variant. */
+.dialogCompare {
+  display: grid;
+  gap: var(--admin-space-8);
+  max-width: 640px;
+}
+.dialogSpec {
+  padding: 0;
+  border: none;
+  border-radius: var(--admin-radius-lg);
+  box-shadow: var(--admin-shadow-lg);
+  background: var(--admin-white);
+  width: 92vw;
+  max-width: 580px;
+  margin: auto;
+  max-height: 88vh;
+  overflow-y: auto;
+}
+.dialogSpec::backdrop {
+  /* the navy at 45% — color-mix keeps it token-true instead of a raw rgba */
+  background: color-mix(in srgb, var(--admin-navy) 45%, transparent);
+  backdrop-filter: blur(2px);
+}
+/* Entry motion: @starting-style + transition, the modern <dialog> pattern.
+   Browsers without support simply show the dialog instantly. */
+.dialogSpec[open] {
+  transition: opacity var(--admin-transition), transform var(--admin-transition);
+}
+.dialogSpec[open]::backdrop {
+  transition: opacity var(--admin-transition);
+}
+@starting-style {
+  .dialogSpec[open] {
+    opacity: 0;
+    transform: translateY(6px) scale(.98);
+  }
+  .dialogSpec[open]::backdrop { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dialogSpec[open],
+  .dialogSpec[open]::backdrop { transition: none; }
+}
+.dialogSpecHeader {
+  background: var(--admin-gray-50);
+  border-bottom: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius-lg) var(--admin-radius-lg) 0 0;
+  padding: var(--admin-space-7) var(--admin-space-11) var(--admin-space-6);
+}
+.dialogSpecTitle {
+  margin: 0 0 var(--admin-space-1);
+  font-size: var(--admin-text-xl);
+  font-weight: var(--admin-weight-bold);
+  color: var(--admin-navy);
+}
+.dialogSpecSub {
+  margin: 0;
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-500);
+  line-height: 1.4;
+}
+.dialogSpecBody {
+  padding: var(--admin-space-9) var(--admin-space-11);
+  font-size: var(--admin-text-md);
+  color: var(--admin-gray-700);
+  line-height: 1.5;
+}
+.dialogSpecActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--admin-space-4);
+  background: var(--admin-gray-50);
+  border-top: 1px solid var(--admin-gray-200);
+  border-radius: 0 0 var(--admin-radius-lg) var(--admin-radius-lg);
+  padding: var(--admin-space-6) var(--admin-space-11);
+}
+/* Danger variant — destructive confirmations stop looking like edits. */
+.dialogSpecDanger .dialogSpecHeader {
+  background: var(--admin-status-error-bg);
+  border-top: 3px solid var(--admin-danger);
+  border-bottom-color: color-mix(in srgb, var(--admin-danger) 25%, var(--admin-white));
+}
+.dialogSpecDanger .dialogSpecTitle { color: var(--admin-danger-dark); }
+
+/* Renders a dialog's classes as an in-flow specimen instead of a modal. */
+.dialogStatic {
+  position: static;
+  width: 100%;
+  margin: 0;
+}
+
+.demoBtn {
+  font-family: inherit;
+  font-size: var(--admin-text-base);
+  font-weight: var(--admin-weight-bold);
+  letter-spacing: var(--admin-tracking-normal);
+  background: var(--admin-navy);
+  color: var(--admin-white);
+  border: 1px solid var(--admin-navy);
+  border-radius: var(--admin-radius-sm);
+  padding: var(--admin-space-3) var(--admin-space-7);
+  cursor: pointer;
+}
+.demoBtn:hover { background: var(--admin-navy-hover); }
+.ghostBtn {
+  font-family: inherit;
+  font-size: var(--admin-text-base);
+  font-weight: var(--admin-weight-semibold);
+  background: var(--admin-white);
+  color: var(--admin-gray-700);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  padding: var(--admin-space-3) var(--admin-space-7);
+  cursor: pointer;
+}
+.ghostBtn:hover { background: var(--admin-gray-100); }
+
+/* ── Callout boxes ── */
+.rules {
+  background: var(--admin-status-info-bg);
+  border: 1px solid var(--admin-gray-200);
+  border-left: 4px solid var(--admin-navy);
+  border-radius: var(--admin-radius);
+  padding: var(--admin-space-6) var(--admin-space-8);
+  font-size: var(--admin-text-md);
+  line-height: 1.6;
+}
+.rules ul { margin: var(--admin-space-3) 0 0; padding-left: var(--admin-space-9); }
+.rules li { margin-bottom: var(--admin-space-2); }

@@ -2,6 +2,25 @@
 # This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+
+## Admin styling: tokens + styleguide are load-bearing (2026-08-21)
+
+Before styling anything under `src/app/admin/`, know the rules in
+`src/app/admin/(workspace)/admin.css` (the `--admin-*` token sheet on `:root` — single source
+of truth) and the pattern library at `/admin/styleguide`
+(`(workspace)/styleguide/page.tsx`). In short: no raw hex in admin CSS (add a token if none
+fits); never read the public palette tokens (`--navy`, `--forest`, `--bark`,
+`--transition`…) from admin styles; spacing/font sizes/radii come from the token scales;
+check the styleguide for an existing pattern before writing a new class; inline
+`style={{…}}` only for genuinely dynamic values.
+
+**Keep the styleguide in the same commit as the change:** adding a new admin UI pattern,
+class family, token, or shared component means adding its specimen (and scoreboard row, if
+it has variants) to the styleguide page; retiring a variant means deleting its specimen and
+striking its row. The page imports real production stylesheets, so an un-updated guide
+doesn't just lag — it lies. Remediation phases and open design questions:
+`Plans/Admin-Design-System.md`. Also: `library.module.css` is imported by ~20 public routes
+(signin, member, advancement reports…) — never restyle it from the admin side.
 <!-- END:nextjs-agent-rules -->
 
 ## Known gotcha: JSX drops the space after an inline element at a line wrap

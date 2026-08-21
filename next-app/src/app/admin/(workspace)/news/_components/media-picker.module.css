@@ -47,7 +47,22 @@
 .uploadInfo { flex: 1; min-width: 0; }
 .uploadName { font-family: var(--font-ui); font-size: 12px; font-weight: 600; color: var(--text-head); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .progressTrack { height: 5px; background: var(--border-light); border-radius: 999px; margin-top: 6px; overflow: hidden; }
-.progressFill { height: 100%; background: var(--forest); border-radius: 999px; transition: width .2s ease; }
+/* Indeterminate on purpose: uploads run through a Server Action, which
+   exposes no progress events, so a real percentage is unobtainable on this
+   path. Until 2026-08-21 this was a determinate bar hardcoded to width:70%
+   inline (caught by the style audit, confirmed a bug by Patrick) — it read
+   as a stalled upload. A sweeping bar is the honest state. */
+.progressFill {
+  height: 100%;
+  width: 40%;
+  background: var(--forest);
+  border-radius: 999px;
+  animation: progressSweep 1.2s ease-in-out infinite;
+}
+@keyframes progressSweep {
+  0%   { margin-left: -40%; }
+  100% { margin-left: 100%; }
+}
 .uploadStatus { font-family: var(--font-ui); font-size: 11px; color: var(--text-meta); margin-top: 3px; }
 .uploadItemError { border-color: #b5484d; background: rgba(181, 72, 77, .05); }
 .uploadItemError .uploadStatus { color: #b5484d; }

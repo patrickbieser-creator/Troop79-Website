@@ -24,6 +24,9 @@ import { IS_DEV_DB } from '@/lib/dev-db';
 import { resolveAdminActor } from '@/lib/admin-actor';
 import { CAPABILITIES } from '@/lib/capabilities';
 import styles from './admin.module.css';
+// Global --admin-* design tokens on :root (Plans/Admin-Design-System.md).
+// Must load with the workspace so every admin module and portal resolves them.
+import './admin.css';
 
 export const metadata: Metadata = IS_DEV_DB
   ? { title: { template: '[DEV] %s', default: '[DEV] Troop 79 Admin' } }
@@ -85,8 +88,10 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
         <main className={styles.main}>{children}</main>
       </div>
       {/* Portal target for admin components (e.g. DatePickerField) that need
-          document.body-level positioning but must stay inside .adminRoot's
-          DOM subtree to inherit its --admin-* CSS custom properties. */}
+          top-level positioning outside their own stacking context. Since the
+          --admin-* tokens moved to :root (admin.css, 2026-08-21) this node no
+          longer has to sit inside .adminRoot for token inheritance — it stays
+          for the stable portal-target contract DatePickerField relies on. */}
       <div id="admin-popover-root" />
     </div>
   );

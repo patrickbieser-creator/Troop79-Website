@@ -250,6 +250,15 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         href: '/admin/utilities',
         matchPath: '/admin/utilities',
         capability: 'news.write'
+      },
+      {
+        // Deliberately NO capability: the styleguide renders static pattern
+        // samples — no data, no writes — so no page-level grant applies, and
+        // per visibleNavSections' rules a capability-less item is offered to
+        // full admins only. That's the right audience for a design reference.
+        label: 'Styleguide',
+        href: '/admin/styleguide',
+        matchPath: '/admin/styleguide'
       }
     ]
   }

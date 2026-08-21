@@ -365,7 +365,7 @@ export function MediaPicker({ mode, onClose, onInsert, initialSelected }: MediaP
                       )}
                       {p.status === 'uploading' && (
                         <div className={styles.progressTrack}>
-                          <div className={styles.progressFill} style={{ width: '70%' }} />
+                          <div className={styles.progressFill} />
                         </div>
                       )}
                       <div className={styles.uploadStatus}>

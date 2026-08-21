@@ -1,0 +1,129 @@
+/**
+ * Admin design tokens — the single source of truth for every color, size,
+ * and effect value in the Leader Workspace. Rendered examples and usage
+ * rules live at /admin/styleguide; the remediation plan that introduced
+ * this file is Plans/Admin-Design-System.md.
+ *
+ * WHY :root AND NOT .adminRoot (where these lived until 2026-08-21):
+ * module-scoped tokens only inherit inside the .adminRoot DOM subtree, which
+ * forced the #admin-popover-root portal workaround in layout.tsx and left
+ * DatePickerField's document.body fallback rendering unstyled. On :root the
+ * tokens resolve everywhere, portals included. The --admin- prefix keeps
+ * them from colliding with the public site's editorial palette
+ * (src/app/globals.css) — the two palettes are separate on purpose and must
+ * not be merged or cross-referenced.
+ *
+ * RULES for admin CSS from here on:
+ *   1. No raw hex in admin module.css files — use a token. If no token
+ *      fits, add one HERE (with a comment), never inline.
+ *   2. Never read the public tokens (--navy, --forest, --bark, --transition,
+ *      --shadow-card...) from admin styles. The 2026-08-21 audit found 5
+ *      admin files leaking public values; those are being remediated, not
+ *      imitated.
+ *   3. Spacing, font sizes, radii come from the scales below. A value that
+ *      isn't on the scale is a design decision — comment it.
+ *
+ * The 22 original tokens are byte-identical to their old .adminRoot values —
+ * promoting them changed nothing visually. Tokens marked NEW were added by
+ * the 2026-08-21 token audit; each comment names the drift cluster it
+ * replaces (full mapping in Plans/Admin-Design-System.md).
+ */
+
+:root {
+  /* ── Brand / semantic colors ─────────────────────────────────────── */
+  --admin-navy:         #1e3a4a;
+  --admin-navy-light:   #2a5068;
+  --admin-navy-hover:   #163040;
+  --admin-forest:       #3d7a4a;  /* target for the 7-green drift cluster (#3d5a3e, #2d6a4f, #2f6b3f…) */
+  --admin-forest-dark:  #2e6038;
+  --admin-danger:       #c0392b;
+  --admin-danger-hover: #a93226;
+  --admin-danger-dark:  #8c2f2f;  /* NEW — dark red for text-on-tint; target for the 8-red drift cluster */
+  --admin-warning:      #d4a017;
+  --admin-accent-gold:  #8b6914;  /* NEW — the dark-gold accent 8 files borrowed raw from the public
+                                     palette ("bark"); formalized here so the borrow can end */
+  --admin-bg:           #f5f6f8;
+  --admin-white:        #ffffff;
+
+  /* ── Gray scale ──────────────────────────────────────────────────── */
+  --admin-gray-50:  #fafbfc;
+  --admin-gray-100: #f0f1f3;
+  --admin-gray-200: #e2e4e8;   /* also the target for literal #e4e4e4 / #ddd / #ccc */
+  --admin-gray-300: #cdd1d6;
+  --admin-gray-400: #9ba1aa;
+  --admin-gray-500: #6d7580;
+  --admin-gray-600: #666666;   /* NEW — was a PHANTOM: 32 reads existed, 11 with no fallback
+                                  (silently dropped declarations). Value matches what every
+                                  fallback-carrying read already rendered, so defining it is a
+                                  pure bug fix with zero visual change on those. */
+  --admin-gray-700: #3a3f47;   /* also the target for literal #444 */
+  --admin-gray-800: #2a2e34;   /* NEW — was a phantom with 2 bare reads (roster-import); defining
+                                  it makes those declarations take effect for the first time */
+  --admin-gray-900: #1a1d21;   /* also the target for literal #1a1a1a */
+
+  /* ── Status backgrounds (pale tints for notices/alerts) ──────────── */
+  /* Each is the most-used value of a 9-12-variant near-identical tint
+     cluster found in the audit; everything else in its cluster is drift. */
+  --admin-status-error-bg:   #fdf0ef;
+  --admin-status-warning-bg: #fdf3d6;
+  --admin-status-success-bg: #f0f6f1;
+  --admin-status-info-bg:    #eef3f8;
+
+  /* ── Radii ───────────────────────────────────────────────────────── */
+  --admin-radius:        4px;
+  --admin-radius-sm:     3px;
+  --admin-radius-lg:     8px;    /* NEW — absorbs stray 6px/8px card radii */
+  --admin-radius-pill:   999px;  /* NEW — pill badges and tab counts (17 hardcoded uses today) */
+  --admin-radius-circle: 50%;    /* NEW — dots and avatars */
+
+  /* ── Shadows ─────────────────────────────────────────────────────── */
+  --admin-shadow-sm: 0 1px 3px rgba(0, 0, 0, .08);
+  --admin-shadow-md: 0 2px 8px rgba(0, 0, 0, .1);
+  --admin-shadow-lg: 0 8px 24px rgba(0, 0, 0, .18);  /* NEW — modal/overlay elevation */
+
+  /* ── Motion ──────────────────────────────────────────────────────── */
+  --admin-transition: .15s ease;  /* NEW — the admin's dominant literal; replaces borrowing the
+                                     public --transition (.18s) in 5 files */
+
+  /* ── Spacing scale ───────────────────────────────────────────────── */
+  /* Derived from the audit's 1,553-declaration histogram. Odd values in the
+     wild (3/5/7/9/11px…) fold into the nearest step during remediation. */
+  --admin-space-1:  2px;
+  --admin-space-2:  4px;
+  --admin-space-3:  6px;
+  --admin-space-4:  8px;
+  --admin-space-5:  10px;
+  --admin-space-6:  12px;
+  --admin-space-7:  14px;
+  --admin-space-8:  16px;
+  --admin-space-9:  18px;
+  --admin-space-10: 20px;
+  --admin-space-11: 24px;
+  --admin-space-12: 28px;
+  --admin-space-13: 32px;
+  --admin-space-14: 40px;
+
+  /* ── Type scale ──────────────────────────────────────────────────── */
+  /* Half-pixel sizes in the wild (10.5/11.5/12.5/13.5px — ~162 uses) are
+     drift, not intent; they round to the nearest step during remediation. */
+  --admin-text-2xs: 9px;
+  --admin-text-xs:  10px;
+  --admin-text-sm:  11px;
+  --admin-text-base: 12px;
+  --admin-text-md:  13px;
+  --admin-text-lg:  14px;
+  --admin-text-xl:  16px;
+  --admin-text-2xl: 20px;
+  --admin-text-3xl: 24px;
+  --admin-text-4xl: 32px;
+
+  --admin-weight-regular:  400;
+  --admin-weight-semibold: 600;
+  --admin-weight-bold:     700;
+
+  --admin-tracking-tight:  .02em;
+  --admin-tracking-normal: .04em;
+  --admin-tracking-wide:   .06em;
+  --admin-tracking-wider:  .08em;
+  --admin-tracking-widest: .12em;
+}

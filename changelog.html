@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 21, 2026</strong></p>
+      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.56.0</p>
     </div>
   </div>
 
@@ -494,6 +494,60 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.56.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.56.0</span>
+        <span class="release-date">August 21, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Admin design system: global tokens, a live styleguide, and an approved dialog spec</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Design tokens go global.</strong> The Leader Workspace&rsquo;s
+              <code>--admin-*</code> design tokens moved from a component-scoped stylesheet to
+              a true global token sheet (<code>admin.css</code>) &mdash; and grew from 22 to
+              ~70: status-tint backgrounds, a spacing scale, a type scale, pill/circle radii,
+              modal-grade shadow, and motion timing. Thirteen CSS declarations that silently
+              referenced tokens that never existed now work. A full three-part audit (35
+              stylesheets, 174 inline styles, every hardcoded color in the admin) drove the
+              additions; the remediation roadmap lives in
+              <code>Plans/Admin-Design-System.md</code>.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>New: /admin/styleguide.</strong> A live pattern library inside the
+              workspace (Setup &rarr; Styleguide) rendering every recurring admin pattern
+              from the real production stylesheets &mdash; canonical versions flagged in
+              green, divergent copies displayed side by side until they&rsquo;re retired, an
+              inconsistency scoreboard, and the styling rules. Because it imports the actual
+              CSS, it can&rsquo;t drift from what ships.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Dialogs got a design pass.</strong> A redesigned dialog spec &mdash;
+              stronger elevation, softer radius, navy-tinted blurred backdrop, entry motion,
+              banded header/footer, and a distinct danger variant for destructive
+              confirmations &mdash; was proposed on the styleguide, reviewed live, and
+              approved. Every admin dialog converges on it as screens convert.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Fixed: the Media Picker&rsquo;s fake progress bar.</strong> Uploads
+              showed a bar frozen at 70% &mdash; a hardcoded stand-in, since the upload path
+              can&rsquo;t report real progress. It&rsquo;s now an honest indeterminate
+              sweep while the upload runs.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 
