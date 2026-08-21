@@ -10,6 +10,8 @@ import {
 import type { LedgerEntry, LedgerKind } from '@/lib/supabase/types';
 import { initialsFor } from '@/lib/initials';
 import { DatePickerField } from '../../_components/date-picker-field';
+import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
+import { Notice } from '../../_components/notice';
 import styles from './ledger.module.css';
 
 interface Props {
@@ -113,13 +115,10 @@ export function RowActions({ row, scouts, leaders }: Props) {
         </>
       )}
 
-      <dialog
+      <Dialog
         ref={dialogRef}
         className={styles.editDialog}
         onClose={() => setEditOpen(false)}
-        onClick={(e) => {
-          if (e.target === dialogRef.current) setEditOpen(false);
-        }}
       >
         {editOpen && (
           <EditForm
@@ -130,7 +129,7 @@ export function RowActions({ row, scouts, leaders }: Props) {
             onSaved={() => setEditOpen(false)}
           />
         )}
-      </dialog>
+      </Dialog>
     </>
   );
 }
@@ -184,20 +183,22 @@ function EditForm({
   }
 
   return (
-    <div className={styles.editDialogInner}>
-      <div className={styles.editDialogHeader}>
-        <h3>Edit ledger entry #{row.id}</h3>
-        <p>
-          Entered by <strong>{row.entered_by ?? '—'}</strong>
-          {row.entered_by && ` (${initialsFor(row.entered_by)})`}
-          {row.entered_at && ` on ${row.entered_at.slice(0, 10)}`}.
-        </p>
-        <p>
-          Mutates the row in place. Audit columns (entered_by, entered_at) are
-          preserved. Use Delete instead if the row is erroneous.
-        </p>
-      </div>
+    <>
+      <DialogHeader
+        title={`Edit ledger entry #${row.id}`}
+        sub={
+          <>
+            Entered by <strong>{row.entered_by ?? '—'}</strong>
+            {row.entered_by && ` (${initialsFor(row.entered_by)})`}
+            {row.entered_at && ` on ${row.entered_at.slice(0, 10)}`}.
+            <br />
+            Mutates the row in place. Audit columns (entered_by, entered_at) are
+            preserved. Use Delete instead if the row is erroneous.
+          </>
+        }
+      />
 
+      <DialogBody>
       <div className={styles.editGrid}>
         <Field label="Date">
           <DatePickerField value={date} onChange={setDate} />
@@ -292,9 +293,10 @@ function EditForm({
         </Field>
       </div>
 
-      {err && <div className={styles.editError}>{err}</div>}
+      {err && <Notice>{err}</Notice>}
+      </DialogBody>
 
-      <div className={styles.editActions}>
+      <DialogActions>
         <button
           type="button"
           className={styles.actionBtn}
@@ -311,8 +313,8 @@ function EditForm({
         >
           {isPending ? 'Saving…' : 'Save changes'}
         </button>
-      </div>
-    </div>
+      </DialogActions>
+    </>
   );
 }
 

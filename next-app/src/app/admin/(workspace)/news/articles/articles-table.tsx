@@ -15,6 +15,7 @@ import {
 } from './actions';
 import styles from './articles.module.css';
 import { Badge } from '../../_components/badge';
+import { Notice } from '../../_components/notice';
 
 type SortKey = 'title' | 'type' | 'status' | 'author' | 'date';
 
@@ -123,7 +124,7 @@ export function ArticlesTable({ rows, sp, sort, dir, sessionName }: Props) {
                     ) : (
                       r.title
                     )}
-                    {rowErr?.id === r.id && <div className={styles.rowError}>{rowErr.msg}</div>}
+                    {rowErr?.id === r.id && <Notice>{rowErr.msg}</Notice>}
                   </td>
                   <td className={styles.nowrap}>
                     <Badge

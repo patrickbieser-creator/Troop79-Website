@@ -16,6 +16,7 @@ import {
 } from './actions';
 import styles from './roster-import.module.css';
 import { Badge } from '../../_components/badge';
+import { Notice } from '../../_components/notice';
 import { TabStrip } from '../../_components/tab-strip';
 
 export interface BatchSummary {
@@ -184,7 +185,11 @@ export function ReviewClient({
         ]}
       />
 
-      {notice && <div className={styles.notice}>{notice}</div>}
+      {notice && (
+        <Notice variant="success" className={styles.noticeSpacing}>
+          {notice}
+        </Notice>
+      )}
       {error && <div className={styles.error}>{error}</div>}
 
       {tab === 'duplicates' ? (

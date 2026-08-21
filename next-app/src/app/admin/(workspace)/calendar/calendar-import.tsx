@@ -22,6 +22,7 @@
 import { forwardRef, useImperativeHandle, useMemo, useRef, useState, useTransition } from 'react';
 import type { CalendarEntry } from '@/lib/supabase/types';
 import type { ImportResult, ImportRowFields, ImportUpdate } from './actions';
+import { Notice } from '../_components/notice';
 import styles from './calendar.module.css';
 
 interface Props {
@@ -380,11 +381,11 @@ export const CalendarImport = forwardRef<CalendarImportHandle, Props>(function C
             ) : (
               <div className={styles.importBody}>
                 {plan.errors.length > 0 && (
-                  <div className={styles.editError}>
+                  <Notice>
                     {plan.errors.map((e, i) => (
                       <div key={i}>{e}</div>
                     ))}
-                  </div>
+                  </Notice>
                 )}
 
                 {plan.news.length > 0 && (
@@ -531,7 +532,7 @@ export const CalendarImport = forwardRef<CalendarImportHandle, Props>(function C
               </div>
             )}
 
-            {err && <div className={styles.editError}>{err}</div>}
+            {err && <Notice>{err}</Notice>}
             {needsCategory > 0 && !done && (
               <p className={styles.muted} style={{ fontStyle: 'normal', marginTop: 6 }}>
                 {needsCategory} checked row{needsCategory === 1 ? ' still needs' : 's still need'} a

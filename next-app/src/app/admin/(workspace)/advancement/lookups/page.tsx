@@ -66,6 +66,7 @@ import {
   saveArticleTokens
 } from './actions';
 import styles from './lookups.module.css';
+import { PageTitle } from '../../_components/page-title';
 
 interface MbReqRowFull {
   id: number;
@@ -392,15 +393,17 @@ export default async function LookupsPage() {
 
   return (
     <>
-      <div className={styles.pageTitle}>
-        <h1>Lookups &amp; Admin</h1>
-        <p>
-          The editable Troop 79 taxonomy. Internal codes, BSA Member IDs, leader
-          signoff initials, and the merit-badge catalog. Click <strong>Edit</strong>{' '}
-          on any row to make changes. Scouts and adults are managed on the{' '}
-          <Link href="/admin/advancement/roster">Roster</Link>.
-        </p>
-      </div>
+      <PageTitle
+        title="Lookups & Admin"
+        sub={
+          <>
+            The editable Troop 79 taxonomy. Internal codes, BSA Member IDs, leader signoff
+            initials, and the merit-badge catalog. Click <strong>Edit</strong> on any row to
+            make changes. Scouts and adults are managed on the{' '}
+            <Link href="/admin/advancement/roster">Roster</Link>.
+          </>
+        }
+      />
 
       {/* The Scouts and "Adults and Instructors" cards used to sit here. They
           moved to /admin/advancement/roster in v1.12 so the roster you read and

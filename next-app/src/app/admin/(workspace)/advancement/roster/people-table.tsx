@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   addRole,
@@ -25,6 +25,8 @@ import { PendingUpdatePanel } from './pending-update-panel';
 import { AdultForm } from './adult-form';
 import { DatePickerField } from '../../_components/date-picker-field';
 import { AddButton } from '../../_components/add-button';
+import { Dialog } from '../../_components/dialog';
+import { Notice } from '../../_components/notice';
 import { ageOn, yptStatus } from '@/lib/demographics';
 import styles from './roster.module.css';
 
@@ -377,6 +379,14 @@ function PersonEditor({
   });
   const [demo, setDemo] = useState<DemoForm>(demoFromFields(seed.fields));
 
+  // The editor is mounted only while open — showModal() once on mount puts
+  // the native <dialog> in the top layer (Esc + backdrop close come free).
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dlg = dialogRef.current;
+    if (dlg && !dlg.open) dlg.showModal();
+  }, []);
+
   // Fresh read on open, so a dialog opened after someone else's edit is current.
   useEffect(() => {
     let live = true;
@@ -437,7 +447,11 @@ function PersonEditor({
   const relationships = detail.relationships;
 
   return (
-    <div className={styles.editorOverlay} role="dialog" aria-modal="true">
+    // Shared Dialog (Phase B, 2026-08-21) — was a hand-rolled fixed overlay
+    // with no Escape/backdrop-close/focus trap (Section 2 finding #1); the
+    // native <dialog> gives all three for free. Mounted only while open, so
+    // showModal() runs once on mount.
+    <Dialog ref={dialogRef} className={styles.editorDialog} onClose={onClose}>
       <div className={styles.editorPanel}>
         <div className={styles.editorHead}>
           <div>
@@ -453,7 +467,7 @@ function PersonEditor({
           </button>
         </div>
 
-        {error && <div className={styles.rowError}>{error}</div>}
+        {error && <Notice>{error}</Notice>}
         {saved && <div className={styles.savedNote}>{saved}</div>}
 
         {/* A family can propose changes to an adult's own record from
@@ -1006,7 +1020,7 @@ function PersonEditor({
           )}
         </section>
       </div>
-    </div>
+    </Dialog>
   );
 }
 

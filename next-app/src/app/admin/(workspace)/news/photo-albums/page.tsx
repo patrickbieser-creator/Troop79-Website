@@ -11,7 +11,7 @@ import { loadCalendarCategories } from '@/lib/calendar';
 import type { PhotoAlbum } from '@/lib/supabase/types';
 import { AlbumsEditor, type CoverInfo } from './albums-editor';
 import { createPhotoAlbum, updatePhotoAlbum, deletePhotoAlbum } from './actions';
-import styles from './albums.module.css';
+import { PageTitle } from '../../_components/page-title';
 
 export const metadata = {
   title: 'Photo Albums — Troop 79'
@@ -44,14 +44,16 @@ export default async function PhotoAlbumsAdminPage() {
 
   return (
     <>
-      <div className={styles.pageTitle}>
-        <h1>Photo Albums</h1>
-        <p>
-          The index behind the public Photos page. Each entry points at a shared Google Photos
-          album — paste the share link, pick a category and date, and optionally choose a cover
-          from the media library (albums without one get the &ldquo;79&rdquo; tile).
-        </p>
-      </div>
+      <PageTitle
+        title="Photo Albums"
+        sub={
+          <>
+            The index behind the public Photos page. Each entry points at a shared Google Photos
+            album — paste the share link, pick a category and date, and optionally choose a cover
+            from the media library (albums without one get the &ldquo;79&rdquo; tile).
+          </>
+        }
+      />
 
       <AlbumsEditor
         rows={albums}

@@ -1,16 +1,4 @@
-.pageTitle {
-  margin-bottom: 20px;
-  border-bottom: 1px solid var(--admin-gray-200);
-  padding-bottom: 14px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-.pageTitle h1 { font-size: 22px; font-weight: 700; color: var(--admin-navy); margin-bottom: 4px; }
-.pageTitle p { font-size: 13px; color: var(--admin-gray-500); max-width: 720px; line-height: 1.5; }
-
+/* .pageTitle retired Phase B (2026-08-21) — shared PageTitle component. */
 .actionsBar { flex-shrink: 0; }
 
 .section { margin-bottom: 28px; }
@@ -19,12 +7,11 @@
   color: var(--admin-gray-500); margin-bottom: 8px;
 }
 
+/* Compact table canon (Phase B, 2026-08-21) — normalized with calendar/
+   albums/meetings/scoutbook-export (was 7px 10px cell padding). */
 .table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-.table th, .table td { padding: 7px 10px; border-bottom: 1px solid var(--admin-gray-100); text-align: left; vertical-align: top; }
-.table th {
-  background: var(--admin-gray-50); font-size: 10px; font-weight: 700; letter-spacing: .06em;
-  text-transform: uppercase; color: var(--admin-gray-700);
-}
+.table th, .table td { padding: 8px 10px; border-bottom: 1px solid var(--admin-gray-100); text-align: left; vertical-align: top; }
+.table th { background: var(--admin-gray-50); font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--admin-gray-700); }
 .table tr:last-child td { border-bottom: none; }
 .muted { color: var(--admin-gray-400); }
 .mono { font-family: 'Menlo', 'Consolas', monospace; font-size: 11.5px; }
@@ -150,28 +137,15 @@
    shouldn't compete with the value above it. */
 .subText { display: block; font-size: 10.5px; color: var(--admin-gray-500); margin-top: 2px; }
 
-/* Wider than detailDialog: the scout form is a full record, not a summary.
-   The height cap and scroll sit on the dialog itself rather than on the form's
-   inner wrapper — that wrapper is styled by lookups.module.css, and a
-   descendant selector can't reach across two CSS modules' hashed names. Without
-   a cap the form runs past the viewport and the dialog anchors to the top. */
-.editDialog {
-  padding: 0; border: none; border-radius: 6px;
-  box-shadow: var(--admin-shadow-md);
-  width: 94vw; max-width: 860px; max-height: 90vh; overflow-y: auto;
-  /* Explicit, not inherited: the UA centres a modal dialog with margin:auto,
-     but the admin workspace resets margins on block elements. */
-  margin: auto;
-  background: var(--admin-white);
-}
-.editDialog::backdrop { background: rgba(0, 0, 0, .42); }
-
-/* Modifier for the section-card + rail treatment (Plans/Admin-Nav-And-Consistency.md,
-   Section 3) — the rail needs to stay in view while only the section cards scroll
-   underneath it, so this dialog scrolls internally (.editScrollArea, in
-   lookups.module.css, imported by scout-form.tsx) instead of at the <dialog> level.
-   Applied alongside .editDialog, not replacing it — width/max-height are unchanged. */
-.editDialogRosterFixed { overflow: hidden; }
+/* .editDialog chrome retired Phase B (2026-08-21) — the shared Dialog carries
+   the approved spec. This size/scroll-model override is all that remains:
+   wider than the 580px default (the scout form is a full record, not a
+   summary), and overflow HIDDEN because the form scrolls INTERNALLY
+   (.editScrollArea + sticky rail in lookups.module.css) — the dialog itself
+   must not scroll, or the rail would scroll away with the content. Doubled
+   selector: deterministic override of the shared .dialog's max-width/overflow
+   regardless of CSS-module order in the bundle. */
+.editDialogWide.editDialogWide { width: 94vw; max-width: 860px; overflow: hidden; }
 
 .deleteBtn {
   background: var(--admin-white); color: var(--admin-gray-600);
@@ -236,9 +210,13 @@
 .warnTag { margin-left: 8px; font-size: 10px; font-weight: 700; background: #fdf6e3; color: #8a6d1f; border: 1px solid #e6d5a3; border-radius: 2px; padding: 1px 6px; }
 .searchInput { border: 1px solid var(--admin-gray-300); border-radius: 3px; padding: 6px 9px; font-family: inherit; font-size: 13px; min-width: 240px; }
 .toolbarCount { font-size: 12px; color: var(--admin-gray-500); }
-.rowError { padding: 8px 12px; margin-bottom: 10px; border-radius: 3px; font-size: 13px; background: #fdf2f2; border: 1px solid #e5b3b3; color: #8c2f2f; }
-.editorOverlay { position: fixed; inset: 0; background: rgba(20,24,28,.45); display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; z-index: 60; }
-.editorPanel { background: var(--admin-white); border-radius: 6px; max-width: 640px; width: 100%; padding: 20px 22px 26px; box-shadow: 0 12px 40px rgba(0,0,0,.25); }
+/* .rowError retired Phase B (2026-08-21) — shared Notice component. */
+/* .editorOverlay retired Phase B (2026-08-21) — the hand-rolled fixed overlay
+   became the shared Dialog (Esc/backdrop close now work; Section 2 finding #1).
+   Doubled selector: deterministic width override of the shared .dialog. */
+.editorDialog.editorDialog { max-width: 640px; }
+/* Inner padding only — box chrome (bg/radius/shadow) comes from the Dialog. */
+.editorPanel { padding: 20px 22px 26px; }
 .editorHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--admin-gray-200); padding-bottom: 12px; margin-bottom: 4px; }
 .editorHead h2 { font-size: 18px; color: var(--admin-navy); margin: 0 0 2px; }
 .editorSub { font-size: 12px; color: var(--admin-gray-500); margin: 0; }

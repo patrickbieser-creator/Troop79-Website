@@ -7,6 +7,7 @@ import { AddPerson, type AddCandidate } from './add-person';
 import { EmailPanel } from './email-panel';
 import { emailConfigured } from '@/lib/email';
 import styles from '../../events/events-admin.module.css';
+import { PageTitle } from '../../_components/page-title';
 
 export const metadata = { title: 'Event Roster — Troop 79' };
 
@@ -248,22 +249,24 @@ export default async function EventRosterPage({ params }: { params: Promise<{ id
 
   return (
     <>
-      <div className={styles.pageTitle}>
-        <h1>{String(data.entry.title)} — Roster</h1>
-        <p className={styles.sub}>
-          <Link href="/admin/events" className={styles.actionLinkMuted}>
-            All signups
-          </Link>{' '}
-          ·{' '}
-          <Link href={`/admin/events/${signupId}`} className={styles.actionLink}>
-            Builder
-          </Link>{' '}
-          ·{' '}
-          <Link href={`/events/${String(data.entry.id)}`} className={styles.actionLinkMuted}>
-            Public page
-          </Link>
-        </p>
-      </div>
+      <PageTitle
+        title={`${String(data.entry.title)} — Roster`}
+        sub={
+          <>
+            <Link href="/admin/events" className={styles.actionLinkMuted}>
+              All signups
+            </Link>{' '}
+            ·{' '}
+            <Link href={`/admin/events/${signupId}`} className={styles.actionLink}>
+              Builder
+            </Link>{' '}
+            ·{' '}
+            <Link href={`/events/${String(data.entry.id)}`} className={styles.actionLinkMuted}>
+              Public page
+            </Link>
+          </>
+        }
+      />
 
       <div className={styles.tiles}>
         <div className={styles.tile}>

@@ -8,7 +8,7 @@
 import { requireCapability } from '@/lib/require-capability';
 import { listReportsAction, getLastPublishedEndDateAction, getReportAction } from './actions';
 import { ReportWorkspace } from './report-workspace';
-import styles from './report.module.css';
+import { PageTitle } from '../../_components/page-title';
 
 export const metadata = {
   title: 'Weekly Advancement Report — Troop 79'
@@ -28,15 +28,13 @@ export default async function AdvancementReportPage({
 
   return (
     <>
-      <div className={styles.pageTitle}>
-        <h1>Weekly Advancement Report</h1>
-        <p>
-          Generate a consolidated summary of what got signed off in a date range — for the Bugle
+      <PageTitle
+        title="Weekly Advancement Report"
+        sub="Generate a consolidated summary of what got signed off in a date range — for the Bugle
           and the public site. Filters on when a leader recorded something, not when the scout
           actually did it, so a late entry or correction always lands in the report you run this
-          week, not a past one nobody re-runs.
-        </p>
-      </div>
+          week, not a past one nobody re-runs."
+      />
 
       <ReportWorkspace initialReport={initialReport} recentReports={reports} lastPublishedEnd={lastPublishedEnd} />
     </>

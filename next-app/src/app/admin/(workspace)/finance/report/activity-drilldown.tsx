@@ -11,6 +11,8 @@ import Link from 'next/link';
 import type { ActivityDrilldownRow } from '../actions';
 import parentStyles from '../finance.module.css';
 import styles from './report.module.css';
+import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
+import { Notice } from '../../_components/notice';
 
 function money(n: number): string {
   return n < 0 ? `-$${Math.abs(n).toFixed(2)}` : `$${n.toFixed(2)}`;
@@ -49,45 +51,46 @@ export function ActivityDrilldownButton({
       <button type="button" className={parentStyles.pagerBtn} onClick={openDrilldown}>
         View transactions →
       </button>
-      <dialog
+      <Dialog
         ref={dialogRef}
         className={parentStyles.editDialog}
         onClose={() => setOpen(false)}
-        onClick={(e) => {
-          if (e.target === dialogRef.current) setOpen(false);
-        }}
       >
-        <h3 className={parentStyles.editDialogTitle}>{activityLabel}</h3>
-        {error && <p className={parentStyles.fieldError}>{error}</p>}
-        {!error && rows === null && <p className={parentStyles.empty}>Loading…</p>}
-        {rows && rows.length === 0 && <p className={parentStyles.empty}>No transactions found.</p>}
-        {rows && rows.length > 0 && (
-          <ul className={styles.drilldownList}>
-            {rows.map((r) => (
-              <li key={r.id} className={r.voided_at ? styles.drilldownVoided : undefined}>
-                <span className={styles.drilldownDate}>{r.occurred_on}</span>
-                <span>{r.account}</span>
-                <span>{r.kind}</span>
-                <span>{r.personName ?? '—'}</span>
-                <span className={styles.drilldownMemo}>{r.memo ?? '—'}</span>
-                <span className={styles.numCell}>{money(r.amount)}</span>
-                {r.eventHref ? (
-                  <Link href={r.eventHref} className={styles.drilldownEventLink}>
-                    View event →
-                  </Link>
-                ) : (
-                  <span />
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-        <form method="dialog" className={parentStyles.editDialogActions}>
-          <button type="submit" className={parentStyles.pagerBtn}>
-            Close
-          </button>
-        </form>
-      </dialog>
+        <DialogHeader title={activityLabel} />
+        <DialogBody>
+          {error && <Notice>{error}</Notice>}
+          {!error && rows === null && <p className={parentStyles.empty}>Loading…</p>}
+          {rows && rows.length === 0 && <p className={parentStyles.empty}>No transactions found.</p>}
+          {rows && rows.length > 0 && (
+            <ul className={styles.drilldownList}>
+              {rows.map((r) => (
+                <li key={r.id} className={r.voided_at ? styles.drilldownVoided : undefined}>
+                  <span className={styles.drilldownDate}>{r.occurred_on}</span>
+                  <span>{r.account}</span>
+                  <span>{r.kind}</span>
+                  <span>{r.personName ?? '—'}</span>
+                  <span className={styles.drilldownMemo}>{r.memo ?? '—'}</span>
+                  <span className={styles.numCell}>{money(r.amount)}</span>
+                  {r.eventHref ? (
+                    <Link href={r.eventHref} className={styles.drilldownEventLink}>
+                      View event →
+                    </Link>
+                  ) : (
+                    <span />
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </DialogBody>
+        <DialogActions>
+          <form method="dialog">
+            <button type="submit" className={parentStyles.pagerBtn}>
+              Close
+            </button>
+          </form>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }

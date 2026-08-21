@@ -6,6 +6,7 @@ import { addLedgerEntries, checkExistingCompletions } from './actions';
 import { RequirementPicker } from './picker';
 import type { CatalogPayload, PickerItem } from './picker-types';
 import { DatePickerField } from '../../_components/date-picker-field';
+import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
 import styles from './fast-entry.module.css';
 
 interface Props {
@@ -315,28 +316,21 @@ export function ReqFirstCard({ scouts, leaders, catalog }: Props) {
       </div>
 
       {/* Confirmation modal — nothing is written until "Add …" is clicked. */}
-      <dialog
-        ref={dialogRef}
-        className={styles.confirmDialog}
-        onClose={() => setConfirmOpen(false)}
-        onCancel={() => setConfirmOpen(false)}
-        onClick={(e) => {
-          if (e.target === dialogRef.current && !isPending) setConfirmOpen(false);
-        }}
-      >
-        <div className={styles.confirmInner}>
-          <div className={styles.confirmHeader}>
-            <h3>Confirm bulk entry</h3>
-            <p>
+      <Dialog ref={dialogRef} onClose={() => setConfirmOpen(false)}>
+        <DialogHeader
+          title="Confirm bulk entry"
+          sub={
+            <>
               About to add <strong>{totalEntries}</strong> ledger entr
               {totalEntries === 1 ? 'y' : 'ies'} — <strong>{selections.length}</strong>{' '}
               requirement{selections.length === 1 ? '' : 's'} ×{' '}
               <strong>{selectedScouts.size}</strong> scout
               {selectedScouts.size === 1 ? '' : 's'}, dated <strong>{date}</strong>,
               signed off by <strong>{byLabel}</strong>.
-            </p>
-          </div>
-
+            </>
+          }
+        />
+        <DialogBody>
           <div className={styles.confirmLists}>
             <div className={styles.confirmList}>
               <div className={styles.confirmListHead}>
@@ -385,29 +379,29 @@ export function ReqFirstCard({ scouts, leaders, catalog }: Props) {
               {confirmErr}
             </div>
           )}
+        </DialogBody>
 
-          <div className={styles.confirmFooter}>
-            <button
-              type="button"
-              className={styles.btn}
-              onClick={() => setConfirmOpen(false)}
-              disabled={isPending}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className={styles.btnPrimary}
-              onClick={commit}
-              disabled={isPending}
-            >
-              {isPending
-                ? 'Saving…'
-                : `Add ${totalEntries} entr${totalEntries === 1 ? 'y' : 'ies'}`}
-            </button>
-          </div>
-        </div>
-      </dialog>
+        <DialogActions>
+          <button
+            type="button"
+            className={styles.btn}
+            onClick={() => setConfirmOpen(false)}
+            disabled={isPending}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className={styles.btnPrimary}
+            onClick={commit}
+            disabled={isPending}
+          >
+            {isPending
+              ? 'Saving…'
+              : `Add ${totalEntries} entr${totalEntries === 1 ? 'y' : 'ies'}`}
+          </button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 }

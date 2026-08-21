@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import styles from './finance.module.css';
+import { Dialog, DialogBody, DialogActions } from '../_components/dialog';
 
 /**
  * Ledger Date cell — surfaces who entered the row and when (2026-08-19),
@@ -51,25 +52,20 @@ export function EnteredByCell({
       >
         i
       </button>
-      <dialog
-        ref={dialogRef}
-        className={styles.infoDialog}
-        onClose={() => setOpen(false)}
-        onClick={(e) => {
-          if (e.target === dialogRef.current) setOpen(false);
-        }}
-      >
-        <div className={styles.infoDialogInner}>
+      <Dialog ref={dialogRef} onClose={() => setOpen(false)}>
+        <DialogBody>
           <p className={styles.infoDialogFull}>
             Entered by {enteredByName} on {enteredOn}.
           </p>
-          <form method="dialog" className={styles.infoDialogActions}>
+        </DialogBody>
+        <DialogActions>
+          <form method="dialog">
             <button type="submit" className={styles.infoDialogClose}>
               Close
             </button>
           </form>
-        </div>
-      </dialog>
+        </DialogActions>
+      </Dialog>
     </span>
   );
 }

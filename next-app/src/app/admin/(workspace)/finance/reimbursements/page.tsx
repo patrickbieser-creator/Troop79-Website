@@ -6,7 +6,7 @@
 import { requireCapability } from '@/lib/require-capability';
 import { listReimbursementsAction } from '../actions';
 import { ReimbursementQueue } from './reimbursement-queue';
-import styles from '../finance.module.css';
+import { PageTitle } from '../../_components/page-title';
 
 export const metadata = {
   title: 'Reimbursements — Troop 79'
@@ -18,12 +18,10 @@ export default async function ReimbursementsPage() {
 
   return (
     <>
-      <div className={styles.pageTitle}>
-        <div>
-          <h1>Reimbursements</h1>
-          <p>Approve, deny, or pay out requests families submit at /member/reimbursements.</p>
-        </div>
-      </div>
+      <PageTitle
+        title="Reimbursements"
+        sub="Approve, deny, or pay out requests families submit at /member/reimbursements."
+      />
       <ReimbursementQueue requests={requests} />
     </>
   );

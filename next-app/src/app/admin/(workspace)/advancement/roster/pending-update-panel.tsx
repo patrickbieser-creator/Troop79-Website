@@ -9,6 +9,7 @@ import {
   type FieldValue
 } from '@/lib/change-requests';
 import styles from '../lookups/lookups.module.css';
+import { Notice } from '../../_components/notice';
 
 /**
  * "Pending Update" panel inside the Scout editor (Plans/Scout-Self-Service-Demographics.md)
@@ -92,7 +93,7 @@ export function PendingUpdatePanel({
       <div className={styles.editSectionHeader}>
         <h4>{notice ? 'Added by a family — not yet acknowledged' : 'Pending Update — awaiting review'}</h4>
       </div>
-      {error && <p className={styles.editError}>{error}</p>}
+      {error && <Notice>{error}</Notice>}
       <p className={styles.helpText}>
         {notice ? 'Added ' : 'Submitted '}
         {new Date(request.submitted_at).toLocaleString('en-US', {

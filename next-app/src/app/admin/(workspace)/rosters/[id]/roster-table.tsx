@@ -7,6 +7,7 @@ import { recordEventFeePaymentAction, voidEventFeePaymentAction } from '../../fi
 import type { TransactionMethod } from '@/lib/finance';
 import type { RosterRow } from './page';
 import styles from '../../events/events-admin.module.css';
+import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
 
 /** Roster table with leader-managed slip/payment ticks and a CSV export.
  *  One troop-wide list — no patrol grouping (see page.tsx). */
@@ -294,49 +295,44 @@ export function RosterTable({
         </div>
       )}
 
-      <dialog
-        ref={payDialogRef}
-        className={styles.payDialog}
-        onClose={() => setPayingRow(null)}
-        onClick={(e) => {
-          if (e.target === payDialogRef.current) setPayingRow(null);
-        }}
-      >
+      <Dialog ref={payDialogRef} onClose={() => setPayingRow(null)}>
         {payingRow && (
-          <div className={styles.payDialogInner}>
-            <h3>Record payment — {payingRow.name}</h3>
-            <label className={styles.payField}>
-              Method
-              <select value={payMethod} onChange={(e) => setPayMethod(e.target.value as TransactionMethod)}>
-                <option value="venmo">Venmo</option>
-                <option value="check">Check</option>
-                <option value="cash">Cash</option>
-                <option value="scout_account">Scout account balance</option>
-                <option value="bank">Bank transfer</option>
-                <option value="other">Other</option>
-              </select>
-            </label>
-            <label className={styles.payField}>
-              Amount
-              <input
-                type="number"
-                min="0.01"
-                step="0.01"
-                value={payAmountText}
-                onChange={(e) => setPayAmountText(e.target.value)}
-              />
-            </label>
-            <div className={styles.payDialogActions}>
+          <>
+            <DialogHeader title={`Record payment — ${payingRow.name}`} />
+            <DialogBody>
+              <label className={styles.payField}>
+                Method
+                <select value={payMethod} onChange={(e) => setPayMethod(e.target.value as TransactionMethod)}>
+                  <option value="venmo">Venmo</option>
+                  <option value="check">Check</option>
+                  <option value="cash">Cash</option>
+                  <option value="scout_account">Scout account balance</option>
+                  <option value="bank">Bank transfer</option>
+                  <option value="other">Other</option>
+                </select>
+              </label>
+              <label className={styles.payField}>
+                Amount
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={payAmountText}
+                  onChange={(e) => setPayAmountText(e.target.value)}
+                />
+              </label>
+            </DialogBody>
+            <DialogActions>
               <button type="button" className={styles.rowEdit} onClick={() => setPayingRow(null)}>
                 Cancel
               </button>
               <button type="button" className={styles.enableBtn} disabled={pending} onClick={confirmPayment}>
                 Record payment
               </button>
-            </div>
-          </div>
+            </DialogActions>
+          </>
         )}
-      </dialog>
+      </Dialog>
     </section>
   );
 }

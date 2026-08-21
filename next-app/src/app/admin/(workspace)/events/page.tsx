@@ -5,6 +5,7 @@ import { formatCalendarDateParts } from '@/lib/calendar-shared';
 import { loadCalendarCategories } from '@/lib/calendar';
 import { categoryColorMap, colorFor, labelsForBehavior } from '@/lib/calendar-categories';
 import { EnableSignupButton } from './enable-button';
+import { PageTitle } from '../_components/page-title';
 import styles from './events-admin.module.css';
 
 export const metadata = { title: 'Event Signups — Troop 79' };
@@ -105,13 +106,11 @@ export default async function EventSignupsAdminPage() {
 
   return (
     <>
-      <div className={styles.pageTitle}>
-        <h1>Event Signups</h1>
-        <p className={styles.sub}>
-          Signups hang off the calendar. Enable one on any upcoming event, then compose it from
-          blocks — attendance, pricing, jobs, capacity, drivers, guests.
-        </p>
-      </div>
+      <PageTitle
+        title="Event Signups"
+        sub="Signups hang off the calendar. Enable one on any upcoming event, then compose it from
+          blocks — attendance, pricing, jobs, capacity, drivers, guests."
+      />
 
       <div className={styles.tiles}>
         <div className={styles.tile}>

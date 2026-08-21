@@ -20,6 +20,7 @@ import { ScoutFirstCard } from './scout-first-card';
 import { ReqFirstCard } from './req-first-card';
 import { AuditTape, type TapeRow } from './audit-tape';
 import type { CatalogPayload } from './picker-types';
+import { PageTitle } from '../../_components/page-title';
 import styles from './fast-entry.module.css';
 
 export const metadata = {
@@ -259,15 +260,17 @@ export default async function FastEntryPage() {
 
   return (
     <>
-      <div className={styles.pageTitle}>
-        <h1>Fast Entry</h1>
-        <p>
-          Two equivalent workflows. Use <strong>Scout-First</strong> when one
-          scout knocked out several requirements; use{' '}
-          <strong>Requirement-First</strong> when many scouts completed the
-          same requirement at the same activity.
-        </p>
-      </div>
+      <PageTitle
+        title="Fast Entry"
+        sub={
+          <>
+            Two equivalent workflows. Use <strong>Scout-First</strong> when one
+            scout knocked out several requirements; use{' '}
+            <strong>Requirement-First</strong> when many scouts completed the
+            same requirement at the same activity.
+          </>
+        }
+      />
 
       <div className={styles.twoCol}>
         <ScoutFirstCard scouts={scouts} leaders={leaders} catalog={catalog} />

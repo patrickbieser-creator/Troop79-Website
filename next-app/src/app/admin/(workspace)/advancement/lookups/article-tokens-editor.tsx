@@ -16,6 +16,7 @@
 import { useState, useTransition } from 'react';
 import { ARTICLE_TOKENS, isValidTokenValue, type TokenValues } from '@/lib/article-tokens';
 import styles from './lookups.module.css';
+import { Notice } from '../../_components/notice';
 
 type ActionResult = { ok: boolean; error?: string };
 
@@ -106,17 +107,13 @@ export function ArticleTokensEditor({
       </div>
 
       {invalid.length > 0 && (
-        <div className={styles.editError} style={{ marginTop: 10 }}>
+        <Notice>
           {invalid.length === 1 ? 'One value is not usable' : `${invalid.length} values are not usable`}
           {' '}&mdash; sizes need a unit (16px, 1.1rem, 90%) and line height is a plain number
           (1.6).
-        </div>
+        </Notice>
       )}
-      {err && (
-        <div className={styles.editError} style={{ marginTop: 10 }}>
-          {err}
-        </div>
-      )}
+      {err && <Notice>{err}</Notice>}
 
       <div className={styles.tokenActions}>
         {saved && <span className={styles.tokenSaved}>Saved &mdash; live on the site.</span>}

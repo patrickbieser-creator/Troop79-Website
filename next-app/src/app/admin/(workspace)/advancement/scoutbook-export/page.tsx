@@ -26,6 +26,7 @@ import { loadScoutbookExport } from '@/lib/scoutbook-export';
 import { DateParamField } from '../../_components/date-param-field';
 import { ScoutbookActions } from './scoutbook-actions';
 import styles from './scoutbook-export.module.css';
+import { PageTitle } from '../../_components/page-title';
 
 export const metadata = {
   title: 'Scoutbook Export — Troop 79'
@@ -66,14 +67,17 @@ export default async function ScoutbookExportPage({
 
   return (
     <>
-      <div className={styles.pageTitle}>
-        <h1>Scoutbook Export</h1>
-        <p>
-          Every merit badge and rank award recorded in the date range below, formatted for Scoutbook&rsquo;s
-          bulk advancement upload. Review the preview and the flagged rows before downloading — this uploads
-          directly into each scout&rsquo;s official BSA record.
-        </p>
-      </div>
+      <PageTitle
+        title="Scoutbook Export"
+        sub={
+          <>
+            Every merit badge and rank award recorded in the date range below, formatted for
+            Scoutbook&rsquo;s bulk advancement upload. Review the preview and the flagged rows
+            before downloading — this uploads directly into each scout&rsquo;s official BSA
+            record.
+          </>
+        }
+      />
 
       <form className={styles.form} method="get">
         <label className={styles.field}>

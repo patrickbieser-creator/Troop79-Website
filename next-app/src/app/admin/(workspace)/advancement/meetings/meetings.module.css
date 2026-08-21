@@ -1,10 +1,4 @@
-.pageTitle {
-  margin-bottom: 20px;
-  border-bottom: 1px solid var(--admin-gray-200);
-  padding-bottom: 14px;
-}
-.pageTitle h1 { font-size: 22px; font-weight: 700; color: var(--admin-navy); margin-bottom: 4px; }
-.pageTitle p { font-size: 13px; color: var(--admin-gray-500); max-width: 720px; line-height: 1.5; }
+/* .pageTitle retired Phase B (2026-08-21) — shared PageTitle component. */
 
 .toolbar { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-bottom: 12px; }
 /* .addBtn retired Phase A (2026-08-21): its one green-submit use (Attendance
@@ -81,9 +75,12 @@
 .editorGrid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 18px; align-items: start; }
 @media (max-width: 1080px) { .editorGrid { grid-template-columns: 1fr; } }
 
+/* Card/panel canon (Phase B, 2026-08-21): radius token + shadow-sm join the
+   .card cluster; padding stays screen-local. */
 .panel {
   background: var(--admin-white); border: 1px solid var(--admin-gray-200);
-  border-radius: 5px; padding: 14px 16px; margin-bottom: 16px;
+  border-radius: var(--admin-radius); box-shadow: var(--admin-shadow-sm);
+  padding: 14px 16px; margin-bottom: 16px;
 }
 .panelTitle {
   font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
@@ -162,10 +159,7 @@
   color: #8a6d1a; background: #f6edd4; border-radius: 8px; padding: 1px 6px;
 }
 
-.editError {
-  margin-top: 8px; padding: 8px 12px; background: #fdf0ef; border: 1px solid #e8c4c0;
-  color: var(--admin-danger); border-radius: 3px; font-size: 12px;
-}
+/* .editError retired Phase B (2026-08-21) — shared Notice component. */
 .okNote { margin-top: 8px; font-size: 11.5px; color: var(--admin-forest); font-weight: 600; }
 
 /* ── session form fields ───────────────────────────────────────────────── */

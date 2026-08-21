@@ -3,22 +3,8 @@
    file doubles as the reference implementation of the rules the page
    documents (Plans/Admin-Design-System.md). */
 
-.pageTitle {
-  margin-bottom: var(--admin-space-10);
-  border-bottom: 1px solid var(--admin-gray-200);
-  padding-bottom: var(--admin-space-7);
-}
-.pageTitle h1 {
-  margin: 0 0 var(--admin-space-2);
-  font-size: var(--admin-text-2xl);
-  color: var(--admin-navy);
-}
-.pageTitle p {
-  margin: 0;
-  font-size: var(--admin-text-md);
-  color: var(--admin-gray-500);
-  max-width: 72ch;
-}
+/* .pageTitle retired Phase B (2026-08-21) — the page renders the shared
+   PageTitle component, which doubles as its canonical specimen. */
 
 .section {
   margin-bottom: var(--admin-space-13);

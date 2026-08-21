@@ -2,27 +2,7 @@
    (already loaded globally via the workspace layout) and the same table/
    toolbar/pager conventions as advancement/ledger/ledger.module.css. */
 
-.pageTitle {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 24px;
-  border-bottom: 1px solid var(--admin-gray-200);
-  padding-bottom: 14px;
-  margin-bottom: 20px;
-}
-.pageTitle h1 {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--admin-navy);
-  margin-bottom: 4px;
-}
-.pageTitle p {
-  font-size: 13px;
-  color: var(--admin-gray-500);
-  max-width: 720px;
-  line-height: 1.5;
-}
+/* .pageTitle retired Phase B (2026-08-21) — shared PageTitle component. */
 /* Add buttons are green, everywhere (Patrick, 2026-08-20) — same values as
    Photo Albums' .addBtn and Calendar's .addBtn, so every "Add X" button in
    the admin is pixel-identical regardless of which module.css it lives in.
@@ -158,10 +138,7 @@
    rather than buttons here: this screen keeps its list state in the URL. */
 /* Inline row error, matching the Calendar list — beats a window.alert you have
    to dismiss before you can see which row it referred to. */
-.rowError {
-  margin-top: 4px; padding: 6px 10px; background: #fdf0ef; border: 1px solid #e8c4c0;
-  color: var(--admin-danger); border-radius: 3px; font-size: 12px; font-weight: 400;
-}
+/* .rowError retired Phase B (2026-08-21) — shared Notice component. */
 
 .pendingNotice {
   background: #fdf6e6;

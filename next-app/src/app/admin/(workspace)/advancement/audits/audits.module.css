@@ -1,27 +1,4 @@
-.pageTitle {
-  border-bottom: 1px solid var(--admin-gray-200);
-  padding-bottom: 14px;
-  margin-bottom: 20px;
-}
-.pageTitle h1 {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--admin-navy);
-  margin-bottom: 4px;
-}
-.pageTitle p {
-  font-size: 13px;
-  color: var(--admin-gray-500);
-  max-width: 760px;
-  line-height: 1.6;
-}
-.pageTitle code {
-  font-family: Menlo, Consolas, monospace;
-  font-size: 12px;
-  background: var(--admin-gray-100);
-  padding: 1px 4px;
-  border-radius: 2px;
-}
+/* .pageTitle retired Phase B (2026-08-21) — shared PageTitle component. */
 
 .section {
   margin-bottom: 32px;

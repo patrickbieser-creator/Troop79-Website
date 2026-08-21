@@ -1,20 +1,4 @@
-.pageTitle {
-  border-bottom: 1px solid var(--admin-gray-200);
-  padding-bottom: 14px;
-  margin-bottom: 20px;
-}
-.pageTitle h1 {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--admin-navy);
-  margin-bottom: 4px;
-}
-.pageTitle p {
-  font-size: 13px;
-  color: var(--admin-gray-500);
-  max-width: 720px;
-  line-height: 1.5;
-}
+/* .pageTitle retired Phase B (2026-08-21) — shared PageTitle component. */
 
 .twoCol {
   display: grid;
@@ -948,39 +932,10 @@
 }
 
 /* ── Requirement-First confirmation modal ── */
-.confirmDialog {
-  padding: 0;
-  border: none;
-  border-radius: 6px;
-  box-shadow: var(--admin-shadow-md);
-  width: 92vw;
-  max-width: 580px;
-  background: var(--admin-white);
-  color: var(--admin-gray-900);
-}
-.confirmDialog::backdrop {
-  background: rgba(0, 0, 0, 0.42);
-}
-.confirmInner {
-  padding: 20px 24px 16px;
-  font-family: inherit;
-}
-.confirmHeader {
-  border-bottom: 1px solid var(--admin-gray-200);
-  padding-bottom: 12px;
-  margin-bottom: 14px;
-}
-.confirmHeader h3 {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--admin-navy);
-  margin-bottom: 4px;
-}
-.confirmHeader p {
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--admin-gray-700);
-}
+/* .confirmDialog/.confirmInner/.confirmHeader/.confirmFooter chrome retired
+   Phase B (2026-08-21) — shared Dialog component (mb-focus-modal deliberately
+   NOT converted: its Esc/backdrop unsaved-ticks guard needs a Dialog hook the
+   shared component doesn't offer yet). */
 .confirmLists {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1014,15 +969,6 @@
 .confirmListRow:last-child {
   border-bottom: none;
 }
-.confirmFooter {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  border-top: 1px solid var(--admin-gray-200);
-  padding-top: 12px;
-  margin-top: 16px;
-}
-
 @media (max-width: 560px) {
   .confirmLists {
     grid-template-columns: 1fr;

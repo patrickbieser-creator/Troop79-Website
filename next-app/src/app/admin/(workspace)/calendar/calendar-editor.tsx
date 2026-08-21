@@ -12,6 +12,7 @@ import { TabStrip } from '../_components/tab-strip';
 import { AddButton } from '../_components/add-button';
 import { ActionsMenu } from '../_components/actions-menu';
 import { Badge } from '../_components/badge';
+import { Notice } from '../_components/notice';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../_components/dialog';
 import { CalendarEntryForm, type CalendarEntryRow } from './entry-form';
 import type { CalendarEntryMergePlan } from '@/lib/calendar-admin';
@@ -423,7 +424,7 @@ export function CalendarEditor({
                   {/* The title is the way in, as it is on News. Clicking a row's
                       subject to edit it is the habit both screens should share. */}
                   <Link href={`/admin/calendar/${row.id}`}>{row.title}</Link>
-                  {rowErr?.id === row.id && <div className={styles.editError}>{rowErr.msg}</div>}
+                  {rowErr?.id === row.id && <Notice>{rowErr.msg}</Notice>}
                 </td>
                 <td className={styles.nowrap}>
                   <StatusPills row={row} />
@@ -631,7 +632,7 @@ function CloneForm({
         deadline set ten days before stays ten days before.
       </p>
 
-      {err && <div className={styles.editError}>{err}</div>}
+      {err && <Notice>{err}</Notice>}
       </DialogBody>
 
       <DialogActions>

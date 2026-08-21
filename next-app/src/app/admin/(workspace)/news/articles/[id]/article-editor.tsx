@@ -15,6 +15,7 @@ import { useMarkdownBlockTools } from '../../../_components/markdown-block-tools
 import { createArticle, updateArticle, publishArticle } from '../actions';
 import styles from './article-editor.module.css';
 import { Badge } from '../../../_components/badge';
+import { PageTitle } from '../../../_components/page-title';
 
 interface Props {
   article: Article | null;
@@ -95,15 +96,14 @@ export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags }: P
 
   return (
     <>
-      <div className={styles.pageTitle}>
-        <div>
-          <h1>{isNew ? 'New Post' : `Edit: ${article.title}`}</h1>
-          <p>Write in markdown on the left; see exactly how it will look on the right.</p>
-        </div>
+      <PageTitle
+        title={isNew ? 'New Post' : `Edit: ${article.title}`}
+        sub="Write in markdown on the left; see exactly how it will look on the right."
+      >
         <Link href="/admin/news/articles" className={styles.backLink}>
           ← Back to News
         </Link>
-      </div>
+      </PageTitle>
 
       <div className={styles.editorShell}>
         <div className={styles.editorPane}>

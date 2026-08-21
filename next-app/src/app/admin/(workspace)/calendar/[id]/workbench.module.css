@@ -58,12 +58,15 @@
 
 .headActions { display: flex; gap: 8px; flex-shrink: 0; }
 
+/* Card/panel canon (Phase B, 2026-08-21): white, gray-200 border, radius
+   token, shadow-sm — padding/margins stay screen-local. */
 .panel {
-  border: 1px solid var(--admin-gray-200, #ddd);
-  border-radius: 4px;
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow-sm);
   padding: 14px 16px 16px;
   margin-bottom: 16px;
-  background: var(--admin-white, #fff);
+  background: var(--admin-white);
 }
 
 .panelHead {

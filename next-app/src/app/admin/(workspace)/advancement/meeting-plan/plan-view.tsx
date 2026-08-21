@@ -13,6 +13,7 @@ import { retargetNotice } from '@/lib/meeting-plan-publish';
 import { DatePickerField } from '../../_components/date-picker-field';
 import styles from './meeting-plan.module.css';
 import { ActionsMenu } from '../../_components/actions-menu';
+import { TabStrip } from '../../_components/tab-strip';
 
 export interface PublishedPlanRow {
   meeting_date: string;
@@ -147,10 +148,18 @@ export function PlanView({ published, defaultDate }: Props) {
             <Stat n={payload.stats.outingItems} label="Items waiting on a campout" />
           </div>
 
-          <div className={styles.tabs}>
-            <TabBtn active={tab === 'sessions'} onClick={() => setTab('sessions')} label="Group Sessions" />
-            <TabBtn active={tab === 'scouts'} onClick={() => setTab('scouts')} label="By Scout" />
-            <TabBtn active={tab === 'roster'} onClick={() => setTab('roster')} label="Teaching Roster" />
+          {/* Shared pill TabStrip — Patrick's Phase B call (2026-08-21): the
+              underline/navy tab one-off folds into the one tab pattern. */}
+          <div className={styles.tabsRow}>
+            <TabStrip
+              ariaLabel="Plan view"
+              activeKey={tab}
+              items={[
+                { key: 'sessions', label: 'Group Sessions', onSelect: () => setTab('sessions') },
+                { key: 'scouts', label: 'By Scout', onSelect: () => setTab('scouts') },
+                { key: 'roster', label: 'Teaching Roster', onSelect: () => setTab('roster') }
+              ]}
+            />
           </div>
 
           {tab === 'sessions' && <SessionsTab payload={payload} />}
@@ -210,18 +219,6 @@ function Stat({ n, label }: { n: number; label: string }) {
       <div className={styles.statNum}>{n}</div>
       <div className={styles.statLabel}>{label}</div>
     </div>
-  );
-}
-
-function TabBtn({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
-  return (
-    <button
-      type="button"
-      className={`${styles.tabBtn} ${active ? styles.tabBtnActive : ''}`}
-      onClick={onClick}
-    >
-      {label}
-    </button>
   );
 }
 

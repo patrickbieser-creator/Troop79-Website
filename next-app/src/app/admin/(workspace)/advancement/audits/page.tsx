@@ -23,6 +23,7 @@ import * as rankPor from './checks/rank-por';
 import * as duplicateRecords from './checks/duplicate-records';
 import * as attendanceReconciliation from './checks/attendance-reconciliation';
 import styles from './audits.module.css';
+import { PageTitle } from '../../_components/page-title';
 
 export const metadata = {
   title: 'Audits — Troop 79'
@@ -79,15 +80,15 @@ export default async function AuditsPage() {
 
   return (
     <>
-      <div className={styles.pageTitle}>
-        <div>
-          <h1>Audits</h1>
-          <p>
+      <PageTitle
+        title="Audits"
+        sub={
+          <>
             Deterministic data-quality checks over the ledger &mdash; no model, just SQL.
             Recomputed fresh every time this page loads; nothing here is cached or persisted.
-          </p>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <DuplicateSection groups={duplicateGroups} />
 

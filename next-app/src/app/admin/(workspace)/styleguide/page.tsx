@@ -25,17 +25,15 @@ import { ActionsMenuSpecimen } from './specimens';
 import { TabStrip } from '../_components/tab-strip';
 import { AddButton } from '../_components/add-button';
 import { Badge } from '../_components/badge';
+import { PageTitle } from '../_components/page-title';
+import { Notice } from '../_components/notice';
 import dlg from '../_components/dialog.module.css';
 import cal from '../calendar/calendar.module.css';
 import ledger from '../advancement/ledger/ledger.module.css';
-import imp from '../advancement/roster-import/roster-import.module.css';
 import coh from '../advancement/court-of-honor/court-of-honor.module.css';
 import plan from '../advancement/meeting-plan/meeting-plan.module.css';
-import art from '../news/articles/articles.module.css';
 import albums from '../news/photo-albums/albums.module.css';
 import mm from '../news/media-manager/media-manager.module.css';
-import ev from '../events/events-admin.module.css';
-import fin from '../finance/finance.module.css';
 import util from '../utilities/utilities.module.css';
 import lib from '../library/library.module.css';
 
@@ -143,10 +141,11 @@ const SCOREBOARD: {
   },
   {
     pattern: 'Non-pill tab variants',
-    copies: '4 distinct designs (meeting-plan, library, media-picker, court-of-honor .viewTabs)',
-    canonical: 'design decision needed — different visual language, not drift',
+    copies: '✓ DONE — 0 left (Patrick 2026-08-21: fold everything into the pill TabStrip)',
+    canonical: '✓ shared TabStrip everywhere — meeting-plan, court-of-honor, report, library workstation, media-picker converted',
     phase: 'B',
-    notes: 'media-picker styles its tabs with PUBLIC tokens'
+    notes:
+      'library.module.css untouched — the admin page just stopped consuming its tab classes (closes the D-160 backlog item); media-picker’s tab public-token reads went with its tab classes'
   },
   {
     pattern: 'Badges / status pills',
@@ -166,40 +165,45 @@ const SCOREBOARD: {
   },
   {
     pattern: 'Data tables',
-    copies: '15 files: compact cluster (5), wrapped-card cluster (4), outliers',
-    canonical: 'both clusters legitimate — normalize within each',
+    copies: '✓ DONE — both clusters normalized (2026-08-21)',
+    canonical:
+      'compact = calendar canon (albums, meetings, roster, scoutbook-export, meeting-plan — navy header normalized per Patrick); wrapped-card = ledger canon (articles, finance, records, access)',
     phase: 'B',
-    notes: 'meeting-plan navy header + access rem units are deliberate one-offs to confirm; .numCell exists in ledger/finance while 23 inline sites hand-roll text-align:right'
+    notes:
+      'Documented outliers fold in Phase C: lookups, dashboard, media-manager, events-admin; plus the .numCell-vs-inline-textAlign sweep'
   },
   {
     pattern: 'Cards / panels',
-    copies: '14 files .card + 4 files .panel',
-    canonical: 'utilities/lookups/dashboard/fast-entry .card (identical)',
+    copies: '✓ DONE — merged onto the card canon (2026-08-21)',
+    canonical: 'white / gray-200 border / radius token / shadow-sm; padding stays per-screen',
     phase: 'B',
-    notes: "roster-import's .card is an interactive disclosure — different thing sharing the name"
+    notes:
+      "Deliberate exceptions: audits' warning-accent card; roster-import's interactive disclosure card (different thing sharing the name)"
   },
   {
     pattern: '<dialog> modals',
-    copies: '✓ DONE — 4 legacy copies (calendar, meetings, albums, media-manager ×2) converted 2026-08-21',
+    copies: '✓ DONE — legacy copies (Phase A) AND the remaining editDialog families (Phase B) all converted',
     canonical:
-      '✓ SHIPPED: shared Dialog component (_components/dialog) implementing the approved spec — centering fix delivered to meetings/albums/media-manager',
-    phase: 'A (bug)',
-    notes:
-      'Remaining families (ledger/roster/lookups editDialog etc.) adopt it in Phase B; media-picker’s custom div overlay unifies last, HIGH risk'
+      '✓ SHIPPED: shared Dialog component (_components/dialog) — every admin modal renders the approved spec, including the formerly hand-rolled PersonEditor overlay (which gained Esc/backdrop close)',
+    phase: 'A+B',
+    notes: 'media-picker’s custom div overlay is the one remaining mechanism — unified last, HIGH risk'
   },
   {
     pattern: 'Page titles',
-    copies: '26 of 35 files',
-    canonical: 'shared verbatim block (border-bottom 1px, 14px pad)',
+    copies: '✓ DONE — 0 copies left (2026-08-21)',
+    canonical:
+      '✓ SHIPPED: shared PageTitle component (title / sub / right-side actions) — every admin screen renders it; this page’s own header is the living specimen',
     phase: 'B',
-    notes: 'access.module.css is the lone rem-units outlier'
+    notes: 'access.module.css also came off rem units in the same pass'
   },
   {
     pattern: 'Error / success notices',
-    copies: '4 names for one concept (.rowError/.editError/.fieldError/.notice)',
-    canonical: 'one Notice component on the status-bg tokens',
+    copies: '✓ DONE — 0 box-notice copies left (2026-08-21)',
+    canonical:
+      '✓ SHIPPED: shared Notice component on the status tokens (error default + success/warning/info), with alert/status roles the legacy divs lacked',
     phase: 'B',
-    notes: '11-file pale-red tint cluster collapses into --admin-status-error-bg'
+    notes:
+      'Inline text-only field errors are a different idiom and were deliberately left; they ride with Phase C'
   },
   {
     pattern: 'Inline styles',
@@ -255,16 +259,20 @@ function Specimen({
 export default function StyleguidePage() {
   return (
     <>
-      <div className={sg.pageTitle}>
-        <h1>Admin Styleguide</h1>
-        <p>
-          The canonical version of every recurring Leader Workspace pattern, rendered from the
-          live production stylesheets — plus the divergent copies still in the wild, side by
-          side, until remediation retires them. Before styling a new screen, find the pattern
-          here and import it; if you&rsquo;re about to write a class that looks like one of
-          these, stop. Plan: <code>Plans/Admin-Design-System.md</code>.
-        </p>
-      </div>
+      {/* The page's own header renders the shared PageTitle — the canonical
+          specimen for the pattern, in use rather than in a jar. */}
+      <PageTitle
+        title="Admin Styleguide"
+        sub={
+          <>
+            The canonical version of every recurring Leader Workspace pattern, rendered from
+            the live production stylesheets — plus the divergent copies still in the wild,
+            side by side, until remediation retires them. Before styling a new screen, find
+            the pattern here and import it; if you&rsquo;re about to write a class that looks
+            like one of these, stop. Plan: <code>Plans/Admin-Design-System.md</code>.
+          </>
+        }
+      />
 
       {/* ════ TOKENS ════ */}
       <section className={sg.section}>
@@ -388,11 +396,20 @@ export default function StyleguidePage() {
       {/* ════ TABS ════ */}
       <section className={sg.section}>
         <h2 className={sg.sectionHead}>Tab Strips</h2>
+        <p className={sg.sectionNote}>
+          Phase B COMPLETE (2026-08-21): Patrick&rsquo;s call — ONE tab pattern. The four
+          non-pill variants (meeting-plan&rsquo;s underline tabs, court-of-honor&rsquo;s and
+          the report&rsquo;s view tabs, the library workstation&rsquo;s tabs, media-picker&rsquo;s
+          tabs) all fold into the shared pill TabStrip. The library conversion touched only
+          the admin page — <code>library.module.css</code> stays untouched (shared with
+          public routes), the admin side just stopped consuming its tab classes, which also
+          closes the D-160 backlog item.
+        </p>
         <div className={sg.specimenGrid}>
           <Specimen
             label="Pill tabs — shared TabStrip component"
             canonical
-            note="SHIPPED Phase A (2026-08-21): calendar, articles, roster (both strips), and roster-import all render this component now — their 4 byte-identical copies (and the .tabOn/.tabActive naming split) are deleted. Import from _components/tab-strip; href items render Links, onSelect items render buttons."
+            note="THE tab pattern — data tabs and view/mode toggles alike. Import from _components/tab-strip; href items render Links, onSelect items render buttons; count renders the pill badge."
           >
             <TabStrip
               ariaLabel="Specimen"
@@ -402,35 +419,6 @@ export default function StyleguidePage() {
                 { key: 'past', label: 'Past', count: 48 }
               ]}
             />
-          </Specimen>
-          <Specimen
-            label="Underline tabs (meeting-plan)"
-            note="A different visual language, not drift — folding it into the pill component is a Phase B design decision."
-          >
-            <div className={plan.tabs}>
-              <button type="button" className={`${plan.tabBtn} ${plan.tabBtnActive}`}>Sessions</button>
-              <button type="button" className={plan.tabBtn}>Roster</button>
-            </div>
-          </Specimen>
-          <Specimen
-            label="Workstation tabs (library)"
-            note="library .tab/.tabOn/.tabBadge — shared with public pages; needs its own scoped pass (backlog item from D-160)."
-          >
-            <div className={lib.tabs}>
-              <button type="button" className={`${lib.tab} ${lib.tabOn}`}>
-                Queue <span className={lib.tabBadge}>3</span>
-              </button>
-              <button type="button" className={lib.tab}>Shelf</button>
-            </div>
-          </Specimen>
-          <Specimen
-            label="View tabs (court-of-honor)"
-            note="A 4th independent tab idiom found by the audit — .viewTabs/.viewTab/.viewTabActive."
-          >
-            <div className={coh.viewTabs}>
-              <button type="button" className={`${coh.viewTab} ${coh.viewTabActive}`}>Preview</button>
-              <button type="button" className={coh.viewTab}>Markdown</button>
-            </div>
           </Specimen>
         </div>
       </section>
@@ -490,15 +478,18 @@ export default function StyleguidePage() {
       <section className={sg.section}>
         <h2 className={sg.sectionHead}>Data Tables</h2>
         <p className={sg.sectionNote}>
-          Two legitimate clusters (compact, wrapped-card) plus outliers. Note{' '}
-          <code>.numCell</code> already exists in ledger and finance for right-aligned numeric
-          cells — while 23 inline <code>textAlign</code> hacks re-invent it elsewhere.
+          Phase B COMPLETE (2026-08-21): both clusters normalized within themselves — compact
+          (calendar canon: albums, meetings, roster, scoutbook-export, plus meeting-plan,
+          whose navy header Patrick chose to normalize) and wrapped-card (ledger canon:
+          articles, finance, records, access). Remaining outliers (lookups, dashboard,
+          media-manager, events-admin) are documented, not drift-by-accident — they fold in
+          Phase C alongside the <code>.numCell</code>-vs-inline-<code>textAlign</code> sweep.
         </p>
         <div className={sg.specimenGrid}>
           <Specimen
             label="Compact cluster"
             canonical
-            note="calendar/albums/scoutbook-export/roster/meetings — 12.5px, tight padding, uppercase gray headers."
+            note="calendar canon — 12.5px, tight padding, uppercase gray headers. Members: calendar, albums, meetings, roster, scoutbook-export, meeting-plan."
           >
             <table className={cal.table}>
               <thead>
@@ -513,7 +504,7 @@ export default function StyleguidePage() {
           <Specimen
             label="Wrapped-card cluster"
             canonical
-            note="articles/finance/ledger/records — .tableWrap card container, roomier padding, 2px header rule. Numeric cells use .numCell."
+            note="ledger canon — .tableWrap card container, roomier padding, 2px header rule. Members: ledger, articles, finance, records, access. Numeric cells use .numCell."
           >
             <div className={ledger.tableWrap}>
               <table className={ledger.table}>
@@ -527,42 +518,27 @@ export default function StyleguidePage() {
               </table>
             </div>
           </Specimen>
-          <Specimen
-            label="Navy-header outlier"
-            note="meeting-plan inverts the header — the only navy table header in the workspace. Confirm intent before normalizing."
-          >
-            <table className={plan.table}>
-              <thead>
-                <tr><th>Session</th><th>Teacher</th></tr>
-              </thead>
-              <tbody>
-                <tr><td>Totin&rsquo; Chip</td><td>MST</td></tr>
-              </tbody>
-            </table>
-          </Specimen>
         </div>
       </section>
 
       {/* ════ CARDS ════ */}
       <section className={sg.section}>
         <h2 className={sg.sectionHead}>Cards &amp; Panels</h2>
+        <p className={sg.sectionNote}>
+          Phase B COMPLETE (2026-08-21): the .panel family (events-admin, meetings, workbench)
+          and the shadow-less coh/report cards now share the card canon — white, gray-200
+          border, radius token, shadow-sm; padding stays per-screen. Deliberate exceptions:
+          audits&rsquo; warning-accent card and roster-import&rsquo;s interactive disclosure
+          card (a different thing wearing the name).
+        </p>
         <div className={sg.specimenGrid}>
           <Specimen
             label="Card"
             canonical
-            note="utilities/lookups/dashboard/fast-entry — identical (fast-entry pads 18px). court-of-honor + report share a second, shadow-less shape."
+            note="White, gray-200 border, var(--admin-radius), shadow-sm. The .panel classes keep their names but carry these values now."
           >
             <div className={util.card} style={{ width: '100%' }}>
               <div className={util.cardSoon}>Card content</div>
-            </div>
-          </Specimen>
-          <Specimen
-            label="Panel family"
-            note="events-admin/meetings .panel (5px radius) vs workbench .panel (4px) — same concept as .card under another name."
-          >
-            <div className={ev.panel} style={{ width: '100%' }}>
-              <div className={ev.panelHead}>Panel heading</div>
-              Panel content
             </div>
           </Specimen>
         </div>
@@ -571,16 +547,25 @@ export default function StyleguidePage() {
       {/* ════ NOTICES ════ */}
       <section className={sg.section}>
         <h2 className={sg.sectionHead}>Notices &amp; Errors</h2>
+        <p className={sg.sectionNote}>
+          Phase B COMPLETE (2026-08-21): the four per-screen names (.rowError / .editError /
+          .fieldError / .notice) and the 11-file pale-tint cluster behind them collapsed into
+          the shared Notice component on the status tokens. Errors announce with{' '}
+          <code>role=&quot;alert&quot;</code>; other variants use{' '}
+          <code>role=&quot;status&quot;</code> — semantics the legacy divs never had. Inline
+          text-only field errors (no box) are a separate idiom and were left alone.
+        </p>
         <div className={sg.specimenGrid}>
           <Specimen
-            label="Four names, one concept"
-            note=".rowError (articles/lookups), .editError (calendar), .fieldError (finance), .notice (roster-import, success). The pale-tint backgrounds behind these span an 11-file drift cluster now collapsed into the status-bg tokens."
+            label="Shared Notice component — all variants"
+            canonical
+            note="Import from _components/notice. Default variant is error (most call sites); className is for layout-only margin adjustments."
           >
             <div style={{ display: 'grid', gap: 8, width: '100%' }}>
-              <p className={art.rowError}>Something went wrong saving this row.</p>
-              <p className={cal.editError}>That date isn&rsquo;t valid.</p>
-              <p className={fin.fieldError}>Amount is required.</p>
-              <p className={imp.notice}>Import complete — 3 people added.</p>
+              <Notice>Something went wrong saving this row.</Notice>
+              <Notice variant="success">Import complete — 3 people added.</Notice>
+              <Notice variant="warning">This entry has no category yet.</Notice>
+              <Notice variant="info">Signups close Friday at 6:00 PM.</Notice>
             </div>
           </Specimen>
         </div>
@@ -600,10 +585,15 @@ export default function StyleguidePage() {
           only calendar&rsquo;s copy used to carry. Backdrop and motion only show on the live
           demo. Compose it as <code>&lt;Dialog&gt;</code> +{' '}
           <code>&lt;DialogHeader/Body/Actions&gt;</code>; pass <code>danger</code> and pair
-          it with a solid danger confirm for destructive flows. Remaining families
-          (ledger/roster/lookups <code>editDialog</code>…) adopt it in Phase B; media-picker
-          uses a custom div overlay — a different mechanism entirely, unified last (high
-          risk).
+          it with a solid danger confirm for destructive flows; width variants are a slim
+          per-screen size-only class via <code>className</code> (doubled selector for
+          deterministic override). Phase B converted the remaining families too —
+          ledger/roster/lookups/finance/fast-entry/rosters, including the two formerly
+          hand-rolled overlays (PersonEditor, adult-form), which gained Esc and
+          backdrop-click close. Documented exceptions: fast-entry&rsquo;s MB focus modal
+          (needs a close-guard prop for its unsaved-ticks confirm) and library&rsquo;s
+          quick-add (public-shared styling); media-picker&rsquo;s custom div overlay unifies
+          last (high risk).
         </p>
         <div className={sg.dialogCompare}>
           <div>

@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireCapability } from '@/lib/require-capability';
 import { BuilderPanels } from './builder-panels';
+import { PageTitle } from '../../_components/page-title';
 import styles from '../events-admin.module.css';
 
 export const metadata = { title: 'Event Builder — Troop 79' };
@@ -74,23 +75,25 @@ export default async function EventBuilderPage({ params }: { params: Promise<{ i
 
   return (
     <>
-      <div className={styles.pageTitle}>
-        <h1>{String(data.entry.title)}</h1>
-        <p className={styles.sub}>
-          {String(data.entry.category)} ·{' '}
-          <Link href="/admin/events" className={styles.actionLinkMuted}>
-            All signups
-          </Link>{' '}
-          ·{' '}
-          <Link href={`/admin/rosters/${signupId}`} className={styles.actionLink}>
-            Roster
-          </Link>{' '}
-          ·{' '}
-          <Link href={`/events/${entryId}`} className={styles.actionLinkMuted}>
-            View public page
-          </Link>
-        </p>
-      </div>
+      <PageTitle
+        title={String(data.entry.title)}
+        sub={
+          <>
+            {String(data.entry.category)} ·{' '}
+            <Link href="/admin/events" className={styles.actionLinkMuted}>
+              All signups
+            </Link>{' '}
+            ·{' '}
+            <Link href={`/admin/rosters/${signupId}`} className={styles.actionLink}>
+              Roster
+            </Link>{' '}
+            ·{' '}
+            <Link href={`/events/${entryId}`} className={styles.actionLinkMuted}>
+              View public page
+            </Link>
+          </>
+        }
+      />
 
       <BuilderPanels
         signupId={signupId}

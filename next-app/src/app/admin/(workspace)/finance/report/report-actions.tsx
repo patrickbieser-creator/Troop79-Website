@@ -12,6 +12,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { RenameActivityPreview } from '../actions';
 import { RenameActivityPanel } from './rename-activity-panel';
 import parentStyles from '../finance.module.css';
+import { ActionsMenu } from '../../_components/actions-menu';
+import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
 
 type ReportModal = 'rename';
 
@@ -39,36 +41,39 @@ export function ReportActions({
   return (
     <>
       <div className={parentStyles.actionsBar}>
-        <select
-          value=""
-          className={parentStyles.select}
-          aria-label="Activity Report actions"
-          onChange={(e) => {
-            const v = e.target.value;
-            e.target.value = '';
+        {/* Shared ActionsMenu — this select had been a leftover hand-rolled
+            copy the Phase A sweep missed (it lived under finance/report, not
+            the screens the audit listed). */}
+        <ActionsMenu
+          ariaLabel="Activity Report actions"
+          options={[{ value: 'rename', label: 'Rename or merge an activity' }]}
+          onAction={(v) => {
             if (v === 'rename') setActiveModal('rename');
           }}
-        >
-          <option value="">Actions…</option>
-          <option value="rename">Rename or merge an activity</option>
-        </select>
+        />
       </div>
 
-      <dialog ref={dialogRef} className={parentStyles.actionModal} onClose={() => setActiveModal(null)}>
-        <div className={parentStyles.actionModalHeader}>
-          <h3>Rename or merge an activity</h3>
+      <Dialog
+        ref={dialogRef}
+        className={parentStyles.actionModal}
+        onClose={() => setActiveModal(null)}
+      >
+        <DialogHeader title="Rename or merge an activity" />
+        <DialogBody>
+          {activeModal === 'rename' && (
+            <RenameActivityPanel
+              activityLabels={activityLabels}
+              previewRenameActivity={previewRenameActivity}
+              renameActivity={renameActivity}
+            />
+          )}
+        </DialogBody>
+        <DialogActions>
           <button type="button" className={parentStyles.saveBtnAlt} onClick={() => setActiveModal(null)}>
             Close
           </button>
-        </div>
-        {activeModal === 'rename' && (
-          <RenameActivityPanel
-            activityLabels={activityLabels}
-            previewRenameActivity={previewRenameActivity}
-            renameActivity={renameActivity}
-          />
-        )}
-      </dialog>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }

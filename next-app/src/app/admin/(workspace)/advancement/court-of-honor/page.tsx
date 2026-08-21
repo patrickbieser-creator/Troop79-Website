@@ -9,7 +9,7 @@
 import { requireCapability } from '@/lib/require-capability';
 import { listCourtOfHonorReportsAction, getLastPublishedCohEndDateAction, getCourtOfHonorAction } from './actions';
 import { CourtOfHonorWorkspace } from './court-of-honor-workspace';
-import styles from './court-of-honor.module.css';
+import { PageTitle } from '../../_components/page-title';
 
 export const metadata = {
   title: 'Court of Honor — Troop 79'
@@ -32,14 +32,17 @@ export default async function CourtOfHonorPage({
 
   return (
     <>
-      <div className={styles.pageTitle}>
-        <h1>Court of Honor</h1>
-        <p>
-          Completed ranks, merit badges, and special awards (Mile Swim and similar) for a date
-          range — filtered by when each was actually earned, not when it was recorded. Individual
-          requirements are never shown here; that&rsquo;s the Weekly Advancement Report&rsquo;s job.
-        </p>
-      </div>
+      <PageTitle
+        title="Court of Honor"
+        sub={
+          <>
+            Completed ranks, merit badges, and special awards (Mile Swim and similar) for a date
+            range — filtered by when each was actually earned, not when it was recorded. Individual
+            requirements are never shown here; that&rsquo;s the Weekly Advancement Report&rsquo;s
+            job.
+          </>
+        }
+      />
 
       <CourtOfHonorWorkspace initialReport={initialReport} recentReports={reports} lastPublishedEnd={lastPublishedEnd} />
     </>

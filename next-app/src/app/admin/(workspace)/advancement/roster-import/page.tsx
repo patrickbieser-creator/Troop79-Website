@@ -26,6 +26,7 @@ import {
   type MergeCandidate
 } from './review-client';
 import styles from './roster-import.module.css';
+import { PageTitle } from '../../_components/page-title';
 
 /** Shape returned by the two-sided relationships join below. */
 interface RawRelationship {
@@ -61,10 +62,7 @@ export default async function RosterImportPage({
   if (batches.length === 0) {
     return (
       <>
-        <div className={styles.pageTitle}>
-          <h1>Roster Import</h1>
-          <p>No import batches have been staged yet.</p>
-        </div>
+        <PageTitle title="Roster Import" sub="No import batches have been staged yet." />
         <div className={styles.empty}>
           Stage a file first:
           <code className={styles.code}>npm run import-roster-csv -- &quot;&lt;path&gt;&quot; --apply</code>
@@ -154,15 +152,13 @@ export default async function RosterImportPage({
 
   return (
     <>
-      <div className={styles.pageTitle}>
-        <h1>Roster Import</h1>
-        <p>
-          Every row from a staged roster file, matched against the people already on record. A
+      <PageTitle
+        title="Roster Import"
+        sub="Every row from a staged roster file, matched against the people already on record. A
           suggestion is only a proposal — nothing is written to the roster until you accept it, and
           a conflict you skip keeps whatever is already stored. The source file may be older than
-          what is on record, so nothing here prefers it by default.
-        </p>
-      </div>
+          what is on record, so nothing here prefers it by default."
+      />
 
       <ReviewClient
         batches={batches}

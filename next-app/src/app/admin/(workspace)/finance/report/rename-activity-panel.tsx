@@ -21,6 +21,7 @@ import { useRouter } from 'next/navigation';
 import type { RenameActivityPreview } from '../actions';
 import parentStyles from '../finance.module.css';
 import styles from './report.module.css';
+import { Notice } from '../../_components/notice';
 
 export function RenameActivityPanel({
   activityLabels,
@@ -113,7 +114,7 @@ export function RenameActivityPanel({
         </datalist>
       </label>
 
-      {error && <p className={parentStyles.fieldError}>{error}</p>}
+      {error && <Notice>{error}</Notice>}
       {done && <p>{done}</p>}
 
       {previewCount === null ? (

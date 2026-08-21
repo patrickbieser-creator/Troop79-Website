@@ -16,6 +16,7 @@
 import Link from 'next/link';
 import { requireCapability } from '@/lib/require-capability';
 import styles from '../dashboard.module.css';
+import { PageTitle } from '../../../_components/page-title';
 
 export const metadata = {
   title: 'Site Analytics — Troop 79'
@@ -28,17 +29,16 @@ export default async function AnalyticsPage() {
 
   return (
     <>
-      <div className={styles.pageTitle}>
-        <div>
-          <h1>Site Analytics</h1>
-          <p>Traffic and engagement for troop-79.com, via Google Analytics 4 and Looker Studio.</p>
-        </div>
+      <PageTitle
+        title="Site Analytics"
+        sub="Traffic and engagement for troop-79.com, via Google Analytics 4 and Looker Studio."
+      >
         <div className={styles.actions}>
           <Link href="/admin/advancement/dashboard" className={styles.btn}>
             ← Dashboard
           </Link>
         </div>
-      </div>
+      </PageTitle>
 
       <div className={styles.card}>
         {embedUrl ? (

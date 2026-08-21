@@ -11,6 +11,8 @@ import {
   DialogBody,
   DialogActions
 } from '../src/app/admin/(workspace)/_components/dialog';
+import { PageTitle } from '../src/app/admin/(workspace)/_components/page-title';
+import { Notice } from '../src/app/admin/(workspace)/_components/notice';
 
 /**
  * Phase A of Plans/Admin-Design-System.md — the first shared admin UI
@@ -144,6 +146,17 @@ describe('Dialog', () => {
     expect(screen.getByTestId('dlg').className).toContain('danger');
   });
 
+  it('SharedDialog_AppendsClassName_ForWidthVariants', () => {
+    render(
+      <Dialog open className="wideOverride" data-testid="dlg">
+        <DialogBody>Wide</DialogBody>
+      </Dialog>
+    );
+    const cls = screen.getByTestId('dlg').className;
+    expect(cls).toContain('wideOverride');
+    expect(cls).toContain('dialog');
+  });
+
   it('SharedDialog_ClosesOnBackdropClick_ButNotOnInnerClick', async () => {
     const onClose = vi.fn();
     render(
@@ -157,6 +170,38 @@ describe('Dialog', () => {
     // backdrop — the banded header/body/actions zones cover the whole box.
     await userEvent.click(screen.getByTestId('dlg'));
     expect(onClose).toHaveBeenCalledOnce();
+  });
+});
+
+describe('PageTitle', () => {
+  it('SharedPageTitle_RendersHeadingSubAndActions', () => {
+    render(
+      <PageTitle title="Calendar" sub="Everything that happens on a date.">
+        <button type="button">+ Add Event</button>
+      </PageTitle>
+    );
+    expect(screen.getByRole('heading', { level: 1, name: 'Calendar' })).toBeTruthy();
+    expect(screen.getByText('Everything that happens on a date.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '+ Add Event' })).toBeTruthy();
+  });
+
+  it('SharedPageTitle_OmitsSub_WhenAbsent', () => {
+    render(<PageTitle title="Utilities" />);
+    const heading = screen.getByRole('heading', { level: 1, name: 'Utilities' });
+    expect(heading.parentElement?.querySelector('p')).toBeNull();
+  });
+});
+
+describe('Notice', () => {
+  it('SharedNotice_MapsVariant_ToStatusToken', () => {
+    render(<Notice variant="success">Import complete — 3 people added.</Notice>);
+    expect(screen.getByText('Import complete — 3 people added.').className).toContain('success');
+  });
+
+  it('SharedNotice_DefaultsToError_WithAlertRole', () => {
+    render(<Notice>Something went wrong saving this row.</Notice>);
+    const el = screen.getByRole('alert');
+    expect(el.className).toContain('error');
   });
 });
 

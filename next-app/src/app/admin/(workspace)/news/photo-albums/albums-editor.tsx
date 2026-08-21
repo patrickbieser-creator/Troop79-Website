@@ -9,6 +9,7 @@ import { DatePickerField } from '../../_components/date-picker-field';
 import { AddButton } from '../../_components/add-button';
 import styles from './albums.module.css';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
+import { Notice } from '../../_components/notice';
 
 type ActionResult = { ok: boolean; error?: string };
 
@@ -112,11 +113,14 @@ export function AlbumsEditor({ rows, covers, categories, onCreate, onUpdate, onD
                       {row.category}
                     </span>
                   </td>
-                  <td>
+                  {/* .linkCell caps a runaway title/URL with an ellipsis — the
+                      class existed unused since the audit flagged it (Section 2
+                      truncation sweep, 2026-08-21). */}
+                  <td className={styles.linkCell}>
                     <a href={row.google_url} target="_blank" rel="noopener noreferrer">
                       {row.title}
                     </a>
-                    {rowErr?.id === row.id && <div className={styles.editError}>{rowErr.msg}</div>}
+                    {rowErr?.id === row.id && <Notice>{rowErr.msg}</Notice>}
                   </td>
                   <td>{row.photo_count ?? <span className={styles.muted}>—</span>}</td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
@@ -320,7 +324,7 @@ function AlbumForm({
         </div>
       </div>
 
-      {err && <div className={styles.editError}>{err}</div>}
+      {err && <Notice>{err}</Notice>}
 
       {pickerOpen && (
         <MediaPicker mode="single" onClose={() => setPickerOpen(false)} onInsert={onPickCover} />

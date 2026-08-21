@@ -12,6 +12,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { requireCapability } from '@/lib/require-capability';
 import { loadAllLogins, loadRecentFailedLogins, type LoginMethod } from '@/lib/login-events';
 import styles from '../dashboard.module.css';
+import { PageTitle } from '../../../_components/page-title';
 
 const PAGE_SIZE = 50;
 
@@ -56,17 +57,16 @@ export default async function AllLoginsPage({
 
   return (
     <>
-      <div className={styles.pageTitle}>
-        <div>
-          <h1>Recent Logins</h1>
-          <p>Every successful sign-in, family and leader alike — same flow since the identity unification.</p>
-        </div>
+      <PageTitle
+        title="Recent Logins"
+        sub="Every successful sign-in, family and leader alike — same flow since the identity unification."
+      >
         <div className={styles.actions}>
           <Link href="/admin/advancement/dashboard" className={styles.btn}>
             ← Dashboard
           </Link>
         </div>
-      </div>
+      </PageTitle>
 
       <div className={styles.card}>
         <div className={styles.cardHeader}>

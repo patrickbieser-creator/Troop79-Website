@@ -22,6 +22,7 @@ import {
 import { useLookupTable } from './use-lookup-table';
 import styles from './lookups.module.css';
 import { AddButton } from '../../_components/add-button';
+import { Notice } from '../../_components/notice';
 
 type ActionResult = { ok: boolean; error?: string };
 
@@ -191,11 +192,7 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
         </div>
       )}
 
-      {err && (
-        <div className={styles.editError} style={{ marginBottom: 10 }}>
-          {err}
-        </div>
-      )}
+      {err && <Notice>{err}</Notice>}
 
       <div className={t.scrollClass}>
         <table className={styles.table}>

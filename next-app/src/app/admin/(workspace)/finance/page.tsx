@@ -21,6 +21,7 @@ import {
   type LedgerSortKey
 } from './actions';
 import { FinanceWorkspace } from './finance-workspace';
+import { PageTitle } from '../_components/page-title';
 import styles from './finance.module.css';
 
 export const metadata = {
@@ -124,16 +125,14 @@ export default async function FinancePage({
 
   return (
     <>
-      <div className={styles.pageTitle}>
-        <div>
-          <h1>Troop Finances</h1>
-          <p>
-            {canManage
-              ? 'The books of record — checking, savings, and every scout account, derived from full transaction history (never a stored total).'
-              : 'Read-only view of troop finances — every historical transaction and current balances.'}
-          </p>
-        </div>
-      </div>
+      <PageTitle
+        title="Troop Finances"
+        sub={
+          canManage
+            ? 'The books of record — checking, savings, and every scout account, derived from full transaction history (never a stored total).'
+            : 'Read-only view of troop finances — every historical transaction and current balances.'
+        }
+      />
 
       <div className={styles.balanceGrid}>
         <div className={`${styles.balanceCard} ${styles.balanceCardEmphasis}`}>

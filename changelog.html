@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.58.0</p>
+      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.59.0</p>
     </div>
   </div>
 
@@ -494,6 +494,71 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.59.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.59.0</span>
+        <span class="release-date">August 21, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Design system Phase B complete: shared PageTitle and Notice, one tab pattern, every modal on the shared Dialog</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Every admin page header is now one component.</strong> The
+              &ldquo;title + subtitle + actions&rdquo; block that 26 stylesheets re-declared
+              by hand became the shared PageTitle, adopted across all ~33 admin screens.
+              Error and success boxes got the same treatment: a shared Notice on the status
+              tokens replaced the four per-screen names (.rowError / .editError /
+              .fieldError / .notice) — and errors now announce to screen readers, which the
+              old boxes never did.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>One tab pattern, everywhere.</strong> The four non-pill tab designs
+              (Meeting Plan&rsquo;s underline tabs, Court of Honor&rsquo;s and the Weekly
+              Report&rsquo;s view toggles, the Library workstation, the media picker) all
+              fold into the shared pill TabStrip. The Library conversion touched only the
+              admin page — the stylesheet shared with the public site stays untouched — which
+              also closes a long-standing backlog item. Meeting Plan&rsquo;s navy table
+              header was normalized to the standard gray in the same pass.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Every remaining modal joined the shared Dialog</strong> — the ledger,
+              finance (all six), the merit-badge and requirement-code editors, the wide scout
+              form, the event-roster payment dialog, and fast entry. Two of those were never
+              real dialogs at all: the adult Person editor and adult-add form were hand-rolled
+              overlays with no Escape or backdrop-click close. They are native dialogs now,
+              so closing them finally works the way every other editor does.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Tables, cards, and the last off-token screen.</strong> Both table
+              clusters are internally consistent (compact on the calendar canon, wrapped-card
+              on the ledger canon), panels share the card canon (border, radius token,
+              shadow), and Access &amp; Permissions — the lone rem-units holdout with its own
+              tan palette — is fully on the token scales and admin grays. Two truncation
+              fixes from the consistency audit landed too, and Meeting Plan&rsquo;s green
+              Generate button went navy with the other primaries.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Test baseline 666&nbsp;&rarr;&nbsp;671</strong> (PageTitle, Notice, and
+              Dialog width-variant tests, written first). Five styleguide scoreboard rows are
+              struck; the guide&rsquo;s own header now renders the shared PageTitle — the
+              canonical specimen, in use.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

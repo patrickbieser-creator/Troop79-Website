@@ -15,6 +15,8 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import { updateReqCode } from './actions';
 import { useLookupTable } from './use-lookup-table';
 import styles from './lookups.module.css';
+import { Notice } from '../../_components/notice';
+import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
 
 export interface ReqRow {
   id: number;
@@ -85,16 +87,9 @@ export function ReqCodesTable({ rows }: { rows: ReqRow[] }) {
       </div>
       {t.footerEl}
 
-      <dialog
-        ref={dialogRef}
-        className={styles.editDialog}
-        onClose={() => setOpenFor(null)}
-        onClick={(e) => {
-          if (e.target === dialogRef.current) setOpenFor(null);
-        }}
-      >
+      <Dialog ref={dialogRef} onClose={() => setOpenFor(null)}>
         {openFor && <ReqCodeForm row={openFor} onClose={() => setOpenFor(null)} />}
-      </dialog>
+      </Dialog>
     </>
   );
 }
@@ -129,17 +124,14 @@ function ReqCodeForm({ row, onClose }: { row: ReqRow; onClose: () => void }) {
   }
 
   return (
-    <div className={styles.editDialogInner}>
-      <div className={styles.editDialogHeader}>
-        <h3>
-          Edit {row.source === 'rank' ? 'Rank' : 'MB'} requirement — {row.parentLabel}
-        </h3>
-        <p>
-          Renaming the code updates every ledger entry already recorded under
-          the old code, so completed requirements stay matched to the catalog.
-        </p>
-      </div>
+    <>
+      <DialogHeader
+        title={`Edit ${row.source === 'rank' ? 'Rank' : 'MB'} requirement — ${row.parentLabel}`}
+        sub="Renaming the code updates every ledger entry already recorded under
+          the old code, so completed requirements stay matched to the catalog."
+      />
 
+      <DialogBody>
       <div className={styles.editGrid}>
         <label className={styles.editField}>
           <span className={styles.editLabel}>Code</span>
@@ -171,16 +163,17 @@ function ReqCodeForm({ row, onClose }: { row: ReqRow; onClose: () => void }) {
         </label>
       </div>
 
-      {err && <div className={styles.editError}>{err}</div>}
+      {err && <Notice>{err}</Notice>}
+      </DialogBody>
 
-      <div className={styles.editActions}>
+      <DialogActions>
         <button type="button" className={styles.editBtn} onClick={onClose} disabled={isPending}>
           Cancel
         </button>
         <button type="button" className={styles.editSaveBtn} onClick={submit} disabled={isPending}>
           {isPending ? 'Saving…' : 'Save changes'}
         </button>
-      </div>
-    </div>
+      </DialogActions>
+    </>
   );
 }

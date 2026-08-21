@@ -18,6 +18,7 @@ import { formatLongDate } from '@/lib/dates';
 import styles from './meetings.module.css';
 import { ActionsMenu } from '../../_components/actions-menu';
 import { Badge } from '../../_components/badge';
+import { Notice } from '../../_components/notice';
 
 const PAGE_SIZE = 25;
 
@@ -184,7 +185,7 @@ export function AttendanceList({ rows, onDeleteAgenda }: Props) {
         </button>
       </div>
 
-      {err && <div className={styles.editError}>{err}</div>}
+      {err && <Notice>{err}</Notice>}
 
       <table className={styles.table}>
         <thead>

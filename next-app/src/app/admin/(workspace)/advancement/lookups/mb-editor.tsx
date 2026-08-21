@@ -6,6 +6,8 @@ import { SortableList } from '../../_components/sortable-list';
 import { useLookupTable } from './use-lookup-table';
 import styles from './lookups.module.css';
 import { AddButton } from '../../_components/add-button';
+import { Notice } from '../../_components/notice';
+import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
 
 export interface MbRow {
   id: string;
@@ -122,14 +124,7 @@ export function MbEditor({ rows, leaders, counselorsByMb, reqTreesByMb }: Props)
       </div>
       {t.footerEl}
 
-      <dialog
-        ref={dialogRef}
-        className={`${styles.editDialog} ${styles.editDialogLarge}`}
-        onClose={() => setOpenFor(null)}
-        onClick={(e) => {
-          if (e.target === dialogRef.current) setOpenFor(null);
-        }}
-      >
+      <Dialog ref={dialogRef} className={styles.editDialogLarge} onClose={() => setOpenFor(null)}>
         {openFor && (
           <MbForm
             row={openFor}
@@ -139,7 +134,7 @@ export function MbEditor({ rows, leaders, counselorsByMb, reqTreesByMb }: Props)
             onClose={() => setOpenFor(null)}
           />
         )}
-      </dialog>
+      </Dialog>
     </>
   );
 }
@@ -218,16 +213,18 @@ function MbForm({
   }
 
   return (
-    <div className={styles.editDialogInner}>
-      <div className={styles.editDialogHeader}>
-        <h3>Edit merit badge — {row.name}</h3>
-        <p>
-          Catalog id <code>{row.id}</code> is permanent. Counselors here are
-          shown in the order set below — that order also flows to other
-          editors that link to this badge.
-        </p>
-      </div>
+    <>
+      <DialogHeader
+        title={`Edit merit badge — ${row.name}`}
+        sub={
+          <>
+            Catalog id <code>{row.id}</code> is permanent. Counselors here are shown in the
+            order set below — that order also flows to other editors that link to this badge.
+          </>
+        }
+      />
 
+      <DialogBody>
       <div className={styles.editSection}>
         <div className={styles.editSectionHeader}>
           <h4>Catalog</h4>
@@ -335,9 +332,10 @@ function MbForm({
         <ReqTreeEditor tree={reqTree} onChange={setReqTree} depth={0} />
       </div>
 
-      {err && <div className={styles.editError}>{err}</div>}
+      {err && <Notice>{err}</Notice>}
+      </DialogBody>
 
-      <div className={styles.editActions}>
+      <DialogActions>
         <button
           type="button"
           className={styles.editBtn}
@@ -354,8 +352,8 @@ function MbForm({
         >
           {isPending ? 'Saving…' : 'Save changes'}
         </button>
-      </div>
-    </div>
+      </DialogActions>
+    </>
   );
 }
 

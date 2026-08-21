@@ -20,6 +20,7 @@ import { requireCapability } from '@/lib/require-capability';
 import type { LedgerEntry, LedgerKind, Scout } from '@/lib/supabase/types';
 import { LedgerToolbar } from './ledger-toolbar';
 import { LedgerTable } from './ledger-table';
+import { PageTitle } from '../../_components/page-title';
 import styles from './ledger.module.css';
 
 const PAGE_SIZE = 50;
@@ -212,19 +213,19 @@ export default async function LedgerPage({
 
   return (
     <>
-      <div className={styles.pageTitle}>
-        <div>
-          <h1>Universal Ledger</h1>
-          <p>
+      <PageTitle
+        title="Universal Ledger"
+        sub={
+          <>
             Sole source of truth. Every advancement, activity, service hour,
             and recognition starts here. <strong>Archive</strong> hides
             lifecycle entries (e.g. scout aged-out). <strong>Delete</strong>{' '}
             removes erroneous entries with a recorded reason. Both are
             soft &mdash; recoverable from the &ldquo;Show hidden rows&rdquo;
             toggle.
-          </p>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <LedgerToolbar
         q={parsed.q}

@@ -15,6 +15,7 @@ import type { LedgerEntry, LedgerKind } from '@/lib/supabase/types';
 import { loadAttentionCategories } from './attention-items';
 import { loadRecentLogins } from '@/lib/login-events';
 import styles from './dashboard.module.css';
+import { PageTitle } from '../../_components/page-title';
 
 const RECENT_LIMIT = 10;
 const LIKELY_READY_THRESHOLD = 0.6; // 60% of next-rank reqs done → surface
@@ -315,15 +316,10 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      <div className={styles.pageTitle}>
-        <div>
-          <h1>Leader Dashboard</h1>
-          <p>
-            Operational overview for the advancement chair. Numbers update
-            from the universal ledger.
-          </p>
-        </div>
-      </div>
+      <PageTitle
+        title="Leader Dashboard"
+        sub="Operational overview for the advancement chair. Numbers update from the universal ledger."
+      />
 
       <div className={styles.stats}>
         <Stat

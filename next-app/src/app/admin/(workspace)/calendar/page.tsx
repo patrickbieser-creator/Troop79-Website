@@ -7,6 +7,7 @@ import type { CalendarEntry, Media } from '@/lib/supabase/types';
 export type { CalendarEntryRow } from './entry-form';
 import type { CalendarEntryRow } from './entry-form';
 import { CalendarEditor } from './calendar-editor';
+import { PageTitle } from '../_components/page-title';
 import {
   createCalendarEntry,
   updateCalendarEntry,
@@ -16,7 +17,6 @@ import {
   setEntryPromoted,
   importCalendarEntries
 } from './actions';
-import styles from './calendar.module.css';
 
 export const metadata = {
   title: 'Calendar — Troop 79'
@@ -104,20 +104,20 @@ export default async function CalendarAdminPage({
 
   return (
     <>
-      <div className={styles.pageTitle}>
-        <div>
-        <h1>Calendar</h1>
-        <p>
-          Everything that happens on a date, whether or not it&rsquo;s on the troop calendar &mdash;
-          meetings, campouts, fundraisers, and outside opportunities like district merit badge
-          clinics. Add one here, then <strong>Edit</strong>{' '}
-          it to add a story, an agenda or a signup;
-          the category you pick decides which of those the entry starts with. On-calendar entries
-          feed the public calendar and .ics subscription; any entry can promote itself into the
-          homepage news feed for a window &mdash; no separate article needed.
-        </p>
-        </div>
-      </div>
+      <PageTitle
+        title="Calendar"
+        sub={
+          <>
+            Everything that happens on a date, whether or not it&rsquo;s on the troop calendar
+            &mdash; meetings, campouts, fundraisers, and outside opportunities like district merit
+            badge clinics. Add one here, then <strong>Edit</strong>{' '}
+            it to add a story, an agenda or a signup; the category you pick decides which of those
+            the entry starts with. On-calendar entries feed the public calendar and .ics
+            subscription; any entry can promote itself into the homepage news feed for a window
+            &mdash; no separate article needed.
+          </>
+        }
+      />
 
       <CalendarEditor
         rows={entries}

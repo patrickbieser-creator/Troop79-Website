@@ -1,31 +1,25 @@
-.pageTitle {
-  margin-bottom: 1.25rem;
-}
-.pageTitle h1 {
-  margin: 0 0 0.25rem;
-  font-size: 1.5rem;
-}
-.pageTitle p {
-  margin: 0;
-  color: #5b5347;
-  font-size: 0.9rem;
-  max-width: 62ch;
-}
+/* Access & Permissions. Phase B (2026-08-21): the file's rem units and its
+   private tan/khaki palette (the audit's lone rem outlier) converted to the
+   px token scales and admin grays — same layout, canonical colors. */
+
+/* .pageTitle retired Phase B (2026-08-21) — shared PageTitle component. */
 
 .note {
-  background: #fdf8ef;
-  border: 1px solid #e4d9c4;
-  border-radius: 6px;
-  padding: 0.75rem 0.9rem;
-  font-size: 0.85rem;
-  color: #5b5347;
-  margin-bottom: 1.25rem;
+  background: var(--admin-status-warning-bg);
+  border: 1px solid color-mix(in srgb, var(--admin-accent-gold) 30%, var(--admin-white));
+  border-radius: var(--admin-radius);
+  padding: var(--admin-space-6) var(--admin-space-7);
+  font-size: var(--admin-text-md);
+  color: var(--admin-gray-700);
+  margin-bottom: var(--admin-space-10);
   max-width: 78ch;
 }
 .note strong {
-  color: #3d3830;
+  color: var(--admin-gray-900);
 }
 
+/* Wrapped-card table canon (Phase B, 2026-08-21) — with this screen's own
+   sticky-header scroll mechanics preserved. */
 .tableWrap {
   overflow: auto;
   /* An explicit height is what makes the sticky header work. `overflow-x: auto`
@@ -33,87 +27,89 @@
      scroll container in both axes — without a height cap it never scrolls
      vertically, and `position: sticky` on the thead anchors to a scrollport
      that never moves. Verified broken in the browser 2026-08-16. */
-  max-height: calc(100vh - 20rem);
-  min-height: 12rem;
-  border: 1px solid #e4d9c4;
-  border-radius: 6px;
-  background: #fff;
+  max-height: calc(100vh - 320px);
+  min-height: 192px;
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow-sm);
 }
 
 .table {
   border-collapse: collapse;
   width: 100%;
-  font-size: 0.85rem;
+  font-size: var(--admin-text-md);
 }
 .table th,
 .table td {
-  padding: 0.5rem 0.6rem;
-  border-bottom: 1px solid #efe7d8;
+  padding: var(--admin-space-4) var(--admin-space-5);
+  border-bottom: 1px solid var(--admin-gray-100);
   text-align: left;
   vertical-align: middle;
 }
 .table thead th {
   position: sticky;
   top: 0;
-  background: #f7f1e6;
-  font-weight: 600;
+  background: var(--admin-gray-50);
+  border-bottom: 2px solid var(--admin-gray-200);
+  font-size: var(--admin-text-sm);
+  font-weight: var(--admin-weight-bold);
   white-space: nowrap;
-  font-size: 0.75rem;
-  letter-spacing: 0.02em;
+  letter-spacing: var(--admin-tracking-wide);
   text-transform: uppercase;
-  color: #6b6355;
+  color: var(--admin-gray-700);
 }
 .table tbody tr:hover {
-  background: #fbf7f0;
+  background: var(--admin-gray-50);
 }
 
 .capCol {
   text-align: center;
-  width: 5.5rem;
+  width: 88px;
 }
 .capCell {
   text-align: center;
 }
 
 .person {
-  font-weight: 600;
-  color: #2f2b25;
+  font-weight: var(--admin-weight-semibold);
+  color: var(--admin-gray-900);
   white-space: nowrap;
 }
 .personMeta {
   display: block;
-  font-weight: 400;
-  font-size: 0.75rem;
-  color: #857c6c;
+  font-weight: var(--admin-weight-regular);
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-500);
 }
 .youthTag {
   display: inline-block;
-  margin-left: 0.35rem;
-  padding: 0.05rem 0.35rem;
-  border-radius: 3px;
-  background: #e8efe4;
-  color: #46603a;
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  margin-left: var(--admin-space-3);
+  padding: 1px var(--admin-space-3);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-status-success-bg);
+  color: var(--admin-forest);
+  font-size: var(--admin-text-sm);
+  font-weight: var(--admin-weight-semibold);
+  letter-spacing: var(--admin-tracking-tight);
 }
 
 .toggle {
-  border: 1px solid #d8ccb4;
-  background: #fff;
-  border-radius: 4px;
-  width: 1.65rem;
-  height: 1.65rem;
+  border: 1px solid var(--admin-gray-300);
+  background: var(--admin-white);
+  border-radius: var(--admin-radius);
+  width: 26px;
+  height: 26px;
   cursor: pointer;
-  color: #b3a894;
+  color: var(--admin-gray-400);
   line-height: 1;
-  font-size: 0.9rem;
+  font-size: var(--admin-text-lg);
 }
 .toggleOn {
-  background: #3f6b3a;
-  border-color: #3f6b3a;
-  color: #fff;
-  font-weight: 700;
+  background: var(--admin-forest);
+  border-color: var(--admin-forest);
+  color: var(--admin-white);
+  font-weight: var(--admin-weight-bold);
 }
 .toggle:disabled {
   opacity: 0.45;
@@ -122,20 +118,20 @@
 
 .rowActions {
   display: flex;
-  gap: 0.35rem;
+  gap: var(--admin-space-3);
   white-space: nowrap;
 }
 .smallBtn {
-  border: 1px solid #d8ccb4;
-  background: #fff;
-  border-radius: 4px;
-  padding: 0.2rem 0.5rem;
-  font-size: 0.75rem;
+  border: 1px solid var(--admin-gray-300);
+  background: var(--admin-white);
+  border-radius: var(--admin-radius);
+  padding: var(--admin-space-2) var(--admin-space-4);
+  font-size: var(--admin-text-base);
   cursor: pointer;
-  color: #5b5347;
+  color: var(--admin-gray-700);
 }
 .smallBtn:hover {
-  background: #f7f1e6;
+  background: var(--admin-gray-100);
 }
 /* Canonical outlined danger (Phase A decision, 2026-08-21) — was one of the
    two off-token hardcoded reds the audit flagged. */
@@ -151,45 +147,45 @@
 .bundleBar {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: var(--admin-space-3);
   align-items: center;
-  margin: 1.25rem 0 0.75rem;
+  margin: var(--admin-space-10) 0 var(--admin-space-6);
 }
 .bundleBar label {
-  font-size: 0.85rem;
-  color: #5b5347;
+  font-size: var(--admin-text-md);
+  color: var(--admin-gray-700);
 }
 .select {
-  border: 1px solid #d8ccb4;
-  border-radius: 4px;
-  padding: 0.3rem 0.4rem;
-  font-size: 0.85rem;
-  background: #fff;
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius);
+  padding: var(--admin-space-3) var(--admin-space-4);
+  font-size: var(--admin-text-md);
+  background: var(--admin-white);
 }
 
 .addRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--admin-space-4);
   align-items: center;
-  margin-top: 1.25rem;
-  padding-top: 1rem;
-  border-top: 1px solid #e4d9c4;
+  margin-top: var(--admin-space-10);
+  padding-top: var(--admin-space-8);
+  border-top: 1px solid var(--admin-gray-200);
 }
 .addRow h2 {
   width: 100%;
   margin: 0;
-  font-size: 1rem;
+  font-size: var(--admin-text-xl);
 }
 .addRow p {
   width: 100%;
   margin: 0;
-  font-size: 0.82rem;
-  color: #857c6c;
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-500);
 }
 
 .error {
-  margin-top: 0.75rem;
-  color: #8c3b3b;
-  font-size: 0.85rem;
+  margin-top: var(--admin-space-6);
+  color: var(--admin-danger);
+  font-size: var(--admin-text-md);
 }

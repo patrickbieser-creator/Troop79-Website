@@ -4,6 +4,7 @@
  * get their own card here rather than their own top-level nav entry.
  */
 import { BunnySyncCard } from './bunny-sync-card';
+import { PageTitle } from '../_components/page-title';
 import styles from './utilities.module.css';
 
 export const metadata = {
@@ -13,10 +14,7 @@ export const metadata = {
 export default function UtilitiesPage() {
   return (
     <>
-      <div className={styles.pageTitle}>
-        <h1>Utilities</h1>
-        <p>One-off maintenance tools. Safe to run any time.</p>
-      </div>
+      <PageTitle title="Utilities" sub="One-off maintenance tools. Safe to run any time." />
 
       <div className={styles.grid}>
         <BunnySyncCard />

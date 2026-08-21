@@ -20,7 +20,7 @@ import {
 import { summarizeByActivity } from '@/lib/finance';
 import { ActivityReport } from './activity-report';
 import { ReportActions } from './report-actions';
-import styles from '../finance.module.css';
+import { PageTitle } from '../../_components/page-title';
 
 export const metadata = {
   title: 'Activity Report — Troop 79'
@@ -37,16 +37,12 @@ export default async function FinanceReportPage() {
 
   return (
     <>
-      <div className={styles.pageTitle}>
-        <div>
-          <h1>Activity Report</h1>
-          <p>
-            Every transaction grouped by event or fundraiser — income, expenses, and whether it nets
+      <PageTitle
+        title="Activity Report"
+        sub="Every transaction grouped by event or fundraiser — income, expenses, and whether it nets
             out to what you expected. Totals blend every account (checking, savings, scout accounts,
-            scholarship); the breakdown under each activity shows the split.
-          </p>
-        </div>
-      </div>
+            scholarship); the breakdown under each activity shows the split."
+      />
       {canManage && (
         <ReportActions
           activityLabels={activityLabels}

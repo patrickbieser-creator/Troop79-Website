@@ -13,6 +13,7 @@ import { fetchAllRows } from '@/lib/supabase/paginate';
 import { requireCapability } from '@/lib/require-capability';
 import { DateParamField } from '../../../_components/date-param-field';
 import styles from '../meetings.module.css';
+import { PageTitle } from '../../../_components/page-title';
 
 export const metadata = {
   title: 'Attendance Report — Troop 79'
@@ -98,14 +99,16 @@ export default async function AttendanceReportPage({
 
   return (
     <>
-      <div className={styles.pageTitle}>
-        <h1>Attendance Report</h1>
-        <p>
-          Meeting attendance per scout — {held} meeting{held === 1 ? '' : 's'} with roll call
-          {from || to ? ' in the selected range' : ' on record'}. Percentages are out of meetings
-          where attendance was actually taken.
-        </p>
-      </div>
+      <PageTitle
+        title="Attendance Report"
+        sub={
+          <>
+            Meeting attendance per scout — {held} meeting{held === 1 ? '' : 's'} with roll call
+            {from || to ? ' in the selected range' : ' on record'}. Percentages are out of meetings
+            where attendance was actually taken.
+          </>
+        }
+      />
 
       <form method="get" className={styles.toolbar} style={{ justifyContent: 'flex-start' }}>
         <Link href="/admin/advancement/meetings" className={styles.editBtn}>

@@ -8,6 +8,7 @@ import { SortHeader, useSortable } from './use-sortable';
 import { TabStrip } from '../../_components/tab-strip';
 import { AddButton } from '../../_components/add-button';
 import { Badge } from '../../_components/badge';
+import { Dialog } from '../../_components/dialog';
 import styles from './roster.module.css';
 
 /*
@@ -257,14 +258,7 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId
         </tbody>
       </table>
 
-      <dialog
-        ref={dialogRef}
-        className={`${styles.editDialog} ${styles.editDialogRosterFixed}`}
-        onClose={() => setOpenFor(null)}
-        onClick={(e) => {
-          if (e.target === dialogRef.current) setOpenFor(null);
-        }}
-      >
+      <Dialog ref={dialogRef} className={styles.editDialogWide} onClose={() => setOpenFor(null)}>
         {openFor && (
           <ScoutForm
             row={openFor === 'new' ? null : openFor}
@@ -272,7 +266,7 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId
             onClose={() => setOpenFor(null)}
           />
         )}
-      </dialog>
+      </Dialog>
     </>
   );
 }

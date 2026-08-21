@@ -27,6 +27,7 @@ import {
   type TransactionMethod
 } from '@/lib/finance';
 import type { LedgerRow, ReconciliationSummaryRow } from './actions';
+import { Dialog, DialogHeader, DialogBody } from '../_components/dialog';
 import styles from './finance.module.css';
 
 interface EditTransactionSaveInput {
@@ -73,14 +74,8 @@ export function EditTransactionDialog({
   }, [row]);
 
   return (
-    <dialog
-      ref={dialogRef}
-      className={styles.editDialog}
-      onClose={onClose}
-      onClick={(e) => {
-        if (e.target === dialogRef.current) onClose();
-      }}
-    >
+    <Dialog ref={dialogRef} className={styles.editDialog} onClose={onClose}>
+      <DialogHeader title="Edit transaction" />
       {row && (
         <EditTransactionForm
           key={row.id}
@@ -94,7 +89,7 @@ export function EditTransactionDialog({
           onSave={onSave}
         />
       )}
-    </dialog>
+    </Dialog>
   );
 }
 
@@ -155,8 +150,8 @@ function EditTransactionForm({
   }
 
   return (
+    <DialogBody>
     <form className={styles.formGrid} onSubmit={submit}>
-      <h3 className={styles.editDialogTitle}>Edit transaction</h3>
       {staleWarning && (
         <p className={`${styles.formGridWide} ${styles.staleWarnNote}`}>
           Reconciled on {lastReconciled} — saving will drift that reconciliation. Consider redoing it after.
@@ -253,5 +248,6 @@ function EditTransactionForm({
         </button>
       </div>
     </form>
+    </DialogBody>
   );
 }

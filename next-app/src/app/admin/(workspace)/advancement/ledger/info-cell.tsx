@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import styles from './ledger.module.css';
+import { Dialog, DialogBody, DialogActions } from '../../_components/dialog';
 
 interface Props {
   short: string;
@@ -45,25 +46,19 @@ export function InfoCell({ short, full, notes }: Props) {
         <span className={styles.infoCellNote}>{notes}</span>
       )}
       {showInfo && (
-        <dialog
-          ref={dialogRef}
-          className={styles.infoDialog}
-          onClose={() => setOpen(false)}
-          onClick={(e) => {
-            // Click-outside-content (on the backdrop) closes the dialog.
-            if (e.target === dialogRef.current) setOpen(false);
-          }}
-        >
-          <div className={styles.infoDialogInner}>
+        <Dialog ref={dialogRef} onClose={() => setOpen(false)}>
+          <DialogBody>
             <p className={styles.infoDialogShort}>{short}</p>
             <p className={styles.infoDialogFull}>{full}</p>
-            <form method="dialog" className={styles.infoDialogActions}>
-              <button type="submit" className={styles.infoDialogClose}>
+          </DialogBody>
+          <DialogActions>
+            <form method="dialog">
+              <button type="submit" className={styles.editSaveBtn}>
                 Close
               </button>
             </form>
-          </div>
-        </dialog>
+          </DialogActions>
+        </Dialog>
       )}
     </span>
   );

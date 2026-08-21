@@ -17,7 +17,7 @@ import { requireCapability } from '@/lib/require-capability';
 import { buildReqTree } from '@/lib/mb-helpers';
 import type { Rank } from '@/lib/supabase/types';
 import { HasNeedsTool, type PickerRank, type ResultScout } from './has-needs-tool';
-import styles from './has-needs.module.css';
+import { PageTitle } from '../../_components/page-title';
 
 export const metadata = {
   title: 'Has/Needs Tool — Troop 79 Admin'
@@ -114,14 +114,12 @@ export default async function HasNeedsPage() {
   const { pickerRanks, scouts } = await loadData();
   return (
     <>
-      <div className={styles.pageTitle}>
-        <h1>Has/Needs Tool</h1>
-        <p>
-          Check one or more Scout, Tenderfoot, Second Class, or First Class
+      <PageTitle
+        title="Has/Needs Tool"
+        sub="Check one or more Scout, Tenderfoot, Second Class, or First Class
           requirements to see who already has them and who still needs them —
-          handy for lining up a meeting station or a signing-off session.
-        </p>
-      </div>
+          handy for lining up a meeting station or a signing-off session."
+      />
       <HasNeedsTool ranks={pickerRanks} scouts={scouts} />
     </>
   );

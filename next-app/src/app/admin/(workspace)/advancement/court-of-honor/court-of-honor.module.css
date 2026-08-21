@@ -1,20 +1,16 @@
-.pageTitle {
-  border-bottom: 1px solid var(--admin-gray-200);
-  padding-bottom: 14px;
-  margin-bottom: 18px;
-}
-.pageTitle h1 { font-size: 22px; font-weight: 700; color: var(--admin-navy); margin-bottom: 4px; }
-.pageTitle p { font-size: 13px; color: var(--admin-gray-500); max-width: 760px; line-height: 1.5; }
+/* .pageTitle retired Phase B (2026-08-21) — shared PageTitle component. */
 
 .layout { display: grid; grid-template-columns: 1fr 240px; gap: 20px; align-items: start; }
 @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
 
 .main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 
+/* Card/panel canon (Phase B, 2026-08-21). */
 .card {
   background: var(--admin-white);
   border: 1px solid var(--admin-gray-200);
-  border-radius: 4px;
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow-sm);
   padding: 16px 18px;
 }
 .cardTitle { font-size: 13px; font-weight: 700; color: var(--admin-navy); margin: 0 0 8px; }
@@ -82,20 +78,9 @@
 }
 .smallBtn:hover { border-color: var(--admin-navy); color: var(--admin-navy); }
 
-.viewTabs { display: flex; gap: 2px; margin-bottom: 14px; }
-.viewTab, .viewTabActive {
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  border: 1px solid var(--admin-gray-300);
-  padding: 7px 14px;
-  cursor: pointer;
-}
-.viewTab { background: var(--admin-white); color: var(--admin-gray-700); }
-.viewTab:first-child, .viewTabActive:first-child { border-radius: 3px 0 0 3px; }
-.viewTab:last-child, .viewTabActive:last-child { border-radius: 0 3px 3px 0; border-left: none; }
-.viewTab:not(:first-child), .viewTabActive:not(:first-child) { border-left: none; }
-.viewTabActive { background: var(--admin-navy); border-color: var(--admin-navy); color: var(--admin-white); }
+/* .viewTabs family retired Phase B (2026-08-21) — folded into the shared
+   pill TabStrip (Patrick's call); this row keeps only the spacing. */
+.viewTabsRow { margin-bottom: 14px; }
 
 .markdownPane { display: flex; flex-direction: column; gap: 10px; }
 .markdownPre {

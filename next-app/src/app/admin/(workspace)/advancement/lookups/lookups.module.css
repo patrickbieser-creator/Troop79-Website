@@ -1,20 +1,4 @@
-.pageTitle {
-  margin-bottom: 20px;
-  border-bottom: 1px solid var(--admin-gray-200);
-  padding-bottom: 14px;
-}
-.pageTitle h1 {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--admin-navy);
-  margin-bottom: 4px;
-}
-.pageTitle p {
-  font-size: 13px;
-  color: var(--admin-gray-500);
-  max-width: 720px;
-  line-height: 1.5;
-}
+/* .pageTitle retired Phase B (2026-08-21) — shared PageTitle component. */
 
 .grid {
   display: grid;
@@ -189,28 +173,13 @@
   margin-top: 2px;
 }
 
-/* Edit dialog (shared shape with the Ledger edit dialog) */
-.editDialog {
-  padding: 0;
-  border: none;
-  border-radius: 6px;
-  box-shadow: var(--admin-shadow-md);
-  width: 92vw;
-  max-width: 580px;
-  background: var(--admin-white);
-}
-.editDialogLarge { max-width: 720px; max-height: 90vh; overflow: hidden; }
-.editDialogLarge .editDialogInner {
-  max-height: 90vh;
-  overflow-y: auto;
-}
-.editDialog::backdrop {
-  background: rgba(0, 0, 0, 0.42);
-}
-.editDialogInner {
-  padding: 22px 26px 18px;
-  font-family: inherit;
-}
+/* .editDialog chrome retired Phase B (2026-08-21) — the shared Dialog
+   component carries the approved spec (mb-editor + req-codes converted).
+   Doubled selector: deterministic override of the shared .dialog's
+   max-width regardless of CSS-module order in the bundle. Width only —
+   the shared Dialog itself owns max-height/scroll now. */
+.editDialogLarge.editDialogLarge { max-width: 720px; }
+/* Still consumed by scout-form's custom sticky-header/rail inner (below). */
 .editDialogHeader {
   border-bottom: 1px solid var(--admin-gray-200);
   padding-bottom: 12px;
@@ -339,7 +308,9 @@
 .editDialogRosterInner {
   display: flex;
   flex-direction: column;
-  max-height: 90vh;
+  /* 88vh matches the shared Dialog's own cap (was 90vh against the legacy
+     dialog) — inner and dialog must agree or the actions row clips. */
+  max-height: 88vh;
   font-family: inherit;
 }
 /* .editDialogHeader normally gets its horizontal inset from .editDialogInner's own
@@ -551,15 +522,10 @@
   font-size: 12px;
   color: var(--admin-gray-500);
 }
-.editError {
-  margin-top: 12px;
-  padding: 8px 12px;
-  background: #fdf0ef;
-  border: 1px solid #e8c4c0;
-  color: var(--admin-danger);
-  border-radius: 3px;
-  font-size: 12px;
-}
+/* .editError retired Phase B (2026-08-21) — shared Notice component. */
+/* Layout-only companion for Notice inside the roster dialog's edge-to-edge
+   inner (scout-form) — colors/chrome come from the Notice variant. */
+.noticeGutter { margin: 0 20px; }
 .editActions {
   display: flex;
   justify-content: flex-end;

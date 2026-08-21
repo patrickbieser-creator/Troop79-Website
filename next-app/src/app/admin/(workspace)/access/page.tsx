@@ -24,6 +24,7 @@ import {
   revokeSessionsAction
 } from './actions';
 import styles from './access.module.css';
+import { PageTitle } from '../_components/page-title';
 
 export const metadata = {
   title: 'Access & Permissions — Troop 79'
@@ -35,13 +36,11 @@ export default async function AccessPage() {
 
   return (
     <>
-      <div className={styles.pageTitle}>
-        <h1>Access &amp; Permissions</h1>
-        <p>
-          Who can do what, per person. A capability is granted to a human, not to a password — and
-          removing one takes effect on their next action, with no sign-out needed.
-        </p>
-      </div>
+      <PageTitle
+        title={<>Access &amp; Permissions</>}
+        sub="Who can do what, per person. A capability is granted to a human, not to a password — and
+          removing one takes effect on their next action, with no sign-out needed."
+      />
 
       <div className={styles.note}>
         {/* Explicit {' '} — the space after </strong> is dropped when the text

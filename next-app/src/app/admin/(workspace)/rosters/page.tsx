@@ -5,6 +5,7 @@ import { formatCalendarDateParts } from '@/lib/calendar-shared';
 import { loadCalendarCategories } from '@/lib/calendar';
 import { categoryColorMap, colorFor } from '@/lib/calendar-categories';
 import styles from '../events/events-admin.module.css';
+import { PageTitle } from '../_components/page-title';
 
 export const metadata = { title: 'Event Rosters — Troop 79' };
 
@@ -133,17 +134,19 @@ export default async function EventRostersPage() {
 
   return (
     <>
-      <div className={styles.pageTitle}>
-        <h1>Event Rosters</h1>
-        <p className={styles.sub}>
-          Who&rsquo;s coming to what, and what still needs chasing. To create or configure a signup,
-          use{' '}
-          <Link href="/admin/events" className={styles.actionLink}>
-            Event Signups
-          </Link>
-          .
-        </p>
-      </div>
+      <PageTitle
+        title="Event Rosters"
+        sub={
+          <>
+            Who&rsquo;s coming to what, and what still needs chasing. To create or configure a
+            signup, use{' '}
+            <Link href="/admin/events" className={styles.actionLink}>
+              Event Signups
+            </Link>
+            .
+          </>
+        }
+      />
 
       {rows.length === 0 ? (
         <section className={styles.panel}>

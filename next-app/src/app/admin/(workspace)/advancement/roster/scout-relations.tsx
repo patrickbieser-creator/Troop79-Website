@@ -11,6 +11,7 @@ import {
 } from './person-actions';
 import styles from './roster.module.css';
 import { AddButton } from '../../_components/add-button';
+import { Notice } from '../../_components/notice';
 
 /**
  * Parents and guardians on a scout record.
@@ -92,7 +93,7 @@ export function ScoutRelations({ scoutPersonId }: { scoutPersonId: number | null
 
   return (
     <div>
-      {error && <div className={styles.rowError}>{error}</div>}
+      {error && <Notice>{error}</Notice>}
       {saved && <div className={styles.savedNote}>{saved}</div>}
 
       {loading && <p className={styles.editorHint}>Loading…</p>}

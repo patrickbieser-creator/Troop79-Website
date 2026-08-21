@@ -20,7 +20,7 @@ import { fetchAllRows } from '@/lib/supabase/paginate';
 import { requireCapability } from '@/lib/require-capability';
 import { AttendanceList, type AttendanceListRow } from './meetings-list';
 import { deleteMeeting } from './actions';
-import styles from './meetings.module.css';
+import { PageTitle } from '../../_components/page-title';
 
 export const metadata = {
   title: 'Roll Call — Troop 79'
@@ -105,14 +105,12 @@ export default async function RollCallListPage() {
 
   return (
     <>
-      <div className={styles.pageTitle}>
-        <h1>Roll Call</h1>
-        <p>
-          Who was at what &mdash; every event that tracks attendance, not just meetings. Open one to
+      <PageTitle
+        title="Roll Call"
+        sub="Who was at what — every event that tracks attendance, not just meetings. Open one to
           take or correct its roll call; marking a scout present grants the ledger credit its
-          category carries. Meetings also carry an agenda, edited separately.
-        </p>
-      </div>
+          category carries. Meetings also carry an agenda, edited separately."
+      />
 
       <AttendanceList rows={rows} onDeleteAgenda={deleteMeeting} />
     </>

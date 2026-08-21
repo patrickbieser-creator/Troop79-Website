@@ -17,6 +17,7 @@ import { requireCapability } from '@/lib/require-capability';
 import type { LedgerEntry, LedgerKind, Scout } from '@/lib/supabase/types';
 import { RecordsTable } from './records-table';
 import styles from './records.module.css';
+import { PageTitle } from '../../_components/page-title';
 
 export const metadata = {
   title: 'Submit & Present — Troop 79 Admin'
@@ -119,15 +120,17 @@ export default async function RecordsPage({
 
   return (
     <>
-      <div className={styles.pageTitle}>
-        <h1>Submit &amp; Present</h1>
-        <p>
-          Every rank, merit badge, and special award earned — most recent first. Check off
-          <strong> Submitted</strong> once the Scoutbook upload is confirmed, and
-          <strong> Presented</strong> once the scout has actually received it at a meeting or Court of
-          Honor. Archived and deleted rows are excluded.
-        </p>
-      </div>
+      <PageTitle
+        title={<>Submit &amp; Present</>}
+        sub={
+          <>
+            Every rank, merit badge, and special award earned — most recent first. Check off
+            <strong> Submitted</strong> once the Scoutbook upload is confirmed, and
+            <strong> Presented</strong> once the scout has actually received it at a meeting or
+            Court of Honor. Archived and deleted rows are excluded.
+          </>
+        }
+      />
 
       <div className={styles.toolbar}>
         <div className={styles.typeTabs} role="tablist" aria-label="Filter by type">

@@ -14,7 +14,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { requireCapability } from '@/lib/require-capability';
 import { nextSunday } from '@/lib/dates';
 import { PlanView, type PublishedPlanRow } from './plan-view';
-import styles from './meeting-plan.module.css';
+import { PageTitle } from '../../_components/page-title';
 
 export const metadata = {
   title: 'Meeting Plan — Troop 79'
@@ -41,16 +41,14 @@ export default async function MeetingPlanPage() {
 
   return (
     <>
-      <div className={styles.pageTitle}>
-        <h1>Meeting Plan</h1>
-        <p>
-          Suggested advancement for a troop meeting, generated on demand from the ledger:
+      <PageTitle
+        title="Meeting Plan"
+        sub="Suggested advancement for a troop meeting, generated on demand from the ledger:
           up to three meeting-doable requirements per scout, grouped into sessions of eight
           or fewer with a qualified teacher — adult leader or authorized scout instructor.
           Campout-only requirements stay visible in their own column. Review the result,
-          then publish it to the public site.
-        </p>
-      </div>
+          then publish it to the public site."
+      />
 
       <PlanView published={published} defaultDate={nextSunday()} />
     </>

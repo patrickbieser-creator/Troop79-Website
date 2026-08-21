@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { bulkUpdateLedgerEntries } from './actions';
 import type { LedgerEntry } from '@/lib/supabase/types';
 import { DatePickerField } from '../../_components/date-picker-field';
+import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
+import { Notice } from '../../_components/notice';
 import styles from './ledger.module.css';
 
 type Row = LedgerEntry & { scoutName?: string };
@@ -132,27 +134,22 @@ export function BulkEditModal({ rows, scouts, leaders, onClose, onSaved }: Props
   const changeCount = FIELDS.filter((f) => changed[f.key]).length;
 
   return (
-    <dialog
-      ref={dialogRef}
-      className={`${styles.editDialog} ${styles.bulkDialog}`}
-      onClose={onClose}
-      onClick={(e) => {
-        if (e.target === dialogRef.current) onClose();
-      }}
-    >
-      <div className={styles.editDialogInner}>
-        <div className={styles.editDialogHeader}>
-          <h3>Bulk edit — {rows.length} record{rows.length === 1 ? '' : 's'}</h3>
-          <p>
+    <Dialog ref={dialogRef} className={styles.bulkDialog} onClose={onClose}>
+      <DialogHeader
+        title={`Bulk edit — ${rows.length} record${rows.length === 1 ? '' : 's'}`}
+        sub={
+          <>
             Toggle a field to overwrite it on <strong>all {rows.length}</strong>{' '}
             selected rows. Untouched fields keep each row&rsquo;s current value.
             A <strong>Mixed</strong> field lists its distinct values with counts
             — click one to normalize every row to it (handy for fixing a
             mis-keyed signer, date, or scout). Kind, Code, and Description are
             edited one row at a time.
-          </p>
-        </div>
+          </>
+        }
+      />
 
+      <DialogBody>
         <div className={styles.bulkFields}>
           {FIELDS.map((f) => {
             const dv = distinct(f.key);
@@ -223,32 +220,32 @@ export function BulkEditModal({ rows, scouts, leaders, onClose, onSaved }: Props
           })}
         </div>
 
-        {err && <div className={styles.editError}>{err}</div>}
+        {err && <Notice>{err}</Notice>}
+      </DialogBody>
 
-        <div className={styles.editActions}>
-          <button
-            type="button"
-            className={styles.actionBtn}
-            onClick={onClose}
-            disabled={isPending}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            className={styles.editSaveBtn}
-            onClick={submit}
-            disabled={isPending || changeCount === 0}
-          >
-            {isPending
-              ? 'Saving…'
-              : changeCount === 0
-                ? 'Apply changes'
-                : `Apply ${changeCount} change${changeCount === 1 ? '' : 's'} to ${rows.length} rows`}
-          </button>
-        </div>
-      </div>
-    </dialog>
+      <DialogActions>
+        <button
+          type="button"
+          className={styles.actionBtn}
+          onClick={onClose}
+          disabled={isPending}
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          className={styles.editSaveBtn}
+          onClick={submit}
+          disabled={isPending || changeCount === 0}
+        >
+          {isPending
+            ? 'Saving…'
+            : changeCount === 0
+              ? 'Apply changes'
+              : `Apply ${changeCount} change${changeCount === 1 ? '' : 's'} to ${rows.length} rows`}
+        </button>
+      </DialogActions>
+    </Dialog>
   );
 }
 

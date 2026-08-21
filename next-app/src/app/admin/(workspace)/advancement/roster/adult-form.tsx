@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { createPerson } from './person-actions';
 import type { HouseholdOption } from './people-table';
 import styles from './roster.module.css';
+import { Notice } from '../../_components/notice';
+import { Dialog } from '../../_components/dialog';
 
 /**
  * "Add Adult" — the same shape as the Scout editor's create path (a dialog off
@@ -50,6 +52,13 @@ export function AdultForm({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  // Mounted only while open — showModal() once on mount (Esc/backdrop free).
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dlg = dialogRef.current;
+    if (dlg && !dlg.open) dlg.showModal();
+  }, []);
+
   function save() {
     setError(null);
     const fd = new FormData();
@@ -78,7 +87,10 @@ export function AdultForm({
   const canSave = firstName.trim() !== '' && lastName.trim() !== '' && !isPending;
 
   return (
-    <div className={styles.editorOverlay} role="dialog" aria-modal="true" aria-label="Add an adult">
+    // Shared Dialog (Phase B, 2026-08-21) — was the same hand-rolled fixed
+    // overlay as PersonEditor's (no Escape/backdrop close). Mounted only
+    // while open, so showModal() runs once on mount.
+    <Dialog ref={dialogRef} className={styles.editorDialog} onClose={onClose} aria-label="Add an adult">
       <div className={styles.editorPanel}>
       <div className={styles.editorHead}>
         <div>
@@ -92,7 +104,7 @@ export function AdultForm({
         </button>
       </div>
 
-      {error && <div className={styles.rowError}>{error}</div>}
+      {error && <Notice>{error}</Notice>}
 
       <div className={styles.editGrid}>
         <label className={styles.editField}>
@@ -228,6 +240,6 @@ export function AdultForm({
         </button>
       </div>
       </div>
-    </div>
+    </Dialog>
   );
 }

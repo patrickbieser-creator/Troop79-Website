@@ -23,6 +23,7 @@ import { requireCapability } from '@/lib/require-capability';
 import type { Article, ArticleType, ArticleStatus } from '@/lib/supabase/types';
 import { ArticlesTabs } from './articles-tabs';
 import { AddButton } from '../../_components/add-button';
+import { PageTitle } from '../../_components/page-title';
 import { ArticlesToolbar } from './articles-toolbar';
 import { ArticlesTable } from './articles-table';
 import styles from './articles.module.css';
@@ -176,18 +177,17 @@ export default async function ArticlesPage({
 
   return (
     <>
-      <div className={styles.pageTitle}>
-        <div>
-          <h1>News</h1>
-          <p>
-            Announcements, opportunities, and stories for the public site &mdash;
-            anything worth publishing that isn&rsquo;t a troop calendar event
-            (those promote themselves from the Calendar). Scouts draft; leaders
-            review and publish. <strong>Archive</strong> hides a post from the
-            public site without deleting it.
-          </p>
-        </div>
-      </div>
+      <PageTitle
+        title="News"
+        sub={
+          <>
+            Announcements, opportunities, and stories for the public site &mdash; anything worth
+            publishing that isn&rsquo;t a troop calendar event (those promote themselves from the
+            Calendar). Scouts draft; leaders review and publish. <strong>Archive</strong> hides a
+            post from the public site without deleting it.
+          </>
+        }
+      />
 
       {pendingCount > 0 && parsed.status !== 'pending' && (
         <div className={styles.pendingNotice}>

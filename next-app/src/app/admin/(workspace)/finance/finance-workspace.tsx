@@ -45,6 +45,7 @@ import { EnteredByCell } from './entered-by-cell';
 import { EditTransactionDialog } from './edit-transaction-dialog';
 import { KindManager } from './kind-manager';
 import { ActionsMenu } from '../_components/actions-menu';
+import { Dialog, DialogHeader, DialogBody, DialogActions } from '../_components/dialog';
 import styles from './finance.module.css';
 
 type FinanceModal = 'record' | 'transfer' | 'reconcile' | 'kinds';
@@ -267,13 +268,13 @@ export function FinanceWorkspace({
       )}
 
       {canManage && (
-        <dialog ref={actionModalRef} className={styles.actionModal} onClose={() => setActiveModal(null)}>
-            <div className={styles.actionModalHeader}>
-              <h3>{activeModal && MODAL_TITLES[activeModal]}</h3>
-              <button type="button" className={styles.saveBtnAlt} onClick={() => setActiveModal(null)}>
-                Close
-              </button>
-            </div>
+        <Dialog
+          ref={actionModalRef}
+          className={styles.actionModal}
+          onClose={() => setActiveModal(null)}
+        >
+          <DialogHeader title={activeModal ? MODAL_TITLES[activeModal] : ''} />
+          <DialogBody>
             {activeModal === 'record' && (
               <RecordTransactionForm
                 people={people}
@@ -327,7 +328,13 @@ export function FinanceWorkspace({
               />
             )}
             {activeModal === 'kinds' && <KindManager kinds={kinds} />}
-        </dialog>
+          </DialogBody>
+          <DialogActions>
+            <button type="button" className={styles.saveBtnAlt} onClick={() => setActiveModal(null)}>
+              Close
+            </button>
+          </DialogActions>
+        </Dialog>
       )}
 
       {canManage && selectedIds.size > 0 && (

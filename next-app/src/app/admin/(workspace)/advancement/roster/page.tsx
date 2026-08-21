@@ -25,6 +25,7 @@ import { centralToday } from '@/lib/dates';
 import type { Rank } from '@/lib/supabase/types';
 import { RosterActions } from './roster-actions';
 import { TabStrip } from '../../_components/tab-strip';
+import { PageTitle } from '../../_components/page-title';
 import { ScoutsTable } from './scouts-table';
 import {
   PeopleTable,
@@ -154,17 +155,14 @@ export default async function RosterPage({
 
   return (
     <>
-      <div className={styles.pageTitle}>
-        <div>
-          <h1>Troop Roster</h1>
-          <p>
-            Ages and grades derived from birthdate and graduation year as of {fmtDate(today)}.
+      <PageTitle
+        title="Troop Roster"
+        sub={`Ages and grades derived from birthdate and graduation year as of ${fmtDate(today)}.
             Which tab someone appears on follows their current role — giving or ending a role moves
-            them, and never changes their household or relationships.
-          </p>
-        </div>
+            them, and never changes their household or relationships.`}
+      >
         <RosterActions className={styles.actionsBar} />
-      </div>
+      </PageTitle>
 
       {/* Shared TabStrip (Phase A, 2026-08-21), link mode — tab state stays
           in the URL. Also gains the tablist/tab roles this hand-rolled strip

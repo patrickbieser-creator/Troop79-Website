@@ -1,0 +1,30 @@
+/**
+ * Shared page header (Phase B, Plans/Admin-Design-System.md) — the block
+ * 26 of 35 admin modules re-declared verbatim. Always a flex row so a
+ * screen can drop actions (an AddButton, a back link) on the right without
+ * redefining the layout, matching what calendar/finance/articles/ledger
+ * already did by hand.
+ */
+.pageTitle {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--admin-space-8);
+  margin-bottom: var(--admin-space-10);
+  border-bottom: 1px solid var(--admin-gray-200);
+  padding-bottom: var(--admin-space-7);
+}
+/* 22px is the legacy-exact heading size every copy used — off the type
+   scale (20/24); rounds in Phase C if at all. */
+.text h1 {
+  font-size: 22px;
+  font-weight: var(--admin-weight-bold);
+  color: var(--admin-navy);
+  margin-bottom: var(--admin-space-2);
+}
+.text p {
+  font-size: var(--admin-text-md);
+  color: var(--admin-gray-500);
+  max-width: 720px;
+  line-height: 1.5;
+}

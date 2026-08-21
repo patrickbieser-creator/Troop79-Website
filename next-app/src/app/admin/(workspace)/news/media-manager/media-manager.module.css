@@ -1,20 +1,4 @@
-.pageTitle {
-  margin-bottom: 20px;
-  border-bottom: 1px solid var(--admin-gray-200);
-  padding-bottom: 14px;
-}
-.pageTitle h1 {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--admin-navy);
-  margin-bottom: 4px;
-}
-.pageTitle p {
-  font-size: 13px;
-  color: var(--admin-gray-500);
-  max-width: 720px;
-  line-height: 1.5;
-}
+/* .pageTitle retired Phase B (2026-08-21) — shared PageTitle component. */
 
 .toolbar {
   display: flex;
@@ -224,15 +208,8 @@
   outline: none;
 }
 .editInput:focus { border-color: var(--admin-navy); }
-.editError, .blockedNotice {
-  margin-top: 4px;
-  padding: 8px 12px;
-  background: #fdf0ef;
-  border: 1px solid #e8c4c0;
-  color: var(--admin-danger);
-  border-radius: 3px;
-  font-size: 12px;
-}
+/* .editError/.blockedNotice retired Phase B (2026-08-21) — shared Notice
+   component; only the list layout inside the blocked notice stays local. */
 .blockedList { margin: 6px 0 0; padding-left: 18px; }
 .blockedList li { margin-bottom: 2px; }
 .editSaveBtn {

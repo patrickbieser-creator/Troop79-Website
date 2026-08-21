@@ -1,0 +1,34 @@
+/**
+ * Shared inline notice (Phase B, Plans/Admin-Design-System.md) — one box
+ * for the four per-screen names the audit found (.rowError / .editError /
+ * .fieldError / .notice) and the 11-file pale-tint drift cluster behind
+ * them, collapsed onto the status tokens.
+ */
+.notice {
+  margin-top: var(--admin-space-2);
+  padding: var(--admin-space-4) var(--admin-space-6);
+  border: 1px solid;
+  border-radius: var(--admin-radius-sm);
+  font-size: var(--admin-text-base);
+  line-height: 1.5;
+}
+.error {
+  background: var(--admin-status-error-bg);
+  border-color: color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white));
+  color: var(--admin-danger);
+}
+.success {
+  background: var(--admin-status-success-bg);
+  border-color: color-mix(in srgb, var(--admin-forest) 30%, var(--admin-white));
+  color: var(--admin-forest);
+}
+.warning {
+  background: var(--admin-status-warning-bg);
+  border-color: color-mix(in srgb, var(--admin-accent-gold) 30%, var(--admin-white));
+  color: var(--admin-accent-gold);
+}
+.info {
+  background: var(--admin-status-info-bg);
+  border-color: color-mix(in srgb, var(--admin-navy) 25%, var(--admin-white));
+  color: var(--admin-navy);
+}

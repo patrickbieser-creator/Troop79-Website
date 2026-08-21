@@ -35,17 +35,23 @@ type DialogProps = {
   danger?: boolean;
   /** Fired on every close path: Esc, backdrop click, or a .close() call. */
   onClose?: () => void;
+  /** Width/size override only (e.g. a per-screen `.wide` class capping at
+   *  900px) — the spec chrome itself is not overridable. */
+  className?: string;
   children: React.ReactNode;
 } & Omit<React.DialogHTMLAttributes<HTMLDialogElement>, 'className' | 'onClose'>;
 
 export const Dialog = forwardRef<HTMLDialogElement, DialogProps>(function Dialog(
-  { danger, onClose, children, ...rest },
+  { danger, onClose, className, children, ...rest },
   ref
 ) {
+  const cls = [styles.dialog, danger ? styles.danger : null, className]
+    .filter(Boolean)
+    .join(' ');
   return (
     <dialog
       ref={ref}
-      className={danger ? `${styles.dialog} ${styles.danger}` : styles.dialog}
+      className={cls}
       onClose={onClose}
       onClick={(e) => {
         if (e.target === e.currentTarget) e.currentTarget.close();

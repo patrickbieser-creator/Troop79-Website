@@ -6,6 +6,8 @@ import type { Media } from '@/lib/supabase/types';
 import { listMediaManager, updateMediaMetadata, deleteMedia, type MediaUsage } from './actions';
 import styles from './media-manager.module.css';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
+import { PageTitle } from '../../_components/page-title';
+import { Notice } from '../../_components/notice';
 
 const PAGE_SIZE = 60;
 
@@ -60,14 +62,12 @@ export function MediaManagerView() {
 
   return (
     <>
-      <div className={styles.pageTitle}>
-        <h1>Media Manager</h1>
-        <p>
-          Every photo in the library — uploaded here or synced in from Bunny. Edit alt text and
+      <PageTitle
+        title="Media Manager"
+        sub="Every photo in the library — uploaded here or synced in from Bunny. Edit alt text and
           captions, or delete photos that are no longer needed (deleting only removes it from this
-          library; the file stays in Bunny and a Sync will re-index it).
-        </p>
-      </div>
+          library; the file stays in Bunny and a Sync will re-index it)."
+      />
 
       <div className={styles.toolbar}>
         <input
@@ -271,7 +271,7 @@ function EditForm({
         />
       </label>
 
-      {err && <div className={styles.editError}>{err}</div>}
+      {err && <Notice>{err}</Notice>}
       </DialogBody>
 
       <DialogActions>
@@ -361,7 +361,7 @@ function DeleteConfirm({
       <img src={media.cdn_url} alt="" className={styles.dialogPreview} />
 
       {blockedBy && (
-        <div className={styles.blockedNotice}>
+        <Notice>
           Used by {blockedBy.length} article{blockedBy.length === 1 ? '' : 's'}:
           <ul className={styles.blockedList}>
             {blockedBy.map((a) => (
@@ -371,9 +371,9 @@ function DeleteConfirm({
             ))}
           </ul>
           Remove it from those articles first, then delete it here.
-        </div>
+        </Notice>
       )}
-      {err && <div className={styles.editError}>{err}</div>}
+      {err && <Notice>{err}</Notice>}
       </DialogBody>
 
       <DialogActions>

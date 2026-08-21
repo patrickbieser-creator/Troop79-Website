@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import Image from 'next/image';
 import type { Media } from '@/lib/supabase/types';
 import { listMedia, setMediaAltText, uploadMedia } from '../media/actions';
+import { TabStrip } from '../../_components/tab-strip';
 import styles from './media-picker.module.css';
 
 interface MediaPickerProps {
@@ -183,25 +184,17 @@ export function MediaPicker({ mode, onClose, onInsert, initialSelected }: MediaP
           </button>
         </div>
 
-        <div className={styles.tabs} role="tablist">
-          <button
-            className={`${styles.tab} ${tab === 'browse' ? styles.tabActive : ''}`}
-            role="tab"
-            aria-selected={tab === 'browse'}
-            type="button"
-            onClick={() => setTab('browse')}
-          >
-            Browse Existing
-          </button>
-          <button
-            className={`${styles.tab} ${tab === 'upload' ? styles.tabActive : ''}`}
-            role="tab"
-            aria-selected={tab === 'upload'}
-            type="button"
-            onClick={() => setTab('upload')}
-          >
-            Upload New
-          </button>
+        {/* Shared pill TabStrip (Phase B fold-in decision, Patrick 2026-08-21) —
+            replaced the picker's own public-token tab styling. */}
+        <div className={styles.tabRow}>
+          <TabStrip
+            ariaLabel="Media picker source"
+            activeKey={tab}
+            items={[
+              { key: 'browse', label: 'Browse Existing', onSelect: () => setTab('browse') },
+              { key: 'upload', label: 'Upload New', onSelect: () => setTab('upload') }
+            ]}
+          />
         </div>
 
         <div className={styles.body}>

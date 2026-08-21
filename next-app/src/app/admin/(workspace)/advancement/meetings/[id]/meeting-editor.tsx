@@ -8,6 +8,7 @@ import type { PromotePayload } from '../actions';
 import styles from '../meetings.module.css';
 import { Badge } from '../../../_components/badge';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../../_components/dialog';
+import { Notice } from '../../../_components/notice';
 
 type ActionResult = { ok: boolean; error?: string };
 
@@ -197,7 +198,7 @@ export function MeetingEditor({
         </div>
       </div>
 
-      {err && <div className={styles.editError}>{err}</div>}
+      {err && <Notice>{err}</Notice>}
 
       <div className={styles.editorGrid}>
         <div>
@@ -604,7 +605,7 @@ function SessionForm({
         </label>
       </div>
 
-      {err && <div className={styles.editError}>{err}</div>}
+      {err && <Notice>{err}</Notice>}
       </DialogBody>
 
       <DialogActions>

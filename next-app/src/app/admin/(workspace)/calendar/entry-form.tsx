@@ -23,6 +23,7 @@ import type { CalendarCategoryRow } from '@/lib/calendar-categories';
 import { MediaPicker } from '../news/_components/media-picker';
 import { DatePickerField } from '../_components/date-picker-field';
 import { DialogHeader, DialogBody, DialogActions } from '../_components/dialog';
+import { Notice } from '../_components/notice';
 import styles from './calendar.module.css';
 
 type ActionResult = { ok: boolean; error?: string };
@@ -325,7 +326,7 @@ export function CalendarEntryForm({
         />
       )}
 
-      {err && <div className={styles.editError}>{err}</div>}
+      {err && <Notice>{err}</Notice>}
     </>
   );
 

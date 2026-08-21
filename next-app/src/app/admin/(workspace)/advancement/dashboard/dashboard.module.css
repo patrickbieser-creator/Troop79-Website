@@ -57,27 +57,7 @@
   font-style: italic;
 }
 
-.pageTitle {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 24px;
-  border-bottom: 1px solid var(--admin-gray-200);
-  padding-bottom: 14px;
-  margin-bottom: 20px;
-}
-.pageTitle h1 {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--admin-navy);
-  margin-bottom: 4px;
-}
-.pageTitle p {
-  font-size: 13px;
-  color: var(--admin-gray-500);
-  max-width: 720px;
-  line-height: 1.5;
-}
+/* .pageTitle retired Phase B (2026-08-21) — shared PageTitle component. */
 .actions {
   display: flex;
   gap: 8px;

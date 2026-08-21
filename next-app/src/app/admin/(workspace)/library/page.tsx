@@ -55,6 +55,7 @@ import {
 } from './actions';
 import { ResourceEntryForm, type TargetOptionGroup } from './resource-entry-form';
 import { QuickAddResource } from './quick-add-resource';
+import { TabStrip } from '../_components/tab-strip';
 import styles from './library.module.css';
 
 export const metadata = {
@@ -316,8 +317,15 @@ export default async function AdminLibraryPage({
       {sp.err && <p className={styles.errBanner}>{sp.err}</p>}
       {sp.saved && <p className={styles.savedBanner}>Saved.</p>}
 
-      <nav className={styles.tabs} aria-label="Library workstation sections">
-        {TABS.map((t) => {
+      {/* Shared pill TabStrip — Patrick's Phase B call (2026-08-21): the
+          workstation's own tab family folds in too. This deliberately stops
+          CONSUMING library.module.css's .tabs/.tab/.tabOn/.tabBadge from the
+          admin side without restyling that shared stylesheet — closing the
+          D-160 backlog item. */}
+      <TabStrip
+        ariaLabel="Library workstation sections"
+        activeKey={tab}
+        items={TABS.map((t) => {
           const badge =
             t.key === 'queue'
               ? pending.length
@@ -326,18 +334,14 @@ export default async function AdminLibraryPage({
                 : t.key === 'archived'
                   ? archived.length
                   : 0;
-          return (
-            <Link
-              key={t.key}
-              className={`${styles.tab} ${tab === t.key ? styles.tabOn : ''}`}
-              href={`/admin/library?tab=${t.key}`}
-            >
-              {t.label}
-              {badge > 0 && <span className={styles.tabBadge}>{badge}</span>}
-            </Link>
-          );
+          return {
+            key: t.key,
+            label: t.label,
+            href: `/admin/library?tab=${t.key}`,
+            ...(badge > 0 ? { count: badge } : {})
+          };
         })}
-      </nav>
+      />
 
       {tab === 'add' && (
         <ResourceEntryForm

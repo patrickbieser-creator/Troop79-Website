@@ -52,8 +52,19 @@ The audit's headline numbers:
       `.adminLabel` utility exists in admin.css; primary/danger button decisions made by
       Patrick and applied (see Notes). Full gate green (666 tests), every touched screen
       browser-verified in dev with screenshots.
-- [ ] **Phase B** complete: table clusters normalized, card/panel merged, `.pageTitle` and
-      notice components shared, `access.module.css` off rem units, non-pill tab decision made.
+- [x] **Phase B** complete (2026-08-21, third session — v1.59.0): shared `PageTitle`
+      (~33 pages; the 26 per-screen blocks deleted) and `Notice` (error/success/warning/info
+      on the status tokens, alert/status roles; ~33 box sites) components shipped and adopted
+      everywhere; table clusters normalized within themselves (compact = calendar canon incl.
+      meeting-plan's normalized navy header; wrapped-card = ledger canon incl. access);
+      card/panel merged onto the card canon; `access.module.css` fully off rem units (and its
+      tan palette onto tokens); non-pill tab decision made (fold ALL into pill TabStrip) and
+      applied (meeting-plan, coh, report, library workstation, media-picker). ALSO: the
+      remaining dialog families converted to the shared Dialog — ledger ×3, finance ×6,
+      lookups ×2 (mb-editor 720px), roster (scout form 860px, PersonEditor + adult-form
+      hand-rolled overlays → native Dialog, gaining Esc/backdrop close — Section 2 finding #1
+      closed), fast-entry req-first-card, rosters payment dialog. Exceptions documented in
+      Notes. Gate green (671 tests), representative screens browser-verified in dev.
 - [ ] **Phase C** complete: ≤ 20 inline `style={{}}` sites remain under `admin/` (the 12
       dynamic ones + genuinely one-off cases, each commented); hex-literal count in admin
       modules reduced ≥ 80%; zero public-token reads from admin styles.
@@ -164,9 +175,23 @@ last (HIGH risk).
       danger treatment (outlined vs solid), roster's navy addBtn (intentional or convert?).
    e. Adopt screen-by-screen: News, Calendar, Meetings, Albums first (already identical —
       pure swaps), then the drift cases (lookups, roster, roster-import, roll-call).
-2. **Phase B — structural consolidation:** table clusters (compact + wrapped-card), card/panel
-   merge, shared PageTitle + Notice, `access.module.css` rem→token pass, non-pill tab
-   decision (meeting-plan/library/media-picker/court-of-honor keep or fold).
+2. **Phase B — structural consolidation: COMPLETE (2026-08-21, v1.59.0).** Executed by three
+   parallel forks with strict directory ownership + a parent integration pass. Beyond the
+   acceptance list: meeting-plan's green Generate button (a primary the audit missed) went
+   navy; the audit's dead `.pillNews`-style leftovers and events-admin's retired `.payDialog`
+   chrome were deleted; Admin-Nav-And-Consistency Section 2's fold-ins landed where they
+   overlap CSS consistency — dialog mechanism unified (incl. both hand-rolled overlays) and
+   the two truncation quick wins (albums' dead `.linkCell` applied; calendar `.titleCell`
+   got overflow-wrap). **Deliberately deferred from Section 2** (behavior features, not CSS
+   consistency — now backlog): SortHeader/useSortable moved to `_components/` + adoption in
+   event-editor/people-table/roster-table/calendar-editor; stretched-link row actions
+   (calendar's duplicate Edit link); genuine `import` convergence of the copied
+   `.editGrid`/`.editField` field CSS. **Dialog exceptions:** fast-entry's mb-focus-modal
+   (its unsaved-ticks close guard needs a `closeOnBackdrop` prop on the shared Dialog first)
+   and library's quick-add (styled by the public-shared stylesheet; rides with the library
+   workstation scoped pass). meeting-plan's plan-view tabs/table conversion is
+   code-complete but needs a production eyes-on when a plan next exists (dev regeneration is
+   deliberately avoided).
 3. **Phase C — inline-style + literal sweep**, screen by screen, worst first: Lookups editors
    (47 sites), fast-entry picker (14 + the marginBottom:4 ×11), library workstation, login
    (needs a new `login.module.css`), rosters (needs any stylesheet). Replace hex literals with
@@ -189,8 +214,13 @@ last (HIGH risk).
       outlined copies share color-mix(30% danger) border + status-error-bg hover.
 - [x] Roster's navy addBtn — **DECIDED by Patrick 2026-08-21: convert to green** shared
       AddButton (it was drift, not a recorded choice).
-- [ ] meeting-plan's navy table header — keep as intentional emphasis or normalize? (Phase B)
-- [ ] Fold the non-pill tab variants into one component, or bless two tab patterns? (Phase B)
+- [x] meeting-plan's navy table header — **DECIDED by Patrick 2026-08-21 (Phase B session):
+      normalize to the compact cluster's gray header.** One table language everywhere.
+- [x] Non-pill tab variants — **DECIDED by Patrick 2026-08-21 (Phase B session): fold
+      EVERYTHING into the pill TabStrip** (offered "bless two patterns" was declined).
+      Applied to meeting-plan's underline tabs, court-of-honor's and the report's view tabs,
+      the library workstation (admin page only — library.module.css untouched, which also
+      closes the D-160 backlog item), and media-picker's tabs.
 
 ## Notes
 

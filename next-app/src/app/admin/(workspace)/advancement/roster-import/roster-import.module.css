@@ -2,11 +2,7 @@
   padding: 40px; text-align: center; font-size: 14px; color: var(--admin-gray-500);
 }
 
-.pageTitle {
-  margin-bottom: 20px; border-bottom: 1px solid var(--admin-gray-200); padding-bottom: 14px;
-}
-.pageTitle h1 { font-size: 22px; font-weight: 700; color: var(--admin-navy); margin-bottom: 4px; }
-.pageTitle p { font-size: 13px; color: var(--admin-gray-500); max-width: 760px; line-height: 1.5; }
+/* .pageTitle retired Phase B (2026-08-21) — shared PageTitle component. */
 
 .fieldLabel {
   display: block; font-size: 10px; font-weight: 700; letter-spacing: .06em;
@@ -162,10 +158,9 @@
 /* Tab strip moved to the shared TabStrip component (Phase A, 2026-08-21);
    only the page-level spacing stays local. */
 .tabMargin { margin-bottom: 16px; }
-.notice {
-  padding: 10px 12px; margin-bottom: 12px; border-radius: 3px; font-size: 13px;
-  background: #f0f6f1; border: 1px solid #b8d6c0; color: #2f6b3f;
-}
+/* .notice retired Phase B (2026-08-21) — shared Notice (success variant). */
+/* Layout-only companion: the old .notice carried its own bottom margin. */
+.noticeSpacing { margin-bottom: 12px; }
 .bulkBar {
   display: flex; align-items: center; justify-content: space-between; gap: 20px;
   padding: 14px 16px; margin-bottom: 14px; border-radius: 4px;

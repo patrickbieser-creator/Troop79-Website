@@ -17,6 +17,7 @@ import {
 } from './actions';
 import styles from './court-of-honor.module.css';
 import { Badge } from '../../_components/badge';
+import { TabStrip } from '../../_components/tab-strip';
 import { ActionsMenu } from '../../_components/actions-menu';
 
 function todayIso(): string {
@@ -187,28 +188,18 @@ export function CourtOfHonorWorkspace({
             </section>
 
             <section className={styles.card}>
-              <div className={styles.viewTabs}>
-                <button
-                  type="button"
-                  className={view === 'category' ? styles.viewTabActive : styles.viewTab}
-                  onClick={() => setView('category')}
-                >
-                  By Type
-                </button>
-                <button
-                  type="button"
-                  className={view === 'scout' ? styles.viewTabActive : styles.viewTab}
-                  onClick={() => setView('scout')}
-                >
-                  By Scout
-                </button>
-                <button
-                  type="button"
-                  className={view === 'markdown' ? styles.viewTabActive : styles.viewTab}
-                  onClick={() => setView('markdown')}
-                >
-                  Markdown
-                </button>
+              {/* Shared pill TabStrip — Patrick's Phase B call (2026-08-21):
+                  fold the boxed view-tab one-off into the one tab pattern. */}
+              <div className={styles.viewTabsRow}>
+                <TabStrip
+                  ariaLabel="Report view"
+                  activeKey={view}
+                  items={[
+                    { key: 'category', label: 'By Type', onSelect: () => setView('category') },
+                    { key: 'scout', label: 'By Scout', onSelect: () => setView('scout') },
+                    { key: 'markdown', label: 'Markdown', onSelect: () => setView('markdown') }
+                  ]}
+                />
               </div>
 
               {view === 'category' && <ArticleBody body={bodyMd} />}

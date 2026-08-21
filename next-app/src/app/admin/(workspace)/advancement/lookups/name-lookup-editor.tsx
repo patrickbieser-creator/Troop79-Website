@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useLookupTable } from './use-lookup-table';
 import styles from './lookups.module.css';
 import { AddButton } from '../../_components/add-button';
+import { Notice } from '../../_components/notice';
 
 type ActionResult = { ok: boolean; error?: string };
 
@@ -133,11 +134,7 @@ export function NameLookupEditor({ rows, noun, onCreate, onUpdate, onDelete }: P
         </div>
       )}
 
-      {err && (
-        <div className={styles.editError} style={{ marginBottom: 10 }}>
-          {err}
-        </div>
-      )}
+      {err && <Notice>{err}</Notice>}
 
       <div className={t.scrollClass}>
       <table className={styles.table}>

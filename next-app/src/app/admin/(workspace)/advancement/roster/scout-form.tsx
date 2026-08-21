@@ -8,6 +8,7 @@ import { PendingUpdatePanel } from './pending-update-panel';
 import { ageOn, gradeFromGradYear, gradeLabel, gradYearFromGrade } from '@/lib/demographics';
 import type { EditableScoutField } from '@/lib/change-requests';
 import { DatePickerField } from '../../_components/date-picker-field';
+import { Notice } from '../../_components/notice';
 import styles from '../lookups/lookups.module.css';
 
 export interface ScoutRow {
@@ -542,7 +543,7 @@ export function ScoutForm({
         </div>
       </div>
 
-      {err && <div className={styles.editError} style={{ margin: '0 20px' }}>{err}</div>}
+      {err && <Notice className={styles.noticeGutter}>{err}</Notice>}
 
       <div className={styles.editActionsRow}>
         {!isNew && row?.active && (

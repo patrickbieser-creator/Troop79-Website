@@ -11,6 +11,7 @@ import { fetchAllRows } from '@/lib/supabase/paginate';
 import { requireCapability } from '@/lib/require-capability';
 import type { MeritBadge, MbProgressRow } from '@/lib/supabase/types';
 import styles from './mb-progress.module.css';
+import { PageTitle } from '../../_components/page-title';
 
 export const metadata = {
   title: 'MB Progress — Troop 79 Admin'
@@ -57,14 +58,12 @@ export default async function MbProgressCatalogPage() {
   const { cards, totalActive } = await loadCatalog();
   return (
     <>
-      <div className={styles.pageTitle}>
-        <h1>Merit Badge Progress</h1>
-        <p>
-          Live progress on every merit badge in the Troop 79 program. Click a
+      <PageTitle
+        title="Merit Badge Progress"
+        sub="Live progress on every merit badge in the Troop 79 program. Click a
           card to drill in and sign off requirements per scout. Cards with a
-          green stripe have at least one scout in progress.
-        </p>
-      </div>
+          green stripe have at least one scout in progress."
+      />
       <div className={styles.meta}>
         {cards.length} badges · {totalActive} active scouts
       </div>
