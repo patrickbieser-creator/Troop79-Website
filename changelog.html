@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.67.0</p>
+      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.68.0</p>
     </div>
   </div>
 
@@ -494,6 +494,42 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.68.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.68.0</span>
+        <span class="release-date">August 21, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Design-system guardrails: the closeout numbers are now failing tests, not conventions</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>A census that bites.</strong> Five new invariant tests grep the source
+              on every test run and fail the build if the design system erodes: a new raw
+              hex color outside the 7 sanctioned deliberates, a new inline style beyond the
+              13 documented dynamic sites, any public CSS reading an admin token, any
+              public file importing admin code, or any admin stylesheet reading public
+              tokens outside the sanctioned crossings. Each failure message says what the
+              right fix is.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>The firewall is a lint error now.</strong> ESLint rejects any import
+              from the admin workspace inside public code, with a message pointing at the
+              shared components and the styleguide &mdash; verified by planting a violation
+              and watching it fail. Growing an allowlist deliberately requires the
+              commented justification at the site plus a styleguide scoreboard note, in the
+              same commit &mdash; the rule agents read in AGENTS.md now matches what the
+              build enforces.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

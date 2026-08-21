@@ -49,6 +49,13 @@ parity — changing those 8 public tokens restyles admin previews), (2) the DB-d
 `--font-playfair`/`--font-lora`/`--font-open-sans` variables are next/font infrastructure,
 not palette tokens — both sides may read them. Keep both styleguides in the same commit as
 any pattern change — same rule as admin. History: `Plans/Completed/Public-Design-System.md`.
+
+**These rules are mechanically enforced, not advisory:** `eslint.config.mjs` fails any
+admin import from public code, and `tests/design-system-census.test.ts` fails the build on
+a new raw hex, a new inline `style={{}}` site, or a cross-side token read outside the
+sanctioned allowlists. If your change trips one, the fix is a token, a class, or a shared
+component — growing an allowlist requires the `/* deliberate */` comment at the site AND a
+scoreboard note on `/admin/styleguide/public`, in the same commit.
 <!-- END:nextjs-agent-rules -->
 
 ## Known gotcha: JSX drops the space after an inline element at a line wrap
