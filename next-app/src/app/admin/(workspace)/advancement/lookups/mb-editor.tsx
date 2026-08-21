@@ -227,7 +227,7 @@ function MbForm({
       <DialogBody>
       <div className={styles.editSection}>
         <div className={styles.editSectionHeader}>
-          <h4>Catalog</h4>
+          <h4 className="adminLabel">Catalog</h4>
         </div>
         <div className={styles.editGrid}>
           <label className={styles.editField}>
@@ -286,7 +286,7 @@ function MbForm({
 
       <div className={styles.editSection}>
         <div className={styles.editSectionHeader}>
-          <h4>Counselors</h4>
+          <h4 className="adminLabel">Counselors</h4>
         </div>
         <p className={`${styles.helpText} ${styles.helpTight}`}>
           Pick one or more adult leaders who are registered counselors for this
@@ -304,7 +304,7 @@ function MbForm({
 
       <div className={styles.editSection}>
         <div className={styles.editSectionHeader}>
-          <h4>Requirements</h4>
+          <h4 className="adminLabel">Requirements</h4>
           <AddButton
             onClick={() =>
               setReqTree((prev) => [

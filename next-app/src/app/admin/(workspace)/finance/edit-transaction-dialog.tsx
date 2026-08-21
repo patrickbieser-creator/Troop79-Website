@@ -157,11 +157,11 @@ function EditTransactionForm({
           Reconciled on {lastReconciled} — saving will drift that reconciliation. Consider redoing it after.
         </p>
       )}
-      <label>
+      <label className="adminLabel">
         Date
         <input type="date" required value={occurredOn} onChange={(e) => setOccurredOn(e.target.value)} />
       </label>
-      <label>
+      <label className="adminLabel">
         Account
         <select value={account} onChange={(e) => setAccount(e.target.value as Account)}>
           {ACCOUNTS.map((a) => (
@@ -171,7 +171,7 @@ function EditTransactionForm({
           ))}
         </select>
       </label>
-      <label>
+      <label className="adminLabel">
         Scout/Adult
         <select required={account === 'scout_account'} value={personId} onChange={(e) => setPersonId(e.target.value)}>
           <option value="">{account === 'scout_account' ? 'Select a scout…' : '— unattributed —'}</option>
@@ -182,7 +182,7 @@ function EditTransactionForm({
           ))}
         </select>
       </label>
-      <label>
+      <label className="adminLabel">
         Kind
         <select value={kind} onChange={(e) => setKind(e.target.value as TransactionKind)}>
           {kinds.map((k) => (
@@ -192,7 +192,7 @@ function EditTransactionForm({
           ))}
         </select>
       </label>
-      <label>
+      <label className="adminLabel">
         Method
         <select value={method} onChange={(e) => setMethod(e.target.value as TransactionMethod | '')}>
           <option value="">(none)</option>
@@ -203,14 +203,14 @@ function EditTransactionForm({
           ))}
         </select>
       </label>
-      <label>
+      <label className="adminLabel">
         Direction
         <select value={sign} onChange={(e) => setSign(e.target.value as 'in' | 'out')}>
           <option value="out">Money out (expense)</option>
           <option value="in">Money in (income)</option>
         </select>
       </label>
-      <label>
+      <label className="adminLabel">
         Amount
         <input
           type="number"
@@ -221,7 +221,7 @@ function EditTransactionForm({
           onChange={(e) => setAmountText(e.target.value)}
         />
       </label>
-      <label>
+      <label className="adminLabel">
         Activity
         <input
           type="text"
@@ -235,7 +235,7 @@ function EditTransactionForm({
           ))}
         </datalist>
       </label>
-      <label className={styles.formGridWide}>
+      <label className={`adminLabel ${styles.formGridWide}`}>
         Memo
         <textarea rows={2} value={memo} onChange={(e) => setMemo(e.target.value)} />
       </label>

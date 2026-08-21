@@ -31,14 +31,10 @@
 .inlinePromptActions { display: flex; gap: 8px; justify-content: flex-end; }
 
 .field { margin-bottom: 10px; }
+/* Typography comes from the global .adminLabel on each <label> (Phase D). */
 .field label {
   display: block;
   font-family: var(--admin-font-ui);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .05em;
-  text-transform: uppercase;
-  color: var(--admin-gray-500);
   margin-bottom: 6px;
 }
 .field input[type='text'],

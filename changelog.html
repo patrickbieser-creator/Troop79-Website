@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.60.0</p>
+      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.61.0</p>
     </div>
   </div>
 
@@ -494,6 +494,59 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.61.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.61.0</span>
+        <span class="release-date">August 21, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Design system Phase D — closeout: every scoreboard row struck, the eyebrow label unified</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>The last duplication family is gone.</strong> The 11px bold uppercase
+              &ldquo;eyebrow&rdquo; label — once re-declared in 32 of 35 admin stylesheets —
+              now renders through the single global <code>.adminLabel</code> utility at ~96
+              call sites. Byte-identical copies were swapped first; the drifted variants
+              (letter-spacing .04&ndash;.12em, grays 600/700, 10&ndash;10.5px sizes) were
+              then folded onto the utility&rsquo;s spec per the token sheet&rsquo;s
+              drift-rounds-to-the-scale rule. Meaningful color accents (navy labels, the
+              danger section) survive as properly-specific local overrides.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>What deliberately kept its own typography:</strong> table headers,
+              pills, buttons, and composite headers are other patterns, not labels — plus
+              two distinct-role survivors (the events stat-tile label and the library
+              workstation&rsquo;s widest-tracked section heading), both documented on the
+              scoreboard.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>The Inconsistency Scoreboard shows every row struck</strong> — all
+              fifteen patterns consolidated or decided across Phases A&ndash;D in a single
+              day&rsquo;s campaign. The final audit re-confirmed Phase C&rsquo;s numbers
+              (12 dynamic inline styles, 59 deliberate hex survivors, zero public-token
+              reads, zero phantoms), and the styleguide&rsquo;s rules now record the
+              override-specificity convention so the utility stays safe to compose.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Verified:</strong> full gate green (lint, typecheck, 671 tests,
+              build) and a browser pass over the styleguide, Troop Finances, Court of
+              Honor, and the Resource Library entry form. The Admin-Design-System plan is
+              complete end to end.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

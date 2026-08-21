@@ -78,7 +78,7 @@ export function RenameActivityPanel({
 
   return (
     <div className={styles.renamePanel}>
-      <label>
+      <label className="adminLabel">
         Rename this activity
         <select
           value={source}
@@ -95,7 +95,7 @@ export function RenameActivityPanel({
           ))}
         </select>
       </label>
-      <label>
+      <label className="adminLabel">
         To
         <input
           type="text"

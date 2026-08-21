@@ -90,13 +90,9 @@
 .fieldFull { grid-column: 1 / -1; }
 @media (max-width: 720px) { .fieldGrid { grid-template-columns: 1fr; } }
 
+/* Typography comes from the global .adminLabel (Phase D). */
 .fieldLabel {
   display: block;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--admin-gray-500);
   margin-bottom: 4px;
 }
 .textInput,

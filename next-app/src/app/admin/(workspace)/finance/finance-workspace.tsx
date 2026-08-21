@@ -611,7 +611,7 @@ export function RecordTransactionForm({
   return (
     <>
       <form className={styles.formGrid} onSubmit={submit}>
-        <label>
+        <label className="adminLabel">
           Date
           <input
             type="date"
@@ -620,7 +620,7 @@ export function RecordTransactionForm({
             onChange={(e) => setF((s) => ({ ...s, occurredOn: e.target.value }))}
           />
         </label>
-        <label>
+        <label className="adminLabel">
           Account
           <select value={f.account} onChange={(e) => setF((s) => ({ ...s, account: e.target.value as Account }))}>
             {ACCOUNTS.filter((a) => a !== 'sofi').map((a) => (
@@ -630,7 +630,7 @@ export function RecordTransactionForm({
             ))}
           </select>
         </label>
-        <label>
+        <label className="adminLabel">
           Scout/Adult
           <select
             required={f.account === 'scout_account'}
@@ -645,7 +645,7 @@ export function RecordTransactionForm({
             ))}
           </select>
         </label>
-        <label>
+        <label className="adminLabel">
           Kind
           <select
             value={f.kind}
@@ -658,7 +658,7 @@ export function RecordTransactionForm({
             ))}
           </select>
         </label>
-        <label>
+        <label className="adminLabel">
           Method
           <select
             value={f.method}
@@ -672,14 +672,14 @@ export function RecordTransactionForm({
             ))}
           </select>
         </label>
-        <label>
+        <label className="adminLabel">
           Direction
           <select value={f.sign} onChange={(e) => setF((s) => ({ ...s, sign: e.target.value as 'in' | 'out' }))}>
             <option value="out">Money out (expense)</option>
             <option value="in">Money in (income)</option>
           </select>
         </label>
-        <label>
+        <label className="adminLabel">
           Amount
           <input
             type="number"
@@ -690,7 +690,7 @@ export function RecordTransactionForm({
             onChange={(e) => setF((s) => ({ ...s, amountText: e.target.value }))}
           />
         </label>
-        <label>
+        <label className="adminLabel">
           Activity <span className={styles.optionalHint}>(for the report)</span>
           <input
             type="text"
@@ -708,7 +708,7 @@ export function RecordTransactionForm({
             ))}
           </datalist>
         </label>
-        <label className={styles.formGridWide}>
+        <label className={`adminLabel ${styles.formGridWide}`}>
           Memo
           <textarea
             rows={2}
@@ -755,25 +755,25 @@ function TransferForm({
   return (
     <>
       <form className={styles.formGrid} onSubmit={submit}>
-        <label>
+        <label className="adminLabel">
           Date
           <input type="date" required value={occurredOn} onChange={(e) => setOccurredOn(e.target.value)} />
         </label>
-        <label>
+        <label className="adminLabel">
           From
           <select value={fromAccount} onChange={(e) => setFromAccount(e.target.value as 'checking' | 'savings')}>
             <option value="checking">Checking</option>
             <option value="savings">Savings</option>
           </select>
         </label>
-        <label>
+        <label className="adminLabel">
           To
           <select value={toAccount} onChange={(e) => setToAccount(e.target.value as 'checking' | 'savings')}>
             <option value="checking">Checking</option>
             <option value="savings">Savings</option>
           </select>
         </label>
-        <label>
+        <label className="adminLabel">
           Amount
           <input
             type="number"
@@ -784,7 +784,7 @@ function TransferForm({
             onChange={(e) => setAmountText(e.target.value)}
           />
         </label>
-        <label className={styles.formGridWide}>
+        <label className={`adminLabel ${styles.formGridWide}`}>
           Memo
           <textarea rows={2} value={memo} onChange={(e) => setMemo(e.target.value)} />
         </label>
@@ -845,18 +845,18 @@ function ReconciliationPanel({
         ))}
       </ul>
       <form className={styles.formGrid} onSubmit={submit}>
-        <label>
+        <label className="adminLabel">
           Account
           <select value={account} onChange={(e) => setAccount(e.target.value as 'checking' | 'savings')}>
             <option value="checking">Checking</option>
             <option value="savings">Savings</option>
           </select>
         </label>
-        <label>
+        <label className="adminLabel">
           As of
           <input type="date" required value={asOf} onChange={(e) => setAsOf(e.target.value)} />
         </label>
-        <label>
+        <label className="adminLabel">
           Statement balance
           <input
             type="number"
@@ -866,7 +866,7 @@ function ReconciliationPanel({
             onChange={(e) => setStatementText(e.target.value)}
           />
         </label>
-        <label className={styles.formGridWide}>
+        <label className={`adminLabel ${styles.formGridWide}`}>
           Note
           <input type="text" value={note} onChange={(e) => setNote(e.target.value)} />
         </label>

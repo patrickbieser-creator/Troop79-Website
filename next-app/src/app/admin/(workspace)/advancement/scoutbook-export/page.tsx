@@ -144,7 +144,7 @@ export default async function ScoutbookExportPage({
       )}
 
       <div className={styles.section}>
-        <div className={styles.sectionHead}>Ready to Export ({rows.length})</div>
+        <div className={`adminLabel ${styles.sectionHead}`}>Ready to Export ({rows.length})</div>
         <table className={styles.table}>
           <thead>
             <tr>

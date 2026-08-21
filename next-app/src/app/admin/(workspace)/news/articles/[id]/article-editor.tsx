@@ -117,7 +117,7 @@ export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags }: P
           </div>
 
           <div className={styles.field}>
-            <label htmlFor="title">Title</label>
+            <label className="adminLabel" htmlFor="title">Title</label>
             <input id="title" type="text" value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
 
@@ -126,12 +126,12 @@ export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags }: P
               their type until edited surfaces need otherwise. */}
           <div className={styles.fieldRow}>
             <div className={styles.field}>
-              <label htmlFor="autoArchiveAt">Auto-archive on (optional)</label>
+              <label className="adminLabel" htmlFor="autoArchiveAt">Auto-archive on (optional)</label>
               <DatePickerField id="autoArchiveAt" value={autoArchiveAt} onChange={setAutoArchiveAt} />
             </div>
             {isLeader && (
               <div className={styles.field}>
-                <label htmlFor="featured">
+                <label className="adminLabel" htmlFor="featured">
                   <input
                     id="featured"
                     type="checkbox"
@@ -145,7 +145,7 @@ export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags }: P
           </div>
 
           <div className={styles.field}>
-            <label>Hero Image</label>
+            <label className="adminLabel">Hero Image</label>
             <div className={styles.heroPreview}>
               {hero && (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -158,7 +158,7 @@ export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags }: P
           </div>
 
           <div className={styles.field}>
-            <label htmlFor="excerpt">Excerpt</label>
+            <label className="adminLabel" htmlFor="excerpt">Excerpt</label>
             <textarea
               id="excerpt"
               rows={3}
@@ -170,7 +170,7 @@ export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags }: P
           </div>
 
           <div className={styles.field}>
-            <label>Tags</label>
+            <label className="adminLabel">Tags</label>
             <div className={styles.tagPicker}>
               {allTags.map((t) => (
                 <button
@@ -186,7 +186,7 @@ export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags }: P
           </div>
 
           <div className={styles.field}>
-            <label htmlFor="body">Body</label>
+            <label className="adminLabel" htmlFor="body">Body</label>
             <MarkdownSource
               id="body"
               ref={bodyRef}

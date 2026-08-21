@@ -136,20 +136,20 @@ export default async function FinancePage({
 
       <div className={styles.balanceGrid}>
         <div className={`${styles.balanceCard} ${styles.balanceCardEmphasis}`}>
-          <p className={styles.balanceLabel}>Total funds</p>
+          <p className={`adminLabel ${styles.balanceLabel}`}>Total funds</p>
           <p className={styles.balanceValue}>${totalFunds.toFixed(2)}</p>
           <p className={styles.balanceSubtext}>Checking + savings</p>
         </div>
         <div className={styles.balanceCard}>
-          <p className={styles.balanceLabel}>Checking</p>
+          <p className={`adminLabel ${styles.balanceLabel}`}>Checking</p>
           <p className={styles.balanceValue}>${accountBalances.checking.toFixed(2)}</p>
         </div>
         <div className={styles.balanceCard}>
-          <p className={styles.balanceLabel}>Savings</p>
+          <p className={`adminLabel ${styles.balanceLabel}`}>Savings</p>
           <p className={styles.balanceValue}>${accountBalances.savings.toFixed(2)}</p>
         </div>
         <div className={styles.balanceCard}>
-          <p className={styles.balanceLabel}>Scout &amp; scholarship accounts</p>
+          <p className={`adminLabel ${styles.balanceLabel}`}>Scout &amp; scholarship accounts</p>
           <p className={styles.balanceValue}>${earmarkedTotal.toFixed(2)}</p>
           <p className={styles.balanceSubtext}>
             {scoutBalances.length} scouts, ${scoutAccountTotal.toFixed(2)} · scholarship $
@@ -157,7 +157,7 @@ export default async function FinancePage({
           </p>
         </div>
         <div className={`${styles.balanceCard} ${styles.balanceCardEmphasis}`}>
-          <p className={styles.balanceLabel}>Available funds</p>
+          <p className={`adminLabel ${styles.balanceLabel}`}>Available funds</p>
           <p className={styles.balanceValue}>${availableFunds.toFixed(2)}</p>
           <p className={styles.balanceSubtext}>Total funds minus scout &amp; scholarship accounts</p>
         </div>

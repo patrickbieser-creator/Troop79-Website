@@ -627,7 +627,7 @@ function ResourceRow({
           {group && <input type="hidden" name="group" value={group} />}
           <div className={styles.fieldGrid}>
             <div className={styles.fieldFull}>
-              <label className={styles.fieldLabel} htmlFor={`title-${res.id}`}>
+              <label className={`adminLabel ${styles.fieldLabel}`} htmlFor={`title-${res.id}`}>
                 Title
               </label>
               <input
@@ -638,7 +638,7 @@ function ResourceRow({
               />
             </div>
             <div>
-              <label className={styles.fieldLabel} htmlFor={`url-${res.id}`}>
+              <label className={`adminLabel ${styles.fieldLabel}`} htmlFor={`url-${res.id}`}>
                 Link
               </label>
               <input
@@ -649,7 +649,7 @@ function ResourceRow({
               />
             </div>
             <div>
-              <label className={styles.fieldLabel} htmlFor={`kind-${res.id}`}>
+              <label className={`adminLabel ${styles.fieldLabel}`} htmlFor={`kind-${res.id}`}>
                 Kind
               </label>
               <select
@@ -666,7 +666,7 @@ function ResourceRow({
               </select>
             </div>
             <div className={styles.fieldFull}>
-              <label className={styles.fieldLabel} htmlFor={`blurb-${res.id}`}>
+              <label className={`adminLabel ${styles.fieldLabel}`} htmlFor={`blurb-${res.id}`}>
                 Blurb (public)
               </label>
               <input
@@ -677,7 +677,7 @@ function ResourceRow({
               />
             </div>
             <div className={styles.fieldFull}>
-              <label className={styles.fieldLabel} htmlFor={`body-${res.id}`}>
+              <label className={`adminLabel ${styles.fieldLabel}`} htmlFor={`body-${res.id}`}>
                 Body markdown (posts only)
               </label>
               <textarea
@@ -688,7 +688,7 @@ function ResourceRow({
               />
             </div>
             <div className={styles.fieldFull}>
-              <label className={styles.fieldLabel} htmlFor={`attr-${res.id}`}>
+              <label className={`adminLabel ${styles.fieldLabel}`} htmlFor={`attr-${res.id}`}>
                 Public credit (blank = &ldquo;Shared by {res.submitted_by_label ?? '…'}&rdquo; at publish)
               </label>
               <input
@@ -726,7 +726,7 @@ function ResourceRow({
 
       {tab !== 'archived' && (
         <div className={styles.placementsBlock}>
-          <span className={styles.fieldLabel}>Placements</span>
+          <span className={`adminLabel ${styles.fieldLabel}`}>Placements</span>
           <div className={styles.placementChips}>
             {placements.length === 0 && (
               <span className={styles.rowMeta}>None yet — it won&rsquo;t appear anywhere until placed.</span>
@@ -975,7 +975,7 @@ function NarrativesTab({
       {target && (
         <form action={saveNarrativeAction} className={styles.narrForm}>
           <input type="hidden" name="target" value={target} />
-          <label className={styles.fieldLabel} htmlFor="narrative_md">
+          <label className={`adminLabel ${styles.fieldLabel}`} htmlFor="narrative_md">
             Narrative for {(() => {
               const sep = target.indexOf(':');
               return targetLabel(data.catalog, target.slice(0, sep), target.slice(sep + 1));
@@ -1008,7 +1008,7 @@ function NarrativesTab({
 
       {data.narratives.length > 0 && (
         <div className={styles.narrList}>
-          <span className={styles.fieldLabel}>Existing narratives</span>
+          <span className={`adminLabel ${styles.fieldLabel}`}>Existing narratives</span>
           {data.narratives.map((n) => (
             <div key={n.id}>
               <Link

@@ -171,7 +171,7 @@ export function useMarkdownBlockTools(
         <div className={styles.inlinePrompt}>
           {editingRange && <div className={styles.hint}>Editing existing gallery link</div>}
           <div className={styles.field}>
-            <label>Album URL</label>
+            <label className="adminLabel">Album URL</label>
             <input
               type="url"
               value={galleryLinkForm.url}
@@ -180,7 +180,7 @@ export function useMarkdownBlockTools(
             />
           </div>
           <div className={styles.field}>
-            <label>Caption (optional)</label>
+            <label className="adminLabel">Caption (optional)</label>
             <input
               type="text"
               value={galleryLinkForm.caption}
@@ -230,7 +230,7 @@ export function useMarkdownBlockTools(
         <div className={styles.inlinePrompt}>
           {editingRange && <div className={styles.hint}>Editing existing video</div>}
           <div className={styles.field}>
-            <label>Video URL (YouTube or Vimeo)</label>
+            <label className="adminLabel">Video URL (YouTube or Vimeo)</label>
             <input
               type="url"
               value={videoForm.url}
@@ -239,7 +239,7 @@ export function useMarkdownBlockTools(
             />
           </div>
           <div className={styles.field}>
-            <label>Caption (optional)</label>
+            <label className="adminLabel">Caption (optional)</label>
             <input
               type="text"
               value={videoForm.caption}

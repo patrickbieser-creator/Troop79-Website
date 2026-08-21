@@ -282,10 +282,8 @@
   margin-bottom: 10px;
 }
 .editSectionHeader h4 {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .12em;
-  text-transform: uppercase;
+  /* typography via global .adminLabel (.12em → .08em fold); (0,1,1) safely
+     out-ranks the utility for the navy override */
   color: var(--admin-navy);
 }
 

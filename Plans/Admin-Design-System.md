@@ -1,6 +1,6 @@
 # Admin Design System — Tokens, Shared Components, and Inline-Style Remediation
 
-**Status:** Active — Foundation + Phases A–C COMPLETE (all 2026-08-21); Phase D queued
+**Status:** COMPLETE — Foundation + Phases A–D all shipped 2026-08-21; move to Plans/Completed/ after Patrick's production eyes-on
 **Created:** 2026-08-21
 **Priority:** Medium (High for the Phase A bug items)
 
@@ -77,10 +77,22 @@ The audit's headline numbers:
       deleted, the public one at `(public)/library/` untouched; quick-add joined the
       shared Dialog (Phase B exception closed). Gate green (671), 14-screen browser
       sweep, zero regressions.
-- [ ] **Phase D** complete: styleguide variant specimens deleted as their copies retire; the
-      scoreboard shows every row struck.
-- [ ] Each phase lands with the full quality gate green AND a browser screenshot pass on the
-      screens it touched (35 screens, no visual regression tests — eyes are the gate).
+- [x] **Phase D** complete (2026-08-21, fourth session — v1.61.0): every scoreboard row
+      struck (the variant specimens were already deleted phase-by-phase; remaining
+      specimens are canonical or documented deliberate exceptions). The last open row —
+      eyebrow labels — closed by finishing the .adminLabel retirement: 0 true label
+      re-declarations left, ~96 adminLabel call sites (5 byte-identical copies converted,
+      then the drifted variants normalized onto the utility per the plan's
+      drift-folds-to-steps rule — tracking .04–.12em → .08em, gray-600/700 → gray-500,
+      10–10.5px → 11px; navy label accents kept as ≥(0,1,1)-specificity local overrides).
+      Rules that share the typography but are OTHER patterns stay: table th, pills,
+      buttons, composite headers; two distinct-role survivors documented (events
+      .tileLabel, library .groupSectionLabel). Final audit grep re-confirmed Phase C:
+      inline 12, hex 59, public reads 0, phantoms 0.
+- [x] Each phase landed with the full quality gate green AND a browser screenshot pass on
+      the screens it touched (Phase C: 14-screen sweep; Phase D: styleguide + label
+      screens; production eyes-on by Patrick still recommended for the label-tracking
+      deltas and meeting-plan's plan-view when a plan next exists).
 
 ## Test Plan
 
@@ -215,8 +227,11 @@ last (HIGH risk).
    tokens in the top-drift files: fast-entry, lookups, meeting-plan, ledger, roster-import.
    Retire the 5 public-token leak files onto admin tokens. Rename phantom `--admin-bark` /
    `--admin-green-*` reads to real tokens.
-4. **Phase D — closeout:** delete retired variant specimens from the styleguide, strike
-   scoreboard rows, final audit grep to confirm the Phase C acceptance numbers.
+4. **Phase D — COMPLETE (2026-08-21, v1.61.0).** Closeout done: scoreboard fully struck,
+   final audit grep confirmed the Phase C numbers, and the eyebrow-label retirement was
+   finished (two forks, two passes: byte-identical copies first, then the parent-approved
+   drift normalization — see the acceptance entry). Utility override rule now documented
+   on the styleguide: out-specify (0,1,0), never rely on stylesheet order.
 
 ## Open Questions
 

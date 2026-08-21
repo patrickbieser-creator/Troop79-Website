@@ -33,9 +33,9 @@
 /* .statusPill retired Phase A (2026-08-21) — shared Badge component. */
 
 .field { margin-bottom: 18px; }
+/* Typography comes from the global .adminLabel on each <label> (Phase D). */
 .field label {
-  display: block; font-family: var(--admin-font-ui); font-size: 11px; font-weight: 700;
-  letter-spacing: .05em; text-transform: uppercase; color: var(--admin-gray-500); margin-bottom: 6px;
+  display: block; font-family: var(--admin-font-ui); margin-bottom: 6px;
 }
 .field .hint { font-family: var(--admin-font-ui); font-size: 11px; color: var(--admin-gray-500); margin-top: 5px; font-style: italic; }
 .field input[type='text'],

@@ -501,7 +501,7 @@ function PersonEditor({
         )}
 
         <section className={styles.editorSection}>
-          <h3>Status</h3>
+          <h3 className="adminLabel">Status</h3>
           <p className={styles.editorHint}>
             Inactive people stay on record — they keep their ledger history, relationships and past
             events — but are no longer offered in the family signup picker. This is separate from
@@ -572,7 +572,7 @@ function PersonEditor({
 
         {/* ── Demographics ──────────────────────────────────────────── */}
         <section className={styles.editorSection}>
-          <h3>Demographics</h3>
+          <h3 className="adminLabel">Demographics</h3>
           <p className={styles.editorHint}>
             Contact info, YPT and health form dates, and anything leaders should know. A family can
             also propose changes to some of this from their own /profile — those land above as a
@@ -727,7 +727,7 @@ function PersonEditor({
 
         {/* ── Household ─────────────────────────────────────────────── */}
         <section className={styles.editorSection}>
-          <h3>Household</h3>
+          <h3 className="adminLabel">Household</h3>
           <p className={styles.editorHint}>
             Picking anyone in a household brings up the whole family at signup. Household
             membership is independent of any role — it does not change when someone starts or
@@ -819,7 +819,7 @@ function PersonEditor({
 
         {/* ── Roles ─────────────────────────────────────────────────── */}
         <section className={styles.editorSection}>
-          <h3>Roles</h3>
+          <h3 className="adminLabel">Roles</h3>
           <p className={styles.editorHint}>
             Holding a leader, committee, or chartered-org role is what puts someone on the Leaders
             tab. Ending it moves them back to Adults — it never touches their household or
@@ -887,7 +887,7 @@ function PersonEditor({
 
         {/* ── Relationships ─────────────────────────────────────────── */}
         <section className={styles.editorSection}>
-          <h3>Relationships</h3>
+          <h3 className="adminLabel">Relationships</h3>
           <p className={styles.editorHint}>
             Relationships persist through every change of role or status — an adult can be the
             sibling of a scout, and a guardian at a different address is still a guardian.
@@ -963,7 +963,7 @@ function PersonEditor({
         {/* ── Duplicates and removal ─────────────────────────────────── */}
         <section className={styles.dangerSection}>
           <div className={`${styles.inlineRow} ${styles.inlineRowSplit}`}>
-            <h3 className={styles.noMargin}>This is a duplicate, or should not exist</h3>
+            <h3 className={`adminLabel ${styles.noMargin}`}>This is a duplicate, or should not exist</h3>
             <button
               type="button"
               className={styles.smallBtn}

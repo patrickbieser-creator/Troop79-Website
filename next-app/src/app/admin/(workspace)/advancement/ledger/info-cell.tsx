@@ -48,7 +48,7 @@ export function InfoCell({ short, full, notes }: Props) {
       {showInfo && (
         <Dialog ref={dialogRef} onClose={() => setOpen(false)}>
           <DialogBody>
-            <p className={styles.infoDialogShort}>{short}</p>
+            <p className={`adminLabel ${styles.infoDialogShort}`}>{short}</p>
             <p className={styles.infoDialogFull}>{full}</p>
           </DialogBody>
           <DialogActions>

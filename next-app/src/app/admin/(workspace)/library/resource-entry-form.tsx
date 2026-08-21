@@ -102,7 +102,7 @@ export function ResourceEntryForm({ targetGroups, onCreate, onUploadDocument, em
 
       <div className={styles.fieldGrid}>
         <label className={styles.fieldFull}>
-          <span className={styles.fieldLabel}>What kind of resource?</span>
+          <span className={`adminLabel ${styles.fieldLabel}`}>What kind of resource?</span>
           <select
             className={styles.selectInput}
             name="kind"
@@ -119,7 +119,7 @@ export function ResourceEntryForm({ targetGroups, onCreate, onUploadDocument, em
         </label>
 
         <label className={styles.fieldFull}>
-          <span className={styles.fieldLabel}>Title</span>
+          <span className={`adminLabel ${styles.fieldLabel}`}>Title</span>
           <input
             className={styles.textInput}
             name="title"
@@ -132,7 +132,7 @@ export function ResourceEntryForm({ targetGroups, onCreate, onUploadDocument, em
 
         {needsUrl && (
           <label className={styles.fieldFull}>
-            <span className={styles.fieldLabel}>
+            <span className={`adminLabel ${styles.fieldLabel}`}>
               {kind === 'document' ? 'Link to the document' : kind === 'image' ? 'Image URL' : 'Link'}
             </span>
             <input
@@ -160,7 +160,7 @@ export function ResourceEntryForm({ targetGroups, onCreate, onUploadDocument, em
 
         {kind === 'document' && (
           <div className={styles.fieldFull}>
-            <span className={styles.fieldLabel}>…or upload a PDF</span>
+            <span className={`adminLabel ${styles.fieldLabel}`}>…or upload a PDF</span>
             <input
               type="file"
               accept="application/pdf"
@@ -199,7 +199,7 @@ export function ResourceEntryForm({ targetGroups, onCreate, onUploadDocument, em
         )}
 
         <label className={styles.fieldFull}>
-          <span className={styles.fieldLabel}>Blurb (optional)</span>
+          <span className={`adminLabel ${styles.fieldLabel}`}>Blurb (optional)</span>
           <input
             className={styles.textInput}
             name="blurb"
@@ -208,12 +208,12 @@ export function ResourceEntryForm({ targetGroups, onCreate, onUploadDocument, em
         </label>
 
         <label>
-          <span className={styles.fieldLabel}>Credit (optional)</span>
+          <span className={`adminLabel ${styles.fieldLabel}`}>Credit (optional)</span>
           <input className={styles.textInput} name="attribution_label" placeholder="Shared by Mr. Porter" />
         </label>
 
         <label>
-          <span className={styles.fieldLabel}>Who can see it</span>
+          <span className={`adminLabel ${styles.fieldLabel}`}>Who can see it</span>
           <select className={styles.selectInput} name="visibility" defaultValue="public">
             <option value="public">Everyone</option>
             <option value="leaders">Leaders only</option>
@@ -222,7 +222,7 @@ export function ResourceEntryForm({ targetGroups, onCreate, onUploadDocument, em
       </div>
 
       <div className={styles.fieldFull}>
-        <span className={styles.fieldLabel}>Where it shows up</span>
+        <span className={`adminLabel ${styles.fieldLabel}`}>Where it shows up</span>
         <div className={styles.entryPlacementRow}>
           <select className={styles.selectInput} ref={targetRef} defaultValue="">
             <option value="">— pick a shelf or requirement —</option>

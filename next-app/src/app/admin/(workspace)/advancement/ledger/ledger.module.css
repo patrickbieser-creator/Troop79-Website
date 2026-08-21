@@ -179,12 +179,7 @@
 /* .infoDialog chrome retired Phase B (2026-08-21) — shared Dialog component.
    The two content classes below render inside its DialogBody. */
 .infoDialogShort {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--admin-gray-500);
-  margin-bottom: 12px;
+  margin-bottom: 12px; /* typography via global .adminLabel */
 }
 .infoDialogFull {
   font-size: 14px;
@@ -467,11 +462,10 @@
   padding-top: 8px;
   border-top: 1px dashed var(--admin-gray-200);
 }
-.bulkSetLabel {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .04em;
-  text-transform: uppercase;
+/* Typography via global .adminLabel (.04em → .08em fold). Doubled selector:
+   the navy override must out-rank .adminLabel's gray-500 without relying on
+   module-vs-global cascade order (same trick as the shared Dialog widths). */
+.bulkSetLabel.bulkSetLabel {
   color: var(--admin-navy);
   white-space: nowrap;
   flex-shrink: 0;

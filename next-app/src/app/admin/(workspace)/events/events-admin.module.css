@@ -33,7 +33,8 @@
 
 /* .payDialog chrome retired Phase B (2026-08-21) — the event-roster payment
    dialog renders the shared Dialog now; only its field styling remains. */
-.payField { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--admin-gray-600); }
+/* Typography comes from the global .adminLabel (Phase D). */
+.payField { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
 .payField input, .payField select { border: 1px solid var(--admin-gray-200); border-radius: 3px; padding: 7px 9px; font-family: inherit; font-size: 13px; font-weight: 400; text-transform: none; letter-spacing: normal; color: var(--admin-gray-900); }
 
 .builder { display: flex; flex-direction: column; gap: 16px; }
@@ -49,7 +50,8 @@
 .fieldGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 12px; }
 .fieldGrid label, .fullField { display: block; }
 .fullField { margin-bottom: 12px; }
-.fieldLabel { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--admin-gray-600); margin-bottom: 4px; }
+/* Typography comes from the global .adminLabel (Phase D). */
+.fieldLabel { display: block; margin-bottom: 4px; }
 .fieldGrid input, .fieldGrid select, .fullField input, .fullField textarea { width: 100%; padding: 7px 10px; border: 1px solid var(--admin-gray-300); border-radius: 3px; font-size: 13.5px; font-family: inherit; }
 .miniTable { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 12px; }
 .miniTable td { padding: 6px 8px; border-bottom: 1px solid var(--admin-gray-100); }
@@ -75,7 +77,6 @@
 .addCard h3 { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--admin-gray-700); margin-bottom: 9px; }
 .addCardActions { display: flex; gap: 12px; align-items: center; margin-top: 11px; flex-wrap: wrap; }
 .addField { display: flex; flex-direction: column; gap: 3px; }
-.addFieldLabel { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--admin-gray-600); }
 .okNote { color: var(--admin-forest); font-size: 12.5px; font-weight: 600; margin: 0; }
 .addHint { font-size: 11.5px; color: var(--admin-gray-600); }
 /* Description gets its own full-width row rather than a slot in the wrapping

@@ -262,7 +262,7 @@ export function BuilderPanels({
         <h2>Settings</h2>
         <div className={styles.fieldGrid}>
           <label>
-            <span className={styles.fieldLabel}>Signup deadline</span>
+            <span className={`adminLabel ${styles.fieldLabel}`}>Signup deadline</span>
             <DateTimeField
               value={s(signup.deadline)}
               disabled={pending}
@@ -270,7 +270,7 @@ export function BuilderPanels({
             />
           </label>
           <label>
-            <span className={styles.fieldLabel}>Capacity (blank = no limit)</span>
+            <span className={`adminLabel ${styles.fieldLabel}`}>Capacity (blank = no limit)</span>
             <input
               type="number"
               min={1}
@@ -279,7 +279,7 @@ export function BuilderPanels({
             />
           </label>
           <label>
-            <span className={styles.fieldLabel}>Who it’s for</span>
+            <span className={`adminLabel ${styles.fieldLabel}`}>Who it’s for</span>
             <select defaultValue={s(signup.audience)} onChange={(e) => save({ audience: e.target.value })}>
               <option value="both">Everyone</option>
               <option value="scouts">Scouts only</option>
@@ -287,7 +287,7 @@ export function BuilderPanels({
             </select>
           </label>
           <label>
-            <span className={styles.fieldLabel}>Status</span>
+            <span className={`adminLabel ${styles.fieldLabel}`}>Status</span>
             <select defaultValue={s(signup.status)} onChange={(e) => save({ status: e.target.value })}>
               <option value="open">Open</option>
               <option value="closed">Closed</option>
@@ -295,7 +295,7 @@ export function BuilderPanels({
           </label>
         </div>
         <label className={styles.fullField}>
-          <span className={styles.fieldLabel}>Payment instructions</span>
+          <span className={`adminLabel ${styles.fieldLabel}`}>Payment instructions</span>
           <textarea
             rows={2}
             defaultValue={s(signup.payment_instructions)}
@@ -303,7 +303,7 @@ export function BuilderPanels({
           />
         </label>
         <label className={styles.fullField}>
-          <span className={styles.fieldLabel}>Question to ask each household (optional)</span>
+          <span className={`adminLabel ${styles.fieldLabel}`}>Question to ask each household (optional)</span>
           <input
             type="text"
             placeholder="e.g. Allergies or dietary needs we should know about?"
@@ -499,7 +499,7 @@ export function BuilderPanels({
         </h2>
         <div className={styles.fieldGrid}>
           <label>
-            <span className={styles.fieldLabel}>What families see this called</span>
+            <span className={`adminLabel ${styles.fieldLabel}`}>What families see this called</span>
             <input
               type="text"
               placeholder="e.g. What can you bring?"
@@ -524,14 +524,14 @@ export function BuilderPanels({
           <h3>Add a job</h3>
           <div className={styles.addRow}>
             <label className={styles.addField}>
-              <span className={styles.addFieldLabel}>Type</span>
+              <span className="adminLabel">Type</span>
               <select value={sKind} onChange={(e) => setSKind(e.target.value as 'shift' | 'task')}>
                 <option value="shift">Shift (timed)</option>
                 <option value="task">Task (untimed)</option>
               </select>
             </label>
             <label className={styles.addField}>
-              <span className={styles.addFieldLabel}>Job name</span>
+              <span className="adminLabel">Job name</span>
               <input
                 ref={sLabelRef}
                 placeholder="e.g. Setup crew"
@@ -540,23 +540,23 @@ export function BuilderPanels({
               />
             </label>
             <label className={styles.addField}>
-              <span className={styles.addFieldLabel}>Date</span>
+              <span className="adminLabel">Date</span>
               <DatePickerField className={styles.dateField} value={sDate} onChange={setSDate} />
             </label>
             {sKind === 'shift' && (
               <>
                 <label className={styles.addField}>
-                  <span className={styles.addFieldLabel}>Starts</span>
+                  <span className="adminLabel">Starts</span>
                   <input type="time" value={sStart} onChange={(e) => setSStart(e.target.value)} />
                 </label>
                 <label className={styles.addField}>
-                  <span className={styles.addFieldLabel}>Ends</span>
+                  <span className="adminLabel">Ends</span>
                   <input type="time" value={sEnd} onChange={(e) => setSEnd(e.target.value)} />
                 </label>
               </>
             )}
             <label className={styles.addField}>
-              <span className={styles.addFieldLabel}>Who</span>
+              <span className="adminLabel">Who</span>
               <select
                 value={sWho}
                 onChange={(e) => setSWho(e.target.value as 'scouts' | 'adults' | 'both')}
@@ -567,7 +567,7 @@ export function BuilderPanels({
               </select>
             </label>
             <label className={styles.addField}>
-              <span className={styles.addFieldLabel}>Needed</span>
+              <span className="adminLabel">Needed</span>
               <input
                 type="number"
                 min={1}
@@ -588,7 +588,7 @@ export function BuilderPanels({
             )}
           </div>
           <label className={styles.addDescField}>
-            <span className={styles.addFieldLabel}>Description (optional)</span>
+            <span className="adminLabel">Description (optional)</span>
             {/* Textarea, not an input: this is prose and often two sentences.
                 Enter inserts a newline here rather than submitting the form —
                 the name field keeps the Enter-to-add shortcut. */}
@@ -691,7 +691,7 @@ export function BuilderPanels({
                             </label>
                           )}
                           <label className={styles.addDescField}>
-                            <span className={styles.addFieldLabel}>Description (optional)</span>
+                            <span className="adminLabel">Description (optional)</span>
                             <textarea
                               rows={2}
                               value={eSlot.description ?? ''}

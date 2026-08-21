@@ -292,7 +292,7 @@ export function CourtOfHonorWorkspace({
       </div>
 
       <aside className={styles.sidebar}>
-        <h2 className={styles.sidebarTitle}>Recent ceremonies</h2>
+        <h2 className={`adminLabel ${styles.sidebarTitle}`}>Recent ceremonies</h2>
         {recentReports.length === 0 ? (
           <p className={styles.hint}>None yet.</p>
         ) : (

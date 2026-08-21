@@ -203,7 +203,7 @@ export function BulkEditModal({ rows, scouts, leaders, onClose, onSaved }: Props
 
                 {on && (
                   <div className={styles.bulkFieldInput}>
-                    <span className={styles.bulkSetLabel}>Set all to</span>
+                    <span className={`adminLabel ${styles.bulkSetLabel}`}>Set all to</span>
                     <FieldInput
                       field={f}
                       value={values[f.key] ?? ''}

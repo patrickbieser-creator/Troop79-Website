@@ -300,7 +300,7 @@ export function RosterTable({
           <>
             <DialogHeader title={`Record payment — ${payingRow.name}`} />
             <DialogBody>
-              <label className={styles.payField}>
+              <label className={`adminLabel ${styles.payField}`}>
                 Method
                 <select value={payMethod} onChange={(e) => setPayMethod(e.target.value as TransactionMethod)}>
                   <option value="venmo">Venmo</option>
@@ -311,7 +311,7 @@ export function RosterTable({
                   <option value="other">Other</option>
                 </select>
               </label>
-              <label className={styles.payField}>
+              <label className={`adminLabel ${styles.payField}`}>
                 Amount
                 <input
                   type="number"

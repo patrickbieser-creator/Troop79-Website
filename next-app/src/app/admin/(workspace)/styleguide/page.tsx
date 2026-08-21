@@ -228,10 +228,11 @@ const SCOREBOARD: {
   },
   {
     pattern: 'Eyebrow labels (11px/700/uppercase)',
-    copies: '32 of 35 files re-declare it',
+    copies: '✓ DONE — 0 label re-declarations left (Phase D, 2026-08-21); ~96 adminLabel call sites',
     canonical: '✓ SHIPPED: global .adminLabel utility in admin.css (2026-08-21)',
     phase: 'A',
-    notes: 'utility exists; the 32 per-screen re-declarations retire screen-by-screen in Phases B/C'
+    notes:
+      'Phase D retired every true label re-declaration (drifted tracking/color/size folded onto the utility — .04–.12em → .08em, gray-600/700 → gray-500, 10–10.5px → 11px). What still shares the typography is OTHER patterns, on purpose: table th, pills, buttons, composite headers — plus two distinct-role survivors (events stat-tile .tileLabel, library .groupSectionLabel at tracking-widest)'
   }
 ];
 
@@ -372,7 +373,7 @@ export default function StyleguidePage() {
           <Specimen
             label=".adminLabel — the eyebrow label"
             canonical
-            note="SHIPPED Phase A (2026-08-21): the 11px/700/uppercase idiom re-declared in 32 of 35 module files. Typography only — consumers add display/margin themselves. Per-screen copies retire in Phases B/C."
+            note="SHIPPED Phase A, adoption COMPLETE Phase D (2026-08-21): ~96 call sites; the 32 per-file re-declarations are gone. Typography only — consumers add display/margin themselves; overrides of utility-set props (e.g. a navy label) must out-specify (0,1,0) via an element qualifier or doubled class, never rely on stylesheet order."
           >
             <span className="adminLabel">Section heading</span>
           </Specimen>
@@ -710,8 +711,8 @@ export default function StyleguidePage() {
             <li>
               <strong>Never read public tokens</strong> (<code>--navy</code>,{' '}
               <code>--forest</code>, <code>--bark</code>, <code>--transition</code>…) from
-              admin styles. The audit found 5 files leaking the editorial palette; they are
-              being remediated, not imitated.
+              admin styles. Phase C took the count to zero; the one sanctioned exception is
+              the <code>--admin-preview-*</code> alias block for WYSIWYG preview surfaces.
             </li>
             <li>
               <strong>Spacing, font sizes, and radii come from the scales.</strong> An

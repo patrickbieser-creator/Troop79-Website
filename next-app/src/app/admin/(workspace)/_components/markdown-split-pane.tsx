@@ -197,7 +197,7 @@ export function MarkdownSplitPane({
   return (
     <div className={styles.wrap}>
       <div className={styles.head}>
-        <span className={styles.label}>{label}</span>
+        <span className={`adminLabel ${styles.label}`}>{label}</span>
         <button
           type="button"
           className={styles.toggle}

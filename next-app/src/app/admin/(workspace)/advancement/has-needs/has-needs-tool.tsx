@@ -122,7 +122,7 @@ export function HasNeedsTool({ ranks, scouts }: { ranks: PickerRank[]; scouts: R
     <div className={styles.layout}>
       <div className={styles.picker}>
         <div className={styles.pickerHeader}>
-          <span className={styles.pickerHeaderLabel}>Requirements</span>
+          <span className="adminLabel">Requirements</span>
           <button
             type="button"
             className={styles.clearBtn}
