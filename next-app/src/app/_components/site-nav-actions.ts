@@ -25,7 +25,6 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { LEADER_COOKIE } from '@/lib/leader-session';
 import { FAMILY_COOKIE } from '@/lib/family-session';
-import { PROFILE_HOUSEHOLD_COOKIE } from '@/lib/profile-household-session';
 import { IDENTITY_COOKIE } from '@/lib/identity-session';
 import { safeInternalPath } from '@/lib/safe-redirect';
 
@@ -33,7 +32,6 @@ export async function logOutEverywhereAction(formData: FormData): Promise<void> 
   const jar = await cookies();
   jar.delete(LEADER_COOKIE.name);
   jar.delete(FAMILY_COOKIE.name);
-  jar.delete(PROFILE_HOUSEHOLD_COOKIE.name);
   jar.delete(IDENTITY_COOKIE.name);
 
   const next = safeInternalPath(String(formData.get('next') ?? ''), '/');

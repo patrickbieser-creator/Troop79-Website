@@ -22,6 +22,11 @@ import { proofSubmissionAllowedFor } from '../src/lib/library';
  * that made Phase 0 necessary. The OLD unverified 'scout' (shared
  * SCOUT_PASSWORD) stays refused permanently — it is superseded by
  * 'household', not reopened itself.
+ *
+ * UPDATED again 2026-08-21: Tier 1 ('family' — shared troop password +
+ * self-asserted household, lib/profile-household-session.ts) is retired.
+ * Phase 3's leader-issued-code safety net, the reason it stayed alive, was
+ * decided against — verified sign-in (email) is the only path now.
  */
 describe('proof submission audience gate', () => {
   it('ScoutLogin_IsRefused_WhenSubmittingProof', () => {
@@ -36,8 +41,8 @@ describe('proof submission audience gate', () => {
     expect(proofSubmissionAllowedFor(null)).toBe(false);
   });
 
-  it('Family_IsAllowed_WhenSubmittingProof', () => {
-    expect(proofSubmissionAllowedFor('family')).toBe(true);
+  it('Family_IsRefused_WhenSubmittingProof', () => {
+    expect(proofSubmissionAllowedFor('family')).toBe(false);
   });
 
   it('VerifiedHousehold_IsAllowed_WhenSubmittingProof', () => {

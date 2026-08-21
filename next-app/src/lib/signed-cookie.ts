@@ -1,12 +1,14 @@
 /**
  * HMAC-signed cookie primitives, shared by every session type in the app:
- * lib/leader-session.ts, lib/family-session.ts, lib/profile-household-session.ts,
- * and lib/identity-session.ts (Plans/Family-Identity-Auth.md Phase 1 — the
- * verified per-person identity cookie, the fourth consumer).
+ * lib/leader-session.ts, lib/family-session.ts, and lib/identity-session.ts
+ * (Plans/Family-Identity-Auth.md Phase 1 — the verified per-person identity
+ * cookie, the third consumer; lib/profile-household-session.ts was a fourth,
+ * retired 2026-08-21 once identity-session.ts's verified cookie became the
+ * only path).
  *
  * Extracted so a second session type doesn't mean a second copy of the
  * signing code — a bug fixed in one copy and missed in the other is exactly
- * the failure mode worth designing out of security-relevant code. All four
+ * the failure mode worth designing out of security-relevant code. All three
  * share LEADER_SESSION_SECRET, which is why each session's own `role`
  * literal is load-bearing — see identity-session.ts's header for the replay
  * risk that guards against.

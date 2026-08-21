@@ -1,10 +1,11 @@
 /**
- * Verified per-person identity — a FOURTH session type on signed-cookie.ts,
- * alongside leader/family/profile-household (Plans/Family-Identity-Auth.md
- * Phase 1). Set only by redeeming a login_tokens challenge
- * (lib/identity-challenge.ts) — never self-asserted like
- * lib/profile-household-session.ts's cookie, which this one supersedes as
- * the trust source for anything that writes real data on a family's behalf.
+ * Verified per-person identity — a session type on signed-cookie.ts,
+ * alongside leader/family (Plans/Family-Identity-Auth.md Phase 1). Set only
+ * by redeeming a login_tokens challenge (lib/identity-challenge.ts) — never
+ * self-asserted like the old lib/profile-household-session.ts cookie, which
+ * this one superseded as the trust source for anything that writes real
+ * data on a family's behalf (that Tier 1 fallback was retired 2026-08-21
+ * once this became the only path).
  *
  * Two things are load-bearing about this payload, for two different reasons:
  *

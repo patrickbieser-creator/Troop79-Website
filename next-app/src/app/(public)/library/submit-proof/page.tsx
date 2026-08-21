@@ -3,26 +3,18 @@
  * extended by Plans/Family-Identity-Auth.md Phase 2). Reached only from a
  * requirement/badge page's CTA, which always supplies
  * ?target=rank_req:{key} or ?target=mb_req:{key} — see actions.ts's module
- * comment for the three paths that actually submit (verified scout, verified
- * adult, Tier 1 family fallback) and the two that don't (leader, the OLD
- * unverified scout login).
+ * comment for the two paths that actually submit (verified scout, verified
+ * adult) and the ones that don't (leader, the OLD unverified scout login,
+ * and 'family' — the Tier 1 troop-password fallback, retired 2026-08-21).
  */
 import Link from 'next/link';
-import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import { gateAudience, familyGateConfigured, getIdentitySessionIfValid } from '@/lib/family-access';
 import { isEpochCurrent } from '@/lib/identity-session';
-import { loadHouseholds, loadHouseholdByKey, type Household } from '@/lib/households';
-import { PROFILE_HOUSEHOLD_COOKIE, verifyProfileHouseholdSession } from '@/lib/profile-household-session';
+import { loadHouseholdByKey } from '@/lib/households';
 import { resolveRequirementLabel } from '@/lib/library-data';
-import {
-  proofGateAction,
-  pickProofHouseholdAction,
-  submitProofAction,
-  switchProofHouseholdAction
-} from './actions';
-import ProofHouseholdPicker from './proof-household-picker';
+import { proofGateAction, submitProofAction } from './actions';
 import { TrackOnMount } from '../../_components/track-on-mount';
 import styles from '../library.module.css';
 
@@ -44,6 +36,7 @@ const ERR_MESSAGES: Record<string, string> = {
   target: 'This link is missing which requirement it’s for — go back and try again.',
   leader: 'Leaders sign requirements off directly through Fast Entry.',
   'scout-disabled': 'Scouts can’t submit proof directly this way — see below for what to do instead.',
+  'signin-required': 'The troop password alone can no longer submit proof — sign in with your email below.',
   revoked: 'Your sign-in has been revoked — please sign in again.',
   photo: 'That photo could not be uploaded — try a different file.',
   link: 'A working link (starting with http) is required.',
@@ -121,7 +114,7 @@ export default async function SubmitProofPage({
         ) : audience === 'household' ? (
           <VerifiedSubmitForm target={target} err={err} />
         ) : (
-          <FamilySubmitForm target={target} err={err} />
+          <SignInRequiredCard target={target} err={err} />
         )}
       </main>
     </>
@@ -343,80 +336,38 @@ async function VerifiedSubmitForm({ target, err }: { target: string; err?: strin
   );
 }
 
-async function FamilySubmitForm({ target, err }: { target: string; err?: string }) {
-  const jar = await cookies();
-  const householdSession = await verifyProfileHouseholdSession(jar.get(PROFILE_HOUSEHOLD_COOKIE.name)?.value);
-
-  if (!householdSession) {
-    const households = await loadHouseholds();
-    return (
-      <>
-        {err && ERR_MESSAGES[err] && <p className={styles.fieldError}>{ERR_MESSAGES[err]}</p>}
-        <ProofHouseholdPicker
-          households={households}
-          target={target}
-          pickHouseholdAction={pickProofHouseholdAction}
-        />
-        {/* GateCard (the troop-password screen one step back) already offers
-            this nudge; this is the only remaining Tier 1 screen that didn't
-            (troop79-specialist review, 2026-08-17, ahead of retiring this
-            fallback outright — Plans/Family-Identity-Auth.md Phase 3's
-            leader-issued-code safety net isn't built yet, so the fallback
-            stays until then, but every screen on the path to it should at
-            least point at the now-much-cheaper verified alternative). */}
-        <p className={styles.fieldHint} style={{ marginTop: 14, fontSize: 13 }}>
-          Prefer not to use the shared password? You can{' '}
-          <Link href={`/signin?next=${encodeURIComponent(`/library/submit-proof?target=${target}`)}`}>
-            sign in with your email instead
-          </Link>
-          .
-        </p>
-      </>
-    );
-  }
-
-  const households = await loadHouseholds();
-  const household: Household | undefined = households.find((h) => h.key === householdSession.householdKey);
-  const scouts = household?.scouts ?? [];
-
+/**
+ * Shown for the 'family' audience (troop password only, no verified
+ * identity) — Tier 1's self-asserted household picker retired 2026-08-21
+ * (Plans/Family-Identity-Auth.md Phase 3's leader-issued-code safety net,
+ * the reason the fallback stayed alive, was decided against — email is the
+ * path forward). The troop password still gates other Library pages; it
+ * just no longer submits proof on its own.
+ */
+function SignInRequiredCard({ target, err }: { target: string; err?: string }) {
   return (
-    <form className={styles.formCard} action={submitProofAction}>
-      <input type="hidden" name="target" value={target} />
+    <div className={styles.formCard}>
+      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, marginBottom: 8 }}>
+        Sign in to submit proof
+      </h2>
       {err && ERR_MESSAGES[err] && <p className={styles.fieldError}>{ERR_MESSAGES[err]}</p>}
-
-      <div className={styles.fieldRow} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span className={styles.fieldHint} style={{ margin: 0 }}>
-          Logged in as <strong>{householdSession.displayName}</strong>
-        </span>
-        <button
-          type="submit"
-          formAction={switchProofHouseholdAction}
-          className={styles.btnSecondary}
-          style={{ padding: '4px 12px', fontSize: 12 }}
+      <p className={styles.fieldHint} style={{ fontSize: 14 }}>
+        Submitting proof now needs your own verified sign-in instead of the shared troop
+        password — sign in with your email (no password to remember) and you&rsquo;ll be able
+        to send proof for your scout.
+      </p>
+      <p style={{ marginTop: 16, display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+        <Link
+          className={styles.btnPrimary}
+          href={`/signin?next=${encodeURIComponent(`/library/submit-proof?target=${target}`)}`}
         >
-          Switch household
-        </button>
-      </div>
-
-      {scouts.length === 0 ? (
-        <p className={styles.fieldError}>
-          No active scout is on file for this household — ask a leader to add one, or{' '}
-          switch households above.
-        </p>
-      ) : (
-        <div className={styles.fieldRow}>
-          <span className={styles.fieldLabel}>Which scout is this for?</span>
-          {scouts.map((s, i) => (
-            <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: i === 0 ? 4 : 8 }}>
-              <input type="radio" name="scoutId" value={s.id} defaultChecked={i === 0} required />
-              {s.displayName}
-            </label>
-          ))}
-        </div>
-      )}
-
-      <ProofFields />
-    </form>
+          Sign In →
+        </Link>
+        <Link className={styles.btnSecondary} href="/library">
+          Back to the Library
+        </Link>
+      </p>
+    </div>
   );
 }
 

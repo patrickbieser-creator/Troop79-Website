@@ -3,30 +3,28 @@
 /**
  * Resource Library Phase 2 — proof-of-completion submission
  * (Plans/Resource-Library.md, extended by Plans/Family-Identity-Auth.md).
- *
- * THREE gated paths now submit, in preference order (Patrick, 2026-08-06):
+ * Tier 1 (shared troop password + self-asserted household,
+ * lib/profile-household-session.ts) retired 2026-08-21 — Phase 3's
+ * leader-issued-code safety net, the reason the fallback stayed alive, was
+ * decided against (email is the path forward; a family with no working
+ * email is handled out of band). Only ONE path submits now:
  *   - household, subjectKind 'scout' (Tier 2-S) — a VERIFIED scout session.
  *     The picker collapses to the verified scout alone; no form field is
  *     consulted for who this is. This is Phase 0's closed scout path
  *     reopened on a real identity basis, not the free-pick that made Phase 0
  *     necessary — see proofSubmissionAllowedFor() (lib/library.ts).
  *   - household, subjectKind 'adult' (Tier 2) — a VERIFIED adult session;
- *     prefers their own household (session.householdKey) over the Tier 1
- *     picker below, but still validates the posted scoutId against it —
+ *     still validates the posted scoutId against their own household —
  *     multi-scout households still need to say which scout.
- *   - family (Tier 1, unverified) — shared troop password + a household
- *     bound to THIS device via lib/profile-household-session.ts. Falls back
- *     to here only when no verified session exists. Scout choice is
- *     validated server-side against the bound household — never trust the
- *     posted scoutId alone.
  *
  * Leader sessions are refused — a leader who personally witnesses a
  * requirement being met signs it off directly through Fast Entry (immediate
  * ledger write, no review queue needed) rather than filing a submission for
- * their own later approval. The OLD unverified 'scout' audience (shared
- * SCOUT_PASSWORD login, no per-scout identity) is ALSO still refused,
- * permanently (Plans/Family-Identity-Auth.md Phase 0) — it is superseded by
- * verified Tier 2-S, not reopened itself.
+ * their own later approval. 'family' (the retired Tier 1 audience) and the
+ * OLD unverified 'scout' audience (shared SCOUT_PASSWORD login, no
+ * per-scout identity) are ALSO refused — the former permanently as of this
+ * retirement, the latter permanently since Plans/Family-Identity-Auth.md
+ * Phase 0 — both superseded by verified Tier 2/2-S, neither reopened itself.
  *
  * Nothing here touches ledger_entries — that only happens on admin approval
  * (lib/library-data.ts's approveSubmission, the same dup-blocked path Fast
@@ -39,11 +37,6 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { FAMILY_COOKIE, signFamilySession } from '@/lib/family-session';
 import { gateAudience, getIdentitySessionIfValid } from '@/lib/family-access';
 import { isEpochCurrent } from '@/lib/identity-session';
-import {
-  PROFILE_HOUSEHOLD_COOKIE,
-  signProfileHouseholdSession,
-  verifyProfileHouseholdSession
-} from '@/lib/profile-household-session';
 import { secretMatches } from '@/lib/signed-cookie';
 import { loadHouseholdByKey } from '@/lib/households';
 import { proofSubmissionAllowedFor } from '@/lib/library';
@@ -96,46 +89,6 @@ export async function proofGateAction(formData: FormData): Promise<void> {
   redirect(proofUrl(keep));
 }
 
-/** Binds this browser to a household — reuses the SAME cookie /profile sets,
- *  so a family already recognized there is recognized here too. */
-export async function pickProofHouseholdAction(formData: FormData): Promise<void> {
-  const jar = await cookies();
-  const family = await gateAudience();
-  const target = String(formData.get('target') ?? '');
-  const keep = { target: target || undefined };
-  if (!family) redirect(proofUrl({ ...keep, gate: 'missing' }));
-
-  const householdKey = String(formData.get('householdKey') ?? '');
-  const household = await loadHouseholdByKey(householdKey);
-  if (!household) redirect(proofUrl({ ...keep, err: 'household' }));
-
-  const token = await signProfileHouseholdSession({
-    householdKey: household.key,
-    displayName: household.label,
-    iat: Date.now()
-  });
-  jar.set(PROFILE_HOUSEHOLD_COOKIE.name, token, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    maxAge: PROFILE_HOUSEHOLD_COOKIE.maxAgeSeconds
-  });
-
-  redirect(proofUrl(keep));
-}
-
-/** Clears ONLY the household cookie (keeps the family gate) so a different
- *  household can be picked without re-entering the troop password — the
- *  "method for changing the household" Patrick asked for (2026-08-06). Not
- *  a full sign-out; profile/actions.ts's profileSignOutAction is that. */
-export async function switchProofHouseholdAction(formData: FormData): Promise<void> {
-  const jar = await cookies();
-  jar.delete(PROFILE_HOUSEHOLD_COOKIE.name);
-  const target = String(formData.get('target') ?? '');
-  redirect(proofUrl({ target: target || undefined }));
-}
-
 export async function submitProofAction(formData: FormData): Promise<void> {
   const audience = await gateAudience();
   const target = String(formData.get('target') ?? '').trim();
@@ -146,7 +99,12 @@ export async function submitProofAction(formData: FormData): Promise<void> {
   // direct POST from either session is treated as a shape error, same as any
   // other guard clause here, rather than silently accepted or crashing.
   if (!proofSubmissionAllowedFor(audience)) {
-    redirect(proofUrl({ ...keep, err: audience === 'leader' ? 'leader' : 'scout-disabled' }));
+    redirect(
+      proofUrl({
+        ...keep,
+        err: audience === 'leader' ? 'leader' : audience === 'scout' ? 'scout-disabled' : 'signin-required'
+      })
+    );
   }
 
   const parsedTarget = parseTarget(target);
@@ -156,54 +114,39 @@ export async function submitProofAction(formData: FormData): Promise<void> {
 
   // Resolve + validate the scout server-side — never trust a posted id alone
   // (same reasoning as cancelSignupAction in events/[id]/actions.ts and
-  // submitChangeRequestAction in profile/actions.ts). Three shapes, in
-  // preference order — see module header.
+  // submitChangeRequestAction in profile/actions.ts). proofSubmissionAllowedFor()
+  // above already guarantees audience === 'household' here — Tier 1 (the
+  // `else` shape this used to have) was retired 2026-08-21.
   let scoutId: string;
   let scoutName: string;
   let fromLabel: string;
   let submittedVia: 'family' | 'scout';
 
-  if (audience === 'household') {
-    const session = await getIdentitySessionIfValid();
-    if (!session) redirect(proofUrl({ ...keep, err: 'household' }));
-    if (!(await isEpochCurrent(supabase, session))) {
-      redirect(proofUrl({ ...keep, err: 'revoked' }));
-    }
-    const party = await loadHouseholdByKey(session.householdKey);
-    if (!party) redirect(proofUrl({ ...keep, err: 'household' }));
+  const session = await getIdentitySessionIfValid();
+  if (!session) redirect(proofUrl({ ...keep, err: 'household' }));
+  if (!(await isEpochCurrent(supabase, session))) {
+    redirect(proofUrl({ ...keep, err: 'revoked' }));
+  }
+  const party = await loadHouseholdByKey(session.householdKey);
+  if (!party) redirect(proofUrl({ ...keep, err: 'household' }));
 
-    if (session.subjectKind === 'scout') {
-      // Tier 2-S: the picker collapses to the verified scout alone — no
-      // form field consulted for who this is, by design (Plans/Family-Identity-Auth.md
-      // decision 6: "a scout may only ever claim their own work").
-      const self = party.scouts.find((s) => s.personId === session.personId);
-      if (!self) redirect(proofUrl({ ...keep, err: 'scout' }));
-      scoutId = self.id;
-      scoutName = self.displayName;
-      fromLabel = 'a verified scout sign-in';
-      submittedVia = 'scout';
-    } else {
-      const postedScoutId = String(formData.get('scoutId') ?? '').trim();
-      const scout = party.scouts.find((s) => s.id === postedScoutId);
-      if (!postedScoutId || !scout) redirect(proofUrl({ ...keep, err: 'scout' }));
-      scoutId = scout.id;
-      scoutName = scout.displayName;
-      fromLabel = `the ${party.label} household (verified sign-in)`;
-      submittedVia = 'family';
-    }
+  if (session.subjectKind === 'scout') {
+    // Tier 2-S: the picker collapses to the verified scout alone — no
+    // form field consulted for who this is, by design (Plans/Family-Identity-Auth.md
+    // decision 6: "a scout may only ever claim their own work").
+    const self = party.scouts.find((s) => s.personId === session.personId);
+    if (!self) redirect(proofUrl({ ...keep, err: 'scout' }));
+    scoutId = self.id;
+    scoutName = self.displayName;
+    fromLabel = 'a verified scout sign-in';
+    submittedVia = 'scout';
   } else {
-    // Tier 1 fallback (unverified family password + self-asserted household).
     const postedScoutId = String(formData.get('scoutId') ?? '').trim();
-    if (!postedScoutId) redirect(proofUrl({ ...keep, err: 'scout' }));
-    const jar = await cookies();
-    const household = await verifyProfileHouseholdSession(jar.get(PROFILE_HOUSEHOLD_COOKIE.name)?.value);
-    if (!household) redirect(proofUrl({ ...keep, err: 'household' }));
-    const party = await loadHouseholdByKey(household.householdKey);
-    const scout = party?.scouts.find((s) => s.id === postedScoutId);
-    if (!party || !scout) redirect(proofUrl({ ...keep, err: 'scout' }));
+    const scout = party.scouts.find((s) => s.id === postedScoutId);
+    if (!postedScoutId || !scout) redirect(proofUrl({ ...keep, err: 'scout' }));
     scoutId = scout.id;
     scoutName = scout.displayName;
-    fromLabel = `the ${party.label} household`;
+    fromLabel = `the ${party.label} household (verified sign-in)`;
     submittedVia = 'family';
   }
 
