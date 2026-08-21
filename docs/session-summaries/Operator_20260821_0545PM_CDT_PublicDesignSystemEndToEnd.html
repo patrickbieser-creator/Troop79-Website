@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Session Summary — Public Design System End to End (2026-08-21)</title>
+<style>
+  :root {
+    --nw-teal: #1e3a4a;   /* Troop 79 navy (BRAND.md primary) */
+    --nw-green: #3d5a3e;  /* Troop 79 forest (BRAND.md accent) */
+    --paper: #faf6ef;
+    --ink: #2a2a2a;
+    --meta: #6d7580;
+    --line: #e2e4e8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 15px; color: var(--ink); background: var(--paper); line-height: 1.55; }
+  .header { background: var(--nw-teal); color: #fff; padding: 40px 64px; }
+  .header .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.6); margin-bottom: 8px; }
+  .header h1 { font-size: 30px; font-weight: 600; margin-bottom: 6px; }
+  .header .sub { font-size: 14px; color: rgba(255,255,255,.75); }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 36px 24px 64px; }
+  h2 { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--nw-green); border-bottom: 2px solid var(--nw-green); padding-bottom: 6px; margin: 36px 0 14px; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .metric { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+  .metric .num { font-size: 26px; font-weight: 700; color: var(--nw-teal); }
+  .metric .lbl { font-size: 12px; color: var(--meta); margin-top: 2px; }
+  ul { padding-left: 22px; }
+  li { margin-bottom: 9px; }
+  .card { background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--nw-green); border-radius: 4px; padding: 14px 18px; margin-bottom: 12px; }
+  .card.warn { border-left-color: #c0392b; }
+  .card .t { font-weight: 700; color: var(--nw-teal); }
+  code { background: #f0f1f3; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+  .footer { text-align: center; font-size: 12px; color: var(--meta); padding: 24px; border-top: 1px solid var(--line); margin-top: 40px; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); font-size: 13.5px; }
+  th { text-align: left; background: #f0f1f3; padding: 8px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--meta); }
+  td { padding: 8px 12px; border-top: 1px solid var(--line); vertical-align: top; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="eyebrow">Troop 79 &middot; Session Summary &middot; Operator</div>
+  <h1>Public Design System, End to End</h1>
+  <div class="sub">August 21, 2026 &middot; 5:45 PM CDT &middot; v1.63.0 &rarr; v1.68.0 &middot; www.troop-79.com</div>
+</div>
+<div class="wrap">
+
+  <h2>Key Metrics</h2>
+  <div class="metrics">
+    <div class="metric"><div class="num">6</div><div class="lbl">Releases shipped (v1.63&ndash;v1.68)</div></div>
+    <div class="metric"><div class="num">4</div><div class="lbl">Decisions recorded (D-172&ndash;175)</div></div>
+    <div class="metric"><div class="num">703</div><div class="lbl">Tests (678 &rarr; 703, failing-first)</div></div>
+    <div class="metric"><div class="num">79&rarr;7</div><div class="lbl">Distinct hex in public CSS</div></div>
+    <div class="metric"><div class="num">146&rarr;13</div><div class="lbl">Inline styles (survivors dynamic)</div></div>
+    <div class="metric"><div class="num">0</div><div class="lbl">Admin&harr;public leaks (enforced by build)</div></div>
+  </div>
+
+  <h2>What Was Accomplished</h2>
+  <ul>
+    <li><strong>Planned, decided, and shipped in one session</strong> &mdash; a full audit of the public surface (22 stylesheets, 67 tsx files), a phased plan mirroring the admin effort, seven Patrick decisions (palette canon, token naming, DatePickerField ownership, iOS inputs, divider fold&hellip;), then Phases 0&ndash;D plus guardrails, each phase gate-green and browser-verified.</li>
+    <li><strong>Phase 0 (v1.63.0)</strong> &mdash; fonts self-hosted via <code>next/font</code> (defusing admin&rsquo;s literal <code>'Open Sans'</code>/<code>'Playfair'</code> stacks that would have silently lost their webfonts); full public token scales in <code>globals.css</code>; 90 lying fallbacks dropped, 3 phantom tokens resolved; <strong>the Styleguides nav item now opens a chooser</strong> over the admin guide and a new public guide (live swatches, remediation scoreboard).</li>
+    <li><strong>Phase A (v1.64.0)</strong> &mdash; ten shared components (PageHeader, PageShell, Button, Badge, TabStrip, Notice, EmptyState, SectionDivider, form kit, card) built failing-first and adopted across ~40 files by three parallel forks; <code>library.module.css</code> de-radioactivated (19 importers &rarr; library-only).</li>
+    <li><strong>Phase B (v1.65.0)</strong> &mdash; the merit-badges pages traded 46 inline style blobs for a real stylesheet; the every-page footer became responsive for the first time; inline styles 146&rarr;13, each survivor a commented dynamic.</li>
+    <li><strong>Phase C (v1.66.0)</strong> &mdash; the second-lineage palette fork (8 files) normalized onto the canonical tokens; hex 79&rarr;7; the last admin coupling severed &mdash; profile editors on a native public <code>DateField</code>, admin&rsquo;s 31 fallback chains deleted; 16px iOS no-zoom inputs; the home divider folded to the shared style.</li>
+    <li><strong>Phase D + guardrails (v1.67&ndash;v1.68)</strong> &mdash; closeout greps recorded, a third sanctioned crossing formalized (scout-accordion), AGENTS.md gained the public styling rules &mdash; and then the rules became <em>mechanical</em>: a 5-invariant census test plus an ESLint firewall rule, both verified failing-first, so a new hex, inline style, or cross-side import now fails the build.</li>
+    <li><strong>Also confirmed:</strong> Recent Logins and Court of Honor are production-verified (long-standing next-step closed).</li>
+  </ul>
+
+  <h2>Decisions</h2>
+  <table>
+    <tr><th>ID</th><th>Decision</th></tr>
+    <tr><td>D-172</td><td>Public design system mirrors D-162 &mdash; global tokens in <code>globals.css</code>, shared components in <code>_components/</code>, two-direction firewall with exactly three sanctioned crossings.</td></tr>
+    <tr><td>D-173</td><td>Palette canon: forest <code>#3d5a3e</code>, danger <code>#8c3b3b</code>, <code>--fs/--sp/--rad/--status</code> scales, 3px radius retired, canonical palette wins the second lineage, one divider style site-wide.</td></tr>
+    <tr><td>D-174</td><td>Date entry option (b): native public <code>DateField</code>; 16px iOS input floor; <code>Badge caps=&#123;false&#125;</code>.</td></tr>
+    <tr><td>D-175</td><td>Design-system rules are mechanically enforced &mdash; census invariant tests + firewall lint; allowlist growth requires site comment + scoreboard note, same commit.</td></tr>
+  </table>
+
+  <h2>Open Items / Next Steps</h2>
+  <div class="card"><span class="t">Production eyes-on (new):</span> phone-width pass &mdash; footer stacking, merit-badges 2&times;2 fold, the recolored member/signin/submit screens, 16px inputs &mdash; plus a desktop glance at the masthead JOIN chip&rsquo;s new shared sizing. (Session capture tooling wouldn&rsquo;t hold a mobile viewport; all mobile behavior is plain media queries verified in code.)</div>
+  <div class="card warn"><span class="t">B-004 &mdash; rotate SUPABASE_DB_PASSWORD.</span> Still open from the fifteenth session; dashboard reset + .env.local + CLI re-link.</div>
+  <div class="card"><span class="t">Patrick&rsquo;s color pick:</span> ledger&rsquo;s Hiking chip still needs its own tint (D-169 follow-up).</div>
+  <div class="card"><span class="t">Small mints on trigger:</span> <code>--award-gold</code> if the celebration gold gains a third use; a PageHeader <code>meta</code> slot if a second meta-row header appears.</div>
+
+</div>
+<div class="footer">Troop 79 &middot; Operator session summary &middot; Generated 2026-08-21 05:45 PM CDT</div>
+</body>
+</html>
