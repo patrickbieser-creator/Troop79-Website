@@ -61,27 +61,25 @@ The audit's headline numbers:
 
 ## Acceptance Criteria
 
-- [ ] **Foundation:** public token sheet complete in `globals.css` `:root` — existing 21
-      kept byte-identical; added: type scale, spacing scale, radius scale, semantic status
-      tokens (danger/success/warning/info + tints), `--font-mono`, focus-ring, breakpoint
-      documentation. Font stacks (`--font-ui/display/body`) defined in `:root` (not only
-      `@theme inline`); fonts served via `next/font/google`. The 3 phantom tokens resolved
-      (defined or reads renamed). The ~63 contradicting fallbacks corrected to match their
-      token (or dropped).
-- [ ] **Styleguide:** `/admin/styleguide` is a chooser offering two choices (Admin / Public);
-      the existing admin guide lives at `/admin/styleguide/admin`, the new public guide at
-      `/admin/styleguide/public`. The public guide follows the admin model exactly: renders
-      canonical patterns **from the real production stylesheets**, shows surviving variants
-      side by side, and carries a scoreboard that is the remediation work queue. Nav
-      visibility unchanged (capability-less ⇒ full admins only).
-- [ ] **Phase A — shared components** in `src/app/_components/` adopted everywhere their
-      pattern appears: `PageHeader` (kicker/title/lede/rule), `PageShell` (wide/narrow),
-      `Button` (primary/secondary/ghost/danger), `Badge`, `TabStrip`, `Notice`,
-      `EmptyState`, `SectionDivider`, form kit (`Field`/`TextInput`/`Select`/`Textarea`/
-      `FieldHint`/`FieldError`), `.card` surface primitive. Library promotion done: the ~20
-      shell+form classes lifted out of `library.module.css` into the shared layer; the 9
-      non-library importers converted; `library.module.css` shrinks to library-only classes
-      and loses its "radioactive" label.
+- [x] **Foundation — SHIPPED 2026-08-21 (v1.63.0).** All of it, plus a bonus catch: admin's
+      literal `'Open Sans'`/`'Playfair Display'` stacks would have silently lost their
+      webfonts under next/font — `--admin-font-ui` repointed to the next/font variable and
+      a new `--admin-font-display` closed the five "TOKEN GAP" heading sites. 90 lying
+      fallbacks dropped (audit estimated ~63; the extra are `--rule`'s now-redundant 16).
+- [x] **Styleguide — SHIPPED 2026-08-21 (v1.63.0).** Chooser + both guides live; nav item
+      relabeled "Styleguides" (longest-prefix matchPath covers the children); chooser test
+      failing-first. Public guide's specimens re-pointed to the live shared components in
+      the Phase A commit.
+- [x] **Phase A — SHIPPED 2026-08-21 (v1.64.0).** All ten components built (15 dom tests,
+      failing-first) and adopted across ~40 files by three parallel forks (D-165 pattern);
+      library promotion complete — all 19 importers converted, promoted classes deleted,
+      `library.module.css` is library-only. Honest residuals live on the public
+      styleguide's scoreboard (photos/events two-column headers, compact/quiet button
+      variants, reqDoneBadge uppercase question, home's editorial divider) — they fold
+      into Phases B/C plus two Patrick calls. Deliberate deltas: passkey buttons
+      navy→forest, boxed accessible error notices, focus rings, 3px→2px radii.
+      Phone-width spot-check deferred to production eyes-on (desktop sweep done;
+      components inherit the canon's responsive CSS).
 - [ ] **Phase B — stylesheet-less screens:** merit-badges ×2, `site-footer` (gains media
       queries for the first time), `signed-in-as` get real stylesheets on tokens; inline
       sites 146 → ≤ 15 (each survivor genuinely dynamic and commented).
