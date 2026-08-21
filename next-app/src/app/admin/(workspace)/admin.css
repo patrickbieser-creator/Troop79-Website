@@ -127,10 +127,16 @@
   --admin-tracking-wider:  .08em;
   --admin-tracking-widest: .12em;
 
-  /* ── Font stacks (Phase C) ───────────────────────────────────────── */
-  /* Same stack the public --font-ui resolves to, declared here so admin
-     chrome never reads the public token. */
-  --admin-font-ui:   'Open Sans', Arial, sans-serif;
+  /* ── Font stacks (Phase C; next/font since Public Phase 0) ───────── */
+  /* Fonts are self-hosted via next/font (layout.tsx), which serves them
+     under hashed family names — literal 'Open Sans' / 'Playfair Display'
+     no longer resolve to a loaded webfont. --font-open-sans/--font-playfair
+     are the next/font infrastructure variables (set on <html>), NOT public
+     palette tokens, so reading them here does not breach the firewall. */
+  --admin-font-ui:      var(--font-open-sans), Arial, sans-serif;
+  --admin-font-display: var(--font-playfair), Georgia, serif; /* closes the
+                                     "TOKEN GAP" sites: dashboard, mb-progress,
+                                     roll-call, workbench display headings */
   --admin-font-mono: 'Menlo', 'Consolas', monospace;  /* absorbs the ui-monospace /
                                      'SF Mono' and bare-monospace drift variants */
 

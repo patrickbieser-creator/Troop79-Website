@@ -4,7 +4,7 @@
  * Shared pill tab strip with optional count badges (Phase A,
  * Plans/Admin-Design-System.md) — replaces the 4 byte-identical per-screen
  * copies found by the 2026-08-21 audit. Canonical rendering lives at
- * /admin/styleguide.
+ * /admin/styleguide/admin.
  *
  * Dual-mode items, matching how the legacy copies were used: an item with
  * `href` renders a Link (articles' archive tabs — tab state lives in the

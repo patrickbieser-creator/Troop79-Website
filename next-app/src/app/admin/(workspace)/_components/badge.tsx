@@ -2,7 +2,7 @@
  * Shared status badge (Phase A, Plans/Admin-Design-System.md) — the one
  * "small colored status label" for the whole Leader Workspace, replacing
  * the per-screen .badge / .statusPill / .pill / .tag copies. Canonical
- * rendering and the variant palette: /admin/styleguide.
+ * rendering and the variant palette: /admin/styleguide/admin.
  *
  * Scope rule: STATUS pills convert to this (Draft/Published/Active/
  * Inactive/Weak match/…); CATEGORICAL tags with their own meaning

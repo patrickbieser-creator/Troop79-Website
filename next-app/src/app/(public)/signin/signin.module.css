@@ -6,11 +6,11 @@
   list-style: none;
   margin: 0.35rem 0 0;
   padding: 0;
-  border-top: 1px solid var(--rule, #e4d9c4);
+  border-top: 1px solid var(--rule);
 }
 
 .pickList > li {
-  border-bottom: 1px solid var(--rule, #e4d9c4);
+  border-bottom: 1px solid var(--rule);
 }
 
 /* The row IS the button — a whole-row target is what makes this usable on a
@@ -34,7 +34,7 @@
 }
 .pickRow:hover,
 .pickRow:focus-visible {
-  background: var(--cream-2, #f7f1e6);
+  background: var(--newsprint);
 }
 .pickRow:disabled {
   opacity: 0.5;
@@ -43,28 +43,28 @@
 
 .pickName {
   font-weight: 600;
-  color: var(--navy, #22333b);
+  color: var(--navy);
 }
 
 .pickMeta {
   font-size: 0.85em;
-  color: var(--text-meta, #857c6c);
+  color: var(--text-meta);
   white-space: nowrap;
 }
 
 .pickRowEmpty {
-  color: var(--text-meta, #857c6c);
+  color: var(--text-meta);
 }
 
 .pickFallback {
   margin-top: 0.75rem;
   padding-top: 0.75rem;
-  border-top: 1px solid var(--rule, #e4d9c4);
+  border-top: 1px solid var(--rule);
 }
 .pickFallback > summary {
   cursor: pointer;
   font-size: 0.9em;
-  color: var(--text-meta, #5b5347);
+  color: var(--text-meta);
 }
 .pickFallback form {
   margin-top: 0.6rem;
@@ -84,7 +84,7 @@
   padding: 0;
   font: inherit;
   font-size: 0.9em;
-  color: var(--forest, #3d7a4a);
+  color: var(--forest);
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
@@ -103,7 +103,7 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--navy, #22333b);
+  color: var(--navy);
   margin-bottom: 0.35rem;
 }
 
@@ -127,13 +127,13 @@
   display: block;
   margin-top: 0.35rem;
   font-size: 0.82rem;
-  color: var(--text-meta, #857c6c);
+  color: var(--text-meta);
 }
 
 .searchNote {
   margin: 0.75rem 0 0;
   font-size: 0.88rem;
-  color: var(--text-meta, #857c6c);
+  color: var(--text-meta);
   line-height: 1.5;
 }
 
@@ -155,12 +155,12 @@
 .passkeyBlock {
   margin-bottom: 1.25rem;
   padding-bottom: 1.25rem;
-  border-bottom: 1px solid var(--rule, #e4d9c4);
+  border-bottom: 1px solid var(--rule);
 }
 
 .passkeyBtn {
   width: 100%;
-  background: var(--navy, #22333b);
+  background: var(--navy);
   color: #fff;
   border: none;
   border-radius: 4px;
@@ -182,7 +182,7 @@
 .passkeyHint {
   margin: 0.5rem 0 0;
   font-size: 0.82rem;
-  color: var(--text-meta, #857c6c);
+  color: var(--text-meta);
   line-height: 1.5;
 }
 

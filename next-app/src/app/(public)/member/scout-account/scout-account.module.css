@@ -4,14 +4,14 @@
   align-items: center;
 }
 .proxyForm select {
-  border: 1px solid var(--rule, #e4d9c4);
+  border: 1px solid var(--rule);
   border-radius: 4px;
   padding: 0.4rem 0.6rem;
   font-family: inherit;
   font-size: 0.88rem;
 }
 .proxyForm button {
-  background: var(--navy, #22333b);
+  background: var(--navy);
   color: #fff;
   border: none;
   border-radius: 4px;
@@ -44,7 +44,7 @@
 }
 
 .balanceCard {
-  border: 1px solid var(--rule, #e4d9c4);
+  border: 1px solid var(--rule);
   border-radius: 6px;
   background: #fff;
   padding: 1rem 1.1rem;
@@ -56,19 +56,19 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--text-meta, #857c6c);
+  color: var(--text-meta);
 }
 
 .balanceValue {
   margin: 0;
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--navy, #22333b);
+  color: var(--navy);
   font-variant-numeric: tabular-nums;
 }
 
 .tableWrap {
-  border: 1px solid var(--rule, #e4d9c4);
+  border: 1px solid var(--rule);
   border-radius: 6px;
   background: #fff;
   overflow-x: auto;
@@ -84,7 +84,7 @@
 .table th,
 .table td {
   padding: 0.6rem 0.8rem;
-  border-bottom: 1px solid var(--rule, #efe7d8);
+  border-bottom: 1px solid var(--rule);
   text-align: left;
 }
 
@@ -94,7 +94,7 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--text-meta, #857c6c);
+  color: var(--text-meta);
   white-space: nowrap;
 }
 
@@ -110,6 +110,6 @@
 .empty {
   padding: 2rem 1rem;
   text-align: center;
-  color: var(--text-meta, #857c6c);
+  color: var(--text-meta);
   font-style: italic;
 }

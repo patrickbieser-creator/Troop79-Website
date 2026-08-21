@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.62.0</p>
+      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.63.0</p>
     </div>
   </div>
 
@@ -494,6 +494,53 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.63.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.63.0</span>
+        <span class="release-date">August 21, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Public design system Phase 0: self-hosted fonts, the full public token sheet, and the two-guide Styleguides chooser</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Fonts are self-hosted now.</strong> Playfair Display, Lora, and Open
+              Sans moved from a render-blocking Google Fonts <code>&lt;link&gt;</code> to
+              <code>next/font</code> &mdash; served from our own domain with size-adjusted
+              fallback metrics, so pages stop shifting while fonts load and no request
+              leaves for Google. En route this defused a landmine: admin&rsquo;s entire UI
+              font and five display headings named the Google families literally and would
+              have silently fallen back to Arial/Georgia &mdash; admin gained a real
+              <code>--admin-font-display</code> token instead.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>The public site has a complete token sheet.</strong> The 21 editorial
+              color tokens are joined by type, spacing (4px grid), and radius scales,
+              semantic status colors (the public side had <em>no</em> danger token &mdash;
+              13 ad-hoc reds in the wild), a single mono stack, and a focus-ring token.
+              Phantom tokens are gone: <code>--rule</code> (16 reads that silently did
+              nothing) is real, and 90 &ldquo;lying&rdquo; fallbacks that encoded a second,
+              contradictory palette were removed.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Styleguides, plural.</strong> The admin nav item now opens a chooser
+              offering two pattern libraries: the existing Admin Styleguide and the new
+              Public Styleguide &mdash; live token swatches, the editorial type scale, and
+              a 14-row remediation scoreboard that is the work queue for Phases A&ndash;C,
+              with canonical specimens rendered from the real production stylesheets so
+              the guide can never drift from what ships.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

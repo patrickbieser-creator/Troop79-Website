@@ -1,6 +1,6 @@
 /**
  * Shared page header (Phase B, Plans/Admin-Design-System.md) — replaces the
- * per-screen .pageTitle blocks. Canonical rendering: /admin/styleguide.
+ * per-screen .pageTitle blocks. Canonical rendering: /admin/styleguide/admin.
  *
  *   <PageTitle title="Calendar" sub="Everything that happens on a date…">
  *     <AddButton …/>            // optional right-side actions

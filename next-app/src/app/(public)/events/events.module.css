@@ -206,7 +206,7 @@
   padding-top: 12px; border-top: 1px solid var(--border-light);
 }
 .subscribeUrl {
-  flex: 1; min-width: 0; font-family: 'Menlo', 'Consolas', monospace; font-size: 11px; color: var(--text-body);
+  flex: 1; min-width: 0; font-family: var(--font-mono); font-size: 11px; color: var(--text-body);
   background: var(--newsprint); border: 1px solid var(--border-light); border-radius: 2px; padding: 6px 8px;
   overflow-x: auto; white-space: nowrap;
 }

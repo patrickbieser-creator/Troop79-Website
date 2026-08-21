@@ -5,7 +5,7 @@
  * D-156/D-158 page-level actions pattern: one quiet select instead of a
  * wall of buttons. Replaces the 7 verbatim per-screen copies (and, on
  * conversion, roster's and calendar's divergent ones). Canonical rendering:
- * /admin/styleguide.
+ * /admin/styleguide/admin.
  *
  * Contract carried over from every legacy copy: the select always rests on
  * the placeholder; picking an option dispatches `onAction(value)` and snaps

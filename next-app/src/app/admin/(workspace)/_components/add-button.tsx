@@ -4,7 +4,7 @@
  * Shared green "+ Add X" button (Phase A, Plans/Admin-Design-System.md) —
  * the D-159 standard: the primary Add action is always visible, far right
  * of any tab strip, never buried in Actions ▾. Replaces the 4 byte-identical
- * per-screen .addBtn copies. Canonical rendering: /admin/styleguide.
+ * per-screen .addBtn copies. Canonical rendering: /admin/styleguide/admin.
  *
  * Dual-mode like the legacy usages: `href` renders a Link (articles' "+ Add
  * News" navigates to the editor), otherwise a button firing `onClick`

@@ -7,7 +7,7 @@
 }
 
 .head h1 {
-  font-family: 'Playfair Display', Georgia, serif; /* TOKEN GAP: no --admin-font-display yet */
+  font-family: var(--admin-font-display);
   font-size: 24px;
   margin: 4px 0 6px;
 }

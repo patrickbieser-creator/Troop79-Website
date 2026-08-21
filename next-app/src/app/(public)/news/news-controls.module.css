@@ -30,11 +30,11 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--text-meta, #857c6c);
+  color: var(--text-meta);
 }
 
 .tagSelect {
-  border: 1px solid var(--rule, #d8ccb4);
+  border: 1px solid var(--rule);
   border-radius: 4px;
   background: #fff;
   color: inherit;
@@ -44,7 +44,7 @@
   max-width: 14rem;
 }
 .tagSelect:focus {
-  outline: 2px solid var(--forest, #3d7a4a);
+  outline: 2px solid var(--forest);
   outline-offset: 1px;
 }
 
@@ -52,7 +52,7 @@
    afford to be loud — it is not clutter for a visitor who cannot use it. */
 .submitBtn {
   display: inline-block;
-  background: var(--forest, #3d7a4a);
+  background: var(--forest);
   color: #fff;
   border: none;
   border-radius: 4px;

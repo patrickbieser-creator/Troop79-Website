@@ -252,11 +252,12 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         capability: 'news.write'
       },
       {
-        // Deliberately NO capability: the styleguide renders static pattern
+        // Deliberately NO capability: the styleguides render static pattern
         // samples — no data, no writes — so no page-level grant applies, and
         // per visibleNavSections' rules a capability-less item is offered to
         // full admins only. That's the right audience for a design reference.
-        label: 'Styleguide',
+        // Lands on the chooser page, which offers the admin and public guides.
+        label: 'Styleguides',
         href: '/admin/styleguide',
         matchPath: '/admin/styleguide'
       }

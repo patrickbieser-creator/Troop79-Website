@@ -1,13 +1,13 @@
 'use client';
 
 /**
- * Client-side specimen wrappers for /admin/styleguide. The styleguide page
+ * Client-side specimen wrappers for /admin/styleguide/admin. The styleguide page
  * is a server component, so it can't pass handler props (onAction/onSelect)
  * to client components — these thin wrappers supply inert handlers instead.
  * Display-only: nothing here appears outside the styleguide.
  */
-import { ActionsMenu } from '../_components/actions-menu';
-import { SortHeader, useSortable } from '../_components/use-sortable';
+import { ActionsMenu } from '../../_components/actions-menu';
+import { SortHeader, useSortable } from '../../_components/use-sortable';
 
 const SORT_ROWS = [
   { name: 'Violet Babby', nights: 12 },

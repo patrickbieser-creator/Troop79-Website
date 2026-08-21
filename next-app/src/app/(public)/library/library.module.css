@@ -94,7 +94,7 @@
 
 /* ── Requirement tag ── */
 .reqTag {
-  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-family: var(--font-mono);
   background: var(--navy);
   color: var(--warm-white);
   padding: 2px 9px;

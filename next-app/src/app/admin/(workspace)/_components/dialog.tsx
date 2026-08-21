@@ -2,7 +2,7 @@
 
 /**
  * Shared admin <dialog> implementing THE approved spec (Patrick,
- * 2026-08-21 — see dialog.module.css and /admin/styleguide). Phase A of
+ * 2026-08-21 — see dialog.module.css and /admin/styleguide/admin). Phase A of
  * Plans/Admin-Design-System.md replaced the four legacy per-screen
  * .dialog copies (calendar, meetings, albums, media-manager) with this.
  *

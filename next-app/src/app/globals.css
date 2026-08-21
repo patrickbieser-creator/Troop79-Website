@@ -25,6 +25,75 @@
   --shadow-card:    0 1px 4px rgba(30,58,74,.08), 0 2px 12px rgba(30,58,74,.06);
   --shadow-hover:   0 4px 20px rgba(30,58,74,.14);
   --transition:     .18s ease;
+
+  /* ── Public Design System scales (Phase 0, 2026-08-21 —
+     Plans/Public-Design-System.md; live reference: /admin/styleguide/public).
+     New public CSS must use these instead of raw px/hex; the admin side has
+     its own --admin-* sheet and never reads these (the sole sanctioned
+     crossings: admin.css's --admin-preview-* alias block and the DB-driven
+     --article-* prose tokens). ── */
+
+  /* Type — px, matching the token-native lineage; --fs-display collapses the
+     three near-identical clamp() headline curves. */
+  --fs-2xs: 11px;
+  --fs-xs:  12px;
+  --fs-sm:  13px;
+  --fs-md:  15px;
+  --fs-lg:  17px;
+  --fs-xl:  20px;
+  --fs-2xl: 26px;
+  --fs-3xl: 34px;
+  --fs-display: clamp(30px, 6vw, 44px);
+
+  /* Spacing — 4px grid */
+  --sp-1: 4px;  --sp-2: 8px;   --sp-3: 12px;  --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px;  --sp-7: 28px;  --sp-8: 32px;
+  --sp-9: 40px; --sp-10: 48px; --sp-11: 56px; --sp-12: 64px;
+
+  /* Radii — 2px is the small canon, 4px medium; 3px is retired (Patrick,
+     2026-08-21: each 3px use folds to its nearer neighbor). */
+  --rad-sm: 2px;
+  --rad-md: 4px;
+  --rad-lg: 8px;
+  --rad-pill: 999px;
+  --rad-circle: 50%;
+
+  /* Semantic status. Danger #8c3b3b chosen over the competing #a04a3d family
+     (Patrick, 2026-08-21); success/info/warning reuse the brand hues so color
+     keeps carrying one meaning per hue. Tints picked from the audit's
+     de-facto clusters. */
+  --status-danger:      #8c3b3b;
+  --status-danger-bg:   #fbf0ee;
+  --status-success:     var(--forest);
+  --status-success-bg:  #eef2ee;
+  --status-warning:     var(--bark);
+  --status-warning-bg:  #fdf6e3;
+  --status-info:        var(--navy);
+  --status-info-bg:     #e8eef2;
+
+  /* Hairline rule. Was a 16-read phantom whose fallbacks disagreed
+     (#e4d9c4 ×12, #efe7d8, #d8ccb4) — the dominant value wins; the minority
+     sites take a deliberate, near-invisible normalization delta. */
+  --rule: #e4d9c4;
+
+  /* Fonts — stacks live HERE (not only in @theme inline, which 323 reads
+     silently depended on); the family variables come from next/font in
+     layout.tsx. One mono stack replaces the two competing ad-hoc ones. */
+  --font-display: var(--font-playfair), Georgia, serif;
+  --font-body:    var(--font-lora), Georgia, serif;
+  --font-ui:      var(--font-open-sans), Arial, sans-serif;
+  --font-mono:    ui-monospace, 'Cascadia Mono', Consolas, Menlo, monospace;
+
+  /* Focus */
+  --focus-ring: 2px solid var(--navy-light);
+
+  /* Breakpoints — documentation, not tokens (custom properties can't be read
+     inside @media). The canon new queries must use, and the set Phase C folds
+     the 17 in-the-wild values onto:
+       480px  — phone
+       640px  — large phone / small tablet
+       900px  — tablet / narrow desktop
+     (1180px is the content max-width, owned by the PageShell component.) */
 }
 
 @theme inline {
@@ -35,9 +104,6 @@
   --color-cream:       var(--cream);
   --color-newsprint:   var(--newsprint);
   --color-bark:        var(--bark);
-  --font-display:      'Playfair Display', Georgia, serif;
-  --font-body:         'Lora', Georgia, serif;
-  --font-ui:           'Open Sans', Arial, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -45,7 +111,7 @@
 body {
   background: var(--newsprint);
   color: var(--text-body);
-  font-family: 'Lora', Georgia, serif;
+  font-family: var(--font-body);
   min-height: 100vh;
 }
 

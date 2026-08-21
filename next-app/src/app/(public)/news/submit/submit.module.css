@@ -1,7 +1,7 @@
 .intro {
   max-width: 60ch;
   margin: 0 0 1.75rem;
-  color: var(--text-meta, #5b5347);
+  color: var(--text-meta);
   line-height: 1.6;
 }
 
@@ -12,7 +12,7 @@
 .byline {
   margin: 0 0 1.25rem;
   font-size: 0.9rem;
-  color: var(--text-meta, #5b5347);
+  color: var(--text-meta);
 }
 
 .field {
@@ -26,7 +26,7 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--navy, #22333b);
+  color: var(--navy);
   margin-bottom: 0.35rem;
 }
 
@@ -57,7 +57,7 @@
   display: block;
   margin-top: 0.4rem;
   font-size: 0.82rem;
-  color: var(--text-meta, #857c6c);
+  color: var(--text-meta);
   line-height: 1.5;
 }
 
@@ -86,7 +86,7 @@
 
 .cancel {
   font-size: 0.9rem;
-  color: var(--text-meta, #5b5347);
+  color: var(--text-meta);
 }
 
 .error {
@@ -103,7 +103,7 @@
 }
 .done p {
   line-height: 1.6;
-  color: var(--text-meta, #5b5347);
+  color: var(--text-meta);
 }
 .doneActions {
   display: flex;
@@ -135,12 +135,12 @@
   margin: 0 0 1rem;
   font-size: 1.1rem;
   line-height: 1.55;
-  color: var(--text-head, #2f2b25);
+  color: var(--text-head);
 }
 
 .gateWhy {
   margin: 0 0 1.5rem;
-  color: var(--text-meta, #5b5347);
+  color: var(--text-meta);
 }
 
 .gateAction {
@@ -149,7 +149,7 @@
 
 .gateBtn {
   display: inline-block;
-  background: var(--forest, #3d7a4a);
+  background: var(--forest);
   color: #fff;
   border-radius: 4px;
   padding: 0.7rem 1.4rem;
@@ -169,7 +169,7 @@
 .gateNote {
   margin: 0;
   font-size: 0.88rem;
-  color: var(--text-meta, #857c6c);
+  color: var(--text-meta);
 }
 
 @media (max-width: 34rem) {

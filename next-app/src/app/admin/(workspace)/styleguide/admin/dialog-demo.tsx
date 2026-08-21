@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Live demo for the shared Dialog component on /admin/styleguide (the spec
+ * Live demo for the shared Dialog component on /admin/styleguide/admin (the spec
  * was approved by Patrick 2026-08-21 and shipped as _components/dialog the
  * same day). The one interactive piece of an otherwise static page: the
  * navy-tinted blurred backdrop and the @starting-style entry motion only
@@ -9,7 +9,7 @@
  */
 import { useRef } from 'react';
 import sg from './styleguide.module.css';
-import { Dialog, DialogHeader, DialogBody, DialogActions } from '../_components/dialog';
+import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
 
 export function DialogDemo() {
   const ref = useRef<HTMLDialogElement>(null);

@@ -1,0 +1,40 @@
+/* /admin/styleguide chooser — two large card links, one per guide.
+   Admin tokens only (this is a workspace page). */
+
+.cards {
+  display: flex;
+  gap: var(--admin-space-8);
+  flex-wrap: wrap;
+  margin-top: var(--admin-space-11);
+}
+
+.card {
+  flex: 1 1 280px;
+  max-width: 420px;
+  display: block;
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius-lg);
+  padding: var(--admin-space-10);
+  box-shadow: var(--admin-shadow-sm);
+  transition: box-shadow var(--admin-transition), border-color var(--admin-transition);
+}
+
+.card:hover {
+  border-color: var(--admin-navy-light);
+  box-shadow: var(--admin-shadow-md);
+}
+
+.cardTitle {
+  font-size: var(--admin-text-xl);
+  font-weight: var(--admin-weight-bold);
+  color: var(--admin-navy);
+  margin: 0 0 var(--admin-space-2);
+}
+
+.cardDesc {
+  font-size: var(--admin-text-md);
+  color: var(--admin-gray-600);
+  margin: 0;
+  line-height: 1.5;
+}

@@ -83,9 +83,9 @@
   margin: 16px auto 0;
 }
 .bannerInner {
-  background: var(--cream, #f6f1e7);
+  background: var(--cream);
   border: 1px solid var(--border-mid, #c8bfaf);
-  border-left: 4px solid var(--bark, #7a5c3e);
+  border-left: 4px solid var(--bark);
   padding: 12px 18px;
   font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
   font-size: 13px;
@@ -118,13 +118,13 @@
 .archiveSection {
   margin-top: 28px;
   padding-top: 18px;
-  border-top: 1px solid var(--border-light, #e4dccb);
+  border-top: 1px solid var(--border-light);
 }
 
 /* ── glance card ── */
 .glanceCard {
-  background: var(--warm-white, #fdfbf6);
-  border: 1px solid var(--border-light, #e4dccb);
+  background: var(--warm-white);
+  border: 1px solid var(--border-light);
   border-top: 4px solid var(--navy);
   border-radius: 2px;
   margin-bottom: 32px;
@@ -167,7 +167,7 @@
   font-weight: 700;
   letter-spacing: .06em;
   text-transform: uppercase;
-  color: var(--warm-white, #fdfbf6);
+  color: var(--warm-white);
   padding: 5px 12px;
   border-radius: 2px;
   background: var(--forest);
@@ -179,7 +179,7 @@
   padding: 20px 24px 14px;
 }
 @media (max-width: 560px) { .glanceDetails { grid-template-columns: 1fr; } }
-.glanceItem { padding: 10px 0; border-top: 1px solid var(--border-light, #e4dccb); }
+.glanceItem { padding: 10px 0; border-top: 1px solid var(--border-light); }
 .glanceLabel {
   font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
   font-size: 10px;
@@ -215,9 +215,9 @@
 
 /* ── pre-meeting cards ── */
 .preCard {
-  background: var(--warm-white, #fdfbf6);
-  border: 1px solid var(--border-light, #e4dccb);
-  border-left: 4px solid var(--bark, #7a5c3e);
+  background: var(--warm-white);
+  border: 1px solid var(--border-light);
+  border-left: 4px solid var(--bark);
   border-radius: 2px;
   padding: 18px 20px;
   margin-bottom: 12px;
@@ -226,7 +226,7 @@
   font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
   font-size: 12px;
   font-weight: 700;
-  color: var(--bark, #7a5c3e);
+  color: var(--bark);
   letter-spacing: .04em;
   margin-bottom: 2px;
 }
@@ -270,7 +270,7 @@
   height: 8px;
   border-radius: 50%;
   background: var(--border-mid, #c8bfaf);
-  border: 2px solid var(--newsprint, #faf6ec);
+  border: 2px solid var(--newsprint);
 }
 .agendaRow:first-of-type .timeCol::after { background: var(--navy); }
 .timeContinuation .agendaTime { visibility: hidden; }
@@ -284,7 +284,7 @@
 }
 .contentCol {
   padding: 14px 0 14px 20px;
-  border-bottom: 1px solid var(--border-light, #e4dccb);
+  border-bottom: 1px solid var(--border-light);
 }
 .agendaRow:last-of-type .contentCol { border-bottom: none; }
 
@@ -295,14 +295,14 @@
   font-weight: 700;
   letter-spacing: .08em;
   text-transform: uppercase;
-  color: var(--warm-white, #fdfbf6);
+  color: var(--warm-white);
   padding: 2px 8px;
   border-radius: 1px;
   margin-bottom: 8px;
   background: var(--navy);
 }
 .trackOpenAdvancement { background: var(--forest); }
-.trackMeritBadge { background: var(--bark, #7a5c3e); }
+.trackMeritBadge { background: var(--bark); }
 
 .itemTitle {
   font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
@@ -338,7 +338,7 @@
 .reqDetails { margin-bottom: 6px; }
 .reqSummary {
   display: inline-block;
-  border: 1px solid var(--border-light, #e4dccb);
+  border: 1px solid var(--border-light);
   border-radius: 2px;
   padding: 6px 12px;
   font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
@@ -349,10 +349,10 @@
   list-style: none;
 }
 .reqSummary::-webkit-details-marker { display: none; }
-.reqSummary:hover { background: var(--newsprint, #faf6ec); border-color: var(--border-mid, #c8bfaf); }
+.reqSummary:hover { background: var(--newsprint); border-color: var(--border-mid, #c8bfaf); }
 .reqContent {
-  background: var(--newsprint, #faf6ec);
-  border: 1px solid var(--border-light, #e4dccb);
+  background: var(--newsprint);
+  border: 1px solid var(--border-light);
   border-radius: 2px;
   padding: 12px 14px;
   margin-top: 4px;
@@ -363,7 +363,7 @@
   font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
   font-size: 11px;
   font-weight: 700;
-  color: var(--bark, #7a5c3e);
+  color: var(--bark);
   margin-bottom: 2px;
 }
 .reqText {
@@ -375,8 +375,8 @@
 
 /* ── sidebar ── */
 .sideCard {
-  background: var(--warm-white, #fdfbf6);
-  border: 1px solid var(--border-light, #e4dccb);
+  background: var(--warm-white);
+  border: 1px solid var(--border-light);
   border-radius: 2px;
   padding: 16px 18px;
   margin-bottom: 18px;
@@ -423,8 +423,8 @@
 .noMeetingCard {
   max-width: 560px;
   margin: 0 auto;
-  background: var(--warm-white, #fdfbf6);
-  border: 1px solid var(--border-light, #e4dccb);
+  background: var(--warm-white);
+  border: 1px solid var(--border-light);
   border-top: 4px solid var(--border-mid, #c8bfaf);
   border-radius: 2px;
   padding: 48px 40px;
@@ -441,7 +441,7 @@
   font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
   font-size: 14px;
   font-weight: 600;
-  color: var(--bark, #7a5c3e);
+  color: var(--bark);
   letter-spacing: .04em;
   text-transform: uppercase;
   margin-bottom: 16px;

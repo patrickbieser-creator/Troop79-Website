@@ -1,0 +1,226 @@
+/* /admin/styleguide/public — chrome for the public pattern library.
+   The page's own chrome (headings, tables, notes) uses ADMIN tokens — it is a
+   workspace page. Everything inside .publicContext re-establishes the public
+   site's rendering context so specimens from the real public stylesheets look
+   exactly as they do on the public site. */
+
+.section {
+  margin: var(--admin-space-13) 0 0;
+}
+
+.sectionLabel {
+  font-size: var(--admin-text-sm);
+  font-weight: var(--admin-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--admin-tracking-wider);
+  color: var(--admin-gray-500);
+  margin: 0 0 var(--admin-space-4);
+}
+
+.sectionNote {
+  font-size: var(--admin-text-md);
+  color: var(--admin-gray-600);
+  max-width: 720px;
+  line-height: 1.55;
+  margin: 0 0 var(--admin-space-6);
+}
+
+.sectionNote code {
+  font-family: var(--admin-font-mono);
+  font-size: var(--admin-text-sm);
+  background: var(--admin-gray-100);
+  padding: 1px 4px;
+  border-radius: var(--admin-radius-sm);
+}
+
+/* ── Public rendering context for specimens ── */
+
+.publicContext {
+  background: var(--cream);
+  font-family: var(--font-body);
+  color: var(--text-body);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  padding: var(--admin-space-11);
+}
+
+/* ── Token swatches ── */
+
+.swatchGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--admin-space-6);
+}
+
+.swatch {
+  width: 132px;
+  font-family: var(--admin-font-ui);
+}
+
+.swatchChip {
+  height: 44px;
+  border-radius: var(--admin-radius);
+  border: 1px solid var(--admin-gray-200);
+  margin-bottom: var(--admin-space-2);
+}
+
+.swatchName {
+  font-family: var(--admin-font-mono);
+  font-size: var(--admin-text-xs);
+  color: var(--admin-gray-700);
+  word-break: break-all;
+}
+
+.swatchVal {
+  font-size: var(--admin-text-2xs);
+  color: var(--admin-gray-500);
+}
+
+/* ── Scale displays ── */
+
+.typeRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--admin-space-8);
+  padding: var(--admin-space-3) 0;
+  border-bottom: 1px solid var(--admin-gray-100);
+}
+
+.typeName {
+  font-family: var(--admin-font-mono);
+  font-size: var(--admin-text-xs);
+  color: var(--admin-gray-700);
+  width: 110px;
+  flex-shrink: 0;
+}
+
+.spaceRow {
+  display: flex;
+  align-items: center;
+  gap: var(--admin-space-8);
+  padding: var(--admin-space-2) 0;
+}
+
+.spaceBar {
+  height: 12px;
+  background: var(--navy);
+  border-radius: 2px;
+}
+
+.radRow {
+  display: flex;
+  gap: var(--admin-space-8);
+  flex-wrap: wrap;
+}
+
+.radBox {
+  width: 88px;
+  height: 56px;
+  background: var(--warm-white);
+  border: 1px solid var(--border-mid);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--admin-font-mono);
+  font-size: var(--admin-text-xs);
+  color: var(--admin-gray-700);
+}
+
+.statusChip {
+  display: inline-block;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: var(--rad-sm, 2px);
+  margin-right: var(--admin-space-4);
+}
+
+/* ── Scoreboard ── */
+
+.scoreTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--admin-font-ui);
+  font-size: var(--admin-text-md);
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+}
+
+.scoreTable th {
+  text-align: left;
+  font-size: var(--admin-text-sm);
+  text-transform: uppercase;
+  letter-spacing: var(--admin-tracking-wide);
+  color: var(--admin-gray-500);
+  background: var(--admin-gray-50);
+  padding: var(--admin-space-4) var(--admin-space-6);
+  border-bottom: 1px solid var(--admin-gray-200);
+}
+
+.scoreTable td {
+  padding: var(--admin-space-4) var(--admin-space-6);
+  border-bottom: 1px solid var(--admin-gray-100);
+  vertical-align: top;
+  color: var(--admin-gray-700);
+}
+
+.scoreTable td:first-child {
+  font-weight: var(--admin-weight-semibold);
+  color: var(--admin-gray-800);
+  white-space: nowrap;
+}
+
+/* ── Specimen layout ── */
+
+.specimenBlock {
+  margin: 0 0 var(--admin-space-11);
+}
+
+.specimenBlock:last-child {
+  margin-bottom: 0;
+}
+
+.variantNote {
+  font-family: var(--admin-font-ui);
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-600);
+  background: var(--admin-status-warning-bg);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius-sm);
+  padding: var(--admin-space-4) var(--admin-space-6);
+  margin-top: var(--admin-space-4);
+  line-height: 1.55;
+}
+
+.variantNote strong {
+  color: var(--admin-gray-800);
+}
+
+.variantNote code {
+  font-family: var(--admin-font-mono);
+  font-size: var(--admin-text-xs);
+}
+
+/* ── Shared contracts ── */
+
+.contractCard {
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  padding: var(--admin-space-8) var(--admin-space-10);
+  font-family: var(--admin-font-ui);
+  font-size: var(--admin-text-md);
+  color: var(--admin-gray-700);
+  line-height: 1.6;
+  margin-bottom: var(--admin-space-6);
+  max-width: 860px;
+}
+
+.contractCard code {
+  font-family: var(--admin-font-mono);
+  font-size: var(--admin-text-sm);
+  background: var(--admin-gray-100);
+  padding: 1px 4px;
+  border-radius: var(--admin-radius-sm);
+}

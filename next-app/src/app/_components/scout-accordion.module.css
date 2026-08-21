@@ -97,7 +97,7 @@
 
 .entryDate { font-size: 11.5px; font-style: italic; color: var(--text-meta); }
 
-.eagleDot { font-size: 10px; font-weight: 700; color: var(--gold, #b8860b); margin-left: 4px; }
+.eagleDot { font-size: 10px; font-weight: 700; color: var(--bark-light); margin-left: 4px; }
 
 .removeBtn {
   margin-left: auto;

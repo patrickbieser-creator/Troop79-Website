@@ -1,7 +1,7 @@
 /**
  * Shared inline notice (Phase B, Plans/Admin-Design-System.md) — the one
  * error/success/info box, replacing the per-screen .rowError / .editError /
- * .fieldError / .notice copies. Canonical rendering: /admin/styleguide.
+ * .fieldError / .notice copies. Canonical rendering: /admin/styleguide/admin.
  *
  * Defaults to the error variant because ~90% of the legacy call sites were
  * error boxes. `role` comes with it: errors announce as alerts, everything

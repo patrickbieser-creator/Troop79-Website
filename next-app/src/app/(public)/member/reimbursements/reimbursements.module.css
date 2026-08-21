@@ -22,7 +22,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
   gap: 0.9rem;
-  border: 1px solid var(--rule, #e4d9c4);
+  border: 1px solid var(--rule);
   border-radius: 6px;
   background: #fff;
   padding: 1.1rem 1.2rem;
@@ -35,11 +35,11 @@
   gap: 0.3rem;
   font-size: 0.8rem;
   font-weight: 700;
-  color: var(--text-meta, #857c6c);
+  color: var(--text-meta);
 }
 .form input,
 .form textarea {
-  border: 1px solid var(--rule, #e4d9c4);
+  border: 1px solid var(--rule);
   border-radius: 4px;
   padding: 0.5rem 0.6rem;
   font-family: inherit;
@@ -54,7 +54,7 @@
 
 .historyHeading {
   font-size: 1.1rem;
-  color: var(--navy, #22333b);
+  color: var(--navy);
   margin: 0 0 0.9rem;
 }
 
@@ -68,7 +68,7 @@
 }
 
 .requestItem {
-  border: 1px solid var(--rule, #e4d9c4);
+  border: 1px solid var(--rule);
   border-radius: 6px;
   background: #fff;
   padding: 0.85rem 1rem;
@@ -85,7 +85,7 @@
 .requestAmount {
   font-size: 1.15rem;
   font-weight: 700;
-  color: var(--navy, #22333b);
+  color: var(--navy);
 }
 
 .requestDesc {
