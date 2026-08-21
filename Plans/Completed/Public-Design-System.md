@@ -1,6 +1,8 @@
 # Public Design System — Tokens, Shared Components, and the Two-Guide Styleguide
 
-**Status:** Ready to activate — all Open Questions decided by Patrick 2026-08-21
+**Status:** COMPLETE — all phases (0, A, B, C, D) shipped 2026-08-21, v1.63.0–v1.67.0;
+archived. Production eyes-on still recommended: phone-width pass (footer stacking,
+merit-badges fold, second-lineage screens, 16px inputs) and the masthead JOIN chip sizing.
 **Created:** 2026-08-21
 **Priority:** Medium
 
@@ -100,11 +102,20 @@ The audit's headline numbers:
       no-zoom floor, --on-navy-* on-dark ink family. Home/about/join editorial divider
       FOLDED to shared (Patrick call; the printed Clipboard keeps the one sanctioned local).
       Breakpoints folded onto 480/640/900 where safe; load-bearing exceptions commented.
-- [ ] **Phase D — closeout:** public scoreboard fully struck; final audit grep re-confirms
-      the numbers; AGENTS.md styling rules extended to cover the public side.
-- [ ] Every phase lands with the full quality gate green (`lint`+`typecheck`+`test`+`build`)
-      AND a browser screenshot pass on touched screens; mobile widths included (the public
-      site is family-facing and phone-heavy).
+- [x] **Phase D — SHIPPED 2026-08-21 (v1.67.0).** Final audit grep re-confirmed: hex 7
+      distinct (target ≤30), inline 13 (target ≤15), contradicting fallbacks 0, admin
+      imports in (public) 0, --admin-* reads in public 0; the firewall's three sanctioned
+      crossings verified and documented (preview aliases, --article-*, scout-accordion —
+      the third was discovered and formalized during this closeout). AGENTS.md gained the
+      public styling block with the both-direction firewall rule; stale library note
+      corrected. Scoreboard rows all either STRUCK or carrying named sanctioned locals.
+      Plan archived to Plans/Completed/.
+- [x] Every phase landed with the full quality gate green (`lint`+`typecheck`+`test`+`build`)
+      AND a desktop browser pass on touched screens (Phase 0: fonts/chooser/guides; A:
+      library/signin/reimbursements/report/submit; B: merit-badges ×2 + footer; C: home/
+      profile/member). Mobile eyes-on deferred to Patrick's production pass — the session's
+      capture tooling would not hold a phone viewport; all mobile behavior is plain media
+      queries verified in code. Tests 678 → 698 across the phases, all failing-first.
 
 ## Test Plan
 

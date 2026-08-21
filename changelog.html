@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.66.0</p>
+      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.67.0</p>
     </div>
   </div>
 
@@ -494,6 +494,53 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.67.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.67.0</span>
+        <span class="release-date">August 21, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Polish</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Public design system Phase D: closeout — the whole site now runs on one design system</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Final verification, all targets beaten.</strong> The closing audit
+              re-confirmed every number: 7 distinct hex colors in public styles (target was
+              &le;30, started at 79), 13 inline styles (target &le;15, started at 146), zero
+              contradicting fallbacks, zero admin imports in public code, zero cross-side
+              token reads outside the three documented contracts. A third sanctioned
+              crossing was discovered and formalized during verification: the scout
+              accordion, deliberately shared so the advancement report renders identically
+              on the public site and in the Leader Workspace.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>The rules are now written down where agents read them.</strong>
+              AGENTS.md gained a public-styling block mirroring the admin one: tokens over
+              hex, shared components over re-declared patterns, the 16px input floor, the
+              480/640/900 breakpoint canon, and the both-direction firewall with its three
+              named exceptions. The public styleguide&rsquo;s scoreboard reads as a closeout
+              record &mdash; every family either struck or carrying its named, deliberate
+              exceptions.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>The plan is archived.</strong> Five versions in one day
+              (v1.63&ndash;v1.67): foundation + fonts, ten shared components, the inline
+              purge, the palette merge, and this closeout. The admin and public sides now
+              share one discipline &mdash; two token sheets, one component philosophy, two
+              live styleguides behind one chooser &mdash; with a clean, documented boundary
+              between them.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

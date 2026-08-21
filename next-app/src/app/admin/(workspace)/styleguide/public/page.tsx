@@ -188,11 +188,12 @@ export default function PublicStyleguidePage() {
         title="Public Styleguide"
         sub={
           <>
-            The canonical version of every recurring public-site pattern, rendered from the
-            live production stylesheets &mdash; plus the drift the 2026-08-21 audit found,
-            tracked in the scoreboard until Phases A&ndash;D retire it. Before styling a
-            public screen, find the pattern here and import it. Plan:{' '}
-            <code>Plans/Public-Design-System.md</code>.
+            The canonical version of every recurring public-site pattern, rendered live from
+            the shared components. The 2026-08-21 remediation (Phases 0&ndash;D, v1.63&ndash;
+            v1.67) is COMPLETE &mdash; the scoreboard below records what each family
+            resolved to and the named sanctioned locals that remain. Before styling a public
+            screen, find the pattern here and import it. History:{' '}
+            <code>Plans/Completed/Public-Design-System.md</code>.
           </>
         }
       />
@@ -422,18 +423,18 @@ export default function PublicStyleguidePage() {
         </div>
 
         <div className={sg.variantNote}>
-          <strong>Variants still in the wild after Phase A</strong> (each is a scoreboard
-          residual above) &mdash; Headers: photos + events index two-column layouts,
-          event-detail/profile <code>.title</code>, meeting-plan&rsquo;s meta-row header,
-          merit-badges inline (Phase B). Buttons: <code>.submitBtn</code> (news-controls,
-          compact), <code>.passkeyRemove</code> (quiet red), <code>.signOutBtn</code>,
-          about-join&rsquo;s khaki CTA, calendar pager/month chrome (excluded by design).
-          Form fields: name-search + tagSelect 16px inputs (iOS-zoom question), profile
-          editors (Phase C). Badges: categorical tags (<code>.catTag</code>,{' '}
-          <code>.tagChip</code>, <code>.tagEagle</code>&hellip;) stay by rule;{' '}
-          <code>.reqDoneBadge</code> open. Empty states: home/news borderless{' '}
-          <code>.empty</code>, photos&rsquo; rich empty block. Dividers: home feed&rsquo;s
-          navy-label/forest-bar editorial variant.
+          <strong>Sanctioned locals after closeout (Phase D, 2026-08-21)</strong> &mdash;
+          every remaining divergence is deliberate and documented in its scoreboard row:
+          two-column headers (photos, events index), kind-chip/narrow headers
+          (event-detail, profile), meeting-plan&rsquo;s meta-row header (wants a PageHeader
+          meta slot if a second case appears); <code>.signOutBtn</code> +
+          scout-account&rsquo;s compact proxy button + about-join&rsquo;s khaki CTA +
+          calendar pager/month chrome; name-search + tagSelect (layout-divergent form
+          controls); categorical tags (<code>.catTag</code>, <code>.tagChip</code>,{' '}
+          <code>.tagEagle</code>&hellip;) by rule; photos&rsquo; rich empty block; the
+          printed Clipboard&rsquo;s divider + pencil-grid greys (print fidelity); the
+          celebration-gold award pair (mint <code>--award-gold</code> on a 3rd use); 13
+          dynamic inline sites.
         </div>
       </section>
 
@@ -452,14 +453,26 @@ export default function PublicStyleguidePage() {
           in; restyling prose means editing the DB values, and it restyles both sides.
         </div>
         <div className={sg.contractCard}>
-          <strong>Admin preview aliases — </strong>the only sanctioned admin&rarr;public
-          token reads. <code>admin.css</code>&rsquo;s <code>--admin-preview-*</code> block
-          aliases 8 public tokens (<code>--font-display</code>, <code>--font-body</code>,{' '}
+          <strong>Admin preview aliases — </strong>sanctioned admin&rarr;public token reads.{' '}
+          <code>admin.css</code>&rsquo;s <code>--admin-preview-*</code> block aliases 8
+          public tokens (<code>--font-display</code>, <code>--font-body</code>,{' '}
           <code>--cream</code>, <code>--newsprint</code>, <code>--text-body</code>,{' '}
           <code>--text-head</code>, <code>--text-meta</code>, <code>--border-light</code>)
           so admin WYSIWYG panes preview public output faithfully. Changing any of these
           eight values restyles admin preview panes too &mdash; treat them as a contract,
           not private public state.
+        </div>
+        <div className={sg.contractCard}>
+          <strong>ScoutAccordion — </strong>the third and last sanctioned crossing.{' '}
+          <code>_components/scout-accordion.module.css</code> is styled on the PUBLIC tokens
+          but consumed by both the public advancement report and{' '}
+          <code>/admin/advancement/report</code> &mdash; deliberately, so the report renders
+          identically in both places (same spirit as the preview aliases). The next/font
+          variables (<code>--font-playfair</code>/<code>--font-lora</code>/
+          <code>--font-open-sans</code>) are infrastructure, not palette &mdash; both sides
+          may read them. Everything else is firewalled: zero admin imports in public, zero{' '}
+          <code>--admin-*</code> reads in public, zero public-token reads in admin chrome
+          (verified Phase D, 2026-08-21).
         </div>
       </section>
     </>

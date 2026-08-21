@@ -1,7 +1,10 @@
 /* Shared scout-centric accordion (Weekly Advancement Report, Decision 8) —
-   used on both /admin/advancement/report and the public report pages, so
-   these are the site's global tokens (library.module.css's set), not
-   --admin-* ones which only exist inside .adminRoot. */
+   used on both /admin/advancement/report and the public report pages. Styled
+   on the PUBLIC tokens deliberately: the report renders identically in both
+   places (public output previewed in admin, same spirit as the
+   --admin-preview-* aliases). One of the three sanctioned admin↔public
+   styling crossings — see the Shared contracts section on
+   /admin/styleguide/public. */
 
 .wrap { display: flex; flex-direction: column; gap: 14px; }
 
