@@ -1,6 +1,6 @@
 # Admin Design System — Tokens, Shared Components, and Inline-Style Remediation
 
-**Status:** COMPLETE — Foundation + Phases A–D all shipped 2026-08-21; move to Plans/Completed/ after Patrick's production eyes-on
+**Status:** COMPLETE — Foundation + Phases A–D all shipped 2026-08-21; Patrick's production eyes-on passed same day ("All looks good"), archived
 **Created:** 2026-08-21
 **Priority:** Medium (High for the Phase A bug items)
 
