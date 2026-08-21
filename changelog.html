@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.56.0</p>
+      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.57.0</p>
     </div>
   </div>
 
@@ -494,6 +494,48 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.57.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.57.0</span>
+        <span class="release-date">August 21, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Design system Phase A: shared TabStrip, AddButton, and ActionsMenu components</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Three shared components replace fourteen hand-rolled copies.</strong>
+              The pill tab strips, green &ldquo;+ Add&rdquo; buttons, and Actions&nbsp;&#9662;
+              menus that every admin screen had re-implemented by copy-paste are now real
+              shared components with their own tests (test baseline 650&nbsp;&rarr;&nbsp;660).
+              Pill tabs: all four copies converted, zero remain. Actions&nbsp;&#9662;: all
+              eight screens converted &mdash; including the three that had quietly drifted
+              (Roster&rsquo;s shorter select, Calendar borrowing its filter styling, Roll
+              Call&rsquo;s list borrowing a date-input style) &mdash; so the menu finally
+              looks identical everywhere.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Accessibility came along for free.</strong> Roster&rsquo;s tab strips
+              gained the tablist/tab roles they never had, and Roster Import&rsquo;s tab
+              buttons got their missing <code>type=&quot;button&quot;</code>.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>The styleguide tracks the progress.</strong> Converted patterns now
+              render the live shared components on /admin/styleguide, retired variants are
+              gone from its panels, and the scoreboard shows pill tabs and Actions&nbsp;&#9662;
+              as done. Next up: the approved Dialog spec and a shared Badge.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

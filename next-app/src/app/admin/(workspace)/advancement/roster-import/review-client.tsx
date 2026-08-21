@@ -15,6 +15,7 @@ import {
   type RelationshipInput
 } from './actions';
 import styles from './roster-import.module.css';
+import { TabStrip } from '../../_components/tab-strip';
 
 export interface BatchSummary {
   id: number;
@@ -165,20 +166,22 @@ export function ReviewClient({
 
   return (
     <div>
-      <div className={styles.tabBar}>
-        <button
-          className={tab === 'queue' ? styles.tabActive : styles.tab}
-          onClick={() => setTab('queue')}
-        >
-          Import queue <span className={styles.tabCount}>{rows.length}</span>
-        </button>
-        <button
-          className={tab === 'duplicates' ? styles.tabActive : styles.tab}
-          onClick={() => setTab('duplicates')}
-        >
-          Duplicate people <span className={styles.tabCount}>{candidates.length}</span>
-        </button>
-      </div>
+      {/* Shared TabStrip (Phase A, 2026-08-21) — also fixes the old buttons'
+          missing type="button" and missing tablist roles. */}
+      <TabStrip
+        className={styles.tabMargin}
+        ariaLabel="Import review"
+        activeKey={tab}
+        items={[
+          { key: 'queue', label: 'Import queue', count: rows.length, onSelect: () => setTab('queue') },
+          {
+            key: 'duplicates',
+            label: 'Duplicate people',
+            count: candidates.length,
+            onSelect: () => setTab('duplicates')
+          }
+        ]}
+      />
 
       {notice && <div className={styles.notice}>{notice}</div>}
       {error && <div className={styles.error}>{error}</div>}

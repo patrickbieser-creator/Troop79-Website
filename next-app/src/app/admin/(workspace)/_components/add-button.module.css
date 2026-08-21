@@ -1,0 +1,26 @@
+/* Shared green "+ Add X" button (Phase A, Plans/Admin-Design-System.md) —
+   the D-159 standard, extracted 2026-08-21 from the 4 byte-identical copies
+   in calendar/articles/meetings/albums. Values mirror the legacy block
+   EXACTLY (padding 7px 14px is off-scale — legacy exact, converges in
+   Phase C). Always visible, far right of any tab strip, never inside
+   Actions ▾ (D-159). */
+
+.addBtn {
+  display: inline-block;
+  white-space: nowrap; /* articles' copy had these two — keeps the button */
+  flex-shrink: 0;      /* intact inside crowded flex toolbars */
+  font-family: inherit;
+  font-size: var(--admin-text-sm);
+  font-weight: var(--admin-weight-bold);
+  letter-spacing: var(--admin-tracking-normal);
+  background: var(--admin-forest);
+  color: var(--admin-white);
+  border: 1px solid var(--admin-forest);
+  padding: 7px var(--admin-space-7); /* 7px off-scale: legacy exact */
+  border-radius: var(--admin-radius-sm);
+  cursor: pointer;
+  text-decoration: none;
+}
+.addBtn:hover {
+  background: var(--admin-forest-dark);
+}

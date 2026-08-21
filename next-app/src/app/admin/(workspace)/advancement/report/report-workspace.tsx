@@ -15,6 +15,7 @@ import {
   type AdvancementReportRow
 } from './actions';
 import styles from './report.module.css';
+import { ActionsMenu } from '../../_components/actions-menu';
 
 function addOneDay(iso: string): string {
   const d = new Date(`${iso}T12:00:00Z`);
@@ -215,20 +216,16 @@ export function ReportWorkspace({
                     field-free, discrete step here; Generate/Regenerate and
                     Save note stay inline above since each sits directly next
                     to the field it acts on (ux-lead, 2026-08-20). */}
-                <select
-                  value=""
-                  className={styles.select}
-                  aria-label="Report actions"
+                <ActionsMenu
+                  ariaLabel="Report actions"
                   disabled={disabled}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    e.target.value = '';
+                  options={
+                    report.contentJson.isEmpty ? [] : [{ value: 'publish', label: 'Publish' }]
+                  }
+                  onAction={(v) => {
                     if (v === 'publish') publish();
                   }}
-                >
-                  <option value="">Actions…</option>
-                  {!report.contentJson.isEmpty && <option value="publish">Publish</option>}
-                </select>
+                />
                 {report.contentJson.isEmpty && (
                   <p className={styles.hint} style={{ marginTop: 8 }}>
                     Nothing was logged in this date range — publishing is disabled. Widen the range,

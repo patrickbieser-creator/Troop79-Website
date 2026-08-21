@@ -6,17 +6,16 @@
  * archive was to also see everything else, and there was no way to look at just
  * what had been archived. Tabs say which set you are in, and give each a count.
  *
- * Deliberately the same shape as the Calendar's Upcoming/Past strip: same
- * markup, same class names, same counts-in-pills. Two list screens that behave
- * the same way should look the same.
- *
- * Server Component — list state lives in the URL on this screen (bookmarkable,
- * same convention as the ledger), so these are links, not buttons, and no
- * client JS is involved.
+ * Renders the shared TabStrip (Phase A, 2026-08-21) in link mode — list state
+ * lives in the URL on this screen (bookmarkable, same convention as the
+ * ledger). This file used to carry its own copy of the pill-tab markup,
+ * deliberately byte-identical to Calendar's; the shared component is that
+ * sameness made structural. Cost of the swap: TabStrip is a client component,
+ * so these tabs now hydrate — a small price this file previously avoided,
+ * accepted for one-tab-strip-everywhere.
  */
 
-import Link from 'next/link';
-import styles from './articles.module.css';
+import { TabStrip } from '../../_components/tab-strip';
 
 interface Props {
   archived: boolean;
@@ -28,23 +27,13 @@ interface Props {
 
 export function ArticlesTabs({ archived, currentCount, archivedCount, hrefFor }: Props) {
   return (
-    <div className={styles.tabs} role="tablist" aria-label="Post archive state">
-      <Link
-        href={hrefFor(false)}
-        role="tab"
-        aria-selected={!archived}
-        className={`${styles.tab} ${!archived ? styles.tabOn : ''}`}
-      >
-        Current <span className={styles.tabCount}>{currentCount}</span>
-      </Link>
-      <Link
-        href={hrefFor(true)}
-        role="tab"
-        aria-selected={archived}
-        className={`${styles.tab} ${archived ? styles.tabOn : ''}`}
-      >
-        Archived <span className={styles.tabCount}>{archivedCount}</span>
-      </Link>
-    </div>
+    <TabStrip
+      ariaLabel="Post archive state"
+      activeKey={archived ? 'archived' : 'current'}
+      items={[
+        { key: 'current', label: 'Current', count: currentCount, href: hrefFor(false) },
+        { key: 'archived', label: 'Archived', count: archivedCount, href: hrefFor(true) }
+      ]}
+    />
   );
 }

@@ -133,28 +133,10 @@
    .tabs is the inner Scouts/Adults sub-strip (scouts-table.tsx); .tabBar is
    this page's own Active Scouts/Inactive/Leaders/Adults strip — two
    containers, same child classes, same look. */
-.tabs, .tabBar {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 2px;
-  background: var(--admin-gray-100, #f0f0f0);
-  border-radius: 4px;
-  padding: 2px;
-  margin-bottom: 14px;
-}
-.tab, .tabActive {
-  background: none; border: none; border-radius: 3px;
-  padding: 6px 14px; font: inherit; font-size: 13px; font-weight: 600;
-  color: var(--admin-gray-600); cursor: pointer;
-}
-.tab:hover { color: var(--admin-gray-900); }
-.tabActive { background: #fff; color: #1e3a4a; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
-.tabCount {
-  font-size: 11px; font-weight: 700;
-  background: var(--admin-gray-200, #e4e4e4); color: var(--admin-gray-700, #444);
-  border-radius: 999px; padding: 1px 7px; margin-left: 4px;
-}
-.tabActive .tabCount { background: #1e3a4a; color: #fff; }
+/* Both tab strips (this page's group strip and scouts-table's Active/
+   Inactive sub-strip) moved to the shared TabStrip component (Phase A,
+   2026-08-21). Only the page-level spacing stays local. */
+.tabMargin { margin-bottom: 14px; }
 
 .addBtn {
   background: var(--admin-navy); color: var(--admin-white);

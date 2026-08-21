@@ -28,24 +28,10 @@
    the admin is pixel-identical regardless of which module.css it lives in.
    (A shared component is the real fix for this duplication — parked as a
    future design-system pass, not done ad hoc mid-task.) */
-.addBtn {
-  font-family: inherit;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .04em;
-  background: var(--admin-forest);
-  color: var(--admin-white);
-  border: 1px solid var(--admin-forest);
-  padding: 7px 14px;
-  border-radius: 3px;
-  cursor: pointer;
-  text-decoration: none;
-  display: inline-block;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.addBtn:hover { background: var(--admin-forest-dark); }
-.tabsRow { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+/* Add button + pill tabs moved to the shared AddButton / TabStrip
+   components (Phase A, 2026-08-21). The strip's old margin-bottom moved
+   onto this row so the spacing under it is unchanged. */
+.tabsRow { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; }
 
 .toolbar {
   display: flex;
@@ -185,40 +171,6 @@
 /* Current / Archived tabs — same shape and tokens as the Calendar's
    Upcoming/Past strip, so the two list screens read as one system. Links
    rather than buttons here: this screen keeps its list state in the URL. */
-.tabs {
-  display: inline-flex;
-  gap: 2px;
-  background: var(--admin-gray-100, #f0f0f0);
-  border-radius: 4px;
-  padding: 2px;
-  margin-bottom: 12px;
-}
-.tab {
-  background: none;
-  border: none;
-  border-radius: 3px;
-  padding: 6px 14px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--admin-gray-600, #666);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  text-decoration: none;
-}
-.tab:hover { color: var(--admin-gray-900, #1a1a1a); }
-.tabOn { background: #fff; color: #1e3a4a; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
-.tabCount {
-  font-size: 11px;
-  font-weight: 700;
-  background: var(--admin-gray-200, #e4e4e4);
-  color: var(--admin-gray-700, #444);
-  border-radius: 999px;
-  padding: 1px 7px;
-}
-.tabOn .tabCount { background: #1e3a4a; color: #fff; }
-
 /* Inline row error, matching the Calendar list — beats a window.alert you have
    to dismiss before you can see which row it referred to. */
 .rowError {

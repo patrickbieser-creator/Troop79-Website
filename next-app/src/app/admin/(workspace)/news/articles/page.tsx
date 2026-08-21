@@ -22,6 +22,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { requireCapability } from '@/lib/require-capability';
 import type { Article, ArticleType, ArticleStatus } from '@/lib/supabase/types';
 import { ArticlesTabs } from './articles-tabs';
+import { AddButton } from '../../_components/add-button';
 import { ArticlesToolbar } from './articles-toolbar';
 import { ArticlesTable } from './articles-table';
 import styles from './articles.module.css';
@@ -209,15 +210,10 @@ export default async function ArticlesPage({
           // page 3 of Current is rarely page 3 of Archived.
           hrefFor={(archived) => urlWith(raw, { archived: archived ? '1' : '', page: '' })}
         />
-        {/* Green Add button, far right (Patrick, 2026-08-20 — corrected same
-            day: right, not left, matching Photo Albums' own placement).
-            "Add" is the most-clicked action here, so it's a direct link, not
-            an extra click through an Actions ▾. "+Add Entry" (shared News/
-            Calendar label) reverted to a per-item name, matching Photo
-            Albums' "Add Album". */}
-        <Link href="/admin/news/articles/new" className={styles.addBtn}>
-          + Add News
-        </Link>
+        {/* Shared AddButton (Phase A, 2026-08-21) — D-159: green, far right,
+            always visible; "Add" is the most-clicked action here, so it's a
+            direct link, not an extra click through an Actions ▾. */}
+        <AddButton href="/admin/news/articles/new">+ Add News</AddButton>
       </div>
 
       <ArticlesToolbar

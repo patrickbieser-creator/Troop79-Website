@@ -5,6 +5,7 @@ import { ageOn, gradeFromGradYear, gradeLabel, SWIM_CLASS_LABEL } from '@/lib/de
 import { INACTIVE_REASON_LABEL } from '@/lib/supabase/types';
 import { ScoutForm, type ScoutRow } from './scout-form';
 import { SortHeader, useSortable } from './use-sortable';
+import { TabStrip } from '../../_components/tab-strip';
 import styles from './roster.module.css';
 
 /*
@@ -163,26 +164,14 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId
         {only ? (
           <span className={styles.toolbarCount}>{scouts.length} scouts</span>
         ) : (
-          <div className={styles.tabs} role="tablist" aria-label="Scout status">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === 'active'}
-              className={tab === 'active' ? styles.tabActive : styles.tab}
-              onClick={() => setTab('active')}
-            >
-              Active <span className={styles.tabCount}>{activeCount}</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === 'inactive'}
-              className={tab === 'inactive' ? styles.tabActive : styles.tab}
-              onClick={() => setTab('inactive')}
-            >
-              Inactive <span className={styles.tabCount}>{inactiveCount}</span>
-            </button>
-          </div>
+          <TabStrip
+            ariaLabel="Scout status"
+            activeKey={tab}
+            items={[
+              { key: 'active', label: 'Active', count: activeCount, onSelect: () => setTab('active') },
+              { key: 'inactive', label: 'Inactive', count: inactiveCount, onSelect: () => setTab('inactive') }
+            ]}
+          />
         )}
         <button type="button" className={styles.addBtn} onClick={() => setOpenFor('new')}>
           + Add Scout

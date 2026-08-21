@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatLongDate } from '@/lib/dates';
 import styles from './meetings.module.css';
+import { ActionsMenu } from '../../_components/actions-menu';
 
 const PAGE_SIZE = 25;
 
@@ -107,19 +108,14 @@ export function AttendanceList({ rows, onDeleteAgenda }: Props) {
         {/* Attendance Report isn't reachable from the main nav — kept as a
             nav: option here. "Calendar →" was dropped (2026-08-20): it
             just duplicated the main nav's own Calendar link. */}
-        <select
-          value=""
-          className={styles.dateInput}
-          aria-label="Meetings actions"
-          onChange={(e) => {
-            const v = e.target.value;
-            e.target.value = '';
-            if (v) router.push(v);
-          }}
-        >
-          <option value="">Actions…</option>
-          <option value="/admin/advancement/meetings/report">Attendance Report</option>
-        </select>
+        {/* Shared ActionsMenu (Phase A, 2026-08-21) — this one had quietly
+            diverged by borrowing .dateInput for its styling; now it matches
+            every other screen's Actions ▾. */}
+        <ActionsMenu
+          ariaLabel="Meetings actions"
+          options={[{ value: '/admin/advancement/meetings/report', label: 'Attendance Report' }]}
+          onAction={(v) => router.push(v)}
+        />
         <span style={{ flex: 1 }} />
         <input
           type="search"

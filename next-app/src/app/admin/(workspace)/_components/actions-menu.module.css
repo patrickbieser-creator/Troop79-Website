@@ -1,0 +1,22 @@
+/* Shared Actions ▾ select (Phase A, Plans/Admin-Design-System.md) — the
+   D-156/D-158 pattern, extracted 2026-08-21 from finance's canonical .select
+   (7 verbatim copies found; roster's shorter/darker select and calendar's
+   .filterSelect reuse adopt this on conversion — a deliberate, visible
+   normalization). Values mirror finance EXACTLY (7px 10px padding and 34px
+   min-height are off-scale — legacy exact, converge in Phase C). */
+
+.select {
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  padding: 7px 10px; /* off-scale: legacy exact */
+  font-family: inherit;
+  font-size: var(--admin-text-md);
+  background: var(--admin-white);
+  color: var(--admin-gray-700);
+  min-height: 34px; /* off-scale: legacy exact */
+  cursor: pointer;
+}
+.select:focus {
+  outline: none;
+  border-color: var(--admin-navy);
+}

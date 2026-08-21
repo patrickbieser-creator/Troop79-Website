@@ -16,6 +16,7 @@ import {
   type CourtOfHonorRow
 } from './actions';
 import styles from './court-of-honor.module.css';
+import { ActionsMenu } from '../../_components/actions-menu';
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
@@ -229,24 +230,21 @@ export function CourtOfHonorWorkspace({
                   Regenerate, Save note, and Mark Presented stay inline
                   above/below since each sits next to a field or a warning
                   it depends on (ux-lead, 2026-08-20). */}
-              <select
-                value=""
-                className={styles.select}
-                aria-label="Court of Honor actions"
+              <ActionsMenu
+                ariaLabel="Court of Honor actions"
                 disabled={disabled}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  e.target.value = '';
-                  if (v === 'download') router.push(`/admin/advancement/court-of-honor/export?id=${report.id}`);
+                options={[
+                  { value: 'download', label: 'Download CSV' },
+                  ...(report.status === 'draft' && !report.contentJson.isEmpty
+                    ? [{ value: 'publish', label: 'Publish' }]
+                    : [])
+                ]}
+                onAction={(v) => {
+                  if (v === 'download')
+                    router.push(`/admin/advancement/court-of-honor/export?id=${report.id}`);
                   else if (v === 'publish') publish();
                 }}
-              >
-                <option value="">Actions…</option>
-                <option value="download">Download CSV</option>
-                {report.status === 'draft' && !report.contentJson.isEmpty && (
-                  <option value="publish">Publish</option>
-                )}
-              </select>
+              />
               {report.contentJson.isEmpty && report.status === 'draft' && (
                 <p className={styles.hint} style={{ marginTop: 8 }}>
                   Nothing was earned in this date range — publishing is disabled. Widen the range.

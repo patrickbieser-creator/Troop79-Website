@@ -15,6 +15,7 @@ import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { bulkSetScoutbookSubmitted } from '../ledger/actions';
 import styles from './scoutbook-export.module.css';
+import { ActionsMenu } from '../../_components/actions-menu';
 
 interface Props {
   downloadHref: string;
@@ -47,26 +48,27 @@ export function ScoutbookActions({ downloadHref, downloadCount, unsubmittedIds }
 
   return (
     <div className={styles.actionsBar}>
-      <select
-        value=""
-        className={styles.select}
-        aria-label="Scoutbook Export actions"
+      <ActionsMenu
+        ariaLabel="Scoutbook Export actions"
         disabled={isPending}
-        onChange={(e) => {
-          const v = e.target.value;
-          e.target.value = '';
+        options={[
+          ...(downloadCount > 0
+            ? [{ value: 'download', label: `Download .txt (${downloadCount})` }]
+            : []),
+          ...(unsubmittedIds.length > 0
+            ? [
+                {
+                  value: 'mark-submitted',
+                  label: isPending ? 'Marking…' : `Mark ${unsubmittedIds.length} as Submitted`
+                }
+              ]
+            : [])
+        ]}
+        onAction={(v) => {
           if (v === 'download') router.push(downloadHref);
           else if (v === 'mark-submitted') markSubmitted();
         }}
-      >
-        <option value="">Actions…</option>
-        {downloadCount > 0 && <option value="download">Download .txt ({downloadCount})</option>}
-        {unsubmittedIds.length > 0 && (
-          <option value="mark-submitted">
-            {isPending ? 'Marking…' : `Mark ${unsubmittedIds.length} as Submitted`}
-          </option>
-        )}
-      </select>
+      />
     </div>
   );
 }

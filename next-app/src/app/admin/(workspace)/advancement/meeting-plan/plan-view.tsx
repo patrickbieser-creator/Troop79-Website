@@ -12,6 +12,7 @@ import { generatePlan, publishPlan, unpublishPlan } from './actions';
 import { retargetNotice } from '@/lib/meeting-plan-publish';
 import { DatePickerField } from '../../_components/date-picker-field';
 import styles from './meeting-plan.module.css';
+import { ActionsMenu } from '../../_components/actions-menu';
 
 export interface PublishedPlanRow {
   meeting_date: string;
@@ -117,20 +118,14 @@ export function PlanView({ published, defaultDate }: Props) {
           // step, so it's the only thing here. The whole control is omitted
           // (not shown disabled) until a plan exists, same signal the
           // standalone button used to give (ux-lead, 2026-08-20).
-          <select
-            value=""
-            className={styles.select}
-            aria-label="Meeting Plan actions"
+          <ActionsMenu
+            ariaLabel="Meeting Plan actions"
             disabled={isPending}
-            onChange={(e) => {
-              const v = e.target.value;
-              e.target.value = '';
+            options={[{ value: 'publish', label: 'Publish to Site' }]}
+            onAction={(v) => {
               if (v === 'publish') publish();
             }}
-          >
-            <option value="">Actions…</option>
-            <option value="publish">Publish to Site</option>
-          </select>
+          />
         )}
         {status && (
           <span className={status.ok ? styles.statusOk : styles.statusErr}>{status.msg}</span>

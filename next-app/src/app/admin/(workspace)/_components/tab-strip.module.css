@@ -1,0 +1,53 @@
+/* Shared pill tab strip (Phase A, Plans/Admin-Design-System.md) — extracted
+   2026-08-21 from the 4 byte-identical copies in calendar/articles/roster/
+   roster-import (the D-160 rollout pasted this block verbatim; roster ×2
+   renamed the active modifier .tabActive — normalized to .tabOn here).
+   Values mirror the legacy block EXACTLY for a pixel-identical swap; the
+   off-scale literals (gap 7px, count padding 1px 7px, the 2px-blur shadow)
+   are kept deliberately and converge to scale/tokens in Phase C, not during
+   extraction. Layout spacing (calendar's old margin-right:auto) was a
+   toolbar concern, not a tab concern — parents pass it via className. */
+
+.tabs {
+  display: inline-flex;
+  flex-wrap: wrap; /* roster's 4-tab strip needs it on phones; harmless on 2-tab strips */
+  gap: var(--admin-space-1);
+  background: var(--admin-gray-100);
+  border-radius: var(--admin-radius);
+  padding: var(--admin-space-1);
+}
+.tab {
+  background: none;
+  border: none;
+  border-radius: var(--admin-radius-sm);
+  padding: var(--admin-space-3) var(--admin-space-7);
+  font-family: inherit;
+  font-size: var(--admin-text-md);
+  font-weight: var(--admin-weight-semibold);
+  color: var(--admin-gray-600);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px; /* off-scale: legacy exact */
+  text-decoration: none;
+}
+.tab:hover {
+  color: var(--admin-gray-900);
+}
+.tabOn {
+  background: var(--admin-white);
+  color: var(--admin-navy);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .08); /* off-token: legacy exact (near shadow-sm) */
+}
+.tabCount {
+  font-size: var(--admin-text-sm);
+  font-weight: var(--admin-weight-bold);
+  background: var(--admin-gray-200);
+  color: var(--admin-gray-700);
+  border-radius: var(--admin-radius-pill);
+  padding: 1px 7px; /* off-scale: legacy exact */
+}
+.tabOn .tabCount {
+  background: var(--admin-navy);
+  color: var(--admin-white);
+}

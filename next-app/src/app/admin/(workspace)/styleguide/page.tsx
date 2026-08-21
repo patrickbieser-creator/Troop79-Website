@@ -21,6 +21,9 @@
  */
 import sg from './styleguide.module.css';
 import { DialogDemo } from './dialog-demo';
+import { ActionsMenuSpecimen } from './specimens';
+import { TabStrip } from '../_components/tab-strip';
+import { AddButton } from '../_components/add-button';
 import cal from '../calendar/calendar.module.css';
 import wb from '../calendar/[id]/workbench.module.css';
 import rollCall from '../calendar/[id]/roll-call/roll-call.module.css';
@@ -109,10 +112,10 @@ const SCOREBOARD: {
 }[] = [
   {
     pattern: 'Add buttons (green "+ Add X")',
-    copies: '6 files + 1 rename (.seedBtn)',
-    canonical: 'calendar/articles/meetings/albums .addBtn (4-way identical)',
+    copies: 'WAS 6 files — now 4 variants left (lookups, roster, roll-call .seedBtn, meetings/report submit)',
+    canonical: '✓ SHIPPED: shared AddButton (calendar/articles/albums converted 2026-08-21)',
     phase: 'A',
-    notes: 'lookups pads 6×12 not 7×14; roster is navy/5px-radius — a design call, not drift'
+    notes: 'roster navy addBtn is a design call still open; meetings/report reuses the style as a SUBMIT — belongs to the primary-button decision'
   },
   {
     pattern: 'Primary buttons',
@@ -130,10 +133,10 @@ const SCOREBOARD: {
   },
   {
     pattern: 'Pill tab strips + count badges',
-    copies: '4 byte-identical copies',
-    canonical: 'calendar .tabs/.tab/.tabOn/.tabCount',
+    copies: '✓ DONE — 0 copies left',
+    canonical: '✓ SHIPPED: shared TabStrip (calendar, articles, roster ×2, roster-import converted 2026-08-21; per-screen copies deleted)',
     phase: 'A',
-    notes: 'only drift is the modifier name: .tabOn (calendar/articles) vs .tabActive (roster ×2)'
+    notes: 'the .tabOn/.tabActive naming split is gone; strips also gained proper tablist roles where they were missing'
   },
   {
     pattern: 'Non-pill tab variants',
@@ -151,10 +154,10 @@ const SCOREBOARD: {
   },
   {
     pattern: 'Actions ▾ menu',
-    copies: '7 identical + 3 divergent (roster, calendar, roster-import)',
-    canonical: 'finance .select (D-156 original)',
+    copies: '✓ DONE — 0 copies left',
+    canonical: '✓ SHIPPED: shared ActionsMenu — all 8 screens converted 2026-08-21, 3 divergents retired, dead CSS deleted',
     phase: 'A',
-    notes: "roster's is shorter + darker; calendar reuses .filterSelect"
+    notes: "ledger's/articles' .select are filter selects (persistent values), correctly untouched; roster-import's is a batch picker, same"
   },
   {
     pattern: 'Data tables',
@@ -319,15 +322,15 @@ export default function StyleguidePage() {
         <h2 className={sg.sectionHead}>Buttons</h2>
         <div className={sg.specimenGrid}>
           <Specimen
-            label="Add button"
+            label="Add button — shared AddButton component"
             canonical
-            note="calendar/articles/meetings/albums .addBtn — 4 byte-identical copies today; becomes one shared component in Phase A."
+            note="SHIPPED Phase A (2026-08-21): calendar, articles, and albums render this component now. Import from _components/add-button; href renders a Link, onClick a button."
           >
-            <button type="button" className={cal.addBtn}>+ Add Event</button>
+            <AddButton>+ Add Event</AddButton>
           </Specimen>
           <Specimen
-            label="Add variants in the wild"
-            note="lookups pads 6×12 instead of 7×14; roster went navy with a 5px radius (design call needed); roll-call hides an identical clone under .seedBtn."
+            label="Add variants still in the wild"
+            note="lookups pads 6×12 instead of 7×14; roster went navy with a 5px radius (design call open); roll-call hides a clone under .seedBtn; meetings/report reuses the green style as a form SUBMIT (a primary-button question, not an Add)."
           >
             <button type="button" className={lookups.addBtn}>+ Add</button>
             <button type="button" className={roster.addBtn}>+ Add Scout</button>
@@ -372,18 +375,18 @@ export default function StyleguidePage() {
         <h2 className={sg.sectionHead}>Tab Strips</h2>
         <div className={sg.specimenGrid}>
           <Specimen
-            label="Pill tabs + count badge"
+            label="Pill tabs — shared TabStrip component"
             canonical
-            note="calendar .tabs/.tab/.tabOn/.tabCount — byte-identical in articles, roster, roster-import (those two renamed the active modifier .tabActive; the shared component normalizes it)."
+            note="SHIPPED Phase A (2026-08-21): calendar, articles, roster (both strips), and roster-import all render this component now — their 4 byte-identical copies (and the .tabOn/.tabActive naming split) are deleted. Import from _components/tab-strip; href items render Links, onSelect items render buttons."
           >
-            <div className={cal.tabs}>
-              <button type="button" className={`${cal.tab} ${cal.tabOn}`}>
-                Upcoming <span className={cal.tabCount}>12</span>
-              </button>
-              <button type="button" className={cal.tab}>
-                Past <span className={cal.tabCount}>48</span>
-              </button>
-            </div>
+            <TabStrip
+              ariaLabel="Specimen"
+              activeKey="upcoming"
+              items={[
+                { key: 'upcoming', label: 'Upcoming', count: 12 },
+                { key: 'past', label: 'Past', count: 48 }
+              ]}
+            />
           </Specimen>
           <Specimen
             label="Underline tabs (meeting-plan)"
@@ -471,25 +474,11 @@ export default function StyleguidePage() {
         <h2 className={sg.sectionHead}>Actions ▾ Menu</h2>
         <div className={sg.specimenGrid}>
           <Specimen
-            label="Actions ▾ select"
+            label="Actions ▾ — shared ActionsMenu component"
             canonical
-            note="finance .select (D-156 original) — pasted verbatim into 6 more screens in v1.54.0. Becomes one ActionsMenu component in Phase A."
+            note="✓ DONE Phase A (2026-08-21): every Actions ▾ in the admin renders this component — finance, calendar, roster, court-of-honor, report, meeting-plan, scoutbook-export, and roll-call's list (which had borrowed .dateInput). All three divergents retired; dead per-screen .select copies deleted. Ledger's and articles' .select are FILTER selects (persistent values), correctly not converted."
           >
-            <select className={fin.select} defaultValue="" aria-label="Sample actions">
-              <option value="">Actions…</option>
-              <option value="x">Record a transaction</option>
-            </select>
-          </Specimen>
-          <Specimen
-            label="Divergent copies"
-            note="roster reused its older .select (shorter, darker, no focus ring); calendar reused .filterSelect from its filter row. Visibly different from the other 7 screens."
-          >
-            <select className={roster.select} defaultValue="" aria-label="Roster actions sample">
-              <option value="">Actions…</option>
-            </select>
-            <select className={cal.filterSelect} defaultValue="" aria-label="Calendar actions sample">
-              <option value="">Actions…</option>
-            </select>
+            <ActionsMenuSpecimen />
           </Specimen>
         </div>
       </section>

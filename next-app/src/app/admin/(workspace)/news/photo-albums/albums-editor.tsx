@@ -6,6 +6,7 @@ import type { Media, PhotoAlbum } from '@/lib/supabase/types';
 import { categoryColorMap, colorFor, type CalendarCategoryRow } from '@/lib/calendar-categories';
 import { MediaPicker } from '../_components/media-picker';
 import { DatePickerField } from '../../_components/date-picker-field';
+import { AddButton } from '../../_components/add-button';
 import styles from './albums.module.css';
 
 type ActionResult = { ok: boolean; error?: string };
@@ -65,9 +66,9 @@ export function AlbumsEditor({ rows, covers, categories, onCreate, onUpdate, onD
   return (
     <>
       <div className={styles.toolbar}>
-        <button type="button" className={styles.addBtn} onClick={() => setOpenFor('new')}>
-          + Add Album
-        </button>
+        {/* Shared AddButton (Phase A, 2026-08-21) — this screen's own .addBtn
+            was the D-159 original the others copied. */}
+        <AddButton onClick={() => setOpenFor('new')}>+ Add Album</AddButton>
       </div>
 
       <table className={styles.table}>

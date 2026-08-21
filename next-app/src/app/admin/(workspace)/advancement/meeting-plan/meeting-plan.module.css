@@ -86,17 +86,8 @@
   color: var(--admin-gray-500);
   align-self: center;
 }
-.select {
-  border: 1px solid var(--admin-gray-300);
-  border-radius: 3px;
-  padding: 7px 10px;
-  font-family: inherit;
-  font-size: 13px;
-  background: var(--admin-white);
-  color: var(--admin-gray-700);
-  min-height: 34px;
-}
-.select:focus { outline: none; border-color: var(--admin-navy); }
+/* Actions ▾ select moved to the shared ActionsMenu component
+   (Phase A, 2026-08-21). */
 .statusOk {
   font-size: 12px;
   font-weight: 600;

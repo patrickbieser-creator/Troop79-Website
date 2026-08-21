@@ -19,12 +19,12 @@
  * nothing else. Their household and relationships are untouched by it.
  */
 
-import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import { resolveAdminActor } from '@/lib/admin-actor';
 import { centralToday } from '@/lib/dates';
 import type { Rank } from '@/lib/supabase/types';
 import { RosterActions } from './roster-actions';
+import { TabStrip } from '../../_components/tab-strip';
 import { ScoutsTable } from './scouts-table';
 import {
   PeopleTable,
@@ -166,17 +166,20 @@ export default async function RosterPage({
         <RosterActions className={styles.actionsBar} />
       </div>
 
-      <div className={styles.tabBar}>
-        {counts.map((t) => (
-          <Link
-            key={t.key}
-            href={`/admin/advancement/roster?tab=${t.key}`}
-            className={tab === t.key ? styles.tabActive : styles.tab}
-          >
-            {t.label} <span className={styles.tabCount}>{t.n}</span>
-          </Link>
-        ))}
-      </div>
+      {/* Shared TabStrip (Phase A, 2026-08-21), link mode — tab state stays
+          in the URL. Also gains the tablist/tab roles this hand-rolled strip
+          never had. */}
+      <TabStrip
+        className={styles.tabMargin}
+        ariaLabel="Roster groups"
+        activeKey={tab}
+        items={counts.map((t) => ({
+          key: t.key,
+          label: t.label,
+          count: t.n,
+          href: `/admin/advancement/roster?tab=${t.key}`
+        }))}
+      />
 
       {tab === 'active_scout' && turning18.length > 0 && (
         <div className={styles.callout}>

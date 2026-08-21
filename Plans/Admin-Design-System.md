@@ -96,6 +96,30 @@ sweep. The styleguide's variant specimens are the work queue — delete each as 
 
 1. **Phase A — shared components + bug fixes** (highest value density):
    a. `AddButton`, `TabStrip` (with count pills), `Badge`, `ActionsMenu` in `_components/`.
+      **PROGRESS 2026-08-21:** `TabStrip`, `AddButton`, `ActionsMenu` SHIPPED with 9 dom
+      tests (baseline 650→659). Converted: TabStrip — calendar, articles, roster (page strip
+      + scouts-table), roster-import (all per-screen pill-tab CSS deleted; `.tabOn`/`.tabActive`
+      split gone; missing tablist roles/type="button" fixed en route). AddButton — calendar,
+      articles, albums (articles' `white-space:nowrap`/`flex-shrink:0` adopted into the shared
+      component). ActionsMenu — finance (canonical), calendar + roster (both divergents
+      retired). **ActionsMenu COMPLETE same session:** court-of-honor, report, meeting-plan,
+      scoutbook-export, and roll-call's list (a 3rd divergent — it borrowed `.dateInput`)
+      converted too; a `disabled` prop added (test 10/10). Audit correction: ledger's and
+      articles' `.select` are FILTER selects (persistent values) and roster-import's is a
+      batch picker — none are Actions menus, correctly untouched. Dead `.select` copies
+      deleted from 4 modules. Remaining in Phase A: AddButton on lookups (padding drift);
+      roster navy addBtn + meetings/report green SUBMIT wait on the primary-button design
+      call; `Badge` and `Dialog` components not started. Recon for the Dialog conversion
+      (2026-08-21, pre-wrap): only 4 `<dialog>` elements exist in the target screens —
+      calendar-editor:544, albums-editor:146, media-manager-view:212 and :320 — and
+      meetings.module.css's `.dialog` block has NO `<dialog>` consumer (dead copy, delete on
+      conversion). Badge recon: meetings/roster/coh status pills share the 10px-radius
+      2px-8px shape with per-file tint colors (#e5efe4/#eef6ee greens, #fdf3dc/#fdf3d6
+      ambers — the drift clusters); calendar's statusPill family adds borders + 999px radius.
+      Small accepted deltas: roster's
+      count pills gain 3px label gap (7px vs its old 4px margin); articles' tabs hydrate now
+      (was a zero-JS server component); roll-call list's Actions ▾ visibly changes from
+      .dateInput styling to canonical.
    b. **Dialog: spec APPROVED by Patrick 2026-08-21** — designed and staged on the
       styleguide (`.dialogSpec*` in `styleguide.module.css`): shadow-lg, radius-lg,
       navy-tinted blurred backdrop (`color-mix`), `@starting-style` entry motion with

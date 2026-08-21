@@ -8,6 +8,9 @@ import { splitByTab } from '@/lib/calendar-tabs';
 import type { ImportResult, ImportRowFields, ImportUpdate } from './actions';
 import { CalendarImport, type CalendarImportHandle } from './calendar-import';
 import { DatePickerField } from '../_components/date-picker-field';
+import { TabStrip } from '../_components/tab-strip';
+import { AddButton } from '../_components/add-button';
+import { ActionsMenu } from '../_components/actions-menu';
 import { CalendarEntryForm, type CalendarEntryRow } from './entry-form';
 import type { CalendarEntryMergePlan } from '@/lib/calendar-admin';
 import styles from './calendar.module.css';
@@ -280,53 +283,41 @@ export function CalendarEditor({
   return (
     <>
       <div className={styles.toolbar}>
-        <div className={styles.tabs} role="tablist" aria-label="Calendar range">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'upcoming'}
-            className={`${styles.tab} ${tab === 'upcoming' ? styles.tabOn : ''}`}
-            onClick={() => push({ tab: null })}
-          >
-            Upcoming <span className={styles.tabCount}>{upcomingShown.length}</span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'past'}
-            className={`${styles.tab} ${tab === 'past' ? styles.tabOn : ''}`}
-            onClick={() => push({ tab: 'past' })}
-          >
-            Past <span className={styles.tabCount}>{pastShown.length}</span>
-          </button>
-        </div>
-        {/* Green Add button, far right (Patrick, 2026-08-20 — corrected same
-            day: right, not left, matching Photo Albums' own placement).
-            "Add" is the most-clicked action here, so it's a direct link, not
-            an extra click through Actions ▾. Same .addBtn values as News and
-            Photo Albums. */}
-        <button type="button" className={styles.addBtn} onClick={() => push({ new: '1' })}>
-          + Add Event
-        </button>
-        {/* Actions ▾ (2026-08-20) — same shape as Finance's (D-156). Add
-            Event is a direct button (above); Import CSV is the only thing
-            left here — CalendarImport's own visible trigger is gone, its
-            file input + review overlay unchanged, just opened via ref now.
-            Per-row Promote/Clone/Merge/Delete stay on the table, out of
-            this menu. */}
-        <select
-          value=""
-          className={styles.filterSelect}
-          aria-label="Calendar actions"
-          onChange={(e) => {
-            const v = e.target.value;
-            e.target.value = '';
+        {/* Shared components (Phase A, 2026-08-21) replaced this screen's own
+            copies of the pill tabs, the green Add button (D-159 — always
+            visible, far right of the tab strip, never in Actions ▾), and the
+            Actions ▾ select (which had quietly diverged here by reusing
+            .filterSelect instead of the canonical shape). Behavior unchanged:
+            tab state stays in the URL, Add opens the add dialog, Import CSV
+            opens CalendarImport via ref; per-row Promote/Clone/Merge/Delete
+            stay on the table, out of the menu. */}
+        <TabStrip
+          className={styles.toolbarTabs}
+          ariaLabel="Calendar range"
+          activeKey={tab}
+          items={[
+            {
+              key: 'upcoming',
+              label: 'Upcoming',
+              count: upcomingShown.length,
+              onSelect: () => push({ tab: null })
+            },
+            {
+              key: 'past',
+              label: 'Past',
+              count: pastShown.length,
+              onSelect: () => push({ tab: 'past' })
+            }
+          ]}
+        />
+        <AddButton onClick={() => push({ new: '1' })}>+ Add Event</AddButton>
+        <ActionsMenu
+          ariaLabel="Calendar actions"
+          options={[{ value: 'import', label: 'Import CSV' }]}
+          onAction={(v) => {
             if (v === 'import') importRef.current?.open();
           }}
-        >
-          <option value="">Actions…</option>
-          <option value="import">Import CSV</option>
-        </select>
+        />
         <CalendarImport
           ref={importRef}
           rows={rows}

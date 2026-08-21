@@ -44,6 +44,7 @@ import { MemoCell } from './memo-cell';
 import { EnteredByCell } from './entered-by-cell';
 import { EditTransactionDialog } from './edit-transaction-dialog';
 import { KindManager } from './kind-manager';
+import { ActionsMenu } from '../_components/actions-menu';
 import styles from './finance.module.css';
 
 type FinanceModal = 'record' | 'transfer' | 'reconcile' | 'kinds';
@@ -245,28 +246,23 @@ export function FinanceWorkspace({
               Activity Report is still reachable — see Backlog re: the
               sub-nav's finance.view visibility gap). Prefixed values
               navigate (router.push); bare values open the modal below. */}
-          <select
-            value=""
-            className={styles.select}
-            aria-label="Finance actions"
-            onChange={(e) => {
-              const v = e.target.value;
-              e.target.value = '';
-              if (!v) return;
+          <ActionsMenu
+            ariaLabel="Finance actions"
+            options={[
+              { value: 'record', label: 'Record a transaction' },
+              { value: 'transfer', label: 'Transfer between accounts' },
+              { value: 'reconcile', label: 'Monthly reconciliation' },
+              { value: 'kinds', label: 'Manage Kinds' },
+              { value: 'nav:/admin/finance/export', label: 'Export CSV (backup)' }
+            ]}
+            onAction={(v) => {
               if (v.startsWith('nav:')) {
                 router.push(v.slice(4));
                 return;
               }
               setActiveModal(v as FinanceModal);
             }}
-          >
-            <option value="">Actions…</option>
-            <option value="record">Record a transaction</option>
-            <option value="transfer">Transfer between accounts</option>
-            <option value="reconcile">Monthly reconciliation</option>
-            <option value="kinds">Manage Kinds</option>
-            <option value="nav:/admin/finance/export">Export CSV (backup)</option>
-          </select>
+          />
         </div>
       )}
 
