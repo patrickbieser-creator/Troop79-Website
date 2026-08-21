@@ -19,8 +19,10 @@ class family, token, or shared component means adding its specimen (and scoreboa
 it has variants) to the styleguide page; retiring a variant means deleting its specimen and
 striking its row. The page imports real production stylesheets, so an un-updated guide
 doesn't just lag — it lies. Remediation phases and open design questions:
-`Plans/Admin-Design-System.md`. Also: `library.module.css` is imported by ~20 public routes
-(signin, member, advancement reports…) — never restyle it from the admin side.
+`Plans/Admin-Design-System.md`. Also: there are TWO `library.module.css` files — the one at
+`src/app/(public)/library/` is imported by ~19 public routes (signin, member, advancement
+reports…) and must never be restyled from the admin side; the admin workstation's own copy at
+`src/app/admin/(workspace)/library/` is admin-only (3 importers) and is on admin tokens.
 <!-- END:nextjs-agent-rules -->
 
 ## Known gotcha: JSX drops the space after an inline element at a line wrap
