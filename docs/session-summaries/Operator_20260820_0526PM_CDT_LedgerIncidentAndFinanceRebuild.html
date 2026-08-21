@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ledger Incident &amp; Finance Rebuild — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #2e4530;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f0f2; }
+        .callout strong { font-weight: 600; }
+
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+
+        @media print {
+            body { background: white; }
+            header { padding: 1.5rem; }
+            .container { padding: 1rem; }
+            .stat { break-inside: avoid; }
+        }
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.5rem; }
+            .stats { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Ledger Incident &amp; Finance Rebuild</h1>
+        <p class="subtitle">v1.53.0 &ndash; v1.53.9 &mdash; a real production incident, root-caused and closed, then rebuilt into a governed system</p>
+        <div class="meta">
+            <span>&#128197; August 20, 2026</span>
+            <span>&#129302; Operator</span>
+            <span>&#128204; Troop79-Website</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">10</div><div class="label">Releases (v1.53.0&ndash;.9)</div></div>
+            <div class="stat"><div class="number">19</div><div class="label">Tests Added</div></div>
+            <div class="stat"><div class="number">650</div><div class="label">Total Tests Passing</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">Production Migration</div></div>
+            <div class="stat"><div class="number">3</div><div class="label">Real Data Incidents Found &amp; Fixed</div></div>
+            <div class="stat"><div class="number">7</div><div class="label">Decisions Recorded</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <h3>It started as a bug report, not a feature request</h3>
+        <p>Patrick reported the ledger was showing scouts and leaders as "present, but no credit" for events they'd
+        actually attended and were previously linked correctly. Traced through direct SQL forensics (batch delete
+        timestamps, the audit-trail <span class="file-path">deleted_reason</span> column) to a real mechanism: a
+        deleted duplicate calendar entry orphaned its ledger credit &mdash; <span class="file-path">event_attendance</span>
+        cascades on delete, but <span class="file-path">ledger_entries.calendar_entry_id</span> only SET NULLs. The
+        orphaned credit then looked like a stray duplicate in the Universal Ledger and got bulk-deleted for real,
+        wiping Summer Camp credit for the whole roster.</p>
+
+        <div class="callout callout-orange">
+            <strong>Root cause, not a guess.</strong> Every step was verified against real production data before
+            acting: the exact batch-delete timestamp and reason string, cross-referenced against
+            <span class="file-path">event_attendance</span> to confirm which credit rows were genuinely orphaned
+            vs. legitimately duplicate. Recovered: 19 restored ledger rows, and along the way a second, unrelated
+            duplicate was found and cleaned (a pre-existing Fast-Entry import colliding with the Roll-Call-linked
+            credit) &mdash; plus a correction to the High Cliff transaction amount, which turned out to be a real
+            error in the source spreadsheet itself, confirmed by Patrick.</p>
+        </div>
+
+        <h3>Fixed at the source: calendar delete/merge safety (D-151)</h3>
+        <p><span class="file-path">deleteCalendarEntry</span> now dry-runs first, reporting every attendance/ledger
+        row that references the entry before anything is destroyed &mdash; same confirm-then-report pattern already
+        used elsewhere in this codebase. New <span class="file-path">mergeCalendarEntries</span> reassigns
+        attendance, credit, resources, signup, and meeting agenda from a duplicate entry onto the one being kept,
+        instead of deleting and hoping nothing was attached. It refuses outright &mdash; no guessing &mdash; when
+        both entries have their own signup or meeting agenda.</p>
+
+        <h3>The Roll Call &amp; Ledger Reconciliation audit can fix what it finds (D-152)</h3>
+        <p>Triggered by a specific finding &mdash; Veronica Kleinfeldt's missing credit had no way to resolve it
+        from the audit page. This reverses a deliberate 2026-08-19 "read-only on purpose" decision, but only where
+        it's actually safe to: <span class="file-path">credit_missing</span> and <span class="file-path">date_drift</span>
+        each have exactly one right answer and now resolve in one click; <span class="file-path">credit_orphaned</span>
+        and <span class="file-path">qty_mismatch</span> still offer both choices side by side rather than guess.</p>
+
+        <h3>The actual Kind/Direction bug, found live and fully closed (D-153)</h3>
+        <p>The 2026-08-19 fix for the Kind/Direction overlap complaint (D-147) turned out to be a real bug, not a
+        UX nicety: the Record/Edit forms auto-set Direction whenever Kind changed to a value with a "usual"
+        direction. Recategorizing the High Cliff transaction &mdash; a pure label fix &mdash; silently flipped its
+        signed amount and corrupted the computed balance, with no warning at all (the auto-set fires FROM the
+        mismatch, so the warning meant to catch it never got the chance).</p>
+
+        <div class="callout callout-gold">
+            <strong>Validated the underlying architecture was already sound.</strong> <span class="file-path">computeBalance</span>
+            and <span class="file-path">summarizeByActivity</span> have only ever summed the signed
+            <span class="file-path">amount</span> &mdash; Kind was already irrelevant to the balance. The bug was
+            purely a UI-layer coupling, now removed entirely. Kind carries no implied direction anywhere,
+            permanently &mdash; a rule, not a preference.
+        </div>
+
+        <h3>Troop Finances reimport rewritten and re-run on production (D-154)</h3>
+        <p>Column L (spreadsheet notes) had been silently dropped on the original import &mdash; read only to help
+        guess a category, never written to memo. The "Who" memo also duplicated a name already captured via
+        person_id. Rewrote the memo formula (notes preserved; Who's raw text appended only when it didn't resolve
+        to a real person), extended person resolution to every row (not just scout accounts), and &mdash; since the
+        import script had always connected via whatever env pointed at, which is never production &mdash; rebuilt
+        it to read people from a plain CSV export and write a <span class="file-path">.sql</span> file instead of
+        connecting to any database directly.</p>
+
+        <table>
+            <thead><tr><th>Account</th><th>Result</th></tr></thead>
+            <tbody>
+                <tr><td>Savings</td><td><span class="badge badge-green">EXACT MATCH</span> to Patrick's recalled target</td></tr>
+                <tr><td>Scholarship</td><td><span class="badge badge-green">EXACT MATCH</span> to Patrick's recalled target</td></tr>
+                <tr><td>Checking</td><td><span class="badge badge-gold">$100 SHORT</span> &mdash; confirmed not a script defect (see Next Steps)</td></tr>
+            </tbody>
+        </table>
+
+        <h3>Kind became a governed lookup table (D-155)</h3>
+        <p>Patrick retired the confusing 'income'/'expense' Kind values via a new bulk-reassignment tool, then
+        asked for a way to add a brand-new Kind on the spot. The old hardcoded 9-value CHECK constraint needed a
+        code deploy for any change. New <span class="file-path">transaction_kinds</span> table &mdash; same
+        governance shape as the existing <span class="file-path">calendar_categories</span> &mdash; makes Kind
+        extensible from the admin UI, with real referential integrity (a rename cascades everywhere automatically;
+        a Kind still in use can't be deleted). 'income' is gone as the first real use; 8 remain.</p>
+
+        <h3>Finance ledger UX consolidated (D-156)</h3>
+        <p>Record Transaction, Transfer, Reconciliation, and the new Manage Kinds panel were becoming four
+        permanent on-page controls &mdash; Patrick: <em>"too many buttons if we keep adding functionality."</em>
+        All four, plus Activity Report, Reimbursements, and Export CSV (moved out of header buttons), now live
+        behind one "Actions&hellip;" pull-down that opens the picked function in a shared modal. Ledger search
+        also gained date-range, amount-range (by magnitude, not sign &mdash; a $75 expense and a $75 payment both
+        match "between $50 and $200"), and Activity contains-match filters.</p>
+
+        <h3>Fixed a real UI bug along the way: admin sub-nav double-highlighting (D-157)</h3>
+        <p>A screenshot showed both "Ledger" and "Activity Report" lit up at once in the Finance sub-nav &mdash; a
+        section root's match path is itself a prefix of a sibling's. Fixed with a general
+        longest-matching-path-wins rule, not a Finance-specific patch, so it covers this shape anywhere else it
+        might exist in the admin nav.</p>
+
+        <h2>Blockers Resolved</h2>
+        <table>
+            <thead><tr><th>Issue</th><th>Root Cause</th><th>Fix</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td>Summer Camp credit wiped for the whole roster</td>
+                    <td>Deleted duplicate calendar entry orphaned ledger credit, which then looked like a stray
+                        duplicate and got bulk-deleted for real</td>
+                    <td>19 rows restored on production; delete now dry-runs, merge replaces raw delete for duplicates</td>
+                </tr>
+                <tr>
+                    <td>High Cliff transaction balance off by exactly one transaction</td>
+                    <td>Editing Kind silently auto-flipped Direction, corrupting the signed amount</td>
+                    <td>Auto-set removed entirely; Kind carries no direction, ever</td>
+                </tr>
+                <tr>
+                    <td>"Write the missing credit" button disabled with no explanation</td>
+                    <td>Roll Call never recorded a quantity for a pre-Roll-Call imported attendance row</td>
+                    <td>Falls back to the entry's own default (same as a fresh Roll Call check-in), except
+                        service hours, which has no safe default</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-151</td><td>Calendar entry delete gets a dependency guard; merge-not-delete replaces raw delete for duplicates</td></tr>
+                <tr><td>D-152</td><td>Roll Call &amp; Ledger Reconciliation audit gains resolve actions &mdash; reverses the prior read-only call where it's actually safe to</td></tr>
+                <tr><td>D-153</td><td>Kind carries NO implied direction, anywhere, permanently &mdash; supersedes D-147</td></tr>
+                <tr><td>D-154</td><td>Troop Finances reimport rewritten: real memo formula, universal person resolution, no supabase-js</td></tr>
+                <tr><td>D-155</td><td>Kind becomes a governed lookup table, not a hardcoded CHECK constraint</td></tr>
+                <tr><td>D-156</td><td>Finance ledger UX consolidated into one Actions pull-down; ledger search gains date/amount/activity filters</td></tr>
+                <tr><td>D-157</td><td>Admin sub-nav active-highlighting: longest-matching-path wins, not every prefix match</td></tr>
+            </tbody>
+        </table>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Troop Finances checking balance is $100 short of Patrick's target &mdash; confirmed not a script
+                defect (two $90 candidate rows checked and ruled out); tolerated for now, may need a one-time
+                manual adjustment</li>
+            <li>Continue retiring Kind values beyond 'income' &mdash; self-service now via Manage Kinds, no code needed</li>
+            <li>Verify Solomon Rader's correct Summer Camp night count (legacy said 5, kept Roll Call's 6)</li>
+            <li>Decide the fate of two small pre-reimport rounding-adjustment rows ($0.11 checking / $0.13 savings)</li>
+            <li>Work through the Ledger Tweaks post-push checklist and the remaining items carried from the eighth
+                session (Health Forms sign-off, <span class="file-path">library.moderate</span> assignment, the 11
+                ambiguous Who-backfill rows)</li>
+        </ul>
+
+        <h2>Files Changed</h2>
+        <p><span class="badge badge-green">NEW</span> <span class="file-path">lib/calendar-admin.ts</span>,
+        <span class="file-path">finance/kind-manager.tsx</span>,
+        <span class="file-path">supabase/migrations/20260820220000_transaction_kinds_lookup.sql</span></p>
+        <p><span class="badge badge-gold">MODIFIED</span> <span class="file-path">calendar/actions.ts</span>,
+        <span class="file-path">calendar-editor.tsx</span>,
+        <span class="file-path">advancement/audits/actions.ts</span>,
+        <span class="file-path">advancement/audits/checks/attendance-reconciliation.ts</span>,
+        <span class="file-path">reconciliation-finding-row.tsx</span>,
+        <span class="file-path">lib/finance.ts</span>, <span class="file-path">finance/actions.ts</span>,
+        <span class="file-path">finance-workspace.tsx</span>, <span class="file-path">finance/page.tsx</span>,
+        <span class="file-path">edit-transaction-dialog.tsx</span>,
+        <span class="file-path">reimbursement-queue.tsx</span>, <span class="file-path">sub-nav.tsx</span>,
+        <span class="file-path">scripts/import-troop-finances.ts</span> (full rewrite)</p>
+        <p>Plus 10 new/modified test files, several deliberately falsified before trusting them to confirm they
+        actually catch the regression they guard.</p>
+
+    </div>
+
+    <footer>
+        <strong>Scout Troop 79</strong> &mdash; Milwaukee, WI<br>
+        Session Summary &mdash; August 20, 2026 &mdash; Operator
+    </footer>
+</body>
+</html>
