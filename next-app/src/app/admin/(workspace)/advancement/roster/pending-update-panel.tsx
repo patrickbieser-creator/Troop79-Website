@@ -134,7 +134,7 @@ export function PendingUpdatePanel({
       </table>
 
       {rejecting ? (
-        <div className={styles.editGrid} style={{ marginTop: 10 }}>
+        <div className={`${styles.editGrid} ${styles.gapTop}`}>
           <label className={styles.editFieldFull}>
             <span className={styles.editLabel}>Reason (optional)</span>
             <input
@@ -147,7 +147,7 @@ export function PendingUpdatePanel({
         </div>
       ) : null}
 
-      <div className={styles.editActions} style={{ marginTop: 10 }}>
+      <div className={`${styles.editActions} ${styles.gapTop}`}>
         {rejecting ? (
           <>
             <button className={styles.editBtn} disabled={busy} onClick={() => setRejecting(false)}>

@@ -118,7 +118,7 @@ export function AttendanceList({ rows, onDeleteAgenda }: Props) {
           options={[{ value: '/admin/advancement/meetings/report', label: 'Attendance Report' }]}
           onAction={(v) => router.push(v)}
         />
-        <span style={{ flex: 1 }} />
+        <span className={styles.spacer} />
         <input
           type="search"
           className={styles.dateInput}
@@ -195,7 +195,7 @@ export function AttendanceList({ rows, onDeleteAgenda }: Props) {
             <th>Category</th>
             <th>Attendance</th>
             <th>Agenda</th>
-            <th style={{ textAlign: 'right' }}>Actions</th>
+            <th className={styles.alignRight}>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -240,7 +240,7 @@ export function AttendanceList({ rows, onDeleteAgenda }: Props) {
                       <span className={styles.muted}>—</span>
                     )}
                   </td>
-                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  <td className={styles.actionsCell}>
                     <Link
                       href={`/admin/calendar/${row.entryId}/roll-call`}
                       className={styles.editBtn}
@@ -274,7 +274,7 @@ export function AttendanceList({ rows, onDeleteAgenda }: Props) {
       </table>
 
       {totalPages > 1 && (
-        <div className={styles.toolbar} style={{ justifyContent: 'center', marginTop: 12 }}>
+        <div className={`${styles.toolbar} ${styles.toolbarCentered}`}>
           <button
             type="button"
             className={styles.editBtn}
@@ -283,7 +283,7 @@ export function AttendanceList({ rows, onDeleteAgenda }: Props) {
           >
             ← Newer
           </button>
-          <span className={styles.muted} style={{ fontStyle: 'normal' }}>
+          <span className={`${styles.muted} ${styles.mutedUpright}`}>
             Page {safePage} of {totalPages} · {filtered.length} events
           </span>
           <button

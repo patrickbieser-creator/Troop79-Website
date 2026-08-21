@@ -40,9 +40,9 @@
   text-decoration: none;
 }
 .outstandingToggleActive {
-  background: #fdf3d6;
-  border-color: #e8d391;
-  color: #8b6914;
+  background: var(--admin-status-warning-bg);
+  border-color: color-mix(in srgb, var(--admin-accent-gold) 35%, white);
+  color: var(--admin-accent-gold);
 }
 
 .tableWrap {
@@ -93,9 +93,10 @@
   background: var(--admin-gray-100);
   color: var(--admin-gray-700);
 }
+/* Categorical rank/MB tints — same TOKEN_GAP as scoutbook-export .badgeRank/.badgeMb. */
 .kindRank  { background: #f0e6f5; color: #6a3d82; }
 .kindMb    { background: #e6eef5; color: #2c5a82; }
-.kindAward { background: #fdf3d6; color: #8b6914; }
+.kindAward { background: var(--admin-status-warning-bg); color: var(--admin-accent-gold); }
 
 .confirmCell {
   display: inline-flex;

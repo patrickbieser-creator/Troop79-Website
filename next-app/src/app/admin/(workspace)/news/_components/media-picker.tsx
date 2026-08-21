@@ -270,7 +270,7 @@ export function MediaPicker({ mode, onClose, onInsert, initialSelected }: MediaP
                       }}
                     >
                       <span className={styles.thumbCheck} aria-hidden="true" />
-                      <Image src={item.cdn_url} alt="" fill sizes="180px" style={{ objectFit: 'cover' }} />
+                      <Image src={item.cdn_url} alt="" fill sizes="180px" />
                       <div className={styles.thumbOverlay}>
                         <div className={styles.thumbMeta}>
                           <span className="fn">{item.bunny_path.split('/').pop()}</span>

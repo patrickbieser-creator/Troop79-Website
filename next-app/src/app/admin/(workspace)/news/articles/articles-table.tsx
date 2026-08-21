@@ -99,7 +99,7 @@ export function ArticlesTable({ rows, sp, sort, dir, sessionName }: Props) {
             {sortLink('date', 'Date')}
             <th>Tags</th>
             <th>Featured</th>
-            <th style={{ textAlign: 'right' }}>Actions</th>
+            <th className={styles.actionsCell}>Actions</th>
           </tr>
         </thead>
         <tbody>

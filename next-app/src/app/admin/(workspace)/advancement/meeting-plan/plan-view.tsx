@@ -181,7 +181,7 @@ export function PlanView({ published, defaultDate }: Props) {
                 <th>Meeting Date</th>
                 <th>Title</th>
                 <th>Generated</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
+                <th className={styles.alignRight}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -193,7 +193,7 @@ export function PlanView({ published, defaultDate }: Props) {
                     {new Date(p.generated_at).toLocaleString()}
                     {p.generated_by ? ` · ${p.generated_by}` : ''}
                   </td>
-                  <td style={{ textAlign: 'right' }}>
+                  <td className={styles.alignRight}>
                     <button
                       type="button"
                       className={styles.smallBtn}
@@ -319,10 +319,10 @@ function ScoutsTab({ payload }: { payload: MeetingPlanPayload }) {
     <table className={styles.table}>
       <thead>
         <tr>
-          <th style={{ width: '18%' }}>Scout</th>
-          <th style={{ width: '12%' }}>Rank</th>
+          <th className={styles.colScout}>Scout</th>
+          <th className={styles.colRank}>Rank</th>
           <th>Suggested this meeting (max 3)</th>
-          <th style={{ width: '28%' }}>Waiting on a campout</th>
+          <th className={styles.colCampout}>Waiting on a campout</th>
         </tr>
       </thead>
       <tbody>

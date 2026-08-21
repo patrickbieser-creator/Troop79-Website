@@ -798,7 +798,7 @@ function NodeRender({
       <>
         <div
           className={`${styles.parentHeader} ${collapsible ? styles.parentHeaderClickable : ''}`.trim()}
-          style={{ paddingLeft: 8 + indent }}
+          style={{ paddingLeft: 8 + indent } /* inline: dynamic — tree depth indent */}
           onClick={collapsible ? () => onToggleCollapse!(nodeKey) : undefined}
           role={collapsible ? 'button' : undefined}
           tabIndex={collapsible ? 0 : undefined}
@@ -987,7 +987,7 @@ function LeadershipTab({
         Pick a leadership position from the list (or add a new one). It appears
         in the pending list and saves when you hit Save.
       </p>
-      <label className={styles.field} style={{ marginBottom: 4 }}>
+      <label className={`${styles.field} ${styles.fieldTight}`}>
         <span className={styles.fieldLabel}>Position</span>
         <select
           className={styles.select}
@@ -1004,7 +1004,7 @@ function LeadershipTab({
         </select>
       </label>
       {isNew && (
-        <label className={styles.field} style={{ marginBottom: 4 }}>
+        <label className={`${styles.field} ${styles.fieldTight}`}>
           <span className={styles.fieldLabel}>New position name</span>
           <input
             type="text"
@@ -1211,7 +1211,7 @@ function EventsTab({
         remembers its Type, so a recurring Fundraiser or Day Outing logs
         itself automatically — no numbers, no re-picking.
       </p>
-      <label className={styles.field} style={{ marginBottom: 4 }}>
+      <label className={`${styles.field} ${styles.fieldTight}`}>
         <span className={styles.fieldLabel}>Event</span>
         <select
           className={styles.select}
@@ -1231,7 +1231,7 @@ function EventsTab({
         </select>
       </label>
       {isNew && (
-        <label className={styles.field} style={{ marginBottom: 4 }}>
+        <label className={`${styles.field} ${styles.fieldTight}`}>
           <span className={styles.fieldLabel}>New event name</span>
           <input
             type="text"
@@ -1244,7 +1244,7 @@ function EventsTab({
         </label>
       )}
       {!isNew && selectedEvent && (
-        <p className={styles.freeFormHelp} style={{ marginTop: -2, marginBottom: 8 }}>
+        <p className={`${styles.freeFormHelp} ${styles.helpTightTop}`}>
           {autoKind
             ? `Classified as ${EVENT_TYPE_LABEL.get(autoKind)} — will log automatically.`
             : storedKind
@@ -1253,7 +1253,7 @@ function EventsTab({
         </p>
       )}
       {showTypePicker && (
-        <label className={styles.field} style={{ marginBottom: 4 }}>
+        <label className={`${styles.field} ${styles.fieldTight}`}>
           <span className={styles.fieldLabel}>Type</span>
           <select
             className={styles.select}
@@ -1269,8 +1269,8 @@ function EventsTab({
           </select>
         </label>
       )}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-        <label className={styles.field} style={{ marginBottom: 4 }}>
+      <div className={styles.grid3}>
+        <label className={`${styles.field} ${styles.fieldTight}`}>
           <span className={styles.fieldLabel}>Nights</span>
           <input
             type="number"
@@ -1282,7 +1282,7 @@ function EventsTab({
             placeholder="0"
           />
         </label>
-        <label className={styles.field} style={{ marginBottom: 4 }}>
+        <label className={`${styles.field} ${styles.fieldTight}`}>
           <span className={styles.fieldLabel}>Miles</span>
           <input
             type="number"
@@ -1294,7 +1294,7 @@ function EventsTab({
             placeholder="0"
           />
         </label>
-        <label className={styles.field} style={{ marginBottom: 4 }}>
+        <label className={`${styles.field} ${styles.fieldTight}`}>
           <span className={styles.fieldLabel}>Hours</span>
           <input
             type="number"
@@ -1378,7 +1378,7 @@ function ServiceTab({
         Pick a service project from the list (or add a new one). Hours defaults
         to 2 per troop convention; adjust for actual time.
       </p>
-      <label className={styles.field} style={{ marginBottom: 4 }}>
+      <label className={`${styles.field} ${styles.fieldTight}`}>
         <span className={styles.fieldLabel}>Service project</span>
         <select
           className={styles.select}
@@ -1395,7 +1395,7 @@ function ServiceTab({
         </select>
       </label>
       {isNew && (
-        <label className={styles.field} style={{ marginBottom: 4 }}>
+        <label className={`${styles.field} ${styles.fieldTight}`}>
           <span className={styles.fieldLabel}>New project name</span>
           <input
             type="text"
@@ -1407,7 +1407,7 @@ function ServiceTab({
           />
         </label>
       )}
-      <label className={styles.field} style={{ marginBottom: 4 }}>
+      <label className={`${styles.field} ${styles.fieldTight}`}>
         <span className={styles.fieldLabel}>Hours</span>
         <input
           type="number"

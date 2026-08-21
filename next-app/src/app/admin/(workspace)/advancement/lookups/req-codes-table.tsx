@@ -54,7 +54,7 @@ export function ReqCodesTable({ rows }: { rows: ReqRow[] }) {
               <th>Code</th>
               <th>Label</th>
               <th>Source</th>
-              <th style={{ textAlign: 'right' }}>Actions</th>
+              <th className={styles.cellRight}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -70,12 +70,12 @@ export function ReqCodesTable({ rows }: { rows: ReqRow[] }) {
                     {r.nestedUnder ? ` — under ${r.nestedUnder}` : ''}
                   </span>
                   {r.officialText && (
-                    <span className={styles.tag} style={{ marginLeft: 4 }} title="Official text on file">
+                    <span className={`${styles.tag} ${styles.gapLeftSm}`} title="Official text on file">
                       📄
                     </span>
                   )}
                 </td>
-                <td style={{ textAlign: 'right' }}>
+                <td className={styles.cellRight}>
                   <button type="button" className={styles.editBtn} onClick={() => setOpenFor(r)}>
                     Edit
                   </button>

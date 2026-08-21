@@ -50,14 +50,14 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
       <div className={styles.adminRoot}>
         <ArticleStyleTokens />
         <TopBar actorLabel={actor.label} actorKind={actor.kind} />
-        <main style={{ maxWidth: '42rem', margin: '0 auto', padding: '2.5rem 1.5rem' }}>
-          <h1 style={{ marginTop: 0 }}>No admin access</h1>
+        <main className={styles.plainMain}>
+          <h1 className={styles.plainHeading}>No admin access</h1>
           <p>
             You&rsquo;re signed in as <strong>{actor.label}</strong>, but this account hasn&rsquo;t
             been given any admin capabilities. If you think that&rsquo;s wrong, ask a troop leader to
             grant them.
           </p>
-          <p style={{ marginTop: '1.5rem' }}>
+          <p className={styles.plainBackRow}>
             <Link href="/">← Back to the troop site</Link>
           </p>
         </main>

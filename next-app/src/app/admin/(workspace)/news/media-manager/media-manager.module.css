@@ -80,7 +80,7 @@
 }
 .thumb:hover .thumbOverlay, .thumb:focus-within .thumbOverlay { opacity: 1; }
 .thumbMeta {
-  color: #fff;
+  color: var(--admin-white);
   font-size: 11px;
   line-height: 1.45;
   /* Second line of defense on top of the gradient — the darkest part of the
@@ -90,7 +90,7 @@
 }
 .thumbMeta .fn { display: block; font-weight: 700; overflow-wrap: anywhere; }
 .thumbMeta .alt { display: block; opacity: .9; margin-top: 2px; }
-.thumbAltMissing { color: #ffd873; font-weight: 700; }
+.thumbAltMissing { color: #ffd873; /* on-dark warning amber — no admin token is legible on the dark overlay; deliberate literal */ font-weight: 700; }
 .thumbActions { display: flex; gap: 6px; align-self: flex-end; }
 
 /* List view */
@@ -130,6 +130,7 @@
   overflow-wrap: anywhere;
 }
 .muted { color: var(--admin-gray-400); font-style: italic; }
+.table th.actionsCell, .table td.actionsCell { text-align: right; white-space: nowrap; }
 
 /* Shared buttons */
 .iconBtn, .editBtn {

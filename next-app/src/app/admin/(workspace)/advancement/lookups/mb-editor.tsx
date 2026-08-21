@@ -76,7 +76,7 @@ export function MbEditor({ rows, leaders, counselorsByMb, reqTreesByMb }: Props)
             <th>ID</th>
             <th>Eagle?</th>
             <th>Counselors</th>
-            <th style={{ textAlign: 'right' }}>Actions</th>
+            <th className={styles.cellRight}>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -97,7 +97,7 @@ export function MbEditor({ rows, leaders, counselorsByMb, reqTreesByMb }: Props)
                   {cs.length === 0 ? (
                     <span className={styles.muted}>—</span>
                   ) : (
-                    <span style={{ fontSize: 12 }}>
+                    <span className={styles.textBase}>
                       {cs
                         .map(
                           (c) =>
@@ -107,7 +107,7 @@ export function MbEditor({ rows, leaders, counselorsByMb, reqTreesByMb }: Props)
                     </span>
                   )}
                 </td>
-                <td style={{ textAlign: 'right' }}>
+                <td className={styles.cellRight}>
                   <button
                     type="button"
                     className={styles.editBtn}
@@ -288,7 +288,7 @@ function MbForm({
         <div className={styles.editSectionHeader}>
           <h4>Counselors</h4>
         </div>
-        <p className={styles.helpText} style={{ marginBottom: 8 }}>
+        <p className={`${styles.helpText} ${styles.helpTight}`}>
           Pick one or more adult leaders who are registered counselors for this
           badge. Use ▲ / ▼ to set the display order (the first counselor is
           shown first on scout-facing screens).
@@ -322,7 +322,7 @@ function MbForm({
             + Add top-level
           </AddButton>
         </div>
-        <p className={styles.helpText} style={{ marginBottom: 8 }}>
+        <p className={`${styles.helpText} ${styles.helpTight}`}>
           Edit codes, labels, and optionality (Complete all / any / N-of) for
           this badge&rsquo;s requirements. Add child rows for sub-requirements;
           unlimited depth supported. Renaming a code is refused if active
@@ -415,7 +415,7 @@ function ReqTreeEditor({
   return (
     <div className={styles.reqTree}>
       {tree.map((node, i) => (
-        <div key={i} className={styles.reqTreeBranch} style={{ marginLeft: depth * 16 }}>
+        <div key={i} className={styles.reqTreeBranch} style={{ marginLeft: depth * 16 } /* inline: dynamic — tree depth indent */}>
           <div className={styles.reqTreeRow}>
             <input
               type="text"

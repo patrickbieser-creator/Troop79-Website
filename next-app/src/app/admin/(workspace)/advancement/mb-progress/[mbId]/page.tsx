@@ -165,7 +165,7 @@ export default async function MbProgressDetailPage({
         <div className={styles.detailTitle}>
           <h1>
             {mb.name}
-            {mb.eagle && <span className={styles.eagleTag} style={{ marginLeft: 10 }}>Eagle</span>}
+            {mb.eagle && <span className={`${styles.eagleTag} ${styles.gapLeft}`}>Eagle</span>}
           </h1>
           <div className={styles.detailMeta}>
             Catalog id <code>{mb.id}</code>
@@ -177,7 +177,7 @@ export default async function MbProgressDetailPage({
             {' · '}
             <Link
               href={`/admin/advancement/lookups`}
-              style={{ color: 'var(--admin-navy)', textDecoration: 'underline' }}
+              className={styles.mbLink}
             >
               Edit catalog
             </Link>
@@ -214,17 +214,7 @@ export default async function MbProgressDetailPage({
       </div>
 
       {startedScouts.length === 0 ? (
-        <div
-          style={{
-            padding: '40px 24px',
-            textAlign: 'center',
-            fontStyle: 'italic',
-            color: 'var(--admin-gray-500)',
-            border: '1px solid var(--admin-gray-200)',
-            borderRadius: 4,
-            background: 'var(--admin-white)'
-          }}
-        >
+        <div className={styles.emptyState}>
           No scout has started this merit badge yet.
         </div>
       ) : (

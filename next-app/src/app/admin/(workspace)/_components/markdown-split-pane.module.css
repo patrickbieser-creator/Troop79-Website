@@ -1,7 +1,13 @@
+/* Markdown source + live-preview split. Phase C (2026-08-21): chrome onto
+   bare --admin-* reads (admin-only component — every importer sits under
+   the workspace layout, so the tokens are always defined; the old
+   fallbacks were dead weight). The preview title is a WYSIWYG parity
+   surface and reads the sanctioned --admin-preview-* aliases. */
+
 .wrap {
-  border: 1px solid var(--admin-gray-200, #ddd);
+  border: 1px solid var(--admin-gray-200);
   border-radius: 4px;
-  background: var(--admin-white, #fff);
+  background: var(--admin-white);
 }
 
 .head {
@@ -9,29 +15,29 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 10px;
-  border-bottom: 1px solid var(--admin-gray-200, #ddd);
+  border-bottom: 1px solid var(--admin-gray-200);
 }
 
 .label {
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--admin-font-ui);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: .1em;
   text-transform: uppercase;
-  color: var(--admin-gray-700, #444);
+  color: var(--admin-gray-700);
 }
 
 .toggle {
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--admin-font-ui);
   font-size: 12px;
   background: none;
-  border: 1px solid var(--admin-gray-200, #ddd);
+  border: 1px solid var(--admin-gray-200);
   border-radius: 3px;
   padding: 3px 8px;
   cursor: pointer;
-  color: var(--admin-gray-700, #444);
+  color: var(--admin-gray-700);
 }
-.toggle:hover { background: var(--admin-gray-100, #f2f2f2); }
+.toggle:hover { background: var(--admin-gray-100); }
 
 .panes {
   display: grid;
@@ -51,7 +57,7 @@
   flex-direction: column;
   min-width: 0;
 }
-.panes > .sourceCol { border-right: 1px solid var(--admin-gray-200, #ddd); }
+.panes > .sourceCol { border-right: 1px solid var(--admin-gray-200); }
 @media (max-width: 900px) {
   .panes > .sourceCol { border-right: none; }
 }
@@ -72,7 +78,7 @@
   width: 100%;
   border: none;
   padding: 12px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: var(--admin-font-mono);
   font-size: 13px;
   line-height: 1.55;
   resize: vertical;
@@ -80,7 +86,7 @@
   color: inherit;
   flex: 1;
 }
-.source:focus { outline: 2px solid var(--forest, #2d6a4f); outline-offset: -2px; }
+.source:focus { outline: 2px solid var(--admin-navy); outline-offset: -2px; }
 
 .preview {
   padding: 12px 14px;
@@ -89,19 +95,20 @@
   overflow-y: auto;
 }
 
+/* WYSIWYG parity — tracks the public article title via the sanctioned aliases. */
 .previewTitle {
-  font-family: var(--font-display, Georgia, serif);
+  font-family: var(--admin-preview-font-display);
   font-size: 26px;
   font-weight: 700;
-  color: var(--text-head, #1a1a1a);
+  color: var(--admin-preview-ink-head);
   margin-bottom: 14px;
 }
 
 .previewEmpty {
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--admin-font-ui);
   font-size: 13px;
   font-style: italic;
-  color: var(--admin-gray-500, #888);
+  color: var(--admin-gray-500);
 }
 
 /* Markdown cheat sheet — moved here from the article editor so every
@@ -111,18 +118,18 @@
    .toolbar above. */
 .cheatSheet {
   margin: 10px 0 0;
-  border: 1px solid var(--border-light, #e5e2dc);
+  border: 1px solid var(--admin-gray-200);
   border-radius: 2px;
-  background: var(--cream, #faf8f4);
+  background: var(--admin-gray-50);
 }
 .cheatSheet summary {
   cursor: pointer;
   padding: 8px 12px;
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--admin-font-ui);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: .04em;
-  color: var(--navy, #1f3a5f);
+  color: var(--admin-navy);
   text-transform: uppercase;
   list-style: none;
 }
@@ -134,19 +141,19 @@
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 4px 14px;
-  font-family: 'SFMono-Regular', Consolas, Menlo, monospace;
+  font-family: var(--admin-font-mono);
   font-size: 11.5px;
 }
 .cheatSheetGrid code {
-  background: var(--warm-white, #fff);
-  border: 1px solid var(--border-light, #e5e2dc);
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
   padding: 1px 6px;
   border-radius: 2px;
-  color: var(--forest, #2d6a4f);
+  color: var(--admin-forest);
   white-space: nowrap;
 }
 .cheatSheetGrid span {
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
-  color: var(--text-meta, #6b6b6b);
+  font-family: var(--admin-font-ui);
+  color: var(--admin-gray-500);
   align-self: center;
 }

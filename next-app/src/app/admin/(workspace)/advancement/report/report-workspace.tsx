@@ -223,7 +223,7 @@ export function ReportWorkspace({
                   }}
                 />
                 {report.contentJson.isEmpty && (
-                  <p className={styles.hint} style={{ marginTop: 8 }}>
+                  <p className={`${styles.hint} ${styles.hintSpaced}`}>
                     Nothing was logged in this date range — publishing is disabled. Widen the range,
                     or this may just be a quiet week not worth publishing at all.
                   </p>

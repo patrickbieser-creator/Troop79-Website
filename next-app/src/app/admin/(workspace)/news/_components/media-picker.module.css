@@ -1,21 +1,22 @@
-/* Ported verbatim (values, not naming) from prototypes/news-cms/assets/news-cms.css's
-   MEDIA PICKER section — browser-verified there, including the ph-N gradient
-   placeholders swapped for real <img> thumbnails now that this renders real data.
-   Tokens (--navy, --forest, --transition, etc.) come from the app's globals.css,
-   already ported from the same prototype — do not fork them here. */
+/* Ported originally from prototypes/news-cms/assets/news-cms.css's MEDIA PICKER
+   section; Phase C (2026-08-21) retired the public-token reads (--navy, --forest,
+   --border-*, --font-ui…) onto the --admin-* sheet — this is admin chrome, not a
+   public-parity preview surface. Primary action follows the Phase A decision
+   (navy commit button). The custom div overlay itself still unifies onto the
+   shared Dialog in a later pass (plan: HIGH risk, deliberately last). */
 
 .overlay {
   position: fixed; inset: 0; background: rgba(26, 26, 26, .55); display: flex;
   align-items: center; justify-content: center; z-index: 500; padding: 24px;
 }
 .modal {
-  background: var(--warm-white); width: 100%; max-width: 880px; max-height: 86vh; border-radius: 3px;
-  box-shadow: var(--shadow-hover); display: flex; flex-direction: column; overflow: hidden;
+  background: var(--admin-white); width: 100%; max-width: 880px; max-height: 86vh; border-radius: 3px;
+  box-shadow: var(--admin-shadow-lg); display: flex; flex-direction: column; overflow: hidden;
 }
-.modalHead { display: flex; align-items: center; justify-content: space-between; padding: 16px 22px; border-bottom: 1px solid var(--border-light); }
-.modalHead h2 { font-family: var(--font-display); font-size: 19px; color: var(--text-head); font-weight: 700; }
-.close { background: none; border: none; cursor: pointer; color: var(--text-meta); font-size: 20px; line-height: 1; padding: 4px 8px; border-radius: 2px; transition: background var(--transition), color var(--transition); }
-.close:hover { background: var(--newsprint); color: var(--text-head); }
+.modalHead { display: flex; align-items: center; justify-content: space-between; padding: 16px 22px; border-bottom: 1px solid var(--admin-gray-200); }
+.modalHead h2 { font-family: var(--admin-font-ui); font-size: 16px; color: var(--admin-gray-900); font-weight: 700; }
+.close { background: none; border: none; cursor: pointer; color: var(--admin-gray-500); font-size: 20px; line-height: 1; padding: 4px 8px; border-radius: 2px; transition: background var(--admin-transition), color var(--admin-transition); }
+.close:hover { background: var(--admin-gray-100); color: var(--admin-gray-900); }
 
 /* .tabs/.tab/.tabActive retired Phase B (2026-08-21) — the shared pill
    TabStrip (fold-in decision) replaced the picker's own public-token tabs;
@@ -28,21 +29,21 @@
 
 /* Upload tab */
 .dropzone {
-  border: 2px dashed var(--border-mid); border-radius: 3px; padding: 44px 20px; text-align: center;
-  color: var(--text-meta); font-family: var(--font-ui); transition: all var(--transition); cursor: pointer;
+  border: 2px dashed var(--admin-gray-300); border-radius: 3px; padding: 44px 20px; text-align: center;
+  color: var(--admin-gray-500); font-family: var(--admin-font-ui); transition: all var(--admin-transition); cursor: pointer;
 }
-.dropzoneDragover { border-color: var(--forest); background: rgba(61, 90, 62, .05); color: var(--forest); }
+.dropzoneDragover { border-color: var(--admin-forest); background: color-mix(in srgb, var(--admin-forest) 5%, transparent); color: var(--admin-forest); }
 .dropzone svg { width: 34px; height: 34px; fill: currentColor; margin-bottom: 10px; opacity: .6; }
-.dropzone strong { display: block; font-size: 14px; color: var(--text-head); margin-bottom: 4px; }
+.dropzone strong { display: block; font-size: 14px; color: var(--admin-gray-900); margin-bottom: 4px; }
 .dzSub { font-size: 12px; }
 .dropzone input[type='file'] { display: none; }
 
 .uploadList { margin-top: 18px; display: flex; flex-direction: column; gap: 10px; }
-.uploadItem { display: flex; align-items: center; gap: 12px; border: 1px solid var(--border-light); border-radius: 2px; padding: 10px 12px; }
-.uploadThumb { width: 42px; height: 42px; border-radius: 2px; flex-shrink: 0; object-fit: cover; background: var(--border-light); }
+.uploadItem { display: flex; align-items: center; gap: 12px; border: 1px solid var(--admin-gray-200); border-radius: 2px; padding: 10px 12px; }
+.uploadThumb { width: 42px; height: 42px; border-radius: 2px; flex-shrink: 0; object-fit: cover; background: var(--admin-gray-200); }
 .uploadInfo { flex: 1; min-width: 0; }
-.uploadName { font-family: var(--font-ui); font-size: 12px; font-weight: 600; color: var(--text-head); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.progressTrack { height: 5px; background: var(--border-light); border-radius: 999px; margin-top: 6px; overflow: hidden; }
+.uploadName { font-family: var(--admin-font-ui); font-size: 12px; font-weight: 600; color: var(--admin-gray-900); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.progressTrack { height: 5px; background: var(--admin-gray-200); border-radius: var(--admin-radius-pill); margin-top: 6px; overflow: hidden; }
 /* Indeterminate on purpose: uploads run through a Server Action, which
    exposes no progress events, so a real percentage is unobtainable on this
    path. Until 2026-08-21 this was a determinate bar hardcoded to width:70%
@@ -51,77 +52,78 @@
 .progressFill {
   height: 100%;
   width: 40%;
-  background: var(--forest);
-  border-radius: 999px;
+  background: var(--admin-forest);
+  border-radius: var(--admin-radius-pill);
   animation: progressSweep 1.2s ease-in-out infinite;
 }
 @keyframes progressSweep {
   0%   { margin-left: -40%; }
   100% { margin-left: 100%; }
 }
-.uploadStatus { font-family: var(--font-ui); font-size: 11px; color: var(--text-meta); margin-top: 3px; }
-.uploadItemError { border-color: #b5484d; background: rgba(181, 72, 77, .05); }
-.uploadItemError .uploadStatus { color: #b5484d; }
-.uploadItemDone .uploadStatus { color: var(--forest); }
+.uploadStatus { font-family: var(--admin-font-ui); font-size: 11px; color: var(--admin-gray-500); margin-top: 3px; }
+.uploadItemError { border-color: var(--admin-danger); background: var(--admin-status-error-bg); }
+.uploadItemError .uploadStatus { color: var(--admin-danger); }
+.uploadItemDone .uploadStatus { color: var(--admin-forest); }
 
 /* Alt text prompt inline on a just-uploaded item */
 .altPrompt { display: flex; gap: 6px; margin-top: 6px; }
 .altPrompt input {
-  flex: 1; font-family: var(--font-ui); font-size: 12px; padding: 5px 8px;
-  border: 1px solid var(--border-mid); border-radius: 2px; outline: none;
+  flex: 1; font-family: var(--admin-font-ui); font-size: 12px; padding: 5px 8px;
+  border: 1px solid var(--admin-gray-300); border-radius: 2px; outline: none;
 }
-.altPrompt input:focus { border-color: var(--forest); }
+.altPrompt input:focus { border-color: var(--admin-navy); }
 
 /* Browse tab */
 .browseBar { display: flex; gap: 10px; margin-bottom: 16px; }
 .search { flex: 1; position: relative; }
 .search input {
-  width: 100%; font-family: var(--font-ui); font-size: 13px; padding: 9px 12px 9px 34px;
-  border: 1px solid var(--border-mid); border-radius: 2px; background: var(--newsprint); outline: none;
+  width: 100%; font-family: var(--admin-font-ui); font-size: 13px; padding: 9px 12px 9px 34px;
+  border: 1px solid var(--admin-gray-300); border-radius: 2px; background: var(--admin-gray-50); outline: none;
 }
-.search input:focus { border-color: var(--forest); background: var(--warm-white); }
-.search svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; fill: var(--text-meta); }
+.search input:focus { border-color: var(--admin-navy); background: var(--admin-white); }
+.search svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; fill: var(--admin-gray-500); }
 
 .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
-.thumb { position: relative; aspect-ratio: 1/1; border-radius: 2px; overflow: hidden; cursor: pointer; border: 2px solid transparent; transition: border-color var(--transition), transform var(--transition); background: var(--border-light); }
+.thumb { position: relative; aspect-ratio: 1/1; border-radius: 2px; overflow: hidden; cursor: pointer; border: 2px solid transparent; transition: border-color var(--admin-transition), transform var(--admin-transition); background: var(--admin-gray-200); }
 .thumb:hover { transform: translateY(-1px); }
-.thumbSelected { border-color: var(--forest); }
+.thumbSelected { border-color: var(--admin-forest); }
 .thumb img { width: 100%; height: 100%; object-fit: cover; }
 .thumbOverlay {
   position: absolute; inset: 0; background: linear-gradient(to top, rgba(0, 0, 0, .75) 0%, rgba(0, 0, 0, 0) 55%);
-  opacity: 0; transition: opacity var(--transition); display: flex; align-items: flex-end; padding: 8px;
+  opacity: 0; transition: opacity var(--admin-transition); display: flex; align-items: flex-end; padding: 8px;
 }
 .thumb:hover .thumbOverlay, .thumbSelected .thumbOverlay { opacity: 1; }
-.thumbMeta { color: #fff; font-family: var(--font-ui); }
+.thumbMeta { color: var(--admin-white); font-family: var(--admin-font-ui); }
 .thumbMeta .fn { font-size: 10px; font-weight: 700; display: block; overflow-wrap: anywhere; }
 .thumbMeta .alt { font-size: 9px; opacity: .75; display: block; margin-top: 2px; }
 .thumbCheck {
-  position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; border-radius: 50%;
+  position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; border-radius: var(--admin-radius-circle);
   background: rgba(255, 255, 255, .85); border: 2px solid rgba(255, 255, 255, .9); display: flex; align-items: center; justify-content: center;
-  opacity: 0; transition: opacity var(--transition), background var(--transition), border-color var(--transition);
+  opacity: 0; transition: opacity var(--admin-transition), background var(--admin-transition), border-color var(--admin-transition);
 }
 .thumb:hover .thumbCheck { opacity: 1; }
-.thumbSelected .thumbCheck { opacity: 1; background: var(--forest); border-color: var(--forest); }
-.thumbSelected .thumbCheck::after { content: '\2713'; color: #fff; font-size: 11px; font-weight: 700; }
+.thumbSelected .thumbCheck { opacity: 1; background: var(--admin-forest); border-color: var(--admin-forest); }
+.thumbSelected .thumbCheck::after { content: '\2713'; color: var(--admin-white); font-size: 11px; font-weight: 700; }
 
-.empty { text-align: center; padding: 50px 20px; color: var(--text-meta); font-family: var(--font-ui); }
-.empty svg { width: 30px; height: 30px; fill: var(--border-mid); margin-bottom: 10px; }
+.empty { text-align: center; padding: 50px 20px; color: var(--admin-gray-500); font-family: var(--admin-font-ui); }
+.empty svg { width: 30px; height: 30px; fill: var(--admin-gray-300); margin-bottom: 10px; }
 
-.modalFoot { display: flex; align-items: center; justify-content: space-between; padding: 14px 22px; border-top: 1px solid var(--border-light); background: var(--cream); }
-.selectedCount { font-family: var(--font-ui); font-size: 12px; color: var(--text-meta); }
-.selectedCount strong { color: var(--text-head); }
+.modalFoot { display: flex; align-items: center; justify-content: space-between; padding: 14px 22px; border-top: 1px solid var(--admin-gray-200); background: var(--admin-gray-50); }
+.selectedCount { font-family: var(--admin-font-ui); font-size: 12px; color: var(--admin-gray-500); }
+.selectedCount strong { color: var(--admin-gray-900); }
 .footActions { display: flex; gap: 10px; }
 
 .btnPrimary, .btnSecondary {
-  font-family: var(--font-ui); font-size: 12px; font-weight: 700; letter-spacing: .05em;
-  text-transform: uppercase; padding: 10px 18px; border-radius: 2px; border: none; cursor: pointer; transition: background var(--transition);
+  font-family: var(--admin-font-ui); font-size: 12px; font-weight: 700; letter-spacing: .05em;
+  text-transform: uppercase; padding: 10px 18px; border-radius: 2px; border: none; cursor: pointer; transition: background var(--admin-transition);
 }
-.btnPrimary { background: var(--forest); color: #fff; }
-.btnPrimary:hover { background: var(--forest-light); }
-.btnPrimary:disabled { background: var(--border-mid); cursor: not-allowed; }
-.btnPrimary:disabled:hover { background: var(--border-mid); }
-.btnSecondary { background: transparent; color: var(--navy); border: 1px solid var(--border-mid); }
-.btnSecondary:hover { background: var(--newsprint); }
+/* Navy per the Phase A primary-button decision — was a forest (public-token) primary. */
+.btnPrimary { background: var(--admin-navy); color: var(--admin-white); }
+.btnPrimary:hover { background: var(--admin-navy-hover); }
+.btnPrimary:disabled { background: var(--admin-gray-300); cursor: not-allowed; }
+.btnPrimary:disabled:hover { background: var(--admin-gray-300); }
+.btnSecondary { background: transparent; color: var(--admin-navy); border: 1px solid var(--admin-gray-300); }
+.btnSecondary:hover { background: var(--admin-gray-100); }
 
 @media (max-width: 900px) {
   .grid { grid-template-columns: repeat(3, 1fr); }

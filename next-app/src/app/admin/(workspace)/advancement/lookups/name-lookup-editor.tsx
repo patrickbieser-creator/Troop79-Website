@@ -106,8 +106,7 @@ export function NameLookupEditor({ rows, noun, onCreate, onUpdate, onDelete }: P
         <div className={styles.addPanel}>
           <input
             type="text"
-            className={styles.editInput}
-            style={{ maxWidth: 260 }}
+            className={`${styles.editInput} ${styles.inputMax260}`}
             placeholder={`New ${lower} name`}
             value={newName}
             autoFocus
@@ -141,7 +140,7 @@ export function NameLookupEditor({ rows, noun, onCreate, onUpdate, onDelete }: P
         <thead>
           <tr>
             <th>{noun}</th>
-            <th style={{ textAlign: 'right' }}>Actions</th>
+            <th className={styles.cellRight}>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -156,7 +155,7 @@ export function NameLookupEditor({ rows, noun, onCreate, onUpdate, onDelete }: P
             t.rows.map((row) => (
               <tr key={row.id}>
                 <td>{row.name}</td>
-                <td style={{ textAlign: 'right' }}>
+                <td className={styles.cellRight}>
                   <button
                     type="button"
                     className={styles.editBtn}
@@ -167,10 +166,9 @@ export function NameLookupEditor({ rows, noun, onCreate, onUpdate, onDelete }: P
                   </button>
                   <button
                     type="button"
-                    className={`${styles.editBtn} ${styles.dangerBtn}`}
+                    className={`${styles.editBtn} ${styles.dangerBtn} ${styles.gapLeft}`}
                     onClick={() => remove(row)}
                     disabled={busyId === row.id}
-                    style={{ marginLeft: 6 }}
                   >
                     Delete
                   </button>

@@ -131,6 +131,7 @@ export function Workbench({
           </Link>
           <h1>{entry.title}</h1>
           <p className={styles.headMeta}>
+            {/* inline: dynamic — per-category color from the lookup table */}
             <span className={styles.cat} style={{ background: entry.categoryColor }}>
               {entry.category}
             </span>

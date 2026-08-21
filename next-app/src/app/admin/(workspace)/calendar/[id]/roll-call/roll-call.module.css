@@ -1,6 +1,6 @@
 .head { margin-bottom: 18px; }
 .head h1 {
-  font-family: var(--font-display, 'Playfair Display', Georgia, serif);
+  font-family: 'Playfair Display', Georgia, serif; /* TOKEN GAP: no --admin-font-display yet */
   font-size: 24px;
   margin: 4px 0 6px;
 }
@@ -27,21 +27,21 @@
    the shared component carries it now (disabled state included). */
 
 .mismatch {
-  border: 1px solid #e8d5a8;
+  border: 1px solid color-mix(in srgb, var(--admin-accent-gold) 30%, var(--admin-white));
   border-left-width: 4px;
-  background: #fdf9f0;
+  background: var(--admin-status-warning-bg);
   padding: 10px 14px;
   border-radius: 3px;
   margin-bottom: 14px;
   font-size: 12.5px;
   line-height: 1.5;
-  color: #6b5423;
+  color: var(--admin-accent-gold);
 }
 .mismatch p { margin: 0 0 6px; }
 .mismatch p:last-child { margin-bottom: 0; }
 
 .error {
-  border: 1px solid #c0392b; border-left-width: 4px; background: #fdf3f2; color: #7d2820;
+  border: 1px solid var(--admin-danger); border-left-width: 4px; background: var(--admin-status-error-bg); color: var(--admin-danger-dark);
   font-size: 13px; padding: 10px 12px; margin-bottom: 12px; border-radius: 3px;
 }
 
@@ -55,7 +55,7 @@
 .group { margin-bottom: 18px; }
 .groupHead {
   display: flex; align-items: center; justify-content: space-between;
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--admin-font-ui);
   font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
   color: var(--admin-forest); margin: 0 0 6px; padding-bottom: 4px;
   border-bottom: 1px solid var(--admin-gray-200);
@@ -68,7 +68,7 @@
   padding: 8px 10px; border-bottom: 1px solid var(--admin-gray-100); font-size: 13.5px;
 }
 /* Present rows read as done at a glance — the useful signal mid-roll-call. */
-.rowOn { background: #f1f7f2; }
+.rowOn { background: var(--admin-status-success-bg); }
 .row:last-child, .rowOn:last-child { border-bottom: none; }
 
 .name { display: flex; align-items: center; gap: 9px; cursor: pointer; flex: 1; }

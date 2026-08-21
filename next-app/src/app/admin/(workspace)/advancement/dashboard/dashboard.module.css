@@ -2,8 +2,8 @@
    Amber accent (not red/danger) — these are routine items awaiting a
    decision, not something broken. */
 .attentionCard {
-  background: #fffaf0;
-  border: 1px solid #f0e2b8;
+  background: var(--admin-status-warning-bg);
+  border: 1px solid color-mix(in srgb, var(--admin-warning) 30%, white);
   border-radius: var(--admin-radius);
   padding: 14px 16px;
   margin-bottom: 20px;
@@ -17,7 +17,7 @@
 .attentionGroup + .attentionGroup {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid #f0e2b8;
+  border-top: 1px solid color-mix(in srgb, var(--admin-warning) 30%, white);
 }
 .attentionGroupLabel {
   font-size: 10.5px;
@@ -173,8 +173,8 @@
 }
 
 .note {
-  background: #fff8e0;
-  border: 1px solid #f0e2b8;
+  background: var(--admin-status-warning-bg);
+  border: 1px solid color-mix(in srgb, var(--admin-warning) 30%, white);
   border-radius: 3px;
   padding: 8px 12px;
   font-size: 12px;
@@ -267,3 +267,8 @@
   font-weight: 700;
   color: var(--admin-forest);
 }
+
+/* Phase C — were inline styles (logins pager, analytics embed). */
+.actionsEnd { margin-top: var(--admin-space-6); justify-content: flex-end; }
+.cardSpaced { margin-top: var(--admin-space-7); }
+.reportFrame { border: 0; display: block; }

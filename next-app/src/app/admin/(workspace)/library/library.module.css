@@ -1,71 +1,53 @@
-/* /admin/library — webmaster workstation styles. */
+/* /admin/library — webmaster workstation styles.
+   Phase C (2026-08-21): retired the public-token styling (--font-display,
+   --navy, --forest, --bark, tan borders…) onto the --admin-* sheet — this
+   module is imported ONLY by the admin workstation (page, entry form,
+   quick-add). The PUBLIC library stylesheet is a different file
+   (app/(public)/library/library.module.css) and stays untouched.
+   Dead Phase B leftovers deleted: .tabs/.tab/.tabOn/.tabBadge (shared
+   TabStrip), .btnNavy (unused), .quickAdd* (shared Dialog). */
 
 .wrap { max-width: 1100px; }
 
+/* PageTitle canon (navy sans 22) — kept as local classes because this page
+   composes its lede/back-link differently than the shared component. */
 .pageTitle {
-  font-family: var(--font-display);
-  font-size: 26px;
-  font-weight: 700;
-  color: var(--text-head);
+  font-size: 22px;
+  font-weight: var(--admin-weight-bold);
+  color: var(--admin-navy);
   margin-bottom: 4px;
 }
-.pageLede { font-family: var(--font-ui); font-size: 13px; color: var(--text-meta); margin-bottom: 18px; max-width: 70ch; line-height: 1.5; }
+.pageLede { font-size: var(--admin-text-md); color: var(--admin-gray-500); margin-bottom: 18px; max-width: 70ch; line-height: 1.5; }
+.pageLedeSpaced { margin-top: 10px; }
 
+/* Notice canon palettes (see _components/notice.module.css) */
 .errBanner {
-  font-family: var(--font-ui);
-  font-size: 13px;
+  font-size: var(--admin-text-md);
   font-weight: 600;
-  color: #8a3b2e;
-  background: #f9efec;
-  border: 1px solid #cba79d;
-  border-radius: 3px;
+  color: var(--admin-danger);
+  background: var(--admin-status-error-bg);
+  border: 1px solid color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white));
+  border-radius: var(--admin-radius-sm);
   padding: 10px 14px;
   margin-bottom: 14px;
 }
 .savedBanner {
-  font-family: var(--font-ui);
-  font-size: 13px;
+  font-size: var(--admin-text-md);
   font-weight: 600;
-  color: var(--forest);
-  background: #eef2ee;
-  border: 1px solid var(--forest-light);
-  border-radius: 3px;
+  color: var(--admin-forest);
+  background: var(--admin-status-success-bg);
+  border: 1px solid color-mix(in srgb, var(--admin-forest) 30%, var(--admin-white));
+  border-radius: var(--admin-radius-sm);
   padding: 10px 14px;
   margin-bottom: 14px;
 }
 
-.tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--border-mid); margin: 4px 0 20px; flex-wrap: wrap; }
-.tab {
-  font-family: var(--font-ui);
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-meta);
-  padding: 10px 18px 9px;
-  border: 1px solid transparent;
-  border-bottom: none;
-  border-radius: 3px 3px 0 0;
-  position: relative;
-  top: 2px;
-  text-decoration: none;
-}
-.tab:hover { color: var(--navy); }
-.tabOn { color: var(--navy); background: var(--cream); border-color: var(--border-mid); }
-.tabBadge {
-  display: inline-block;
-  margin-left: 7px;
-  font-size: 10.5px;
-  background: var(--bark);
-  color: #fff;
-  border-radius: 999px;
-  padding: 1px 8px;
-  vertical-align: 1px;
-}
-
+/* Card canon: white, gray-200 border, radius + shadow tokens. */
 .queueRow {
-  background: var(--warm-white);
-  border: 1px solid var(--border-light);
-  border-radius: 3px;
-  box-shadow: var(--shadow-card);
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow-sm);
   padding: 16px 18px;
   margin-bottom: 14px;
 }
@@ -74,34 +56,35 @@
   flex-shrink: 0;
   width: 84px;
   height: 47px; /* 16:9 */
-  border-radius: 3px;
+  border-radius: var(--admin-radius-sm);
   object-fit: cover;
-  border: 1px solid var(--border-light);
-  background: var(--newsprint);
+  border: 1px solid var(--admin-gray-200);
+  background: var(--admin-gray-50);
 }
-.rowTitle { font-family: var(--font-ui); font-size: 15px; font-weight: 700; color: var(--text-head); }
-.rowMeta { font-family: var(--font-ui); font-size: 11.5px; color: var(--text-meta); }
-.rowMeta strong { color: var(--text-body); }
-.rowMeta a { color: var(--navy); font-weight: 600; }
+.rowTitle { font-size: 15px; font-weight: 700; color: var(--admin-gray-900); }
+.rowMeta { font-size: 11.5px; color: var(--admin-gray-500); }
+.rowMeta strong { color: var(--admin-gray-700); }
+.rowMeta a { color: var(--admin-navy); font-weight: 600; }
 .rowMeta a:hover { text-decoration: underline; text-underline-offset: 2px; }
+.rowMetaSpaced { margin-bottom: 8px; }
 
+/* Status pills on the status tokens (Badge palette). */
 .statusPill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-family: var(--font-ui);
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding: 3px 10px;
-  border-radius: 999px;
+  border-radius: var(--admin-radius-pill);
   border: 1px solid transparent;
   margin-left: auto;
 }
-.pillPending { color: var(--bark); border-color: var(--bark-light); background: #f6e7c4; }
-.pillPublished { color: var(--forest); border-color: var(--forest-light); background: #eef2ee; }
-.pillArchived { color: var(--text-meta); border-color: var(--border-mid); background: var(--cream); }
+.pillPending { color: var(--admin-accent-gold); border-color: color-mix(in srgb, var(--admin-accent-gold) 30%, var(--admin-white)); background: var(--admin-status-warning-bg); }
+.pillPublished { color: var(--admin-forest); border-color: color-mix(in srgb, var(--admin-forest) 30%, var(--admin-white)); background: var(--admin-status-success-bg); }
+.pillArchived { color: var(--admin-gray-500); border-color: var(--admin-gray-300); background: var(--admin-gray-100); }
 
 .fieldGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; margin-bottom: 10px; }
 .fieldFull { grid-column: 1 / -1; }
@@ -109,41 +92,40 @@
 
 .fieldLabel {
   display: block;
-  font-family: var(--font-ui);
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-meta);
+  color: var(--admin-gray-500);
   margin-bottom: 4px;
 }
 .textInput,
 .selectInput,
 .textArea {
   width: 100%;
-  background: var(--warm-white);
-  border: 1px solid var(--border-mid);
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-300);
   border-radius: 2px;
-  font-family: var(--font-ui);
+  font-family: inherit;
   font-size: 13.5px;
   padding: 8px 10px;
-  color: var(--text-body);
+  color: var(--admin-gray-700);
 }
 .textArea { min-height: 80px; resize: vertical; line-height: 1.5; }
 .narrArea { min-height: 180px; }
 
 .actionsRow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+.actionsRowTight { margin-top: 0; }
 /* Base styles live on every variant directly — the JSX applies a single
    btnX class, so the variants can't rely on a separate .btn being present
    (that's exactly how Save/Archive shipped unstyled on 2026-07-21). */
 .btnPrimary,
-.btnNavy,
 .btnSecondary,
 .btnDanger {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-ui);
+  font-family: inherit; /* buttons don't inherit by default */
   font-size: 11.5px;
   font-weight: 700;
   letter-spacing: 0.05em;
@@ -153,28 +135,27 @@
   border: none;
   cursor: pointer;
 }
-.btnPrimary { background: var(--forest); color: #fff; }
-.btnPrimary:hover { background: var(--forest-light); }
-.btnNavy { background: var(--navy); color: #fff; }
-.btnNavy:hover { background: var(--navy-hover); }
-.btnSecondary { background: var(--warm-white); color: var(--navy); border: 1px solid var(--border-mid); }
-.btnSecondary:hover { border-color: var(--forest); color: var(--forest); background: var(--cream); }
-.btnDanger { background: var(--warm-white); color: #8a3b2e; border: 1px solid #cba79d; }
-.btnDanger:hover { background: #f7ece9; border-color: #8a3b2e; }
+/* Navy per the Phase A primary-button decision — was a forest primary. */
+.btnPrimary { background: var(--admin-navy); color: var(--admin-white); }
+.btnPrimary:hover { background: var(--admin-navy-hover); }
+.btnSecondary { background: var(--admin-white); color: var(--admin-navy); border: 1px solid var(--admin-gray-300); }
+.btnSecondary:hover { border-color: var(--admin-navy); color: var(--admin-navy); background: var(--admin-gray-100); }
+/* Outlined danger canon (Phase A decision). */
+.btnDanger { background: var(--admin-white); color: var(--admin-danger); border: 1px solid color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white)); }
+.btnDanger:hover { background: var(--admin-status-error-bg); border-color: var(--admin-danger); }
 
-.placementsBlock { border-top: 1px dashed var(--border-mid); margin-top: 12px; padding-top: 10px; }
+.placementsBlock { border-top: 1px dashed var(--admin-gray-300); margin-top: 12px; padding-top: 10px; }
 .placementChips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .placementChip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-family: var(--font-ui);
   font-size: 11.5px;
   font-weight: 600;
-  background: var(--newsprint);
-  color: var(--navy);
-  border: 1px solid var(--border-mid);
-  border-radius: 999px;
+  background: var(--admin-gray-50);
+  color: var(--admin-navy);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-pill);
   padding: 3px 6px 3px 11px;
 }
 .chipBtn {
@@ -182,41 +163,39 @@
   place-items: center;
   min-width: 17px;
   height: 17px;
-  border-radius: 999px;
-  background: var(--border-mid);
-  color: #fff;
+  border-radius: var(--admin-radius-pill);
+  background: var(--admin-gray-400);
+  color: var(--admin-white);
   font-size: 11px;
   line-height: 1;
   border: none;
   cursor: pointer;
   padding: 0 5px;
 }
-.chipBtn:hover { background: var(--navy); }
-.chipPinned { background: var(--bark); }
+.chipBtn:hover { background: var(--admin-navy); }
+.chipPinned { background: var(--admin-accent-gold); }
 .addPlacementForm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
 .addPlacementForm select { max-width: 420px; }
 
-.declineForm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; border-top: 1px dashed var(--border-mid); padding-top: 10px; }
+.declineForm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; border-top: 1px dashed var(--admin-gray-300); padding-top: 10px; }
 .declineForm input { flex: 1; min-width: 220px; }
 
 .declineReason {
-  font-family: var(--font-ui);
-  font-size: 12px;
-  color: #8a3b2e;
-  background: #f9efec;
-  border-left: 3px solid #cba79d;
+  font-size: var(--admin-text-base);
+  color: var(--admin-danger-dark);
+  background: var(--admin-status-error-bg);
+  border-left: 3px solid color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white));
   padding: 6px 10px;
   margin-top: 8px;
 }
 
 /* Published tab — grouped drill-in (mirrors the public IA) */
 .groupSectionLabel {
-  font-family: var(--font-ui);
-  font-size: 11px;
+  font-size: var(--admin-text-sm);
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--text-meta);
+  color: var(--admin-gray-500);
   margin: 20px 0 10px;
 }
 .groupGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
@@ -224,44 +203,44 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  background: var(--warm-white);
-  border: 1px solid var(--border-light);
-  border-radius: 3px;
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
   padding: 11px 14px;
-  box-shadow: var(--shadow-card);
-  font-family: var(--font-ui);
+  box-shadow: var(--admin-shadow-sm);
   text-decoration: none;
 }
-.groupCard:hover { border-color: var(--navy); box-shadow: var(--shadow-hover); }
-.groupName { flex: 1; font-size: 13.5px; font-weight: 600; color: var(--text-head); line-height: 1.3; }
+.groupCard:hover { border-color: var(--admin-navy); box-shadow: var(--admin-shadow-md); }
+.groupName { flex: 1; font-size: 13.5px; font-weight: 600; color: var(--admin-gray-900); line-height: 1.3; }
 .groupCount {
   font-size: 11.5px;
   font-weight: 700;
-  color: var(--forest);
-  background: #eef2ee;
-  border: 1px solid var(--forest-light);
-  border-radius: 999px;
+  color: var(--admin-forest);
+  background: var(--admin-status-success-bg);
+  border: 1px solid color-mix(in srgb, var(--admin-forest) 30%, var(--admin-white));
+  border-radius: var(--admin-radius-pill);
   padding: 2px 9px;
 }
 .groupBack {
   display: inline-block;
-  font-family: var(--font-ui);
   font-size: 12.5px;
   font-weight: 700;
-  color: var(--navy);
+  color: var(--admin-navy);
   margin-bottom: 14px;
 }
-.groupBack:hover { color: var(--forest); text-decoration: underline; text-underline-offset: 2px; }
+.groupBack:hover { color: var(--admin-navy-hover); text-decoration: underline; text-underline-offset: 2px; }
+
+/* The "← Back to library" link (was inline navy/700). */
+.backLink { color: var(--admin-navy); font-weight: 700; }
 
 .emptyTab {
   text-align: center;
   padding: 32px 20px;
-  color: var(--text-meta);
-  font-family: var(--font-body);
+  color: var(--admin-gray-500);
   font-style: italic;
-  background: var(--warm-white);
-  border: 1px dashed var(--border-mid);
-  border-radius: 3px;
+  background: var(--admin-white);
+  border: 1px dashed var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
 }
 
 .topicRow {
@@ -269,57 +248,56 @@
   grid-template-columns: 60px 1fr 2fr 80px auto;
   gap: 10px;
   align-items: center;
-  background: var(--warm-white);
-  border: 1px solid var(--border-light);
-  border-radius: 3px;
-  box-shadow: var(--shadow-card);
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow-sm);
   padding: 10px 14px;
   margin-bottom: 8px;
 }
 @media (max-width: 860px) { .topicRow { grid-template-columns: 1fr 1fr; } }
 .topicRetired { opacity: 0.55; }
+.topicRowNew { margin-top: 16px; }
 
 .narrCard {
-  background: var(--warm-white);
-  border: 1px solid var(--border-light);
-  border-radius: 3px;
-  box-shadow: var(--shadow-card);
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow-sm);
   padding: 18px 20px;
   max-width: 860px;
 }
-.narrList { font-family: var(--font-ui); font-size: 12.5px; margin-top: 14px; line-height: 1.9; }
-.narrList a { color: var(--navy); font-weight: 600; }
+.narrList { font-size: 12.5px; margin-top: 14px; line-height: 1.9; }
+.narrList a { color: var(--admin-navy); font-weight: 600; }
 .narrList a:hover { text-decoration: underline; text-underline-offset: 2px; }
+.narrForm { margin-top: 14px; }
 
 /* ── Add Resource entry form (Plans/Library-Admin-Resource-Entry.md) ─────── */
 
 .entryForm {
-  background: var(--warm-white);
-  border: 1px solid var(--border-mid);
-  border-radius: 3px;
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
   padding: 16px 18px;
   margin-bottom: 16px;
 }
 .entryHeading {
-  font-family: var(--font-display);
-  font-size: 19px;
-  color: var(--navy);
+  font-size: var(--admin-text-xl);
+  font-weight: var(--admin-weight-bold);
+  color: var(--admin-navy);
   margin: 0 0 12px;
 }
 .fieldHint {
   display: block;
-  font-family: var(--font-ui);
   font-size: 11.5px;
-  color: var(--text-meta);
+  color: var(--admin-gray-500);
   margin-top: 4px;
   line-height: 1.45;
 }
 .entryError {
   display: block;
-  font-family: var(--font-ui);
-  font-size: 12px;
-  /* Same error red as .errBanner above — not a token, that file's convention. */
-  color: #8a3b2e;
+  font-size: var(--admin-text-base);
+  color: var(--admin-danger);
   margin-top: 6px;
 }
 
@@ -332,23 +310,18 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-family: var(--font-ui);
-  font-size: 12px;
-  background: var(--cream);
-  border: 1px solid var(--border-mid);
+  font-size: var(--admin-text-base);
+  background: var(--admin-gray-50);
+  border: 1px solid var(--admin-gray-300);
   border-radius: 2px;
   padding: 3px 6px 3px 8px;
 }
 .quickAddRow { display: flex; justify-content: flex-end; margin-bottom: 12px; }
-.quickAddDialog {
-  border: 1px solid var(--border-mid);
-  border-radius: 3px;
-  padding: 0;
-  width: min(920px, 94vw);
-  max-height: 90vh;
-  background: var(--cream);
-}
-.quickAddDialog::backdrop { background: rgba(26, 32, 38, 0.45); }
-.quickAddInner { padding: 16px 18px; max-height: 90vh; overflow-y: auto; }
-.quickAddHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
-.quickAddHead h2 { font-family: var(--font-display); font-size: 20px; color: var(--navy); margin: 0; }
+/* Width override for the shared Dialog (spec allows size-only overrides). */
+.quickAddWide { width: min(920px, 94vw); }
+
+/* Review-queue helpers (were inline styles on page.tsx). */
+.thumbRow { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+.proofThumb { max-width: 160px; max-height: 160px; border-radius: var(--admin-radius); border: 1px solid var(--admin-gray-300); }
+.inlineForm { display: inline; }
+.inlineFlexForm { display: inline-flex; gap: 4px; }

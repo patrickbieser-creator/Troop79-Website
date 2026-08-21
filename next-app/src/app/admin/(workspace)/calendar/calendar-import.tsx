@@ -353,7 +353,7 @@ export const CalendarImport = forwardRef<CalendarImportHandle, Props>(function C
         ref={fileRef}
         type="file"
         accept=".csv,text/csv"
-        style={{ display: 'none' }}
+        className={styles.hiddenFileInput}
         onChange={(e) => {
           const f = e.target.files?.[0];
           if (f) openFile(f);
@@ -516,7 +516,7 @@ export const CalendarImport = forwardRef<CalendarImportHandle, Props>(function C
                 {plan.orphans.length > 0 && (
                   <>
                     <h4 className={styles.importSection}>In the calendar but not in this CSV</h4>
-                    <p className={styles.muted} style={{ fontStyle: 'normal', marginBottom: 8 }}>
+                    <p className={`${styles.muted} ${styles.mutedUprightIntro}`}>
                       Within the CSV&rsquo;s date range but absent from it — possibly cancelled in the
                       sheet. The import never deletes; remove manually if they&rsquo;re gone for real.
                     </p>
@@ -534,7 +534,7 @@ export const CalendarImport = forwardRef<CalendarImportHandle, Props>(function C
 
             {err && <Notice>{err}</Notice>}
             {needsCategory > 0 && !done && (
-              <p className={styles.muted} style={{ fontStyle: 'normal', marginTop: 6 }}>
+              <p className={`${styles.muted} ${styles.mutedUprightNote}`}>
                 {needsCategory} checked row{needsCategory === 1 ? ' still needs' : 's still need'} a
                 category before they can import.
               </p>

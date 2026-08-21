@@ -1,28 +1,30 @@
 /* Insert-block toolbar and the inline gallery-link / video mini-forms.
    Lifted from article-editor.module.css when the machinery became shared
-   (D-081/D-088) — the article editor looks exactly as it did. */
+   (D-081/D-088). Phase C (2026-08-21): retired the public-token reads onto
+   the --admin-* sheet — these are editor chrome (toolbar buttons, URL/label
+   inputs), not public-parity preview surfaces. */
 
 .insertBtn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-family: var(--font-ui);
+  font-family: var(--admin-font-ui);
   font-size: 11px;
   font-weight: 600;
-  color: var(--navy);
-  background: var(--newsprint);
-  border: 1px solid var(--border-mid);
+  color: var(--admin-navy);
+  background: var(--admin-gray-50);
+  border: 1px solid var(--admin-gray-300);
   padding: 6px 10px;
   border-radius: 2px;
   cursor: pointer;
-  transition: all var(--transition);
+  transition: all var(--admin-transition);
 }
-.insertBtn:hover { background: var(--navy); color: #fff; border-color: var(--navy); }
+.insertBtn:hover { background: var(--admin-navy); color: var(--admin-white); border-color: var(--admin-navy); }
 
 .inlinePrompt {
-  border: 1px solid var(--border-mid);
+  border: 1px solid var(--admin-gray-300);
   border-radius: 2px;
-  background: var(--cream);
+  background: var(--admin-gray-50);
   padding: 12px;
   margin-bottom: 8px;
 }
@@ -31,33 +33,33 @@
 .field { margin-bottom: 10px; }
 .field label {
   display: block;
-  font-family: var(--font-ui);
+  font-family: var(--admin-font-ui);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: .05em;
   text-transform: uppercase;
-  color: var(--text-meta);
+  color: var(--admin-gray-500);
   margin-bottom: 6px;
 }
 .field input[type='text'],
 .field input[type='url'] {
   width: 100%;
-  font-family: var(--font-body);
+  font-family: var(--admin-font-ui);
   font-size: 14px;
-  color: var(--text-body);
-  border: 1px solid var(--border-mid);
+  color: var(--admin-gray-700);
+  border: 1px solid var(--admin-gray-300);
   border-radius: 2px;
   padding: 9px 11px;
-  background: var(--newsprint);
+  background: var(--admin-white);
   outline: none;
-  transition: border-color var(--transition), background var(--transition);
+  transition: border-color var(--admin-transition), background var(--admin-transition);
 }
-.field input:focus { border-color: var(--forest); background: var(--warm-white); }
+.field input:focus { border-color: var(--admin-navy); background: var(--admin-white); }
 
 .hint {
-  font-family: var(--font-ui);
+  font-family: var(--admin-font-ui);
   font-size: 11px;
-  color: var(--text-meta);
+  color: var(--admin-gray-500);
   margin-bottom: 8px;
   font-style: italic;
 }
@@ -65,28 +67,28 @@
 .chooseBtn,
 .btnSecondary,
 .btnPrimary {
-  font-family: var(--font-ui);
+  font-family: var(--admin-font-ui);
   font-size: 12px;
   font-weight: 600;
   padding: 7px 14px;
   border-radius: 2px;
   cursor: pointer;
-  transition: all var(--transition);
+  transition: all var(--admin-transition);
 }
 
 .chooseBtn,
 .btnSecondary {
-  color: var(--navy);
-  background: var(--warm-white);
-  border: 1px solid var(--border-mid);
+  color: var(--admin-navy);
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-300);
 }
 .chooseBtn:hover,
-.btnSecondary:hover { background: var(--newsprint); border-color: var(--navy); }
+.btnSecondary:hover { background: var(--admin-gray-100); border-color: var(--admin-navy); }
 
 .btnPrimary {
-  color: #fff;
-  background: var(--navy);
-  border: 1px solid var(--navy);
+  color: var(--admin-white);
+  background: var(--admin-navy);
+  border: 1px solid var(--admin-navy);
 }
-.btnPrimary:hover:not(:disabled) { background: var(--forest); border-color: var(--forest); }
+.btnPrimary:hover:not(:disabled) { background: var(--admin-navy-hover); border-color: var(--admin-navy-hover); }
 .btnPrimary:disabled { opacity: .5; cursor: not-allowed; }

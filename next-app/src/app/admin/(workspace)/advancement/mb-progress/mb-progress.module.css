@@ -48,8 +48,8 @@
   font-weight: 700;
   letter-spacing: .06em;
   text-transform: uppercase;
-  color: #8b6914;
-  background: #fdf3d6;
+  color: var(--admin-accent-gold);
+  background: var(--admin-status-warning-bg);
   padding: 2px 6px;
   border-radius: 8px;
   flex-shrink: 0;
@@ -247,7 +247,7 @@
   font-weight: 700;
 }
 .cellDone {
-  color: #ffffff;
+  color: var(--admin-white);
   background: var(--admin-forest);
 }
 .cellEmpty {
@@ -292,7 +292,7 @@
 }
 .cellAwarded {
   color: var(--admin-warning);
-  background: #fffbeb;
+  background: var(--admin-status-warning-bg);
 }
 .cellNotAwarded {
   color: var(--admin-gray-300);
@@ -354,3 +354,8 @@
   color: var(--admin-gray-500);
   font-style: italic;
 }
+
+/* ── Phase C — classes replacing repeated inline styles ──────────────── */
+.gapLeft { margin-left: var(--admin-space-5); }
+.mbLink  { color: var(--admin-navy); text-decoration: underline; }
+.emptyState { padding: 40px 24px; text-align: center; font-style: italic; color: var(--admin-gray-500); border: 1px solid var(--admin-gray-200); border-radius: var(--admin-radius); background: var(--admin-white); }

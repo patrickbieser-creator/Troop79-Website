@@ -111,7 +111,7 @@ export function MediaManagerView() {
         <div className={styles.grid}>
           {media.map((item) => (
             <div key={item.id} className={styles.thumb}>
-              <Image src={item.cdn_url} alt="" fill sizes="150px" style={{ objectFit: 'cover' }} />
+              <Image src={item.cdn_url} alt="" fill sizes="150px" />
               <div className={styles.thumbOverlay}>
                 <div className={styles.thumbMeta}>
                   <span className="fn">{item.bunny_path.split('/').pop()}</span>
@@ -144,7 +144,7 @@ export function MediaManagerView() {
               <th>Alt Text</th>
               <th>Caption</th>
               <th>Uploaded By</th>
-              <th style={{ textAlign: 'right' }}>Actions</th>
+              <th className={styles.actionsCell}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -159,7 +159,7 @@ export function MediaManagerView() {
                 </td>
                 <td>{item.caption || <span className={styles.muted}>—</span>}</td>
                 <td>{item.uploaded_by}</td>
-                <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                <td className={styles.actionsCell}>
                   <button type="button" className={styles.editBtn} onClick={() => setEditing(item)}>
                     Edit
                   </button>

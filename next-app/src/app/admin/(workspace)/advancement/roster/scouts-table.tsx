@@ -194,7 +194,7 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId
             {head('BSA ID', 'bsa')}
             {head('Health Form', 'health')}
             {head('Status', 'status')}
-            <th style={{ textAlign: 'right' }}>Actions</th>
+            <th className={styles.cellRight}>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -247,7 +247,7 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId
                     </span>
                   )}
                 </td>
-                <td style={{ textAlign: 'right' }}>
+                <td className={styles.cellRight}>
                   <button type="button" className={styles.editBtn} onClick={() => setOpenFor(s)}>
                     Edit
                   </button>

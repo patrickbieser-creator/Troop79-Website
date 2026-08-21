@@ -15,6 +15,8 @@
 }
 .cardTitle { font-size: 13px; font-weight: 700; color: var(--admin-navy); margin: 0 0 8px; }
 .hint { font-size: 12.5px; color: var(--admin-gray-500); line-height: 1.5; margin: 0 0 10px; }
+/* Phase C — was `style={{ marginTop: 8 }}` fighting .hint's own margin. */
+.hintSpaced { margin-top: var(--admin-space-4); }
 
 .dateRow { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
 .dateField { display: flex; flex-direction: column; gap: 4px; }
@@ -37,17 +39,17 @@
 .publishedNote { font-size: 12px; color: var(--admin-gray-500); margin: 10px 0 0; line-height: 1.5; }
 
 .errorBox {
-  background: #fdf2f2;
-  border: 1px solid #c98b8b;
-  color: #8c2f2f;
+  background: var(--admin-status-error-bg);
+  border: 1px solid color-mix(in srgb, var(--admin-danger) 30%, white);
+  color: var(--admin-danger-dark);
   font-size: 12.5px;
   border-radius: 3px;
   padding: 8px 12px;
 }
 .savedBox {
-  background: #eef6ee;
-  border: 1px solid #a9cba9;
-  color: #2f5d34;
+  background: var(--admin-status-success-bg);
+  border: 1px solid color-mix(in srgb, var(--admin-forest) 35%, white);
+  color: var(--admin-forest-dark);
   font-size: 12.5px;
   border-radius: 3px;
   padding: 8px 12px;
@@ -98,8 +100,8 @@
   font-family: inherit;
   font-size: 14px;
   font-weight: 700;
-  background: #3d5a3e;
-  color: #fff;
+  background: var(--admin-navy);
+  color: var(--admin-white);
   border: none;
   border-radius: 3px;
   padding: 10px 22px;

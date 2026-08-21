@@ -81,7 +81,7 @@ export function AlbumsEditor({ rows, covers, categories, onCreate, onUpdate, onD
             <th>Category</th>
             <th>Title</th>
             <th>Photos</th>
-            <th style={{ textAlign: 'right' }}>Actions</th>
+            <th className={styles.actionsCell}>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -106,6 +106,7 @@ export function AlbumsEditor({ rows, covers, categories, onCreate, onUpdate, onD
                   <td className={styles.dateCell}>{formatDate(row.event_date)}</td>
                   <td>
                     <span className={styles.catTag}>
+                      {/* inline: dynamic — per-category color from the lookup table */}
                       <span
                         className={styles.catPip}
                         style={{ background: colorFor(colors, row.category) }}
@@ -123,7 +124,7 @@ export function AlbumsEditor({ rows, covers, categories, onCreate, onUpdate, onD
                     {rowErr?.id === row.id && <Notice>{rowErr.msg}</Notice>}
                   </td>
                   <td>{row.photo_count ?? <span className={styles.muted}>—</span>}</td>
-                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  <td className={styles.actionsCell}>
                     <button
                       type="button"
                       className={styles.editBtn}

@@ -99,7 +99,7 @@ export default async function ScoutbookExportPage({
         unsubmittedIds={unsubmittedIds}
       />
 
-      <p className={styles.muted} style={{ fontSize: 12, marginTop: -6, marginBottom: 14 }}>
+      <p className={`${styles.muted} ${styles.tightNote}`}>
         Only mark rows as submitted after the downloaded file has been uploaded to Scoutbook and the
         upload confirmed successful — this is a record-keeping flag, not part of the upload itself.
       </p>
@@ -120,7 +120,7 @@ export default async function ScoutbookExportPage({
         <div className={styles.callout}>
           <strong>{excluded.length} award{excluded.length === 1 ? '' : 's'} excluded</strong> — fix these
           and re-run the export to include them.
-          <table className={styles.table} style={{ marginTop: 10 }}>
+          <table className={`${styles.table} ${styles.calloutTable}`}>
             <thead>
               <tr>
                 <th>Scout</th>
@@ -185,7 +185,7 @@ export default async function ScoutbookExportPage({
         </table>
       </div>
 
-      <p className={styles.muted} style={{ fontSize: 12 }}>
+      <p className={`${styles.muted} ${styles.mutedSmall}`}>
         Need a wider or narrower window? <Link href="/admin/advancement/scoutbook-export">Reset to the last 30 days</Link>.
       </p>
     </>

@@ -64,8 +64,7 @@ export function TagsManager({ tags }: { tags: Tag[] }) {
           <input
             ref={inputRef}
             type="text"
-            className={styles.editInput}
-            style={{ maxWidth: 220 }}
+            className={`${styles.editInput} ${styles.inputMax220}`}
             placeholder="New tag name…"
             autoFocus
             disabled={isPending}

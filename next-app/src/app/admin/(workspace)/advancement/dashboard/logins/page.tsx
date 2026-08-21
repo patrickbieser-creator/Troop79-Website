@@ -106,7 +106,7 @@ export default async function AllLoginsPage({
           </table>
         )}
         {totalPages > 1 && (
-          <div className={styles.actions} style={{ marginTop: 12, justifyContent: 'flex-end' }}>
+          <div className={`${styles.actions} ${styles.actionsEnd}`}>
             {page > 1 && (
               <Link href={`/admin/advancement/dashboard/logins?page=${page - 1}`} className={styles.btn}>
                 ← Newer
@@ -121,7 +121,7 @@ export default async function AllLoginsPage({
         )}
       </div>
 
-      <div className={styles.card} style={{ marginTop: 14 }}>
+      <div className={`${styles.card} ${styles.cardSpaced}`}>
         <div className={styles.cardHeader}>
           <h3>Recent Failed Attempts</h3>
         </div>

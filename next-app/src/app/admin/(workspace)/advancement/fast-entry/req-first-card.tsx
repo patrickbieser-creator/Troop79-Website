@@ -191,7 +191,7 @@ export function ReqFirstCard({ scouts, leaders, catalog }: Props) {
         />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+      <div className={styles.grid2}>
         <label className={styles.field}>
           <span className={styles.fieldLabel}>Date Completed</span>
           <DatePickerField value={date} onChange={setDate} />
@@ -214,39 +214,14 @@ export function ReqFirstCard({ scouts, leaders, catalog }: Props) {
       </div>
 
       <div className={`${styles.field} ${styles.reqFirstFlexField}`}>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'baseline',
-            marginBottom: 4
-          }}
-        >
+        <div className={styles.labelRow}>
           <span className={styles.fieldLabel}>
             Scouts{' '}
-            <span
-              style={{
-                fontWeight: 400,
-                color: 'var(--admin-gray-500)',
-                textTransform: 'none',
-                letterSpacing: 0
-              }}
-            >
+            <span className={styles.fieldLabelNote}>
               ({selectedScouts.size} selected)
             </span>
           </span>
-          <button
-            type="button"
-            onClick={selectAll}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--admin-navy)',
-              fontSize: 11,
-              fontWeight: 700,
-              cursor: 'pointer'
-            }}
-          >
+          <button type="button" onClick={selectAll} className={styles.linkBtn}>
             {selectedScouts.size === scouts.length ? 'Clear all' : 'Select all'}
           </button>
         </div>
@@ -355,7 +330,7 @@ export function ReqFirstCard({ scouts, leaders, catalog }: Props) {
           </div>
 
           {checkingDups && (
-            <p style={{ fontSize: 12, color: 'var(--admin-gray-500)', marginTop: 12 }}>
+            <p className={styles.checkingNote}>
               Checking for existing sign-offs…
             </p>
           )}
@@ -375,7 +350,7 @@ export function ReqFirstCard({ scouts, leaders, catalog }: Props) {
           )}
 
           {confirmErr && (
-            <div className={styles.statusErr} style={{ marginTop: 12, display: 'block' }}>
+            <div className={`${styles.statusErr} ${styles.statusErrBlock}`}>
               {confirmErr}
             </div>
           )}

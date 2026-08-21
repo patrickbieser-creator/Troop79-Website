@@ -309,7 +309,7 @@ export default async function AdminLibraryPage({
       <p className={styles.pageLede}>
         Everything submitted queues here first — nothing publishes until you approve it.
         Placements put one resource on many pages; pins float it to the top of a page.{' '}
-        <Link href="/library" style={{ color: 'var(--navy)', fontWeight: 700 }}>
+        <Link href="/library" className={styles.backLink}>
           View the public library →
         </Link>
       </p>
@@ -520,21 +520,21 @@ function ProofQueueRow({ item }: { item: ProofQueueItem }) {
         </p>
       )}
       {photoUrls.length > 0 && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '8px 0' }}>
+        <div className={styles.thumbRow}>
           {photoUrls.map((url) => (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               key={url}
               src={url}
               alt="Proof submitted by the scout/family"
-              style={{ maxWidth: 160, maxHeight: 160, borderRadius: 4, border: '1px solid var(--border-mid)' }}
+              className={styles.proofThumb}
             />
           ))}
         </div>
       )}
 
       <div className={styles.actionsRow}>
-        <form action={approveSubmissionAction} style={{ display: 'inline' }}>
+        <form action={approveSubmissionAction} className={styles.inlineForm}>
           <input type="hidden" name="id" value={s.id} />
           <button className={styles.btnPrimary} type="submit">
             Approve — Write to Ledger
@@ -612,7 +612,7 @@ function ResourceRow({
       </div>
 
       {res.submitter_note && res.submitter_note !== res.blurb && (
-        <p className={styles.rowMeta} style={{ marginBottom: 8 }}>
+        <p className={`${styles.rowMeta} ${styles.rowMetaSpaced}`}>
           Submitter&rsquo;s note: <em>&ldquo;{res.submitter_note}&rdquo;</em>
         </p>
       )}
@@ -737,7 +737,7 @@ function ResourceRow({
               return (
                 <span key={p.id} className={styles.placementChip}>
                   {href ? <Link href={href}>{label}</Link> : label}
-                  <form style={{ display: 'inline-flex', gap: 4 }}>
+                  <form className={styles.inlineFlexForm}>
                     <input type="hidden" name="placement_id" value={p.id} />
                     <input type="hidden" name="pinned" value={String(p.pinned)} />
                     <input type="hidden" name="tab" value={tab} />
@@ -885,7 +885,7 @@ function TopicsTab({ topics }: { topics: LibraryTopic[] }) {
             defaultValue={t.sort_order}
             aria-label="Sort order"
           />
-          <span className={styles.actionsRow} style={{ marginTop: 0 }}>
+          <span className={`${styles.actionsRow} ${styles.actionsRowTight}`}>
             <button className={styles.btnSecondary} formAction={updateTopicAction}>
               Save
             </button>
@@ -896,7 +896,7 @@ function TopicsTab({ topics }: { topics: LibraryTopic[] }) {
         </form>
       ))}
 
-      <form className={styles.topicRow} action={createTopicAction} style={{ marginTop: 16 }}>
+      <form className={`${styles.topicRow} ${styles.topicRowNew}`} action={createTopicAction}>
         <input className={styles.textInput} name="icon" placeholder="Icon" aria-label="Icon" />
         <input
           className={styles.textInput}
@@ -922,7 +922,7 @@ function TopicsTab({ topics }: { topics: LibraryTopic[] }) {
           + New Shelf
         </button>
       </form>
-      <p className={styles.pageLede} style={{ marginTop: 10 }}>
+      <p className={`${styles.pageLede} ${styles.pageLedeSpaced}`}>
         Renaming a shelf is safe — placements key on the slug, which never changes, so the
         URL and every placement survive. Retired shelves disappear from the public library
         but keep their placements for if they come back.
@@ -973,7 +973,7 @@ function NarrativesTab({
       </form>
 
       {target && (
-        <form action={saveNarrativeAction} style={{ marginTop: 14 }}>
+        <form action={saveNarrativeAction} className={styles.narrForm}>
           <input type="hidden" name="target" value={target} />
           <label className={styles.fieldLabel} htmlFor="narrative_md">
             Narrative for {(() => {

@@ -197,8 +197,7 @@ export function EventEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
         <div className={styles.addPanel}>
           <input
             type="text"
-            className={styles.editInput}
-            style={{ maxWidth: 220 }}
+            className={`${styles.editInput} ${styles.inputMax220}`}
             placeholder="New event name"
             value={newName}
             autoFocus
@@ -216,8 +215,7 @@ export function EventEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
           />
           <DatePickerField className={styles.dateField} value={newDate} onChange={setNewDate} />
           <select
-            className={styles.editInput}
-            style={{ maxWidth: 160 }}
+            className={`${styles.editInput} ${styles.inputMax160}`}
             value={newKind}
             onChange={(e) => setNewKind(e.target.value)}
           >
@@ -260,7 +258,7 @@ export function EventEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
               </button>
             </th>
             <th>Type</th>
-            <th style={{ textAlign: 'right' }}>Actions</th>
+            <th className={styles.cellRight}>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -303,7 +301,7 @@ export function EventEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
                     ))}
                   </select>
                 </td>
-                <td style={{ textAlign: 'right' }}>
+                <td className={styles.cellRight}>
                   <button
                     type="button"
                     className={styles.editBtn}
@@ -314,10 +312,9 @@ export function EventEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
                   </button>
                   <button
                     type="button"
-                    className={`${styles.editBtn} ${styles.dangerBtn}`}
+                    className={`${styles.editBtn} ${styles.dangerBtn} ${styles.gapLeft}`}
                     onClick={() => remove(row)}
                     disabled={busyId === row.id}
-                    style={{ marginLeft: 6 }}
                   >
                     Delete
                   </button>

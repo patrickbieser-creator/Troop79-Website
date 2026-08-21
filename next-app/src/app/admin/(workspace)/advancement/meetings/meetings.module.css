@@ -1,6 +1,14 @@
 /* .pageTitle retired Phase B (2026-08-21) — shared PageTitle component. */
 
 .toolbar { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-bottom: 12px; }
+/* Phase C modifiers — were inline styles. */
+.toolbarCentered { justify-content: center; margin-top: var(--admin-space-6); }
+.toolbarStart { justify-content: flex-start; }
+.spacer { flex: 1; }
+.alignRight { text-align: right; }
+.actionsCell { text-align: right; white-space: nowrap; }
+.mutedUpright { font-style: normal; }
+.filterLabel { font-style: normal; font-size: var(--admin-text-base); }
 /* .addBtn retired Phase A (2026-08-21): its one green-submit use (Attendance
    Report's Apply) moved to .editSaveBtn per the navy primary-button decision. */
 .dateInput {
@@ -17,9 +25,9 @@
 .dateFieldLabel { display: contents; }
 /* Create-a-meeting row, revealed by "+ New Meeting". Separated from the
    filter toolbar on purpose — see the comment at its render site. */
-.createRow { display: flex; align-items: flex-end; justify-content: flex-end; gap: 10px; margin-bottom: 12px; padding: 11px 13px; background: #fff; border: 1px solid var(--admin-gray-200, #e4e4e4); border-radius: 5px; }
+.createRow { display: flex; align-items: flex-end; justify-content: flex-end; gap: 10px; margin-bottom: 12px; padding: 11px 13px; background: var(--admin-white); border: 1px solid var(--admin-gray-200); border-radius: 5px; }
 .createField { display: flex; flex-direction: column; gap: 4px; }
-.createLabel { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--admin-gray-600, #666); }
+.createLabel { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--admin-gray-600); }
 .srOnly {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
@@ -132,7 +140,7 @@
 .candidateMeta { font-size: 11px; color: var(--admin-gray-500); line-height: 1.45; }
 .candidateFoot { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
 .candidateAdded { font-size: 10.5px; font-weight: 700; color: var(--admin-forest); }
-.eagleTag { color: #8a6d1a; font-weight: 700; }
+.eagleTag { color: var(--admin-accent-gold); font-weight: 700; }
 
 /* ── roll call ─────────────────────────────────────────────────────────── */
 
@@ -152,11 +160,11 @@
 .rollChip input { accent-color: var(--admin-forest); cursor: pointer; }
 .rollChip:hover { border-color: var(--admin-forest); }
 .rollChipOn {
-  background: #e5efe4; border-color: var(--admin-forest); color: var(--admin-forest); font-weight: 600;
+  background: var(--admin-status-success-bg); border-color: var(--admin-forest); color: var(--admin-forest); font-weight: 600;
 }
 .rollCommitted {
   font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
-  color: #8a6d1a; background: #f6edd4; border-radius: 8px; padding: 1px 6px;
+  color: var(--admin-accent-gold); background: var(--admin-status-warning-bg); border-radius: 8px; padding: 1px 6px;
 }
 
 /* .editError retired Phase B (2026-08-21) — shared Notice component. */
@@ -196,9 +204,9 @@ textarea.editInput { resize: vertical; min-height: 64px; }
 
 /* Read-only logistics value (the date, which the calendar entry owns). */
 .readOnlyValue {
-  font-family: var(--font-ui, "Open Sans", Arial, sans-serif);
+  font-family: var(--admin-font-ui);
   font-size: 13px;
-  color: var(--admin-gray-700, #444);
+  color: var(--admin-gray-700);
   padding: 6px 0;
 }
-.readOnlyValue a { color: var(--forest, #2d6a4f); text-decoration: underline; margin-left: 6px; font-size: 12px; }
+.readOnlyValue a { color: var(--admin-forest); text-decoration: underline; margin-left: 6px; font-size: 12px; }

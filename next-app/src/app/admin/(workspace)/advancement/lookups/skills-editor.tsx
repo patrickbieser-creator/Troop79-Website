@@ -117,8 +117,7 @@ export function SkillsEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
         <div className={styles.addPanel}>
           <input
             type="text"
-            className={styles.editInput}
-            style={{ maxWidth: 220 }}
+            className={`${styles.editInput} ${styles.inputMax220}`}
             placeholder="New skill name"
             value={newName}
             autoFocus
@@ -134,7 +133,7 @@ export function SkillsEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
               }
             }}
           />
-          <label style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <label className={styles.checkInline}>
             <input
               type="checkbox"
               checked={newYouth}
@@ -161,7 +160,7 @@ export function SkillsEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
           <tr>
             <th>Skill</th>
             <th>Older scout may teach</th>
-            <th style={{ textAlign: 'right' }}>Actions</th>
+            <th className={styles.cellRight}>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -169,7 +168,7 @@ export function SkillsEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
             <tr key={row.id}>
               <td>{row.name}</td>
               <td>
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <label className={styles.checkInlineWide}>
                   <input
                     type="checkbox"
                     checked={row.youth_teachable}
@@ -179,7 +178,7 @@ export function SkillsEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
                   {row.youth_teachable ? 'Yes' : 'Adults only'}
                 </label>
               </td>
-              <td style={{ textAlign: 'right' }}>
+              <td className={styles.cellRight}>
                 <button
                   type="button"
                   className={styles.editBtn}
@@ -190,10 +189,9 @@ export function SkillsEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
                 </button>
                 <button
                   type="button"
-                  className={`${styles.editBtn} ${styles.dangerBtn}`}
+                  className={`${styles.editBtn} ${styles.dangerBtn} ${styles.gapLeft}`}
                   onClick={() => remove(row)}
                   disabled={busyId === row.id}
-                  style={{ marginLeft: 6 }}
                 >
                   Delete
                 </button>

@@ -47,7 +47,7 @@ export default async function AnalyticsPage() {
             title="Site Analytics"
             width="100%"
             height={900}
-            style={{ border: 0, display: 'block' }}
+            className={styles.reportFrame}
             allowFullScreen
           />
         ) : (

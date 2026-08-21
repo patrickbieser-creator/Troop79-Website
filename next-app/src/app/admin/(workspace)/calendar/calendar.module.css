@@ -8,6 +8,12 @@
   text-transform: uppercase; color: var(--admin-gray-700);
 }
 .table tr:last-child td { border-bottom: none; }
+.table th.actionsCell, .table td.actionsCell { text-align: right; white-space: nowrap; }
+.mutedFootnote { font-size: 12px; margin-top: 8px; }
+/* .muted is italic by default; these two are running prose, not asides. */
+.mutedUprightIntro { font-style: normal; margin-bottom: 8px; }
+.mutedUprightNote { font-style: normal; margin-top: 6px; }
+.hiddenFileInput { display: none; }
 .dateCell { font-family: 'Menlo', 'Consolas', monospace; font-size: 11.5px; color: var(--admin-gray-700); white-space: nowrap; }
 .muted { color: var(--admin-gray-400); font-style: italic; }
 
@@ -154,7 +160,7 @@ textarea.editInput { resize: vertical; min-height: 68px; line-height: 1.5; }
   display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; padding-top: 12px;
   border-top: 1px solid var(--admin-gray-200);
 }
-.savedNote { font-size: 12px; color: var(--admin-forest, #2d6a4f); margin-right: 10px; align-self: center; }
+.savedNote { font-size: 12px; color: var(--admin-forest); margin-right: 10px; align-self: center; }
 
 /* Title-as-link, matching the News table: the row's subject is the way into its
    editor on both screens. */
@@ -186,8 +192,8 @@ textarea.editInput { resize: vertical; min-height: 68px; line-height: 1.5; }
   text-transform: uppercase;
   padding: 2px 7px;
   border-radius: 999px;
-  background: #e0e7ef;
+  background: color-mix(in srgb, var(--admin-navy) 13%, var(--admin-white));
   color: var(--admin-navy);
-  border: 1px solid #c3d0e0;
+  border: 1px solid color-mix(in srgb, var(--admin-navy) 25%, var(--admin-white));
   cursor: help;
 }

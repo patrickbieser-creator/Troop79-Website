@@ -118,7 +118,7 @@
   align-self: center;
 }
 .missingCode {
-  font-family: Menlo, Consolas, monospace;
+  font-family: var(--admin-font-mono);
   font-size: 11px;
   font-weight: 700;
   color: var(--admin-navy);
@@ -129,6 +129,9 @@
   font-weight: 600;
 }
 
+/* Phase C modifiers — were inline styles in reconciliation-finding-row.tsx. */
+.missingRowStatic { display: block; cursor: default; }
+.fillRowFlush { padding-top: 0; border-top: none; }
 .fillRow {
   display: flex;
   align-items: flex-end;
@@ -247,7 +250,7 @@
   letter-spacing: .04em;
   text-transform: uppercase;
   color: var(--admin-forest);
-  background: #e5efe4;
+  background: var(--admin-status-success-bg);
   border-radius: 8px;
   padding: 1px 6px;
   margin-left: 6px;

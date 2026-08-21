@@ -70,7 +70,7 @@
 }
 .tagRank        { background: #e0e7ef; color: var(--admin-navy); }
 .tagMb          { background: #e3eee5; color: var(--admin-forest); }
-.tagEagle       { background: #fdf3d6; color: #8b6914; }
+.tagEagle       { background: var(--admin-status-warning-bg); color: var(--admin-accent-gold); }
 /* .tagActive/.tagInactive deleted Phase A (2026-08-21) — no consumers left;
    status pills are the shared Badge component now. The categorical tags
    above (rank/MB source, Eagle) deliberately stay per-screen. */
@@ -154,8 +154,8 @@
    with Cancel/editBtn. Amber, matching the warning-tag color used elsewhere
    (e.g. .warnTag in roster.module.css) rather than danger-red — this isn't a
    destructive action, just one that shouldn't be clicked casually. */
-.promoteBtn { background: var(--admin-white); color: #8a6d1a; border: 1px solid #e6d5a3; border-radius: 3px; padding: 3px 9px; font: inherit; cursor: pointer; }
-.promoteBtn:hover { background: #fdf6e3; border-color: #8a6d1a; }
+.promoteBtn { background: var(--admin-white); color: var(--admin-accent-gold); border: 1px solid color-mix(in srgb, var(--admin-accent-gold) 30%, var(--admin-white)); border-radius: 3px; padding: 3px 9px; font: inherit; cursor: pointer; }
+.promoteBtn:hover { background: var(--admin-status-warning-bg); border-color: var(--admin-accent-gold); }
 .promoteBtn:disabled { opacity: .5; cursor: not-allowed; }
 .dangerBtn {
   color: var(--admin-danger);
@@ -355,7 +355,7 @@
   margin-bottom: 2px;
 }
 .editRailItem:hover { background: var(--admin-gray-50); color: var(--admin-navy); }
-.editRailItemActive { background: #eaf0f4; color: var(--admin-navy); }
+.editRailItemActive { background: var(--admin-status-info-bg); color: var(--admin-navy); }
 .editRailNum {
   width: 18px;
   height: 18px;
@@ -608,8 +608,8 @@
   border-radius: var(--admin-radius-sm);
   cursor: pointer;
 }
-.tagDeleteBtn:hover { background: #fdf0ef; border-color: var(--admin-danger); }
-.tagError { color: #b5484d; font-size: 12px; margin-top: 8px; }
+.tagDeleteBtn:hover { background: var(--admin-status-error-bg); border-color: var(--admin-danger); }
+.tagError { color: var(--admin-danger); font-size: 12px; margin-top: 8px; }
 
 .dateField { width: 150px; }
 
@@ -638,7 +638,7 @@
 .hint { font-size: 11.5px; color: var(--admin-gray-500); margin-top: 8px; line-height: 1.5; }
 .warnTag {
   margin-left: 8px; font-size: 10px; font-weight: 700; letter-spacing: .04em;
-  background: #f2d2d2; color: #7d2626; border: 1px solid #c98b8b;
+  background: var(--admin-status-error-bg); color: var(--admin-danger-dark); border: 1px solid color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white));
   border-radius: 2px; padding: 1px 7px;
 }
 
@@ -657,10 +657,33 @@
 }
 .tokenHint { font-size: 11.5px; color: var(--admin-gray-500); line-height: 1.4; }
 /* A rejected value is marked as you type; the server refuses it regardless. */
-.tokenInvalid { border-color: var(--admin-danger); background: #fdf6f5; }
+.tokenInvalid { border-color: var(--admin-danger); background: var(--admin-status-error-bg); }
 
 .tokenActions {
   display: flex; align-items: center; justify-content: flex-end; gap: 8px;
   margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--admin-gray-200);
 }
 .tokenSaved { font-size: 12px; color: var(--admin-forest); margin-right: auto; }
+
+/* ── Phase C — classes replacing repeated inline styles ──────────────── */
+.cellRight       { text-align: right; }
+.cellRightNowrap { text-align: right; white-space: nowrap; }
+.colTemplate { width: 170px; }
+.colOrder    { width: 70px; }
+.colThird    { width: 32%; }
+.inputMax64  { max-width: 64px; }
+.inputPad2   { padding: var(--admin-space-1); }
+.inputMax160 { max-width: 160px; }
+.inputMax165 { max-width: 165px; }
+.inputMax210 { max-width: 210px; }
+.inputMax220 { max-width: 220px; }
+.inputMax260 { max-width: 260px; }
+.gapLeft   { margin-left: var(--admin-space-3); }
+.gapLeftSm { margin-left: var(--admin-space-2); }
+.helpTight { margin-bottom: var(--admin-space-4); }
+.textBase  { font-size: var(--admin-text-base); }
+.colorSwatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: var(--admin-space-4); }
+.checkInline     { font-size: var(--admin-text-base); display: inline-flex; align-items: center; gap: var(--admin-space-2); }
+.checkInlineWide { display: inline-flex; align-items: center; gap: var(--admin-space-3); }
+.skillChecks { display: flex; flex-wrap: wrap; gap: var(--admin-space-2) var(--admin-space-7); }
+.skillCheck  { display: inline-flex; align-items: center; gap: var(--admin-space-2); font-size: var(--admin-text-base); white-space: nowrap; }

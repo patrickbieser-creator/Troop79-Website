@@ -110,16 +110,16 @@ export default async function AttendanceReportPage({
         }
       />
 
-      <form method="get" className={styles.toolbar} style={{ justifyContent: 'flex-start' }}>
+      <form method="get" className={`${styles.toolbar} ${styles.toolbarStart}`}>
         <Link href="/admin/advancement/meetings" className={styles.editBtn}>
           ← All meetings
         </Link>
-        <span style={{ flex: 1 }} />
-        <label className={styles.muted} style={{ fontStyle: 'normal', fontSize: 11.5 }} htmlFor="from">
+        <span className={styles.spacer} />
+        <label className={`${styles.muted} ${styles.filterLabel}`} htmlFor="from">
           From
         </label>
         <DateParamField id="from" name="from" defaultValue={from} />
-        <label className={styles.muted} style={{ fontStyle: 'normal', fontSize: 11.5 }} htmlFor="to">
+        <label className={`${styles.muted} ${styles.filterLabel}`} htmlFor="to">
           To
         </label>
         <DateParamField id="to" name="to" defaultValue={to} />
@@ -160,7 +160,7 @@ export default async function AttendanceReportPage({
                 <td>
                   <Link href={`/scouts/${r.scoutId}`}>{r.name}</Link>
                 </td>
-                <td className={styles.muted} style={{ fontStyle: 'normal' }}>
+                <td className={`${styles.muted} ${styles.mutedUpright}`}>
                   {r.patrol ?? '—'}
                 </td>
                 <td className={styles.dateCell}>

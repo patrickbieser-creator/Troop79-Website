@@ -230,7 +230,7 @@ export function LedgerTable({ rows, scouts, leaders, sp, sort, dir }: Props) {
               {sortLink('qty', 'Qty')}
               <th>Unit</th>
               {sortLink('entered', 'Entered')}
-              <th style={{ textAlign: 'right' }}>Actions</th>
+              <th className={styles.thRight}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -290,7 +290,7 @@ export function LedgerTable({ rows, scouts, leaders, sp, sort, dir }: Props) {
                       {r.entered_by && (
                         <span
                           title={`Entered by ${r.entered_by}`}
-                          style={{ color: '#6d7580', fontSize: 11, marginLeft: 4 }}
+                          className={styles.entryMeta}
                         >
                           · {initialsFor(r.entered_by)}
                         </span>

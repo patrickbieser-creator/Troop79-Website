@@ -83,9 +83,9 @@ export function SkillAssignEditor({ people, skills, keyField, noun, onSave }: Pr
       <table className={styles.table}>
         <thead>
           <tr>
-            <th style={{ width: '32%' }}>{noun}</th>
+            <th className={styles.colThird}>{noun}</th>
             <th>Skills</th>
-            <th style={{ textAlign: 'right' }}>Actions</th>
+            <th className={styles.cellRight}>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -109,18 +109,9 @@ export function SkillAssignEditor({ people, skills, keyField, noun, onSave }: Pr
                 </td>
                 <td>
                   {openKey === p.key ? (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px' }}>
+                    <div className={styles.skillChecks}>
                       {skills.map((s) => (
-                        <label
-                          key={s.id}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 4,
-                            fontSize: 12,
-                            whiteSpace: 'nowrap'
-                          }}
-                        >
+                        <label key={s.id} className={styles.skillCheck}>
                           <input
                             type="checkbox"
                             checked={draft.has(s.id)}
@@ -136,7 +127,7 @@ export function SkillAssignEditor({ people, skills, keyField, noun, onSave }: Pr
                     p.skillIds.map((id) => skillName.get(id) ?? id).join(', ')
                   )}
                 </td>
-                <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                <td className={styles.cellRightNowrap}>
                   {openKey === p.key ? (
                     <>
                       {/* Navy: Save commits an edit, it doesn't add — the
@@ -151,10 +142,9 @@ export function SkillAssignEditor({ people, skills, keyField, noun, onSave }: Pr
                       </button>
                       <button
                         type="button"
-                        className={styles.editBtn}
+                        className={`${styles.editBtn} ${styles.gapLeft}`}
                         onClick={() => setOpenKey(null)}
                         disabled={isPending}
-                        style={{ marginLeft: 6 }}
                       >
                         Cancel
                       </button>

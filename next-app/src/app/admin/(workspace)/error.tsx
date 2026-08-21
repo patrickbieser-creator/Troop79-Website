@@ -27,6 +27,7 @@
 
 import Link from 'next/link';
 import { useEffect } from 'react';
+import styles from './admin.module.css';
 
 function isRefusal(message: string): boolean {
   return (
@@ -51,23 +52,23 @@ export default function WorkspaceError({
   const refused = isRefusal(error.message);
 
   return (
-    <div style={{ maxWidth: '46rem', padding: '1rem 0' }}>
-      <h1 style={{ marginTop: 0 }}>{refused ? 'You can’t open this page' : 'Something went wrong'}</h1>
-      <p style={{ color: '#5b5347' }}>
+    <div className={styles.errorWrap}>
+      <h1 className={styles.plainHeading}>{refused ? 'You can’t open this page' : 'Something went wrong'}</h1>
+      <p className={styles.errorBody}>
         {refused
           ? error.message
           : 'That page failed to load. If it keeps happening, the details are in the server log.'}
       </p>
       {refused ? (
-        <p style={{ color: '#857c6c', fontSize: '0.9rem' }}>
+        <p className={styles.errorHint}>
           If you should have access to this, ask a troop leader to grant it on the Access &amp;
           Permissions screen.
         </p>
       ) : null}
-      <p style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem' }}>
+      <p className={styles.errorActions}>
         <Link href="/admin/advancement/dashboard">← Back to the dashboard</Link>
         {!refused ? (
-          <button type="button" onClick={reset} style={{ cursor: 'pointer' }}>
+          <button type="button" onClick={reset} className={styles.errorRetry}>
             Try again
           </button>
         ) : null}

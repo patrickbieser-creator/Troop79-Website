@@ -382,7 +382,7 @@ export function CalendarEditor({
             <th>Author</th>
             <th>Location</th>
             <th>Promoted</th>
-            <th style={{ textAlign: 'right' }}>Actions</th>
+            <th className={styles.actionsCell}>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -416,6 +416,7 @@ export function CalendarEditor({
                 </td>
                 <td>
                   <span className={styles.catTag}>
+                    {/* inline: dynamic — per-category color from the lookup table */}
                     <span className={styles.catPip} style={{ background: colorFor(colors, row.category) }} />
                     {row.category}
                   </span>
@@ -457,7 +458,7 @@ export function CalendarEditor({
                     </span>
                   )}
                 </td>
-                <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                <td className={styles.actionsCell}>
                   {/* "Edit", not "Open" — News calls the same act Edit, and
                       these two content screens should not use different words
                       for it. It is the only editor: details, story, agenda and
@@ -627,7 +628,7 @@ function CloneForm({
         </label>
       </div>
 
-      <p className={styles.muted} style={{ fontSize: 12, marginTop: 8 }}>
+      <p className={`${styles.muted} ${styles.mutedFootnote}`}>
         Dates that hang off the event move with it: a multi-day span keeps its length, and a signup
         deadline set ten days before stays ten days before.
       </p>

@@ -41,7 +41,7 @@
 }
 .error {
   padding: 10px 12px; margin-bottom: 12px; border-radius: 3px; font-size: 13px;
-  background: #fdf2f2; border: 1px solid #e5b3b3; color: #8c2f2f;
+  background: var(--admin-status-error-bg); border: 1px solid color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white)); color: var(--admin-danger-dark);
 }
 
 .list { display: flex; flex-direction: column; gap: 6px; }
@@ -72,7 +72,7 @@
 .cardBody { padding: 4px 14px 16px; border-top: 1px solid var(--admin-gray-200); }
 .warn {
   margin: 12px 0; padding: 10px 12px; border-radius: 3px; font-size: 12.5px; line-height: 1.5;
-  background: #fdf6e3; border: 1px solid #e6d5a3; color: #6b5514;
+  background: var(--admin-status-warning-bg); border: 1px solid color-mix(in srgb, var(--admin-accent-gold) 30%, var(--admin-white)); color: var(--admin-accent-gold);
 }
 .metaRow {
   display: flex; gap: 16px; flex-wrap: wrap; margin: 12px 0;
@@ -93,7 +93,7 @@
   padding: 5px 8px; border-bottom: 1px solid var(--admin-gray-200);
 }
 .fieldTable td { padding: 6px 8px; border-bottom: 1px solid var(--admin-gray-100); vertical-align: top; }
-.rowConflict { background: #fdf7f7; }
+.rowConflict { background: var(--admin-status-error-bg); }
 .csvVal { color: var(--admin-gray-900); }
 .dbVal { color: var(--admin-gray-600); }
 .emptyVal { color: var(--admin-gray-400); }
@@ -141,7 +141,7 @@
 }
 .guardianTag {
   margin-left: 8px; font-size: 10px; font-weight: 700; letter-spacing: .04em;
-  background: #f0f6f1; color: #2f6b3f; border: 1px solid #b8d6c0;
+  background: var(--admin-status-success-bg); color: var(--admin-forest-dark); border: 1px solid color-mix(in srgb, var(--admin-forest) 30%, var(--admin-white));
   border-radius: 2px; padding: 1px 6px;
 }
 .removeBtn {
@@ -150,7 +150,7 @@
   border-radius: 3px; padding: 3px 9px; cursor: pointer; white-space: nowrap;
 }
 .removeBtn:disabled { opacity: .5; cursor: default; }
-.picked { display: inline-block; margin-left: 8px; font-size: 12px; font-weight: 700; color: #2f6b3f; }
+.picked { display: inline-block; margin-left: 8px; font-size: 12px; font-weight: 700; color: var(--admin-forest-dark); }
 
 /* Pill tab strip — same layout, color and count-badge treatment as
    Calendar's Upcoming/Past and News's Current/Archived (Patrick,

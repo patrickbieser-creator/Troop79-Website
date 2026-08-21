@@ -138,8 +138,7 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
         <div className={styles.addPanel}>
           <input
             type="text"
-            className={styles.editInput}
-            style={{ maxWidth: 260 }}
+            className={`${styles.editInput} ${styles.inputMax260}`}
             placeholder="New category name"
             value={newLabel}
             autoFocus
@@ -157,15 +156,13 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
           />
           <input
             type="color"
-            className={styles.editInput}
-            style={{ maxWidth: 64, padding: 2 }}
+            className={`${styles.editInput} ${styles.inputMax64} ${styles.inputPad2}`}
             aria-label="Category color"
             value={newColor}
             onChange={(e) => setNewColor(e.target.value)}
           />
           <select
-            className={styles.editInput}
-            style={{ maxWidth: 210 }}
+            className={`${styles.editInput} ${styles.inputMax210}`}
             aria-label="Entry template"
             value={newTemplate}
             onChange={(e) => setNewTemplate(e.target.value as CategoryTemplate)}
@@ -199,9 +196,9 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
           <thead>
             <tr>
               <th>Category</th>
-              <th style={{ width: 170 }}>Template</th>
-              <th style={{ width: 70 }}>Order</th>
-              <th style={{ textAlign: 'right' }}>Actions</th>
+              <th className={styles.colTemplate}>Template</th>
+              <th className={styles.colOrder}>Order</th>
+              <th className={styles.cellRight}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -212,8 +209,7 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
                   <td>
                     <input
                       type="text"
-                      className={styles.editInput}
-                      style={{ maxWidth: 220 }}
+                      className={`${styles.editInput} ${styles.inputMax220}`}
                       value={editLabel}
                       autoFocus
                       onChange={(e) => setEditLabel(e.target.value)}
@@ -230,8 +226,7 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
                     />
                     <input
                       type="color"
-                      className={styles.editInput}
-                      style={{ maxWidth: 64, padding: 2, marginLeft: 6 }}
+                      className={`${styles.editInput} ${styles.inputMax64} ${styles.inputPad2} ${styles.gapLeft}`}
                       aria-label={`Color for ${row.label}`}
                       value={editColor}
                       onChange={(e) => setEditColor(e.target.value)}
@@ -239,8 +234,7 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
                   </td>
                   <td>
                     <select
-                      className={styles.editInput}
-                      style={{ maxWidth: 165 }}
+                      className={`${styles.editInput} ${styles.inputMax165}`}
                       aria-label={`Entry template for ${row.label}`}
                       value={editTemplate}
                       onChange={(e) => setEditTemplate(e.target.value as CategoryTemplate)}
@@ -255,14 +249,13 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
                   <td>
                     <input
                       type="number"
-                      className={styles.editInput}
-                      style={{ maxWidth: 64 }}
+                      className={`${styles.editInput} ${styles.inputMax64}`}
                       aria-label={`Display order for ${row.label}`}
                       value={editSort}
                       onChange={(e) => setEditSort(e.target.value)}
                     />
                   </td>
-                  <td style={{ textAlign: 'right' }}>
+                  <td className={styles.cellRight}>
                     <button
                       type="button"
                       className={styles.editBtn}
@@ -273,10 +266,9 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
                     </button>
                     <button
                       type="button"
-                      className={styles.editSaveBtn}
+                      className={`${styles.editSaveBtn} ${styles.gapLeft}`}
                       onClick={() => saveEdit(row.label)}
                       disabled={isPending || !editLabel.trim()}
-                      style={{ marginLeft: 6 }}
                     >
                       Save
                     </button>
@@ -286,14 +278,8 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
                 <tr key={row.label}>
                   <td>
                     <span
-                      style={{
-                        display: 'inline-block',
-                        width: 10,
-                        height: 10,
-                        borderRadius: 2,
-                        background: row.color,
-                        marginRight: 8
-                      }}
+                      className={styles.colorSwatch}
+                      style={{ background: row.color } /* inline: dynamic — per-category color */}
                       aria-hidden="true"
                     />
                     {row.label}
@@ -303,7 +289,7 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
                     {TEMPLATE_LABELS[row.template ?? FALLBACK_CATEGORY_TEMPLATE]}
                   </td>
                   <td className={styles.muted}>{row.sort_order}</td>
-                  <td style={{ textAlign: 'right' }}>
+                  <td className={styles.cellRight}>
                     <button
                       type="button"
                       className={styles.editBtn}
@@ -317,10 +303,9 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
                     {row.behavior === null && (
                       <button
                         type="button"
-                        className={`${styles.editBtn} ${styles.dangerBtn}`}
+                        className={`${styles.editBtn} ${styles.dangerBtn} ${styles.gapLeft}`}
                         onClick={() => remove(row)}
                         disabled={isPending}
-                        style={{ marginLeft: 6 }}
                       >
                         Delete
                       </button>

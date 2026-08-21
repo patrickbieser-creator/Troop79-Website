@@ -10,7 +10,7 @@
 .adminRoot {
   background: var(--admin-bg);
   color: var(--admin-gray-900);
-  font-family: var(--font-ui), Arial, sans-serif;
+  font-family: var(--admin-font-ui);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -98,8 +98,8 @@
 /* Applied only when pointed at the local dev database (see sub-nav.tsx) —
    a visual tripwire against mistaking dev for production. */
 .subNavDevDb {
-  background: #fbe4e1;
-  border-right-color: #eab8b1;
+  background: var(--admin-status-error-bg);
+  border-right-color: color-mix(in srgb, var(--admin-danger) 30%, white);
 }
 .subNavGroup {
   display: block;
@@ -169,6 +169,22 @@
   padding: 28px 32px;
   overflow-y: auto;
 }
+
+/* "No admin access" refusal branch (layout.tsx) — Phase C: was inline. */
+.plainMain {
+  max-width: 672px;
+  margin: 0 auto;
+  padding: var(--admin-space-14) var(--admin-space-11);
+}
+.plainHeading { margin-top: 0; }
+.plainBackRow { margin-top: var(--admin-space-11); }
+
+/* Workspace error boundary (error.tsx) — Phase C: was inline. */
+.errorWrap { max-width: 736px; padding: var(--admin-space-8) 0; }
+.errorBody { color: var(--admin-gray-600); }
+.errorHint { color: var(--admin-gray-500); font-size: var(--admin-text-lg); }
+.errorActions { display: flex; gap: var(--admin-space-6); margin-top: var(--admin-space-10); }
+.errorRetry { cursor: pointer; }
 
 @media (max-width: 800px) {
   .workspace { grid-template-columns: 1fr; }

@@ -149,7 +149,7 @@ export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags }: P
             <div className={styles.heroPreview}>
               {hero && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={hero.cdn_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={hero.cdn_url} alt="" className={styles.heroImg} />
               )}
             </div>
             <button type="button" className={styles.chooseBtn} onClick={() => setHeroPicking(true)}>

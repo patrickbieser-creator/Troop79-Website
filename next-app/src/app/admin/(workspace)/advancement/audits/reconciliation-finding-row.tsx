@@ -53,7 +53,7 @@ export function ReconciliationFindingRow({ finding }: { finding: ReconciliationF
   const disabled = isPending || resolved;
 
   return (
-    <li className={styles.missingRow} style={{ display: 'block', cursor: 'default' }}>
+    <li className={`${styles.missingRow} ${styles.missingRowStatic}`}>
       <div>
         <Link href={`/admin/calendar/${finding.entryId}/roll-call`} className={styles.scoutLink}>
           {finding.personName}
@@ -63,7 +63,7 @@ export function ReconciliationFindingRow({ finding }: { finding: ReconciliationF
       <div className={styles.detailLines}>{finding.detail}</div>
 
       {!resolved && (
-        <div className={styles.fillRow} style={{ paddingTop: 0, borderTop: 'none' }}>
+        <div className={`${styles.fillRow} ${styles.fillRowFlush}`}>
           {finding.kind === 'credit_missing' && finding.personId != null && (
             <button
               type="button"

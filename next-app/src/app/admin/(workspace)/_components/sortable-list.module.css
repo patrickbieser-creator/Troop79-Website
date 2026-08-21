@@ -30,7 +30,7 @@
   font-size: 13px;
 }
 .position {
-  font-family: 'Menlo', 'Consolas', monospace;
+  font-family: var(--admin-font-mono);
   font-size: 11px;
   color: var(--admin-gray-500);
   width: 24px;
@@ -70,11 +70,11 @@
 }
 .removeBtn {
   color: var(--admin-danger);
-  border-color: #e8c4c0;
+  border-color: color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white));
   font-size: 16px;
 }
 .removeBtn:hover {
-  background: #fdf0ef;
+  background: var(--admin-status-error-bg);
   border-color: var(--admin-danger);
   color: var(--admin-danger);
 }

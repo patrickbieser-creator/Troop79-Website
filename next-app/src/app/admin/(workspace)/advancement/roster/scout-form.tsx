@@ -522,8 +522,7 @@ export function ScoutForm({
           <select
             value={inactiveReason}
             onChange={(e) => setInactiveReason(e.target.value as InactiveReason | '')}
-            className={styles.editInput}
-            style={{ marginTop: 6, maxWidth: 320 }}
+            className={`${styles.editInput} ${styles.reasonSelect}`}
             required
           >
             <option value="">— Pick a reason —</option>
@@ -549,8 +548,7 @@ export function ScoutForm({
         {!isNew && row?.active && (
           <button
             type="button"
-            className={styles.promoteBtn}
-            style={{ marginRight: 'auto' }}
+            className={`${styles.promoteBtn} ${styles.pushLeft}`}
             disabled={isPending}
             onClick={() => {
               if (
@@ -631,7 +629,7 @@ function FormSection({
       <div className={styles.editSectionCardHead}>
         <span className={styles.editSectionNum}>{num}</span>
         <h4>{title}</h4>
-        {actions && <div style={{ marginLeft: 'auto' }}>{actions}</div>}
+        {actions && <div className={styles.pushRight}>{actions}</div>}
       </div>
       {children}
     </div>

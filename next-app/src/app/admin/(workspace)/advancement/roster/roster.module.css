@@ -20,7 +20,7 @@
    here; the shared Badge component (_components/badge) is the pattern now. */
 
 .callout {
-  background: #fdf3dc; border: 1px solid #ecd9a0; border-left: 4px solid #c9a227;
+  background: var(--admin-status-warning-bg); border: 1px solid color-mix(in srgb, var(--admin-accent-gold) 30%, var(--admin-white)); border-left: 4px solid var(--admin-warning);
   border-radius: 4px; padding: 10px 14px; margin-bottom: 18px;
   font-size: 12.5px; color: var(--admin-gray-900);
 }
@@ -152,11 +152,11 @@
   border: 1px solid var(--admin-gray-200); border-radius: 5px;
   padding: 3px 10px; font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer;
 }
-.deleteBtn:hover:not(:disabled) { border-color: #b3261e; color: #b3261e; }
+.deleteBtn:hover:not(:disabled) { border-color: var(--admin-danger); color: var(--admin-danger); }
 .deleteBtn:disabled { opacity: .5; cursor: default; }
 /* Delete fails when ledger rows still reference the signer — the reason has to
    land next to the button that caused it, not in a toast somewhere else. */
-.rowErr { display: block; margin-top: 4px; font-size: 10.5px; color: #b3261e; }
+.rowErr { display: block; margin-top: 4px; font-size: 10.5px; color: var(--admin-danger); }
 
 /* Four-tab roster: people tables, person editor */
 /* scout-relations.tsx references these — kept in sync with the equivalent
@@ -207,7 +207,7 @@
   white-space: nowrap;
   width: 1%;
 }
-.warnTag { margin-left: 8px; font-size: 10px; font-weight: 700; background: #fdf6e3; color: #8a6d1f; border: 1px solid #e6d5a3; border-radius: 2px; padding: 1px 6px; }
+.warnTag { margin-left: 8px; font-size: 10px; font-weight: 700; background: var(--admin-status-warning-bg); color: var(--admin-accent-gold); border: 1px solid color-mix(in srgb, var(--admin-accent-gold) 30%, var(--admin-white)); border-radius: 2px; padding: 1px 6px; }
 .searchInput { border: 1px solid var(--admin-gray-300); border-radius: 3px; padding: 6px 9px; font-family: inherit; font-size: 13px; min-width: 240px; }
 .toolbarCount { font-size: 12px; color: var(--admin-gray-500); }
 /* .rowError retired Phase B (2026-08-21) — shared Notice component. */
@@ -220,7 +220,7 @@
 .editorHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--admin-gray-200); padding-bottom: 12px; margin-bottom: 4px; }
 .editorHead h2 { font-size: 18px; color: var(--admin-navy); margin: 0 0 2px; }
 .editorSub { font-size: 12px; color: var(--admin-gray-500); margin: 0; }
-.editorWarn { margin: 14px 0 0; padding: 10px 12px; border-radius: 3px; font-size: 12.5px; line-height: 1.5; background: #fdf6e3; border: 1px solid #e6d5a3; color: #6b5514; }
+.editorWarn { margin: 14px 0 0; padding: 10px 12px; border-radius: 3px; font-size: 12.5px; line-height: 1.5; background: var(--admin-status-warning-bg); border: 1px solid color-mix(in srgb, var(--admin-accent-gold) 30%, var(--admin-white)); color: var(--admin-accent-gold); }
 .editorSection { margin-top: 22px; }
 .editorSection h3 { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--admin-gray-500); margin: 0 0 6px; }
 .editorHint { font-size: 11.5px; color: var(--admin-gray-500); line-height: 1.5; margin: 0 0 8px; }
@@ -233,23 +233,23 @@
 .checkLabel { display: flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--admin-gray-700); }
 .relList { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .relItem { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 10px; font-size: 12.5px; background: var(--admin-gray-50); border: 1px solid var(--admin-gray-200); border-radius: 3px; }
-.guardianTag { margin-left: 8px; font-size: 10px; font-weight: 700; background: #f0f6f1; color: #2f6b3f; border: 1px solid #b8d6c0; border-radius: 2px; padding: 1px 6px; }
+.guardianTag { margin-left: 8px; font-size: 10px; font-weight: 700; background: var(--admin-status-success-bg); color: var(--admin-forest-dark); border: 1px solid color-mix(in srgb, var(--admin-forest) 30%, var(--admin-white)); border-radius: 2px; padding: 1px 6px; }
 .pickerBlock { margin-top: 8px; }
 .fieldLabel { display: block; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--admin-gray-500); margin-bottom: 4px; }
-.pickedTag { margin-left: 8px; font-size: 12px; font-weight: 700; color: #2f6b3f; }
+.pickedTag { margin-left: 8px; font-size: 12px; font-weight: 700; color: var(--admin-forest-dark); }
 .results { list-style: none; margin: 6px 0 0; padding: 0; max-width: 420px; border: 1px solid var(--admin-gray-200); border-radius: 3px; overflow: hidden; }
 .results li + li { border-top: 1px solid var(--admin-gray-100); }
 .resultBtn { display: block; width: 100%; text-align: left; background: var(--admin-white); border: none; cursor: pointer; font-family: inherit; font-size: 12.5px; padding: 7px 10px; }
 .resultBtn:hover { background: var(--admin-gray-50); }
-.savedNote { padding: 8px 12px; margin-bottom: 10px; border-radius: 3px; font-size: 12.5px; background: #f0f6f1; border: 1px solid #b8d6c0; color: #2f6b3f; }
-.chipActiveTag { margin-left: 8px; font-size: 10px; font-weight: 700; letter-spacing: .04em; background: #f0f6f1; color: #2f6b3f; border: 1px solid #b8d6c0; border-radius: 2px; padding: 1px 7px; }
+.savedNote { padding: 8px 12px; margin-bottom: 10px; border-radius: 3px; font-size: 12.5px; background: var(--admin-status-success-bg); border: 1px solid color-mix(in srgb, var(--admin-forest) 30%, var(--admin-white)); color: var(--admin-forest-dark); }
+.chipActiveTag { margin-left: 8px; font-size: 10px; font-weight: 700; letter-spacing: .04em; background: var(--admin-status-success-bg); color: var(--admin-forest-dark); border: 1px solid color-mix(in srgb, var(--admin-forest) 30%, var(--admin-white)); border-radius: 2px; padding: 1px 7px; }
 /* Red, not grey. Inactive is a state a leader needs to notice while scanning
    a list of 80 people — grey-on-grey read as decoration and disappeared. */
-.chipInactiveTag { margin-left: 8px; font-size: 10px; font-weight: 700; letter-spacing: .04em; background: #f2d2d2; color: #7d2626; border: 1px solid #c98b8b; border-radius: 2px; padding: 1px 7px; }
+.chipInactiveTag { margin-left: 8px; font-size: 10px; font-weight: 700; letter-spacing: .04em; background: var(--admin-status-error-bg); color: var(--admin-danger-dark); border: 1px solid color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white)); border-radius: 2px; padding: 1px 7px; }
 .readValue { font-size: 13px; color: var(--admin-gray-900); padding: 6px 0; }
 .readValue a { color: var(--admin-navy); }
-.dangerSection { margin-top: 26px; padding-top: 16px; border-top: 1px solid #e5b3b3; }
-.dangerSection h3 { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #8c2f2f; margin: 0 0 6px; }
+.dangerSection { margin-top: 26px; padding-top: 16px; border-top: 1px solid color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white)); }
+.dangerSection h3 { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--admin-danger-dark); margin: 0 0 6px; }
 /* Footer actions for the create-an-adult dialog — the Scout editor's pair,
    which lives in lookups.module.css, restated here so this module is
    self-contained rather than importing another screen's stylesheet. */
@@ -274,11 +274,20 @@
    class is sized for the standalone danger-zone delete button, and pairing
    `${editBtn} ${dangerBtn}` let dangerBtn's larger padding/font-size win the
    cascade, making Unlink read as louder than Save/Cancel. */
-.unlinkBtn { background: var(--admin-white); color: #8c2f2f; border: 1px solid #c98b8b; border-radius: 5px; padding: 3px 10px; font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; }
-.unlinkBtn:hover { background: #fdf2f2; border-color: #8c2f2f; }
+.unlinkBtn { background: var(--admin-white); color: var(--admin-danger-dark); border: 1px solid color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white)); border-radius: 5px; padding: 3px 10px; font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; }
+.unlinkBtn:hover { background: var(--admin-status-error-bg); border-color: var(--admin-danger-dark); }
 .unlinkBtn:disabled { opacity: .5; cursor: default; }
 
 /* Also referenced by people-table.tsx's PersonEditor Status section — kept in
    sync with lookups.module.css's definitions, same reason as the block above. */
 .statusRadioRow { display: flex; gap: 18px; margin-bottom: 4px; }
 .statusRadio { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--admin-gray-900); cursor: pointer; user-select: none; }
+
+/* ── Phase C — classes replacing repeated inline styles ──────────────── */
+.cellRight { text-align: right; }
+.gapTop    { margin-top: var(--admin-space-5); }
+.reasonSelect { margin-top: var(--admin-space-3); max-width: 320px; }
+.pushRight { margin-left: auto; }
+.pushLeft  { margin-right: auto; }
+.inlineRowSplit { margin-top: 0; justify-content: space-between; }
+.noMargin  { margin: 0; }

@@ -78,6 +78,11 @@ const STATUS_TOKENS = [
   ['--admin-status-info-bg', '#eef3f8', true]
 ] as const;
 
+const FONT_TOKENS = [
+  ['--admin-font-ui', "'Open Sans', Arial, sans-serif — all admin chrome", true],
+  ['--admin-font-mono', "'Menlo', 'Consolas', monospace — code, IDs, figures", true]
+] as const;
+
 const TYPE_SCALE = [
   ['--admin-text-2xs', '9px'],
   ['--admin-text-xs', '10px'],
@@ -121,7 +126,7 @@ const SCOREBOARD: {
     canonical: 'court-of-honor/report .primaryBtn; green stays reserved for Add/create',
     phase: 'A',
     notes:
-      'workbench’s forest Save (a public --forest leak) and the green submits converted to navy; library’s .btnPrimary family is shared with public pages and stays'
+      'workbench’s forest Save (a public --forest leak) and the green submits converted to navy; library workstation’s .btnPrimary went navy in Phase C, once it turned out the admin library.module.css is a SEPARATE file from the public one (3 admin importers only)'
   },
   {
     pattern: 'Danger buttons',
@@ -145,7 +150,7 @@ const SCOREBOARD: {
     canonical: '✓ shared TabStrip everywhere — meeting-plan, court-of-honor, report, library workstation, media-picker converted',
     phase: 'B',
     notes:
-      'library.module.css untouched — the admin page just stopped consuming its tab classes (closes the D-160 backlog item); media-picker’s tab public-token reads went with its tab classes'
+      'the admin page stopped consuming library tab classes in Phase B (closes the D-160 backlog item); Phase C then found the admin library.module.css is a separate file from the public one and deleted its dead .tabs family outright'
   },
   {
     pattern: 'Badges / status pills',
@@ -154,7 +159,7 @@ const SCOREBOARD: {
       '✓ SHIPPED: shared Badge (neutral/success/warning/danger/info/muted) — meetings, calendar, articles, article-editor, roster, roster-import, roll-call, court-of-honor, report converted 2026-08-21',
     phase: 'A',
     notes:
-      'Deliberate exceptions: library workstation (stylesheet shared with 20 public routes, D-160) and CATEGORICAL tags (lookups rank/MB/Eagle, meeting-plan track tags, scoutbook-export type badges) — categories are not statuses'
+      'Deliberate exception: CATEGORICAL tags (lookups rank/MB/Eagle, meeting-plan track tags, scoutbook-export type badges) — categories are not statuses. The library workstation exception dissolved in Phase C: its stylesheet turned out to be admin-only (the public copy is a separate file), so its pills were re-tokened in place'
   },
   {
     pattern: 'Actions ▾ menu',
@@ -186,7 +191,7 @@ const SCOREBOARD: {
     canonical:
       '✓ SHIPPED: shared Dialog component (_components/dialog) — every admin modal renders the approved spec, including the formerly hand-rolled PersonEditor overlay (which gained Esc/backdrop close)',
     phase: 'A+B',
-    notes: 'media-picker’s custom div overlay is the one remaining mechanism — unified last, HIGH risk'
+    notes: 'library’s quick-add converted in Phase C (its Phase B exception closed — Esc/backdrop close gained); media-picker’s custom div overlay is the one remaining mechanism — unified last, HIGH risk'
   },
   {
     pattern: 'Page titles',
@@ -203,14 +208,23 @@ const SCOREBOARD: {
       '✓ SHIPPED: shared Notice component on the status tokens (error default + success/warning/info), with alert/status roles the legacy divs lacked',
     phase: 'B',
     notes:
-      'Inline text-only field errors are a different idiom and were deliberately left; they ride with Phase C'
+      'Inline text-only field errors are a different idiom, deliberately left — still open, tracked for the Phase D closeout'
   },
   {
     pattern: 'Inline styles',
-    copies: '174 sites; 162 convertible, 12 legitimately dynamic',
+    copies: '✓ DONE — 170 sites → 12 (2026-08-21), every survivor genuinely dynamic + commented',
     canonical: 'module classes + the token scales',
     phase: 'C',
-    notes: 'top offender: bare text-align:right ×23; login and rosters pages have no stylesheet at all'
+    notes:
+      'survivors: per-category colors from the lookup table, tree-depth indents, a computed bar width, the Satori favicon. login gained login.module.css; rosters deliberately shares events-admin.module.css (same visual family — a separate sheet would recreate the drift)'
+  },
+  {
+    pattern: 'Raw hex + public-token reads in admin CSS',
+    copies: '✓ DONE — hex 371 → 59 (−84%); public-token reads 229 → 0; phantom tokens 3 → 0 (2026-08-21)',
+    canonical: 'admin.css tokens; --admin-preview-* aliases for WYSIWYG preview surfaces only',
+    phase: 'C',
+    notes:
+      'deliberate survivors: date-picker-field keeps its var(--admin-x, var(--public-x, #hex)) fallback chains (it also serves the public /profile editors, where admin tokens are undefined); the categorical palettes (ledger kind family, lookups/scoutbook/records MB + rank tints — categories are not statuses, no tokens by design); one on-dark warning amber in media-manager'
   },
   {
     pattern: 'Eyebrow labels (11px/700/uppercase)',
@@ -314,6 +328,22 @@ export default function StyleguidePage() {
             <span style={{ fontSize: `var(${n})` }}>Scouts BSA Troop 79 — Milwaukee, WI</span>
           </div>
         ))}
+        <p className={sg.sectionNote}>
+          Font stacks (Phase C, 2026-08-21): admin chrome never reads the public font tokens.
+        </p>
+        {FONT_TOKENS.map(([n, desc]) => (
+          <div key={n} className={sg.scaleRow}>
+            <span className={sg.scaleName}>{n}</span>
+            <span style={{ fontFamily: `var(${n})` }}>{desc}</span>
+          </div>
+        ))}
+        <p className={sg.sectionNote}>
+          The <code>--admin-preview-*</code> aliases (font-display, font-body, paper,
+          paper-alt, ink, ink-head, ink-meta, border) are the ONE sanctioned coupling to the
+          public palette — they alias the public tokens so WYSIWYG surfaces (the markdown
+          preview pane, the article preview) keep tracking public rendering by construction.
+          Admin chrome must never read them.
+        </p>
       </section>
 
       <section className={sg.section}>
@@ -385,7 +415,7 @@ export default function StyleguidePage() {
           </Specimen>
           <Specimen
             label="Library's own family"
-            note="library .btnPrimary/.btnSecondary — this stylesheet is shared with 20 PUBLIC routes: never restyle it from the admin side."
+            note="library .btnPrimary/.btnSecondary — Phase C discovery: this admin stylesheet is a SEPARATE file from the public library.module.css (which lives in (public)/library with ~19 importers). The admin copy has 3 workstation importers and was fully re-tokened; .btnPrimary is now navy per the primary decision."
           >
             <button type="button" className={lib.btnPrimary}>Approve</button>
             <button type="button" className={lib.btnSecondary}>Decline</button>
@@ -401,9 +431,9 @@ export default function StyleguidePage() {
           non-pill variants (meeting-plan&rsquo;s underline tabs, court-of-honor&rsquo;s and
           the report&rsquo;s view tabs, the library workstation&rsquo;s tabs, media-picker&rsquo;s
           tabs) all fold into the shared pill TabStrip. The library conversion touched only
-          the admin page — <code>library.module.css</code> stays untouched (shared with
-          public routes), the admin side just stopped consuming its tab classes, which also
-          closes the D-160 backlog item.
+          the admin page, which also closes the D-160 backlog item. (Phase C then found the
+          admin <code>library.module.css</code> is a separate file from the public
+          one — the dead tab classes were deleted from the admin copy outright.)
         </p>
         <div className={sg.specimenGrid}>
           <Specimen
@@ -434,8 +464,8 @@ export default function StyleguidePage() {
           (draft/published/active/…) are Badges; CATEGORICAL tags with their own meaning
           (lookups&rsquo; rank/MB/Eagle, meeting-plan&rsquo;s track tags,
           scoutbook-export&rsquo;s type badges) deliberately keep per-screen classes. The
-          library workstation is the other exception — its stylesheet is shared with 20
-          public routes (D-160).
+          library-workstation exception dissolved in Phase C — its stylesheet turned out to
+          be admin-only (the public copy is a separate file), so its pills were re-tokened.
         </p>
         <div className={sg.specimenGrid}>
           <Specimen
@@ -590,10 +620,10 @@ export default function StyleguidePage() {
           deterministic override). Phase B converted the remaining families too —
           ledger/roster/lookups/finance/fast-entry/rosters, including the two formerly
           hand-rolled overlays (PersonEditor, adult-form), which gained Esc and
-          backdrop-click close. Documented exceptions: fast-entry&rsquo;s MB focus modal
-          (needs a close-guard prop for its unsaved-ticks confirm) and library&rsquo;s
-          quick-add (public-shared styling); media-picker&rsquo;s custom div overlay unifies
-          last (high risk).
+          backdrop-click close. Phase C closed the library quick-add exception (shared
+          Dialog, Esc/backdrop close gained). Remaining exceptions: fast-entry&rsquo;s MB
+          focus modal (needs a close-guard prop for its unsaved-ticks confirm);
+          media-picker&rsquo;s custom div overlay unifies last (high risk).
         </p>
         <div className={sg.dialogCompare}>
           <div>

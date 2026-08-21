@@ -126,6 +126,28 @@
   --admin-tracking-wide:   .06em;
   --admin-tracking-wider:  .08em;
   --admin-tracking-widest: .12em;
+
+  /* ── Font stacks (Phase C) ───────────────────────────────────────── */
+  /* Same stack the public --font-ui resolves to, declared here so admin
+     chrome never reads the public token. */
+  --admin-font-ui:   'Open Sans', Arial, sans-serif;
+  --admin-font-mono: 'Menlo', 'Consolas', monospace;  /* absorbs the ui-monospace /
+                                     'SF Mono' and bare-monospace drift variants */
+
+  /* ── Public-parity aliases — PREVIEW SURFACES ONLY (Phase C) ─────── */
+  /* The ONE sanctioned coupling to the public palette. Only for WYSIWYG
+     surfaces whose job is to mirror public rendering (markdown preview
+     pane, article preview). If the public site restyles, previews must
+     follow — so these alias the public tokens rather than copy values.
+     Admin chrome must never read these; it uses the real tokens above. */
+  --admin-preview-font-display: var(--font-display);
+  --admin-preview-font-body:    var(--font-body);
+  --admin-preview-paper:        var(--cream);
+  --admin-preview-paper-alt:    var(--newsprint);
+  --admin-preview-ink:          var(--text-body);
+  --admin-preview-ink-head:     var(--text-head);
+  --admin-preview-ink-meta:     var(--text-meta);
+  --admin-preview-border:       var(--border-light);
 }
 
 /* ── Utilities ──────────────────────────────────────────────────────── */

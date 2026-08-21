@@ -98,7 +98,7 @@
 }
 .kindRankReq        { background: #e0e7ef; color: var(--admin-navy); }
 .kindMbReq          { background: #e3eee5; color: var(--admin-forest); }
-.kindMbAward        { background: #fdf3d6; color: #8b6914; }
+.kindMbAward        { background: var(--admin-status-warning-bg); color: var(--admin-accent-gold); }
 .kindCamping        { background: #d6efef; color: #186e72; }
 .kindHiking         { background: #e0e7ef; color: #2a4f63; }
 .kindDayOuting      { background: #ddeedd; color: #2f6b2f; }
@@ -287,10 +287,10 @@
 }
 .actionBtnDanger {
   color: var(--admin-danger);
-  border-color: #e8c4c0;
+  border-color: color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white));
 }
 .actionBtnDanger:hover {
-  background: #fdf0ef;
+  background: var(--admin-status-error-bg);
   border-color: var(--admin-danger);
   color: var(--admin-danger);
 }
@@ -308,7 +308,7 @@
   height: 15px;
 }
 .selectedRow {
-  background: #eef3f8 !important;
+  background: var(--admin-status-info-bg) !important;
 }
 
 .bulkBar {
@@ -380,8 +380,8 @@
   background: var(--admin-gray-50);
 }
 .bulkFieldOn {
-  background: #eef3f8;
-  border-color: #cbdcea;
+  background: var(--admin-status-info-bg);
+  border-color: color-mix(in srgb, var(--admin-navy) 25%, var(--admin-white));
 }
 .bulkFieldHead {
   display: flex;
@@ -433,8 +433,8 @@
   letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--admin-danger);
-  background: #fdece9;
-  border: 1px solid #f1cbc4;
+  background: var(--admin-status-error-bg);
+  border: 1px solid color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white));
   padding: 1px 7px;
   border-radius: 8px;
 }
@@ -451,7 +451,7 @@
 }
 .bulkChip:hover {
   border-color: var(--admin-navy);
-  background: #eef3f8;
+  background: var(--admin-status-info-bg);
 }
 .bulkChip em {
   font-style: normal;
@@ -511,3 +511,7 @@
   pointer-events: none;
   opacity: .5;
 }
+
+/* ── Phase C — classes replacing repeated inline styles ──────────────── */
+.thRight { text-align: right; } /* th modifier — the module's th rule left-aligns */
+.entryMeta { color: var(--admin-gray-500); font-size: var(--admin-text-sm); margin-left: var(--admin-space-2); }

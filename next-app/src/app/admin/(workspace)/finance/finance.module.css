@@ -85,6 +85,8 @@
   outline: none;
   border-color: var(--admin-navy);
 }
+/* The Min $/Max $ magnitude filters — narrow on purpose. */
+.amountInput { width: 88px; }
 .kindManager {
   margin-bottom: 14px;
   font-size: 13px;

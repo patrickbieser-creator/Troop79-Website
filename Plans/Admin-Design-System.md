@@ -1,6 +1,6 @@
 # Admin Design System — Tokens, Shared Components, and Inline-Style Remediation
 
-**Status:** Active — Foundation + Phase A COMPLETE (both 2026-08-21); Phases B–D queued
+**Status:** Active — Foundation + Phases A–C COMPLETE (all 2026-08-21); Phase D queued
 **Created:** 2026-08-21
 **Priority:** Medium (High for the Phase A bug items)
 
@@ -65,9 +65,18 @@ The audit's headline numbers:
       hand-rolled overlays → native Dialog, gaining Esc/backdrop close — Section 2 finding #1
       closed), fast-entry req-first-card, rosters payment dialog. Exceptions documented in
       Notes. Gate green (671 tests), representative screens browser-verified in dev.
-- [ ] **Phase C** complete: ≤ 20 inline `style={{}}` sites remain under `admin/` (the 12
-      dynamic ones + genuinely one-off cases, each commented); hex-literal count in admin
-      modules reduced ≥ 80%; zero public-token reads from admin styles.
+- [x] **Phase C** complete (2026-08-21, fourth session — v1.60.0): inline sites 170 → 12
+      (all dynamic, each commented — under the ≤ 20 target); hex in admin modules
+      371 → 59 (−84%, ≥ 80% target met; survivors deliberate: date-picker-field's
+      load-bearing public-fallback chains, the categorical palettes, one on-dark amber);
+      public-token reads 229 → 0 outside the sanctioned `--admin-preview-*` alias block
+      (new: font tokens `--admin-font-ui`/`--admin-font-mono`, preview aliases for WYSIWYG
+      parity); phantom reads renamed. login.module.css created; rosters deliberately
+      shares events-admin.module.css. Library discovery: TWO library.module.css files
+      exist — the admin one (3 admin importers) was fully re-tokened + dead classes
+      deleted, the public one at `(public)/library/` untouched; quick-add joined the
+      shared Dialog (Phase B exception closed). Gate green (671), 14-screen browser
+      sweep, zero regressions.
 - [ ] **Phase D** complete: styleguide variant specimens deleted as their copies retire; the
       scoreboard shows every row struck.
 - [ ] Each phase lands with the full quality gate green AND a browser screenshot pass on the
@@ -192,7 +201,15 @@ last (HIGH risk).
    workstation scoped pass). meeting-plan's plan-view tabs/table conversion is
    code-complete but needs a production eyes-on when a plan next exists (dev regeneration is
    deliberately avoided).
-3. **Phase C — inline-style + literal sweep**, screen by screen, worst first: Lookups editors
+3. **Phase C — COMPLETE (2026-08-21, v1.60.0).** Executed by three parallel forks
+   (advancement-core / shell+events / news+library+calendar+_components) with strict
+   directory ownership + parent integration, same pattern as Phase B. Numbers and
+   discoveries in the acceptance entry above. Open item for Patrick: the categorical
+   tints have drifted BETWEEN files (MB is #e6eef5 in scoutbook-export but #e3eee5 in
+   lookups; rank is purple in records/scoutbook, blue-gray in lookups) — normalizing
+   would need a `--admin-cat-mb`/`--admin-cat-rank` token pair and Patrick's sign-off
+   (the Badge scope rule says categorical stays, so left as commented literals).
+   Original queue for reference: Lookups editors
    (47 sites), fast-entry picker (14 + the marginBottom:4 ×11), library workstation, login
    (needs a new `login.module.css`), rosters (needs any stylesheet). Replace hex literals with
    tokens in the top-drift files: fast-entry, lookups, meeting-plan, ledger, roster-import.
@@ -228,9 +245,9 @@ last (HIGH risk).
   advancement reports, news submit…). Its classes (`.tab`, `.statusPill`, `.pageTitle`,
   `.fieldHint`, `.btnPrimary`…) must never be restyled from the admin side; the library
   workstation needs its own scoped classes first (existing backlog item, D-160).
-- **Possible real bug found by the audit, parked for Patrick:** `media-picker.tsx:368`
-  hardcodes `style={{width:'70%'}}` on `.progressFill` — looks like an unfinished progress
-  indicator shipping a mock value.
+- **media-picker progress-bar bug (was parked here): already fixed before Phase C** — the
+  mock `width:'70%'` is now an honest indeterminate sweep bar (CSS comment records
+  Patrick confirmed the bug). Phase C's recon found the parked note stale.
 - Inline styles that FIGHT their own module (fix by modifier, not conversion):
   `ledger-table.tsx:233` (th right-align vs module's th left rule), `.hint` + `marginTop:8`
   ×3 (court-of-honor ×2, report), `reconciliation-finding-row.tsx:66` vs `.fillRow`,

@@ -180,7 +180,8 @@ export default async function EventRostersPage() {
                 <tr key={r.signupId}>
                   <td>
                     <span className={styles.evTitle}>{r.title}</span>
-                    <span className={styles.evCat} style={{ color: colorFor(colors, r.category) }}>
+                    {/* inline: dynamic — category color comes from the calendar_categories lookup */}
+                  <span className={styles.evCat} style={{ color: colorFor(colors, r.category) }}>
                       {r.category}
                       {r.status === 'closed' && ' · closed'}
                     </span>

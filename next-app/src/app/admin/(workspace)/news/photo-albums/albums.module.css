@@ -11,6 +11,7 @@
   text-transform: uppercase; color: var(--admin-gray-700);
 }
 .table tr:last-child td { border-bottom: none; }
+.table th.actionsCell, .table td.actionsCell { text-align: right; white-space: nowrap; }
 .dateCell { font-family: 'Menlo', 'Consolas', monospace; font-size: 11.5px; color: var(--admin-gray-700); white-space: nowrap; }
 .muted { color: var(--admin-gray-400); font-style: italic; }
 

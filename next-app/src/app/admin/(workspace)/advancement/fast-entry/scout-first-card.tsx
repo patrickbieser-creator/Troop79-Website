@@ -283,7 +283,7 @@ export function ScoutFirstCard({ scouts, leaders, catalog }: Props) {
         <span className={styles.fieldLabel}>
           Requirements{' '}
           {scoutId && loadingCompletion && (
-            <span style={{ fontWeight: 400, color: 'var(--admin-gray-400)', textTransform: 'none', letterSpacing: 0 }}>
+            <span className={styles.fieldLabelNoteFaint}>
               · loading scout history…
             </span>
           )}
@@ -325,7 +325,7 @@ export function ScoutFirstCard({ scouts, leaders, catalog }: Props) {
         onSaved={onMbModalSaved}
       />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+      <div className={styles.grid2}>
         <label className={styles.field}>
           <span className={styles.fieldLabel}>Date Completed</span>
           <DatePickerField value={date} onChange={setDate} />

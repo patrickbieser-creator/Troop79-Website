@@ -7,6 +7,8 @@ export const contentType = 'image/png';
 export default function Icon() {
   return new ImageResponse(
     (
+      // inline: mandatory — rendered by ImageResponse/Satori at build time,
+      // where CSS modules and the admin token sheet don't exist.
       <div
         style={{
           width: '100%',

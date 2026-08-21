@@ -60,10 +60,7 @@ export function AuditTape({ tape }: { tape: TapeRow[] }) {
           {tape.length > 0 && (
             <>
               {' · '}
-              <Link
-                href="/admin/advancement/ledger"
-                style={{ color: 'inherit', textDecoration: 'underline' }}
-              >
+              <Link href="/admin/advancement/ledger" className={styles.inlineLink}>
                 full ledger →
               </Link>
             </>
@@ -86,7 +83,7 @@ export function AuditTape({ tape }: { tape: TapeRow[] }) {
                 <th>Code</th>
                 <th>Description</th>
                 <th>By</th>
-                <th style={{ textAlign: 'right' }}>Qty</th>
+                <th className={styles.cellRight}>Qty</th>
                 <th>Unit</th>
               </tr>
             </thead>
@@ -95,10 +92,7 @@ export function AuditTape({ tape }: { tape: TapeRow[] }) {
                 <tr key={r.id}>
                   <td className={styles.nowrap}>{shortDate(r.date)}</td>
                   <td className={styles.nowrap}>
-                    <Link
-                      href={`/scouts/${r.scoutId}`}
-                      style={{ color: 'var(--admin-navy)', fontWeight: 600 }}
-                    >
+                    <Link href={`/scouts/${r.scoutId}`} className={styles.scoutLink}>
                       {r.scoutName}
                     </Link>
                   </td>
@@ -106,8 +100,7 @@ export function AuditTape({ tape }: { tape: TapeRow[] }) {
                     <span className={styles.kindPill}>{KIND_LABEL[r.kind]}</span>
                   </td>
                   <td
-                    className={styles.nowrap}
-                    style={{ fontFamily: 'Menlo, Consolas, monospace', fontSize: 11.5 }}
+                    className={`${styles.nowrap} ${styles.codeCell}`}
                   >
                     {r.code}
                   </td>
@@ -115,7 +108,7 @@ export function AuditTape({ tape }: { tape: TapeRow[] }) {
                     <InfoCell short={r.shortLabel} full={r.label} />
                   </td>
                   <td className={styles.nowrap}>{r.by ?? ''}</td>
-                  <td style={{ textAlign: 'right' }}>{r.qty}</td>
+                  <td className={styles.cellRight}>{r.qty}</td>
                   <td className={styles.nowrap}>{r.unit}</td>
                 </tr>
               ))}

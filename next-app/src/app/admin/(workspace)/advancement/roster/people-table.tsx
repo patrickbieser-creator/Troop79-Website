@@ -962,8 +962,8 @@ function PersonEditor({
 
         {/* ── Duplicates and removal ─────────────────────────────────── */}
         <section className={styles.dangerSection}>
-          <div className={styles.inlineRow} style={{ marginTop: 0, justifyContent: 'space-between' }}>
-            <h3 style={{ margin: 0 }}>This is a duplicate, or should not exist</h3>
+          <div className={`${styles.inlineRow} ${styles.inlineRowSplit}`}>
+            <h3 className={styles.noMargin}>This is a duplicate, or should not exist</h3>
             <button
               type="button"
               className={styles.smallBtn}

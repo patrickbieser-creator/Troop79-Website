@@ -132,9 +132,9 @@
   align-self: center;
 }
 .dupWarning {
-  background: #fdf3dc;
-  border: 1px solid #ecd9a0;
-  border-left: 4px solid #c9a227;
+  background: var(--admin-status-warning-bg);
+  border: 1px solid color-mix(in srgb, var(--admin-accent-gold) 30%, var(--admin-white));
+  border-left: 4px solid var(--admin-warning);
   border-radius: 4px;
   padding: 10px 14px;
   margin-top: 14px;
@@ -276,7 +276,7 @@
 .pickerCheckPending {
   border: 1.5px dashed var(--admin-navy);
   color: var(--admin-navy);
-  background: #eef3f8;
+  background: var(--admin-status-info-bg);
 }
 .pickerCheckCompleted {
   border-color: var(--admin-forest);
@@ -302,7 +302,7 @@
   font-weight: 700;
   letter-spacing: .04em;
   color: var(--admin-forest);
-  background: #e7f1e8;
+  background: var(--admin-status-success-bg);
   border-radius: 8px;
   padding: 1px 7px;
   flex-shrink: 0;
@@ -323,8 +323,8 @@
 
 /* Top pending summary bar */
 .pendingTop {
-  background: #eef3f8;
-  border-bottom: 1px solid #d8e3ed;
+  background: var(--admin-status-info-bg);
+  border-bottom: 1px solid color-mix(in srgb, var(--admin-navy) 25%, var(--admin-white));
   padding: 6px 12px;
   font-size: 12px;
   color: var(--admin-navy);
@@ -360,8 +360,8 @@
   letter-spacing: .04em;
   padding: 1px 7px;
   border-radius: 8px;
-  background: #fff0d6;
-  color: #946b00;
+  background: var(--admin-status-warning-bg);
+  color: var(--admin-accent-gold);
   flex-shrink: 0;
 }
 .satIndicator {
@@ -445,8 +445,8 @@
   font-weight: 700;
   letter-spacing: .06em;
   text-transform: uppercase;
-  color: #8b6914;
-  background: #fdf3d6;
+  color: var(--admin-accent-gold);
+  background: var(--admin-status-warning-bg);
   padding: 1px 7px;
   border-radius: 8px;
 }
@@ -463,10 +463,10 @@
 }
 .selectAllBtn:hover {
   border-color: var(--admin-navy);
-  background: #eef3f8;
+  background: var(--admin-status-info-bg);
 }
 .pickerRowAward {
-  background: #f6f9f3;
+  background: var(--admin-status-success-bg);
   border-bottom: 1px solid var(--admin-gray-200);
   font-weight: 600;
 }
@@ -547,7 +547,7 @@
   padding: 0;
 }
 .historyUndoBtn:hover {
-  background: #fdf0ef;
+  background: var(--admin-status-error-bg);
   border-color: var(--admin-danger);
 }
 .historyEmpty {
@@ -977,16 +977,32 @@
 
 /* Status banner */
 .banner {
-  background: #ecf5ed;
-  border: 1px solid #c3dec6;
-  color: #1d5126;
+  background: var(--admin-status-success-bg);
+  border: 1px solid color-mix(in srgb, var(--admin-forest) 30%, var(--admin-white));
+  color: var(--admin-forest-dark);
   padding: 8px 14px;
   border-radius: 3px;
   font-size: 12px;
   margin-bottom: 14px;
 }
 .bannerErr {
-  background: #fdf0ef;
-  border-color: #e8c4c0;
+  background: var(--admin-status-error-bg);
+  border-color: color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white));
   color: var(--admin-danger);
 }
+
+/* ── Phase C — classes replacing repeated inline styles ──────────────── */
+.cellRight  { text-align: right; }
+.fieldTight { margin-bottom: var(--admin-space-2); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--admin-space-5); }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--admin-space-4); }
+.inlineLink { color: inherit; text-decoration: underline; }
+.scoutLink  { color: var(--admin-navy); font-weight: var(--admin-weight-semibold); }
+.codeCell   { font-family: var(--admin-font-mono); font-size: var(--admin-text-sm); }
+.fieldLabelNote      { font-weight: var(--admin-weight-regular); color: var(--admin-gray-500); text-transform: none; letter-spacing: 0; }
+.fieldLabelNoteFaint { font-weight: var(--admin-weight-regular); color: var(--admin-gray-400); text-transform: none; letter-spacing: 0; }
+.labelRow { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: var(--admin-space-2); }
+.linkBtn  { background: none; border: none; color: var(--admin-navy); font-size: var(--admin-text-sm); font-weight: var(--admin-weight-bold); cursor: pointer; }
+.checkingNote   { font-size: var(--admin-text-base); color: var(--admin-gray-500); margin-top: var(--admin-space-6); }
+.statusErrBlock { margin-top: var(--admin-space-6); display: block; }
+.helpTightTop   { margin-top: -2px; margin-bottom: var(--admin-space-4); }

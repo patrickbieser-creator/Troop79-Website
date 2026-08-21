@@ -238,12 +238,12 @@ export function CourtOfHonorWorkspace({
                 }}
               />
               {report.contentJson.isEmpty && report.status === 'draft' && (
-                <p className={styles.hint} style={{ marginTop: 8 }}>
+                <p className={`${styles.hint} ${styles.hintSpaced}`}>
                   Nothing was earned in this date range — publishing is disabled. Widen the range.
                 </p>
               )}
               {report.status === 'draft' && (
-                <p className={styles.hint} style={{ marginTop: 8 }}>
+                <p className={`${styles.hint} ${styles.hintSpaced}`}>
                   Publishing finalizes this report&rsquo;s content — it does NOT mark anything as presented.
                   That&rsquo;s a separate step below, once published.
                 </p>

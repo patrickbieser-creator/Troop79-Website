@@ -7,15 +7,15 @@
 }
 
 .head h1 {
-  font-family: var(--font-display, 'Playfair Display', Georgia, serif);
+  font-family: 'Playfair Display', Georgia, serif; /* TOKEN GAP: no --admin-font-display yet */
   font-size: 24px;
   margin: 4px 0 6px;
 }
 
 .backLink {
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--admin-font-ui);
   font-size: 12px;
-  color: var(--admin-gray-700, #444);
+  color: var(--admin-gray-700);
 }
 .backLink:hover { text-decoration: underline; }
 
@@ -24,23 +24,23 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--admin-font-ui);
   font-size: 13px;
-  color: var(--admin-gray-700, #444);
+  color: var(--admin-gray-700);
 }
 
 .cat {
   display: inline-block;
   padding: 2px 8px;
   border-radius: 3px;
-  color: #fff;
+  color: var(--admin-white);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: .04em;
 }
 
 .flag {
-  border: 1px solid var(--admin-gray-200, #ddd);
+  border: 1px solid var(--admin-gray-200);
   border-radius: 3px;
   padding: 1px 6px;
   font-size: 11px;
@@ -50,10 +50,10 @@
 
 .templateNote {
   margin-top: 6px;
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--admin-font-ui);
   font-size: 12px;
   font-style: italic;
-  color: var(--admin-gray-500, #888);
+  color: var(--admin-gray-500);
 }
 
 .headActions { display: flex; gap: 8px; flex-shrink: 0; }
@@ -78,37 +78,37 @@
 }
 
 .panelHead h2 {
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--admin-font-ui);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: .12em;
   text-transform: uppercase;
-  color: var(--forest, #2d6a4f);
+  color: var(--admin-forest);
   margin: 0;
 }
 
 .panelNote {
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--admin-font-ui);
   font-size: 12.5px;
-  color: var(--admin-gray-700, #444);
+  color: var(--admin-gray-700);
   margin: 0 0 10px;
 }
-.panelNote a { color: var(--forest, #2d6a4f); text-decoration: underline; }
+.panelNote a { color: var(--admin-forest); text-decoration: underline; }
 
 .btn,
 .primaryBtn {
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--admin-font-ui);
   font-size: 12.5px;
   border-radius: 3px;
   padding: 5px 10px;
   cursor: pointer;
-  border: 1px solid var(--admin-gray-200, #ddd);
-  background: var(--admin-white, #fff);
-  color: var(--admin-gray-700, #444);
+  border: 1px solid var(--admin-gray-200);
+  background: var(--admin-white);
+  color: var(--admin-gray-700);
   text-decoration: none;
   display: inline-block;
 }
-.btn:hover { background: var(--admin-gray-100, #f2f2f2); }
+.btn:hover { background: var(--admin-gray-100); }
 
 /* Navy per the Phase A primary-button decision (2026-08-21) — this was both
    a forest one-off AND a public-token leak (--forest). */
@@ -121,18 +121,18 @@
 .primaryBtn:disabled { opacity: .6; cursor: default; }
 
 .savedNote {
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--admin-font-ui);
   font-size: 12px;
-  color: var(--forest, #2d6a4f);
+  color: var(--admin-forest);
   margin-right: 10px;
 }
 
 .error {
-  border: 1px solid #c0392b;
+  border: 1px solid var(--admin-danger);
   border-left-width: 4px;
-  background: #fdf3f2;
-  color: #7d2820;
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  background: var(--admin-status-error-bg);
+  color: var(--admin-danger-dark);
+  font-family: var(--admin-font-ui);
   font-size: 13px;
   padding: 10px 12px;
   margin-bottom: 14px;

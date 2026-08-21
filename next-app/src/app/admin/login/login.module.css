@@ -1,0 +1,54 @@
+/* /admin/login — the post-retirement redirect notice (LEADER_PASSWORD is
+   gone; see page.tsx header). Standalone dark screen OUTSIDE the workspace
+   route group, so page.tsx must import admin.css itself for the --admin-*
+   tokens to resolve here. Token-only (Phase C, Plans/Admin-Design-System.md). */
+
+.wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--admin-gray-900);
+  padding: var(--admin-space-11);
+}
+.panel {
+  max-width: 420px;
+  width: 100%;
+  color: var(--admin-gray-300);
+  text-align: center;
+}
+.title {
+  color: var(--admin-white);
+  font-size: 22px;
+  margin-bottom: var(--admin-space-6);
+}
+.lede {
+  font-size: var(--admin-text-lg);
+  line-height: 1.6;
+  margin-bottom: var(--admin-space-10);
+}
+.cta {
+  display: inline-block;
+  background: var(--admin-forest);
+  color: var(--admin-white);
+  padding: 11px 22px;
+  border-radius: var(--admin-radius-sm);
+  font-weight: var(--admin-weight-bold);
+  font-size: var(--admin-text-md);
+  letter-spacing: var(--admin-tracking-normal);
+  text-transform: uppercase;
+}
+.hint {
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-400);
+  margin-top: 22px;
+  line-height: 1.6;
+}
+.backRow {
+  font-size: var(--admin-text-base);
+  margin-top: var(--admin-space-7);
+}
+.backLink {
+  color: var(--admin-forest);
+  font-weight: var(--admin-weight-semibold);
+}

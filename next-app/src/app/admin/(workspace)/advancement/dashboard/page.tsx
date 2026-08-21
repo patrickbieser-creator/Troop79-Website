@@ -429,6 +429,7 @@ export default async function DashboardPage() {
                         <span className={styles.progress}>
                           <span
                             className={styles.progressFill}
+                            // inline: dynamic — bar width is the computed percentage
                             style={{ width: `${Math.round(r.pct * 100)}%` }}
                           />
                         </span>

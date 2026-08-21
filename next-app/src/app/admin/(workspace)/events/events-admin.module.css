@@ -3,81 +3,81 @@
    (the gray-900 h1 one-off goes navy with it). */
 
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 20px; }
-.tile { background: #fff; border: 1px solid var(--admin-gray-200, #e4e4e4); border-radius: 5px; padding: 12px 14px; }
-.tileOk { border-left: 3px solid #3d5a3e; }
-.tileWarn { border-left: 3px solid #a04a3d; }
-.tileLabel { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--admin-gray-600, #666); }
-.tileValue { font-size: 24px; font-weight: 700; color: var(--admin-gray-900, #1a1a1a); margin-top: 2px; }
-.tileOf { font-size: 14px; font-weight: 400; color: var(--admin-gray-600, #666); }
-.tileSub { font-size: 11.5px; color: var(--admin-gray-600, #666); margin-top: 2px; }
+.tile { background: var(--admin-white); border: 1px solid var(--admin-gray-200); border-radius: 5px; padding: 12px 14px; }
+.tileOk { border-left: 3px solid var(--admin-forest); }
+.tileWarn { border-left: 3px solid var(--admin-danger); }
+.tileLabel { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--admin-gray-600); }
+.tileValue { font-size: 24px; font-weight: 700; color: var(--admin-gray-900); margin-top: 2px; }
+.tileOf { font-size: 14px; font-weight: 400; color: var(--admin-gray-600); }
+.tileSub { font-size: 11.5px; color: var(--admin-gray-600); margin-top: 2px; }
 
-.table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--admin-gray-200, #e4e4e4); border-radius: 5px; font-size: 13.5px; }
-.table th { text-align: left; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--admin-gray-600, #666); padding: 9px 12px; border-bottom: 1px solid var(--admin-gray-200, #e4e4e4); }
-.table td { padding: 9px 12px; border-bottom: 1px solid var(--admin-gray-100, #f0f0f0); vertical-align: top; }
+.table { width: 100%; border-collapse: collapse; background: var(--admin-white); border: 1px solid var(--admin-gray-200); border-radius: 5px; font-size: 13.5px; }
+.table th { text-align: left; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--admin-gray-600); padding: 9px 12px; border-bottom: 1px solid var(--admin-gray-200); }
+.table td { padding: 9px 12px; border-bottom: 1px solid var(--admin-gray-100); vertical-align: top; }
 .table tbody tr:last-child td { border-bottom: none; }
-.waitRow { background: #fdf6e6; }
-.evTitle { display: block; font-weight: 700; color: var(--admin-gray-900, #1a1a1a); }
-.evCat { display: block; font-size: 11px; color: var(--admin-gray-600, #666); text-transform: capitalize; }
-.rowNote { display: block; font-size: 11.5px; color: #8b6914; margin-top: 2px; }
+.waitRow { background: var(--admin-status-warning-bg); }
+.evTitle { display: block; font-weight: 700; color: var(--admin-gray-900); }
+.evCat { display: block; font-size: 11px; color: var(--admin-gray-600); text-transform: capitalize; }
+.rowNote { display: block; font-size: 11.5px; color: var(--admin-accent-gold); margin-top: 2px; }
 .nowrap { white-space: nowrap; }
-.empty { text-align: center; color: var(--admin-gray-600, #666); padding: 22px; }
+.empty { text-align: center; color: var(--admin-gray-600); padding: 22px; }
 .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.actionLink { font-size: 12.5px; font-weight: 700; color: #1e3a4a; text-decoration: underline; }
-.actionLinkMuted { font-size: 12.5px; color: var(--admin-gray-600, #666); text-decoration: underline; }
-.badgeOn { display: inline-block; font-size: 11px; font-weight: 700; color: #3d5a3e; background: #eef2ee; border: 1px solid #3d5a3e; border-radius: 999px; padding: 2px 9px; }
-.badgeOff { color: var(--admin-gray-400, #aaa); }
-.enableBtn { background: #1e3a4a; color: #fff; border: none; border-radius: 3px; padding: 6px 13px; font-size: 12.5px; font-weight: 700; cursor: pointer; }
-.enableBtn:hover:not(:disabled) { background: #3d5a3e; }
-.enableBtn:disabled { background: var(--admin-gray-400, #aaa); cursor: not-allowed; }
-.err { color: #a04a3d; font-size: 12.5px; font-weight: 600; margin: 8px 0; }
+.actionLink { font-size: 12.5px; font-weight: 700; color: var(--admin-navy); text-decoration: underline; }
+.actionLinkMuted { font-size: 12.5px; color: var(--admin-gray-600); text-decoration: underline; }
+.badgeOn { display: inline-block; font-size: 11px; font-weight: 700; color: var(--admin-forest); background: var(--admin-status-success-bg); border: 1px solid var(--admin-forest); border-radius: var(--admin-radius-pill); padding: 2px 9px; }
+.badgeOff { color: var(--admin-gray-400); }
+.enableBtn { background: var(--admin-navy); color: var(--admin-white); border: none; border-radius: 3px; padding: 6px 13px; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.enableBtn:hover:not(:disabled) { background: var(--admin-navy-hover); }
+.enableBtn:disabled { background: var(--admin-gray-400); cursor: not-allowed; }
+.err { color: var(--admin-danger); font-size: 12.5px; font-weight: 600; margin: 8px 0; }
 
 /* .payDialog chrome retired Phase B (2026-08-21) — the event-roster payment
    dialog renders the shared Dialog now; only its field styling remains. */
-.payField { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--admin-gray-600, #666); }
-.payField input, .payField select { border: 1px solid var(--admin-gray-200, #e4e4e4); border-radius: 3px; padding: 7px 9px; font-family: inherit; font-size: 13px; font-weight: 400; text-transform: none; letter-spacing: normal; color: var(--admin-gray-900, #1a1a1a); }
+.payField { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--admin-gray-600); }
+.payField input, .payField select { border: 1px solid var(--admin-gray-200); border-radius: 3px; padding: 7px 9px; font-family: inherit; font-size: 13px; font-weight: 400; text-transform: none; letter-spacing: normal; color: var(--admin-gray-900); }
 
 .builder { display: flex; flex-direction: column; gap: 16px; }
 /* Card/panel canon (Phase B, 2026-08-21). */
 .panel { background: var(--admin-white); border: 1px solid var(--admin-gray-200); border-radius: var(--admin-radius); box-shadow: var(--admin-shadow-sm); padding: 16px; }
-.panel h2 { font-size: 14px; font-weight: 700; margin-bottom: 4px; color: var(--admin-gray-900, #1a1a1a); }
+.panel h2 { font-size: 14px; font-weight: 700; margin-bottom: 4px; color: var(--admin-gray-900); }
 .panelHead { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
-.panelHint { font-size: 12.5px; color: var(--admin-gray-600, #666); line-height: 1.5; margin-bottom: 12px; }
-.note { margin-top: 10px; font-size: 12.5px; background: #eef2ee; border-left: 3px solid #3d5a3e; padding: 8px 11px; border-radius: 0 3px 3px 0; }
-.toggleRow { display: flex; gap: 9px; align-items: flex-start; padding: 7px 0; font-size: 13.5px; border-bottom: 1px solid var(--admin-gray-100, #f0f0f0); }
+.panelHint { font-size: 12.5px; color: var(--admin-gray-600); line-height: 1.5; margin-bottom: 12px; }
+.note { margin-top: 10px; font-size: 12.5px; background: var(--admin-status-success-bg); border-left: 3px solid var(--admin-forest); padding: 8px 11px; border-radius: 0 3px 3px 0; }
+.toggleRow { display: flex; gap: 9px; align-items: flex-start; padding: 7px 0; font-size: 13.5px; border-bottom: 1px solid var(--admin-gray-100); }
 .toggleRow:last-of-type { border-bottom: none; }
-.toggleHint { display: block; font-size: 11.5px; color: var(--admin-gray-600, #666); margin-top: 1px; }
+.toggleHint { display: block; font-size: 11.5px; color: var(--admin-gray-600); margin-top: 1px; }
 .fieldGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 12px; }
 .fieldGrid label, .fullField { display: block; }
 .fullField { margin-bottom: 12px; }
-.fieldLabel { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--admin-gray-600, #666); margin-bottom: 4px; }
-.fieldGrid input, .fieldGrid select, .fullField input, .fullField textarea { width: 100%; padding: 7px 10px; border: 1px solid var(--admin-gray-300, #ccc); border-radius: 3px; font-size: 13.5px; font-family: inherit; }
+.fieldLabel { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--admin-gray-600); margin-bottom: 4px; }
+.fieldGrid input, .fieldGrid select, .fullField input, .fullField textarea { width: 100%; padding: 7px 10px; border: 1px solid var(--admin-gray-300); border-radius: 3px; font-size: 13.5px; font-family: inherit; }
 .miniTable { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 12px; }
-.miniTable td { padding: 6px 8px; border-bottom: 1px solid var(--admin-gray-100, #f0f0f0); }
-.miniTable th { text-align: left; font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--admin-gray-600, #666); padding: 4px 8px; border-bottom: 1px solid var(--admin-gray-200, #e4e4e4); }
-.tag { display: inline-block; margin-left: 6px; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #8b6914; background: #fdf6e6; border-radius: 3px; padding: 1px 5px; }
-.rowDel { background: none; border: none; color: #a04a3d; font-size: 12px; text-decoration: underline; cursor: pointer; padding: 4px 6px; min-height: 24px; }
+.miniTable td { padding: 6px 8px; border-bottom: 1px solid var(--admin-gray-100); }
+.miniTable th { text-align: left; font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--admin-gray-600); padding: 4px 8px; border-bottom: 1px solid var(--admin-gray-200); }
+.tag { display: inline-block; margin-left: 6px; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--admin-accent-gold); background: var(--admin-status-warning-bg); border-radius: 3px; padding: 1px 5px; }
+.rowDel { background: none; border: none; color: var(--admin-danger); font-size: 12px; text-decoration: underline; cursor: pointer; padding: 4px 6px; min-height: 24px; }
 /* Duplicate is the bulk-entry workhorse — a rummage sale is a handful of
    stations repeated across time blocks — so it reads as a normal action, not
    a destructive one. */
-.rowDup { background: none; border: 1px solid var(--admin-gray-300, #ccc); border-radius: 3px; color: var(--admin-gray-700, #444); font-size: 12px; cursor: pointer; padding: 4px 9px; min-height: 24px; }
-.rowDup:hover:not(:disabled) { border-color: #3d5a3e; color: #3d5a3e; background: #f4f7f4; }
+.rowDup { background: none; border: 1px solid var(--admin-gray-300); border-radius: 3px; color: var(--admin-gray-700); font-size: 12px; cursor: pointer; padding: 4px 9px; min-height: 24px; }
+.rowDup:hover:not(:disabled) { border-color: var(--admin-forest); color: var(--admin-forest); background: var(--admin-status-success-bg); }
 /* The job name is the thing a leader reaches for when they want to change a
    job, so it is the edit trigger too — the small "Edit" button alone was not
    discoverable. */
-.rowLabelBtn { background: none; border: none; padding: 0; font: inherit; font-weight: 700; color: var(--admin-gray-900, #1a1a1a); cursor: pointer; text-align: left; }
-.rowLabelBtn:hover:not(:disabled) { text-decoration: underline; color: #1e3a4a; }
+.rowLabelBtn { background: none; border: none; padding: 0; font: inherit; font-weight: 700; color: var(--admin-gray-900); cursor: pointer; text-align: left; }
+.rowLabelBtn:hover:not(:disabled) { text-decoration: underline; color: var(--admin-navy); }
 .addRow { display: flex; gap: 7px; flex-wrap: wrap; align-items: flex-end; }
 /* The add form used to sit *below* the jobs table as a bare row of inputs,
    where it read as a blank last row of the list and drifted a row further
    down the page with every job added. Above the list, in a titled box, it
    stays put and reads as a form. */
-.addCard { border: 1px solid var(--admin-gray-300, #ccc); border-radius: 4px; background: #fafbfc; padding: 12px 13px; margin-bottom: 14px; }
-.addCard h3 { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--admin-gray-700, #444); margin-bottom: 9px; }
+.addCard { border: 1px solid var(--admin-gray-300); border-radius: 4px; background: var(--admin-gray-50); padding: 12px 13px; margin-bottom: 14px; }
+.addCard h3 { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--admin-gray-700); margin-bottom: 9px; }
 .addCardActions { display: flex; gap: 12px; align-items: center; margin-top: 11px; flex-wrap: wrap; }
 .addField { display: flex; flex-direction: column; gap: 3px; }
-.addFieldLabel { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--admin-gray-600, #666); }
-.okNote { color: #3d5a3e; font-size: 12.5px; font-weight: 600; margin: 0; }
-.addHint { font-size: 11.5px; color: var(--admin-gray-600, #666); }
+.addFieldLabel { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--admin-gray-600); }
+.okNote { color: var(--admin-forest); font-size: 12.5px; font-weight: 600; margin: 0; }
+.addHint { font-size: 11.5px; color: var(--admin-gray-600); }
 /* Description gets its own full-width row rather than a slot in the wrapping
    field strip — it's prose, and a 170px box alongside seven other controls
    invites one-word entries.
@@ -86,38 +86,38 @@
    flex item and lands the same width as the "needed" box. In the add card it
    is a plain block child and the basis is simply ignored. */
 .addDescField { display: flex; flex-direction: column; gap: 3px; margin-top: 9px; flex: 1 0 100%; width: 100%; min-width: 0; }
-.addDescField > input, .addDescField > textarea { width: 100%; box-sizing: border-box; padding: 6px 9px; border: 1px solid var(--admin-gray-300, #ccc); border-radius: 3px; font-size: 13px; font-family: inherit; }
+.addDescField > input, .addDescField > textarea { width: 100%; box-sizing: border-box; padding: 6px 9px; border: 1px solid var(--admin-gray-300); border-radius: 3px; font-size: 13px; font-family: inherit; }
 .addDescField > textarea { resize: vertical; line-height: 1.45; min-height: 48px; }
-.rowDesc { display: block; font-size: 11.5px; color: var(--admin-gray-600, #666); font-weight: 400; line-height: 1.45; margin-top: 2px; }
+.rowDesc { display: block; font-size: 11.5px; color: var(--admin-gray-600); font-weight: 400; line-height: 1.45; margin-top: 2px; }
 /* Child combinator on purpose: DatePickerField renders its own nested
    <input>, and a plain `.addRow input` descendant selector would also catch
    that inner input, fighting the component's own border/padding. `.inlineChk
    input` keeps the existing "needs attendance" checkbox (nested one level
    inside its own label) styled exactly as before. */
 .addRow > input, .addRow > select, .addRow .inlineChk input,
-.addField > input, .addField > select { padding: 6px 9px; border: 1px solid var(--admin-gray-300, #ccc); border-radius: 3px; font-size: 13px; font-family: inherit; }
+.addField > input, .addField > select { padding: 6px 9px; border: 1px solid var(--admin-gray-300); border-radius: 3px; font-size: 13px; font-family: inherit; }
 .addRow > input[type="text"], .addRow > input:not([type]),
 .addField > input[type="text"], .addField > input:not([type]) { min-width: 170px; }
 .dateField { width: 150px; }
 .inlineChk { display: flex; align-items: center; gap: 5px; font-size: 12.5px; }
 .coverList { list-style: none; font-size: 13px; }
-.coverList li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--admin-gray-100, #f0f0f0); }
+.coverList li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--admin-gray-100); }
 .coverList li:last-child { border-bottom: none; }
-.covFull { color: var(--admin-gray-600, #666); }
-.covShort { color: #8b6914; font-weight: 600; }
-.nrList { font-size: 13px; line-height: 1.7; color: var(--admin-gray-700, #444); }
+.covFull { color: var(--admin-gray-600); }
+.covShort { color: var(--admin-accent-gold); font-weight: 600; }
+.nrList { font-size: 13px; line-height: 1.7; color: var(--admin-gray-700); }
 @media print { .enableBtn, .actions, .actionLink, .actionLinkMuted { display: none; } }
-.rowAnswers { display: block; font-size: 11.5px; color: #2f6b7a; margin-top: 2px; }
+.rowAnswers { display: block; font-size: 11.5px; color: var(--admin-navy-light); margin-top: 2px; }
 /* 24px min target + real separation between Edit and the destructive Remove:
    these sit in the same cell and a 40-job build session is a lot of chances
    to hit the wrong one. */
 .rowActions { display: flex; gap: 14px; white-space: nowrap; align-items: center; justify-content: flex-end; }
-.rowEdit { background: none; border: 1px solid var(--admin-gray-300, #ccc); border-radius: 3px; color: #1e3a4a; font-size: 12px; font-weight: 700; cursor: pointer; padding: 4px 9px; min-height: 24px; }
-.rowEdit:hover:not(:disabled) { border-color: #1e3a4a; background: #f6f9fb; }
-.editRow { background: #f6f9fb; }
-.removedBlock { margin-top: 16px; padding-top: 12px; border-top: 1px dashed var(--admin-gray-300, #ccc); }
-.dangerPanel { background: #fff; border: 1px solid #e3c9c4; border-left: 3px solid #a04a3d; border-radius: 5px; padding: 16px; }
-.dangerPanel h2 { font-size: 14px; font-weight: 700; color: #a04a3d; margin-bottom: 4px; }
+.rowEdit { background: none; border: 1px solid var(--admin-gray-300); border-radius: 3px; color: var(--admin-navy); font-size: 12px; font-weight: 700; cursor: pointer; padding: 4px 9px; min-height: 24px; }
+.rowEdit:hover:not(:disabled) { border-color: var(--admin-navy); background: var(--admin-status-info-bg); }
+.editRow { background: var(--admin-status-info-bg); }
+.removedBlock { margin-top: 16px; padding-top: 12px; border-top: 1px dashed var(--admin-gray-300); }
+.dangerPanel { background: var(--admin-white); border: 1px solid color-mix(in srgb, var(--admin-danger) 30%, white); border-left: 3px solid var(--admin-danger); border-radius: 5px; padding: 16px; }
+.dangerPanel h2 { font-size: 14px; font-weight: 700; color: var(--admin-danger); margin-bottom: 4px; }
 /* Canonical outlined danger (Phase A decision, 2026-08-21) — was the
    workspace's lone SOLID danger button; solid is now reserved for the
    confirm inside a danger Dialog. */

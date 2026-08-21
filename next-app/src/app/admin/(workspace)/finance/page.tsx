@@ -222,7 +222,7 @@ export default async function FinancePage({
             placeholder="0.00"
             defaultValue={amountMin ?? ''}
             aria-label="Filter: minimum amount"
-            style={{ width: '5.5rem' }}
+            className={styles.amountInput}
           />
         </label>
         <label className={styles.toolbarField}>
@@ -235,7 +235,7 @@ export default async function FinancePage({
             placeholder="any"
             defaultValue={amountMax ?? ''}
             aria-label="Filter: maximum amount"
-            style={{ width: '5.5rem' }}
+            className={styles.amountInput}
           />
         </label>
         {/* Sort survives a filter change — carried as hidden fields rather

@@ -140,7 +140,12 @@ export function HasNeedsTool({ ranks, scouts }: { ranks: PickerRank[]; scouts: R
               <div className={styles.rankRows}>
                 {rows.map((row) =>
                   row.isLeaf ? (
-                    <div key={row.key} className={styles.reqRow} style={{ paddingLeft: row.depth * 14 }}>
+                    <div
+                      key={row.key}
+                      className={styles.reqRow}
+                      // inline: dynamic — indent depth comes from the requirement tree
+                      style={{ paddingLeft: row.depth * 14 }}
+                    >
                       <input
                         type="checkbox"
                         id={row.key}
@@ -156,6 +161,7 @@ export function HasNeedsTool({ ranks, scouts }: { ranks: PickerRank[]; scouts: R
                     <div
                       key={row.key}
                       className={styles.groupRow}
+                      // inline: dynamic — indent depth comes from the requirement tree
                       style={{ paddingLeft: row.depth * 14 }}
                     >
                       <span className={styles.reqCode}>{row.code}</span> {row.label}

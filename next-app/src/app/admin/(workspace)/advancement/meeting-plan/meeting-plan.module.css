@@ -162,7 +162,7 @@
   font-weight: 700;
   letter-spacing: .04em;
   text-transform: uppercase;
-  color: var(--admin-bark, #8b6914);
+  color: var(--admin-accent-gold);
 }
 .sessionCard h3 {
   font-size: 14.5px;
@@ -186,8 +186,8 @@
   border-radius: 2px;
 }
 .tagYouth {
-  background: #f5eeda;
-  color: #8b6914;
+  background: var(--admin-status-warning-bg);
+  color: var(--admin-accent-gold);
 }
 .tagAdult {
   background: var(--admin-navy);
@@ -276,7 +276,7 @@
   font-family: Menlo, Consolas, monospace;
   font-size: 10.5px;
   font-weight: 700;
-  color: var(--admin-bark, #8b6914);
+  color: var(--admin-accent-gold);
   white-space: nowrap;
 }
 .sRef {
@@ -312,7 +312,7 @@
 }
 .rosterPanelYouth {
   composes: rosterPanel;
-  border-top-color: var(--admin-bark, #8b6914);
+  border-top-color: var(--admin-accent-gold);
 }
 .rosterPanel h2 {
   font-size: 15px;
@@ -406,3 +406,9 @@
   border: 1px solid var(--admin-gray-200);
   border-radius: var(--admin-radius);
 }
+
+/* Phase C modifiers — were inline styles in plan-view.tsx. */
+.alignRight { text-align: right; }
+.colScout { width: 18%; }
+.colRank { width: 12%; }
+.colCampout { width: 28%; }

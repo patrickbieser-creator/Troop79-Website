@@ -146,6 +146,7 @@ export default async function EventSignupsAdminPage() {
               <tr key={r.id}>
                 <td>
                   <span className={styles.evTitle}>{r.title}</span>
+                  {/* inline: dynamic — category color comes from the calendar_categories lookup */}
                   <span className={styles.evCat} style={{ color: colorFor(colors, r.category) }}>
                     {r.category}
                   </span>
