@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Session Summary — Design System Completion &amp; Tail (2026-08-21)</title>
+<style>
+  :root {
+    --nw-teal: #1e3a4a;   /* Troop 79 navy (BRAND.md primary) */
+    --nw-green: #3d5a3e;  /* Troop 79 forest (BRAND.md accent) */
+    --paper: #faf6ef;
+    --ink: #2a2a2a;
+    --meta: #6d7580;
+    --line: #e2e4e8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 15px; color: var(--ink); background: var(--paper); line-height: 1.55; }
+  .header { background: var(--nw-teal); color: #fff; padding: 40px 64px; }
+  .header .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.6); margin-bottom: 8px; }
+  .header h1 { font-size: 30px; font-weight: 600; margin-bottom: 6px; }
+  .header .sub { font-size: 14px; color: rgba(255,255,255,.75); }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 36px 24px 64px; }
+  h2 { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--nw-green); border-bottom: 2px solid var(--nw-green); padding-bottom: 6px; margin: 36px 0 14px; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .metric { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+  .metric .num { font-size: 26px; font-weight: 700; color: var(--nw-teal); }
+  .metric .lbl { font-size: 12px; color: var(--meta); margin-top: 2px; }
+  ul { padding-left: 22px; }
+  li { margin-bottom: 9px; }
+  .card { background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--nw-green); border-radius: 4px; padding: 14px 18px; margin-bottom: 12px; }
+  .card.warn { border-left-color: #c0392b; }
+  .card .t { font-weight: 700; color: var(--nw-teal); }
+  code { background: #f0f1f3; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+  .footer { text-align: center; font-size: 12px; color: var(--meta); padding: 24px; border-top: 1px solid var(--line); margin-top: 40px; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); font-size: 13.5px; }
+  th { text-align: left; background: #f0f1f3; padding: 8px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--meta); }
+  td { padding: 8px 12px; border-top: 1px solid var(--line); vertical-align: top; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="eyebrow">Troop 79 &middot; Session Summary &middot; Operator</div>
+  <h1>Design System Completion &amp; Tail</h1>
+  <div class="sub">August 21, 2026 &middot; 1:19 PM CDT &middot; v1.60.0 &rarr; v1.62.0 &middot; www.troop-79.com</div>
+</div>
+<div class="wrap">
+
+  <h2>Key Metrics</h2>
+  <div class="metrics">
+    <div class="metric"><div class="num">3</div><div class="lbl">Releases shipped (v1.60–v1.62)</div></div>
+    <div class="metric"><div class="num">6</div><div class="lbl">Decisions recorded (D-166–171)</div></div>
+    <div class="metric"><div class="num">678</div><div class="lbl">Tests (671 → 678, failing-first)</div></div>
+    <div class="metric"><div class="num">170&rarr;12</div><div class="lbl">Inline styles (survivors dynamic)</div></div>
+    <div class="metric"><div class="num">&minus;84%</div><div class="lbl">Raw hex in admin CSS</div></div>
+    <div class="metric"><div class="num">0</div><div class="lbl">Public-token reads &middot; non-Dialog modals</div></div>
+  </div>
+
+  <h2>What Was Accomplished</h2>
+  <ul>
+    <li><strong>Phase C (v1.60.0)</strong> — the inline-style + hex-literal sweep across all ~35 admin screens: inline <code>style={{}}</code> 170&rarr;12 (each survivor genuinely dynamic and commented), hex 371&rarr;59, public-token reads 229&rarr;0. New <code>--admin-font-*</code> tokens and the <code>--admin-preview-*</code> alias block; the login page got a real stylesheet. Discovery: there are <em>two</em> <code>library.module.css</code> files — the &ldquo;radioactive&rdquo; rule only binds the public one.</li>
+    <li><strong>Phase D (v1.61.0)</strong> — closeout: all 15 styleguide scoreboard rows struck. The eyebrow-label family retired (~96 <code>adminLabel</code> call sites, drifted variants folded to the scale, override-specificity rule documented).</li>
+    <li><strong>Tail (v1.62.0)</strong> — shared Dialog gained <code>closeOnBackdrop</code>/<code>onBackdropAttempt</code>; fast-entry&rsquo;s MB focus modal and the media picker converted — <strong>zero non-Dialog modals remain</strong>, nested pickers stack via the platform top layer. Shared SortHeader adopted by four tables; duplicate row-Edit controls dropped (calendar, roster, news); roster field CSS converged onto lookups&rsquo; imports; categorical rank/MB tints normalized onto new tokens (the cross-screen color <em>inversion</em> is dead); &ldquo;Universal Ledger&rdquo; renamed &ldquo;Advancement Ledger&rdquo;.</li>
+    <li><strong>Hygiene batch</strong> — dead <code>supabase/client.ts</code>, orphaned <code>.gate</code>, stale &ldquo;Phase E&rdquo; comments, README key placeholder; retired shared passwords deleted from <code>.env.local</code> and Vercel.</li>
+    <li><strong>Process</strong> — three fork-parallel waves (strict directory ownership, parent runs the gate); every phase landed gate-green with a live browser pass (14 screens in Phase C; MB-modal guard cycle and nested-picker Esc verified interactively). Patrick production-verified Phases A&ndash;D same day. STATE/BACKLOG trimmed (~35K tokens off every future session start); Admin-Design-System plan archived to <code>Plans/Completed/</code>.</li>
+  </ul>
+
+  <h2>Decisions</h2>
+  <table>
+    <tr><th>ID</th><th>Decision</th></tr>
+    <tr><td>D-166</td><td>Admin font tokens + <code>--admin-preview-*</code> alias block — the one sanctioned public-palette coupling, preview surfaces only.</td></tr>
+    <tr><td>D-167</td><td>Two <code>library.module.css</code> files; the admin copy is admin-only and fully tokenized.</td></tr>
+    <tr><td>D-168</td><td>Eyebrow-label canon: <code>.adminLabel</code> everywhere, drift folds to scale, overrides must out-specify (0,1,0).</td></tr>
+    <tr><td>D-169</td><td>Categorical tint canon: rank = navy/blue-gray, MB = forest/green on all four screens; inverted palette retired.</td></tr>
+    <tr><td>D-170</td><td>Dialog close ownership via <code>closeOnBackdrop</code>/<code>onBackdropAttempt</code>; zero non-Dialog modals.</td></tr>
+    <tr><td>D-171</td><td>SortHeader contract: <code>initialKey: null</code> preserves deliberate default orders; finance&rsquo;s server sort stays separate.</td></tr>
+  </table>
+
+  <h2>Open Items / Next Steps</h2>
+  <div class="card warn"><span class="t">B-004 — rotate SUPABASE_DB_PASSWORD.</span> The live value was echoed into the assistant transcript during the env cleanup. Same rotation recipe as B-002; local-machine credential only, no production exposure.</div>
+  <div class="card"><span class="t">Patrick&rsquo;s color pick:</span> ledger&rsquo;s Hiking chip now nearly matches the rank chip — needs its own tint.</div>
+  <div class="card"><span class="t">Parking lot:</span> Health Forms awaits a committee decision (reverses the 2026-07-13 no-medical-content policy).</div>
+  <div class="card"><span class="t">Plugin tuning:</span> split init out of start-session, slim the preflight&rsquo;s STATE embed, add a <code>model_ack</code> opt-out — via the drift-check PR flow.</div>
+
+</div>
+<div class="footer">Troop 79 &middot; Operator session summary &middot; Generated 2026-08-21 01:19 PM CDT</div>
+</body>
+</html>

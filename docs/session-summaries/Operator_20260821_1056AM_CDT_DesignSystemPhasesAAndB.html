@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Session Summary — Design System Phases A &amp; B</title>
+<style>
+  :root {
+    --nw-teal: #1e3a4a;
+    --nw-green: #3d5a3e;
+    --gray-dark: #4b4b4b;
+    --gray-med: #7e7e7e;
+    --gray-light: #e6e6e6;
+    --pale: #eef1ea;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 14px; color: var(--gray-dark); background: var(--pale); }
+  .header { background: var(--nw-teal); color: #fff; padding: 40px 72px; }
+  .header-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.55); margin-bottom: 10px; }
+  .header h1 { font-size: 30px; font-weight: 500; margin-bottom: 6px; }
+  .header-sub { font-size: 13px; color: rgba(255,255,255,.7); }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 40px 72px 72px; }
+  h2 { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); padding-bottom: 8px; margin: 36px 0 16px; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 18px; }
+  .metric { background: #fff; border: 1px solid var(--gray-light); border-radius: 6px; padding: 14px 16px; }
+  .metric .n { font-size: 26px; font-weight: 700; color: var(--nw-teal); }
+  .metric .l { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gray-med); margin-top: 2px; }
+  ul { margin: 0 0 14px 20px; line-height: 1.65; }
+  li { margin-bottom: 8px; }
+  p { line-height: 1.65; margin-bottom: 12px; }
+  strong { color: var(--nw-teal); }
+  code { background: #fff; border: 1px solid var(--gray-light); border-radius: 3px; padding: 1px 5px; font-size: 12.5px; }
+  .decision { background: #fff; border: 1px solid var(--gray-light); border-left: 4px solid var(--nw-green); border-radius: 4px; padding: 12px 16px; margin-bottom: 10px; }
+  .decision .id { font-weight: 700; color: var(--nw-teal); }
+  .footer { text-align: center; font-size: 11px; color: var(--gray-med); padding: 24px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-eyebrow">Operator Session Summary · Troop 79 Website</div>
+  <h1>Design System Phases A &amp; B — Shipped</h1>
+  <div class="header-sub">August 21, 2026 · 10:56 AM CDT · v1.58.0 + v1.59.0 · production deploys verified Ready</div>
+</div>
+<div class="wrap">
+
+  <h2>Key Metrics</h2>
+  <div class="metrics">
+    <div class="metric"><div class="n">2</div><div class="l">Releases shipped</div></div>
+    <div class="metric"><div class="n">~156</div><div class="l">Files changed</div></div>
+    <div class="metric"><div class="n">671</div><div class="l">Tests (650 → 671)</div></div>
+    <div class="metric"><div class="n">7</div><div class="l">Shared components live</div></div>
+    <div class="metric"><div class="n">2</div><div class="l">Decisions recorded</div></div>
+    <div class="metric"><div class="n">0</div><div class="l">Migrations</div></div>
+  </div>
+
+  <h2>What Was Accomplished</h2>
+  <p><strong>Phase A (v1.58.0)</strong> — the shared <code>Dialog</code> implementing Patrick's approved spec
+  replaced all five legacy <code>&lt;dialog&gt;</code> copies (delivering the centering fix three screens never had,
+  and a red-banded danger variant for Delete Photo); the shared <code>Badge</code> collapsed four status-pill naming
+  families across nine screens; AddButton adoption finished (lookups ×7, roster's navy one-off → green, roll-call's
+  seed clone); and Patrick's three button decisions were made and applied — primaries are navy, destructive buttons
+  are outlined in context with solid red reserved for danger-dialog confirms, and green stays reserved for
+  Add/create. The <code>.adminLabel</code> eyebrow utility shipped in <code>admin.css</code>.</p>
+  <p><strong>Phase B (v1.59.0)</strong> — the shared <code>PageTitle</code> replaced the header block 26 stylesheets
+  re-declared verbatim (~33 pages), and the shared <code>Notice</code> replaced the four error/success box families
+  with proper <code>alert</code>/<code>status</code> semantics. Patrick's two Phase B calls: all four non-pill tab
+  variants folded into the pill TabStrip (including the Library workstation — done without touching the
+  public-shared stylesheet, closing the D-160 backlog item), and Meeting Plan's navy table header normalized. Every
+  remaining modal joined the shared Dialog — ledger, finance ×6, the MB editor, the wide scout form — including two
+  hand-rolled overlays (PersonEditor, adult-form) that finally gained Esc and backdrop-click close. Both table
+  clusters and the card/panel family were normalized to canon, and Access &amp; Permissions came fully off rem units
+  and its tan palette onto tokens.</p>
+  <p><strong>Process</strong> — Phase B's ~100-file sweep ran as <strong>three parallel Fable forks</strong> with
+  strict directory ownership and a parent integration pass; integration surfaced four small issues (one missing
+  import, two lint warnings, one dead-CSS block). Every gate ran green (lint / typecheck / 671 tests / build) and
+  representative screens were browser-verified in dev, including the converted overlays' new Esc behavior.</p>
+
+  <h2>Decisions</h2>
+  <div class="decision"><span class="id">D-164</span> — Phase A canon: navy primaries, ruled danger buttons
+  (outlined in context, solid only in danger dialogs), roster's Add goes green; shared Dialog/Badge ship it.
+  Recon correction recorded: meetings' dialog CSS was live, not dead — 5 conversion sites, not 4.</div>
+  <div class="decision"><span class="id">D-165</span> — Phase B canon: fold ALL tab variants into the pill
+  TabStrip; normalize meeting-plan's navy header; PageTitle/Notice components; width-only per-screen dialog
+  classes via doubled selectors. Fork-parallel execution pattern validated for wide mechanical passes.</div>
+
+  <h2>Next Steps</h2>
+  <ul>
+    <li><strong>Phase C</strong> (recommended: fresh session) — inline-style sweep (170 sites), hex reduction ≥80%
+    (344 occurrences), zero public-token reads (~136 convertible), phantom renames, table outliers. Recon baselines
+    and per-file counts are already in STATE.md so the next session can skip the greps.</li>
+    <li>Dialog <code>closeOnBackdrop</code> prop → convert fast-entry's mb-focus-modal (the one dialog exception).</li>
+    <li>Library workstation scoped pass — own admin stylesheet, then quick-add dialog + statusPill onto shared components.</li>
+    <li>Patrick: authenticated production click-through of v1.58.0/v1.59.0; Meeting Plan's plan view needs eyes
+    next time a published plan exists.</li>
+    <li>Deferred Section 2 behavior items (backlog): shared SortHeader adoption, stretched-link row actions,
+    field-CSS import convergence.</li>
+  </ul>
+
+</div>
+<div class="footer">Generated by Operator · Troop 79 Website · 2026-08-21</div>
+</body>
+</html>
