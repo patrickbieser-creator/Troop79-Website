@@ -12,6 +12,7 @@ import { getPublicMeetingForEntry, getPublishedMeetingNav } from '@/lib/meetings
 import { ArticleBody } from '@/lib/article-body/ArticleBody';
 import { centralToday } from '@/lib/dates';
 import { MeetingAgenda } from './meeting-agenda';
+import { Notice } from '@/app/_components/notice';
 import styles from './event-detail.module.css';
 
 /*
@@ -353,9 +354,9 @@ export default async function EventDetailPage({
             ) : (
               <>
                 {signedUp.length > 0 && (
-                  <p className={styles.savedNote}>
+                  <Notice tone="success" className={styles.noticeGapBottom}>
                     ✓ You&rsquo;re signed up: <strong>{signedUp.join(', ')}</strong>
-                  </p>
+                  </Notice>
                 )}
                 <p className={styles.signupCta}>
                   <Link href={`/events/${entry.id}/signup`} className={styles.gateBtn}>

@@ -31,10 +31,11 @@ import {
   passkeyRegisterVerifyAction,
   deletePasskeyAction
 } from '../signin/actions';
-// Page furniture (kicker, title, rule, column widths) comes from the same
-// stylesheet /signin and /library use — a bare <main> renders unstyled
-// against this shell, which is exactly how this page first shipped.
-import shell from '../library/library.module.css';
+import { PageHeader } from '@/app/_components/page-header';
+import { PageShell } from '@/app/_components/page-shell';
+import { Button } from '@/app/_components/button';
+import { Badge } from '@/app/_components/badge';
+import surface from '@/app/_components/card.module.css';
 import styles from './member.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -92,12 +93,8 @@ export default async function MemberPage() {
   if (!session) {
     return (
       <>
-        <div className={shell.pageHeader}>
-          <p className={shell.kicker}>Members</p>
-          <h1 className={shell.pageTitle}>Member Sign In</h1>
-          <div className={shell.headRule} />
-        </div>
-        <main className={`${shell.main} ${shell.mainNarrow}`}>
+        <PageHeader kicker="Members" title="Member Sign In" />
+        <PageShell width="narrow">
           <div className={styles.gate}>
           <p>
             This is where your own troop information lives &mdash; your household&rsquo;s details
@@ -109,12 +106,9 @@ export default async function MemberPage() {
             we&rsquo;ll send a one-time code to the address we already have for you.
           </p>
           <p style={{ marginTop: '1.5rem' }}>
-            <Link
-              className={styles.signInBtn}
-              href={`/signin?next=${encodeURIComponent('/member')}`}
-            >
+            <Button variant="primary" href={`/signin?next=${encodeURIComponent('/member')}`}>
               Sign in
-            </Link>
+            </Button>
           </p>
           <p style={{ fontSize: '0.9rem' }}>
             Trouble signing in? Ask a leader &mdash; they can check what address we have for you.
@@ -123,7 +117,7 @@ export default async function MemberPage() {
             Leaders working in the admin: <Link href="/admin/login">troop leader sign in</Link>.
           </p>
           </div>
-        </main>
+        </PageShell>
       </>
     );
   }
@@ -134,12 +128,8 @@ export default async function MemberPage() {
 
   return (
     <>
-      <div className={shell.pageHeader}>
-        <p className={shell.kicker}>Members</p>
-        <h1 className={shell.pageTitle}>Members</h1>
-        <div className={shell.headRule} />
-      </div>
-      <main className={shell.main}>
+      <PageHeader kicker="Members" title="Members" />
+      <PageShell>
         <div className={styles.identityRow}>
           <p className={styles.intro}>
             Signed in as <strong>{session.displayName}</strong>. Everything here is yours &mdash;
@@ -166,7 +156,11 @@ export default async function MemberPage() {
 
           if (live) {
             return (
-              <Link key={card.title} href={card.href!} className={`${styles.card} ${styles.cardLive}`}>
+              <Link
+                key={card.title}
+                href={card.href!}
+                className={`${surface.card} ${styles.card} ${styles.cardLive}`}
+              >
                 <p className={styles.cardTitle}>{card.title}</p>
                 <p className={styles.cardBody}>{card.body}</p>
               </Link>
@@ -175,10 +169,10 @@ export default async function MemberPage() {
 
           const blockedForScout = card.href != null && card.adultOnly && !isAdult;
           return (
-            <div key={card.title} className={`${styles.card} ${styles.cardSoon}`}>
+            <div key={card.title} className={`${surface.card} ${styles.card} ${styles.cardSoon}`}>
               <p className={styles.cardTitle}>
                 {card.title}
-                <span className={styles.soonTag}>{blockedForScout ? 'Parents' : 'Soon'}</span>
+                <Badge tone="neutral">{blockedForScout ? 'Parents' : 'Soon'}</Badge>
               </p>
               <p className={styles.cardBody}>
                 {blockedForScout
@@ -205,7 +199,7 @@ export default async function MemberPage() {
           what&rsquo;s coming &mdash; if one of them would save you a phone call, tell a leader and
           it&rsquo;ll move up the list.
         </p>
-      </main>
+      </PageShell>
     </>
   );
 }

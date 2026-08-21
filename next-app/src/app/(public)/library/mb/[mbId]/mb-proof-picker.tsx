@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { Button } from '@/app/_components/button';
+import { FormCard, FieldHint } from '@/app/_components/form';
 import styles from '../../library.module.css';
 
 /**
@@ -65,27 +67,30 @@ export default function MbProofPicker({
 
   if (scoutBlocked) {
     return (
-      <div className={styles.formCard} style={{ marginTop: 16 }}>
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, marginBottom: 4 }}>
-          I did this
-        </h2>
-        <p className={styles.fieldHint}>
-          Scouts: proof can&rsquo;t be submitted from this login yet — ask a parent to send it
-          in, or show a leader in person.
-        </p>
+      <div style={{ marginTop: 16 }}>
+        <FormCard>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, marginBottom: 4 }}>
+            I did this
+          </h2>
+          <FieldHint>
+            Scouts: proof can&rsquo;t be submitted from this login yet — ask a parent to send it
+            in, or show a leader in person.
+          </FieldHint>
+        </FormCard>
       </div>
     );
   }
 
   return (
-    <div className={styles.formCard} style={{ marginTop: 16 }}>
+    <div style={{ marginTop: 16 }}>
+      <FormCard>
       <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, marginBottom: 4 }}>
         I did this
       </h2>
-      <p className={styles.fieldHint} style={{ marginBottom: 14 }}>
+      <FieldHint>
         Pick the requirement you completed. A leader reviews your submission before it
         counts.
-      </p>
+      </FieldHint>
 
       <div className={styles.proofGroupList}>
         {groups.map((g) =>
@@ -127,14 +132,19 @@ export default function MbProofPicker({
       </div>
 
       {proofHref ? (
-        <a className={styles.btnPrimary} href={proofHref} style={{ marginTop: 14 }}>
-          Continue →
-        </a>
+        <p style={{ marginTop: 14, marginBottom: 0 }}>
+          <Button variant="primary" href={proofHref}>
+            Continue →
+          </Button>
+        </p>
       ) : (
-        <button className={styles.btnSecondary} type="button" disabled style={{ marginTop: 14 }}>
-          Continue →
-        </button>
+        <p style={{ marginTop: 14, marginBottom: 0 }}>
+          <Button variant="secondary" disabled>
+            Continue →
+          </Button>
+        </p>
       )}
+      </FormCard>
     </div>
   );
 }

@@ -1,30 +1,13 @@
-.success {
-  background: #eef2ee;
-  border-left: 3px solid #3d7a4a;
-  padding: 0.6rem 0.9rem;
-  border-radius: 0 4px 4px 0;
-  color: #2f5f39;
-  font-size: 0.9rem;
+/* Status boxes are the shared Notice now; this only spaces them. */
+.noticeGap {
   margin-bottom: 1rem;
 }
 
-.error {
-  background: #fdf0ef;
-  border-left: 3px solid #8c3b3b;
-  padding: 0.6rem 0.9rem;
-  border-radius: 0 4px 4px 0;
-  color: #8c3b3b;
-  font-size: 0.9rem;
-  margin-bottom: 1rem;
-}
-
+/* Surface from the shared card primitive; grid layout only. */
 .form {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
   gap: 0.9rem;
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  background: #fff;
   padding: 1.1rem 1.2rem;
   margin-bottom: 2rem;
   align-items: end;
@@ -67,10 +50,8 @@
   gap: 0.75rem;
 }
 
+/* Surface from the shared card primitive; layout only. */
 .requestItem {
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  background: #fff;
   padding: 0.85rem 1rem;
 }
 
@@ -101,46 +82,6 @@
   color: #8c3b3b;
 }
 
-.statusTag {
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  padding: 0.15rem 0.5rem;
-  border-radius: 10px;
-  background: #ece5d6;
-  color: #6b6355;
-}
-.status_submitted {
-  background: #fdf3d6;
-  color: #8b6914;
-}
-.status_approved {
-  background: #e3eee5;
-  color: #3d7a4a;
-}
-.status_paid {
-  background: #e0e7ef;
-  color: #22333b;
-}
-.status_denied {
-  background: #fdece9;
-  color: #8c3b3b;
-}
-.status_withdrawn {
-  background: #ece5d6;
-  color: #857c6c;
-}
-
-.withdrawBtn {
+.withdrawRow {
   margin-top: 0.5rem;
-  background: none;
-  border: none;
-  padding: 0;
-  font: inherit;
-  font-size: 0.85rem;
-  color: #8c3b3b;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  cursor: pointer;
 }

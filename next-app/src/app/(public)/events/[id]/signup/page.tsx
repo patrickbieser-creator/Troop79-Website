@@ -15,6 +15,7 @@ import HouseholdPicker from '../household-picker';
 import SlotFirstForm from '../slot-first-form';
 import PersonFirstForm from '../person-first-form';
 import { TrackOnMount } from '../../../_components/track-on-mount';
+import { Notice } from '@/app/_components/notice';
 import styles from '../event-detail.module.css';
 
 /*
@@ -205,11 +206,11 @@ export default async function EventSignupPage({
               </button>
             </div>
             {sp.gate === 'bad-password' && (
-              <p className={styles.gateErr}>That password didn&rsquo;t match. Try again.</p>
+              <Notice tone="error" className={styles.noticeGapTop}>That password didn&rsquo;t match. Try again.</Notice>
             )}
-            {sp.gate === 'missing' && <p className={styles.gateErr}>Please enter the troop password.</p>}
+            {sp.gate === 'missing' && <Notice tone="error" className={styles.noticeGapTop}>Please enter the troop password.</Notice>}
             {sp.gate === 'not-configured' && (
-              <p className={styles.gateErr}>The family gate isn&rsquo;t configured on this server.</p>
+              <Notice tone="error" className={styles.noticeGapTop}>The family gate isn&rsquo;t configured on this server.</Notice>
             )}
           </form>
         )
@@ -218,20 +219,20 @@ export default async function EventSignupPage({
           {sp.saved && (
             <>
               <TrackOnMount event="event_signup_complete" params={{ event_id: entry.id }} />
-              <p className={styles.savedNote}>
+              <Notice tone="success" className={styles.noticeGapBottom}>
                 ✓ Your signup is saved. You can come back and change it until the deadline.
-              </p>
+              </Notice>
             </>
           )}
           {sp.signedout && (
-            <p className={styles.savedNote}>✓ Signed out of the family gate on this device.</p>
+            <Notice tone="success" className={styles.noticeGapBottom}>✓ Signed out of the family gate on this device.</Notice>
           )}
           {sp.cancelled && (
-            <p className={styles.savedNote}>
+            <Notice tone="success" className={styles.noticeGapBottom}>
               Your signup was cancelled and your spots went back to the pool.
-            </p>
+            </Notice>
           )}
-          {sp.err && <p className={styles.gateErr}>{sp.err}</p>}
+          {sp.err && <Notice tone="error" className={styles.noticeGapBottom}>{sp.err}</Notice>}
 
           {!household ? (
             <>

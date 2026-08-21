@@ -1,0 +1,10 @@
+/* Shared public page shell — the 1180px/800px content column the audit found
+   written out 17 times in CSS plus 4 more inline. Promoted from
+   library.module.css's .main/.mainNarrow. */
+
+.main {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 24px 24px 80px;
+}
+.narrow { max-width: 800px; }

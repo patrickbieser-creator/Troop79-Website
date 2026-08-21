@@ -8,7 +8,11 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { loadLatestPublishedReport } from '@/lib/advancement-report-store';
 import { PublicReportView } from './_components/PublicReportView';
 import { formatMonthDayYear } from '@/lib/advancement-report';
-import styles from '../../library/library.module.css';
+import { PageHeader, KickerSep } from '@/app/_components/page-header';
+import { PageShell } from '@/app/_components/page-shell';
+import { Button } from '@/app/_components/button';
+import { Notice } from '@/app/_components/notice';
+import { EmptyState } from '@/app/_components/empty-state';
 import reportStyles from './report.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -23,43 +27,43 @@ export default async function LatestReportPage() {
 
   return (
     <>
-      <div className={styles.pageHeader}>
-        <p className={styles.kicker}>
-          <Link href="/advancement">Advancement</Link>
-          <span className={styles.kickerSep}>·</span>
-          Weekly Report
-        </p>
-        <h1 className={styles.pageTitle}>Weekly Advancement Report</h1>
-        {report && (
-          <p className={styles.pageLede}>
-            {formatMonthDayYear(report.startDate)} – {formatMonthDayYear(report.endDate)}
-          </p>
-        )}
-        <div className={styles.headRule} />
-      </div>
+      <PageHeader
+        kicker={
+          <>
+            <Link href="/advancement">Advancement</Link>
+            <KickerSep />
+            Weekly Report
+          </>
+        }
+        title="Weekly Advancement Report"
+        lede={
+          report ? (
+            <>
+              {formatMonthDayYear(report.startDate)} – {formatMonthDayYear(report.endDate)}
+            </>
+          ) : undefined
+        }
+      />
 
-      <main className={styles.main}>
+      <PageShell>
         {!report ? (
-          <div className={reportStyles.emptyState}>
-            <p>No report has been published yet — check back after the next one goes out.</p>
-          </div>
+          <EmptyState>No report has been published yet — check back after the next one goes out.</EmptyState>
         ) : (
           <>
             {report.note && (
-              <div className={reportStyles.note}>
-                <strong>Editor&rsquo;s note</strong>
-                {report.note}
-              </div>
+              <Notice tone="warning" className={reportStyles.noticeGap}>
+                <strong>Editor&rsquo;s note:</strong> {report.note}
+              </Notice>
             )}
             <PublicReportView report={report} basePath="/advancement/report" />
             <p style={{ marginTop: 24 }}>
-              <Link className={styles.divLink} href="/advancement/report/archive">
+              <Button variant="ghost" href="/advancement/report/archive">
                 See past reports →
-              </Link>
+              </Button>
             </p>
           </>
         )}
-      </main>
+      </PageShell>
     </>
   );
 }

@@ -20,6 +20,8 @@
 
 import { useState, useSyncExternalStore, useTransition } from 'react';
 import { startAuthentication } from '@simplewebauthn/browser';
+import { Button } from '@/app/_components/button';
+import { Notice } from '@/app/_components/notice';
 import styles from './signin.module.css';
 
 
@@ -57,9 +59,9 @@ export function PasskeyButton({
 
   return (
     <div className={styles.passkeyBlock}>
-      <button
-        type="button"
-        className={styles.passkeyBtn}
+      <Button
+        variant="primary"
+        className={styles.fullWidth}
         disabled={pending}
         onClick={() => {
           setError(null);
@@ -90,14 +92,14 @@ export function PasskeyButton({
         }}
       >
         {pending ? 'Waiting for your device…' : 'Sign in with a passkey'}
-      </button>
+      </Button>
       <p className={styles.passkeyHint}>
         One tap, if you&rsquo;ve set one up on this device. Otherwise use the troop password below.
       </p>
       {error ? (
-        <p className={styles.passkeyError} role="alert">
+        <Notice tone="error" className={styles.passkeyNotice}>
           {error}
-        </p>
+        </Notice>
       ) : null}
     </div>
   );

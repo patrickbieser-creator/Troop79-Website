@@ -10,6 +10,8 @@ import { publishedCountsByTarget, loadScoutRankProgress } from '@/lib/library-da
 import { rankReqKey, withViewScout } from '@/lib/library';
 import { resolveLibraryViewer, viewerIsLeader } from '@/lib/library-viewer';
 import { ScoutSwitcher } from '../../_components/scout-switcher';
+import { PageHeader, KickerSep } from '@/app/_components/page-header';
+import { PageShell } from '@/app/_components/page-shell';
 import styles from '../../library.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -48,22 +50,23 @@ export default async function LibraryRankPage({
 
   return (
     <>
-      <div className={styles.pageHeader}>
-        <p className={styles.kicker}>
-          <Link href="/library">Resource Library</Link>
-          <span className={styles.kickerSep}>·</span>
-          {(rank as Rank).display_name}
-        </p>
-        <h1 className={styles.pageTitle}>{(rank as Rank).display_name} Resources</h1>
-        <p className={styles.pageLede}>
-          {total === 0
+      <PageHeader
+        kicker={
+          <>
+            <Link href="/library">Resource Library</Link>
+            <KickerSep />
+            {(rank as Rank).display_name}
+          </>
+        }
+        title={`${(rank as Rank).display_name} Resources`}
+        lede={
+          total === 0
             ? 'Nothing shelved for this rank yet — pick a requirement and be the first to suggest something.'
-            : `${total} resource${total === 1 ? '' : 's'} across this rank's requirements. Pick a requirement to see what the troop recommends.`}
-        </p>
-        <div className={styles.headRule} />
-      </div>
+            : `${total} resource${total === 1 ? '' : 's'} across this rank's requirements. Pick a requirement to see what the troop recommends.`
+        }
+      />
 
-      <main className={styles.main}>
+      <PageShell>
         <ScoutSwitcher viewer={viewer} />
         <div className={styles.rankItem}>
           <div className={styles.reqRows}>
@@ -103,7 +106,7 @@ export default async function LibraryRankPage({
             })}
           </div>
         </div>
-      </main>
+      </PageShell>
     </>
   );
 }

@@ -3,6 +3,9 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import type { SubmitResult } from './actions';
+import { Button } from '@/app/_components/button';
+import { Notice } from '@/app/_components/notice';
+import { Field, TextInput, TextArea } from '@/app/_components/form';
 import styles from './submit.module.css';
 
 export function SubmitStoryForm({
@@ -28,9 +31,8 @@ export function SubmitStoryForm({
         </p>
         <p className={styles.doneActions}>
           <Link href="/news">← Back to news</Link>
-          <button
-            type="button"
-            className={styles.linkBtn}
+          <Button
+            variant="ghost"
             onClick={() => {
               setTitle('');
               setBody('');
@@ -38,7 +40,7 @@ export function SubmitStoryForm({
             }}
           >
             Write another
-          </button>
+          </Button>
         </p>
       </div>
     );
@@ -64,44 +66,44 @@ export function SubmitStoryForm({
         Submitting as <strong>{authorName}</strong>
       </p>
 
-      <label className={styles.field}>
-        <span className={styles.label}>Headline</span>
-        <input
-          className={styles.input}
+      <Field label="Headline">
+        <TextInput
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           maxLength={120}
           placeholder="Winter Camporee, in one word: cold"
           required
         />
-      </label>
+      </Field>
 
-      <label className={styles.field}>
-        <span className={styles.label}>Your story</span>
-        <textarea
-          className={styles.textarea}
+      <Field
+        label="Your story"
+        hint={
+          <>
+            Write it however you like — a leader will tidy up spelling and add photos before it
+            goes up. Don&rsquo;t include anyone&rsquo;s address, phone number or last name.
+          </>
+        }
+      >
+        <TextArea
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={14}
           placeholder="What happened, who was there, and what was the best part?"
           required
         />
-        <span className={styles.hint}>
-          Write it however you like — a leader will tidy up spelling and add photos before it goes
-          up. Don&rsquo;t include anyone&rsquo;s address, phone number or last name.
-        </span>
-      </label>
+      </Field>
 
       {error ? (
-        <p className={styles.error} role="alert">
+        <Notice tone="error" className={styles.errGap}>
           {error}
-        </p>
+        </Notice>
       ) : null}
 
       <div className={styles.actions}>
-        <button type="submit" className={styles.submitBtn} disabled={pending}>
+        <Button variant="primary" type="submit" disabled={pending}>
           {pending ? 'Sending…' : 'Send to the leaders'}
-        </button>
+        </Button>
         <Link href="/news" className={styles.cancel}>
           Cancel
         </Link>

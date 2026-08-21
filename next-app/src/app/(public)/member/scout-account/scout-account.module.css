@@ -22,18 +22,15 @@
   cursor: pointer;
 }
 
+/* Colors/border/radius come from the shared Notice (tone="warning") — this
+   keeps only the banner's flex layout and spacing. */
 .proxyBanner {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  background: #fdf6e3;
-  border: 1px solid #e8d9a8;
-  border-radius: 6px;
-  padding: 0.7rem 1rem;
   margin-bottom: 1.25rem;
-  font-size: 0.9rem;
 }
 
 .balanceGrid {
@@ -43,10 +40,8 @@
   margin-bottom: 1.75rem;
 }
 
+/* Surface from the shared card primitive; layout only. */
 .balanceCard {
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  background: #fff;
   padding: 1rem 1.1rem;
 }
 
@@ -67,10 +62,8 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Surface from the shared card primitive; layout only. */
 .tableWrap {
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  background: #fff;
   overflow-x: auto;
   margin-bottom: 1.5rem;
 }

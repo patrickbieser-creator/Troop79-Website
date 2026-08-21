@@ -10,6 +10,10 @@ import type { LibraryTopic } from '@/lib/supabase/types';
 import { loadPublishedFor } from '@/lib/library-data';
 import { viewerIsLeader } from '@/lib/library-viewer';
 import { ResourceCard } from '../../_components/resource-card';
+import { PageHeader, KickerSep } from '@/app/_components/page-header';
+import { PageShell } from '@/app/_components/page-shell';
+import { EmptyState } from '@/app/_components/empty-state';
+import { Button } from '@/app/_components/button';
 import styles from '../../library.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -34,30 +38,33 @@ export default async function LibraryTopicPage({
 
   return (
     <>
-      <div className={styles.pageHeader}>
-        <p className={styles.kicker}>
-          <Link href="/library">Resource Library</Link>
-          <span className={styles.kickerSep}>·</span>
-          Topic Shelf
-        </p>
-        <h1 className={styles.pageTitle}>
-          {shelf.icon && (
-            <span aria-hidden="true" style={{ marginRight: 12 }}>
-              {shelf.icon}
-            </span>
-          )}
-          {shelf.title}
-        </h1>
-        {shelf.blurb_md && <p className={styles.pageLede}>{shelf.blurb_md}</p>}
-        <div className={styles.headRule} />
-      </div>
+      <PageHeader
+        kicker={
+          <>
+            <Link href="/library">Resource Library</Link>
+            <KickerSep />
+            Topic Shelf
+          </>
+        }
+        title={
+          <>
+            {shelf.icon && (
+              <span aria-hidden="true" style={{ marginRight: 12 }}>
+                {shelf.icon}
+              </span>
+            )}
+            {shelf.title}
+          </>
+        }
+        lede={shelf.blurb_md || undefined}
+      />
 
-      <main className={styles.main}>
+      <PageShell>
         {resources.length === 0 ? (
-          <div className={styles.emptyState}>
+          <EmptyState>
             This shelf is waiting for its first item.{' '}
             <Link href={suggestHref}>Suggest something for it →</Link>
-          </div>
+          </EmptyState>
         ) : (
           <ul className={styles.resourceList}>
             {resources.map((res) => (
@@ -74,11 +81,11 @@ export default async function LibraryTopicPage({
               even if you&rsquo;re not sure it fits.
             </p>
           </div>
-          <Link className={styles.btnPrimary} href={suggestHref}>
+          <Button variant="primary" href={suggestHref}>
             Suggest a Resource
-          </Link>
+          </Button>
         </div>
-      </main>
+      </PageShell>
     </>
   );
 }

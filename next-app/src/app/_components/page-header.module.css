@@ -1,0 +1,40 @@
+/* Shared public PageHeader — promoted verbatim from library.module.css's
+   .pageHeader/.kicker/.pageTitle/.pageLede/.headRule, the de-facto canon the
+   2026-08-21 audit found re-declared across 11 files (+2 pages inline).
+   Canonical rendering: /admin/styleguide/public. Off-grid paddings are the
+   canon's own values; Phase C may fold them onto the --sp-* grid. */
+
+.pageHeader {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 32px 24px 0;
+}
+.kicker {
+  font-family: var(--font-ui);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-meta);
+  margin-bottom: 10px;
+}
+.kicker a { color: var(--navy); }
+.kicker a:hover { color: var(--forest); text-decoration: underline; text-underline-offset: 2px; }
+.kickerSep { margin: 0 6px; color: var(--border-mid); }
+.pageTitle {
+  font-family: var(--font-display);
+  font-weight: 900;
+  color: var(--text-head);
+  font-size: var(--fs-display);
+  line-height: 1.08;
+  margin-bottom: 10px;
+  text-wrap: balance;
+}
+.pageLede {
+  font-family: var(--font-body);
+  font-size: var(--fs-lg);
+  font-style: italic;
+  color: var(--text-meta);
+  line-height: 1.5;
+}
+.headRule { height: 2px; background: var(--border-mid); margin-top: 20px; }

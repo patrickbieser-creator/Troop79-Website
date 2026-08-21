@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { loadArticlesByTag, articleTypeLabel, formatDateLong } from '@/lib/news-feed';
 import type { ArticleCard } from '@/lib/news-feed';
 import styles from '../../../_components/news-cards.module.css';
+import { EmptyState } from '@/app/_components/empty-state';
 
 function catClass(type: ArticleCard['type']): string {
   if (type === 'news') return styles.catNews;
@@ -30,7 +31,7 @@ export default async function TagArchivePage({
       </div>
       <main className={styles.mainContent}>
         {rows.length === 0 ? (
-          <p className={styles.empty}>No articles tagged &ldquo;{tag.name}&rdquo; yet.</p>
+          <EmptyState>No articles tagged &ldquo;{tag.name}&rdquo; yet.</EmptyState>
         ) : (
           <div className={styles.storyGrid} style={{ marginTop: 24 }}>
             {rows.map((a) => (

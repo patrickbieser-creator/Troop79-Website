@@ -1,0 +1,39 @@
+/* Shared public TabStrip — the joined segmented row, promoted from
+   advancement/report's .viewTab/.viewTabActive (canon among 5 re-declaring
+   files: report, events' viewToggle, event-detail's seg, meeting-plan and
+   scout-account tabs). Canonical rendering: /admin/styleguide/public. */
+
+.strip { display: flex; gap: 2px; }
+
+.tab {
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  border: 1px solid var(--border-mid);
+  padding: var(--sp-2) var(--sp-4);
+  cursor: pointer;
+  background: var(--warm-white);
+  color: var(--text-head);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+}
+.tab:first-child { border-radius: var(--rad-sm) 0 0 var(--rad-sm); }
+.tab:last-child { border-radius: 0 var(--rad-sm) var(--rad-sm) 0; }
+.tab:not(:first-child) { border-left: none; }
+.tab:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
+.tab:hover { background: var(--cream); }
+
+.active {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: var(--warm-white);
+}
+.active:hover { background: var(--navy); }
+
+.count {
+  font-size: 10.5px; /* off-scale canon; Phase C may fold to --fs-2xs */
+  font-weight: 700;
+  opacity: 0.75;
+}

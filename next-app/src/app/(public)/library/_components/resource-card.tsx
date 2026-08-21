@@ -11,6 +11,7 @@ import type { PlacedResource } from '@/lib/library-data';
 import type { LibraryResource } from '@/lib/supabase/types';
 import { detectHost, resourceThumbnail, RESOURCE_KIND_ICON, RESOURCE_KIND_LABEL } from '@/lib/library';
 import { TrackedExternalLink } from '../../_components/tracked-external-link';
+import { Badge } from '@/app/_components/badge';
 import styles from '../library.module.css';
 
 export interface AlsoOnLink {
@@ -89,7 +90,7 @@ export function ResourceCard({
         {title}
         {resource.blurb && <p className={styles.resBlurb}>{resource.blurb}</p>}
         <div className={styles.resMetaRow}>
-          <span className={styles.hostChip}>{host}</span>
+          <Badge tone="neutral">{host}</Badge>
           {resource.attribution_label && (
             <span className={styles.resCredit}>{resource.attribution_label}</span>
           )}

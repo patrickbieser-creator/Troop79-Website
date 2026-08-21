@@ -1,0 +1,51 @@
+/* Shared public Badge — the uppercase ui pill (library's .hostChip shape,
+   the canon among 46 pill/badge/tag class names in 16 files). Tones map to
+   the Phase 0 status tokens plus the neutral chip and the khaki/bark
+   "your scout" accent (library's .reqDoneBadge). NOT this component:
+   library's .reqTag (mono requirement-code tag — its own promoted pattern).
+   Canonical rendering: /admin/styleguide/public. */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-family: var(--font-ui);
+  font-size: 10.5px; /* off-scale canon (hostChip); Phase C may fold to --fs-2xs */
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 2px 9px;
+  border-radius: var(--rad-pill);
+  white-space: nowrap;
+}
+
+.neutral {
+  background: var(--cream);
+  color: var(--text-meta);
+  border: 1px solid var(--border-mid);
+}
+.success {
+  background: var(--status-success-bg);
+  color: var(--status-success);
+  border: 1px solid var(--forest-light);
+}
+.warning {
+  background: var(--status-warning-bg);
+  color: var(--status-warning);
+  border: 1px solid var(--khaki);
+}
+.danger {
+  background: var(--status-danger-bg);
+  color: var(--status-danger);
+  border: 1px solid color-mix(in srgb, var(--status-danger) 35%, var(--border-mid));
+}
+.info {
+  background: var(--status-info-bg);
+  color: var(--status-info);
+  border: 1px solid var(--border-mid);
+}
+.accent {
+  background: var(--khaki-light);
+  color: var(--bark);
+  border: 1px solid var(--khaki);
+}

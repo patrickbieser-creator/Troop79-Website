@@ -12,11 +12,10 @@
   margin-bottom: 2rem;
 }
 
+/* Surface (bg/border/radius/shadow) comes from the shared card primitive
+   (_components/card.module.css); only this screen's layout stays here. */
 .card {
   display: block;
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  background: #fff;
   padding: 1rem 1.1rem;
   text-decoration: none;
   color: inherit;
@@ -28,10 +27,12 @@
 .cardLive:hover,
 .cardLive:focus-visible {
   border-color: var(--forest);
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.07);
+  box-shadow: var(--shadow-hover);
 }
 
-.cardSoon {
+/* .card.cardSoon out-specifies the shared surface's background (the admin
+   styleguide's utility-override rule: specificity, never stylesheet order). */
+.card.cardSoon {
   background: #faf7f1;
   border-style: dashed;
   color: var(--text-meta);
@@ -58,18 +59,6 @@
   color: var(--text-meta);
 }
 
-.soonTag {
-  flex-shrink: 0;
-  padding: 0.1rem 0.4rem;
-  border-radius: 3px;
-  background: #ece5d6;
-  color: #6b6355;
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
 .gate {
   max-width: 60ch;
   line-height: 1.6;
@@ -83,24 +72,6 @@
   font-size: 0.88rem;
   color: var(--text-meta);
   line-height: 1.55;
-}
-
-.signInBtn {
-  display: inline-block;
-  background: var(--forest);
-  color: #fff;
-  border-radius: 4px;
-  padding: 0.65rem 1.4rem;
-  font-weight: 700;
-  font-size: 0.9rem;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  text-decoration: none;
-}
-.signInBtn:hover,
-.signInBtn:focus-visible {
-  background: #2f5f39;
-  color: #fff;
 }
 
 .identityRow {
@@ -152,10 +123,8 @@
   }
 }
 
+/* Surface comes from the shared card primitive; layout only here. */
 .passkeySection {
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  background: #fff;
   padding: 1.1rem 1.2rem;
   margin-bottom: 1.75rem;
   max-width: 46rem;
@@ -207,34 +176,6 @@
   cursor: pointer;
 }
 
-.passkeyAdd {
-  background: var(--navy);
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  padding: 0.6rem 1.2rem;
-  font-family: var(--font-ui), inherit;
-  font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  cursor: pointer;
-}
-.passkeyAdd:hover:not(:disabled) {
-  background: #17262d;
-}
-.passkeyAdd:disabled {
-  opacity: 0.6;
-  cursor: progress;
-}
-
-.passkeyDone {
-  margin: 0;
-  font-size: 0.9rem;
-  color: #1e6b3a;
-}
-
-.passkeyError {
-  margin: 0.6rem 0 0;
-  font-size: 0.85rem;
-  color: #8c3b3b;
+.passkeyNotice {
+  margin-top: 0.6rem;
 }

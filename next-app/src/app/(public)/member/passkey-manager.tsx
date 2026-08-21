@@ -16,6 +16,9 @@
 
 import { useState, useSyncExternalStore, useTransition } from 'react';
 import { startRegistration } from '@simplewebauthn/browser';
+import { Button } from '@/app/_components/button';
+import { Notice } from '@/app/_components/notice';
+import surface from '@/app/_components/card.module.css';
 import styles from './member.module.css';
 
 export interface PasskeyRow {
@@ -61,7 +64,7 @@ export function PasskeyManager({
   if (!configured) return null;
 
   return (
-    <section className={styles.passkeySection}>
+    <section className={`${surface.card} ${styles.passkeySection}`}>
       <h2 className={styles.passkeyHeading}>One-tap sign in</h2>
       <p className={styles.passkeyIntro}>
         Set up a passkey and this device signs you in with a fingerprint or your face &mdash;
@@ -93,13 +96,12 @@ export function PasskeyManager({
       )}
 
       {done ? (
-        <p className={styles.passkeyDone} role="status">
+        <Notice tone="success">
           Passkey saved. Next time, just tap &ldquo;Sign in with a passkey&rdquo;.
-        </p>
+        </Notice>
       ) : supported ? (
-        <button
-          type="button"
-          className={styles.passkeyAdd}
+        <Button
+          variant="primary"
           disabled={pending}
           onClick={() => {
             setError(null);
@@ -162,15 +164,15 @@ export function PasskeyManager({
             : passkeys.length > 0
               ? 'Add another device'
               : 'Set up one-tap sign in'}
-        </button>
+        </Button>
       ) : (
         <p className={styles.passkeyMeta}>This browser doesn&rsquo;t support passkeys.</p>
       )}
 
       {error ? (
-        <p className={styles.passkeyError} role="alert">
+        <Notice tone="error" className={styles.passkeyNotice}>
           {error}
-        </p>
+        </Notice>
       ) : null}
     </section>
   );

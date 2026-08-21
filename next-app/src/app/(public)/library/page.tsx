@@ -23,6 +23,11 @@ import { rankReqKey, splitRankReqKey, withViewScout } from '@/lib/library';
 import { resolveLibraryViewer, viewerIsLeader, type LibraryViewer } from '@/lib/library-viewer';
 import { ResourceCard, type AlsoOnLink } from './_components/resource-card';
 import { ScoutSwitcher } from './_components/scout-switcher';
+import { PageHeader } from '@/app/_components/page-header';
+import { PageShell } from '@/app/_components/page-shell';
+import { SectionDivider } from '@/app/_components/section-divider';
+import { EmptyState } from '@/app/_components/empty-state';
+import { Button } from '@/app/_components/button';
 import styles from './library.module.css';
 
 // New public pages must opt out of static prerendering or they freeze at
@@ -111,18 +116,15 @@ export default async function LibraryHomePage({
 
   return (
     <>
-      <div className={styles.pageHeader}>
-        <p className={styles.kicker}>Scout Troop 79 · Resource Library</p>
-        <h1 className={styles.pageTitle}>The Resource Library</h1>
-        <p className={styles.pageLede}>
-          Videos, guides, links, and troop know-how — organized by the same ranks and merit
+      <PageHeader
+        kicker="Scout Troop 79 · Resource Library"
+        title="The Resource Library"
+        lede="Videos, guides, links, and troop know-how — organized by the same ranks and merit
           badges we track, plus shelves for everything else worth keeping. Found something
-          great? Share it, and the webmaster will add it to the shelf.
-        </p>
-        <div className={styles.headRule} />
-      </div>
+          great? Share it, and the webmaster will add it to the shelf."
+      />
 
-      <main className={styles.main}>
+      <PageShell>
         <ScoutSwitcher viewer={viewer} />
 
         <form className={styles.searchForm} action="/library" method="get" role="search">
@@ -149,22 +151,8 @@ export default async function LibraryHomePage({
             <ContributeBand />
           </>
         )}
-      </main>
+      </PageShell>
     </>
-  );
-}
-
-function SectionDivider({ label, link }: { label: string; link?: AlsoOnLink }) {
-  return (
-    <div className={styles.sectionDivider}>
-      <span className={styles.divLabel}>{label}</span>
-      <span className={styles.divRule} aria-hidden="true" />
-      {link && (
-        <Link className={styles.divLink} href={link.href}>
-          {link.label}
-        </Link>
-      )}
-    </div>
   );
 }
 
@@ -224,10 +212,10 @@ function SearchResults({
         </Link>
       </p>
       {hits.length === 0 ? (
-        <div className={styles.emptyState}>
+        <EmptyState>
           Nothing on the shelves for that yet.{' '}
           <Link href="/library/submit">Suggest the resource that should be here →</Link>
-        </div>
+        </EmptyState>
       ) : (
         <ul className={styles.resourceList}>
           {hits.map((hit) => (
@@ -244,7 +232,7 @@ function RankDrill({ data }: { data: HomeData }) {
     <>
       <SectionDivider
         label="Browse by Rank"
-        link={{ href: '/advancement', label: 'Advancement Tracker →' }}
+        link={<Link href="/advancement">Advancement Tracker →</Link>}
       />
       <div className={styles.rankAccordion}>
         {data.ranks.map((rank) => {
@@ -316,7 +304,7 @@ function MbGrid({ data }: { data: HomeData }) {
     <>
       <SectionDivider
         label="Browse by Merit Badge"
-        link={{ href: '/merit-badges', label: 'Full catalog →' }}
+        link={<Link href="/merit-badges">Full catalog →</Link>}
       />
       <div className={styles.mbGrid}>
         {data.mbs.map((mb) => {
@@ -403,9 +391,9 @@ function ContributeBand() {
           send it in even if you&rsquo;re not sure where it belongs.
         </p>
       </div>
-      <Link className={styles.btnPrimary} href="/library/submit">
+      <Button variant="primary" href="/library/submit">
         Suggest a Resource
-      </Link>
+      </Button>
     </div>
   );
 }

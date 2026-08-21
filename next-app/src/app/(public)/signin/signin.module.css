@@ -1,6 +1,55 @@
-/* Name-picker styles (Phase D). The page borrows the Library stylesheet for
-   its form furniture; these are the only classes specific to /signin, kept
-   here rather than pushed into a shared sheet. */
+/* Name-picker styles (Phase D). Form furniture comes from the shared public
+   components (_components/form.tsx etc. — Public Design System Phase A);
+   only /signin-specific layout lives here. */
+
+/* The sign-in column is deliberately tighter than PageShell's narrow 800px. */
+.shell {
+  max-width: 480px;
+}
+
+.errGap {
+  margin-bottom: 16px;
+}
+
+/* A hint used ABOVE the search rather than under an input. */
+.hintTop {
+  margin-top: 0;
+  margin-bottom: 14px;
+}
+
+/* "Continue as {name}?" on /signin/verify — a hint promoted to the lead line. */
+.confirmAs {
+  margin-top: 0;
+  margin-bottom: 14px;
+  font-size: var(--fs-md);
+}
+
+/* The "code sent" confirmation block — shared by /signin and /signin/verify
+   flows but nowhere else, so it lives here (was library.module.css's
+   .confirmDone family before the Phase A promotion). */
+.confirmDone {
+  text-align: center;
+  padding: 20px 0 8px;
+}
+.bigCheck {
+  font-size: 44px;
+  color: var(--forest);
+  margin-bottom: 10px;
+}
+.confirmTitle {
+  font-family: var(--font-display);
+  font-size: 24px;
+  color: var(--text-head);
+  margin: 0 0 10px;
+}
+.confirmText {
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  line-height: 1.6;
+  color: var(--text-body);
+  max-width: 48ch;
+  margin: 0 auto 8px;
+}
 
 .pickList {
   list-style: none;
@@ -78,18 +127,6 @@
   text-align: center;
 }
 
-.resendBtn {
-  background: none;
-  border: none;
-  padding: 0;
-  font: inherit;
-  font-size: 0.9em;
-  color: var(--forest);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  cursor: pointer;
-}
-
 /* Search box (Phase D reshape). The list only ever holds matches, so it needs
    no group headings — the input is the primary control. */
 .searchField {
@@ -158,25 +195,9 @@
   border-bottom: 1px solid var(--rule);
 }
 
-.passkeyBtn {
+/* Passkey CTA is the shared Button (primary) at full width. */
+.fullWidth {
   width: 100%;
-  background: var(--navy);
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  padding: 0.75rem 1.2rem;
-  font-family: var(--font-ui), inherit;
-  font-size: 0.9rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  cursor: pointer;
-}
-.passkeyBtn:hover:not(:disabled) {
-  background: #17262d;
-}
-.passkeyBtn:disabled {
-  opacity: 0.6;
-  cursor: progress;
 }
 
 .passkeyHint {
@@ -186,8 +207,6 @@
   line-height: 1.5;
 }
 
-.passkeyError {
-  margin: 0.5rem 0 0;
-  font-size: 0.85rem;
-  color: #8c3b3b;
+.passkeyNotice {
+  margin-top: 0.5rem;
 }

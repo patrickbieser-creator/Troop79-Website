@@ -1,0 +1,19 @@
+/* Shared public SectionDivider — label + hairline + optional trailing link,
+   promoted from library.module.css's .sectionDivider family (replicated as
+   .pageHeaderRule/.headRule/.spanBar and inline in merit-badges). Canonical
+   rendering: /admin/styleguide/public. */
+
+.divider { display: flex; align-items: center; gap: var(--sp-3); margin: 34px 0 14px; }
+.label {
+  font-family: var(--font-ui);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-meta);
+  white-space: nowrap;
+}
+.rule { flex: 1; height: 1px; background: var(--border-mid); }
+.link { font-family: var(--font-ui); font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+.link a { color: var(--navy); }
+.link a:hover { color: var(--forest); text-decoration: underline; text-underline-offset: 2px; }

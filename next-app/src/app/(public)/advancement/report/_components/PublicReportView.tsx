@@ -11,6 +11,7 @@ import { ArticleBody } from '@/lib/article-body/ArticleBody';
 import { ScoutAccordion } from '@/app/_components/ScoutAccordion';
 import { buildScoutView, toMarkdown } from '@/lib/advancement-report';
 import type { PublishedReport } from '@/lib/advancement-report-store';
+import { TabStrip } from '@/app/_components/tab-strip';
 import styles from '../report.module.css';
 
 export function PublicReportView({ report, basePath }: { report: PublishedReport; basePath: string }) {
@@ -43,21 +44,15 @@ export function PublicReportView({ report, basePath }: { report: PublishedReport
 
   return (
     <>
-      <div className={styles.viewTabs}>
-        <button
-          type="button"
-          className={view === 'category' ? styles.viewTabActive : styles.viewTab}
-          onClick={() => switchView('category')}
-        >
-          By Category
-        </button>
-        <button
-          type="button"
-          className={view === 'scout' ? styles.viewTabActive : styles.viewTab}
-          onClick={() => switchView('scout')}
-        >
-          By Scout
-        </button>
+      <div className={styles.tabsGap}>
+        <TabStrip
+          ariaLabel="Report view"
+          activeKey={view}
+          items={[
+            { key: 'category', label: 'By Category', onSelect: () => switchView('category') },
+            { key: 'scout', label: 'By Scout', onSelect: () => switchView('scout') }
+          ]}
+        />
       </div>
 
       {view === 'category' ? (

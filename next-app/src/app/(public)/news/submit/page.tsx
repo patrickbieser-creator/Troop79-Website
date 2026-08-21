@@ -12,11 +12,12 @@
  * rule Phase 0 of Family-Identity-Auth.md applied to proof submission.
  */
 
-import Link from 'next/link';
 import { getIdentitySessionIfValid } from '@/lib/family-access';
 import { SubmitStoryForm } from './submit-form';
 import { submitStoryAction } from './actions';
-import shell from '../../library/library.module.css';
+import { PageHeader } from '@/app/_components/page-header';
+import { PageShell } from '@/app/_components/page-shell';
+import { Button } from '@/app/_components/button';
 import styles from './submit.module.css';
 
 export const metadata = {
@@ -29,12 +30,8 @@ export default async function SubmitStoryPage() {
 
   return (
     <>
-      <div className={shell.pageHeader}>
-        <p className={shell.kicker}>News &amp; Events</p>
-        <h1 className={shell.pageTitle}>Submit a Story</h1>
-        <div className={shell.headRule} />
-      </div>
-      <main className={`${shell.main} ${shell.mainNarrow}`}>
+      <PageHeader kicker={<>News &amp; Events</>} title="Submit a Story" />
+      <PageShell width="narrow">
 
       {session ? (
         <>
@@ -58,12 +55,13 @@ export default async function SubmitStoryPage() {
             address the troop already has for you.
           </p>
           <p className={styles.gateAction}>
-            <Link
-              className={styles.gateBtn}
+            <Button
+              variant="primary"
+              className={styles.gateBtnWide}
               href={`/signin?next=${encodeURIComponent('/news/submit')}`}
             >
               Sign in to write one
-            </Link>
+            </Button>
           </p>
           <p className={styles.gateNote}>
             No luck signing in? Ask a leader &mdash; they can give you a code, or take your story
@@ -71,7 +69,7 @@ export default async function SubmitStoryPage() {
           </p>
         </div>
       )}
-      </main>
+      </PageShell>
     </>
   );
 }

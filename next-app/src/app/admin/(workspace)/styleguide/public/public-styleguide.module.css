@@ -181,6 +181,16 @@
   margin-bottom: 0;
 }
 
+/* Spacer between stacked Notice specimens — the shared Notice deliberately
+   carries no margins (adopters own spacing). */
+.specimenGap {
+  height: var(--admin-space-4);
+}
+
+.specimenTagRow {
+  margin-top: var(--admin-space-4);
+}
+
 .variantNote {
   font-family: var(--admin-font-ui);
   font-size: var(--admin-text-sm);

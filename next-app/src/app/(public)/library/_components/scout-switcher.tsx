@@ -28,6 +28,7 @@
  */
 import { useRouter } from 'next/navigation';
 import type { LibraryViewer } from '@/lib/library-viewer';
+import { Button } from '@/app/_components/button';
 import styles from '../library.module.css';
 
 export function ScoutSwitcher({ viewer }: { viewer: LibraryViewer }) {
@@ -77,9 +78,9 @@ export function ScoutSwitcher({ viewer }: { viewer: LibraryViewer }) {
             </option>
           ))}
         </select>
-        <a href="/library" className={styles.divLink}>
+        <Button variant="ghost" href="/library">
           Exit proxy view
-        </a>
+        </Button>
       </div>
     );
   }

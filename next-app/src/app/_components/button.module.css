@@ -1,0 +1,57 @@
+/* Shared public Button — primary/secondary from library.module.css's
+   .btnPrimary/.btnSecondary (the canon among 33 button class names in 15
+   files; the primary green was hand-written 5× with 3 greens and 3 radii).
+   Ghost is the .divLink/.linkBtn idiom; danger is the public outlined
+   danger on the Phase 0 status tokens (public had NO danger canon at all —
+   13 ad-hoc reds). Canonical rendering: /admin/styleguide/public. */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-radius: var(--rad-sm);
+  padding: 12px 22px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.btn:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.btn:disabled { opacity: 0.55; cursor: default; }
+
+.primary {
+  background: var(--forest);
+  color: var(--warm-white);
+  border: none;
+}
+.primary:hover { background: var(--forest-light); box-shadow: var(--shadow-hover); }
+
+.secondary {
+  background: var(--warm-white);
+  color: var(--navy);
+  border: 1px solid var(--border-mid);
+}
+.secondary:hover { border-color: var(--forest); color: var(--forest); background: var(--cream); }
+
+.ghost {
+  background: none;
+  border: none;
+  min-height: 0;
+  padding: var(--sp-2) 0;
+  color: var(--navy);
+  letter-spacing: 0.02em;
+  text-transform: none;
+  font-size: var(--fs-sm);
+}
+.ghost:hover { color: var(--forest); text-decoration: underline; text-underline-offset: 2px; }
+
+.danger {
+  background: var(--warm-white);
+  color: var(--status-danger);
+  border: 1px solid color-mix(in srgb, var(--status-danger) 45%, var(--border-mid));
+}
+.danger:hover { background: var(--status-danger-bg); border-color: var(--status-danger); }

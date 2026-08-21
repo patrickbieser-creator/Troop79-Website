@@ -2,12 +2,10 @@
  * /signin — passwordless sign-in (Plans/Family-Identity-Auth.md Phase 1).
  * Two states on one page: request (enter email) → sent (enter the 6-digit
  * code, or use the link in the email instead — that lands on /signin/verify).
- * Reuses the Library's form/gate styling (library.module.css) rather than
- * duplicating another near-identical CSS module — see that file for the
- * class shapes (formCard/fieldRow/btnPrimary/etc.) already used by every
- * other gated form in this app.
+ * Form furniture comes from the shared public components (_components/form,
+ * button, notice — Public Design System Phase A); signin.module.css keeps
+ * only this screen's own layout.
  */
-import Link from 'next/link';
 import { emailConfigured } from '@/lib/email';
 import { hasFamilyAccess } from '@/lib/family-access';
 import { NameSearch } from './name-search';
@@ -23,7 +21,11 @@ import {
   verifyCodeForPersonAction,
   searchRosterAction
 } from './actions';
-import styles from '../library/library.module.css';
+import { PageHeader } from '@/app/_components/page-header';
+import { PageShell } from '@/app/_components/page-shell';
+import { Button } from '@/app/_components/button';
+import { Notice } from '@/app/_components/notice';
+import { FormCard, Field, TextInput, FieldHint } from '@/app/_components/form';
 import pick from './signin.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -85,22 +87,23 @@ export default async function SignInPage({
 
   return (
     <>
-      <div className={styles.pageHeader}>
-        <p className={styles.kicker}>Sign In</p>
-        <h1 className={styles.pageTitle}>Sign In</h1>
-        <p className={styles.pageLede}>
-          No password to remember — find your name and we&rsquo;ll send a one-time code to the
-          email we already have for you.
-        </p>
-        <div className={styles.headRule} />
-      </div>
+      <PageHeader
+        kicker="Sign In"
+        title="Sign In"
+        lede={
+          <>
+            No password to remember — find your name and we&rsquo;ll send a one-time code to the
+            email we already have for you.
+          </>
+        }
+      />
 
-      <main className={`${styles.main} ${styles.mainNarrow}`} style={{ maxWidth: 480 }}>
+      <PageShell width="narrow" className={pick.shell}>
         {!configured && (
-          <p className={styles.fieldError} style={{ marginBottom: 16 }}>
+          <Notice tone="error" className={pick.errGap}>
             Email sign-in isn&rsquo;t configured on this server yet — ask a leader for a
             one-time code instead.
-          </p>
+          </Notice>
         )}
 
         {sent !== '1' && passkeys && (
@@ -131,11 +134,11 @@ export default async function SignInPage({
             passwordless email — see that module's header), reached from
             here rather than a second top-level nav link. */}
         <p style={{ marginTop: 24, textAlign: 'center' }}>
-          <Link className={styles.divLink} href="/admin/login">
+          <Button variant="ghost" href="/admin/login">
             Leader or Scout? Sign in with the troop password
-          </Link>
+          </Button>
         </p>
-      </main>
+      </PageShell>
     </>
   );
 }
@@ -144,56 +147,55 @@ export default async function SignInPage({
 function CodeForm({ email, next, err }: { email?: string; next?: string; err?: string }) {
   return (
     <>
-      <div className={styles.formCard}>
-        <div className={styles.confirmDone}>
-          <div className={styles.bigCheck} aria-hidden="true">
+      <FormCard>
+        <div className={pick.confirmDone}>
+          <div className={pick.bigCheck} aria-hidden="true">
             ✓
           </div>
-          <h2 className={styles.confirmTitle}>Check your email</h2>
-          <p className={styles.confirmText}>
+          <h2 className={pick.confirmTitle}>Check your email</h2>
+          <p className={pick.confirmText}>
             If that address is on our roster, a 6-digit code and a sign-in link are on the
             way. Enter the code below, or tap the link in the email — either one works.
           </p>
         </div>
 
-        {err && ERR_MESSAGES[err] && <p className={styles.fieldError}>{ERR_MESSAGES[err]}</p>}
+        {err && ERR_MESSAGES[err] && (
+          <Notice tone="error" className={pick.errGap}>
+            {ERR_MESSAGES[err]}
+          </Notice>
+        )}
 
         <form action={verifyCodeAction}>
           <input type="hidden" name="email" value={email ?? ''} />
           {next && <input type="hidden" name="next" value={next} />}
-          <div className={styles.fieldRow}>
-            <label className={styles.fieldLabel} htmlFor="code">
-              6-digit code
-            </label>
-            <input
-              className={styles.textInput}
+          <Field label="6-digit code">
+            <TextInput
               type="text"
               inputMode="numeric"
               autoComplete="one-time-code"
-              id="code"
               name="code"
               maxLength={6}
               placeholder="123456"
             />
-          </div>
-          <button className={styles.btnPrimary} type="submit">
+          </Field>
+          <Button variant="primary" type="submit">
             Continue
-          </button>
+          </Button>
         </form>
-      </div>
+      </FormCard>
 
       <form action={requestSignInAction} style={{ marginTop: 12, textAlign: 'center' }}>
         <input type="hidden" name="email" value={email ?? ''} />
         {next && <input type="hidden" name="next" value={next} />}
-        <button className={styles.btnSecondary} type="submit">
+        <Button variant="secondary" type="submit">
           Resend code
-        </button>
+        </Button>
       </form>
 
       <p style={{ marginTop: 16, textAlign: 'center' }}>
-        <Link className={styles.divLink} href="/signin">
+        <Button variant="ghost" href="/signin">
           Use a different email
-        </Link>
+        </Button>
       </p>
     </>
   );
@@ -209,31 +211,32 @@ function CodeForm({ email, next, err }: { email?: string; next?: string; err?: s
  */
 function PasswordGate({ next, err }: { next?: string; err?: string }) {
   return (
-    <form className={styles.formCard} action={unlockRosterAction}>
-      {next && <input type="hidden" name="next" value={next} />}
-      {err && ERR_MESSAGES[err] && <p className={styles.fieldError}>{ERR_MESSAGES[err]}</p>}
+    <FormCard>
+      <form action={unlockRosterAction}>
+        {next && <input type="hidden" name="next" value={next} />}
+        {err && ERR_MESSAGES[err] && (
+          <Notice tone="error" className={pick.errGap}>
+            {ERR_MESSAGES[err]}
+          </Notice>
+        )}
 
-      <div className={styles.fieldRow}>
-        <label className={styles.fieldLabel} htmlFor="password">
-          Troop password
-        </label>
-        <input
-          className={styles.textInput}
-          type="password"
-          id="password"
-          name="password"
-          autoComplete="off"
-        />
-        <p className={styles.fieldHint}>
-          The one from the Bugle. This just brings up the list of names &mdash; you&rsquo;ll still
-          sign in as yourself on the next screen.
-        </p>
-      </div>
+        <Field
+          label="Troop password"
+          hint={
+            <>
+              The one from the Bugle. This just brings up the list of names &mdash; you&rsquo;ll
+              still sign in as yourself on the next screen.
+            </>
+          }
+        >
+          <TextInput type="password" name="password" autoComplete="off" />
+        </Field>
 
-      <button className={styles.btnPrimary} type="submit">
-        Find my name
-      </button>
-    </form>
+        <Button variant="primary" type="submit">
+          Find my name
+        </Button>
+      </form>
+    </FormCard>
   );
 }
 
@@ -261,12 +264,16 @@ function NamePicker({
   configured: boolean;
 }) {
   return (
-    <div className={styles.formCard}>
-      {err && ERR_MESSAGES[err] && <p className={styles.fieldError}>{ERR_MESSAGES[err]}</p>}
-      <p className={styles.fieldHint} style={{ marginTop: 0 }}>
+    <FormCard>
+      {err && ERR_MESSAGES[err] && (
+        <Notice tone="error" className={pick.errGap}>
+          {ERR_MESSAGES[err]}
+        </Notice>
+      )}
+      <FieldHint className={pick.hintTop}>
         Find your name and we&rsquo;ll send a one-time code to the address we already have for you
         &mdash; you don&rsquo;t need to remember which one it is.
-      </p>
+      </FieldHint>
 
       <NameSearch
         next={next}
@@ -277,25 +284,24 @@ function NamePicker({
 
       <details className={pick.pickFallback}>
         <summary>Can&rsquo;t find yourself, or the address shown is wrong?</summary>
-        <p className={styles.fieldHint}>
+        <FieldHint>
           Type an address instead &mdash; or ask a leader, who can fix what we have on file.
-        </p>
+        </FieldHint>
         <form action={requestSignInAction}>
           {next && <input type="hidden" name="next" value={next} />}
-          <input
-            className={styles.textInput}
+          <TextInput
             type="email"
             name="email"
             autoComplete="email"
             placeholder="you@example.com"
             disabled={!configured}
           />
-          <button className={styles.btnPrimary} type="submit" disabled={!configured}>
+          <Button variant="primary" type="submit" disabled={!configured}>
             Send Code
-          </button>
+          </Button>
         </form>
       </details>
-    </div>
+    </FormCard>
   );
 }
 
@@ -312,9 +318,9 @@ function PersonCodeForm({
   err?: string;
 }) {
   return (
-    <div className={styles.formCard}>
-      <div className={styles.confirmDone}>
-        <div className={styles.bigCheck} aria-hidden="true">
+    <FormCard>
+      <div className={pick.confirmDone}>
+        <div className={pick.bigCheck} aria-hidden="true">
           &#10003;
         </div>
         <p>
@@ -322,38 +328,37 @@ function PersonCodeForm({
         </p>
       </div>
 
-      {err && ERR_MESSAGES[err] && <p className={styles.fieldError}>{ERR_MESSAGES[err]}</p>}
+      {err && ERR_MESSAGES[err] && (
+        <Notice tone="error" className={pick.errGap}>
+          {ERR_MESSAGES[err]}
+        </Notice>
+      )}
 
       <form action={verifyCodeForPersonAction}>
         <input type="hidden" name="personId" value={personId} />
         {masked && <input type="hidden" name="masked" value={masked} />}
         {next && <input type="hidden" name="next" value={next} />}
-        <div className={styles.fieldRow}>
-          <label className={styles.fieldLabel} htmlFor="code">
-            6-digit code
-          </label>
-          <input
-            className={styles.textInput}
-            id="code"
+        <Field label="6-digit code">
+          <TextInput
             name="code"
             inputMode="numeric"
             autoComplete="one-time-code"
             maxLength={6}
             placeholder="123456"
           />
-        </div>
-        <button className={styles.btnPrimary} type="submit">
+        </Field>
+        <Button variant="primary" type="submit">
           Sign In
-        </button>
+        </Button>
       </form>
 
       <form action={requestForPersonAction} className={pick.resendRow}>
         <input type="hidden" name="personId" value={personId} />
         {next && <input type="hidden" name="next" value={next} />}
-        <button type="submit" className={pick.resendBtn}>
+        <Button variant="ghost" type="submit">
           Send another code
-        </button>
+        </Button>
       </form>
-    </div>
+    </FormCard>
   );
 }

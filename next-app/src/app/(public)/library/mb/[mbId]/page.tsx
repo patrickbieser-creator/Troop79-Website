@@ -23,6 +23,10 @@ import { loadNarrative, loadPublishedFor, type PlacedResource } from '@/lib/libr
 import { viewerIsLeader } from '@/lib/library-viewer';
 import { ResourceCard } from '../../_components/resource-card';
 import MbProofPicker from './mb-proof-picker';
+import { PageHeader, KickerSep } from '@/app/_components/page-header';
+import { PageShell } from '@/app/_components/page-shell';
+import { SectionDivider } from '@/app/_components/section-divider';
+import { EmptyState } from '@/app/_components/empty-state';
 import styles from '../../library.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -117,30 +121,33 @@ export default async function LibraryMbPage({
 
   return (
     <>
-      <div className={styles.pageHeader}>
-        <p className={styles.kicker}>
-          <Link href="/library">Resource Library</Link>
-          <span className={styles.kickerSep}>·</span>
-          Merit Badge
-        </p>
-        <h1 className={styles.pageTitle}>{badge.name}</h1>
-        <p className={styles.pageLede}>
-          {totalCount === 0
-            ? 'Nothing shelved for this badge yet — be the first to suggest something.'
-            : `${totalCount} resource${totalCount === 1 ? '' : 's'} the troop recommends for this badge.`}{' '}
-          For requirements and troop progress, see the{' '}
-          <Link
-            href={`/merit-badges/${mbId}`}
-            style={{ color: 'var(--navy)', fontWeight: 700, fontStyle: 'normal' }}
-          >
-            badge tracker page
-          </Link>
-          .
-        </p>
-        <div className={styles.headRule} />
-      </div>
+      <PageHeader
+        kicker={
+          <>
+            <Link href="/library">Resource Library</Link>
+            <KickerSep />
+            Merit Badge
+          </>
+        }
+        title={badge.name}
+        lede={
+          <>
+            {totalCount === 0
+              ? 'Nothing shelved for this badge yet — be the first to suggest something.'
+              : `${totalCount} resource${totalCount === 1 ? '' : 's'} the troop recommends for this badge.`}{' '}
+            For requirements and troop progress, see the{' '}
+            <Link
+              href={`/merit-badges/${mbId}`}
+              style={{ color: 'var(--navy)', fontWeight: 700, fontStyle: 'normal' }}
+            >
+              badge tracker page
+            </Link>
+            .
+          </>
+        }
+      />
 
-      <main className={styles.main}>
+      <PageShell>
         {narrative && (
           <div className={styles.narrative}>
             <ArticleBody body={narrative.narrative_md} />
@@ -160,18 +167,15 @@ export default async function LibraryMbPage({
           <MbProofPicker mbId={mbId} groups={proofGroups} scoutBlocked={audience === 'scout'} />
         )}
 
-        <div className={styles.sectionDivider}>
-          <span className={styles.divLabel}>Whole-badge resources</span>
-          <span className={styles.divRule} aria-hidden="true" />
-          <Link className={styles.divLink} href={suggestHref}>
-            Suggest one →
-          </Link>
-        </div>
+        <SectionDivider
+          label="Whole-badge resources"
+          link={<Link href={suggestHref}>Suggest one →</Link>}
+        />
         {badgeResources.length === 0 ? (
-          <div className={styles.emptyState}>
+          <EmptyState>
             Nothing shelved for the badge overall yet.{' '}
             <Link href={suggestHref}>Suggest the first one →</Link>
-          </div>
+          </EmptyState>
         ) : (
           <ul className={styles.resourceList}>
             {badgeResources.map((res) => (
@@ -182,13 +186,14 @@ export default async function LibraryMbPage({
 
         {topGroups.map((group) => (
           <div key={group.top.code}>
-            <div className={styles.sectionDivider}>
-              <span className={styles.divLabel}>
-                Requirement {group.top.code} — {group.top.label.slice(0, 60)}
-                {group.top.label.length > 60 ? '…' : ''}
-              </span>
-              <span className={styles.divRule} aria-hidden="true" />
-            </div>
+            <SectionDivider
+              label={
+                <>
+                  Requirement {group.top.code} — {group.top.label.slice(0, 60)}
+                  {group.top.label.length > 60 ? '…' : ''}
+                </>
+              }
+            />
             <ul className={styles.resourceList}>
               {group.resources.map((res) => (
                 <ResourceCard key={res.placement.id} resource={res} pinned={res.placement.pinned} />
@@ -196,7 +201,7 @@ export default async function LibraryMbPage({
             </ul>
           </div>
         ))}
-      </main>
+      </PageShell>
     </>
   );
 }

@@ -5,11 +5,15 @@
  * token before the human clicks (see lib/identity-challenge.ts's
  * peekTokenChallenge()). Only the POST below (confirmTokenAction) consumes.
  */
-import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import { inspectTokenChallenge } from '@/lib/identity-challenge';
 import { confirmTokenAction } from '../actions';
-import styles from '../../library/library.module.css';
+import { PageHeader } from '@/app/_components/page-header';
+import { PageShell } from '@/app/_components/page-shell';
+import { Button } from '@/app/_components/button';
+import { Notice } from '@/app/_components/notice';
+import { FormCard, FieldHint } from '@/app/_components/form';
+import pick from '../signin.module.css';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,24 +33,20 @@ export default async function SignInVerifyPage({
 
   return (
     <>
-      <div className={styles.pageHeader}>
-        <p className={styles.kicker}>Sign In</p>
-        <h1 className={styles.pageTitle}>Confirm Sign In</h1>
-        <div className={styles.headRule} />
-      </div>
+      <PageHeader kicker="Sign In" title="Confirm Sign In" />
 
-      <main className={`${styles.main} ${styles.mainNarrow}`} style={{ maxWidth: 480 }}>
-        <div className={styles.formCard}>
+      <PageShell width="narrow" className={pick.shell}>
+        <FormCard>
           {target ? (
             <>
-              <p className={styles.fieldHint} style={{ marginBottom: 14, fontSize: 15 }}>
+              <FieldHint className={pick.confirmAs}>
                 Continue as <strong>{target.displayName}</strong>?
-              </p>
+              </FieldHint>
               <form action={confirmTokenAction}>
                 <input type="hidden" name="token" value={token} />
-                <button className={styles.btnPrimary} type="submit">
+                <Button variant="primary" type="submit">
                   Continue
-                </button>
+                </Button>
               </form>
             </>
           ) : (
@@ -56,7 +56,7 @@ export default async function SignInVerifyPage({
                   with the code from this same email — is not an error at all.
                   Reported as a bug 2026-08-16 by someone who read it as the
                   site being broken. */}
-              <p className={styles.fieldError}>
+              <Notice tone="error">
                 {err
                   ? 'Something went wrong confirming that sign-in — try the code instead.'
                   : state === 'consumed'
@@ -64,16 +64,16 @@ export default async function SignInVerifyPage({
                     : state === 'expired'
                       ? 'This link has expired. Sign-in links last 15 minutes; request a fresh one and it’ll work.'
                       : 'We don’t recognise that link. It may have been broken across two lines by your email app — request a fresh one, or use the 6-digit code instead.'}
-              </p>
+              </Notice>
               <p style={{ marginTop: 12 }}>
-                <Link className={styles.btnSecondary} href="/signin">
+                <Button variant="secondary" href="/signin">
                   Back to Sign In
-                </Link>
+                </Button>
               </p>
             </>
           )}
-        </div>
-      </main>
+        </FormCard>
+      </PageShell>
     </>
   );
 }

@@ -246,6 +246,15 @@ All decided by Patrick 2026-08-21 (same-day as plan creation):
 
 ## Notes
 
+- **Component wishes from the Phase A adoption waves (2026-08-21)** — small API gaps hit
+  during conversion; add with tests when their residual sites convert (B/C): `Button`
+  `size="sm"` (news-controls compact CTA) and a danger-ghost variant (member passkeyRemove);
+  `PageHeader` optional `meta` slot (meeting-plan's date/title row between lede and rule);
+  `Field as="fieldset"` for radio groups (submit-proof); `FormCard`/`FieldHint` accept no
+  style overrides (by design — revisit only if wrappers proliferate). Open Phase C question
+  the waves surfaced: bump the form kit's 14.5px input font to 16px to stop iOS focus-zoom
+  (name-search already does this deliberately).
+
 - **Full audit (2026-08-21, subagent):** 22 public stylesheets / 5,772 lines / 746 classes /
   1,173 declarations; 308 hex occurrences, 79 distinct; 1,457 var() reads; 146 inline sites
   in 31 files; 507 font-size declarations, 59 distinct. The durable summary is condensed

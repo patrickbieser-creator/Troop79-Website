@@ -16,6 +16,11 @@ import { loadHouseholdByKey } from '@/lib/households';
 import { resolveRequirementLabel } from '@/lib/library-data';
 import { proofGateAction, submitProofAction } from './actions';
 import { TrackOnMount } from '../../_components/track-on-mount';
+import { PageHeader, KickerSep } from '@/app/_components/page-header';
+import { PageShell } from '@/app/_components/page-shell';
+import { SectionDivider } from '@/app/_components/section-divider';
+import { Button } from '@/app/_components/button';
+import { FormCard, Field, TextInput, TextArea, FieldHint, FieldError } from '@/app/_components/form';
 import styles from '../library.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -84,22 +89,25 @@ export default async function SubmitProofPage({
 
   return (
     <>
-      <div className={styles.pageHeader}>
-        <p className={styles.kicker}>
-          <Link href="/library">Resource Library</Link>
-          <span className={styles.kickerSep}>·</span>
-          {context ? <Link href={context.backHref}>{context.label}</Link> : 'I did this'}
-        </p>
-        <h1 className={styles.pageTitle}>I did this</h1>
-        <p className={styles.pageLede}>
-          Send in a photo, a link, or a short write-up showing you completed{' '}
-          {context?.label ?? 'this requirement'}. A leader reviews it before it counts —
-          usually within a few days.
-        </p>
-        <div className={styles.headRule} />
-      </div>
+      <PageHeader
+        kicker={
+          <>
+            <Link href="/library">Resource Library</Link>
+            <KickerSep />
+            {context ? <Link href={context.backHref}>{context.label}</Link> : 'I did this'}
+          </>
+        }
+        title="I did this"
+        lede={
+          <>
+            Send in a photo, a link, or a short write-up showing you completed{' '}
+            {context?.label ?? 'this requirement'}. A leader reviews it before it counts —
+            usually within a few days.
+          </>
+        }
+      />
 
-      <main className={`${styles.main} ${styles.mainNarrow}`} style={{ maxWidth: 720 }}>
+      <PageShell width="narrow">
         {sent === '1' ? (
           <SentConfirmation
             backHref={context?.backHref ?? '/library'}
@@ -116,7 +124,7 @@ export default async function SubmitProofPage({
         ) : (
           <SignInRequiredCard target={target} err={err} />
         )}
-      </main>
+      </PageShell>
     </>
   );
 }
@@ -129,7 +137,7 @@ function SentConfirmation({
   targetKind: 'rank_req' | 'mb_req';
 }) {
   return (
-    <div className={styles.formCard}>
+    <FormCard>
       <TrackOnMount event="proof_submitted" params={{ target_kind: targetKind }} />
       <div className={styles.confirmDone}>
         <div className={styles.bigCheck} aria-hidden="true">
@@ -141,34 +149,34 @@ function SentConfirmation({
           anything&rsquo;s missing.
         </p>
         <p style={{ marginTop: 16, display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Link className={styles.btnSecondary} href={backHref}>
+          <Button variant="secondary" href={backHref}>
             Back to the Requirement
-          </Link>
-          <Link className={styles.btnPrimary} href="/library">
+          </Button>
+          <Button variant="primary" href="/library">
             Back to the Library
-          </Link>
+          </Button>
         </p>
       </div>
-    </div>
+    </FormCard>
   );
 }
 
 function LeaderRedirectCard() {
   return (
-    <div className={styles.formCard}>
+    <FormCard>
       <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, marginBottom: 8 }}>
         Leaders: use Fast Entry
       </h2>
-      <p className={styles.fieldHint} style={{ fontSize: 14 }}>
+      <FieldHint>
         If you&rsquo;re signing this off yourself, Fast Entry writes it straight to the
         ledger — no review queue needed.
-      </p>
+      </FieldHint>
       <p style={{ marginTop: 16 }}>
-        <Link className={styles.btnPrimary} href="/admin/advancement/fast-entry">
+        <Button variant="primary" href="/admin/advancement/fast-entry">
           Open Fast Entry →
-        </Link>
+        </Button>
       </p>
-    </div>
+    </FormCard>
   );
 }
 
@@ -182,75 +190,66 @@ function LeaderRedirectCard() {
  */
 function ScoutDisabledCard({ err, target }: { err?: string; target: string }) {
   return (
-    <div className={styles.formCard}>
+    <FormCard>
       <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, marginBottom: 8 }}>
         Sign in to submit proof as yourself
       </h2>
-      {err && ERR_MESSAGES[err] && <p className={styles.fieldError}>{ERR_MESSAGES[err]}</p>}
-      <p className={styles.fieldHint} style={{ fontSize: 14 }}>
+      {err && ERR_MESSAGES[err] && <FieldError>{ERR_MESSAGES[err]}</FieldError>}
+      <FieldHint>
         The shared scout login can&rsquo;t send proof &mdash; it has no way to prove which
         scout is submitting. Sign in with your own email instead (no password to remember)
         and you&rsquo;ll be able to send proof as yourself. Or have a parent sign in and send
         it for you.
-      </p>
+      </FieldHint>
       <p style={{ marginTop: 16, display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-        <Link
-          className={styles.btnPrimary}
+        <Button
+          variant="primary"
           href={`/signin?next=${encodeURIComponent(`/library/submit-proof?target=${target}`)}`}
         >
           Sign In →
-        </Link>
-        <Link className={styles.btnSecondary} href="/library">
+        </Button>
+        <Button variant="secondary" href="/library">
           Back to the Library
-        </Link>
+        </Button>
       </p>
-    </div>
+    </FormCard>
   );
 }
 
 function GateCard({ target, gate }: { target: string; gate?: string }) {
   const configured = familyGateConfigured();
   return (
-    <div className={styles.formCard}>
+    <FormCard>
       <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, marginBottom: 8 }}>
         Troop sign-in
       </h2>
-      <p className={styles.fieldHint} style={{ marginBottom: 18, fontSize: 14 }}>
+      <FieldHint>
         One shared password for the whole troop — it&rsquo;s printed in the Bugle each week,
         or ask any leader. Leaders and scouts already signed in to the workspace skip this
         step automatically.
-      </p>
-      {gate && GATE_MESSAGES[gate] && <p className={styles.fieldError}>{GATE_MESSAGES[gate]}</p>}
+      </FieldHint>
+      {gate && GATE_MESSAGES[gate] && <FieldError>{GATE_MESSAGES[gate]}</FieldError>}
       {configured ? (
         <form action={proofGateAction}>
           <input type="hidden" name="target" value={target} />
-          <div className={styles.fieldRow}>
-            <label className={styles.fieldLabel} htmlFor="password">
-              Troop password
-            </label>
-            <input
-              className={styles.textInput}
-              type="password"
-              id="password"
-              name="password"
-              autoComplete="off"
-            />
-          </div>
-          <button className={styles.btnPrimary} type="submit">
+          <Field label="Troop password">
+            <TextInput type="password" name="password" autoComplete="off" />
+          </Field>
+          <Button variant="primary" type="submit">
             Continue
-          </button>
+          </Button>
         </form>
       ) : (
-        <p className={styles.fieldError}>{GATE_MESSAGES['not-configured']}</p>
+        <FieldError>{GATE_MESSAGES['not-configured']}</FieldError>
       )}
-      <p className={styles.fieldHint} style={{ marginTop: 14, fontSize: 13 }}>
+      <FieldHint>
         Prefer not to use the shared password? You can{' '}
         <Link href={`/signin?next=${encodeURIComponent(`/library/submit-proof?target=${target}`)}`}>
           sign in with your email instead
         </Link>
         .
-      </p>
-    </div>
+      </FieldHint>
+    </FormCard>
   );
 }
 
@@ -273,17 +272,17 @@ async function VerifiedSubmitForm({ target, err }: { target: string; err?: strin
   const epochOk = await isEpochCurrent(supabase, session);
   if (!epochOk) {
     return (
-      <div className={styles.formCard}>
-        <p className={styles.fieldError}>{ERR_MESSAGES.revoked}</p>
+      <FormCard>
+        <FieldError>{ERR_MESSAGES.revoked}</FieldError>
         <p style={{ marginTop: 12 }}>
-          <Link
-            className={styles.btnPrimary}
+          <Button
+            variant="primary"
             href={`/signin?next=${encodeURIComponent(`/library/submit-proof?target=${target}`)}`}
           >
             Sign In Again →
-          </Link>
+          </Button>
         </p>
-      </div>
+      </FormCard>
     );
   }
 
@@ -293,45 +292,48 @@ async function VerifiedSubmitForm({ target, err }: { target: string; err?: strin
     // No picker at all — the scout IS the session (Phase 0 decision 6: "a
     // scout may only ever claim their own work").
     return (
-      <form className={styles.formCard} action={submitProofAction}>
-        <input type="hidden" name="target" value={target} />
-        {err && ERR_MESSAGES[err] && <p className={styles.fieldError}>{ERR_MESSAGES[err]}</p>}
-        <p className={styles.fieldHint} style={{ marginBottom: 0 }}>
-          Signed in as <strong>{session.displayName}</strong>
-        </p>
-        <ProofFields />
+      <form action={submitProofAction}>
+        <FormCard>
+          <input type="hidden" name="target" value={target} />
+          {err && ERR_MESSAGES[err] && <FieldError>{ERR_MESSAGES[err]}</FieldError>}
+          <FieldHint>
+            Signed in as <strong>{session.displayName}</strong>
+          </FieldHint>
+          <ProofFields />
+        </FormCard>
       </form>
     );
   }
 
   const scouts = party?.scouts ?? [];
   return (
-    <form className={styles.formCard} action={submitProofAction}>
-      <input type="hidden" name="target" value={target} />
-      {err && ERR_MESSAGES[err] && <p className={styles.fieldError}>{ERR_MESSAGES[err]}</p>}
+    <form action={submitProofAction}>
+      <FormCard>
+        <input type="hidden" name="target" value={target} />
+        {err && ERR_MESSAGES[err] && <FieldError>{ERR_MESSAGES[err]}</FieldError>}
 
-      <p className={styles.fieldHint} style={{ margin: 0 }}>
-        Signed in as <strong>{session.displayName}</strong> ({party?.label ?? session.displayName}{' '}
-        household)
-      </p>
+        <FieldHint>
+          Signed in as <strong>{session.displayName}</strong> ({party?.label ?? session.displayName}{' '}
+          household)
+        </FieldHint>
 
-      {scouts.length === 0 ? (
-        <p className={styles.fieldError}>
-          No active scout is on file for this household — ask a leader to add one.
-        </p>
-      ) : (
-        <div className={styles.fieldRow}>
-          <span className={styles.fieldLabel}>Which scout is this for?</span>
-          {scouts.map((s, i) => (
-            <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: i === 0 ? 4 : 8 }}>
-              <input type="radio" name="scoutId" value={s.id} defaultChecked={i === 0} required />
-              {s.displayName}
-            </label>
-          ))}
-        </div>
-      )}
+        {scouts.length === 0 ? (
+          <FieldError>
+            No active scout is on file for this household — ask a leader to add one.
+          </FieldError>
+        ) : (
+          <Field label="Which scout is this for?">
+            {scouts.map((s, i) => (
+              <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: i === 0 ? 4 : 8 }}>
+                <input type="radio" name="scoutId" value={s.id} defaultChecked={i === 0} required />
+                {s.displayName}
+              </label>
+            ))}
+          </Field>
+        )}
 
-      <ProofFields />
+        <ProofFields />
+      </FormCard>
     </form>
   );
 }
@@ -346,72 +348,78 @@ async function VerifiedSubmitForm({ target, err }: { target: string; err?: strin
  */
 function SignInRequiredCard({ target, err }: { target: string; err?: string }) {
   return (
-    <div className={styles.formCard}>
+    <FormCard>
       <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, marginBottom: 8 }}>
         Sign in to submit proof
       </h2>
-      {err && ERR_MESSAGES[err] && <p className={styles.fieldError}>{ERR_MESSAGES[err]}</p>}
-      <p className={styles.fieldHint} style={{ fontSize: 14 }}>
+      {err && ERR_MESSAGES[err] && <FieldError>{ERR_MESSAGES[err]}</FieldError>}
+      <FieldHint>
         Submitting proof now needs your own verified sign-in instead of the shared troop
         password — sign in with your email (no password to remember) and you&rsquo;ll be able
         to send proof for your scout.
-      </p>
+      </FieldHint>
       <p style={{ marginTop: 16, display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-        <Link
-          className={styles.btnPrimary}
+        <Button
+          variant="primary"
           href={`/signin?next=${encodeURIComponent(`/library/submit-proof?target=${target}`)}`}
         >
           Sign In →
-        </Link>
-        <Link className={styles.btnSecondary} href="/library">
+        </Button>
+        <Button variant="secondary" href="/library">
           Back to the Library
-        </Link>
+        </Button>
       </p>
-    </div>
+    </FormCard>
   );
 }
 
 function ProofFields() {
   return (
     <>
-      <div className={styles.sectionDivider} style={{ margin: '22px 0 14px' }}>
-        <span className={styles.divLabel}>Add one of these</span>
-        <span className={styles.divRule} aria-hidden="true" />
-      </div>
+      <SectionDivider label="Add one of these" />
 
-      <div className={styles.fieldRow}>
-        <label className={styles.fieldLabel} htmlFor="photo">
-          Photo{' '}
-          <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>
-            (JPEG, PNG, HEIC, or WebP — 10&nbsp;MB max)
-          </span>
-        </label>
-        <input className={styles.textInput} type="file" id="photo" name="photo" accept="image/jpeg,image/png,image/heic,image/webp" />
-      </div>
+      <Field
+        label={
+          <>
+            Photo{' '}
+            <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>
+              (JPEG, PNG, HEIC, or WebP — 10&nbsp;MB max)
+            </span>
+          </>
+        }
+      >
+        <TextInput type="file" name="photo" accept="image/jpeg,image/png,image/heic,image/webp" />
+      </Field>
 
-      <div className={styles.fieldRow}>
-        <label className={styles.fieldLabel} htmlFor="link_url">
-          Or a link{' '}
-          <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>
-            (a Google Form score screenshot, a video you made, anything)
-          </span>
-        </label>
-        <input className={styles.textInput} type="url" id="link_url" name="link_url" placeholder="https://…" />
-      </div>
+      <Field
+        label={
+          <>
+            Or a link{' '}
+            <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>
+              (a Google Form score screenshot, a video you made, anything)
+            </span>
+          </>
+        }
+      >
+        <TextInput type="url" name="link_url" placeholder="https://…" />
+      </Field>
 
-      <div className={styles.fieldRow}>
-        <label className={styles.fieldLabel} htmlFor="body_md">
-          Or a short write-up{' '}
-          <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>
-            (also doubles as a caption if you added a photo or link)
-          </span>
-        </label>
-        <textarea className={styles.textArea} id="body_md" name="body_md" placeholder="What did you do?" />
-      </div>
+      <Field
+        label={
+          <>
+            Or a short write-up{' '}
+            <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>
+              (also doubles as a caption if you added a photo or link)
+            </span>
+          </>
+        }
+      >
+        <TextArea name="body_md" placeholder="What did you do?" />
+      </Field>
 
-      <button className={styles.btnPrimary} type="submit">
+      <Button variant="primary" type="submit">
         Send for Review
-      </button>
+      </Button>
     </>
   );
 }

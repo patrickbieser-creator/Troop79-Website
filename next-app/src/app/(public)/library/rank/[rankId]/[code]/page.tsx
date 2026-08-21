@@ -18,6 +18,12 @@ import { resolveLibraryViewer, viewerIsLeader } from '@/lib/library-viewer';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import { ResourceCard } from '../../../_components/resource-card';
 import { ScoutSwitcher } from '../../../_components/scout-switcher';
+import { PageHeader, KickerSep } from '@/app/_components/page-header';
+import { PageShell } from '@/app/_components/page-shell';
+import { SectionDivider } from '@/app/_components/section-divider';
+import { EmptyState } from '@/app/_components/empty-state';
+import { Button } from '@/app/_components/button';
+import { FieldHint } from '@/app/_components/form';
 import styles from '../../../library.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -108,31 +114,36 @@ export default async function LibraryRequirementPage({
 
   return (
     <>
-      <div className={styles.pageHeader}>
-        <p className={styles.kicker}>
-          <Link href="/library">Resource Library</Link>
-          <span className={styles.kickerSep}>·</span>
-          <Link href={`/library/rank/${rankId}`}>{(rank as Rank).display_name}</Link>
-          <span className={styles.kickerSep}>·</span>
-          Requirement {code}
-        </p>
-        <h1 className={styles.pageTitle} style={{ display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap' }}>
-          <span className={`${styles.reqTag} ${styles.reqTagLarge}`}>{code}</span>
-          <span style={{ flex: 1, minWidth: 260 }}>{node.label}</span>
-          {isLeaf && ownDoneDate && (
-            <span className={styles.reqDoneBadge}>
-              ✓ Completed{' '}
-              {new Date(ownDoneDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-            </span>
-          )}
-        </h1>
-        <p className={styles.pageLede} style={{ fontSize: 13, marginTop: 6 }}>
-          Paraphrased — confirm exact wording against the current handbook at sign-off.
-        </p>
-        <div className={styles.headRule} />
-      </div>
+      <PageHeader
+        kicker={
+          <>
+            <Link href="/library">Resource Library</Link>
+            <KickerSep />
+            <Link href={`/library/rank/${rankId}`}>{(rank as Rank).display_name}</Link>
+            <KickerSep />
+            Requirement {code}
+          </>
+        }
+        title={
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap' }}>
+            <span className={`${styles.reqTag} ${styles.reqTagLarge}`}>{code}</span>
+            <span style={{ flex: 1, minWidth: 260 }}>{node.label}</span>
+            {isLeaf && ownDoneDate && (
+              <span className={styles.reqDoneBadge}>
+                ✓ Completed{' '}
+                {new Date(ownDoneDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+              </span>
+            )}
+          </span>
+        }
+        lede={
+          <span style={{ fontSize: 13 }}>
+            Paraphrased — confirm exact wording against the current handbook at sign-off.
+          </span>
+        }
+      />
 
-      <main className={styles.main}>
+      <PageShell>
         <ScoutSwitcher viewer={viewer} />
         {narrative && (
           <div className={styles.narrative}>
@@ -169,25 +180,24 @@ export default async function LibraryRequirementPage({
         )}
 
         {isLeaf && audience === 'scout' && (
-          <p style={{ margin: '18px 0 0', textAlign: 'center' }} className={styles.fieldHint}>
-            Scouts: proof can&rsquo;t be submitted from this login yet — ask a parent to send it
-            in, or show a leader in person.
-          </p>
+          <div style={{ margin: '18px 0 0', textAlign: 'center' }}>
+            <FieldHint>
+              Scouts: proof can&rsquo;t be submitted from this login yet — ask a parent to send
+              it in, or show a leader in person.
+            </FieldHint>
+          </div>
         )}
         {isLeaf && audience !== 'scout' && (
           <p style={{ margin: '18px 0 0', textAlign: 'center' }}>
-            <Link className={styles.btnPrimary} href={proofHref}>
+            <Button variant="primary" href={proofHref}>
               I did this →
-            </Link>
+            </Button>
           </p>
         )}
 
         {children.length > 0 && (
           <>
-            <div className={styles.sectionDivider}>
-              <span className={styles.divLabel}>Parts of this requirement</span>
-              <span className={styles.divRule} aria-hidden="true" />
-            </div>
+            <SectionDivider label="Parts of this requirement" />
             <div className={styles.rankItem}>
               <div className={styles.reqRows}>
                 {children.map((child) => {
@@ -221,19 +231,16 @@ export default async function LibraryRequirementPage({
           </>
         )}
 
-        <div className={styles.sectionDivider}>
-          <span className={styles.divLabel}>Resources</span>
-          <span className={styles.divRule} aria-hidden="true" />
-          <Link className={styles.divLink} href={suggestHref}>
-            Suggest one →
-          </Link>
-        </div>
+        <SectionDivider
+          label="Resources"
+          link={<Link href={suggestHref}>Suggest one →</Link>}
+        />
 
         {resources.length === 0 ? (
-          <div className={styles.emptyState}>
+          <EmptyState>
             Nothing shelved for this requirement yet. Found a great video, article, or
             document for it? <Link href={suggestHref}>Be the first to suggest one →</Link>
-          </div>
+          </EmptyState>
         ) : (
           <ul className={styles.resourceList}>
             {resources.map((res) => (
@@ -265,7 +272,7 @@ export default async function LibraryRequirementPage({
             </Link>
           )}
         </nav>
-      </main>
+      </PageShell>
     </>
   );
 }

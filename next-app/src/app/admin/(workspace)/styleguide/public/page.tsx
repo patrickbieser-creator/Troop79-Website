@@ -4,10 +4,11 @@
  * via the /admin/styleguide chooser, beside the admin guide.
  *
  * Same two jobs as the admin guide:
- *   1. REFERENCE — canonical public patterns rendered from the REAL public
- *      stylesheets (library.module.css is the promoted canon for shell, form
- *      kit, buttons, empty states — audit 2026-08-21). Because samples share
- *      the live stylesheets, this page cannot drift from what ships.
+ *   1. REFERENCE — canonical public patterns rendered from the LIVE shared
+ *      components in src/app/_components/ (promoted in Phase A from the
+ *      library.module.css / advancement-report canon the audit identified).
+ *      Because samples render the real components, this page cannot drift
+ *      from what ships.
  *   2. TRACKER — the scoreboard lists every duplication family the audit
  *      found; rows get struck as Phases A–D retire them. Variant notes name
  *      the divergent classes/files still in the wild.
@@ -22,6 +23,14 @@
 import { PageTitle } from '../../_components/page-title';
 import sg from './public-styleguide.module.css';
 import lib from '@/app/(public)/library/library.module.css';
+import { PageHeader, KickerSep } from '@/app/_components/page-header';
+import { Button } from '@/app/_components/button';
+import { Badge } from '@/app/_components/badge';
+import { Notice } from '@/app/_components/notice';
+import { EmptyState } from '@/app/_components/empty-state';
+import { SectionDivider } from '@/app/_components/section-divider';
+import { PublicTabStripSpecimen } from './specimens';
+import { FormCard, Field, TextInput, FieldHint } from '@/app/_components/form';
 
 export const metadata = {
   title: 'Public Styleguide — Troop 79'
@@ -99,19 +108,59 @@ const STATUS: ReadonlyArray<readonly [string, string, string]> = [
       and the divergent copies are deleted. ── */
 
 const SCOREBOARD: ReadonlyArray<readonly [string, string, string]> = [
-  ['Page header / masthead', '11 files re-declare + 2 pages inline', 'PageHeader (Phase A)'],
-  ['Page shell (1180px)', '17 CSS copies + 4 inline', 'PageShell (Phase A)'],
-  ['Buttons', '33 distinct class names / 15 files; primary green written 5× with 3 greens, 3 radii', 'Button (Phase A)'],
-  ['Pills / badges / tags', '46 distinct class names / 16 files', 'Badge (Phase A)'],
-  ['Form fields', '18 files / 88 declarations', 'Form kit (Phase A)'],
-  ['Cards', '~14 hand-written surface recipes / 4 radii', '.card primitive (Phase A)'],
-  ['Tab strips', '5 files / 27 declarations', 'TabStrip (Phase A)'],
-  ['Notices / errors', '15 files / 34 declarations; 13 reds, no danger token', 'Notice (Phase A)'],
-  ['Empty states', '12 files / 20 declarations', 'EmptyState (Phase A)'],
-  ['Section dividers', 'library sectionDivider replicated as headRule/spanBar + inline', 'SectionDivider (Phase A)'],
+  [
+    'Page header / masthead',
+    '11 files re-declare + 2 pages inline',
+    'PageHeader SHIPPED (A) — residuals: photos + events index (two-column headers), event-detail/profile .title, meeting-plan meta row (needs a meta slot), merit-badges inline (B)'
+  ],
+  [
+    'Page shell (1180px)',
+    '17 CSS copies + 4 inline',
+    'PageShell SHIPPED (A) — residuals: photos, event-detail, scout-detail, merit-badges inline (B)'
+  ],
+  [
+    'Buttons',
+    '33 distinct class names / 15 files; primary green written 5× with 3 greens, 3 radii',
+    'Button SHIPPED (A), 38+ sites — residuals: news-controls submitBtn (wants size="sm"), passkeyRemove (wants danger-ghost), signOutBtn, about-join khaki CTA, calendar/pager chrome (excluded by design)'
+  ],
+  [
+    'Pills / badges / tags',
+    '46 distinct class names / 16 files',
+    'Badge SHIPPED (A) — statusTag family, hostChip, soonTag converted; CATEGORICAL tags stay by rule; reqDoneBadge open (uppercase mismatch — Patrick call)'
+  ],
+  [
+    'Form fields',
+    '18 files / 88 declarations',
+    'Form kit SHIPPED (A) — signin ×4 forms, submit flows, library forms; residuals: name-search + tagSelect (16px iOS-zoom question, Phase C), profile editors (ride the Phase C DatePickerField decoupling)'
+  ],
+  [
+    'Cards',
+    '~14 hand-written surface recipes / 4 radii',
+    '.card SHIPPED (A) — member/reimbursement surfaces converted; content-card recipes (resourceCard, storyCard…) remain, fold in Phase C'
+  ],
+  [
+    'Tab strips',
+    '5 files / 27 declarations',
+    'TabStrip SHIPPED (A) — report (canon) + events List/Month converted, CSS deleted; event-detail .seg is an RSVP INPUT control, not tabs (stays by design)'
+  ],
+  [
+    'Notices / errors',
+    '15 files / 34 declarations; 13 reds, no danger token',
+    'Notice SHIPPED (A) — 24+ sites on the status tokens (gateErr, savedNote, fieldError boxes, proxyBanner)'
+  ],
+  [
+    'Empty states',
+    '12 files / 20 declarations',
+    'EmptyState SHIPPED (A) — 10+ sites; residuals: home/news .empty (borderless editorial variant), photos rich empty block'
+  ],
+  [
+    'Section dividers',
+    'library sectionDivider replicated as headRule/spanBar + inline',
+    'SectionDivider SHIPPED (A) — residual: home feed navy-label/forest-bar variant (deliberate editorial look, Patrick call)'
+  ],
   ['Stylesheet-less screens', 'merit-badges ×2 (46 inline sites), site-footer (no media queries)', 'Phase B'],
   ['Inline styles', '146 sites / 31 files (~140 convertible)', 'Phase B target ≤ 15'],
-  ['Second-lineage palette', '8 files render an alternate palette (second navy #22333b, five meta-greys…)', 'Phase C'],
+  ['Second-lineage palette', '8 files render an alternate palette (second navy #22333b, five meta-greys…)', 'Phase C — Phase A adoption already deleted ~40 divergent rules with their hexes'],
   ['Hex census', '79 distinct hex across public modules', 'Phase C target ≤ 30']
 ];
 
@@ -261,83 +310,94 @@ export default function PublicStyleguidePage() {
       <section className={sg.section}>
         <h2 className={sg.sectionLabel}>Canonical specimens</h2>
         <p className={sg.sectionNote}>
-          Rendered from <code>library.module.css</code> &mdash; the de-facto public canon
-          the audit identified (19 importers; its shell and form clusters are promoted to
-          shared components in Phase A). These samples share the live stylesheet, so they
-          cannot drift.
+          Rendered from the SHARED COMPONENTS in <code>src/app/_components/</code> &mdash;
+          promoted in Phase A from the de-facto canon (library.module.css&rsquo;s shell and
+          form clusters; advancement/report&rsquo;s tabs). These samples render the live
+          components, so they cannot drift. Import the component; never re-declare the
+          pattern in a screen module.
         </p>
 
         <div className={sg.publicContext}>
-          {/* Page header */}
+          {/* PageHeader */}
           <div className={sg.specimenBlock}>
-            <header className={lib.pageHeader}>
-              <p className={lib.kicker}>
-                Troop 79 <span className={lib.kickerSep}>&bull;</span> Resource Library
-              </p>
-              <h1 className={lib.pageTitle}>Page Header Specimen</h1>
-              <p className={lib.pageLede}>
-                Kicker, display title, lede, and the hairline rule &mdash; the shell every
-                public page re-declares today and PageHeader replaces in Phase A.
-              </p>
-              <div className={lib.headRule} />
-            </header>
+            <PageHeader
+              kicker={
+                <>
+                  Troop 79 <KickerSep /> Resource Library
+                </>
+              }
+              title="Page Header Specimen"
+              lede="Kicker, display title, lede, and the hairline rule — PageHeader, adopted by 20+ pages in Phase A."
+            />
           </div>
 
           {/* Buttons */}
           <div className={sg.specimenBlock}>
-            <button type="button" className={lib.btnPrimary}>
-              Primary action
-            </button>{' '}
-            <button type="button" className={lib.btnSecondary}>
-              Secondary action
-            </button>
+            <Button variant="primary">Primary action</Button>{' '}
+            <Button variant="secondary">Secondary action</Button>{' '}
+            <Button variant="danger">Withdraw</Button>{' '}
+            <Button variant="ghost">Ghost link-button</Button>
+          </div>
+
+          {/* TabStrip */}
+          <div className={sg.specimenBlock}>
+            <PublicTabStripSpecimen />
+          </div>
+
+          {/* Badge tones */}
+          <div className={sg.specimenBlock}>
+            <Badge tone="neutral">Neutral</Badge> <Badge tone="success">Approved</Badge>{' '}
+            <Badge tone="warning">Submitted</Badge> <Badge tone="danger">Denied</Badge>{' '}
+            <Badge tone="info">Paid</Badge> <Badge tone="accent">Your scout</Badge>
+          </div>
+
+          {/* Notices */}
+          <div className={sg.specimenBlock}>
+            <Notice tone="error">Error notice — role=&quot;alert&quot;, status-danger tokens.</Notice>
+            <div className={sg.specimenGap} />
+            <Notice tone="success">Success notice — role=&quot;status&quot;.</Notice>
+            <div className={sg.specimenGap} />
+            <Notice tone="warning">Warning notice — khaki/bark family.</Notice>
+            <div className={sg.specimenGap} />
+            <Notice tone="info">Info notice — navy family.</Notice>
           </div>
 
           {/* Form kit */}
           <div className={sg.specimenBlock}>
-            <div className={lib.formCard}>
-              <div className={lib.fieldRow}>
-                <label className={lib.fieldLabel} htmlFor="sg-pub-name">
-                  Scout name
-                </label>
-                <input
-                  id="sg-pub-name"
-                  className={lib.textInput}
-                  defaultValue="Sample value"
-                />
-                <p className={lib.fieldHint}>Hint text — quiet, meta-toned.</p>
-                <p className={lib.fieldError}>Error text — the field kit&rsquo;s red.</p>
-              </div>
-            </div>
+            <FormCard>
+              <Field label="Scout name" error="Error text — the status-danger red.">
+                <TextInput defaultValue="Sample value" readOnly />
+              </Field>
+              <FieldHint>Hint text — quiet, meta-toned.</FieldHint>
+            </FormCard>
           </div>
 
-          {/* Empty state + tag */}
+          {/* SectionDivider + EmptyState + reqTag */}
           <div className={sg.specimenBlock}>
-            <div className={lib.emptyState}>Nothing here yet — the empty-state canon.</div>
-            <p style={{ marginTop: 12 }}>
+            <SectionDivider label="This Week" link={<a href="#specimen">All news</a>} />
+            <EmptyState action={<a href="#specimen">Suggest one</a>}>
+              Nothing here yet — the empty-state canon.
+            </EmptyState>
+            <p className={sg.specimenTagRow}>
               <span className={lib.reqTag}>1a</span> <span className={lib.reqTag}>2</span>{' '}
-              requirement tags — the badge seed.
+              requirement tags — library-specific (mono code tags, NOT the Badge pattern).
             </p>
           </div>
         </div>
 
         <div className={sg.variantNote}>
-          <strong>Variants in the wild</strong> (deleted as Phase A adoption lands) &mdash;
-          Page header: <code>.pageHeader</code> re-declared in advancement, meeting-agenda,
-          meeting-plan, photos; <code>.title</code> in event-detail, profile; both
-          merit-badges pages inline. Buttons: <code>.submitBtn</code> ×3 files,{' '}
-          <code>.signInBtn</code>, <code>.gateBtn</code>, <code>.subscribeBtn</code>,{' '}
-          <code>.passkeyBtn</code>, <code>.editSaveBtn</code>, <code>.pagerBtn</code>,{' '}
-          <code>.monthNavBtn</code>&hellip; (33 names / 15 files). Form fields:{' '}
-          <code>.editLabel</code>/<code>.gateLabel</code>/<code>.noteLabel</code>,{' '}
-          <code>.editInput</code>/<code>.gateInput</code>/<code>.filterInput</code>&hellip;
-          (18 files). Tabs: <code>.viewTabs</code> (advancement/report, the canon-to-be),{' '}
-          <code>.viewToggleRow</code> (events), <code>.seg</code> (event-detail),{' '}
-          <code>.tabs</code> (meeting-plan, scout-account). Badges: 46 names incl.{' '}
-          <code>.catTag</code>, <code>.tagChip</code>, <code>.statusTag</code>,{' '}
-          <code>.chip</code>, <code>.rankPill</code>, <code>.trackBadge</code>&hellip;
-          Empty states: <code>.empty</code>, <code>.emptyRow</code>, <code>.miniEmpty</code>,{' '}
-          <code>.recapEmpty</code>&hellip; (12 files).
+          <strong>Variants still in the wild after Phase A</strong> (each is a scoreboard
+          residual above) &mdash; Headers: photos + events index two-column layouts,
+          event-detail/profile <code>.title</code>, meeting-plan&rsquo;s meta-row header,
+          merit-badges inline (Phase B). Buttons: <code>.submitBtn</code> (news-controls,
+          compact), <code>.passkeyRemove</code> (quiet red), <code>.signOutBtn</code>,
+          about-join&rsquo;s khaki CTA, calendar pager/month chrome (excluded by design).
+          Form fields: name-search + tagSelect 16px inputs (iOS-zoom question), profile
+          editors (Phase C). Badges: categorical tags (<code>.catTag</code>,{' '}
+          <code>.tagChip</code>, <code>.tagEagle</code>&hellip;) stay by rule;{' '}
+          <code>.reqDoneBadge</code> open. Empty states: home/news borderless{' '}
+          <code>.empty</code>, photos&rsquo; rich empty block. Dividers: home feed&rsquo;s
+          navy-label/forest-bar editorial variant.
         </div>
       </section>
 

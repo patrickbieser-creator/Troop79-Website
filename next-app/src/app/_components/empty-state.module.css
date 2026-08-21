@@ -1,0 +1,18 @@
+/* Shared public EmptyState — promoted from library.module.css's .emptyState
+   (canon among 20 declarations in 12 files). Canonical rendering:
+   /admin/styleguide/public. */
+
+.emptyState {
+  text-align: center;
+  padding: var(--sp-8) var(--sp-5);
+  color: var(--text-meta);
+  font-family: var(--font-body);
+  font-style: italic;
+  background: var(--warm-white);
+  border: 1px dashed var(--border-mid);
+  border-radius: var(--rad-sm);
+  line-height: 1.6;
+}
+.emptyState a { color: var(--navy); font-weight: 700; font-style: normal; }
+.emptyState a:hover { text-decoration: underline; text-underline-offset: 2px; }
+.action { margin-top: var(--sp-3); font-family: var(--font-ui); font-style: normal; }

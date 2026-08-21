@@ -31,42 +31,8 @@
   color: var(--forest);
 }
 
-.main {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 8px 24px 72px;
-}
-
-.empty {
-  margin-top: 32px;
-  padding: 48px 24px;
-  text-align: center;
-  background: var(--warm-white);
-  border: 1px solid var(--border-light);
-  border-radius: 2px;
-  color: var(--text-meta);
-  font-style: italic;
-}
-
-.sectionDivider {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin: 36px 0 16px;
-}
-.divLabel {
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: var(--forest);
-  white-space: nowrap;
-}
-.divRule {
-  flex: 1;
-  border-bottom: 1px solid var(--border-mid, #c8bfaf);
-}
+/* Shell, empty state, and section dividers use the shared public
+   components (Phase A, Plans/Public-Design-System.md). */
 
 /* ── tiers + session cards ── */
 .tierHead {

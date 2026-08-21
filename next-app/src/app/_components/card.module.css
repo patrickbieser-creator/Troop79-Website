@@ -1,0 +1,14 @@
+/* Shared public card surface — the recipe the audit found hand-written ~14
+   times with 4 different radii: warm-white on border-light with the card
+   shadow. Import this module and use .card directly (optionally with
+   .cardHover for interactive cards); screen modules keep only their own
+   layout. Canonical rendering: /admin/styleguide/public. */
+
+.card {
+  background: var(--warm-white);
+  border: 1px solid var(--border-light);
+  border-radius: var(--rad-sm);
+  box-shadow: var(--shadow-card);
+}
+.cardHover:hover { box-shadow: var(--shadow-hover); border-color: var(--border-mid); }
+.cardPad { padding: 18px 20px; }

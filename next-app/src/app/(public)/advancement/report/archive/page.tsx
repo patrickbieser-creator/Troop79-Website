@@ -6,7 +6,9 @@ import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import { loadPublishedArchive } from '@/lib/advancement-report-store';
 import { formatMonthDayYear } from '@/lib/advancement-report';
-import styles from '../../../library/library.module.css';
+import { PageHeader, KickerSep } from '@/app/_components/page-header';
+import { PageShell } from '@/app/_components/page-shell';
+import { EmptyState } from '@/app/_components/empty-state';
 import reportStyles from '../report.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -21,22 +23,21 @@ export default async function ReportArchivePage() {
 
   return (
     <>
-      <div className={styles.pageHeader}>
-        <p className={styles.kicker}>
-          <Link href="/advancement">Advancement</Link>
-          <span className={styles.kickerSep}>·</span>
-          <Link href="/advancement/report">Weekly Report</Link>
-        </p>
-        <h1 className={styles.pageTitle}>Report Archive</h1>
-        <p className={styles.pageLede}>Every Weekly Advancement Report Troop 79 has published.</p>
-        <div className={styles.headRule} />
-      </div>
+      <PageHeader
+        kicker={
+          <>
+            <Link href="/advancement">Advancement</Link>
+            <KickerSep />
+            <Link href="/advancement/report">Weekly Report</Link>
+          </>
+        }
+        title="Report Archive"
+        lede="Every Weekly Advancement Report Troop 79 has published."
+      />
 
-      <main className={styles.main}>
+      <PageShell>
         {reports.length === 0 ? (
-          <div className={reportStyles.emptyState}>
-            <p>No reports have been published yet.</p>
-          </div>
+          <EmptyState>No reports have been published yet.</EmptyState>
         ) : (
           <ul className={reportStyles.archiveList}>
             {reports.map((r) => (
@@ -53,7 +54,7 @@ export default async function ReportArchivePage() {
             ))}
           </ul>
         )}
-      </main>
+      </PageShell>
     </>
   );
 }

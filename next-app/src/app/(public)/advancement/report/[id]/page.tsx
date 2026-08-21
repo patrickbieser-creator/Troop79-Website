@@ -11,7 +11,9 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { loadPublishedReportById } from '@/lib/advancement-report-store';
 import { PublicReportView } from '../_components/PublicReportView';
 import { formatMonthDayYear } from '@/lib/advancement-report';
-import styles from '../../../library/library.module.css';
+import { PageHeader, KickerSep } from '@/app/_components/page-header';
+import { PageShell } from '@/app/_components/page-shell';
+import { Notice } from '@/app/_components/notice';
 import reportStyles from '../report.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -35,28 +37,30 @@ export default async function ArchivedReportPage({ params }: { params: Promise<{
 
   return (
     <>
-      <div className={styles.pageHeader}>
-        <p className={styles.kicker}>
-          <Link href="/advancement">Advancement</Link>
-          <span className={styles.kickerSep}>·</span>
-          <Link href="/advancement/report/archive">Weekly Reports</Link>
-        </p>
-        <h1 className={styles.pageTitle}>Weekly Advancement Report</h1>
-        <p className={styles.pageLede}>
-          {formatMonthDayYear(report.startDate)} – {formatMonthDayYear(report.endDate)}
-        </p>
-        <div className={styles.headRule} />
-      </div>
+      <PageHeader
+        kicker={
+          <>
+            <Link href="/advancement">Advancement</Link>
+            <KickerSep />
+            <Link href="/advancement/report/archive">Weekly Reports</Link>
+          </>
+        }
+        title="Weekly Advancement Report"
+        lede={
+          <>
+            {formatMonthDayYear(report.startDate)} – {formatMonthDayYear(report.endDate)}
+          </>
+        }
+      />
 
-      <main className={styles.main}>
+      <PageShell>
         {report.note && (
-          <div className={reportStyles.note}>
-            <strong>Editor&rsquo;s note</strong>
-            {report.note}
-          </div>
+          <Notice tone="warning" className={reportStyles.noticeGap}>
+            <strong>Editor&rsquo;s note:</strong> {report.note}
+          </Notice>
         )}
         <PublicReportView report={report} basePath={`/advancement/report/${report.id}`} />
-      </main>
+      </PageShell>
     </>
   );
 }

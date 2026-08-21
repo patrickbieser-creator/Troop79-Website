@@ -2,34 +2,8 @@
    advancement.html so the visual continuity is preserved. Tokens live in
    globals.css; everything page-specific is scoped here. */
 
-.pageHeader {
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 32px 24px 0;
-}
-.pageHeader h1 {
-  font-family: var(--font-display);
-  font-size: 36px;
-  font-weight: 700;
-  color: var(--text-head);
-  letter-spacing: -.01em;
-  margin-bottom: 6px;
-}
-.pageHeaderLede {
-  font-family: var(--font-body);
-  font-size: 16px;
-  color: var(--text-body);
-  line-height: 1.6;
-  max-width: 760px;
-  margin-bottom: 20px;
-}
-.pageHeaderRule { height: 2px; background: var(--border-mid); }
-
-.main {
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 0 24px 60px;
-}
+/* Page header, shell, and section dividers use the shared public components
+   (Phase A, Plans/Public-Design-System.md). */
 
 /* ── Stats strip ───────────────────────────────────── */
 .statsStrip {
@@ -62,26 +36,6 @@
   color: var(--text-meta);
   margin-top: 6px;
 }
-
-/* ── Section divider ───────────────────────────────── */
-.sectionDivider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 28px 0 16px;
-}
-.divLabel {
-  font-family: var(--font-ui);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  color: var(--navy);
-  white-space: nowrap;
-  border-left: 3px solid var(--forest);
-  padding-left: 8px;
-}
-.divRule { flex: 1; height: 1px; background: var(--border-light); }
 
 /* ── Rank distribution grid ────────────────────────── */
 .rankGrid {

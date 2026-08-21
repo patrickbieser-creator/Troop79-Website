@@ -1,62 +1,10 @@
-/* Resource Library — shared styles for all /library pages.
-   Mirrors the prototype (prototypes/resource-library/) on the production
-   token set from globals.css. */
-
-.pageHeader {
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 32px 24px 0;
-}
-.kicker {
-  font-family: var(--font-ui);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-meta);
-  margin-bottom: 10px;
-}
-.kicker a { color: var(--navy); }
-.kicker a:hover { color: var(--forest); text-decoration: underline; text-underline-offset: 2px; }
-.kickerSep { margin: 0 6px; color: var(--border-mid); }
-.pageTitle {
-  font-family: var(--font-display);
-  font-weight: 900;
-  color: var(--text-head);
-  font-size: clamp(30px, 6vw, 44px);
-  line-height: 1.08;
-  margin-bottom: 10px;
-  text-wrap: balance;
-}
-.pageLede {
-  font-family: var(--font-body);
-  font-size: 17px;
-  font-style: italic;
-  color: var(--text-meta);
-  line-height: 1.5;
-}
-.headRule { height: 2px; background: var(--border-mid); margin-top: 20px; }
-
-.main {
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 24px 24px 80px;
-}
-.mainNarrow { max-width: 800px; }
-
-.sectionDivider { display: flex; align-items: center; gap: 12px; margin: 34px 0 14px; }
-.divLabel {
-  font-family: var(--font-ui);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-meta);
-  white-space: nowrap;
-}
-.divRule { flex: 1; height: 1px; background: var(--border-mid); }
-.divLink { font-family: var(--font-ui); font-size: 11.5px; font-weight: 700; color: var(--navy); white-space: nowrap; }
-.divLink:hover { color: var(--forest); text-decoration: underline; text-underline-offset: 2px; }
+/* Resource Library — styles for the /library pages ONLY (since Public
+   Design System Phase A, 2026-08-21). The page shell, section dividers,
+   buttons, form kit, and empty state this file used to carry were the
+   de-facto public canon (19 importers at audit); they are PROMOTED to the
+   shared components in src/app/_components/ (PageHeader, PageShell,
+   SectionDivider, Button, form kit, EmptyState) and deleted here. Nothing
+   outside /library imports this file any more — keep it that way. */
 
 /* ── Search ── */
 .searchForm { position: relative; margin-bottom: 8px; }
@@ -158,19 +106,6 @@
 .resTitleLink:hover .resTitle { color: var(--navy); text-decoration: underline; text-underline-offset: 2px; }
 .resBlurb { font-family: var(--font-body); font-size: 13.5px; color: var(--text-body); line-height: 1.5; margin: 3px 0 0; }
 .resMetaRow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
-.hostChip {
-  display: inline-flex;
-  font-family: var(--font-ui);
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  padding: 2px 9px;
-  border-radius: 999px;
-  border: 1px solid var(--border-mid);
-  background: var(--cream);
-  color: var(--text-meta);
-}
 .resCredit { font-family: var(--font-ui); font-size: 11.5px; color: var(--text-meta); }
 .alsoOn { font-family: var(--font-ui); font-size: 11.5px; color: var(--text-meta); }
 .alsoOn a { color: var(--navy); font-weight: 600; }
@@ -449,103 +384,8 @@
 .ctaBandText { flex: 1; min-width: 260px; }
 .ctaBandTitle { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--text-head); margin: 0 0 6px; }
 .ctaBandLede { font-family: var(--font-body); font-size: 14.5px; line-height: 1.55; color: var(--text-body); margin: 0; }
-.btnPrimary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-family: var(--font-ui);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  border-radius: 2px;
-  padding: 12px 22px;
-  min-height: 44px;
-  background: var(--forest);
-  color: #fff;
-  border: none;
-  cursor: pointer;
-}
-.btnPrimary:hover { background: var(--forest-light); box-shadow: var(--shadow-hover); }
-.btnSecondary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-ui);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  border-radius: 2px;
-  padding: 12px 22px;
-  min-height: 44px;
-  background: var(--warm-white);
-  color: var(--navy);
-  border: 1px solid var(--border-mid);
-  cursor: pointer;
-}
-.btnSecondary:hover { border-color: var(--forest); color: var(--forest); background: var(--cream); }
 
-/* ── Empty state ── */
-.emptyState {
-  text-align: center;
-  padding: 32px 20px;
-  color: var(--text-meta);
-  font-family: var(--font-body);
-  font-style: italic;
-  background: var(--warm-white);
-  border: 1px dashed var(--border-mid);
-  border-radius: 3px;
-  line-height: 1.6;
-}
-.emptyState a { color: var(--navy); font-weight: 700; font-style: normal; }
-.emptyState a:hover { text-decoration: underline; text-underline-offset: 2px; }
-
-/* ── Submit form ── */
-.formCard {
-  background: var(--warm-white);
-  border: 1px solid var(--border-light);
-  border-radius: 3px;
-  box-shadow: var(--shadow-card);
-  padding: 26px 28px;
-}
-.fieldLabel {
-  display: block;
-  font-family: var(--font-ui);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-meta);
-  margin-bottom: 6px;
-}
-.textInput,
-.selectInput,
-.textArea {
-  width: 100%;
-  background: var(--warm-white);
-  border: 1px solid var(--border-mid);
-  border-radius: 2px;
-  font-family: var(--font-ui);
-  font-size: 14.5px;
-  padding: 11px 13px;
-  color: var(--text-body);
-}
-.textArea { min-height: 110px; resize: vertical; line-height: 1.55; }
-.fieldRow { margin-bottom: 16px; }
-.fieldHint { font-family: var(--font-ui); font-size: 12px; color: var(--text-meta); margin-top: 6px; line-height: 1.5; }
-.fieldError {
-  font-family: var(--font-ui);
-  font-size: 13px;
-  font-weight: 600;
-  color: #8a3b2e;
-  background: #f9efec;
-  border: 1px solid #cba79d;
-  border-radius: 3px;
-  padding: 10px 14px;
-  margin-bottom: 16px;
-}
+/* ── Proof picker ── */
 .proofGroupList {
   max-height: 420px;
   overflow-y: auto;
@@ -589,7 +429,3 @@
 .siblingNav a { color: var(--navy); padding: 8px 0; }
 .siblingNav a:hover { color: var(--forest); text-decoration: underline; text-underline-offset: 2px; }
 .siblingSpacer { flex: 1; }
-
-@media (max-width: 620px) {
-  .formCard { padding: 20px 18px; }
-}

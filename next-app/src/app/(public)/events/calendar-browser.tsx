@@ -11,6 +11,9 @@ import {
 } from '@/lib/calendar-categories';
 import { formatCalendarDateParts, formatTimeOfDay } from '@/lib/calendar-shared';
 import { MonthGrid } from './month-grid';
+import { TabStrip } from '@/app/_components/tab-strip';
+import { SectionDivider } from '@/app/_components/section-divider';
+import { EmptyState } from '@/app/_components/empty-state';
 import styles from './events.module.css';
 
 type View = 'list' | 'month';
@@ -268,26 +271,14 @@ export function CalendarBrowser({
   return (
     <>
       <div className={styles.viewToggleRow}>
-        <div className={styles.viewToggle} role="tablist" aria-label="Calendar view">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={view === 'list'}
-            className={`${styles.viewToggleBtn} ${view === 'list' ? styles.viewToggleBtnActive : ''}`}
-            onClick={() => setView('list')}
-          >
-            List
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={view === 'month'}
-            className={`${styles.viewToggleBtn} ${view === 'month' ? styles.viewToggleBtnActive : ''}`}
-            onClick={() => setView('month')}
-          >
-            Month
-          </button>
-        </div>
+        <TabStrip
+          ariaLabel="Calendar view"
+          activeKey={view}
+          items={[
+            { key: 'list', label: 'List', onSelect: () => setView('list') },
+            { key: 'month', label: 'Month', onSelect: () => setView('month') }
+          ]}
+        />
 
         <div className={styles.filterCluster} role="region" aria-label="Calendar filters">
           <div className={styles.filterControls}>
@@ -346,14 +337,11 @@ export function CalendarBrowser({
       </div>
 
       <div style={{ display: view === 'list' ? 'block' : 'none' }}>
-        <div className={styles.sectionDivider}>
-          <span className={styles.divLabel}>Upcoming</span>
-          <span className={styles.divRule} aria-hidden="true" />
-        </div>
+        <SectionDivider label="Upcoming" />
         {filteredUpcoming.length === 0 ? (
-          <p className={styles.empty}>
+          <EmptyState>
             {filtering ? 'No upcoming entries match that filter.' : 'Nothing on the calendar yet.'}
-          </p>
+          </EmptyState>
         ) : (
           groupByMonth(filteredUpcoming).map(([label, items]) => (
             <section key={`u-${label}`} aria-label={label}>
@@ -372,10 +360,7 @@ export function CalendarBrowser({
 
         {filteredPast.length > 0 && (
           <>
-            <div className={styles.sectionDivider}>
-              <span className={styles.divLabel}>Past</span>
-              <span className={styles.divRule} aria-hidden="true" />
-            </div>
+            <SectionDivider label="Past" />
             {groupByMonth(filteredPast).map(([label, items]) => (
               <section key={`p-${label}`} aria-label={`${label} (past)`}>
                 <div className={styles.monthDivider}>

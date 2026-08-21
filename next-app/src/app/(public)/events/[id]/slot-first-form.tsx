@@ -6,6 +6,7 @@ import type { SignupSlot } from '@/lib/event-signup';
 import type { Household } from '@/lib/households';
 import { formatTimeOfDay } from '@/lib/calendar-shared';
 import styles from './event-detail.module.css';
+import { Notice } from '@/app/_components/notice';
 
 /*
  * THE JOB BOARD — one list, not two.
@@ -265,10 +266,10 @@ export default function SlotFirstForm({
                 </button>
               </div>
               {gateError === 'bad-password' && (
-                <p className={styles.gateErr}>That password didn’t match. Try again.</p>
+                <Notice tone="error" className={styles.noticeGapTop}>That password didn’t match. Try again.</Notice>
               )}
               {gateError === 'missing' && (
-                <p className={styles.gateErr}>Please enter the troop password.</p>
+                <Notice tone="error" className={styles.noticeGapTop}>Please enter the troop password.</Notice>
               )}
             </form>
           )}

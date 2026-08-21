@@ -15,6 +15,10 @@ import type { Scout, ScoutSummaryRow, Rank } from '@/lib/supabase/types';
 import { publicScoutName } from '@/lib/scout-name';
 import styles from './advancement.module.css';
 import { RosterTable, type RosterRow } from './roster-table';
+import { PageHeader } from '@/app/_components/page-header';
+import { PageShell } from '@/app/_components/page-shell';
+import { SectionDivider } from '@/app/_components/section-divider';
+import { EmptyState } from '@/app/_components/empty-state';
 
 // No Dynamic API is used here, so Next silently prerendered this page as
 // static HTML at build time — same bug as /merit-badges (see that page's
@@ -64,29 +68,21 @@ export default async function AdvancementPage() {
 
   return (
     <>
-      <div className={styles.pageHeader}>
-        <h1>Advancement Tracker</h1>
-        <p className={styles.pageHeaderLede}>
-          Every Troop 79 scout&rsquo;s rank progress, merit badges, leadership,
-          service hours, and camping nights &mdash; the same record their
-          parents, scoutmasters, and Boards of Review use. Tap any scout to
-          open their full Clipboard report.
-        </p>
-        <div className={styles.pageHeaderRule} />
-      </div>
+      <PageHeader
+        title="Advancement Tracker"
+        lede={
+          <>
+            Every Troop 79 scout&rsquo;s rank progress, merit badges, leadership,
+            service hours, and camping nights &mdash; the same record their
+            parents, scoutmasters, and Boards of Review use. Tap any scout to
+            open their full Clipboard report.
+          </>
+        }
+      />
 
-      <main className={styles.main}>
+      <PageShell>
         {!data ? (
-          <p
-            style={{
-              padding: 40,
-              textAlign: 'center',
-              color: 'var(--text-meta)',
-              fontStyle: 'italic'
-            }}
-          >
-            Could not load advancement data. Try again later.
-          </p>
+          <EmptyState>Could not load advancement data. Try again later.</EmptyState>
         ) : (
           <>
             <StatsStrip data={data} />
@@ -100,7 +96,7 @@ export default async function AdvancementPage() {
             <LeaderCta />
           </>
         )}
-      </main>
+      </PageShell>
     </>
   );
 }
@@ -134,15 +130,6 @@ function Stat({ value, label }: { value: number; label: string }) {
     <div className={styles.stat}>
       <div className={styles.statNum}>{value}</div>
       <div className={styles.statLabel}>{label}</div>
-    </div>
-  );
-}
-
-function SectionDivider({ label }: { label: string }) {
-  return (
-    <div className={styles.sectionDivider}>
-      <span className={styles.divLabel}>{label}</span>
-      <span className={styles.divRule} aria-hidden="true" />
     </div>
   );
 }

@@ -11,6 +11,18 @@ import { resolveAdminActor } from '@/lib/admin-actor';
 import type { LibraryTopic, MeritBadge, Rank } from '@/lib/supabase/types';
 import { rankReqKey } from '@/lib/library';
 import { libraryGateAction, submitLibraryResourceAction } from './actions';
+import { PageHeader, KickerSep } from '@/app/_components/page-header';
+import { PageShell } from '@/app/_components/page-shell';
+import { Button } from '@/app/_components/button';
+import {
+  FormCard,
+  Field,
+  TextInput,
+  SelectInput,
+  TextArea,
+  FieldHint,
+  FieldError
+} from '@/app/_components/form';
 import styles from '../library.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -75,21 +87,20 @@ export default async function LibrarySubmitPage({
 
   return (
     <>
-      <div className={styles.pageHeader}>
-        <p className={styles.kicker}>
-          <Link href="/library">Resource Library</Link>
-          <span className={styles.kickerSep}>·</span>
-          Suggest a Resource
-        </p>
-        <h1 className={styles.pageTitle}>Suggest a Resource</h1>
-        <p className={styles.pageLede}>
-          Found a great video, article, document, or product link? Send it in. The webmaster
-          reviews every suggestion before it&rsquo;s published — usually within a few days.
-        </p>
-        <div className={styles.headRule} />
-      </div>
+      <PageHeader
+        kicker={
+          <>
+            <Link href="/library">Resource Library</Link>
+            <KickerSep />
+            Suggest a Resource
+          </>
+        }
+        title="Suggest a Resource"
+        lede="Found a great video, article, document, or product link? Send it in. The webmaster
+          reviews every suggestion before it&rsquo;s published — usually within a few days."
+      />
 
-      <main className={`${styles.main} ${styles.mainNarrow}`} style={{ maxWidth: 720 }}>
+      <PageShell width="narrow">
         {sent === '1' ? (
           <SentConfirmation />
         ) : audience === null ? (
@@ -97,14 +108,14 @@ export default async function LibrarySubmitPage({
         ) : (
           <SubmitForm target={target} err={err} />
         )}
-      </main>
+      </PageShell>
     </>
   );
 }
 
 function SentConfirmation() {
   return (
-    <div className={styles.formCard}>
+    <FormCard>
       <div className={styles.confirmDone}>
         <div className={styles.bigCheck} aria-hidden="true">
           ✓
@@ -115,54 +126,45 @@ function SentConfirmation() {
           you&rsquo;ll see it on the shelf — usually within a few days.
         </p>
         <p style={{ marginTop: 16, display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Link className={styles.btnSecondary} href="/library/submit">
+          <Button variant="secondary" href="/library/submit">
             Suggest Another
-          </Link>
-          <Link className={styles.btnPrimary} href="/library">
+          </Button>
+          <Button variant="primary" href="/library">
             Back to the Library
-          </Link>
+          </Button>
         </p>
       </div>
-    </div>
+    </FormCard>
   );
 }
 
 function GateCard({ target, gate }: { target?: string; gate?: string }) {
   const configured = familyGateConfigured();
   return (
-    <div className={styles.formCard}>
+    <FormCard>
       <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, marginBottom: 8 }}>
         Troop sign-in
       </h2>
-      <p className={styles.fieldHint} style={{ marginBottom: 18, fontSize: 14 }}>
+      <FieldHint>
         One shared password for the whole troop — it&rsquo;s printed in the Bugle each week,
         or ask any leader. You&rsquo;ll only enter it once on this device. Leaders and scouts
         already signed in to the workspace skip this step automatically.
-      </p>
-      {gate && GATE_MESSAGES[gate] && <p className={styles.fieldError}>{GATE_MESSAGES[gate]}</p>}
+      </FieldHint>
+      {gate && GATE_MESSAGES[gate] && <FieldError>{GATE_MESSAGES[gate]}</FieldError>}
       {configured ? (
         <form action={libraryGateAction}>
           {target && <input type="hidden" name="target" value={target} />}
-          <div className={styles.fieldRow}>
-            <label className={styles.fieldLabel} htmlFor="password">
-              Troop password
-            </label>
-            <input
-              className={styles.textInput}
-              type="password"
-              id="password"
-              name="password"
-              autoComplete="off"
-            />
-          </div>
-          <button className={styles.btnPrimary} type="submit">
+          <Field label="Troop password">
+            <TextInput type="password" name="password" autoComplete="off" />
+          </Field>
+          <Button variant="primary" type="submit">
             Continue
-          </button>
+          </Button>
         </form>
       ) : (
-        <p className={styles.fieldError}>{GATE_MESSAGES['not-configured']}</p>
+        <FieldError>{GATE_MESSAGES['not-configured']}</FieldError>
       )}
-    </div>
+    </FormCard>
   );
 }
 
@@ -175,44 +177,44 @@ async function SubmitForm({ target, err }: { target?: string; err?: string }) {
   const namePrefill = adminActor?.label ?? '';
 
   return (
-    <form className={styles.formCard} action={submitLibraryResourceAction}>
-      {err && ERR_MESSAGES[err] && <p className={styles.fieldError}>{ERR_MESSAGES[err]}</p>}
+    <form action={submitLibraryResourceAction}>
+      <FormCard>
+      {err && ERR_MESSAGES[err] && <FieldError>{ERR_MESSAGES[err]}</FieldError>}
 
-      <div className={styles.fieldRow}>
-        <label className={styles.fieldLabel} htmlFor="url">
-          Link
-        </label>
-        <input
-          className={styles.textInput}
+      <Field label="Link">
+        <TextInput
           type="url"
-          id="url"
           name="url"
           required
           placeholder="https://…  (YouTube, article, Google Doc, Amazon — anything)"
         />
-      </div>
+      </Field>
 
-      <div className={styles.fieldRow}>
-        <label className={styles.fieldLabel} htmlFor="title">
-          What is it? <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>(optional)</span>
-        </label>
-        <input
-          className={styles.textInput}
+      <Field
+        label={
+          <>
+            What is it? <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>(optional)</span>
+          </>
+        }
+      >
+        <TextInput
           type="text"
-          id="title"
           name="title"
           placeholder="e.g. Great 6-minute video on splinting an arm"
         />
-      </div>
+      </Field>
 
-      <div className={styles.fieldRow}>
-        <label className={styles.fieldLabel} htmlFor="target">
-          Where does it belong?{' '}
-          <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>
-            (best guess is fine)
-          </span>
-        </label>
-        <select className={styles.selectInput} id="target" name="target" defaultValue={target ?? ''}>
+      <Field
+        label={
+          <>
+            Where does it belong?{' '}
+            <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>
+              (best guess is fine)
+            </span>
+          </>
+        }
+      >
+        <SelectInput name="target" defaultValue={target ?? ''}>
           <option value="">Let the webmaster decide</option>
           <optgroup label="Topic shelves">
             {options.topics.map((t) => (
@@ -237,46 +239,44 @@ async function SubmitForm({ target, err }: { target?: string; err?: string }) {
               </option>
             ))}
           </optgroup>
-        </select>
-      </div>
+        </SelectInput>
+      </Field>
 
-      <div className={styles.fieldRow}>
-        <label className={styles.fieldLabel} htmlFor="why">
-          Why is it good?{' '}
-          <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>
-            (optional — becomes the blurb if published)
-          </span>
-        </label>
-        <textarea
-          className={styles.textArea}
-          id="why"
-          name="why"
-          placeholder="One or two sentences."
-        />
-      </div>
+      <Field
+        label={
+          <>
+            Why is it good?{' '}
+            <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>
+              (optional — becomes the blurb if published)
+            </span>
+          </>
+        }
+      >
+        <TextArea name="why" placeholder="One or two sentences." />
+      </Field>
 
-      <div className={styles.fieldRow}>
-        <label className={styles.fieldLabel} htmlFor="name">
-          Who are you?
-        </label>
-        <input
-          className={styles.textInput}
+      <Field
+        label="Who are you?"
+        hint={
+          <>
+            Shown to the webmaster; if published, credit defaults to &ldquo;Shared by
+            {' '}your name&rdquo; (the webmaster can edit it).
+          </>
+        }
+      >
+        <TextInput
           type="text"
-          id="name"
           name="name"
           required
           defaultValue={namePrefill}
           placeholder="e.g. Mr. Kowalski, or Ben S. (scout)"
         />
-        <p className={styles.fieldHint}>
-          Shown to the webmaster; if published, credit defaults to &ldquo;Shared by
-          {' '}your name&rdquo; (the webmaster can edit it).
-        </p>
-      </div>
+      </Field>
 
-      <button className={styles.btnPrimary} type="submit">
+      <Button variant="primary" type="submit">
         Send to the Webmaster
-      </button>
+      </Button>
+      </FormCard>
     </form>
   );
 }

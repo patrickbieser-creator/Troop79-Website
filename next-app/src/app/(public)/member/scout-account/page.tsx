@@ -28,7 +28,11 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { resolveFinanceViewer } from '@/lib/finance-viewer';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import { computeBalance } from '@/lib/finance';
-import shell from '../../library/library.module.css';
+import { PageHeader } from '@/app/_components/page-header';
+import { PageShell } from '@/app/_components/page-shell';
+import { Button } from '@/app/_components/button';
+import { Notice } from '@/app/_components/notice';
+import surface from '@/app/_components/card.module.css';
 import memberStyles from '../member.module.css';
 import styles from './scout-account.module.css';
 
@@ -52,21 +56,17 @@ interface HistoryRow {
 function SignInPrompt({ heading, body }: { heading: string; body: string }) {
   return (
     <>
-      <div className={shell.pageHeader}>
-        <p className={shell.kicker}>Members</p>
-        <h1 className={shell.pageTitle}>{heading}</h1>
-        <div className={shell.headRule} />
-      </div>
-      <main className={`${shell.main} ${shell.mainNarrow}`}>
+      <PageHeader kicker="Members" title={heading} />
+      <PageShell width="narrow">
         <div className={memberStyles.gate}>
           <p>{body}</p>
           <p style={{ marginTop: '1.5rem' }}>
-            <Link className={memberStyles.signInBtn} href={`/signin?next=${encodeURIComponent('/member/scout-account')}`}>
+            <Button variant="primary" href={`/signin?next=${encodeURIComponent('/member/scout-account')}`}>
               Sign in
-            </Link>
+            </Button>
           </p>
         </div>
-      </main>
+      </PageShell>
     </>
   );
 }
@@ -92,12 +92,8 @@ export default async function ScoutAccountPage({
   if (viewer.kind === 'proxy-available') {
     return (
       <>
-        <div className={shell.pageHeader}>
-          <p className={shell.kicker}>Members</p>
-          <h1 className={shell.pageTitle}>Scout Account</h1>
-          <div className={shell.headRule} />
-        </div>
-        <main className={`${shell.main} ${shell.mainNarrow}`}>
+        <PageHeader kicker="Members" title="Scout Account" />
+        <PageShell width="narrow">
           <p className={memberStyles.intro}>
             Pick a scout to view their account exactly as their family sees it.
           </p>
@@ -114,7 +110,7 @@ export default async function ScoutAccountPage({
             </select>
             <button type="submit">View</button>
           </form>
-        </main>
+        </PageShell>
       </>
     );
   }
@@ -153,14 +149,10 @@ export default async function ScoutAccountPage({
 
   return (
     <>
-      <div className={shell.pageHeader}>
-        <p className={shell.kicker}>Members</p>
-        <h1 className={shell.pageTitle}>Scout Account</h1>
-        <div className={shell.headRule} />
-      </div>
-      <main className={shell.main}>
+      <PageHeader kicker="Members" title="Scout Account" />
+      <PageShell>
         {isProxy && (
-          <div className={styles.proxyBanner}>
+          <Notice tone="warning" className={styles.proxyBanner}>
             <span>
               Viewing as <strong>{label}</strong> (leader view)
             </span>
@@ -174,7 +166,7 @@ export default async function ScoutAccountPage({
               </select>
               <button type="submit">Switch</button>
             </form>
-          </div>
+          </Notice>
         )}
 
         {!isProxy && switchOptions.length > 0 && (
@@ -182,7 +174,7 @@ export default async function ScoutAccountPage({
           // (Patrick, 2026-08-18) — the switcher is offered, not forced.
           // Picking a scout here is what turns proxy mode on; returning to
           // /member and back resets to this default, no toggle to remember.
-          <div className={styles.proxyBanner}>
+          <Notice tone="warning" className={styles.proxyBanner}>
             <span>Viewing your own family.</span>
             <form method="get" className={styles.proxyForm}>
               <select name="viewScout" defaultValue="">
@@ -197,7 +189,7 @@ export default async function ScoutAccountPage({
               </select>
               <button type="submit">View</button>
             </form>
-          </div>
+          </Notice>
         )}
 
         <p className={memberStyles.intro}>
@@ -208,14 +200,14 @@ export default async function ScoutAccountPage({
 
         <div className={styles.balanceGrid}>
           {balanceRows.map((b) => (
-            <div key={b.personId} className={styles.balanceCard}>
+            <div key={b.personId} className={`${surface.card} ${styles.balanceCard}`}>
               <p className={styles.balanceLabel}>{b.name}</p>
               <p className={styles.balanceValue}>${b.balance.toFixed(2)}</p>
             </div>
           ))}
         </div>
 
-        <div className={styles.tableWrap}>
+        <div className={`${surface.card} ${styles.tableWrap}`}>
           <table className={styles.table}>
             <thead>
               <tr>
@@ -252,7 +244,7 @@ export default async function ScoutAccountPage({
         <p className={memberStyles.note}>
           Questions about a specific entry? Ask a leader — the troop treasurer can pull up the full detail.
         </p>
-      </main>
+      </PageShell>
     </>
   );
 }

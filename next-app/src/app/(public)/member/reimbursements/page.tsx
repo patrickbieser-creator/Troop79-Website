@@ -16,7 +16,12 @@ import { isEpochCurrent } from '@/lib/identity-session';
 import { createAdminClient } from '@/lib/supabase/server';
 import { resolveFamilyScope } from '@/lib/household-scope';
 import { submitReimbursementAction, withdrawReimbursementAction } from './actions';
-import shell from '../../library/library.module.css';
+import { PageHeader } from '@/app/_components/page-header';
+import { PageShell } from '@/app/_components/page-shell';
+import { Button } from '@/app/_components/button';
+import { Badge, type BadgeTone } from '@/app/_components/badge';
+import { Notice } from '@/app/_components/notice';
+import surface from '@/app/_components/card.module.css';
 import memberStyles from '../member.module.css';
 import styles from './reimbursements.module.css';
 
@@ -46,24 +51,29 @@ const ERROR_MESSAGES: Record<string, string> = {
   save: 'Something went wrong saving that — try again, or ask a leader.'
 };
 
+/** Maps a reimbursement status to the shared Badge's semantic tone. */
+const STATUS_TONE: Record<string, BadgeTone> = {
+  submitted: 'warning',
+  approved: 'success',
+  paid: 'info',
+  denied: 'danger',
+  withdrawn: 'neutral'
+};
+
 function SignInPrompt() {
   return (
     <>
-      <div className={shell.pageHeader}>
-        <p className={shell.kicker}>Members</p>
-        <h1 className={shell.pageTitle}>Sign In</h1>
-        <div className={shell.headRule} />
-      </div>
-      <main className={`${shell.main} ${shell.mainNarrow}`}>
+      <PageHeader kicker="Members" title="Sign In" />
+      <PageShell width="narrow">
         <div className={memberStyles.gate}>
           <p>Sign in to submit a reimbursement request or check on one you already sent.</p>
           <p style={{ marginTop: '1.5rem' }}>
-            <Link className={memberStyles.signInBtn} href={`/signin?next=${encodeURIComponent('/member/reimbursements')}`}>
+            <Button variant="primary" href={`/signin?next=${encodeURIComponent('/member/reimbursements')}`}>
               Sign in
-            </Link>
+            </Button>
           </p>
         </div>
-      </main>
+      </PageShell>
     </>
   );
 }
@@ -92,22 +102,30 @@ export default async function ReimbursementsPage({
 
   return (
     <>
-      <div className={shell.pageHeader}>
-        <p className={shell.kicker}>Members</p>
-        <h1 className={shell.pageTitle}>Reimbursements</h1>
-        <div className={shell.headRule} />
-      </div>
-      <main className={shell.main}>
+      <PageHeader kicker="Members" title="Reimbursements" />
+      <PageShell>
         <p className={memberStyles.intro}>
           Paid for something out of pocket for the troop? Submit it here with a receipt, and the
           treasurer will review it. <Link href="/member">← Back to Members</Link>
         </p>
 
-        {ok === '1' && <p className={styles.success}>Request submitted — the treasurer will review it.</p>}
-        {ok === 'withdrawn' && <p className={styles.success}>Request withdrawn.</p>}
-        {err && <p className={styles.error}>{ERROR_MESSAGES[err] ?? 'Something went wrong — try again.'}</p>}
+        {ok === '1' && (
+          <Notice tone="success" className={styles.noticeGap}>
+            Request submitted — the treasurer will review it.
+          </Notice>
+        )}
+        {ok === 'withdrawn' && (
+          <Notice tone="success" className={styles.noticeGap}>
+            Request withdrawn.
+          </Notice>
+        )}
+        {err && (
+          <Notice tone="error" className={styles.noticeGap}>
+            {ERROR_MESSAGES[err] ?? 'Something went wrong — try again.'}
+          </Notice>
+        )}
 
-        <form action={submitReimbursementAction} className={styles.form}>
+        <form action={submitReimbursementAction} className={`${surface.card} ${styles.form}`}>
           <label>
             Amount
             <input type="number" name="amount" min="0.01" step="0.01" required />
@@ -120,9 +138,9 @@ export default async function ReimbursementsPage({
             Receipt
             <input type="file" name="receipt" accept="image/jpeg,image/png,image/heic,image/webp,application/pdf" required />
           </label>
-          <button type="submit" className={memberStyles.signInBtn}>
+          <Button variant="primary" type="submit">
             Submit request
-          </button>
+          </Button>
         </form>
 
         <h2 className={styles.historyHeading}>Your household&rsquo;s requests</h2>
@@ -131,28 +149,28 @@ export default async function ReimbursementsPage({
         ) : (
           <ul className={styles.requestList}>
             {requests.map((r) => (
-              <li key={r.id} className={styles.requestItem}>
+              <li key={r.id} className={`${surface.card} ${styles.requestItem}`}>
                 <div className={styles.requestHead}>
                   <span className={styles.requestAmount}>${r.amount.toFixed(2)}</span>
-                  <span className={`${styles.statusTag} ${styles[`status_${r.status}`] ?? ''}`}>{r.status}</span>
+                  <Badge tone={STATUS_TONE[r.status] ?? 'neutral'}>{r.status}</Badge>
                 </div>
                 <p className={styles.requestDesc}>{r.description}</p>
                 {r.status === 'denied' && r.denial_reason && (
                   <p className={styles.denialReason}>Reason: {r.denial_reason}</p>
                 )}
                 {r.status === 'submitted' && r.requester_person_id === session.personId && (
-                  <form action={withdrawReimbursementAction}>
+                  <form action={withdrawReimbursementAction} className={styles.withdrawRow}>
                     <input type="hidden" name="id" value={r.id} />
-                    <button type="submit" className={styles.withdrawBtn}>
+                    <Button variant="danger" type="submit">
                       Withdraw
-                    </button>
+                    </Button>
                   </form>
                 )}
               </li>
             ))}
           </ul>
         )}
-      </main>
+      </PageShell>
     </>
   );
 }

@@ -19,6 +19,9 @@ import {
   type TierId
 } from '@/lib/meeting-plan-types';
 import styles from './meeting-plan.module.css';
+import { PageShell } from '@/app/_components/page-shell';
+import { SectionDivider } from '@/app/_components/section-divider';
+import { EmptyState } from '@/app/_components/empty-state';
 
 export const metadata = {
   title: 'Meeting Plan — Scout Troop 79',
@@ -71,13 +74,13 @@ export default async function PublicMeetingPlanPage() {
         <div className={styles.pageHeaderRule} />
       </div>
 
-      <main className={styles.main}>
+      <PageShell>
         {!plan ? (
-          <div className={styles.empty}>
+          <EmptyState>
             No advancement plan is published for the next meeting — it may be a themed
             merit-badge night or campout prep. Check back next week, or see the{' '}
             <a href="/advancement">Advancement Tracker</a> for overall progress.
-          </div>
+          </EmptyState>
         ) : (
           <>
             <SectionDivider label="Group Sessions" />
@@ -165,17 +168,8 @@ export default async function PublicMeetingPlanPage() {
             </p>
           </>
         )}
-      </main>
+      </PageShell>
     </>
-  );
-}
-
-function SectionDivider({ label }: { label: string }) {
-  return (
-    <div className={styles.sectionDivider}>
-      <span className={styles.divLabel}>{label}</span>
-      <span className={styles.divRule} aria-hidden="true" />
-    </div>
   );
 }
 
