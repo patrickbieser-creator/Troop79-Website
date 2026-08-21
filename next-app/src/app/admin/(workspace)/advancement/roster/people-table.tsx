@@ -24,6 +24,7 @@ import {
 import { PendingUpdatePanel } from './pending-update-panel';
 import { AdultForm } from './adult-form';
 import { DatePickerField } from '../../_components/date-picker-field';
+import { AddButton } from '../../_components/add-button';
 import { ageOn, yptStatus } from '@/lib/demographics';
 import styles from './roster.module.css';
 
@@ -173,9 +174,7 @@ export function PeopleTable({
         </span>
         {/* The front door adults never had — same toolbar position as the
             Scouts tab's "+ Add Scout". */}
-        <button type="button" className={styles.addBtn} onClick={() => setAdding(true)}>
-          + Add Adult
-        </button>
+        <AddButton onClick={() => setAdding(true)}>+ Add Adult</AddButton>
       </div>
 
       {adding && (

@@ -31,22 +31,14 @@
 .editBtn:first-child { margin-left: 0; }
 .editBtn:hover { border-color: var(--admin-navy); color: var(--admin-navy); }
 .editBtn:disabled { opacity: .5; cursor: not-allowed; }
-.dangerBtn { color: var(--admin-danger); border-color: #e8c4c0; }
-.dangerBtn:hover { background: #fdf0ef; border-color: var(--admin-danger); color: var(--admin-danger); }
+.dangerBtn { color: var(--admin-danger); border-color: color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white)); }
+.dangerBtn:hover { background: var(--admin-status-error-bg); border-color: var(--admin-danger); color: var(--admin-danger); }
 
-/* Edit dialog */
-/* margin:auto is what centres a modal <dialog>; the admin reset zeroes margins
-   globally, so without it the dialog pinned itself to the top-left corner over
-   the page header. Pre-existing — it only became obvious once a short dialog
-   (Clone, one field) stopped filling enough of the screen to hide it.
-   max-height keeps the tall Add Entry form scrollable instead of overflowing. */
-.dialog {
-  padding: 0; border: none; border-radius: 6px; box-shadow: var(--admin-shadow-md);
-  width: 92vw; max-width: 580px; background: var(--admin-white);
-  margin: auto; max-height: 88vh; overflow-y: auto;
-}
-.dialog::backdrop { background: rgba(0, 0, 0, .42); }
-.dialogInner { padding: 22px 26px 18px; font-family: inherit; }
+/* The <dialog> chrome (.dialog/.dialogInner) retired Phase A (2026-08-21) —
+   the shared Dialog component (_components/dialog) carries the approved spec,
+   centering fix included. .dialogHeader/.dialogActions survive ONLY because
+   the CSV import overlay (calendar-import.tsx) reuses them inside its own
+   .importPanel — they are panel chrome there, not dialog chrome. */
 .dialogHeader { border-bottom: 1px solid var(--admin-gray-200); padding-bottom: 12px; margin-bottom: 16px; }
 .dialogHeader h3 { font-size: 15px; font-weight: 700; color: var(--admin-navy); margin-bottom: 4px; }
 .dialogHeader p { font-size: 12px; color: var(--admin-gray-500); line-height: 1.4; }
@@ -165,6 +157,12 @@ textarea.editInput { resize: vertical; min-height: 68px; line-height: 1.5; }
    cap, and on a wide screen the two-column grid stretched each field to ~800px
    — a text input that wide is harder to read, not easier. */
 .formInline { padding: 0; max-width: 760px; }
+/* The inline form's Save row — what .dialogActions used to give it before the
+   shared Dialog component took over the dialog-mode chrome. */
+.inlineActions {
+  display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; padding-top: 12px;
+  border-top: 1px solid var(--admin-gray-200);
+}
 .savedNote { font-size: 12px; color: var(--admin-forest, #2d6a4f); margin-right: 10px; align-self: center; }
 
 /* Title-as-link, matching the News table: the row's subject is the way into its
@@ -172,16 +170,9 @@ textarea.editInput { resize: vertical; min-height: 68px; line-height: 1.5; }
 .titleCell a { color: var(--admin-navy); font-weight: 600; }
 .titleCell a:hover { text-decoration: underline; }
 
-/* Status pills — the same idiom News uses for Draft/Published, extended to the
-   entry's layers. */
-.statusPill {
-  display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .04em;
-  text-transform: uppercase; padding: 2px 7px; border-radius: 999px;
-  margin-right: 4px; white-space: nowrap;
-}
-.statusDraft { background: #fdf3e3; color: #8b6914; border: 1px solid #e8d5a8; }
-.statusClosed { background: #f3efe9; color: var(--admin-gray-700); border: 1px solid var(--admin-gray-300); }
-.statusMuted { background: var(--admin-gray-50); color: var(--admin-gray-600); border: 1px solid var(--admin-gray-200); }
+/* .statusPill family retired Phase A (2026-08-21) — the shared Badge
+   component carries it now; this cell just spaces adjacent badges. */
+.statusCell { display: inline-flex; flex-wrap: wrap; gap: 4px; }
 .nowrap { white-space: nowrap; }
 
 /* The header's "+ Add Entry", matching the News page header's "+ New Post". */

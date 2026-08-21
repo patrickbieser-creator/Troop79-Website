@@ -142,9 +142,11 @@ export function SkillAssignEditor({ people, skills, keyField, noun, onSave }: Pr
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                   {openKey === p.key ? (
                     <>
+                      {/* Navy: Save commits an edit, it doesn't add — the
+                          Phase A primary-button decision (2026-08-21). */}
                       <button
                         type="button"
-                        className={styles.addBtn}
+                        className={styles.editSaveBtn}
                         onClick={() => save(p)}
                         disabled={isPending}
                       >

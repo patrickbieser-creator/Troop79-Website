@@ -17,6 +17,7 @@ import Link from 'next/link';
 import { formatLongDate } from '@/lib/dates';
 import styles from './meetings.module.css';
 import { ActionsMenu } from '../../_components/actions-menu';
+import { Badge } from '../../_components/badge';
 
 const PAGE_SIZE = 25;
 
@@ -230,15 +231,9 @@ export function AttendanceList({ rows, onDeleteAgenda }: Props) {
                   <td>
                     {row.agendaId ? (
                       <Link href={`/admin/advancement/meetings/${row.agendaId}`}>
-                        <span
-                          className={`${styles.statusPill} ${
-                            row.agendaStatus === 'published'
-                              ? styles.statusPublished
-                              : styles.statusDraft
-                          }`}
-                        >
+                        <Badge variant={row.agendaStatus === 'published' ? 'success' : 'neutral'}>
                           {row.agendaStatus}
-                        </span>
+                        </Badge>
                       </Link>
                     ) : (
                       <span className={styles.muted}>—</span>

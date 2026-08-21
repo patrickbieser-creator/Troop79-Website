@@ -5,6 +5,7 @@ import { updateMeritBadge } from './actions';
 import { SortableList } from '../../_components/sortable-list';
 import { useLookupTable } from './use-lookup-table';
 import styles from './lookups.module.css';
+import { AddButton } from '../../_components/add-button';
 
 export interface MbRow {
   id: string;
@@ -307,9 +308,7 @@ function MbForm({
       <div className={styles.editSection}>
         <div className={styles.editSectionHeader}>
           <h4>Requirements</h4>
-          <button
-            type="button"
-            className={styles.addBtn}
+          <AddButton
             onClick={() =>
               setReqTree((prev) => [
                 ...prev,
@@ -324,7 +323,7 @@ function MbForm({
             }
           >
             + Add top-level
-          </button>
+          </AddButton>
         </div>
         <p className={styles.helpText} style={{ marginBottom: 8 }}>
           Edit codes, labels, and optionality (Complete all / any / N-of) for

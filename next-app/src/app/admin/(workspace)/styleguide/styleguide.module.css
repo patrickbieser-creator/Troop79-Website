@@ -193,96 +193,14 @@
   padding: var(--admin-space-1) var(--admin-space-3);
 }
 
-/* ── THE approved dialog spec (proposed and approved by Patrick 2026-08-21) ──
-   This is what every admin dialog converges on. Production dialogs haven't
-   converted yet — Phase A (Plans/Admin-Design-System.md) extracts these
-   classes into the shared Dialog component and migrates the screens; until
-   then this page is the spec's only home. New dialogs built before Phase A
-   should copy this spec, not the legacy calendar .dialog.
-   Vs legacy: shadow-md→lg, radius 6px→radius-lg, navy-tinted blurred
-   backdrop, @starting-style entry motion, banded header/footer, danger
-   variant. */
+/* The approved dialog spec's classes moved to _components/dialog.module.css
+   when the shared Dialog component shipped (Phase A, 2026-08-21) — this page
+   imports them from there. Only the specimen-layout helpers remain here. */
 .dialogCompare {
   display: grid;
   gap: var(--admin-space-8);
   max-width: 640px;
 }
-.dialogSpec {
-  padding: 0;
-  border: none;
-  border-radius: var(--admin-radius-lg);
-  box-shadow: var(--admin-shadow-lg);
-  background: var(--admin-white);
-  width: 92vw;
-  max-width: 580px;
-  margin: auto;
-  max-height: 88vh;
-  overflow-y: auto;
-}
-.dialogSpec::backdrop {
-  /* the navy at 45% — color-mix keeps it token-true instead of a raw rgba */
-  background: color-mix(in srgb, var(--admin-navy) 45%, transparent);
-  backdrop-filter: blur(2px);
-}
-/* Entry motion: @starting-style + transition, the modern <dialog> pattern.
-   Browsers without support simply show the dialog instantly. */
-.dialogSpec[open] {
-  transition: opacity var(--admin-transition), transform var(--admin-transition);
-}
-.dialogSpec[open]::backdrop {
-  transition: opacity var(--admin-transition);
-}
-@starting-style {
-  .dialogSpec[open] {
-    opacity: 0;
-    transform: translateY(6px) scale(.98);
-  }
-  .dialogSpec[open]::backdrop { opacity: 0; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .dialogSpec[open],
-  .dialogSpec[open]::backdrop { transition: none; }
-}
-.dialogSpecHeader {
-  background: var(--admin-gray-50);
-  border-bottom: 1px solid var(--admin-gray-200);
-  border-radius: var(--admin-radius-lg) var(--admin-radius-lg) 0 0;
-  padding: var(--admin-space-7) var(--admin-space-11) var(--admin-space-6);
-}
-.dialogSpecTitle {
-  margin: 0 0 var(--admin-space-1);
-  font-size: var(--admin-text-xl);
-  font-weight: var(--admin-weight-bold);
-  color: var(--admin-navy);
-}
-.dialogSpecSub {
-  margin: 0;
-  font-size: var(--admin-text-base);
-  color: var(--admin-gray-500);
-  line-height: 1.4;
-}
-.dialogSpecBody {
-  padding: var(--admin-space-9) var(--admin-space-11);
-  font-size: var(--admin-text-md);
-  color: var(--admin-gray-700);
-  line-height: 1.5;
-}
-.dialogSpecActions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--admin-space-4);
-  background: var(--admin-gray-50);
-  border-top: 1px solid var(--admin-gray-200);
-  border-radius: 0 0 var(--admin-radius-lg) var(--admin-radius-lg);
-  padding: var(--admin-space-6) var(--admin-space-11);
-}
-/* Danger variant — destructive confirmations stop looking like edits. */
-.dialogSpecDanger .dialogSpecHeader {
-  background: var(--admin-status-error-bg);
-  border-top: 3px solid var(--admin-danger);
-  border-bottom-color: color-mix(in srgb, var(--admin-danger) 25%, var(--admin-white));
-}
-.dialogSpecDanger .dialogSpecTitle { color: var(--admin-danger-dark); }
 
 /* Renders a dialog's classes as an in-flow specimen instead of a modal. */
 .dialogStatic {

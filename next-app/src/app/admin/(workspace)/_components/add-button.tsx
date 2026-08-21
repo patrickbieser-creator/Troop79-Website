@@ -16,10 +16,13 @@ import styles from './add-button.module.css';
 export function AddButton({
   href,
   onClick,
+  disabled,
   children
 }: {
   href?: string;
   onClick?: () => void;
+  /** Button mode only — a Link has no disabled state. */
+  disabled?: boolean;
   children: React.ReactNode;
 }) {
   return href ? (
@@ -27,7 +30,7 @@ export function AddButton({
       {children}
     </Link>
   ) : (
-    <button type="button" className={styles.addBtn} onClick={onClick}>
+    <button type="button" className={styles.addBtn} onClick={onClick} disabled={disabled}>
       {children}
     </button>
   );

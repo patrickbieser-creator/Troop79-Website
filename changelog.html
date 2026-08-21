@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.57.0</p>
+      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.58.0</p>
     </div>
   </div>
 
@@ -494,6 +494,61 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.58.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.58.0</span>
+        <span class="release-date">August 21, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Design system Phase A complete: shared Dialog and Badge, plus the button decisions</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Every admin dialog now uses the approved spec.</strong> The shared
+              Dialog component (banded header/footer, navy-tinted blurred backdrop, entry
+              motion, danger variant) replaced all five legacy <code>&lt;dialog&gt;</code>
+              copies &mdash; Calendar&rsquo;s add/clone, the meeting agenda editor, Photo
+              Albums, and Media Manager&rsquo;s edit and delete. That also delivers the
+              centering-and-scroll fix only Calendar&rsquo;s copy carried: tall dialogs on
+              the other three screens no longer pin to the top-left corner. Deleting a photo
+              now looks like the destructive act it is &mdash; red-banded header and a solid
+              red confirm.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>One Badge for every status pill.</strong> The four naming families and
+              per-screen tint drift (.badge / .statusPill / .pill / .tag) collapsed into a
+              shared Badge with six semantic variants on the status tokens &mdash; adopted by
+              Calendar, News, the article editor, Roster, Roster Import, Roll Call, meetings,
+              Court of Honor, and the Weekly Report. Categorical tags (Eagle&nbsp;&#9733;,
+              rank/MB source, track labels) deliberately keep their own look.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>The three open button decisions, made and applied.</strong> Primaries
+              are navy (green stays reserved for Add/create); destructive buttons are
+              outlined in context with solid red reserved for danger-dialog confirms; and
+              Roster&rsquo;s navy &ldquo;+ Add Scout&rdquo; joined the shared green
+              AddButton, as did the seven Lookups editors and Roll Call&rsquo;s seed action.
+              The workbench&rsquo;s green Save (a public-token leak) went navy with it.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Test baseline 660&nbsp;&rarr;&nbsp;666.</strong> New dom tests cover the
+              Badge variant mapping, the Dialog&rsquo;s zones, danger variant and
+              backdrop-click close, and AddButton&rsquo;s disabled state. The styleguide
+              renders the new components live, and six scoreboard rows are struck.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

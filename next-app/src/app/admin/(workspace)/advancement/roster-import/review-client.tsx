@@ -15,6 +15,7 @@ import {
   type RelationshipInput
 } from './actions';
 import styles from './roster-import.module.css';
+import { Badge } from '../../_components/badge';
 import { TabStrip } from '../../_components/tab-strip';
 
 export interface BatchSummary {
@@ -279,13 +280,13 @@ export function ReviewClient({
                     <strong>{r.person_name}</strong>
                   )}
                 </span>
-                <span className={weak ? styles.badgeWeak : styles.badge}>
+                <Badge variant={weak ? 'warning' : 'neutral'}>
                   {CONFIDENCE_LABEL[r.confidence]}
-                </span>
+                </Badge>
                 {r.conflict_count > 0 && (
-                  <span className={styles.badgeConflict}>{r.conflict_count} conflict{r.conflict_count > 1 ? 's' : ''}</span>
+                  <Badge variant="danger">{r.conflict_count} conflict{r.conflict_count > 1 ? 's' : ''}</Badge>
                 )}
-                {r.fill_count > 0 && <span className={styles.badgeFill}>{r.fill_count} to fill</span>}
+                {r.fill_count > 0 && <Badge variant="success">{r.fill_count} to fill</Badge>}
               </button>
 
               {isOpen && (
@@ -446,7 +447,7 @@ function DuplicatesPanel({
             <div className={styles.dupBody}>
               <div className={styles.dupHead}>
                 <strong>{c.person_name}</strong>
-                <span className={styles.badge}>{c.evidence.replace(/_/g, ' ')}</span>
+                <Badge>{c.evidence.replace(/_/g, ' ')}</Badge>
               </div>
               <div className={styles.dupGrid}>
                 <DupSide

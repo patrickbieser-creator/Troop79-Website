@@ -24,3 +24,7 @@
 .addBtn:hover {
   background: var(--admin-forest-dark);
 }
+.addBtn:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}

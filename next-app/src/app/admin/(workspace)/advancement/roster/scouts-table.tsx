@@ -6,6 +6,8 @@ import { INACTIVE_REASON_LABEL } from '@/lib/supabase/types';
 import { ScoutForm, type ScoutRow } from './scout-form';
 import { SortHeader, useSortable } from './use-sortable';
 import { TabStrip } from '../../_components/tab-strip';
+import { AddButton } from '../../_components/add-button';
+import { Badge } from '../../_components/badge';
 import styles from './roster.module.css';
 
 /*
@@ -173,9 +175,7 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId
             ]}
           />
         )}
-        <button type="button" className={styles.addBtn} onClick={() => setOpenFor('new')}>
-          + Add Scout
-        </button>
+        <AddButton onClick={() => setOpenFor('new')}>+ Add Scout</AddButton>
       </div>
 
       <table className={styles.table}>
@@ -237,9 +237,9 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId
                 <td className={styles.mono}>{s.bsa_member_id ?? dash}</td>
                 <td>{s.health_form_date ? fmtDate(s.health_form_date) : dash}</td>
                 <td>
-                  <span className={s.active ? styles.tagActive : styles.tagInactive}>
+                  <Badge variant={s.active ? 'success' : 'danger'}>
                     {s.active ? 'Active' : 'Inactive'}
-                  </span>
+                  </Badge>
                   {!s.active && s.inactive_reason && (
                     <span className={styles.subText}>
                       {INACTIVE_REASON_LABEL[s.inactive_reason]}

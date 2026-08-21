@@ -5,6 +5,7 @@ import Image from 'next/image';
 import type { Media } from '@/lib/supabase/types';
 import { listMediaManager, updateMediaMetadata, deleteMedia, type MediaUsage } from './actions';
 import styles from './media-manager.module.css';
+import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
 
 const PAGE_SIZE = 60;
 
@@ -209,16 +210,9 @@ function EditDialog({
   }, [media]);
 
   return (
-    <dialog
-      ref={dialogRef}
-      className={styles.dialog}
-      onClose={onClose}
-      onClick={(e) => {
-        if (e.target === dialogRef.current) onClose();
-      }}
-    >
+    <Dialog ref={dialogRef} onClose={onClose}>
       {media && <EditForm key={media.id} media={media} onClose={onClose} onSaved={onSaved} />}
-    </dialog>
+    </Dialog>
   );
 }
 
@@ -249,12 +243,10 @@ function EditForm({
   }
 
   return (
-    <div className={styles.dialogInner}>
-      <div className={styles.dialogHeader}>
-        <h3>Edit Photo Details</h3>
-        <p>{media.bunny_path.split('/').pop()}</p>
-      </div>
+    <>
+      <DialogHeader title="Edit Photo Details" sub={media.bunny_path.split('/').pop()} />
 
+      <DialogBody>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={media.cdn_url} alt="" className={styles.dialogPreview} />
 
@@ -280,8 +272,9 @@ function EditForm({
       </label>
 
       {err && <div className={styles.editError}>{err}</div>}
+      </DialogBody>
 
-      <div className={styles.dialogActions}>
+      <DialogActions>
         <button type="button" className={styles.editBtn} onClick={onClose} disabled={isPending}>
           Cancel
         </button>
@@ -293,8 +286,8 @@ function EditForm({
         >
           {isPending ? 'Saving…' : 'Save changes'}
         </button>
-      </div>
-    </div>
+      </DialogActions>
+    </>
   );
 }
 
@@ -317,16 +310,9 @@ function DeleteDialog({
   }, [media]);
 
   return (
-    <dialog
-      ref={dialogRef}
-      className={styles.dialog}
-      onClose={onClose}
-      onClick={(e) => {
-        if (e.target === dialogRef.current) onClose();
-      }}
-    >
+    <Dialog danger ref={dialogRef} onClose={onClose}>
       {media && <DeleteConfirm key={media.id} media={media} onClose={onClose} onDeleted={onDeleted} />}
-    </dialog>
+    </Dialog>
   );
 }
 
@@ -360,16 +346,17 @@ function DeleteConfirm({
   }
 
   return (
-    <div className={styles.dialogInner}>
-      <div className={styles.dialogHeader}>
-        <h3>Delete Photo</h3>
-        <p>
-          {blockedBy
+    <>
+      <DialogHeader
+        title="Delete Photo"
+        sub={
+          blockedBy
             ? "This photo can't be deleted while it's in use."
-            : 'Removes it from the media library. The file stays in Bunny storage — a Bunny Library Sync will re-index it if you change your mind.'}
-        </p>
-      </div>
+            : 'Removes it from the media library. The file stays in Bunny storage — a Bunny Library Sync will re-index it if you change your mind.'
+        }
+      />
 
+      <DialogBody>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={media.cdn_url} alt="" className={styles.dialogPreview} />
 
@@ -387,8 +374,9 @@ function DeleteConfirm({
         </div>
       )}
       {err && <div className={styles.editError}>{err}</div>}
+      </DialogBody>
 
-      <div className={styles.dialogActions}>
+      <DialogActions>
         <button type="button" className={styles.editBtn} onClick={onClose} disabled={isPending}>
           {blockedBy ? 'Close' : 'Cancel'}
         </button>
@@ -397,7 +385,7 @@ function DeleteConfirm({
             {isPending ? 'Deleting…' : 'Delete photo'}
           </button>
         )}
-      </div>
-    </div>
+      </DialogActions>
+    </>
   );
 }

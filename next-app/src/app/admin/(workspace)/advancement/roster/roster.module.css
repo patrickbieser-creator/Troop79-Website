@@ -29,14 +29,8 @@
 .muted { color: var(--admin-gray-400); }
 .mono { font-family: 'Menlo', 'Consolas', monospace; font-size: 11.5px; }
 
-.badge {
-  display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .04em;
-  text-transform: uppercase; padding: 2px 8px; border-radius: 10px;
-}
-.badgeOk { background: #e5efe4; color: var(--admin-forest); }
-.badgeWarn { background: #fdf3dc; color: #8a6d1a; }
-.badgeBad { background: #fdf0ef; color: var(--admin-danger); }
-.badgeMuted { background: var(--admin-gray-100); color: var(--admin-gray-700); }
+/* .badge family retired Phase A (2026-08-21) — it had no remaining consumer
+   here; the shared Badge component (_components/badge) is the pattern now. */
 
 .callout {
   background: #fdf3dc; border: 1px solid #ecd9a0; border-left: 4px solid #c9a227;
@@ -138,12 +132,8 @@
    2026-08-21). Only the page-level spacing stays local. */
 .tabMargin { margin-bottom: 14px; }
 
-.addBtn {
-  background: var(--admin-navy); color: var(--admin-white);
-  border: none; border-radius: 5px; padding: 6px 12px;
-  font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
-}
-.addBtn:hover { filter: brightness(1.12); }
+/* .addBtn retired Phase A (2026-08-21): the navy one-off converts to the
+   shared green AddButton — Patrick's call (roster add, 2026-08-21). */
 
 .editBtn {
   background: var(--admin-white); color: var(--admin-gray-700);
@@ -152,14 +142,9 @@
 }
 .editBtn:hover { border-color: var(--admin-navy); color: var(--admin-navy); }
 
-.tagActive, .tagInactive {
-  display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .04em;
-  text-transform: uppercase; padding: 2px 8px; border-radius: 10px;
-}
-.tagActive { background: var(--admin-green-50, #e8f5ec); color: var(--admin-green-700, #1d6b38); }
-/* Red, matching .chipInactiveTag — inactive is a state to notice, and the
-   grey version read as decoration when scanning a long list. */
-.tagInactive { background: #f2d2d2; color: #7d2626; }
+/* .tagActive/.tagInactive retired Phase A (2026-08-21) — shared Badge
+   (success/danger; danger keeps "inactive is a state to notice" red). This
+   also removed two of the phantom --admin-green-* reads flagged by the audit. */
 
 /* Reason under the status tag, patrol under a name — a second line that
    shouldn't compete with the value above it. */
@@ -299,8 +284,11 @@
 .editSaveBtn:hover:not(:disabled) { filter: brightness(1.12); }
 .editSaveBtn:disabled { opacity: .5; cursor: default; }
 
-.dangerBtn { font-family: inherit; font-size: 12px; font-weight: 700; letter-spacing: .04em; background: var(--admin-white); color: #8c2f2f; border: 1px solid #c98b8b; border-radius: 3px; padding: 7px 14px; cursor: pointer; }
-.dangerBtn:hover { background: #fdf2f2; }
+/* Canonical outlined danger (Phase A decision, 2026-08-21): danger text,
+   25%-danger border, error-tint hover — solid danger is reserved for the
+   confirm button inside a danger Dialog. */
+.dangerBtn { font-family: inherit; font-size: 12px; font-weight: 700; letter-spacing: .04em; background: var(--admin-white); color: var(--admin-danger); border: 1px solid color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white)); border-radius: 3px; padding: 7px 14px; cursor: pointer; }
+.dangerBtn:hover { background: var(--admin-status-error-bg); border-color: var(--admin-danger); }
 .dangerBtn:disabled { opacity: .5; cursor: default; }
 
 /* Small, inline danger action (e.g. Unlink a parent) — same box model as

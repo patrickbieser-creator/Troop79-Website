@@ -92,24 +92,9 @@
 .titleCell a:hover { text-decoration: underline; }
 .tagList { font-size: 12px; color: var(--admin-gray-500); }
 
-.pill {
-  display: inline-block;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  padding: 2px 7px;
-  border-radius: 8px;
-  background: var(--admin-gray-100);
-  color: var(--admin-gray-700);
-}
-.pillNews        { background: #e0d9c8; color: #6b5423; }
-.pillEvent       { background: #e3eee5; color: var(--admin-forest); }
-.pillRecognition { background: #e0e7ef; color: var(--admin-navy); }
-.pillDraft       { background: var(--admin-gray-100); color: var(--admin-gray-700); }
-.pillPublished   { background: #dcefe0; color: #1e6b3a; }
-.pillPending     { background: #fbeecd; color: #7a5410; }
-.pillArchived    { background: var(--admin-gray-100); color: var(--admin-gray-500); }
+/* .pill family retired Phase A (2026-08-21) — shared Badge component. The
+   dead .pillNews/.pillEvent/.pillRecognition type pills (no consumer since
+   the 2026-08-09 every-post-is-news change) went with it. */
 
 .archivedRow { background: var(--admin-gray-50); color: var(--admin-gray-500); font-style: italic; }
 .empty { padding: 36px 16px; text-align: center; color: var(--admin-gray-500); font-style: italic; }

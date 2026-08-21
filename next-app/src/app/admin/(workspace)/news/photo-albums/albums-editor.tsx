@@ -8,6 +8,7 @@ import { MediaPicker } from '../_components/media-picker';
 import { DatePickerField } from '../../_components/date-picker-field';
 import { AddButton } from '../../_components/add-button';
 import styles from './albums.module.css';
+import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
 
 type ActionResult = { ok: boolean; error?: string };
 
@@ -143,14 +144,7 @@ export function AlbumsEditor({ rows, covers, categories, onCreate, onUpdate, onD
         </tbody>
       </table>
 
-      <dialog
-        ref={dialogRef}
-        className={styles.dialog}
-        onClose={() => setOpenFor(null)}
-        onClick={(e) => {
-          if (e.target === dialogRef.current) setOpenFor(null);
-        }}
-      >
+      <Dialog ref={dialogRef} onClose={() => setOpenFor(null)}>
         {openFor && (
           <AlbumForm
             key={openFor === 'new' ? 'new' : openFor.id}
@@ -162,7 +156,7 @@ export function AlbumsEditor({ rows, covers, categories, onCreate, onUpdate, onD
             onClose={() => setOpenFor(null)}
           />
         )}
-      </dialog>
+      </Dialog>
     </>
   );
 }
@@ -226,12 +220,13 @@ function AlbumForm({
   }
 
   return (
-    <div className={styles.dialogInner}>
-      <div className={styles.dialogHeader}>
-        <h3>{isNew ? 'Add Photo Album' : `Edit: ${row?.title}`}</h3>
-        <p>Shows on the public Photos page; the card links out to Google Photos in a new tab.</p>
-      </div>
+    <>
+      <DialogHeader
+        title={isNew ? 'Add Photo Album' : `Edit: ${row?.title}`}
+        sub="Shows on the public Photos page; the card links out to Google Photos in a new tab."
+      />
 
+      <DialogBody>
       <div className={styles.editGrid}>
         <label className={styles.editFieldFull}>
           <span className={styles.editLabel}>Google Photos share link</span>
@@ -327,7 +322,12 @@ function AlbumForm({
 
       {err && <div className={styles.editError}>{err}</div>}
 
-      <div className={styles.dialogActions}>
+      {pickerOpen && (
+        <MediaPicker mode="single" onClose={() => setPickerOpen(false)} onInsert={onPickCover} />
+      )}
+      </DialogBody>
+
+      <DialogActions>
         <button type="button" className={styles.editBtn} onClick={onClose} disabled={isPending}>
           Cancel
         </button>
@@ -339,11 +339,7 @@ function AlbumForm({
         >
           {isPending ? 'Saving…' : isNew ? 'Add Album' : 'Save changes'}
         </button>
-      </div>
-
-      {pickerOpen && (
-        <MediaPicker mode="single" onClose={() => setPickerOpen(false)} onInsert={onPickCover} />
-      )}
-    </div>
+      </DialogActions>
+    </>
   );
 }

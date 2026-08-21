@@ -1,6 +1,6 @@
 # Admin Design System — Tokens, Shared Components, and Inline-Style Remediation
 
-**Status:** Active — Foundation shipped 2026-08-21; Phases A–D queued
+**Status:** Active — Foundation + Phase A COMPLETE (both 2026-08-21); Phases B–D queued
 **Created:** 2026-08-21
 **Priority:** Medium (High for the Phase A bug items)
 
@@ -44,10 +44,14 @@ The audit's headline numbers:
       (spacing, type, weights, tracking, radii incl. pill/circle, shadow-lg, transition,
       status backgrounds, gray-600/800, danger-dark, accent-gold); `.adminRoot` keeps layout
       only; `/admin/styleguide` live with canonical + variant specimens and the scoreboard.
-- [ ] **Phase A** complete: shared `AddButton`, `Badge`, `TabStrip`, `ActionsMenu` components
-      adopted by every screen the scoreboard lists; the dialog centering fix applied to
-      meetings/albums/media-manager; `.adminLabel` utility exists; primary/danger button
-      design decisions made and applied.
+- [x] **Phase A** complete (2026-08-21, second session): shared `AddButton`, `Badge`,
+      `TabStrip`, `ActionsMenu`, AND `Dialog` components adopted by every screen the
+      scoreboard lists; the dialog centering fix applied to meetings/albums/media-manager
+      (5 `<dialog>` sites across 4 screens — the recon's "4 sites" undercounted:
+      meeting-editor.tsx:343 was a live 5th consumer, meetings' `.dialog` was NOT dead);
+      `.adminLabel` utility exists in admin.css; primary/danger button decisions made by
+      Patrick and applied (see Notes). Full gate green (666 tests), every touched screen
+      browser-verified in dev with screenshots.
 - [ ] **Phase B** complete: table clusters normalized, card/panel merged, `.pageTitle` and
       notice components shared, `access.module.css` off rem units, non-pill tab decision made.
 - [ ] **Phase C** complete: ≤ 20 inline `style={{}}` sites remain under `admin/` (the 12
@@ -64,9 +68,10 @@ Most of this work is CSS with no unit-testable logic; the testable surfaces:
 
 - [x] Nav visibility for the styleguide item — covered by existing
       `admin-nav-capabilities.test.ts` behavior (capability-less item ⇒ fullAdmin only).
-- [ ] `SharedTabStrip_RendersCount_WhenCountProvided()` — Phase A, dom project.
-- [ ] `SharedActionsMenu_FiresHandler_WhenOptionPicked()` — Phase A, dom project.
-- [ ] `SharedBadge_MapsSemanticVariant_ToStatusToken()` — Phase A, dom project.
+- [x] `SharedTabStrip_RendersCount_WhenCountProvided()` — Phase A, dom project.
+- [x] `SharedActionsMenu_FiresHandler_WhenOptionPicked()` — Phase A, dom project.
+- [x] `SharedBadge_MapsSemanticVariant_ToStatusToken()` — Phase A, dom project (plus
+      Dialog render/danger/backdrop-close tests and AddButton disabled — baseline 660→666).
 - [ ] Per-phase: `npm run lint && npm run typecheck && npm run test && npm run build` +
       manual screenshot sweep of touched screens.
 
@@ -93,6 +98,30 @@ ones adopt it — a deliberate, visible change on those two screens).
 sweep. The styleguide's variant specimens are the work queue — delete each as its copy dies.
 
 ## Implementation Steps
+
+**PHASE A COMPLETE (2026-08-21, second session — v1.58.0).** What landed beyond the first
+slice below: shared `Badge` (6 semantic variants on the status tokens; adopted by meetings ×2,
+calendar StatusPills, articles table + editor, roster scouts-table, roster-import
+review-client, roll-call, court-of-honor, report — the drift tint clusters collapsed into
+tokens); shared `Dialog`/`DialogHeader`/`DialogBody`/`DialogActions` implementing the
+approved spec (all 5 legacy `<dialog>` sites converted: calendar-editor + entry-form +
+CloneForm, meeting-editor SessionForm, albums-editor AlbumForm, media-manager Edit +
+Delete — Delete uses the danger variant + solid confirm; legacy .dialog CSS deleted from all
+4 modules; calendar keeps .dialogHeader/.dialogActions ONLY for the CSV import overlay and
+gained .inlineActions for the workbench inline form); AddButton finished (lookups ×7 editors,
+roster ×3 incl. the navy→green conversion, roll-call seedBtn; `disabled` prop added; meetings'
+and albums' dead .addBtn copies deleted); the three design decisions applied (see Open
+Questions); `.adminLabel` utility in admin.css; styleguide fully updated (Badge/Dialog
+canonical specimens, variant specimens deleted, 6 scoreboard rows struck). Badge scope rule
+documented on the styleguide: STATUS pills convert; CATEGORICAL tags (lookups rank/MB/Eagle,
+meeting-plan track tags, scoutbook-export type badges, events-admin .tag) deliberately stay;
+library.module.css untouched (shared with public routes, D-160).
+
+**Phase B note:** the remaining dialog families (ledger row-actions/bulk-edit/info-cell,
+roster editDialog/scout-form, lookups mb-editor/req-codes-table, finance edit-transaction/
+actionModal/memo-cell/entered-by-cell, fast-entry, library quick-add, rosters roster-table,
+meeting-plan?) adopt the shared Dialog in Phase B; media-picker's custom div overlay unifies
+last (HIGH risk).
 
 1. **Phase A — shared components + bug fixes** (highest value density):
    a. `AddButton`, `TabStrip` (with count pills), `Badge`, `ActionsMenu` in `_components/`.
@@ -149,12 +178,19 @@ sweep. The styleguide's variant specimens are the work queue — delete each as 
 
 ## Open Questions
 
-- [ ] Primary button canonical: navy (court-of-honor) or forest (workbench)? (Phase A-d)
-- [ ] Danger buttons: outlined, solid, or both-with-rules? (Phase A-d)
-- [ ] Roster's navy addBtn — deliberate differentiation or convert to green? (D-159 left it
-      visible but unconverted)
-- [ ] meeting-plan's navy table header — keep as intentional emphasis or normalize?
-- [ ] Fold the non-pill tab variants into one component, or bless two tab patterns?
+- [x] Primary button canonical — **DECIDED by Patrick 2026-08-21: NAVY** (court-of-honor
+      .primaryBtn). Green stays reserved for Add/create so color carries meaning (green =
+      create, navy = commit). Applied: workbench's forest Save (public-token leak) → navy;
+      meetings/report's green Apply submit → .editSaveBtn; lookups' green Save → .editSaveBtn.
+- [x] Danger buttons — **DECIDED by Patrick 2026-08-21: both, with rules.** OUTLINED for
+      in-context destructive actions (rows/panels); SOLID reserved for the confirm button
+      inside a danger Dialog (media-manager's DeleteConfirm is the exemplar). Applied:
+      events-admin's solid one-off → outlined; roster + access hardcoded reds → tokens; all
+      outlined copies share color-mix(30% danger) border + status-error-bg hover.
+- [x] Roster's navy addBtn — **DECIDED by Patrick 2026-08-21: convert to green** shared
+      AddButton (it was drift, not a recorded choice).
+- [ ] meeting-plan's navy table header — keep as intentional emphasis or normalize? (Phase B)
+- [ ] Fold the non-pill tab variants into one component, or bless two tab patterns? (Phase B)
 
 ## Notes
 

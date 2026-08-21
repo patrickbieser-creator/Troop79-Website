@@ -6,6 +6,7 @@ import type { Tag } from '@/lib/supabase/types';
 import { createTag, deleteTag } from './actions';
 import { useLookupTable } from './use-lookup-table';
 import styles from './lookups.module.css';
+import { AddButton } from '../../_components/add-button';
 
 export function TagsManager({ tags }: { tags: Tag[] }) {
   const router = useRouter();
@@ -55,9 +56,7 @@ export function TagsManager({ tags }: { tags: Tag[] }) {
     <>
       <div className={styles.cardToolbar}>
         {t.searchEl}
-        <button type="button" className={styles.addBtn} onClick={() => setAdding(true)}>
-          + Add Tag
-        </button>
+        <AddButton onClick={() => setAdding(true)}>+ Add Tag</AddButton>
       </div>
 
       {adding && (
@@ -82,9 +81,9 @@ export function TagsManager({ tags }: { tags: Tag[] }) {
             <button type="button" className={styles.editBtn} onClick={cancelAdd} disabled={isPending}>
               Cancel
             </button>
-            <button type="button" className={styles.addBtn} disabled={isPending} onClick={handleAdd}>
+            <AddButton onClick={handleAdd} disabled={isPending}>
               Add Tag
-            </button>
+            </AddButton>
           </div>
         </div>
       )}

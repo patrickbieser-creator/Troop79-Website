@@ -22,6 +22,7 @@ import type { CalendarCategoryRow } from '@/lib/calendar-categories';
 // media library the article editor uses.
 import { MediaPicker } from '../news/_components/media-picker';
 import { DatePickerField } from '../_components/date-picker-field';
+import { DialogHeader, DialogBody, DialogActions } from '../_components/dialog';
 import styles from './calendar.module.css';
 
 type ActionResult = { ok: boolean; error?: string };
@@ -121,15 +122,8 @@ export function CalendarEntryForm({
     });
   }
 
-  return (
-    <div className={inline ? styles.formInline : styles.dialogInner}>
-      {!inline && (
-        <div className={styles.dialogHeader}>
-          <h3>{isNew ? 'Add Calendar Entry' : `Edit: ${row?.title}`}</h3>
-          <p>Shows on the public calendar and the .ics subscription feed.</p>
-        </div>
-      )}
-
+  const body = (
+    <>
       <div className={styles.editGrid}>
         <label className={styles.editField}>
           <span className={styles.editLabel}>Date</span>
@@ -332,23 +326,45 @@ export function CalendarEntryForm({
       )}
 
       {err && <div className={styles.editError}>{err}</div>}
+    </>
+  );
 
-      <div className={styles.dialogActions}>
-        {inline && saved && <span className={styles.savedNote}>Saved</span>}
-        {!inline && (
-          <button type="button" className={styles.editBtn} onClick={onClose} disabled={isPending}>
-            Cancel
-          </button>
-        )}
-        <button
-          type="button"
-          className={styles.editSaveBtn}
-          onClick={submit}
-          disabled={isPending || !entryDate.trim() || !category || !title.trim()}
-        >
-          {isPending ? 'Saving…' : isNew ? 'Add Entry' : 'Save details'}
+  const actionButtons = (
+    <>
+      {inline && saved && <span className={styles.savedNote}>Saved</span>}
+      {!inline && (
+        <button type="button" className={styles.editBtn} onClick={onClose} disabled={isPending}>
+          Cancel
         </button>
+      )}
+      <button
+        type="button"
+        className={styles.editSaveBtn}
+        onClick={submit}
+        disabled={isPending || !entryDate.trim() || !category || !title.trim()}
+      >
+        {isPending ? 'Saving…' : isNew ? 'Add Entry' : 'Save details'}
+      </button>
+    </>
+  );
+
+  if (inline) {
+    return (
+      <div className={styles.formInline}>
+        {body}
+        <div className={styles.inlineActions}>{actionButtons}</div>
       </div>
-    </div>
+    );
+  }
+
+  return (
+    <>
+      <DialogHeader
+        title={isNew ? 'Add Calendar Entry' : `Edit: ${row?.title}`}
+        sub="Shows on the public calendar and the .ics subscription feed."
+      />
+      <DialogBody>{body}</DialogBody>
+      <DialogActions>{actionButtons}</DialogActions>
+    </>
   );
 }

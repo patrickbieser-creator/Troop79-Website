@@ -21,6 +21,7 @@ import {
 } from '@/lib/calendar-categories';
 import { useLookupTable } from './use-lookup-table';
 import styles from './lookups.module.css';
+import { AddButton } from '../../_components/add-button';
 
 type ActionResult = { ok: boolean; error?: string };
 
@@ -129,9 +130,7 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
     <>
       <div className={styles.cardToolbar}>
         {t.searchEl}
-        <button type="button" className={styles.addBtn} onClick={() => setAdding(true)}>
-          + Add Category
-        </button>
+        <AddButton onClick={() => setAdding(true)}>+ Add Category</AddButton>
       </div>
 
       {adding && (
@@ -185,14 +184,9 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
             >
               Cancel
             </button>
-            <button
-              type="button"
-              className={styles.addBtn}
-              onClick={add}
-              disabled={isPending || !newLabel.trim()}
-            >
+            <AddButton onClick={add} disabled={isPending || !newLabel.trim()}>
               Add Category
-            </button>
+            </AddButton>
           </div>
         </div>
       )}

@@ -15,6 +15,7 @@ import {
   type AdvancementReportRow
 } from './actions';
 import styles from './report.module.css';
+import { Badge } from '../../_components/badge';
 import { ActionsMenu } from '../../_components/actions-menu';
 
 function addOneDay(iso: string): string {
@@ -257,9 +258,9 @@ export function ReportWorkspace({
                   <span>
                     {r.startDate} – {r.endDate}
                   </span>
-                  <span className={r.status === 'published' ? styles.badgePublished : styles.badgeDraft}>
+                  <Badge variant={r.status === 'published' ? 'success' : 'warning'}>
                     {r.status === 'published' ? 'Published' : 'Draft'}
-                  </span>
+                  </Badge>
                 </a>
               </li>
             ))}

@@ -11,6 +11,8 @@ import { DatePickerField } from '../_components/date-picker-field';
 import { TabStrip } from '../_components/tab-strip';
 import { AddButton } from '../_components/add-button';
 import { ActionsMenu } from '../_components/actions-menu';
+import { Badge } from '../_components/badge';
+import { Dialog, DialogHeader, DialogBody, DialogActions } from '../_components/dialog';
 import { CalendarEntryForm, type CalendarEntryRow } from './entry-form';
 import type { CalendarEntryMergePlan } from '@/lib/calendar-admin';
 import styles from './calendar.module.css';
@@ -541,14 +543,7 @@ export function CalendarEditor({
         </tbody>
       </table>
 
-      <dialog
-        ref={dialogRef}
-        className={styles.dialog}
-        onClose={closeDialog}
-        onClick={(e) => {
-          if (e.target === dialogRef.current) closeDialog();
-        }}
-      >
+      <Dialog ref={dialogRef} onClose={closeDialog}>
         {newOpen && !cloneFor && (
           <CalendarEntryForm
             key="new"
@@ -568,7 +563,7 @@ export function CalendarEditor({
             onDone={(id) => router.push(`/admin/calendar/${id}`)}
           />
         )}
-      </dialog>
+      </Dialog>
     </>
   );
 }
@@ -615,16 +610,15 @@ function CloneForm({
   }
 
   return (
-    <div className={styles.dialogInner}>
-      <div className={styles.dialogHeader}>
-        <h3>Clone: {source.title}</h3>
-        <p>
-          The write-up, agenda shape and signup structure come along. People never do &mdash; no
+    <>
+      <DialogHeader
+        title={`Clone: ${source.title}`}
+        sub="The write-up, agenda shape and signup structure come along. People never do — no
           claims, no payments, no assigned scouts or leaders. A copied signup starts closed until
-          you open it.
-        </p>
-      </div>
+          you open it."
+      />
 
+      <DialogBody>
       <div className={styles.editGrid}>
         <label className={styles.editField}>
           <span className={styles.editLabel}>Date for the copy</span>
@@ -638,8 +632,9 @@ function CloneForm({
       </p>
 
       {err && <div className={styles.editError}>{err}</div>}
+      </DialogBody>
 
-      <div className={styles.dialogActions}>
+      <DialogActions>
         <button type="button" className={styles.editBtn} onClick={onClose} disabled={isPending}>
           Cancel
         </button>
@@ -651,8 +646,8 @@ function CloneForm({
         >
           {isPending ? 'Copying…' : 'Clone and open'}
         </button>
-      </div>
-    </div>
+      </DialogActions>
+    </>
   );
 }
 
@@ -681,21 +676,15 @@ function StatusPills({ row }: { row: CalendarEntryRow }) {
   if (pills.length === 0) return <span className={styles.muted}>—</span>;
 
   return (
-    <>
+    <span className={styles.statusCell}>
       {pills.map((p) => (
-        <span
+        <Badge
           key={p.label}
-          className={`${styles.statusPill} ${
-            p.tone === 'draft'
-              ? styles.statusDraft
-              : p.tone === 'closed'
-                ? styles.statusClosed
-                : styles.statusMuted
-          }`}
+          variant={p.tone === 'draft' ? 'warning' : p.tone === 'closed' ? 'neutral' : 'muted'}
         >
           {p.label}
-        </span>
+        </Badge>
       ))}
-    </>
+    </span>
   );
 }

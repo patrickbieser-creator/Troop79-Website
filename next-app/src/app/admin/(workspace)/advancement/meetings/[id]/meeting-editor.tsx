@@ -6,6 +6,8 @@ import type { Meeting, MeetingSection, MeetingSession } from '@/lib/supabase/typ
 import { formatLongDate } from '@/lib/dates';
 import type { PromotePayload } from '../actions';
 import styles from '../meetings.module.css';
+import { Badge } from '../../../_components/badge';
+import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../../_components/dialog';
 
 type ActionResult = { ok: boolean; error?: string };
 
@@ -178,11 +180,7 @@ export function MeetingEditor({
           </h1>
         </div>
         <div className={styles.headActions}>
-          <span
-            className={`${styles.statusPill} ${published ? styles.statusPublished : styles.statusDraft}`}
-          >
-            {meeting.status}
-          </span>
+          <Badge variant={published ? 'success' : 'neutral'}>{meeting.status}</Badge>
           {published && (
             <Link href={`/events/${entry.id}`} className={styles.editBtn}>
               View public page
@@ -340,14 +338,7 @@ export function MeetingEditor({
         </aside>
       </div>
 
-      <dialog
-        ref={dialogRef}
-        className={styles.dialog}
-        onClose={() => setOpenFor(null)}
-        onClick={(e) => {
-          if (e.target === dialogRef.current) setOpenFor(null);
-        }}
-      >
+      <Dialog ref={dialogRef} onClose={() => setOpenFor(null)}>
         {openFor && (
           <SessionForm
             key={'newIn' in openFor ? `new-${openFor.newIn}` : openFor.id}
@@ -359,7 +350,7 @@ export function MeetingEditor({
             onClose={() => setOpenFor(null)}
           />
         )}
-      </dialog>
+      </Dialog>
     </>
   );
 }
@@ -531,16 +522,17 @@ function SessionForm({
 
   const isPre = section === 'pre_meeting';
   return (
-    <form ref={formRef} className={styles.dialogInner} onSubmit={(e) => e.preventDefault()}>
-      <div className={styles.dialogHeader}>
-        <h3>{isNew ? (isPre ? 'Add Pre-Meeting Item' : 'Add Agenda Item') : `Edit: ${row?.title}`}</h3>
-        <p>
-          {isPre
+    <form ref={formRef} onSubmit={(e) => e.preventDefault()}>
+      <DialogHeader
+        title={isNew ? (isPre ? 'Add Pre-Meeting Item' : 'Add Agenda Item') : `Edit: ${row?.title}`}
+        sub={
+          isPre
             ? 'Shows in the "Before the Meeting" section — early advancement help, setup crews, and the like.'
-            : 'One row in the meeting agenda. Time is a label ("4:10"), so parallel sessions can share it.'}
-        </p>
-      </div>
+            : 'One row in the meeting agenda. Time is a label ("4:10"), so parallel sessions can share it.'
+        }
+      />
 
+      <DialogBody>
       <input type="hidden" name="section" value={section} />
       <div className={styles.editGrid}>
         <label className={styles.editField}>
@@ -613,15 +605,16 @@ function SessionForm({
       </div>
 
       {err && <div className={styles.editError}>{err}</div>}
+      </DialogBody>
 
-      <div className={styles.dialogActions}>
+      <DialogActions>
         <button type="button" className={styles.editBtn} onClick={onClose} disabled={isPending}>
           Cancel
         </button>
         <button type="button" className={styles.editSaveBtn} onClick={submit} disabled={isPending}>
           {isPending ? 'Saving…' : isNew ? 'Add item' : 'Save changes'}
         </button>
-      </div>
+      </DialogActions>
     </form>
   );
 }

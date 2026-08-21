@@ -127,3 +127,17 @@
   --admin-tracking-wider:  .08em;
   --admin-tracking-widest: .12em;
 }
+
+/* ── Utilities ──────────────────────────────────────────────────────── */
+/* The eyebrow label — the single most universal idiom in the workspace
+   (the audit found it re-declared in 32 of 35 module files as .editLabel /
+   .importSection / table th / …). Phase A ships the utility; per-screen
+   copies retire screen-by-screen in Phases B/C. Typography only, no
+   layout — consumers add display/margin in their own class if needed. */
+.adminLabel {
+  font-size: var(--admin-text-sm);
+  font-weight: var(--admin-weight-bold);
+  letter-spacing: var(--admin-tracking-wider);
+  text-transform: uppercase;
+  color: var(--admin-gray-500);
+}

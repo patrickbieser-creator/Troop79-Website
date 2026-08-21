@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useLookupTable } from './use-lookup-table';
 import styles from './lookups.module.css';
+import { AddButton } from '../../_components/add-button';
 
 type ActionResult = { ok: boolean; error?: string };
 
@@ -108,9 +109,7 @@ export function SkillsEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
     <>
       <div className={styles.cardToolbar}>
         {t.searchEl}
-        <button type="button" className={styles.addBtn} onClick={() => setAdding(true)}>
-          + Add Skill
-        </button>
+        <AddButton onClick={() => setAdding(true)}>+ Add Skill</AddButton>
       </div>
 
       {adding && (
@@ -146,14 +145,9 @@ export function SkillsEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
             <button type="button" className={styles.editBtn} onClick={cancelAdd} disabled={isPending}>
               Cancel
             </button>
-            <button
-              type="button"
-              className={styles.addBtn}
-              onClick={add}
-              disabled={isPending || !newName.trim()}
-            >
+            <AddButton onClick={add} disabled={isPending || !newName.trim()}>
               Add Skill
-            </button>
+            </AddButton>
           </div>
         </div>
       )}

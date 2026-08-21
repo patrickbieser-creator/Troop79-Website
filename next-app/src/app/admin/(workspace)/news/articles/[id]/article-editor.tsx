@@ -14,6 +14,7 @@ import {
 import { useMarkdownBlockTools } from '../../../_components/markdown-block-tools';
 import { createArticle, updateArticle, publishArticle } from '../actions';
 import styles from './article-editor.module.css';
+import { Badge } from '../../../_components/badge';
 
 interface Props {
   article: Article | null;
@@ -109,9 +110,9 @@ export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags }: P
           <div className={styles.editorPaneHead}>
             <h2>Article Details</h2>
             {article && (
-              <span className={`${styles.statusPill} ${article.status === 'published' ? styles.statusPillPublished : ''}`}>
+              <Badge variant={article.status === 'published' ? 'success' : 'warning'}>
                 {article.status}
-              </span>
+              </Badge>
             )}
           </div>
 

@@ -87,8 +87,9 @@
 .tagRank        { background: #e0e7ef; color: var(--admin-navy); }
 .tagMb          { background: #e3eee5; color: var(--admin-forest); }
 .tagEagle       { background: #fdf3d6; color: #8b6914; }
-.tagActive      { background: #e3eee5; color: var(--admin-forest); }
-.tagInactive    { background: var(--admin-gray-100); color: var(--admin-gray-500); }
+/* .tagActive/.tagInactive deleted Phase A (2026-08-21) — no consumers left;
+   status pills are the shared Badge component now. The categorical tags
+   above (rank/MB source, Eagle) deliberately stay per-screen. */
 .muted { color: var(--admin-gray-400); font-style: italic; }
 .summary {
   font-size: 11px;
@@ -143,19 +144,8 @@
   gap: 8px;
   margin-left: auto;
 }
-.addBtn {
-  font-family: inherit;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .04em;
-  background: var(--admin-forest);
-  color: var(--admin-white);
-  border: 1px solid var(--admin-forest);
-  padding: 6px 12px;
-  border-radius: 3px;
-  cursor: pointer;
-}
-.addBtn:hover { background: var(--admin-forest-dark); }
+/* .addBtn retired Phase A (2026-08-21) — the shared AddButton component
+   (its 6×12 padding drift folds into the canonical 7×14). */
 
 /* Row action buttons */
 .editBtn {
@@ -185,10 +175,10 @@
 .promoteBtn:disabled { opacity: .5; cursor: not-allowed; }
 .dangerBtn {
   color: var(--admin-danger);
-  border-color: #e8c4c0;
+  border-color: color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white));
 }
 .dangerBtn:hover {
-  background: #fdf0ef;
+  background: var(--admin-status-error-bg);
   border-color: var(--admin-danger);
   color: var(--admin-danger);
 }

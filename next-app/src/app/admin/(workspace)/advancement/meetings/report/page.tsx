@@ -121,7 +121,9 @@ export default async function AttendanceReportPage({
         </label>
         <DateParamField id="to" name="to" defaultValue={to} />
         {sort !== 'pct' && <input type="hidden" name="sort" value={sort} />}
-        <button type="submit" className={styles.addBtn}>
+        {/* Navy: this is a form submit, not an Add — the Phase A primary-button
+            decision (2026-08-21) reserves green for create actions. */}
+        <button type="submit" className={styles.editSaveBtn}>
           Apply
         </button>
       </form>

@@ -147,14 +147,4 @@
 }
 .reportLink:hover { background: var(--admin-gray-100); }
 .reportLinkActive { border-color: var(--admin-navy); background: var(--admin-gray-100); font-weight: 700; }
-.badgeDraft, .badgePublished {
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  padding: 2px 6px;
-  border-radius: 2px;
-  white-space: nowrap;
-}
-.badgeDraft { background: #fdf3d6; color: #8a6d1a; }
-.badgePublished { background: #eef6ee; color: #2f5d34; }
+/* .badgeDraft/.badgePublished retired Phase A (2026-08-21) — shared Badge. */

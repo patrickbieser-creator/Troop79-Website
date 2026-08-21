@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useLookupTable } from './use-lookup-table';
 import styles from './lookups.module.css';
+import { AddButton } from '../../_components/add-button';
 
 type ActionResult = { ok: boolean; error?: string };
 
@@ -97,9 +98,7 @@ export function NameLookupEditor({ rows, noun, onCreate, onUpdate, onDelete }: P
     <>
       <div className={styles.cardToolbar}>
         {t.searchEl}
-        <button type="button" className={styles.addBtn} onClick={() => setAdding(true)}>
-          + Add {noun}
-        </button>
+        <AddButton onClick={() => setAdding(true)}>+ Add {noun}</AddButton>
       </div>
 
       {adding && (
@@ -127,14 +126,9 @@ export function NameLookupEditor({ rows, noun, onCreate, onUpdate, onDelete }: P
             <button type="button" className={styles.editBtn} onClick={cancelAdd} disabled={isPending}>
               Cancel
             </button>
-            <button
-              type="button"
-              className={styles.addBtn}
-              onClick={add}
-              disabled={isPending || !newName.trim()}
-            >
+            <AddButton onClick={add} disabled={isPending || !newName.trim()}>
               Add {noun}
-            </button>
+            </AddButton>
           </div>
         </div>
       )}

@@ -137,12 +137,15 @@
 .smallBtn:hover {
   background: #f7f1e6;
 }
+/* Canonical outlined danger (Phase A decision, 2026-08-21) — was one of the
+   two off-token hardcoded reds the audit flagged. */
 .dangerBtn {
-  border-color: #d9bcbc;
-  color: #8c3b3b;
+  border-color: color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white));
+  color: var(--admin-danger);
 }
 .dangerBtn:hover {
-  background: #fbf0f0;
+  background: var(--admin-status-error-bg);
+  border-color: var(--admin-danger);
 }
 
 .bundleBar {

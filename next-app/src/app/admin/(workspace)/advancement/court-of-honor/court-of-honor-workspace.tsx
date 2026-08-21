@@ -16,6 +16,7 @@ import {
   type CourtOfHonorRow
 } from './actions';
 import styles from './court-of-honor.module.css';
+import { Badge } from '../../_components/badge';
 import { ActionsMenu } from '../../_components/actions-menu';
 
 function todayIso(): string {
@@ -314,9 +315,9 @@ export function CourtOfHonorWorkspace({
                   <span>
                     {r.startDate} – {r.endDate}
                   </span>
-                  <span className={r.status === 'published' ? styles.badgePublished : styles.badgeDraft}>
+                  <Badge variant={r.status === 'published' ? 'success' : 'warning'}>
                     {r.status === 'published' ? 'Published' : 'Draft'}
-                  </span>
+                  </Badge>
                 </a>
               </li>
             ))}

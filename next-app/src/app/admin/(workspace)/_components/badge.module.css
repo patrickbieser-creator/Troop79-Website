@@ -1,0 +1,23 @@
+/**
+ * Shared status badge (Phase A, Plans/Admin-Design-System.md) — collapses
+ * the audit's four naming families (.badge / .statusPill / .pill / .tag)
+ * and their per-file tint drift into one component on the status tokens.
+ * Base shape: meetings' .statusPill, generalized to the pill radius.
+ */
+.badge {
+  display: inline-block;
+  font-size: var(--admin-text-xs);
+  font-weight: var(--admin-weight-bold);
+  letter-spacing: var(--admin-tracking-normal);
+  text-transform: uppercase;
+  padding: var(--admin-space-1) var(--admin-space-4);
+  border-radius: var(--admin-radius-pill);
+  white-space: nowrap;
+}
+
+.neutral { background: var(--admin-gray-100); color: var(--admin-gray-700); }
+.success { background: var(--admin-status-success-bg); color: var(--admin-forest); }
+.warning { background: var(--admin-status-warning-bg); color: var(--admin-accent-gold); }
+.danger  { background: var(--admin-status-error-bg); color: var(--admin-danger); }
+.info    { background: var(--admin-status-info-bg); color: var(--admin-navy); }
+.muted   { background: var(--admin-gray-100); color: var(--admin-gray-500); }

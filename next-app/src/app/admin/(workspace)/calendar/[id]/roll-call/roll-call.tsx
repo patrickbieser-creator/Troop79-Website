@@ -14,6 +14,8 @@ import { useRouter } from 'next/navigation';
 import type { AttendanceRow, AttendeeCandidate, CreditKind } from '@/lib/attendance-shared';
 import { reconcileWithSignup } from '@/lib/attendance-shared';
 import styles from './roll-call.module.css';
+import { AddButton } from '../../../_components/add-button';
+import { Badge } from '../../../_components/badge';
 
 type Result = { ok: boolean; error?: string };
 
@@ -135,9 +137,9 @@ export function RollCall({
             : ' Does not count as a troop activity — this is a meeting.'}
         </span>
         {hasSignup && (
-          <button type="button" className={styles.seedBtn} onClick={seed} disabled={busy !== null}>
+          <AddButton onClick={seed} disabled={busy !== null}>
             {busy === -1 ? 'Seeding…' : 'Mark everyone who signed up'}
-          </button>
+          </AddButton>
         )}
       </div>
 
@@ -193,8 +195,8 @@ export function RollCall({
                       onChange={(e) => toggle(c, e.target.checked)}
                     />
                     <span>{c.displayName}</span>
-                    {c.signedUp && <span className={styles.pill}>signed up</span>}
-                    {row?.source === 'import' && <span className={styles.pillMuted}>historical</span>}
+                    {c.signedUp && <Badge variant="info">signed up</Badge>}
+                    {row?.source === 'import' && <Badge variant="muted">historical</Badge>}
                   </label>
                   {isHere && creditKind && creditUnit && creditUnit !== 'each' && (
                     <span className={styles.qty}>

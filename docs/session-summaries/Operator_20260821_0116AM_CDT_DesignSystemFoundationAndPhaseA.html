@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Session Summary — Design System Foundation &amp; Phase A</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;700;900&family=Libre+Baskerville:ital@0;1&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --nw-teal:  #1e3a4a; /* Troop 79 navy (BRAND.md primary) */
+      --nw-green: #3d5a3e; /* Troop 79 forest (BRAND.md accent) */
+      --gray-dark: #4b4b4b; --gray-med: #7e7e7e; --gray-light: #e6e6e6;
+      --pale: #e1e6d2; --white: #fff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Montserrat', Arial, sans-serif; font-size: 14px; color: var(--gray-dark); background: var(--pale); }
+    .header { background: var(--nw-teal); color: #fff; padding: 40px 60px; }
+    .header-inner { max-width: 860px; margin: 0 auto; }
+    .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.55); margin-bottom: 8px; }
+    h1 { font-size: 30px; font-weight: 500; margin-bottom: 6px; }
+    .sub { font-size: 13px; font-weight: 300; color: rgba(255,255,255,.7); }
+    .stripe { background: var(--gray-light); padding: 12px 60px; }
+    .stripe-inner { max-width: 860px; margin: 0 auto; display: flex; justify-content: space-between; font-size: 12px; color: var(--gray-med); }
+    .stripe strong { color: var(--gray-dark); }
+    .body { max-width: 860px; margin: 0 auto; padding: 40px 60px 70px; }
+    h2 { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); padding-bottom: 8px; margin: 36px 0 16px; }
+    h2:first-child { margin-top: 0; }
+    .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+    .metric { background: var(--white); border: 1px solid var(--gray-light); border-radius: 4px; padding: 14px 16px; }
+    .metric .n { font-size: 24px; font-weight: 700; color: var(--nw-teal); }
+    .metric .l { font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--gray-med); margin-top: 2px; }
+    .card { background: var(--white); border: 1px solid var(--gray-light); border-left: 4px solid var(--nw-green); border-radius: 4px; padding: 16px 20px; margin-bottom: 14px; }
+    .card h3 { font-size: 14px; font-weight: 700; color: var(--nw-teal); margin-bottom: 8px; }
+    .card p, .card li { font-size: 13px; line-height: 1.6; }
+    ul { padding-left: 20px; }
+    li { margin-bottom: 6px; }
+    code { font-size: 12px; background: #f0f1f3; border-radius: 3px; padding: 0 4px; }
+    .decision { border-left-color: var(--nw-teal); }
+    .tag { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; background: var(--nw-green); color: #fff; border-radius: 999px; padding: 2px 9px; margin-right: 8px; }
+    .footer { text-align: center; font-size: 11px; color: var(--gray-med); padding: 0 0 40px; }
+  </style>
+</head>
+<body>
+  <div class="header"><div class="header-inner">
+    <div class="eyebrow">Session Summary · Troop 79 Website</div>
+    <h1>Design System Foundation &amp; Phase&nbsp;A</h1>
+    <div class="sub">Operator session · August 21, 2026 · v1.55.0 → v1.57.0 · 3 commits, all pushed &amp; deployed</div>
+  </div></div>
+  <div class="stripe"><div class="stripe-inner">
+    <span>Project: <strong>Troop79-Website</strong> · Branch: <strong>main</strong></span>
+    <span>Quality gate: <strong>lint · typecheck · 660/660 tests · build — all green</strong></span>
+  </div></div>
+  <div class="body">
+
+    <h2>Key Metrics</h2>
+    <div class="metrics">
+      <div class="metric"><div class="n">3</div><div class="l">Releases pushed</div></div>
+      <div class="metric"><div class="n">650→660</div><div class="l">Test baseline</div></div>
+      <div class="metric"><div class="n">3</div><div class="l">Decisions (D-161–163)</div></div>
+      <div class="metric"><div class="n">−415</div><div class="l">Net lines of duplicated UI (v1.57)</div></div>
+      <div class="metric"><div class="n">14</div><div class="l">Per-screen copies retired</div></div>
+      <div class="metric"><div class="n">2</div><div class="l">Bugs fixed</div></div>
+    </div>
+
+    <h2>What Was Accomplished</h2>
+    <div class="card">
+      <h3>v1.55.0 — Tier 1 proof-submission fallback retired</h3>
+      <ul>
+        <li><code>/library/submit-proof</code> now requires a verified identity — the shared-troop-password + self-picked-household path is gone (<code>profile-household-session.ts</code> deleted with its 6 call sites).</li>
+        <li>Unblocked by Patrick's product call: leader-issued offline codes won't be built; email is the path forward. qa-lead security review: <strong>SHIP, no blockers</strong>.</li>
+        <li><code>library.moderate</code> backlog item closed — multiple holders confirmed.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>v1.56.0 — Admin design system foundation + live styleguide</h3>
+      <ul>
+        <li>Three-part audit (3 parallel agents): 35 stylesheets, 174 inline styles, full color census — found 13 silently-dead phantom-token reads, two public-palette leaks, 7-green/8-red drift clusters, tab strips re-defined in 18 files.</li>
+        <li><code>--admin-*</code> tokens promoted to <code>:root</code> in <code>admin.css</code> (22 → ~70 tokens; portal-inheritance constraint dissolved; the 13 dead reads fixed).</li>
+        <li><strong>/admin/styleguide</strong> shipped — renders canonical patterns from the real production stylesheets, drift variants side by side, an inconsistency scoreboard, and the styling rules (also codified in <code>next-app/AGENTS.md</code>: styleguide ships with the change).</li>
+        <li>Dialog redesign proposed → staged on the styleguide → <strong>approved by Patrick live in the browser</strong> (D-163): shadow-lg, navy-tinted blurred backdrop, entry motion, banded zones, danger variant.</li>
+        <li>Bug fixed: Media Picker's progress bar was hardcoded to 70% (Server Actions expose no progress) — now an honest indeterminate sweep.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>v1.57.0 — Phase A: shared TabStrip, AddButton, ActionsMenu</h3>
+      <ul>
+        <li>Three shared components in <code>_components/</code> with 10 dom tests; <strong>pill tabs and Actions ▾ are fully deduplicated — zero copies left</strong>.</li>
+        <li>All 8 Actions ▾ menus converted, including three quiet divergents nobody had normalized (Roster's short select, Calendar's filter-style reuse, Roll Call's date-input borrow).</li>
+        <li>Free fixes en route: missing <code>tablist</code>/<code>tab</code> roles on Roster, missing <code>type="button"</code> on Roster Import.</li>
+        <li>Audit correction recorded: ledger's/articles' <code>.select</code> are filter selects, roster-import's a batch picker — value selects, correctly untouched.</li>
+      </ul>
+    </div>
+
+    <h2>Decisions Recorded</h2>
+    <div class="card decision"><h3><span class="tag">D-161</span>Tier 1 fallback retired; leader-issued codes dropped</h3>
+      <p>Email sign-in is the only proof-submission path; a family without email is handled out of band by a leader. Accepted capability loss documented rather than discovered later.</p></div>
+    <div class="card decision"><h3><span class="tag">D-162</span>Admin design system architecture</h3>
+      <p>Global <code>:root</code> tokens + shared React components (over utility classes and Tailwind); live styleguide as the drift-proof reference and remediation work queue; screen-by-screen phased conversion — never big-bang.</p></div>
+    <div class="card decision"><h3><span class="tag">D-163</span>Approved dialog spec is the admin standard</h3>
+      <p>Reviewed live via the styleguide's demo and approved. Every dialog converges on it as screens convert; new dialogs copy the spec, never legacy <code>calendar .dialog</code>.</p></div>
+
+    <h2>Next Steps</h2>
+    <div class="card">
+      <ul>
+        <li><strong>Phase A remainder:</strong> shared <code>Dialog</code> (approved spec + centering bug fix; recon done — only 4 <code>&lt;dialog&gt;</code> sites, meetings' dialog CSS is dead) and shared <code>Badge</code>.</li>
+        <li><strong>Patrick's open design calls:</strong> primary button color (navy vs forest), danger treatment (outlined vs solid), roster's navy addBtn.</li>
+        <li><strong>Eyes-on browser pass</strong> of the v1.57.0-converted screens — Calendar, News, Roster, Roster Import, Finance, Roll Call list.</li>
+      </ul>
+    </div>
+
+  </div>
+  <div class="footer">Troop 79 Website · Operator session summary · Generated 2026-08-21 01:16 AM CDT</div>
+</body>
+</html>

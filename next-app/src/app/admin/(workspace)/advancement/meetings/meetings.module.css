@@ -7,13 +7,8 @@
 .pageTitle p { font-size: 13px; color: var(--admin-gray-500); max-width: 720px; line-height: 1.5; }
 
 .toolbar { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-bottom: 12px; }
-.addBtn {
-  font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: .04em;
-  background: var(--admin-forest); color: var(--admin-white); border: 1px solid var(--admin-forest);
-  padding: 7px 14px; border-radius: 3px; cursor: pointer;
-}
-.addBtn:hover { background: var(--admin-forest-dark); }
-.addBtn:disabled { opacity: .55; cursor: not-allowed; }
+/* .addBtn retired Phase A (2026-08-21): its one green-submit use (Attendance
+   Report's Apply) moved to .editSaveBtn per the navy primary-button decision. */
 .dateInput {
   border: 1px solid var(--admin-gray-300); border-radius: 3px; padding: 6px 9px;
   font-family: inherit; font-size: 12.5px; background: var(--admin-white); color: var(--admin-gray-900);
@@ -46,12 +41,8 @@
 .dateCell { font-family: 'Menlo', 'Consolas', monospace; font-size: 11.5px; color: var(--admin-gray-700); white-space: nowrap; }
 .muted { color: var(--admin-gray-400); font-style: italic; }
 
-.statusPill {
-  display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .05em;
-  text-transform: uppercase; padding: 2px 8px; border-radius: 10px;
-}
-.statusDraft { background: var(--admin-gray-100); color: var(--admin-gray-700); }
-.statusPublished { background: #e5efe4; color: var(--admin-forest); }
+/* .statusPill family retired Phase A (2026-08-21) — the shared Badge
+   component (_components/badge) carries it now. */
 
 .editBtn {
   font-family: inherit; font-size: 11px; font-weight: 600; background: var(--admin-white);
@@ -61,8 +52,8 @@
 .editBtn:first-child { margin-left: 0; }
 .editBtn:hover { border-color: var(--admin-navy); color: var(--admin-navy); }
 .editBtn:disabled { opacity: .5; cursor: not-allowed; }
-.dangerBtn { color: var(--admin-danger); border-color: #e8c4c0; }
-.dangerBtn:hover { background: #fdf0ef; border-color: var(--admin-danger); color: var(--admin-danger); }
+.dangerBtn { color: var(--admin-danger); border-color: color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white)); }
+.dangerBtn:hover { background: var(--admin-status-error-bg); border-color: var(--admin-danger); color: var(--admin-danger); }
 .publishBtn {
   font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: .04em;
   background: var(--admin-forest); color: var(--admin-white); border: 1px solid var(--admin-forest);
@@ -177,14 +168,10 @@
 }
 .okNote { margin-top: 8px; font-size: 11.5px; color: var(--admin-forest); font-weight: 600; }
 
-/* ── dialog (session form) ─────────────────────────────────────────────── */
-
-.dialog { padding: 0; border: none; border-radius: 6px; box-shadow: var(--admin-shadow-md); width: 92vw; max-width: 580px; background: var(--admin-white); }
-.dialog::backdrop { background: rgba(0, 0, 0, .42); }
-.dialogInner { padding: 22px 26px 18px; font-family: inherit; }
-.dialogHeader { border-bottom: 1px solid var(--admin-gray-200); padding-bottom: 12px; margin-bottom: 16px; }
-.dialogHeader h3 { font-size: 15px; font-weight: 700; color: var(--admin-navy); margin-bottom: 4px; }
-.dialogHeader p { font-size: 12px; color: var(--admin-gray-500); line-height: 1.4; }
+/* ── session form fields ───────────────────────────────────────────────── */
+/* The dialog chrome (.dialog/.dialogInner/.dialogHeader/.dialogActions)
+   retired Phase A (2026-08-21) — the shared Dialog component
+   (_components/dialog) carries the approved spec, centering fix included. */
 
 .editGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
 .editField { display: block; margin-bottom: 12px; }
@@ -200,10 +187,6 @@
 .editInput:focus { border-color: var(--admin-navy); }
 textarea.editInput { resize: vertical; min-height: 64px; }
 
-.dialogActions {
-  display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; padding-top: 12px;
-  border-top: 1px solid var(--admin-gray-200);
-}
 .editSaveBtn {
   font-family: inherit; font-size: 12px; font-weight: 700; letter-spacing: .04em;
   background: var(--admin-navy); color: var(--admin-white); border: 1px solid var(--admin-navy);

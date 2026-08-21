@@ -14,6 +14,7 @@ import {
   setFeatured
 } from './actions';
 import styles from './articles.module.css';
+import { Badge } from '../../_components/badge';
 
 type SortKey = 'title' | 'type' | 'status' | 'author' | 'date';
 
@@ -125,18 +126,23 @@ export function ArticlesTable({ rows, sp, sort, dir, sessionName }: Props) {
                     {rowErr?.id === r.id && <div className={styles.rowError}>{rowErr.msg}</div>}
                   </td>
                   <td className={styles.nowrap}>
-                    <span
-                      className={`${styles.pill} ${
+                    <Badge
+                      variant={
                         r.status === 'published'
-                          ? styles.pillPublished
+                          ? 'success'
                           : r.status === 'pending'
-                            ? styles.pillPending
-                            : styles.pillDraft
-                      }`}
+                            ? 'warning'
+                            : 'neutral'
+                      }
                     >
                       {STATUS_LABEL[r.status]}
-                    </span>
-                    {r.archived_at && <span className={`${styles.pill} ${styles.pillArchived}`}> Archived</span>}
+                    </Badge>
+                    {r.archived_at && (
+                      <>
+                        {' '}
+                        <Badge variant="muted">Archived</Badge>
+                      </>
+                    )}
                   </td>
                   <td className={styles.nowrap}>{r.author_name}</td>
                   <td className={styles.nowrap}>

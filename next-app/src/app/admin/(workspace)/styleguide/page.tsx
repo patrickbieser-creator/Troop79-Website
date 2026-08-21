@@ -24,18 +24,16 @@ import { DialogDemo } from './dialog-demo';
 import { ActionsMenuSpecimen } from './specimens';
 import { TabStrip } from '../_components/tab-strip';
 import { AddButton } from '../_components/add-button';
+import { Badge } from '../_components/badge';
+import dlg from '../_components/dialog.module.css';
 import cal from '../calendar/calendar.module.css';
-import wb from '../calendar/[id]/workbench.module.css';
-import rollCall from '../calendar/[id]/roll-call/roll-call.module.css';
 import ledger from '../advancement/ledger/ledger.module.css';
-import roster from '../advancement/roster/roster.module.css';
 import imp from '../advancement/roster-import/roster-import.module.css';
-import meet from '../advancement/meetings/meetings.module.css';
 import coh from '../advancement/court-of-honor/court-of-honor.module.css';
 import plan from '../advancement/meeting-plan/meeting-plan.module.css';
-import lookups from '../advancement/lookups/lookups.module.css';
 import art from '../news/articles/articles.module.css';
 import albums from '../news/photo-albums/albums.module.css';
+import mm from '../news/media-manager/media-manager.module.css';
 import ev from '../events/events-admin.module.css';
 import fin from '../finance/finance.module.css';
 import util from '../utilities/utilities.module.css';
@@ -112,24 +110,29 @@ const SCOREBOARD: {
 }[] = [
   {
     pattern: 'Add buttons (green "+ Add X")',
-    copies: 'WAS 6 files — now 4 variants left (lookups, roster, roll-call .seedBtn, meetings/report submit)',
-    canonical: '✓ SHIPPED: shared AddButton (calendar/articles/albums converted 2026-08-21)',
+    copies: '✓ DONE — 0 copies left',
+    canonical:
+      '✓ SHIPPED: shared AddButton — calendar/articles/albums (v1.57.0), then lookups (7 editors), roster (navy one-off → green, Patrick 2026-08-21), and roll-call’s .seedBtn clone',
     phase: 'A',
-    notes: 'roster navy addBtn is a design call still open; meetings/report reuses the style as a SUBMIT — belongs to the primary-button decision'
+    notes:
+      'meetings/report’s green SUBMIT and lookups’ green Save were re-classed navy — submits are primaries, not Adds'
   },
   {
     pattern: 'Primary buttons',
-    copies: '4 files, 3 designs, 2 naming families',
-    canonical: 'court-of-honor/report .primaryBtn (identical pair)',
+    copies: '✓ DECIDED + APPLIED — navy (Patrick 2026-08-21)',
+    canonical: 'court-of-honor/report .primaryBtn; green stays reserved for Add/create',
     phase: 'A',
-    notes: 'workbench repaints via PUBLIC --forest token; library has its own .btnPrimary family shared with public pages'
+    notes:
+      'workbench’s forest Save (a public --forest leak) and the green submits converted to navy; library’s .btnPrimary family is shared with public pages and stays'
   },
   {
     pattern: 'Danger buttons',
-    copies: '7+ files, outlined AND solid treatments',
-    canonical: 'decide: outlined (albums et al.) vs solid (events-admin)',
+    copies: '✓ DECIDED + APPLIED — both, with rules (Patrick 2026-08-21)',
+    canonical:
+      'outlined for in-context actions; SOLID reserved for the confirm inside a danger Dialog',
     phase: 'A',
-    notes: 'roster + access use hardcoded reds off-token entirely'
+    notes:
+      'events-admin’s solid one-off → outlined; roster + access hardcoded reds re-tokened; all outlined copies now share the color-mix border + status-error-bg hover'
   },
   {
     pattern: 'Pill tab strips + count badges',
@@ -147,10 +150,12 @@ const SCOREBOARD: {
   },
   {
     pattern: 'Badges / status pills',
-    copies: '9+ files, 4 naming families, 2 radii (10px vs 999px)',
-    canonical: 'meetings .statusPill base, generalized to pill radius',
+    copies: '✓ DONE — 0 status-pill copies left',
+    canonical:
+      '✓ SHIPPED: shared Badge (neutral/success/warning/danger/info/muted) — meetings, calendar, articles, article-editor, roster, roster-import, roll-call, court-of-honor, report converted 2026-08-21',
     phase: 'A',
-    notes: '.badge / .statusPill / .pill / .tag all mean the same thing'
+    notes:
+      'Deliberate exceptions: library workstation (stylesheet shared with 20 public routes, D-160) and CATEGORICAL tags (lookups rank/MB/Eagle, meeting-plan track tags, scoutbook-export type badges) — categories are not statuses'
   },
   {
     pattern: 'Actions ▾ menu',
@@ -175,10 +180,12 @@ const SCOREBOARD: {
   },
   {
     pattern: '<dialog> modals',
-    copies: '4 legacy copies; only calendar has the margin:auto/max-height centering fix',
-    canonical: 'the APPROVED spec in the Dialogs section (2026-08-21) — extract as the shared Dialog component',
+    copies: '✓ DONE — 4 legacy copies (calendar, meetings, albums, media-manager ×2) converted 2026-08-21',
+    canonical:
+      '✓ SHIPPED: shared Dialog component (_components/dialog) implementing the approved spec — centering fix delivered to meetings/albums/media-manager',
     phase: 'A (bug)',
-    notes: 'media-picker uses a custom div overlay instead — unify later, HIGH risk. New dialogs copy the approved spec, not calendar’s legacy .dialog.'
+    notes:
+      'Remaining families (ledger/roster/lookups editDialog etc.) adopt it in Phase B; media-picker’s custom div overlay unifies last, HIGH risk'
   },
   {
     pattern: 'Page titles',
@@ -204,9 +211,9 @@ const SCOREBOARD: {
   {
     pattern: 'Eyebrow labels (11px/700/uppercase)',
     copies: '32 of 35 files re-declare it',
-    canonical: 'planned .adminLabel utility (Phase A)',
+    canonical: '✓ SHIPPED: global .adminLabel utility in admin.css (2026-08-21)',
     phase: 'A',
-    notes: 'the single most universal idiom in the workspace'
+    notes: 'utility exists; the 32 per-screen re-declarations retire screen-by-screen in Phases B/C'
   }
 ];
 
@@ -317,6 +324,23 @@ export default function StyleguidePage() {
         ))}
       </section>
 
+      <section className={sg.section}>
+        <h2 className={sg.sectionHead}>Utilities</h2>
+        <p className={sg.sectionNote}>
+          Global classes in <code>admin.css</code> — usable from any admin markup without a
+          module import.
+        </p>
+        <div className={sg.specimenGrid}>
+          <Specimen
+            label=".adminLabel — the eyebrow label"
+            canonical
+            note="SHIPPED Phase A (2026-08-21): the 11px/700/uppercase idiom re-declared in 32 of 35 module files. Typography only — consumers add display/margin themselves. Per-screen copies retire in Phases B/C."
+          >
+            <span className="adminLabel">Section heading</span>
+          </Specimen>
+        </div>
+      </section>
+
       {/* ════ BUTTONS ════ */}
       <section className={sg.section}>
         <h2 className={sg.sectionHead}>Buttons</h2>
@@ -324,17 +348,9 @@ export default function StyleguidePage() {
           <Specimen
             label="Add button — shared AddButton component"
             canonical
-            note="SHIPPED Phase A (2026-08-21): calendar, articles, and albums render this component now. Import from _components/add-button; href renders a Link, onClick a button."
+            note="Phase A COMPLETE (2026-08-21): every green Add in the workspace renders this component — calendar, articles, albums, the 7 lookups editors, roster (converted from its navy one-off, Patrick's call), and roll-call's seed action. Import from _components/add-button; href renders a Link, onClick a button; disabled supported."
           >
             <AddButton>+ Add Event</AddButton>
-          </Specimen>
-          <Specimen
-            label="Add variants still in the wild"
-            note="lookups pads 6×12 instead of 7×14; roster went navy with a 5px radius (design call open); roll-call hides a clone under .seedBtn; meetings/report reuses the green style as a form SUBMIT (a primary-button question, not an Add)."
-          >
-            <button type="button" className={lookups.addBtn}>+ Add</button>
-            <button type="button" className={roster.addBtn}>+ Add Scout</button>
-            <button type="button" className={rollCall.seedBtn}>Seed from Signups</button>
           </Specimen>
           <Specimen
             label="Row actions"
@@ -345,24 +361,23 @@ export default function StyleguidePage() {
             <button type="button" className={`${ledger.actionBtn} ${ledger.actionBtnDanger}`}>Void</button>
           </Specimen>
           <Specimen
-            label="Primary — 3 designs"
-            note="court-of-honor (navy 9×18) vs workbench (repainted via the PUBLIC --forest token) vs roster-import (8×16). No canonical yet — Phase A decision."
+            label="Primary — navy (decided 2026-08-21)"
+            canonical
+            note="Patrick's Phase A call: primaries are NAVY (court-of-honor/report .primaryBtn); green stays reserved for Add/create, so color carries meaning. Workbench's forest Save (a public-token leak) and the green form submits were converted."
           >
             <button type="button" className={coh.primaryBtn}>Publish</button>
-            <button type="button" className={`${wb.btn} ${wb.primaryBtn}`}>Save</button>
-            <button type="button" className={imp.primaryBtn}>Import</button>
           </Specimen>
           <Specimen
-            label="Danger — outlined vs solid vs off-token"
-            note="albums et al. outline in danger red; events-admin fills solid (#a04a3d); roster hardcodes #8c2f2f off-token. One treatment should win in Phase A."
+            label="Danger — both, with rules (decided 2026-08-21)"
+            canonical
+            note="Patrick's Phase A call: OUTLINED for in-context destructive actions (rows, panels) — quiet until hovered; SOLID reserved for the confirm button inside a danger Dialog. All copies now share the tokens (color-mix border, status-error-bg hover)."
           >
             <button type="button" className={`${albums.editBtn} ${albums.dangerBtn}`}>Delete</button>
-            <button type="button" className={ev.dangerBtn}>Remove</button>
-            <button type="button" className={roster.dangerBtn}>Deactivate</button>
+            <button type="button" className={mm.deleteConfirmBtn}>Delete photo</button>
           </Specimen>
           <Specimen
             label="Library's own family"
-            note="library .btnPrimary/.btnSecondary — a 4th naming convention, and this stylesheet is shared with 20 PUBLIC routes: never restyle it from the admin side."
+            note="library .btnPrimary/.btnSecondary — this stylesheet is shared with 20 PUBLIC routes: never restyle it from the admin side."
           >
             <button type="button" className={lib.btnPrimary}>Approve</button>
             <button type="button" className={lib.btnSecondary}>Decline</button>
@@ -424,47 +439,35 @@ export default function StyleguidePage() {
       <section className={sg.section}>
         <h2 className={sg.sectionHead}>Badges &amp; Status Pills</h2>
         <p className={sg.sectionNote}>
-          Four naming families (.badge / .statusPill / .pill / .tag), two radius conventions
-          (10px vs 999px), three paddings — all meaning &ldquo;small colored status
-          label.&rdquo; Phase A collapses them into one Badge component.
+          Phase A COMPLETE (2026-08-21): the four naming families (.badge / .statusPill /
+          .pill / .tag) and their per-file tint drift collapsed into the shared Badge
+          component — meetings, calendar, articles, roster, roster-import, roll-call,
+          court-of-honor, and report all render it now. Rule of thumb: STATUS pills
+          (draft/published/active/…) are Badges; CATEGORICAL tags with their own meaning
+          (lookups&rsquo; rank/MB/Eagle, meeting-plan&rsquo;s track tags,
+          scoutbook-export&rsquo;s type badges) deliberately keep per-screen classes. The
+          library workstation is the other exception — its stylesheet is shared with 20
+          public routes (D-160).
         </p>
         <div className={sg.specimenGrid}>
           <Specimen
-            label="meetings .statusPill"
+            label="Shared Badge component — all variants"
             canonical
-            note="Cleanest base + semantic modifiers; canonical shape, generalized to pill radius."
+            note="Import from _components/badge. Variants map to the status tokens: neutral, success, warning, danger, info, muted. Base shape: meetings' old .statusPill at pill radius."
           >
-            <span className={`${meet.statusPill} ${meet.statusDraft}`}>Draft</span>
-            <span className={`${meet.statusPill} ${meet.statusPublished}`}>Published</span>
-          </Specimen>
-          <Specimen label="roster .badge (10px radius)" note="Ok/Warn/Bad traffic-light semantics.">
-            <span className={`${roster.badge} ${roster.badgeOk}`}>Active</span>
-            <span className={`${roster.badge} ${roster.badgeWarn}`}>Check</span>
-            <span className={`${roster.badge} ${roster.badgeBad}`}>Missing</span>
+            <Badge>Draft</Badge>
+            <Badge variant="success">Published</Badge>
+            <Badge variant="warning">Pending</Badge>
+            <Badge variant="danger">Inactive</Badge>
+            <Badge variant="info">Signed up</Badge>
+            <Badge variant="muted">Historical</Badge>
           </Specimen>
           <Specimen
-            label="calendar .statusPill (999px radius)"
-            note="Same name as meetings' pill, different radius and padding."
+            label="Categorical tags — NOT Badges (deliberate)"
+            note="Categories are not statuses — mapping them onto status colors would erase a real distinction. These keep their per-screen classes (meeting-plan shown; lookups' rank/MB and scoutbook-export's type badges likewise)."
           >
-            <span className={`${cal.statusPill} ${cal.statusDraft}`}>Draft</span>
-            <span className={`${cal.statusPill} ${cal.statusClosed}`}>Closed</span>
-          </Specimen>
-          <Specimen
-            label="roster-import .badge (2px, bordered)"
-            note="Structurally different treatment wearing the same .badge name."
-          >
-            <span className={`${imp.badge} ${imp.badgeWeak}`}>Weak match</span>
-            <span className={`${imp.badge} ${imp.badgeConflict}`}>Conflict</span>
-          </Specimen>
-          <Specimen label="articles .pill / roll-call .pill" note="A third and fourth family name.">
-            <span className={`${art.pill} ${art.pillPublished}`}>Published</span>
-            <span className={`${art.pill} ${art.pillDraft}`}>Draft</span>
-            <span className={rollCall.pill}>4 nights</span>
-          </Specimen>
-          <Specimen label="roster .tagActive / court-of-honor .badgeDraft" note="…and a fifth and sixth.">
-            <span className={roster.tagActive}>Active</span>
-            <span className={roster.tagInactive}>Inactive</span>
-            <span className={coh.badgeDraft}>Draft</span>
+            <span className={`${plan.tag} ${plan.tagEagle}`}>★ Eagle-required</span>
+            <span className={`${plan.tag} ${plan.tagAdult}`}>Adults only</span>
           </Specimen>
         </div>
       </section>
@@ -587,30 +590,33 @@ export default function StyleguidePage() {
       <section className={sg.section}>
         <h2 className={sg.sectionHead}>Dialogs</h2>
         <p className={sg.sectionNote}>
-          The spec below was <strong>approved 2026-08-21</strong> and is what every admin
-          dialog converges on: shadow-lg elevation, 8px radius, navy-tinted blurred backdrop,
-          entry motion, banded header/footer zones, and a danger variant so destructive
-          confirmations stop looking like edits. Backdrop and motion only show on the live
-          demo. Phase A extracts it as the shared Dialog component; new dialogs built before
-          then copy this spec, not the legacy one. Legacy state: native{' '}
-          <code>&lt;dialog&gt;</code> in calendar/meetings/albums/media-manager, where only
-          calendar&rsquo;s copy carries the <code>margin:auto</code> /{' '}
-          <code>max-height:88vh</code> centering-and-scroll fix (the other three likely
-          mis-center tall content); media-picker uses a custom div overlay — a different
-          mechanism entirely, unified last (high risk).
+          The approved spec (<strong>2026-08-21</strong>) SHIPPED as the shared Dialog
+          component (<code>_components/dialog</code>) the same day: shadow-lg elevation, 8px
+          radius, navy-tinted blurred backdrop, entry motion, banded header/footer zones, and
+          a danger variant so destructive confirmations stop looking like edits. The four
+          legacy <code>&lt;dialog&gt;</code> copies (calendar, meetings, albums,
+          media-manager ×2) are converted — which also delivered the{' '}
+          <code>margin:auto</code> / <code>max-height:88vh</code> centering-and-scroll fix
+          only calendar&rsquo;s copy used to carry. Backdrop and motion only show on the live
+          demo. Compose it as <code>&lt;Dialog&gt;</code> +{' '}
+          <code>&lt;DialogHeader/Body/Actions&gt;</code>; pass <code>danger</code> and pair
+          it with a solid danger confirm for destructive flows. Remaining families
+          (ledger/roster/lookups <code>editDialog</code>…) adopt it in Phase B; media-picker
+          uses a custom div overlay — a different mechanism entirely, unified last (high
+          risk).
         </p>
         <div className={sg.dialogCompare}>
           <div>
             <div className={`${sg.specimenLabel} ${sg.specimenLabelApproved}`}>
-              ✓ Approved spec (2026-08-21)
+              ✓ Shared Dialog component (approved spec, 2026-08-21)
             </div>
-            <div className={`${sg.dialogSpec} ${sg.dialogStatic}`}>
-              <div className={sg.dialogSpecHeader}>
-                <h3 className={sg.dialogSpecTitle}>Edit calendar entry</h3>
-                <p className={sg.dialogSpecSub}>Changes apply immediately when saved.</p>
+            <div className={`${dlg.dialog} ${sg.dialogStatic}`}>
+              <div className={dlg.header}>
+                <h3 className={dlg.title}>Edit calendar entry</h3>
+                <p className={dlg.sub}>Changes apply immediately when saved.</p>
               </div>
-              <div className={sg.dialogSpecBody}>Body content…</div>
-              <div className={sg.dialogSpecActions}>
+              <div className={dlg.body}>Body content…</div>
+              <div className={dlg.actions}>
                 <button type="button" className={sg.ghostBtn}>Cancel</button>
                 <button type="button" className={sg.demoBtn}>Save</button>
               </div>
@@ -618,40 +624,23 @@ export default function StyleguidePage() {
           </div>
           <div>
             <div className={`${sg.specimenLabel} ${sg.specimenLabelApproved}`}>
-              ✓ Approved spec — danger variant
+              ✓ Danger variant — with its solid danger confirm
             </div>
-            <div className={`${sg.dialogSpec} ${sg.dialogSpecDanger} ${sg.dialogStatic}`}>
-              <div className={sg.dialogSpecHeader}>
-                <h3 className={sg.dialogSpecTitle}>Delete this entry?</h3>
-                <p className={sg.dialogSpecSub}>
+            <div className={`${dlg.dialog} ${dlg.danger} ${sg.dialogStatic}`}>
+              <div className={dlg.header}>
+                <h3 className={dlg.title}>Delete this entry?</h3>
+                <p className={dlg.sub}>
                   Signups and roll call for it will be removed. This can&rsquo;t be undone.
                 </p>
               </div>
-              <div className={sg.dialogSpecBody}>Body content…</div>
-              <div className={sg.dialogSpecActions}>
+              <div className={dlg.body}>Body content…</div>
+              <div className={dlg.actions}>
                 <button type="button" className={sg.ghostBtn}>Cancel</button>
-                <button type="button" className={sg.demoBtn}>Delete</button>
+                <button type="button" className={mm.deleteConfirmBtn}>Delete</button>
               </div>
             </div>
           </div>
           <DialogDemo />
-          <div>
-            <div className={sg.specimenLabel}>
-              Legacy — calendar .dialog (to convert in Phase A)
-            </div>
-            <div className={`${cal.dialog} ${sg.dialogStatic}`}>
-              <div className={cal.dialogInner}>
-                <div className={cal.dialogHeader}>
-                  <h3>Edit calendar entry</h3>
-                  <p>Changes apply immediately when saved.</p>
-                </div>
-                Body content…
-                <div className={cal.dialogActions}>
-                  <button type="button" className={cal.editSaveBtn}>Save</button>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 

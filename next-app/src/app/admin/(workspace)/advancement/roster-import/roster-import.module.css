@@ -69,14 +69,9 @@
   border-radius: 2px; padding: 1px 5px;
 }
 
-.badge, .badgeWeak, .badgeConflict, .badgeFill {
-  font-size: 10px; font-weight: 700; letter-spacing: .04em; border-radius: 2px;
-  padding: 2px 7px; white-space: nowrap;
-}
-.badge { background: var(--admin-gray-100); color: var(--admin-gray-700); }
-.badgeWeak { background: #fdf6e3; color: #8a6d1f; border: 1px solid #e6d5a3; }
-.badgeConflict { background: #fdf2f2; color: #8c2f2f; border: 1px solid #e5b3b3; }
-.badgeFill { background: #f0f6f1; color: #2f6b3f; border: 1px solid #b8d6c0; }
+/* .badge family retired Phase A (2026-08-21) — shared Badge
+   (neutral/warning/danger/success; the bordered 2px-radius one-off folds
+   into the canonical pill shape). */
 
 .cardBody { padding: 4px 14px 16px; border-top: 1px solid var(--admin-gray-200); }
 .warn {

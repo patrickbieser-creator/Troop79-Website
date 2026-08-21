@@ -10,6 +10,7 @@ import {
   type ScoutRelation
 } from './person-actions';
 import styles from './roster.module.css';
+import { AddButton } from '../../_components/add-button';
 
 /**
  * Parents and guardians on a scout record.
@@ -147,11 +148,7 @@ export function ScoutRelations({ scoutPersonId }: { scoutPersonId: number | null
         tab, and every scout they are attached to sees the change.
       </p>
 
-      {!showAdd && (
-        <button type="button" className={styles.addBtn} onClick={() => setShowAdd(true)}>
-          + Add parent/guardian
-        </button>
-      )}
+      {!showAdd && <AddButton onClick={() => setShowAdd(true)}>+ Add parent/guardian</AddButton>}
 
       {showAdd && (
         <div className={styles.parentRow}>
