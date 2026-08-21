@@ -21,3 +21,6 @@
 .archiveRow:hover { color: var(--navy); }
 .archiveRange { font-family: var(--font-display); font-size: var(--fs-md); }
 .archiveDate { font-size: var(--fs-xs); color: var(--text-meta); }
+
+/* Phase B: archive back-link row (was inline marginTop 24) */
+.backRow { margin-top: var(--sp-6); }

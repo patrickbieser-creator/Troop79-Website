@@ -290,3 +290,6 @@
   .statsStrip { grid-template-columns: repeat(2, 1fr); }
   .rankGrid   { grid-template-columns: repeat(4, 1fr); }
 }
+
+/* Phase B: Eagle-required MB count suffix in the roster table (was inline) */
+.eagleCount { color: var(--text-meta); font-size: var(--fs-2xs); }

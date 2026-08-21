@@ -21,6 +21,7 @@ import {
   verifyCodeForPersonAction,
   searchRosterAction
 } from './actions';
+import styles from './signin.module.css';
 import { PageHeader } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
 import { Button } from '@/app/_components/button';
@@ -133,7 +134,7 @@ export default async function SignInPage({
             (lib/leader-session.ts is a different credential entirely, not a
             passwordless email — see that module's header), reached from
             here rather than a second top-level nav link. */}
-        <p style={{ marginTop: 24, textAlign: 'center' }}>
+        <p className={styles.centerRow}>
           <Button variant="ghost" href="/admin/login">
             Leader or Scout? Sign in with the troop password
           </Button>
@@ -184,7 +185,7 @@ function CodeForm({ email, next, err }: { email?: string; next?: string; err?: s
         </form>
       </FormCard>
 
-      <form action={requestSignInAction} style={{ marginTop: 12, textAlign: 'center' }}>
+      <form action={requestSignInAction} className={styles.centerRowSm}>
         <input type="hidden" name="email" value={email ?? ''} />
         {next && <input type="hidden" name="next" value={next} />}
         <Button variant="secondary" type="submit">
@@ -192,7 +193,7 @@ function CodeForm({ email, next, err }: { email?: string; next?: string; err?: s
         </Button>
       </form>
 
-      <p style={{ marginTop: 16, textAlign: 'center' }}>
+      <p className={styles.centerRowMd}>
         <Button variant="ghost" href="/signin">
           Use a different email
         </Button>

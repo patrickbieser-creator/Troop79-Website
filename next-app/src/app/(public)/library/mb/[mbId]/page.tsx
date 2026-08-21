@@ -136,10 +136,7 @@ export default async function LibraryMbPage({
               ? 'Nothing shelved for this badge yet — be the first to suggest something.'
               : `${totalCount} resource${totalCount === 1 ? '' : 's'} the troop recommends for this badge.`}{' '}
             For requirements and troop progress, see the{' '}
-            <Link
-              href={`/merit-badges/${mbId}`}
-              style={{ color: 'var(--navy)', fontWeight: 700, fontStyle: 'normal' }}
-            >
+            <Link href={`/merit-badges/${mbId}`} className={styles.inlineLink}>
               badge tracker page
             </Link>
             .

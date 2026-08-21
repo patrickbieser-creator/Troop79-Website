@@ -1,0 +1,449 @@
+/* Merit Badges — catalog (/merit-badges) + detail (/merit-badges/[mbId]).
+   Phase B of Plans/Public-Design-System.md: these two pages were the public
+   site's only stylesheet-less screens (46 inline sites, ~336 props living in
+   JSX). Everything here is on the Phase 0 tokens; the two commented gold
+   literals below are the only deliberate exceptions (no token exists yet).
+   Page header/shell/dividers/empty state come from the shared components. */
+
+/* ── Catalog ── */
+
+.countLine {
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  color: var(--text-meta);
+  margin-bottom: 18px;
+}
+
+.catalogGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+/* Pair with the shared card surface (card.module.css .card/.cardHover). */
+.catalogCard {
+  padding: var(--sp-4) 18px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+}
+.catalogCardStarted { border-left: 4px solid var(--forest-light); }
+
+.catalogCardHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.catalogCardName {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--navy);
+  line-height: 1.25;
+}
+
+.countRow {
+  display: flex;
+  gap: 14px;
+  padding-top: var(--sp-2);
+  border-top: 1px dashed var(--border-light);
+}
+
+.count {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  font-family: var(--font-ui);
+}
+.countNum {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+}
+.countEarned { color: var(--forest); }
+.countPartial { color: var(--navy); }
+.countNot { color: var(--border-mid); }
+.countLabel {
+  font-size: 9px; /* off-scale canon micro-label; Phase C may fold */
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-meta);
+  margin-top: var(--sp-1);
+}
+
+/* ── Eagle / optionality tags (categorical — deliberately NOT the shared
+      Badge: Eagle is identity, not status) ── */
+
+.eagleTag {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bark);
+  background: var(--status-warning-bg);
+  padding: 2px 7px;
+  border-radius: var(--rad-pill);
+  flex-shrink: 0;
+}
+.eagleTagLarge {
+  font-family: var(--font-ui);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bark);
+  background: var(--status-warning-bg);
+  padding: var(--sp-1) 10px;
+  border-radius: var(--rad-pill);
+  margin-left: var(--sp-3);
+  vertical-align: 6px;
+}
+
+/* ── Detail header ── */
+
+/* Rendered inside PageHeader's italic lede (span, so the markup stays valid
+   phrasing content) — reset the inherited italic. */
+.actionRow {
+  display: flex;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  margin-top: 14px;
+  font-style: normal;
+}
+
+/* Compact outlined CTA links — smaller than the shared Button (which has no
+   size="sm" yet; see the plan's component-wishes note). */
+.actionLink {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--navy);
+  padding: var(--sp-2) var(--sp-4);
+  border: 1px solid var(--navy);
+  border-radius: var(--rad-sm);
+  transition: background var(--transition), color var(--transition);
+}
+.actionLink:hover { background: var(--navy); color: var(--warm-white); }
+.actionLinkForest { color: var(--forest); border-color: var(--forest); }
+.actionLinkForest:hover { background: var(--forest); color: var(--warm-white); }
+
+/* ── Stats strip ── */
+
+.statStrip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: var(--warm-white);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-card);
+  margin-bottom: 22px;
+}
+@media (max-width: 480px) {
+  .statStrip { grid-template-columns: repeat(2, 1fr); }
+  .stat:nth-child(-n + 2) { border-bottom: 1px solid var(--border-light); }
+}
+
+.stat {
+  padding: 18px var(--sp-5);
+  text-align: center;
+  border-right: 1px solid var(--border-light);
+}
+.statNum {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1;
+}
+.statForest { color: var(--forest); }
+.statNavy { color: var(--navy); }
+.statMeta { color: var(--text-meta); }
+.statLabel {
+  font-family: var(--font-ui);
+  font-size: 10px; /* off-scale canon micro-label */
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-meta);
+  margin-top: 6px;
+}
+
+/* ── Progress grid ── */
+
+.gridScroller {
+  overflow: auto;
+  max-height: 70vh;
+  border: 1px solid var(--border-light);
+  background: var(--warm-white);
+  box-shadow: var(--shadow-card);
+}
+
+.grid {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  width: max-content;
+}
+
+.scoutHead {
+  position: sticky;
+  left: 0;
+  top: 0;
+  background: var(--cream);
+  z-index: 4;
+  min-width: 200px;
+  padding: var(--sp-2) 10px;
+  border-right: 2px solid var(--border-mid);
+  border-bottom: 2px solid var(--navy);
+  text-align: left;
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-meta);
+}
+
+.groupHead {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--cream);
+  color: var(--navy);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 10px var(--sp-2);
+  text-align: center;
+  border-bottom: 2px solid var(--navy);
+  border-right: 1px solid var(--border-light);
+}
+
+.groupRule {
+  display: inline-block;
+  margin-left: var(--sp-2);
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bark);
+  background: var(--status-warning-bg);
+  padding: 2px var(--sp-2);
+  border-radius: var(--rad-pill);
+  vertical-align: 1px;
+}
+
+.leafHead {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  min-width: 46px;
+  padding: var(--sp-2) var(--sp-1);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  background: var(--newsprint);
+  color: var(--navy);
+  border-left: 1px solid var(--border-light);
+  border-right: 1px solid var(--border-light);
+}
+
+/* First column of each requirement group gets the heavy navy separator. */
+.groupStart { border-left: 2px solid var(--navy); }
+
+/* AWARD column — sticky beside the Scout column. The two golds are the ONLY
+   raw hex in this stylesheet, deliberately: the earned-badge celebration
+   gold has no public token (closest, --khaki, reads muddy). If a third use
+   appears, mint an --award-gold token in globals.css instead of copying. */
+.awardHead {
+  position: sticky;
+  top: 0;
+  left: 200px;
+  z-index: 4;
+  min-width: 60px;
+  padding: 10px var(--sp-2);
+  background: var(--status-warning-bg);
+  color: var(--bark);
+  text-align: center;
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  border-right: 2px solid var(--bark);
+  border-bottom: 2px solid var(--navy);
+}
+.awardSubHead {
+  position: sticky;
+  top: 0;
+  left: 200px;
+  z-index: 4;
+  min-width: 60px;
+  padding: var(--sp-2) var(--sp-1);
+  background: var(--status-warning-bg);
+  border-right: 2px solid var(--bark);
+}
+
+.scoutCell {
+  position: sticky;
+  left: 0;
+  background: var(--warm-white);
+  z-index: 2;
+  padding: 6px 10px;
+  min-width: 200px;
+  border-right: 2px solid var(--border-mid);
+  border-bottom: 1px solid var(--border-light);
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+}
+.scoutCell a { color: var(--text-head); font-weight: 600; }
+
+.rankPill {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: var(--text-meta);
+  padding: 1px 6px;
+  background: var(--newsprint);
+  border-radius: var(--rad-pill);
+  margin-left: var(--sp-2);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.cell {
+  width: 46px;
+  text-align: center;
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 700;
+  padding: 6px var(--sp-2);
+  color: var(--border-mid);
+  background: transparent;
+  border-left: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+}
+.cellDone {
+  color: var(--forest);
+  background: var(--status-success-bg);
+}
+
+.awardCell {
+  position: sticky;
+  left: 200px;
+  z-index: 2;
+  width: 60px;
+  text-align: center;
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 700;
+  padding: 6px var(--sp-2);
+  color: var(--bark);
+  /* Sticky cells need an opaque background — "transparent" would let
+     scrolled-under requirement cells show through. */
+  background: var(--warm-white);
+  border-right: 2px solid var(--bark);
+  border-bottom: 1px solid var(--border-light);
+}
+.awardCellDone {
+  color: #5a3a00; /* deliberate: dark ink on the celebration gold (see .awardHead note) */
+  background: #f5d76a; /* deliberate: celebration gold, no token exists */
+}
+
+/* ── Requirements list ── */
+
+.reqCard {
+  background: var(--warm-white);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-card);
+  padding: var(--sp-5) 22px;
+}
+
+.reqDisclaimer {
+  font-family: var(--font-body);
+  font-size: var(--fs-xs);
+  font-style: italic;
+  color: var(--text-meta);
+  padding-bottom: var(--sp-3);
+  margin-bottom: 14px;
+  border-bottom: 1px dashed var(--border-light);
+}
+
+.reqLeaf {
+  padding: 3px 0 3px var(--sp-3);
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-body);
+  line-height: 1.5;
+}
+
+.reqParent {
+  padding: var(--sp-3) 0;
+}
+.reqParentTop { border-bottom: 1px solid var(--border-light); }
+
+.reqParentHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 6px;
+}
+
+.reqNote {
+  font-family: var(--font-body);
+  font-style: italic;
+  font-weight: 600;
+  color: var(--bark);
+  background: var(--status-warning-bg);
+  border-left: 3px solid var(--bark-light);
+  padding: var(--sp-2) 14px;
+  margin: var(--sp-2) 0 var(--sp-1);
+  font-size: 14px;
+  line-height: 1.5;
+  border-radius: 0 var(--rad-sm) var(--rad-sm) 0;
+}
+.reqNoteLabel {
+  font-family: var(--font-ui);
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 10px;
+  margin-right: 6px;
+  vertical-align: 2px;
+}
+
+.reqChildren {
+  margin-top: 6px;
+  display: grid;
+  gap: var(--sp-1);
+}
+
+/* Mono requirement-code pill — same pattern as library's .reqTag (candidate
+   for a future shared promotion; kept local per current scope rules). */
+.reqTag {
+  font-family: var(--font-mono);
+  background: var(--navy);
+  color: var(--warm-white);
+  padding: 2px var(--sp-2);
+  border-radius: var(--rad-pill);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  margin-right: var(--sp-2);
+}
+.reqTagLarge {
+  font-size: var(--fs-xs);
+  padding: 3px 10px;
+}

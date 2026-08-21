@@ -10,7 +10,11 @@
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
+import { PageHeader } from '@/app/_components/page-header';
+import { PageShell } from '@/app/_components/page-shell';
+import card from '@/app/_components/card.module.css';
 import type { MeritBadge, MbProgressRow } from '@/lib/supabase/types';
+import s from './merit-badges.module.css';
 
 interface CatalogCard {
   mb: MeritBadge;
@@ -71,159 +75,52 @@ export default async function MeritBadgesCatalogPage() {
 
   return (
     <>
-      <div style={{ maxWidth: 1180, margin: '0 auto', padding: '32px 24px 0' }}>
-        <h1
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 36,
-            fontWeight: 700,
-            color: 'var(--text-head)',
-            letterSpacing: '-.01em',
-            marginBottom: 6
-          }}
-        >
-          Merit Badge Progress
-        </h1>
-        <p
-          style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: 16,
-            color: 'var(--text-body)',
-            lineHeight: 1.6,
-            maxWidth: 760,
-            marginBottom: 20
-          }}
-        >
-          Live progress across every merit badge in the Troop 79 program — how many
-          scouts have earned each one, how many are in the middle, requirement by
-          requirement. Tap any badge to see the details.
-        </p>
-        <div style={{ height: 2, background: 'var(--border-mid)' }} />
-      </div>
+      <PageHeader
+        title="Merit Badge Progress"
+        lede="Live progress across every merit badge in the Troop 79 program — how many scouts have earned each one, how many are in the middle, requirement by requirement. Tap any badge to see the details."
+      />
 
-      <main style={{ maxWidth: 1180, margin: '0 auto', padding: '24px 24px 60px' }}>
-        <p
-          style={{
-            fontFamily: 'var(--font-ui)',
-            fontSize: 12,
-            color: 'var(--text-meta)',
-            marginBottom: 18
-          }}
-        >
+      <PageShell>
+        <p className={s.countLine}>
           {cards.length} {cards.length === 1 ? 'badge' : 'badges'} · {totalActive} active
           scouts
         </p>
 
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-            gap: 14
-          }}
-        >
-          {cards.map((card) => (
-            <CatalogCardEl key={card.mb.id} card={card} />
+        <div className={s.catalogGrid}>
+          {cards.map((c) => (
+            <CatalogCardEl key={c.mb.id} card={c} />
           ))}
         </div>
-      </main>
+      </PageShell>
     </>
   );
 }
 
-function CatalogCardEl({ card }: { card: CatalogCard }) {
-  const { mb, completed, partial, notStarted, hasProgress } = card;
+function CatalogCardEl({ card: c }: { card: CatalogCard }) {
+  const { mb, completed, partial, notStarted, hasProgress } = c;
+  const cls = [card.card, card.cardHover, s.catalogCard, hasProgress ? s.catalogCardStarted : null]
+    .filter(Boolean)
+    .join(' ');
   return (
-    <Link
-      href={`/merit-badges/${mb.id}`}
-      style={{
-        background: 'var(--warm-white)',
-        border: '1px solid var(--border-light)',
-        borderLeft: hasProgress ? '4px solid var(--forest-light)' : '1px solid var(--border-light)',
-        boxShadow: 'var(--shadow-card)',
-        padding: '16px 18px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 8,
-        transition: 'transform .18s ease, box-shadow .18s ease, border-color .18s ease'
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-        <div
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 18,
-            fontWeight: 700,
-            color: 'var(--navy)',
-            lineHeight: 1.25
-          }}
-        >
-          {mb.name}
-        </div>
-        {mb.eagle && <EagleTag />}
+    <Link href={`/merit-badges/${mb.id}`} className={cls}>
+      <div className={s.catalogCardHead}>
+        <div className={s.catalogCardName}>{mb.name}</div>
+        {mb.eagle && <span className={s.eagleTag}>Eagle</span>}
       </div>
-      <div
-        style={{
-          display: 'flex',
-          gap: 14,
-          paddingTop: 8,
-          borderTop: '1px dashed var(--border-light)'
-        }}
-      >
-        <Count label="Earned" n={completed} color="var(--forest)" />
-        <Count label="In Progress" n={partial} color="var(--navy)" />
-        <Count label="Not Started" n={notStarted} color="var(--border-mid)" />
+      <div className={s.countRow}>
+        <Count label="Earned" n={completed} tone={s.countEarned} />
+        <Count label="In Progress" n={partial} tone={s.countPartial} />
+        <Count label="Not Started" n={notStarted} tone={s.countNot} />
       </div>
     </Link>
   );
 }
 
-function EagleTag() {
+function Count({ label, n, tone }: { label: string; n: number; tone: string }) {
   return (
-    <span
-      style={{
-        fontFamily: 'var(--font-ui)',
-        fontSize: 9,
-        fontWeight: 700,
-        letterSpacing: '.08em',
-        textTransform: 'uppercase',
-        color: 'var(--bark)',
-        background: '#f6e7c4',
-        padding: '2px 7px',
-        borderRadius: 999,
-        flexShrink: 0
-      }}
-    >
-      Eagle
-    </span>
-  );
-}
-
-function Count({ label, n, color }: { label: string; n: number; color: string }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', fontFamily: 'var(--font-ui)' }}>
-      <strong
-        style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: 24,
-          fontWeight: 700,
-          lineHeight: 1,
-          color
-        }}
-      >
-        {n}
-      </strong>
-      <span
-        style={{
-          fontSize: 9,
-          fontWeight: 700,
-          letterSpacing: '.08em',
-          textTransform: 'uppercase',
-          color: 'var(--text-meta)',
-          marginTop: 4
-        }}
-      >
-        {label}
-      </span>
+    <div className={s.count}>
+      <strong className={`${s.countNum} ${tone}`}>{n}</strong>
+      <span className={s.countLabel}>{label}</span>
     </div>
   );
 }

@@ -843,3 +843,6 @@
      rows running two lines. */
   .miniRowLabel { white-space: normal; overflow: visible; text-overflow: clip; }
 }
+
+/* Phase B: award notes suffix (was inline; color-only, print-safe) */
+.awardNotes { color: var(--text-meta); }

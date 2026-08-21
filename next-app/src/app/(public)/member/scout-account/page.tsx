@@ -60,7 +60,7 @@ function SignInPrompt({ heading, body }: { heading: string; body: string }) {
       <PageShell width="narrow">
         <div className={memberStyles.gate}>
           <p>{body}</p>
-          <p style={{ marginTop: '1.5rem' }}>
+          <p className={styles.gapTopLg}>
             <Button variant="primary" href={`/signin?next=${encodeURIComponent('/member/scout-account')}`}>
               Sign in
             </Button>

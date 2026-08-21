@@ -1,0 +1,4 @@
+/* /tags/[slug] — page-local layout only (the story grid itself comes from
+   the shared news-cards.module.css). Created in Phase B to house what was an
+   inline marginTop on the grid. */
+.gridGapTop { margin-top: var(--sp-6); }

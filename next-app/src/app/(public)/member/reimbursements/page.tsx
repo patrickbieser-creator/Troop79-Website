@@ -67,7 +67,7 @@ function SignInPrompt() {
       <PageShell width="narrow">
         <div className={memberStyles.gate}>
           <p>Sign in to submit a reimbursement request or check on one you already sent.</p>
-          <p style={{ marginTop: '1.5rem' }}>
+          <p className={styles.gapTopLg}>
             <Button variant="primary" href={`/signin?next=${encodeURIComponent('/member/reimbursements')}`}>
               Sign in
             </Button>

@@ -107,10 +107,10 @@ export default async function PublicMeetingPlanPage() {
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th style={{ width: '18%' }}>Scout</th>
-                    <th style={{ width: '13%' }}>Rank</th>
+                    <th className={styles.colScout}>Scout</th>
+                    <th className={styles.colRank}>Rank</th>
                     <th>Suggested this meeting</th>
-                    <th style={{ width: '27%' }}>Waiting on a campout</th>
+                    <th className={styles.colWait}>Waiting on a campout</th>
                   </tr>
                 </thead>
                 <tbody>

@@ -207,7 +207,7 @@ function SearchResults({
       <p className={styles.searchCount}>
         <strong>{hits.length}</strong> result{hits.length === 1 ? '' : 's'} for
         &ldquo;{query}&rdquo; —{' '}
-        <Link href="/library" style={{ color: 'var(--navy)', fontWeight: 700 }}>
+        <Link href="/library" className={styles.inlineLink}>
           clear to browse
         </Link>
       </p>

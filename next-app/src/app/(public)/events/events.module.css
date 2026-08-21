@@ -376,3 +376,6 @@
   .spanTitle, .spanChevron { display: none; }
 
 }
+
+/* Phase B: subscribe menu caret open state (was inline transform ternary) */
+.subscribeChevronOpen { transform: rotate(180deg); }

@@ -106,3 +106,6 @@
   color: var(--text-meta);
   font-style: italic;
 }
+
+/* Phase B: was inline marginTop 1.5rem */
+.gapTopLg { margin-top: var(--sp-6); }

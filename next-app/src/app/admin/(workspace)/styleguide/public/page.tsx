@@ -158,8 +158,16 @@ const SCOREBOARD: ReadonlyArray<readonly [string, string, string]> = [
     'library sectionDivider replicated as headRule/spanBar + inline',
     'SectionDivider SHIPPED (A) — residual: home feed navy-label/forest-bar variant (deliberate editorial look, Patrick call)'
   ],
-  ['Stylesheet-less screens', 'merit-badges ×2 (46 inline sites), site-footer (no media queries)', 'Phase B'],
-  ['Inline styles', '146 sites / 31 files (~140 convertible)', 'Phase B target ≤ 15'],
+  [
+    'Stylesheet-less screens',
+    'merit-badges ×2 (46 inline sites), site-footer (no media queries)',
+    'STRUCK (B) — merit-badges.module.css + site-footer.module.css + signed-in-as shipped; footer gained its first mobile stacking (640px); zero stylesheet-less screens remain'
+  ],
+  [
+    'Inline styles',
+    '146 sites / 31 files (~140 convertible)',
+    'STRUCK (B) — 13 survivors in 6 files, every one genuinely dynamic and commented (category colors, --month-lanes/--lane-count, fill %, tree-depth indents)'
+  ],
   ['Second-lineage palette', '8 files render an alternate palette (second navy #22333b, five meta-greys…)', 'Phase C — Phase A adoption already deleted ~40 divergent rules with their hexes'],
   ['Hex census', '79 distinct hex across public modules', 'Phase C target ≤ 30']
 ];

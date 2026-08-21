@@ -429,3 +429,26 @@
 .siblingNav a { color: var(--navy); padding: 8px 0; }
 .siblingNav a:hover { color: var(--forest); text-decoration: underline; text-underline-offset: 2px; }
 .siblingSpacer { flex: 1; }
+
+/* ── Phase B inline-style conversions (Plans/Public-Design-System.md) ──
+   Small utility/layout classes replacing the library flows' inline
+   style={{}} sites. Off-scale px values (14/18/24/260) match the prior
+   inline rendering exactly; Phase C may fold them. */
+.inlineLink { color: var(--navy); font-weight: 700; font-style: normal; }
+.reqTitleRow { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.reqTitleLabel { flex: 1; min-width: 260px; }
+.ledeSmall { font-size: var(--fs-sm); }
+.centerBlock { margin: 18px 0 0; text-align: center; }
+.flowHeading { font-family: var(--font-display); font-size: 24px; margin-bottom: var(--sp-2); }
+.pickerHeading { font-family: var(--font-display); font-size: var(--fs-xl); margin-bottom: var(--sp-1); }
+.flowActions { margin-top: var(--sp-4); display: flex; gap: 14px; flex-wrap: wrap; }
+.flowActionsCenter { justify-content: center; }
+/* Un-does .fieldLabel's uppercase treatment for a "(optional)" qualifier
+   inside the label — the class-level fix for the audit's un-do pattern. */
+.labelQualifier { text-transform: none; letter-spacing: 0; font-weight: 400; }
+.stackGap { margin-top: var(--sp-4); }
+.stackGapSm { margin-top: var(--sp-3); }
+.pickerNote { margin-top: 14px; margin-bottom: 0; }
+.shelfTitleIcon { margin-right: var(--sp-3); }
+.scoutPickRow { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-2); }
+.scoutPickRow:first-of-type { margin-top: var(--sp-1); }

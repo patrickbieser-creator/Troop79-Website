@@ -818,7 +818,7 @@ function ActivitiesPanel({ detail }: { detail: ScoutDetail }) {
             <span>
               {a.title}
               {a.notes && (
-                <span style={{ color: 'var(--text-meta)' }}> {a.notes}</span>
+                <span className={styles.awardNotes}> {a.notes}</span>
               )}
             </span>
           </div>
@@ -1025,6 +1025,7 @@ function MbReqTree({
           return (
             <div
               key={node.id}
+              /* dynamic: indent computed from requirement nesting depth */
               style={{ marginLeft: indent }}
               className={`${styles.mbReqRow} ${done ? '' : styles.mbReqRowOpen}`.trim()}
             >
@@ -1047,7 +1048,12 @@ function MbReqTree({
         }
         const note = optionalityNote(node);
         return (
-          <div key={node.id} style={{ marginLeft: indent }} className={styles.mbReqGroup}>
+          <div
+            key={node.id}
+            /* dynamic: indent computed from requirement nesting depth */
+            style={{ marginLeft: indent }}
+            className={styles.mbReqGroup}
+          >
             <div className={styles.mbReqGroupHeader}>
               <span className={styles.mbReqCode}>{node.code}</span>
               <span className={styles.mbReqLabel}>{node.label}</span>

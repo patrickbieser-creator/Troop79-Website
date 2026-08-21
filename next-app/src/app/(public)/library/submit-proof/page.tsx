@@ -148,7 +148,7 @@ function SentConfirmation({
           A leader will look this over and either sign it off or send back a note if
           anything&rsquo;s missing.
         </p>
-        <p style={{ marginTop: 16, display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
+        <p className={`${styles.flowActions} ${styles.flowActionsCenter}`}>
           <Button variant="secondary" href={backHref}>
             Back to the Requirement
           </Button>
@@ -164,14 +164,14 @@ function SentConfirmation({
 function LeaderRedirectCard() {
   return (
     <FormCard>
-      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, marginBottom: 8 }}>
+      <h2 className={styles.flowHeading}>
         Leaders: use Fast Entry
       </h2>
       <FieldHint>
         If you&rsquo;re signing this off yourself, Fast Entry writes it straight to the
         ledger — no review queue needed.
       </FieldHint>
-      <p style={{ marginTop: 16 }}>
+      <p className={styles.stackGap}>
         <Button variant="primary" href="/admin/advancement/fast-entry">
           Open Fast Entry →
         </Button>
@@ -191,7 +191,7 @@ function LeaderRedirectCard() {
 function ScoutDisabledCard({ err, target }: { err?: string; target: string }) {
   return (
     <FormCard>
-      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, marginBottom: 8 }}>
+      <h2 className={styles.flowHeading}>
         Sign in to submit proof as yourself
       </h2>
       {err && ERR_MESSAGES[err] && <FieldError>{ERR_MESSAGES[err]}</FieldError>}
@@ -201,7 +201,7 @@ function ScoutDisabledCard({ err, target }: { err?: string; target: string }) {
         and you&rsquo;ll be able to send proof as yourself. Or have a parent sign in and send
         it for you.
       </FieldHint>
-      <p style={{ marginTop: 16, display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+      <p className={styles.flowActions}>
         <Button
           variant="primary"
           href={`/signin?next=${encodeURIComponent(`/library/submit-proof?target=${target}`)}`}
@@ -220,7 +220,7 @@ function GateCard({ target, gate }: { target: string; gate?: string }) {
   const configured = familyGateConfigured();
   return (
     <FormCard>
-      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, marginBottom: 8 }}>
+      <h2 className={styles.flowHeading}>
         Troop sign-in
       </h2>
       <FieldHint>
@@ -274,7 +274,7 @@ async function VerifiedSubmitForm({ target, err }: { target: string; err?: strin
     return (
       <FormCard>
         <FieldError>{ERR_MESSAGES.revoked}</FieldError>
-        <p style={{ marginTop: 12 }}>
+        <p className={styles.stackGapSm}>
           <Button
             variant="primary"
             href={`/signin?next=${encodeURIComponent(`/library/submit-proof?target=${target}`)}`}
@@ -324,7 +324,7 @@ async function VerifiedSubmitForm({ target, err }: { target: string; err?: strin
         ) : (
           <Field label="Which scout is this for?">
             {scouts.map((s, i) => (
-              <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: i === 0 ? 4 : 8 }}>
+              <label key={s.id} className={styles.scoutPickRow}>
                 <input type="radio" name="scoutId" value={s.id} defaultChecked={i === 0} required />
                 {s.displayName}
               </label>
@@ -349,7 +349,7 @@ async function VerifiedSubmitForm({ target, err }: { target: string; err?: strin
 function SignInRequiredCard({ target, err }: { target: string; err?: string }) {
   return (
     <FormCard>
-      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, marginBottom: 8 }}>
+      <h2 className={styles.flowHeading}>
         Sign in to submit proof
       </h2>
       {err && ERR_MESSAGES[err] && <FieldError>{ERR_MESSAGES[err]}</FieldError>}
@@ -358,7 +358,7 @@ function SignInRequiredCard({ target, err }: { target: string; err?: string }) {
         password — sign in with your email (no password to remember) and you&rsquo;ll be able
         to send proof for your scout.
       </FieldHint>
-      <p style={{ marginTop: 16, display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+      <p className={styles.flowActions}>
         <Button
           variant="primary"
           href={`/signin?next=${encodeURIComponent(`/library/submit-proof?target=${target}`)}`}
@@ -382,7 +382,7 @@ function ProofFields() {
         label={
           <>
             Photo{' '}
-            <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>
+            <span className={styles.labelQualifier}>
               (JPEG, PNG, HEIC, or WebP — 10&nbsp;MB max)
             </span>
           </>
@@ -395,7 +395,7 @@ function ProofFields() {
         label={
           <>
             Or a link{' '}
-            <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>
+            <span className={styles.labelQualifier}>
               (a Google Form score screenshot, a video you made, anything)
             </span>
           </>
@@ -408,7 +408,7 @@ function ProofFields() {
         label={
           <>
             Or a short write-up{' '}
-            <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>
+            <span className={styles.labelQualifier}>
               (also doubles as a caption if you added a photo or link)
             </span>
           </>

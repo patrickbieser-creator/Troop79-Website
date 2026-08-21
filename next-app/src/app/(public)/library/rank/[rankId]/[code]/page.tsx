@@ -125,9 +125,9 @@ export default async function LibraryRequirementPage({
           </>
         }
         title={
-          <span style={{ display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap' }}>
+          <span className={styles.reqTitleRow}>
             <span className={`${styles.reqTag} ${styles.reqTagLarge}`}>{code}</span>
-            <span style={{ flex: 1, minWidth: 260 }}>{node.label}</span>
+            <span className={styles.reqTitleLabel}>{node.label}</span>
             {isLeaf && ownDoneDate && (
               <span className={styles.reqDoneBadge}>
                 ✓ Completed{' '}
@@ -137,7 +137,7 @@ export default async function LibraryRequirementPage({
           </span>
         }
         lede={
-          <span style={{ fontSize: 13 }}>
+          <span className={styles.ledeSmall}>
             Paraphrased — confirm exact wording against the current handbook at sign-off.
           </span>
         }
@@ -180,7 +180,7 @@ export default async function LibraryRequirementPage({
         )}
 
         {isLeaf && audience === 'scout' && (
-          <div style={{ margin: '18px 0 0', textAlign: 'center' }}>
+          <div className={styles.centerBlock}>
             <FieldHint>
               Scouts: proof can&rsquo;t be submitted from this login yet — ask a parent to send
               it in, or show a leader in person.
@@ -188,7 +188,7 @@ export default async function LibraryRequirementPage({
           </div>
         )}
         {isLeaf && audience !== 'scout' && (
-          <p style={{ margin: '18px 0 0', textAlign: 'center' }}>
+          <p className={styles.centerBlock}>
             <Button variant="primary" href={proofHref}>
               I did this →
             </Button>

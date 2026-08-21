@@ -442,6 +442,7 @@ export default function SlotFirstForm({
                       <span className={styles.slotDesc}>{sl.description}</span>
                     )}
                     <span className={styles.bar}>
+                      {/* dynamic: fill percentage */}
                       <span style={{ width: `${pct}%` }} />
                     </span>
                   </button>

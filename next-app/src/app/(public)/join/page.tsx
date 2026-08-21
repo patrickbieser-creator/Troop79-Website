@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import shell from '../../_components/news-cards.module.css';
 import styles from '../../_components/about-join.module.css';
+import local from './join.module.css';
 
 export const metadata = {
   title: 'Join — Troop 79',
@@ -112,7 +113,7 @@ export default function JoinPage() {
               </ol>
             </section>
 
-            <section className={styles.proseSection} style={{ marginTop: 34 }} aria-labelledby="who-can-join">
+            <section className={`${styles.proseSection} ${local.sectionGapLg}`} aria-labelledby="who-can-join">
               <div className={shell.sectionDivider}>
                 <span className={shell.divLabel} id="who-can-join">Who Can Join</span>
                 <span className={shell.divRule} aria-hidden="true" />

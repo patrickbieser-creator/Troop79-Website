@@ -125,7 +125,7 @@ function SentConfirmation() {
           Your suggestion is in the webmaster&rsquo;s queue. If it&rsquo;s published
           you&rsquo;ll see it on the shelf — usually within a few days.
         </p>
-        <p style={{ marginTop: 16, display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
+        <p className={`${styles.flowActions} ${styles.flowActionsCenter}`}>
           <Button variant="secondary" href="/library/submit">
             Suggest Another
           </Button>
@@ -142,7 +142,7 @@ function GateCard({ target, gate }: { target?: string; gate?: string }) {
   const configured = familyGateConfigured();
   return (
     <FormCard>
-      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, marginBottom: 8 }}>
+      <h2 className={styles.flowHeading}>
         Troop sign-in
       </h2>
       <FieldHint>
@@ -193,7 +193,7 @@ async function SubmitForm({ target, err }: { target?: string; err?: string }) {
       <Field
         label={
           <>
-            What is it? <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>(optional)</span>
+            What is it? <span className={styles.labelQualifier}>(optional)</span>
           </>
         }
       >
@@ -208,7 +208,7 @@ async function SubmitForm({ target, err }: { target?: string; err?: string }) {
         label={
           <>
             Where does it belong?{' '}
-            <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>
+            <span className={styles.labelQualifier}>
               (best guess is fine)
             </span>
           </>
@@ -246,7 +246,7 @@ async function SubmitForm({ target, err }: { target?: string; err?: string }) {
         label={
           <>
             Why is it good?{' '}
-            <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>
+            <span className={styles.labelQualifier}>
               (optional — becomes the blurb if published)
             </span>
           </>

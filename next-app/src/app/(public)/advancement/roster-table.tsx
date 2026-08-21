@@ -207,7 +207,7 @@ export function RosterTable({ rows, rankOptions, patrols }: Props) {
                   <td className={styles.numCell}>
                     {r.mbCount}
                     {r.eagleMbCount > 0 && (
-                      <span style={{ color: 'var(--text-meta)', fontSize: 11 }}>
+                      <span className={styles.eagleCount}>
                         {' '}
                         ({r.eagleMbCount}&#9733;)
                       </span>

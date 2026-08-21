@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import styles from './site-nav.module.css';
 
 export function UtilityDate() {
   const [date, setDate] = useState('');
@@ -18,17 +19,5 @@ export function UtilityDate() {
       })
     );
   }, []);
-  return (
-    <span
-      style={{
-        fontFamily: 'var(--font-ui)',
-        fontSize: 11,
-        color: 'var(--text-meta)',
-        letterSpacing: '.03em',
-        fontWeight: 600
-      }}
-    >
-      {date || ' '}
-    </span>
-  );
+  return <span className={styles.utilityDate}>{date || ' '}</span>;
 }

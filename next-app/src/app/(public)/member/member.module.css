@@ -179,3 +179,7 @@
 .passkeyNotice {
   margin-top: 0.6rem;
 }
+
+/* ── Phase B inline-style conversions ── */
+.gapTopLg { margin-top: var(--sp-6); } /* was inline 1.5rem */
+.finePrint { font-size: 0.9rem; } /* second-lineage rem; Phase C folds to the px scale */

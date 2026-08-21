@@ -210,3 +210,9 @@
 .passkeyNotice {
   margin-top: 0.5rem;
 }
+
+/* ── Phase B inline-style conversions ── */
+.centerRow { text-align: center; margin-top: var(--sp-6); }
+.centerRowSm { text-align: center; margin-top: var(--sp-3); }
+.centerRowMd { text-align: center; margin-top: var(--sp-4); }
+.gapTopSm { margin-top: var(--sp-3); }

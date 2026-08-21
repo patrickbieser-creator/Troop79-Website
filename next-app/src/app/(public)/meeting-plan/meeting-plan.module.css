@@ -237,3 +237,8 @@
   font-style: italic;
   max-width: 720px;
 }
+
+/* Phase B: has/needs table column sizing (was inline th widths) */
+.colScout { width: 18%; }
+.colRank { width: 13%; }
+.colWait { width: 27%; }

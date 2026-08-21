@@ -158,6 +158,7 @@ export default async function EventDetailPage({
 
       <header className={styles.head}>
         <p className={styles.kicker}>
+          {/* dynamic: category color */}
           <span className={styles.cat} style={{ background: colorFor(categoryColorMap(categories), entry.category) }}>
             {entry.category}
           </span>
@@ -316,6 +317,7 @@ export default async function EventDetailPage({
                           for why this can't live inside the title block. */}
                       {s.description && <span className={styles.slotDesc}>{s.description}</span>}
                       <span className={styles.bar}>
+                        {/* dynamic: fill percentage */}
                         <span style={{ width: `${pct}%` }} />
                       </span>
                     </li>

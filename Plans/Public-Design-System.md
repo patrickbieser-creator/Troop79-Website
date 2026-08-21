@@ -80,9 +80,15 @@ The audit's headline numbers:
       navy→forest, boxed accessible error notices, focus rings, 3px→2px radii.
       Phone-width spot-check deferred to production eyes-on (desktop sweep done;
       components inherit the canon's responsive CSS).
-- [ ] **Phase B — stylesheet-less screens:** merit-badges ×2, `site-footer` (gains media
-      queries for the first time), `signed-in-as` get real stylesheets on tokens; inline
-      sites 146 → ≤ 15 (each survivor genuinely dynamic and commented).
+- [x] **Phase B — SHIPPED 2026-08-21 (v1.65.0).** merit-badges ×2 on a real all-token
+      stylesheet + PageHeader/PageShell/SectionDivider/EmptyState/card (46 sites → 2);
+      site-footer.module.css with the footer's first-ever mobile stacking (640px canon);
+      signed-in-as/site-nav/nav-links/utility-date converted (nav active state now styles
+      off aria-current). Inline sites 146 → **13** in 6 files, every survivor genuinely
+      dynamic and commented. Two deliberate hex survivors (merit-badges celebration gold —
+      mint --award-gold if a third use appears); footer's on-navy rgba tints flagged for a
+      Phase C --on-navy-* family. Phone eyes-on still owed in production (capture tooling
+      wouldn't hold the mobile viewport; media queries verified in code).
 - [ ] **Phase C — color + unit normalization:** the 8 second-lineage files moved onto the
       canonical palette and px type scale (deliberate, visible change — see Open Questions);
       distinct hex across public modules 79 → ≤ 30 (survivors deliberate and commented);

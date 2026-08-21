@@ -65,7 +65,7 @@ export default async function SignInVerifyPage({
                       ? 'This link has expired. Sign-in links last 15 minutes; request a fresh one and it’ll work.'
                       : 'We don’t recognise that link. It may have been broken across two lines by your email app — request a fresh one, or use the 6-digit code instead.'}
               </Notice>
-              <p style={{ marginTop: 12 }}>
+              <p className={pick.gapTopSm}>
                 <Button variant="secondary" href="/signin">
                   Back to Sign In
                 </Button>

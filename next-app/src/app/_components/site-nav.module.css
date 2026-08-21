@@ -1,7 +1,62 @@
-/* Main-nav layout — the one piece of SiteNav that needs media queries
-   (inline styles can't). On phones the links become a horizontally
-   swipeable strip (the newspaper section-bar pattern) instead of wrapping
-   off-screen; the Join button holds its ground on the right. */
+/* SiteNav chrome — utility bar, masthead, main nav. Fully class-based since
+   Phase B (Plans/Public-Design-System.md, 2026-08-21); the last inline
+   styles (bar/masthead/nav shells, UtilityDate, SignedInAs, the nav
+   active state) moved here. On phones the links become a horizontally
+   swipeable strip (the newspaper section-bar pattern). */
+
+/* ── Utility bar ── */
+.utilityBar {
+  background: var(--newsprint);
+  border-bottom: 1px solid var(--border-light);
+  padding: 6px 0;
+}
+.utilityInner {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 var(--sp-6);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.utilityRight {
+  display: flex;
+  gap: var(--sp-4);
+  align-items: center;
+}
+.utilityDate {
+  font-family: var(--font-ui);
+  font-size: var(--fs-2xs);
+  color: var(--text-meta);
+  letter-spacing: 0.03em;
+  font-weight: 600;
+}
+.signedInAs {
+  font-family: var(--font-ui);
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.04em;
+  color: var(--text-meta);
+  text-decoration: none;
+}
+.signedInAsName {
+  color: var(--navy);
+}
+
+/* ── Masthead shell ── */
+.masthead {
+  background: var(--cream);
+  border-bottom: 2px solid var(--border-mid);
+  padding: 18px 0 14px;
+}
+
+/* ── Main nav shell ── */
+.mainNav {
+  background: var(--warm-white);
+  border-bottom: 1px solid var(--border-light);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+}
 
 .navInner {
   max-width: 1180px;
@@ -37,6 +92,14 @@
   letter-spacing: 0.02em;
   white-space: nowrap;
   transition: color 0.18s ease, border-color 0.18s ease;
+  color: var(--text-head);
+  border-bottom: 3px solid transparent;
+}
+/* Active state keys off aria-current, which NavLinks already sets — the
+   accessibility attribute doubles as the styling hook, so no inline styles. */
+.link[aria-current='page'] {
+  color: var(--navy);
+  border-bottom-color: var(--navy);
 }
 
 @media (max-width: 700px) {

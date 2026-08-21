@@ -387,6 +387,8 @@ export function MonthGrid({
         role="grid"
         aria-labelledby="monthHeaderTitle"
         ref={gridRef}
+        /* dynamic: lane count computed from event overlap — the sanctioned
+           custom-property pattern (audit 2026-08-21) */
         style={{ '--month-lanes': monthLaneCount } as React.CSSProperties}
       >
         {weeks.map((week, wi) => {
@@ -396,6 +398,7 @@ export function MonthGrid({
               key={wi}
               className={styles.weekRow}
               role="row"
+              /* dynamic: per-week lane count */
               style={{ '--lane-count': laneCount } as React.CSSProperties}
             >
               <div className={styles.cellsGrid}>
@@ -435,9 +438,11 @@ export function MonthGrid({
                               key={e.id}
                               href={`/events/${e.id}${search ? `?${search}` : ''}`}
                               className={styles.chip}
+                              /* dynamic: category color */
                               style={{ borderLeftColor: color, background: hexToRgba(color, 0.14) }}
                               aria-label={`${e.title}${e.start_time ? ` at ${formatTimeOfDay(e.start_time)}` : ''} — ${e.category}`}
                             >
+                              {/* dynamic: category color */}
                               <span className={styles.chipDot} style={{ background: color }} />
                               <span className={styles.chipTitle}>{e.title}</span>
                             </Link>
@@ -475,6 +480,7 @@ export function MonthGrid({
                         className={[styles.spanBar, p.isTrueStart ? styles.capStart : '', p.isTrueEnd ? styles.capEnd : '']
                           .filter(Boolean)
                           .join(' ')}
+                        /* dynamic: span placement + category color */
                         style={{
                           gridColumn: `${p.startCol + 1} / ${p.endCol + 2}`,
                           gridRow: p.lane + 1,

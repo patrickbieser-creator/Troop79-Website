@@ -105,15 +105,15 @@ export default async function MemberPage() {
             There&rsquo;s no password to remember. Enter the troop password, find your name, and
             we&rsquo;ll send a one-time code to the address we already have for you.
           </p>
-          <p style={{ marginTop: '1.5rem' }}>
+          <p className={styles.gapTopLg}>
             <Button variant="primary" href={`/signin?next=${encodeURIComponent('/member')}`}>
               Sign in
             </Button>
           </p>
-          <p style={{ fontSize: '0.9rem' }}>
+          <p className={styles.finePrint}>
             Trouble signing in? Ask a leader &mdash; they can check what address we have for you.
           </p>
-          <p style={{ fontSize: '0.9rem' }}>
+          <p className={styles.finePrint}>
             Leaders working in the admin: <Link href="/admin/login">troop leader sign in</Link>.
           </p>
           </div>

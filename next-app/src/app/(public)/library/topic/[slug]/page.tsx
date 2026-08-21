@@ -49,7 +49,7 @@ export default async function LibraryTopicPage({
         title={
           <>
             {shelf.icon && (
-              <span aria-hidden="true" style={{ marginRight: 12 }}>
+              <span aria-hidden="true" className={styles.shelfTitleIcon}>
                 {shelf.icon}
               </span>
             )}

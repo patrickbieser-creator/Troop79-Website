@@ -56,7 +56,7 @@ export default async function LatestReportPage() {
               </Notice>
             )}
             <PublicReportView report={report} basePath="/advancement/report" />
-            <p style={{ marginTop: 24 }}>
+            <p className={reportStyles.backRow}>
               <Button variant="ghost" href="/advancement/report/archive">
                 See past reports →
               </Button>

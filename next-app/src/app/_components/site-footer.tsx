@@ -1,55 +1,20 @@
 /**
- * Shared site footer mirroring the prototype shell.
+ * Shared site footer mirroring the prototype shell. Styles live in
+ * site-footer.module.css (Phase B — was fully inline, which silently meant
+ * no mobile layout; columns now stack at the 640px canon breakpoint).
  */
 import Link from 'next/link';
+import s from './site-footer.module.css';
 
 export function SiteFooter() {
   return (
-    <footer
-      id="site-footer-root"
-      style={{
-        background: 'var(--navy)',
-        color: 'rgba(255,255,255,.85)',
-        marginTop: 64,
-        padding: '48px 0 24px'
-      }}
-    >
-      <div
-        style={{
-          maxWidth: 1180,
-          margin: '0 auto',
-          padding: '0 24px'
-        }}
-      >
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1.4fr) repeat(2, minmax(0, 1fr))',
-            gap: 40,
-            marginBottom: 32
-          }}
-        >
+    <footer id="site-footer-root" className={s.footer}>
+      <div className={s.inner}>
+        <div className={s.grid}>
           <div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/troop-79-logo.png"
-              alt="Scout Troop 79"
-              style={{
-                height: 56,
-                width: 'auto',
-                marginBottom: 12,
-                filter: 'brightness(0) invert(1)',
-                opacity: 0.9
-              }}
-            />
-            <p
-              style={{
-                fontFamily: 'var(--font-body)',
-                fontSize: 13,
-                lineHeight: 1.6,
-                color: 'rgba(255,255,255,.7)'
-              }}
-            >
+            <img src="/troop-79-logo.png" alt="Scout Troop 79" className={s.logo} />
+            <p className={s.about}>
               Scout Troop 79 is a family troop serving scouts and families in
               Milwaukee, Wisconsin. We are chartered through Scouts America and
               welcome boys and girls of all backgrounds.
@@ -74,20 +39,7 @@ export function SiteFooter() {
             <FooterLink href="/admin">Members Login</FooterLink>
           </FooterCol>
         </div>
-        <div
-          style={{
-            borderTop: '1px solid rgba(255,255,255,.15)',
-            paddingTop: 20,
-            display: 'flex',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: 12,
-            fontFamily: 'var(--font-ui)',
-            fontSize: 11,
-            color: 'rgba(255,255,255,.55)',
-            letterSpacing: '.04em'
-          }}
-        >
+        <div className={s.legal}>
           <p>
             &copy; {new Date().getFullYear()}{' '}Scout Troop 79 &nbsp;&middot;&nbsp;
             Milwaukee, Wisconsin &nbsp;&middot;&nbsp; Scouts America
@@ -112,20 +64,8 @@ function FooterCol({
 }) {
   return (
     <div>
-      <h4
-        style={{
-          fontFamily: 'var(--font-ui)',
-          fontSize: 11,
-          fontWeight: 700,
-          letterSpacing: '.14em',
-          textTransform: 'uppercase',
-          color: 'rgba(255,255,255,.5)',
-          marginBottom: 12
-        }}
-      >
-        {title}
-      </h4>
-      <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>{children}</ul>
+      <h4 className={s.colTitle}>{title}</h4>
+      <ul className={s.colList}>{children}</ul>
     </div>
   );
 }
@@ -138,15 +78,8 @@ function FooterLink({
   children: React.ReactNode;
 }) {
   return (
-    <li style={{ marginBottom: 8 }}>
-      <Link
-        href={href}
-        style={{
-          fontFamily: 'var(--font-body)',
-          fontSize: 13,
-          color: 'rgba(255,255,255,.85)'
-        }}
-      >
+    <li className={s.linkItem}>
+      <Link href={href} className={s.link}>
         {children}
       </Link>
     </li>

@@ -22,38 +22,17 @@ export function SiteNav() {
   return (
     <div id="site-nav-root">
       {/* Utility bar */}
-      <div
-        style={{
-          background: 'var(--newsprint)',
-          borderBottom: '1px solid var(--border-light)',
-          padding: '6px 0'
-        }}
-      >
-        <div
-          style={{
-            maxWidth: 1180,
-            margin: '0 auto',
-            padding: '0 24px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}
-        >
+      <div className={styles.utilityBar}>
+        <div className={styles.utilityInner}>
           <UtilityDate />
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+          <div className={styles.utilityRight}>
             <SignedInAs />
           </div>
         </div>
       </div>
 
       {/* Masthead */}
-      <header
-        style={{
-          background: 'var(--cream)',
-          borderBottom: '2px solid var(--border-mid)',
-          padding: '18px 0 14px'
-        }}
-      >
+      <header className={styles.masthead}>
         <div className={styles.mastheadInner}>
           <Link href="/" aria-label="Troop 79 Home" className={styles.mastheadLogo}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -87,17 +66,7 @@ export function SiteNav() {
       </header>
 
       {/* Main nav */}
-      <nav
-        aria-label="Main navigation"
-        style={{
-          background: 'var(--warm-white)',
-          borderBottom: '1px solid var(--border-light)',
-          position: 'sticky',
-          top: 0,
-          zIndex: 100,
-          boxShadow: '0 1px 6px rgba(0,0,0,.06)'
-        }}
-      >
+      <nav aria-label="Main navigation" className={styles.mainNav}>
         <div className={styles.navInner}>
           <NavLinks />
         </div>

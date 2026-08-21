@@ -85,3 +85,6 @@
 .withdrawRow {
   margin-top: 0.5rem;
 }
+
+/* Phase B: was inline marginTop 1.5rem */
+.gapTopLg { margin-top: var(--sp-6); }

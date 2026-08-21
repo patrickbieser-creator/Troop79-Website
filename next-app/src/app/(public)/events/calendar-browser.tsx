@@ -129,6 +129,7 @@ function EntryRow({
           </Link>
           {entry.day_note && <span className={styles.dayNote}>{entry.day_note}</span>}
         </p>
+        {/* dynamic: category color from the categories lookup */}
         <p className={styles.itemCategory} style={{ color }}>
           {entry.category}
         </p>
@@ -336,7 +337,8 @@ export function CalendarBrowser({
         </div>
       </div>
 
-      <div style={{ display: view === 'list' ? 'block' : 'none' }}>
+      {/* [hidden] carries display:none !important via globals.css */}
+      <div hidden={view !== 'list'}>
         <SectionDivider label="Upcoming" />
         {filteredUpcoming.length === 0 ? (
           <EmptyState>
@@ -378,7 +380,7 @@ export function CalendarBrowser({
         )}
       </div>
 
-      <div style={{ display: view === 'month' ? 'block' : 'none' }}>
+      <div hidden={view !== 'month'}>
         <MonthGrid
           entries={monthEntries}
           activeCategories={NO_CATEGORY_FILTER}

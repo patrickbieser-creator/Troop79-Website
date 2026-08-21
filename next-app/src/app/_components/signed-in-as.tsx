@@ -20,25 +20,17 @@
 
 import Link from 'next/link';
 import { useSessionStatus } from './use-session-status';
+import styles from './site-nav.module.css';
 
 export function SignedInAs() {
   const status = useSessionStatus();
   if (!status?.loggedIn) return null;
 
   return (
-    <Link
-      href="/member"
-      style={{
-        fontFamily: 'var(--font-ui)',
-        fontSize: 11,
-        letterSpacing: '.04em',
-        color: 'var(--text-meta)',
-        textDecoration: 'none'
-      }}
-    >
+    <Link href="/member" className={styles.signedInAs}>
       {status.label ? (
         <>
-          Signed in as <strong style={{ color: 'var(--navy)' }}>{status.label}</strong>
+          Signed in as <strong className={styles.signedInAsName}>{status.label}</strong>
         </>
       ) : (
         'Signed in'

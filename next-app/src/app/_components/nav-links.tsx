@@ -24,8 +24,8 @@ const LINKS: { href: string; label: string }[] = [
 export function NavLinks() {
   const pathname = usePathname();
   return (
-    // Layout + responsive sizing live in site-nav.module.css (the strip
-    // scrolls sideways on phones); only the active-state colors stay inline.
+    // All styling lives in site-nav.module.css; the active state is styled
+    // via .link[aria-current='page'], so the a11y attribute is the only hook.
     <ul className={styles.links}>
       {LINKS.map((l) => {
         const active =
@@ -36,10 +36,6 @@ export function NavLinks() {
               href={l.href}
               aria-current={active ? 'page' : undefined}
               className={styles.link}
-              style={{
-                color: active ? 'var(--navy)' : 'var(--text-head)',
-                borderBottom: `3px solid ${active ? 'var(--navy)' : 'transparent'}`
-              }}
             >
               {l.label}
             </Link>

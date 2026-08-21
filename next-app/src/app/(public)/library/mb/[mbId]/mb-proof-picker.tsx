@@ -67,9 +67,9 @@ export default function MbProofPicker({
 
   if (scoutBlocked) {
     return (
-      <div style={{ marginTop: 16 }}>
+      <div className={styles.stackGap}>
         <FormCard>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, marginBottom: 4 }}>
+          <h2 className={styles.pickerHeading}>
             I did this
           </h2>
           <FieldHint>
@@ -82,9 +82,9 @@ export default function MbProofPicker({
   }
 
   return (
-    <div style={{ marginTop: 16 }}>
+    <div className={styles.stackGap}>
       <FormCard>
-      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, marginBottom: 4 }}>
+      <h2 className={styles.pickerHeading}>
         I did this
       </h2>
       <FieldHint>
@@ -132,13 +132,13 @@ export default function MbProofPicker({
       </div>
 
       {proofHref ? (
-        <p style={{ marginTop: 14, marginBottom: 0 }}>
+        <p className={styles.pickerNote}>
           <Button variant="primary" href={proofHref}>
             Continue →
           </Button>
         </p>
       ) : (
-        <p style={{ marginTop: 14, marginBottom: 0 }}>
+        <p className={styles.pickerNote}>
           <Button variant="secondary" disabled>
             Continue →
           </Button>

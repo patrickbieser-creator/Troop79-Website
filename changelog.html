@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.64.0</p>
+      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.65.0</p>
     </div>
   </div>
 
@@ -494,6 +494,52 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.65.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.65.0</span>
+        <span class="release-date">August 21, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Public design system Phase B: no more stylesheets living in JSX, and a footer that finally works on phones</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>The merit-badge pages got a real stylesheet.</strong> The catalog and
+              detail pages were the public site&rsquo;s only screens with no CSS file at
+              all &mdash; 46 inline style blobs (~336 properties, effectively a stylesheet
+              written inside the markup). They now render from
+              <code>merit-badges.module.css</code> on the design tokens, adopt the shared
+              PageHeader/PageShell/dividers/cards, and the stats strip folds to 2&times;2
+              on phones instead of squeezing.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>The site footer is responsive for the first time.</strong> It renders
+              on every public page but was styled entirely inline &mdash; which meant zero
+              media queries, ever. Its new stylesheet stacks the three columns cleanly on
+              phones with full-width tap targets, and adds hover states the inline version
+              could not express. The nav&rsquo;s active link now styles off its
+              <code>aria-current</code> attribute &mdash; the accessibility marker and the
+              visual are one thing.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Inline styles: 146 &rarr; 13.</strong> The remaining thirteen are
+              each genuinely dynamic &mdash; category colors from the DB, calendar lane
+              counts, signup fill percentages, requirement-tree indents &mdash; and each
+              carries a comment saying so. Both &ldquo;stylesheet-less screens&rdquo; and
+              &ldquo;inline styles&rdquo; rows are struck from the public styleguide&rsquo;s
+              scoreboard.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

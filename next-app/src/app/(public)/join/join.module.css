@@ -1,0 +1,4 @@
+/* /join — page-local layout only (shared prose/section styling comes from
+   about-join.module.css). Created in Phase B to house what was an inline
+   marginTop on the second prose section. */
+.sectionGapLg { margin-top: 34px; } /* off-scale canon; Phase C may fold */
