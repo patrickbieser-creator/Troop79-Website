@@ -59,7 +59,7 @@ const MODAL_TITLES: Record<FinanceModal, string> = {
 const TODAY = () => new Date().toISOString().slice(0, 10);
 
 /** Sortable column header — a plain link (URL-driven sort, matches the
- *  Universal Ledger's convention), not a client-side sort, so the 50-row
+ *  Advancement Ledger's convention), not a client-side sort, so the 50-row
  *  page and the 1000-row PostgREST cap stay someone else's problem. */
 function SortHeader({
   label,

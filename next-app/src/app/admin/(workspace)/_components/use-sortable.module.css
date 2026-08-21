@@ -1,0 +1,15 @@
+/* Shared sortable-column-header styles (moved from roster.module.css when
+   SortHeader was promoted to _components/, 2026-08-21). Token-only. */
+
+.sortBtn {
+  background: none; border: none; padding: 0; margin: 0;
+  font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit;
+  cursor: pointer; display: inline-flex; align-items: center; gap: var(--admin-space-3);
+}
+.sortBtn:hover { color: var(--admin-navy); }
+.sortArrow { font-size: var(--admin-text-2xs); color: var(--admin-navy); }
+/* Idle arrows stay in the layout but recede, so headers don't shift on sort. */
+.sortArrowIdle { font-size: var(--admin-text-2xs); color: var(--admin-gray-300); }
+.sortBtn:hover .sortArrowIdle { color: var(--admin-gray-500); }
+
+.alignRight { text-align: right; }

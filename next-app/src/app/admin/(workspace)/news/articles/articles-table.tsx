@@ -168,14 +168,10 @@ export function ArticlesTable({ rows, sp, sort, dir, sessionName }: Props) {
                     )}
                   </td>
                   <td className={styles.actionsCell}>
-                    {/* An explicit Edit, matching the Calendar's row actions.
-                        The title is still a link — both screens now offer the
-                        same two ways in rather than one each. */}
-                    {canEdit && (
-                      <Link href={`/admin/news/articles/${r.id}`} className={styles.actionBtn}>
-                        Edit
-                      </Link>
-                    )}
+                    {/* No explicit Edit — the title link is the one way in
+                        (D-108 stretched-link sweep, 2026-08-21; Calendar and
+                        the roster tables dropped their duplicates the same
+                        day). Actions hold real operations only. */}
                     {/* Clone, matching the Calendar's row actions. The copy is
                         always a draft, so it is offered on published and
                         archived posts alike — those are the ones most worth

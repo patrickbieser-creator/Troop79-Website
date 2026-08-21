@@ -1,15 +1,17 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import styles from './roster.module.css';
+import styles from './use-sortable.module.css';
 
 /*
- * Column sorting for the roster tables.
+ * Shared column sorting for admin tables (promoted from
+ * advancement/roster/use-sortable.tsx, 2026-08-21 — the Section 2
+ * consistency-sweep item). Client-side toggle sorting; finance's
+ * URL-param-driven SortHeader is a different, server-sorted mechanism and
+ * deliberately not this component.
  *
  * Deliberately not the windowing/search hook the Lookups tables used
- * (use-lookup-table.tsx): the roster shows the whole troop at once — that's the
- * point of a roster — so paging it would fight the use case. Sorting is what a
- * printed roster needs.
+ * (use-lookup-table.tsx): these tables show their whole dataset at once.
  */
 
 export type SortDir = 'asc' | 'desc';
@@ -39,13 +41,17 @@ export function compareValues(a: unknown, b: unknown): number {
 export function useSortable<T, K extends string>(
   rows: T[],
   getValue: (row: T, key: K) => unknown,
-  initialKey: K,
+  /** `null` = keep the input order until the user first clicks a header —
+   *  for tables whose default order is deliberate (server order, compound
+   *  grouping) and must survive adoption byte-for-byte. */
+  initialKey: K | null,
   initialDir: SortDir = 'asc'
 ) {
-  const [key, setKey] = useState<K>(initialKey);
+  const [key, setKey] = useState<K | null>(initialKey);
   const [dir, setDir] = useState<SortDir>(initialDir);
 
   const sorted = useMemo(() => {
+    if (key === null) return rows;
     const copy = [...rows];
     copy.sort((a, b) => {
       const r = compareValues(getValue(a, key), getValue(b, key));
@@ -78,7 +84,7 @@ export function SortHeader<K extends string>({
 }: {
   label: string;
   colKey: K;
-  sortKey: K;
+  sortKey: K | null;
   sortDir: SortDir;
   toggle: (k: K) => void;
   align?: 'right';
@@ -87,7 +93,7 @@ export function SortHeader<K extends string>({
   return (
     <th
       aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
-      style={align === 'right' ? { textAlign: 'right' } : undefined}
+      className={align === 'right' ? styles.alignRight : undefined}
     >
       <button type="button" className={styles.sortBtn} onClick={() => toggle(colKey)}>
         {label}

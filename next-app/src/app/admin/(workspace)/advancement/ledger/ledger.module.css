@@ -1,4 +1,4 @@
-/* Universal Ledger page styles. */
+/* Advancement Ledger page styles. */
 
 /* .pageTitle retired Phase B (2026-08-21) — shared PageTitle component. */
 
@@ -96,8 +96,8 @@
   background: var(--admin-gray-100);
   color: var(--admin-gray-700);
 }
-.kindRankReq        { background: #e0e7ef; color: var(--admin-navy); }
-.kindMbReq          { background: #e3eee5; color: var(--admin-forest); }
+.kindRankReq        { background: var(--admin-cat-rank-bg); color: var(--admin-navy); }
+.kindMbReq          { background: var(--admin-cat-mb-bg); color: var(--admin-forest); }
 .kindMbAward        { background: var(--admin-status-warning-bg); color: var(--admin-accent-gold); }
 .kindCamping        { background: #d6efef; color: #186e72; }
 .kindHiking         { background: #e0e7ef; color: #2a4f63; }

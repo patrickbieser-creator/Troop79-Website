@@ -82,12 +82,12 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     // Split from a single 7-item Records section (Plans/Admin-Nav-And-Consistency.md,
     // Section 1) — day-to-day recording stays here; generate-and-hand-off actions moved to
-    // Reports & Exports below. Roster sits right under Universal Ledger (rather than at the
+    // Reports & Exports below. Roster sits right under Advancement Ledger (rather than at the
     // end, where it landed by accretion): the two are what a leader reaches for most.
     title: 'Records',
     items: [
       {
-        label: 'Universal Ledger',
+        label: 'Advancement Ledger',
         href: '/admin/advancement/ledger',
         matchPath: '/admin/advancement/ledger',
         capability: 'advancement.write'

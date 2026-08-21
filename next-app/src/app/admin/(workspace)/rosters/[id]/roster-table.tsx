@@ -8,6 +8,23 @@ import type { TransactionMethod } from '@/lib/finance';
 import type { RosterRow } from './page';
 import styles from '../../events/events-admin.module.css';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
+import { SortHeader, useSortable } from '../../_components/use-sortable';
+
+type RosterColKey = 'name' | 'household' | 'status' | 'owed';
+
+/** Module scope on purpose — see the note on useSortable. */
+function rosterValue(r: RosterRow, key: RosterColKey): unknown {
+  switch (key) {
+    case 'name':
+      return r.name;
+    case 'household':
+      return r.household;
+    case 'status':
+      return r.status;
+    case 'owed':
+      return r.owed;
+  }
+}
 
 /** Roster table with leader-managed slip/payment ticks and a CSV export.
  *  One troop-wide list — no patrol grouping (see page.tsx). */
@@ -96,8 +113,15 @@ export function RosterTable({
     });
   }
 
-  const sorted = [...rows].sort(
+  const defaultOrder = [...rows].sort(
     (a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name)
+  );
+  // null initial key: the adults-then-scouts… (kind → name) compound grouping
+  // above IS the default; column sorting starts only when a header is clicked.
+  const { sorted, sortKey, sortDir, toggle: toggleSort } = useSortable<RosterRow, RosterColKey>(
+    defaultOrder,
+    rosterValue,
+    null
   );
 
   const exportCsv = () => {
@@ -150,10 +174,10 @@ export function RosterTable({
       <table className={styles.table}>
         <thead>
           <tr>
-            <th scope="col">Name</th>
-            <th scope="col">Household</th>
-            <th scope="col">Status</th>
-            <th scope="col">Owed</th>
+            <SortHeader label="Name" colKey="name" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
+            <SortHeader label="Household" colKey="household" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
+            <SortHeader label="Status" colKey="status" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
+            <SortHeader label="Owed" colKey="owed" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
             <th scope="col">Driving</th>
             <th scope="col">Jobs</th>
             {showSlip && <th scope="col">Slip</th>}

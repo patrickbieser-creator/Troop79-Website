@@ -4,6 +4,9 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import { createPerson } from './person-actions';
 import type { HouseholdOption } from './people-table';
 import styles from './roster.module.css';
+// Field CSS converged onto lookups' family (D-139 answered, 2026-08-21) —
+// roster.module.css's hand-copied .editGrid/.editField block is deleted.
+import fields from '../lookups/lookups.module.css';
 import { Notice } from '../../_components/notice';
 import { Dialog } from '../../_components/dialog';
 
@@ -106,51 +109,51 @@ export function AdultForm({
 
       {error && <Notice>{error}</Notice>}
 
-      <div className={styles.editGrid}>
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>First Name</span>
+      <div className={fields.editGrid}>
+        <label className={fields.editField}>
+          <span className={fields.editLabel}>First Name</span>
           <input
-            className={styles.editInput}
+            className={fields.editInput}
             value={firstName}
             disabled={isPending}
             onChange={(e) => setFirstName(e.target.value)}
             placeholder="Required"
           />
         </label>
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>Last Name</span>
+        <label className={fields.editField}>
+          <span className={fields.editLabel}>Last Name</span>
           <input
-            className={styles.editInput}
+            className={fields.editInput}
             value={lastName}
             disabled={isPending}
             onChange={(e) => setLastName(e.target.value)}
             placeholder="Required"
           />
         </label>
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>Email</span>
+        <label className={fields.editField}>
+          <span className={fields.editLabel}>Email</span>
           <input
-            className={styles.editInput}
+            className={fields.editInput}
             type="email"
             value={email}
             disabled={isPending}
             onChange={(e) => setEmail(e.target.value)}
           />
         </label>
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>Phone</span>
+        <label className={fields.editField}>
+          <span className={fields.editLabel}>Phone</span>
           <input
-            className={styles.editInput}
+            className={fields.editInput}
             type="tel"
             value={phone}
             disabled={isPending}
             onChange={(e) => setPhone(e.target.value)}
           />
         </label>
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>Role</span>
+        <label className={fields.editField}>
+          <span className={fields.editLabel}>Role</span>
           <select
-            className={styles.editInput}
+            className={fields.editInput}
             value={role}
             disabled={isPending}
             onChange={(e) => setRole(e.target.value)}
@@ -162,10 +165,10 @@ export function AdultForm({
             ))}
           </select>
         </label>
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>Household</span>
+        <label className={fields.editField}>
+          <span className={fields.editLabel}>Household</span>
           <select
-            className={styles.editInput}
+            className={fields.editInput}
             value={householdId}
             disabled={isPending}
             onChange={(e) => setHouseholdId(e.target.value)}
@@ -178,37 +181,37 @@ export function AdultForm({
             ))}
           </select>
         </label>
-        <label className={styles.editFieldFull}>
-          <span className={styles.editLabel}>Address Line 1</span>
+        <label className={fields.editFieldFull}>
+          <span className={fields.editLabel}>Address Line 1</span>
           <input
-            className={styles.editInput}
+            className={fields.editInput}
             value={addr1}
             disabled={isPending}
             onChange={(e) => setAddr1(e.target.value)}
           />
         </label>
-        <label className={styles.editFieldFull}>
-          <span className={styles.editLabel}>Address Line 2</span>
+        <label className={fields.editFieldFull}>
+          <span className={fields.editLabel}>Address Line 2</span>
           <input
-            className={styles.editInput}
+            className={fields.editInput}
             value={addr2}
             disabled={isPending}
             onChange={(e) => setAddr2(e.target.value)}
           />
         </label>
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>City</span>
+        <label className={fields.editField}>
+          <span className={fields.editLabel}>City</span>
           <input
-            className={styles.editInput}
+            className={fields.editInput}
             value={city}
             disabled={isPending}
             onChange={(e) => setCity(e.target.value)}
           />
         </label>
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>State</span>
+        <label className={fields.editField}>
+          <span className={fields.editLabel}>State</span>
           <input
-            className={styles.editInput}
+            className={fields.editInput}
             value={stateAbbr}
             maxLength={2}
             disabled={isPending}
@@ -216,10 +219,10 @@ export function AdultForm({
             placeholder="WI"
           />
         </label>
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>ZIP</span>
+        <label className={fields.editField}>
+          <span className={fields.editLabel}>ZIP</span>
           <input
-            className={styles.editInput}
+            className={fields.editInput}
             value={zip}
             disabled={isPending}
             onChange={(e) => setZip(e.target.value)}
@@ -231,11 +234,11 @@ export function AdultForm({
         Roles, relationships and household moves are all editable afterwards by opening the person.
       </p>
 
-      <div className={styles.editActions}>
+      <div className={fields.editActions}>
         <button className={styles.smallBtn} onClick={onClose} disabled={isPending}>
           Cancel
         </button>
-        <button className={styles.editSaveBtn} onClick={save} disabled={!canSave}>
+        <button className={fields.editSaveBtn} onClick={save} disabled={!canSave}>
           {isPending ? 'Adding…' : 'Add adult'}
         </button>
       </div>

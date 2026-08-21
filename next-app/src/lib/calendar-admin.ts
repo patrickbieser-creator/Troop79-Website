@@ -22,7 +22,7 @@ export interface CalendarEntryDependents {
  *
  * Found the hard way 2026-08-20: a deleted duplicate calendar entry silently
  * orphaned its ledger credit, which then looked like a stray "duplicate" row
- * in the Universal Ledger and got bulk-deleted for real — wiping the actual
+ * in the Advancement Ledger and got bulk-deleted for real — wiping the actual
  * credit for the whole event roster. Both counts are surfaced here so a
  * leader sees the full blast radius before either fate can happen.
  */
@@ -125,7 +125,7 @@ async function loadEntry(admin: SupabaseClient, id: number): Promise<EntryLite |
  *     row for them is superseded (dropped) instead of moved.
  *   - ledger_entries: unique(calendar_entry_id, scout_id) — same shape, but
  *     the loser's row is SOFT-deleted (never destroyed) rather than dropped,
- *     matching the Universal Ledger's own delete semantics.
+ *     matching the Advancement Ledger's own delete semantics.
  *   - event_signups / meetings: unique per calendar_entry_id (at most one
  *     each). If BOTH entries have one, there is no right answer to guess —
  *     that's a conflict the leader resolves by hand first (remove the stray
@@ -260,7 +260,7 @@ export async function executeCalendarEntryMerge(
   }
 
   // ledger_entries — soft-delete the ones keepId already holds active credit
-  // for (same trail as a manual Universal Ledger delete); repoint the rest to
+  // for (same trail as a manual Advancement Ledger delete); repoint the rest to
   // keepId, refreshing date/label/code so they read as keepId's credit, not
   // a stale copy of the entry that's about to be gone.
   {

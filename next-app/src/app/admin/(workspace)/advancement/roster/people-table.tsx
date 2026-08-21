@@ -25,10 +25,14 @@ import { PendingUpdatePanel } from './pending-update-panel';
 import { AdultForm } from './adult-form';
 import { DatePickerField } from '../../_components/date-picker-field';
 import { AddButton } from '../../_components/add-button';
+import { SortHeader, useSortable } from '../../_components/use-sortable';
 import { Dialog } from '../../_components/dialog';
 import { Notice } from '../../_components/notice';
 import { ageOn, yptStatus } from '@/lib/demographics';
 import styles from './roster.module.css';
+// Field CSS converged onto lookups' family (D-139 answered, 2026-08-21) —
+// roster.module.css's hand-copied .editGrid/.editField block is deleted.
+import fields from '../lookups/lookups.module.css';
 
 export interface DirectoryPerson {
   person_id: number;
@@ -111,6 +115,20 @@ const RELATION_WORDS: Record<RelationshipRow['type'], string> = {
   emergency_contact_for: 'emergency contact for'
 };
 
+type PeopleColKey = 'name' | 'email' | 'phone';
+
+/** Module scope on purpose — see the note on useSortable. */
+function personValue(p: DirectoryPerson, key: PeopleColKey): unknown {
+  switch (key) {
+    case 'name':
+      return p.display_name;
+    case 'email':
+      return p.primary_email;
+    case 'phone':
+      return p.primary_phone;
+  }
+}
+
 export function PeopleTable({
   people,
   roles,
@@ -162,6 +180,14 @@ export function PeopleTable({
     );
   }, [people, q]);
 
+  // null initial key: the server's display_name order IS the default; sorting
+  // starts only when a header is clicked.
+  const { sorted, sortKey, sortDir, toggle } = useSortable<DirectoryPerson, PeopleColKey>(
+    visible,
+    personValue,
+    null
+  );
+
   return (
     <div>
       <div className={styles.tableToolbar}>
@@ -190,16 +216,15 @@ export function PeopleTable({
       <table className={styles.table}>
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Phone</th>
+            <SortHeader label="Name" colKey="name" sortKey={sortKey} sortDir={sortDir} toggle={toggle} />
+            <SortHeader label="Email" colKey="email" sortKey={sortKey} sortDir={sortDir} toggle={toggle} />
+            <SortHeader label="Phone" colKey="phone" sortKey={sortKey} sortDir={sortDir} toggle={toggle} />
             <th>Roles</th>
             <th>Household</th>
-            <th />
           </tr>
         </thead>
         <tbody>
-          {visible.map((p) => {
+          {sorted.map((p) => {
             const hh = householdByPerson[p.person_id];
             return (
               <tr key={p.person_id}>
@@ -247,17 +272,15 @@ export function PeopleTable({
                     <span className={styles.muted}>—</span>
                   )}
                 </td>
-                <td>
-                  <button className={styles.smallBtn} onClick={() => setOpenPerson(p)}>
-                    Edit
-                  </button>
-                </td>
+                {/* The trailing duplicate Edit button is gone (Section 2
+                    stretched-link sweep, 2026-08-21) — the name is the single
+                    way into the editor, matching ScoutsTable. */}
               </tr>
             );
           })}
           {visible.length === 0 && (
             <tr>
-              <td colSpan={6} className={styles.muted}>
+              <td colSpan={5} className={styles.muted}>
                 Nobody matches that search.
               </td>
             </tr>
@@ -579,84 +602,84 @@ function PersonEditor({
             Pending Update rather than here, so nothing you type is ever silently overwritten by a
             family submission.
           </p>
-          <div className={styles.editGrid}>
-            <label className={styles.editField}>
-              <span className={styles.editLabel}>First Name</span>
+          <div className={fields.editGrid}>
+            <label className={fields.editField}>
+              <span className={fields.editLabel}>First Name</span>
               <input
-                className={styles.editInput}
+                className={fields.editInput}
                 value={demo.firstName}
                 disabled={disabled}
                 onChange={(e) => setDemoField('firstName', e.target.value)}
               />
             </label>
-            <label className={styles.editField}>
-              <span className={styles.editLabel}>Last Name</span>
+            <label className={fields.editField}>
+              <span className={fields.editLabel}>Last Name</span>
               <input
-                className={styles.editInput}
+                className={fields.editInput}
                 value={demo.lastName}
                 disabled={disabled}
                 onChange={(e) => setDemoField('lastName', e.target.value)}
               />
             </label>
-            <label className={styles.editField}>
-              <span className={styles.editLabel}>
+            <label className={fields.editField}>
+              <span className={fields.editLabel}>
                 Birthdate
                 {ageOn(demo.birthdate || null) !== null ? ` · age ${ageOn(demo.birthdate || null)}` : ''}
               </span>
               <DatePickerField value={demo.birthdate} onChange={(v) => setDemoField('birthdate', v)} />
             </label>
-            <label className={styles.editField}>
-              <span className={styles.editLabel}>Email</span>
+            <label className={fields.editField}>
+              <span className={fields.editLabel}>Email</span>
               <input
-                className={styles.editInput}
+                className={fields.editInput}
                 type="email"
                 value={demo.email}
                 disabled={disabled}
                 onChange={(e) => setDemoField('email', e.target.value)}
               />
             </label>
-            <label className={styles.editField}>
-              <span className={styles.editLabel}>Phone</span>
+            <label className={fields.editField}>
+              <span className={fields.editLabel}>Phone</span>
               <input
-                className={styles.editInput}
+                className={fields.editInput}
                 type="tel"
                 value={demo.phone}
                 disabled={disabled}
                 onChange={(e) => setDemoField('phone', e.target.value)}
               />
             </label>
-            <label className={styles.editFieldFull}>
-              <span className={styles.editLabel}>Address Line 1</span>
+            <label className={fields.editFieldFull}>
+              <span className={fields.editLabel}>Address Line 1</span>
               <input
-                className={styles.editInput}
+                className={fields.editInput}
                 value={demo.addr1}
                 disabled={disabled}
                 onChange={(e) => setDemoField('addr1', e.target.value)}
               />
             </label>
-            <label className={styles.editFieldFull}>
-              <span className={styles.editLabel}>Address Line 2</span>
+            <label className={fields.editFieldFull}>
+              <span className={fields.editLabel}>Address Line 2</span>
               <input
-                className={styles.editInput}
+                className={fields.editInput}
                 value={demo.addr2}
                 disabled={disabled}
                 onChange={(e) => setDemoField('addr2', e.target.value)}
                 placeholder="Apt / unit (optional)"
               />
             </label>
-            <label className={styles.editField}>
-              <span className={styles.editLabel}>City</span>
+            <label className={fields.editField}>
+              <span className={fields.editLabel}>City</span>
               <input
-                className={styles.editInput}
+                className={fields.editInput}
                 value={demo.city}
                 disabled={disabled}
                 onChange={(e) => setDemoField('city', e.target.value)}
               />
             </label>
-            <label className={styles.editField}>
-              <span className={styles.editLabel}>State</span>
+            <label className={fields.editField}>
+              <span className={fields.editLabel}>State</span>
               <input
-                className={styles.editInput}
+                className={fields.editInput}
                 value={demo.state}
                 maxLength={2}
                 disabled={disabled}
@@ -664,27 +687,27 @@ function PersonEditor({
                 placeholder="WI"
               />
             </label>
-            <label className={styles.editField}>
-              <span className={styles.editLabel}>ZIP</span>
+            <label className={fields.editField}>
+              <span className={fields.editLabel}>ZIP</span>
               <input
-                className={styles.editInput}
+                className={fields.editInput}
                 value={demo.zip}
                 disabled={disabled}
                 onChange={(e) => setDemoField('zip', e.target.value)}
               />
             </label>
-            <label className={styles.editField}>
-              <span className={styles.editLabel}>BSA Member ID</span>
+            <label className={fields.editField}>
+              <span className={fields.editLabel}>BSA Member ID</span>
               <input
-                className={styles.editInput}
+                className={fields.editInput}
                 value={demo.bsaMemberId}
                 disabled={disabled}
                 onChange={(e) => setDemoField('bsaMemberId', e.target.value)}
                 placeholder="(optional)"
               />
             </label>
-            <label className={styles.editField}>
-              <span className={styles.editLabel}>
+            <label className={fields.editField}>
+              <span className={fields.editLabel}>
                 YPT Completed
                 {demo.yptCompleted
                   ? ` · ${yptStatus(demo.yptCompleted).status} (expires ${yptStatus(demo.yptCompleted).expires})`
@@ -695,17 +718,17 @@ function PersonEditor({
                 onChange={(v) => setDemoField('yptCompleted', v)}
               />
             </label>
-            <label className={styles.editField}>
-              <span className={styles.editLabel}>Health Form Date</span>
+            <label className={fields.editField}>
+              <span className={fields.editLabel}>Health Form Date</span>
               <DatePickerField
                 value={demo.healthFormDate}
                 onChange={(v) => setDemoField('healthFormDate', v)}
               />
             </label>
-            <label className={styles.editFieldFull}>
-              <span className={styles.editLabel}>Things We Should Know</span>
+            <label className={fields.editFieldFull}>
+              <span className={fields.editLabel}>Things We Should Know</span>
               <textarea
-                className={styles.editInput}
+                className={fields.editInput}
                 value={demo.thingsWeShouldKnow}
                 disabled={disabled}
                 onChange={(e) => setDemoField('thingsWeShouldKnow', e.target.value)}
@@ -716,7 +739,7 @@ function PersonEditor({
           </div>
           <div className={styles.inlineRow}>
             <button
-              className={styles.editSaveBtn}
+              className={fields.editSaveBtn}
               disabled={disabled || !demo.firstName.trim() || !demo.lastName.trim()}
               onClick={saveDemographics}
             >

@@ -472,7 +472,7 @@ export async function importCalendarEntries(
  * anything is destroyed, rather than deleting outright. Added 2026-08-20
  * after a deleted duplicate entry orphaned its ledger credit (SET NULL,
  * survives but unlinked) while its attendance vanished (CASCADE) — the
- * orphaned credit then read as a stray duplicate in the Universal Ledger and
+ * orphaned credit then read as a stray duplicate in the Advancement Ledger and
  * got deleted for real. See calendarEntryDependents() for the FK asymmetry
  * this exists to surface before it fires.
  */

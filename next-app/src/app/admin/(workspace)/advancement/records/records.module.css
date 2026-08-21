@@ -93,9 +93,10 @@
   background: var(--admin-gray-100);
   color: var(--admin-gray-700);
 }
-/* Categorical rank/MB tints — same TOKEN_GAP as scoutbook-export .badgeRank/.badgeMb. */
-.kindRank  { background: #f0e6f5; color: #6a3d82; }
-.kindMb    { background: #e6eef5; color: #2c5a82; }
+/* Categorical rank/MB tints on the shared tokens (2026-08-21 normalization —
+   the old purple/blue pair here was inverted vs. ledger/lookups and is retired). */
+.kindRank  { background: var(--admin-cat-rank-bg); color: var(--admin-navy); }
+.kindMb    { background: var(--admin-cat-mb-bg); color: var(--admin-forest); }
 .kindAward { background: var(--admin-status-warning-bg); color: var(--admin-accent-gold); }
 
 .confirmCell {

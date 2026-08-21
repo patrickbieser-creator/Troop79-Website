@@ -687,20 +687,15 @@
 }
 
 /* ── MB Focus Modal (Scout-First merit-badge entry) ── */
-.mbModal {
-  padding: 0;
-  border: none;
-  border-radius: 6px;
-  box-shadow: var(--admin-shadow-md);
+/* Size-only override of the shared Dialog (converted 2026-08-21 — the last
+   Phase B dialog exception, now on the spec chrome via closeOnBackdrop).
+   Doubled selector: deterministic override regardless of CSS-module order.
+   overflow:hidden is part of the size contract here — the two-pane layout
+   scrolls its own panes, so the box itself must not scroll. */
+.mbModal.mbModal {
   width: 96vw;
   max-width: 940px;
-  max-height: 88vh;
   overflow: hidden;
-  background: var(--admin-white);
-  color: var(--admin-gray-900);
-}
-.mbModal::backdrop {
-  background: rgba(0, 0, 0, 0.42);
 }
 .mbModalInner {
   display: flex;
@@ -896,7 +891,7 @@
 }
 
 @media (max-width: 760px) {
-  .mbModal {
+  .mbModal.mbModal {
     width: 100vw;
     max-width: 100vw;
     max-height: 100vh;

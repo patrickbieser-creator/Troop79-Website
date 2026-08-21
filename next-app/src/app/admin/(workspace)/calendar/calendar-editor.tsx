@@ -14,9 +14,28 @@ import { ActionsMenu } from '../_components/actions-menu';
 import { Badge } from '../_components/badge';
 import { Notice } from '../_components/notice';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../_components/dialog';
+import { SortHeader, useSortable } from '../_components/use-sortable';
 import { CalendarEntryForm, type CalendarEntryRow } from './entry-form';
 import type { CalendarEntryMergePlan } from '@/lib/calendar-admin';
 import styles from './calendar.module.css';
+
+type CalColKey = 'date' | 'category' | 'title' | 'author' | 'location';
+
+/** Module scope on purpose — see the note on useSortable. */
+function calendarValue(row: CalendarEntryRow, key: CalColKey): unknown {
+  switch (key) {
+    case 'date':
+      return row.entry_date;
+    case 'category':
+      return row.category;
+    case 'title':
+      return row.title;
+    case 'author':
+      return row.author_name;
+    case 'location':
+      return row.location;
+  }
+}
 
 type ActionResult = { ok: boolean; error?: string };
 type CloneResult = { ok: boolean; error?: string; id?: number };
@@ -170,6 +189,17 @@ export function CalendarEditor({
   const pastShown = past.filter(matches);
   const shown = tab === 'upcoming' ? upcomingShown : pastShown;
   const filtering = needle !== '' || category !== '';
+
+  // null initial key: each tab's own date order (upcoming soonest-first, past
+  // newest-first, from splitByTab) IS the default; column sorting starts only
+  // when a header is clicked, and a chosen sort persists across tab switches
+  // as explicit user state.
+  const {
+    sorted: shownSorted,
+    sortKey,
+    sortDir,
+    toggle: toggleSort
+  } = useSortable<CalendarEntryRow, CalColKey>(shown, calendarValue, null);
 
   const dialogOpen = newOpen || cloneFor !== null;
   useEffect(() => {
@@ -375,12 +405,12 @@ export function CalendarEditor({
       <table className={styles.table}>
         <thead>
           <tr>
-            <th>Date</th>
-            <th>Category</th>
-            <th>Title</th>
+            <SortHeader label="Date" colKey="date" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
+            <SortHeader label="Category" colKey="category" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
+            <SortHeader label="Title" colKey="title" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
             <th>Status</th>
-            <th>Author</th>
-            <th>Location</th>
+            <SortHeader label="Author" colKey="author" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
+            <SortHeader label="Location" colKey="location" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
             <th>Promoted</th>
             <th className={styles.actionsCell}>Actions</th>
           </tr>
@@ -400,7 +430,7 @@ export function CalendarEditor({
               </td>
             </tr>
           ) : (
-            shown.map((row) => (
+            shownSorted.map((row) => (
               <Fragment key={row.id}>
               <tr>
                 <td className={styles.dateCell}>
@@ -459,13 +489,10 @@ export function CalendarEditor({
                   )}
                 </td>
                 <td className={styles.actionsCell}>
-                  {/* "Edit", not "Open" — News calls the same act Edit, and
-                      these two content screens should not use different words
-                      for it. It is the only editor: details, story, agenda and
-                      signup all live in the workbench. */}
-                  <Link href={`/admin/calendar/${row.id}`} className={styles.editBtn}>
-                    Edit
-                  </Link>
+                  {/* The duplicate Edit link is gone (Section 2 stretched-link
+                      sweep, 2026-08-21): the title IS the way into the
+                      workbench — one way in per row. Actions keeps only the
+                      operations that aren't "open": Clone, Merge, Delete. */}
                   <button
                     type="button"
                     className={styles.editBtn}

@@ -133,7 +133,7 @@ export function RequirementPicker({
     const reason = window.prompt(
       `"${item.label}" was already signed off${
         entry.date ? ' on ' + entry.date : ''
-      }${entry.by ? ' by ' + entry.by : ''}.\n\nRemove this completion? Enter a reason (required — duplicate, wrong scout, etc.). The entry will be soft-deleted (recoverable from the Universal Ledger).`,
+      }${entry.by ? ' by ' + entry.by : ''}.\n\nRemove this completion? Enter a reason (required — duplicate, wrong scout, etc.). The entry will be soft-deleted (recoverable from the Advancement Ledger).`,
       ''
     );
     if (reason === null) return;

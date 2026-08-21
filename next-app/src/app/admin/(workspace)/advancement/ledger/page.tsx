@@ -1,5 +1,5 @@
 /**
- * /admin/advancement/ledger — Universal Ledger.
+ * /admin/advancement/ledger — Advancement Ledger.
  *
  * Server Component. All filter/sort/page state lives in the URL so
  * everything is bookmarkable / sharable.
@@ -214,7 +214,7 @@ export default async function LedgerPage({
   return (
     <>
       <PageTitle
-        title="Universal Ledger"
+        title="Advancement Ledger"
         sub={
           <>
             Sole source of truth. Every advancement, activity, service hour,

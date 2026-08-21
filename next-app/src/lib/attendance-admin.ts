@@ -22,7 +22,7 @@
  * reason it is spelled out here.
  *
  * SOFT DELETE, NEVER HARD. Unchecking a box must not destroy advancement
- * history: a mis-click has to be recoverable, and the Universal Ledger's own
+ * history: a mis-click has to be recoverable, and the Advancement Ledger's own
  * delete already works this way.
  */
 

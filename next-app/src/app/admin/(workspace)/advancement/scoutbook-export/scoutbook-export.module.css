@@ -49,11 +49,12 @@
   display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .04em;
   text-transform: uppercase; padding: 2px 8px; border-radius: 10px;
 }
-/* Categorical type tints (MB blue / rank purple) — deliberately NOT status
-   tokens (Phase A Badge scope rule); no admin token exists yet. Phase C
-   TOKEN_GAP: candidate --admin-cat-mb / --admin-cat-rank. */
-.badgeMb { background: #e6eef5; color: #2c5a82; }
-.badgeRank { background: #f0e6f5; color: #6a3d82; }
+/* Categorical type tints on the shared tokens (2026-08-21, Patrick's
+   normalization call) — this file's old inverted palette (MB blue / rank
+   purple) is retired; one meaning per color everywhere: rank = navy on
+   --admin-cat-rank-bg, MB = forest on --admin-cat-mb-bg. */
+.badgeMb { background: var(--admin-cat-mb-bg); color: var(--admin-forest); }
+.badgeRank { background: var(--admin-cat-rank-bg); color: var(--admin-navy); }
 
 .callout {
   background: var(--admin-status-warning-bg); border: 1px solid color-mix(in srgb, var(--admin-warning) 40%, white); border-left: 4px solid var(--admin-warning);
@@ -61,11 +62,6 @@
   font-size: 12.5px; color: var(--admin-gray-900);
 }
 
-.gate {
-  background: var(--admin-gray-50); border: 1px dashed var(--admin-gray-300);
-  border-radius: 4px; padding: 40px 24px; text-align: center;
-  color: var(--admin-gray-500); font-size: 13px;
-}
 
 /* Phase C modifiers — were inline styles in page.tsx. */
 .tightNote { font-size: var(--admin-text-base); margin: -6px 0 var(--admin-space-7); }

@@ -88,17 +88,6 @@
 
 /* Sortable column headers. The th keeps its own padding, so the button is a
    bare inline trigger rather than a control with chrome of its own. */
-.sortBtn {
-  background: none; border: none; padding: 0; margin: 0;
-  font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit;
-  cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
-}
-.sortBtn:hover { color: var(--admin-navy); }
-.sortArrow { font-size: 8px; color: var(--admin-navy); }
-/* Idle arrows stay in the layout but recede, so headers don't shift on sort. */
-.sortArrowIdle { font-size: 8px; color: var(--admin-gray-300); }
-.sortBtn:hover .sortArrowIdle { color: var(--admin-gray-500); }
-
 .tableToolbar {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 0 0 10px;
@@ -158,29 +147,8 @@
 /* scout-relations.tsx references these — kept in sync with the equivalent
    definitions in lookups.module.css so the Parents/Guardians grid, cards and
    select actually get styled instead of silently resolving to no class. */
-.editGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
-.editField { display: block; }
-.editFieldFull { display: block; grid-column: 1 / -1; }
-.editLabel { display: block; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--admin-gray-500); margin-bottom: 4px; }
-/* The text input to go with .editField/.editLabel above. It was referenced by
-   the add-a-parent/guardian form in the Scout editor but never defined, so
-   those three fields rendered as bare browser inputs (and emitted a literal
-   "undefined" class). Matches .select below, plus full width — it always sits
-   in an .editGrid cell. */
-.editInput {
-  width: 100%;
-  box-sizing: border-box;
-  border: 1px solid var(--admin-gray-300);
-  border-radius: 3px;
-  padding: 6px 9px;
-  font-family: inherit;
-  font-size: 13px;
-  background: var(--admin-white);
-  color: var(--admin-gray-900);
-}
-.editInput:focus { outline: none; border-color: var(--admin-navy); }
-.editInput:disabled { background: var(--admin-gray-100); color: var(--admin-gray-500); }
-.editInput::placeholder { color: var(--admin-gray-400); }
+/* .editGrid/.editField/.editLabel/.editInput family DELETED 2026-08-21 —
+   converged onto lookups.module.css (the copy scout-form already used; D-139). */
 .parentRow { background: var(--admin-gray-50); border: 1px solid var(--admin-gray-200); border-radius: 3px; padding: 10px 12px; margin-bottom: 8px; }
 .parentRowHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .parentRowLabel { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--admin-gray-500); }
@@ -249,14 +217,6 @@
 /* Footer actions for the create-an-adult dialog — the Scout editor's pair,
    which lives in lookups.module.css, restated here so this module is
    self-contained rather than importing another screen's stylesheet. */
-.editActions { margin-top: 16px; display: flex; justify-content: flex-end; gap: 8px; }
-.editSaveBtn {
-  font-family: inherit; font-size: 12px; font-weight: 700; letter-spacing: .04em;
-  background: var(--admin-navy); color: var(--admin-white); border: 1px solid var(--admin-navy);
-  border-radius: 3px; padding: 7px 16px; cursor: pointer;
-}
-.editSaveBtn:hover:not(:disabled) { filter: brightness(1.12); }
-.editSaveBtn:disabled { opacity: .5; cursor: default; }
 
 /* Canonical outlined danger (Phase A decision, 2026-08-21): danger text,
    25%-danger border, error-tint hover — solid danger is reserved for the

@@ -105,7 +105,7 @@ npx supabase db push
 This applies the same migration SQL to the cloud project. Then:
 
 ```bash
-SUPABASE_SERVICE_ROLE_KEY=<cloud-service-role> \
+SUPABASE_SERVICE_ROLE_KEY=<cloud sb_secret_... key> \
 NEXT_PUBLIC_SUPABASE_URL=<cloud-url> \
 npm run seed
 ```

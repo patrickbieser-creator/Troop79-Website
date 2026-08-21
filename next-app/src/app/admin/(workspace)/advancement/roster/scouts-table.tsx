@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ageOn, gradeFromGradYear, gradeLabel, SWIM_CLASS_LABEL } from '@/lib/demographics';
 import { INACTIVE_REASON_LABEL } from '@/lib/supabase/types';
 import { ScoutForm, type ScoutRow } from './scout-form';
-import { SortHeader, useSortable } from './use-sortable';
+import { SortHeader, useSortable } from '../../_components/use-sortable';
 import { TabStrip } from '../../_components/tab-strip';
 import { AddButton } from '../../_components/add-button';
 import { Badge } from '../../_components/badge';
@@ -194,13 +194,12 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId
             {head('BSA ID', 'bsa')}
             {head('Health Form', 'health')}
             {head('Status', 'status')}
-            <th className={styles.cellRight}>Actions</th>
           </tr>
         </thead>
         <tbody>
           {sorted.length === 0 && (
             <tr>
-              <td colSpan={13} className={styles.muted}>
+              <td colSpan={12} className={styles.muted}>
                 {tab === 'active'
                   ? 'No active scouts.'
                   : 'No inactive scouts — nobody has been marked dropped, transferred, moved, or aged out.'}
@@ -247,11 +246,9 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId
                     </span>
                   )}
                 </td>
-                <td className={styles.cellRight}>
-                  <button type="button" className={styles.editBtn} onClick={() => setOpenFor(s)}>
-                    Edit
-                  </button>
-                </td>
+                {/* The trailing duplicate Edit button is gone (Section 2
+                    stretched-link sweep, 2026-08-21) — the scout's name is
+                    the single way into the editor, as on Calendar/News. */}
               </tr>
             );
           })}

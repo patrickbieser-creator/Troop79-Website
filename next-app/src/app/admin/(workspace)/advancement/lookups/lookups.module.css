@@ -68,8 +68,8 @@
   background: var(--admin-gray-100);
   color: var(--admin-gray-700);
 }
-.tagRank        { background: #e0e7ef; color: var(--admin-navy); }
-.tagMb          { background: #e3eee5; color: var(--admin-forest); }
+.tagRank        { background: var(--admin-cat-rank-bg); color: var(--admin-navy); }
+.tagMb          { background: var(--admin-cat-mb-bg); color: var(--admin-forest); }
 .tagEagle       { background: var(--admin-status-warning-bg); color: var(--admin-accent-gold); }
 /* .tagActive/.tagInactive deleted Phase A (2026-08-21) — no consumers left;
    status pills are the shared Badge component now. The categorical tags

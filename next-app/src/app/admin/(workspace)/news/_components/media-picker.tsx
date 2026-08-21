@@ -5,6 +5,7 @@ import Image from 'next/image';
 import type { Media } from '@/lib/supabase/types';
 import { listMedia, setMediaAltText, uploadMedia } from '../media/actions';
 import { TabStrip } from '../../_components/tab-strip';
+import { Dialog } from '../../_components/dialog';
 import styles from './media-picker.module.css';
 
 interface MediaPickerProps {
@@ -67,6 +68,15 @@ export function MediaPicker({ mode, onClose, onInsert, initialSelected }: MediaP
   const [dragOver, setDragOver] = useState(false);
   const [isSaving, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  // The picker mounts only while open (consumers gate on their own state),
+  // so open the native modal on mount. Nested consumers (calendar entry
+  // form, library quick-add, albums) stack fine — the top layer handles it,
+  // and Esc/cancel targets only the topmost dialog.
+  useEffect(() => {
+    dialogRef.current?.showModal();
+  }, []);
 
   // Revoke any pending upload preview URLs on unmount.
   useEffect(() => () => pending.forEach((p) => URL.revokeObjectURL(p.previewUrl)), []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -170,13 +180,12 @@ export function MediaPicker({ mode, onClose, onInsert, initialSelected }: MediaP
   const selectedList = Array.from(selected.values());
 
   return (
-    <div
-      className={styles.overlay}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+    <Dialog
+      ref={dialogRef}
+      className={styles.modal}
+      onClose={onClose}
+      aria-labelledby="mpTitle"
     >
-      <div className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="mpTitle">
         <div className={styles.modalHead}>
           <h2 id="mpTitle">{mode === 'multi' ? 'Select Photos for Gallery' : 'Select an Image'}</h2>
           <button className={styles.close} aria-label="Close media picker" onClick={onClose} type="button">
@@ -395,7 +404,6 @@ export function MediaPicker({ mode, onClose, onInsert, initialSelected }: MediaP
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </Dialog>
   );
 }

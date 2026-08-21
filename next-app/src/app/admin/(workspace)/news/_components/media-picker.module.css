@@ -2,17 +2,22 @@
    section; Phase C (2026-08-21) retired the public-token reads (--navy, --forest,
    --border-*, --font-ui…) onto the --admin-* sheet — this is admin chrome, not a
    public-parity preview surface. Primary action follows the Phase A decision
-   (navy commit button). The custom div overlay itself still unifies onto the
-   shared Dialog in a later pass (plan: HIGH risk, deliberately last). */
+   (navy commit button). The custom div overlay unified onto the shared Dialog
+   2026-08-21 (the deliberately-last conversion) — see .modal below. */
 
-.overlay {
-  position: fixed; inset: 0; background: rgba(26, 26, 26, .55); display: flex;
-  align-items: center; justify-content: center; z-index: 500; padding: 24px;
+/* Size-only override of the shared Dialog (converted 2026-08-21 — this was
+   the last non-Dialog modal mechanism in the admin; the old .overlay div is
+   gone, backdrop/centering/Esc come from the spec chrome). Doubled selector
+   per convention. The picker's panes scroll internally, so the box itself
+   must not scroll; flex is gated on [open] so the UA's closed-dialog
+   display:none keeps working. */
+.modal.modal {
+  width: 92vw;
+  max-width: 880px;
+  max-height: 86vh;
+  overflow: hidden;
 }
-.modal {
-  background: var(--admin-white); width: 100%; max-width: 880px; max-height: 86vh; border-radius: 3px;
-  box-shadow: var(--admin-shadow-lg); display: flex; flex-direction: column; overflow: hidden;
-}
+.modal.modal[open] { display: flex; flex-direction: column; }
 .modalHead { display: flex; align-items: center; justify-content: space-between; padding: 16px 22px; border-bottom: 1px solid var(--admin-gray-200); }
 .modalHead h2 { font-family: var(--admin-font-ui); font-size: 16px; color: var(--admin-gray-900); font-weight: 700; }
 .close { background: none; border: none; cursor: pointer; color: var(--admin-gray-500); font-size: 20px; line-height: 1; padding: 4px 8px; border-radius: 2px; transition: background var(--admin-transition), color var(--admin-transition); }

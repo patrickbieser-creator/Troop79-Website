@@ -21,7 +21,7 @@
  */
 import sg from './styleguide.module.css';
 import { DialogDemo } from './dialog-demo';
-import { ActionsMenuSpecimen } from './specimens';
+import { ActionsMenuSpecimen, SortHeaderSpecimen } from './specimens';
 import { TabStrip } from '../_components/tab-strip';
 import { AddButton } from '../_components/add-button';
 import { Badge } from '../_components/badge';
@@ -75,7 +75,9 @@ const STATUS_TOKENS = [
   ['--admin-status-error-bg', '#fdf0ef', true],
   ['--admin-status-warning-bg', '#fdf3d6', true],
   ['--admin-status-success-bg', '#f0f6f1', true],
-  ['--admin-status-info-bg', '#eef3f8', true]
+  ['--admin-status-info-bg', '#eef3f8', true],
+  ['--admin-cat-rank-bg', '#e0e7ef · navy text', true],
+  ['--admin-cat-mb-bg', '#e3eee5 · forest text', true]
 ] as const;
 
 const FONT_TOKENS = [
@@ -175,7 +177,7 @@ const SCOREBOARD: {
       'compact = calendar canon (albums, meetings, roster, scoutbook-export, meeting-plan — navy header normalized per Patrick); wrapped-card = ledger canon (articles, finance, records, access)',
     phase: 'B',
     notes:
-      'Documented outliers fold in Phase C: lookups, dashboard, media-manager, events-admin; plus the .numCell-vs-inline-textAlign sweep'
+      'Phase C did the inline-textAlign sweep; the tail session (2026-08-21) added the shared SortHeader/useSortable (_components/use-sortable — initialKey null keeps a table’s deliberate default order) adopted by scouts-table, people-table, event-roster table, calendar-editor; finance’s URL-param server sort is deliberately separate. Stretched-link rows landed too: calendar, scouts, people, articles dropped their duplicate Edit controls — the title link is the one way in'
   },
   {
     pattern: 'Cards / panels',
@@ -191,7 +193,8 @@ const SCOREBOARD: {
     canonical:
       '✓ SHIPPED: shared Dialog component (_components/dialog) — every admin modal renders the approved spec, including the formerly hand-rolled PersonEditor overlay (which gained Esc/backdrop close)',
     phase: 'A+B',
-    notes: 'library’s quick-add converted in Phase C (its Phase B exception closed — Esc/backdrop close gained); media-picker’s custom div overlay is the one remaining mechanism — unified last, HIGH risk'
+    notes:
+      'ZERO non-Dialog modals remain (2026-08-21): library’s quick-add converted in Phase C, then the last two fell in the tail session — fast-entry’s MB focus modal (via the new closeOnBackdrop={false} + onBackdropAttempt props; its unsaved-ticks guard is the exemplar of consumer-owned close decisions) and media-picker’s custom div overlay (nested dialogs stack via the platform top layer)'
   },
   {
     pattern: 'Page titles',
@@ -224,7 +227,7 @@ const SCOREBOARD: {
     canonical: 'admin.css tokens; --admin-preview-* aliases for WYSIWYG preview surfaces only',
     phase: 'C',
     notes:
-      'deliberate survivors: date-picker-field keeps its var(--admin-x, var(--public-x, #hex)) fallback chains (it also serves the public /profile editors, where admin tokens are undefined); the categorical palettes (ledger kind family, lookups/scoutbook/records MB + rank tints — categories are not statuses, no tokens by design); one on-dark warning amber in media-manager'
+      'deliberate survivors: date-picker-field keeps its var(--admin-x, var(--public-x, #hex)) fallback chains (it also serves the public /profile editors, where admin tokens are undefined); the ledger ACTIVITY-kind palette (camping/hiking/outing/fundraiser/service/leadership — categorical by design); one on-dark warning amber in media-manager. The MB/rank tints got real tokens 2026-08-21 (Patrick: normalize the drift) — --admin-cat-rank-bg/--admin-cat-mb-bg, one meaning per color on all four screens'
   },
   {
     pattern: 'Eyebrow labels (11px/700/uppercase)',
@@ -533,6 +536,13 @@ export default function StyleguidePage() {
             </table>
           </Specimen>
           <Specimen
+            label="Sortable headers — shared SortHeader + useSortable"
+            canonical
+            note="Import from _components/use-sortable. aria-sort carries the state; initialKey null preserves a table's deliberate default order until the first click. Client-side tables only — finance's URL-param server sort is a different mechanism, deliberately separate."
+          >
+            <SortHeaderSpecimen />
+          </Specimen>
+          <Specimen
             label="Wrapped-card cluster"
             canonical
             note="ledger canon — .tableWrap card container, roomier padding, 2px header rule. Members: ledger, articles, finance, records, access. Numeric cells use .numCell."
@@ -621,10 +631,14 @@ export default function StyleguidePage() {
           deterministic override). Phase B converted the remaining families too —
           ledger/roster/lookups/finance/fast-entry/rosters, including the two formerly
           hand-rolled overlays (PersonEditor, adult-form), which gained Esc and
-          backdrop-click close. Phase C closed the library quick-add exception (shared
-          Dialog, Esc/backdrop close gained). Remaining exceptions: fast-entry&rsquo;s MB
-          focus modal (needs a close-guard prop for its unsaved-ticks confirm);
-          media-picker&rsquo;s custom div overlay unifies last (high risk).
+          backdrop-click close. Phase C closed the library quick-add exception, and the
+          tail session (2026-08-21) closed the last two: fast-entry&rsquo;s MB focus modal
+          rides the new <code>closeOnBackdrop=&#123;false&#125;</code> +{' '}
+          <code>onBackdropAttempt</code> props (its unsaved-ticks guard is the exemplar —
+          backdrop and Esc both route through the consumer&rsquo;s own close decision), and
+          media-picker&rsquo;s custom div overlay became a native Dialog (nested pickers
+          stack via the platform top layer; Esc closes only the topmost). ZERO non-Dialog
+          modals remain in the admin.
         </p>
         <div className={sg.dialogCompare}>
           <div>

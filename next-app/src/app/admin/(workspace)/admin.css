@@ -134,6 +134,15 @@
   --admin-font-mono: 'Menlo', 'Consolas', monospace;  /* absorbs the ui-monospace /
                                      'SF Mono' and bare-monospace drift variants */
 
+  /* ── Categorical tints (2026-08-21, Patrick: normalize the drift) ── */
+  /* Rank vs merit-badge identity, one meaning per color everywhere. The
+     ledger/lookups camp won (built on the brand tokens); scoutbook-export
+     and records' inverted purple-rank/blue-MB palette is retired. Text
+     pairs: rank → --admin-navy, MB → --admin-forest. Eagle and Award
+     already use warning-bg + accent-gold. */
+  --admin-cat-rank-bg: #e0e7ef;
+  --admin-cat-mb-bg:   #e3eee5;
+
   /* ── Public-parity aliases — PREVIEW SURFACES ONLY (Phase C) ─────── */
   /* The ONE sanctioned coupling to the public palette. Only for WYSIWYG
      surfaces whose job is to mirror public rendering (markdown preview

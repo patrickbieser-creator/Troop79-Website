@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.61.0</p>
+      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.62.0</p>
     </div>
   </div>
 
@@ -494,6 +494,73 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.62.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.62.0</span>
+        <span class="release-date">August 21, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Design-system tail: every modal on the shared Dialog, sortable tables everywhere, one color per meaning, and the Advancement Ledger rename</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Zero non-Dialog modals remain.</strong> The shared Dialog gained
+              <code>closeOnBackdrop</code>/<code>onBackdropAttempt</code> props, letting
+              Fast Entry&rsquo;s merit-badge focus modal convert without losing its
+              unsaved-ticks guard — backdrop clicks and Escape both route through the same
+              &ldquo;save or Cancel to discard&rdquo; decision, verified live. The media
+              picker&rsquo;s hand-rolled overlay (the last holdout, flagged high-risk)
+              became a native dialog too: nested pickers stack on the platform&rsquo;s top
+              layer, and Escape closes only the topmost.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>One color per meaning.</strong> Rank and merit-badge tints said
+              opposite things on different screens (blue meant MB on Scoutbook Export but
+              rank on the ledger). New <code>--admin-cat-rank-bg</code>/
+              <code>--admin-cat-mb-bg</code> tokens settle it — rank is navy-on-blue-gray,
+              MB is forest-on-green, on all four screens; the inverted purple/blue palette
+              is retired with zero orphaned hex left behind.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Sortable tables became a shared component.</strong>
+              SortHeader/useSortable moved to <code>_components/</code> (with an
+              &ldquo;input order until first click&rdquo; contract so every table keeps
+              its deliberate default), adopted by the roster&rsquo;s scout and adult
+              tables, event rosters, and the calendar list. Duplicate row-openers are
+              gone too — calendar, roster, and news rows now open through their title
+              link, with the actions column holding real operations only.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>&ldquo;Universal Ledger&rdquo; is now &ldquo;Advancement
+              Ledger&rdquo;</strong> everywhere — nav, page title, prompts, and code
+              comments. The roster editor family also converged onto one set of field
+              styles (the hand-copied duplicates are deleted), and a hygiene pass cleaned
+              out dead code: the never-imported browser Supabase client, an orphaned CSS
+              rule, stale &ldquo;retires in Phase E&rdquo; comments (the legacy session
+              branch has been unmintable since 2026-08-16), and the retired shared
+              passwords — removed from both the local env file and Vercel.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Verified:</strong> test baseline 671&nbsp;&rarr;&nbsp;678 (Dialog
+              backdrop-guard and SortHeader tests, written failing-first), full gate
+              green, and a live browser pass over the MB focus modal&rsquo;s guard, the
+              nested media picker, calendar sorting, and the recolored categorical chips.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

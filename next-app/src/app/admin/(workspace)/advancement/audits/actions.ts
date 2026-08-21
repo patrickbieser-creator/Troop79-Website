@@ -84,7 +84,7 @@ interface ResolveResult {
 /**
  * Duplicate-records fix: soft-deletes every row in a duplicate group except
  * the one the leader picked to keep — same audit trail (deleted_at/by/reason)
- * as a manual Universal Ledger delete, just applied to N-1 rows at once.
+ * as a manual Advancement Ledger delete, just applied to N-1 rows at once.
  */
 export async function resolveDuplicateLedgerEntries(formData: FormData): Promise<ResolveResult> {
   let session;
@@ -249,7 +249,7 @@ export async function addAttendanceForOrphanedCredit(formData: FormData): Promis
 }
 
 /** credit_orphaned, choice B: they weren't there after all — retire the
- *  credit. Soft delete, same trail as a manual Universal Ledger delete. */
+ *  credit. Soft delete, same trail as a manual Advancement Ledger delete. */
 export async function retireOrphanedCredit(formData: FormData): Promise<ReconcileResult> {
   let session;
   try {

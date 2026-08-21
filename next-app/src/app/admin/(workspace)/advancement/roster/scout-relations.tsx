@@ -10,6 +10,7 @@ import {
   type ScoutRelation
 } from './person-actions';
 import styles from './roster.module.css';
+import fields from '../lookups/lookups.module.css';
 import { AddButton } from '../../_components/add-button';
 import { Notice } from '../../_components/notice';
 
@@ -119,19 +120,19 @@ export function ScoutRelations({ scoutPersonId }: { scoutPersonId: number | null
               Unlink
             </button>
           </div>
-          <div className={styles.editGrid}>
-            <div className={styles.editField}>
-              <span className={styles.editLabel}>Name</span>
+          <div className={fields.editGrid}>
+            <div className={fields.editField}>
+              <span className={fields.editLabel}>Name</span>
               <div className={styles.readValue}>{r.name}</div>
             </div>
-            <div className={styles.editField}>
-              <span className={styles.editLabel}>Phone</span>
+            <div className={fields.editField}>
+              <span className={fields.editLabel}>Phone</span>
               <div className={styles.readValue}>
                 {r.phone ? <a href={`tel:${r.phone}`}>{r.phone}</a> : <span className={styles.muted}>—</span>}
               </div>
             </div>
-            <div className={styles.editFieldFull}>
-              <span className={styles.editLabel}>Email</span>
+            <div className={fields.editFieldFull}>
+              <span className={fields.editLabel}>Email</span>
               <div className={styles.readValue}>
                 {r.email ? (
                   <a href={`mailto:${r.email}`}>{r.email}</a>
@@ -257,7 +258,7 @@ function AdultPicker({
 
   return (
     <div className={styles.pickerBlock}>
-      <span className={styles.editLabel}>Search everyone on record</span>
+      <span className={fields.editLabel}>Search everyone on record</span>
       <input
         className={styles.searchInput}
         value={q}
@@ -301,30 +302,30 @@ function NewAdultForm({
 
   return (
     <div className={styles.parentRow}>
-      <div className={styles.editGrid}>
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>Name</span>
+      <div className={fields.editGrid}>
+        <label className={fields.editField}>
+          <span className={fields.editLabel}>Name</span>
           <input
-            className={styles.editInput}
+            className={fields.editInput}
             value={name}
             placeholder="Required"
             disabled={disabled}
             onChange={(e) => setName(e.target.value)}
           />
         </label>
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>Phone</span>
+        <label className={fields.editField}>
+          <span className={fields.editLabel}>Phone</span>
           <input
-            className={styles.editInput}
+            className={fields.editInput}
             value={phone}
             disabled={disabled}
             onChange={(e) => setPhone(e.target.value)}
           />
         </label>
-        <label className={styles.editFieldFull}>
-          <span className={styles.editLabel}>Email</span>
+        <label className={fields.editFieldFull}>
+          <span className={fields.editLabel}>Email</span>
           <input
-            className={styles.editInput}
+            className={fields.editInput}
             value={email}
             disabled={disabled}
             onChange={(e) => setEmail(e.target.value)}

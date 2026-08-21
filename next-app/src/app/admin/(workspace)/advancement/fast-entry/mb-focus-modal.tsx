@@ -11,6 +11,7 @@ import {
 } from './picker';
 import { nodeSatisfied } from './satisfaction';
 import { DatePickerField } from '../../_components/date-picker-field';
+import { Dialog } from '../../_components/dialog';
 import {
   itemKey,
   mbAwardItem,
@@ -117,7 +118,7 @@ export function MbFocusModal({
     const reason = window.prompt(
       `"${item.label}" was already signed off${
         entry.date ? ' on ' + entry.date : ''
-      }${entry.by ? ' by ' + entry.by : ''}.\n\nRemove this completion? Enter a reason (required — duplicate, wrong scout, etc.). The entry will be soft-deleted (recoverable from the Universal Ledger).`,
+      }${entry.by ? ' by ' + entry.by : ''}.\n\nRemove this completion? Enter a reason (required — duplicate, wrong scout, etc.). The entry will be soft-deleted (recoverable from the Advancement Ledger).`,
       ''
     );
     if (reason === null) return;
@@ -216,19 +217,21 @@ export function MbFocusModal({
   const canSave = selected.length > 0 && !!date && !!by && !isPending;
 
   return (
-    <dialog
+    <Dialog
       ref={dialogRef}
       className={styles.mbModal}
       onClose={onClose}
+      // The consumer owns the close decision — unsaved ticks must never be
+      // silently discarded. Backdrop clicks route through attemptClose (same
+      // error-message path as the × and Esc), never straight to close().
+      closeOnBackdrop={false}
+      onBackdropAttempt={attemptClose}
       onCancel={(e) => {
         // Esc — guard unsaved ticks without a native confirm dialog.
         if (selected.length > 0) {
           e.preventDefault();
           setErr('You have unsaved selections — Save them, or use Cancel to discard.');
         }
-      }}
-      onClick={(e) => {
-        if (e.target === dialogRef.current) attemptClose();
       }}
       onKeyDown={(e) => {
         // Ctrl/Cmd+Enter → Save & Close (works from anywhere in the modal).
@@ -475,6 +478,6 @@ export function MbFocusModal({
           </div>
         </div>
       )}
-    </dialog>
+    </Dialog>
   );
 }

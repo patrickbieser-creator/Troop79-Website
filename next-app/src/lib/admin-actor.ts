@@ -4,16 +4,19 @@
  *
  * Two session types reach the workspace during the transition:
  *
- *   1. `t79_leader_session` — the legacy shared-password login. Still fully
- *      supported; retires in Phase E.
+ *   1. `t79_leader_session` — the legacy shared-password login. The password
+ *      itself retired in Phase E (2026-08-16) and nothing mints this cookie
+ *      anymore (break-glass issues identity sign-in codes, and login/actions
+ *      only deletes it) — the branch below is inert, kept until someone does
+ *      the deletion refactor.
  *   2. `t79_identity` — a verified person who holds at least one capability.
  *      This is the one that makes "a leader who is also a parent signs in
  *      once" true.
  *
  * Callers should never branch on which cookie was presented. They ask for a
  * capability and get an answer — that is the whole point of the abstraction,
- * and it is what lets Phase E delete the legacy branch without touching a
- * single page.
+ * and it is what let Phase E retire the password without touching a single
+ * page (and what lets the dead branch be deleted the same way, whenever).
  *
  * Server-only: needs next/headers. The framework-agnostic half lives in
  * lib/capabilities.ts so proxy.ts (Edge) can still import the vocabulary.
@@ -38,7 +41,8 @@ export interface AdminActor {
   capabilities: Set<Capability>;
   /** 'leader' when kind === 'legacy'; null for identity actors. The only
    *  remaining reader is the workspace layout's full-admin check — a legacy
-   *  password session sees everything. Goes away in Phase E. */
+   *  password session sees everything. Dead in practice since Phase E
+   *  (2026-08-16): no code path mints a legacy session anymore. */
   legacyRole: SessionRole | null;
   /** 'adult' | 'scout' for an identity actor; null for a legacy session
    *  (SCOUT_PASSWORD is retired, so a legacy actor is never a scout).
@@ -54,11 +58,12 @@ export interface AdminActor {
 /**
  * TRANSITION SHIM — a legacy session gets a synthetic capability set.
  *
- * A LEADER_PASSWORD session grants full admin today, so it maps to every
- * capability; otherwise converting a page to requireCapability() would lock
- * out the people currently using the site. This is the reason the switchover
- * is safe to do one page at a time rather than in one commit. It dies in
- * Phase E with the password.
+ * A LEADER_PASSWORD session granted full admin, so it mapped to every
+ * capability; otherwise converting a page to requireCapability() would have
+ * locked out the people using the site mid-transition. This is what made the
+ * switchover safe to do one page at a time rather than in one commit. The
+ * password died in Phase E (2026-08-16); this shim is now unreachable and
+ * rides along until the legacy branch is deleted.
  *
  * The SCOUT_PASSWORD half of this shim is gone (Phase C, 2026-08-16). It
  * mapped a scout session to `news.write`, which — once news.author and

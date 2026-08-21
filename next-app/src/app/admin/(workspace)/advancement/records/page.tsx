@@ -6,7 +6,7 @@
  * independent human confirmations per row: submitted to Scoutbook, and
  * presented to the scout (a regular meeting or a Court of Honor — the troop
  * does both, so this isn't tied to any specific event record). Same
- * underlying ledger_entries rows and mutations as the Universal Ledger —
+ * underlying ledger_entries rows and mutations as the Advancement Ledger —
  * this is a filtered, purpose-built read of the same source of truth, not a
  * separate store.
  */

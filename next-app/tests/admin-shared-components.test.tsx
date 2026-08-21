@@ -13,6 +13,7 @@ import {
 } from '../src/app/admin/(workspace)/_components/dialog';
 import { PageTitle } from '../src/app/admin/(workspace)/_components/page-title';
 import { Notice } from '../src/app/admin/(workspace)/_components/notice';
+import { SortHeader, useSortable } from '../src/app/admin/(workspace)/_components/use-sortable';
 
 /**
  * Phase A of Plans/Admin-Design-System.md — the first shared admin UI
@@ -171,6 +172,30 @@ describe('Dialog', () => {
     await userEvent.click(screen.getByTestId('dlg'));
     expect(onClose).toHaveBeenCalledOnce();
   });
+
+  it('SharedDialog_KeepsOpen_WhenBackdropClickedAndCloseOnBackdropFalse', async () => {
+    const onClose = vi.fn();
+    render(
+      <Dialog open closeOnBackdrop={false} onClose={onClose} data-testid="dlg">
+        <DialogBody>Guarded content</DialogBody>
+      </Dialog>
+    );
+    // The consumer owns the close decision (e.g. fast-entry's unsaved-ticks
+    // guard) — a backdrop click must not silently close the dialog.
+    await userEvent.click(screen.getByTestId('dlg'));
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('SharedDialog_FiresOnBackdropAttempt_WhenCloseOnBackdropFalse', async () => {
+    const onBackdropAttempt = vi.fn();
+    render(
+      <Dialog open closeOnBackdrop={false} onBackdropAttempt={onBackdropAttempt} data-testid="dlg">
+        <DialogBody>Guarded content</DialogBody>
+      </Dialog>
+    );
+    await userEvent.click(screen.getByTestId('dlg'));
+    expect(onBackdropAttempt).toHaveBeenCalledOnce();
+  });
 });
 
 describe('PageTitle', () => {
@@ -247,5 +272,86 @@ describe('ActionsMenu', () => {
     const select = screen.getByRole('combobox', { name: 'Finance actions' }) as HTMLSelectElement;
     await userEvent.selectOptions(select, 'record');
     expect(select.value).toBe('');
+  });
+});
+
+describe('SortHeader', () => {
+  it('SharedSortHeader_FiresSortCallback_WhenClicked', async () => {
+    const toggle = vi.fn();
+    render(
+      <table>
+        <thead>
+          <tr>
+            <SortHeader label="Name" colKey="name" sortKey="name" sortDir="asc" toggle={toggle} />
+          </tr>
+        </thead>
+      </table>
+    );
+    await userEvent.click(screen.getByRole('button', { name: /Name/ }));
+    expect(toggle).toHaveBeenCalledExactlyOnceWith('name');
+  });
+
+  it('SharedSortHeader_AnnouncesAriaSort_WhenActive', () => {
+    render(
+      <table>
+        <thead>
+          <tr>
+            <SortHeader label="Rank" colKey="rank" sortKey="rank" sortDir="desc" toggle={() => {}} />
+          </tr>
+        </thead>
+      </table>
+    );
+    expect(screen.getByRole('columnheader').getAttribute('aria-sort')).toBe('descending');
+  });
+
+  it('SharedSortHeader_ReportsNone_WhenInactive', () => {
+    render(
+      <table>
+        <thead>
+          <tr>
+            <SortHeader label="Age" colKey="age" sortKey="name" sortDir="asc" toggle={() => {}} />
+          </tr>
+        </thead>
+      </table>
+    );
+    expect(screen.getByRole('columnheader').getAttribute('aria-sort')).toBe('none');
+  });
+});
+
+/* Module scope on purpose — useSortable's getValue contract. */
+function probeValue(row: { kind: string; name: string }, key: 'name'): unknown {
+  return key === 'name' ? row.name : undefined;
+}
+
+describe('useSortable', () => {
+  function Probe({ rows }: { rows: { kind: string; name: string }[] }) {
+    const { sorted, sortKey, sortDir, toggle } = useSortable<{ kind: string; name: string }, 'name'>(
+      rows,
+      probeValue,
+      null
+    );
+    return (
+      <div>
+        <output data-testid="order">{sorted.map((r) => r.name).join(',')}</output>
+        <table>
+          <thead>
+            <tr>
+              <SortHeader label="Name" colKey="name" sortKey={sortKey} sortDir={sortDir} toggle={toggle} />
+            </tr>
+          </thead>
+        </table>
+      </div>
+    );
+  }
+
+  it('SharedUseSortable_PreservesInputOrder_WhenInitialKeyNull', () => {
+    render(<Probe rows={[{ kind: 'scout', name: 'Zoe' }, { kind: 'adult', name: 'Al' }]} />);
+    expect(screen.getByTestId('order').textContent).toBe('Zoe,Al');
+  });
+
+  it('SharedUseSortable_SortsAscending_OnFirstToggle', async () => {
+    render(<Probe rows={[{ kind: 'scout', name: 'Zoe' }, { kind: 'adult', name: 'Al' }]} />);
+    await userEvent.click(screen.getByRole('button', { name: /Name/ }));
+    expect(screen.getByTestId('order').textContent).toBe('Al,Zoe');
   });
 });

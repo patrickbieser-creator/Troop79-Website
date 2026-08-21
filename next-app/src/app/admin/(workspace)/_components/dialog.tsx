@@ -35,6 +35,15 @@ type DialogProps = {
   danger?: boolean;
   /** Fired on every close path: Esc, backdrop click, or a .close() call. */
   onClose?: () => void;
+  /** Default true. Pass false when the CONSUMER owns the close decision —
+   *  e.g. fast-entry's MB focus modal guards unsaved ticks — so a backdrop
+   *  click never silently closes. Esc still fires the native `cancel`
+   *  event, which the consumer intercepts via onCancel + preventDefault
+   *  (that path has always been consumer-interceptable and stays so). */
+  closeOnBackdrop?: boolean;
+  /** With closeOnBackdrop={false}: fired when a backdrop click is refused,
+   *  so the consumer can route it through its own guarded close attempt. */
+  onBackdropAttempt?: () => void;
   /** Width/size override only (e.g. a per-screen `.wide` class capping at
    *  900px) — the spec chrome itself is not overridable. */
   className?: string;
@@ -42,7 +51,7 @@ type DialogProps = {
 } & Omit<React.DialogHTMLAttributes<HTMLDialogElement>, 'className' | 'onClose'>;
 
 export const Dialog = forwardRef<HTMLDialogElement, DialogProps>(function Dialog(
-  { danger, onClose, className, children, ...rest },
+  { danger, onClose, closeOnBackdrop = true, onBackdropAttempt, className, children, ...rest },
   ref
 ) {
   const cls = [styles.dialog, danger ? styles.danger : null, className]
@@ -54,7 +63,9 @@ export const Dialog = forwardRef<HTMLDialogElement, DialogProps>(function Dialog
       className={cls}
       onClose={onClose}
       onClick={(e) => {
-        if (e.target === e.currentTarget) e.currentTarget.close();
+        if (e.target !== e.currentTarget) return;
+        if (closeOnBackdrop) e.currentTarget.close();
+        else onBackdropAttempt?.();
       }}
       {...rest}
     >
