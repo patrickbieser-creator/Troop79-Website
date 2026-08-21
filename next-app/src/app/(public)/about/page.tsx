@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { SectionDivider } from '@/app/_components/section-divider';
 import shell from '../../_components/news-cards.module.css';
 import styles from '../../_components/about-join.module.css';
 
@@ -46,10 +47,7 @@ export default function AboutPage() {
             </div>
 
             <section className={styles.proseSection} aria-labelledby="who-we-are">
-              <div className={shell.sectionDivider}>
-                <span className={shell.divLabel} id="who-we-are">Who We Are</span>
-                <span className={shell.divRule} aria-hidden="true" />
-              </div>
+              <SectionDivider label={<span id="who-we-are">Who We Are</span>} />
               <div className={styles.prose}>
                 <p>
                   Troop 79 was founded in 2022 and is chartered through Scouts
@@ -68,10 +66,7 @@ export default function AboutPage() {
             </section>
 
             <section className={styles.proseSection} aria-labelledby="scout-led">
-              <div className={shell.sectionDivider}>
-                <span className={shell.divLabel} id="scout-led">Scout-Led, Adult-Supported</span>
-                <span className={shell.divRule} aria-hidden="true" />
-              </div>
+              <SectionDivider label={<span id="scout-led">Scout-Led, Adult-Supported</span>} />
               <div className={styles.prose}>
                 <p>
                   Scouts are organized into patrols, plan the meetings, and —
@@ -85,10 +80,7 @@ export default function AboutPage() {
             </section>
 
             <section className={styles.proseSection} aria-labelledby="what-we-do">
-              <div className={shell.sectionDivider}>
-                <span className={shell.divLabel} id="what-we-do">What We Do</span>
-                <span className={shell.divRule} aria-hidden="true" />
-              </div>
+              <SectionDivider label={<span id="what-we-do">What We Do</span>} />
               <div className={styles.prose}>
                 <p>
                   Between Sunday meetings the troop calendar fills with
@@ -103,10 +95,7 @@ export default function AboutPage() {
             </section>
 
             <section className={styles.proseSection} aria-labelledby="advancement-open">
-              <div className={shell.sectionDivider}>
-                <span className={shell.divLabel} id="advancement-open">Advancement, In the Open</span>
-                <span className={shell.divRule} aria-hidden="true" />
-              </div>
+              <SectionDivider label={<span id="advancement-open">Advancement, In the Open</span>} />
               <div className={styles.prose}>
                 <p>
                   This website is more than a newsletter. Every requirement a

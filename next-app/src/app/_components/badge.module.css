@@ -49,3 +49,10 @@
   color: var(--bark);
   border: 1px solid var(--khaki);
 }
+
+/* caps={false} — mixed-case badge content (dates, names); decided by
+   Patrick 2026-08-21 for library's "✓ Completed Mar 2026". */
+.noCaps {
+  text-transform: none;
+  letter-spacing: 0.02em;
+}

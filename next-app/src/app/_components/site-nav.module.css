@@ -102,7 +102,7 @@
   border-bottom-color: var(--navy);
 }
 
-@media (max-width: 700px) {
+@media (max-width: 640px) {
   .navInner {
     padding: 0 12px;
     gap: 8px;
@@ -168,16 +168,10 @@
   white-space: nowrap;
 }
 
+/* Layout-only since Phase C — the chip itself is the shared Button
+   (variant primary, size sm); this class carries the masthead's flex
+   placement plus the mobile full-width treatment below. */
 .mastheadJoin {
-  font-family: var(--font-ui);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  background: var(--forest);
-  color: #fff;
-  padding: 7px 16px;
-  border-radius: 2px;
   flex-shrink: 0;
   white-space: nowrap;
 }
@@ -199,6 +193,10 @@
   flex-shrink: 0;
 }
 
+/* deliberate: masthead-tuned breakpoints (2026-08-16 mobile QA), NOT the
+   480/640/900 canon. 62rem≈992: folding to 900 re-shows the tagline where
+   the wordmark+Join already crowd; 34rem≈544: folding to 480 overflows the
+   38px nowrap wordmark between 480-544. Both stay. */
 @media (max-width: 62rem) {
   .mastheadRule,
   .mastheadTagline {
@@ -222,9 +220,11 @@
     font-size: 11px;
     letter-spacing: 0.08em;
   }
-  .mastheadJoin {
-    /* Own row, full width: the recruiting CTA is worth a real tap target, and
-       squeezing it beside a 26px wordmark leaves neither legible. */
+  /* Own row, full width: the recruiting CTA is worth a real tap target, and
+     squeezing it beside a 26px wordmark leaves neither legible. Doubled
+     selector out-specifies the shared Button's .sm padding (styleguide rule:
+     out-specify, never rely on stylesheet order). */
+  .mastheadInner .mastheadJoin {
     width: 100%;
     text-align: center;
     padding: 10px 16px;

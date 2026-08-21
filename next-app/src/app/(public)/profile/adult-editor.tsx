@@ -3,7 +3,7 @@
 import { useTransition } from 'react';
 import { EDITABLE_PERSON_FIELDS, type ChangeRequestRow } from '@/lib/change-requests';
 import { displayValue, pendingFields, type DraftValues } from '@/lib/profile-draft';
-import { DatePickerField } from '@/app/admin/(workspace)/_components/date-picker-field';
+import { DateField } from '@/app/_components/date-field';
 import { EditField } from './edit-field';
 import { EditorActions } from './editor-actions';
 import styles from './profile.module.css';
@@ -118,10 +118,10 @@ export default function AdultEditor({
           previous={displayValue(adult.birthdate)}
         >
           {(a) => (
-            <DatePickerField
+            <DateField
               {...a}
               value={values.birthdate ?? ''}
-              onChange={(v) => onChange('birthdate', v)}
+              onChange={(e) => onChange('birthdate', e.target.value)}
             />
           )}
         </EditField>

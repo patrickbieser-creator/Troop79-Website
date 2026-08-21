@@ -87,6 +87,14 @@
   /* Focus */
   --focus-ring: 2px solid var(--navy-light);
 
+  /* On-dark ink — text/rules sitting on the navy field (footer, dark
+     bands). Added Phase C to end the per-file rgba(255,255,255,…) drift;
+     no other white-alpha values on navy, use these. */
+  --on-navy-strong: rgba(255, 255, 255, 0.85);
+  --on-navy-soft:   rgba(255, 255, 255, 0.7);
+  --on-navy-faint:  rgba(255, 255, 255, 0.55);
+  --on-navy-rule:   rgba(255, 255, 255, 0.15);
+
   /* Breakpoints — documentation, not tokens (custom properties can't be read
      inside @media). The canon new queries must use, and the set Phase C folds
      the 17 in-the-wild values onto:

@@ -34,7 +34,7 @@
 }
 .item:last-child { border-bottom: none; }
 .item:hover { background: var(--newsprint); }
-.dateBlock { background: var(--navy); color: #fff; text-align: center; padding: 4px 6px 6px; border-radius: 2px; }
+.dateBlock { background: var(--navy); color: var(--warm-white); text-align: center; padding: 4px 6px 6px; border-radius: 2px; }
 .dateBlock .eWkd { font-family: var(--font-ui); font-size: 9px; font-weight: 700; letter-spacing: .1em; opacity: .8; }
 .dateBlock .eDay { font-family: var(--font-display); font-size: 21px; font-weight: 700; line-height: 1.15; }
 .dateBlock .eDayRange { font-size: 15px; padding-top: 3px; }
@@ -78,7 +78,7 @@
   padding: 5px 12px; white-space: nowrap;
   transition: background var(--transition), color var(--transition);
 }
-.rowAction:hover { background: var(--forest); color: #fff; }
+.rowAction:hover { background: var(--forest); color: var(--warm-white); }
 .rowAction:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
 .spanNote { font-family: var(--font-ui); font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--text-meta); margin-top: 2px; }
 .colTime { font-family: var(--font-ui); font-size: 12px; color: var(--text-body); padding-top: 4px; white-space: nowrap; }
@@ -111,7 +111,7 @@
 .pastItem { opacity: .7; }
 .pastItem .dateBlock { background: var(--border-mid); }
 
-@media (max-width: 860px) {
+@media (max-width: 900px) {
   .item { grid-template-columns: 60px minmax(0, 1fr) 110px 150px 96px; }
 }
 
@@ -207,7 +207,7 @@
 }
 .subscribeCopyBtn {
   font-family: var(--font-ui); font-size: 11px; font-weight: 700; letter-spacing: .03em;
-  color: #fff; background: var(--forest); border: none; border-radius: 2px; padding: 7px 12px; cursor: pointer;
+  color: var(--warm-white); background: var(--forest); border: none; border-radius: 2px; padding: 7px 12px; cursor: pointer;
   transition: background var(--transition); white-space: nowrap; flex-shrink: 0;
 }
 .subscribeCopyBtn:hover { background: var(--forest-light); }
@@ -313,7 +313,7 @@
   font-family: var(--font-ui); font-size: 12px; font-weight: 600; color: var(--text-body);
   width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;
 }
-.dayCell.isToday .dayNum { background: var(--navy); color: #fff; font-weight: 700; }
+.dayCell.isToday .dayNum { background: var(--navy); color: var(--warm-white); font-weight: 700; }
 
 .chipList { display: flex; flex-direction: column; gap: 2px; margin-top: calc(var(--lane-count, 0) * 22px); }
 .chip {
@@ -351,7 +351,7 @@
   .dayCell { min-height: calc(84px + var(--lane-count, 0) * 22px); }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 640px) {
   .filterCluster { align-items: stretch; width: 100%; }
   .filterControls { flex-wrap: wrap; justify-content: stretch; }
   .filterSelect { flex: 1 1 auto; }

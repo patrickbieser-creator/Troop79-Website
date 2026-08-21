@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { Button } from '@/app/_components/button';
+import { EmptyState } from '@/app/_components/empty-state';
 import { TagFilter } from './tag-filter';
 import controls from './news-controls.module.css';
 import { loadNewsIndex, loadAllTags } from '@/lib/news-feed';
@@ -69,9 +71,9 @@ export default async function NewsIndexPage({
               button beats a discoverable-but-dead link, and a visitor who
               cannot submit should not be offered the option. */}
           {canSubmit && !archive && (
-            <Link href="/news/submit" className={controls.submitBtn}>
+            <Button variant="primary" size="sm" href="/news/submit" className={controls.headerCta}>
               Submit a Story
-            </Link>
+            </Button>
           )}
         </span>
       </div>
@@ -79,9 +81,9 @@ export default async function NewsIndexPage({
       <main className={styles.mainContent}>
 
         {items.length === 0 ? (
-          <p className={styles.empty}>
+          <EmptyState>
             {archive ? 'Nothing archived yet.' : 'No news published yet — check back soon.'}
-          </p>
+          </EmptyState>
         ) : (
           <div className={styles.storyGrid}>
             {items.map((item) => (

@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { NavLinks } from './nav-links';
 import { UtilityDate } from './utility-date';
 import { SignedInAs } from './signed-in-as';
+import { Button } from './button';
 import styles from './site-nav.module.css';
 
 // Deliberately NOT async and does not read cookies()/headers() — this layout
@@ -53,9 +54,9 @@ export function SiteNav() {
           {/* Moved out of the nav strip (Patrick, 2026-08-16) so the nav is
               purely navigation and the recruiting call to action sits with the
               masthead's identity block, left of the tagline. */}
-          <Link href="/join" className={styles.mastheadJoin}>
+          <Button href="/join" size="sm" className={styles.mastheadJoin}>
             Join Troop 79
-          </Link>
+          </Button>
           <div className={styles.mastheadRule} />
           <p className={styles.mastheadTagline}>
             Prepared. Courageous.

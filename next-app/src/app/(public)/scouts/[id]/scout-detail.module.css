@@ -144,7 +144,7 @@
 }
 .earned {
   border-top-color: var(--forest);
-  background: #f6f9f3;
+  background: var(--status-success-bg);
 }
 .current {
   border-top-color: var(--navy);
@@ -188,7 +188,10 @@
 }
 .current .pin { background: var(--navy); }
 
-/* Section divider */
+/* Section divider — deliberately NOT the shared <SectionDivider> (Phase C):
+   this one is print-load-bearing (the @media print block below re-tunes its
+   margins/sizes for the two-page Clipboard) and carries the .divMeta slot
+   the shared component lacks. The one sanctioned local divider. */
 .sectionDivider {
   display: flex;
   align-items: center;
@@ -217,7 +220,7 @@
 /* Clipboard (dense report) */
 .clipboard {
   background: var(--warm-white);
-  border: 1px solid #6b6357;
+  border: 1px solid var(--text-meta);
   box-shadow: var(--shadow-card);
   padding: 16px;
   margin-bottom: 28px;
@@ -241,6 +244,9 @@
   color: var(--text-meta);
   font-variant-numeric: tabular-nums;
 }
+/* deliberate: #999/#aaa/#efeae0 below are the printed Clipboard's pencil
+   grid — print fidelity is column-for-column against the troop's original
+   one-sheet, so these neutral print grays stay off the palette. */
 .rankColumns {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -280,7 +286,7 @@
   color: var(--text-head);
   text-align: center;
   text-decoration: underline;
-  background: #f0ebe0;
+  background: var(--newsprint);
   padding: 6px 4px;
   border-bottom: 1px solid #aaa;
 }
@@ -351,7 +357,7 @@
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--text-meta);
-  background: #f0ebe0;
+  background: var(--newsprint);
   border-radius: 3px;
 }
 .bor {
@@ -801,7 +807,10 @@
   .metricsStrip { grid-template-columns: repeat(3, 1fr); }
   .metric { border-bottom: 1px solid var(--border-light); }
   .rankTimeline { grid-template-columns: repeat(4, 1fr); }
-  .rankColumns { grid-template-columns: 1fr; }
+  /* deliberate: #999/#aaa/#efeae0 below are the printed Clipboard's pencil
+   grid — print fidelity is column-for-column against the troop's original
+   one-sheet, so these neutral print grays stay off the palette. */
+.rankColumns { grid-template-columns: 1fr; }
   .rankBlock {
     border-right: none;
     border-bottom: 1px solid #aaa;

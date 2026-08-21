@@ -7,7 +7,7 @@
   padding: 32px 24px 0;
 }
 .pageHeader h1 {
-  font-family: var(--font-display, 'Playfair Display', Georgia, serif);
+  font-family: var(--font-display);
   font-size: 36px;
   font-weight: 700;
   color: var(--text-head);
@@ -20,11 +20,11 @@
   gap: 16px;
   flex-wrap: wrap;
   margin-bottom: 20px;
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--font-ui);
   font-size: 12px;
   color: var(--text-meta);
 }
-.pageHeaderRule { height: 2px; background: var(--border-mid, #c8bfaf); }
+.pageHeaderRule { height: 2px; background: var(--border-mid, var(--border-mid)); }
 
 /* ── date strip ── */
 .dateStrip {
@@ -34,11 +34,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--font-ui);
 }
 .dateStripCenter { text-align: center; }
 .dateStripDate {
-  font-family: var(--font-display, 'Playfair Display', Georgia, serif);
+  font-family: var(--font-display);
   font-size: 17px;
   font-weight: 700;
   color: var(--text-head);
@@ -84,10 +84,10 @@
 }
 .bannerInner {
   background: var(--cream);
-  border: 1px solid var(--border-mid, #c8bfaf);
+  border: 1px solid var(--border-mid, var(--border-mid));
   border-left: 4px solid var(--bark);
   padding: 12px 18px;
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--font-ui);
   font-size: 13px;
   color: var(--text-body);
 }
@@ -139,7 +139,7 @@
   flex-wrap: wrap;
 }
 .glanceDayLabel {
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--font-ui);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: .12em;
@@ -148,21 +148,21 @@
   margin-bottom: 2px;
 }
 .glanceDate {
-  font-family: var(--font-display, 'Playfair Display', Georgia, serif);
+  font-family: var(--font-display);
   font-size: 32px;
   font-weight: 700;
   color: var(--text-head);
   line-height: 1.15;
 }
 .glanceTime {
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--font-ui);
   font-size: 14px;
   color: var(--text-body);
   margin-top: 4px;
 }
 .uniformBadge {
   display: inline-block;
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--font-ui);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: .06em;
@@ -178,10 +178,10 @@
   grid-template-columns: 1fr 1fr;
   padding: 20px 24px 14px;
 }
-@media (max-width: 560px) { .glanceDetails { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .glanceDetails { grid-template-columns: 1fr; } }
 .glanceItem { padding: 10px 0; border-top: 1px solid var(--border-light); }
 .glanceLabel {
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--font-ui);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: .1em;
@@ -190,7 +190,7 @@
   margin-bottom: 3px;
 }
 .glanceValue {
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--font-ui);
   font-size: 14px;
   font-weight: 600;
   color: var(--text-head);
@@ -201,7 +201,7 @@
 
 /* ── section labels ── */
 .sectionLabel {
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--font-ui);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: .14em;
@@ -223,7 +223,7 @@
   margin-bottom: 12px;
 }
 .preTime {
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--font-ui);
   font-size: 12px;
   font-weight: 700;
   color: var(--bark);
@@ -231,21 +231,21 @@
   margin-bottom: 2px;
 }
 .preTitle {
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--font-ui);
   font-size: 16px;
   font-weight: 700;
   color: var(--text-head);
   margin-bottom: 6px;
 }
 .preDesc {
-  font-family: var(--font-body, 'Lora', Georgia, serif);
+  font-family: var(--font-body);
   font-size: 14px;
   color: var(--text-body);
   line-height: 1.65;
   margin-bottom: 8px;
 }
 .preContact {
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--font-ui);
   font-size: 12px;
   color: var(--text-meta);
 }
@@ -258,7 +258,7 @@
 .timeCol {
   padding: 16px 12px 16px 0;
   text-align: right;
-  border-right: 2px solid var(--border-mid, #c8bfaf);
+  border-right: 2px solid var(--border-mid, var(--border-mid));
   position: relative;
 }
 .timeCol::after {
@@ -269,14 +269,14 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--border-mid, #c8bfaf);
+  background: var(--border-mid, var(--border-mid));
   border: 2px solid var(--newsprint);
 }
 .agendaRow:first-of-type .timeCol::after { background: var(--navy); }
 .timeContinuation .agendaTime { visibility: hidden; }
 .timeContinuation::after { display: none; }
 .agendaTime {
-  font-family: var(--font-display, 'Playfair Display', Georgia, serif);
+  font-family: var(--font-display);
   font-size: 16px;
   font-weight: 700;
   color: var(--text-head);
@@ -290,7 +290,7 @@
 
 .trackBadge {
   display: inline-block;
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--font-ui);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: .08em;
@@ -305,7 +305,7 @@
 .trackMeritBadge { background: var(--bark); }
 
 .itemTitle {
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--font-ui);
   font-size: 15px;
   font-weight: 700;
   color: var(--text-head);
@@ -313,20 +313,20 @@
   margin-bottom: 4px;
 }
 .itemLeader {
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--font-ui);
   font-size: 12px;
   color: var(--text-meta);
   margin-bottom: 6px;
 }
 .itemDesc {
-  font-family: var(--font-body, 'Lora', Georgia, serif);
+  font-family: var(--font-body);
   font-size: 14px;
   color: var(--text-body);
   line-height: 1.65;
   margin-bottom: 8px;
 }
 .itemScouts {
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--font-ui);
   font-size: 12px;
   color: var(--text-meta);
   line-height: 1.5;
@@ -341,7 +341,7 @@
   border: 1px solid var(--border-light);
   border-radius: 2px;
   padding: 6px 12px;
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--font-ui);
   font-size: 11px;
   font-weight: 600;
   color: var(--navy);
@@ -349,7 +349,7 @@
   list-style: none;
 }
 .reqSummary::-webkit-details-marker { display: none; }
-.reqSummary:hover { background: var(--newsprint); border-color: var(--border-mid, #c8bfaf); }
+.reqSummary:hover { background: var(--newsprint); border-color: var(--border-mid, var(--border-mid)); }
 .reqContent {
   background: var(--newsprint);
   border: 1px solid var(--border-light);
@@ -360,14 +360,14 @@
 .reqItem { margin-bottom: 8px; }
 .reqItem:last-child { margin-bottom: 0; }
 .reqId {
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--font-ui);
   font-size: 11px;
   font-weight: 700;
   color: var(--bark);
   margin-bottom: 2px;
 }
 .reqText {
-  font-family: var(--font-body, 'Lora', Georgia, serif);
+  font-family: var(--font-body);
   font-size: 13px;
   color: var(--text-body);
   line-height: 1.6;
@@ -382,7 +382,7 @@
   margin-bottom: 18px;
 }
 .sideCard h4 {
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--font-ui);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: .12em;
@@ -391,7 +391,7 @@
   margin-bottom: 10px;
 }
 .sideItem {
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--font-ui);
   font-size: 13px;
   color: var(--text-body);
   padding: 5px 0;
@@ -401,13 +401,13 @@
 .archiveList { list-style: none; }
 .archiveList li { padding: 4px 0; }
 .archiveList a {
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--font-ui);
   font-size: 13px;
   color: var(--forest);
 }
 .archiveList a:hover { text-decoration: underline; }
 .archiveCurrent {
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--font-ui);
   font-size: 13px;
   font-weight: 700;
   color: var(--text-head);
@@ -425,20 +425,20 @@
   margin: 0 auto;
   background: var(--warm-white);
   border: 1px solid var(--border-light);
-  border-top: 4px solid var(--border-mid, #c8bfaf);
+  border-top: 4px solid var(--border-mid, var(--border-mid));
   border-radius: 2px;
   padding: 48px 40px;
   box-shadow: var(--shadow-card, 0 1px 3px rgba(0,0,0,.06));
 }
 .noMeetingDate {
-  font-family: var(--font-display, 'Playfair Display', Georgia, serif);
+  font-family: var(--font-display);
   font-size: 28px;
   font-weight: 700;
   color: var(--text-head);
   margin-bottom: 8px;
 }
 .noMeetingReason {
-  font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
+  font-family: var(--font-ui);
   font-size: 14px;
   font-weight: 600;
   color: var(--bark);
@@ -447,7 +447,7 @@
   margin-bottom: 16px;
 }
 .noMeetingMsg {
-  font-family: var(--font-body, 'Lora', Georgia, serif);
+  font-family: var(--font-body);
   font-size: 16px;
   line-height: 1.65;
   color: var(--text-body);

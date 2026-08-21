@@ -16,7 +16,10 @@ import {
 } from 'react';
 import s from './form.module.css';
 
-const FieldCtx = createContext<{ id?: string; describedBy?: string }>({});
+/* Exported for sibling field controls (date-field.tsx) — screen code should
+   never consume this directly; put controls inside <Field> instead. */
+export const FieldContext = createContext<{ id?: string; describedBy?: string }>({});
+const FieldCtx = FieldContext;
 
 export function FormCard({ className, children }: { className?: string; children: ReactNode }) {
   return <div className={[s.formCard, className].filter(Boolean).join(' ')}>{children}</div>;

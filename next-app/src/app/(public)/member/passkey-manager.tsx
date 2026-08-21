@@ -86,9 +86,9 @@ export function PasskeyManager({
               </span>
               <form action={remove}>
                 <input type="hidden" name="credentialId" value={k.id} />
-                <button type="submit" className={styles.passkeyRemove}>
+                <Button variant="dangerGhost" type="submit">
                   Remove
-                </button>
+                </Button>
               </form>
             </li>
           ))}

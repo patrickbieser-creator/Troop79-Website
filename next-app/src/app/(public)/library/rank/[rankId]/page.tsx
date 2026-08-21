@@ -12,6 +12,7 @@ import { resolveLibraryViewer, viewerIsLeader } from '@/lib/library-viewer';
 import { ScoutSwitcher } from '../../_components/scout-switcher';
 import { PageHeader, KickerSep } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
+import { Badge } from '@/app/_components/badge';
 import styles from '../../library.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -86,13 +87,13 @@ export default async function LibraryRankPage({
                   <span className={`${styles.reqTag} ${styles.reqTagGhost}`}>{req.code}</span>
                   <span className={styles.reqLabel}>{req.label}</span>
                   {doneDate && (
-                    <span className={styles.reqDoneBadge}>
+                    <Badge tone="accent" caps={false}>
                       ✓{' '}
                       {new Date(doneDate).toLocaleDateString('en-US', {
                         month: 'short',
                         year: 'numeric'
                       })}
-                    </span>
+                    </Badge>
                   )}
                   {n > 0 ? (
                     <span className={styles.reqResCount}>

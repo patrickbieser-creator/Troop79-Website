@@ -216,7 +216,7 @@
   color: var(--warm-white);
   white-space: nowrap;
 }
-.rankScout        { background: #7a7068; }
+.rankScout        { background: #7a7068; } /* deliberate: categorical rank ramp (its siblings use brand tokens; Scout has no token twin) */
 .rankTenderfoot   { background: var(--bark); }
 .rankSecondClass  { background: var(--forest); }
 .rankFirstClass   { background: var(--navy); }
@@ -286,6 +286,9 @@
 }
 .leaderCtaLink:hover { background: var(--forest-light); }
 
+/* deliberate: 720px, not the 640/900 canon — this is where the roster
+   layout genuinely stops fitting; folding either way breaks 640-720 or
+   degrades 720-900. */
 @media (max-width: 720px) {
   .statsStrip { grid-template-columns: repeat(2, 1fr); }
   .rankGrid   { grid-template-columns: repeat(4, 1fr); }

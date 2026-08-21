@@ -1,30 +1,27 @@
 /* Shared date-picker trigger + popover, built on react-day-picker and
-   themed with the admin --admin-* tokens (admin.module.css). Base grid/
-   layout comes from react-day-picker/style.css; colors/spacing here
-   override its --rdp-* custom properties instead of fighting its markup.
+   themed with the admin --admin-* tokens. Base grid/layout comes from
+   react-day-picker/style.css; colors/spacing here override its --rdp-*
+   custom properties instead of fighting its markup.
 
-   EVERY --admin-* READ IS A THREE-LINK CHAIN: the admin token, then the
-   public site's equivalent from globals.css, then a literal matching the
-   admin value. This is not belt-and-braces — admin.module.css scopes
-   --admin-* to .adminRoot, so on a public page every one of them is
-   undefined, and `border: 1px solid var(--admin-gray-300)` with an
-   undefined var is invalid at computed-value time: the browser drops the
-   whole declaration rather than falling back. The field therefore rendered
-   completely unstyled on /profile — no border, no background — the moment
-   it was reused outside admin (reported 2026-08-14). Keep the chain intact
-   when adding rules here; a bare var(--admin-x) is a latent bug the admin
-   screens will never reveal. */
+   ADMIN-ONLY since Public Design System Phase C (2026-08-21, decision
+   option b): the public profile editors now use the public DateField
+   (src/app/_components/date-field.tsx — a styled native input), so the
+   31 three-link fallback chains this file carried to survive on public
+   pages are deleted; reads are plain var(--admin-*) again (fine since the
+   Foundation phase moved admin tokens to :root). Do NOT import this
+   component from public routes — that firewall breach is exactly what
+   Phase C removed. */
 
 .wrapper {
   position: relative;
   display: flex;
   align-items: stretch;
-  border: 1px solid var(--admin-gray-300, var(--border-mid, #cdd1d6));
+  border: 1px solid var(--admin-gray-300);
   border-radius: 3px;
-  background: var(--admin-white, var(--warm-white, #ffffff));
+  background: var(--admin-white);
 }
-.wrapper:focus-within { border-color: var(--admin-navy, var(--navy, #1e3a4a)); }
-.wrapperDisabled { background: var(--admin-gray-100, var(--cream, #f0f1f3)); }
+.wrapper:focus-within { border-color: var(--admin-navy); }
+.wrapperDisabled { background: var(--admin-gray-100); }
 
 .input {
   flex: 1;
@@ -34,11 +31,11 @@
   background: transparent;
   font-family: inherit;
   font-size: 13px;
-  color: var(--admin-gray-900, var(--text-head, #1a1d21));
+  color: var(--admin-gray-900);
   padding: 7px 6px 7px 9px;
 }
-.input::placeholder { color: var(--admin-gray-400, var(--text-meta, #9ba1aa)); }
-.input:disabled { color: var(--admin-gray-500, var(--text-meta, #6d7580)); cursor: not-allowed; }
+.input::placeholder { color: var(--admin-gray-400); }
+.input:disabled { color: var(--admin-gray-500); cursor: not-allowed; }
 
 .iconBtn {
   flex-shrink: 0;
@@ -47,13 +44,13 @@
   justify-content: center;
   width: 28px;
   border: none;
-  border-left: 1px solid var(--admin-gray-200, var(--border-light, #e2e4e8));
+  border-left: 1px solid var(--admin-gray-200);
   background: transparent;
-  color: var(--admin-gray-500, var(--text-meta, #6d7580));
+  color: var(--admin-gray-500);
   cursor: pointer;
   padding: 0;
 }
-.iconBtn:hover:not(:disabled) { color: var(--admin-navy, var(--navy, #1e3a4a)); background: var(--admin-gray-50, var(--newsprint, #fafbfc)); }
+.iconBtn:hover:not(:disabled) { color: var(--admin-navy); background: var(--admin-gray-50); }
 .iconBtn:disabled { cursor: not-allowed; opacity: .5; }
 
 .error {
@@ -71,10 +68,10 @@
 .popover {
   position: fixed;
   z-index: 300;
-  background: var(--admin-white, var(--warm-white, #ffffff));
-  border: 1px solid var(--admin-gray-200, var(--border-light, #e2e4e8));
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
   border-radius: var(--admin-radius, 4px);
-  box-shadow: var(--admin-shadow-md, var(--shadow-card, 0 2px 8px rgba(0,0,0,.1)));
+  box-shadow: var(--admin-shadow-md);
   padding: 10px 12px 8px;
 }
 
@@ -89,9 +86,9 @@
   max-height: 85vh;
   overflow-y: auto;
   z-index: 300;
-  background: var(--admin-white, var(--warm-white, #ffffff));
+  background: var(--admin-white);
   border-radius: 6px;
-  box-shadow: var(--admin-shadow-md, var(--shadow-card, 0 2px 8px rgba(0,0,0,.1)));
+  box-shadow: var(--admin-shadow-md);
   padding: 12px 14px 10px;
 }
 .backdrop {
@@ -103,7 +100,7 @@
 
 /* ── Calendar theming — override react-day-picker's CSS variables ──────── */
 .calendarRoot {
-  --rdp-accent-color: var(--admin-navy, var(--navy, #1e3a4a));
+  --rdp-accent-color: var(--admin-navy);
   --rdp-accent-background-color: #e5ebef;
   --rdp-day-width: 32px;
   --rdp-day-height: 32px;
@@ -114,34 +111,34 @@
   --rdp-nav_button-width: 24px;
   --rdp-nav_button-height: 24px;
   --rdp-nav-height: 2.1rem;
-  --rdp-today-color: var(--admin-forest, var(--forest, #3d7a4a));
+  --rdp-today-color: var(--admin-forest);
   --rdp-disabled-opacity: .4;
   --rdp-outside-opacity: .5;
   font-family: inherit;
   font-size: 12.5px;
 }
 .calendarRoot :global(.rdp-weekday) {
-  color: var(--admin-gray-500, var(--text-meta, #6d7580));
+  color: var(--admin-gray-500);
   font-weight: 700;
   text-transform: uppercase;
   font-size: 9.5px;
 }
-.calendarRoot :global(.rdp-chevron) { fill: var(--admin-gray-500, var(--text-meta, #6d7580)); }
+.calendarRoot :global(.rdp-chevron) { fill: var(--admin-gray-500); }
 .calendarRoot :global(.rdp-button_previous):hover :global(.rdp-chevron),
-.calendarRoot :global(.rdp-button_next):hover :global(.rdp-chevron) { fill: var(--admin-navy, var(--navy, #1e3a4a)); }
+.calendarRoot :global(.rdp-button_next):hover :global(.rdp-chevron) { fill: var(--admin-navy); }
 .calendarRoot :global(.rdp-day_button:hover:not([disabled])) {
-  background: var(--admin-gray-100, var(--cream, #f0f1f3));
+  background: var(--admin-gray-100);
 }
 .calendarRoot :global(.rdp-selected) :global(.rdp-day_button) {
-  background: var(--admin-navy, var(--navy, #1e3a4a));
-  color: var(--admin-white, var(--warm-white, #ffffff));
-  border-color: var(--admin-navy, var(--navy, #1e3a4a));
+  background: var(--admin-navy);
+  color: var(--admin-white);
+  border-color: var(--admin-navy);
   font-weight: 700;
 }
 .calendarRoot :global(.rdp-caption_label) {
   font-size: 12.5px;
   font-weight: 700;
-  color: var(--admin-navy, var(--navy, #1e3a4a));
+  color: var(--admin-navy);
 }
 
 .footer {
@@ -151,19 +148,19 @@
   gap: 8px;
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px solid var(--admin-gray-200, var(--border-light, #e2e4e8));
+  border-top: 1px solid var(--admin-gray-200);
 }
 .footerBtn {
   font-family: inherit;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: .02em;
-  background: var(--admin-white, var(--warm-white, #ffffff));
-  border: 1px solid var(--admin-gray-300, var(--border-mid, #cdd1d6));
-  color: var(--admin-gray-700, var(--text-body, #3a3f47));
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-300);
+  color: var(--admin-gray-700);
   padding: 4px 10px;
   border-radius: 3px;
   cursor: pointer;
 }
-.footerBtn:hover { border-color: var(--admin-navy, var(--navy, #1e3a4a)); color: var(--admin-navy, var(--navy, #1e3a4a)); }
-.footerToday { border-color: var(--admin-navy, var(--navy, #1e3a4a)); color: var(--admin-navy, var(--navy, #1e3a4a)); }
+.footerBtn:hover { border-color: var(--admin-navy); color: var(--admin-navy); }
+.footerToday { border-color: var(--admin-navy); color: var(--admin-navy); }

@@ -30,7 +30,7 @@
   letter-spacing: 0.05em;
   text-transform: uppercase;
   background: var(--navy);
-  color: #fff;
+  color: var(--warm-white);
   border: none;
   border-radius: 2px;
   padding: 0 18px;
@@ -98,7 +98,7 @@
   border: 1px solid var(--border-light);
   background: var(--newsprint);
 }
-@media (max-width: 560px) {
+@media (max-width: 640px) {
   .resThumb { width: 80px; height: 45px; }
 }
 .resBody { min-width: 0; flex: 1; }
@@ -156,7 +156,7 @@
   font-size: 11.5px;
   font-weight: 700;
   color: var(--forest);
-  background: #eef2ee;
+  background: var(--status-success-bg);
   border: 1px solid var(--forest-light);
   border-radius: 999px;
   padding: 3px 10px;
@@ -209,21 +209,6 @@
 .mbTileCompleted:hover { border-color: var(--bark); }
 .mbNameCompleted { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; font-size: 13.5px; font-weight: 600; color: var(--text-head); line-height: 1.3; }
 .mbCompletedDate { font-size: 10px; font-weight: 700; color: var(--bark); }
-
-.reqDoneBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-family: var(--font-ui);
-  font-size: 10.5px;
-  font-weight: 700;
-  color: var(--bark);
-  background: var(--khaki-light);
-  border: 1px solid var(--khaki);
-  border-radius: 999px;
-  padding: 2px 9px;
-  white-space: nowrap;
-}
 
 .scoutSwitcher {
   display: flex;

@@ -37,7 +37,9 @@
   border: 1px solid var(--border-mid);
   border-radius: var(--rad-sm);
   font-family: var(--font-ui);
-  font-size: 14.5px; /* off-scale canon; Phase C may fold to --fs-md */
+  font-size: 16px; /* DECIDED (Patrick, 2026-08-21, Phase C): 16px is the
+                      iOS no-zoom floor — below it Safari zooms every field
+                      focus. Deliberately off the --fs-* scale. */
   padding: 11px 13px;
   color: var(--text-body);
 }

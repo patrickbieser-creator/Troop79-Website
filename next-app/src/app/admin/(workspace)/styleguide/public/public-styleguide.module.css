@@ -191,6 +191,12 @@
   margin-top: var(--admin-space-4);
 }
 
+.specimenInlineNote {
+  font-family: var(--admin-font-ui);
+  font-size: var(--admin-text-xs);
+  color: var(--admin-gray-500);
+}
+
 .variantNote {
   font-family: var(--admin-font-ui);
   font-size: var(--admin-text-sm);

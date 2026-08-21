@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.65.0</p>
+      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.66.0</p>
     </div>
   </div>
 
@@ -494,6 +494,52 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.66.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.66.0</span>
+        <span class="release-date">August 21, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Public design system Phase C: one palette everywhere, 79 hex colors down to 7, and the last admin coupling severed</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>The second palette is gone.</strong> Eight screens (Members, sign-in,
+              news submission, scout account, reimbursements&hellip;) had quietly evolved
+              their own navy, their own green, and five spellings of gray. They now render
+              on the one canonical palette &mdash; and the whole public stylesheet set is
+              down from 79 distinct hex colors to <strong>7</strong>, each remaining one a
+              documented deliberate (the printed Clipboard&rsquo;s pencil grid, two
+              categorical tag colors, the merit-badge celebration gold).
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Forms stopped zooming on iPhones.</strong> Every shared form input
+              moved to 16px text &mdash; the threshold below which iOS Safari force-zooms on
+              tap. Profile editors also switched from the admin side&rsquo;s calendar widget
+              to a native date field (better on phones, and it severs the last styling
+              coupling between the public site and the Leader Workspace &mdash; zero admin
+              imports remain anywhere in the public code).
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>One divider, smarter buttons, honest badges.</strong> The home/about/
+              join pages&rsquo; one-off section divider folded into the shared style; the
+              Button component gained compact and quiet-danger variants (the masthead JOIN
+              chip, Submit News, and passkey Remove now share it); badges can keep mixed
+              case, so &ldquo;&#10003; Completed Mar 2026&rdquo; joined the shared Badge; and
+              the footer&rsquo;s on-navy text tones became real tokens. Responsive
+              breakpoints rationalized onto the 480/640/900 canon.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

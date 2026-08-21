@@ -30,7 +30,8 @@ import { Notice } from '@/app/_components/notice';
 import { EmptyState } from '@/app/_components/empty-state';
 import { SectionDivider } from '@/app/_components/section-divider';
 import { PublicTabStripSpecimen } from './specimens';
-import { FormCard, Field, TextInput, FieldHint } from '@/app/_components/form';
+import { FormCard, Field, TextInput } from '@/app/_components/form';
+import { DateField } from '@/app/_components/date-field';
 
 export const metadata = {
   title: 'Public Styleguide — Troop 79'
@@ -111,7 +112,7 @@ const SCOREBOARD: ReadonlyArray<readonly [string, string, string]> = [
   [
     'Page header / masthead',
     '11 files re-declare + 2 pages inline',
-    'PageHeader SHIPPED (A) — residuals: photos + events index (two-column headers), event-detail/profile .title, meeting-plan meta row (needs a meta slot), merit-badges inline (B)'
+    'PageHeader SHIPPED (A) — sanctioned local headers: photos + events index (genuine two-column layouts), event-detail/profile (kind-chip eyebrow / narrow scale; type sizes on canon since C), meeting-plan meta row (needs a meta slot)'
   ],
   [
     'Page shell (1180px)',
@@ -121,17 +122,17 @@ const SCOREBOARD: ReadonlyArray<readonly [string, string, string]> = [
   [
     'Buttons',
     '33 distinct class names / 15 files; primary green written 5× with 3 greens, 3 radii',
-    'Button SHIPPED (A), 38+ sites — residuals: news-controls submitBtn (wants size="sm"), passkeyRemove (wants danger-ghost), signOutBtn, about-join khaki CTA, calendar/pager chrome (excluded by design)'
+    'Button SHIPPED (A; size="sm" + dangerGhost added C) — submitBtn, passkeyRemove, mastheadJoin converted; sanctioned locals: signOutBtn (forest outline), scout-account proxy (compact navy), about-join khaki CTA, calendar/pager chrome'
   ],
   [
     'Pills / badges / tags',
     '46 distinct class names / 16 files',
-    'Badge SHIPPED (A) — statusTag family, hostChip, soonTag converted; CATEGORICAL tags stay by rule; reqDoneBadge open (uppercase mismatch — Patrick call)'
+    'Badge SHIPPED (A; caps={false} added C) — reqDoneBadge converted, class deleted; CATEGORICAL tags stay by rule'
   ],
   [
     'Form fields',
     '18 files / 88 declarations',
-    'Form kit SHIPPED (A) — signin ×4 forms, submit flows, library forms; residuals: name-search + tagSelect (16px iOS-zoom question, Phase C), profile editors (ride the Phase C DatePickerField decoupling)'
+    'Form kit SHIPPED (A; 16px iOS floor decided C) — profile editors decoupled onto the public DateField (admin imports in public: ZERO); sanctioned locals: name-search (hint-above layout), tagSelect (compact header control)'
   ],
   [
     'Cards',
@@ -156,7 +157,7 @@ const SCOREBOARD: ReadonlyArray<readonly [string, string, string]> = [
   [
     'Section dividers',
     'library sectionDivider replicated as headRule/spanBar + inline',
-    'SectionDivider SHIPPED (A) — residual: home feed navy-label/forest-bar variant (deliberate editorial look, Patrick call)'
+    'SectionDivider SHIPPED (A) — home/about/join editorial variant FOLDED (C, Patrick call); one sanctioned local: the printed Clipboard (print-load-bearing + meta slot)'
   ],
   [
     'Stylesheet-less screens',
@@ -168,8 +169,16 @@ const SCOREBOARD: ReadonlyArray<readonly [string, string, string]> = [
     '146 sites / 31 files (~140 convertible)',
     'STRUCK (B) — 13 survivors in 6 files, every one genuinely dynamic and commented (category colors, --month-lanes/--lane-count, fill %, tree-depth indents)'
   ],
-  ['Second-lineage palette', '8 files render an alternate palette (second navy #22333b, five meta-greys…)', 'Phase C — Phase A adoption already deleted ~40 divergent rules with their hexes'],
-  ['Hex census', '79 distinct hex across public modules', 'Phase C target ≤ 30']
+  [
+    'Second-lineage palette',
+    '8 files render an alternate palette (second navy #22333b, five meta-greys…)',
+    'STRUCK (C) — canonical palette everywhere; rem font sizes folded onto --fs-*; on-navy alphas onto --on-navy-*; zero raw hex in the 8 files'
+  ],
+  [
+    'Hex census',
+    '79 distinct hex across public modules',
+    'STRUCK (C) — 7 distinct remain, every one commented deliberate: Clipboard pencil-grid print fidelity (#999/#aaa/#efeae0), categorical ramps (#7a7068, #f5eeda), merit-badge celebration gold (#f5d76a/#5a3a00 — mint --award-gold on a 3rd use)'
+  ]
 ];
 
 export default function PublicStyleguidePage() {
@@ -344,7 +353,18 @@ export default function PublicStyleguidePage() {
             <Button variant="primary">Primary action</Button>{' '}
             <Button variant="secondary">Secondary action</Button>{' '}
             <Button variant="danger">Withdraw</Button>{' '}
-            <Button variant="ghost">Ghost link-button</Button>
+            <Button variant="ghost">Ghost link-button</Button>{' '}
+            <Button variant="dangerGhost">Remove</Button>
+            <div className={sg.specimenGap} />
+            <Button variant="primary" size="sm">
+              Compact primary
+            </Button>{' '}
+            <Button variant="secondary" size="sm">
+              Compact secondary
+            </Button>{' '}
+            <span className={sg.specimenInlineNote}>
+              size=&quot;sm&quot; — section-header CTAs and chrome rows (Phase C)
+            </span>
           </div>
 
           {/* TabStrip */}
@@ -356,7 +376,13 @@ export default function PublicStyleguidePage() {
           <div className={sg.specimenBlock}>
             <Badge tone="neutral">Neutral</Badge> <Badge tone="success">Approved</Badge>{' '}
             <Badge tone="warning">Submitted</Badge> <Badge tone="danger">Denied</Badge>{' '}
-            <Badge tone="info">Paid</Badge> <Badge tone="accent">Your scout</Badge>
+            <Badge tone="info">Paid</Badge> <Badge tone="accent">Your scout</Badge>{' '}
+            <Badge tone="accent" caps={false}>
+              ✓ Completed Mar 2026
+            </Badge>{' '}
+            <span className={sg.specimenInlineNote}>
+              caps=&#123;false&#125; — mixed-case content (dates, names)
+            </span>
           </div>
 
           {/* Notices */}
@@ -376,7 +402,9 @@ export default function PublicStyleguidePage() {
               <Field label="Scout name" error="Error text — the status-danger red.">
                 <TextInput defaultValue="Sample value" readOnly />
               </Field>
-              <FieldHint>Hint text — quiet, meta-toned.</FieldHint>
+              <Field label="Date of birth" hint="Native date input — the public DateField (Phase C); inputs are 16px, the iOS no-zoom floor.">
+                <DateField defaultValue="2012-04-01" readOnly />
+              </Field>
             </FormCard>
           </div>
 

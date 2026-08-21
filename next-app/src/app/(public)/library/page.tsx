@@ -28,6 +28,7 @@ import { PageShell } from '@/app/_components/page-shell';
 import { SectionDivider } from '@/app/_components/section-divider';
 import { EmptyState } from '@/app/_components/empty-state';
 import { Button } from '@/app/_components/button';
+import { Badge } from '@/app/_components/badge';
 import styles from './library.module.css';
 
 // New public pages must opt out of static prerendering or they freeze at
@@ -272,13 +273,13 @@ function RankDrill({ data }: { data: HomeData }) {
                       <span className={`${styles.reqTag} ${styles.reqTagGhost}`}>{req.code}</span>
                       <span className={styles.reqLabel}>{req.label}</span>
                       {doneDate && (
-                        <span className={styles.reqDoneBadge}>
+                        <Badge tone="accent" caps={false}>
                           ✓{' '}
                           {new Date(doneDate).toLocaleDateString('en-US', {
                             month: 'short',
                             year: 'numeric'
                           })}
-                        </span>
+                        </Badge>
                       )}
                       {n > 0 ? (
                         <span className={styles.reqResCount}>

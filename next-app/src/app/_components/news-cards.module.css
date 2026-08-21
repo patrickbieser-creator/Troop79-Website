@@ -27,8 +27,8 @@
   letter-spacing: .1em; text-transform: uppercase; padding: 3px 7px; margin-bottom: 10px; border-radius: 1px;
 }
 .catNews         { background: var(--khaki); color: var(--navy); }
-.catEvents       { background: var(--forest); color: #fff; }
-.catRecognition  { background: var(--navy); color: #fff; }
+.catEvents       { background: var(--forest); color: var(--warm-white); }
+.catRecognition  { background: var(--navy); color: var(--warm-white); }
 
 .heroHeadline {
   font-family: var(--font-display); font-size: 30px; font-weight: 700; line-height: 1.22;
@@ -68,7 +68,7 @@
 .stretchItem { color: inherit; }
 .stretchItem::after { content: ''; position: absolute; inset: 0; }
 .stretchItem:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; border-radius: 2px; }
-.eventDateBlock { flex-shrink: 0; background: var(--navy); color: #fff; width: 40px; text-align: center; padding: 4px 4px 5px; border-radius: 2px; }
+.eventDateBlock { flex-shrink: 0; background: var(--navy); color: var(--warm-white); width: 40px; text-align: center; padding: 4px 4px 5px; border-radius: 2px; }
 .eventDateBlock .eMonth { font-family: var(--font-ui); font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
 .eventDateBlock .eDay { font-family: var(--font-display); font-size: 20px; font-weight: 700; line-height: 1.1; }
 .eventTitle { font-family: var(--font-ui); font-size: 12px; font-weight: 600; color: var(--text-head); line-height: 1.35; margin-bottom: 2px; }
@@ -84,12 +84,9 @@
 }
 .tagChipSidebar:hover { border-color: var(--forest); color: var(--forest); }
 
-.sectionDivider { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
-.sectionDivider .divLabel {
-  font-family: var(--font-ui); font-size: 10px; font-weight: 700; letter-spacing: .14em;
-  text-transform: uppercase; color: var(--navy); white-space: nowrap; border-left: 3px solid var(--forest); padding-left: 8px;
-}
-.sectionDivider .divRule { flex: 1; height: 1px; background: var(--border-light); }
+/* .sectionDivider (navy-label/forest-bar) retired Phase C — DECIDED by
+   Patrick 2026-08-21: one divider style site-wide. Consumers (home, about,
+   join) use the shared <SectionDivider>. */
 
 .storyGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
 .storyCard {
@@ -110,7 +107,6 @@
 .pagerBtn { padding: 7px 16px; border: 1px solid var(--border-mid); border-radius: 2px; color: var(--text-body); font-weight: 600; }
 .pagerBtn:hover { border-color: var(--navy); color: var(--navy); }
 .pagerBtnDisabled { pointer-events: none; opacity: .4; }
-.empty { text-align: center; padding: 60px 20px; color: var(--text-meta); font-family: var(--font-body); font-style: italic; }
 
 @media (max-width: 900px) {
   .heroLayout { grid-template-columns: 1fr; }
@@ -118,7 +114,7 @@
   .sidebar { padding: 20px 0; }
   .storyGrid { grid-template-columns: repeat(2, 1fr); }
 }
-@media (max-width: 600px) {
+@media (max-width: 640px) {
   .heroHeadline { font-size: 22px; }
   .storyGrid { grid-template-columns: 1fr; }
 }

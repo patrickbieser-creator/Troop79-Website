@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { SectionDivider } from '@/app/_components/section-divider';
 import shell from '../../_components/news-cards.module.css';
 import styles from '../../_components/about-join.module.css';
 import local from './join.module.css';
@@ -51,10 +52,7 @@ export default function JoinPage() {
             </p>
 
             <section aria-labelledby="how-it-works">
-              <div className={shell.sectionDivider}>
-                <span className={shell.divLabel} id="how-it-works">How Joining Works</span>
-                <span className={shell.divRule} aria-hidden="true" />
-              </div>
+              <SectionDivider label={<span id="how-it-works">How Joining Works</span>} />
 
               <ol className={styles.steps}>
                 <li className={styles.step}>
@@ -114,10 +112,7 @@ export default function JoinPage() {
             </section>
 
             <section className={`${styles.proseSection} ${local.sectionGapLg}`} aria-labelledby="who-can-join">
-              <div className={shell.sectionDivider}>
-                <span className={shell.divLabel} id="who-can-join">Who Can Join</span>
-                <span className={shell.divRule} aria-hidden="true" />
-              </div>
+              <SectionDivider label={<span id="who-can-join">Who Can Join</span>} />
               <div className={styles.prose}>
                 <p>
                   Troop 79 welcomes <strong>boys and girls of all
@@ -131,10 +126,7 @@ export default function JoinPage() {
             </section>
 
             <section aria-labelledby="join-faq">
-              <div className={shell.sectionDivider}>
-                <span className={shell.divLabel} id="join-faq">Common Questions</span>
-                <span className={shell.divRule} aria-hidden="true" />
-              </div>
+              <SectionDivider label={<span id="join-faq">Common Questions</span>} />
               <div className={styles.faq}>
                 {FAQ.map((item) => (
                   <div key={item.q} className={styles.faqItem}>

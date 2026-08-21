@@ -4,6 +4,8 @@ import { loadMergedHomeFeed } from '@/lib/home-feed';
 import { eventCardExcerpt } from '@/lib/feed-logic';
 import { loadCalendarEntries, formatCalendarDateParts } from '@/lib/calendar';
 import { FeedCard, catClass, entryHeroMedia, entryDateLine } from '../_components/feed-cards';
+import { SectionDivider } from '../_components/section-divider';
+import { EmptyState } from '../_components/empty-state';
 import styles from '../_components/news-cards.module.css';
 
 /*
@@ -40,7 +42,7 @@ export default async function Home({
 
       <main className={styles.mainContent}>
         {!hero ? (
-          <p className={styles.empty}>No articles published yet — check back soon.</p>
+          <EmptyState>No articles published yet — check back soon.</EmptyState>
         ) : (
           <>
             <div className={styles.heroLayout}>
@@ -171,10 +173,7 @@ export default async function Home({
 
             {gridItems.length > 0 && (
               <section aria-label="More stories">
-                <div className={styles.sectionDivider}>
-                  <span className={styles.divLabel}>More This Week</span>
-                  <span className={styles.divRule} aria-hidden="true" />
-                </div>
+                <SectionDivider label="More This Week" />
                 <div className={styles.storyGrid}>
                   {gridItems.map((item) => (
                     <FeedCard

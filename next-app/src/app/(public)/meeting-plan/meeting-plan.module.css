@@ -60,7 +60,7 @@
 .sessionCard {
   background: var(--warm-white);
   border: 1px solid var(--border-light);
-  border-top: 3px solid var(--khaki, #c4a882);
+  border-top: 3px solid var(--khaki);
   border-radius: 2px;
   box-shadow: 0 1px 4px rgba(30, 58, 74, .08);
   padding: 16px 18px 14px;
@@ -108,12 +108,12 @@
   border-radius: 2px;
 }
 .tagYouth {
-  background: #f5eeda;
+  background: #f5eeda; /* deliberate: categorical (youth vs adult vs eagle identity), stays per the Badge scope rule */
   color: var(--bark);
 }
 .tagAdult {
   background: var(--navy);
-  color: #fff;
+  color: var(--warm-white);
 }
 .tagEagle {
   background: var(--warm-white);
@@ -174,7 +174,7 @@
 }
 .table th {
   background: var(--navy);
-  color: #fff;
+  color: var(--warm-white);
   font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
   font-size: 12px;
   font-weight: 700;

@@ -6,7 +6,7 @@
 
 .footer {
   background: var(--navy);
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--on-navy-strong);
   margin-top: var(--sp-12);
   padding: var(--sp-10) 0 var(--sp-6);
 }
@@ -36,7 +36,7 @@
   font-family: var(--font-body);
   font-size: var(--fs-sm);
   line-height: 1.6;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--on-navy-soft);
 }
 
 .colTitle {
@@ -45,7 +45,7 @@
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--on-navy-faint);
   margin-bottom: var(--sp-3);
 }
 
@@ -62,16 +62,16 @@
 .link {
   font-family: var(--font-body);
   font-size: var(--fs-sm);
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--on-navy-strong);
 }
 .link:hover {
-  color: rgba(255, 255, 255, 1);
+  color: var(--warm-white);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .legal {
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  border-top: 1px solid var(--on-navy-rule);
   padding-top: var(--sp-5);
   display: flex;
   justify-content: space-between;
@@ -79,7 +79,7 @@
   gap: var(--sp-3);
   font-family: var(--font-ui);
   font-size: var(--fs-2xs);
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--on-navy-faint);
   letter-spacing: 0.04em;
 }
 

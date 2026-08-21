@@ -104,14 +104,14 @@
   font-family: var(--font-ui);
   font-size: 10.5px;
   font-weight: 700;
-  color: #8c2f2f;
+  color: var(--status-danger);
   background: none;
-  border: 1px solid #c98b8b;
+  border: 1px solid color-mix(in srgb, var(--status-danger) 45%, var(--border-mid));
   border-radius: 2px;
   padding: 2px 8px;
   cursor: pointer;
 }
-.removeBtn:hover { background: #fdf2f2; }
+.removeBtn:hover { background: var(--status-danger-bg); }
 
 .emptyState {
   padding: 24px;

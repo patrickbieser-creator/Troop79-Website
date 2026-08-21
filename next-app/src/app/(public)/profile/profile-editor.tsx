@@ -10,7 +10,7 @@ import { displayValue, pendingFields, type DraftValues } from '@/lib/profile-dra
 // when this import was added, which is why the field rendered unstyled here
 // until 2026-08-14. Left where it lives rather than relocated: one public
 // consumer isn't yet a pattern.
-import { DatePickerField } from '@/app/admin/(workspace)/_components/date-picker-field';
+import { DateField } from '@/app/_components/date-field';
 import { EditField } from './edit-field';
 import { EditorActions } from './editor-actions';
 import styles from './profile.module.css';
@@ -269,10 +269,10 @@ export default function ProfileEditor({
           previous={displayValue(scout.birthdate)}
         >
           {(a) => (
-            <DatePickerField
+            <DateField
               {...a}
               value={values.birthdate ?? ''}
-              onChange={(v) => onChange('birthdate', v)}
+              onChange={(e) => onChange('birthdate', e.target.value)}
             />
           )}
         </EditField>

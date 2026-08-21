@@ -55,3 +55,26 @@
   border: 1px solid color-mix(in srgb, var(--status-danger) 45%, var(--border-mid));
 }
 .danger:hover { background: var(--status-danger-bg); border-color: var(--status-danger); }
+
+/* Quiet red text-button for destructive row actions where the outlined
+   danger is too heavy (Phase C; e.g. member's passkey Remove). */
+.dangerGhost {
+  background: none;
+  border: none;
+  min-height: 0;
+  padding: var(--sp-2) 0;
+  color: var(--status-danger);
+  letter-spacing: 0.02em;
+  text-transform: none;
+  font-size: var(--fs-sm);
+}
+.dangerGhost:hover { text-decoration: underline; text-underline-offset: 2px; background: none; }
+
+/* Compact size for section-header CTAs and chrome rows (Phase C; e.g.
+   news-controls' Submit News, the masthead JOIN). Ghost variants keep
+   their own minimal padding. */
+.sm {
+  font-size: var(--fs-xs);
+  padding: 7px 14px;
+  min-height: 0;
+}

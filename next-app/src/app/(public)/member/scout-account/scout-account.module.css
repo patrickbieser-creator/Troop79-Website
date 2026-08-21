@@ -5,19 +5,19 @@
 }
 .proxyForm select {
   border: 1px solid var(--rule);
-  border-radius: 4px;
+  border-radius: var(--rad-md);
   padding: 0.4rem 0.6rem;
   font-family: inherit;
-  font-size: 0.88rem;
+  font-size: 16px; /* iOS no-zoom floor (Patrick, 2026-08-21) */
 }
 .proxyForm button {
   background: var(--navy);
-  color: #fff;
+  color: var(--warm-white);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--rad-md);
   padding: 0.45rem 0.9rem;
   font-family: inherit;
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
   cursor: pointer;
 }
@@ -47,7 +47,7 @@
 
 .balanceLabel {
   margin: 0 0 0.3rem;
-  font-size: 0.78rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -56,7 +56,7 @@
 
 .balanceValue {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: var(--fs-2xl); /* folded from 1.5rem/24px */
   font-weight: 700;
   color: var(--navy);
   font-variant-numeric: tabular-nums;
@@ -71,7 +71,7 @@
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.9rem;
+  font-size: var(--fs-md);
 }
 
 .table th,
@@ -82,8 +82,8 @@
 }
 
 .table th {
-  background: #faf7f1;
-  font-size: 0.72rem;
+  background: var(--cream);
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;

@@ -11,12 +11,19 @@ export type BadgeTone = 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 
 
 export function Badge({
   tone = 'neutral',
+  caps = true,
   className,
   children
 }: {
   tone?: BadgeTone;
+  /** false — keep mixed case (dates, names); default badges are uppercase. */
+  caps?: boolean;
   className?: string;
   children: ReactNode;
 }) {
-  return <span className={[s.badge, s[tone], className].filter(Boolean).join(' ')}>{children}</span>;
+  return (
+    <span className={[s.badge, s[tone], caps ? null : s.noCaps, className].filter(Boolean).join(' ')}>
+      {children}
+    </span>
+  );
 }

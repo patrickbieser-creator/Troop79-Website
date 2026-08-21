@@ -16,7 +16,7 @@
 }
 .title {
   font-family: var(--font-display);
-  font-size: clamp(26px, 5vw, 38px);
+  font-size: var(--fs-display); /* folded from clamp(26,5vw,38) — headline-clamp collapse */
   line-height: 1.12;
   color: var(--text-head);
   margin-bottom: 8px;
@@ -69,7 +69,7 @@
 }
 .gateBtn {
   background: var(--navy);
-  color: #fff;
+  color: var(--warm-white);
   border: none;
   border-radius: 3px;
   padding: 9px 20px;
@@ -82,7 +82,7 @@
 .gateErr {
   margin-top: 10px;
   font-size: 13px;
-  color: #a04a3d;
+  color: var(--status-danger);
   font-weight: 600;
 }
 
@@ -107,9 +107,9 @@
 }
 .linkBtn:hover { color: var(--navy); }
 
-.savedNote { font-family: var(--font-ui); font-size: 13.5px; font-weight: 700; color: var(--forest); background: #eef2ee; border-left: 3px solid var(--forest); padding: 10px 13px; border-radius: 0 3px 3px 0; margin-bottom: 18px; }
-.errNote { font-family: var(--font-ui); font-size: 13.5px; font-weight: 700; color: #a04a3d; background: #fbf0ee; border-left: 3px solid #a04a3d; padding: 10px 13px; border-radius: 0 3px 3px 0; margin-bottom: 18px; }
-.warnNote { font-family: var(--font-ui); font-size: 13px; line-height: 1.5; color: #6b5514; background: #fdf6e3; border: 1px solid #e6d5a3; border-radius: 3px; padding: 10px 13px; margin-bottom: 12px; }
+.savedNote { font-family: var(--font-ui); font-size: 13.5px; font-weight: 700; color: var(--forest); background: var(--status-success-bg); border-left: 3px solid var(--forest); padding: 10px 13px; border-radius: 0 3px 3px 0; margin-bottom: 18px; }
+.errNote { font-family: var(--font-ui); font-size: 13.5px; font-weight: 700; color: var(--status-danger); background: var(--status-danger-bg); border-left: 3px solid var(--status-danger); padding: 10px 13px; border-radius: 0 3px 3px 0; margin-bottom: 18px; }
+.warnNote { font-family: var(--font-ui); font-size: 13px; line-height: 1.5; color: var(--bark); background: var(--status-warning-bg); border: 1px solid var(--khaki); border-radius: 3px; padding: 10px 13px; margin-bottom: 12px; }
 
 /* ── Household member switcher ─────────────────────────────────────────────
    Replaces the per-scout <details> accordions: everyone in the household is a
@@ -150,8 +150,8 @@
   background: var(--navy);
 }
 .memberChipActive .memberName,
-.memberChipActive .memberRole { color: #fff; }
-.memberChipActive .memberFlag { background: rgba(255, 255, 255, .22); color: #fff; border-color: transparent; }
+.memberChipActive .memberRole { color: var(--warm-white); }
+.memberChipActive .memberFlag { background: rgba(255, 255, 255, .22); color: var(--warm-white); border-color: transparent; }
 
 .memberName { font-size: 14px; font-weight: 700; color: var(--text-head); }
 .memberRole { font-size: 11px; color: var(--text-meta); }
@@ -162,9 +162,9 @@
   font-weight: 700;
   letter-spacing: .08em;
   text-transform: uppercase;
-  color: #6b5514;
-  background: #fdf6e3;
-  border: 1px solid #e6d5a3;
+  color: var(--bark);
+  background: var(--status-warning-bg);
+  border: 1px solid var(--khaki);
   border-radius: 2px;
   padding: 1px 5px;
 }
@@ -178,12 +178,12 @@
   letter-spacing: .08em;
   text-transform: uppercase;
   color: var(--navy);
-  background: #e8eef2;
-  border: 1px solid #c3d2db;
+  background: var(--status-info-bg);
+  border: 1px solid var(--border-mid);
   border-radius: 2px;
   padding: 1px 5px;
 }
-.memberChipActive .memberEditFlag { background: rgba(255, 255, 255, .22); color: #fff; border-color: transparent; }
+.memberChipActive .memberEditFlag { background: rgba(255, 255, 255, .22); color: var(--warm-white); border-color: transparent; }
 
 /* The add-a-member chip carries no name/role rows, so it centres instead. */
 .memberAddChip {
@@ -226,10 +226,12 @@
    control below is block-level and starts its own line either way. */
 .editLabel { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-meta); margin-bottom: 4px; }
 .editInput {
-  width: 100%; border: 1px solid var(--border-mid); border-radius: 3px; padding: 8px 10px;
-  font-family: inherit; font-size: 13.5px; background: var(--warm-white); color: var(--text-body);
+  width: 100%; border: 1px solid var(--border-mid); border-radius: var(--rad-sm); padding: 11px 13px;
+  font-family: inherit;
+  font-size: 16px; /* iOS no-zoom floor — matches the shared form kit (Phase C decision) */
+  background: var(--warm-white); color: var(--text-body);
 }
-.editInput:focus-visible { outline: 2px solid var(--forest); outline-offset: 1px; }
+.editInput:focus-visible { border-color: var(--navy); outline: var(--focus-ring); outline-offset: 1px; }
 .helpText { font-size: 11.5px; color: var(--text-meta); line-height: 1.5; margin-top: 6px; }
 
 /* A field whose value is queued for review rather than on the record. The tag
@@ -241,9 +243,9 @@
   font-weight: 700;
   letter-spacing: .06em;
   text-transform: uppercase;
-  color: #6b5514;
-  background: #fdf6e3;
-  border: 1px solid #e6d5a3;
+  color: var(--bark);
+  background: var(--status-warning-bg);
+  border: 1px solid var(--khaki);
   border-radius: 2px;
   padding: 1px 5px;
   vertical-align: 1px;
@@ -259,7 +261,7 @@
 .editActions { margin-top: 14px; display: flex; justify-content: flex-end; align-items: center; gap: 8px; flex-wrap: wrap; }
 .actionsHint { flex: 1 1 auto; font-size: 11.5px; color: var(--text-meta); line-height: 1.45; }
 .editSaveBtn {
-  background: var(--navy); color: #fff; border: none; border-radius: 3px; padding: 8px 18px;
+  background: var(--navy); color: var(--warm-white); border: none; border-radius: 3px; padding: 8px 18px;
   font-family: var(--font-ui); font-size: 13px; font-weight: 700; cursor: pointer;
 }
 .editSaveBtn:hover { background: var(--forest); }
@@ -267,10 +269,10 @@
 .editSaveBtn:disabled:hover { background: var(--border-mid); }
 
 .editDangerBtn {
-  background: #a04a3d; color: #fff; border: none; border-radius: 3px; padding: 8px 16px;
+  background: var(--status-danger); color: var(--warm-white); border: none; border-radius: 3px; padding: 8px 16px;
   font-family: var(--font-ui); font-size: 13px; font-weight: 700; cursor: pointer;
 }
-.editDangerBtn:hover { background: #8a3d31; }
+.editDangerBtn:hover { background: var(--status-danger); }
 .editDangerBtn:disabled { background: var(--border-mid); color: var(--text-meta); cursor: not-allowed; }
 
 @media (max-width: 480px) {

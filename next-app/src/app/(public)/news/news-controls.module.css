@@ -26,7 +26,7 @@
 }
 
 .tagFilterLabel {
-  font-size: 0.72rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -35,8 +35,8 @@
 
 .tagSelect {
   border: 1px solid var(--rule);
-  border-radius: 4px;
-  background: #fff;
+  border-radius: var(--rad-md);
+  background: var(--warm-white);
   color: inherit;
   /* 16px stops iOS zooming the viewport when the select is focused. */
   font-size: 16px;
@@ -48,43 +48,22 @@
   outline-offset: 1px;
 }
 
-/* The submit call to action. Only rendered for a signed-in member, so it can
-   afford to be loud — it is not clutter for a visitor who cannot use it. */
-.submitBtn {
-  display: inline-block;
-  background: var(--forest);
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  padding: 0.5rem 1rem;
-  font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  text-decoration: none;
-  white-space: nowrap;
-}
-.submitBtn:hover,
-.submitBtn:focus-visible {
-  background: #2f5f39;
-  color: #fff;
-}
+/* The submit CTA is the shared Button (primary, size="sm") — this class only
+   carries its phone behavior (full width; it is the page's primary action for
+   a signed-in scout, and a small right-aligned button gets missed). */
 
 .archiveLink {
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   white-space: nowrap;
 }
 
-@media (max-width: 34rem) {
+@media (max-width: 640px) { /* folded from 34rem onto the canon */
   .headerControls {
     width: 100%;
     margin-left: 0;
     justify-content: space-between;
   }
-  .submitBtn {
-    /* Full width on a phone: it is the primary action on this page for a
-       signed-in scout, and a small right-aligned button gets missed. */
+  .headerCta {
     width: 100%;
-    text-align: center;
   }
 }

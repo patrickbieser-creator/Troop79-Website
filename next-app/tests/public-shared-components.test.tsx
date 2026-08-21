@@ -10,6 +10,7 @@ import { Notice } from '../src/app/_components/notice';
 import { EmptyState } from '../src/app/_components/empty-state';
 import { SectionDivider } from '../src/app/_components/section-divider';
 import { Field, TextInput, FieldError } from '../src/app/_components/form';
+import { DateField } from '../src/app/_components/date-field';
 
 /**
  * Phase A of Plans/Public-Design-System.md — the public shared components,
@@ -52,6 +53,20 @@ describe('Button', () => {
     expect(screen.getByRole('button', { name: 'Withdraw' }).className).toMatch(/danger/i);
   });
 
+  it('PublicButton_AppliesCompactSize_WhenSizeSm', () => {
+    render(
+      <Button variant="secondary" size="sm">
+        Submit news
+      </Button>
+    );
+    expect(screen.getByRole('button', { name: 'Submit news' }).className).toMatch(/sm/);
+  });
+
+  it('PublicButton_MapsDangerGhost_ToQuietDangerClass', () => {
+    render(<Button variant="dangerGhost">Remove</Button>);
+    expect(screen.getByRole('button', { name: 'Remove' }).className).toMatch(/dangerGhost/i);
+  });
+
   it('PublicButton_RendersLink_WhenHrefProvided', () => {
     render(
       <Button variant="primary" href="/join">
@@ -66,6 +81,15 @@ describe('Badge', () => {
   it('PublicBadge_MapsTone_ToSemanticClass', () => {
     render(<Badge tone="success">Paid</Badge>);
     expect(screen.getByText('Paid').className).toMatch(/success/i);
+  });
+
+  it('PublicBadge_SkipsUppercase_WhenCapsFalse', () => {
+    render(
+      <Badge tone="accent" caps={false}>
+        ✓ Completed Mar 2026
+      </Badge>
+    );
+    expect(screen.getByText('✓ Completed Mar 2026').className).toMatch(/noCaps/i);
   });
 });
 
@@ -161,5 +185,17 @@ describe('Form kit', () => {
   it('FieldError_RendersNothing_WhenChildrenEmpty', () => {
     const { container } = render(<FieldError>{null}</FieldError>);
     expect(container.innerHTML).toBe('');
+  });
+
+  it('PublicDateField_RendersNativeDateInput_WithFieldWiring', () => {
+    render(
+      <Field label="Date of birth">
+        <DateField name="dob" defaultValue="2012-04-01" />
+      </Field>
+    );
+    const input = screen.getByLabelText('Date of birth') as HTMLInputElement;
+    expect(input.tagName).toBe('INPUT');
+    expect(input.type).toBe('date');
+    expect(input.value).toBe('2012-04-01');
   });
 });

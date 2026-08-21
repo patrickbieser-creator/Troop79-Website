@@ -9,10 +9,12 @@ import type { ComponentProps, ReactNode } from 'react';
 import Link from 'next/link';
 import s from './button.module.css';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'dangerGhost';
 
 type ButtonOwnProps = {
   variant?: Variant;
+  /** 'sm' — compact chrome/section-header sizing; ghost variants ignore it. */
+  size?: 'md' | 'sm';
   href?: string;
   className?: string;
   children: ReactNode;
@@ -20,12 +22,13 @@ type ButtonOwnProps = {
 
 export function Button({
   variant = 'primary',
+  size = 'md',
   href,
   className,
   children,
   ...rest
 }: ButtonOwnProps & Omit<ComponentProps<'button'>, 'className'>) {
-  const cls = [s.btn, s[variant], className].filter(Boolean).join(' ');
+  const cls = [s.btn, s[variant], size === 'sm' ? s.sm : null, className].filter(Boolean).join(' ');
   if (href != null) {
     return (
       <Link href={href} className={cls}>

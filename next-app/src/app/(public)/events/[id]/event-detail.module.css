@@ -32,7 +32,7 @@
 }
 .cat {
   display: inline-block;
-  color: #fff;
+  color: var(--warm-white);
   font-family: var(--font-ui);
   font-size: 11px;
   font-weight: 700;
@@ -43,7 +43,7 @@
 }
 .title {
   font-family: var(--font-display);
-  font-size: clamp(28px, 5vw, 42px);
+  font-size: var(--fs-display); /* folded from clamp(28,5vw,42) — the plan collapses the three near-identical headline clamps */
   line-height: 1.12;
   color: var(--text-head);
   margin-bottom: 10px;
@@ -273,8 +273,8 @@
   margin-bottom: 22px;
 }
 .ahmr {
-  background: #fdf6e6;
-  border-left: 3px solid var(--bark, #8b6914);
+  background: var(--status-warning-bg);
+  border-left: 3px solid var(--bark);
 }
 .locked,
 .noSignup {
@@ -335,7 +335,7 @@
 
 .gateBtn {
   background: var(--navy);
-  color: #fff;
+  color: var(--warm-white);
   border: none;
   border-radius: 3px;
   padding: 9px 20px;
@@ -405,8 +405,8 @@
 .signupForm .slotList > li:has(.claimerChip) { border-color: var(--forest); box-shadow: inset 3px 0 0 var(--forest); }
 
 .claimerChips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 11px; }
-.claimerChip { display: inline-flex; align-items: center; gap: 5px; background: #eef2ee; color: var(--forest); border: 1px solid var(--forest); border-radius: 999px; padding: 3px 5px 3px 11px; font-size: 12.5px; font-weight: 700; }
-.claimerX { display: grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: var(--forest); color: #fff; font-size: 13px; line-height: 1; border: none; cursor: pointer; padding: 0 0 1px; }
+.claimerChip { display: inline-flex; align-items: center; gap: 5px; background: var(--status-success-bg); color: var(--forest); border: 1px solid var(--forest); border-radius: 999px; padding: 3px 5px 3px 11px; font-size: 12.5px; font-weight: 700; }
+.claimerX { display: grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: var(--forest); color: var(--warm-white); font-size: 13px; line-height: 1; border: none; cursor: pointer; padding: 0 0 1px; }
 .claimerX:hover { background: var(--navy); }
 
 /* Per-claim note. Appears only once the job is actually claimed. */
@@ -422,15 +422,15 @@
 .pickChip:hover:not(:disabled) { border-color: var(--forest); background: var(--warm-white); }
 .pickName { font-size: 13px; font-weight: 700; color: var(--text-head); }
 .pickSub { font-size: 10.5px; color: var(--text-meta); }
-.pickOn { background: #eef2ee; border-color: var(--forest); box-shadow: inset 0 0 0 1px var(--forest); }
+.pickOn { background: var(--status-success-bg); border-color: var(--forest); box-shadow: inset 0 0 0 1px var(--forest); }
 .pickOn .pickName { color: var(--forest); }
 .pickBlocked { opacity: 0.5; cursor: not-allowed; }
 
-.fullNote { display: flex; gap: 8px; margin: 0 14px 12px; padding: 9px 12px; background: #fdf6e6; border-left: 3px solid var(--bark, #8b6914); border-radius: 0 3px 3px 0; font-size: 12.5px; line-height: 1.45; }
+.fullNote { display: flex; gap: 8px; margin: 0 14px 12px; padding: 9px 12px; background: var(--status-warning-bg); border-left: 3px solid var(--bark); border-radius: 0 3px 3px 0; font-size: 12.5px; line-height: 1.45; }
 
 .guestBlock { margin: 22px 0; }
 .guestGrid { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 12px; align-items: start; }
-@media (max-width: 560px) { .guestGrid { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .guestGrid { grid-template-columns: 1fr; } }
 
 .recap { background: var(--cream); border: 1px solid var(--border-light); border-radius: 4px; padding: 14px; margin: 22px 0; }
 .recap .dayHead { border-bottom: none; margin-bottom: 8px; padding-bottom: 0; }
@@ -451,16 +451,16 @@
 .seg { display: inline-flex; gap: 6px; flex-wrap: wrap; }
 .segBtn { border: 1.5px solid var(--border-mid); background: var(--cream); border-radius: 3px; padding: 6px 13px; font-family: var(--font-ui); font-size: 12.5px; font-weight: 700; color: var(--text-body); cursor: pointer; }
 .segBtn:hover { border-color: var(--forest); }
-.segYes { background: #eef2ee; border-color: var(--forest); color: var(--forest); }
-.segNo { background: #f6eeec; border-color: #a04a3d; color: #a04a3d; }
-.segDrv { background: #eef1f5; border-color: var(--navy); color: var(--navy); }
+.segYes { background: var(--status-success-bg); border-color: var(--forest); color: var(--forest); }
+.segNo { background: var(--status-danger-bg); border-color: var(--status-danger); color: var(--status-danger); }
+.segDrv { background: var(--status-info-bg); border-color: var(--navy); color: var(--navy); }
 .personExtra { margin-top: 11px; padding-top: 11px; border-top: 1px dashed var(--border-mid); display: flex; flex-direction: column; gap: 9px; }
 .miniLabel { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-meta); margin-bottom: 5px; }
 .tierPick { }
 .pillRow { display: flex; flex-wrap: wrap; gap: 7px; }
 .pill { border: 1.5px solid var(--border-mid); background: var(--cream); border-radius: 999px; padding: 5px 13px; font-family: var(--font-ui); font-size: 12.5px; cursor: pointer; color: var(--text-body); }
 .pill:hover { border-color: var(--forest); }
-.pillOn { background: #eef2ee; border-color: var(--forest); color: var(--forest); font-weight: 700; }
+.pillOn { background: var(--status-success-bg); border-color: var(--forest); color: var(--forest); font-weight: 700; }
 .daysRow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .daysRow .miniLabel { margin-bottom: 0; }
 .numInput { width: 76px; padding: 6px 9px; border: 1px solid var(--border-mid); border-radius: 3px; background: var(--warm-white); font-size: 14px; }
@@ -486,7 +486,7 @@
 .jobBoard { font-family: var(--font-ui); }
 .boardLede { font-size: 13.5px; line-height: 1.55; color: var(--text-body); margin-bottom: 16px; }
 .jobCue { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--navy); border: 1px solid var(--navy); border-radius: 3px; padding: 2px 8px; white-space: nowrap; }
-.slotTrigger:hover .jobCue { background: var(--navy); color: #fff; }
+.slotTrigger:hover .jobCue { background: var(--navy); color: var(--warm-white); }
 .inlineGate { margin-top: 4px; }
 .boardStatus { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; background: var(--cream); border: 1px solid var(--border-light); border-radius: 4px; padding: 8px 12px; margin-bottom: 14px; font-size: 13px; color: var(--text-body); }
 .boardStatusActions { display: flex; gap: 14px; align-items: center; }

@@ -16,19 +16,19 @@
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
-  font-size: 0.8rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-meta);
 }
 .form input,
 .form textarea {
   border: 1px solid var(--rule);
-  border-radius: 4px;
+  border-radius: var(--rad-md);
   padding: 0.5rem 0.6rem;
   font-family: inherit;
-  font-size: 0.92rem;
+  font-size: 16px; /* iOS no-zoom floor (Patrick, 2026-08-21) */
   font-weight: 400;
-  color: #1a1a1a;
+  color: var(--text-head);
   resize: vertical;
 }
 .wide {
@@ -36,7 +36,7 @@
 }
 
 .historyHeading {
-  font-size: 1.1rem;
+  font-size: var(--fs-lg);
   color: var(--navy);
   margin: 0 0 0.9rem;
 }
@@ -64,22 +64,22 @@
 }
 
 .requestAmount {
-  font-size: 1.15rem;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--navy);
 }
 
 .requestDesc {
   margin: 0;
-  font-size: 0.92rem;
-  color: #444;
+  font-size: var(--fs-md);
+  color: var(--text-body);
   line-height: 1.5;
 }
 
 .denialReason {
   margin: 0.4rem 0 0;
-  font-size: 0.85rem;
-  color: #8c3b3b;
+  font-size: var(--fs-sm);
+  color: var(--status-danger);
 }
 
 .withdrawRow {

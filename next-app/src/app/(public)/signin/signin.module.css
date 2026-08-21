@@ -136,9 +136,9 @@
 
 .searchLabel {
   display: block;
-  font-size: 0.8rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em; /* folded from 0.04 */
   text-transform: uppercase;
   color: var(--navy);
   margin-bottom: 0.35rem;
@@ -146,30 +146,30 @@
 
 .searchInput {
   width: 100%;
-  border: 1px solid #d8ccb4;
-  border-radius: 4px;
+  border: 1px solid var(--border-mid); /* input-border role (was a second-lineage tan literal) */
+  border-radius: var(--rad-md);
   /* 16px keeps iOS from zooming the viewport on focus — this flow is
      phone-first, and the zoom is what made the old list unusable. */
   font-size: 16px;
   padding: 0.6rem 0.7rem;
-  background: #fff;
+  background: var(--warm-white);
   color: inherit;
 }
 .searchInput:focus {
-  outline: 2px solid #3d7a4a;
+  outline: 2px solid var(--forest);
   outline-offset: 1px;
 }
 
 .searchHint {
   display: block;
   margin-top: 0.35rem;
-  font-size: 0.82rem;
+  font-size: var(--fs-sm);
   color: var(--text-meta);
 }
 
 .searchNote {
   margin: 0.75rem 0 0;
-  font-size: 0.88rem;
+  font-size: var(--fs-md);
   color: var(--text-meta);
   line-height: 1.5;
 }
@@ -178,10 +178,10 @@
   display: inline-block;
   margin-left: 0.4rem;
   padding: 0.05rem 0.35rem;
-  border-radius: 3px;
-  background: #e8efe4;
-  color: #46603a;
-  font-size: 0.68rem;
+  border-radius: var(--rad-sm); /* 3px retired */
+  background: var(--status-success-bg);
+  color: var(--forest);
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -202,7 +202,7 @@
 
 .passkeyHint {
   margin: 0.5rem 0 0;
-  font-size: 0.82rem;
+  font-size: var(--fs-sm);
   color: var(--text-meta);
   line-height: 1.5;
 }

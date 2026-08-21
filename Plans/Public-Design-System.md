@@ -89,10 +89,17 @@ The audit's headline numbers:
       mint --award-gold if a third use appears); footer's on-navy rgba tints flagged for a
       Phase C --on-navy-* family. Phone eyes-on still owed in production (capture tooling
       wouldn't hold the mobile viewport; media queries verified in code).
-- [ ] **Phase C — color + unit normalization:** the 8 second-lineage files moved onto the
-      canonical palette and px type scale (deliberate, visible change — see Open Questions);
-      distinct hex across public modules 79 → ≤ 30 (survivors deliberate and commented);
-      radius/letter-spacing/breakpoints on the token scales.
+- [x] **Phase C — SHIPPED 2026-08-21 (v1.66.0).** Second lineage fully normalized (8 files,
+      zero raw hex, rem sizes onto --fs-*); distinct hex 79 → **7** (target was ≤ 30) — all
+      survivors commented deliberates (Clipboard print pencil grid, categorical ramps,
+      celebration gold). DatePickerField decoupled per option (b): public DateField (native
+      input) shipped + adopted by both profile editors, admin's 31 fallback chains deleted,
+      **zero admin imports anywhere in (public)**. Component additions decided + shipped
+      with tests: Button size="sm" + dangerGhost (submitBtn/passkeyRemove/mastheadJoin
+      converted), Badge caps={false} (reqDoneBadge converted), form kit at the 16px iOS
+      no-zoom floor, --on-navy-* on-dark ink family. Home/about/join editorial divider
+      FOLDED to shared (Patrick call; the printed Clipboard keeps the one sanctioned local).
+      Breakpoints folded onto 480/640/900 where safe; load-bearing exceptions commented.
 - [ ] **Phase D — closeout:** public scoreboard fully struck; final audit grep re-confirms
       the numbers; AGENTS.md styling rules extended to cover the public side.
 - [ ] Every phase lands with the full quality gate green (`lint`+`typecheck`+`test`+`build`)
