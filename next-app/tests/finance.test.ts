@@ -1,5 +1,27 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeAll } from 'vitest';
 import { adminClient } from './helpers/admin-client';
+
+/**
+ * A transaction kind that actually exists in THIS database.
+ *
+ * These tests used to hardcode 'income'. `transaction_kinds` is a GOVERNED
+ * lookup a treasurer may edit from the admin UI (that is the whole point of
+ * the 2026-08-20 migration), and production has since deleted 'income' —
+ * which turned four tests red the moment local data was synced from
+ * production on 2026-08-22. A test must not depend on a row someone is
+ * allowed to remove, so it reads one instead. Kind carries no direction or
+ * behaviour, so any code serves.
+ */
+let ANY_KIND = 'expense';
+beforeAll(async () => {
+  const { data } = await adminClient()
+    .from('transaction_kinds')
+    .select('code')
+    .order('sort_order')
+    .limit(1);
+  const row = (data ?? [])[0] as { code: string } | undefined;
+  if (row) ANY_KIND = row.code;
+});
 import {
   ACCOUNTS,
   TRANSACTION_METHODS,
@@ -432,7 +454,7 @@ describe('finance — schema constraints (requires local Supabase)', () => {
       occurred_on: '2026-08-18',
       account: 'crypto_wallet',
       amount: 10,
-      kind: 'income'
+      kind: ANY_KIND
     });
     expect(error).not.toBeNull();
   });
@@ -509,7 +531,7 @@ describe('finance — Phase 2 write-pattern constraints (requires local Supabase
     const admin = adminClient();
     const { data } = await admin
       .from('financial_transactions')
-      .insert({ occurred_on: '2026-08-18', account: 'checking', amount: 25, kind: 'income' })
+      .insert({ occurred_on: '2026-08-18', account: 'checking', amount: 25, kind: ANY_KIND })
       .select('id')
       .single();
     const id = (data as { id: number }).id;
@@ -575,7 +597,7 @@ describe('finance — Phase 2 write-pattern constraints (requires local Supabase
     const { data: inserted, error: insertError } = await admin
       .from('financial_transactions')
       .insert([
-        { occurred_on: '2026-08-19', account: 'checking', amount: 50, kind: 'income', activity_label: source },
+        { occurred_on: '2026-08-19', account: 'checking', amount: 50, kind: ANY_KIND, activity_label: source },
         {
           occurred_on: '2026-08-19',
           account: 'scout_account',
@@ -638,7 +660,7 @@ describe('finance — Phase 2 write-pattern constraints (requires local Supabase
     const paddedSource = `[TEST] Padded Label ${crypto.randomUUID()} `; // real trailing space, as stored
     const { data: row, error } = await admin
       .from('financial_transactions')
-      .insert({ occurred_on: '2026-08-19', account: 'checking', amount: 10, kind: 'income', activity_label: paddedSource })
+      .insert({ occurred_on: '2026-08-19', account: 'checking', amount: 10, kind: ANY_KIND, activity_label: paddedSource })
       .select('id')
       .single();
     expect(error).toBeNull();
@@ -670,8 +692,8 @@ describe('finance — Phase 2 write-pattern constraints (requires local Supabase
     const { data: rows, error } = await admin
       .from('financial_transactions')
       .insert([
-        { occurred_on: '2026-08-19', account: 'checking', amount: 15, kind: 'income', activity_label: source },
-        { occurred_on: '2026-08-19', account: 'checking', amount: 30, kind: 'income', activity_label: target }
+        { occurred_on: '2026-08-19', account: 'checking', amount: 15, kind: ANY_KIND, activity_label: source },
+        { occurred_on: '2026-08-19', account: 'checking', amount: 30, kind: ANY_KIND, activity_label: target }
       ])
       .select('id');
     expect(error).toBeNull();

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
+import { mustList, mustMaybe } from '@/lib/db';
 import { loadCalendarCategories } from '@/lib/calendar';
 import {
   calendarEntryDependents,
@@ -199,11 +200,11 @@ export async function cloneCalendarEntry(
   const problems: string[] = [];
 
   // ── resources ──
-  const { data: resources } = await supabase
-    .from('event_resources')
-    .select('*')
-    .eq('calendar_entry_id', sourceId);
-  if (resources?.length) {
+  const resources = mustList<Record<string, unknown>>(
+    await supabase.from('event_resources').select('*').eq('calendar_entry_id', sourceId),
+    'clone: event_resources'
+  );
+  if (resources.length) {
     const { error } = await supabase
       .from('event_resources')
       .insert(resources.map((r) => ({ ...stripRow(r), calendar_entry_id: newId })));
@@ -211,12 +212,15 @@ export async function cloneCalendarEntry(
   }
 
   // ── agenda layer: structure only, every person cleared ──
-  const { data: meeting } = await supabase
-    .from('meetings')
-    .select('*')
-    .eq('calendar_entry_id', sourceId)
-    .is('archived_at', null)
-    .maybeSingle();
+  const meeting = mustMaybe<Record<string, unknown>>(
+    await supabase
+      .from('meetings')
+      .select('*')
+      .eq('calendar_entry_id', sourceId)
+      .is('archived_at', null)
+      .maybeSingle(),
+    'clone: meetings'
+  );
   if (meeting) {
     const { data: newMeeting, error } = await supabase
       .from('meetings')
@@ -233,11 +237,11 @@ export async function cloneCalendarEntry(
     if (error || !newMeeting) {
       problems.push('agenda');
     } else {
-      const { data: sessions } = await supabase
-        .from('meeting_sessions')
-        .select('*')
-        .eq('meeting_id', meeting.id);
-      if (sessions?.length) {
+      const sessions = mustList<Record<string, unknown>>(
+        await supabase.from('meeting_sessions').select('*').eq('meeting_id', meeting.id as number),
+        'clone: meeting_sessions'
+      );
+      if (sessions.length) {
         const { error: sErr } = await supabase.from('meeting_sessions').insert(
           sessions.map((s) => ({
             ...stripRow(s),
@@ -256,11 +260,10 @@ export async function cloneCalendarEntry(
   }
 
   // ── signup layer: the whole structure, none of the people, and closed ──
-  const { data: signup } = await supabase
-    .from('event_signups')
-    .select('*')
-    .eq('calendar_entry_id', sourceId)
-    .maybeSingle();
+  const signup = mustMaybe<Record<string, unknown>>(
+    await supabase.from('event_signups').select('*').eq('calendar_entry_id', sourceId).maybeSingle(),
+    'clone: event_signups'
+  );
   if (signup) {
     const { data: newSignup, error } = await supabase
       .from('event_signups')
@@ -276,11 +279,20 @@ export async function cloneCalendarEntry(
       problems.push('signup');
     } else {
       for (const table of ['event_prices', 'signup_slots', 'signup_questions'] as const) {
-        const { data: rows } = await supabase
-          .from(table)
-          .select('*')
-          .eq('event_signup_id', signup.id);
-        if (!rows?.length) continue;
+        /*
+         * THE READ THAT CAUSED THE 2026-08-22 REPORT. This was
+         * `const { data: rows } = await …`, so a transient failure (production
+         * reaches Postgres through a connection pooler) made `rows` null, the
+         * loop `continue`d, and the clone reported SUCCESS with the jobs
+         * silently absent. Reading it loudly turns that into a named problem
+         * the leader actually sees. Same defect class as the 2026-08-16
+         * outage lib/db.ts was written for.
+         */
+        const rows = mustList<Record<string, unknown>>(
+          await supabase.from(table).select('*').eq('event_signup_id', signup.id as number),
+          `clone: ${table}`
+        );
+        if (!rows.length) continue;
         const { error: cErr } = await supabase.from(table).insert(
           rows.map((r) => ({
             ...stripRow(r),

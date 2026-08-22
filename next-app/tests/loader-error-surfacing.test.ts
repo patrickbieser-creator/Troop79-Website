@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { adminClient } from './helpers/admin-client';
 import { mustList, mustMaybe } from '../src/lib/db';
 
@@ -90,5 +91,55 @@ describe('loader error surfacing', () => {
     // fix. Asserted so a future sweep does not "helpfully" harden them.
     const src = readFileSync('src/lib/identity-challenge.ts', 'utf8');
     expect(src).not.toMatch(/from '@\/lib\/db'/);
+  });
+});
+
+/**
+ * The deep clone's reads must be LOUD too (Patrick, 2026-08-22).
+ *
+ * He reported that cloning the Sept 2 Unity Church service project to Sept 16
+ * "did not carry the jobs forward". The date-shift logic was verified present
+ * since 2026-08-14 and correct — cloning that exact event on a copy of
+ * production reproduced a properly shifted job. But cloneCalendarEntry read
+ * its child rows as `const { data: rows } = await supabase...`, dropping the
+ * error. A transient failure on that ONE read (production goes through a
+ * connection pooler) makes `rows` null, the loop `continue`s, and the clone
+ * reports SUCCESS with the jobs silently missing — exactly the symptom, with
+ * no message to the leader.
+ *
+ * This is the same defect class lib/db.ts was written to kill after the
+ * 2026-08-16 outage. These assert the clone now uses those helpers rather
+ * than swallowing.
+ */
+describe('clone — child-row reads surface failure instead of silently skipping', () => {
+  it('MustList_Throws_WhenTheChildRowReadFails', () => {
+    expect(() =>
+      mustList<{ id: number }>(
+        { data: null, error: { message: 'canceling statement due to conflict', code: '40001' } },
+        'clone: signup_slots'
+      )
+    ).toThrow(/clone: signup_slots/);
+  });
+
+  it('MustList_ReturnsEmpty_WhenThereGenuinelyAreNoChildRows', () => {
+    // A signup with no jobs is ordinary and must NOT be reported as a problem.
+    expect(mustList<{ id: number }>({ data: [], error: null }, 'clone: signup_slots')).toEqual([]);
+  });
+
+  it('CloneAction_UsesTheLoudHelpers_ForEveryChildRead', () => {
+    // Guards the regression directly: a future `const { data: x } = await`
+    // in this action would reintroduce the silent skip.
+    const src = readFileSync(
+      resolve(__dirname, '../src/app/admin/(workspace)/calendar/actions.ts'),
+      'utf8'
+    );
+    const clone = src
+      .slice(src.indexOf('export async function cloneCalendarEntry'))
+      // Strip comments first — this file DOCUMENTS the old broken shape, and
+      // matching prose would make the guard unfixable.
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/.*$/gm, '');
+    const silentReads = clone.match(/const \{ data: \w+ \} = await/g) ?? [];
+    expect(silentReads, 'clone must not drop read errors — use mustList/mustMaybe').toEqual([]);
   });
 });
