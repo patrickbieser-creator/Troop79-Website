@@ -58,6 +58,8 @@ export interface RosterRow {
   /** Driver's name when placed in a car for that leg. */
   carOut: string | null;
   carBack: string | null;
+  /** "Patrols: Kraken", "Tents: Tent 3" — every non-car set they're placed in. */
+  groups: string[];
   slipReceived: boolean;
   paymentReceived: boolean;
   notes: string | null;
@@ -107,32 +109,46 @@ async function load(signupId: number) {
     supabase.from('people').select('id, display_name')
   ]);
 
-  // Cars (Plans/Event-Logistics.md §A): trigger-owned groups in the two
-  // kind='car' sets. Each entry's car per leg is the driver's name.
-  const { data: carSets } = await supabase
+  // Group sets (Plans/Event-Logistics.md §A/§B): cars are the trigger-owned
+  // kind='car' sets (each entry's car per leg = the driver's name); every
+  // other set (patrols, tents, crews, teams) becomes a "Label: Group" tag.
+  const { data: allSets } = await supabase
     .from('signup_group_sets')
-    .select('id, leg')
+    .select('id, kind, label, leg, sort')
     .eq('event_signup_id', sig.id)
-    .eq('kind', 'car');
-  const carSetIds = ((carSets ?? []) as { id: number; leg: Leg }[]).map((s) => s.id);
-  const legBySet = new Map(((carSets ?? []) as { id: number; leg: Leg }[]).map((s) => [s.id, s.leg]));
-  const { data: carGroups } = carSetIds.length
-    ? await supabase.from('signup_groups').select('id, set_id, driver_entry_id, capacity').in('set_id', carSetIds)
+    .order('sort')
+    .order('id');
+  const setRows = (allSets ?? []) as { id: number; kind: string; label: string; leg: Leg | null }[];
+  const carSetIds = setRows.filter((s) => s.kind === 'car').map((s) => s.id);
+  const legBySet = new Map(setRows.filter((s) => s.kind === 'car').map((s) => [s.id, s.leg as Leg]));
+  const setById = new Map(setRows.map((s) => [s.id, s]));
+  const allSetIds = setRows.map((s) => s.id);
+  const { data: allGroups } = allSetIds.length
+    ? await supabase.from('signup_groups').select('id, set_id, name, driver_entry_id, capacity').in('set_id', allSetIds)
     : { data: [] as unknown[] };
-  const { data: carMembers } = carSetIds.length
-    ? await supabase.from('signup_group_members').select('group_id, entry_id').in('set_id', carSetIds)
+  const { data: allMembers } = allSetIds.length
+    ? await supabase.from('signup_group_members').select('group_id, entry_id, set_id').in('set_id', allSetIds)
     : { data: [] as unknown[] };
-  const membersByGroup = new Map<number, number[]>();
-  for (const m of (carMembers ?? []) as { group_id: number; entry_id: number }[]) {
-    membersByGroup.set(m.group_id, [...(membersByGroup.get(m.group_id) ?? []), m.entry_id]);
-  }
-  const cars: TransportCar[] = ((carGroups ?? []) as {
+  const groupRows = (allGroups ?? []) as {
     id: number;
     set_id: number;
+    name: string;
     driver_entry_id: number | null;
     capacity: number | null;
-  }[])
-    .filter((g) => g.driver_entry_id != null)
+  }[];
+  const groupById = new Map(groupRows.map((g) => [g.id, g]));
+  const membersByGroup = new Map<number, number[]>();
+  const groupTagsByEntry = new Map<number, string[]>();
+  for (const m of (allMembers ?? []) as { group_id: number; entry_id: number; set_id: number }[]) {
+    membersByGroup.set(m.group_id, [...(membersByGroup.get(m.group_id) ?? []), m.entry_id]);
+    const set = setById.get(m.set_id);
+    const group = groupById.get(m.group_id);
+    if (set && group && set.kind !== 'car') {
+      groupTagsByEntry.set(m.entry_id, [...(groupTagsByEntry.get(m.entry_id) ?? []), `${set.label}: ${group.name}`]);
+    }
+  }
+  const cars: TransportCar[] = groupRows
+    .filter((g) => carSetIds.includes(g.set_id) && g.driver_entry_id != null)
     .map((g) => ({
       id: g.id,
       leg: legBySet.get(g.set_id) ?? 'out',
@@ -244,6 +260,7 @@ async function load(signupId: number) {
       rideBack: isRideStatus(e.ride_back) ? e.ride_back : null,
       carOut: e.drives_out === true ? null : carNameFor(Number(e.id), 'out'),
       carBack: e.drives_back === true ? null : carNameFor(Number(e.id), 'back'),
+      groups: groupTagsByEntry.get(Number(e.id)) ?? [],
       slipReceived: e.permission_slip_received === true,
       paymentReceived: e.payment_received === true,
       notes: (e.notes as string) ?? null,

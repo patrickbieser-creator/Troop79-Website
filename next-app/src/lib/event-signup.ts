@@ -13,7 +13,7 @@
 
 import { GUEST_CLASSES, type GuestClass, type ParticipantClass } from '@/lib/participant-class';
 import { createAdminClient } from '@/lib/supabase/server';
-import { mustMaybe } from '@/lib/db';
+import { mustList, mustMaybe } from '@/lib/db';
 import type { CalendarEntry } from '@/lib/supabase/types';
 import type { Leg, PlacementRow, RideStatus } from '@/lib/transport';
 
@@ -80,6 +80,15 @@ export interface SignupQuestion {
   sort: number;
 }
 
+/** A family-pickable set, public-safe: labels, names, capacities and
+ *  counts — never who is in a group (Plans/Event-Logistics.md §B). */
+export interface PublicGroupSet {
+  id: number;
+  label: string;
+  kind: string;
+  groups: { id: number; name: string; capacity: number | null; filled: number }[];
+}
+
 export interface EventDetail {
   entry: CalendarEntry;
   resources: EventResource[];
@@ -88,6 +97,8 @@ export interface EventDetail {
   prices: EventPrice[];
   slots: SignupSlot[];
   questions: SignupQuestion[];
+  /** Sets families may pick a group in (self_select), with room counts. */
+  groupSets: PublicGroupSet[];
   /** status='yes' + participation='full' headcount, including guests. */
   headcount: number;
 }
@@ -263,51 +274,61 @@ export async function loadPartySignup(
 export async function loadPartyPlacements(eventSignupId: number, entryIds: number[]): Promise<PlacementRow[]> {
   if (entryIds.length === 0) return [];
   const supabase = createAdminClient();
-  const { data: sets } = await supabase
-    .from('signup_group_sets')
-    .select('id, label, kind, leg, family_visible, sort')
-    .eq('event_signup_id', eventSignupId)
-    .eq('family_visible', true)
-    .order('sort');
-  const setList = (sets ?? []) as { id: number; label: string; kind: string; leg: Leg | null; sort: number }[];
+  const ctx = `party placements (signup ${eventSignupId})`;
+  const setList = mustList<{ id: number; label: string; kind: string; leg: Leg | null; sort: number }>(
+    await supabase
+      .from('signup_group_sets')
+      .select('id, label, kind, leg, family_visible, sort')
+      .eq('event_signup_id', eventSignupId)
+      .eq('family_visible', true)
+      .order('sort'),
+    `${ctx}: sets`
+  );
   if (setList.length === 0) return [];
   const setById = new Map(setList.map((s) => [s.id, s]));
 
-  const { data: members } = await supabase
-    .from('signup_group_members')
-    .select('entry_id, group_id, set_id')
-    .in('entry_id', entryIds)
-    .in('set_id', setList.map((s) => s.id));
-  const memberRows = (members ?? []) as { entry_id: number; group_id: number; set_id: number }[];
+  const memberRows = mustList<{ entry_id: number; group_id: number; set_id: number }>(
+    await supabase
+      .from('signup_group_members')
+      .select('entry_id, group_id, set_id')
+      .in('entry_id', entryIds)
+      .in('set_id', setList.map((s) => s.id)),
+    `${ctx}: members`
+  );
   if (memberRows.length === 0) return [];
 
-  const { data: groups } = await supabase
-    .from('signup_groups')
-    .select('id, name, driver_entry_id')
-    .in('id', [...new Set(memberRows.map((m) => m.group_id))]);
-  const groupById = new Map(
-    ((groups ?? []) as { id: number; name: string; driver_entry_id: number | null }[]).map((g) => [g.id, g])
+  const groups = mustList<{ id: number; name: string; driver_entry_id: number | null }>(
+    await supabase
+      .from('signup_groups')
+      .select('id, name, driver_entry_id')
+      .in('id', [...new Set(memberRows.map((m) => m.group_id))]),
+    `${ctx}: groups`
   );
+  const groupById = new Map(groups.map((g) => [g.id, g]));
 
   // Names: the party's own people (for "Maya —") and the drivers' family names.
   const driverEntryIds = [...groupById.values()].map((g) => g.driver_entry_id).filter((v): v is number => v != null);
-  const { data: entryPeople } = await supabase
-    .from('signup_entries')
-    .select('id, person_id, guest_name')
-    .in('id', [...new Set([...entryIds, ...driverEntryIds])]);
+  const entryPeople = mustList<{ id: number; person_id: number | null; guest_name: string | null }>(
+    await supabase
+      .from('signup_entries')
+      .select('id, person_id, guest_name')
+      .in('id', [...new Set([...entryIds, ...driverEntryIds])]),
+    `${ctx}: entries`
+  );
   const personIdByEntry = new Map<number, number | null>();
   const guestNameByEntry = new Map<number, string | null>();
-  for (const e of (entryPeople ?? []) as { id: number; person_id: number | null; guest_name: string | null }[]) {
+  for (const e of entryPeople) {
     personIdByEntry.set(e.id, e.person_id);
     guestNameByEntry.set(e.id, e.guest_name);
   }
   const personIds = [...personIdByEntry.values()].filter((v): v is number => v != null);
-  const { data: people } = personIds.length
-    ? await supabase.from('people').select('id, display_name, last_name').in('id', personIds)
-    : { data: [] as unknown[] };
-  const personById = new Map(
-    ((people ?? []) as { id: number; display_name: string; last_name: string | null }[]).map((p) => [p.id, p])
-  );
+  const people = personIds.length
+    ? mustList<{ id: number; display_name: string; last_name: string | null }>(
+        await supabase.from('people').select('id, display_name, last_name').in('id', personIds),
+        `${ctx}: people`
+      )
+    : [];
+  const personById = new Map(people.map((p) => [p.id, p]));
   const nameOf = (entryId: number) => {
     const pid = personIdByEntry.get(entryId);
     return (pid != null ? personById.get(pid)?.display_name : null) ?? guestNameByEntry.get(entryId) ?? 'Someone';
@@ -389,6 +410,7 @@ export async function loadEventDetail(entryId: number): Promise<EventDetail | nu
     signup: (signup ?? null) as EventSignup | null,
     prices: [],
     slots: [],
+    groupSets: [],
     questions: [],
     headcount: 0
   };
@@ -426,8 +448,44 @@ export async function loadEventDetail(entryId: number): Promise<EventDetail | nu
     .from('signup_questions')
     .select('id, prompt, input_type, choices, applies_to, required, sort')
     .eq('event_signup_id', sig.id)
+    // Leader-only columns are never a family prompt (Plans/Event-Logistics.md §D).
+    .eq('leader_only', false)
     .order('sort')
     .order('id');
+
+  // Family-pickable sets: labels/names/capacity/fill only — no names of
+  // members. Cars are never self-select (they come from the signup).
+  const selfSetRows = mustList<{ id: number; label: string; kind: string }>(
+    await supabase
+      .from('signup_group_sets')
+      .select('id, label, kind, sort')
+      .eq('event_signup_id', sig.id)
+      .eq('self_select', true)
+      .neq('kind', 'car')
+      .order('sort')
+      .order('id'),
+    `event ${entryId}: self-select sets`
+  );
+  let groupSets: PublicGroupSet[] = [];
+  if (selfSetRows.length > 0) {
+    const setIds = selfSetRows.map((s) => s.id);
+    const [groupsRes, membersRes] = await Promise.all([
+      supabase.from('signup_groups').select('id, set_id, name, capacity, sort').in('set_id', setIds).order('sort').order('name'),
+      supabase.from('signup_group_members').select('group_id').in('set_id', setIds)
+    ]);
+    const groups = mustList<{ id: number; set_id: number; name: string; capacity: number | null }>(groupsRes, `event ${entryId}: groups`);
+    const members = mustList<{ group_id: number }>(membersRes, `event ${entryId}: group members`);
+    const filled = new Map<number, number>();
+    for (const m of members) filled.set(m.group_id, (filled.get(m.group_id) ?? 0) + 1);
+    groupSets = selfSetRows.map((s) => ({
+      id: s.id,
+      label: s.label,
+      kind: s.kind,
+      groups: groups
+        .filter((g) => g.set_id === s.id)
+        .map((g) => ({ id: g.id, name: g.name, capacity: g.capacity, filled: filled.get(g.id) ?? 0 }))
+    }));
+  }
 
   // Coverage counts, aggregate only. Filtered to status='yes' so a cancelled
   // entry releases its spot — the same rule the claim RPC enforces.
@@ -455,8 +513,27 @@ export async function loadEventDetail(entryId: number): Promise<EventDetail | nu
     })),
     slots: slotRows.map((s) => ({ ...s, filled: counts.get(s.id) ?? 0 })),
     questions: (questions ?? []) as unknown as SignupQuestion[],
+    groupSets,
     headcount: typeof headcount === 'number' ? headcount : 0
   };
+}
+
+export interface PartyMembership {
+  entryId: number;
+  setId: number;
+  groupId: number;
+}
+
+/** The party's raw placements (set → group) for the form's pickers to
+ *  prefill. GATE-ONLY and scoped to entry ids the caller already resolved. */
+export async function loadPartyMemberships(entryIds: number[]): Promise<PartyMembership[]> {
+  if (entryIds.length === 0) return [];
+  const supabase = createAdminClient();
+  const rows = mustList<{ entry_id: number; set_id: number; group_id: number }>(
+    await supabase.from('signup_group_members').select('entry_id, set_id, group_id').in('entry_id', entryIds),
+    'party memberships'
+  );
+  return rows.map((m) => ({ entryId: m.entry_id, setId: m.set_id, groupId: m.group_id }));
 }
 
 /* ── Named guest rows from the public form (Plans/Participant-Classification.md) ── */

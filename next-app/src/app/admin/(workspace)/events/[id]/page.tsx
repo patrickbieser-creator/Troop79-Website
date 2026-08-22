@@ -54,12 +54,38 @@ async function load(signupId: number) {
     supabase.from('signup_questions').select('*').eq('event_signup_id', s.id).order('sort').order('id')
   ]);
 
+  // Assignments block (Plans/Event-Logistics.md §B): the sets on this signup
+  // with how many groups and placements each holds, so Remove can warn.
+  const { data: setRows } = await supabase
+    .from('signup_group_sets')
+    .select('id, kind, label, leg, seed_from_roster, self_select, family_visible, default_capacity, sort')
+    .eq('event_signup_id', s.id)
+    .order('sort')
+    .order('id');
+  const setIds = ((setRows ?? []) as { id: number }[]).map((r) => r.id);
+  const [{ data: groupRows }, { data: memberRows }] = setIds.length
+    ? await Promise.all([
+        supabase.from('signup_groups').select('set_id').in('set_id', setIds),
+        supabase.from('signup_group_members').select('set_id').in('set_id', setIds)
+      ])
+    : [{ data: [] as unknown[] }, { data: [] as unknown[] }];
+  const groupCount = new Map<number, number>();
+  for (const g of (groupRows ?? []) as { set_id: number }[]) groupCount.set(g.set_id, (groupCount.get(g.set_id) ?? 0) + 1);
+  const memberCount = new Map<number, number>();
+  for (const m of (memberRows ?? []) as { set_id: number }[]) memberCount.set(m.set_id, (memberCount.get(m.set_id) ?? 0) + 1);
+  const sets = ((setRows ?? []) as Record<string, unknown>[]).map((r) => ({
+    ...r,
+    group_count: groupCount.get(Number(r.id)) ?? 0,
+    member_count: memberCount.get(Number(r.id)) ?? 0
+  }));
+
   return {
     signup: signup as Record<string, unknown>,
     entry: entry as Record<string, unknown> | null,
     prices: (prices ?? []) as Record<string, unknown>[],
     slots: (slots ?? []) as Record<string, unknown>[],
-    questions: (questions ?? []) as Record<string, unknown>[]
+    questions: (questions ?? []) as Record<string, unknown>[],
+    sets
   };
 }
 
@@ -104,6 +130,8 @@ export default async function EventBuilderPage({ params }: { params: Promise<{ i
         prices={data.prices}
         slots={data.slots}
         questions={data.questions}
+        sets={data.sets}
+        category={String(data.entry.category ?? '')}
       />
     </>
   );

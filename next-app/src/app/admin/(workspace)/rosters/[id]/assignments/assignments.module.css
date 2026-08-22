@@ -39,5 +39,14 @@
 .sideList { display: flex; flex-wrap: wrap; gap: var(--admin-space-2); list-style: none; margin: 0; padding: 0; }
 .sideList .chip { cursor: default; }
 
+.cardTools { display: flex; align-items: center; gap: var(--admin-space-2); }
+.cardEdit { background: none; border: 1px solid var(--admin-gray-300); border-radius: var(--admin-radius-sm); color: var(--admin-navy); font-size: var(--admin-text-2xs); font-weight: var(--admin-weight-bold); cursor: pointer; padding: 2px 7px; }
+.cardEdit:hover:not(:disabled) { border-color: var(--admin-navy); background: var(--admin-status-info-bg); }
+.groupEdit { display: flex; flex-direction: column; gap: var(--admin-space-2); margin-bottom: var(--admin-space-2); }
+.groupEdit input { border: 1px solid var(--admin-gray-300); border-radius: var(--admin-radius-sm); padding: 5px 8px; font-size: var(--admin-text-sm); font-family: inherit; }
+.groupEditActions { display: flex; gap: var(--admin-space-2); align-items: center; flex-wrap: wrap; }
+.addGroup { display: flex; gap: var(--admin-space-2); align-items: center; flex-wrap: wrap; margin-bottom: var(--admin-space-4); }
+.addGroup input { border: 1px solid var(--admin-gray-300); border-radius: var(--admin-radius-sm); padding: 6px 9px; font-size: var(--admin-text-sm); font-family: inherit; }
+.addGroup input[type='number'] { width: 96px; }
 .err { color: var(--admin-danger); font-size: var(--admin-text-sm); font-weight: var(--admin-weight-semibold); margin: var(--admin-space-2) 0; }
 .noSets { font-size: var(--admin-text-sm); color: var(--admin-gray-600); }

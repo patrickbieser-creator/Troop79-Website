@@ -10,10 +10,16 @@ vi.mock('next/navigation', () => ({
 const placeInGroup = vi.fn(async () => ({ ok: true, outcome: 'placed' as const }));
 const unplaceFromGroup = vi.fn(async () => ({ ok: true }));
 const setRideStatus = vi.fn(async () => ({ ok: true }));
+const addGroup = vi.fn(async () => ({ ok: true, groupId: 300 }));
+const updateGroup = vi.fn(async () => ({ ok: true }));
+const deleteGroup = vi.fn(async () => ({ ok: true }));
 vi.mock('../src/app/admin/(workspace)/events/actions', () => ({
   placeInGroup: (...a: unknown[]) => placeInGroup(...(a as [])),
   unplaceFromGroup: (...a: unknown[]) => unplaceFromGroup(...(a as [])),
-  setRideStatus: (...a: unknown[]) => setRideStatus(...(a as []))
+  setRideStatus: (...a: unknown[]) => setRideStatus(...(a as [])),
+  addGroup: (...a: unknown[]) => addGroup(...(a as [])),
+  updateGroup: (...a: unknown[]) => updateGroup(...(a as [])),
+  deleteGroup: (...a: unknown[]) => deleteGroup(...(a as []))
 }));
 
 /**
@@ -139,6 +145,38 @@ describe('AssignmentsBoard — any other set', () => {
     const tentA = [...move.options].find((o) => o.value === '200');
     expect(tentA?.disabled).toBe(true); // Full · 2 of 2
     expect(screen.getByText('Full · 2 of 2')).toBeTruthy();
+  });
+
+  it('GroupBoard_AddGroup_CallsAddGroupWithTheActiveSet', async () => {
+    const user = userEvent.setup();
+    render(<AssignmentsBoard signupId={1} calendarEntryId={2} sets={[tentSet]} people={people} />);
+    await user.type(screen.getByLabelText('New group name'), 'Tent C');
+    await user.type(screen.getByLabelText('New group capacity'), '3');
+    await user.click(screen.getByRole('button', { name: 'Add tent' }));
+    expect(addGroup).toHaveBeenCalledWith(11, 1, 2, { name: 'Tent C', capacity: 3 });
+  });
+
+  it('GroupBoard_EditCard_SavesNameCapacityNotes_AndRemoveIsDisabledWhileOccupied', async () => {
+    const user = userEvent.setup();
+    render(<AssignmentsBoard signupId={1} calendarEntryId={2} sets={[tentSet]} people={people} />);
+    await user.click(screen.getByLabelText('Edit Tent A'));
+    const remove = screen.getByRole('button', { name: 'Remove' }) as HTMLButtonElement;
+    expect(remove.disabled).toBe(true); // two people in Tent A
+    await user.clear(screen.getByLabelText('Group name'));
+    await user.type(screen.getByLabelText('Group name'), 'Tent Alpha');
+    await user.type(screen.getByLabelText('Group note'), 'by the creek');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(updateGroup).toHaveBeenCalledWith(200, 1, 2, { name: 'Tent Alpha', capacity: 2, notes: 'by the creek' });
+  });
+
+  it('CarBoard_OffersNoAddGroup_AndEditsOnlyTheNote', async () => {
+    const user = userEvent.setup();
+    render(<AssignmentsBoard signupId={1} calendarEntryId={2} sets={[carSet]} people={people} />);
+    expect(screen.queryByLabelText('New group name')).toBeNull();
+    await user.click(screen.getByLabelText('Edit Jason Porter'));
+    expect(screen.queryByLabelText('Group name')).toBeNull();
+    expect(screen.queryByLabelText('Group capacity')).toBeNull();
+    expect(screen.getByLabelText('Group note')).toBeTruthy();
   });
 
   it('Board_TabStrip_SwitchesSets', async () => {

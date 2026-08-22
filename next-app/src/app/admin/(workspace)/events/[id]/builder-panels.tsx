@@ -5,10 +5,12 @@ import { flushSync } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import {
   updateSignup, addPrice, deletePrice, updatePrice, backfillPrices,
-  addSlot, deleteSlot, updateSlot, addQuestion, deleteQuestion, disableSignup
+  addSlot, deleteSlot, updateSlot, addQuestion, deleteQuestion, disableSignup,
+  addGroupSet, updateGroupSet, deleteGroupSet
 } from '../actions';
 import type { SlotClaimant, QuestionAnswerRow } from '@/lib/event-signup-admin';
 import { jobDateNote } from '@/lib/event-signup-shared';
+import { SET_KINDS, SET_KIND_LABEL, presetSetsFor, type SetKind } from '@/lib/group-sets';
 import { DatePickerField } from '../../_components/date-picker-field';
 import { DateTimeField } from '../../_components/date-time-field';
 import styles from '../events-admin.module.css';
@@ -63,7 +65,9 @@ export function BuilderPanels({
   signup,
   prices,
   slots,
-  questions
+  questions,
+  sets = [],
+  category = ''
 }: {
   signupId: number;
   calendarEntryId: number;
@@ -74,10 +78,22 @@ export function BuilderPanels({
   prices: Rec[];
   slots: Rec[];
   questions: Rec[];
+  /** Group sets on this signup (Plans/Event-Logistics.md §B), with
+   *  group_count / member_count for the Remove warning. */
+  sets?: Rec[];
+  /** calendar_entries.category — picks the Assignments presets. */
+  category?: string;
 }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+
+  // Assignments block drafts
+  const [gLabel, setGLabel] = useState('');
+  const [gKind, setGKind] = useState<SetKind>('tent');
+  const [gCap, setGCap] = useState('');
+  const [gSelf, setGSelf] = useState(false);
+  const [setDeleteConfirm, setSetDeleteConfirm] = useState<{ id: number; message: string } | null>(null);
 
   const save = (fields: Record<string, unknown>) =>
     start(async () => {
@@ -1054,6 +1070,215 @@ export function BuilderPanels({
           </button>
         </div>
       </section>
+      <section className={styles.panel}>
+        <h2>Assignments</h2>
+        <p className={styles.panelHint}>
+          The campout sheet&rsquo;s Patrol / Tent / Crew / Team columns, per event. Presets follow the
+          category; add any other set. People are placed on{' '}
+          <a href={`/admin/rosters/${signupId}/assignments`} className={styles.actionLink}>Rides &amp; assignments</a>.
+          Cars come from the <strong>Drivers</strong> block above. Patrols seed from the roster and
+          place late sign-ups automatically; nothing ever writes back to the roster.
+        </p>
+        {presetSetsFor(category).map((p) => {
+          const existing = sets.find((x) => String(x.kind) === p.kind && String(x.label).toLowerCase() === p.label.toLowerCase());
+          return (
+            <Toggle
+              key={p.label}
+              checked={!!existing}
+              disabled={pending}
+              label={p.label}
+              hint={
+                p.seedFromRoster
+                  ? 'Seeded from each scout’s roster patrol.'
+                  : p.selfSelect
+                    ? `Families may pick one on the sign-up form${p.defaultCapacity ? ` (${p.defaultCapacity} per ${SET_KIND_LABEL[p.kind].toLowerCase()})` : ''}.`
+                    : 'Leaders place people on the board.'
+              }
+              onChange={(v) =>
+                start(async () => {
+                  setError(null);
+                  const res = v
+                    ? await addGroupSet(signupId, calendarEntryId, {
+                        kind: p.kind,
+                        label: p.label,
+                        seedFromRoster: p.seedFromRoster,
+                        selfSelect: p.selfSelect,
+                        familyVisible: p.familyVisible,
+                        defaultCapacity: p.defaultCapacity
+                      })
+                    : await deleteGroupSet(Number(existing!.id), signupId, calendarEntryId, false);
+                  if (!res.ok) {
+                    if ('needsConfirm' in res && res.needsConfirm) {
+                      setSetDeleteConfirm({ id: Number(existing!.id), message: res.error ?? '' });
+                    } else {
+                      setError(res.error ?? 'Could not save.');
+                    }
+                    return;
+                  }
+                  router.refresh();
+                })
+              }
+            />
+          );
+        })}
+        {sets.filter((x) => String(x.kind) !== 'car').length > 0 && (
+          <table className={styles.miniTable}>
+            <tbody>
+              {sets
+                .filter((x) => String(x.kind) !== 'car')
+                .map((x) => {
+                  const id = Number(x.id);
+                  if (setDeleteConfirm?.id === id) {
+                    return (
+                      <tr key={id} className={styles.editRow}>
+                        <td colSpan={4}>
+                          <p className={styles.err}>{setDeleteConfirm.message}</p>
+                          <div className={styles.addRow}>
+                            <button
+                              type="button"
+                              className={styles.dangerBtn}
+                              disabled={pending}
+                              onClick={() =>
+                                start(async () => {
+                                  const res = await deleteGroupSet(id, signupId, calendarEntryId, true);
+                                  if (!res.ok) setError(res.error ?? 'Could not remove the set.');
+                                  setSetDeleteConfirm(null);
+                                  router.refresh();
+                                })
+                              }
+                            >
+                              Yes, remove anyway
+                            </button>
+                            <button type="button" className={styles.rowEdit} onClick={() => setSetDeleteConfirm(null)}>
+                              Keep it
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+                  return (
+                    <tr key={id}>
+                      <td>
+                        <strong>{s(x.label)}</strong>
+                        <span className={styles.evCat}>
+                          {SET_KIND_LABEL[(String(x.kind) as SetKind)] ?? s(x.kind)} · {Number(x.group_count)} groups ·{' '}
+                          {Number(x.member_count)} placed
+                          {x.default_capacity ? ` · ${String(x.default_capacity)} each` : ''}
+                        </span>
+                      </td>
+                      <td>
+                        <label className={styles.inlineChk}>
+                          <input
+                            type="checkbox"
+                            checked={b(x.self_select)}
+                            disabled={pending}
+                            onChange={(e) =>
+                              start(async () => {
+                                const res = await updateGroupSet(id, signupId, calendarEntryId, { selfSelect: e.target.checked });
+                                if (!res.ok) setError(res.error ?? 'Could not save.');
+                                router.refresh();
+                              })
+                            }
+                          />
+                          families pick
+                        </label>
+                      </td>
+                      <td>
+                        <label className={styles.inlineChk}>
+                          <input
+                            type="checkbox"
+                            checked={b(x.family_visible)}
+                            disabled={pending}
+                            onChange={(e) =>
+                              start(async () => {
+                                const res = await updateGroupSet(id, signupId, calendarEntryId, { familyVisible: e.target.checked });
+                                if (!res.ok) setError(res.error ?? 'Could not save.');
+                                router.refresh();
+                              })
+                            }
+                          />
+                          families see it
+                        </label>
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className={styles.rowDel}
+                          disabled={pending}
+                          onClick={() =>
+                            start(async () => {
+                              const res = await deleteGroupSet(id, signupId, calendarEntryId, false);
+                              if (res.ok) {
+                                router.refresh();
+                                return;
+                              }
+                              if (res.needsConfirm) {
+                                setSetDeleteConfirm({ id, message: res.error ?? '' });
+                                return;
+                              }
+                              setError(res.error ?? 'Could not remove the set.');
+                            })
+                          }
+                        >
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+            </tbody>
+          </table>
+        )}
+        <div className={styles.addRow}>
+          <input placeholder="Set label (e.g. Cooking groups)" value={gLabel} onChange={(e) => setGLabel(e.target.value)} />
+          <select value={gKind} onChange={(e) => setGKind(e.target.value as SetKind)} aria-label="Kind of group">
+            {SET_KINDS.filter((k) => k !== 'car').map((k) => (
+              <option key={k} value={k}>
+                {SET_KIND_LABEL[k]}
+              </option>
+            ))}
+          </select>
+          <input
+            type="number"
+            min={1}
+            placeholder="Capacity (optional)"
+            aria-label="Capacity per group"
+            value={gCap}
+            onChange={(e) => setGCap(e.target.value)}
+          />
+          <label className={styles.inlineChk}>
+            <input type="checkbox" checked={gSelf} onChange={(e) => setGSelf(e.target.checked)} />
+            families pick
+          </label>
+          <button
+            type="button"
+            className={styles.enableBtn}
+            disabled={pending}
+            onClick={() =>
+              start(async () => {
+                setError(null);
+                const res = await addGroupSet(signupId, calendarEntryId, {
+                  kind: gKind,
+                  label: gLabel,
+                  selfSelect: gSelf,
+                  defaultCapacity: gCap ? Number(gCap) : null
+                });
+                if (!res.ok) setError(res.error ?? 'Could not add the set.');
+                else {
+                  setGLabel('');
+                  setGCap('');
+                  setGSelf(false);
+                  router.refresh();
+                }
+              })
+            }
+          >
+            Add a set
+          </button>
+        </div>
+      </section>
+
       <section className={styles.dangerPanel}>
         <h2>Remove signup from this event</h2>
         <p className={styles.panelHint}>

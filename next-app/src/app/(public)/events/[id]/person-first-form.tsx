@@ -6,6 +6,8 @@ import type {
   EventPrice,
   EventSignup,
   HouseholdEntry,
+  PartyMembership,
+  PublicGroupSet,
   SignupQuestion,
   SignupSlot
 } from '@/lib/event-signup';
@@ -52,6 +54,8 @@ export default function PersonFirstForm({
   slots,
   existingClaims,
   existing,
+  groupSets = [],
+  existingMemberships = [],
   submitAction,
   cancelAction
 }: {
@@ -63,6 +67,10 @@ export default function PersonFirstForm({
   slots: SignupSlot[];
   existingClaims: { slotId: number; personKey: string }[];
   existing: HouseholdEntry[];
+  /** Sets the family may pick a group in (Plans/Event-Logistics.md §B) —
+   *  "Tent preference". Blank = the leader decides. */
+  groupSets?: PublicGroupSet[];
+  existingMemberships?: PartyMembership[];
   submitAction: (fd: FormData) => void;
   cancelAction: (fd: FormData) => void;
 }) {
@@ -145,6 +153,64 @@ export default function PersonFirstForm({
   });
   const setRide = (key: string, leg: Leg, value: RideStatus) =>
     setRides((v) => ({ ...v, [key]: { ...(v[key] ?? { out: 'needs_ride', back: 'needs_ride' }), [leg]: value } }));
+
+  // Self-select placements: picks[personKey][setId] = groupId | '' (leader decides).
+  // Prefilled from the party's existing memberships so an edit shows the tent
+  // they already chose (or a leader already put them in).
+  const [picks, setPicks] = useState<Record<string, Record<number, number | ''>>>(() => {
+    const init: Record<string, Record<number, number | ''>> = {};
+    const keyOfEntry = (e: HouseholdEntry) => {
+      const sc = e.person_kind === 'scout' ? scouts.find((s) => s.personId === e.person_id) : null;
+      if (sc) return `s:${sc.id}`;
+      const ad = e.person_kind === 'adult' ? adults.find((a) => a.personId === e.person_id) : null;
+      return ad ? `a:${ad.key}` : null;
+    };
+    const keyByEntryId = new Map(existing.map((e) => [e.id, keyOfEntry(e)]));
+    for (const m of existingMemberships) {
+      const key = keyByEntryId.get(m.entryId);
+      if (!key) continue;
+      init[key] = { ...(init[key] ?? {}), [m.setId]: m.groupId };
+    }
+    return init;
+  });
+  const setPick = (key: string, setId: number, groupId: number | '') =>
+    setPicks((v) => ({ ...v, [key]: { ...(v[key] ?? {}), [setId]: groupId } }));
+
+  /** "Tent preference" pickers — one select per self-select set, for an
+   *  attending person. A full group is offered only if it's the one they're
+   *  already in. Blank = the leader places them. */
+  const pickFields = (key: string, name: string) => {
+    if (groupSets.length === 0) return null;
+    return (
+      <div className={styles.rideRow}>
+        {groupSets.map((gs) => {
+          const current = picks[key]?.[gs.id] ?? '';
+          return (
+            <label key={gs.id} className={styles.rideField}>
+              <span className={styles.rideLeg}>{gs.label}</span>
+              <select
+                className={styles.rideSelect}
+                aria-label={`${name} — ${gs.label}`}
+                value={current}
+                onChange={(e) => setPick(key, gs.id, e.target.value === '' ? '' : Number(e.target.value))}
+              >
+                <option value="">No preference — leaders will place me</option>
+                {gs.groups.map((g) => {
+                  const full = g.capacity != null && g.filled >= g.capacity && g.id !== current;
+                  return (
+                    <option key={g.id} value={g.id} disabled={full}>
+                      {g.name}
+                      {g.capacity != null ? ` (${g.filled}/${g.capacity}${full ? ' full' : ''})` : ''}
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
+          );
+        })}
+      </div>
+    );
+  };
   // Named guest rows (Plans/Participant-Classification.md) — seeded from the
   // party's existing guest entries so an edit shows who's already listed.
   const [guestRows, setGuestRows] = useState<GuestRowValue[]>(() =>
@@ -451,6 +517,7 @@ export default function PersonFirstForm({
       <input type="hidden" name="signupId" value={signup.id} />
       <input type="hidden" name="householdKey" value={household.key} />
       <input type="hidden" name="entries" value={JSON.stringify(entries)} />
+      <input type="hidden" name="placements" value={JSON.stringify(picks)} />
       <input
         type="hidden"
         name="slotClaims"
@@ -498,6 +565,7 @@ export default function PersonFirstForm({
               {scoutChoice[s.id] === 'yes' && questionFields(`s:${s.id}`, 'scout')}
               {scoutChoice[s.id] === 'yes' &&
                 rideFields(`s:${s.id}`, s.displayName, { out: false, back: false })}
+              {scoutChoice[s.id] === 'yes' && pickFields(`s:${s.id}`, s.displayName)}
             </div>
           ))}
         </>
@@ -609,6 +677,7 @@ export default function PersonFirstForm({
                       })}
                   </div>
                 )}
+              {adultChoice[a.key] === 'full' && pickFields(`a:${a.key}`, a.name)}
             </div>
           ))}
 

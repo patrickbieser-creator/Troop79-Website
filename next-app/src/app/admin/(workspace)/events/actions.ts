@@ -6,6 +6,7 @@ import { eventRevalidatePaths } from '@/lib/event-signup-shared';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { isRideStatus } from '@/lib/transport';
+import { normalizeGroupName, normalizeSetLabel, validateNewSet } from '@/lib/group-sets';
 import { sendEmail, renderEmail } from '@/lib/email';
 import { recipientsForScouts } from '@/lib/email-recipients';
 import { siteUrl } from '@/lib/site-url';
@@ -1046,4 +1047,227 @@ function friendlyPlaceError(message: string): string {
   if (message.includes('CAR_GROUPS_ARE_SYSTEM_MANAGED'))
     return 'Cars come from the signup — set who drives on the roster.';
   return message;
+}
+
+/* ── Group sets & groups (Plans/Event-Logistics.md §B) ────────────────────── */
+
+/**
+ * Add a set (Patrols, Tents, Crews, Teams, or any label) to a signup. Cars
+ * are refused here — they come from the Drivers block. A patrol set with
+ * seed_from_roster seeds itself (DB trigger) from scouts.patrol.
+ */
+export async function addGroupSet(
+  signupId: number,
+  calendarEntryId: number,
+  input: {
+    kind: string;
+    label: string;
+    seedFromRoster?: boolean;
+    selfSelect?: boolean;
+    familyVisible?: boolean;
+    defaultCapacity?: number | null;
+  }
+): Promise<Result & { setId?: number }> {
+  await requireCapability('calendar.write');
+  const supabase = createAdminClient();
+  const { data: existing } = await supabase
+    .from('signup_group_sets')
+    .select('label')
+    .eq('event_signup_id', signupId);
+  const problem = validateNewSet(input, ((existing ?? []) as { label: string }[]).map((s) => s.label));
+  if (problem) return { ok: false, error: problem };
+  const cap = input.defaultCapacity != null && input.defaultCapacity > 0 ? Math.floor(input.defaultCapacity) : null;
+  const { data, error } = await supabase
+    .from('signup_group_sets')
+    .insert({
+      event_signup_id: signupId,
+      kind: input.kind,
+      label: normalizeSetLabel(input.label),
+      seed_from_roster: input.kind === 'patrol' && (input.seedFromRoster ?? true),
+      self_select: input.selfSelect ?? false,
+      family_visible: input.familyVisible ?? true,
+      default_capacity: cap
+    })
+    .select('id')
+    .single();
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/admin/events/${signupId}`);
+  revalidatePath(`/admin/rosters/${signupId}`);
+  revalidatePath(`/admin/rosters/${signupId}/assignments`);
+  revalidateEvent(calendarEntryId, signupId);
+  return { ok: true, setId: (data as { id: number }).id };
+}
+
+export async function updateGroupSet(
+  setId: number,
+  signupId: number,
+  calendarEntryId: number,
+  fields: { label?: string; selfSelect?: boolean; familyVisible?: boolean; defaultCapacity?: number | null; seedFromRoster?: boolean }
+): Promise<Result> {
+  await requireCapability('calendar.write');
+  const supabase = createAdminClient();
+  const patch: Record<string, unknown> = {};
+  if (fields.label !== undefined) {
+    const label = normalizeSetLabel(fields.label);
+    if (!label) return { ok: false, error: 'Give the set a label.' };
+    patch.label = label;
+  }
+  if (fields.selfSelect !== undefined) patch.self_select = fields.selfSelect;
+  if (fields.familyVisible !== undefined) patch.family_visible = fields.familyVisible;
+  if (fields.seedFromRoster !== undefined) patch.seed_from_roster = fields.seedFromRoster;
+  if (fields.defaultCapacity !== undefined)
+    patch.default_capacity = fields.defaultCapacity != null && fields.defaultCapacity > 0 ? Math.floor(fields.defaultCapacity) : null;
+  const { error } = await supabase
+    .from('signup_group_sets')
+    .update(patch)
+    .eq('id', setId)
+    .eq('event_signup_id', signupId)
+    .neq('kind', 'car');
+  if (error) return { ok: false, error: error.message.includes('duplicate') ? 'A set with that label already exists.' : error.message };
+  revalidatePath(`/admin/events/${signupId}`);
+  revalidatePath(`/admin/rosters/${signupId}/assignments`);
+  revalidateEvent(calendarEntryId, signupId);
+  return { ok: true };
+}
+
+/** Removing a set takes its groups and placements with it — so it asks first
+ *  once anyone is placed, and reports how many. Car sets cannot be removed
+ *  here (turn off Drivers). */
+export async function deleteGroupSet(
+  setId: number,
+  signupId: number,
+  calendarEntryId: number,
+  confirm: boolean
+): Promise<Result & { needsConfirm?: boolean; memberCount?: number }> {
+  await requireCapability('calendar.write');
+  const supabase = createAdminClient();
+  const { data: set } = await supabase
+    .from('signup_group_sets')
+    .select('id, kind, label')
+    .eq('id', setId)
+    .eq('event_signup_id', signupId)
+    .maybeSingle();
+  if (!set) return { ok: false, error: 'That set is not on this signup.' };
+  if ((set as { kind: string }).kind === 'car') {
+    return { ok: false, error: 'Cars come from the Drivers block — turn Drivers off to remove them.' };
+  }
+  const { count } = await supabase
+    .from('signup_group_members')
+    .select('*', { count: 'exact', head: true })
+    .eq('set_id', setId);
+  const memberCount = count ?? 0;
+  if (memberCount > 0 && !confirm) {
+    return {
+      ok: false,
+      needsConfirm: true,
+      memberCount,
+      error: `${memberCount} ${memberCount === 1 ? 'person is' : 'people are'} placed in "${(set as { label: string }).label}". Removing the set un-places them — this can't be undone.`
+    };
+  }
+  const { error } = await supabase.from('signup_group_sets').delete().eq('id', setId);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/admin/events/${signupId}`);
+  revalidatePath(`/admin/rosters/${signupId}`);
+  revalidatePath(`/admin/rosters/${signupId}/assignments`);
+  revalidateEvent(calendarEntryId, signupId);
+  return { ok: true, memberCount };
+}
+
+/** Add a group (a tent, a patrol, a team) to a non-car set. */
+export async function addGroup(
+  setId: number,
+  signupId: number,
+  calendarEntryId: number,
+  input: { name: string; capacity?: number | null; notes?: string | null }
+): Promise<Result & { groupId?: number }> {
+  await requireCapability('calendar.write');
+  const name = normalizeGroupName(input.name);
+  if (!name) return { ok: false, error: 'Give the group a name.' };
+  const supabase = createAdminClient();
+  const { data: set } = await supabase
+    .from('signup_group_sets')
+    .select('id, kind, default_capacity')
+    .eq('id', setId)
+    .eq('event_signup_id', signupId)
+    .maybeSingle();
+  if (!set) return { ok: false, error: 'That set is not on this signup.' };
+  const s = set as { kind: string; default_capacity: number | null };
+  if (s.kind === 'car') return { ok: false, error: 'Cars come from the signup — set who drives on the roster.' };
+  const capacity =
+    input.capacity === undefined ? s.default_capacity : input.capacity != null && input.capacity > 0 ? Math.floor(input.capacity) : null;
+  const { data, error } = await supabase
+    .from('signup_groups')
+    .insert({ set_id: setId, name, capacity, notes: input.notes?.trim() || null })
+    .select('id')
+    .single();
+  if (error) {
+    return { ok: false, error: error.message.includes('duplicate') ? `"${name}" already exists in this set.` : error.message };
+  }
+  revalidatePath(`/admin/rosters/${signupId}`);
+  revalidatePath(`/admin/rosters/${signupId}/assignments`);
+  revalidateEvent(calendarEntryId, signupId);
+  return { ok: true, groupId: (data as { id: number }).id };
+}
+
+/** Rename / resize / annotate a non-car group. (Car capacity lives on the
+ *  driver's entry; only `notes` is editable on a car here.) */
+export async function updateGroup(
+  groupId: number,
+  signupId: number,
+  calendarEntryId: number,
+  fields: { name?: string; capacity?: number | null; notes?: string | null }
+): Promise<Result> {
+  await requireCapability('calendar.write');
+  const supabase = createAdminClient();
+  const { data: group } = await supabase
+    .from('signup_groups')
+    .select('id, set_id, signup_group_sets!inner(kind, event_signup_id)')
+    .eq('id', groupId)
+    .maybeSingle();
+  const g = group as unknown as { id: number; signup_group_sets: { kind: string; event_signup_id: number } } | null;
+  if (!g || g.signup_group_sets.event_signup_id !== signupId) return { ok: false, error: 'That group is not on this signup.' };
+  const patch: Record<string, unknown> = {};
+  if (fields.notes !== undefined) patch.notes = fields.notes?.trim() || null;
+  if (g.signup_group_sets.kind !== 'car') {
+    if (fields.name !== undefined) {
+      const name = normalizeGroupName(fields.name);
+      if (!name) return { ok: false, error: 'Give the group a name.' };
+      patch.name = name;
+    }
+    if (fields.capacity !== undefined) {
+      patch.capacity = fields.capacity != null && fields.capacity > 0 ? Math.floor(fields.capacity) : null;
+    }
+  }
+  if (Object.keys(patch).length === 0) return { ok: true };
+  const { error } = await supabase.from('signup_groups').update(patch).eq('id', groupId);
+  if (error) {
+    return { ok: false, error: error.message.includes('duplicate') ? 'A group with that name already exists in this set.' : error.message };
+  }
+  revalidatePath(`/admin/rosters/${signupId}`);
+  revalidatePath(`/admin/rosters/${signupId}/assignments`);
+  revalidateEvent(calendarEntryId, signupId);
+  return { ok: true };
+}
+
+/** Remove a non-car group. Refused while anyone is in it — move them first,
+ *  so a leader can't un-place a tent of scouts by accident. */
+export async function deleteGroup(groupId: number, signupId: number, calendarEntryId: number): Promise<Result> {
+  await requireCapability('calendar.write');
+  const supabase = createAdminClient();
+  const { data: group } = await supabase
+    .from('signup_groups')
+    .select('id, signup_group_sets!inner(kind, event_signup_id)')
+    .eq('id', groupId)
+    .maybeSingle();
+  const g = group as unknown as { id: number; signup_group_sets: { kind: string; event_signup_id: number } } | null;
+  if (!g || g.signup_group_sets.event_signup_id !== signupId) return { ok: false, error: 'That group is not on this signup.' };
+  if (g.signup_group_sets.kind === 'car') return { ok: false, error: 'Cars retire when their driver stops driving — change that on the roster.' };
+  const { count } = await supabase.from('signup_group_members').select('*', { count: 'exact', head: true }).eq('group_id', groupId);
+  if ((count ?? 0) > 0) return { ok: false, error: `Move the ${count} ${count === 1 ? 'person' : 'people'} out first, then remove the group.` };
+  const { error } = await supabase.from('signup_groups').delete().eq('id', groupId);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/admin/rosters/${signupId}`);
+  revalidatePath(`/admin/rosters/${signupId}/assignments`);
+  revalidateEvent(calendarEntryId, signupId);
+  return { ok: true };
 }

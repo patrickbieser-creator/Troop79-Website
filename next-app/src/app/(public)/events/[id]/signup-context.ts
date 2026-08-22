@@ -2,8 +2,10 @@ import {
   loadEventDetail,
   loadPartySignup,
   loadPartyPlacements,
+  loadPartyMemberships,
   isSlotFirst,
-  signupLocked
+  signupLocked,
+  type PartyMembership
 } from '@/lib/event-signup';
 import { summarizePlacements, type PlacementLine } from '@/lib/transport';
 import type { HouseholdEntry } from '@/lib/event-signup';
@@ -44,6 +46,8 @@ export interface SignupContext {
   /** This party's own car/tent/patrol placements, family-visible sets only
    *  (Plans/Event-Logistics.md §A/§B). Family name for cars, nothing more. */
   placements: PlacementLine[];
+  /** Raw set→group memberships for the form's self-select pickers. */
+  memberships: PartyMembership[];
   gateState: 'anon' | 'no-household' | 'ready';
   slotFirst: boolean;
   locked: boolean;
@@ -119,15 +123,12 @@ export async function loadSignupContext(
       })
     : [];
 
-  const placements =
-    signup && existing.length > 0
-      ? summarizePlacements(
-          await loadPartyPlacements(
-            signup.id,
-            existing.map((e) => e.id)
-          )
-        )
-      : [];
+  const entryIds = existing.map((e) => e.id);
+  const [placementRows, memberships] =
+    signup && entryIds.length > 0
+      ? await Promise.all([loadPartyPlacements(signup.id, entryIds), loadPartyMemberships(entryIds)])
+      : [[], []];
+  const placements = summarizePlacements(placementRows);
 
   return {
     detail,
@@ -139,6 +140,7 @@ export async function loadSignupContext(
     existing,
     existingClaims,
     placements,
+    memberships,
     gateState: !gatedIn ? 'anon' : household ? 'ready' : 'no-household',
     slotFirst,
     locked: signup ? signupLocked(signup) : false

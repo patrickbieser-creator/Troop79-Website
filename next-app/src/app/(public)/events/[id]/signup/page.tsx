@@ -304,6 +304,8 @@ export default async function EventSignupPage({
                   slots={slots}
                   existingClaims={existingClaims}
                   existing={existing}
+                  groupSets={detail.groupSets}
+                  existingMemberships={ctx.memberships}
                   submitAction={submitSignupAction}
                   cancelAction={cancelSignupAction}
                 />

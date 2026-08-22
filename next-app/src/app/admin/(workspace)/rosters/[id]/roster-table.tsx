@@ -315,14 +315,14 @@ export function RosterTable({
     const head = [
       'Type', 'Name', 'Household', 'Status', 'Participation', 'Tier', 'Days',
       'Owed', 'Guests', 'Guest note',
-      'Drives there (seats incl. driver)', 'Drives back (seats incl. driver)', 'Ride there', 'Ride back',
+      'Drives there (seats incl. driver)', 'Drives back (seats incl. driver)', 'Ride there', 'Ride back', 'Groups',
       'Slip', 'Paid', 'Jobs', 'Answers', 'Notes'
     ];
     const body = sorted.map((r) => [
       PARTICIPANT_CLASS_LABEL[r.participantClass], r.name, r.household, r.status, r.participation, r.tierLabel ?? '',
       r.days ?? '', r.owed, r.guests, r.guestNote ?? '',
       r.drivesOut ? (r.vehicleSeatsOut ?? '') : '', r.drivesBack ? (r.vehicleSeatsBack ?? '') : '',
-      rideCell(r, 'out', r.carOut), rideCell(r, 'back', r.carBack),
+      rideCell(r, 'out', r.carOut), rideCell(r, 'back', r.carBack), r.groups.join(' | '),
       r.slipReceived ? 'Y' : 'N', r.paymentReceived ? 'Y' : 'N',
       r.claimsDisplay.join(' | '), r.answers.join(' | '), r.notes ?? ''
     ]);
@@ -345,7 +345,7 @@ export function RosterTable({
       else router.refresh();
     });
 
-  const colCount = 14 + (showSlip ? 1 : 0);
+  const colCount = 15 + (showSlip ? 1 : 0);
 
   return (
     <section className={styles.panel}>
@@ -377,6 +377,7 @@ export function RosterTable({
             <SortHeader label="Owed" colKey="owed" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
             <th scope="col">Driving</th>
             <th scope="col">Ride</th>
+            <th scope="col">Groups</th>
             <th scope="col">Jobs</th>
             <th scope="col">Answers</th>
             <th scope="col">Notes</th>
@@ -433,6 +434,7 @@ export function RosterTable({
                       .join(' · ') || '—'
                   : '—'}
               </td>
+              <td className={styles.cellMuted}>{r.groups.join(' · ') || '—'}</td>
               <td>{r.claimsDisplay.join(', ') || '—'}</td>
               <td className={styles.cellMuted}>{r.answers.join(' · ') || '—'}</td>
               <td className={styles.cellMuted}>{r.notes || '—'}</td>

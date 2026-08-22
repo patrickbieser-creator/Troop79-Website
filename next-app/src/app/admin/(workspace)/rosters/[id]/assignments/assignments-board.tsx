@@ -2,7 +2,14 @@
 
 import { useMemo, useState, useTransition, type DragEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { placeInGroup, unplaceFromGroup, setRideStatus } from '../../../events/actions';
+import {
+  placeInGroup,
+  unplaceFromGroup,
+  setRideStatus,
+  addGroup,
+  updateGroup,
+  deleteGroup
+} from '../../../events/actions';
 import { TabStrip } from '../../../_components/tab-strip';
 import { Badge } from '../../../_components/badge';
 import { PARTICIPANT_CLASS_LABEL, type ParticipantClass } from '@/lib/participant-class';
@@ -85,6 +92,11 @@ export function AssignmentsBoard({
   const [activeId, setActiveId] = useState<number | null>(sets[0]?.id ?? null);
   const [dragging, setDragging] = useState<number | null>(null);
   const [over, setOver] = useState<string | null>(null);
+  // Group CRUD for non-car sets (Plans/Event-Logistics.md §B) — cars are
+  // trigger-owned; only their note ("pulling trailer") is editable here.
+  const [newName, setNewName] = useState('');
+  const [newCap, setNewCap] = useState('');
+  const [editingGroup, setEditingGroup] = useState<{ id: number; name: string; capacity: string; notes: string } | null>(null);
 
   const active = sets.find((s) => s.id === activeId) ?? sets[0] ?? null;
   const byId = useMemo(() => new Map(people.map((p) => [p.entryId, p])), [people]);
@@ -288,6 +300,45 @@ export function AssignmentsBoard({
       </p>
       {error && <p className={styles.err}>{error}</p>}
 
+      {!isCar && (
+        <div className={styles.addGroup}>
+          <input
+            placeholder={`New ${active.kind === 'patrol' ? 'patrol' : active.kind === 'tent' ? 'tent' : 'group'} name`}
+            aria-label="New group name"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+          />
+          <input
+            type="number"
+            min={1}
+            placeholder="Capacity"
+            aria-label="New group capacity"
+            value={newCap}
+            onChange={(e) => setNewCap(e.target.value)}
+          />
+          <button
+            type="button"
+            className={ev.enableBtn}
+            disabled={pending || !newName.trim()}
+            onClick={() =>
+              run(async () => {
+                const res = await addGroup(active.id, signupId, calendarEntryId, {
+                  name: newName,
+                  capacity: newCap ? Number(newCap) : undefined
+                });
+                if (res.ok) {
+                  setNewName('');
+                  setNewCap('');
+                }
+                return res;
+              })
+            }
+          >
+            Add {active.kind === 'patrol' ? 'patrol' : active.kind === 'tent' ? 'tent' : 'group'}
+          </button>
+        </div>
+      )}
+
       <div className={styles.columns}>
         <section
           className={`${styles.card} ${styles.pool}`}
@@ -323,18 +374,104 @@ export function AssignmentsBoard({
               onDrop={onDropGroup(g)}
               aria-label={g.name}
             >
-              <div className={styles.cardHead}>
-                <span className={styles.cardTitle}>
-                  {g.name}
-                  {driver?.phone && <span className={styles.cardSub}>{driver.phone}</span>}
-                  {g.notes && <span className={styles.cardSub}>{g.notes}</span>}
-                </span>
-                <span
-                  className={`${styles.capPill} ${full ? styles.capFull : g.capacity != null ? styles.capOpen : ''}`}
-                >
-                  {capacityLabel(g.memberEntryIds.length, g.capacity)}
-                </span>
-              </div>
+              {editingGroup?.id === g.id ? (
+                <div className={styles.groupEdit}>
+                  {!isCar && (
+                    <input
+                      aria-label="Group name"
+                      value={editingGroup.name}
+                      onChange={(e) => setEditingGroup({ ...editingGroup, name: e.target.value })}
+                    />
+                  )}
+                  {!isCar && (
+                    <input
+                      type="number"
+                      min={1}
+                      placeholder="Capacity"
+                      aria-label="Group capacity"
+                      value={editingGroup.capacity}
+                      onChange={(e) => setEditingGroup({ ...editingGroup, capacity: e.target.value })}
+                    />
+                  )}
+                  <input
+                    placeholder="Note (e.g. pulling trailer)"
+                    aria-label="Group note"
+                    value={editingGroup.notes}
+                    onChange={(e) => setEditingGroup({ ...editingGroup, notes: e.target.value })}
+                  />
+                  <div className={styles.groupEditActions}>
+                    <button
+                      type="button"
+                      className={ev.enableBtn}
+                      disabled={pending}
+                      onClick={() =>
+                        run(async () => {
+                          const res = await updateGroup(g.id, signupId, calendarEntryId, {
+                            name: isCar ? undefined : editingGroup.name,
+                            capacity: isCar ? undefined : editingGroup.capacity ? Number(editingGroup.capacity) : null,
+                            notes: editingGroup.notes
+                          });
+                          if (res.ok) setEditingGroup(null);
+                          return res;
+                        })
+                      }
+                    >
+                      Save
+                    </button>
+                    <button type="button" className={ev.rowEdit} onClick={() => setEditingGroup(null)}>
+                      Cancel
+                    </button>
+                    {!isCar && (
+                      <button
+                        type="button"
+                        className={ev.rowDel}
+                        disabled={pending || g.memberEntryIds.length > 0}
+                        title={g.memberEntryIds.length > 0 ? 'Move everyone out first' : undefined}
+                        onClick={() =>
+                          run(async () => {
+                            const res = await deleteGroup(g.id, signupId, calendarEntryId);
+                            if (res.ok) setEditingGroup(null);
+                            return res;
+                          })
+                        }
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className={styles.cardHead}>
+                  <span className={styles.cardTitle}>
+                    {g.name}
+                    {driver?.phone && <span className={styles.cardSub}>{driver.phone}</span>}
+                    {g.notes && <span className={styles.cardSub}>{g.notes}</span>}
+                  </span>
+                  <span className={styles.cardTools}>
+                    <span
+                      className={`${styles.capPill} ${full ? styles.capFull : g.capacity != null ? styles.capOpen : ''}`}
+                    >
+                      {capacityLabel(g.memberEntryIds.length, g.capacity)}
+                    </span>
+                    <button
+                      type="button"
+                      className={styles.cardEdit}
+                      aria-label={`Edit ${g.name}`}
+                      disabled={pending}
+                      onClick={() =>
+                        setEditingGroup({
+                          id: g.id,
+                          name: g.name,
+                          capacity: g.capacity != null ? String(g.capacity) : '',
+                          notes: g.notes ?? ''
+                        })
+                      }
+                    >
+                      Edit
+                    </button>
+                  </span>
+                </div>
+              )}
               <ul className={styles.chips}>
                 {g.memberEntryIds
                   .map((id) => byId.get(id))

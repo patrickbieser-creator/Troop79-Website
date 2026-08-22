@@ -2,6 +2,7 @@
 
 import { personKindFor } from '@/lib/participant-class';
 import { normalizeGuestRows } from '@/lib/event-signup';
+import { placementPayloadFromForm } from '@/lib/group-sets';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
@@ -58,6 +59,9 @@ function friendlyError(message: string): string {
     return 'This event isn’t open to everyone you selected.';
   if (message.includes('PRICE_')) return 'That price option isn’t valid for this event — reload and try again.';
   if (message.includes('DAYS_')) return 'Please enter how many days each adult is attending.';
+  if (message.includes('ANSWER_REQUIRED'))
+    return 'Please answer every required question for each person attending.';
+  if (message.includes('ANSWER_NOT_A_NUMBER')) return 'One of the answers needs to be a number.';
   if (message.includes('SLOT_FULL')) return 'Someone took the last spot on that job. Pick another.';
   if (message.includes('PERSON_NOT_IN_PARTY'))
     return 'That doesn’t look like someone in your household. Reload the page and try again.';
@@ -237,6 +241,41 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
       });
       if (claimErr) redirect(`${back}&err=${encodeURIComponent(friendlyError(claimErr.message))}`);
     }
+  }
+
+  // Self-select placements (Plans/Event-Logistics.md §B): the family's
+  // "tent preference" lands directly as a membership, leaders can move it.
+  // Only sets the SERVER marks self_select are honoured; a full group comes
+  // back as 'full' from the RPC and is simply not applied (the form disables
+  // full options — a race is the only way to get here). Blank clears a
+  // prior pick in that set.
+  const { data: selfSets } = await supabase
+    .from('signup_group_sets')
+    .select('id')
+    .eq('event_signup_id', signupId)
+    .eq('self_select', true)
+    .neq('kind', 'car');
+  const selfSetIds = new Set(((selfSets ?? []) as { id: number }[]).map((s) => s.id));
+  const picks = placementPayloadFromForm(String(formData.get('placements') ?? ''), selfSetIds);
+  for (const pick of picks) {
+    const entryId = byKey.get(pick.personKey);
+    if (!entryId) continue;
+    if (pick.groupId == null) {
+      const { data: current } = await supabase
+        .from('signup_group_members')
+        .select('group_id')
+        .eq('set_id', pick.setId)
+        .eq('entry_id', entryId)
+        .maybeSingle();
+      if (current) {
+        await supabase.rpc('unplace_from_group', {
+          p_group_id: (current as { group_id: number }).group_id,
+          p_entry_id: entryId
+        });
+      }
+      continue;
+    }
+    await supabase.rpc('place_in_group', { p_group_id: pick.groupId, p_entry_id: entryId, p_actor: actor });
   }
 
   revalidatePath(`/events/${eventId}`);

@@ -33,6 +33,7 @@ function row(over: Partial<RosterRow> & { id: number; name: string }): RosterRow
     rideBack: 'needs_ride',
     carOut: null,
     carBack: null,
+    groups: [],
     slipReceived: false,
     paymentReceived: false,
     notes: null,
