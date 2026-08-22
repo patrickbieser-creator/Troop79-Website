@@ -161,7 +161,7 @@ const SCOREBOARD: ReadonlyArray<readonly [string, string, string]> = [
   ],
   [
     'Stylesheet-less screens',
-    'merit-badges ×2 (46 inline sites), site-footer (no media queries)',
+    'merit-badges ×2 (46 inline sites) — RETIRED 2026-08-22, folded into the Library; site-footer (no media queries)',
     'STRUCK (B) — merit-badges.module.css + site-footer.module.css + signed-in-as shipped; footer gained its first mobile stacking (640px); zero stylesheet-less screens remain'
   ],
   [

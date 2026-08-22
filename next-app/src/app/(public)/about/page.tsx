@@ -101,8 +101,8 @@ export default function AboutPage() {
                   This website is more than a newsletter. Every requirement a
                   scout completes is recorded here, and families can follow
                   progress on the <Link href="/advancement">advancement
-                  tracker</Link> and the <Link href="/merit-badges">merit badge
-                  catalog</Link> any time — no waiting for a court of honor to
+                  tracker</Link> and the <Link href="/library">merit badge
+                  library</Link> any time — no waiting for a court of honor to
                   find out how close a rank is.
                 </p>
               </div>

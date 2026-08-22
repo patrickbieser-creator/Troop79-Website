@@ -1,96 +1,17 @@
-/* Merit Badges — catalog (/merit-badges) + detail (/merit-badges/[mbId]).
-   Phase B of Plans/Public-Design-System.md: these two pages were the public
-   site's only stylesheet-less screens (46 inline sites, ~336 props living in
-   JSX). Everything here is on the Phase 0 tokens; the two commented gold
-   literals below are the only deliberate exceptions (no token exists yet).
-   Page header/shell/dividers/empty state come from the shared components. */
+/*
+ * Merit badge tracker styles — moved here 2026-08-22 when the public tracker
+ * at /merit-badges/[mbId] was retired and its content folded into this page
+ * (Patrick: "the library is the one place where you go for merit badges, not
+ * two different places").
+ *
+ * COLOCATED rather than appended to library.module.css, which is already ~440
+ * lines and is library-routes-only by the Public Phase A rule. These styles
+ * have exactly one consumer — the page next to them.
+ *
+ * Public tokens only. Carried over from merit-badges.module.css unchanged
+ * except where noted, so the tracker looks the same after the move as before.
+ */
 
-/* ── Catalog ── */
-
-.countLine {
-  font-family: var(--font-ui);
-  font-size: var(--fs-xs);
-  color: var(--text-meta);
-  margin-bottom: 18px;
-}
-
-.catalogGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 14px;
-}
-
-/* Pair with the shared card surface (card.module.css .card/.cardHover). */
-.catalogCard {
-  padding: var(--sp-4) 18px;
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
-  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
-}
-.catalogCardStarted { border-left: 4px solid var(--forest-light); }
-
-.catalogCardHead {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--sp-2);
-}
-
-.catalogCardName {
-  font-family: var(--font-display);
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--navy);
-  line-height: 1.25;
-}
-
-.countRow {
-  display: flex;
-  gap: 14px;
-  padding-top: var(--sp-2);
-  border-top: 1px dashed var(--border-light);
-}
-
-.count {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  font-family: var(--font-ui);
-}
-.countNum {
-  font-family: var(--font-display);
-  font-size: 24px;
-  font-weight: 700;
-  line-height: 1;
-}
-.countEarned { color: var(--forest); }
-.countPartial { color: var(--navy); }
-.countNot { color: var(--border-mid); }
-.countLabel {
-  font-size: 9px; /* off-scale canon micro-label; Phase C may fold */
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-meta);
-  margin-top: var(--sp-1);
-}
-
-/* ── Eagle / optionality tags (categorical — deliberately NOT the shared
-      Badge: Eagle is identity, not status) ── */
-
-.eagleTag {
-  font-family: var(--font-ui);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--bark);
-  background: var(--status-warning-bg);
-  padding: 2px 7px;
-  border-radius: var(--rad-pill);
-  flex-shrink: 0;
-}
 .eagleTagLarge {
   font-family: var(--font-ui);
   font-size: var(--fs-2xs);

@@ -80,7 +80,10 @@ describe('Design-system census (public)', () => {
       // express, since the values are data.
       '(public)/photos/views.tsx': 5,
       '(public)/scouts/[id]/page.tsx': 2,
-      '(public)/merit-badges/[mbId]/page.tsx': 2,
+      // Moved 2026-08-22 with the tracker: the two tree-depth indents came
+      // from the retired /merit-badges/[mbId] and now live in the Library's
+      // requirements tree. Same two sites, new home.
+      '(public)/library/mb/[mbId]/mb-requirements-tree.tsx': 2,
       '(public)/events/[id]/page.tsx': 2,
       '(public)/events/calendar-browser.tsx': 1,
       '(public)/events/[id]/slot-first-form.tsx': 1

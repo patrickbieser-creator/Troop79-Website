@@ -360,7 +360,6 @@ export const STATIC_SITEMAP_PATHS: readonly string[] = [
   '/events',
   '/photos',
   '/library',
-  '/merit-badges',
   '/advancement'
 ];
 
@@ -438,7 +437,10 @@ export function buildSitemap(input: SitemapInput): SitemapEntry[] {
     push(`/category/${c.slug}`, { changeFrequency: 'weekly', priority: 0.5 });
   }
   for (const mb of input.meritBadges) {
-    push(`/merit-badges/${mb.id}`, { changeFrequency: 'monthly', priority: 0.5 });
+    // /merit-badges retired 2026-08-22 — a badge's page is its Library page
+    // now. No redirects (Patrick: the URLs were hours old), so the sitemap
+    // must stop advertising the old ones or it points crawlers at 404s.
+    push(`/library/mb/${mb.id}`, { changeFrequency: 'monthly', priority: 0.5 });
   }
   for (const r of input.libraryRanks) {
     push(r.path, { changeFrequency: 'monthly', priority: 0.4 });

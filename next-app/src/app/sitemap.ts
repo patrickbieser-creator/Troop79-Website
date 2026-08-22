@@ -13,7 +13,7 @@ import { buildSitemap, loadSeoSettings, resolveSeo, seoFlagOn, type SitemapInput
  * scout pages are advertised only when a leader turns on the setting in
  * Lookups & Admin, and NEVER_SITEMAPPED paths cannot be added at all.
  *
- * force-dynamic for the same reason /merit-badges and /advancement carry it:
+ * force-dynamic for the same reason /advancement carries it:
  * with no Dynamic API in the module Next would prerender it once at build and
  * a new article or event would be missing from the sitemap until the next
  * deploy — the exact failure this feature exists to prevent. Revalidation is

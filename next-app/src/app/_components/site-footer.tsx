@@ -25,7 +25,10 @@ export function SiteFooter() {
             <FooterLink href="/events">Calendar</FooterLink>
             <FooterLink href="/photos">Photo Albums</FooterLink>
             <FooterLink href="/advancement">Advancement Tracker</FooterLink>
-            <FooterLink href="/merit-badges">Merit Badges</FooterLink>
+            {/* /merit-badges retired 2026-08-22 — the Library is the merit
+                badge catalog now. This footer renders on every public page, so a
+                stale href here would be a dead link site-wide. */}
+            <FooterLink href="/library">Merit Badges</FooterLink>
             <FooterLink href="/about">About the Troop</FooterLink>
           </FooterCol>
           <FooterCol title="Contact">

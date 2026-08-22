@@ -262,7 +262,9 @@ describe('seo — sitemap (pure)', () => {
     expect(urls).toContain(`${ORIGIN}/news/a-story`);
     expect(urls).toContain(`${ORIGIN}/events/e1`);
     expect(urls).toContain(`${ORIGIN}/category/campouts`);
-    expect(urls).toContain(`${ORIGIN}/merit-badges/camping`);
+    // /merit-badges retired 2026-08-22 — a badge's page is its Library page.
+    expect(urls).toContain(`${ORIGIN}/library/mb/camping`);
+    expect(urls.every((u2) => !u2.includes('/merit-badges'))).toBe(true);
     expect(urls).toContain(`${ORIGIN}/library/rank/tenderfoot`);
   });
 

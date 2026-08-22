@@ -88,8 +88,11 @@ export default async function AdvancementPage() {
             <StatsStrip data={data} />
             <SectionDivider label="Current Rank Distribution" />
             <RankGrid data={data} />
-            <SectionDivider label="Merit Badge Progress" />
-            <MbProgressCta />
+            {/* The "See every merit badge" stripe was removed 2026-08-22 when
+                /merit-badges retired — merit badges live in the Library now, and
+                this page kept a second door to a catalog that no longer exists.
+                The divider is relabelled for the report CTA it now heads alone. */}
+            <SectionDivider label="Advancement Report" />
             <WeeklyReportCta />
             <SectionDivider label="Troop Roster" />
             <Roster data={data} />
@@ -203,22 +206,6 @@ function WeeklyReportCta() {
   );
 }
 
-function MbProgressCta() {
-  return (
-    <Link href="/merit-badges" className={styles.mbCta}>
-      <div className={styles.mbCtaInner}>
-        <div>
-          <div className={styles.mbCtaTitle}>See every merit badge &rarr;</div>
-          <div className={styles.mbCtaLede}>
-            Browse all 32 merit badges with current troop progress &mdash; who&rsquo;s
-            earned each one, who&rsquo;s in the middle, requirement by requirement.
-          </div>
-        </div>
-        <div className={styles.mbCtaPill}>Open Catalog</div>
-      </div>
-    </Link>
-  );
-}
 
 function RankGrid({ data }: { data: AdvancementData }) {
   const counts = new Map<string, number>();

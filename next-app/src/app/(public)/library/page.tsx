@@ -10,6 +10,8 @@
  */
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
+import { fetchAllRows } from '@/lib/supabase/paginate';
+import { earnedByBadge } from '@/lib/mb-scout-progress';
 import type { MeritBadge, Rank } from '@/lib/supabase/types';
 import {
   loadTopics,
@@ -22,6 +24,7 @@ import {
 import { rankReqKey, splitRankReqKey, withViewScout } from '@/lib/library';
 import { resolveLibraryViewer, viewerIsLeader, type LibraryViewer } from '@/lib/library-viewer';
 import { ResourceCard, type AlsoOnLink } from './_components/resource-card';
+import { MbGrid, type MbTile } from './mb-grid';
 import { ScoutSwitcher } from './_components/scout-switcher';
 import { PageHeader } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
@@ -52,6 +55,9 @@ interface HomeData {
   mbs: MeritBadge[];
   topics: Awaited<ReturnType<typeof loadTopics>>;
   counts: Map<string, number>;
+  /** mbId -> active scouts who have earned it. Feeds the grid's Progress
+   *  mode; the read moved here off the retired /merit-badges catalog. */
+  earnedByMb: Map<string, number>;
   /** Personalization (Patrick, 2026-08-07) — null unless resolveLibraryViewer()
    *  resolved a scout to show. rankProgress is keyed by the SAME rankReqKey
    *  composite used everywhere else; mbAwards is keyed by bare mbId. */
@@ -63,7 +69,7 @@ interface HomeData {
 
 async function loadHome(viewer: LibraryViewer): Promise<HomeData> {
   const supabase = createAdminClient();
-  const [ranksRes, reqsRes, mbsRes, topics, counts] = await Promise.all([
+  const [ranksRes, reqsRes, mbsRes, topics, counts, awardedRows, activeRes] = await Promise.all([
     supabase.from('ranks').select('*').order('sort_order'),
     supabase
       .from('rank_requirements')
@@ -72,8 +78,23 @@ async function loadHome(viewer: LibraryViewer): Promise<HomeData> {
       .order('sort_order'),
     supabase.from('merit_badges').select('*').order('name'),
     loadTopics(supabase),
-    publishedCountsByTarget(supabase, await viewerIsLeader())
+    publishedCountsByTarget(supabase, await viewerIsLeader()),
+    /* Feeds the grid's Progress mode. Paginated because mb_progress is
+       unbounded past the ~1000-row PostgREST cap as more scouts start more
+       badges — it is already at 528 rows. This is the SAME read the retired
+       /merit-badges catalog ran, moved rather than added. */
+    fetchAllRows<{ mb_id: string; scout_id: string }>((from, to) =>
+      supabase.from('mb_progress').select('mb_id, scout_id').eq('awarded', true).range(from, to)
+    ),
+    /* Active scout ids — the grid counts ACTIVE scouts only, so its numbers
+       agree with the badge page one click away. Without this the grid said
+       Archery 12 (every award ever) against the badge page's 6 (scouts in the
+       troop now); see earnedByBadge(). */
+    supabase.from('scouts').select('id').eq('active', true)
   ]);
+
+  const activeIds = new Set(((activeRes.data ?? []) as { id: string }[]).map((r) => r.id));
+  const earnedByMb = earnedByBadge(awardedRows, activeIds);
 
   const reqsByRank = new Map<string, TopReq[]>();
   for (const r of (reqsRes.data ?? []) as { rank_id: string; code: string; label: string }[]) {
@@ -97,6 +118,7 @@ async function loadHome(viewer: LibraryViewer): Promise<HomeData> {
     mbs: (mbsRes.data ?? []) as MeritBadge[],
     topics,
     counts,
+    earnedByMb,
     progress,
     viewScoutId: viewer.kind === 'scout' ? viewer.scoutId : undefined
   };
@@ -147,7 +169,7 @@ export default async function LibraryHomePage({
         ) : (
           <>
             <RankDrill data={data} />
-            <MbGrid data={data} />
+            <MbGridSection data={data} />
             <TopicShelves data={data} />
             <ContributeBand />
           </>
@@ -300,58 +322,33 @@ function RankDrill({ data }: { data: HomeData }) {
   );
 }
 
-function MbGrid({ data }: { data: HomeData }) {
-  return (
-    <>
-      <SectionDivider
-        label="Browse by Merit Badge"
-        link={<Link href="/merit-badges">Full catalog →</Link>}
-      />
-      <div className={styles.mbGrid}>
-        {data.mbs.map((mb) => {
-          let n = data.counts.get(`mb:${mb.id}`) ?? 0;
-          for (const [key, count] of data.counts) {
-            if (key.startsWith(`mb_req:${mb.id}-`)) n += count;
-          }
-          const awardDate = data.progress?.mbAwards.get(mb.id) ?? null;
-          return (
-            <Link
-              key={mb.id}
-              className={`${styles.mbTile} ${awardDate ? styles.mbTileCompleted : ''}`}
-              href={withViewScout(`/library/mb/${mb.id}`, data.viewScoutId)}
-              // Redundant with the always-visible date caption below —
-              // native hover tooltip on top of it for a desktop mouse-over,
-              // per the ask, but the date is never hover-only (D-069: title
-              // text is invisible on touch, and this is a completion date on
-              // an otherwise-anonymous-looking tile, not decoration).
-              title={awardDate ? `Completed ${new Date(awardDate).toLocaleDateString('en-US')}` : undefined}
-            >
-              {awardDate ? (
-                <span className={styles.mbNameCompleted}>
-                  <span>
-                    {mb.name}
-                    {mb.eagle && <span className={styles.eagleDot}> ★ EAGLE</span>}
-                  </span>
-                  <span className={styles.mbCompletedDate}>
-                    ✓ Completed{' '}
-                    {new Date(awardDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-                  </span>
-                </span>
-              ) : (
-                <span className={styles.mbName}>
-                  {mb.name}
-                  {mb.eagle && <span className={styles.eagleDot}> ★ EAGLE</span>}
-                </span>
-              )}
-              <span className={`${styles.mbCount} ${n === 0 ? styles.mbCountZero : ''}`}>
-                {n === 0 ? '—' : n}
-              </span>
-            </Link>
-          );
-        })}
-      </div>
-    </>
-  );
+/**
+ * Server-side adapter for the merit badge grid. Computes both numbers each
+ * tile can show — resources shelved, and scouts who have earned it — and
+ * hands plain data to the client component that owns the toggle.
+ *
+ * Both are computed unconditionally rather than on demand: the earned counts
+ * are one paginated read that the retired /merit-badges catalog already ran,
+ * so this is net-neutral for the site, and gating it behind the toggle would
+ * buy nothing but a loading state on every flip.
+ */
+function MbGridSection({ data }: { data: HomeData }) {
+  const tiles: MbTile[] = data.mbs.map((mb) => {
+    let resources = data.counts.get(`mb:${mb.id}`) ?? 0;
+    for (const [key, count] of data.counts) {
+      if (key.startsWith(`mb_req:${mb.id}-`)) resources += count;
+    }
+    return {
+      id: mb.id,
+      name: mb.name,
+      eagle: mb.eagle,
+      resources,
+      earned: data.earnedByMb.get(mb.id) ?? 0,
+      awardDate: data.progress?.mbAwards.get(mb.id) ?? null,
+      href: withViewScout(`/library/mb/${mb.id}`, data.viewScoutId)
+    };
+  });
+  return <MbGrid tiles={tiles} />;
 }
 
 function TopicShelves({ data }: { data: HomeData }) {

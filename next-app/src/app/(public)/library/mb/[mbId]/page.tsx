@@ -1,35 +1,89 @@
 /**
- * /library/mb/[mbId] — one merit badge's library page. Whole-badge resources
- * (target 'mb':mbId) first, then per-requirement groups ('mb_req':
- * '{mbId}-{code}') anchored under their top-level requirement — NOT one page
- * per requirement node (1,700+ nodes; the badge is the right granularity).
+ * /library/mb/[mbId] — ONE page per merit badge: what the badge asks, who in
+ * the troop has done it, what helps, and how to claim it.
  *
- * Deliberately NOT personalized (Patrick's 2026-08-07 ask, and the requirement
- * rows here aren't an accordion — grouped under plain section headers, per
- * this file's own header above). The MB GRID on /library home shows
- * completion highlighting instead (lib/library-viewer.ts,
- * loadScoutMbAwardMap); a `?viewScout=` param reaching this page from that
- * grid is simply dropped, not a leak — no scout data renders either way.
+ * MERGED 2026-08-22. This page used to be resources-only, and a separate
+ * tracker at /merit-badges/[mbId] carried the stats, the scout grid and the
+ * requirement list. Patrick: "everything that is on the individual merit badge
+ * display should be relocated into the library for each merit badge and placed
+ * thoughtfully above where the current 'I did this' functionality exists so
+ * that the library is the one place where you go for merit badges, not two
+ * different places." The tracker route is retired; this is the only one.
+ *
+ * SECTION ORDER, and why: stats → scout grid → requirements → resources →
+ * "I did this". A parent or leader landing here gets the counts first, exactly
+ * as the retired page led with. A scout gets study → do → claim: what the
+ * badge asks, what helps, then the claim at the end, next to the requirement
+ * labels it asks them to pick from. The picker is no longer the top of the
+ * page, so the header carries an anchor jump to it.
+ *
+ * SCOUT DATA NOW RENDERS HERE — this file previously promised it never would
+ * (a 2026-08-07 note, when the page was resources-only and personalization was
+ * deliberately kept off it). That is no longer true and the note is gone
+ * rather than left to contradict the code. Patrick confirmed the reversal on
+ * 2026-08-22: troop-wide progress, scouts shown as first name + last initial
+ * (publicScoutName). The audience did not change — this page and the retired
+ * tracker were both fully public — but the promise did, so it is recorded
+ * here instead of discovered later.
+ *
+ * `?viewScout=` is still dropped. The grid is troop-wide, not personalized;
+ * highlighting the viewing scout's row is a separate decision Patrick parked.
  */
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
-import type { MeritBadge, MeritBadgeRequirement } from '@/lib/supabase/types';
-import { buildReqTree, topLevelCodeOf } from '@/lib/mb-helpers';
+import { fetchAllRows } from '@/lib/supabase/paginate';
+import type { MeritBadge, MeritBadgeRequirement, Scout } from '@/lib/supabase/types';
+import { buildReqTree, flattenLeaves, topLevelCodeOf, bsaPageUrl, workbookUrl } from '@/lib/mb-helpers';
+import {
+  foldLedger,
+  gridGroups,
+  mbStats,
+  startedScouts,
+  type MbLedgerRow
+} from '@/lib/mb-scout-progress';
 import { ArticleBody } from '@/lib/article-body/ArticleBody';
-import { flattenLeaves } from '@/lib/mb-helpers';
 import { gateAudience } from '@/lib/family-access';
 import { loadNarrative, loadPublishedFor, type PlacedResource } from '@/lib/library-data';
 import { viewerIsLeader } from '@/lib/library-viewer';
+import { TrackedExternalLink } from '../../../_components/tracked-external-link';
 import { ResourceCard } from '../../_components/resource-card';
 import MbProofPicker from './mb-proof-picker';
+import { MbScoutGrid } from './mb-scout-grid';
+import { MbRequirementsTree } from './mb-requirements-tree';
 import { PageHeader, KickerSep } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
 import { SectionDivider } from '@/app/_components/section-divider';
 import { EmptyState } from '@/app/_components/empty-state';
 import styles from '../../library.module.css';
+import s from './mb-tracker.module.css';
 
 export const dynamic = 'force-dynamic';
+
+/** The badge name in the tab — this page had no metadata export at all before
+ *  the merge, so every badge rendered as an untitled tab. Carries forward the
+ *  retired tracker's title/description intent. */
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ mbId: string }>;
+}): Promise<Metadata> {
+  const { mbId } = await params;
+  const { data } = await createAdminClient()
+    .from('merit_badges')
+    .select('name, eagle')
+    .eq('id', mbId)
+    .maybeSingle();
+  if (!data) return { title: 'Merit Badge — Scout Troop 79' };
+  const badge = data as Pick<MeritBadge, 'name' | 'eagle'>;
+  return {
+    title: `${badge.name} — Merit Badge — Scout Troop 79`,
+    description: `${badge.name}${badge.eagle ? ' (Eagle-required)' : ''} — requirements, troop progress, and the resources Troop 79 recommends.`
+  };
+}
+
+const PROOF_ANCHOR = 'i-did-this';
 
 export default async function LibraryMbPage({
   params
@@ -40,7 +94,16 @@ export default async function LibraryMbPage({
   const supabase = createAdminClient();
   const isLeader = await viewerIsLeader();
 
-  const [{ data: mb }, reqsRes, narrative, badgeResources, reqPlacementsRes] = await Promise.all([
+  const [
+    { data: mb },
+    reqsRes,
+    narrative,
+    badgeResources,
+    reqPlacementsRes,
+    ledgerRows,
+    { data: scoutRows },
+    { count: totalActive }
+  ] = await Promise.all([
     supabase.from('merit_badges').select('*').eq('id', mbId).maybeSingle(),
     supabase.from('merit_badge_requirements').select('*').eq('mb_id', mbId),
     loadNarrative(createAdminClient(), 'mb', mbId),
@@ -56,12 +119,32 @@ export default async function LibraryMbPage({
       .eq('library_resources.status', 'published')
       .in('library_resources.visibility', isLeader ? ['public', 'leaders'] : ['public'])
       .order('pinned', { ascending: false })
-      .order('sort_order')
+      .order('sort_order'),
+    // Unbounded past the ~1000-row PostgREST cap once a badge accumulates
+    // enough history across every scout — paginate (lib/supabase/paginate.ts).
+    fetchAllRows<MbLedgerRow>((from, to) =>
+      supabase
+        .from('ledger_entries')
+        .select('scout_id, kind, code')
+        .or(`code.like.${mbId}-%,code.eq.MB:${mbId}`)
+        .is('archived_at', null)
+        .is('deleted_at', null)
+        .range(from, to)
+    ),
+    supabase.from('scouts').select('*').eq('active', true).order('display_name'),
+    supabase.from('scouts').select('id', { count: 'exact', head: true }).eq('active', true)
   ]);
   if (!mb) notFound();
 
   const badge = mb as MeritBadge;
   const reqTree = buildReqTree((reqsRes.data ?? []) as MeritBadgeRequirement[]);
+  const leaves = flattenLeaves(reqTree);
+
+  // ── Tracker (all four decisions live in lib/mb-scout-progress.ts) ────────
+  const byScout = foldLedger(ledgerRows, mbId);
+  const started = startedScouts((scoutRows ?? []) as Scout[], byScout);
+  const stats = mbStats(started, byScout, totalActive ?? 0);
+  const groups = gridGroups(reqTree, leaves);
 
   // Group requirement-level resources by their TOP-LEVEL requirement code so
   // a resource on 'robotics-4a' shows under "Requirement 4".
@@ -99,7 +182,7 @@ export default async function LibraryMbPage({
   // above), so every leaf in the catalog is reachable here even on a badge
   // page with nothing shelved.
   const leavesByTop = new Map<string, { code: string; label: string }[]>();
-  for (const leaf of flattenLeaves(reqTree)) {
+  for (const leaf of leaves) {
     const top = topLevelCodeOf(reqTree, leaf.code) ?? leaf.code;
     const list = leavesByTop.get(top) ?? [];
     list.push({ code: leaf.code, label: leaf.label });
@@ -129,17 +212,38 @@ export default async function LibraryMbPage({
             Merit Badge
           </>
         }
-        title={badge.name}
+        title={
+          <>
+            {badge.name}
+            {badge.eagle && <span className={s.eagleTagLarge}>Eagle</span>}
+          </>
+        }
         lede={
           <>
+            {/* Explicit {' '} — a bare space after a {expr} container is dropped
+                when the following text wraps (AGENTS.md's JSX gotcha; this
+                shipped as "Electivemerit badge" for one render). */}
+            {badge.eagle ? 'Eagle-required' : 'Elective'}{' '}
+            merit badge &mdash; requirements, troop progress, and{' '}
             {totalCount === 0
-              ? 'Nothing shelved for this badge yet — be the first to suggest something.'
-              : `${totalCount} resource${totalCount === 1 ? '' : 's'} the troop recommends for this badge.`}{' '}
-            For requirements and troop progress, see the{' '}
-            <Link href={`/merit-badges/${mbId}`} className={styles.inlineLink}>
-              badge tracker page
-            </Link>
+              ? 'nothing shelved yet (be the first to suggest something)'
+              : `${totalCount} resource${totalCount === 1 ? '' : 's'} the troop recommends`}
             .
+            <span className={s.actionRow}>
+              <ExternLink href={bsaPageUrl(badge)} mbId={mbId} linkType="official">
+                Official BSA page ↗
+              </ExternLink>
+              <ExternLink href={workbookUrl(badge)} mbId={mbId} linkType="workbook">
+                Workbook (PDF) ↗
+              </ExternLink>
+              {proofGroups.length > 0 && (
+                /* The proof picker moved to the bottom of the page, so the one
+                   action a scout comes here to take needs a way down to it. */
+                <a href={`#${PROOF_ANCHOR}`} className={`${s.actionLink} ${s.actionLinkForest}`}>
+                  Done with a requirement? I did this ↓
+                </a>
+              )}
+            </span>
           </>
         }
       />
@@ -160,9 +264,28 @@ export default async function LibraryMbPage({
           </div>
         )}
 
-        {proofGroups.length > 0 && (
-          <MbProofPicker mbId={mbId} groups={proofGroups} scoutBlocked={audience === 'scout'} />
+        <div className={s.statStrip}>
+          <Stat label="Earned" n={stats.earned} tone={s.statForest} />
+          <Stat label="In Progress" n={stats.inProgress} tone={s.statNavy} />
+          <Stat label="Not Started" n={stats.notStarted} tone={s.statMeta} />
+          <Stat label="Active Scouts" n={stats.totalActive} tone={s.statNavy} />
+        </div>
+
+        <SectionDivider label="Scout Progress" />
+        {started.length === 0 ? (
+          <EmptyState>No scouts have started this merit badge yet.</EmptyState>
+        ) : (
+          <MbScoutGrid scouts={started} byScout={byScout} leaves={leaves} groups={groups} />
         )}
+
+        <SectionDivider label="Requirements" />
+        <div className={s.reqCard}>
+          <p className={s.reqDisclaimer}>
+            From the official BSA merit badge pamphlet — wording is paraphrased here. Confirm
+            against the current pamphlet for sign-off.
+          </p>
+          <MbRequirementsTree nodes={reqTree} depth={0} />
+        </div>
 
         <SectionDivider
           label="Whole-badge resources"
@@ -198,7 +321,45 @@ export default async function LibraryMbPage({
             </ul>
           </div>
         ))}
+
+        {proofGroups.length > 0 && (
+          <div id={PROOF_ANCHOR}>
+            <MbProofPicker mbId={mbId} groups={proofGroups} scoutBlocked={audience === 'scout'} />
+          </div>
+        )}
       </PageShell>
     </>
+  );
+}
+
+function ExternLink({
+  href,
+  mbId,
+  linkType,
+  children
+}: {
+  href: string;
+  mbId: string;
+  linkType: 'official' | 'workbook';
+  children: React.ReactNode;
+}) {
+  return (
+    <TrackedExternalLink
+      href={href}
+      event="outbound_bsa_click"
+      params={{ mb_id: mbId, link_type: linkType }}
+      className={s.actionLink}
+    >
+      {children}
+    </TrackedExternalLink>
+  );
+}
+
+function Stat({ label, n, tone }: { label: string; n: number; tone: string }) {
+  return (
+    <div className={s.stat}>
+      <div className={`${s.statNum} ${tone}`}>{n}</div>
+      <div className={s.statLabel}>{label}</div>
+    </div>
   );
 }

@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 22, 2026</strong> &nbsp;&middot;&nbsp; v1.77.0</p>
+      <p>Last updated: <strong>August 22, 2026</strong> &nbsp;&middot;&nbsp; v1.78.0</p>
     </div>
   </div>
 
@@ -494,6 +494,68 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.78.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.78.0</span>
+        <span class="release-date">August 22, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Merit badges now live in one place: the Library</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Merit badges used to be split across two sections &mdash; a tracker with troop
+              progress, and a Library page with the resources and the &ldquo;I did this&rdquo;
+              form. <strong>They are now one page.</strong> Open any badge in the Library and you
+              get, in order: how many scouts have earned it, the full scout-by-scout grid, the
+              requirements, the resources, and then the &ldquo;I did this&rdquo; form at the
+              bottom.
+            </span>
+          </li>
+          <li>
+            <span>
+              A link at the top jumps straight down to &ldquo;I did this&rdquo; for a scout who
+              came to claim a requirement rather than read.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>The Library catalog can now show progress.</strong> A
+              <em>Resources / Progress</em> switch above the badge grid changes what the number on
+              each tile counts &mdash; resources shelved, or scouts who have earned the badge
+              &mdash; with a caption saying which. Your choice is remembered and travels in the
+              link.
+            </span>
+          </li>
+          <li>
+            <span>
+              The old <code>/merit-badges</code> pages are retired. The Advancement page&rsquo;s
+              &ldquo;See every merit badge&rdquo; stripe, the footer link, and the About page link
+              all point at the Library now.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Two bugs fixed along the way.</strong> Scout names in the progress grid
+              linked to a page that doesn&rsquo;t exist &mdash; every one of those was a dead link;
+              they now open the scout&rsquo;s page. And the catalog&rsquo;s earned counts included
+              scouts who have long since aged out, so it disagreed with the badge page one click
+              away &mdash; Archery read 12 in one place and 6 in the other. Both now count scouts
+              currently in the troop.
+            </span>
+          </li>
+          <li>
+            <span>
+              Badge pages also have proper titles for the first time &mdash; a bookmarked badge
+              used to save as an untitled tab.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 
