@@ -9,7 +9,7 @@ import { EmptyState } from '@/app/_components/empty-state';
 import { SectionDivider } from '@/app/_components/section-divider';
 
 /**
- * /tags/[slug] — ONE category across the whole site (Patrick, 2026-08-21:
+ * /category/[slug] — ONE category across the whole site (Patrick, 2026-08-21:
  * "offer a search result sort of experience since news, event, and resources
  * could all be tagged"). Events (upcoming, then recent), news (paged), and
  * resources when any carry the category (none yet — by design; the column
@@ -114,7 +114,7 @@ export default async function CategoryPage({
         {totalPages > 1 && (
           <div className={styles.pager}>
             <Link
-              href={`/tags/${slug}?page=${page - 1}`}
+              href={`/category/${slug}?page=${page - 1}`}
               className={`${styles.pagerBtn} ${page <= 1 ? styles.pagerBtnDisabled : ''}`}
               aria-disabled={page <= 1}
             >
@@ -124,7 +124,7 @@ export default async function CategoryPage({
               Page {page} of {totalPages}
             </span>
             <Link
-              href={`/tags/${slug}?page=${page + 1}`}
+              href={`/category/${slug}?page=${page + 1}`}
               className={`${styles.pagerBtn} ${page >= totalPages ? styles.pagerBtnDisabled : ''}`}
               aria-disabled={page >= totalPages}
             >
