@@ -6,8 +6,9 @@ import { useRouter } from 'next/navigation';
 import {
   updateSignup, addPrice, deletePrice, updatePrice, backfillPrices,
   addSlot, deleteSlot, updateSlot, addQuestion, deleteQuestion, disableSignup,
-  addGroupSet, updateGroupSet, deleteGroupSet
+  addGroupSet, updateGroupSet, deleteGroupSet, setQuestionPrintAllowed
 } from '../actions';
+import { LEADER_PRESETS } from '@/lib/leader-columns';
 import type { SlotClaimant, QuestionAnswerRow } from '@/lib/event-signup-admin';
 import { jobDateNote } from '@/lib/event-signup-shared';
 import { SET_KINDS, SET_KIND_LABEL, presetSetsFor, type SetKind } from '@/lib/group-sets';
@@ -87,6 +88,9 @@ export function BuilderPanels({
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+
+  // Leader-only question draft (Plans/Event-Logistics.md §D)
+  const [qLeader, setQLeader] = useState(false);
 
   // Assignments block drafts
   const [gLabel, setGLabel] = useState('');
@@ -980,8 +984,28 @@ export function BuilderPanels({
                     <td>
                       <strong>{s(q.prompt)}</strong>
                       {b(q.required) && <span className={styles.tag}>required</span>}
+                      {b(q.leader_only) && <span className={styles.tag}>leader only</span>}
                     </td>
-                    <td>{s(q.input_type)}</td>
+                    <td>
+                      {s(q.input_type)}
+                      {b(q.leader_only) && s(q.input_type) === 'text' && (
+                        <label className={styles.inlineChk} title="Free-text leader columns print on the snapshot/CSV only when ticked — the snapshot goes to scouts.">
+                          <input
+                            type="checkbox"
+                            checked={b(q.print_allowed)}
+                            disabled={pending}
+                            onChange={(e) =>
+                              start(async () => {
+                                const res = await setQuestionPrintAllowed(qid, e.target.checked, signupId, calendarEntryId);
+                                if (!res.ok) setError(res.error ?? 'Could not save.');
+                                router.refresh();
+                              })
+                            }
+                          />
+                          prints
+                        </label>
+                      )}
+                    </td>
                     <td>{Array.isArray(q.choices) ? (q.choices as string[]).join(' / ') : '—'}</td>
                     <td>{s(q.applies_to)}</td>
                     <td>
@@ -1041,8 +1065,12 @@ export function BuilderPanels({
             <option value="adults">Adults</option>
           </select>
           <label className={styles.inlineChk}>
-            <input type="checkbox" checked={qReq} onChange={(e) => setQReq(e.target.checked)} />
+            <input type="checkbox" checked={qReq} disabled={qLeader} onChange={(e) => setQReq(e.target.checked)} />
             required
+          </label>
+          <label className={styles.inlineChk} title="A column the LEADER fills on the roster — families never see it.">
+            <input type="checkbox" checked={qLeader} onChange={(e) => setQLeader(e.target.checked)} />
+            leader only
           </label>
           <button
             type="button"
@@ -1055,7 +1083,8 @@ export function BuilderPanels({
                   input_type: qType,
                   choices: qChoices.split(',').map((c) => c.trim()).filter(Boolean),
                   applies_to: qWho,
-                  required: qReq
+                  required: qReq,
+                  leader_only: qLeader
                 });
                 if (!res.ok) setError(res.error ?? 'Could not add question.');
                 else {
@@ -1069,6 +1098,38 @@ export function BuilderPanels({
             Add question
           </button>
         </div>
+        {/* Leader-only column presets (Plans/Event-Logistics.md §D): the
+            sheet's "Health Forms" and "Registered?" ticks. A single-choice
+            leader column renders as a checkbox on the roster. The health
+            form one is pre-suggested from people.health_form_date — a date,
+            never the form's contents (Health Forms upload is parked). */}
+        <p className={styles.panelHint}>
+          Leader columns the sheet always had:{' '}
+          {LEADER_PRESETS.filter((p) => !questions.some((q) => b(q.leader_only) && s(q.prompt) === p.prompt)).map((p) => (
+            <button
+              key={p.prompt}
+              type="button"
+              className={styles.rowEdit}
+              disabled={pending}
+              onClick={() =>
+                start(async () => {
+                  const res = await addQuestion(signupId, calendarEntryId, {
+                    prompt: p.prompt,
+                    input_type: 'choice',
+                    choices: ['Yes'],
+                    applies_to: p.appliesTo,
+                    required: false,
+                    leader_only: true
+                  });
+                  if (!res.ok) setError(res.error ?? 'Could not add column.');
+                  router.refresh();
+                })
+              }
+            >
+              + {p.prompt}
+            </button>
+          ))}
+        </p>
       </section>
       <section className={styles.panel}>
         <h2>Assignments</h2>

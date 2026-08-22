@@ -11,6 +11,7 @@ import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireCapability } from '@/lib/require-capability';
 import { isRideStatus, legTiles, type Leg, type RideStatus, type TransportCar } from '@/lib/transport';
+import type { LeaderQuestion } from '@/lib/leader-columns';
 import { RosterTable } from './roster-table';
 import { AddPerson, type AddCandidate } from './add-person';
 import { EmailPanel } from './email-panel';
@@ -74,7 +75,12 @@ export interface RosterRow {
   claimsDisplay: string[];
   /** Slot ids + notes — what the per-row jobs editor edits (2026-08-21). */
   claimDetails: { slotId: number; comment: string | null }[];
+  /** Family answers, "prompt: value". */
   answers: string[];
+  /** Leader-only columns (Plans/Event-Logistics.md §D): question id → value. */
+  leaderAnswers: Record<number, string>;
+  /** people.health_form_date — a date, for the health-form column hint only. */
+  healthFormDate: string | null;
 }
 
 async function load(signupId: number) {
@@ -106,11 +112,18 @@ async function load(signupId: number) {
     supabase.from('signup_slots').select('*').eq('event_signup_id', sig.id).order('sort'),
     supabase.from('signup_slot_claims').select('slot_id, signup_entry_id, comment'),
     supabase.from('signup_answers').select('signup_entry_id, question_id, value'),
-    supabase.from('signup_questions').select('id, prompt').eq('event_signup_id', sig.id),
+    supabase
+      .from('signup_questions')
+      .select('id, prompt, input_type, choices, applies_to, leader_only, print_allowed, sort')
+      .eq('event_signup_id', sig.id)
+      .order('sort')
+      .order('id'),
     supabase.from('scouts').select('id, display_name, active, household_id'),
     supabase.from('households').select('id, label'),
 
-    supabase.from('people').select('id, display_name')
+    // health_form_date is a DATE only — the hint beside the "Health form in
+    // hand" leader column (Plans/Event-Logistics.md §D); never the form.
+    supabase.from('people').select('id, display_name, health_form_date')
   ]);
 
   // Money (Plans/Event-Logistics.md §C): the derived per-entry balance.
@@ -209,22 +222,51 @@ async function load(signupId: number) {
     ]);
   }
 
-  const qLabel = new Map(
-    ((questionRows ?? []) as { id: number; prompt: string }[]).map((q) => [q.id, q.prompt])
-  );
+  // Family questions flatten to "label: value" strings for the Answers column;
+  // LEADER-ONLY questions (Plans/Event-Logistics.md §D) are editable cells,
+  // so their answers stay structured (question id → value).
+  type QuestionRow = {
+    id: number;
+    prompt: string;
+    input_type: 'text' | 'number' | 'choice';
+    choices: string[] | null;
+    applies_to: 'scouts' | 'adults' | 'both';
+    leader_only: boolean;
+    print_allowed: boolean;
+  };
+  const questionList = (questionRows ?? []) as QuestionRow[];
+  const qById = new Map(questionList.map((q) => [q.id, q]));
+  const leaderQuestions: LeaderQuestion[] = questionList
+    .filter((q) => q.leader_only)
+    .map((q) => ({
+      id: q.id,
+      prompt: q.prompt,
+      inputType: q.input_type,
+      choices: q.choices,
+      appliesTo: q.applies_to,
+      printAllowed: q.print_allowed
+    }));
   const ansByEntry = new Map<number, string[]>();
+  const leaderAnsByEntry = new Map<number, Record<number, string>>();
   for (const a of (answerRows ?? []) as {
     signup_entry_id: number;
     question_id: number;
     value: string;
   }[]) {
-    const label = qLabel.get(a.question_id);
-    if (!label) continue;
+    const q = qById.get(a.question_id);
+    if (!q) continue;
+    if (q.leader_only) {
+      leaderAnsByEntry.set(a.signup_entry_id, { ...(leaderAnsByEntry.get(a.signup_entry_id) ?? {}), [q.id]: a.value });
+      continue;
+    }
     ansByEntry.set(a.signup_entry_id, [
       ...(ansByEntry.get(a.signup_entry_id) ?? []),
-      `${label}: ${a.value}`
+      `${q.prompt}: ${a.value}`
     ]);
   }
+  const healthFormDateByPerson = new Map(
+    ((people ?? []) as { id: number; health_form_date: string | null }[]).map((p) => [p.id, p.health_form_date])
+  );
 
   const entryNameById = new Map<number, string>();
   for (const e of (entries ?? []) as Record<string, unknown>[]) {
@@ -289,7 +331,9 @@ async function load(signupId: number) {
       claims: claimsByEntry.get(Number(e.id)) ?? [],
       claimsDisplay: claimsDisplayByEntry.get(Number(e.id)) ?? [],
       claimDetails: claimDetailsByEntry.get(Number(e.id)) ?? [],
-      answers: ansByEntry.get(Number(e.id)) ?? []
+      answers: ansByEntry.get(Number(e.id)) ?? [],
+      leaderAnswers: leaderAnsByEntry.get(Number(e.id)) ?? {},
+      healthFormDate: e.person_id ? (healthFormDateByPerson.get(Number(e.person_id)) ?? null) : null
     };
   });
 
@@ -356,6 +400,7 @@ async function load(signupId: number) {
     ridesOut,
     ridesBack,
     hasCarSets: carSetIds.length > 0,
+    leaderQuestions,
     slots: ((slots ?? []) as { id: number; label: string }[]).map((sl) => ({ id: sl.id, label: sl.label }))
   };
 }
@@ -411,6 +456,10 @@ export default async function EventRosterPage({ params }: { params: Promise<{ id
             ·{' '}
             <Link href={`/admin/rosters/${signupId}/money`} className={styles.actionLink}>
               Money
+            </Link>{' '}
+            ·{' '}
+            <Link href={`/admin/snapshot/${signupId}`} className={styles.actionLink}>
+              Snapshot
             </Link>{' '}
             ·{' '}
             <Link href={`/events/${String(data.entry.id)}`} className={styles.actionLinkMuted}>
@@ -505,6 +554,8 @@ export default async function EventRosterPage({ params }: { params: Promise<{ id
         signupId={signupId}
         calendarEntryId={Number(data.entry.id)}
         showSlip={signup.needs_permission_slip}
+        leaderQuestions={data.leaderQuestions}
+        eventDate={String(data.entry.entry_date ?? '')}
       />
 
       <AddPerson

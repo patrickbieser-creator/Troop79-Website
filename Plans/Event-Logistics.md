@@ -1,8 +1,17 @@
 # Event Logistics — the campout sheet, inside the site
 
-**Status:** Active (planning complete 2026-08-22; tech-lead + qa-lead reviewed same day, both
-go-with-changes — all changes folded in below; Patrick signed off the two qa-lead items same day —
-READY TO ACTIVATE at Phase 0; no code yet)
+**Status:** Active — **Phases 0–4 BUILT and committed locally 2026-08-22** (d0bcdf0 Phase 0 schema,
+f5873db Phase 1 transportation v1.81.0, 65f499a Phase 2 assignments v1.82.0, 136cd13 Phase 3 money
+v1.83.0, Phase 4 leader columns + snapshot v1.84.0), each browser-verified on the dev server against
+the local Fall Campout signup. **NOT pushed, NOT deployed** — Patrick's call. Phase 5 (backfill two
+events) deliberately NOT started (Patrick, 2026-08-22: "No backfill at this time").
+**Deploy order for the Phase 3 migration (20260822210000): push the CODE first, then `supabase db
+push`** — it drops the one-payment index and `payment_received`; the new code tolerates both states.
+Still open: step 15 (drop `seats_offered_*` + the sync trigger once nothing reads them); the
+`signup_group_sets` self-select picker lands picks directly (no leader approval step); the public
+milestone list has no styleguide specimen (a content list on the event page, not a shared pattern).
+Planning history: tech-lead + qa-lead reviewed the plan the same day, both go-with-changes (folded in
+below); Patrick signed off the two qa-lead items.
 **Created:** 2026-08-22
 **Priority:** High
 **Source of truth being replaced:** `Troop 79 Event Registration History and Roster.xlsx` — 24 tabs,

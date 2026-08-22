@@ -47,6 +47,8 @@ function row(over: Partial<RosterRow> & { id: number; name: string }): RosterRow
     claimsDisplay: [],
     claimDetails: [],
     answers: [],
+    leaderAnswers: {},
+    healthFormDate: null,
     ...over
   };
 }

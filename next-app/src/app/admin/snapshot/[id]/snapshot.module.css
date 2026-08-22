@@ -1,0 +1,64 @@
+/*
+ * The event snapshot document (Plans/Event-Logistics.md §E) — the campout
+ * sheet's one tab, printed for the SPL and kept by the trip leader. Admin
+ * surface (admin tokens); sized for US Letter portrait with 0.5in margins,
+ * one section per page. Modeled on roster-print.module.css.
+ */
+
+@page {
+  size: letter portrait;
+  margin: 0.5in;
+}
+
+.doc {
+  font-family: var(--admin-font-ui, inherit);
+  color: var(--admin-gray-900);
+  background: var(--admin-white);
+  max-width: 7.5in;
+  margin: 0 auto;
+  padding: var(--admin-space-6) var(--admin-space-6) var(--admin-space-14);
+  font-size: var(--admin-text-sm);
+  line-height: 1.4;
+}
+
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--admin-space-6); flex-wrap: wrap; margin-bottom: var(--admin-space-6); padding-bottom: var(--admin-space-4); border-bottom: 1px solid var(--admin-gray-200); font-size: var(--admin-text-sm); color: var(--admin-gray-600); }
+.toolbarActions { display: flex; gap: var(--admin-space-4); align-items: center; }
+.printBtn { background: var(--admin-navy); color: var(--admin-white); border: none; border-radius: var(--admin-radius-sm); padding: 6px 13px; font-size: var(--admin-text-sm); font-weight: var(--admin-weight-bold); cursor: pointer; }
+.backLink { color: var(--admin-navy); text-decoration: underline; }
+
+.cover { margin-bottom: var(--admin-space-4); }
+.coverTitle { font-family: var(--admin-font-display, inherit); font-size: var(--admin-text-2xl); font-weight: var(--admin-weight-bold); margin: 0; }
+.coverSub { margin: 2px 0 0; color: var(--admin-gray-600); }
+.tiles { display: flex; flex-wrap: wrap; gap: var(--admin-space-2) var(--admin-space-5); margin: var(--admin-space-3) 0; font-size: var(--admin-text-xs); }
+.tiles strong { font-size: var(--admin-text-base); }
+.confidential { font-size: var(--admin-text-xs); color: var(--admin-gray-600); border-top: 1px solid var(--admin-gray-200); border-bottom: 1px solid var(--admin-gray-200); padding: var(--admin-space-2) 0; margin: var(--admin-space-3) 0 var(--admin-space-5); }
+
+.section { margin-top: var(--admin-space-6); }
+.sectionTitle { font-size: var(--admin-text-md); font-weight: var(--admin-weight-bold); letter-spacing: var(--admin-tracking-wide); text-transform: uppercase; color: var(--admin-gray-900); border-bottom: 2px solid var(--admin-gray-900); padding-bottom: 3px; margin: 0 0 var(--admin-space-3); }
+.sub { font-size: var(--admin-text-sm); font-weight: var(--admin-weight-bold); margin: var(--admin-space-4) 0 var(--admin-space-2); break-after: avoid; page-break-after: avoid; }
+
+.table { width: 100%; border-collapse: collapse; font-size: var(--admin-text-xs); }
+.table th { text-align: left; font-weight: var(--admin-weight-bold); letter-spacing: var(--admin-tracking-wide); text-transform: uppercase; font-size: var(--admin-text-2xs); color: var(--admin-gray-600); padding: 3px 6px; border-bottom: 1px solid var(--admin-gray-300); }
+.table td { padding: 3px 6px; border-bottom: 1px solid var(--admin-gray-100); vertical-align: top; }
+.table tr { break-inside: avoid; page-break-inside: avoid; }
+.num { text-align: right; white-space: nowrap; }
+.muted { color: var(--admin-gray-600); }
+
+.cars { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--admin-space-3); }
+.car { border: 1px solid var(--admin-gray-300); border-radius: var(--admin-radius-sm); padding: var(--admin-space-2) var(--admin-space-3); break-inside: avoid; page-break-inside: avoid; }
+.carHead { display: flex; justify-content: space-between; gap: var(--admin-space-2); font-weight: var(--admin-weight-bold); }
+.carMeta { font-size: var(--admin-text-2xs); color: var(--admin-gray-600); }
+.plainList { list-style: none; margin: var(--admin-space-1) 0 0; padding: 0; }
+.plainList li { padding: 1px 0; }
+.blank { display: inline-block; width: 4.5em; border-bottom: 1px solid var(--admin-gray-400); }
+
+.cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--admin-space-4); }
+.block { break-inside: avoid; page-break-inside: avoid; }
+
+@media print {
+  .toolbar { display: none; }
+  .doc { max-width: none; padding: 0; font-size: 9pt; }
+  .section { break-before: page; page-break-before: always; }
+  .section:first-of-type { break-before: auto; page-break-before: auto; }
+  .doc a { color: inherit; text-decoration: none; }
+}

@@ -10,8 +10,16 @@ import {
   unclaimSlotFor,
   setEntryClass,
   addGuestEntry,
-  setEntryTransport
+  setEntryTransport,
+  setLeaderAnswer
 } from '../../events/actions';
+import {
+  healthFormLikelyCurrent,
+  isCheckboxColumn,
+  printableLeaderQuestions,
+  LEADER_PRESETS,
+  type LeaderQuestion
+} from '@/lib/leader-columns';
 import { LEG_LABEL, RIDE_STATUSES, RIDE_STATUS_LABEL, rideCell, type Leg, type RideStatus } from '@/lib/transport';
 import {
   PARTICIPANT_CLASSES,
@@ -68,7 +76,9 @@ export function RosterTable({
   signupId,
   calendarEntryId,
   showSlip,
-  slots
+  slots,
+  leaderQuestions = [],
+  eventDate = ''
 }: {
   rows: RosterRow[];
   removedRows: RosterRow[];
@@ -77,6 +87,10 @@ export function RosterTable({
   showSlip: boolean;
   /** Every job on this signup — the editor's checklist. */
   slots: { id: number; label: string }[];
+  /** Leader-only columns (Plans/Event-Logistics.md §D) — editable cells. */
+  leaderQuestions?: LeaderQuestion[];
+  /** For the health-form hint (a date within 12 months of the event). */
+  eventDate?: string;
 }) {
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -306,7 +320,11 @@ export function RosterTable({
       'Type', 'Name', 'Household', 'Status', 'Participation', 'Tier', 'Days',
       'Owed', 'Guests', 'Guest note',
       'Drives there (seats incl. driver)', 'Drives back (seats incl. driver)', 'Ride there', 'Ride back', 'Groups',
-      'Slip', 'Balance', 'Jobs', 'Answers', 'Notes'
+      'Slip', 'Balance', 'Jobs', 'Answers',
+      // Leader-only columns: checkbox/number always; free text only when the
+      // leader flagged it printable (Plans/Event-Logistics.md §D).
+      ...printableLeader.map((q) => q.prompt),
+      'Notes'
     ];
     const body = sorted.map((r) => [
       PARTICIPANT_CLASS_LABEL[r.participantClass], r.name, r.household, r.status, r.participation, r.tierLabel ?? '',
@@ -314,7 +332,9 @@ export function RosterTable({
       r.drivesOut ? (r.vehicleSeatsOut ?? '') : '', r.drivesBack ? (r.vehicleSeatsBack ?? '') : '',
       rideCell(r, 'out', r.carOut), rideCell(r, 'back', r.carBack), r.groups.join(' | '),
       r.slipReceived ? 'Y' : 'N', r.owed === 0 ? '' : r.settled ? 'Paid' : `${r.balance} due`,
-      r.claimsDisplay.join(' | '), r.answers.join(' | '), r.notes ?? ''
+      r.claimsDisplay.join(' | '), r.answers.join(' | '),
+      ...printableLeader.map((q) => r.leaderAnswers[q.id] ?? ''),
+      r.notes ?? ''
     ]);
     const csv = [head, ...body]
       .map((line) => line.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))
@@ -335,7 +355,78 @@ export function RosterTable({
       else router.refresh();
     });
 
-  const colCount = 15 + (showSlip ? 1 : 0);
+  const colCount = 15 + (showSlip ? 1 : 0) + leaderQuestions.length;
+  const printableLeader = printableLeaderQuestions(leaderQuestions);
+  const [leaderDraft, setLeaderDraft] = useState<Record<string, string>>({});
+  const saveLeader = (r: RosterRow, q: LeaderQuestion, value: string | null) =>
+    start(async () => {
+      setError(null);
+      const res = await setLeaderAnswer(r.id, q.id, value, signupId, calendarEntryId);
+      if (!res.ok) setError(res.error ?? 'Could not save.');
+      else router.refresh();
+    });
+  const leaderCell = (r: RosterRow, q: LeaderQuestion) => {
+    const applies = q.appliesTo === 'both' || (q.appliesTo === 'scouts') === isYouthClass(r.participantClass);
+    if (!applies || r.status === 'cancelled') return <td key={q.id} className={styles.cellMuted}>—</td>;
+    const current = r.leaderAnswers[q.id] ?? '';
+    const key = `${r.id}:${q.id}`;
+    const hint =
+      LEADER_PRESETS.find((p) => p.prompt === q.prompt)?.hint === 'health_form_date' && !current && healthFormLikelyCurrent(r.healthFormDate, eventDate)
+        ? `form dated ${r.healthFormDate}`
+        : null;
+    if (isCheckboxColumn(q)) {
+      const yes = (q.choices ?? [])[0];
+      return (
+        <td key={q.id}>
+          <input
+            type="checkbox"
+            checked={current === yes}
+            disabled={pending}
+            aria-label={`${q.prompt} — ${r.name}`}
+            onChange={(e) => saveLeader(r, q, e.target.checked ? yes : null)}
+          />
+          {hint && <span className={styles.evCat}>{hint}</span>}
+        </td>
+      );
+    }
+    if (q.inputType === 'choice') {
+      return (
+        <td key={q.id}>
+          <select
+            value={current}
+            disabled={pending}
+            aria-label={`${q.prompt} — ${r.name}`}
+            onChange={(e) => saveLeader(r, q, e.target.value || null)}
+          >
+            <option value="">—</option>
+            {(q.choices ?? []).map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </td>
+      );
+    }
+    const draft = leaderDraft[key] ?? current;
+    return (
+      <td key={q.id}>
+        <input
+          type={q.inputType === 'number' ? 'number' : 'text'}
+          value={draft}
+          disabled={pending}
+          aria-label={`${q.prompt} — ${r.name}`}
+          onChange={(e) => setLeaderDraft((d) => ({ ...d, [key]: e.target.value }))}
+          onBlur={() => {
+            if (draft !== current) saveLeader(r, q, draft || null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+          }}
+        />
+      </td>
+    );
+  };
 
   return (
     <section className={styles.panel}>
@@ -370,6 +461,11 @@ export function RosterTable({
             <th scope="col">Groups</th>
             <th scope="col">Jobs</th>
             <th scope="col">Answers</th>
+            {leaderQuestions.map((q) => (
+              <th key={q.id} scope="col" title="Leader-only column — families never see it">
+                {q.prompt}
+              </th>
+            ))}
             <th scope="col">Notes</th>
             {showSlip && <th scope="col">Slip</th>}
             <th scope="col">Balance</th>
@@ -427,6 +523,7 @@ export function RosterTable({
               <td className={styles.cellMuted}>{r.groups.join(' · ') || '—'}</td>
               <td>{r.claimsDisplay.join(', ') || '—'}</td>
               <td className={styles.cellMuted}>{r.answers.join(' · ') || '—'}</td>
+              {leaderQuestions.map((q) => leaderCell(r, q))}
               <td className={styles.cellMuted}>{r.notes || '—'}</td>
               {showSlip && (
                 <td>

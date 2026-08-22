@@ -307,6 +307,11 @@ export async function addQuestion(
     choices: string[];
     applies_to: 'scouts' | 'adults' | 'both';
     required: boolean;
+    /** Leader-managed roster column (Plans/Event-Logistics.md §D): never on
+     *  the family form, never required of a family. */
+    leader_only?: boolean;
+    /** Free-text leader columns print on the snapshot/CSV only when true. */
+    print_allowed?: boolean;
   }
 ): Promise<Result> {
   await requireCapability('calendar.write');
@@ -315,6 +320,7 @@ export async function addQuestion(
     return { ok: false, error: 'A choice question needs at least one option.' };
   }
   const supabase = createAdminClient();
+  const leaderOnly = q.leader_only === true;
   const { error } = await supabase.from('signup_questions').insert({
     event_signup_id: signupId,
     prompt: q.prompt.trim(),
@@ -322,9 +328,73 @@ export async function addQuestion(
     // The DB CHECK requires choices exactly when the type is 'choice'.
     choices: q.input_type === 'choice' ? q.choices : null,
     applies_to: q.applies_to,
-    required: q.required
+    required: leaderOnly ? false : q.required,
+    leader_only: leaderOnly,
+    print_allowed: leaderOnly && q.input_type === 'text' ? q.print_allowed === true : true
   });
   if (error) return { ok: false, error: error.message };
+  revalidateEvent(calendarEntryId, signupId);
+  return { ok: true };
+}
+
+/** Flip whether a free-text leader column prints (snapshot / CSV). */
+export async function setQuestionPrintAllowed(
+  questionId: number,
+  printAllowed: boolean,
+  signupId: number,
+  calendarEntryId: number
+): Promise<Result> {
+  await requireCapability('calendar.write');
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from('signup_questions')
+    .update({ print_allowed: printAllowed })
+    .eq('id', questionId)
+    .eq('event_signup_id', signupId);
+  if (error) return { ok: false, error: error.message };
+  revalidateEvent(calendarEntryId, signupId);
+  return { ok: true };
+}
+
+/** A leader fills (or clears) a leader-only column for one person — the
+ *  roster's editable cells. Family questions are NOT writable here; the
+ *  family form owns those. */
+export async function setLeaderAnswer(
+  entryId: number,
+  questionId: number,
+  value: string | null,
+  signupId: number,
+  calendarEntryId: number
+): Promise<Result> {
+  await requireCapability('calendar.write');
+  const supabase = createAdminClient();
+  const { data: q } = await supabase
+    .from('signup_questions')
+    .select('id, leader_only, input_type, choices')
+    .eq('id', questionId)
+    .eq('event_signup_id', signupId)
+    .maybeSingle();
+  const question = q as { id: number; leader_only: boolean; input_type: string; choices: string[] | null } | null;
+  if (!question) return { ok: false, error: 'That column is not on this signup.' };
+  if (!question.leader_only) return { ok: false, error: 'Only leader-only columns are edited here.' };
+  const v = value?.trim() ?? '';
+  if (!v) {
+    const { error } = await supabase.from('signup_answers').delete().eq('signup_entry_id', entryId).eq('question_id', questionId);
+    if (error) return { ok: false, error: error.message };
+  } else {
+    if (question.input_type === 'choice' && !(question.choices ?? []).includes(v)) {
+      return { ok: false, error: 'That is not one of the column’s options.' };
+    }
+    if (question.input_type === 'number' && !/^-?[0-9]+(\.[0-9]+)?$/.test(v)) {
+      return { ok: false, error: 'That column expects a number.' };
+    }
+    const { error } = await supabase
+      .from('signup_answers')
+      .upsert({ signup_entry_id: entryId, question_id: questionId, value: v.slice(0, 300) }, { onConflict: 'signup_entry_id,question_id' });
+    if (error) return { ok: false, error: error.message };
+  }
+  revalidatePath(`/admin/rosters/${signupId}`);
+  revalidatePath(`/admin/snapshot/${signupId}`);
   revalidateEvent(calendarEntryId, signupId);
   return { ok: true };
 }
