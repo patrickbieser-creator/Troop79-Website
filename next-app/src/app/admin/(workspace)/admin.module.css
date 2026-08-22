@@ -127,14 +127,21 @@
 .subNavGroup {
   display: block;
 }
+/* Section headers outrank the items they label. They used to be SMALLER
+   (10px) and LIGHTER (gray-500) than the 13px/gray-700 links beneath them,
+   so the eight sections read as one undifferentiated list (Patrick,
+   2026-08-22: "too small and too similar in color to see the sections").
+   Now: larger than the links, and navy rather than a gray one step off
+   theirs — the same brand navy the active item uses, so the sidebar has
+   exactly one accent color. */
 .subNavSection {
-  font-size: 10px;
+  font-size: var(--admin-text-lg);
   font-weight: 700;
-  letter-spacing: .14em;
+  letter-spacing: .1em;
   text-transform: uppercase;
-  color: var(--admin-gray-500);
-  padding: 14px 18px 6px;
-  margin-top: 10px;
+  color: var(--admin-navy);
+  padding: 16px 18px 6px;
+  margin-top: 12px;
 }
 .subNavSection:first-child { margin-top: 0; }
 .subNavBtn {
@@ -231,14 +238,18 @@
     border-bottom: 1px solid var(--admin-gray-100);
   }
   .subNavGroup:last-child { border-bottom: none; }
+  /* Same correction as the desktop header, scaled for the inline chip row:
+     readable against the chips instead of receding behind them. Stays
+     smaller than desktop — here it shares a line with the items rather
+     than heading a block. */
   .subNavSection {
     display: block;
     flex: 0 0 auto;
-    font-size: 9px;
+    font-size: var(--admin-text-sm);
     font-weight: 700;
-    letter-spacing: .1em;
+    letter-spacing: .08em;
     text-transform: uppercase;
-    color: var(--admin-gray-400);
+    color: var(--admin-navy);
     padding: 0 8px 0 2px;
     margin: 0 2px 0 0;
     border-right: 1px solid var(--admin-gray-200);
