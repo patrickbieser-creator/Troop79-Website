@@ -291,7 +291,10 @@
 .spineYearRule { flex: 1; height: 1px; background: var(--rule); }
 .spineRow {
   position: relative;
-  display: grid; grid-template-columns: 3.2rem 4.5rem 1fr auto;
+  /* minmax(0, …) on both flexible columns — without it a long unbroken title
+     or description sets the column's min-content width and pushes the row
+     wider than the page. */
+  display: grid; grid-template-columns: 3.2rem 4.5rem minmax(0, 1fr) minmax(0, 1.1fr) auto;
   align-items: center; gap: var(--sp-4);
   padding: var(--sp-3) var(--sp-3) var(--sp-3) 0;
   border-bottom: 1px solid var(--border-light);
@@ -325,6 +328,20 @@
   margin-top: var(--sp-1);
 }
 .spineNum::before { content: '\00b7  '; }
+/* Two lines on a desktop or iPad, clamped rather than truncated to one —
+   Patrick asked for at least two, and most album descriptions are a sentence.
+   line-clamp needs a real height to clamp against, hence the box display. */
+.spineDesc {
+  font-family: var(--font-body);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--text-body);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-width: 0;
+}
 .spineGo {
   font-family: var(--font-ui); font-size: var(--fs-2xs); font-weight: 700; color: var(--forest);
   opacity: 0; transition: opacity .18s ease; white-space: nowrap;
@@ -443,14 +460,22 @@
 /* ── responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
   .prints { grid-template-columns: repeat(3, 1fr); }
+  /* iPad portrait still shows the description (Patrick's floor is two lines
+     on a "normal desktop or ipad browser") — the View-album affordance is
+     what yields the width, since it is hover-only anyway. */
+  .spineRow { grid-template-columns: 3.2rem 4.5rem minmax(0, 1fr) minmax(0, 1fr); }
+  .spineGo { display: none; }
 }
 @media (max-width: 640px) {
   .prints { grid-template-columns: repeat(2, 1fr); }
   .spine { padding-left: var(--sp-6); }
   .spine::before { left: 9px; }
-  .spineRow { grid-template-columns: 2.6rem 1fr; gap: var(--sp-3); }
+  .spineRow { grid-template-columns: 2.6rem minmax(0, 1fr); gap: var(--sp-3); }
   .spineRow::before { left: -15px; }
-  .spineThumb, .spineGo { display: none; }
+  /* Description goes with the thumb and the hover affordance on a phone —
+     Patrick: "this content can be dropped on small mobile views". A third
+     line of prose per row turns the rail into a wall. */
+  .spineThumb, .spineGo, .spineDesc { display: none; }
 }
 @media (max-width: 480px) {
   .prints { grid-template-columns: 1fr; }

@@ -3,8 +3,9 @@
 import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
+import { resolveArticleSlug, resolveByline } from '@/lib/article-slug';
 import { slugify } from '@/lib/slugify';
-import type { Article } from '@/lib/supabase/types';
+import type { Article , ArticleStatus } from '@/lib/supabase/types';
 
 function revalidateNews() {
   revalidatePath('/admin/news/articles');
@@ -21,6 +22,10 @@ interface ArticleFields {
   body: string;
   heroMediaId: number | null;
   autoArchiveAt: string | null;
+  /** Explicit URL slug; blank means "derive it" (lib/article-slug rules). */
+  slug: string;
+  /** Explicit byline; blank means "leave the existing author alone". */
+  authorName: string;
   /** Category labels from the ONE taxonomy (calendar_categories). */
   categories: string[];
 }
@@ -41,6 +46,8 @@ function parseFields(formData: FormData): ArticleFields {
     heroMediaId: heroMediaIdRaw ? Number(heroMediaIdRaw) : null,
     autoArchiveAt: String(formData.get('autoArchiveAt') ?? '').trim() || null,
     featured: String(formData.get('featured') ?? '') === '1',
+    slug: String(formData.get('slug') ?? '').trim(),
+    authorName: String(formData.get('authorName') ?? '').trim(),
     categories
   };
 }
@@ -105,7 +112,7 @@ export async function createArticle(formData: FormData): Promise<ActionResult> {
       hero_media_id: fields.heroMediaId,
       featured: fields.featured,
       status: 'draft',
-      author_name: session.label,
+      author_name: resolveByline(fields.authorName, session.label),
       author_role: 'leader',
       auto_archive_at: fields.autoArchiveAt
     })
@@ -195,13 +202,27 @@ export async function updateArticle(id: number, formData: FormData): Promise<Act
 
   const { data: existing, error: fetchError } = await supabase
     .from('articles')
-    .select('author_name')
+    .select('author_name, slug, status')
     .eq('id', id)
     .single();
   if (fetchError || !existing) return { ok: false, error: 'Article not found.' };
+  const current = existing as { author_name: string; slug: string; status: ArticleStatus };
   const fields = parseFields(formData);
   if (!fields.title) return { ok: false, error: 'Title is required.' };
-  const slug = await uniqueSlug(supabase, fields.title, id);
+
+  /*
+   * The slug no longer follows the title once a post is live (2026-08-22).
+   * It used to, on every save — so fixing a headline typo silently moved the
+   * public URL and 404'd every link already shared. Rules in lib/article-slug.
+   */
+  const desiredSlug = resolveArticleSlug({
+    title: fields.title,
+    manualSlug: fields.slug,
+    currentSlug: current.slug,
+    status: current.status
+  });
+  const slug =
+    desiredSlug === current.slug ? current.slug : await uniqueSlug(supabase, desiredSlug, id);
 
   const { error } = await supabase
     .from('articles')
@@ -213,6 +234,9 @@ export async function updateArticle(id: number, formData: FormData): Promise<Act
       hero_media_id: fields.heroMediaId,
       auto_archive_at: fields.autoArchiveAt,
       featured: fields.featured,
+      // Editable byline: a post written by a scout or another leader gets
+      // credited to them. Blank means "leave it alone", never anonymous.
+      author_name: resolveByline(fields.authorName, current.author_name),
       updated_at: new Date().toISOString()
     })
     .eq('id', id);
@@ -221,6 +245,9 @@ export async function updateArticle(id: number, formData: FormData): Promise<Act
   await setCategories(supabase, id, fields.categories);
   revalidateNews();
   revalidatePath(`/news/${slug}`);
+  // A deliberate slug change leaves the old path cached — flush it so the
+  // stale copy stops serving under a URL that no longer belongs to it.
+  if (slug !== current.slug) revalidatePath(`/news/${current.slug}`);
   return { ok: true, id };
 }
 

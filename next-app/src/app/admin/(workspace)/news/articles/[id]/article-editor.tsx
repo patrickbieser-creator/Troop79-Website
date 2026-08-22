@@ -41,6 +41,12 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
 
   const [title, setTitle] = useState(article?.title ?? '');
   const [excerpt, setExcerpt] = useState(article?.excerpt ?? '');
+  const [authorName, setAuthorName] = useState(article?.author_name ?? '');
+  const [slug, setSlug] = useState(article?.slug ?? '');
+  /* Once live, the slug is frozen against title edits (lib/article-slug) — the
+     hint below says so, because nothing in this UI used to mention slugs at
+     all and the URL moved silently on every save. */
+  const published = article?.status === 'published';
   const [featured, setFeatured] = useState(article?.featured ?? false);
   const [body, setBody] = useState(article?.body ?? '');
   const [categories, setCategories] = useState<Set<string>>(new Set(selectedCategories));
@@ -73,6 +79,8 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
     const fd = new FormData();
     fd.set('title', title);
     fd.set('excerpt', excerpt);
+    fd.set('authorName', authorName);
+    fd.set('slug', slug);
     fd.set('featured', featured ? '1' : '');
     fd.set('body', body);
     if (hero) fd.set('heroMediaId', String(hero.id));
@@ -175,6 +183,46 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
               placeholder="A short summary that appears on the home page — 1-2 sentences."
             />
             <div className={styles.hint}>Shown on the home page and article cards. Keep it to 1-2 sentences.</div>
+          </div>
+
+          <div className={styles.field}>
+            <label className="adminLabel" htmlFor="authorName">Byline</label>
+            <input
+              id="authorName"
+              type="text"
+              value={authorName}
+              onChange={(e) => setAuthorName(e.target.value)}
+              placeholder="Who wrote it"
+            />
+            <div className={styles.hint}>
+              Who the post is credited to. Defaults to you; change it when a scout or another
+              leader wrote it. Leave it blank to keep the current byline.
+            </div>
+          </div>
+
+          <div className={styles.field}>
+            <label className="adminLabel" htmlFor="slug">Web address</label>
+            <div className={styles.slugRow}>
+              <span className={styles.slugPrefix}>/news/</span>
+              <input
+                id="slug"
+                type="text"
+                value={slug}
+                onChange={(e) => setSlug(e.target.value)}
+                placeholder="made-from-the-title"
+              />
+            </div>
+            <div className={styles.hint}>
+              {published ? (
+                <>
+                  <strong>This post is live at /news/{article?.slug}.</strong> Editing the title no
+                  longer moves it — change this field only if you mean to change the address, and
+                  know that any link already shared will stop working.
+                </>
+              ) : (
+                <>Made from the title until the post is published, then it stays put so shared links keep working.</>
+              )}
+            </div>
           </div>
 
           <div className={styles.field}>

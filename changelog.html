@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 22, 2026</strong> &nbsp;&middot;&nbsp; v1.78.0</p>
+      <p>Last updated: <strong>August 22, 2026</strong> &nbsp;&middot;&nbsp; v1.79.0</p>
     </div>
   </div>
 
@@ -494,6 +494,56 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.79.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.79.0</span>
+        <span class="release-date">August 22, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Fix</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Editable bylines, and news links that stop breaking</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Renaming a published post used to change its web address</strong> &mdash;
+              silently, on every save. Any link already shared in the Bugle, a text message or a
+              Facebook post stopped working, and nothing in the editor ever mentioned it. A post&rsquo;s
+              address now <strong>locks when it&rsquo;s published</strong>: titles stay freely
+              editable and the link keeps working.
+            </span>
+          </li>
+          <li>
+            <span>
+              There is now a <strong>Web address</strong> field, so a URL can still be changed when
+              you actually mean to &mdash; with a plain warning on live posts about what that costs.
+              Drafts still take their address from the title, since nothing links to them yet.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>The byline is editable.</strong> A post was credited forever to whoever
+              clicked New, with no way to fix a wrong name or credit the scout who actually wrote
+              it. Leave the field blank to keep the current byline.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Photo timeline shows album descriptions</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              The <strong>Timeline</strong> view now carries each album&rsquo;s description in its
+              own column, up to two lines &mdash; the detail the old photo page showed and the
+              other three views have no room for. Hidden on phones, where a third line per row
+              turns the rail into a wall.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

@@ -113,3 +113,21 @@
   .editorPane { border-right: none; border-bottom: 1px solid var(--admin-gray-200); }
   .fieldRow { flex-direction: column; }
 }
+
+/* Web address field — the "/news/" prefix sits inline so the input reads as
+   the tail of a URL rather than a mystery text box (2026-08-22). */
+.slugRow {
+  display: flex;
+  align-items: center;
+  gap: var(--admin-space-2);
+}
+.slugRow input {
+  flex: 1;
+  min-width: 0;
+}
+.slugPrefix {
+  font-family: var(--admin-font-mono, monospace);
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-600);
+  white-space: nowrap;
+}

@@ -164,6 +164,13 @@ export function TimelineSpine({ albums, colors }: ViewProps) {
                       {a.photo_count ? <span className={styles.spineNum}>{a.photo_count.toLocaleString()} photos</span> : null}
                     </span>
                   </span>
+                  {/* Descriptions come back on the TIMELINE ONLY (Patrick,
+                      2026-08-22). They were on every card in the legacy design;
+                      Prints has no room for them beside a cover, the Ledger
+                      trades prose for scanability, and the Almanac's cells are
+                      already narrow. A row on a rail is the one shape with a
+                      column to spare. Dropped below 640px — see the stylesheet. */}
+                  <span className={styles.spineDesc}>{a.description ?? ''}</span>
                   <span className={styles.spineGo}>View album &rarr;</span>
                 </a>
               );
