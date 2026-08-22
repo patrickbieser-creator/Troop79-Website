@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Session Summary — Event Logistics: the campout sheet moves into the site (2026-08-22)</title>
+<style>
+  :root {
+    --nw-teal: #1e3a4a;   /* Troop 79 navy (BRAND.md primary) */
+    --nw-green: #3d5a3e;  /* Troop 79 forest (BRAND.md accent) */
+    --paper: #faf6ef;
+    --ink: #2a2a2a;
+    --meta: #6d7580;
+    --line: #e2e4e8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 15px; color: var(--ink); background: var(--paper); line-height: 1.55; }
+  .header { background: var(--nw-teal); color: #fff; padding: 40px 64px; }
+  .header .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.6); margin-bottom: 8px; }
+  .header h1 { font-size: 30px; font-weight: 600; margin-bottom: 6px; }
+  .header .sub { font-size: 14px; color: rgba(255,255,255,.75); }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 36px 24px 64px; }
+  h2 { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--nw-green); border-bottom: 2px solid var(--nw-green); padding-bottom: 6px; margin: 36px 0 14px; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .metric { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+  .metric .num { font-size: 26px; font-weight: 700; color: var(--nw-teal); }
+  .metric .lbl { font-size: 12px; color: var(--meta); margin-top: 2px; }
+  ul { padding-left: 22px; }
+  li { margin-bottom: 9px; }
+  .card { background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--nw-green); border-radius: 4px; padding: 14px 18px; margin-bottom: 12px; }
+  .card.warn { border-left-color: #c0392b; }
+  .card .t { font-weight: 700; color: var(--nw-teal); }
+  .footer { text-align: center; font-size: 12px; color: var(--meta); padding: 24px; border-top: 1px solid var(--line); margin-top: 40px; }
+  code { background: #f0f1f3; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="eyebrow">Troop 79 &middot; Session Summary</div>
+  <h1>Event Logistics &mdash; the campout spreadsheet moves into the site</h1>
+  <div class="sub">Saturday, 22 August 2026 &middot; planning, review, then Phases 0&ndash;4 built and deployed &middot; v1.81.0 &rarr; v1.84.0</div>
+</div>
+
+<div class="wrap">
+
+  <h2>At a glance</h2>
+  <div class="metrics">
+    <div class="metric"><div class="num">5</div><div class="lbl">code commits</div></div>
+    <div class="metric"><div class="num">4</div><div class="lbl">releases (v1.81.0&ndash;v1.84.0)</div></div>
+    <div class="metric"><div class="num">6</div><div class="lbl">migrations, applied to production</div></div>
+    <div class="metric"><div class="num">1070</div><div class="lbl">tests (from 967)</div></div>
+    <div class="metric"><div class="num">9</div><div class="lbl">decisions (D-194&ndash;D-202)</div></div>
+  </div>
+
+  <h2>How it went</h2>
+  <div class="card">
+    <div class="t">Read the sheet, not a description of it</div>
+    All 24 tabs of <em>Troop 79 Event Registration History and Roster.xlsx</em> were parsed &mdash;
+    values and formulas &mdash; and mapped against the live schema. Most columns already had a home
+    (sign-ups, participant class, people spine, roll call, finance). Four things did not: car
+    assignment, per-event groups, many-payments money, and leader-only columns. Twelve questions,
+    Patrick answered every one; the plan was reviewed by tech-lead and qa-lead the same day (both
+    go-with-changes, all folded in); Patrick signed off the two safeguarding items. Then
+    <code>/goal build phases 0-4</code>.
+  </div>
+
+  <h2>What shipped</h2>
+  <div class="card">
+    <div class="t">Phase 0 &mdash; schema, additive first</div>
+    Seats counted <strong>including the driver</strong> with the legacy column kept in step by trigger;
+    ride status per leg; group sets / groups / members with <strong>trigger-owned cars</strong> and a
+    <code>place_in_group</code> RPC that locks the group row; a derived balance view, per-person owed
+    override, milestones, ledger rows that know their calendar entry; leader-only questions (the
+    family RPC skips them). 40 schema tests, failing first.
+  </div>
+  <div class="card">
+    <div class="t">v1.81.0 &mdash; who rides with whom</div>
+    The family form asks &ldquo;seats in your vehicle, including you&rdquo; (prefilled from the
+    driver&rsquo;s remembered capacity) and a ride status per leg. The roster gains Ride and Rides
+    there/back tiles (the sheet&rsquo;s Need/Avail/Short-Over). <strong>Rides &amp; assignments</strong>:
+    a card per car, a Needs-a-ride pool, drag or Move&hellip;. Families see their own rides on the
+    event page &mdash; &ldquo;riding with the Porters (there)&rdquo;.
+  </div>
+  <div class="card">
+    <div class="t">v1.82.0 &mdash; patrols, tents, crews, teams</div>
+    The builder&rsquo;s Assignments block (presets by category, add any set); patrols seed from the
+    roster and place late sign-ups automatically, never writing back; families can pick a tent; the
+    roster shows Groups. The jobs/slots question was answered: reuse the picker UI, not the table.
+  </div>
+  <div class="card">
+    <div class="t">v1.83.0 &mdash; the money block</div>
+    Many payments per person (the one-payment index dropped <em>in the same deploy</em> as the
+    rewritten actions), refunds as negative rows, overpayments credited to the scout account,
+    <code>payment_received</code> retired in favour of the derived view. A Money tab per event:
+    owed/paid/balance, record/refund/credit, expenses (troop paid, or a leader fronted it &rarr;
+    reimbursement request), income by method, P&amp;L, deposit schedules with a Behind badge and an
+    editable reminder email.
+  </div>
+  <div class="card">
+    <div class="t">v1.84.0 &mdash; leader columns and the snapshot</div>
+    &ldquo;Health form in hand&rdquo; / &ldquo;Registered with council&rdquo; as leader-only roster
+    cells (free text prints only when the leader says so); and <code>/admin/snapshot/[id]</code>
+    &mdash; the whole tab on paper: roster by patrol, car manifests with blank lines for open seats,
+    contacts, money, schedule. Outside the admin shell because the page <em>is</em> the document.
+  </div>
+
+  <h2>Deployed &mdash; in the right order</h2>
+  <div class="card">
+    <div class="t">Code first, then the database</div>
+    On &ldquo;Push now&rdquo;: <code>git push</code>, Vercel&rsquo;s commit status polled to
+    <em>success</em>, only then <code>supabase db push</code> (six migrations; dry-run now &ldquo;up
+    to date&rdquo;). Production eyes-on: roster, assignments, money and snapshot all render on
+    www.troop-79.com. At Patrick&rsquo;s instruction the old free-text &ldquo;Can you help drive?&rdquo;
+    question was removed from Fall Campout &mdash; the Drivers block owns that now.
+  </div>
+
+  <h2>Worth knowing</h2>
+  <ul>
+    <li><strong>Phase 5 (backfill) was deliberately not started</strong> &mdash; designed in the plan (link-first matching, dry-run, qa-lead review) and waiting on Patrick.</li>
+    <li>Two real guards earned their keep: <code>loader-error-surfacing</code> caught a swallowed read in a new loader (now <code>mustList</code>), and the old finance invariant test had to be reversed on purpose, not deleted.</li>
+    <li>Browser verification on the dev server used a locally minted sign-in link (the dev mail relay never delivers codes); every test row was reverted afterwards.</li>
+    <li>Still pending: step 15 (drop <code>seats_offered_*</code> after a soak), B-004 password rotation (now actually in BLOCKERS.md), and the scout-account payment sign check.</li>
+  </ul>
+
+  <h2>Next</h2>
+  <ul>
+    <li>First real use at the <strong>Fall Campout (Oct 9)</strong> &mdash; watch what families and leaders actually do, then the step-15 cleanup.</li>
+    <li>Decide on Phase 5; qa-lead reviews the matching code before it touches production.</li>
+    <li>Nineteenth-session carry-overs: print the family roster, production SEO fields, patrols for 23 scouts, photo thumbnails.</li>
+  </ul>
+
+</div>
+<div class="footer">Troop79-Website &middot; Operator session summary &middot; 22 Aug 2026 05:50 PM CDT</div>
+</body>
+</html>
