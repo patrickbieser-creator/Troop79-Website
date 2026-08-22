@@ -253,7 +253,7 @@
 }
 
 .formPanel {
-  background: var(--admin-white);
+  background: var(--admin-form-bg);
   border: 1px solid var(--admin-gray-200);
   border-radius: var(--admin-radius);
   box-shadow: var(--admin-shadow-sm);

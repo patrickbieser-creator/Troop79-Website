@@ -44,15 +44,18 @@
                                      palette ("bark"); formalized here so the borrow can end */
   --admin-bg:           #f5f6f8;
   --admin-white:        #ffffff;
-  /* Form FIELD surface (2026-08-21, Patrick: fields were "too blurred with
-     the background, too subtle" on every longer admin form). Text inputs,
-     selects and textareas sit on this cool tint inside white panels and go
-     white on focus — applied ONCE for the whole admin by the scoped rule in
-     admin.module.css (.adminRoot), so every form, dialog and popover gets it
-     without per-screen work. Module stylesheets that name a field background
-     read this token, never --admin-white. */
-  --admin-field-bg:       #f3f5f9;
+  /* Form standard (2026-08-21, Patrick: fields were "too blurred with the
+     background, too subtle" on every longer admin form; his call after
+     seeing the first cut: "flip the panels to tinted and fields to white").
+     FIELDS are white (--admin-field-bg, applied ONCE by the scoped rule in
+     admin.module.css under .adminRoot — every input/select/textarea, focus
+     included); the SURFACES that hold them — the shared Dialog body, form
+     panels and .editGrid blocks — sit on --admin-form-bg, a cool tint, so
+     white fields read as fields. Module stylesheets read these tokens, never
+     --admin-white, for either. */
+  --admin-field-bg:       #ffffff;
   --admin-field-bg-focus: #ffffff;
+  --admin-form-bg:        #eef1f5;
 
   /* ── Gray scale ──────────────────────────────────────────────────── */
   --admin-gray-50:  #fafbfc;

@@ -39,7 +39,7 @@
 
 .builder { display: flex; flex-direction: column; gap: 16px; }
 /* Card/panel canon (Phase B, 2026-08-21). */
-.panel { background: var(--admin-white); border: 1px solid var(--admin-gray-200); border-radius: var(--admin-radius); box-shadow: var(--admin-shadow-sm); padding: 16px; }
+.panel { background: var(--admin-form-bg); border: 1px solid var(--admin-gray-200); border-radius: var(--admin-radius); box-shadow: var(--admin-shadow-sm); padding: 16px; }
 .panel h2 { font-size: 14px; font-weight: 700; margin-bottom: 4px; color: var(--admin-gray-900); }
 .panelHead { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
 .panelHint { font-size: 12.5px; color: var(--admin-gray-600); line-height: 1.5; margin-bottom: 12px; }

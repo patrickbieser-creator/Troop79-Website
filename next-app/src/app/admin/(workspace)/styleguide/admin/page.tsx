@@ -62,8 +62,9 @@ const BRAND_TOKENS = [
   // background"): every text input/select/textarea under .adminRoot sits on
   // --admin-field-bg and goes white on focus — one scoped rule in
   // admin.module.css; module sheets read the token, never --admin-white.
-  ['--admin-field-bg', '#f3f5f9 · every text field/select/textarea, admin-wide (scoped rule in admin.module.css)', true],
-  ['--admin-field-bg-focus', '#ffffff · the same field on focus', true]
+  ['--admin-field-bg', '#ffffff · every text field/select/textarea, admin-wide (scoped rule in admin.module.css)', true],
+  ['--admin-field-bg-focus', '#ffffff · the same field on focus', true],
+  ['--admin-form-bg', '#eef1f5 · the surface AROUND fields: Dialog body, form panels, .editGrid blocks (Patrick: "flip the panels to tinted and fields to white")', true]
 ] as const;
 
 const GRAY_TOKENS = [

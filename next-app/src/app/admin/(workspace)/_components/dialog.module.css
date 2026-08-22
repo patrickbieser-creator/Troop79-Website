@@ -67,6 +67,8 @@
   line-height: 1.4;
 }
 .body {
+  /* Form surface tint (form standard, 2026-08-21) — white fields pop. */
+  background: var(--admin-form-bg);
   padding: var(--admin-space-9) var(--admin-space-11);
   font-size: var(--admin-text-md);
   color: var(--admin-gray-700);

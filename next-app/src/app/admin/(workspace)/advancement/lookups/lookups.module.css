@@ -200,6 +200,10 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px 14px;
+  background: var(--admin-form-bg);
+  padding: 12px 14px;
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius-sm);
 }
 .editField {
   display: block;
@@ -376,7 +380,7 @@
   scroll-behavior: smooth;
 }
 .editSectionCard {
-  background: var(--admin-gray-50);
+  background: var(--admin-form-bg);
   border: 1px solid var(--admin-gray-200);
   border-left: 4px solid var(--admin-navy);
   border-radius: 6px;

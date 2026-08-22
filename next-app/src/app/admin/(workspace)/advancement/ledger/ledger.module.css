@@ -199,6 +199,10 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px 14px;
+  background: var(--admin-form-bg);
+  padding: 12px 14px;
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius-sm);
 }
 .editField {
   display: block;
