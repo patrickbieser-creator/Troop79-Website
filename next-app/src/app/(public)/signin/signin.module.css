@@ -211,12 +211,6 @@
   margin-top: 0.5rem;
 }
 
-/* Secondary placement — a quiet line at the bottom for browsers that have
-   never registered/used a passkey here (hint cookie absent). */
-.passkeySecondary {
-  text-align: center;
-  margin-top: var(--sp-4);
-}
 
 /* ── Phase B inline-style conversions ── */
 .centerRow { text-align: center; margin-top: var(--sp-6); }

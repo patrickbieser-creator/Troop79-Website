@@ -40,19 +40,19 @@ function useWebAuthnSupported(): boolean {
 
 export function PasskeyButton({
   next,
-  placement = 'primary',
   getOptions,
   verify
 }: {
   next?: string;
-  /**
-   * 'primary' — the full-width CTA at the top, for a browser that has
-   * registered or used a passkey here before (hint cookie, lib/passkeys).
-   * 'secondary' — a quiet ghost link at the bottom for everyone else, so a
-   * first-time member isn't led with a prompt for something they don't have
-   * (Patrick, 2026-08-21). Same ceremony either way; never omitted (D-119).
+  /*
+   * Rendered ONLY when this browser is known to hold a passkey (hint cookie,
+   * lib/passkeys passkeyPlacement) — then it's the full-width CTA at the top.
+   * A browser with no passkey sees no passkey prompt at all (Patrick,
+   * 2026-08-21: "if they have not yet created a passkey, we need to not ask
+   * them for one"); the platform's autofill (PasskeyAutofill) still offers
+   * one silently when the browser actually has it. The code path stays
+   * permanent either way (D-119).
    */
-  placement?: 'primary' | 'secondary';
   getOptions: () => Promise<string | null>;
   verify: (
     responseJson: string,
@@ -66,13 +66,11 @@ export function PasskeyButton({
 
   if (!supported) return null;
 
-  const secondary = placement === 'secondary';
-
   return (
-    <div className={secondary ? styles.passkeySecondary : styles.passkeyBlock}>
+    <div className={styles.passkeyBlock}>
       <Button
-        variant={secondary ? 'ghost' : 'primary'}
-        className={secondary ? undefined : styles.fullWidth}
+        variant="primary"
+        className={styles.fullWidth}
         disabled={pending}
         onClick={() => {
           setError(null);
@@ -102,18 +100,12 @@ export function PasskeyButton({
           });
         }}
       >
-        {pending
-          ? 'Waiting for your device…'
-          : secondary
-            ? 'Already set up a passkey? Sign in with it'
-            : 'Sign in with a passkey'}
+        {pending ? 'Waiting for your device…' : 'Sign in with a passkey'}
       </Button>
-      {!secondary && (
-        <p className={styles.passkeyHint}>
-          One tap &mdash; this browser has used a passkey here before. New here, or signing in as
-          someone else? Use the troop password and your name below instead.
-        </p>
-      )}
+      <p className={styles.passkeyHint}>
+        One tap &mdash; this browser has used a passkey here before. New here, or signing in as
+        someone else? Use the troop password and your name below instead.
+      </p>
       {error ? (
         <Notice tone="error" className={styles.passkeyNotice}>
           {error}

@@ -12,6 +12,7 @@ import {
   type CategoryTemplate
 } from '@/lib/calendar-categories';
 import { ARTICLE_TOKENS, isValidTokenValue } from '@/lib/article-tokens';
+import { SITE_TEXT_KEYS } from '@/lib/site-text';
 
 /** The event-tab kinds an event can be classified as — Day Outing/Fundraiser
  *  have no natural quantity of their own, Camping/Hiking are implied by
@@ -1309,5 +1310,36 @@ export async function saveArticleTokens(formData: FormData): Promise<Result> {
 
   // Every surface that renders prose.
   revalidatePath('/', 'layout');
+  return { ok: true };
+}
+
+// ── Editable site text (reminder email etc.) ────────────────────────────────
+// Patrick, 2026-08-21: the event-reminder follow-up email "should be in the
+// lookups section of the admin so that text can be edited". Same contract as
+// article typography: blank = built-in default (row deleted), value otherwise.
+export async function saveSiteText(formData: FormData): Promise<Result> {
+  let session;
+  try {
+    session = await requireCapability('roster.manage');
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  const supabase = createAdminClient();
+  const upserts: { key: string; value: string; updated_by: string }[] = [];
+  const clears: string[] = [];
+  for (const def of SITE_TEXT_KEYS) {
+    const raw = String(formData.get(def.key) ?? '').trim();
+    if (raw === '') clears.push(def.key);
+    else upserts.push({ key: def.key, value: raw.slice(0, 2000), updated_by: session.label });
+  }
+  if (clears.length) {
+    const { error } = await supabase.from('site_settings').delete().in('key', clears);
+    if (error) return { ok: false, error: error.message };
+  }
+  if (upserts.length) {
+    const { error } = await supabase.from('site_settings').upsert(upserts, { onConflict: 'key' });
+    if (error) return { ok: false, error: error.message };
+  }
+  revalidatePath('/admin/advancement/lookups');
   return { ok: true };
 }

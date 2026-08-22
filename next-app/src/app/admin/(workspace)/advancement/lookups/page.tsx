@@ -42,6 +42,8 @@ import { SkillAssignEditor, type AssignPerson } from './skill-assign-editor';
 import { TagsManager } from './tags-manager';
 import { CategoriesEditor } from './categories-editor';
 import { ArticleTokensEditor } from './article-tokens-editor';
+import { SiteTextEditor } from './site-text-editor';
+import { loadSiteText, SITE_TEXT_KEYS, type SiteTextKey } from '@/lib/site-text';
 import { loadArticleTokens } from '@/lib/article-tokens-server';
 import type { Tag } from '@/lib/supabase/types';
 import { loadCalendarCategories } from '@/lib/calendar';
@@ -63,7 +65,8 @@ import {
   createCalendarCategory,
   updateCalendarCategory,
   deleteCalendarCategory,
-  saveArticleTokens
+  saveArticleTokens,
+  saveSiteText
 } from './actions';
 import styles from './lookups.module.css';
 import { PageTitle } from '../../_components/page-title';
@@ -349,10 +352,16 @@ export default async function LookupsPage() {
     tags,
     householdRows
   } = await loadLookups();
-  const [calendarCategories, articleTokens] = await Promise.all([
+  const [calendarCategories, articleTokens, siteTextMap] = await Promise.all([
     loadCalendarCategories(),
-    loadArticleTokens()
+    loadArticleTokens(),
+    loadSiteText(createAdminClient())
   ]);
+  const siteText: Partial<Record<SiteTextKey, string>> = {};
+  for (const def of SITE_TEXT_KEYS) {
+    const v = siteTextMap.get(def.key);
+    if (v) siteText[def.key] = v;
+  }
   const leadersLite = leaders.map((l) => ({ code: l.code, name: l.name }));
 
   // Classify sign-off initials: youth = linked to an ACTIVE scout; aging out
@@ -535,6 +544,13 @@ export default async function LookupsPage() {
           sub="how markdown stories are set — news posts, event write-ups and library narratives share it · blank means the built-in default · values only, so a typo can't break the page"
         >
           <ArticleTokensEditor values={articleTokens} onSave={saveArticleTokens} />
+        </Card>
+
+        <Card
+          title="Event reminder email"
+          sub="the follow-up sent from an event roster’s “Chase the non-responders” panel · blank means the built-in wording · {title} and {deadline} are filled when it’s sent"
+        >
+          <SiteTextEditor values={siteText} onSave={saveSiteText} />
         </Card>
       </div>
 

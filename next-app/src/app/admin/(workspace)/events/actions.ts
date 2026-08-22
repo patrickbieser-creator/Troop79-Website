@@ -7,6 +7,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { sendEmail, renderEmail } from '@/lib/email';
 import { recipientsForScouts } from '@/lib/email-recipients';
 import { siteUrl } from '@/lib/site-url';
+import { loadSiteText, reminderEmailCopy } from '@/lib/site-text';
 import {
   backfillEventPrices,
   slotClaimants,
@@ -398,20 +399,22 @@ export async function emailNonResponders(
     weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit'
   });
 
+  // Copy is editable in Lookups & Admin → "Event reminder email"
+  // (lib/site-text; blank = the built-in default). {title}/{deadline} are
+  // filled here.
+  const copy = reminderEmailCopy(await loadSiteText(supabase), { title, deadline });
   const { html, text } = renderEmail({
-    heading: `We haven't heard from you about ${title}`,
-    intro:
-      `We're finalising numbers for ${title} and don't have an answer from your family yet. ` +
-      `Even a "can't make it" helps — it tells the planners who not to wait for.`,
-    bullets: [`Signups close ${deadline}.`],
+    heading: copy.heading,
+    intro: copy.intro,
+    bullets: [copy.bullet],
     actionUrl: `${siteUrl()}/events/${sig.calendar_entry_id}`,
-    actionLabel: 'Sign up or decline',
-    outro: 'If you have already replied, thank you — please ignore this.'
+    actionLabel: copy.actionLabel,
+    outro: copy.outro
   });
 
   const res = await sendEmail({
     to: recipients.map((r) => r.email),
-    subject: `Troop 79 — are you coming to ${title}?`,
+    subject: copy.subject,
     html,
     text,
     confirm

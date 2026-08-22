@@ -94,13 +94,17 @@ export default async function MemberPage() {
     return (
       <>
         <PageHeader kicker="Members" title="Member Sign In" />
-        <PageShell width="narrow">
+        {/* Full-width shell, not "narrow": the narrow shell centers its
+            column under the left-aligned header (Patrick, 2026-08-21: "left
+            aligned like the rest of the content"). .gate caps the measure. */}
+        <PageShell>
           <div className={styles.gate}>
           <p>
             This is where your own troop information lives &mdash; your household&rsquo;s details
             today, and your scout account, campout payments, registration and health forms as we
             build them.
           </p>
+          <hr className={styles.gateRule} />
           <p>
             There&rsquo;s no password to remember. Enter the troop password, find your name, and
             we&rsquo;ll send a one-time code to the address we already have for you.
@@ -110,6 +114,7 @@ export default async function MemberPage() {
               Sign in
             </Button>
           </p>
+          <hr className={styles.gateRule} />
           <p className={styles.finePrint}>
             Trouble signing in? Ask a leader &mdash; they can check what address we have for you.
           </p>

@@ -29,22 +29,18 @@ function withWebAuthn<T>(fn: () => T): T {
 }
 
 describe('PasskeyButton placement', () => {
-  it('PasskeyButton_RendersThePrimaryCta_WhenPlacementPrimary', () => {
-    withWebAuthn(() => render(<PasskeyButton placement="primary" getOptions={noop} verify={verify} />));
+  it('PasskeyButton_RendersThePrimaryCta_WithTheOneTapHint', () => {
+    // The only variant: rendered solely when the device is known to hold a
+    // passkey (Patrick, 2026-08-21: show it when it exists, never ask
+    // otherwise — the quiet ghost-link variant is gone).
+    withWebAuthn(() => render(<PasskeyButton getOptions={noop} verify={verify} />));
     const btn = screen.getByRole('button', { name: /sign in with a passkey/i });
     expect(btn.className).toMatch(/primary/i);
     expect(screen.getByText(/one tap/i)).toBeTruthy();
   });
 
-  it('PasskeyButton_RendersAQuietGhostLink_WhenPlacementSecondary', () => {
-    withWebAuthn(() => render(<PasskeyButton placement="secondary" getOptions={noop} verify={verify} />));
-    const btn = screen.getByRole('button', { name: /already set up a passkey/i });
-    expect(btn.className).toMatch(/ghost/i);
-    expect(screen.queryByText(/one tap/i)).toBeNull();
-  });
-
   it('PasskeyButton_RendersNothing_WithoutWebAuthn', () => {
-    const { container } = render(<PasskeyButton placement="primary" getOptions={noop} verify={verify} />);
+    const { container } = render(<PasskeyButton getOptions={noop} verify={verify} />);
     expect(container.innerHTML).toBe('');
   });
 });

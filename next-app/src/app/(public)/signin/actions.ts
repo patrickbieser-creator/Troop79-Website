@@ -35,7 +35,8 @@ import {
   finishRegistration,
   deletePasskey,
   PASSKEY_HINT_COOKIE,
-  passkeyHintCookieOptions
+  passkeyHintCookieOptions,
+  listPasskeys
 } from '@/lib/passkeys';
 import type {
   AuthenticationResponseJSON,
@@ -193,6 +194,7 @@ export async function verifyCodeAction(formData: FormData): Promise<void> {
   }
 
   await setIdentityCookie(result.identity, 'code');
+  await rememberPasskeyDeviceIfHolder(result.identity.personId);
   redirect(safeInternalPath(result.identity.nextPath, '/profile'));
 }
 
@@ -211,6 +213,7 @@ export async function confirmTokenAction(formData: FormData): Promise<void> {
   }
 
   await setIdentityCookie(identity, 'link');
+  await rememberPasskeyDeviceIfHolder(identity.personId);
   redirect(safeInternalPath(identity.nextPath, '/profile'));
 }
 
@@ -337,6 +340,7 @@ export async function verifyCodeForPersonAction(formData: FormData): Promise<voi
   }
 
   await setIdentityCookie(result.identity, 'code');
+  await rememberPasskeyDeviceIfHolder(result.identity.personId);
   redirect(safeInternalPath(result.identity.nextPath, '/profile'));
 }
 
@@ -377,6 +381,31 @@ export async function searchRosterAction(query: string): Promise<SignInSearchRes
 async function rememberPasskeyDevice(): Promise<void> {
   const jar = await cookies();
   jar.set(PASSKEY_HINT_COOKIE.name, '1', passkeyHintCookieOptions());
+}
+
+/** Seed the hint for people who registered a passkey BEFORE the hint
+ *  existed (2026-08-21) and for holders on a browser that hasn't used one
+ *  yet: when someone signs in by code/link and their person already has a
+ *  passkey, this browser is marked — next visit shows the one-tap button
+ *  (Patrick: "if the passkey exists, we need to show that"). Identity-free
+ *  like the cookie itself; a lookup failure must never block sign-in. */
+async function rememberPasskeyDeviceIfHolder(personId: number | null | undefined): Promise<void> {
+  if (personId == null) return;
+  try {
+    const supabase = createAdminClient();
+    const held = await listPasskeys(supabase, personId);
+    if (held.length > 0) await rememberPasskeyDevice();
+  } catch {
+    /* advisory only */
+  }
+}
+
+/** Called from the member page for a signed-in holder (the passkey manager
+ *  knows their list) — same seeding, for the people already signed in when
+ *  this shipped who won't go through the code flow again for weeks. */
+export async function rememberPasskeyDeviceAction(): Promise<void> {
+  const session = await getIdentitySessionIfValid();
+  await rememberPasskeyDeviceIfHolder(session?.personId);
 }
 
 export async function passkeyAuthOptionsAction(): Promise<string | null> {

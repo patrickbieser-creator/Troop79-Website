@@ -121,7 +121,6 @@ export default async function SignInPage({
         {sent !== '1' && passkeys && placement === 'primary' && (
           <PasskeyButton
             next={next}
-            placement="primary"
             getOptions={passkeyAuthOptionsAction}
             verify={passkeyAuthVerifyAction}
           />
@@ -139,14 +138,6 @@ export default async function SignInPage({
           <PasswordGate next={next} err={err} />
         )}
 
-        {sent !== '1' && passkeys && placement === 'secondary' && (
-          <PasskeyButton
-            next={next}
-            placement="secondary"
-            getOptions={passkeyAuthOptionsAction}
-            verify={passkeyAuthVerifyAction}
-          />
-        )}
 
         {/* Consolidated nav login (Patrick, 2026-08-06: "Consolidate all
             logins under member login. Having two sign ins is confusing.") —

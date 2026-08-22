@@ -359,7 +359,14 @@ export function passkeyHintCookieOptions(nodeEnv: string | undefined = process.e
   };
 }
 
-/** Where the passkey control sits on /signin. */
-export function passkeyPlacement(deviceSeen: boolean): 'primary' | 'secondary' {
-  return deviceSeen ? 'primary' : 'secondary';
+/** Whether /signin shows the passkey control at all. Patrick, 2026-08-21
+ *  (second pass): "If the passkey exists, we need to show that… If they
+ *  have not yet created a passkey, then we need to not ask them for one" —
+ *  so it's the full primary button when this browser is known to hold one,
+ *  and NOTHING otherwise (the earlier quiet ghost link still read as being
+ *  asked). The browser's own conditional-UI autofill stays armed regardless:
+ *  it surfaces a passkey only when one actually exists here, which is the
+ *  same rule enforced by the platform. */
+export function passkeyPlacement(deviceSeen: boolean): 'primary' | 'hidden' {
+  return deviceSeen ? 'primary' : 'hidden';
 }

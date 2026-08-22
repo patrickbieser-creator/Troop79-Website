@@ -66,6 +66,13 @@
 .gate p {
   color: var(--text-meta);
 }
+/* The two rules Patrick asked for (2026-08-21): after the first paragraph
+   and after the Sign in button — the public hairline token, nothing else. */
+.gateRule {
+  border: 0;
+  border-top: 1px solid var(--rule);
+  margin: var(--sp-5) 0;
+}
 
 .note {
   max-width: 62ch;

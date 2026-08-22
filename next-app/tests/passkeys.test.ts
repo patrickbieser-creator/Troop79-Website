@@ -271,9 +271,11 @@ describe('passkeys — remembered-device hint (pure)', () => {
     expect(passkeyHintCookieOptions('production').secure).toBe(true);
   });
 
-  it('PasskeyPlacement_IsPrimaryOnlyWhenTheDeviceHasBeenSeen', async () => {
+  it('PasskeyPlacement_IsPrimaryWhenTheDeviceHasBeenSeen_AndHiddenOtherwise', async () => {
+    // Patrick, 2026-08-21 (second pass): show the passkey when it exists;
+    // don't ask for one at all when it doesn't — no ghost link either.
     const { passkeyPlacement } = await import('../src/lib/passkeys');
     expect(passkeyPlacement(true)).toBe('primary');
-    expect(passkeyPlacement(false)).toBe('secondary');
+    expect(passkeyPlacement(false)).toBe('hidden');
   });
 });

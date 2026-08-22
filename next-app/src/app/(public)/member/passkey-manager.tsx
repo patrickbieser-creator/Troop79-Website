@@ -14,8 +14,9 @@
  * a foreseeable mess, so the card simply isn't rendered for a scout session.
  */
 
-import { useState, useSyncExternalStore, useTransition } from 'react';
+import { useEffect, useState, useSyncExternalStore, useTransition } from 'react';
 import { startRegistration } from '@simplewebauthn/browser';
+import { rememberPasskeyDeviceAction } from '../signin/actions';
 import { Button } from '@/app/_components/button';
 import { Notice } from '@/app/_components/notice';
 import surface from '@/app/_components/card.module.css';
@@ -59,6 +60,17 @@ export function PasskeyManager({
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [pending, startTransition] = useTransition();
+
+  // A signed-in HOLDER is, by definition, on a browser that should offer the
+  // one-tap button next time — seed the remembered-device hint here, once,
+  // so people who registered before the hint existed (2026-08-21) see the
+  // passkey on /signin without having to use the code flow first. The
+  // action is identity-free and idempotent; nothing on screen depends on it.
+  const holder = passkeys.length > 0;
+  useEffect(() => {
+    if (!holder) return;
+    void rememberPasskeyDeviceAction().catch(() => {});
+  }, [holder]);
 
 
   if (!configured) return null;

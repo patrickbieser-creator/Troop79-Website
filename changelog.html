@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.71.1</p>
+      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.72.0</p>
     </div>
   </div>
 
@@ -494,6 +494,64 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.72.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.72.0</span>
+        <span class="release-date">August 21, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Passkeys, properly: shown when you have one, silent when you don&rsquo;t</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Show it if it exists; never ask otherwise.</strong> The sign-in page now leads
+              with the full &ldquo;Sign in with a passkey&rdquo; button on any browser known to hold
+              one, and shows <em>no</em> passkey prompt at all on a browser that doesn&rsquo;t (the
+              quiet link from v1.70 is gone &mdash; it still read as being asked). The browser&rsquo;s
+              own autofill keeps offering a passkey silently when it actually has one.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Existing passkey holders are recognized</strong> without doing anything: signing
+              in by code or link on a browser marks it if your person already has a passkey, and a
+              signed-in holder visiting the Members page marks that browser too &mdash; so the
+              button appears on your next visit, not only after you&rsquo;ve registered again.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Reminder email wording is editable</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Lookups &amp; Admin &rarr; Event reminder email.</strong> The follow-up sent from
+              a roster&rsquo;s &ldquo;Chase the non-responders&rdquo; panel &mdash; subject, heading,
+              opening paragraph, deadline line, button label, closing line &mdash; is editable, with
+              the built-in wording shown as the default and <code>{title}</code> /
+              <code>{deadline}</code> filled when it&rsquo;s sent. Stored in a new
+              <code>site_settings</code> table (blank = default), the same contract as article
+              typography.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Member Sign In page</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Left-aligned under its header like the rest of the site (it was centered in a narrow
+              column), with a rule after the first paragraph and one after the Sign in button.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 
