@@ -161,7 +161,7 @@
   border: 1px solid var(--admin-gray-300);
   border-radius: 3px;
   color: var(--admin-gray-900);
-  background: var(--admin-white);
+  background: var(--admin-field-bg);
 }
 .saveBtn {
   font-family: inherit;

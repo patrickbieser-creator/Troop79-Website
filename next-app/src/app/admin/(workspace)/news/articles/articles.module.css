@@ -26,7 +26,7 @@
   padding: 7px 10px;
   font-family: inherit;
   font-size: 13px;
-  background: var(--admin-white);
+  background: var(--admin-field-bg);
   color: var(--admin-gray-700);
   min-height: 34px;
 }

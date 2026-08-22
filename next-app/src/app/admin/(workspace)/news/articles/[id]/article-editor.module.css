@@ -43,7 +43,7 @@
 .field select,
 .field textarea {
   width: 100%; font-family: var(--admin-font-ui); font-size: 14px; color: var(--admin-gray-700);
-  border: 1px solid var(--admin-gray-300); border-radius: 2px; padding: 9px 11px; background: var(--admin-white);
+  border: 1px solid var(--admin-gray-300); border-radius: 2px; padding: 9px 11px; background: var(--admin-field-bg);
   outline: none; transition: border-color var(--admin-transition), background var(--admin-transition);
 }
 .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--admin-navy); background: var(--admin-white); }

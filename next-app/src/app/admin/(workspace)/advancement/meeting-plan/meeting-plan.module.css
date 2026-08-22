@@ -34,7 +34,7 @@
   border: 1px solid var(--admin-gray-300);
   border-radius: 3px;
   color: var(--admin-gray-900);
-  background: var(--admin-white);
+  background: var(--admin-field-bg);
   min-width: 180px;
 }
 /* Navy per the Phase A primary-button decision (2026-08-21) — Generate is a

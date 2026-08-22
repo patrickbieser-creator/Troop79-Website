@@ -57,7 +57,13 @@ const BRAND_TOKENS = [
   ['--admin-warning', '#d4a017', false],
   ['--admin-accent-gold', '#8b6914', true],
   ['--admin-bg', '#f5f6f8', false],
-  ['--admin-white', '#ffffff', false]
+  ['--admin-white', '#ffffff', false],
+  // Form-field standard (2026-08-21, Patrick: fields "too blurred with the
+  // background"): every text input/select/textarea under .adminRoot sits on
+  // --admin-field-bg and goes white on focus — one scoped rule in
+  // admin.module.css; module sheets read the token, never --admin-white.
+  ['--admin-field-bg', '#f3f5f9 · every text field/select/textarea, admin-wide (scoped rule in admin.module.css)', true],
+  ['--admin-field-bg-focus', '#ffffff · the same field on focus', true]
 ] as const;
 
 const GRAY_TOKENS = [

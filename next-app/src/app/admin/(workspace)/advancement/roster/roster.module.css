@@ -152,7 +152,7 @@
 .parentRow { background: var(--admin-gray-50); border: 1px solid var(--admin-gray-200); border-radius: 3px; padding: 10px 12px; margin-bottom: 8px; }
 .parentRowHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .parentRowLabel { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--admin-gray-500); }
-.select { border: 1px solid var(--admin-gray-300); border-radius: 3px; padding: 6px 9px; font-family: inherit; font-size: 13px; background: var(--admin-white); color: var(--admin-gray-900); }
+.select { border: 1px solid var(--admin-gray-300); border-radius: 3px; padding: 6px 9px; font-family: inherit; font-size: 13px; background: var(--admin-field-bg); color: var(--admin-gray-900); }
 @media (max-width: 560px) {
   .editGrid { grid-template-columns: 1fr; }
   .editFieldFull { grid-column: auto; }

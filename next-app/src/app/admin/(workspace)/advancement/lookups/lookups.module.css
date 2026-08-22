@@ -224,7 +224,7 @@
   padding: 7px 9px;
   font-family: inherit;
   font-size: 13px;
-  background: var(--admin-white);
+  background: var(--admin-field-bg);
   color: var(--admin-gray-900);
   outline: none;
 }
@@ -620,7 +620,7 @@
 /* ── Households manager ─────────────────────────────────────────────────── */
 .input {
   border: 1px solid var(--admin-gray-300); border-radius: 3px; padding: 5px 8px;
-  font-family: inherit; font-size: 12.5px; background: var(--admin-white);
+  font-family: inherit; font-size: 12.5px; background: var(--admin-field-bg);
   color: var(--admin-gray-900); min-width: 220px;
 }
 .input:focus { border-color: var(--admin-navy); }

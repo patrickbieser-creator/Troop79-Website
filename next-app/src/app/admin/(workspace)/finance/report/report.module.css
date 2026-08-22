@@ -107,7 +107,7 @@
   text-transform: none;
   letter-spacing: normal;
   color: var(--admin-gray-900);
-  background: var(--admin-white);
+  background: var(--admin-field-bg);
 }
 .renamePanel p {
   flex-basis: 100%;

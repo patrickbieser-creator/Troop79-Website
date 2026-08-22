@@ -16,6 +16,27 @@
   flex-direction: column;
 }
 
+/* ── Form-field standard (2026-08-21) ──────────────────────────────────────
+   Patrick: on every longer admin form the fields were "too blurred with the
+   background, too subtle". Every text-like input, select and textarea under
+   the admin root now sits on --admin-field-bg (a cool tint) and goes white
+   on focus — ONE rule, admin-wide, including portaled popovers and native
+   dialogs (both render inside this subtree). Module stylesheets may set
+   borders/padding as they like; for the surface they read the same token
+   (no more --admin-white fields). Checkboxes/radios/ranges/buttons and file
+   inputs are excluded — they aren't text surfaces. Specimen: /admin/styleguide
+   → Form fields. */
+.adminRoot :is(
+    input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='button']):not([type='submit']):not([type='reset']):not([type='color']):not([type='hidden']),
+    select,
+    textarea
+  ) {
+  background-color: var(--admin-field-bg);
+}
+.adminRoot :is(input, select, textarea):focus {
+  background-color: var(--admin-field-bg-focus);
+}
+
 /* Top bar */
 .topBar {
   background: var(--admin-navy);

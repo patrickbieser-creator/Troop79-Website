@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.70.0</p>
+      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.71.0</p>
     </div>
   </div>
 
@@ -494,6 +494,58 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.71.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.71.0</span>
+        <span class="release-date">August 21, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Polish</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Admin forms: fields that read as fields</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>New form-field standard, admin-wide.</strong> On every longer admin form the
+              inputs were &ldquo;too blurred with the background, too subtle.&rdquo; Every text
+              field, select and textarea in the admin now sits on a cool tint
+              (<code>--admin-field-bg</code>) inside the white panels and goes white on focus &mdash;
+              applied by ONE scoped rule at the admin root, so the builder, the scout editor, every
+              dialog and popover, filters and toolbars all got it at once, no per-screen work. The
+              21 stylesheets that had hard-coded white fields now read the token. Swatches on the
+              admin styleguide.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.70.1 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.70.1</span>
+        <span class="release-date">August 21, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Fix</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Event roster &ldquo;Add a person&rdquo;: no more one-and-done</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Walked the whole flow on dev and production &mdash; add, add again, Done, reopen, add
+              a third &mdash; all good on v1.70.0 (the failure you hit was v1.69&rsquo;s dropped
+              <code>adult_name</code> column on every fresh insert, fixed earlier today). One real
+              trap remained by design: anyone you had <em>Removed</em> was hidden from the Add list
+              (only Restore brought them back), which reads as &ldquo;it won&rsquo;t let me add
+              again.&rdquo; Removed people are now offered in Add, flagged &ldquo;removed earlier
+              &mdash; will be restored,&rdquo; and adding them reinstates their original entry with
+              its history &mdash; exactly what Restore does, one panel instead of two.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

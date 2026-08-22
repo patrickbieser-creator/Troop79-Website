@@ -15,7 +15,7 @@
 }
 .select {
   border: 1px solid var(--admin-gray-300); border-radius: 3px; padding: 6px 8px;
-  font-family: inherit; font-size: 13px; background: var(--admin-white); color: var(--admin-gray-900);
+  font-family: inherit; font-size: 13px; background: var(--admin-field-bg); color: var(--admin-gray-900);
 }
 
 .batchBar { margin-bottom: 14px; }

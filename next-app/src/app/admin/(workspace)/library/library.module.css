@@ -99,7 +99,7 @@
 .selectInput,
 .textArea {
   width: 100%;
-  background: var(--admin-white);
+  background: var(--admin-field-bg);
   border: 1px solid var(--admin-gray-300);
   border-radius: 2px;
   font-family: inherit;
