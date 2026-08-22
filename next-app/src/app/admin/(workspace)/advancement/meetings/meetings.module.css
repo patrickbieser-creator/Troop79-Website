@@ -85,8 +85,14 @@
 
 /* Card/panel canon (Phase B, 2026-08-21): radius token + shadow-sm join the
    .card cluster; padding stays screen-local. */
+/* The form standard (D-179, v1.71.1): a surface that holds fields is tinted so
+   the white fields inside it read as fields. The Logistics panel here is a
+   <form> with a field grid and was still on --admin-white, i.e. white on white
+   (Patrick, 2026-08-22 — the sibling of the calendar workbench fix in
+   v1.80.0). Applied to the class rather than one panel so the three panels on
+   this screen stay consistent with each other. */
 .panel {
-  background: var(--admin-white); border: 1px solid var(--admin-gray-200);
+  background: var(--admin-form-bg); border: 1px solid var(--admin-gray-200);
   border-radius: var(--admin-radius); box-shadow: var(--admin-shadow-sm);
   padding: 14px 16px; margin-bottom: 16px;
 }

@@ -34,6 +34,7 @@ import cal from '../../calendar/calendar.module.css';
 import ledger from '../../advancement/ledger/ledger.module.css';
 import coh from '../../advancement/court-of-honor/court-of-honor.module.css';
 import plan from '../../advancement/meeting-plan/meeting-plan.module.css';
+import ev from '../../events/events-admin.module.css';
 import albums from '../../news/photo-albums/albums.module.css';
 import mm from '../../news/media-manager/media-manager.module.css';
 import util from '../../utilities/utilities.module.css';
@@ -200,11 +201,12 @@ const SCOREBOARD: {
   },
   {
     pattern: 'Cards / panels',
-    copies: '✓ DONE — merged onto the card canon (2026-08-21)',
-    canonical: 'white / gray-200 border / radius token / shadow-sm; padding stays per-screen',
+    copies: '✓ DONE — card canon 2026-08-21; form-surface split completed 2026-08-22',
+    canonical:
+      'gray-200 border / radius token / shadow-sm. BACKGROUND depends on the job: a panel that HOLDS FIELDS is --admin-form-bg (D-179), a display-only card stays --admin-white',
     phase: 'B',
     notes:
-      "Deliberate exceptions: audits' warning-accent card; roster-import's interactive disclosure card (different thing sharing the name)"
+      "The calendar workbench and meetings panels were still white-on-white until 2026-08-22 — both hold field grids. Deliberate exceptions: audits' warning-accent card; roster-import's interactive disclosure card (different thing sharing the name)"
   },
   {
     pattern: '<dialog> modals',
@@ -510,6 +512,15 @@ export default function StyleguidePage() {
             <span className={`${plan.tag} ${plan.tagEagle}`}>★ Eagle-required</span>
             <span className={`${plan.tag} ${plan.tagAdult}`}>Adults only</span>
           </Specimen>
+          <Specimen
+            label="Inline annotation — .offEventNote (signup builder)"
+            note="NOT a Badge and not a status: it annotates a value with a fact about it. Amber (--admin-accent-gold), no chrome, sits under the value it qualifies. A signup job dated outside its event is FREQUENTLY correct — the shopping run on the Thursday before a Friday campout — so it must read as worth noticing, never as an error. Added 2026-08-22 after a job two weeks adrift on a cloned event was invisible in a dense date column. Reach for a Notice instead when the thing needs acting on, and a Badge when it is a state rather than a remark."
+          >
+            <span>
+              2026-09-02 17:00–19:00
+              <span className={ev.offEventNote}>14 days before the event</span>
+            </span>
+          </Specimen>
         </div>
       </section>
 
@@ -586,16 +597,24 @@ export default function StyleguidePage() {
         <h2 className={sg.sectionHead}>Cards &amp; Panels</h2>
         <p className={sg.sectionNote}>
           Phase B COMPLETE (2026-08-21): the .panel family (events-admin, meetings, workbench)
-          and the shadow-less coh/report cards now share the card canon — white, gray-200
-          border, radius token, shadow-sm; padding stays per-screen. Deliberate exceptions:
-          audits&rsquo; warning-accent card and roster-import&rsquo;s interactive disclosure
-          card (a different thing wearing the name).
+          and the shadow-less coh/report cards share the card canon — gray-200 border, radius
+          token, shadow-sm; padding stays per-screen. Deliberate exceptions: audits&rsquo;
+          warning-accent card and roster-import&rsquo;s interactive disclosure card (a
+          different thing wearing the name).
+        </p>
+        <p className={sg.sectionNote}>
+          <strong>Background is not part of the canon — the job decides it.</strong> A panel
+          that HOLDS FIELDS carries <code>--admin-form-bg</code> so the white inputs inside it
+          read as fields (D-179, v1.71.1); a display-only card stays <code>--admin-white</code>.
+          The calendar workbench and the meetings panels were still white-on-white until
+          2026-08-22 — both wrap field grids — which is why this line now exists rather than
+          leaving &ldquo;panels are white&rdquo; to mislead the next reader.
         </p>
         <div className={sg.specimenGrid}>
           <Specimen
             label="Card"
             canonical
-            note="White, gray-200 border, var(--admin-radius), shadow-sm. The .panel classes keep their names but carry these values now."
+            note="Gray-200 border, var(--admin-radius), shadow-sm. The .panel classes keep their names but carry these values now. Background: --admin-white for a display card, --admin-form-bg when the panel holds fields."
           >
             <div className={util.card} style={{ width: '100%' }}>
               <div className={util.cardSoon}>Card content</div>
