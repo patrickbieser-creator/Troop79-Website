@@ -15,6 +15,7 @@ import {
   type AdvancementReportRow
 } from './actions';
 import styles from './report.module.css';
+import { formatShortDate } from '@/lib/dates';
 import { Badge } from '../../_components/badge';
 import { TabStrip } from '../../_components/tab-strip';
 import { ActionsMenu } from '../../_components/actions-menu';
@@ -250,8 +251,8 @@ export function ReportWorkspace({
                   href={`/admin/advancement/report?id=${r.id}`}
                   className={r.id === report?.id ? styles.reportLinkActive : styles.reportLink}
                 >
-                  <span>
-                    {r.startDate} – {r.endDate}
+                  <span className={styles.reportRange}>
+                    {formatShortDate(r.startDate)} – {formatShortDate(r.endDate)}
                   </span>
                   <Badge variant={r.status === 'published' ? 'success' : 'warning'}>
                     {r.status === 'published' ? 'Published' : 'Draft'}

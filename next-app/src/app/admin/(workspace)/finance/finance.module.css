@@ -208,6 +208,24 @@
   background: var(--admin-gray-100);
   color: var(--admin-gray-700);
 }
+/* Per-Kind tints (2026-08-21, Patrick: "distinguish them from each other at
+   a quick glance"). Kinds are a DB-governed vocabulary, so the slot is
+   assigned by position (lib/finance kindTintIndex) onto admin.css's indexed
+   --admin-cat-N scale — no per-kind class names to keep in sync with the
+   table. The bare .kindPill gray above is the fallback for an unknown code. */
+.kindTint1 { background: var(--admin-cat-1-bg); color: var(--admin-cat-1-fg); }
+.kindTint2 { background: var(--admin-cat-2-bg); color: var(--admin-cat-2-fg); }
+.kindTint3 { background: var(--admin-cat-3-bg); color: var(--admin-cat-3-fg); }
+.kindTint4 { background: var(--admin-cat-4-bg); color: var(--admin-cat-4-fg); }
+.kindTint5 { background: var(--admin-cat-5-bg); color: var(--admin-cat-5-fg); }
+.kindTint6 { background: var(--admin-cat-6-bg); color: var(--admin-cat-6-fg); }
+.kindTint7 { background: var(--admin-cat-7-bg); color: var(--admin-cat-7-fg); }
+.kindTint8 { background: var(--admin-cat-8-bg); color: var(--admin-cat-8-fg); }
+/* Running Total Funds — secondary to the row's own Amount, so quieter. */
+.runningCell {
+  color: var(--admin-gray-500);
+  white-space: nowrap;
+}
 /* Direction — the sign of `amount`, and nothing else (Kind carries no
    direction of its own, 2026-08-20). Expenses (negative amounts) are the
    minority row and get the accounting-standard treatment — red, in

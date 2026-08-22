@@ -272,7 +272,7 @@ export default function ProfileEditor({
             <DateField
               {...a}
               value={values.birthdate ?? ''}
-              onChange={(e) => onChange('birthdate', e.target.value)}
+              onChange={(iso) => onChange('birthdate', iso)}
             />
           )}
         </EditField>

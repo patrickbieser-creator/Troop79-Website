@@ -25,7 +25,7 @@ import { PageTitle } from '../_components/page-title';
 import styles from './finance.module.css';
 
 export const metadata = {
-  title: 'Finance Ledger — Troop 79'
+  title: 'Financial Ledger — Troop 79'
 };
 
 interface SearchParams {

@@ -23,6 +23,7 @@ import Link from 'next/link';
 import {
   ACCOUNTS,
   TRANSACTION_METHODS,
+  kindTintIndex,
   type Account,
   type TransactionKind,
   type TransactionKindRow,
@@ -139,6 +140,14 @@ export function FinanceWorkspace({
   // any already-selected/optimistic value legible even before a refresh
   // catches up (e.g. right after createKind, below).
   const kindLabel = (code: string) => kinds.find((k) => k.code === code)?.label ?? code;
+  // Subtle per-Kind tint (Patrick, 2026-08-21: "distinguish them from each
+  // other at a quick glance") — slot by position in the governed list onto
+  // the indexed --admin-cat-N scale; an unknown/retired code stays neutral.
+  const kindPillClass = (code: string) => {
+    const slot = kindTintIndex(kinds, code);
+    const tint = slot > 0 ? styles[`kindTint${slot}`] : undefined;
+    return tint ? `${styles.kindPill} ${tint}` : styles.kindPill;
+  };
 
   /**
    * Bulk Kind reassignment — built for retiring the 'income'/'expense' Kind
@@ -442,13 +451,18 @@ export function FinanceWorkspace({
                 sortUrl={sortUrl}
                 numeric
               />
+              {/* Running total — derived, not a sortable column (its order
+                  is chronological by definition, whatever the page sort). */}
+              <th className={styles.numCell} title="Checking + savings, as they stood right after this transaction">
+                Total Funds
+              </th>
               {canManage && <th />}
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={canManage ? 9 : 7} className={styles.empty}>
+                <td colSpan={canManage ? 10 : 8} className={styles.empty}>
                   No transactions match this filter.
                 </td>
               </tr>
@@ -470,7 +484,7 @@ export function FinanceWorkspace({
                 </td>
                 <td>{r.account}</td>
                 <td>
-                  <span className={styles.kindPill}>{kindLabel(r.kind)}</span>
+                  <span className={kindPillClass(r.kind)}>{kindLabel(r.kind)}</span>
                 </td>
                 <td>{r.personName ?? '—'}</td>
                 <td>{r.activity_label || '—'}</td>
@@ -479,6 +493,11 @@ export function FinanceWorkspace({
                 </td>
                 <td className={r.amount < 0 ? `${styles.numCell} ${styles.amountOut}` : styles.numCell}>
                   {r.amount < 0 ? `($${Math.abs(r.amount).toFixed(2)})` : `$${r.amount.toFixed(2)}`}
+                </td>
+                <td className={`${styles.numCell} ${styles.runningCell}`}>
+                  {r.runningFunds < 0
+                    ? `($${Math.abs(r.runningFunds).toFixed(2)})`
+                    : `$${r.runningFunds.toFixed(2)}`}
                 </td>
                 {canManage && (
                   <td className={styles.numCell}>

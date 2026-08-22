@@ -79,7 +79,17 @@ const STATUS_TOKENS = [
   ['--admin-status-success-bg', '#f0f6f1', true],
   ['--admin-status-info-bg', '#eef3f8', true],
   ['--admin-cat-rank-bg', '#e0e7ef · navy text', true],
-  ['--admin-cat-mb-bg', '#e3eee5 · forest text', true]
+  ['--admin-cat-mb-bg', '#e3eee5 · forest text', true],
+  // Indexed categorical scale (2026-08-21) — DB-governed vocabularies with
+  // no fixed meaning per value; slot by position (finance Kind pills).
+  ['--admin-cat-1-bg', '#d6efef · fg #186e72 (teal) — indexed scale 1/8', true],
+  ['--admin-cat-2-bg', '#ddeedd · fg #2f6b2f (green)', true],
+  ['--admin-cat-3-bg', '#fde0e0 · fg #a03737 (red)', true],
+  ['--admin-cat-4-bg', '#fce6dc · fg #b54d22 (orange)', true],
+  ['--admin-cat-5-bg', '#fff0d6 · fg #946b00 (gold)', true],
+  ['--admin-cat-6-bg', '#ece0f0 · fg #6b3f7a (plum)', true],
+  ['--admin-cat-7-bg', '#dde8f7 · fg #2b4f8a (blue)', true],
+  ['--admin-cat-8-bg', '#e6e6ea · fg #4a4a5a (slate)', true]
 ] as const;
 
 const FONT_TOKENS = [

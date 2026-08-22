@@ -365,7 +365,7 @@ export function ScoutForm({
           </label>
         </div>
         <p className={styles.helpText}>
-          Age and grade are derived automatically (grade advances each August 1) {'—'} the stored
+          Age and grade are derived automatically (grade advances each June 15) {'—'} the stored
           value is the graduation class year.
         </p>
       </FormSection>

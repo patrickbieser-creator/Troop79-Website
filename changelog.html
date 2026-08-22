@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.68.0</p>
+      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.69.0</p>
     </div>
   </div>
 
@@ -494,6 +494,98 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.69.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.69.0</span>
+        <span class="release-date">August 21, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Financial Ledger: tinted Kinds, a running Total Funds column, and the name to match</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>&ldquo;Financial Ledger&rdquo; in the Finance nav</strong> (was bare
+              &ldquo;Ledger&rdquo; &mdash; the Advancement section has one of those too).
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Kind pills tell apart at a glance.</strong> Each Kind (Event, fundraiser,
+              donation, expense, interest&hellip;) now carries its own subtle tint. Kinds are a
+              governed, extensible list, so the color is assigned by position onto a new
+              8-slot categorical scale in the admin tokens rather than hardcoded per Kind;
+              an unknown or retired code stays neutral gray. Swatches on the admin styleguide.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Running Total Funds</strong> to the right of Amount: checking + savings
+              as they stood right after each transaction, derived from the full history
+              (never the display page), in integer cents. Scout-account and scholarship rows
+              read the funds at that moment rather than going blank, so the column stays
+              continuous down the page; the top row reconciles to the Total Funds card.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Public date entry, rebuilt: type almost anything, or pick</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>The public DateField is a real control again.</strong> The native browser
+              date input the profile editors reverted to in Phase C is replaced by a field that
+              accepts nearly any typed form &mdash; <code>7/25/26</code>, <code>Jul 25 2026</code>,
+              <code>25 July</code>, <code>20260725</code>, <code>today</code> &mdash; shows the
+              result as &ldquo;Jul 25, 2026,&rdquo; and opens a calendar with month/year
+              dropdowns (jump straight to a birth year), Clear and Today. Anchored popover on
+              desktop, centered sheet on phones. Impossible dates (Feb 30) are rejected with an
+              inline hint rather than rolled over.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Built on the public tokens only.</strong> Behavior matches the admin
+              workstation&rsquo;s picker; code is shared with it nowhere &mdash; parsing lives
+              in a neutral <code>lib/date-entry</code> module, the control in the public
+              component kit. The firewall census and lint rule both stay at zero. One
+              improvement over the admin picker: clicking the field keeps the cursor in the
+              input, so typing keeps working with the calendar open beside it.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Smaller</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Grade rollover moves to June 15</strong> (was August 1). Grade is derived
+              from graduation year, so every scout promotes together on that date with no data
+              change &mdash; and now reads as &ldquo;going into 7th&rdquo; all summer, the way the
+              troop talks about it. Invisible until June 15, 2027.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Advancement Report &ldquo;Recent reports&rdquo;</strong> rows are clickable
+              cards on the card canon (they read as floating text when no report was selected),
+              and their dates are <code>mm/dd/yy</code>.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Tests:</strong> 703 &rarr; 748, every new one written failing-first
+              (running-funds math, Kind tint slots, the date grammar, the DateField control,
+              the rollover, the new Total Funds column and pills in the rendered table).
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

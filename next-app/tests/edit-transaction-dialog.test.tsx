@@ -52,6 +52,7 @@ function checkingRow(over: Partial<LedgerRow> = {}): LedgerRow {
     entered_by_person_id: null,
     enteredByName: null,
     created_at: '2026-06-09T00:00:00Z',
+    runningFunds: 0,
     ...over
   };
 }
@@ -61,6 +62,7 @@ function scoutAccountRow(over: Partial<LedgerRow> = {}): LedgerRow {
     ...checkingRow(),
     account: 'scout_account',
     amount: -146.05,
+    runningFunds: 0,
     ...over
   };
 }

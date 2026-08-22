@@ -22,12 +22,16 @@ import {
   editTransactionGuard,
   validateActivityRename,
   amountRangeOrFilter,
+  buildRunningFunds,
+  runningFundsAsOf,
+  TOTAL_FUNDS_ACCOUNTS,
   type Account,
   type TransactionKind,
   type TransactionKindRow,
   type TransactionMethod,
   type FinancialTransactionRow,
-  type LedgerCsvRow
+  type LedgerCsvRow,
+  type RunningFundsInputRow
 } from '@/lib/finance';
 
 interface Result {
@@ -91,6 +95,11 @@ export interface LedgerRow {
   entered_by_person_id: number | null;
   enteredByName: string | null;
   created_at: string;
+  /** Total funds (checking + savings) as they stood right after this row,
+   *  chronologically — derived from the FULL history, not the display page
+   *  (2026-08-21). A scout_account/scholarship row reads the funds at that
+   *  moment; it doesn't move them. */
+  runningFunds: number;
 }
 
 /** One page of transactions, newest first. This is a DISPLAY page (`.range()`
@@ -130,19 +139,36 @@ export async function listFinancialTransactionsAction(
   const { data, count, error } = await q.range(from, from + FINANCE_PAGE_SIZE - 1);
   if (error) throw new Error(`listFinancialTransactionsAction failed: ${error.message}`);
 
-  const rawRows = (data ?? []) as Omit<LedgerRow, 'personName' | 'enteredByName'>[];
+  const rawRows = (data ?? []) as Omit<LedgerRow, 'personName' | 'enteredByName' | 'runningFunds'>[];
   const personIds = [
     ...new Set(
       rawRows.flatMap((r) => [r.person_id, r.entered_by_person_id]).filter((id): id is number => id != null)
     )
   ];
-  const nameMap = await loadNames(supabase, personIds);
+  // Running Total Funds needs the FULL checking+savings history (the
+  // display page alone can't know what came before it) — fetchAllRows, same
+  // as the balance actions; never `.range()`-capped. Names and history are
+  // independent lookups, so they run together.
+  const [nameMap, fundsHistory] = await Promise.all([
+    loadNames(supabase, personIds),
+    fetchAllRows<RunningFundsInputRow>((from, to) =>
+      supabase
+        .from('financial_transactions')
+        .select('id, occurred_on, account, amount, voided_at')
+        .in('account', [...TOTAL_FUNDS_ACCOUNTS])
+        .order('occurred_on', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to)
+    )
+  ]);
+  const fundsSeries = buildRunningFunds(fundsHistory);
 
   const rows: LedgerRow[] = rawRows.map((r) => ({
     ...r,
     personName: r.person_id != null ? (nameMap.get(r.person_id) ?? `#${r.person_id}`) : null,
     enteredByName:
-      r.entered_by_person_id != null ? (nameMap.get(r.entered_by_person_id) ?? `#${r.entered_by_person_id}`) : null
+      r.entered_by_person_id != null ? (nameMap.get(r.entered_by_person_id) ?? `#${r.entered_by_person_id}`) : null,
+    runningFunds: runningFundsAsOf(fundsSeries, r)
   }));
 
   return { rows, total: count ?? 0 };

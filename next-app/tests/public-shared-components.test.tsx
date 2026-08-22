@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PageHeader } from '../src/app/_components/page-header';
 import { PageShell } from '../src/app/_components/page-shell';
@@ -187,15 +187,111 @@ describe('Form kit', () => {
     expect(container.innerHTML).toBe('');
   });
 
-  it('PublicDateField_RendersNativeDateInput_WithFieldWiring', () => {
-    render(
+});
+
+/**
+ * Public DateField v2 (Patrick, 2026-08-21): the native <input type="date">
+ * of Phase C (D-174 option b) reverted to a rich control — free typing with
+ * tolerant parsing (lib/date-entry) plus a calendar popover — built ONLY on
+ * public tokens and lib/, never the admin picker (firewall). Same <Field>
+ * wiring as TextInput; the ISO value travels in a hidden input under `name`
+ * so plain form posts keep working.
+ */
+describe('Public DateField (rich)', () => {
+  it('PublicDateField_ShowsAFormattedTextInput_AndPostsIsoUnderName', () => {
+    const { container } = render(
       <Field label="Date of birth">
         <DateField name="dob" defaultValue="2012-04-01" />
       </Field>
     );
     const input = screen.getByLabelText('Date of birth') as HTMLInputElement;
     expect(input.tagName).toBe('INPUT');
-    expect(input.type).toBe('date');
-    expect(input.value).toBe('2012-04-01');
+    expect(input.type).toBe('text');
+    expect(input.value).toBe('Apr 1, 2012');
+    const hidden = container.querySelector('input[type="hidden"][name="dob"]') as HTMLInputElement;
+    expect(hidden.value).toBe('2012-04-01');
+  });
+
+  it('PublicDateField_CommitsTolerantlyTypedText_AsIso_OnBlur', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <Field label="Date of birth">
+        <DateField value="" onChange={onChange} />
+      </Field>
+    );
+    const input = screen.getByLabelText('Date of birth');
+    await user.type(input, '7/4/12');
+    await user.tab();
+    expect(onChange).toHaveBeenLastCalledWith('2012-07-04');
+  });
+
+  it('PublicDateField_CommitsOnEnter_AndFlagsUnrecognizedText_WithoutCommitting', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <Field label="Date of birth">
+        <DateField value="" onChange={onChange} />
+      </Field>
+    );
+    const input = screen.getByLabelText('Date of birth');
+    await user.type(input, 'next tuesday{Enter}');
+    expect(onChange).not.toHaveBeenCalled();
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByText(/unrecognized date/i)).toBeTruthy();
+    await user.clear(input);
+    await user.type(input, 'Jul 25, 2026{Enter}');
+    expect(onChange).toHaveBeenLastCalledWith('2026-07-25');
+  });
+
+  it('PublicDateField_ClearingTheText_CommitsEmpty', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <Field label="Date of birth">
+        <DateField value="2012-04-01" onChange={onChange} />
+      </Field>
+    );
+    const input = screen.getByLabelText('Date of birth');
+    await user.clear(input);
+    await user.tab();
+    expect(onChange).toHaveBeenLastCalledWith('');
+  });
+
+  it('PublicDateField_OpensACalendarDialog_FromTheIconButton_AndPicksToday', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <Field label="Date of birth">
+        <DateField value="" onChange={onChange} />
+      </Field>
+    );
+    await user.click(screen.getByRole('button', { name: /open calendar/i }));
+    const dialog = screen.getByRole('dialog', { name: /choose date/i });
+    expect(dialog).toBeTruthy();
+    await user.click(within(dialog).getByRole('button', { name: 'Today' }));
+    const today = new Date();
+    const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    expect(onChange).toHaveBeenLastCalledWith(iso);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('PublicDateField_ReadOnlyOrDisabled_NeverOpensTheCalendar', async () => {
+    const user = userEvent.setup();
+    render(
+      <Field label="Date of birth">
+        <DateField defaultValue="2012-04-01" readOnly />
+      </Field>
+    );
+    await user.click(screen.getByLabelText('Date of birth'));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('button', { name: /open calendar/i })).toBeNull();
+  });
+
+  it('PublicDateField_HonorsAnExplicitIdAndDescribedBy_OverFieldContext', () => {
+    render(<DateField id="pf-birthdate" aria-describedby="pf-birthdate-note" value="" onChange={() => {}} />);
+    const input = screen.getByRole('combobox');
+    expect(input.id).toBe('pf-birthdate');
+    expect(input.getAttribute('aria-describedby')).toBe('pf-birthdate-note');
   });
 });

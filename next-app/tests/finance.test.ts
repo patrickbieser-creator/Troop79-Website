@@ -11,7 +11,12 @@ import {
   editTransactionGuard,
   validateActivityRename,
   amountRangeOrFilter,
+  buildRunningFunds,
+  runningFundsAsOf,
+  kindTintIndex,
+  KIND_TINT_COUNT,
   type FinancialTransactionRow,
+  type RunningFundsInputRow,
   type LedgerCsvRow,
   type ActivityTransactionRow
 } from '../src/lib/finance';
@@ -862,5 +867,137 @@ describe('finance — Phase 4 reimbursement_requests (requires local Supabase)',
       .from('financial_transactions')
       .insert({ occurred_on: '2026-08-18', account: 'checking', amount: -20, kind: 'reimbursement', reimbursement_id: requestId });
     expect(secondError).not.toBeNull();
+  });
+});
+
+/**
+ * Running Total Funds column (Patrick, 2026-08-21: "a running balance total
+ * to the right of the amount column showing the total available funds which
+ * is the sum of checking plus savings"). Two pure halves: buildRunningFunds
+ * turns the FULL checking+savings history into a chronological cumulative
+ * series (integer cents, same discipline as computeBalance), and
+ * runningFundsAsOf answers "what were total funds right after this row" for
+ * ANY ledger row — including scout_account/scholarship rows, which don't
+ * move the number but still sit at a point in time.
+ */
+describe('finance — running total funds (pure)', () => {
+  function row(over: Partial<RunningFundsInputRow> & { id: number }): RunningFundsInputRow {
+    return { occurred_on: '2026-01-01', account: 'checking', amount: 0, voided_at: null, ...over };
+  }
+
+  it('BuildRunningFunds_AccumulatesCheckingAndSavings_InChronologicalOrder', () => {
+    const series = buildRunningFunds([
+      row({ id: 3, occurred_on: '2026-03-01', account: 'savings', amount: 50 }),
+      row({ id: 1, occurred_on: '2026-01-01', account: 'checking', amount: 100 }),
+      row({ id: 2, occurred_on: '2026-02-01', account: 'checking', amount: -25.5 })
+    ]);
+    expect(series.map((p) => [p.id, p.balance])).toEqual([
+      [1, 100],
+      [2, 74.5],
+      [3, 124.5]
+    ]);
+  });
+
+  it('BuildRunningFunds_IgnoresOtherAccountsAndVoidedRows', () => {
+    const series = buildRunningFunds([
+      row({ id: 1, amount: 100 }),
+      row({ id: 2, account: 'scout_account', amount: 999 }),
+      row({ id: 3, account: 'scholarship', amount: 999 }),
+      row({ id: 4, account: 'sofi', amount: 999 }),
+      row({ id: 5, amount: 999, voided_at: '2026-01-02T00:00:00Z' }),
+      row({ id: 6, account: 'savings', amount: 10 })
+    ]);
+    expect(series.map((p) => p.id)).toEqual([1, 6]);
+    expect(series.at(-1)?.balance).toBe(110);
+  });
+
+  it('BuildRunningFunds_BreaksSameDayTiesById_MatchingTheLedgersOwnOrder', () => {
+    const series = buildRunningFunds([
+      row({ id: 20, occurred_on: '2026-05-05', amount: -30 }),
+      row({ id: 10, occurred_on: '2026-05-05', amount: 100 })
+    ]);
+    expect(series.map((p) => [p.id, p.balance])).toEqual([
+      [10, 100],
+      [20, 70]
+    ]);
+  });
+
+  it('BuildRunningFunds_AvoidsFloatDrift_OverManySmallAmounts', () => {
+    const rows = Array.from({ length: 300 }, (_, i) => row({ id: i + 1, amount: 0.1 }));
+    const series = buildRunningFunds(rows);
+    expect(series.at(-1)?.balance).toBe(30);
+  });
+
+  it('RunningFundsAsOf_ReturnsTheBalanceRightAfterTheRow_ForACheckingRow', () => {
+    const series = buildRunningFunds([
+      row({ id: 1, occurred_on: '2026-01-01', amount: 100 }),
+      row({ id: 2, occurred_on: '2026-02-01', amount: -25 }),
+      row({ id: 3, occurred_on: '2026-03-01', amount: 10 })
+    ]);
+    expect(runningFundsAsOf(series, { occurred_on: '2026-02-01', id: 2 })).toBe(75);
+    expect(runningFundsAsOf(series, { occurred_on: '2026-03-01', id: 3 })).toBe(85);
+  });
+
+  it('RunningFundsAsOf_ReturnsThePriorPointsBalance_ForARowThatDoesNotMoveFunds', () => {
+    // A scout_account row dated between two checking rows reads the funds
+    // as they stood at that moment — the column stays continuous down the
+    // page instead of going blank on non-checking rows.
+    const series = buildRunningFunds([
+      row({ id: 1, occurred_on: '2026-01-01', amount: 100 }),
+      row({ id: 3, occurred_on: '2026-03-01', amount: 10 })
+    ]);
+    expect(runningFundsAsOf(series, { occurred_on: '2026-02-01', id: 2 })).toBe(100);
+    // Same day, lower id than the checking row → before it.
+    expect(runningFundsAsOf(series, { occurred_on: '2026-03-01', id: 2 })).toBe(100);
+    // Same day, higher id → after it.
+    expect(runningFundsAsOf(series, { occurred_on: '2026-03-01', id: 4 })).toBe(110);
+  });
+
+  it('RunningFundsAsOf_ReturnsZero_BeforeAnyCheckingOrSavingsHistory', () => {
+    const series = buildRunningFunds([row({ id: 5, occurred_on: '2026-06-01', amount: 100 })]);
+    expect(runningFundsAsOf(series, { occurred_on: '2025-01-01', id: 1 })).toBe(0);
+    expect(runningFundsAsOf([], { occurred_on: '2026-06-01', id: 5 })).toBe(0);
+  });
+});
+
+/**
+ * Kind pill tints (Patrick, 2026-08-21: "a subtle color treatment to
+ * distinguish them from each other at a quick glance"). Kinds are a
+ * DB-governed, extensible vocabulary (transaction_kinds), so the colour is
+ * assigned by position in the governed list — index-based, not hashed, so
+ * the first KIND_TINT_COUNT kinds are guaranteed pairwise distinct.
+ */
+describe('finance — kindTintIndex (pure)', () => {
+  const KINDS = [
+    { code: 'event_fee', label: 'Event', sort_order: 10 },
+    { code: 'fundraiser', label: 'fundraiser', sort_order: 20 },
+    { code: 'donation', label: 'donation', sort_order: 30 }
+  ];
+
+  it('KindTintIndex_AssignsOneBasedPositions_InGovernedOrder', () => {
+    expect(kindTintIndex(KINDS, 'event_fee')).toBe(1);
+    expect(kindTintIndex(KINDS, 'fundraiser')).toBe(2);
+    expect(kindTintIndex(KINDS, 'donation')).toBe(3);
+  });
+
+  it('KindTintIndex_ReturnsZero_ForAnUnknownCode_SoItFallsBackToNeutral', () => {
+    expect(kindTintIndex(KINDS, 'not-a-kind')).toBe(0);
+  });
+
+  it('KindTintIndex_WrapsAround_OncePastThePaletteSize', () => {
+    const many = Array.from({ length: KIND_TINT_COUNT + 2 }, (_, i) => ({
+      code: `k${i}`,
+      label: `k${i}`,
+      sort_order: i
+    }));
+    expect(kindTintIndex(many, `k${KIND_TINT_COUNT - 1}`)).toBe(KIND_TINT_COUNT);
+    expect(kindTintIndex(many, `k${KIND_TINT_COUNT}`)).toBe(1);
+    expect(kindTintIndex(many, `k${KIND_TINT_COUNT + 1}`)).toBe(2);
+  });
+
+  it('KindTintIndex_PaletteHasAtLeastEightTints_ToCoverTheSeededVocabulary', () => {
+    // 9 seeded kinds, two of which (income/expense) are being retired
+    // (D-155) — 8 distinct tints keeps the live vocabulary collision-free.
+    expect(KIND_TINT_COUNT).toBeGreaterThanOrEqual(8);
   });
 });

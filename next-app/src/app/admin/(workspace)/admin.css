@@ -149,6 +149,22 @@
   --admin-cat-rank-bg: #e0e7ef;
   --admin-cat-mb-bg:   #e3eee5;
 
+  /* ── Indexed categorical scale (2026-08-21) — for DB-governed vocabularies
+     with no fixed meaning per value (finance Kind pills first). Slots are
+     assigned by position (lib/finance kindTintIndex), so the scale must stay
+     pairwise distinct AND distinct from the rank/MB identity tints above.
+     Slots 1–5 reuse the ledger ACTIVITY-kind literals (camping/outing/
+     fundraiser/service/leadership) so no new hue enters the system; 6–8 are
+     new (plum/blue/slate). Each bg pairs with a -fg that clears AA on it. */
+  --admin-cat-1-bg: #d6efef; --admin-cat-1-fg: #186e72;  /* teal   */
+  --admin-cat-2-bg: #ddeedd; --admin-cat-2-fg: #2f6b2f;  /* green  */
+  --admin-cat-3-bg: #fde0e0; --admin-cat-3-fg: #a03737;  /* red    */
+  --admin-cat-4-bg: #fce6dc; --admin-cat-4-fg: #b54d22;  /* orange */
+  --admin-cat-5-bg: #fff0d6; --admin-cat-5-fg: #946b00;  /* gold   */
+  --admin-cat-6-bg: #ece0f0; --admin-cat-6-fg: #6b3f7a;  /* plum   */
+  --admin-cat-7-bg: #dde8f7; --admin-cat-7-fg: #2b4f8a;  /* blue   */
+  --admin-cat-8-bg: #e6e6ea; --admin-cat-8-fg: #4a4a5a;  /* slate  */
+
   /* ── Public-parity aliases — PREVIEW SURFACES ONLY (Phase C) ─────── */
   /* The ONE sanctioned coupling to the public palette. Only for WYSIWYG
      surfaces whose job is to mirror public rendering (markdown preview

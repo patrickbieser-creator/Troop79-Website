@@ -30,6 +30,16 @@ export function nextSunday(from: string = centralToday()): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** yyyy-mm-dd → "mm/dd/yy" for tight UI (Recent reports cards, 2026-08-21).
+ *  Pure string rearrangement — no Date parsing, so no timezone day-shift is
+ *  even possible. Anything that isn't yyyy-mm-dd passes through untouched
+ *  rather than becoming an invented date. */
+export function formatShortDate(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return iso;
+  return `${m[2]}/${m[3]}/${m[1].slice(2)}`;
+}
+
 /** yyyy-mm-dd → "Sunday, July 12, 2026". Parses at UTC noon so the label
  *  never shifts a day across timezones. */
 export function formatLongDate(iso: string): string {

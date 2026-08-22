@@ -201,7 +201,9 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         // the page itself also accepts finance.view (nobody holds it at
         // launch, so this is a distinction without a difference for now —
         // see the page's requireAnyOf call, which is the real boundary).
-        label: 'Ledger',
+        // "Financial Ledger", not bare "Ledger" (Patrick, 2026-08-21) — the
+        // Advancement section has its own Ledger; the qualifier disambiguates.
+        label: 'Financial Ledger',
         href: '/admin/finance',
         matchPath: '/admin/finance',
         capability: 'finance.manage'
@@ -321,7 +323,7 @@ export function visibleNavSections(
  * out for testability, same reason as visibleNavSections above.
  *
  * A section root's matchPath is often itself a prefix of a sibling's — e.g.
- * Finance's "Ledger" -> /admin/finance, "Activity Report" ->
+ * Finance's "Financial Ledger" -> /admin/finance, "Activity Report" ->
  * /admin/finance/report. `pathname.startsWith(item.matchPath)` alone would
  * match BOTH on /admin/finance/report and light up two nav items at once
  * (screenshot, 2026-08-20). Longest-match-wins picks the more specific one.

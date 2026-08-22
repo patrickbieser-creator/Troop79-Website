@@ -132,7 +132,7 @@ const SCOREBOARD: ReadonlyArray<readonly [string, string, string]> = [
   [
     'Form fields',
     '18 files / 88 declarations',
-    'Form kit SHIPPED (A; 16px iOS floor decided C) — profile editors decoupled onto the public DateField (admin imports in public: ZERO); sanctioned locals: name-search (hint-above layout), tagSelect (compact header control)'
+    'Form kit SHIPPED (A; 16px iOS floor decided C) — profile editors decoupled onto the public DateField (admin imports in public: ZERO); DateField v2 (2026-08-21, Patrick): native input → rich control (tolerant typing via lib/date-entry + react-day-picker popover on public tokens — admin parity by behavior, not by import); sanctioned locals: name-search (hint-above layout), tagSelect (compact header control)'
   ],
   [
     'Cards',
@@ -403,8 +403,11 @@ export default function PublicStyleguidePage() {
               <Field label="Scout name" error="Error text — the status-danger red.">
                 <TextInput defaultValue="Sample value" readOnly />
               </Field>
-              <Field label="Date of birth" hint="Native date input — the public DateField (Phase C); inputs are 16px, the iOS no-zoom floor.">
-                <DateField defaultValue="2012-04-01" readOnly />
+              <Field
+                label="Date of birth"
+                hint="Rich public DateField (2026-08-21, replaces the Phase C native input): type any form — 7/25/26, Jul 25 2026, 20260725, today — or pick from the calendar (month/year dropdowns, Clear/Today; centered sheet ≤640px). Parsing lives in lib/date-entry; no admin code. 16px iOS floor."
+              >
+                <DateField defaultValue="2012-04-01" />
               </Field>
             </FormCard>
           </div>

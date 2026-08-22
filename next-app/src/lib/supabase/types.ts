@@ -63,7 +63,7 @@ export interface Scout {
   birthdate: string | null;
   gender: 'M' | 'F' | null;
   school: string | null;
-  /** Grade is derived from this (Aug 1 rollover) — see lib/demographics. */
+  /** Grade is derived from this (June 15 rollover) — see lib/demographics. */
   graduation_year: number | null;
   swim_class: 'swimmer' | 'beginner' | 'nonswimmer' | null;
   active: boolean;

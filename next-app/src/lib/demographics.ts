@@ -15,10 +15,14 @@ export function ageOn(birthdate: string | null, onDate: string = centralToday())
   return age;
 }
 
-/** The calendar year the CURRENT school year ends in (Aug 1 rollover). */
+/** The calendar year the CURRENT school year ends in. Rollover is JUNE 15
+ *  (Patrick, 2026-08-21 — was Aug 1): the troop talks about scouts by their
+ *  UPCOMING grade all summer ("going into 7th" at camp), so once school is
+ *  out the roster already says so. Everything derived from grade promotes
+ *  together on this date with no data change. */
 export function schoolYearEnd(onDate: string = centralToday()): number {
-  const [y, m] = onDate.split('-').map(Number);
-  return m >= 8 ? y + 1 : y;
+  const [y, m, d] = onDate.split('-').map(Number);
+  return m > 6 || (m === 6 && d >= 15) ? y + 1 : y;
 }
 
 /**
