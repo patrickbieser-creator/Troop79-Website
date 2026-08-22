@@ -1,9 +1,44 @@
 # Photo Library Restyle
 
-**Status:** Parked — awaiting decisions
+**Status:** ACTIVE — decided by Patrick 2026-08-22, in build
 **Parked:** 2026-08-22
 **Priority:** Medium
 **Prototype:** `prototypes/photo-library-concepts.html` (six working concepts, one scroll)
+
+## DECIDED (Patrick, 2026-08-22)
+
+Brad recommended Print Shelf + Ledger behind a toggle. Patrick went further and took the
+tabbed shell from Concept 6 with **four** views rather than two:
+
+> "I liked the tabbed approach introduced in option 6, it should include tabs in this order:
+> print shelf, timeline spine, the ledger, and the almanac views as the four tabs with all of
+> the features brad suggested on each screen."
+
+**Tab order is specified and not ours to re-sort:**
+
+| # | Tab | Carries |
+|---|---|---|
+| 1 | **Print Shelf** (default) | every feature from Concept 2 |
+| 2 | **Timeline Spine** | every feature from Concept 1 |
+| 3 | **The Ledger** | every feature from Concept 3 |
+| 4 | **The Almanac** | every feature from Concept 5 |
+
+Concept 4 (Year Shelf) and Concept 0 (today's grid) are **not** shipped. Concept 6's own
+demo content is superseded by this four-tab arrangement — it contributed the shell, not the
+view list.
+
+**Print Shelf tweak (Patrick, 2026-08-22):** the title and the date go on **separate lines**,
+not run together on one meta line.
+
+**Still open — the Almanac's axis (Brad's Q7).** Calendar quarters keep left-to-right reading
+forward in time but file a September Court of Honor under "Summer"; true seasons read better
+but break strict chronology. Chronology is one of the four hard requirements, so the build
+defaults to **calendar quarters** unless Patrick says otherwise.
+
+**Known cost, accepted:** Print Shelf is the image-heaviest of the four and is the default
+tab, so until `Plans/Photo-Thumbnails.md` lands it loads 1–4 MB PNG covers. Mitigate with
+lazy-loading below the fold; the real fix is that plan.
+
 
 ## Overview
 
