@@ -553,14 +553,16 @@ describe('finance — Phase 2 write-pattern constraints (requires local Supabase
     expect(after).not.toBeNull();
   });
 
-  it('RecordEventFeePayment_RejectsSecondRecording_WhenSignupEntryAlreadyLinked', async () => {
+  it('RecordEventFeePayment_AllowsSecondRecording_SinceInstallmentsAreRealPayments', async () => {
+    // REVERSED 2026-08-22 (Plans/Event-Logistics.md §C, Phase 3): the
+    // one-payment-per-entry partial unique index is gone — deposits and
+    // balances, split methods and refunds are each their own row, and the
+    // entry's paid/balance is DERIVED (signup_entry_balances). What replaces
+    // the old structural guarantee: an idempotency key on every write and
+    // voids by transaction id (tests/event-money-db.test.ts). Skips gracefully
+    // on a completely empty signups table rather than creating fixture data
+    // that isn't this test's job.
     const admin = adminClient();
-    // financial_transactions_signup_entry_uq is a partial unique index —
-    // signup_entry_id also carries a real FK to signup_entries, so this
-    // needs an actual row to reference (read-only use of real data; this
-    // test never writes to signup_entries itself). Skips gracefully on a
-    // completely empty signups table rather than failing on missing fixture
-    // data that isn't this test's job to create.
     const { data: anyEntry } = await admin.from('signup_entries').select('id').limit(1).maybeSingle();
     if (!anyEntry) return;
     const signupEntryId = (anyEntry as { id: number }).id;
@@ -573,10 +575,13 @@ describe('finance — Phase 2 write-pattern constraints (requires local Supabase
     expect(firstError).toBeNull();
     if (first) transactionIds.push((first as { id: number }).id);
 
-    const { error: secondError } = await admin
+    const { data: second, error: secondError } = await admin
       .from('financial_transactions')
-      .insert({ occurred_on: '2026-08-18', account: 'checking', amount: 30, kind: 'event_fee', signup_entry_id: signupEntryId });
-    expect(secondError).not.toBeNull();
+      .insert({ occurred_on: '2026-08-18', account: 'checking', amount: 30, kind: 'event_fee', signup_entry_id: signupEntryId })
+      .select('id')
+      .single();
+    expect(secondError).toBeNull();
+    if (second) transactionIds.push((second as { id: number }).id);
   });
 
   it('RenameActivity_UpdatesEveryMatchingRow_AcrossAllAccounts', async () => {

@@ -21,7 +21,7 @@ import {
   type ParticipantClass
 } from '@/lib/participant-class';
 import { Badge } from '../../_components/badge';
-import { recordEventFeePaymentAction, voidEventFeePaymentAction } from '../../finance/actions';
+import { recordEventFeePaymentAction } from '../../finance/actions';
 import type { TransactionMethod } from '@/lib/finance';
 import { diffClaimEdits, type ClaimEdit } from '@/lib/event-signup-admin';
 import type { RosterRow } from './page';
@@ -254,7 +254,8 @@ export function RosterTable({
 
   function openPayDialog(r: RosterRow) {
     setPayMethod('venmo');
-    setPayAmountText(String(r.owed));
+    // Default to what is still due — installments are the common case now.
+    setPayAmountText(String(r.balance > 0 ? r.balance : r.owed));
     setPayingRow(r);
   }
 
@@ -276,7 +277,9 @@ export function RosterTable({
           signupEntryId: row.id,
           amount,
           method: payMethod,
-          signupId
+          signupId,
+          // Retry-safe: a double click or a flaky network records once.
+          idempotencyKey: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : undefined
         });
         if (!res.ok) setError(res.error ?? 'Could not record payment.');
       } catch (err) {
@@ -284,19 +287,6 @@ export function RosterTable({
       }
       setPayingRow(null);
       router.refresh();
-    });
-  }
-
-  function unmarkPayment(r: RosterRow) {
-    start(async () => {
-      setError(null);
-      try {
-        const res = await voidEventFeePaymentAction(r.id, signupId);
-        if (!res.ok) setError(res.error ?? 'Could not undo payment.');
-        else router.refresh();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Could not undo payment.');
-      }
     });
   }
 
@@ -316,14 +306,14 @@ export function RosterTable({
       'Type', 'Name', 'Household', 'Status', 'Participation', 'Tier', 'Days',
       'Owed', 'Guests', 'Guest note',
       'Drives there (seats incl. driver)', 'Drives back (seats incl. driver)', 'Ride there', 'Ride back', 'Groups',
-      'Slip', 'Paid', 'Jobs', 'Answers', 'Notes'
+      'Slip', 'Balance', 'Jobs', 'Answers', 'Notes'
     ];
     const body = sorted.map((r) => [
       PARTICIPANT_CLASS_LABEL[r.participantClass], r.name, r.household, r.status, r.participation, r.tierLabel ?? '',
       r.days ?? '', r.owed, r.guests, r.guestNote ?? '',
       r.drivesOut ? (r.vehicleSeatsOut ?? '') : '', r.drivesBack ? (r.vehicleSeatsBack ?? '') : '',
       rideCell(r, 'out', r.carOut), rideCell(r, 'back', r.carBack), r.groups.join(' | '),
-      r.slipReceived ? 'Y' : 'N', r.paymentReceived ? 'Y' : 'N',
+      r.slipReceived ? 'Y' : 'N', r.owed === 0 ? '' : r.settled ? 'Paid' : `${r.balance} due`,
       r.claimsDisplay.join(' | '), r.answers.join(' | '), r.notes ?? ''
     ]);
     const csv = [head, ...body]
@@ -337,7 +327,7 @@ export function RosterTable({
     URL.revokeObjectURL(url);
   };
 
-  const toggle = (r: RosterRow, field: 'permission_slip_received' | 'payment_received', v: boolean) =>
+  const toggle = (r: RosterRow, field: 'permission_slip_received', v: boolean) =>
     start(async () => {
       setError(null);
       const res = await setEntryFlag(r.id, field, v, signupId, calendarEntryId);
@@ -382,7 +372,7 @@ export function RosterTable({
             <th scope="col">Answers</th>
             <th scope="col">Notes</th>
             {showSlip && <th scope="col">Slip</th>}
-            <th scope="col">Paid</th>
+            <th scope="col">Balance</th>
             <th scope="col" />
           </tr>
         </thead>
@@ -449,14 +439,27 @@ export function RosterTable({
                   />
                 </td>
               )}
-              <td>
-                <input
-                  type="checkbox"
-                  checked={r.paymentReceived}
-                  disabled={pending || r.owed === 0}
-                  aria-label={`Payment received — ${r.name}`}
-                  onChange={(e) => (e.target.checked ? openPayDialog(r) : unmarkPayment(r))}
-                />
+              <td className={styles.nowrap}>
+                {/* Derived, never a tick: owed − every linked payment (+ refunds).
+                    Record here; void / refund / credit on the Money tab. */}
+                {r.owed === 0 ? (
+                  '—'
+                ) : r.settled ? (
+                  <Badge variant="success">{r.balance < 0 ? `Paid · over $${-r.balance}` : 'Paid'}</Badge>
+                ) : (
+                  <>
+                    <Badge variant={r.paid > 0 ? 'warning' : 'muted'}>${r.balance} due</Badge>{' '}
+                    <button
+                      type="button"
+                      className={styles.rowEdit}
+                      disabled={pending}
+                      aria-label={`Record payment — ${r.name}`}
+                      onClick={() => openPayDialog(r)}
+                    >
+                      Record
+                    </button>
+                  </>
+                )}
               </td>
               <td className={styles.nowrap}>
                 <button

@@ -18,7 +18,13 @@ export type SiteTextKey =
   | 'reminder_email.intro'
   | 'reminder_email.bullet'
   | 'reminder_email.action_label'
-  | 'reminder_email.outro';
+  | 'reminder_email.outro'
+  | 'payment_reminder.subject'
+  | 'payment_reminder.heading'
+  | 'payment_reminder.intro'
+  | 'payment_reminder.bullet'
+  | 'payment_reminder.action_label'
+  | 'payment_reminder.outro';
 
 export interface SiteTextKeyDef {
   key: SiteTextKey;
@@ -38,7 +44,16 @@ export const SITE_TEXT_KEYS: readonly SiteTextKeyDef[] = [
   { key: 'reminder_email.intro', label: 'Opening paragraph', hint: 'Placeholders: {title}', multiline: true },
   { key: 'reminder_email.bullet', label: 'Deadline line', hint: 'Shown as a bullet. Placeholders: {deadline}', multiline: false },
   { key: 'reminder_email.action_label', label: 'Button label', hint: 'The button links to the event’s sign-up page.', multiline: false },
-  { key: 'reminder_email.outro', label: 'Closing line', hint: 'Shown under the button.', multiline: true }
+  { key: 'reminder_email.outro', label: 'Closing line', hint: 'Shown under the button.', multiline: true },
+  // Payment reminder ("Email those behind" on an event's Money tab,
+  // Plans/Event-Logistics.md §C). Placeholders: {title}, {short} (the
+  // amount the family is behind), {due} (what the schedule asked for by today).
+  { key: 'payment_reminder.subject', label: 'Payment reminder — subject', hint: 'Placeholders: {title}', multiline: false },
+  { key: 'payment_reminder.heading', label: 'Payment reminder — heading', hint: 'Placeholders: {title}', multiline: false },
+  { key: 'payment_reminder.intro', label: 'Payment reminder — opening paragraph', hint: 'Placeholders: {title}, {short}, {due}', multiline: true },
+  { key: 'payment_reminder.bullet', label: 'Payment reminder — amount line', hint: 'Shown as a bullet. Placeholders: {short}, {due}', multiline: false },
+  { key: 'payment_reminder.action_label', label: 'Payment reminder — button label', hint: 'The button links to the event page.', multiline: false },
+  { key: 'payment_reminder.outro', label: 'Payment reminder — closing line', hint: 'Shown under the button.', multiline: true }
 ];
 
 export const SITE_TEXT_DEFAULTS: Record<SiteTextKey, string> = {
@@ -49,8 +64,32 @@ export const SITE_TEXT_DEFAULTS: Record<SiteTextKey, string> = {
     'Even a "can\'t make it" helps — it tells the planners who not to wait for.',
   'reminder_email.bullet': 'Signups close {deadline}.',
   'reminder_email.action_label': 'Sign up or decline',
-  'reminder_email.outro': 'If you have already replied, thank you — please ignore this.'
+  'reminder_email.outro': 'If you have already replied, thank you — please ignore this.',
+  'payment_reminder.subject': 'Troop 79 — {title}: payment reminder',
+  'payment_reminder.heading': 'A payment for {title} is due',
+  'payment_reminder.intro':
+    'Our records show your family is behind on the payment schedule for {title}. The schedule asked for {due} by now; we have not yet received {short} of that.',
+  'payment_reminder.bullet': '{short} still due now (of {due} scheduled so far).',
+  'payment_reminder.action_label': 'See the event',
+  'payment_reminder.outro': 'If you have already paid in the last few days, thank you — please ignore this.'
 };
+
+/** The payment reminder's copy, resolved and filled (same shape as the
+ *  reminder email so renderEmail() serves both). */
+export function paymentReminderEmailCopy(
+  stored: ReadonlyMap<string, string>,
+  vars: { title: string; short: string; due: string }
+): ReminderEmailCopy {
+  const v: Record<string, string> = { title: vars.title, short: vars.short, due: vars.due };
+  return {
+    subject: fillTemplate(resolveSiteText(stored, 'payment_reminder.subject'), v),
+    heading: fillTemplate(resolveSiteText(stored, 'payment_reminder.heading'), v),
+    intro: fillTemplate(resolveSiteText(stored, 'payment_reminder.intro'), v),
+    bullet: fillTemplate(resolveSiteText(stored, 'payment_reminder.bullet'), v),
+    actionLabel: fillTemplate(resolveSiteText(stored, 'payment_reminder.action_label'), v),
+    outro: fillTemplate(resolveSiteText(stored, 'payment_reminder.outro'), v)
+  };
+}
 
 /** Replace {name} placeholders from `vars`; unknown ones stay visible so a
  *  typo in the admin editor shows up in the preview instead of vanishing. */

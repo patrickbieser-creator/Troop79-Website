@@ -61,7 +61,11 @@ export interface RosterRow {
   /** "Patrols: Kraken", "Tents: Tent 3" — every non-car set they're placed in. */
   groups: string[];
   slipReceived: boolean;
-  paymentReceived: boolean;
+  /** Derived money (signup_entry_balances): owed honours the per-person
+   *  override; paid nets every linked payment and refund. */
+  paid: number;
+  balance: number;
+  settled: boolean;
   notes: string | null;
   household: string;
   /** Pure job labels — the coverage tally matches against these. */
@@ -108,6 +112,18 @@ async function load(signupId: number) {
 
     supabase.from('people').select('id, display_name')
   ]);
+
+  // Money (Plans/Event-Logistics.md §C): the derived per-entry balance.
+  const { data: balanceRows } = await supabase
+    .from('signup_entry_balances')
+    .select('entry_id, owed, paid, balance, settled')
+    .eq('event_signup_id', sig.id);
+  const balanceByEntry = new Map(
+    ((balanceRows ?? []) as { entry_id: number; owed: number; paid: number; balance: number; settled: boolean }[]).map((b) => [
+      b.entry_id,
+      b
+    ])
+  );
 
   // Group sets (Plans/Event-Logistics.md §A/§B): cars are the trigger-owned
   // kind='car' sets (each entry's car per leg = the driver's name); every
@@ -225,7 +241,10 @@ async function load(signupId: number) {
   const rows: RosterRow[] = ((entries ?? []) as Record<string, unknown>[]).map((e) => {
     const tier = e.price_id ? priceById.get(Number(e.price_id)) : undefined;
     const days = e.days ? Number(e.days) : null;
-    const owed = tier ? Number(tier.amount) * (tier.per === 'day' ? (days ?? 1) : 1) : 0;
+    // owed comes from the balances view (tier × days, or the per-person
+    // override) so the roster and the Money tab can never disagree.
+    const bal = balanceByEntry.get(Number(e.id));
+    const owed = bal ? Number(bal.owed) : tier ? Number(tier.amount) * (tier.per === 'day' ? (days ?? 1) : 1) : 0;
     // person_id is NOT NULL and every row has one, so the legacy name
     // fallbacks went with their columns (D-066). 'Unknown' stays as the
     // last resort for a person row that was deleted out from under an entry.
@@ -262,7 +281,9 @@ async function load(signupId: number) {
       carBack: e.drives_back === true ? null : carNameFor(Number(e.id), 'back'),
       groups: groupTagsByEntry.get(Number(e.id)) ?? [],
       slipReceived: e.permission_slip_received === true,
-      paymentReceived: e.payment_received === true,
+      paid: bal ? Number(bal.paid) : 0,
+      balance: bal ? Number(bal.balance) : owed,
+      settled: bal?.settled === true,
       notes: (e.notes as string) ?? null,
       household: e.household_id ? (hhById.get(Number(e.household_id)) ?? '—') : '—',
       claims: claimsByEntry.get(Number(e.id)) ?? [],
@@ -366,7 +387,7 @@ export default async function EventRosterPage({ params }: { params: Promise<{ id
   const guests = going.reduce((n, r) => n + r.guests, 0);
   const headcount = going.length + guests;
   const owedTotal = rows.reduce((n, r) => n + r.owed, 0);
-  const paidTotal = rows.filter((r) => r.paymentReceived).reduce((n, r) => n + r.owed, 0);
+  const paidTotal = Math.round(rows.reduce((n, r) => n + r.paid, 0) * 100) / 100;
   // Two-deep: registered adults actually attending. driver_only doesn't count.
   const twoDeep = adultsGoing.length >= 2;
 
@@ -386,6 +407,10 @@ export default async function EventRosterPage({ params }: { params: Promise<{ id
             ·{' '}
             <Link href={`/admin/rosters/${signupId}/assignments`} className={styles.actionLink}>
               Rides &amp; assignments
+            </Link>{' '}
+            ·{' '}
+            <Link href={`/admin/rosters/${signupId}/money`} className={styles.actionLink}>
+              Money
             </Link>{' '}
             ·{' '}
             <Link href={`/events/${String(data.entry.id)}`} className={styles.actionLinkMuted}>

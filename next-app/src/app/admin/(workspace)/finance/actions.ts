@@ -469,17 +469,54 @@ export interface RecordEventFeePaymentInput {
   signupEntryId: number;
   amount: number;
   method: TransactionMethod;
-  /** For revalidating the roster page this payment was recorded from. */
+  /** For revalidating the roster/Money pages this payment was recorded from. */
   signupId?: number;
+  /** Defaults to today. */
+  occurredOn?: string;
+  memo?: string | null;
+  /** Client-minted; a retried click with the same key is a no-op. */
+  idempotencyKey?: string;
 }
 
-/** The event-fee integration point (Plans/Troop-Finances.md): writes ONE
- *  transaction linked to the signup entry and flips payment_received in
- *  the same call, so the two facts can never independently drift — this is
- *  the only writer either the Finances section or the existing signup
- *  roster's "payment received" checkbox should ever call. `owed` stays
- *  fully derived from event_prices; this never copies that amount into a
- *  stored "charge" row. */
+/** Resolve the event (calendar entry id + title) behind a signup entry, so a
+ *  money row can carry calendar_entry_id AND the activity label the Activity
+ *  Report groups by. Plans/Event-Logistics.md §C: activity_label stays free
+ *  text — for linked rows it is simply the event title. */
+async function eventForSignupEntry(
+  supabase: ReturnType<typeof createAdminClient>,
+  signupEntryId: number
+): Promise<{ entry: { id: number; person_id: number | null; event_signup_id: number }; calendarEntryId: number | null; title: string | null } | null> {
+  const { data: entry } = await supabase
+    .from('signup_entries')
+    .select('id, person_id, event_signup_id')
+    .eq('id', signupEntryId)
+    .maybeSingle();
+  if (!entry) return null;
+  const e = entry as { id: number; person_id: number | null; event_signup_id: number };
+  const { data: sig } = await supabase
+    .from('event_signups')
+    .select('calendar_entry_id, calendar_entries!inner(title)')
+    .eq('id', e.event_signup_id)
+    .maybeSingle();
+  const s = sig as unknown as { calendar_entry_id: number; calendar_entries: { title: string } } | null;
+  return { entry: e, calendarEntryId: s?.calendar_entry_id ?? null, title: s?.calendar_entries?.title ?? null };
+}
+
+function revalidateEventMoney(signupId?: number) {
+  revalidateFinance();
+  if (signupId) {
+    revalidatePath(`/admin/rosters/${signupId}`);
+    revalidatePath(`/admin/rosters/${signupId}/money`);
+  }
+}
+
+/** The event-fee integration point (Plans/Troop-Finances.md, revised by
+ *  Plans/Event-Logistics.md §C, 2026-08-22): writes ONE transaction linked to
+ *  the signup entry. Many per entry are allowed — installments, split methods —
+ *  and the entry's paid/balance is DERIVED from them (signup_entry_balances),
+ *  never flagged. `owed` stays derived from event_prices (or the per-entry
+ *  override); this never copies that amount into a stored "charge" row.
+ *  A retried click carries the same idempotency key and is a no-op. */
 export async function recordEventFeePaymentAction(input: RecordEventFeePaymentInput): Promise<Result> {
   // calendar.write OR finance.manage — "whoever can already mark payment_received
   // today keeps that power" (Plans/Troop-Finances.md's original design intent
@@ -487,88 +524,405 @@ export async function recordEventFeePaymentAction(input: RecordEventFeePaymentIn
   // an earlier pass had narrowed this to finance.manage-only, which would have
   // locked ordinary event leaders out of a checkbox they already used.
   const actor = await requireAnyOf(['calendar.write', 'finance.manage']);
-  if (input.amount <= 0) return { ok: false, error: 'Amount must be positive.' };
+  if (!(input.amount > 0)) return { ok: false, error: 'Amount must be positive.' };
 
   const supabase = createAdminClient();
-  const { data: entry, error: entryError } = await supabase
-    .from('signup_entries')
-    .select('id, person_id, payment_received')
-    .eq('id', input.signupEntryId)
-    .maybeSingle();
-  if (entryError) return { ok: false, error: entryError.message };
-  if (!entry) return { ok: false, error: 'Signup entry not found.' };
-  if (entry.payment_received) return { ok: false, error: 'Payment is already recorded for this entry.' };
+  const ctx = await eventForSignupEntry(supabase, input.signupEntryId);
+  if (!ctx) return { ok: false, error: 'Signup entry not found.' };
 
   const account: Account = input.method === 'scout_account' ? 'scout_account' : 'checking';
   const { error: insertError } = await supabase.from('financial_transactions').insert({
-    occurred_on: new Date().toISOString().slice(0, 10),
+    occurred_on: input.occurredOn ?? new Date().toISOString().slice(0, 10),
     account,
     amount: input.amount,
     kind: 'event_fee',
     method: input.method,
-    person_id: entry.person_id,
-    signup_entry_id: entry.id,
+    person_id: ctx.entry.person_id,
+    signup_entry_id: ctx.entry.id,
+    calendar_entry_id: ctx.calendarEntryId,
+    activity_label: ctx.title,
+    memo: input.memo?.trim() || null,
     source: 'app',
-    entered_by_person_id: actor.personId
+    entered_by_person_id: actor.personId,
+    idempotency_key: input.idempotencyKey ?? null
   });
-  if (insertError) return { ok: false, error: insertError.message };
-
-  const { error: flagError } = await supabase
-    .from('signup_entries')
-    .update({ payment_received: true })
-    .eq('id', entry.id);
-  if (flagError) {
-    // The transaction is already written and correct; only the denormalized
-    // flag failed to flip. Surface it plainly rather than pretending this
-    // succeeded — the drift report (getPaymentDriftReportAction) is the
-    // backstop for exactly this partial-failure shape.
-    return {
-      ok: false,
-      error: `Payment recorded, but the roster checkbox failed to update (${flagError.message}). It will show as drift.`
-    };
+  if (insertError) {
+    if (insertError.code === '23505' && input.idempotencyKey) {
+      revalidateEventMoney(input.signupId);
+      return { ok: true }; // the retry of a write that already landed
+    }
+    return { ok: false, error: insertError.message };
   }
 
-  revalidateFinance();
-  if (input.signupId) revalidatePath(`/admin/rosters/${input.signupId}`);
+  revalidateEventMoney(input.signupId);
   return { ok: true };
 }
 
-/** Reverses recordEventFeePaymentAction: voids the linked transaction and
- *  flips payment_received back to false. Used when a leader un-ticks the
- *  roster checkbox — a real correction, not a delete. */
-export async function voidEventFeePaymentAction(signupEntryId: number, signupId?: number): Promise<Result> {
+/** Void ONE event-fee transaction by id — a real correction, not a delete.
+ *  With many payments per entry, "un-tick the box" is gone; the Money tab
+ *  voids the specific row. */
+export async function voidEventFeePaymentAction(transactionId: number, signupId?: number): Promise<Result> {
   // Same calendar.write-OR-finance.manage gate as recordEventFeePaymentAction —
-  // whoever can tick the box must be able to un-tick it too.
+  // whoever can record a payment must be able to correct it too.
   const actor = await requireAnyOf(['calendar.write', 'finance.manage']);
   const supabase = createAdminClient();
 
   const { data: txn, error: findError } = await supabase
     .from('financial_transactions')
-    .select('id')
-    .eq('signup_entry_id', signupEntryId)
-    .is('voided_at', null)
+    .select('id, signup_entry_id, kind, voided_at')
+    .eq('id', transactionId)
     .maybeSingle();
   if (findError) return { ok: false, error: findError.message };
-
-  if (txn) {
-    const { error: voidError } = await supabase
-      .from('financial_transactions')
-      .update({ voided_at: new Date().toISOString(), voided_by_person_id: actor.personId })
-      .eq('id', txn.id);
-    if (voidError) return { ok: false, error: voidError.message };
+  const t = txn as { id: number; signup_entry_id: number | null; kind: string; voided_at: string | null } | null;
+  if (!t) return { ok: false, error: 'Transaction not found.' };
+  if (t.signup_entry_id == null || t.kind !== 'event_fee') {
+    return { ok: false, error: 'Only event-fee payments can be voided here — use the Financial Ledger for other rows.' };
   }
-  // No linked transaction found is not fatal — a pre-cutover row ticked
-  // before Finances existed has no transaction to void; still flip the flag.
+  if (t.voided_at) return { ok: true };
 
-  const { error: flagError } = await supabase
-    .from('signup_entries')
-    .update({ payment_received: false })
-    .eq('id', signupEntryId);
-  if (flagError) return { ok: false, error: flagError.message };
+  const { error: voidError } = await supabase
+    .from('financial_transactions')
+    .update({ voided_at: new Date().toISOString(), voided_by_person_id: actor.personId })
+    .eq('id', t.id);
+  if (voidError) return { ok: false, error: voidError.message };
 
-  revalidateFinance();
-  if (signupId) revalidatePath(`/admin/rosters/${signupId}`);
+  revalidateEventMoney(signupId);
   return { ok: true };
+}
+
+/** A refund is a NEGATIVE event_fee row linked to the entry — the balance view
+ *  nets it, the Activity Report nets it, and Kind stays a tag (finance.ts: the
+ *  signed amount is the only thing that decides money in vs. out). */
+export async function refundEventFeeAction(input: {
+  signupEntryId: number;
+  amount: number;
+  method: TransactionMethod;
+  memo?: string | null;
+  signupId?: number;
+  idempotencyKey?: string;
+}): Promise<Result> {
+  const actor = await requireAnyOf(['calendar.write', 'finance.manage']);
+  if (!(input.amount > 0)) return { ok: false, error: 'Refund amount must be positive.' };
+  const supabase = createAdminClient();
+  const ctx = await eventForSignupEntry(supabase, input.signupEntryId);
+  if (!ctx) return { ok: false, error: 'Signup entry not found.' };
+  const account: Account = input.method === 'scout_account' ? 'scout_account' : 'checking';
+  const { error } = await supabase.from('financial_transactions').insert({
+    occurred_on: new Date().toISOString().slice(0, 10),
+    account,
+    amount: -Math.abs(input.amount),
+    kind: 'event_fee',
+    method: input.method,
+    person_id: ctx.entry.person_id,
+    signup_entry_id: ctx.entry.id,
+    calendar_entry_id: ctx.calendarEntryId,
+    activity_label: ctx.title,
+    memo: input.memo?.trim() || 'Refund',
+    source: 'app',
+    entered_by_person_id: actor.personId,
+    idempotency_key: input.idempotencyKey ?? null
+  });
+  if (error) {
+    if (error.code === '23505' && input.idempotencyKey) return { ok: true };
+    return { ok: false, error: error.message };
+  }
+  revalidateEventMoney(input.signupId);
+  return { ok: true };
+}
+
+/** Overpayment → scout-account credit (Patrick: "a perfect place to put it").
+ *  The fee money already sits in checking; the credit is the NOTIONAL
+ *  scout_account +X (kind adjustment, linked to the entry and the event),
+ *  the finance plan's two-row pattern. The entry keeps showing the
+ *  overpayment with a "credited" note — nothing is hidden or re-stated. */
+export async function creditOverpaymentAction(input: {
+  signupEntryId: number;
+  amount: number;
+  signupId?: number;
+  idempotencyKey?: string;
+}): Promise<Result> {
+  const actor = await requireAnyOf(['calendar.write', 'finance.manage']);
+  if (!(input.amount > 0)) return { ok: false, error: 'Credit amount must be positive.' };
+  const supabase = createAdminClient();
+  const ctx = await eventForSignupEntry(supabase, input.signupEntryId);
+  if (!ctx) return { ok: false, error: 'Signup entry not found.' };
+  if (ctx.entry.person_id == null) return { ok: false, error: 'A guest has no scout account to credit.' };
+  const { error } = await supabase.from('financial_transactions').insert({
+    occurred_on: new Date().toISOString().slice(0, 10),
+    account: 'scout_account',
+    amount: Math.abs(input.amount),
+    kind: 'adjustment',
+    method: 'other',
+    person_id: ctx.entry.person_id,
+    signup_entry_id: ctx.entry.id,
+    calendar_entry_id: ctx.calendarEntryId,
+    activity_label: ctx.title,
+    memo: `Overpayment credit${ctx.title ? ` — ${ctx.title}` : ''}`,
+    source: 'app',
+    entered_by_person_id: actor.personId,
+    idempotency_key: input.idempotencyKey ?? null
+  });
+  if (error) {
+    if (error.code === '23505' && input.idempotencyKey) return { ok: true };
+    return { ok: false, error: error.message };
+  }
+  revalidateEventMoney(input.signupId);
+  return { ok: true };
+}
+
+/** Per-person owed override (Tesomas tiers, BWCA 840 vs 850, Lapham
+ *  "Expected"). null = back to the tier. */
+export async function setAmountOverrideAction(
+  signupEntryId: number,
+  amount: number | null,
+  signupId?: number
+): Promise<Result> {
+  await requireAnyOf(['calendar.write', 'finance.manage']);
+  if (amount != null && !(amount >= 0)) return { ok: false, error: 'Amount must be zero or more.' };
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from('signup_entries')
+    .update({ amount_override: amount == null ? null : Math.round(amount * 100) / 100 })
+    .eq('id', signupEntryId);
+  if (error) return { ok: false, error: error.message };
+  revalidateEventMoney(signupId);
+  return { ok: true };
+}
+
+export interface AddEventExpenseInput {
+  signupId: number;
+  calendarEntryId: number;
+  occurredOn: string;
+  /** Entered positive; stored negative. */
+  amount: number;
+  memo: string;
+  /** 'troop' = the troop paid (check / card / bank) — a real expense row now.
+   *  A person id = that person fronted it — a reimbursement request is
+   *  created; the expense row is written when it is paid out
+   *  (markReimbursementPaidAction), the one writer for that money. */
+  paidBy: 'troop' | number;
+  method: TransactionMethod;
+  idempotencyKey?: string;
+}
+
+/** Expenses from the event's Money tab (the sheet's expense list). Patrick:
+ *  "Expenses could be entered by any leader with access" — calendar.write or
+ *  finance.manage; everything stays visible to leaders, which is the control. */
+export async function addEventExpenseAction(input: AddEventExpenseInput): Promise<Result> {
+  const actor = await requireAnyOf(['calendar.write', 'finance.manage']);
+  if (!(input.amount > 0)) return { ok: false, error: 'Amount must be positive.' };
+  const memo = input.memo.trim();
+  if (!memo) return { ok: false, error: 'Say what the expense was for.' };
+  const supabase = createAdminClient();
+  const { data: cal } = await supabase.from('calendar_entries').select('id, title').eq('id', input.calendarEntryId).maybeSingle();
+  if (!cal) return { ok: false, error: 'Event not found.' };
+  const title = (cal as { title: string }).title;
+
+  if (input.paidBy === 'troop') {
+    const { error } = await supabase.from('financial_transactions').insert({
+      occurred_on: input.occurredOn,
+      account: 'checking',
+      amount: -Math.abs(input.amount),
+      kind: 'expense',
+      method: input.method,
+      memo,
+      calendar_entry_id: input.calendarEntryId,
+      activity_label: title,
+      source: 'app',
+      entered_by_person_id: actor.personId,
+      idempotency_key: input.idempotencyKey ?? null
+    });
+    if (error) {
+      if (error.code === '23505' && input.idempotencyKey) return { ok: true };
+      return { ok: false, error: error.message };
+    }
+  } else {
+    const { error } = await supabase.from('reimbursement_requests').insert({
+      requester_person_id: input.paidBy,
+      amount: Math.abs(input.amount),
+      description: `${title}: ${memo}`,
+      receipt_path: null,
+      status: 'submitted',
+      calendar_entry_id: input.calendarEntryId,
+      entered_by_person_id: actor.personId
+    });
+    if (error) return { ok: false, error: error.message };
+    revalidatePath('/admin/finance/reimbursements');
+  }
+  revalidateEventMoney(input.signupId);
+  return { ok: true };
+}
+
+export interface EventMoneyPerson {
+  entryId: number;
+  personId: number | null;
+  name: string;
+  isScout: boolean;
+  status: string;
+  participation: string;
+  tierLabel: string | null;
+  tierAmount: number;
+  amountOverride: number | null;
+  owed: number;
+  paid: number;
+  balance: number;
+  settled: boolean;
+  credited: number;
+  transactions: {
+    id: number;
+    occurredOn: string;
+    amount: number;
+    kind: string;
+    method: string | null;
+    memo: string | null;
+    voidedAt: string | null;
+  }[];
+}
+
+export interface EventMoneyData {
+  people: EventMoneyPerson[];
+  expenses: {
+    id: number;
+    occurredOn: string;
+    amount: number;
+    kind: string;
+    method: string | null;
+    memo: string | null;
+    personName: string | null;
+    voidedAt: string | null;
+  }[];
+  reimbursements: {
+    id: number;
+    requesterName: string;
+    amount: number;
+    description: string;
+    status: string;
+    createdAt: string;
+  }[];
+  milestones: {
+    id: number;
+    kind: 'payment' | 'registration' | 'form' | 'other';
+    label: string;
+    dueOn: string;
+    amount: number | null;
+    appliesTo: 'scouts' | 'adults' | 'both';
+  }[];
+}
+
+/** Everything the event's Money tab shows — the sheet's money block for one
+ *  event. Pure math over it lives in lib/event-money.ts. */
+export async function getEventMoneyAction(signupId: number): Promise<EventMoneyData | null> {
+  await requireAnyOf(['calendar.write', 'finance.manage']);
+  const supabase = createAdminClient();
+  const { data: sig } = await supabase.from('event_signups').select('id, calendar_entry_id').eq('id', signupId).maybeSingle();
+  if (!sig) return null;
+  const calendarEntryId = (sig as { calendar_entry_id: number }).calendar_entry_id;
+
+  const [{ data: entries }, { data: balances }, { data: prices }, { data: people }, { data: tx }, { data: reqs }, { data: ms }] =
+    await Promise.all([
+      supabase
+        .from('signup_entries')
+        .select('id, person_id, guest_name, person_kind, status, participation, price_id, amount_override')
+        .eq('event_signup_id', signupId)
+        .neq('status', 'cancelled'),
+      supabase.from('signup_entry_balances').select('entry_id, owed, paid, balance, settled').eq('event_signup_id', signupId),
+      supabase.from('event_prices').select('id, label, amount, per').eq('event_signup_id', signupId),
+      supabase.from('people').select('id, display_name'),
+      supabase
+        .from('financial_transactions')
+        .select('id, occurred_on, amount, kind, method, memo, person_id, signup_entry_id, voided_at')
+        .eq('calendar_entry_id', calendarEntryId)
+        .order('occurred_on')
+        .order('id'),
+      supabase
+        .from('reimbursement_requests')
+        .select('id, requester_person_id, amount, description, status, created_at')
+        .eq('calendar_entry_id', calendarEntryId)
+        .order('created_at'),
+      supabase.from('event_milestones').select('id, kind, label, due_on, amount, applies_to, sort').eq('event_signup_id', signupId)
+    ]);
+
+  const nameOf = new Map(((people ?? []) as { id: number; display_name: string }[]).map((p) => [p.id, p.display_name]));
+  const priceById = new Map(((prices ?? []) as { id: number; label: string; amount: number; per: string }[]).map((p) => [p.id, p]));
+  const balById = new Map(
+    ((balances ?? []) as { entry_id: number; owed: number; paid: number; balance: number; settled: boolean }[]).map((b) => [b.entry_id, b])
+  );
+  type Tx = { id: number; occurred_on: string; amount: number; kind: string; method: string | null; memo: string | null; person_id: number | null; signup_entry_id: number | null; voided_at: string | null };
+  const txRows = (tx ?? []) as Tx[];
+  const txByEntry = new Map<number, Tx[]>();
+  for (const t of txRows) if (t.signup_entry_id != null) txByEntry.set(t.signup_entry_id, [...(txByEntry.get(t.signup_entry_id) ?? []), t]);
+
+  const peopleRows: EventMoneyPerson[] = ((entries ?? []) as Record<string, unknown>[]).map((e) => {
+    const id = Number(e.id);
+    const b = balById.get(id);
+    const tier = e.price_id ? priceById.get(Number(e.price_id)) : undefined;
+    const mine = txByEntry.get(id) ?? [];
+    const credited = mine
+      .filter((t) => !t.voided_at && t.kind === 'adjustment' && t.amount > 0)
+      .reduce((n, t) => n + Number(t.amount), 0);
+    return {
+      entryId: id,
+      personId: e.person_id != null ? Number(e.person_id) : null,
+      name: (e.person_id != null ? nameOf.get(Number(e.person_id)) : null) ?? (e.guest_name ? String(e.guest_name) : 'Unknown'),
+      isScout: e.person_kind === 'scout',
+      status: String(e.status),
+      participation: String(e.participation),
+      tierLabel: tier?.label ?? null,
+      tierAmount: tier ? Number(tier.amount) : 0,
+      amountOverride: e.amount_override != null ? Number(e.amount_override) : null,
+      owed: Number(b?.owed ?? 0),
+      paid: Number(b?.paid ?? 0),
+      balance: Number(b?.balance ?? 0),
+      settled: b?.settled === true,
+      credited: Math.round(credited * 100) / 100,
+      transactions: mine.map((t) => ({
+        id: t.id,
+        occurredOn: t.occurred_on,
+        amount: Number(t.amount),
+        kind: t.kind,
+        method: t.method,
+        memo: t.memo,
+        voidedAt: t.voided_at
+      }))
+    };
+  });
+  peopleRows.sort((a, b) => a.name.localeCompare(b.name));
+
+  return {
+    people: peopleRows,
+    expenses: txRows
+      .filter((t) => t.signup_entry_id == null)
+      .map((t) => ({
+        id: t.id,
+        occurredOn: t.occurred_on,
+        amount: Number(t.amount),
+        kind: t.kind,
+        method: t.method,
+        memo: t.memo,
+        personName: t.person_id != null ? (nameOf.get(t.person_id) ?? null) : null,
+        voidedAt: t.voided_at
+      })),
+    reimbursements: ((reqs ?? []) as { id: number; requester_person_id: number; amount: number; description: string; status: string; created_at: string }[]).map(
+      (r) => ({
+        id: r.id,
+        requesterName: nameOf.get(r.requester_person_id) ?? `#${r.requester_person_id}`,
+        amount: Number(r.amount),
+        description: r.description,
+        status: r.status,
+        createdAt: r.created_at
+      })
+    ),
+    milestones: ((ms ?? []) as { id: number; kind: string; label: string; due_on: string; amount: number | null; applies_to: string; sort: number }[])
+      .map((m) => ({
+        id: m.id,
+        kind: m.kind as 'payment' | 'registration' | 'form' | 'other',
+        label: m.label,
+        dueOn: m.due_on,
+        amount: m.amount != null ? Number(m.amount) : null,
+        appliesTo: m.applies_to as 'scouts' | 'adults' | 'both'
+      }))
+      .sort((a, b) => (a.dueOn < b.dueOn ? -1 : a.dueOn > b.dueOn ? 1 : a.id - b.id))
+  };
 }
 
 export interface ReconciliationSummaryRow {

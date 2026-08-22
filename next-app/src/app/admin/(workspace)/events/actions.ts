@@ -10,7 +10,7 @@ import { normalizeGroupName, normalizeSetLabel, validateNewSet } from '@/lib/gro
 import { sendEmail, renderEmail } from '@/lib/email';
 import { recipientsForScouts } from '@/lib/email-recipients';
 import { siteUrl } from '@/lib/site-url';
-import { loadSiteText, reminderEmailCopy } from '@/lib/site-text';
+import { loadSiteText, reminderEmailCopy, paymentReminderEmailCopy } from '@/lib/site-text';
 import {
   backfillEventPrices,
   slotClaimants,
@@ -277,10 +277,11 @@ export async function deleteSlot(
   return { ok: true };
 }
 
-/** Leader-managed ticks on the roster. */
+/** Leader-managed ticks on the roster. (payment_received is gone — payments
+ *  are transactions and "paid" is derived; Plans/Event-Logistics.md §C.) */
 export async function setEntryFlag(
   entryId: number,
-  field: 'permission_slip_received' | 'payment_received',
+  field: 'permission_slip_received',
   value: boolean,
   signupId: number,
   calendarEntryId: number
@@ -1270,4 +1271,111 @@ export async function deleteGroup(groupId: number, signupId: number, calendarEnt
   revalidatePath(`/admin/rosters/${signupId}/assignments`);
   revalidateEvent(calendarEntryId, signupId);
   return { ok: true };
+}
+
+/* ── Milestones: deposit schedules & deadlines (Plans/Event-Logistics.md §C) ── */
+
+export async function addMilestone(
+  signupId: number,
+  calendarEntryId: number,
+  input: { kind: string; label: string; dueOn: string; amount: number | null; appliesTo: 'scouts' | 'adults' | 'both' }
+): Promise<Result> {
+  await requireCapability('calendar.write');
+  if (!['payment', 'registration', 'form', 'other'].includes(input.kind)) return { ok: false, error: 'Pick a kind of milestone.' };
+  const label = input.label.trim();
+  if (!label) return { ok: false, error: 'Give the milestone a label.' };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.dueOn)) return { ok: false, error: 'Pick a due date.' };
+  if (input.kind === 'payment' && !(input.amount != null && input.amount > 0)) {
+    return { ok: false, error: 'A payment milestone needs an amount.' };
+  }
+  const supabase = createAdminClient();
+  const { error } = await supabase.from('event_milestones').insert({
+    event_signup_id: signupId,
+    kind: input.kind,
+    label,
+    due_on: input.dueOn,
+    amount: input.kind === 'payment' ? input.amount : null,
+    applies_to: input.appliesTo
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/admin/rosters/${signupId}/money`);
+  revalidateEvent(calendarEntryId, signupId);
+  return { ok: true };
+}
+
+export async function deleteMilestone(milestoneId: number, signupId: number, calendarEntryId: number): Promise<Result> {
+  await requireCapability('calendar.write');
+  const supabase = createAdminClient();
+  const { error } = await supabase.from('event_milestones').delete().eq('id', milestoneId).eq('event_signup_id', signupId);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/admin/rosters/${signupId}/money`);
+  revalidateEvent(calendarEntryId, signupId);
+  return { ok: true };
+}
+
+/**
+ * "Email those behind" — the deposit-schedule chase. Same plumbing and the
+ * same two-step confirm as emailNonResponders; copy is editable in Lookups &
+ * Admin (payment_reminder.*). Recipients are resolved per BEHIND person:
+ * a scout's guardians (recipientsForScouts) or the adult themselves.
+ */
+export async function emailPaymentReminders(
+  signupId: number,
+  behind: { entryId: number; short: number; due: number }[],
+  confirm: boolean
+): Promise<{ ok: boolean; error?: string; status?: string; to?: string[] }> {
+  await requireCapability('calendar.write');
+  if (behind.length === 0) return { ok: false, error: 'Nobody is behind on the schedule.' };
+  const supabase = createAdminClient();
+
+  const { data: signup } = await supabase
+    .from('event_signups')
+    .select('id, calendar_entry_id, calendar_entries!inner(title)')
+    .eq('id', signupId)
+    .maybeSingle();
+  if (!signup) return { ok: false, error: 'Signup not found.' };
+  const sig = signup as unknown as { calendar_entry_id: number; calendar_entries: { title: string } };
+
+  const { data: entries } = await supabase
+    .from('signup_entries')
+    .select('id, person_id, person_kind')
+    .in('id', behind.map((b) => b.entryId))
+    .eq('event_signup_id', signupId);
+  const rows = (entries ?? []) as { id: number; person_id: number | null; person_kind: string }[];
+  const scoutPersonIds = rows.filter((r) => r.person_kind === 'scout' && r.person_id != null).map((r) => r.person_id as number);
+  const adultPersonIds = rows.filter((r) => r.person_kind === 'adult' && r.person_id != null).map((r) => r.person_id as number);
+
+  const to = new Set<string>();
+  if (scoutPersonIds.length > 0) {
+    const { data: scouts } = await supabase.from('scouts').select('id').in('person_id', scoutPersonIds);
+    const recipients = await recipientsForScouts(((scouts ?? []) as { id: string }[]).map((s) => s.id));
+    for (const r of recipients) to.add(r.email);
+  }
+  if (adultPersonIds.length > 0) {
+    const { data: adults } = await supabase.from('people').select('primary_email').in('id', adultPersonIds);
+    for (const a of (adults ?? []) as { primary_email: string | null }[]) if (a.primary_email) to.add(a.primary_email.trim().toLowerCase());
+  }
+  if (to.size === 0) return { ok: false, error: 'No email addresses on file for the people who are behind.' };
+
+  // One email, one amount: the copy quotes the LARGEST shortfall in the set
+  // so the message is never wrong by being too small. A per-family figure
+  // would mean one send per household; this is the chase, not the statement.
+  const short = Math.max(...behind.map((b) => b.short));
+  const due = Math.max(...behind.map((b) => b.due));
+  const fmt = (n: number) => `$${Number.isInteger(n) ? n : n.toFixed(2)}`;
+  const copy = paymentReminderEmailCopy(await loadSiteText(supabase), {
+    title: sig.calendar_entries.title,
+    short: fmt(short),
+    due: fmt(due)
+  });
+  const { html, text } = renderEmail({
+    heading: copy.heading,
+    intro: copy.intro,
+    bullets: [copy.bullet],
+    actionUrl: `${siteUrl()}/events/${sig.calendar_entry_id}`,
+    actionLabel: copy.actionLabel,
+    outro: copy.outro
+  });
+  const res = await sendEmail({ to: [...to], subject: copy.subject, html, text, confirm });
+  return { ok: res.status !== 'error', error: res.detail, status: res.status, to: res.to };
 }

@@ -321,6 +321,31 @@ export default async function EventDetailPage({
               {signup.payment_instructions && (
                 <p className={styles.payNote}>{signup.payment_instructions}</p>
               )}
+              {/* Deposit schedule & deadlines (Plans/Event-Logistics.md §C):
+                  "multi-week deposit schedules are a common occurrence", and so
+                  are registration deadlines — say them on the page. */}
+              {detail.milestones.length > 0 && (
+                <ul className={styles.milestoneList}>
+                  {detail.milestones.map((m) => (
+                    <li key={m.id}>
+                      <span className={styles.milestoneDate}>
+                        {new Date(`${m.due_on}T12:00:00`).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </span>
+                      <span>
+                        <strong>{m.label}</strong>
+                        {m.amount != null && <> — {money(m.amount)}</>}
+                        {m.applies_to !== 'both' && (
+                          <span className={styles.tierWho}>{AUDIENCE_LABEL[m.applies_to]}</span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
           )}
 

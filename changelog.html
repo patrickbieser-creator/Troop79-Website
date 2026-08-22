@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 22, 2026</strong> &nbsp;&middot;&nbsp; v1.82.0</p>
+      <p>Last updated: <strong>August 22, 2026</strong> &nbsp;&middot;&nbsp; v1.83.0</p>
     </div>
   </div>
 
@@ -494,6 +494,52 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.83.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.83.0</span>
+        <span class="release-date">August 22, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Event logistics, part 3 &mdash; the money block</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Many payments per person.</strong> Deposits and balances, a split between
+              Venmo and a scout account, a refund, &ldquo;Patrick paid for Anjali&rdquo; &mdash; each is its
+              own ledger row against the sign-up, and what someone owes, has paid and still owes is
+              derived from them. The roster&rsquo;s paid checkbox is gone; it shows the balance due
+              and a Record button instead.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>A Money tab per event</strong> (Roster &rarr; Money): who owes what, with a
+              per-person override for the odd tier; record / refund / credit an overpayment to the
+              scout account; the expense list (the troop paid, or a leader fronted it &mdash; which
+              opens a reimbursement request); income by method; and the campout&rsquo;s profit or
+              cost to the troop.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Deposit schedules and deadlines.</strong> Milestones show on the public event
+              page; payment milestones drive a &ldquo;Behind&rdquo; badge and an &ldquo;email those
+              behind&rdquo; reminder whose wording is editable in Lookups &amp; Admin.
+            </span>
+          </li>
+          <li>
+            <span>
+              Every event-linked ledger row now carries its calendar entry, so the Activity Report
+              and the event agree by construction. Deploy note: push the code first, then the
+              migration (it drops the one-payment index and the old paid flag).
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

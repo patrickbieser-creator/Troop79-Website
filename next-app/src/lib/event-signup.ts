@@ -99,8 +99,19 @@ export interface EventDetail {
   questions: SignupQuestion[];
   /** Sets families may pick a group in (self_select), with room counts. */
   groupSets: PublicGroupSet[];
+  /** Deposit schedule and deadlines (Plans/Event-Logistics.md §C), upcoming first. */
+  milestones: PublicMilestone[];
   /** status='yes' + participation='full' headcount, including guests. */
   headcount: number;
+}
+
+export interface PublicMilestone {
+  id: number;
+  kind: 'payment' | 'registration' | 'form' | 'other';
+  label: string;
+  due_on: string;
+  amount: number | null;
+  applies_to: 'scouts' | 'adults' | 'both';
 }
 
 /**
@@ -133,7 +144,6 @@ export interface HouseholdEntry {
   guest_note: string | null;
   notes: string | null;
   permission_slip_received: boolean;
-  payment_received: boolean;
   /** Transportation (Plans/Event-Logistics.md §A): per-leg driving with seats
    *  INCLUDING the driver, and a ride status for legs not driven. Prefills the
    *  family form so an edit shows what was offered last time. */
@@ -166,7 +176,7 @@ export interface PartyIdentities {
 
 const ENTRY_COLUMNS =
   'id, person_kind, person_id, participant_class, guest_name, host_entry_id, status, participation, ' +
-  'price_id, days, guest_count, guest_note, notes, permission_slip_received, payment_received, ' +
+  'price_id, days, guest_count, guest_note, notes, permission_slip_received, ' +
   'drives_out, drives_back, vehicle_seats_out, vehicle_seats_back, ride_out, ride_back';
 
 /**
@@ -411,6 +421,7 @@ export async function loadEventDetail(entryId: number): Promise<EventDetail | nu
     prices: [],
     slots: [],
     groupSets: [],
+    milestones: [],
     questions: [],
     headcount: 0
   };
@@ -466,6 +477,16 @@ export async function loadEventDetail(entryId: number): Promise<EventDetail | nu
       .order('id'),
     `event ${entryId}: self-select sets`
   );
+  const milestones = mustList<PublicMilestone>(
+    await supabase
+      .from('event_milestones')
+      .select('id, kind, label, due_on, amount, applies_to')
+      .eq('event_signup_id', sig.id)
+      .order('due_on')
+      .order('sort')
+      .order('id'),
+    `event ${entryId}: milestones`
+  ).map((m) => ({ ...m, amount: m.amount != null ? Number(m.amount) : null }));
   let groupSets: PublicGroupSet[] = [];
   if (selfSetRows.length > 0) {
     const setIds = selfSetRows.map((s) => s.id);
@@ -514,6 +535,7 @@ export async function loadEventDetail(entryId: number): Promise<EventDetail | nu
     slots: slotRows.map((s) => ({ ...s, filled: counts.get(s.id) ?? 0 })),
     questions: (questions ?? []) as unknown as SignupQuestion[],
     groupSets,
+    milestones,
     headcount: typeof headcount === 'number' ? headcount : 0
   };
 }

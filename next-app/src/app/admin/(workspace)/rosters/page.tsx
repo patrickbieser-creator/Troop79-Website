@@ -57,9 +57,8 @@ async function load(): Promise<RosterSummary[]> {
 
   const activeCount = (activeScouts ?? []).length;
 
-  const [{ data: entries }, { data: prices }, { data: cal }] = await Promise.all([
+  const [{ data: entries }, { data: cal }] = await Promise.all([
     supabase.from('signup_entries').select('*').neq('status', 'cancelled'),
-    supabase.from('event_prices').select('id, amount, per'),
     supabase
       .from('calendar_entries')
       .select('id, title, category, entry_date')
@@ -69,15 +68,25 @@ async function load(): Promise<RosterSummary[]> {
       )
   ]);
 
-  const priceById = new Map(
-    ((prices ?? []) as { id: number; amount: number; per: string }[]).map((p) => [p.id, p])
-  );
   const calById = new Map(
     ((cal ?? []) as { id: number; title: string; category: string; entry_date: string }[]).map(
       (c) => [c.id, c]
     )
   );
   const allEntries = (entries ?? []) as Record<string, unknown>[];
+
+  // Owed/paid are DERIVED (signup_entry_balances — many payments per entry,
+  // overrides, refunds; Plans/Event-Logistics.md §C), never a flag.
+  const { data: balanceRows } = await supabase
+    .from('signup_entry_balances')
+    .select('entry_id, event_signup_id, owed, paid');
+  const balancesBySignup = new Map<number, { owed: number; paid: number }>();
+  for (const b of (balanceRows ?? []) as { entry_id: number; event_signup_id: number; owed: number; paid: number }[]) {
+    const acc = balancesBySignup.get(b.event_signup_id) ?? { owed: 0, paid: 0 };
+    acc.owed += Number(b.owed);
+    acc.paid += Number(b.paid);
+    balancesBySignup.set(b.event_signup_id, acc);
+  }
 
   const out: RosterSummary[] = [];
   for (const s of sigs) {
@@ -91,15 +100,9 @@ async function load(): Promise<RosterSummary[]> {
     const going = mine.filter((e) => e.status === 'yes' && e.participation === 'full');
     const respondedScouts = new Set(mine.map((e) => e.scout_id).filter(Boolean));
 
-    let owed = 0;
-    let paid = 0;
-    for (const e of mine) {
-      const t = e.price_id ? priceById.get(Number(e.price_id)) : undefined;
-      if (!t) continue;
-      const amt = Number(t.amount) * (t.per === 'day' ? Number(e.days ?? 1) : 1);
-      owed += amt;
-      if (e.payment_received === true) paid += amt;
-    }
+    const sums = balancesBySignup.get(sid) ?? { owed: 0, paid: 0 };
+    const owed = Math.round(sums.owed * 100) / 100;
+    const paid = Math.round(sums.paid * 100) / 100;
 
     out.push({
       signupId: sid,
