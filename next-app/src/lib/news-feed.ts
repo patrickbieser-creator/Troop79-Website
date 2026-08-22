@@ -170,7 +170,7 @@ export interface CategoryResource {
 }
 
 /**
- * /tags/[slug] — a search-result view of one category across the whole site
+ * /category/[slug] — a search-result view of one category across the whole site
  * (Patrick, 2026-08-21): upcoming and recent events, news articles (paged),
  * and resources (when they carry a category — none do yet, by design).
  */

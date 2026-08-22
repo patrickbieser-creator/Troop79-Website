@@ -65,7 +65,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
       {article.categories.length > 0 && (
         <div className={styles.tagRow}>
           {article.categories.map((t) => (
-            <Link key={t.slug} href={`/tags/${t.slug}`} className={styles.tagChip}>
+            <Link key={t.slug} href={`/category/${t.slug}`} className={styles.tagChip}>
               {t.label}
             </Link>
           ))}

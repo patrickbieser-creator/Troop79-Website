@@ -516,7 +516,7 @@ export default async function LookupsPage() {
       <div className={styles.grid}>
         <Card
           title="Categories"
-          sub={`${calendarCategories.length} categories · the ONE taxonomy — every event, photo album AND news story picks from this list (tags merged in, 2026-08-21) · renaming one updates everything that used it · a category in use can't be deleted · each has a public page at /tags/<slug>`}
+          sub={`${calendarCategories.length} categories · the ONE taxonomy — every event, photo album AND news story picks from this list (tags merged in, 2026-08-21) · renaming one updates everything that used it · a category in use can't be deleted · each has a public page at /category/<slug>`}
         >
           <CategoriesEditor
             rows={calendarCategories}

@@ -127,7 +127,7 @@ const SCOREBOARD: ReadonlyArray<readonly [string, string, string]> = [
   [
     'Pills / badges / tags',
     '46 distinct class names / 16 files',
-    'Badge SHIPPED (A; caps={false} added C) — reqDoneBadge converted, class deleted; CATEGORICAL tags stay by rule. ONE taxonomy (2026-08-21, Patrick): news articles join calendar_categories (article_categories) — article and event cards both chip their category via articleCategoryLabel/.catEvents; the home "Browse by Category" cloud (loadCategoryCloud, live counts, .tagCount) and /tags/<slug> (events + news + resources) read the same list'
+    'Badge SHIPPED (A; caps={false} added C) — reqDoneBadge converted, class deleted; CATEGORICAL tags stay by rule. ONE taxonomy (2026-08-21, Patrick): news articles join calendar_categories (article_categories) — article and event cards both chip their category via articleCategoryLabel/.catEvents; the home "Browse by Category" cloud (loadCategoryCloud, live counts, .tagCount) and /category/<slug> (events + news + resources) read the same list'
   ],
   [
     'Form fields',

@@ -159,3 +159,21 @@
 .frontPageTitle { font-size: 14px; font-weight: 700; color: var(--admin-gray-900); margin: 0; }
 .frontPageActions { display: flex; align-items: center; gap: 10px; }
 .frontPageHint { font-size: 12.5px; color: var(--admin-gray-600); line-height: 1.5; margin: 6px 0 10px; }
+/* Save order — the admin PRIMARY canon (solid navy; Patrick's Phase A call:
+   primaries are navy, green is reserved for Add/create). Same recipe as
+   court-of-honor/report .primaryBtn and events-admin .enableBtn. */
+.frontPageSave {
+  background: var(--admin-navy);
+  color: var(--admin-white);
+  border: 1px solid var(--admin-navy);
+  border-radius: var(--admin-radius-sm);
+  font-family: inherit;
+  font-size: var(--admin-text-base);
+  font-weight: var(--admin-weight-bold);
+  letter-spacing: var(--admin-tracking-tight);
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: background var(--admin-transition);
+}
+.frontPageSave:hover:not(:disabled) { background: var(--admin-navy-hover); }
+.frontPageSave:disabled { opacity: .5; cursor: not-allowed; }

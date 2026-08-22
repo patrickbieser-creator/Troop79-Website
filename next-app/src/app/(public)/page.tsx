@@ -165,7 +165,7 @@ export default async function Home({
                       {tags.map((t) => (
                         <Link
                           key={t.slug}
-                          href={`/tags/${t.slug}`}
+                          href={`/category/${t.slug}`}
                           className={styles.tagChipSidebar}
                           title={`${t.articles} news · ${t.events} upcoming event${t.events === 1 ? '' : 's'}${t.resources ? ` · ${t.resources} resources` : ''}`}
                         >

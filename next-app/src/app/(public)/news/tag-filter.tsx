@@ -19,14 +19,14 @@ import styles from './news-controls.module.css';
 
 /** Categories come from the ONE taxonomy shared with the calendar
  *  (calendar_categories, 2026-08-21) — only those with content, via
- *  loadCategoryCloud. The /tags/<slug> URL shape is kept. */
+ *  loadCategoryCloud. The /category/<slug> URL shape is kept. */
 export function TagFilter({ tags, currentSlug }: { tags: NewsCategory[]; currentSlug?: string }) {
   const router = useRouter();
 
   return (
     <form
       className={styles.tagFilter}
-      action="/tags"
+      action="/category"
       onSubmit={(e) => e.preventDefault()}
     >
       <label className={styles.tagFilterLabel} htmlFor="tag-filter">
@@ -39,7 +39,7 @@ export function TagFilter({ tags, currentSlug }: { tags: NewsCategory[]; current
         defaultValue={currentSlug ?? ''}
         onChange={(e) => {
           const slug = e.target.value;
-          router.push(slug ? `/tags/${slug}` : '/news');
+          router.push(slug ? `/category/${slug}` : '/news');
         }}
       >
         <option value="">All categories</option>

@@ -55,7 +55,12 @@ export function FrontPageOrder({ ordered, available }: { ordered: FrontPageItem[
         <h2 className={styles.frontPageTitle}>Front page order</h2>
         <div className={styles.frontPageActions}>
           {saved && !dirty && <Badge variant="success">Saved</Badge>}
-          <button type="button" className={styles.actionBtnPrimary} disabled={!dirty || pending} onClick={save}>
+          <button
+            type="button"
+            className={styles.frontPageSave}
+            disabled={!dirty || pending}
+            onClick={save}
+          >
             {pending ? 'Saving…' : 'Save order'}
           </button>
         </div>
