@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { eventRevalidatePaths } from '../src/lib/event-signup';
+import { eventRevalidatePaths } from '../src/lib/event-signup-shared';
 
 /**
  * Which paths a signup edit has to flush (found 2026-08-22).

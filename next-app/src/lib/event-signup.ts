@@ -391,31 +391,3 @@ export function normalizeGuestRows(raw: string | null | undefined): GuestRow[] {
   }
   return out;
 }
-
-/**
- * Every path a signup change has to flush.
- *
- * `/events/{id}/signup` — the slot-first form families actually sign up on —
- * was missing from this list: nothing in the codebase revalidated it. That is
- * latent rather than currently visible, because the page awaits searchParams
- * and is therefore rendered dynamically today; the gap would bite the moment
- * it stopped being, which is one `export const revalidate` away.
- *
- * Recorded honestly because it was found while chasing a DIFFERENT problem
- * (Patrick, 2026-08-22: a job showing Sep 2 on the public form after being
- * changed to Sep 16 in the builder). That turned out to be a duplicate job
- * still dated Sep 2, not staleness — the form was right. This list was
- * genuinely incomplete regardless, so it is fixed and tested rather than left
- * for a future reader to trip over.
- */
-export function eventRevalidatePaths(calendarEntryId: number, signupId?: number): string[] {
-  const paths = [
-    '/admin/events',
-    `/events/${calendarEntryId}`,
-    // The slot-first signup form — the page that actually shows job dates.
-    `/events/${calendarEntryId}/signup`,
-    '/events'
-  ];
-  if (signupId) paths.splice(1, 0, `/admin/events/${signupId}`);
-  return paths;
-}

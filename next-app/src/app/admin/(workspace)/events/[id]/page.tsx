@@ -98,6 +98,8 @@ export default async function EventBuilderPage({ params }: { params: Promise<{ i
       <BuilderPanels
         signupId={signupId}
         calendarEntryId={entryId}
+        entryDate={String(data.entry.entry_date ?? '')}
+        endDate={(data.entry.end_date as string | null) ?? null}
         signup={data.signup}
         prices={data.prices}
         slots={data.slots}

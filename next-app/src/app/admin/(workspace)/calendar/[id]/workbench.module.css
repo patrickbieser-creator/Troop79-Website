@@ -60,13 +60,19 @@
 
 /* Card/panel canon (Phase B, 2026-08-21): white, gray-200 border, radius
    token, shadow-sm — padding/margins stay screen-local. */
+/* The form standard (D-179, v1.71.1): the SURFACE that holds fields is
+   tinted so white fields read as fields. This panel was left on
+   --admin-white, so every input on the calendar workbench sat white-on-white
+   — the one screen in the admin still doing it (Patrick and the event
+   coordinator, 2026-08-22: "does not have the background tinting on all
+   sections"). */
 .panel {
   border: 1px solid var(--admin-gray-200);
   border-radius: var(--admin-radius);
   box-shadow: var(--admin-shadow-sm);
   padding: 14px 16px 16px;
   margin-bottom: 16px;
-  background: var(--admin-white);
+  background: var(--admin-form-bg);
 }
 
 .panelHead {

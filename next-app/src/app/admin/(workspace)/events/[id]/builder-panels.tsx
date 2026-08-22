@@ -8,6 +8,7 @@ import {
   addSlot, deleteSlot, updateSlot, addQuestion, deleteQuestion, disableSignup
 } from '../actions';
 import type { SlotClaimant, QuestionAnswerRow } from '@/lib/event-signup-admin';
+import { jobDateNote } from '@/lib/event-signup-shared';
 import { DatePickerField } from '../../_components/date-picker-field';
 import { DateTimeField } from '../../_components/date-time-field';
 import styles from '../events-admin.module.css';
@@ -57,6 +58,8 @@ function Toggle({
 export function BuilderPanels({
   signupId,
   calendarEntryId,
+  entryDate,
+  endDate,
   signup,
   prices,
   slots,
@@ -64,6 +67,9 @@ export function BuilderPanels({
 }: {
   signupId: number;
   calendarEntryId: number;
+  /** The event's own dates — a job outside them gets a note, never a block. */
+  entryDate: string;
+  endDate: string | null;
   signup: Rec;
   prices: Rec[];
   slots: Rec[];
@@ -514,108 +520,12 @@ export function BuilderPanels({
           in that job’s own description — the event’s description covers the rest.
         </p>
 
-        <form
-          className={styles.addCard}
-          onSubmit={(e) => {
-            e.preventDefault();
-            submitSlot();
-          }}
-        >
-          <h3>Add a job</h3>
-          <div className={styles.addRow}>
-            <label className={styles.addField}>
-              <span className="adminLabel">Type</span>
-              <select value={sKind} onChange={(e) => setSKind(e.target.value as 'shift' | 'task')}>
-                <option value="shift">Shift (timed)</option>
-                <option value="task">Task (untimed)</option>
-              </select>
-            </label>
-            <label className={styles.addField}>
-              <span className="adminLabel">Job name</span>
-              <input
-                ref={sLabelRef}
-                placeholder="e.g. Setup crew"
-                value={sLabel}
-                onChange={(e) => setSLabel(e.target.value)}
-              />
-            </label>
-            <label className={styles.addField}>
-              <span className="adminLabel">Date</span>
-              <DatePickerField className={styles.dateField} value={sDate} onChange={setSDate} />
-            </label>
-            {sKind === 'shift' && (
-              <>
-                <label className={styles.addField}>
-                  <span className="adminLabel">Starts</span>
-                  <input type="time" value={sStart} onChange={(e) => setSStart(e.target.value)} />
-                </label>
-                <label className={styles.addField}>
-                  <span className="adminLabel">Ends</span>
-                  <input type="time" value={sEnd} onChange={(e) => setSEnd(e.target.value)} />
-                </label>
-              </>
-            )}
-            <label className={styles.addField}>
-              <span className="adminLabel">Who</span>
-              <select
-                value={sWho}
-                onChange={(e) => setSWho(e.target.value as 'scouts' | 'adults' | 'both')}
-              >
-                <option value="both">Everyone</option>
-                <option value="scouts">Scouts</option>
-                <option value="adults">Adults</option>
-              </select>
-            </label>
-            <label className={styles.addField}>
-              <span className="adminLabel">Needed</span>
-              <input
-                type="number"
-                min={1}
-                placeholder="no limit"
-                value={sNeeded}
-                onChange={(e) => setSNeeded(e.target.value)}
-              />
-            </label>
-            {sKind === 'task' && (
-              <label className={styles.inlineChk}>
-                <input
-                  type="checkbox"
-                  checked={sAttend}
-                  onChange={(e) => setSAttend(e.target.checked)}
-                />
-                needs attendance
-              </label>
-            )}
-          </div>
-          <label className={styles.addDescField}>
-            <span className="adminLabel">Description (optional)</span>
-            {/* Textarea, not an input: this is prose and often two sentences.
-                Enter inserts a newline here rather than submitting the form —
-                the name field keeps the Enter-to-add shortcut. */}
-            <textarea
-              rows={2}
-              value={sDesc}
-              onChange={(e) => setSDesc(e.target.value)}
-              placeholder="What this job involves — e.g. “Bring a folding table, 6ft or larger. Drop off Friday evening.”"
-            />
-          </label>
-          <div className={styles.addCardActions}>
-            <button type="submit" className={styles.enableBtn} disabled={pending}>
-              {pending ? 'Adding…' : 'Add job'}
-            </button>
-            <span className={styles.addHint}>
-              Enter adds the job and puts the cursor back in the name — everything else stays for
-              the next one.
-            </span>
-          </div>
-          {slotError && <p className={styles.err}>{slotError}</p>}
-          {slotNote && (
-            <p className={styles.okNote} role="status">
-              {slotNote}
-            </p>
-          )}
-        </form>
-
+        {/* The list comes FIRST (Patrick + the event coordinator, 2026-08-22:
+            "the order of operations for add/editing a job is confusing").
+            Add-then-list meant the jobs you already had were pushed below a
+            form you were done with, which is how a stray duplicate went
+            unnoticed on a cloned event. What exists is the thing you want to
+            read; adding is what you do next. */}
         {slots.length > 0 && (
           <table className={styles.miniTable}>
             <thead>
@@ -833,6 +743,24 @@ export function BuilderPanels({
                       {s(sl.starts_at)
                         ? `${s(sl.starts_at).slice(0, 5)}–${s(sl.ends_at).slice(0, 5)}`
                         : ''}
+                      {/* A job outside its event is often correct — the Thursday
+                          shopping run before a Friday campout — so this NOTES it
+                          rather than blocking. It exists because the difference
+                          was invisible: a stray Sep 2 job on a Sep 16 event read
+                          as a broken clone, then made two near-identical rows
+                          impossible to tell apart (2026-08-22). */}
+                      {(() => {
+                        const note = jobDateNote(
+                          (sl.slot_date as string | null) ?? null,
+                          entryDate,
+                          endDate
+                        );
+                        return note ? (
+                          <span className={styles.offEventNote} title="This job's date is outside the event">
+                            {note.text}
+                          </span>
+                        ) : null;
+                      })()}
                     </td>
                     <td>{s(sl.eligibility)}</td>
                     <td className={styles.nowrap}>
@@ -877,6 +805,109 @@ export function BuilderPanels({
             </tbody>
           </table>
         )}
+
+        <form
+          className={styles.addCard}
+          onSubmit={(e) => {
+            e.preventDefault();
+            submitSlot();
+          }}
+        >
+          <h3>Add a job</h3>
+          <div className={styles.addRow}>
+            <label className={styles.addField}>
+              <span className="adminLabel">Type</span>
+              <select value={sKind} onChange={(e) => setSKind(e.target.value as 'shift' | 'task')}>
+                <option value="shift">Shift (timed)</option>
+                <option value="task">Task (untimed)</option>
+              </select>
+            </label>
+            <label className={styles.addField}>
+              <span className="adminLabel">Job name</span>
+              <input
+                ref={sLabelRef}
+                placeholder="e.g. Setup crew"
+                value={sLabel}
+                onChange={(e) => setSLabel(e.target.value)}
+              />
+            </label>
+            <label className={styles.addField}>
+              <span className="adminLabel">Date</span>
+              <DatePickerField className={styles.dateField} value={sDate} onChange={setSDate} />
+            </label>
+            {sKind === 'shift' && (
+              <>
+                <label className={styles.addField}>
+                  <span className="adminLabel">Starts</span>
+                  <input type="time" value={sStart} onChange={(e) => setSStart(e.target.value)} />
+                </label>
+                <label className={styles.addField}>
+                  <span className="adminLabel">Ends</span>
+                  <input type="time" value={sEnd} onChange={(e) => setSEnd(e.target.value)} />
+                </label>
+              </>
+            )}
+            <label className={styles.addField}>
+              <span className="adminLabel">Who</span>
+              <select
+                value={sWho}
+                onChange={(e) => setSWho(e.target.value as 'scouts' | 'adults' | 'both')}
+              >
+                <option value="both">Everyone</option>
+                <option value="scouts">Scouts</option>
+                <option value="adults">Adults</option>
+              </select>
+            </label>
+            <label className={styles.addField}>
+              <span className="adminLabel">Needed</span>
+              <input
+                type="number"
+                min={1}
+                placeholder="no limit"
+                value={sNeeded}
+                onChange={(e) => setSNeeded(e.target.value)}
+              />
+            </label>
+            {sKind === 'task' && (
+              <label className={styles.inlineChk}>
+                <input
+                  type="checkbox"
+                  checked={sAttend}
+                  onChange={(e) => setSAttend(e.target.checked)}
+                />
+                needs attendance
+              </label>
+            )}
+          </div>
+          <label className={styles.addDescField}>
+            <span className="adminLabel">Description (optional)</span>
+            {/* Textarea, not an input: this is prose and often two sentences.
+                Enter inserts a newline here rather than submitting the form —
+                the name field keeps the Enter-to-add shortcut. */}
+            <textarea
+              rows={2}
+              value={sDesc}
+              onChange={(e) => setSDesc(e.target.value)}
+              placeholder="What this job involves — e.g. “Bring a folding table, 6ft or larger. Drop off Friday evening.”"
+            />
+          </label>
+          <div className={styles.addCardActions}>
+            <button type="submit" className={styles.enableBtn} disabled={pending}>
+              {pending ? 'Adding…' : 'Add job'}
+            </button>
+            <span className={styles.addHint}>
+              Enter adds the job and puts the cursor back in the name — everything else stays for
+              the next one.
+            </span>
+          </div>
+          {slotError && <p className={styles.err}>{slotError}</p>}
+          {slotNote && (
+            <p className={styles.okNote} role="status">
+              {slotNote}
+            </p>
+          )}
+        </form>
+
       </section>
 
       <section className={styles.panel}>

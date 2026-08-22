@@ -2,7 +2,7 @@
 
 import { isParticipantClass, personKindFor, GUEST_CLASSES, type ParticipantClass } from '@/lib/participant-class';
 import { revalidatePath } from 'next/cache';
-import { eventRevalidatePaths } from '@/lib/event-signup';
+import { eventRevalidatePaths } from '@/lib/event-signup-shared';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { sendEmail, renderEmail } from '@/lib/email';
