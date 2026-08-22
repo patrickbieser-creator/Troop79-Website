@@ -9,8 +9,10 @@ import {
   claimSlotFor,
   unclaimSlotFor,
   setEntryClass,
-  addGuestEntry
+  addGuestEntry,
+  setEntryTransport
 } from '../../events/actions';
+import { LEG_LABEL, RIDE_STATUSES, RIDE_STATUS_LABEL, rideCell, type Leg, type RideStatus } from '@/lib/transport';
 import {
   PARTICIPANT_CLASSES,
   PARTICIPANT_CLASS_LABEL,
@@ -150,13 +152,44 @@ export function RosterTable({
     if (!editingRow && dlg.open) dlg.close();
   }, [editingRow]);
 
+  // Transport (Plans/Event-Logistics.md §A): legs driven, seats INCLUDING the
+  // driver, and a ride status for the legs not driven.
+  const [editTransport, setEditTransport] = useState({
+    drivesOut: false,
+    drivesBack: false,
+    seatsOut: 4,
+    seatsBack: 4,
+    rideOut: 'needs_ride' as RideStatus,
+    rideBack: 'needs_ride' as RideStatus
+  });
+
   function openJobsEditor(r: RosterRow) {
     const byId = new Map(r.claimDetails.map((c) => [c.slotId, c.comment ?? '']));
     setEditClaims(
       new Map(slots.map((sl) => [sl.id, { checked: byId.has(sl.id), comment: byId.get(sl.id) ?? '' }]))
     );
     setEditClass(r.participantClass);
+    setEditTransport({
+      drivesOut: r.drivesOut,
+      drivesBack: r.drivesBack,
+      seatsOut: r.vehicleSeatsOut ?? r.vehicleSeatsBack ?? 4,
+      seatsBack: r.vehicleSeatsBack ?? r.vehicleSeatsOut ?? 4,
+      rideOut: r.rideOut ?? 'needs_ride',
+      rideBack: r.rideBack ?? 'needs_ride'
+    });
     setEditingRow(r);
+  }
+
+  function transportChanged(r: RosterRow) {
+    const t = editTransport;
+    return (
+      t.drivesOut !== r.drivesOut ||
+      t.drivesBack !== r.drivesBack ||
+      (t.drivesOut && t.seatsOut !== r.vehicleSeatsOut) ||
+      (t.drivesBack && t.seatsBack !== r.vehicleSeatsBack) ||
+      (!t.drivesOut && t.rideOut !== (r.rideOut ?? 'needs_ride')) ||
+      (!t.drivesBack && t.rideBack !== (r.rideBack ?? 'needs_ride'))
+    );
   }
 
   function saveJobs() {
@@ -169,6 +202,26 @@ export function RosterTable({
     start(async () => {
       setError(null);
       try {
+        if (transportChanged(row)) {
+          const t = editTransport;
+          const res = await setEntryTransport(
+            row.id,
+            {
+              drivesOut: t.drivesOut,
+              drivesBack: t.drivesBack,
+              vehicleSeatsOut: t.drivesOut ? t.seatsOut : null,
+              vehicleSeatsBack: t.drivesBack ? t.seatsBack : null,
+              rideOut: t.drivesOut ? null : t.rideOut,
+              rideBack: t.drivesBack ? null : t.rideBack
+            },
+            signupId,
+            calendarEntryId
+          );
+          if (!res.ok) {
+            setError(res.error ?? 'Could not save transportation.');
+            return;
+          }
+        }
         if (editClass !== row.participantClass) {
           const res = await setEntryClass(row.id, editClass, signupId, calendarEntryId);
           if (!res.ok) {
@@ -261,13 +314,15 @@ export function RosterTable({
   const exportCsv = () => {
     const head = [
       'Type', 'Name', 'Household', 'Status', 'Participation', 'Tier', 'Days',
-      'Owed', 'Guests', 'Guest note', 'Driving there', 'Driving back',
+      'Owed', 'Guests', 'Guest note',
+      'Drives there (seats incl. driver)', 'Drives back (seats incl. driver)', 'Ride there', 'Ride back',
       'Slip', 'Paid', 'Jobs', 'Answers', 'Notes'
     ];
     const body = sorted.map((r) => [
       PARTICIPANT_CLASS_LABEL[r.participantClass], r.name, r.household, r.status, r.participation, r.tierLabel ?? '',
       r.days ?? '', r.owed, r.guests, r.guestNote ?? '',
-      r.drivesOut ? (r.seatsOut ?? '') : '', r.drivesBack ? (r.seatsBack ?? '') : '',
+      r.drivesOut ? (r.vehicleSeatsOut ?? '') : '', r.drivesBack ? (r.vehicleSeatsBack ?? '') : '',
+      rideCell(r, 'out', r.carOut), rideCell(r, 'back', r.carBack),
       r.slipReceived ? 'Y' : 'N', r.paymentReceived ? 'Y' : 'N',
       r.claimsDisplay.join(' | '), r.answers.join(' | '), r.notes ?? ''
     ]);
@@ -290,7 +345,7 @@ export function RosterTable({
       else router.refresh();
     });
 
-  const colCount = 13 + (showSlip ? 1 : 0);
+  const colCount = 14 + (showSlip ? 1 : 0);
 
   return (
     <section className={styles.panel}>
@@ -321,6 +376,7 @@ export function RosterTable({
             <th scope="col">Guests</th>
             <SortHeader label="Owed" colKey="owed" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
             <th scope="col">Driving</th>
+            <th scope="col">Ride</th>
             <th scope="col">Jobs</th>
             <th scope="col">Answers</th>
             <th scope="col">Notes</th>
@@ -361,9 +417,20 @@ export function RosterTable({
               </td>
               <td className={styles.nowrap}>
                 {r.drivesOut || r.drivesBack
-                  ? [r.drivesOut && `there ${r.seatsOut}`, r.drivesBack && `back ${r.seatsBack}`]
+                  ? [
+                      r.drivesOut && `there · ${r.vehicleSeatsOut} seats`,
+                      r.drivesBack && `back · ${r.vehicleSeatsBack} seats`
+                    ]
                       .filter(Boolean)
-                      .join(' · ')
+                      .join(' / ')
+                  : '—'}
+              </td>
+              <td className={`${styles.nowrap} ${styles.cellMuted}`}>
+                {r.status === 'yes' && r.participation !== 'contributor'
+                  ? (['out', 'back'] as Leg[])
+                      .filter((leg) => !(leg === 'out' ? r.drivesOut : r.drivesBack))
+                      .map((leg) => `${LEG_LABEL[leg].toLowerCase()}: ${rideCell(r, leg, leg === 'out' ? r.carOut : r.carBack)}`)
+                      .join(' · ') || '—'
                   : '—'}
               </td>
               <td>{r.claimsDisplay.join(', ') || '—'}</td>
@@ -500,6 +567,69 @@ export function RosterTable({
                   ))}
                 </select>
               </label>
+              {editingRow.participation !== 'contributor' && editingRow.status !== 'cancelled' && (
+                <>
+                  <p className={`adminLabel ${styles.jobsHeading}`}>Transportation</p>
+                  <ul className={styles.jobsList}>
+                    {(['out', 'back'] as Leg[]).map((leg) => {
+                      const drives = leg === 'out' ? editTransport.drivesOut : editTransport.drivesBack;
+                      const seats = leg === 'out' ? editTransport.seatsOut : editTransport.seatsBack;
+                      const ride = leg === 'out' ? editTransport.rideOut : editTransport.rideBack;
+                      return (
+                        <li key={leg}>
+                          <label>
+                            <input
+                              type="checkbox"
+                              checked={drives}
+                              disabled={editingRow.kind !== 'adult'}
+                              onChange={(e) =>
+                                setEditTransport((t) => ({
+                                  ...t,
+                                  [leg === 'out' ? 'drivesOut' : 'drivesBack']: e.target.checked
+                                }))
+                              }
+                            />
+                            Drives {LEG_LABEL[leg].toLowerCase()}
+                          </label>
+                          {drives ? (
+                            <input
+                              type="number"
+                              min={1}
+                              max={15}
+                              aria-label={`Seats ${LEG_LABEL[leg].toLowerCase()}, including the driver`}
+                              value={seats}
+                              onChange={(e) =>
+                                setEditTransport((t) => ({
+                                  ...t,
+                                  [leg === 'out' ? 'seatsOut' : 'seatsBack']: Math.max(1, Number(e.target.value) || 1)
+                                }))
+                              }
+                            />
+                          ) : (
+                            <select
+                              aria-label={`Ride ${LEG_LABEL[leg].toLowerCase()}`}
+                              value={ride}
+                              onChange={(e) =>
+                                setEditTransport((t) => ({
+                                  ...t,
+                                  [leg === 'out' ? 'rideOut' : 'rideBack']: e.target.value as RideStatus
+                                }))
+                              }
+                            >
+                              {RIDE_STATUSES.map((s) => (
+                                <option key={s} value={s}>
+                                  {RIDE_STATUS_LABEL[s]}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <p className={styles.jobsEmpty}>Seat counts include the driver. Placing riders in cars happens on Rides &amp; assignments.</p>
+                </>
+              )}
               <p className={`adminLabel ${styles.jobsHeading}`}>Jobs &amp; commitments</p>
               {slots.length === 0 ? (
                 <p className={styles.jobsEmpty}>This signup has no jobs defined yet — add them in the Builder.</p>

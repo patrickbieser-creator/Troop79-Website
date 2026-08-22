@@ -31,7 +31,8 @@ const HOUSEHOLDS: Household[] = [
         leaderCode: 'PB',
         name: 'Patrick Bieser',
         relationship: 'Parent',
-        email: null
+        email: null,
+        defaultVehicleSeats: null
       }
     ]
   },
@@ -46,7 +47,8 @@ const HOUSEHOLDS: Household[] = [
         leaderCode: 'CM',
         name: 'Committee Member',
         relationship: null,
-        email: null
+        email: null,
+        defaultVehicleSeats: null
       }
     ]
   }

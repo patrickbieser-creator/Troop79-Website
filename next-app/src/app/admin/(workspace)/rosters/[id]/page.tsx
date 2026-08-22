@@ -10,6 +10,7 @@ import {
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireCapability } from '@/lib/require-capability';
+import { isRideStatus, legTiles, type Leg, type RideStatus, type TransportCar } from '@/lib/transport';
 import { RosterTable } from './roster-table';
 import { AddPerson, type AddCandidate } from './add-person';
 import { EmailPanel } from './email-panel';
@@ -48,8 +49,15 @@ export interface RosterRow {
   guestNote: string | null;
   drivesOut: boolean;
   drivesBack: boolean;
-  seatsOut: number | null;
-  seatsBack: number | null;
+  /** Seats INCLUDING the driver (Plans/Event-Logistics.md §A). */
+  vehicleSeatsOut: number | null;
+  vehicleSeatsBack: number | null;
+  /** Ride status for legs not driven; null on a driven leg. */
+  rideOut: RideStatus | null;
+  rideBack: RideStatus | null;
+  /** Driver's name when placed in a car for that leg. */
+  carOut: string | null;
+  carBack: string | null;
   slipReceived: boolean;
   paymentReceived: boolean;
   notes: string | null;
@@ -98,6 +106,43 @@ async function load(signupId: number) {
 
     supabase.from('people').select('id, display_name')
   ]);
+
+  // Cars (Plans/Event-Logistics.md §A): trigger-owned groups in the two
+  // kind='car' sets. Each entry's car per leg is the driver's name.
+  const { data: carSets } = await supabase
+    .from('signup_group_sets')
+    .select('id, leg')
+    .eq('event_signup_id', sig.id)
+    .eq('kind', 'car');
+  const carSetIds = ((carSets ?? []) as { id: number; leg: Leg }[]).map((s) => s.id);
+  const legBySet = new Map(((carSets ?? []) as { id: number; leg: Leg }[]).map((s) => [s.id, s.leg]));
+  const { data: carGroups } = carSetIds.length
+    ? await supabase.from('signup_groups').select('id, set_id, driver_entry_id, capacity').in('set_id', carSetIds)
+    : { data: [] as unknown[] };
+  const { data: carMembers } = carSetIds.length
+    ? await supabase.from('signup_group_members').select('group_id, entry_id').in('set_id', carSetIds)
+    : { data: [] as unknown[] };
+  const membersByGroup = new Map<number, number[]>();
+  for (const m of (carMembers ?? []) as { group_id: number; entry_id: number }[]) {
+    membersByGroup.set(m.group_id, [...(membersByGroup.get(m.group_id) ?? []), m.entry_id]);
+  }
+  const cars: TransportCar[] = ((carGroups ?? []) as {
+    id: number;
+    set_id: number;
+    driver_entry_id: number | null;
+    capacity: number | null;
+  }[])
+    .filter((g) => g.driver_entry_id != null)
+    .map((g) => ({
+      id: g.id,
+      leg: legBySet.get(g.set_id) ?? 'out',
+      driverEntryId: g.driver_entry_id as number,
+      capacity: g.capacity ?? 1,
+      memberEntryIds: membersByGroup.get(g.id) ?? []
+    }));
+  // entry id → driver entry id, per leg
+  const carDriverByEntry: Record<Leg, Map<number, number>> = { out: new Map(), back: new Map() };
+  for (const c of cars) for (const m of c.memberEntryIds) carDriverByEntry[c.leg].set(m, c.driverEntryId);
 
   const priceById = new Map(
     ((prices ?? []) as { id: number; label: string; amount: number; per: string }[]).map((p) => [p.id, p])
@@ -149,6 +194,18 @@ async function load(signupId: number) {
     ]);
   }
 
+  const entryNameById = new Map<number, string>();
+  for (const e of (entries ?? []) as Record<string, unknown>[]) {
+    entryNameById.set(
+      Number(e.id),
+      (e.person_id ? peopleById.get(Number(e.person_id)) : null) ?? (e.guest_name ? String(e.guest_name) : 'Unknown')
+    );
+  }
+  const carNameFor = (entryId: number, leg: Leg) => {
+    const driver = carDriverByEntry[leg].get(entryId);
+    return driver != null ? (entryNameById.get(driver) ?? 'Driver') : null;
+  };
+
   const rows: RosterRow[] = ((entries ?? []) as Record<string, unknown>[]).map((e) => {
     const tier = e.price_id ? priceById.get(Number(e.price_id)) : undefined;
     const days = e.days ? Number(e.days) : null;
@@ -181,8 +238,12 @@ async function load(signupId: number) {
       guestNote: (e.guest_note as string) ?? null,
       drivesOut: e.drives_out === true,
       drivesBack: e.drives_back === true,
-      seatsOut: e.seats_offered_out ? Number(e.seats_offered_out) : null,
-      seatsBack: e.seats_offered_back ? Number(e.seats_offered_back) : null,
+      vehicleSeatsOut: e.vehicle_seats_out ? Number(e.vehicle_seats_out) : null,
+      vehicleSeatsBack: e.vehicle_seats_back ? Number(e.vehicle_seats_back) : null,
+      rideOut: isRideStatus(e.ride_out) ? e.ride_out : null,
+      rideBack: isRideStatus(e.ride_back) ? e.ride_back : null,
+      carOut: e.drives_out === true ? null : carNameFor(Number(e.id), 'out'),
+      carBack: e.drives_back === true ? null : carNameFor(Number(e.id), 'back'),
       slipReceived: e.permission_slip_received === true,
       paymentReceived: e.payment_received === true,
       notes: (e.notes as string) ?? null,
@@ -231,6 +292,21 @@ async function load(signupId: number) {
     household: null
   }));
 
+  // The sheet's Need / Avail / Short-Over block, per leg.
+  const transportEntries = rows.map((r) => ({
+    id: r.id,
+    status: r.status,
+    participation: r.participation,
+    drivesOut: r.drivesOut,
+    drivesBack: r.drivesBack,
+    vehicleSeatsOut: r.vehicleSeatsOut,
+    vehicleSeatsBack: r.vehicleSeatsBack,
+    rideOut: r.rideOut,
+    rideBack: r.rideBack
+  }));
+  const ridesOut = legTiles(transportEntries, cars, 'out');
+  const ridesBack = legTiles(transportEntries, cars, 'back');
+
   return {
     signup: sig,
     entry: entry as Record<string, unknown> | null,
@@ -239,6 +315,9 @@ async function load(signupId: number) {
     nonResponders,
     slotCoverage,
     addCandidates,
+    ridesOut,
+    ridesBack,
+    hasCarSets: carSetIds.length > 0,
     slots: ((slots ?? []) as { id: number; label: string }[]).map((sl) => ({ id: sl.id, label: sl.label }))
   };
 }
@@ -250,7 +329,7 @@ export default async function EventRosterPage({ params }: { params: Promise<{ id
   const data = await load(signupId);
   if (!data || !data.entry) notFound();
 
-  const { rows, removedRows, nonResponders, slotCoverage, signup } = data;
+  const { rows, removedRows, nonResponders, slotCoverage, signup, ridesOut, ridesBack, hasCarSets } = data;
   const going = rows.filter((r) => r.status === 'yes' && r.participation === 'full');
   // By CLASS (Plans/Participant-Classification.md): youth = scout, junior
   // leader, webelos, cub scout, youth guest; adults = adult, adult guest.
@@ -269,8 +348,6 @@ export default async function EventRosterPage({ params }: { params: Promise<{ id
   const waitlisted = rows.filter((r) => r.status === 'waitlist');
   const guests = going.reduce((n, r) => n + r.guests, 0);
   const headcount = going.length + guests;
-  const seatsOut = rows.reduce((n, r) => n + (r.drivesOut ? (r.seatsOut ?? 0) : 0), 0);
-  const seatsBack = rows.reduce((n, r) => n + (r.drivesBack ? (r.seatsBack ?? 0) : 0), 0);
   const owedTotal = rows.reduce((n, r) => n + r.owed, 0);
   const paidTotal = rows.filter((r) => r.paymentReceived).reduce((n, r) => n + r.owed, 0);
   // Two-deep: registered adults actually attending. driver_only doesn't count.
@@ -288,6 +365,10 @@ export default async function EventRosterPage({ params }: { params: Promise<{ id
             ·{' '}
             <Link href={`/admin/events/${signupId}`} className={styles.actionLink}>
               Builder
+            </Link>{' '}
+            ·{' '}
+            <Link href={`/admin/rosters/${signupId}/assignments`} className={styles.actionLink}>
+              Rides &amp; assignments
             </Link>{' '}
             ·{' '}
             <Link href={`/events/${String(data.entry.id)}`} className={styles.actionLinkMuted}>
@@ -325,13 +406,29 @@ export default async function EventRosterPage({ params }: { params: Promise<{ id
           <div className={styles.tileValue}>{twoDeep ? '✓' : '!'}</div>
           <div className={styles.tileSub}>{adultsGoing.length} attending (need ≥2)</div>
         </div>
-        <div className={styles.tile}>
-          <div className={styles.tileLabel}>Driver seats</div>
-          <div className={styles.tileValue}>
-            {seatsOut} / {seatsBack}
-          </div>
-          <div className={styles.tileSub}>there / back, besides the driver</div>
-        </div>
+        {hasCarSets &&
+          (
+            [
+              ['Rides there', ridesOut],
+              ['Rides back', ridesBack]
+            ] as const
+          ).map(([label, t]) => (
+            <div
+              key={label}
+              className={styles.tile + ' ' + (t.shortOver < 0 || t.unplaced > 0 ? styles.tileWarn : styles.tileOk)}
+            >
+              <div className={styles.tileLabel}>{label}</div>
+              <div className={styles.tileValue}>
+                {t.room}
+                <span className={styles.tileOf}> seats for {t.riders}</span>
+              </div>
+              <div className={styles.tileSub}>
+                {t.drivers} {t.drivers === 1 ? 'driver' : 'drivers'} · {t.unplaced} unplaced
+                {t.shortOver < 0 ? ` · ${-t.shortOver} short` : ''}
+                {t.self + t.meetingThere > 0 ? ` · ${t.self + t.meetingThere} on their own` : ''}
+              </div>
+            </div>
+          ))}
         <div className={styles.tile}>
           <div className={styles.tileLabel}>Payments</div>
           <div className={styles.tileValue}>${paidTotal}</div>

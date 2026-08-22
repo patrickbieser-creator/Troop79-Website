@@ -1,0 +1,43 @@
+/* Assignment board — cars, tents, patrols, teams (Plans/Event-Logistics.md
+   §A/§B). One board for every set: columns are groups, chips are people,
+   drag a chip onto a card (or use its Move… select on a phone). Admin tokens
+   only; specimen on /admin/styleguide/admin under "Assignment Board". */
+
+.lede { font-size: var(--admin-text-sm); color: var(--admin-gray-600); margin: 0 0 var(--admin-space-4); line-height: 1.5; }
+
+.columns { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--admin-space-4); align-items: start; }
+
+.card { background: var(--admin-white); border: 1px solid var(--admin-gray-200); border-radius: var(--admin-radius); box-shadow: var(--admin-shadow-sm); padding: var(--admin-space-3) var(--admin-space-4); min-height: 120px; transition: border-color var(--admin-transition), background var(--admin-transition); }
+.card[data-over='true'] { border-color: var(--admin-navy); background: var(--admin-status-info-bg); }
+.card[data-full='true'] { border-top: 3px solid var(--admin-warning); }
+.pool { background: var(--admin-form-bg); border-style: dashed; }
+.pool[data-over='true'] { border-color: var(--admin-navy); background: var(--admin-status-info-bg); }
+
+.cardHead { display: flex; align-items: baseline; justify-content: space-between; gap: var(--admin-space-2); margin-bottom: var(--admin-space-2); }
+.cardTitle { font-size: var(--admin-text-base); font-weight: var(--admin-weight-bold); color: var(--admin-gray-900); }
+.cardSub { display: block; font-size: var(--admin-text-2xs); color: var(--admin-gray-600); font-weight: var(--admin-weight-regular); }
+.capPill { font-size: var(--admin-text-2xs); font-weight: var(--admin-weight-bold); letter-spacing: var(--admin-tracking-wide); text-transform: uppercase; color: var(--admin-gray-600); border: 1px solid var(--admin-gray-300); border-radius: var(--admin-radius-pill); padding: 2px 8px; white-space: nowrap; }
+.capFull { color: var(--admin-danger); border-color: var(--admin-danger); background: var(--admin-status-error-bg); }
+.capOpen { color: var(--admin-forest); border-color: var(--admin-forest); background: var(--admin-status-success-bg); }
+
+.chips { display: flex; flex-direction: column; gap: var(--admin-space-2); list-style: none; margin: 0; padding: 0; }
+/* The name owns its own line; the class badge, Move… select and remove
+   button wrap beneath it — a 220px column must never truncate "Veronica
+   Kleinfeldt" into a badge and a dropdown (seen 2026-08-22). */
+.chip { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--admin-space-2); background: var(--admin-white); border: 1px solid var(--admin-gray-200); border-radius: var(--admin-radius-sm); padding: 5px 8px; font-size: var(--admin-text-sm); cursor: grab; }
+.chip:active { cursor: grabbing; }
+.chip[data-dragging='true'] { opacity: .5; }
+.chipName { flex: 1 1 100%; min-width: 0; font-weight: var(--admin-weight-semibold); color: var(--admin-gray-900); }
+.chipRole { font-size: var(--admin-text-2xs); font-weight: var(--admin-weight-bold); letter-spacing: var(--admin-tracking-wide); text-transform: uppercase; color: var(--admin-navy); }
+.chipX { background: none; border: none; color: var(--admin-gray-400); font-size: var(--admin-text-md); line-height: 1; cursor: pointer; padding: 0 2px; }
+.chipX:hover:not(:disabled) { color: var(--admin-danger); }
+.moveSelect { max-width: 120px; font-size: var(--admin-text-xs); border: 1px solid var(--admin-gray-300); border-radius: var(--admin-radius-sm); padding: 2px 4px; background: var(--admin-white); color: var(--admin-gray-700); }
+.empty { font-size: var(--admin-text-xs); color: var(--admin-gray-500); font-style: italic; padding: var(--admin-space-2) 0; }
+
+.side { margin-top: var(--admin-space-5); }
+.sideHead { font-size: var(--admin-text-2xs); font-weight: var(--admin-weight-bold); letter-spacing: var(--admin-tracking-wide); text-transform: uppercase; color: var(--admin-gray-600); margin-bottom: var(--admin-space-2); }
+.sideList { display: flex; flex-wrap: wrap; gap: var(--admin-space-2); list-style: none; margin: 0; padding: 0; }
+.sideList .chip { cursor: default; }
+
+.err { color: var(--admin-danger); font-size: var(--admin-text-sm); font-weight: var(--admin-weight-semibold); margin: var(--admin-space-2) 0; }
+.noSets { font-size: var(--admin-text-sm); color: var(--admin-gray-600); }

@@ -1,4 +1,11 @@
-import { loadEventDetail, loadPartySignup, isSlotFirst, signupLocked } from '@/lib/event-signup';
+import {
+  loadEventDetail,
+  loadPartySignup,
+  loadPartyPlacements,
+  isSlotFirst,
+  signupLocked
+} from '@/lib/event-signup';
+import { summarizePlacements, type PlacementLine } from '@/lib/transport';
 import type { HouseholdEntry } from '@/lib/event-signup';
 import {
   householdKeyForPerson,
@@ -34,6 +41,9 @@ export interface SignupContext {
   existing: HouseholdEntry[];
   /** Slot claims mapped to the forms' person keys (s0/s1…, a0/a1…). */
   existingClaims: { slotId: number; personKey: string; comment: string | null }[];
+  /** This party's own car/tent/patrol placements, family-visible sets only
+   *  (Plans/Event-Logistics.md §A/§B). Family name for cars, nothing more. */
+  placements: PlacementLine[];
   gateState: 'anon' | 'no-household' | 'ready';
   slotFirst: boolean;
   locked: boolean;
@@ -109,6 +119,16 @@ export async function loadSignupContext(
       })
     : [];
 
+  const placements =
+    signup && existing.length > 0
+      ? summarizePlacements(
+          await loadPartyPlacements(
+            signup.id,
+            existing.map((e) => e.id)
+          )
+        )
+      : [];
+
   return {
     detail,
     audience,
@@ -118,6 +138,7 @@ export async function loadSignupContext(
     householdKey,
     existing,
     existingClaims,
+    placements,
     gateState: !gatedIn ? 'anon' : household ? 'ready' : 'no-household',
     slotFirst,
     locked: signup ? signupLocked(signup) : false

@@ -467,6 +467,14 @@
 .dayMath { font-size: 12.5px; color: var(--text-meta); }
 .chk { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text-body); }
 .drvNote { margin-top: 10px; font-size: 12.5px; line-height: 1.5; color: var(--text-body); background: var(--cream); border-left: 3px solid var(--navy); padding: 8px 11px; border-radius: 0 3px 3px 0; }
+/* Ride status per leg (Plans/Event-Logistics.md §A) — one select per leg the
+   person is not driving. 16px select = the iOS no-zoom floor. */
+.rideRow { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; }
+.rideRow .miniLabel { margin-bottom: 0; flex-basis: 100%; }
+.rideField { display: flex; align-items: center; gap: 6px; font-size: var(--fs-sm); color: var(--text-body); }
+.rideLeg { font-weight: 700; }
+.placementList { margin: 8px 0 0; padding-left: 18px; font-size: var(--fs-sm); line-height: 1.6; }
+.rideSelect { padding: 6px 9px; border: 1px solid var(--border-mid); border-radius: 3px; background: var(--warm-white); font-family: var(--font-ui); font-size: 16px; color: var(--text-body); }
 .addAdult { border: 1px dashed var(--border-mid); border-radius: 4px; padding: 12px 14px; margin-bottom: 18px; background: var(--cream); }
 .addAdultRow { display: grid; grid-template-columns: minmax(0,1.2fr) minmax(0,1.4fr) minmax(0,.9fr) auto; gap: 8px; align-items: center; margin-bottom: 8px; }
 @media (max-width: 640px) { .addAdultRow { grid-template-columns: 1fr; } }

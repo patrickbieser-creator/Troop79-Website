@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { eventRevalidatePaths } from '@/lib/event-signup-shared';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
+import { isRideStatus } from '@/lib/transport';
 import { sendEmail, renderEmail } from '@/lib/email';
 import { recipientsForScouts } from '@/lib/email-recipients';
 import { siteUrl } from '@/lib/site-url';
@@ -910,4 +911,139 @@ export async function addGuestEntry(
   revalidatePath(`/admin/rosters/${signupId}`);
   revalidateEvent(calendarEntryId, signupId);
   return { ok: true };
+}
+
+/* ── Transportation & assignments (Plans/Event-Logistics.md §A/§B) ───────── */
+
+/**
+ * Leader sets one person's transport: which legs they drive (with seats
+ * INCLUDING the driver) and the ride status for legs they don't. The DB
+ * normalizer derives the legacy seats_offered_* and nulls a ride status on a
+ * driven leg; sync_car_groups creates/resizes/retires the car.
+ */
+export async function setEntryTransport(
+  entryId: number,
+  transport: {
+    drivesOut: boolean;
+    drivesBack: boolean;
+    vehicleSeatsOut: number | null;
+    vehicleSeatsBack: number | null;
+    rideOut: string | null;
+    rideBack: string | null;
+  },
+  signupId: number,
+  calendarEntryId: number
+): Promise<Result> {
+  const session = await requireCapability('calendar.write');
+  for (const r of [transport.rideOut, transport.rideBack]) {
+    if (r != null && !isRideStatus(r)) return { ok: false, error: 'Unknown ride status.' };
+  }
+  if (transport.drivesOut && !(transport.vehicleSeatsOut && transport.vehicleSeatsOut >= 1))
+    return { ok: false, error: 'A driver needs a seat count (including themselves).' };
+  if (transport.drivesBack && !(transport.vehicleSeatsBack && transport.vehicleSeatsBack >= 1))
+    return { ok: false, error: 'A driver needs a seat count (including themselves).' };
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from('signup_entries')
+    .update({
+      drives_out: transport.drivesOut,
+      drives_back: transport.drivesBack,
+      vehicle_seats_out: transport.drivesOut ? transport.vehicleSeatsOut : null,
+      vehicle_seats_back: transport.drivesBack ? transport.vehicleSeatsBack : null,
+      ride_out: transport.drivesOut ? null : (transport.rideOut ?? 'needs_ride'),
+      ride_back: transport.drivesBack ? null : (transport.rideBack ?? 'needs_ride'),
+      updated_by: session.label,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', entryId)
+    .eq('event_signup_id', signupId);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/admin/rosters/${signupId}`);
+  revalidatePath(`/admin/rosters/${signupId}/assignments`);
+  revalidateEvent(calendarEntryId, signupId);
+  return { ok: true };
+}
+
+/** Ride status for one leg only — the board's quick "meeting there" change. */
+export async function setRideStatus(
+  entryId: number,
+  leg: 'out' | 'back',
+  status: string,
+  signupId: number,
+  calendarEntryId: number
+): Promise<Result> {
+  const session = await requireCapability('calendar.write');
+  if (!isRideStatus(status)) return { ok: false, error: 'Unknown ride status.' };
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from('signup_entries')
+    .update({
+      [leg === 'out' ? 'ride_out' : 'ride_back']: status,
+      updated_by: session.label,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', entryId)
+    .eq('event_signup_id', signupId);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/admin/rosters/${signupId}`);
+  revalidatePath(`/admin/rosters/${signupId}/assignments`);
+  revalidateEvent(calendarEntryId, signupId);
+  return { ok: true };
+}
+
+export type PlaceOutcome = 'placed' | 'moved' | 'already' | 'full' | 'gone';
+
+/**
+ * Put someone in a group (car, tent, patrol…). The RPC locks the group row
+ * before counting, so two leaders dragging into the last seat cannot both win;
+ * 'full' and 'gone' come back as outcomes, not errors, because the board
+ * handles them as ordinary states.
+ */
+export async function placeInGroup(
+  groupId: number,
+  entryId: number,
+  signupId: number,
+  calendarEntryId: number
+): Promise<Result & { outcome?: PlaceOutcome }> {
+  const session = await requireCapability('calendar.write');
+  const supabase = createAdminClient();
+  const { data, error } = await supabase.rpc('place_in_group', {
+    p_group_id: groupId,
+    p_entry_id: entryId,
+    p_actor: session.label
+  });
+  if (error) return { ok: false, error: friendlyPlaceError(error.message) };
+  const outcome = data as PlaceOutcome;
+  revalidatePath(`/admin/rosters/${signupId}`);
+  revalidatePath(`/admin/rosters/${signupId}/assignments`);
+  revalidateEvent(calendarEntryId, signupId);
+  if (outcome === 'full') return { ok: false, outcome, error: 'That group is full.' };
+  if (outcome === 'gone') return { ok: false, outcome, error: 'That group no longer exists — the page will refresh.' };
+  return { ok: true, outcome };
+}
+
+export async function unplaceFromGroup(
+  groupId: number,
+  entryId: number,
+  signupId: number,
+  calendarEntryId: number
+): Promise<Result> {
+  await requireCapability('calendar.write');
+  const supabase = createAdminClient();
+  const { error } = await supabase.rpc('unplace_from_group', { p_group_id: groupId, p_entry_id: entryId });
+  if (error) return { ok: false, error: friendlyPlaceError(error.message) };
+  revalidatePath(`/admin/rosters/${signupId}`);
+  revalidatePath(`/admin/rosters/${signupId}/assignments`);
+  revalidateEvent(calendarEntryId, signupId);
+  return { ok: true };
+}
+
+function friendlyPlaceError(message: string): string {
+  if (message.includes('DRIVER_STAYS_WITH_CAR'))
+    return 'A driver stays with their car — change their driving on the roster instead.';
+  if (message.includes('ENTRY_CANCELLED')) return 'That person was removed from the signup.';
+  if (message.includes('ENTRY_NOT_IN_THIS_EVENT')) return 'That person is not signed up for this event.';
+  if (message.includes('CAR_GROUPS_ARE_SYSTEM_MANAGED'))
+    return 'Cars come from the signup — set who drives on the roster.';
+  return message;
 }

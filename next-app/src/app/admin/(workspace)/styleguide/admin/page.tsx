@@ -39,6 +39,7 @@ import albums from '../../news/photo-albums/albums.module.css';
 import mm from '../../news/media-manager/media-manager.module.css';
 import util from '../../utilities/utilities.module.css';
 import lib from '../../library/library.module.css';
+import board from '../../rosters/[id]/assignments/assignments.module.css';
 
 export const metadata = {
   title: 'Admin Styleguide — Troop 79'
@@ -618,6 +619,67 @@ export default function StyleguidePage() {
           >
             <div className={util.card} style={{ width: '100%' }}>
               <div className={util.cardSoon}>Card content</div>
+            </div>
+          </Specimen>
+        </div>
+      </section>
+
+      {/* ════ ASSIGNMENT BOARD ════ */}
+      <section className={sg.section}>
+        <h2 className={sg.sectionHead}>Assignment Board</h2>
+        <p className={sg.sectionNote}>
+          Added 2026-08-22 (Plans/Event-Logistics.md): the Rides &amp; assignments board at
+          /admin/rosters/[id]/assignments — cars, tents, patrols, teams. A column per group is a
+          <code>.card</code> (drop target, <code>data-over</code> while a chip hovers,
+          <code>data-full</code> top accent at capacity); the unassigned pool is
+          <code>.card.pool</code> (form-bg, dashed). People are <code>.chip</code>s — draggable, with
+          the Move… <code>.moveSelect</code> as the touch/keyboard path. The capacity pill counts the
+          driver for cars (seats include the driver).
+        </p>
+        <div className={sg.specimenGrid}>
+          <Specimen label="Group card" canonical note="Driver (or group name) + sub line, capacity pill: open = forest, full = danger. Chips carry the class Badge and a Move… select.">
+            <div className={board.card} style={{ width: '100%' }}>
+              <div className={board.cardHead}>
+                <span className={board.cardTitle}>
+                  Jason Porter
+                  <span className={board.cardSub}>pulling trailer</span>
+                </span>
+                <span className={`${board.capPill} ${board.capOpen}`}>2 of 4 · 2 open</span>
+              </div>
+              <ul className={board.chips}>
+                <li className={board.chip}>
+                  <span className={board.chipName}>Jason Porter</span>
+                  <span className={board.chipRole}>driver</span>
+                </li>
+                <li className={board.chip}>
+                  <span className={board.chipName}>Anjali Sankpal-Tatera</span>
+                  <Badge variant="muted">Scout</Badge>
+                  <select className={board.moveSelect} aria-label="Move (specimen)" defaultValue="1">
+                    <option value="1">Jason Porter (2/4)</option>
+                  </select>
+                  <button type="button" className={board.chipX} aria-label="Remove (specimen)">×</button>
+                </li>
+              </ul>
+            </div>
+          </Specimen>
+          <Specimen label="Pool + full card" note="The unassigned pool is dashed on form-bg; a full card carries the warning top accent and a danger pill.">
+            <div className={`${board.card} ${board.pool}`} style={{ width: '100%' }}>
+              <div className={board.cardHead}>
+                <span className={board.cardTitle}>Needs a ride</span>
+                <span className={board.capPill}>1</span>
+              </div>
+              <ul className={board.chips}>
+                <li className={board.chip}>
+                  <span className={board.chipName}>Owen Radtke</span>
+                  <Badge variant="muted">Scout</Badge>
+                </li>
+              </ul>
+            </div>
+            <div className={board.card} data-full="true" style={{ width: '100%' }}>
+              <div className={board.cardHead}>
+                <span className={board.cardTitle}>Tent A</span>
+                <span className={`${board.capPill} ${board.capFull}`}>Full · 2 of 2</span>
+              </div>
             </div>
           </Specimen>
         </div>

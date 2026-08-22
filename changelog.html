@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 22, 2026</strong> &nbsp;&middot;&nbsp; v1.80.0</p>
+      <p>Last updated: <strong>August 22, 2026</strong> &nbsp;&middot;&nbsp; v1.81.0</p>
     </div>
   </div>
 
@@ -494,6 +494,67 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.81.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.81.0</span>
+        <span class="release-date">August 22, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Event logistics, part 1 &mdash; who rides with whom</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Seats now count the driver.</strong> The sign-up form asks &ldquo;Seats in your
+              vehicle, including you&rdquo; &mdash; the campout spreadsheet&rsquo;s convention
+              (&ldquo;Patrick 4/4&rdquo;) &mdash; and remembers each driver&rsquo;s usual capacity so
+              it is prefilled next time.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Everyone who isn&rsquo;t driving has a ride status per leg</strong> &mdash;
+              needs a ride (the default), driving separately, meeting there, or not traveling this
+              leg &mdash; on the family form, the roster&rsquo;s per-row Edit, and the new Ride column.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Rides &amp; assignments &mdash; a board for putting people in cars.</strong> A
+              card per car (driver, phone, &ldquo;2 of 5 &middot; 3 open&rdquo;), a Needs-a-ride pool,
+              drag a name onto a car or use the Move&hellip; control on a phone. The roster&rsquo;s
+              new Rides there / Rides back tiles are the sheet&rsquo;s Need / Avail / Short-Over block.
+              Cars come from the sign-up &mdash; a car exists because someone drives &mdash; so the
+              board can never disagree with the roster.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Families see their own rides on the event page</strong> &mdash; &ldquo;Maya
+              &mdash; riding with the Porters (there), driving (back)&rdquo; &mdash; the driver&rsquo;s
+              family name and nothing more. The day-before negotiation now has somewhere to look.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Under the hood (Phase 0, same release)</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Per-event <strong>group sets</strong> (patrols, crews, tents, cars, teams) with a
+              placement RPC that locks the group row; a per-entry <strong>amount override</strong> and a
+              derived <strong>balance view</strong>; ledger rows now know their <strong>calendar
+              entry</strong>; <strong>milestones</strong> (deposits, registration deadlines); and
+              <strong>leader-only questions</strong> the family form never sees. Plan:
+              <code>Plans/Event-Logistics.md</code>.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

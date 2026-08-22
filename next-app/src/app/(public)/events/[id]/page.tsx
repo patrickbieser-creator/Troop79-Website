@@ -393,6 +393,20 @@ export default async function EventDetailPage({
                 {signedUp.length > 0 && (
                   <Notice tone="success" className={styles.noticeGapBottom}>
                     ✓ You&rsquo;re signed up: <strong>{signedUp.join(', ')}</strong>
+                    {/* Own household's placements only — car = the driver's
+                        family name, never a phone, email or the full manifest
+                        (Plans/Event-Logistics.md §A; Patrick accepted the
+                        family gate for this, 2026-08-22). Scouts negotiate
+                        rides the day before; this is what stops the havoc. */}
+                    {ctx.placements.length > 0 && (
+                      <ul className={styles.placementList}>
+                        {ctx.placements.map((p) => (
+                          <li key={p.entryId}>
+                            <strong>{p.personName}</strong> — {p.parts.join(' · ')}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </Notice>
                 )}
                 <p className={styles.signupCta}>

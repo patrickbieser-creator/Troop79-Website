@@ -15,6 +15,7 @@ import { GUEST_CLASSES, type GuestClass, type ParticipantClass } from '@/lib/par
 import { createAdminClient } from '@/lib/supabase/server';
 import { mustMaybe } from '@/lib/db';
 import type { CalendarEntry } from '@/lib/supabase/types';
+import type { Leg, PlacementRow, RideStatus } from '@/lib/transport';
 
 export interface EventPrice {
   id: number;
@@ -122,6 +123,15 @@ export interface HouseholdEntry {
   notes: string | null;
   permission_slip_received: boolean;
   payment_received: boolean;
+  /** Transportation (Plans/Event-Logistics.md §A): per-leg driving with seats
+   *  INCLUDING the driver, and a ride status for legs not driven. Prefills the
+   *  family form so an edit shows what was offered last time. */
+  drives_out: boolean;
+  drives_back: boolean;
+  vehicle_seats_out: number | null;
+  vehicle_seats_back: number | null;
+  ride_out: RideStatus | null;
+  ride_back: RideStatus | null;
   /** slot ids this entry currently holds. */
   claims: number[];
   /** slot id -> the note written about doing that job, for the claims above.
@@ -145,7 +155,8 @@ export interface PartyIdentities {
 
 const ENTRY_COLUMNS =
   'id, person_kind, person_id, participant_class, guest_name, host_entry_id, status, participation, ' +
-  'price_id, days, guest_count, guest_note, notes, permission_slip_received, payment_received';
+  'price_id, days, guest_count, guest_note, notes, permission_slip_received, payment_received, ' +
+  'drives_out, drives_back, vehicle_seats_out, vehicle_seats_back, ride_out, ride_back';
 
 /**
  * One signup party's live entries for an event. GATE-ONLY — this returns names
@@ -236,6 +247,103 @@ export async function loadPartySignup(
     claimComments: notesByEntry.get(r.id) ?? {},
     answers: ansByEntry.get(r.id) ?? []
   }));
+}
+
+/**
+ * A party's own placements — which car, tent, patrol — for the event page's
+ * "You're signed up" line (Plans/Event-Logistics.md §A/§B). GATE-ONLY, and
+ * scoped to the entry ids the caller already resolved as this party's, so the
+ * loader cannot widen what loadPartySignup narrowed. Family-visible sets only.
+ *
+ * For cars the only identity exposed is the driver's FAMILY NAME (people
+ * .last_name, falling back to the last word of display_name): never a phone,
+ * an email, an address, or the other riders (qa-lead; Patrick accepted the
+ * Tier 1 gate for this on 2026-08-22).
+ */
+export async function loadPartyPlacements(eventSignupId: number, entryIds: number[]): Promise<PlacementRow[]> {
+  if (entryIds.length === 0) return [];
+  const supabase = createAdminClient();
+  const { data: sets } = await supabase
+    .from('signup_group_sets')
+    .select('id, label, kind, leg, family_visible, sort')
+    .eq('event_signup_id', eventSignupId)
+    .eq('family_visible', true)
+    .order('sort');
+  const setList = (sets ?? []) as { id: number; label: string; kind: string; leg: Leg | null; sort: number }[];
+  if (setList.length === 0) return [];
+  const setById = new Map(setList.map((s) => [s.id, s]));
+
+  const { data: members } = await supabase
+    .from('signup_group_members')
+    .select('entry_id, group_id, set_id')
+    .in('entry_id', entryIds)
+    .in('set_id', setList.map((s) => s.id));
+  const memberRows = (members ?? []) as { entry_id: number; group_id: number; set_id: number }[];
+  if (memberRows.length === 0) return [];
+
+  const { data: groups } = await supabase
+    .from('signup_groups')
+    .select('id, name, driver_entry_id')
+    .in('id', [...new Set(memberRows.map((m) => m.group_id))]);
+  const groupById = new Map(
+    ((groups ?? []) as { id: number; name: string; driver_entry_id: number | null }[]).map((g) => [g.id, g])
+  );
+
+  // Names: the party's own people (for "Maya —") and the drivers' family names.
+  const driverEntryIds = [...groupById.values()].map((g) => g.driver_entry_id).filter((v): v is number => v != null);
+  const { data: entryPeople } = await supabase
+    .from('signup_entries')
+    .select('id, person_id, guest_name')
+    .in('id', [...new Set([...entryIds, ...driverEntryIds])]);
+  const personIdByEntry = new Map<number, number | null>();
+  const guestNameByEntry = new Map<number, string | null>();
+  for (const e of (entryPeople ?? []) as { id: number; person_id: number | null; guest_name: string | null }[]) {
+    personIdByEntry.set(e.id, e.person_id);
+    guestNameByEntry.set(e.id, e.guest_name);
+  }
+  const personIds = [...personIdByEntry.values()].filter((v): v is number => v != null);
+  const { data: people } = personIds.length
+    ? await supabase.from('people').select('id, display_name, last_name').in('id', personIds)
+    : { data: [] as unknown[] };
+  const personById = new Map(
+    ((people ?? []) as { id: number; display_name: string; last_name: string | null }[]).map((p) => [p.id, p])
+  );
+  const nameOf = (entryId: number) => {
+    const pid = personIdByEntry.get(entryId);
+    return (pid != null ? personById.get(pid)?.display_name : null) ?? guestNameByEntry.get(entryId) ?? 'Someone';
+  };
+  const familyNameOf = (entryId: number | null) => {
+    if (entryId == null) return null;
+    const pid = personIdByEntry.get(entryId);
+    const p = pid != null ? personById.get(pid) : null;
+    if (!p) return null;
+    const last = p.last_name?.trim() || p.display_name.trim().split(/\s+/).pop() || '';
+    return last || null;
+  };
+
+  const rows: PlacementRow[] = [];
+  for (const m of memberRows) {
+    const set = setById.get(m.set_id);
+    const group = groupById.get(m.group_id);
+    if (!set || !group) continue;
+    rows.push({
+      entryId: m.entry_id,
+      personName: nameOf(m.entry_id),
+      setLabel: set.label,
+      kind: set.kind,
+      leg: set.leg,
+      groupName: group.name,
+      driverFamilyName: set.kind === 'car' ? familyNameOf(group.driver_entry_id) : null,
+      isDriver: set.kind === 'car' && group.driver_entry_id === m.entry_id
+    });
+  }
+  const setOrder = new Map(setList.map((s, i) => [s.id, i]));
+  rows.sort((a, b) => {
+    const sa = setOrder.get(setList.find((s) => s.label === a.setLabel)?.id ?? 0) ?? 0;
+    const sb = setOrder.get(setList.find((s) => s.label === b.setLabel)?.id ?? 0) ?? 0;
+    return a.entryId - b.entryId || sa - sb;
+  });
+  return rows;
 }
 
 export async function loadEventDetail(entryId: number): Promise<EventDetail | null> {

@@ -56,6 +56,10 @@ export interface HouseholdAdult {
    *  scout_parents was retired. */
   relationship: string | null;
   email: string | null;
+  /** people.default_vehicle_seats — the capacity (including the driver) this
+   *  adult last offered, remembered so the sign-up form prefills it
+   *  (Plans/Event-Logistics.md §A). null = never driven for the troop. */
+  defaultVehicleSeats: number | null;
 }
 
 export interface HouseholdScout {
@@ -77,6 +81,7 @@ interface PersonRow {
   id: number;
   display_name: string;
   primary_email: string | null;
+  default_vehicle_seats: number | null;
 }
 
 /** At 18 a scout is no longer a scout — they are an adult, and belong in the
@@ -134,7 +139,7 @@ export async function loadHouseholds(): Promise<Household[]> {
     // accumulates everyone who has ever been on the roster.
     supabase
       .from('people')
-      .select('id, display_name, primary_email')
+      .select('id, display_name, primary_email, default_vehicle_seats')
       .is('merged_into_person_id', null)
       .eq('active', true),
     supabase
@@ -215,7 +220,8 @@ export async function loadHouseholds(): Promise<Household[]> {
       // scout_parents.email used to sit between these two. It is gone with the
       // table and nothing is lost: every address it held is already on
       // people.primary_email (verified against production before the drop).
-      email: person.primary_email ?? leader?.email ?? null
+      email: person.primary_email ?? leader?.email ?? null,
+      defaultVehicleSeats: person.default_vehicle_seats ?? null
     };
   }
 

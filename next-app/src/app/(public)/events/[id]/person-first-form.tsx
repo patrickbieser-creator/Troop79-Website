@@ -10,6 +10,14 @@ import type {
   SignupSlot
 } from '@/lib/event-signup';
 import type { Household, HouseholdAdult } from '@/lib/households';
+import {
+  defaultSeats,
+  LEG_LABEL,
+  RIDE_STATUSES,
+  RIDE_STATUS_LABEL,
+  type Leg,
+  type RideStatus
+} from '@/lib/transport';
 import styles from './event-detail.module.css';
 
 /*
@@ -101,9 +109,42 @@ export default function PersonFirstForm({
     for (const a of adults) init[`a:${a.key}`] = priorAdult(a)?.days ?? 1;
     return init;
   });
+  // Driving, per adult: legs + seats INCLUDING the driver (Plans/Event-Logistics.md
+  // §A). Prefilled from the prior entry, else the capacity this adult last
+  // offered at any event (people.default_vehicle_seats), else an ordinary car.
   const [drives, setDrives] = useState<Record<string, { out: boolean; back: boolean; seats: number }>>(
-    () => Object.fromEntries(adults.map((a) => [a.key, { out: false, back: false, seats: 3 }]))
+    () =>
+      Object.fromEntries(
+        adults.map((a) => {
+          const p = priorAdult(a);
+          return [
+            a.key,
+            {
+              out: p?.drives_out ?? false,
+              back: p?.drives_back ?? false,
+              seats: defaultSeats(p?.vehicle_seats_out ?? p?.vehicle_seats_back ?? a.defaultVehicleSeats)
+            }
+          ];
+        })
+      )
   );
+  // Ride status per person per leg for anyone NOT driving that leg. Defaults
+  // to "needs a ride" (Patrick, 2026-08-22) — the other three happen often
+  // enough that every one is offered.
+  const [rides, setRides] = useState<Record<string, Record<Leg, RideStatus>>>(() => {
+    const init: Record<string, Record<Leg, RideStatus>> = {};
+    for (const s of scouts) {
+      const p = priorScout(s);
+      init[`s:${s.id}`] = { out: p?.ride_out ?? 'needs_ride', back: p?.ride_back ?? 'needs_ride' };
+    }
+    for (const a of adults) {
+      const p = priorAdult(a);
+      init[`a:${a.key}`] = { out: p?.ride_out ?? 'needs_ride', back: p?.ride_back ?? 'needs_ride' };
+    }
+    return init;
+  });
+  const setRide = (key: string, leg: Leg, value: RideStatus) =>
+    setRides((v) => ({ ...v, [key]: { ...(v[key] ?? { out: 'needs_ride', back: 'needs_ride' }), [leg]: value } }));
   // Named guest rows (Plans/Participant-Classification.md) — seeded from the
   // party's existing guest entries so an edit shows who's already listed.
   const [guestRows, setGuestRows] = useState<GuestRowValue[]>(() =>
@@ -282,6 +323,8 @@ export default function PersonFirstForm({
         days: t?.per === 'day' ? days[`s:${s.id}`] : null,
         guest_count: 0,
         notes: notes || null,
+        ride_out: signup.drivers_needed ? (rides[`s:${s.id}`]?.out ?? 'needs_ride') : null,
+        ride_back: signup.drivers_needed ? (rides[`s:${s.id}`]?.back ?? 'needs_ride') : null,
         answers: c === 'yes' ? answerArr(`s:${s.id}`, 'scout') : []
       });
     }
@@ -304,8 +347,12 @@ export default function PersonFirstForm({
         days: t?.per === 'day' ? days[`a:${a.key}`] : null,
         drives_out: d.out,
         drives_back: d.back,
-        seats_offered_out: d.out ? d.seats : null,
-        seats_offered_back: d.back ? d.seats : null,
+        // Seats INCLUDING the driver; the DB derives the legacy besides-the-
+        // driver column from this. A leg not driven carries a ride status.
+        vehicle_seats_out: d.out ? d.seats : null,
+        vehicle_seats_back: d.back ? d.seats : null,
+        ride_out: d.out || !signup.drivers_needed ? null : (rides[`a:${a.key}`]?.out ?? 'needs_ride'),
+        ride_back: d.back || !signup.drivers_needed ? null : (rides[`a:${a.key}`]?.back ?? 'needs_ride'),
         // Legacy count stays 0 — guests are NAMED ROWS now (hidden `guests`
         // field, written by the submit action under this party's host entry).
         guest_count: 0,
@@ -315,9 +362,39 @@ export default function PersonFirstForm({
       });
     }
     return out;
-  }, [scoutChoice, adultChoice, tier, days, drives, notes, scouts, adults]);
+  }, [scoutChoice, adultChoice, tier, days, drives, rides, notes, scouts, adults, signup.drivers_needed]);
 
   const anyChoice = entries.length > 0;
+
+  /** Per-leg ride status for an attending person, only for legs they don't
+   *  drive. Shown only when the event tracks transportation. */
+  const rideFields = (key: string, name: string, drivenLegs: { out: boolean; back: boolean }) => {
+    if (!signup.drivers_needed) return null;
+    const legs = (['out', 'back'] as Leg[]).filter((l) => !drivenLegs[l]);
+    if (legs.length === 0) return null;
+    return (
+      <div className={styles.rideRow}>
+        <span className={styles.miniLabel}>Getting there &amp; back</span>
+        {legs.map((leg) => (
+          <label key={leg} className={styles.rideField}>
+            <span className={styles.rideLeg}>{LEG_LABEL[leg]}</span>
+            <select
+              className={styles.rideSelect}
+              aria-label={`${name} — ${LEG_LABEL[leg].toLowerCase()}`}
+              value={rides[key]?.[leg] ?? 'needs_ride'}
+              onChange={(e) => setRide(key, leg, e.target.value as RideStatus)}
+            >
+              {RIDE_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {RIDE_STATUS_LABEL[s]}
+                </option>
+              ))}
+            </select>
+          </label>
+        ))}
+      </div>
+    );
+  };
 
   const tierPicker = (key: string, kind: 'scout' | 'adult') => {
     const opts = tiersFor(kind);
@@ -419,6 +496,8 @@ export default function PersonFirstForm({
               </div>
               {scoutChoice[s.id] === 'yes' && tierPicker(`s:${s.id}`, 'scout')}
               {scoutChoice[s.id] === 'yes' && questionFields(`s:${s.id}`, 'scout')}
+              {scoutChoice[s.id] === 'yes' &&
+                rideFields(`s:${s.id}`, s.displayName, { out: false, back: false })}
             </div>
           ))}
         </>
@@ -504,12 +583,12 @@ export default function PersonFirstForm({
                     </label>
                     {(drives[a.key]?.out || drives[a.key]?.back) && (
                       <label className={styles.daysRow}>
-                        <span className={styles.miniLabel}>Seats besides you</span>
+                        <span className={styles.miniLabel}>Seats in your vehicle, including you</span>
                         <input
                           type="number"
                           min={1}
-                          max={8}
-                          value={drives[a.key]?.seats ?? 3}
+                          max={15}
+                          value={drives[a.key]?.seats ?? 4}
                           onChange={(e) =>
                             setDrives((v) => ({
                               ...v,
@@ -518,8 +597,16 @@ export default function PersonFirstForm({
                           }
                           className={styles.numInput}
                         />
+                        <span className={styles.dayMath}>
+                          {Math.max(0, (drives[a.key]?.seats ?? 4) - 1)} for riders
+                        </span>
                       </label>
                     )}
+                    {adultChoice[a.key] === 'full' &&
+                      rideFields(`a:${a.key}`, a.name, {
+                        out: drives[a.key]?.out ?? false,
+                        back: drives[a.key]?.back ?? false
+                      })}
                   </div>
                 )}
             </div>
