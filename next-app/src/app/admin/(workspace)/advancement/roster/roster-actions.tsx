@@ -13,16 +13,28 @@
  * screen's Actions ▾ looked different from the other screens'.
  */
 
+import { useRouter } from 'next/navigation';
 import { ActionsMenu } from '../../_components/actions-menu';
 
 export function RosterActions({ className }: { className?: string }) {
+  const router = useRouter();
   return (
     <div className={className}>
       <ActionsMenu
         ariaLabel="Roster actions"
-        options={[{ value: 'print', label: 'Print Roster' }]}
+        options={[
+          { value: 'family-roster', label: 'Family Roster (print / PDF)' },
+          { value: 'print-screen', label: 'Print this screen' }
+        ]}
         onAction={(v) => {
-          if (v === 'print') window.print();
+          /* "Print Roster" used to be window.print() over whichever tab was
+             open, which printed the working table — Edit buttons, tab strip
+             and all (Patrick, 2026-08-22: "the print a roster is a mess").
+             The real document now lives at /admin/roster-print. Printing the
+             screen stays available because it is genuinely what you want when
+             you have filtered or sorted the table for a specific job. */
+          if (v === 'family-roster') router.push('/admin/roster-print');
+          if (v === 'print-screen') window.print();
         }}
       />
     </div>

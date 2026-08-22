@@ -1,0 +1,258 @@
+/*
+ * The home roster document (Patrick, 2026-08-22).
+ *
+ * This route sits OUTSIDE the (workspace) group, so it has no admin chrome to
+ * hide — the page IS the document. It still reads --admin-* tokens: it is an
+ * admin surface, and the firewall rule is about not reaching for the PUBLIC
+ * palette, which nothing here does.
+ *
+ * Sized for US Letter portrait with 0.5in margins. The layout is a two-column
+ * flow of family cards, which is what makes it usable at arm's length on a
+ * fridge: a family is a block you find by surname, not a row you trace across
+ * a wide table.
+ */
+
+@page {
+  size: letter portrait;
+  margin: 0.5in;
+}
+
+.doc {
+  font-family: var(--admin-font, inherit);
+  color: var(--admin-gray-900);
+  background: var(--admin-white);
+  max-width: 7.5in;
+  margin: 0 auto;
+  padding: var(--admin-space-8) var(--admin-space-6) var(--admin-space-14);
+  font-size: var(--admin-text-base);
+  line-height: 1.4;
+}
+
+/* ── Screen-only toolbar ─────────────────────────────────────────────────── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--admin-space-6);
+  flex-wrap: wrap;
+  margin-bottom: var(--admin-space-8);
+  padding-bottom: var(--admin-space-6);
+  border-bottom: 1px solid var(--admin-gray-200);
+}
+.toolbarNote {
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-600);
+  max-width: 48ch;
+}
+.toolbarActions {
+  display: flex;
+  gap: var(--admin-space-6);
+  align-items: center;
+}
+/* Same solid-navy primary as the Lookups/ledger Save buttons — this route is
+   outside (workspace) so it cannot reach their module sheets. */
+.printBtn {
+  font-family: inherit;
+  font-size: var(--admin-text-base);
+  font-weight: 700;
+  letter-spacing: .04em;
+  background: var(--admin-navy);
+  color: var(--admin-white);
+  border: 1px solid var(--admin-navy);
+  padding: 6px 14px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.printBtn:hover { background: var(--admin-navy-hover); }
+.backLink {
+  font-size: var(--admin-text-base);
+  color: var(--admin-navy);
+}
+
+/* ── Cover block ─────────────────────────────────────────────────────────── */
+.cover {
+  border-bottom: 3px solid var(--admin-navy);
+  padding-bottom: var(--admin-space-5);
+  margin-bottom: var(--admin-space-6);
+}
+.coverTitle {
+  font-size: var(--admin-text-3xl);
+  font-weight: 700;
+  color: var(--admin-navy);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.coverSub {
+  font-size: var(--admin-text-md);
+  color: var(--admin-gray-700);
+  margin: var(--admin-space-2) 0 0;
+}
+.coverMeta {
+  display: flex;
+  gap: var(--admin-space-6);
+  flex-wrap: wrap;
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-600);
+  margin-top: var(--admin-space-4);
+}
+
+/* The confidentiality line. Loud on purpose: this sheet carries every
+   family's address and phone number and is meant to leave the building. */
+.confidential {
+  border: 1px solid var(--admin-navy);
+  background: var(--admin-form-bg);
+  color: var(--admin-navy);
+  font-size: var(--admin-text-sm);
+  font-weight: 600;
+  padding: var(--admin-space-4) var(--admin-space-5);
+  border-radius: 3px;
+  margin-bottom: var(--admin-space-7);
+}
+
+/* ── Sections ────────────────────────────────────────────────────────────── */
+.section {
+  margin-bottom: var(--admin-space-9);
+}
+.sectionTitle {
+  font-size: var(--admin-text-lg);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--admin-navy);
+  border-bottom: 1px solid var(--admin-gray-300);
+  padding-bottom: var(--admin-space-2);
+  margin: 0 0 var(--admin-space-5);
+}
+
+/* ── Family cards ────────────────────────────────────────────────────────── */
+.families {
+  column-count: 2;
+  column-gap: var(--admin-space-7);
+}
+.family {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  border: 1px solid var(--admin-gray-200);
+  border-left: 3px solid var(--admin-navy);
+  border-radius: 3px;
+  padding: var(--admin-space-4) var(--admin-space-5);
+  margin-bottom: var(--admin-space-5);
+  /* column-count + margin-bottom leaves a card able to start at the very
+     bottom of a column; inline-block keeps it whole. */
+  display: inline-block;
+  width: 100%;
+}
+.familyName {
+  font-size: var(--admin-text-md);
+  font-weight: 700;
+  color: var(--admin-navy);
+  margin: 0;
+}
+.familyAddress {
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-700);
+  margin: 2px 0 var(--admin-space-3);
+}
+.people {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.person {
+  padding: var(--admin-space-2) 0;
+  border-top: 1px solid var(--admin-gray-100);
+}
+.person:first-child {
+  border-top: none;
+}
+.personName {
+  font-weight: 600;
+  color: var(--admin-gray-900);
+}
+.personTag {
+  font-size: var(--admin-text-2xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--admin-gray-600);
+  margin-left: var(--admin-space-3);
+}
+.scoutTag {
+  color: var(--admin-forest);
+}
+.roleTag {
+  color: var(--admin-accent-gold);
+}
+.personDetail {
+  display: block;
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-700);
+}
+
+/* ── Simple two-column lists (leaders, patrols) ──────────────────────────── */
+.cols {
+  column-count: 2;
+  column-gap: var(--admin-space-7);
+}
+.block {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  display: inline-block;
+  width: 100%;
+  margin-bottom: var(--admin-space-5);
+}
+.blockTitle {
+  font-size: var(--admin-text-md);
+  font-weight: 700;
+  color: var(--admin-navy);
+  margin: 0 0 var(--admin-space-2);
+}
+.plainList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--admin-text-sm);
+}
+.plainList li {
+  padding: 1px 0;
+  color: var(--admin-gray-800);
+}
+.muted {
+  color: var(--admin-gray-600);
+}
+
+.footNote {
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-600);
+  border-top: 1px solid var(--admin-gray-200);
+  padding-top: var(--admin-space-4);
+}
+
+/* ── Print ───────────────────────────────────────────────────────────────── */
+@media print {
+  .toolbar {
+    display: none;
+  }
+  .doc {
+    max-width: none;
+    padding: 0;
+    font-size: 9.5pt;
+  }
+  .section {
+    /* Each major section starts its own page: the family directory is the
+       part that goes on the fridge, the patrol and leader pages are the ones
+       a leader takes to a meeting. Splitting them makes each usable alone. */
+    break-before: page;
+    page-break-before: always;
+  }
+  .section:first-of-type {
+    break-before: auto;
+    page-break-before: auto;
+  }
+  /* Scoped to .doc: a CSS Module rejects a bare element selector ("Selector
+     'a' is not pure"), and this only ever needs to apply inside the document. */
+  .doc a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
