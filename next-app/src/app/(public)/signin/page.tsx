@@ -9,8 +9,10 @@
 import { emailConfigured } from '@/lib/email';
 import { hasFamilyAccess } from '@/lib/family-access';
 import { NameSearch } from './name-search';
+import { cookies } from 'next/headers';
 import { PasskeyButton } from './passkey-button';
-import { passkeysConfigured } from '@/lib/passkeys';
+import { PasskeyAutofill } from './passkey-autofill';
+import { passkeysConfigured, passkeyPlacement, PASSKEY_HINT_COOKIE } from '@/lib/passkeys';
 import {
   passkeyAuthOptionsAction,
   passkeyAuthVerifyAction,
@@ -85,6 +87,12 @@ export default async function SignInPage({
   // nothing for the legitimate flow and closes the forgery.
   const rosterUnlocked = await hasFamilyAccess();
   const passkeys = passkeysConfigured();
+  // Placement only (Patrick, 2026-08-21): a browser that has registered or
+  // used a passkey here carries an identity-free hint cookie → the one-tap
+  // button leads; otherwise it sits quietly at the bottom so a first-time
+  // member isn't asked for something they don't have. Both paths render.
+  const deviceSeen = (await cookies()).get(PASSKEY_HINT_COOKIE.name)?.value === '1';
+  const placement = passkeyPlacement(deviceSeen);
 
   return (
     <>
@@ -108,8 +116,12 @@ export default async function SignInPage({
         )}
 
         {sent !== '1' && passkeys && (
+          <PasskeyAutofill next={next} getOptions={passkeyAuthOptionsAction} verify={passkeyAuthVerifyAction} />
+        )}
+        {sent !== '1' && passkeys && placement === 'primary' && (
           <PasskeyButton
             next={next}
+            placement="primary"
             getOptions={passkeyAuthOptionsAction}
             verify={passkeyAuthVerifyAction}
           />
@@ -125,6 +137,15 @@ export default async function SignInPage({
           <NamePicker next={next} err={err} configured={configured} />
         ) : (
           <PasswordGate next={next} err={err} />
+        )}
+
+        {sent !== '1' && passkeys && placement === 'secondary' && (
+          <PasskeyButton
+            next={next}
+            placement="secondary"
+            getOptions={passkeyAuthOptionsAction}
+            verify={passkeyAuthVerifyAction}
+          />
         )}
 
         {/* Consolidated nav login (Patrick, 2026-08-06: "Consolidate all
@@ -230,7 +251,12 @@ function PasswordGate({ next, err }: { next?: string; err?: string }) {
             </>
           }
         >
-          <TextInput type="password" name="password" autoComplete="off" />
+          {/* `webauthn` token (alone — NOT "username"/"current-password", which
+              would invite password managers to save the shared troop password):
+              lets the browser offer a stored passkey for this site in this
+              field's autofill via the conditional-UI ceremony PasskeyAutofill
+              starts on load. Browsers without one show nothing here. */}
+          <TextInput type="password" name="password" autoComplete="webauthn" />
         </Field>
 
         <Button variant="primary" type="submit">

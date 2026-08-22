@@ -40,10 +40,19 @@ function useWebAuthnSupported(): boolean {
 
 export function PasskeyButton({
   next,
+  placement = 'primary',
   getOptions,
   verify
 }: {
   next?: string;
+  /**
+   * 'primary' — the full-width CTA at the top, for a browser that has
+   * registered or used a passkey here before (hint cookie, lib/passkeys).
+   * 'secondary' — a quiet ghost link at the bottom for everyone else, so a
+   * first-time member isn't led with a prompt for something they don't have
+   * (Patrick, 2026-08-21). Same ceremony either way; never omitted (D-119).
+   */
+  placement?: 'primary' | 'secondary';
   getOptions: () => Promise<string | null>;
   verify: (
     responseJson: string,
@@ -57,11 +66,13 @@ export function PasskeyButton({
 
   if (!supported) return null;
 
+  const secondary = placement === 'secondary';
+
   return (
-    <div className={styles.passkeyBlock}>
+    <div className={secondary ? styles.passkeySecondary : styles.passkeyBlock}>
       <Button
-        variant="primary"
-        className={styles.fullWidth}
+        variant={secondary ? 'ghost' : 'primary'}
+        className={secondary ? undefined : styles.fullWidth}
         disabled={pending}
         onClick={() => {
           setError(null);
@@ -91,11 +102,18 @@ export function PasskeyButton({
           });
         }}
       >
-        {pending ? 'Waiting for your device…' : 'Sign in with a passkey'}
+        {pending
+          ? 'Waiting for your device…'
+          : secondary
+            ? 'Already set up a passkey? Sign in with it'
+            : 'Sign in with a passkey'}
       </Button>
-      <p className={styles.passkeyHint}>
-        One tap, if you&rsquo;ve set one up on this device. Otherwise use the troop password below.
-      </p>
+      {!secondary && (
+        <p className={styles.passkeyHint}>
+          One tap &mdash; this browser has used a passkey here before. New here, or signing in as
+          someone else? Use the troop password and your name below instead.
+        </p>
+      )}
       {error ? (
         <Notice tone="error" className={styles.passkeyNotice}>
           {error}

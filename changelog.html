@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.69.0</p>
+      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.70.0</p>
     </div>
   </div>
 
@@ -494,6 +494,124 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.70.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.70.0</span>
+        <span class="release-date">August 21, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Participant classification: who, exactly, is coming</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Every sign-up attendee now has a class</strong> &mdash; Adult, Scout, Junior
+              Leader (a scout in high school), Webelos, Cub Scout, Youth Guest, Adult Guest &mdash;
+              the information campout and event planning actually needs (tents, two-deep, slips,
+              feeder-pack events). It lives on the sign-up entry and defaults from the roster
+              person: adults are Adults; scouts are Scouts, or Junior Leaders when they&rsquo;re in
+              grades 9&ndash;12 <em>as of the event date</em>. Every existing sign-up was
+              backfilled the same way, and a database trigger derives the class for any path that
+              forgets to set it, so nothing can slip through unclassified.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Junior Leader override</strong> on the scout&rsquo;s roster record
+              (Demographics): Auto (grades 9&ndash;12) / Yes / No &mdash; for the 7th-grade SPL or
+              the freshman who isn&rsquo;t one yet. Leaders can also change any one entry&rsquo;s
+              class per event from the roster&rsquo;s Edit dialog.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Guests are named rows now.</strong> On the public sign-up forms, &ldquo;Bringing
+              anyone else?&rdquo; takes a name and a class per guest (Webelos / Cub Scout / Youth
+              Guest / Adult Guest), stored as their own entries under the family member who brought
+              them &mdash; the &ldquo;+N guests, we don&rsquo;t need their names&rdquo; count is gone
+              for new sign-ups (old counts still display). Leaders can add guests the same way from
+              the admin roster (<em>Add a guest</em>). Named guests count in headcounts and get the
+              slip checkbox when they&rsquo;re youth.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Event roster, rebuilt: one line per name, edit what changes</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>One line per name.</strong> The adult/scout line under each name is gone;
+              participation (attending / driver only / contributor), guests, answers and notes each
+              have their own column, and a <strong>Class</strong> column carries the badge. Youth
+              and Adults tiles break down by class (&ldquo;1 Junior Leader &middot; 1 Webelos&rdquo;).
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Edit on every row</strong> &mdash; jobs and commitments &ldquo;often fluctuate
+              widely between when people sign up and the day of need.&rdquo; The dialog lists every
+              job with a checkbox and note, plus the class; Save writes only what changed.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Fixed: &ldquo;Add a person&rdquo; failed</strong> with &ldquo;could not find
+              the adult_name column&rdquo; &mdash; the builder&rsquo;s manual add still wrote two
+              columns the 2026-08-15 roster retirement had dropped. The insert payload is now a
+              tested builder so the column set can&rsquo;t drift again.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Fixed: the Builder&rsquo;s Signup-deadline field</strong> showed only the time
+              &mdash; the form&rsquo;s every-input-is-100%-wide rule was squeezing the date picker to
+              a sliver. The time input owns its own width now.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Calendar rows have an Edit button again</strong> beside Clone / Merge / Delete.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Passkeys: first-timers aren&rsquo;t asked for one</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Remembered-device hint.</strong> The one-tap &ldquo;Sign in with a
+              passkey&rdquo; button leads the sign-in page only on a browser that has registered or
+              used a passkey before (an identity-free cookie); everyone else sees the normal
+              name/code flow first and a quiet &ldquo;Already set up a passkey? Sign in with
+              it&rdquo; link at the bottom. Both paths always remain.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Passkey autofill.</strong> Browsers that hold a passkey for troop-79.com now
+              offer it right in the troop-password field&rsquo;s autofill (WebAuthn conditional UI)
+              &mdash; no button needed; browsers without one show nothing.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Smaller</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Tests:</strong> 748 &rarr; 790, every new one written failing-first; two
+              migrations (class + guests, default-class trigger) applied to production before the
+              code deploy.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

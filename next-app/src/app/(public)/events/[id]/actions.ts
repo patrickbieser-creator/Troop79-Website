@@ -1,5 +1,7 @@
 'use server';
 
+import { personKindFor } from '@/lib/participant-class';
+import { normalizeGuestRows } from '@/lib/event-signup';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
@@ -174,6 +176,45 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
         .update({ entered_by_person_id: session.personId })
         .in('id', entryIds)
         .is('entered_by_person_id', null);
+    }
+  }
+
+  // Named guest rows (Plans/Participant-Classification.md): the party's
+  // guests are REPLACED on every submit — delete the ones hosted by this
+  // party's entries, then insert the normalized list under the first
+  // attending entry (an adult when there is one). No attending host → no
+  // guests; the RPC already refused nothing, so this is a silent no-op.
+  const guestRows = normalizeGuestRows(String(formData.get('guests') ?? ''));
+  const partyEntryIds = writtenRows.map((r) => r.entry_id);
+  if (partyEntryIds.length > 0) {
+    await supabase.from('signup_entries').delete().in('host_entry_id', partyEntryIds);
+  }
+  if (guestRows.length > 0) {
+    const { data: hosts } = await supabase
+      .from('signup_entries')
+      .select('id, person_kind, status, participation')
+      .in('id', partyEntryIds)
+      .eq('status', 'yes')
+      .eq('participation', 'full');
+    const hostRows = (hosts ?? []) as { id: number; person_kind: string }[];
+    const host = hostRows.find((h) => h.person_kind === 'adult') ?? hostRows[0];
+    if (host) {
+      const { error: guestErr } = await supabase.from('signup_entries').insert(
+        guestRows.map((g) => ({
+          event_signup_id: signupId,
+          person_id: null,
+          guest_name: g.name,
+          host_entry_id: host.id,
+          participant_class: g.cls,
+          person_kind: personKindFor(g.cls),
+          status: 'yes',
+          participation: 'full',
+          household_id: householdId,
+          entered_by: actor,
+          updated_by: actor
+        }))
+      );
+      if (guestErr) redirect(`${back}&err=${encodeURIComponent(friendlyError(guestErr.message))}`);
     }
   }
 

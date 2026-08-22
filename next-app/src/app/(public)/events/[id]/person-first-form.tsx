@@ -1,5 +1,6 @@
 'use client';
 
+import { GuestRowsEditor, type GuestRowValue } from './guest-rows';
 import { useMemo, useState } from 'react';
 import type {
   EventPrice,
@@ -103,8 +104,13 @@ export default function PersonFirstForm({
   const [drives, setDrives] = useState<Record<string, { out: boolean; back: boolean; seats: number }>>(
     () => Object.fromEntries(adults.map((a) => [a.key, { out: false, back: false, seats: 3 }]))
   );
-  const [guests, setGuests] = useState(existing[0]?.guest_count ?? 0);
-  const [guestNote, setGuestNote] = useState(existing[0]?.guest_note ?? '');
+  // Named guest rows (Plans/Participant-Classification.md) — seeded from the
+  // party's existing guest entries so an edit shows who's already listed.
+  const [guestRows, setGuestRows] = useState<GuestRowValue[]>(() =>
+    existing
+      .filter((e) => e.guest_name)
+      .map((e) => ({ name: e.guest_name as string, cls: e.participant_class as GuestRowValue['cls'] }))
+  );
   const [notes, setNotes] = useState(existing[0]?.notes ?? '');
   const [newAdults, setNewAdults] = useState<AdHocAdult[]>([]);
   const [claims, setClaims] = useState<Record<number, string[]>>(() => {
@@ -261,7 +267,6 @@ export default function PersonFirstForm({
 
   const entries = useMemo(() => {
     const out: Record<string, unknown>[] = [];
-    let guestsAssigned = false;
     for (const s of scouts) {
       const c = scoutChoice[s.id];
       if (!c) continue;
@@ -286,8 +291,6 @@ export default function PersonFirstForm({
       const attending = c === 'full';
       const t = attending ? chosenTier(`a:${a.key}`, 'adult') : null;
       const d = drives[a.key] ?? { out: false, back: false, seats: 3 };
-      const wantsGuests = attending && !guestsAssigned && guests > 0;
-      if (wantsGuests) guestsAssigned = true;
       out.push({
         key: `a:${a.key}`,
         person_kind: 'adult',
@@ -303,14 +306,16 @@ export default function PersonFirstForm({
         drives_back: d.back,
         seats_offered_out: d.out ? d.seats : null,
         seats_offered_back: d.back ? d.seats : null,
-        guest_count: wantsGuests ? guests : 0,
-        guest_note: wantsGuests ? guestNote || null : null,
+        // Legacy count stays 0 — guests are NAMED ROWS now (hidden `guests`
+        // field, written by the submit action under this party's host entry).
+        guest_count: 0,
+        guest_note: null,
         notes: notes || null,
         answers: attending ? answerArr(`a:${a.key}`, 'adult') : []
       });
     }
     return out;
-  }, [scoutChoice, adultChoice, tier, days, drives, guests, guestNote, notes, scouts, adults]);
+  }, [scoutChoice, adultChoice, tier, days, drives, notes, scouts, adults]);
 
   const anyChoice = entries.length > 0;
 
@@ -704,35 +709,7 @@ export default function PersonFirstForm({
       )}
 
       {signup.allow_guests && (
-        <div className={styles.guestBlock}>
-          <p className={styles.dayHead}>Guests</p>
-          <p className={styles.gateLede}>
-            {signup.guest_prompt ?? 'Friends and family joining — how many? We don’t need their names.'}
-          </p>
-          <div className={styles.guestGrid}>
-            <label className={styles.gateLabel}>
-              How many guests?
-              <input
-                type="number"
-                min={0}
-                max={200}
-                value={guests}
-                onChange={(e) => setGuests(Math.max(0, Number(e.target.value) || 0))}
-                className={styles.gateInput}
-              />
-            </label>
-            <label className={styles.gateLabel}>
-              Who are they? (optional)
-              <input
-                type="text"
-                value={guestNote}
-                onChange={(e) => setGuestNote(e.target.value)}
-                placeholder="e.g. grandparents, 2 aunts, neighbors"
-                className={styles.gateInput}
-              />
-            </label>
-          </div>
-        </div>
+        <GuestRowsEditor guests={guestRows} onChange={setGuestRows} prompt={signup.guest_prompt} />
       )}
 
       {signup.notes_prompt && (

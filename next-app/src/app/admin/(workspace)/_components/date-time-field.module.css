@@ -5,6 +5,15 @@
 }
 .row > *:first-child { flex: 1; min-width: 0; }
 
+/* `.row > .time` (0,2,0) on purpose: host forms style every descendant
+   input — e.g. events-admin's `.fieldGrid input { width: 100% }` — which
+   combined with flex-shrink:0 let the time input take the WHOLE row and
+   squeeze the date picker to a sliver (builder Signup deadline, reported
+   2026-08-21). The time input owns its width; the date picker flexes. */
+.row > .time {
+  width: auto;
+  flex: 0 0 auto;
+}
 .time {
   flex-shrink: 0;
   border: 1px solid var(--admin-gray-300);

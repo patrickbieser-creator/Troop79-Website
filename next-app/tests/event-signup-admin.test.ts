@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { adminClient } from './helpers/admin-client';
 import { createTestEvent, deleteTestEvent, createTestScout, deleteTestScout } from './helpers/signup-fixtures';
-import { backfillEventPrices, slotClaimants, questionAnswers } from '../src/lib/event-signup-admin';
+import { backfillEventPrices, slotClaimants, questionAnswers, diffClaimEdits, signupEntryInsertRow } from '../src/lib/event-signup-admin';
 
 /**
  * Coverage for the event-builder warn/backfill logic added 2026-07-25:
@@ -349,5 +349,69 @@ describe('questionAnswers', () => {
       await deleteTestEvent(admin, event);
       await deleteTestScout(admin, scout);
     }
+  });
+});
+
+/**
+ * Roster row "Edit" for jobs & commitments (Patrick, 2026-08-21: "these jobs
+ * and commitments often fluctuate widely between when people sign up and the
+ * day of need"). The dialog edits a whole set of claims at once; this pure
+ * diff turns before/after into the minimal claimSlotFor/unclaimSlotFor calls.
+ */
+describe('diffClaimEdits (pure)', () => {
+  it('DiffClaimEdits_AddsNewSlots_AndRemovesDroppedOnes', () => {
+    const d = diffClaimEdits(
+      [{ slotId: 1, comment: null }, { slotId: 2, comment: 'bringing two' }],
+      [{ slotId: 2, comment: 'bringing two' }, { slotId: 3, comment: null }]
+    );
+    expect(d.upsert).toEqual([{ slotId: 3, comment: null }]);
+    expect(d.remove).toEqual([1]);
+  });
+
+  it('DiffClaimEdits_UpsertsWhenOnlyTheCommentChanged', () => {
+    const d = diffClaimEdits([{ slotId: 2, comment: 'one table' }], [{ slotId: 2, comment: 'two tables' }]);
+    expect(d.upsert).toEqual([{ slotId: 2, comment: 'two tables' }]);
+    expect(d.remove).toEqual([]);
+  });
+
+  it('DiffClaimEdits_TreatsBlankAndNullComments_AsTheSame', () => {
+    const d = diffClaimEdits([{ slotId: 2, comment: null }], [{ slotId: 2, comment: '   ' }]);
+    expect(d.upsert).toEqual([]);
+    expect(d.remove).toEqual([]);
+  });
+
+  it('DiffClaimEdits_IsEmpty_WhenNothingChanged', () => {
+    const same = [{ slotId: 1, comment: 'x' }, { slotId: 4, comment: null }];
+    expect(diffClaimEdits(same, [...same].reverse())).toEqual({ upsert: [], remove: [] });
+  });
+});
+
+/**
+ * Leader "Add a person" (builder/roster) — the insert payload must match the
+ * live signup_entries columns. Regression for 2026-08-21: the action still
+ * wrote scout_id + adult_name after the scout_parents retirement dropped
+ * them, so every Add failed with "could not find the adult_name column".
+ */
+describe('signupEntryInsertRow (pure)', () => {
+  it('InsertRow_UsesPersonIdAndKindOnly_NeverTheRetiredIdentityColumns', () => {
+    const row = signupEntryInsertRow({
+      signupId: 5, personId: 77, isScout: false, status: 'yes', participation: 'full', updatedBy: 'Test'
+    });
+    expect(row).toEqual({
+      event_signup_id: 5, person_id: 77, person_kind: 'adult', status: 'yes', participation: 'full', updated_by: 'Test'
+    });
+    expect(Object.keys(row)).not.toContain('adult_name');
+    expect(Object.keys(row)).not.toContain('scout_id');
+  });
+
+  it('InsertRow_MarksAScout_AsPersonKindScout', () => {
+    expect(signupEntryInsertRow({
+      signupId: 5, personId: 8, isScout: true, status: 'waitlist', participation: 'full', updatedBy: 'T'
+    }).person_kind).toBe('scout');
+  });
+
+  it('SignupEntries_SchemaHasNoAdultNameColumn_SoTheOldPayloadCannotComeBack', async () => {
+    const { error } = await adminClient().from('signup_entries').select('adult_name').limit(1);
+    expect(error).not.toBeNull();
   });
 });

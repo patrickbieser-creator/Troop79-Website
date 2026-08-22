@@ -122,7 +122,7 @@ const SCOREBOARD: ReadonlyArray<readonly [string, string, string]> = [
   [
     'Buttons',
     '33 distinct class names / 15 files; primary green written 5× with 3 greens, 3 radii',
-    'Button SHIPPED (A; size="sm" + dangerGhost added C) — submitBtn, passkeyRemove, mastheadJoin converted; sanctioned locals: signOutBtn (forest outline), scout-account proxy (compact navy), about-join khaki CTA, calendar/pager chrome'
+    'Button SHIPPED (A; size="sm" + dangerGhost added C) — submitBtn, passkeyRemove, mastheadJoin converted; /signin passkey CTA is primary (full-width) only on a browser with the remembered-device hint cookie, else the shared ghost variant at the bottom (2026-08-21); sanctioned locals: signOutBtn (forest outline), scout-account proxy (compact navy), about-join khaki CTA, calendar/pager chrome'
   ],
   [
     'Pills / badges / tags',
@@ -132,7 +132,7 @@ const SCOREBOARD: ReadonlyArray<readonly [string, string, string]> = [
   [
     'Form fields',
     '18 files / 88 declarations',
-    'Form kit SHIPPED (A; 16px iOS floor decided C) — profile editors decoupled onto the public DateField (admin imports in public: ZERO); DateField v2 (2026-08-21, Patrick): native input → rich control (tolerant typing via lib/date-entry + react-day-picker popover on public tokens — admin parity by behavior, not by import); sanctioned locals: name-search (hint-above layout), tagSelect (compact header control)'
+    'Form kit SHIPPED (A; 16px iOS floor decided C) — profile editors decoupled onto the public DateField (admin imports in public: ZERO); event sign-up forms gained named guest rows (GuestRowsEditor, 2026-08-21: name + class per guest, replacing the "+N guests" count — Plans/Participant-Classification.md; .guestRow/.guestAdd/.guestRemove on tokens in event-detail.module.css); DateField v2 (2026-08-21, Patrick): native input → rich control (tolerant typing via lib/date-entry + react-day-picker popover on public tokens — admin parity by behavior, not by import); sanctioned locals: name-search (hint-above layout), tagSelect (compact header control)'
   ],
   [
     'Cards',

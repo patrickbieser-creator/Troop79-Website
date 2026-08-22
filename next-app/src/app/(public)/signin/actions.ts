@@ -33,7 +33,9 @@ import {
   finishAuthentication,
   beginRegistration,
   finishRegistration,
-  deletePasskey
+  deletePasskey,
+  PASSKEY_HINT_COOKIE,
+  passkeyHintCookieOptions
 } from '@/lib/passkeys';
 import type {
   AuthenticationResponseJSON,
@@ -368,6 +370,15 @@ export async function searchRosterAction(query: string): Promise<SignInSearchRes
  * page permanently rather than the passkey replacing the link.
  */
 
+/** Mark this browser as one that has a passkey (registered here, or just
+ *  used here). Identity-free — see PASSKEY_HINT_COOKIE in lib/passkeys. The
+ *  /signin page reads it only to decide whether the one-tap button leads or
+ *  sits quietly at the bottom. */
+async function rememberPasskeyDevice(): Promise<void> {
+  const jar = await cookies();
+  jar.set(PASSKEY_HINT_COOKIE.name, '1', passkeyHintCookieOptions());
+}
+
 export async function passkeyAuthOptionsAction(): Promise<string | null> {
   const options = await beginAuthentication(createAdminClient());
   return options ? JSON.stringify(options) : null;
@@ -400,6 +411,7 @@ export async function passkeyAuthVerifyAction(
   }
 
   await setIdentityCookie(identity, 'passkey');
+  await rememberPasskeyDevice();
   return { ok: true, redirectTo: safeInternalPath(identity.nextPath, '/member') };
 }
 
@@ -443,6 +455,7 @@ export async function passkeyRegisterVerifyAction(
     parsed,
     nickname || null
   );
+  if (result.ok) await rememberPasskeyDevice();
   revalidatePath('/member');
   return result.ok ? { ok: true } : { ok: false, error: result.error };
 }

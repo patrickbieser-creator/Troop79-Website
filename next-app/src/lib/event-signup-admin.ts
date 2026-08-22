@@ -166,3 +166,62 @@ export async function questionAnswers(
     };
   });
 }
+
+/* ── Roster row "Edit" — jobs & commitments (2026-08-21) ───────────────── */
+
+export interface ClaimEdit {
+  slotId: number;
+  comment: string | null;
+}
+
+/** Before/after claim sets → the minimal writes: upsert (new slot, or same
+ *  slot with a changed comment) and remove (slot no longer claimed). Blank
+ *  and null comments are the same thing. Pure; the dialog calls it once on
+ *  Save and the page fans the result out to claimSlotFor/unclaimSlotFor. */
+export function diffClaimEdits(
+  before: readonly ClaimEdit[],
+  after: readonly ClaimEdit[]
+): { upsert: ClaimEdit[]; remove: number[] } {
+  const norm = (c: string | null) => (c ?? '').trim() || null;
+  const beforeBy = new Map(before.map((c) => [c.slotId, norm(c.comment)]));
+  const afterBy = new Map(after.map((c) => [c.slotId, norm(c.comment)]));
+  const upsert: ClaimEdit[] = [];
+  for (const [slotId, comment] of afterBy) {
+    if (!beforeBy.has(slotId) || beforeBy.get(slotId) !== comment) upsert.push({ slotId, comment });
+  }
+  const remove = [...beforeBy.keys()].filter((slotId) => !afterBy.has(slotId));
+  return { upsert, remove };
+}
+
+/* ── Leader "Add a person" insert payload (2026-08-21) ─────────────────── */
+
+/** The row addSignupEntry inserts for a hand-added person. Pure and tested
+ *  so the column set can't drift from the schema again: the 2026-08-15
+ *  scout_parents retirement dropped scout_id/adult_name, and the action kept
+ *  writing them — "could not find the adult_name column in the schema cache"
+ *  on every Add (Patrick, 2026-08-21). Identity is person_id + person_kind,
+ *  nothing else. */
+export function signupEntryInsertRow(input: {
+  signupId: number;
+  personId: number;
+  isScout: boolean;
+  status: 'yes' | 'waitlist';
+  participation: 'full' | 'driver_only' | 'contributor';
+  updatedBy: string;
+}): {
+  event_signup_id: number;
+  person_id: number;
+  person_kind: 'scout' | 'adult';
+  status: 'yes' | 'waitlist';
+  participation: 'full' | 'driver_only' | 'contributor';
+  updated_by: string;
+} {
+  return {
+    event_signup_id: input.signupId,
+    person_id: input.personId,
+    person_kind: input.isScout ? 'scout' : 'adult',
+    status: input.status,
+    participation: input.participation,
+    updated_by: input.updatedBy
+  };
+}

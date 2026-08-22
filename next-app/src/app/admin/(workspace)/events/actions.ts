@@ -1,5 +1,6 @@
 'use server';
 
+import { isParticipantClass, personKindFor, GUEST_CLASSES, type ParticipantClass } from '@/lib/participant-class';
 import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
@@ -12,8 +13,7 @@ import {
   questionAnswers,
   type BackfillPricesResult,
   type SlotClaimant,
-  type QuestionAnswerRow
-} from '@/lib/event-signup-admin';
+  type QuestionAnswerRow, signupEntryInsertRow } from '@/lib/event-signup-admin';
 
 /*
  * Event Signup builder actions. House pattern throughout:
@@ -758,16 +758,19 @@ export async function addSignupEntry(
       .eq('id', existing.id);
     if (error) return { ok: false, error: error.message };
   } else {
-    const { error } = await supabase.from('signup_entries').insert({
-      event_signup_id: signupId,
-      person_id: personId,
-      person_kind: isScout ? 'scout' : 'adult',
-      scout_id: isScout ? scout!.id : null,
-      adult_name: isScout ? null : person.display_name,
-      status,
-      participation,
-      updated_by: session.label
-    });
+    // Payload is a tested pure builder (lib/event-signup-admin) — the
+    // scout_id/adult_name columns this used to write were dropped 2026-08-15
+    // and every Add failed on the schema cache until 2026-08-21.
+    const { error } = await supabase.from('signup_entries').insert(
+      signupEntryInsertRow({
+        signupId,
+        personId,
+        isScout,
+        status: status as 'yes' | 'waitlist',
+        participation,
+        updatedBy: session.label
+      })
+    );
     if (error) return { ok: false, error: error.message };
   }
 
@@ -804,6 +807,103 @@ export async function claimSlotFor(
     );
   if (error) return { ok: false, error: error.message };
 
+  revalidatePath(`/admin/rosters/${signupId}`);
+  revalidateEvent(calendarEntryId, signupId);
+  return { ok: true };
+}
+
+/**
+ * Release a job claim on someone's behalf — the other half of claimSlotFor,
+ * for the roster's per-row Edit (Patrick, 2026-08-21: "jobs and commitments
+ * often fluctuate widely between when people sign up and the day of need").
+ */
+export async function unclaimSlotFor(
+  slotId: number,
+  entryId: number,
+  signupId: number,
+  calendarEntryId: number
+): Promise<Result> {
+  await requireCapability('calendar.write');
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from('signup_slot_claims')
+    .delete()
+    .eq('slot_id', slotId)
+    .eq('signup_entry_id', entryId);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/admin/rosters/${signupId}`);
+  revalidateEvent(calendarEntryId, signupId);
+  return { ok: true };
+}
+
+/**
+ * Per-event class override on one entry (Plans/Participant-Classification.md):
+ * the default came from the roster person at sign-up; a leader corrects it
+ * here from the roster's Edit dialog. person_kind follows the class so the
+ * readers that haven't migrated (slips, two-deep, pricing audience) agree.
+ */
+export async function setEntryClass(
+  entryId: number,
+  participantClass: string,
+  signupId: number,
+  calendarEntryId: number
+): Promise<Result> {
+  await requireCapability('calendar.write');
+  if (!isParticipantClass(participantClass)) return { ok: false, error: 'Unknown participant class.' };
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from('signup_entries')
+    .update({ participant_class: participantClass, person_kind: personKindFor(participantClass) })
+    .eq('id', entryId)
+    .eq('event_signup_id', signupId);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/admin/rosters/${signupId}`);
+  revalidateEvent(calendarEntryId, signupId);
+  return { ok: true };
+}
+
+/**
+ * Leader adds a NAMED guest (Webelos / Cub Scout / Youth Guest / Adult Guest)
+ * under a roster entry that brought them — the admin half of decision 4
+ * (families add theirs on the public form). Cascade-deletes with the host.
+ */
+export async function addGuestEntry(
+  signupId: number,
+  calendarEntryId: number,
+  hostEntryId: number,
+  guestName: string,
+  guestClass: string
+): Promise<Result> {
+  const session = await requireCapability('calendar.write');
+  const name = guestName.trim();
+  if (!name) return { ok: false, error: 'Give the guest a name.' };
+  if (!(GUEST_CLASSES as readonly string[]).includes(guestClass)) {
+    return { ok: false, error: 'Pick a guest class.' };
+  }
+  const cls = guestClass as ParticipantClass;
+  const supabase = createAdminClient();
+  const { data: host } = await supabase
+    .from('signup_entries')
+    .select('id, household_id')
+    .eq('id', hostEntryId)
+    .eq('event_signup_id', signupId)
+    .maybeSingle();
+  if (!host) return { ok: false, error: 'That host is not on this roster.' };
+  const { error } = await supabase.from('signup_entries').insert({
+    event_signup_id: signupId,
+    person_id: null,
+    guest_name: name,
+    host_entry_id: hostEntryId,
+    // A guest belongs to the household that brought them — same as the
+    // public form writes — so the roster's Household column reads right.
+    household_id: (host as { household_id?: number | null }).household_id ?? null,
+    participant_class: cls,
+    person_kind: personKindFor(cls),
+    status: 'yes',
+    participation: 'full',
+    updated_by: session.label
+  });
+  if (error) return { ok: false, error: error.message };
   revalidatePath(`/admin/rosters/${signupId}`);
   revalidateEvent(calendarEntryId, signupId);
   return { ok: true };

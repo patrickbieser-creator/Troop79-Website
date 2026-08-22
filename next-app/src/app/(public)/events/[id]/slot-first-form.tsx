@@ -1,5 +1,6 @@
 'use client';
 
+import { GuestRowsEditor, type GuestRowValue } from './guest-rows';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { SignupSlot } from '@/lib/event-signup';
@@ -127,8 +128,8 @@ export default function SlotFirstForm({
   });
   const [open, setOpen] = useState<number | null>(null);
   const [fullNote, setFullNote] = useState<number | null>(null);
-  const [guests, setGuests] = useState(0);
-  const [guestNote, setGuestNote] = useState('');
+  // Named guest rows (Plans/Participant-Classification.md).
+  const [guestRows, setGuestRows] = useState<GuestRowValue[]>([]);
   const [query, setQuery] = useState('');
 
   const claimersOf = (slotId: number) => claims[slotId] ?? [];
@@ -192,11 +193,13 @@ export default function SlotFirstForm({
           person_id: p.personId,
           status: 'yes',
           participation: donationOnly ? 'contributor' : 'full',
-          guest_count: p.key === people[0]?.key ? guests : 0,
-          guest_note: p.key === people[0]?.key ? guestNote || null : null
+          // Legacy count stays 0 — guests are NAMED ROWS now (hidden `guests`
+          // field, written by the submit action under this party's host entry).
+          guest_count: 0,
+          guest_note: null
         };
       });
-  }, [claims, people, slots, guests, guestNote, ready]);
+  }, [claims, people, slots, ready]);
 
   const claimsForSubmit = useMemo(() => {
     const byPerson: Record<string, number[]> = {};
@@ -586,38 +589,7 @@ export default function SlotFirstForm({
 
       {jobList}
 
-      {allowGuests && (
-        <div className={styles.guestBlock}>
-          <p className={styles.dayHead}>Guests coming along</p>
-          <p className={styles.gateLede}>
-            {guestPrompt ??
-              'Friends and family joining — how many, so we can plan? We don’t need their names.'}
-          </p>
-          <div className={styles.guestGrid}>
-            <label className={styles.gateLabel}>
-              How many guests?
-              <input
-                type="number"
-                min={0}
-                max={200}
-                value={guests}
-                onChange={(e) => setGuests(Math.max(0, Number(e.target.value) || 0))}
-                className={styles.gateInput}
-              />
-            </label>
-            <label className={styles.gateLabel}>
-              Who are they? (optional)
-              <input
-                type="text"
-                value={guestNote}
-                onChange={(e) => setGuestNote(e.target.value)}
-                placeholder="e.g. grandparents, 2 aunts, neighbors"
-                className={styles.gateInput}
-              />
-            </label>
-          </div>
-        </div>
-      )}
+      {allowGuests && <GuestRowsEditor guests={guestRows} onChange={setGuestRows} prompt={guestPrompt} />}
 
       <div className={styles.recap}>
         <p className={styles.dayHead}>Your household’s jobs</p>

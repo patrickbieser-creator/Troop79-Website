@@ -489,10 +489,18 @@ export function CalendarEditor({
                   )}
                 </td>
                 <td className={styles.actionsCell}>
-                  {/* The duplicate Edit link is gone (Section 2 stretched-link
-                      sweep, 2026-08-21): the title IS the way into the
-                      workbench — one way in per row. Actions keeps only the
-                      operations that aren't "open": Clone, Merge, Delete. */}
+                  {/* Edit is BACK (Patrick, 2026-08-21: "The calendar needs an
+                      Edit button in addition to the three") — the stretched-
+                      link sweep had left the title as the only way in; an
+                      explicit control beside Clone/Merge/Delete is what the
+                      row reads as needing. Same destination as the title. */}
+                  <Link
+                    href={`/admin/calendar/${row.id}`}
+                    className={styles.editBtn}
+                    title="Open this entry in the workbench"
+                  >
+                    Edit
+                  </Link>
                   <button
                     type="button"
                     className={styles.editBtn}

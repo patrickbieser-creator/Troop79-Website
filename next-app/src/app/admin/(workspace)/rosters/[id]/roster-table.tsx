@@ -2,9 +2,26 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { setEntryFlag, cancelEntry, restoreEntry } from '../../events/actions';
+import {
+  setEntryFlag,
+  cancelEntry,
+  restoreEntry,
+  claimSlotFor,
+  unclaimSlotFor,
+  setEntryClass,
+  addGuestEntry
+} from '../../events/actions';
+import {
+  PARTICIPANT_CLASSES,
+  PARTICIPANT_CLASS_LABEL,
+  GUEST_CLASSES,
+  isYouthClass,
+  type ParticipantClass
+} from '@/lib/participant-class';
+import { Badge } from '../../_components/badge';
 import { recordEventFeePaymentAction, voidEventFeePaymentAction } from '../../finance/actions';
 import type { TransactionMethod } from '@/lib/finance';
+import { diffClaimEdits, type ClaimEdit } from '@/lib/event-signup-admin';
 import type { RosterRow } from './page';
 import styles from '../../events/events-admin.module.css';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
@@ -26,20 +43,38 @@ function rosterValue(r: RosterRow, key: RosterColKey): unknown {
   }
 }
 
-/** Roster table with leader-managed slip/payment ticks and a CSV export.
- *  One troop-wide list — no patrol grouping (see page.tsx). */
+const PARTICIPATION_LABEL: Record<string, string> = {
+  full: 'attending',
+  driver_only: 'driver only',
+  contributor: 'contributor'
+};
+
+/** Roster table with leader-managed slip/payment ticks, a per-row jobs &
+ *  commitments editor, and a CSV export. One troop-wide list — no patrol
+ *  grouping (see page.tsx).
+ *
+ *  Layout (Patrick, 2026-08-21): ONE line per name. The old line-2
+ *  "kind · participation · +guests" plus notes/answers are gone from the
+ *  name cell — participation, guests, answers and notes are their own
+ *  columns, and the adult/scout indicator is dropped entirely (a richer
+ *  participant classification is coming — Plans/Participant-Classification.md).
+ *  The per-row Edit opens the jobs editor because "jobs and commitments
+ *  often fluctuate widely between when people sign up and the day of need". */
 export function RosterTable({
   rows,
   removedRows,
   signupId,
   calendarEntryId,
-  showSlip
+  showSlip,
+  slots
 }: {
   rows: RosterRow[];
   removedRows: RosterRow[];
   signupId: number;
   calendarEntryId: number;
   showSlip: boolean;
+  /** Every job on this signup — the editor's checklist. */
+  slots: { id: number; label: string }[];
 }) {
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -64,6 +99,105 @@ export function RosterTable({
     if (payingRow && !dlg.open) dlg.showModal();
     if (!payingRow && dlg.open) dlg.close();
   }, [payingRow]);
+
+  // Jobs & commitments editor — one row at a time; the whole claim set is
+  // edited locally and diffed on Save (lib/event-signup-admin diffClaimEdits)
+  // into the minimal claimSlotFor/unclaimSlotFor calls.
+  const [editingRow, setEditingRow] = useState<RosterRow | null>(null);
+  const [editClaims, setEditClaims] = useState<Map<number, { checked: boolean; comment: string }>>(new Map());
+  const [editClass, setEditClass] = useState<ParticipantClass>('adult');
+  const jobsDialogRef = useRef<HTMLDialogElement>(null);
+
+  // Add a guest (Plans/Participant-Classification.md decision 3/4): a NAMED
+  // non-roster attendee — Webelos, Cub Scout, Youth Guest, Adult Guest —
+  // brought by one of the roster entries. Leaders add here; families add
+  // theirs on the public form.
+  const [addingGuest, setAddingGuest] = useState(false);
+  const [guestName, setGuestName] = useState('');
+  const [guestClass, setGuestClass] = useState<(typeof GUEST_CLASSES)[number]>('webelos');
+  const [guestHost, setGuestHost] = useState<number | ''>('');
+  const guestDialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dlg = guestDialogRef.current;
+    if (!dlg) return;
+    if (addingGuest && !dlg.open) dlg.showModal();
+    if (!addingGuest && dlg.open) dlg.close();
+  }, [addingGuest]);
+  function openAddGuest() {
+    setGuestName('');
+    setGuestClass('webelos');
+    setGuestHost(rows.find((r) => r.hostEntryId === null)?.id ?? '');
+    setAddingGuest(true);
+  }
+  function saveGuest() {
+    if (!guestName.trim() || guestHost === '') return;
+    start(async () => {
+      setError(null);
+      const res = await addGuestEntry(signupId, calendarEntryId, Number(guestHost), guestName, guestClass);
+      if (!res.ok) {
+        setError(res.error ?? 'Could not add the guest.');
+        return;
+      }
+      setAddingGuest(false);
+      router.refresh();
+    });
+  }
+
+  useEffect(() => {
+    const dlg = jobsDialogRef.current;
+    if (!dlg) return;
+    if (editingRow && !dlg.open) dlg.showModal();
+    if (!editingRow && dlg.open) dlg.close();
+  }, [editingRow]);
+
+  function openJobsEditor(r: RosterRow) {
+    const byId = new Map(r.claimDetails.map((c) => [c.slotId, c.comment ?? '']));
+    setEditClaims(
+      new Map(slots.map((sl) => [sl.id, { checked: byId.has(sl.id), comment: byId.get(sl.id) ?? '' }]))
+    );
+    setEditClass(r.participantClass);
+    setEditingRow(r);
+  }
+
+  function saveJobs() {
+    if (!editingRow) return;
+    const row = editingRow;
+    const after: ClaimEdit[] = [...editClaims.entries()]
+      .filter(([, v]) => v.checked)
+      .map(([slotId, v]) => ({ slotId, comment: v.comment.trim() || null }));
+    const diff = diffClaimEdits(row.claimDetails, after);
+    start(async () => {
+      setError(null);
+      try {
+        if (editClass !== row.participantClass) {
+          const res = await setEntryClass(row.id, editClass, signupId, calendarEntryId);
+          if (!res.ok) {
+            setError(res.error ?? 'Could not save the class.');
+            return;
+          }
+        }
+        for (const c of diff.upsert) {
+          const res = await claimSlotFor(c.slotId, row.id, signupId, calendarEntryId, c.comment);
+          if (!res.ok) {
+            setError(res.error ?? 'Could not save jobs.');
+            return;
+          }
+        }
+        for (const slotId of diff.remove) {
+          const res = await unclaimSlotFor(slotId, row.id, signupId, calendarEntryId);
+          if (!res.ok) {
+            setError(res.error ?? 'Could not save jobs.');
+            return;
+          }
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Could not save jobs.');
+        return;
+      }
+      setEditingRow(null);
+      router.refresh();
+    });
+  }
 
   function openPayDialog(r: RosterRow) {
     setPayMethod('venmo');
@@ -131,7 +265,7 @@ export function RosterTable({
       'Slip', 'Paid', 'Jobs', 'Answers', 'Notes'
     ];
     const body = sorted.map((r) => [
-      r.kind, r.name, r.household, r.status, r.participation, r.tierLabel ?? '',
+      PARTICIPANT_CLASS_LABEL[r.participantClass], r.name, r.household, r.status, r.participation, r.tierLabel ?? '',
       r.days ?? '', r.owed, r.guests, r.guestNote ?? '',
       r.drivesOut ? (r.seatsOut ?? '') : '', r.drivesBack ? (r.seatsBack ?? '') : '',
       r.slipReceived ? 'Y' : 'N', r.paymentReceived ? 'Y' : 'N',
@@ -156,11 +290,16 @@ export function RosterTable({
       else router.refresh();
     });
 
+  const colCount = 13 + (showSlip ? 1 : 0);
+
   return (
     <section className={styles.panel}>
       <div className={styles.panelHead}>
         <h2>Everyone signed up ({rows.length})</h2>
         <div>
+          <button type="button" className={styles.enableBtn} onClick={openAddGuest} disabled={pending || rows.length === 0}>
+            Add a guest
+          </button>{' '}
           <button type="button" className={styles.enableBtn} onClick={() => window.print()}>
             Print
           </button>{' '}
@@ -175,11 +314,16 @@ export function RosterTable({
         <thead>
           <tr>
             <SortHeader label="Name" colKey="name" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
+            <th scope="col">Class</th>
             <SortHeader label="Household" colKey="household" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
             <SortHeader label="Status" colKey="status" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
+            <th scope="col">Participation</th>
+            <th scope="col">Guests</th>
             <SortHeader label="Owed" colKey="owed" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
             <th scope="col">Driving</th>
             <th scope="col">Jobs</th>
+            <th scope="col">Answers</th>
+            <th scope="col">Notes</th>
             {showSlip && <th scope="col">Slip</th>}
             <th scope="col">Paid</th>
             <th scope="col" />
@@ -188,21 +332,28 @@ export function RosterTable({
         <tbody>
           {sorted.map((r) => (
             <tr key={r.id} className={r.status === 'waitlist' ? styles.waitRow : undefined}>
-              <td>
+              <td className={styles.nowrap}>
                 <span className={styles.evTitle}>{r.name}</span>
-                <span className={styles.evCat}>
-                  {r.kind}
-                  {r.participation !== 'full' && ` · ${r.participation.replace('_', ' ')}`}
-                  {r.guests > 0 && ` · +${r.guests} guests`}
-                </span>
-                {r.notes && <span className={styles.rowNote}>{r.notes}</span>}
-                {r.answers.length > 0 && (
-                  <span className={styles.rowAnswers}>{r.answers.join(' · ')}</span>
+              </td>
+              <td className={styles.nowrap}>
+                <Badge variant={isYouthClass(r.participantClass) ? 'info' : 'neutral'}>
+                  {PARTICIPANT_CLASS_LABEL[r.participantClass]}
+                </Badge>
+                {r.hostEntryId !== null && (
+                  <span className={styles.guestOf}>
+                    guest of {rows.find((h) => h.id === r.hostEntryId)?.name ?? '—'}
+                  </span>
                 )}
               </td>
               <td>{r.household}</td>
               <td className={styles.nowrap}>
                 {r.status === 'waitlist' ? <strong>Waitlist</strong> : r.status}
+              </td>
+              <td className={`${styles.nowrap} ${styles.cellMuted}`}>
+                {PARTICIPATION_LABEL[r.participation] ?? r.participation}
+              </td>
+              <td className={styles.nowrap}>
+                {r.guests > 0 ? `+${r.guests}${r.guestNote ? ` (${r.guestNote})` : ''}` : '—'}
               </td>
               <td className={styles.nowrap}>
                 {r.owed > 0 ? `$${r.owed}` : '—'}
@@ -216,12 +367,14 @@ export function RosterTable({
                   : '—'}
               </td>
               <td>{r.claimsDisplay.join(', ') || '—'}</td>
+              <td className={styles.cellMuted}>{r.answers.join(' · ') || '—'}</td>
+              <td className={styles.cellMuted}>{r.notes || '—'}</td>
               {showSlip && (
                 <td>
                   <input
                     type="checkbox"
                     checked={r.slipReceived}
-                    disabled={pending || r.kind !== 'scout'}
+                    disabled={pending || !isYouthClass(r.participantClass)}
                     aria-label={`Permission slip received — ${r.name}`}
                     onChange={(e) => toggle(r, 'permission_slip_received', e.target.checked)}
                   />
@@ -237,6 +390,15 @@ export function RosterTable({
                 />
               </td>
               <td className={styles.nowrap}>
+                <button
+                  type="button"
+                  className={styles.rowEdit}
+                  disabled={pending}
+                  aria-label={`Edit jobs and commitments — ${r.name}`}
+                  onClick={() => openJobsEditor(r)}
+                >
+                  Edit
+                </button>{' '}
                 {confirming === r.id ? (
                   <>
                     <button
@@ -278,7 +440,7 @@ export function RosterTable({
           ))}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={showSlip ? 9 : 8} className={styles.empty}>
+              <td colSpan={colCount} className={styles.empty}>
                 Nobody has signed up yet.
               </td>
             </tr>
@@ -318,6 +480,146 @@ export function RosterTable({
           </ul>
         </div>
       )}
+
+      <Dialog ref={jobsDialogRef} onClose={() => setEditingRow(null)}>
+        {editingRow && (
+          <>
+            <DialogHeader title={`Edit — ${editingRow.name}`} />
+            <DialogBody>
+              <label className={`adminLabel ${styles.payField}`}>
+                Class
+                <select
+                  value={editClass}
+                  onChange={(e) => setEditClass(e.target.value as ParticipantClass)}
+                  aria-label="Class"
+                >
+                  {PARTICIPANT_CLASSES.map((c) => (
+                    <option key={c} value={c}>
+                      {PARTICIPANT_CLASS_LABEL[c]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className={`adminLabel ${styles.jobsHeading}`}>Jobs &amp; commitments</p>
+              {slots.length === 0 ? (
+                <p className={styles.jobsEmpty}>This signup has no jobs defined yet — add them in the Builder.</p>
+              ) : (
+                <ul className={styles.jobsList}>
+                  {slots.map((sl) => {
+                    const st = editClaims.get(sl.id) ?? { checked: false, comment: '' };
+                    return (
+                      <li key={sl.id}>
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={st.checked}
+                            onChange={(e) =>
+                              setEditClaims((prev) => {
+                                const next = new Map(prev);
+                                next.set(sl.id, { ...st, checked: e.target.checked });
+                                return next;
+                              })
+                            }
+                          />
+                          {sl.label}
+                        </label>
+                        {st.checked && (
+                          <input
+                            type="text"
+                            placeholder="Note (optional) — e.g. Sat dinner, bringing two"
+                            aria-label={`Note for ${sl.label}`}
+                            value={st.comment}
+                            onChange={(e) =>
+                              setEditClaims((prev) => {
+                                const next = new Map(prev);
+                                next.set(sl.id, { ...st, comment: e.target.value });
+                                return next;
+                              })
+                            }
+                          />
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </DialogBody>
+            <DialogActions>
+              <button type="button" className={styles.rowEdit} onClick={() => setEditingRow(null)} disabled={pending}>
+                Cancel
+              </button>
+              <button type="button" className={styles.enableBtn} disabled={pending} onClick={saveJobs}>
+                {pending ? 'Saving…' : 'Save'}
+              </button>
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
+
+      <Dialog ref={guestDialogRef} onClose={() => setAddingGuest(false)}>
+        {addingGuest && (
+          <>
+            <DialogHeader title="Add a guest" />
+            <DialogBody>
+              <label className={`adminLabel ${styles.payField}`}>
+                Guest name
+                <input
+                  type="text"
+                  value={guestName}
+                  onChange={(e) => setGuestName(e.target.value)}
+                  aria-label="Guest name"
+                  placeholder="e.g. Sam Lee"
+                  autoFocus
+                />
+              </label>
+              <label className={`adminLabel ${styles.payField}`}>
+                Guest class
+                <select
+                  value={guestClass}
+                  onChange={(e) => setGuestClass(e.target.value as (typeof GUEST_CLASSES)[number])}
+                  aria-label="Guest class"
+                >
+                  {GUEST_CLASSES.map((c) => (
+                    <option key={c} value={c}>
+                      {PARTICIPANT_CLASS_LABEL[c]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className={`adminLabel ${styles.payField}`}>
+                Brought by
+                <select
+                  value={guestHost}
+                  onChange={(e) => setGuestHost(e.target.value ? Number(e.target.value) : '')}
+                  aria-label="Brought by"
+                >
+                  <option value="">Select who is bringing them…</option>
+                  {rows
+                    .filter((r) => r.hostEntryId === null)
+                    .map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+            </DialogBody>
+            <DialogActions>
+              <button type="button" className={styles.rowEdit} onClick={() => setAddingGuest(false)} disabled={pending}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={styles.enableBtn}
+                disabled={pending || !guestName.trim() || guestHost === ''}
+                onClick={saveGuest}
+              >
+                {pending ? 'Adding…' : 'Add guest'}
+              </button>
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
 
       <Dialog ref={payDialogRef} onClose={() => setPayingRow(null)}>
         {payingRow && (

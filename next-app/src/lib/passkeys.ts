@@ -330,3 +330,36 @@ export async function deletePasskey(
     .eq('id', credentialRowId)
     .eq('person_id', personId);
 }
+
+// ── Remembered-device hint (2026-08-21) ─────────────────────────────────────
+//
+// A first-time member on /signin used to meet a PRIMARY "Sign in with a
+// passkey" button with no way to know they had none (Patrick: "confusing new
+// members"). No browser API will say "this user has a passkey for this site"
+// — that's hidden on purpose — so the page keeps its own, non-sensitive
+// memory: a cookie set when a passkey is REGISTERED or successfully USED from
+// this browser. Value is a constant; it names nobody and grants nothing. It
+// only decides placement: present → one-tap button first; absent → a quiet
+// secondary link. Both paths always render (D-119 — the code path and the
+// passkey path are both permanent).
+
+export const PASSKEY_HINT_COOKIE = {
+  name: 't79_passkey_hint',
+  maxAgeSeconds: 365 * 24 * 60 * 60
+} as const;
+
+/** Cookie attributes for the hint — same shape as the session cookies. */
+export function passkeyHintCookieOptions(nodeEnv: string | undefined = process.env.NODE_ENV) {
+  return {
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    secure: nodeEnv === 'production',
+    path: '/',
+    maxAge: PASSKEY_HINT_COOKIE.maxAgeSeconds
+  };
+}
+
+/** Where the passkey control sits on /signin. */
+export function passkeyPlacement(deviceSeen: boolean): 'primary' | 'secondary' {
+  return deviceSeen ? 'primary' : 'secondary';
+}

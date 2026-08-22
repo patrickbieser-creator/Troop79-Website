@@ -1,4 +1,11 @@
 import Link from 'next/link';
+import {
+  isParticipantClass,
+  isYouthClass,
+  PARTICIPANT_CLASSES,
+  PARTICIPANT_CLASS_LABEL,
+  type ParticipantClass
+} from '@/lib/participant-class';
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireCapability } from '@/lib/require-capability';
@@ -25,6 +32,12 @@ export interface RosterRow {
   id: number;
   name: string;
   kind: 'scout' | 'adult';
+  /** Participant class (Plans/Participant-Classification.md) — the planning
+   *  truth; `kind` is the legacy person_kind kept in step with it. */
+  participantClass: ParticipantClass;
+  /** Named guest rows (no person): who they are and which entry brought them. */
+  guestName: string | null;
+  hostEntryId: number | null;
   status: string;
   participation: string;
   tierLabel: string | null;
@@ -44,6 +57,8 @@ export interface RosterRow {
   claims: string[];
   /** Job labels with each claim's note appended. Display and CSV only. */
   claimsDisplay: string[];
+  /** Slot ids + notes — what the per-row jobs editor edits (2026-08-21). */
+  claimDetails: { slotId: number; comment: string | null }[];
   answers: string[];
 }
 
@@ -97,6 +112,7 @@ async function load(signupId: number) {
   // "covered" figure on the page. `claimsDisplayByEntry` is the one rendered.
   const claimsByEntry = new Map<number, string[]>();
   const claimsDisplayByEntry = new Map<number, string[]>();
+  const claimDetailsByEntry = new Map<number, { slotId: number; comment: string | null }[]>();
   for (const c of (claims ?? []) as {
     slot_id: number;
     signup_entry_id: number;
@@ -108,6 +124,10 @@ async function load(signupId: number) {
     claimsDisplayByEntry.set(c.signup_entry_id, [
       ...(claimsDisplayByEntry.get(c.signup_entry_id) ?? []),
       c.comment ? `${label} — ${c.comment}` : label
+    ]);
+    claimDetailsByEntry.set(c.signup_entry_id, [
+      ...(claimDetailsByEntry.get(c.signup_entry_id) ?? []),
+      { slotId: c.slot_id, comment: c.comment }
     ]);
   }
 
@@ -135,11 +155,22 @@ async function load(signupId: number) {
     // person_id is NOT NULL and every row has one, so the legacy name
     // fallbacks went with their columns (D-066). 'Unknown' stays as the
     // last resort for a person row that was deleted out from under an entry.
-    const name = (e.person_id ? peopleById.get(Number(e.person_id)) : null) ?? 'Unknown';
+    const name =
+      (e.person_id ? peopleById.get(Number(e.person_id)) : null) ??
+      (e.guest_name ? String(e.guest_name) : null) ??
+      'Unknown';
+    const participantClass: ParticipantClass = isParticipantClass(String(e.participant_class))
+      ? (String(e.participant_class) as ParticipantClass)
+      : e.person_kind === 'scout'
+        ? 'scout'
+        : 'adult';
     return {
       id: Number(e.id),
       name,
       kind: e.person_kind as 'scout' | 'adult',
+      participantClass,
+      guestName: (e.guest_name as string | null) ?? null,
+      hostEntryId: e.host_entry_id != null ? Number(e.host_entry_id) : null,
       status: String(e.status),
       participation: String(e.participation),
       tierLabel: tier?.label ?? null,
@@ -157,6 +188,7 @@ async function load(signupId: number) {
       household: e.household_id ? (hhById.get(Number(e.household_id)) ?? '—') : '—',
       claims: claimsByEntry.get(Number(e.id)) ?? [],
       claimsDisplay: claimsDisplayByEntry.get(Number(e.id)) ?? [],
+      claimDetails: claimDetailsByEntry.get(Number(e.id)) ?? [],
       answers: ansByEntry.get(Number(e.id)) ?? []
     };
   });
@@ -220,7 +252,8 @@ async function load(signupId: number) {
     removedRows,
     nonResponders,
     slotCoverage,
-    addCandidates
+    addCandidates,
+    slots: ((slots ?? []) as { id: number; label: string }[]).map((sl) => ({ id: sl.id, label: sl.label }))
   };
 }
 
@@ -233,8 +266,18 @@ export default async function EventRosterPage({ params }: { params: Promise<{ id
 
   const { rows, removedRows, nonResponders, slotCoverage, signup } = data;
   const going = rows.filter((r) => r.status === 'yes' && r.participation === 'full');
-  const scoutsGoing = going.filter((r) => r.kind === 'scout');
-  const adultsGoing = going.filter((r) => r.kind === 'adult');
+  // By CLASS (Plans/Participant-Classification.md): youth = scout, junior
+  // leader, webelos, cub scout, youth guest; adults = adult, adult guest.
+  // Named guest rows are attendees in their own right; legacy guest_count
+  // (pre-2026-08-21 sign-ups) still adds to the headcount below.
+  const youthGoing = going.filter((r) => isYouthClass(r.participantClass));
+  const adultsGoing = going.filter((r) => !isYouthClass(r.participantClass));
+  const classBreakdown = (rowsIn: RosterRow[], youth: boolean) =>
+    PARTICIPANT_CLASSES.filter((c) => isYouthClass(c) === youth)
+      .map((c) => [c, rowsIn.filter((r) => r.participantClass === c).length] as const)
+      .filter(([, n]) => n > 0)
+      .map(([c, n]) => `${n} ${PARTICIPANT_CLASS_LABEL[c]}`)
+      .join(' · ') || '—';
   const driverOnly = rows.filter((r) => r.participation === 'driver_only');
   const contributors = rows.filter((r) => r.participation === 'contributor');
   const waitlisted = rows.filter((r) => r.status === 'waitlist');
@@ -270,13 +313,16 @@ export default async function EventRosterPage({ params }: { params: Promise<{ id
 
       <div className={styles.tiles}>
         <div className={styles.tile}>
-          <div className={styles.tileLabel}>Scouts going</div>
-          <div className={styles.tileValue}>{scoutsGoing.length}</div>
+          <div className={styles.tileLabel}>Youth going</div>
+          <div className={styles.tileValue}>{youthGoing.length}</div>
+          <div className={styles.tileSub}>{classBreakdown(going, true)}</div>
         </div>
         <div className={styles.tile}>
           <div className={styles.tileLabel}>Adults going</div>
           <div className={styles.tileValue}>{adultsGoing.length}</div>
-          <div className={styles.tileSub}>{driverOnly.length} driver-only</div>
+          <div className={styles.tileSub}>
+            {classBreakdown(going, false)} · {driverOnly.length} driver-only
+          </div>
         </div>
         <div className={styles.tile}>
           <div className={styles.tileLabel}>Total headcount</div>
@@ -284,7 +330,9 @@ export default async function EventRosterPage({ params }: { params: Promise<{ id
             {headcount}
             {signup.capacity ? <span className={styles.tileOf}> of {signup.capacity}</span> : null}
           </div>
-          <div className={styles.tileSub}>{guests} guests included</div>
+          <div className={styles.tileSub}>
+            {guests > 0 ? `${guests} unnamed guests included` : 'named guests counted as rows'}
+          </div>
         </div>
         <div className={styles.tile + ' ' + (twoDeep ? styles.tileOk : styles.tileWarn)}>
           <div className={styles.tileLabel}>Two-deep leadership</div>
@@ -326,6 +374,7 @@ export default async function EventRosterPage({ params }: { params: Promise<{ id
       )}
 
       <RosterTable
+        slots={data.slots}
         rows={rows}
         removedRows={removedRows}
         signupId={signupId}

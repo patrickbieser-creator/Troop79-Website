@@ -143,6 +143,8 @@ export function signedUpNames(ctx: SignupContext): string[] {
   for (const a of household.adults) byPerson.set(a.personId, a.name);
   return existing
     .filter((e) => e.status === 'yes' || e.status === 'waitlist')
-    .map((e) => byPerson.get(e.person_id))
+    // Named guest rows have no person — they show by guest_name (Plans/
+    // Participant-Classification.md).
+    .map((e) => (e.person_id != null ? byPerson.get(e.person_id) : e.guest_name ?? undefined))
     .filter((n): n is string => !!n);
 }

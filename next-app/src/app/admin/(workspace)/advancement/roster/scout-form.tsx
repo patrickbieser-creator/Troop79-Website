@@ -26,6 +26,9 @@ export interface ScoutRow {
   school: string | null;
   graduation_year: number | null;
   swim_class: 'swimmer' | 'beginner' | 'nonswimmer' | null;
+  /** Junior Leader override for event sign-ups (Plans/Participant-
+   *  Classification.md): null = derive from grade 9–12. */
+  junior_leader_override: 'yes' | 'no' | null;
   active: boolean;
   inactive_reason: InactiveReason | null;
   address_line1: string | null;
@@ -112,6 +115,7 @@ export function ScoutForm({
     return g === null ? '' : String(g);
   });
   const [swimClass, setSwimClass] = useState<string>(row?.swim_class ?? '');
+  const [jlOverride, setJlOverride] = useState<string>(row?.junior_leader_override ?? '');
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -192,6 +196,7 @@ export function ScoutForm({
     fd.set('school', school);
     fd.set('graduation_year', grade === '' ? '' : String(gradYearFromGrade(Number(grade))));
     fd.set('swim_class', swimClass);
+    fd.set('junior_leader_override', jlOverride);
     // `parents` is deliberately NOT sent — createScout/updateScout no longer
     // read or handle it at all. Parents are relationships now, saved as they
     // are edited (see scout-relations.tsx / person-actions.ts).
@@ -363,10 +368,24 @@ export function ScoutForm({
               <option value="nonswimmer">Non-swimmer</option>
             </select>
           </label>
+          <label className={styles.editField}>
+            <span className={styles.editLabel}>Junior Leader (event sign-ups)</span>
+            <select
+              value={jlOverride}
+              onChange={(e) => setJlOverride(e.target.value)}
+              className={styles.editInput}
+              aria-label="Junior Leader override"
+            >
+              <option value="">Auto — grades 9–12</option>
+              <option value="yes">Yes — always a Junior Leader</option>
+              <option value="no">No — always a Scout</option>
+            </select>
+          </label>
         </div>
         <p className={styles.helpText}>
           Age and grade are derived automatically (grade advances each June 15) {'—'} the stored
-          value is the graduation class year.
+          value is the graduation class year. Junior Leader (a scout in high school) is derived the
+          same way for event sign-ups; the override above pins it either way for this scout.
         </p>
       </FormSection>
 

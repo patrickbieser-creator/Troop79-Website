@@ -247,3 +247,33 @@ describe('passkeys', () => {
     expect(actions).toContain('redeemCodeForPerson');
   });
 });
+
+/**
+ * Remembered-device hint + placement (Patrick, 2026-08-21: first-time
+ * members were confused by a primary "Sign in with a passkey" button they
+ * had no passkey for). The cookie carries NO identity — just "a passkey was
+ * registered or used from this browser" — so the page can put the one-tap
+ * path first for returning families and tuck it away for newcomers. The
+ * path itself is never removed (D-119).
+ */
+describe('passkeys — remembered-device hint (pure)', () => {
+  it('HintCookie_HasAFixedNameAndAYearLifetime', async () => {
+    const { PASSKEY_HINT_COOKIE } = await import('../src/lib/passkeys');
+    expect(PASSKEY_HINT_COOKIE.name).toBe('t79_passkey_hint');
+    expect(PASSKEY_HINT_COOKIE.maxAgeSeconds).toBe(365 * 24 * 60 * 60);
+  });
+
+  it('HintCookieOptions_AreHttpOnlyLaxRootPath_AndSecureInProduction', async () => {
+    const { passkeyHintCookieOptions } = await import('../src/lib/passkeys');
+    const dev = passkeyHintCookieOptions('development');
+    expect(dev).toMatchObject({ httpOnly: true, sameSite: 'lax', path: '/', secure: false });
+    expect(dev.maxAge).toBe(365 * 24 * 60 * 60);
+    expect(passkeyHintCookieOptions('production').secure).toBe(true);
+  });
+
+  it('PasskeyPlacement_IsPrimaryOnlyWhenTheDeviceHasBeenSeen', async () => {
+    const { passkeyPlacement } = await import('../src/lib/passkeys');
+    expect(passkeyPlacement(true)).toBe('primary');
+    expect(passkeyPlacement(false)).toBe('secondary');
+  });
+});

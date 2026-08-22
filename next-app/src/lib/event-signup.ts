@@ -11,6 +11,7 @@
  *   * (Phase 1 step 4) entry-level loaders return names and are gate-only.
  */
 
+import { GUEST_CLASSES, type GuestClass, type ParticipantClass } from '@/lib/participant-class';
 import { createAdminClient } from '@/lib/supabase/server';
 import { mustMaybe } from '@/lib/db';
 import type { CalendarEntry } from '@/lib/supabase/types';
@@ -107,7 +108,11 @@ export function signupLocked(signup: EventSignup): boolean {
 export interface HouseholdEntry {
   id: number;
   person_kind: 'scout' | 'adult';
-  person_id: number;
+  /** null ONLY for named guest rows (Plans/Participant-Classification.md). */
+  person_id: number | null;
+  participant_class: ParticipantClass;
+  guest_name: string | null;
+  host_entry_id: number | null;
   status: 'yes' | 'no' | 'waitlist' | 'cancelled';
   participation: 'full' | 'driver_only' | 'contributor';
   price_id: number | null;
@@ -139,7 +144,7 @@ export interface PartyIdentities {
 }
 
 const ENTRY_COLUMNS =
-  'id, person_kind, person_id, status, participation, ' +
+  'id, person_kind, person_id, participant_class, guest_name, host_entry_id, status, participation, ' +
   'price_id, days, guest_count, guest_note, notes, permission_slip_received, payment_received';
 
 /**
@@ -174,7 +179,16 @@ export async function loadPartySignup(
   // write is validated to belong to this party too — no live or future row
   // can match this party by legacy column without also matching by person_id.
   const personIds = new Set(identities.personIds);
-  const rows = householdId != null ? all : all.filter((r) => personIds.has(r.person_id));
+  // Guest rows have no person_id; they belong to the party when their host
+  // entry does (household path already carried them via household_id).
+  let rows: typeof all;
+  if (householdId != null) {
+    rows = all;
+  } else {
+    const own = all.filter((r) => r.person_id != null && personIds.has(r.person_id));
+    const ownIds = new Set(own.map((r) => r.id));
+    rows = [...own, ...all.filter((r) => r.host_entry_id != null && ownIds.has(r.host_entry_id))];
+  }
   if (rows.length === 0) return [];
 
   const { data: claims } = await supabase
@@ -335,4 +349,45 @@ export async function loadEventDetail(entryId: number): Promise<EventDetail | nu
     questions: (questions ?? []) as unknown as SignupQuestion[],
     headcount: typeof headcount === 'number' ? headcount : 0
   };
+}
+
+/* ── Named guest rows from the public form (Plans/Participant-Classification.md) ── */
+
+export interface GuestRow {
+  name: string;
+  cls: GuestClass;
+}
+
+/** Bound on guests per submission — a family bringing a whole den is fine,
+ *  an unbounded list from a crafted POST is not. */
+export const MAX_GUEST_ROWS = 20;
+
+/**
+ * Normalize the form's `guests` JSON (never trusted): parse, trim and cap
+ * names, keep only the four guest classes, drop blanks, collapse duplicates
+ * (case-insensitive name + class), bound the count. Pure.
+ */
+export function normalizeGuestRows(raw: string | null | undefined): GuestRow[] {
+  if (!raw) return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+  const out: GuestRow[] = [];
+  const seen = new Set<string>();
+  for (const item of parsed) {
+    if (!item || typeof item !== 'object') continue;
+    const name = String((item as { name?: unknown }).name ?? '').trim().slice(0, 80);
+    const cls = String((item as { cls?: unknown }).cls ?? '');
+    if (!name || !(GUEST_CLASSES as readonly string[]).includes(cls)) continue;
+    const key = `${name.toLowerCase()}|${cls}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ name, cls: cls as GuestClass });
+    if (out.length >= MAX_GUEST_ROWS) break;
+  }
+  return out;
 }

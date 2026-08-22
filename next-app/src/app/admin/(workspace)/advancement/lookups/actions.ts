@@ -80,11 +80,15 @@ function readScoutExtras(formData: FormData) {
     return v === '' ? null : v;
   };
   const gradYearRaw = str('graduation_year');
+  const jl = str('junior_leader_override');
   return {
     gender: str('gender'),
     school: str('school'),
     graduation_year: gradYearRaw ? Number(gradYearRaw) : null,
-    swim_class: str('swim_class')
+    swim_class: str('swim_class'),
+    // Junior Leader override for event sign-ups (Plans/Participant-
+    // Classification.md): 'yes' | 'no' | null (auto, grades 9–12).
+    junior_leader_override: jl === 'yes' || jl === 'no' ? jl : null
   };
 }
 

@@ -151,3 +151,12 @@
 .addPick:hover { background: var(--admin-gray-50); }
 .addPick:disabled { opacity: .5; cursor: default; }
 .addMeta { font-size: 11.5px; color: var(--admin-gray-500); white-space: nowrap; }
+/* Roster per-row jobs & commitments editor (2026-08-21). */
+.jobsList { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.jobsList li { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; }
+.jobsList label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--admin-gray-900); cursor: pointer; }
+.jobsList input[type="text"] { grid-column: 2; border: 1px solid var(--admin-gray-200); border-radius: 3px; padding: 6px 8px; font-family: inherit; font-size: 12.5px; }
+.jobsEmpty { font-size: 13px; color: var(--admin-gray-500); font-style: italic; margin: 0 0 12px; }
+.cellMuted { color: var(--admin-gray-600); font-size: 12.5px; }
+.jobsHeading { margin: 4px 0 8px; }
+.guestOf { display: block; font-size: 11px; color: var(--admin-gray-600); margin-top: 2px; }
