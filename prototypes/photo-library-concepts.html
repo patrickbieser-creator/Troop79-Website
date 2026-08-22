@@ -1,0 +1,1509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Photo Library — Restyle Concepts · Troop 79</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TOKENS — copied verbatim from next-app/src/app/globals.css :root
+   Nothing below invents a hex. The only colors outside this block are the
+   nine calendar_categories.color values, which are DATABASE ROWS, not CSS
+   tokens — the calendar already renders them as dynamic inline style
+   (month-grid.tsx, admin/events/page.tsx). They are listed in --cat-* below
+   purely so this static file can render without a database.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --navy:#1e3a4a; --navy-mid:#2a4f63; --navy-light:#3a6478; --navy-hover:#163040;
+  --forest:#3d5a3e; --forest-light:#527554;
+  --khaki:#c4a882; --khaki-light:#ddd0bb;
+  --bark:#8b6914; --bark-light:#a98020;
+  --cream:#faf6ef; --newsprint:#f4efe6; --warm-white:#ffffff;
+  --text-head:#1a1a1a; --text-body:#363636; --text-meta:#787060;
+  --border-light:#e2d9cc; --border-mid:#c8bfaf;
+  --shadow-card:0 1px 4px rgba(30,58,74,.08), 0 2px 12px rgba(30,58,74,.06);
+  --shadow-hover:0 4px 20px rgba(30,58,74,.14);
+  --transition:.18s ease;
+
+  --fs-2xs:11px; --fs-xs:12px; --fs-sm:13px; --fs-md:15px; --fs-lg:17px;
+  --fs-xl:20px; --fs-2xl:26px; --fs-3xl:34px; --fs-display:clamp(30px,6vw,44px);
+
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px;
+  --sp-7:28px; --sp-8:32px; --sp-9:40px; --sp-10:48px; --sp-11:56px; --sp-12:64px;
+
+  --rad-sm:2px; --rad-md:4px; --rad-lg:8px; --rad-pill:999px; --rad-circle:50%;
+
+  --status-danger:#8c3b3b; --status-danger-bg:#fbf0ee;
+  --status-success:var(--forest); --status-success-bg:#eef2ee;
+  --status-warning:var(--bark); --status-warning-bg:#fdf6e3;
+  --status-info:var(--navy); --status-info-bg:#e8eef2;
+
+  --rule:#e4d9c4;
+
+  --font-display:'Playfair Display', Georgia, serif;
+  --font-body:'Lora', Georgia, serif;
+  --font-ui:'Open Sans', Arial, sans-serif;
+  --font-mono:ui-monospace,'Cascadia Mono',Consolas,Menlo,monospace;
+
+  --focus-ring:2px solid var(--navy-light);
+
+  --on-navy-strong:rgba(255,255,255,.85);
+  --on-navy-soft:rgba(255,255,255,.7);
+  --on-navy-faint:rgba(255,255,255,.55);
+  --on-navy-rule:rgba(255,255,255,.15);
+
+  /* calendar_categories.color — DB data, mirrored here for the static demo. */
+  --cat-meeting:#1e3a4a;
+  --cat-campout:#3d5a3e;
+  --cat-outing:#4a6741;
+  --cat-highadv:#2d6a4f;
+  --cat-summercamp:#527554;
+  --cat-service:#6a5d3a;
+  --cat-fundraiser:#8b6914;
+  --cat-ceremony:#5a3d6a;
+  --cat-recruiting:#a04a3d;
+}
+
+/* ═══ page chrome (the memo wrapper, NOT part of any concept) ═══ */
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth; scroll-padding-top:64px;}
+body{
+  margin:0; background:var(--newsprint); color:var(--text-body);
+  font-family:var(--font-body); font-size:var(--fs-md); line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+img{display:block; max-width:100%;}
+a{color:inherit; text-decoration:none;}
+:focus-visible{outline:var(--focus-ring); outline-offset:2px;}
+
+.wrap{max-width:1180px; margin:0 auto; padding:0 var(--sp-6);}
+
+/* sticky concept nav */
+.deckNav{
+  position:sticky; top:0; z-index:60;
+  background:rgba(244,239,230,.94); backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--border-mid);
+}
+.deckNav .wrap{display:flex; align-items:center; gap:var(--sp-4); flex-wrap:wrap; padding-top:var(--sp-2); padding-bottom:var(--sp-2);}
+.deckNav b{
+  font-family:var(--font-ui); font-size:var(--fs-2xs); font-weight:700;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--forest);
+  border-left:3px solid var(--forest); padding-left:var(--sp-2);
+}
+.deckNav ol{display:flex; gap:var(--sp-1); list-style:none; margin:0; padding:0; flex-wrap:wrap;}
+.deckNav a{
+  font-family:var(--font-ui); font-size:var(--fs-xs); color:var(--text-body);
+  padding:5px var(--sp-2); border-radius:var(--rad-sm); display:block;
+  transition:background var(--transition), color var(--transition);
+}
+.deckNav a:hover{background:var(--navy); color:var(--warm-white);}
+
+/* intro */
+.deckHead{padding:var(--sp-10) 0 var(--sp-8);}
+.kicker{
+  font-family:var(--font-ui); font-size:var(--fs-2xs); font-weight:700;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--forest);
+  border-left:3px solid var(--forest); padding-left:var(--sp-2);
+  display:inline-block; margin-bottom:var(--sp-3);
+}
+.deckHead h1{
+  font-family:var(--font-display); font-size:var(--fs-display); font-weight:700;
+  color:var(--text-head); letter-spacing:-.01em; line-height:1.1; margin:0 0 var(--sp-3);
+}
+.deckHead .lede{font-size:var(--fs-lg); max-width:66ch; margin:0 0 var(--sp-6); color:var(--text-body);}
+.headRule{height:2px; background:var(--border-mid); margin:var(--sp-6) 0;}
+
+.readGrid{display:grid; grid-template-columns:1fr 1fr; gap:var(--sp-6);}
+@media (max-width:900px){.readGrid{grid-template-columns:1fr;}}
+
+.panel{
+  background:var(--warm-white); border:1px solid var(--border-light);
+  border-left:3px solid var(--khaki); border-radius:var(--rad-sm);
+  padding:var(--sp-5); font-size:var(--fs-sm); line-height:1.65;
+}
+.panel.warn{border-left-color:var(--status-warning); background:var(--status-warning-bg);}
+.panel.info{border-left-color:var(--status-info); background:var(--status-info-bg);}
+.panel h3{
+  font-family:var(--font-ui); font-size:var(--fs-xs); font-weight:700;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--navy);
+  margin:0 0 var(--sp-3);
+}
+.panel ul{margin:0; padding-left:1.1em;}
+.panel li{margin-bottom:var(--sp-2);}
+.panel li:last-child{margin-bottom:0;}
+.panel code{font-family:var(--font-mono); font-size:.92em; background:rgba(30,58,74,.06); padding:1px 4px; border-radius:var(--rad-sm);}
+
+.reqLegend{display:flex; gap:var(--sp-2); flex-wrap:wrap; margin-top:var(--sp-3);}
+.reqPill{
+  font-family:var(--font-ui); font-size:var(--fs-2xs); font-weight:700;
+  letter-spacing:.06em; text-transform:uppercase;
+  background:var(--navy); color:var(--warm-white);
+  padding:4px var(--sp-2); border-radius:var(--rad-pill);
+}
+
+/* concept section */
+.concept{padding:var(--sp-11) 0 0; border-top:2px solid var(--border-mid); margin-top:var(--sp-10);}
+.conceptHead{display:flex; align-items:flex-start; gap:var(--sp-5); margin-bottom:var(--sp-6); flex-wrap:wrap;}
+.conceptNum{
+  font-family:var(--font-display); font-size:var(--fs-3xl); font-weight:900;
+  color:var(--khaki); line-height:1; flex:0 0 auto;
+}
+.conceptTitles{flex:1 1 340px; min-width:0;}
+.conceptTitles h2{
+  font-family:var(--font-display); font-size:var(--fs-2xl); font-weight:700;
+  color:var(--text-head); margin:0 0 var(--sp-1); letter-spacing:-.01em;
+}
+.thesis{font-family:var(--font-body); font-style:italic; font-size:var(--fs-md); color:var(--text-body); margin:0; max-width:70ch;}
+.effortTag{
+  font-family:var(--font-ui); font-size:var(--fs-2xs); font-weight:700;
+  letter-spacing:.08em; text-transform:uppercase; padding:5px var(--sp-3);
+  border-radius:var(--rad-pill); flex:0 0 auto; align-self:center;
+}
+.effLow{background:var(--status-success-bg); color:var(--forest); border:1px solid var(--forest);}
+.effMed{background:var(--status-warning-bg); color:var(--bark); border:1px solid var(--bark);}
+.effHigh{background:var(--status-danger-bg); color:var(--status-danger); border:1px solid var(--status-danger);}
+
+/* the demo canvas — everything inside simulates the real /photos page */
+.canvas{
+  background:var(--newsprint);
+  border:1px solid var(--border-mid); border-radius:var(--rad-md);
+  padding:var(--sp-7) var(--sp-6) var(--sp-8);
+  box-shadow:var(--shadow-card);
+  overflow:hidden;
+}
+.canvasLabel{
+  font-family:var(--font-ui); font-size:var(--fs-2xs); font-weight:700;
+  letter-spacing:.12em; text-transform:uppercase; color:var(--text-meta);
+  margin-bottom:var(--sp-2); display:block;
+}
+
+/* annotation block */
+.annot{
+  margin:var(--sp-5) 0 0;
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+  gap:1px; background:var(--border-light);
+  border:1px solid var(--border-light); border-radius:var(--rad-sm); overflow:hidden;
+}
+.annot div{background:var(--warm-white); padding:var(--sp-4);}
+.annot dt{
+  font-family:var(--font-ui); font-size:10px; font-weight:700;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--text-meta);
+  margin-bottom:var(--sp-2);
+}
+.annot dd{margin:0; font-size:var(--fs-sm); line-height:1.55;}
+.annot dd strong{font-family:var(--font-ui); font-size:var(--fs-xs);}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SHARED DEMO PIECES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Photo placeholder. Zero network bytes — layered CSS gradients standing in
+   for a real Bunny cover so this file is genuinely self-contained and its own
+   weight isn't a lie. Six variants keyed off the album's category. */
+.ph{
+  position:relative; overflow:hidden; display:block;
+  background-color:var(--ph-s2, var(--khaki-light));
+  background-image:
+    radial-gradient(circle at 74% 26%, rgba(255,246,222,.95) 0 5%, rgba(255,246,222,0) 5.6%),
+    linear-gradient(to top right, var(--ph-h2,#3d5a3e) 0 26%, transparent 26.4%),
+    linear-gradient(to top left,  var(--ph-h1,#1e3a4a) 0 38%, transparent 38.4%),
+    linear-gradient(180deg, var(--ph-s1,#ddd0bb), var(--ph-s2,#c4a882));
+}
+.ph::before{
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(180deg, rgba(30,58,74,.05) 0%, rgba(30,58,74,.28) 100%);
+}
+.phA{--ph-s1:#ddd0bb; --ph-s2:#c4a882; --ph-h1:#1e3a4a; --ph-h2:#3d5a3e;}
+.phB{--ph-s1:#e8eef2; --ph-s2:#3a6478; --ph-h1:#1e3a4a; --ph-h2:#2a4f63;}
+.phC{--ph-s1:#faf6ef; --ph-s2:#ddd0bb; --ph-h1:#3d5a3e; --ph-h2:#527554;}
+.phD{--ph-s1:#fdf6e3; --ph-s2:#c4a882; --ph-h1:#8b6914; --ph-h2:#6a5d3a;}
+.phE{--ph-s1:#e8eef2; --ph-s2:#ddd0bb; --ph-h1:#5a3d6a; --ph-h2:#3a6478;}
+.phF{--ph-s1:#f4efe6; --ph-s2:#a98020; --ph-h1:#a04a3d; --ph-h2:#8b6914;}
+
+/* category chip — solid fill, DB color, white ink. All nine DB colors clear
+   4.5:1 against #ffffff (checked; the lightest, #527554, lands at 5.25:1). */
+.catChip{
+  display:inline-block; font-family:var(--font-ui);
+  font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+  padding:3px 7px; border-radius:var(--rad-sm);
+  background:var(--catColor, var(--navy)); color:var(--warm-white);
+  white-space:nowrap;
+}
+/* text-only variant for the low-ink concepts — same colors on cream stay ≥4.8:1 */
+.catInk{
+  font-family:var(--font-ui); font-size:var(--fs-xs); font-weight:600;
+  color:var(--catColor, var(--navy)); letter-spacing:.02em;
+}
+.catDot{
+  display:inline-block; width:8px; height:8px; border-radius:var(--rad-circle);
+  background:var(--catColor, var(--navy)); flex:0 0 auto;
+}
+
+.extIcon{width:10px; height:10px; fill:currentColor; display:inline-block; vertical-align:-1px;}
+
+.srOnly{
+  position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
+}
+
+/* a filter cluster reused by several demos */
+.demoBar{
+  display:flex; align-items:center; gap:var(--sp-2); flex-wrap:wrap;
+  padding-bottom:var(--sp-4); margin-bottom:var(--sp-5);
+  border-bottom:2px solid var(--border-mid);
+}
+.demoBar .grow{flex:1 1 auto;}
+.demoSel{
+  font-family:var(--font-ui); font-size:var(--fs-xs); color:var(--text-body);
+  background:var(--warm-white); border:1px solid var(--border-mid);
+  border-radius:var(--rad-sm); padding:7px 10px; cursor:pointer;
+}
+.demoSel:focus{border-color:var(--navy); outline:none;}
+.demoCount{font-family:var(--font-ui); font-size:var(--fs-2xs); color:var(--text-meta);}
+.demoCount strong{color:var(--text-body);}
+
+/* ─── C0: today, for reference ─────────────────────────────────────────── */
+.todayGrid{display:grid; grid-template-columns:repeat(3,1fr); gap:18px;}
+.todayCard{
+  display:flex; flex-direction:column; background:var(--warm-white);
+  border:1px solid var(--border-light); border-top:3px solid var(--border-mid);
+  border-radius:var(--rad-sm); overflow:hidden;
+  transition:box-shadow var(--transition), border-top-color var(--transition), transform var(--transition);
+}
+.todayCard:hover{box-shadow:var(--shadow-hover); border-top-color:var(--forest); transform:translateY(-2px);}
+.todayCard .ph{aspect-ratio:16/10;}
+.todayBody{padding:13px 15px 15px;}
+.todayBody h4{
+  font-family:var(--font-display); font-size:var(--fs-lg); font-weight:700;
+  line-height:1.3; color:var(--text-head); margin:var(--sp-2) 0 6px;
+}
+.todayBody p{font-size:12.5px; line-height:1.55; margin:0 0 10px; color:var(--text-body);}
+.todayMeta{font-family:var(--font-ui); font-size:var(--fs-2xs); color:var(--text-meta);}
+@media (max-width:900px){.todayGrid{grid-template-columns:repeat(2,1fr);}}
+
+/* ═══ C1 — THE SPINE ══════════════════════════════════════════════════════ */
+.spine{position:relative; padding-left:96px;}
+.spine::before{
+  content:''; position:absolute; left:78px; top:6px; bottom:6px;
+  width:2px; background:var(--border-mid);
+}
+.spineYear{position:relative; margin:var(--sp-7) 0 var(--sp-4);}
+.spineYear:first-child{margin-top:0;}
+.spineYear h3{
+  font-family:var(--font-display); font-size:var(--fs-2xl); font-weight:900;
+  color:var(--navy); margin:0; line-height:1;
+  position:absolute; left:-96px; width:110px; text-align:right; padding-right:var(--sp-5);
+  background:var(--newsprint);
+}
+.spineYear .yc{
+  font-family:var(--font-ui); font-size:var(--fs-2xs); color:var(--text-meta);
+  display:block; margin-top:var(--sp-1); font-weight:400;
+}
+.spineYearRule{height:1px; background:var(--border-light);}
+
+.spineRow{
+  position:relative; display:flex; align-items:center; gap:var(--sp-4);
+  padding:var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-4);
+  border-radius:var(--rad-sm);
+  transition:background var(--transition), transform var(--transition);
+}
+.spineRow::before{ /* the node on the rail */
+  content:''; position:absolute; left:-24px; top:50%; transform:translate(-50%,-50%);
+  width:9px; height:9px; border-radius:var(--rad-circle);
+  background:var(--catColor, var(--navy));
+  box-shadow:0 0 0 3px var(--newsprint);
+  transition:transform var(--transition), box-shadow var(--transition);
+}
+.spineRow:hover{background:var(--warm-white); transform:translateX(3px); box-shadow:var(--shadow-card);}
+.spineRow:hover::before{transform:translate(-50%,-50%) scale(1.45);}
+.spineRow:hover .spineTitle{color:var(--navy);}
+.spineRow:hover .spineGo{opacity:1; transform:translateX(0);}
+.spineDate{
+  position:absolute; left:-96px; width:66px; text-align:right;
+  font-family:var(--font-ui); line-height:1.15;
+}
+.spineDate .m{display:block; font-size:var(--fs-2xs); font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--text-meta);}
+.spineDate .d{display:block; font-family:var(--font-display); font-size:var(--fs-xl); font-weight:700; color:var(--text-head);}
+.spineThumb{
+  flex:0 0 auto; width:60px; height:60px; border-radius:var(--rad-sm);
+  border:1px solid var(--border-light);
+}
+.spineText{flex:1 1 auto; min-width:0;}
+.spineTitle{
+  font-family:var(--font-ui); font-size:var(--fs-md); font-weight:700;
+  color:var(--text-head); margin:0 0 5px; line-height:1.3;
+  transition:color var(--transition);
+}
+.spineMeta{display:flex; align-items:center; gap:var(--sp-2); flex-wrap:wrap;}
+.spineNum{font-family:var(--font-ui); font-size:var(--fs-2xs); color:var(--text-meta);}
+.spineGo{
+  flex:0 0 auto; font-family:var(--font-ui); font-size:var(--fs-xs); font-weight:600;
+  color:var(--forest); opacity:0; transform:translateX(-6px);
+  transition:opacity var(--transition), transform var(--transition);
+  white-space:nowrap;
+}
+.spineGap{
+  position:relative; margin:var(--sp-5) 0; padding:var(--sp-3) var(--sp-4);
+  border-left:2px dashed var(--border-mid); margin-left:-18px; padding-left:22px;
+  font-family:var(--font-ui); font-size:var(--fs-xs); font-style:normal;
+  color:var(--text-meta);
+}
+.spineGap b{color:var(--status-warning); font-weight:700;}
+@media (max-width:640px){
+  .spine{padding-left:58px;}
+  .spine::before{left:44px;}
+  .spineDate{left:-58px; width:36px;}
+  .spineDate .d{font-size:var(--fs-lg);}
+  .spineYear h3{left:-58px; width:64px; padding-right:var(--sp-3); font-size:var(--fs-xl);}
+  .spineThumb{width:44px; height:44px;}
+  .spineGo{display:none;}
+}
+
+/* ═══ C2 — THE PRINT SHELF ════════════════════════════════════════════════ */
+.shelfYear{margin-bottom:var(--sp-9);}
+.shelfYearHead{display:flex; align-items:baseline; gap:var(--sp-4); margin-bottom:var(--sp-6);}
+.shelfYearHead h3{
+  font-family:var(--font-display); font-size:var(--fs-2xl); font-weight:900;
+  color:var(--navy); margin:0; line-height:1; letter-spacing:-.01em;
+}
+.shelfYearHead .yc{font-family:var(--font-ui); font-size:var(--fs-2xs); color:var(--text-meta); letter-spacing:.04em;}
+.shelfYearHead .rule{flex:1; height:1px; background:var(--border-mid); align-self:center;}
+
+.prints{display:grid; grid-template-columns:repeat(4,1fr); gap:var(--sp-6) var(--sp-5);}
+.print{
+  position:relative; display:block;
+  background:var(--warm-white);
+  padding:10px 10px 12px;
+  border:1px solid var(--border-light);
+  border-radius:1px;
+  box-shadow:0 1px 3px rgba(30,58,74,.12);
+  transition:transform var(--transition), box-shadow var(--transition);
+  transform:rotate(var(--tilt,0deg));
+}
+/* the stack silhouette — this is what says COLLECTION, not story */
+.print::before, .print::after{
+  content:''; position:absolute; inset:0; z-index:-1;
+  background:var(--warm-white); border:1px solid var(--border-light); border-radius:1px;
+  transition:transform var(--transition);
+}
+.print::before{transform:rotate(-2.2deg) translate(-3px,3px);}
+.print::after{transform:rotate(1.6deg) translate(4px,5px);}
+.print:hover{transform:rotate(0deg) translateY(-4px); box-shadow:var(--shadow-hover); z-index:2;}
+.print:hover::before{transform:rotate(-4.5deg) translate(-6px,5px);}
+.print:hover::after{transform:rotate(3.4deg) translate(7px,8px);}
+.print .ph{aspect-ratio:4/3;}
+.printSticker{
+  position:absolute; top:-7px; right:8px; z-index:3;
+  box-shadow:0 1px 3px rgba(30,58,74,.25);
+}
+.printCaption{padding:10px 2px 0;}
+.printDate{
+  font-family:var(--font-ui); font-size:var(--fs-2xs); font-weight:700;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--text-meta);
+  margin-bottom:3px;
+}
+.printTitle{
+  font-family:var(--font-ui); font-size:var(--fs-sm); font-weight:700;
+  line-height:1.35; color:var(--text-head); margin:0;
+  transition:color var(--transition);
+}
+.print:hover .printTitle{color:var(--navy);}
+.printFoot{
+  display:flex; align-items:baseline; justify-content:space-between; gap:var(--sp-2);
+  margin-top:6px; font-family:var(--font-ui); font-size:var(--fs-2xs); color:var(--text-meta);
+}
+.printGo{color:var(--forest); font-weight:600; opacity:0; transition:opacity var(--transition); white-space:nowrap;}
+.print:hover .printGo{opacity:1;}
+@media (max-width:900px){.prints{grid-template-columns:repeat(3,1fr);}}
+@media (max-width:640px){
+  .prints{grid-template-columns:repeat(2,1fr); gap:var(--sp-5) var(--sp-4);}
+  .print::before,.print::after{display:none;} /* stack shadow costs more than it earns at 2-up */
+  .print{transform:none;}
+}
+
+/* ═══ C3 — THE LEDGER ═════════════════════════════════════════════════════ */
+.ledgerWrap{overflow-x:auto; border:1px solid var(--border-light); border-radius:var(--rad-sm); background:var(--warm-white);}
+table.ledger{width:100%; border-collapse:collapse; min-width:600px;}
+table.ledger th{
+  font-family:var(--font-ui); font-size:var(--fs-2xs); font-weight:700;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--text-meta);
+  text-align:left; padding:var(--sp-3) var(--sp-4);
+  border-bottom:2px solid var(--border-mid); background:var(--cream);
+  position:sticky; top:0; z-index:2;
+}
+table.ledger th button{
+  all:unset; cursor:pointer; display:inline-flex; align-items:center; gap:5px;
+  font:inherit; color:inherit; letter-spacing:inherit; text-transform:inherit;
+}
+table.ledger th button:hover{color:var(--navy);}
+table.ledger th button::after{content:'↕'; opacity:.35; font-size:11px;}
+table.ledger th[aria-sort="descending"] button::after{content:'↓'; opacity:1; color:var(--forest);}
+table.ledger th[aria-sort="ascending"] button::after{content:'↑'; opacity:1; color:var(--forest);}
+table.ledger th.num, table.ledger td.num{text-align:right;}
+table.ledger td{
+  padding:var(--sp-3) var(--sp-4); border-bottom:1px solid var(--border-light);
+  font-family:var(--font-ui); font-size:var(--fs-sm); vertical-align:middle;
+}
+tr.ledYear td{
+  background:var(--cream); border-bottom:1px solid var(--border-mid);
+  font-family:var(--font-display); font-size:var(--fs-lg); font-weight:900;
+  color:var(--navy); padding:var(--sp-2) var(--sp-4);
+}
+tr.ledYear .yc{font-family:var(--font-ui); font-size:var(--fs-2xs); font-weight:400; color:var(--text-meta); margin-left:var(--sp-3);}
+tr.ledRow{transition:background var(--transition);}
+tr.ledRow:hover{background:var(--cream);}
+tr.ledRow:hover .ledTitle{color:var(--navy); text-decoration:underline; text-underline-offset:3px;}
+.ledDate{font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text-meta); white-space:nowrap;}
+.ledTitle{font-weight:600; color:var(--text-head); transition:color var(--transition);}
+.ledCat{display:flex; align-items:center; gap:7px; white-space:nowrap;}
+.ledBarWrap{display:flex; align-items:center; gap:var(--sp-2); justify-content:flex-end;}
+.ledBar{
+  height:6px; border-radius:var(--rad-pill); background:var(--catColor, var(--navy));
+  opacity:.55; min-width:2px;
+}
+.ledNum{font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text-body); min-width:44px; text-align:right;}
+.ledThumb{width:38px; height:38px; border-radius:var(--rad-sm); border:1px solid var(--border-light);}
+.ledgerWrap.noThumbs .ledThumbCell{display:none;}
+.toggleWrap{display:inline-flex; align-items:center; gap:var(--sp-2); font-family:var(--font-ui); font-size:var(--fs-xs); color:var(--text-body); cursor:pointer;}
+
+/* ═══ C4 — THE YEAR SHELF ═════════════════════════════════════════════════ */
+.rail{margin-bottom:var(--sp-8);}
+.railHead{display:flex; align-items:center; gap:var(--sp-4); margin-bottom:var(--sp-3);}
+.railHead h3{
+  font-family:var(--font-display); font-size:var(--fs-3xl); font-weight:900;
+  color:var(--navy); margin:0; line-height:.9; letter-spacing:-.02em;
+}
+.railHead .yc{font-family:var(--font-ui); font-size:var(--fs-2xs); color:var(--text-meta);}
+.railHead .rule{flex:1; height:1px; background:var(--border-mid);}
+.railBtns{display:flex; gap:var(--sp-1);}
+.railBtn{
+  all:unset; cursor:pointer; width:28px; height:28px; display:grid; place-items:center;
+  border:1px solid var(--border-mid); border-radius:var(--rad-sm);
+  background:var(--warm-white); color:var(--navy);
+  font-family:var(--font-ui); font-size:var(--fs-sm); line-height:1;
+  transition:background var(--transition), color var(--transition);
+}
+.railBtn:hover{background:var(--navy); color:var(--warm-white);}
+.railBtn[disabled]{opacity:.3; cursor:default;}
+.railBtn[disabled]:hover{background:var(--warm-white); color:var(--navy);}
+.railScroll{
+  display:flex; gap:var(--sp-4); overflow-x:auto; padding:var(--sp-2) 2px var(--sp-4);
+  scroll-snap-type:x proximity; scrollbar-width:thin;
+}
+.railScroll::-webkit-scrollbar{height:8px;}
+.railScroll::-webkit-scrollbar-thumb{background:var(--border-mid); border-radius:var(--rad-pill);}
+.tile{
+  flex:0 0 200px; scroll-snap-align:start; display:block;
+  border-radius:var(--rad-sm); overflow:hidden; position:relative;
+  border:1px solid var(--border-light); background:var(--warm-white);
+  transition:transform var(--transition), box-shadow var(--transition);
+}
+.tile:hover{transform:translateY(-3px); box-shadow:var(--shadow-hover);}
+.tile .ph{aspect-ratio:1/1;}
+.tileOver{
+  position:absolute; left:0; right:0; bottom:0; z-index:2;
+  padding:var(--sp-6) var(--sp-3) var(--sp-3);
+  background:linear-gradient(180deg, rgba(20,32,40,0) 0%, rgba(20,32,40,.82) 62%);
+  color:var(--warm-white);
+}
+.tileDate{
+  font-family:var(--font-ui); font-size:10px; font-weight:700; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--on-navy-soft); margin-bottom:3px;
+}
+.tileTitle{font-family:var(--font-ui); font-size:var(--fs-sm); font-weight:700; line-height:1.3; margin:0;}
+.tileTag{position:absolute; top:var(--sp-2); left:var(--sp-2); z-index:3;}
+.tileCount{
+  position:absolute; top:var(--sp-2); right:var(--sp-2); z-index:3;
+  font-family:var(--font-ui); font-size:10px; font-weight:700; letter-spacing:.06em;
+  background:rgba(20,32,40,.66); color:var(--warm-white);
+  padding:3px 7px; border-radius:var(--rad-pill); backdrop-filter:blur(2px);
+}
+.railEmpty{
+  border:1px dashed var(--border-mid); border-radius:var(--rad-sm);
+  padding:var(--sp-5); font-family:var(--font-ui); font-size:var(--fs-xs);
+  color:var(--text-meta); background:var(--cream);
+}
+@media (max-width:640px){.tile{flex:0 0 158px;}}
+
+/* ═══ C5 — THE ALMANAC ════════════════════════════════════════════════════ */
+.almanac{width:100%; border-collapse:collapse; table-layout:fixed;}
+.almanac th{
+  font-family:var(--font-ui); font-size:var(--fs-2xs); font-weight:700;
+  letter-spacing:.12em; text-transform:uppercase; color:var(--text-meta);
+  padding:0 var(--sp-3) var(--sp-3); text-align:left; border-bottom:2px solid var(--border-mid);
+}
+.almanac th.yr{width:78px;}
+.almanac td{
+  border-bottom:1px solid var(--border-light); border-left:1px solid var(--border-light);
+  padding:var(--sp-3); vertical-align:top;
+}
+.almanac td.yr{
+  border-left:0; text-align:right; padding-right:var(--sp-4);
+  font-family:var(--font-display); font-size:var(--fs-2xl); font-weight:900;
+  color:var(--navy); line-height:1;
+}
+.almanac td.yr small{display:block; font-family:var(--font-ui); font-size:10px; font-weight:400; color:var(--text-meta); margin-top:5px; letter-spacing:.04em;}
+.almCell{display:flex; flex-direction:column; gap:var(--sp-2);}
+.almItem{
+  display:block; padding:var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-3);
+  border-left:3px solid var(--catColor, var(--navy));
+  background:var(--warm-white); border-radius:0 var(--rad-sm) var(--rad-sm) 0;
+  transition:transform var(--transition), box-shadow var(--transition);
+}
+.almItem:hover{transform:translateX(2px); box-shadow:var(--shadow-card);}
+.almItem:hover .almTitle{color:var(--navy);}
+.almDay{font-family:var(--font-ui); font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--text-meta);}
+.almTitle{font-family:var(--font-ui); font-size:var(--fs-xs); font-weight:600; line-height:1.35; color:var(--text-head); margin:2px 0 0; transition:color var(--transition);}
+.almNum{font-family:var(--font-ui); font-size:10px; color:var(--text-meta);}
+.almNone{
+  font-family:var(--font-ui); font-size:var(--fs-2xs); color:var(--border-mid);
+  letter-spacing:.1em; padding-top:var(--sp-1);
+}
+.almGapRow td{background:repeating-linear-gradient(135deg, var(--cream) 0 8px, var(--newsprint) 8px 16px);}
+.almGapNote{
+  font-family:var(--font-ui); font-size:var(--fs-xs); color:var(--text-meta); font-style:normal;
+  padding:var(--sp-3); text-align:center; grid-column:1/-1;
+}
+@media (max-width:900px){
+  .almanac, .almanac tbody, .almanac tr, .almanac td{display:block; width:100%;}
+  .almanac thead{display:none;}
+  .almanac td{border-left:0; border-bottom:0; padding:var(--sp-2) 0;}
+  .almanac td.yr{text-align:left; padding:var(--sp-5) 0 var(--sp-2); border-bottom:1px solid var(--border-mid);}
+  .almanac td[data-season]::before{
+    content:attr(data-season);
+    display:block; font-family:var(--font-ui); font-size:10px; font-weight:700;
+    letter-spacing:.12em; text-transform:uppercase; color:var(--text-meta); margin-bottom:var(--sp-2);
+  }
+  .almanac td[data-empty="1"]{display:none;} /* empty season cells are noise on a phone */
+  .almanac tr{border-bottom:1px solid var(--border-light); display:block; padding-bottom:var(--sp-4);}
+}
+
+/* ═══ C6 — HYBRID TOGGLE ══════════════════════════════════════════════════ */
+.viewToggle{display:inline-flex; border:1px solid var(--border-mid); border-radius:var(--rad-sm); overflow:hidden; background:var(--warm-white);}
+.viewToggle button{
+  all:unset; cursor:pointer; padding:7px var(--sp-4);
+  font-family:var(--font-ui); font-size:var(--fs-xs); font-weight:600; color:var(--text-body);
+  display:inline-flex; align-items:center; gap:6px;
+  border-right:1px solid var(--border-light);
+  transition:background var(--transition), color var(--transition);
+}
+.viewToggle button:last-child{border-right:0;}
+.viewToggle button:hover{background:var(--cream);}
+.viewToggle button[aria-pressed="true"]{background:var(--navy); color:var(--warm-white);}
+.viewToggle svg{width:13px; height:13px; fill:currentColor;}
+
+/* ═══ comparison table + closing ══════════════════════════════════════════ */
+.cmpWrap{overflow-x:auto; border:1px solid var(--border-light); border-radius:var(--rad-sm); background:var(--warm-white); margin-top:var(--sp-5);}
+table.cmp{width:100%; border-collapse:collapse; min-width:840px; font-family:var(--font-ui); font-size:var(--fs-xs);}
+table.cmp th, table.cmp td{padding:var(--sp-3) var(--sp-3); border-bottom:1px solid var(--border-light); text-align:left; vertical-align:top;}
+table.cmp thead th{
+  background:var(--navy); color:var(--warm-white); font-size:var(--fs-2xs);
+  letter-spacing:.08em; text-transform:uppercase; font-weight:700; border-bottom:0;
+  position:sticky; top:0;
+}
+table.cmp tbody th{font-weight:700; color:var(--text-head); background:var(--cream); white-space:nowrap;}
+table.cmp tr.rec th, table.cmp tr.rec td{background:var(--status-success-bg);}
+.mark{font-weight:700;}
+.mYes{color:var(--forest);}
+.mPart{color:var(--bark);}
+.mNo{color:var(--status-danger);}
+
+.deckFoot{padding:var(--sp-10) 0 var(--sp-12);}
+.deckFoot h2{font-family:var(--font-display); font-size:var(--fs-2xl); font-weight:700; color:var(--text-head); margin:0 0 var(--sp-4);}
+.deckFoot h3{font-family:var(--font-ui); font-size:var(--fs-md); font-weight:700; color:var(--navy); margin:var(--sp-7) 0 var(--sp-3);}
+.deckFoot ol, .deckFoot ul{padding-left:1.2em;}
+.deckFoot li{margin-bottom:var(--sp-3); font-size:var(--fs-sm);}
+
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto;}
+  *{transition:none !important;}
+  .print:hover, .tile:hover, .spineRow:hover, .almItem:hover, .todayCard:hover{transform:none !important;}
+}
+</style>
+</head>
+<body>
+
+<nav class="deckNav" aria-label="Concept navigation">
+  <div class="wrap">
+    <b>Photo Library Concepts</b>
+    <ol>
+      <li><a href="#today">0 · Today</a></li>
+      <li><a href="#c1">1 · Spine</a></li>
+      <li><a href="#c2">2 · Print Shelf</a></li>
+      <li><a href="#c3">3 · Ledger</a></li>
+      <li><a href="#c4">4 · Year Shelf</a></li>
+      <li><a href="#c5">5 · Almanac</a></li>
+      <li><a href="#c6">6 · Three Lenses</a></li>
+      <li><a href="#compare">Compare</a></li>
+    </ol>
+  </div>
+</nav>
+
+<header class="deckHead">
+  <div class="wrap">
+    <span class="kicker">Prototype · 2026-08-22 · Brad</span>
+    <h1>How else might the photo library be presented?</h1>
+    <p class="lede">
+      Six working answers, on one scroll. Every concept below runs on the real
+      fourteen albums currently in <code>photo_albums</code>, uses only public
+      design tokens from <code>globals.css</code>, and links out to Google Photos
+      the way the real page does. Hover things — the interactions are real.
+    </p>
+
+    <div class="headRule"></div>
+
+    <div class="readGrid">
+      <div class="panel info">
+        <h3>How to read this page</h3>
+        <ul>
+          <li><strong>Concept 0</strong> is today's page, rebuilt here so you can compare against it without switching tabs.</li>
+          <li>Each concept has a <strong>live demo</strong> in a bordered canvas, then an <strong>annotation strip</strong>: what it optimizes for, how chronology survives, what happens to description and photo count, image weight, and build effort.</li>
+          <li>The four hard requirements are called out per concept:</li>
+        </ul>
+        <div class="reqLegend">
+          <span class="reqPill">Date</span>
+          <span class="reqPill">Title</span>
+          <span class="reqPill">Category</span>
+          <span class="reqPill">Chronology</span>
+        </div>
+      </div>
+
+      <div class="panel warn">
+        <h3>Three facts that shaped every concept</h3>
+        <ul>
+          <li><strong>The library is small — 14 albums, not 60.</strong> A three-across card grid inside year groups is a layout for a library five times this size. 2022 has 2 albums and 2025 has 3; in a 3-column grid those years render as a broken row.</li>
+          <li><strong>There is a real two-year hole: no albums at all for 2023 or 2024.</strong> Any timeline-shaped design will show that hole honestly. That's a content decision, not a design bug — see the open questions.</li>
+          <li><strong>Covers are the page's whole weight budget.</strong> Fourteen 1–4&nbsp;MB PNGs is roughly 25&nbsp;MB above the fold. Every concept here is annotated for image weight, and two of them work with none.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:var(--sp-6)">
+      <h3>Bug found while reading the code</h3>
+      <p style="margin:0">
+        <code>albums-browser.tsx</code> hardcodes a <code>CATEGORY_CLASS</code> map from category label
+        to a palette token — but the categories themselves live in
+        <code>calendar_categories</code>, which already carries an authoritative
+        <code>color</code> column that the calendar renders (<code>month-grid.tsx</code>, <code>colors: CategoryColorMap</code>).
+        The map is missing five live labels. <strong>"Troop 79 — 2025 in Review" is
+        <em>Recruiting / Outreach</em>, which has no entry, so it silently falls through to the default
+        navy chip</strong> instead of its DB color <code>#a04a3d</code>. Every concept below reads the DB
+        color instead, the way the calendar does. That alone is a same-day fix, independent of which
+        concept you pick.
+      </p>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ══════════════════ CONCEPT 0 — TODAY ══════════════════ -->
+<section class="concept" id="today">
+  <div class="conceptHead">
+    <div class="conceptNum">0</div>
+    <div class="conceptTitles">
+      <h2>Today — Year-grouped card grid</h2>
+      <p class="thesis">The baseline. Reproduced here at real data volume so the comparison is fair rather than remembered.</p>
+    </div>
+    <span class="effortTag effLow">Shipped</span>
+  </div>
+
+  <span class="canvasLabel">Live demo — current design</span>
+  <div class="canvas">
+    <div id="todayMount"></div>
+  </div>
+
+  <dl class="annot">
+    <div><dt>What it optimizes for</dt><dd>Cover photography. The image is 60% of the card and the first thing you see.</dd></div>
+    <div><dt>Chronology</dt><dd><span class="mark mYes">Kept</span> — year headings, newest first. This part already works and every concept preserves it.</dd></div>
+    <div><dt>Description &amp; count</dt><dd>Both shown. Description is 2-line clamped and <strong>null on 2 of 14 albums</strong>, so the cards are visibly uneven.</dd></div>
+    <div><dt>Image weight</dt><dd><span class="mark mNo">Worst case.</span> Every album loads a full-size cover, all above the fold at 14 albums.</dd></div>
+    <div><dt>The actual problem</dt><dd>Identical recipe to a news card — 16:10 box, 17px Playfair title, meta line, hover lift. Nothing signals <em>this is 209 photos</em> rather than <em>this is an article</em>.</dd></div>
+  </dl>
+</section>
+
+<!-- ══════════════════ CONCEPT 1 — SPINE ══════════════════ -->
+<section class="concept" id="c1">
+  <div class="conceptHead">
+    <div class="conceptNum">1</div>
+    <div class="conceptTitles">
+      <h2>The Spine</h2>
+      <p class="thesis">Stop grouping by time and start <em>drawing</em> time: one continuous rail down the page, every album a dated node on it, gaps included.</p>
+    </div>
+    <span class="effortTag effMed">~1 day</span>
+  </div>
+
+  <span class="canvasLabel">Live demo — hover a row</span>
+  <div class="canvas">
+    <div id="spineMount"></div>
+  </div>
+
+  <dl class="annot">
+    <div><dt>What it optimizes for</dt><dd>Narrative. Reads as the troop's history rather than a catalog — which is what a family actually wants from four years of photos.</dd></div>
+    <div><dt>Chronology</dt><dd><span class="mark mYes">Strongest of the six.</span> The layout <em>is</em> the timeline. Day-level dates on the rail, not just month; the 2023–24 gap is rendered as a labelled dashed segment instead of quietly vanishing.</dd></div>
+    <div><dt>Date / Title / Category</dt><dd>Date on the rail in display type. Title in Open Sans at 15px — sans, so Playfair stays the story voice. Category is the rail node's color plus a chip.</dd></div>
+    <div><dt>Description &amp; count</dt><dd>Description <span class="mark mNo">dropped</span>. Count kept as a quiet meta item — it's the one number that earns its place.</dd></div>
+    <div><dt>Image weight</dt><dd><span class="mark mYes">Very low.</span> One 60px square per row → a 120px derivative, ~6&nbsp;KB each, ~85&nbsp;KB total. Two orders of magnitude under today.</dd></div>
+    <div><dt>Build effort</dt><dd>New CSS module + a light restructure of the map in <code>albums-browser.tsx</code>. No query changes. The gap marker needs a tiny "years with zero albums" derivation.</dd></div>
+  </dl>
+</section>
+
+<!-- ══════════════════ CONCEPT 2 — PRINT SHELF ══════════════════ -->
+<section class="concept" id="c2">
+  <div class="conceptHead">
+    <div class="conceptNum">2</div>
+    <div class="conceptTitles">
+      <h2>The Print Shelf</h2>
+      <p class="thesis">Make an album look like a <em>stack of prints</em>, not a story card — white border, 4:3 print geometry, two sheets peeking out behind, category as a sticker on the corner.</p>
+    </div>
+    <span class="effortTag effLow">~half a day (+ image pipeline)</span>
+  </div>
+
+  <span class="canvasLabel">Live demo — hover a print; the stack fans and it straightens</span>
+  <div class="canvas">
+    <div id="shelfMount"></div>
+  </div>
+
+  <dl class="annot">
+    <div><dt>What it optimizes for</dt><dd>The exact problem you flagged: <strong>album cards reading as news stories</strong>. The stack silhouette does that in two pseudo-elements and no extra markup.</dd></div>
+    <div><dt>Chronology</dt><dd><span class="mark mYes">Kept</span> as today — year heading + newest-first within year. Every caption also carries a full date, so a print is self-dating even out of context.</dd></div>
+    <div><dt>Date / Title / Category</dt><dd>Date sits in the print's bottom margin where a photo-lab date stamp goes. Title in Open Sans 13px bold. Category is a colored sticker overhanging the top-right corner — visible <em>before</em> you read anything.</dd></div>
+    <div><dt>Description &amp; count</dt><dd>Description <span class="mark mNo">dropped</span> — it's what makes these look like articles. Count kept, small, in the caption foot.</dd></div>
+    <div><dt>Image weight</dt><dd><span class="mark mPart">Same count, much smaller.</span> 4-up at 4:3 means a ~280px-wide derivative. This concept is the one that <strong>requires</strong> the image pipeline — at 1–4&nbsp;MB PNGs it's no better than today.</dd></div>
+    <div><dt>Build effort</dt><dd><span class="mark mYes">Cheapest real win.</span> Same JSX shape as the current card; almost entirely a rewrite of <code>photos.module.css</code>. The stack pseudo-elements drop at 2-up on phones where they cost more than they earn.</dd></div>
+  </dl>
+</section>
+
+<!-- ══════════════════ CONCEPT 3 — LEDGER ══════════════════ -->
+<section class="concept" id="c3">
+  <div class="conceptHead">
+    <div class="conceptNum">3</div>
+    <div class="conceptTitles">
+      <h2>The Ledger</h2>
+      <p class="thesis">Trade every image for scanability: fourteen albums as a sortable index that loads in zero bytes and reads top-to-bottom in one glance.</p>
+    </div>
+    <span class="effortTag effLow">~half a day</span>
+  </div>
+
+  <span class="canvasLabel">Live demo — click a column header to sort; toggle thumbnails on</span>
+  <div class="canvas">
+    <div class="demoBar">
+      <label class="toggleWrap">
+        <input type="checkbox" id="ledThumbs"> Show thumbnails
+      </label>
+      <span class="grow"></span>
+      <span class="demoCount">Sorted by <strong id="ledSortLabel">date, newest first</strong></span>
+    </div>
+    <div id="ledgerMount"></div>
+  </div>
+
+  <dl class="annot">
+    <div><dt>What it optimizes for</dt><dd>Finding a specific album, and honest comparison. "Which outing has the most photos?" is answerable in one look — the bar makes 1,024 vs 5 a visible fact instead of a number to parse.</dd></div>
+    <div><dt>Chronology</dt><dd><span class="mark mYes">Kept, and defended.</span> Default sort is date descending with year separator rows. Sorting by another column is opt-in, the date column never leaves, and the year rows reappear the moment you sort back. <code>aria-sort</code> announces the state.</dd></div>
+    <div><dt>Date / Title / Category</dt><dd>All four are literally columns. Date is exact (no "May 2026" fuzz). Category is a DB-colored dot plus its label — colored text at 12px still clears 4.5:1 on cream.</dd></div>
+    <div><dt>Description &amp; count</dt><dd>Description <span class="mark mNo">dropped entirely</span>. Count <span class="mark mYes">promoted</span> to a first-class sortable column with a proportional bar.</dd></div>
+    <div><dt>Image weight</dt><dd><span class="mark mYes">Zero by default.</span> The thumbnail toggle lazily swaps in 38px squares only if asked. This is the concept that survives a bad connection at a campsite.</dd></div>
+    <div><dt>Build effort</dt><dd>Low. A real <code>&lt;table&gt;</code>, existing data, no new query. Best accessibility of the six by a wide margin — it's tabular data presented as a table.</dd></div>
+  </dl>
+</section>
+
+<!-- ══════════════════ CONCEPT 4 — YEAR SHELF ══════════════════ -->
+<section class="concept" id="c4">
+  <div class="conceptHead">
+    <div class="conceptNum">4</div>
+    <div class="conceptTitles">
+      <h2>The Year Shelf</h2>
+      <p class="thesis">One horizontal shelf per year. A two-album year looks deliberate on a shelf; in a three-column grid it looks broken.</p>
+    </div>
+    <span class="effortTag effMed">~1 day</span>
+  </div>
+
+  <span class="canvasLabel">Live demo — drag, scroll, or use the arrows; tiles are keyboard-reachable</span>
+  <div class="canvas">
+    <div id="railMount"></div>
+  </div>
+
+  <dl class="annot">
+    <div><dt>What it optimizes for</dt><dd>Sparse and uneven years — which is exactly what this library is and will stay. It also scales the other way: a 25-album year just makes a longer shelf, never a wall.</dd></div>
+    <div><dt>Chronology</dt><dd><span class="mark mYes">Kept on two axes.</span> Shelves descend by year; tiles run newest→oldest left to right. Risk to watch: horizontal order is a weaker time signal than vertical, so each tile carries its own full date in the overlay.</dd></div>
+    <div><dt>Date / Title / Category</dt><dd>Date and title in the gradient overlay; category as a sticker top-left; count as a pill top-right. Everything is legible without hovering.</dd></div>
+    <div><dt>Description &amp; count</dt><dd>Description <span class="mark mNo">dropped</span> — no room, and a square tile is better for it. Count kept as the corner pill.</dd></div>
+    <div><dt>Image weight</dt><dd><span class="mark mYes">Best of the image-led concepts.</span> Off-screen tiles are genuinely off-screen: horizontal overflow plus <code>loading="lazy"</code> means a year's fourth-through-tenth albums never fetch until scrolled.</dd></div>
+    <div><dt>Build effort</dt><dd>Medium. The layout is easy; <strong>the accessibility is the work</strong> — scroll containers need a keyboard path, a visible scrollbar, and arrow buttons that disable at the ends. Budget the extra half day for that, not for the CSS.</dd></div>
+  </dl>
+</section>
+
+<!-- ══════════════════ CONCEPT 5 — ALMANAC ══════════════════ -->
+<section class="concept" id="c5">
+  <div class="conceptHead">
+    <div class="conceptNum">5</div>
+    <div class="conceptTitles">
+      <h2>The Almanac</h2>
+      <p class="thesis">Years down, seasons across. A troop's year rhymes — Klondike in January, camp in July, Court of Honor in the fall — and no other layout can show that.</p>
+    </div>
+    <span class="effortTag effHigh">~1.5–2 days</span>
+  </div>
+
+  <span class="canvasLabel">Live demo — read down a column to see the same thing happening every year</span>
+  <div class="canvas">
+    <div id="almanacMount"></div>
+  </div>
+
+  <dl class="annot">
+    <div><dt>What it optimizes for</dt><dd>Institutional memory. It answers a question no other view can: "what do we do every winter?" For a family deciding whether to join, that's the most persuasive page on the site.</dd></div>
+    <div><dt>Chronology</dt><dd><span class="mark mYes">Kept, and enriched.</span> Reading order is still strictly chronological (down = years, across = seasons in order), but a second, cyclical time axis appears for free.</dd></div>
+    <div><dt>Date / Title / Category</dt><dd>Day-and-month per item, title in Open Sans 12px, category as the item's left border color. Dense but not cramped.</dd></div>
+    <div><dt>Description &amp; count</dt><dd>Description <span class="mark mNo">dropped</span>. Count kept as a small trailing number.</dd></div>
+    <div><dt>Image weight</dt><dd><span class="mark mYes">Zero.</span> Text-first by design — there is no cell geometry that a cover fits into without wrecking the grid.</dd></div>
+    <div><dt>Honest risk</dt><dd><span class="mark mNo">It is mostly empty today.</span> Five year-rows × four seasons = 20 cells, and the fourteen albums fill only <strong>7</strong> of them — the 2023 and 2024 rows are entirely blank, and 2022 and 2025 each light up two. This design gets better every year and is weakest right now. Mobile also has to collapse it to a single column, at which point it's Concept 1 with worse dates.</dd></div>
+    <div><dt>Unresolved: where seasons start</dt><dd>The columns are calendar quarters, because that's the only cut where left-to-right stays forward in time. The cost shows in the demo: <strong>Court of Honor, September 7, lands under "Summer"</strong> — which no scouting family would say. True seasons (Dec–Feb winter) would fix that and break chronology, since December would belong to the following winter. <span class="mark mNo">Needs your call</span> before this one could ship.</dd></div>
+  </dl>
+</section>
+
+<!-- ══════════════════ CONCEPT 6 — HYBRID ══════════════════ -->
+<section class="concept" id="c6">
+  <div class="conceptHead">
+    <div class="conceptNum">6</div>
+    <div class="conceptTitles">
+      <h2>One Index, Three Lenses</h2>
+      <p class="thesis">Don't pick one. Keep a single filtered result set and let the visitor choose how it's drawn — prints for browsing, timeline for history, list for finding.</p>
+    </div>
+    <span class="effortTag effMed">Sum of the two you ship + ~2 hrs</span>
+  </div>
+
+  <span class="canvasLabel">Live demo — the filter and the view toggle work together; try Category = Campout, then switch views</span>
+  <div class="canvas">
+    <div class="demoBar">
+      <div class="viewToggle" role="group" aria-label="Choose a view">
+        <button type="button" data-view="prints" aria-pressed="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v14H3zM5 7v10h14V7z"/><path d="M6 15l3.5-4 2.5 3 3-3.5L19 15z"/></svg>
+          Prints
+        </button>
+        <button type="button" data-view="spine" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3h2v18h-2z"/><circle cx="12" cy="7" r="3"/><circle cx="12" cy="17" r="3"/></svg>
+          Timeline
+        </button>
+        <button type="button" data-view="list" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>
+          List
+        </button>
+      </div>
+      <span class="grow"></span>
+      <label class="srOnly" for="hybCat">Filter by category</label>
+      <select class="demoSel" id="hybCat"></select>
+      <label class="srOnly" for="hybYear">Filter by year</label>
+      <select class="demoSel" id="hybYear"></select>
+      <span class="demoCount" aria-live="polite" id="hybCount"></span>
+    </div>
+    <div id="hybridMount"></div>
+  </div>
+
+  <dl class="annot">
+    <div><dt>What it optimizes for</dt><dd>The fact that the same page serves three different errands: a parent browsing after a campout, a new family reading the troop's history, and someone hunting for "that Klondike album."</dd></div>
+    <div><dt>Chronology</dt><dd><span class="mark mYes">Kept in all three lenses</span> — that's the constraint that makes them interchangeable. Switching views never reorders the data, only redraws it.</dd></div>
+    <div><dt>Description &amp; count</dt><dd>Description dropped everywhere. Count present in all three, most prominent in List.</dd></div>
+    <div><dt>Image weight</dt><dd>Visitor-controlled, which is the real answer. Default to Prints on desktop and remember the choice; anyone on a slow connection lands on List once and stays there.</dd></div>
+    <div><dt>Build effort</dt><dd>The toggle itself is trivial — ~2 hours: one <code>view</code> state, one more URL param alongside the existing <code>?category=&amp;year=&amp;q=</code>, and a <code>localStorage</code> read on mount. The cost is whichever views you build.</dd></div>
+    <div><dt>Recommendation</dt><dd><strong>Ship Prints + List first.</strong> Prints fixes the identity problem for ~half a day of CSS; List fixes weight, scanning and accessibility for another half. Timeline is the nicest of the six and can follow when there's appetite.</dd></div>
+  </dl>
+</section>
+
+<!-- ══════════════════ COMPARISON ══════════════════ -->
+<section class="concept" id="compare">
+  <div class="conceptHead">
+    <div class="conceptNum">✦</div>
+    <div class="conceptTitles">
+      <h2>Side by side</h2>
+      <p class="thesis">Against the four hard requirements, plus the things that will actually decide it.</p>
+    </div>
+  </div>
+
+  <div class="cmpWrap">
+    <table class="cmp">
+      <thead>
+        <tr>
+          <th scope="col">Concept</th>
+          <th scope="col">Date</th>
+          <th scope="col">Title</th>
+          <th scope="col">Category</th>
+          <th scope="col">Chronology</th>
+          <th scope="col">Reads as a collection?</th>
+          <th scope="col">Image weight</th>
+          <th scope="col">Works at 14 albums</th>
+          <th scope="col">Effort</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">0 · Today</th>
+          <td><span class="mark mPart">Month only</span></td>
+          <td><span class="mark mYes">Yes</span></td>
+          <td><span class="mark mPart">Chip, 5 labels unmapped</span></td>
+          <td><span class="mark mYes">Year groups</span></td>
+          <td><span class="mark mNo">No — same recipe as news</span></td>
+          <td><span class="mark mNo">~25 MB</span></td>
+          <td><span class="mark mNo">Sparse years break the row</span></td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <th scope="row">1 · Spine</th>
+          <td><span class="mark mYes">Exact day</span></td>
+          <td><span class="mark mYes">Yes</span></td>
+          <td><span class="mark mYes">Node color + chip</span></td>
+          <td><span class="mark mYes">Strongest — gaps shown</span></td>
+          <td><span class="mark mYes">Yes — a log, not a feed</span></td>
+          <td><span class="mark mYes">~85 KB</span></td>
+          <td><span class="mark mYes">Excellent</span></td>
+          <td>~1 day</td>
+        </tr>
+        <tr class="rec">
+          <th scope="row">2 · Print Shelf</th>
+          <td><span class="mark mYes">Exact day</span></td>
+          <td><span class="mark mYes">Yes</span></td>
+          <td><span class="mark mYes">Corner sticker</span></td>
+          <td><span class="mark mYes">Year groups + full dates</span></td>
+          <td><span class="mark mYes">Strongest — stack silhouette</span></td>
+          <td><span class="mark mPart">Needs derivatives</span></td>
+          <td><span class="mark mPart">4-up, better than 3-up</span></td>
+          <td>~½ day</td>
+        </tr>
+        <tr class="rec">
+          <th scope="row">3 · Ledger</th>
+          <td><span class="mark mYes">Exact day, sortable</span></td>
+          <td><span class="mark mYes">Yes</span></td>
+          <td><span class="mark mYes">Column, sortable</span></td>
+          <td><span class="mark mYes">Default sort + year rows</span></td>
+          <td><span class="mark mPart">Neutral — it's an index</span></td>
+          <td><span class="mark mYes">Zero</span></td>
+          <td><span class="mark mYes">Excellent</span></td>
+          <td>~½ day</td>
+        </tr>
+        <tr>
+          <th scope="row">4 · Year Shelf</th>
+          <td><span class="mark mYes">Exact day</span></td>
+          <td><span class="mark mYes">Yes</span></td>
+          <td><span class="mark mYes">Corner sticker</span></td>
+          <td><span class="mark mPart">Horizontal = weaker signal</span></td>
+          <td><span class="mark mYes">Yes — shelf reads as a set</span></td>
+          <td><span class="mark mYes">Lazy, in-view only</span></td>
+          <td><span class="mark mYes">Best for sparse years</span></td>
+          <td>~1 day</td>
+        </tr>
+        <tr>
+          <th scope="row">5 · Almanac</th>
+          <td><span class="mark mYes">Day + month</span></td>
+          <td><span class="mark mYes">Yes</span></td>
+          <td><span class="mark mYes">Border color</span></td>
+          <td><span class="mark mYes">Two axes — linear + cyclical</span></td>
+          <td><span class="mark mYes">Yes — reads as an archive</span></td>
+          <td><span class="mark mYes">Zero</span></td>
+          <td><span class="mark mNo">Only 7 of 20 cells filled</span></td>
+          <td>~1.5–2 days</td>
+        </tr>
+        <tr class="rec">
+          <th scope="row">6 · Three Lenses</th>
+          <td colspan="4"><span class="mark mYes">Inherits all four from whichever lens is active — that's the design constraint</span></td>
+          <td><span class="mark mYes">Yes, via Prints</span></td>
+          <td><span class="mark mYes">Visitor's choice</span></td>
+          <td><span class="mark mYes">Yes</span></td>
+          <td>+~2 hrs</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="font-family:var(--font-ui); font-size:var(--fs-2xs); color:var(--text-meta); margin-top:var(--sp-3)">
+    Green rows are the recommended package: Concepts 2 + 3, wired together by Concept 6.
+  </p>
+</section>
+
+<section class="deckFoot">
+  <h2>Recommendation</h2>
+  <p style="max-width:72ch">
+    <strong>Ship Concept 2 (Print Shelf) as the default view and Concept 3 (Ledger) as the alternate,
+    joined by Concept 6's toggle.</strong> Concept 2 solves the stated problem — album cards reading as
+    news stories — with a CSS rewrite over markup that already exists, which is about half a day. Concept 3
+    solves the weight, scanning and accessibility problems with a real table and no images, for another
+    half day. The toggle costs two hours and lets the page serve browsing and finding without either one
+    compromising. Concept 1 (Spine) is the most beautiful of the six and the strongest on chronology; it
+    is the right third lens once the first two are live, not the thing to start with.
+  </p>
+
+  <h3>Do this first, regardless of which concept wins</h3>
+  <ol>
+    <li><strong>Fix the category color source.</strong> Delete <code>CATEGORY_CLASS</code> from <code>albums-browser.tsx</code> and read <code>calendar_categories.color</code> the way <code>month-grid.tsx</code> already does. Five labels are unmapped today; one of them is live on the "2025 in Review" album. Same-day fix, no design dependency.</li>
+    <li><strong>Settle the cover-image pipeline.</strong> Nothing else on this page matters as much. Concepts 2 and 4 are only wins if a cover ships at ~40&nbsp;KB instead of 1–4&nbsp;MB.</li>
+  </ol>
+
+  <h3>Open questions — I need answers to these before building</h3>
+  <ol>
+    <li><strong>2023 and 2024 have no albums at all.</strong> Are those photos missing from the site, or did they genuinely never get collected? Concepts 1, 4 and 5 all make that hole loud and visible. If they exist somewhere, adding them changes which concept wins; if they don't, do you want the gap labelled honestly ("no albums posted") or quietly skipped?</li>
+    <li><strong>Can we resize covers?</strong> <code>lib/bunny-storage.ts</code> talks to a Bunny <em>Storage</em> zone — I found no evidence of Bunny Optimizer or any <code>?width=</code> transform in the codebase. So thumbnails mean either enabling the Optimizer add-on (a paid Bunny feature, needs your call) or generating derivatives at upload time in the admin uploader. Which?</li>
+    <li><strong>Is <code>description</code> worth keeping?</strong> Two of fourteen are null and several restate the title verbatim ("Crossover from Pack 179 at Grant Park", "Chess Merit Badge"). Every concept here drops or demotes it. Do we retire the field, or make it required and useful on entry?</li>
+    <li><strong>How much do you trust <code>photo_count</code>?</strong> The type comment calls it leader-maintained and approximate, and "2025 in Review" claims 1,024. Concept 3 promotes it to a sortable column with a proportional bar, which is only a good idea if the number is roughly right. Promote, or drop?</li>
+    <li><strong>Default view and persistence.</strong> If we ship the toggle: default to Prints everywhere, or List on phones? And should the choice persist per visitor in <code>localStorage</code>, or live only in the URL alongside the existing <code>?category=&amp;year=&amp;q=</code> params?</li>
+    <li><strong>Only if the Almanac interests you: where does a season start?</strong> I used calendar quarters so that reading across a row stays forward in time, but that files the September Court of Honor under "Summer." Real seasons read better and break the chronology guarantee. Not worth solving unless Concept 5 is in play.</li>
+    <li><strong>Uniform treatment, or a hero?</strong> Right now every album gets the same weight. Should the newest album — or a leader-flagged one — get a larger slot at the top? That needs a new <code>featured</code> boolean on <code>photo_albums</code>, so it's a schema question, not a CSS one.</li>
+  </ol>
+
+  <h3>Considered and rejected</h3>
+  <ul>
+    <li><strong>A map view.</strong> Genuinely appealing for a troop — Governor Dodge, Long Lake, Boundary Waters, Tesomas are all real places. Rejected because <code>photo_albums</code> has no location field and no lat/long anywhere in the schema. It would need a new column plus back-filling fourteen rows by hand. Worth revisiting as its own plan; not a restyle.</li>
+    <li><strong>Masonry / mixed-height mosaic.</strong> Rejected on two counts: it needs <em>more</em> large images visible at once, which is the wrong direction for this page, and it actively damages chronology — a masonry column flow means the reading order and the date order stop agreeing.</li>
+    <li><strong>Infinite-scroll feed.</strong> Fourteen albums. There is nothing to paginate.</li>
+  </ul>
+
+  <div class="panel" style="margin-top:var(--sp-8)">
+    <h3>Token discipline note</h3>
+    <p style="margin:0">
+      Every color, size, space and radius in this file comes from <code>globals.css</code>. No new tokens
+      are required for any concept. The nine category colors are <em>database rows</em>
+      (<code>calendar_categories.color</code>), not CSS tokens — they belong in a dynamic inline
+      <code>style</code> with a <code>/* dynamic */</code> comment, exactly as
+      <code>admin/(workspace)/events/page.tsx</code> already does. I checked all nine against white:
+      the lightest, <code>#527554</code>, lands at 5.25:1, so the solid chips clear WCAG AA. The
+      text-only variant on cream clears 4.8:1. If any concept ships, its specimen goes on
+      <code>/admin/styleguide/public</code> in the same commit.
+    </p>
+  </div>
+</section>
+
+</main>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   DATA — the real 14 rows of public.photo_albums as of the 2026-08-14 backup.
+   Category colors are the real calendar_categories.color values.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const CAT = {
+  'Troop Meeting':          { color:'#1e3a4a', ph:'phB', short:'Meeting' },
+  'Campout / Overnight':    { color:'#3d5a3e', ph:'phA', short:'Campout' },
+  'Day Activity / Outing':  { color:'#4a6741', ph:'phC', short:'Outing'  },
+  'High Adventure':         { color:'#2d6a4f', ph:'phA', short:'High Adv.' },
+  'Summer Camp':            { color:'#527554', ph:'phC', short:'Summer Camp' },
+  'Service Project':        { color:'#6a5d3a', ph:'phD', short:'Service' },
+  'Fundraiser':             { color:'#8b6914', ph:'phD', short:'Fundraiser' },
+  'Ceremony / Recognition': { color:'#5a3d6a', ph:'phE', short:'Ceremony' },
+  'Recruiting / Outreach':  { color:'#a04a3d', ph:'phF', short:'Outreach' }
+};
+
+const ALBUMS = [
+  { d:'2026-07-26', t:'Summer Camp — Tesomas 2026',              c:'Summer Camp',            n:200,  desc:'Summer camp in northern Wisconsin near Rhinelander from July 26 to August 1st.', u:'https://photos.app.goo.gl/mM2TWKCHgdmZLp3U8' },
+  { d:'2026-06-20', t:'Boundary Waters High Adventure Trip',     c:'High Adventure',         n:393,  desc:"Troop 79's first High Adventure Trip.", u:'https://photos.app.goo.gl/MBjfGw2rnbkm6pPH7' },
+  { d:'2026-06-06', t:'Crossover from Pack 179 at Grant Park',   c:'Ceremony / Recognition', n:47,   desc:'Crossover from Pack 179 at Grant Park.', u:'https://photos.app.goo.gl/HhdLnesMc8zfcTp9A' },
+  { d:'2026-05-12', t:'Greenbush Spring Campout — May 2026',     c:'Campout / Overnight',    n:79,   desc:null, u:'https://photos.app.goo.gl/pfsKbb1m4ahmsjLRA' },
+  { d:'2026-04-20', t:'Maya Eagle Project — April / May 2026',   c:'Service Project',        n:99,   desc:'The Little Library and Display Kiosk at the Urban Ecology Center on the east side of Milwaukee.', u:'https://photos.app.goo.gl/bqy5xFit3aewVwzP9' },
+  { d:'2026-04-18', t:'Woodwork Merit Badge',                    c:'Troop Meeting',          n:25,   desc:'Scouts began building stools as part of Woodwork Merit Badge with Nate at Northwoods.', u:'https://photos.app.goo.gl/q51by3fo3KhMLhLdA' },
+  { d:'2026-04-15', t:'Pinewood Derby Concessions',              c:'Fundraiser',             n:5,    desc:'Troop 79 ran the Pack 179 Pinewood Derby concession stand.', u:'https://photos.app.goo.gl/XQauYHicwGcRsF8FA' },
+  { d:'2026-02-12', t:"Winter Camp '26 — Long Lake",             c:'Campout / Overnight',    n:143,  desc:'Winter Camp on a warm weekend. Our first of many at Long Lake Scout Camp.', u:'https://photos.app.goo.gl/uVus1cvjkbyHngLM9' },
+  { d:'2026-01-10', t:'Klondike Derby — Oh-Da-Ko-Ta',            c:'Day Activity / Outing',  n:43,   desc:null, u:'https://photos.app.goo.gl/g2vB1ffHfm7LKkFw5' },
+  { d:'2025-12-31', t:'Troop 79 — 2025 in Review',               c:'Recruiting / Outreach',  n:1024, desc:'Selected pictures from every event this year.', u:'https://photos.app.goo.gl/T5hhrmavvMgdLiWm6' },
+  { d:'2025-12-10', t:'Chess Merit Badge',                       c:'Troop Meeting',          n:13,   desc:'Chess Merit Badge.', u:'https://photos.app.goo.gl/V2U4V84q8RFskWE47' },
+  { d:'2025-09-07', t:'Court of Honor 2025',                     c:'Ceremony / Recognition', n:59,   desc:'Court of Honor — Sept 7, 2025.', u:'https://photos.app.goo.gl/cojp1Fw7Mm6bor4HA' },
+  { d:'2022-10-14', t:"Governor Dodge — October '22",            c:'Campout / Overnight',    n:209,  desc:'Our first campout as a new troop.', u:'https://photos.app.goo.gl/pbmGPmffRntKHPJj8' },
+  { d:'2022-08-22', t:'Inaugural Troop Meeting at Thomas Moore HS', c:'Troop Meeting',        n:15,   desc:'First-ever troop meeting, August 2022.', u:'https://photos.app.goo.gl/99R2TyP1k2oe4yxA8' }
+];
+
+/* ── helpers ───────────────────────────────────────────────────────────── */
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const parts = d => ({ y:+d.slice(0,4), m:+d.slice(5,7)-1, day:+d.slice(8,10) });
+const yearOf = a => a.d.slice(0,4);
+const fullDate = d => { const p = parts(d); return `${MONL[p.m]} ${p.day}, ${p.y}`; };
+const shortDate = d => { const p = parts(d); return `${MON[p.m]} ${p.day}, ${p.y}`; };
+const monthYear = d => { const p = parts(d); return `${MONL[p.m]} ${p.y}`; };
+const cat = a => CAT[a.c] || { color:'#1e3a4a', ph:'phA', short:a.c };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const MAXN = Math.max(...ALBUMS.map(a => a.n));
+
+const EXT = '<svg class="extIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3zm-9 0H3v18h18v-9h-2v7H5V5h7V3z"/></svg>';
+
+/** Every album is an external link; the label is the whole story so a screen
+ *  reader user never has to reconstruct it from surrounding markup. */
+function aria(a){
+  return esc([a.t, a.c, fullDate(a.d), `${a.n} photos`, 'Opens Google Photos in a new tab'].join('. '));
+}
+function open(a, cls, extraStyle){
+  const style = `--catColor:${cat(a).color}${extraStyle ? '; ' + extraStyle : ''}`;
+  return `<a class="${cls}" href="${a.u}" target="_blank" rel="noopener noreferrer" aria-label="${aria(a)}" style="${style}">`;
+}
+
+/** Years that exist between the oldest and newest album but hold nothing.
+ *  2023 and 2024 today — the gap the timeline concepts render honestly. */
+function yearsPresent(list){ return [...new Set(list.map(yearOf))].sort().reverse(); }
+function gapAfter(list, y){
+  const ys = yearsPresent(list).map(Number);
+  const i = ys.indexOf(+y);
+  if (i === -1 || i === ys.length - 1) return null;
+  const next = ys[i+1];
+  const missing = [];
+  /* descending, matching the page's newest-first reading order */
+  for (let k = +y - 1; k > next; k--) missing.push(k);
+  return missing.length ? missing : null;
+}
+
+/* ═══ Concept 0 — today ═══════════════════════════════════════════════════ */
+function renderToday(list){
+  const years = yearsPresent(list);
+  return years.map(y => {
+    const inY = list.filter(a => yearOf(a) === y);
+    return `
+      <section aria-label="Albums from ${y}" style="margin-bottom:var(--sp-9)">
+        <div class="shelfYearHead">
+          <h3>${y}</h3>
+          <span class="yc">${inY.length} album${inY.length === 1 ? '' : 's'}</span>
+          <span class="rule"></span>
+        </div>
+        <div class="todayGrid">
+          ${inY.map(a => `
+            ${open(a,'todayCard')}
+              <span class="ph ${cat(a).ph}"></span>
+              <div class="todayBody">
+                <span class="catChip">${esc(a.c)}</span>
+                <h4>${esc(a.t)}</h4>
+                ${a.desc ? `<p>${esc(a.desc)}</p>` : ''}
+                <p class="todayMeta">${monthYear(a.d)} &middot; ${a.n.toLocaleString()} photos &middot; Google Photos ${EXT}</p>
+              </div>
+            </a>`).join('')}
+        </div>
+      </section>`;
+  }).join('');
+}
+
+/* ═══ Concept 1 — The Spine ═══════════════════════════════════════════════ */
+function renderSpine(list){
+  const years = yearsPresent(list);
+  let out = '<div class="spine">';
+  years.forEach(y => {
+    const inY = list.filter(a => yearOf(a) === y);
+    out += `
+      <div class="spineYear">
+        <h3>${y}<span class="yc">${inY.length} album${inY.length===1?'':'s'}</span></h3>
+        <div class="spineYearRule"></div>
+      </div>`;
+    out += inY.map(a => {
+      const p = parts(a.d);
+      return `
+        ${open(a,'spineRow')}
+          <span class="spineDate" aria-hidden="true">
+            <span class="m">${MON[p.m]}</span>
+            <span class="d">${p.day}</span>
+          </span>
+          <span class="ph ${cat(a).ph} spineThumb"></span>
+          <span class="spineText">
+            <span class="spineTitle">${esc(a.t)}</span>
+            <span class="spineMeta">
+              <span class="catChip">${esc(a.c)}</span>
+              <span class="spineNum">${a.n.toLocaleString()} photos</span>
+            </span>
+          </span>
+          <span class="spineGo">View album &rarr;</span>
+        </a>`;
+    }).join('');
+
+    const gap = gapAfter(list, y);
+    if (gap){
+      out += `<div class="spineGap">No albums posted for <b>${gap.join(' or ')}</b> &mdash; the rail keeps going so the gap is visible rather than invisible.</div>`;
+    }
+  });
+  return out + '</div>';
+}
+
+/* ═══ Concept 2 — The Print Shelf ═════════════════════════════════════════ */
+const TILTS = ['-1.1deg','0.8deg','-0.5deg','1.3deg','-0.9deg','0.6deg'];
+function renderShelf(list){
+  const years = yearsPresent(list);
+  return years.map(y => {
+    const inY = list.filter(a => yearOf(a) === y);
+    return `
+      <section class="shelfYear" aria-label="Albums from ${y}">
+        <div class="shelfYearHead">
+          <h3>${y}</h3>
+          <span class="yc">${inY.length} album${inY.length===1?'':'s'}</span>
+          <span class="rule"></span>
+        </div>
+        <div class="prints">
+          ${inY.map((a,i) => `
+            ${open(a,'print', `--tilt:${TILTS[i % TILTS.length]}`)}
+              <span class="catChip printSticker">${esc(cat(a).short)}</span>
+              <span class="ph ${cat(a).ph}"></span>
+              <span class="printCaption">
+                <span class="printDate">${shortDate(a.d)}</span>
+                <span class="printTitle">${esc(a.t)}</span>
+                <span class="printFoot">
+                  <span>${a.n.toLocaleString()} photos</span>
+                  <span class="printGo">View &rarr;</span>
+                </span>
+              </span>
+            </a>`).join('')}
+        </div>
+      </section>`;
+  }).join('');
+}
+
+/* ═══ Concept 3 — The Ledger ══════════════════════════════════════════════ */
+const ledState = { key:'d', dir:'desc' };
+function renderLedger(list, mountId, withYears){
+  const sorted = [...list].sort((x,y) => {
+    let r;
+    if (ledState.key === 'n') r = x.n - y.n;
+    else if (ledState.key === 't') r = x.t.localeCompare(y.t);
+    else if (ledState.key === 'c') r = x.c.localeCompare(y.c) || x.d.localeCompare(y.d);
+    else r = x.d.localeCompare(y.d);
+    return ledState.dir === 'desc' ? -r : r;
+  });
+  /* Year separator rows only make sense while the table is in date order —
+     that's how chronology stays defended under sorting. */
+  const grouped = withYears !== false && ledState.key === 'd';
+
+  const sortAttr = k => ledState.key === k ? ` aria-sort="${ledState.dir === 'desc' ? 'descending' : 'ascending'}"` : '';
+  let body = '';
+  let lastYear = null;
+  sorted.forEach(a => {
+    if (grouped && yearOf(a) !== lastYear){
+      lastYear = yearOf(a);
+      const n = sorted.filter(x => yearOf(x) === lastYear).length;
+      body += `<tr class="ledYear"><td colspan="5">${lastYear}<span class="yc">${n} album${n===1?'':'s'}</span></td></tr>`;
+    }
+    const c = cat(a);
+    body += `
+      <tr class="ledRow" style="--catColor:${c.color}">
+        <td class="ledThumbCell"><span class="ph ${c.ph} ledThumb"></span></td>
+        <td><span class="ledDate">${shortDate(a.d)}</span></td>
+        <td><a class="ledTitle" href="${a.u}" target="_blank" rel="noopener noreferrer" aria-label="${aria(a)}">${esc(a.t)} ${EXT}</a></td>
+        <td><span class="ledCat"><span class="catDot"></span><span class="catInk">${esc(a.c)}</span></span></td>
+        <td class="num">
+          <span class="ledBarWrap">
+            <span class="ledBar" style="width:${Math.max(2, Math.round(a.n / MAXN * 90))}px"></span>
+            <span class="ledNum">${a.n.toLocaleString()}</span>
+          </span>
+        </td>
+      </tr>`;
+  });
+
+  return `
+    <div class="ledgerWrap noThumbs" id="${mountId}Wrap">
+      <table class="ledger">
+        <caption class="srOnly">Troop 79 photo albums, ${sorted.length} rows. Sortable by date, title, category or photo count.</caption>
+        <thead>
+          <tr>
+            <th scope="col" class="ledThumbCell"><span class="srOnly">Cover</span></th>
+            <th scope="col"${sortAttr('d')}><button type="button" data-sort="d">Date</button></th>
+            <th scope="col"${sortAttr('t')}><button type="button" data-sort="t">Album</button></th>
+            <th scope="col"${sortAttr('c')}><button type="button" data-sort="c">Category</button></th>
+            <th scope="col" class="num"${sortAttr('n')}><button type="button" data-sort="n">Photos</button></th>
+          </tr>
+        </thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>`;
+}
+
+/* ═══ Concept 4 — The Year Shelf ══════════════════════════════════════════ */
+function renderRails(list){
+  const years = yearsPresent(list);
+  /* Empty years get a shelf too — a skipped year is a fact about the troop,
+     not a rendering detail to hide. */
+  const all = [];
+  years.forEach(y => {
+    all.push(y);
+    const gap = gapAfter(list, y);
+    if (gap) gap.forEach(g => all.push(String(g)));
+  });
+
+  return all.map(y => {
+    const inY = list.filter(a => yearOf(a) === y);
+    if (inY.length === 0){
+      return `
+        <section class="rail" aria-label="Albums from ${y}">
+          <div class="railHead">
+            <h3 style="color:var(--border-mid)">${y}</h3>
+            <span class="rule"></span>
+          </div>
+          <div class="railEmpty">No albums posted for ${y}. The shelf stays on the page so the year isn't silently skipped.</div>
+        </section>`;
+    }
+    const id = 'rail' + y;
+    return `
+      <section class="rail" aria-label="Albums from ${y}">
+        <div class="railHead">
+          <h3>${y}</h3>
+          <span class="yc">${inY.length} album${inY.length===1?'':'s'}</span>
+          <span class="rule"></span>
+          <span class="railBtns">
+            <button class="railBtn" type="button" data-rail="${id}" data-dir="-1" aria-label="Scroll ${y} albums left">&#8249;</button>
+            <button class="railBtn" type="button" data-rail="${id}" data-dir="1" aria-label="Scroll ${y} albums right">&#8250;</button>
+          </span>
+        </div>
+        <div class="railScroll" id="${id}" tabindex="0" role="group" aria-label="${y} albums, scrollable">
+          ${inY.map(a => `
+            ${open(a,'tile')}
+              <span class="catChip tileTag">${esc(cat(a).short)}</span>
+              <span class="tileCount">${a.n.toLocaleString()}</span>
+              <span class="ph ${cat(a).ph}"></span>
+              <span class="tileOver">
+                <span class="tileDate">${shortDate(a.d)}</span>
+                <span class="tileTitle">${esc(a.t)}</span>
+              </span>
+            </a>`).join('')}
+        </div>
+      </section>`;
+  }).join('');
+}
+
+/* ═══ Concept 5 — The Almanac ═════════════════════════════════════════════ */
+/* Seasons run in calendar order so left-to-right is still forward in time. */
+const SEASONS = [
+  { key:'Winter', label:'Winter · Jan–Mar', months:[0,1,2] },
+  { key:'Spring', label:'Spring · Apr–Jun', months:[3,4,5] },
+  { key:'Summer', label:'Summer · Jul–Sep', months:[6,7,8] },
+  { key:'Fall',   label:'Fall · Oct–Dec',   months:[9,10,11] }
+];
+function renderAlmanac(list){
+  const present = yearsPresent(list).map(Number);
+  const span = [];
+  for (let y = Math.max(...present); y >= Math.min(...present); y--) span.push(String(y));
+
+  const rows = span.map(y => {
+    const inY = list.filter(a => yearOf(a) === y);
+    const cells = SEASONS.map(s => {
+      const items = inY
+        .filter(a => s.months.includes(parts(a.d).m))
+        .sort((x,z) => z.d.localeCompare(x.d));
+      if (items.length === 0){
+        return `<td data-season="${s.key}" data-empty="1"><span class="almNone">—</span></td>`;
+      }
+      return `<td data-season="${s.key}"><span class="almCell">${items.map(a => `
+        ${open(a,'almItem')}
+          <span class="almDay">${MON[parts(a.d).m]} ${parts(a.d).day}</span>
+          <span class="almTitle">${esc(a.t)}</span>
+          <span class="almNum">${a.n.toLocaleString()} photos</span>
+        </a>`).join('')}</span></td>`;
+    }).join('');
+    const empty = inY.length === 0;
+    return `<tr${empty ? ' class="almGapRow"' : ''}>
+      <td class="yr">${y}<small>${inY.length} album${inY.length===1?'':'s'}</small></td>
+      ${cells}
+    </tr>`;
+  }).join('');
+
+  return `
+    <table class="almanac">
+      <caption class="srOnly">Troop 79 albums by year and season. Years run newest first down the table; seasons run in calendar order across it.</caption>
+      <thead>
+        <tr>
+          <th class="yr" scope="col">Year</th>
+          ${SEASONS.map(s => `<th scope="col">${s.label}</th>`).join('')}
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+/* ═══ mount ═══════════════════════════════════════════════════════════════ */
+const $ = id => document.getElementById(id);
+$('todayMount').innerHTML    = renderToday(ALBUMS);
+$('spineMount').innerHTML    = renderSpine(ALBUMS);
+$('shelfMount').innerHTML    = renderShelf(ALBUMS);
+$('ledgerMount').innerHTML   = renderLedger(ALBUMS, 'ledger');
+$('railMount').innerHTML     = renderRails(ALBUMS);
+$('almanacMount').innerHTML  = renderAlmanac(ALBUMS);
+
+/* ── Ledger: sorting + thumbnail toggle ────────────────────────────────── */
+const SORT_LABEL = {
+  d:{desc:'date, newest first', asc:'date, oldest first'},
+  t:{desc:'album name, Z–A',    asc:'album name, A–Z'},
+  c:{desc:'category, Z–A',      asc:'category, A–Z'},
+  n:{desc:'photo count, most first', asc:'photo count, fewest first'}
+};
+function reLedger(){
+  const showThumbs = $('ledThumbs').checked;
+  $('ledgerMount').innerHTML = renderLedger(ALBUMS, 'ledger');
+  $('ledgerWrap').classList.toggle('noThumbs', !showThumbs);
+  $('ledSortLabel').textContent = SORT_LABEL[ledState.key][ledState.dir === 'desc' ? 'desc' : 'asc'];
+}
+/* One handler for BOTH tables. Concept 6's List lens renders the same
+   component, so its headers have to sort too — a header that looks sortable
+   and isn't is worse than no header affordance at all. */
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.ledger th button');
+  if (!btn) return;
+  const inHybrid = !!btn.closest('#hybridMount');
+  const k = btn.dataset.sort;
+  if (ledState.key === k) ledState.dir = ledState.dir === 'desc' ? 'asc' : 'desc';
+  else { ledState.key = k; ledState.dir = (k === 'd' || k === 'n') ? 'desc' : 'asc'; }
+
+  if (inHybrid) hybRender(); else reLedger();
+
+  /* Re-rendering destroys the button that was clicked — put focus back on its
+     replacement or a keyboard user is dumped to the top of the document. */
+  const scope = inHybrid ? '#hybridMount' : '#ledgerMount';
+  const again = document.querySelector(`${scope} .ledger th button[data-sort="${k}"]`);
+  if (again) again.focus();
+});
+$('ledThumbs').addEventListener('change', () => {
+  $('ledgerWrap').classList.toggle('noThumbs', !$('ledThumbs').checked);
+});
+
+/* ── Year Shelf: arrow buttons + end-state disabling ───────────────────── */
+document.addEventListener('click', e => {
+  const b = e.target.closest('.railBtn');
+  if (!b) return;
+  const el = $(b.dataset.rail);
+  el.scrollBy({ left: (+b.dataset.dir) * (el.clientWidth * 0.8), behavior:'smooth' });
+});
+function syncRailBtns(){
+  document.querySelectorAll('.railScroll').forEach(el => {
+    const atStart = el.scrollLeft <= 2;
+    const atEnd   = el.scrollLeft + el.clientWidth >= el.scrollWidth - 2;
+    document.querySelectorAll(`.railBtn[data-rail="${el.id}"]`).forEach(b => {
+      b.disabled = (+b.dataset.dir === -1) ? atStart : atEnd;
+    });
+  });
+}
+document.querySelectorAll('.railScroll').forEach(el => el.addEventListener('scroll', syncRailBtns, { passive:true }));
+window.addEventListener('resize', syncRailBtns);
+syncRailBtns();
+
+/* ── Concept 6: view toggle + shared filters ──────────────────────────── */
+const hybCat = $('hybCat'), hybYear = $('hybYear'), hybCount = $('hybCount');
+const catCounts = new Map();
+ALBUMS.forEach(a => catCounts.set(a.c, (catCounts.get(a.c) || 0) + 1));
+hybCat.innerHTML = `<option value="all">All categories (${ALBUMS.length})</option>` +
+  [...catCounts.entries()].sort((a,b) => a[0].localeCompare(b[0]))
+    .map(([c,n]) => `<option value="${esc(c)}">${esc(c)} (${n})</option>`).join('');
+hybYear.innerHTML = `<option value="all">All years</option>` +
+  yearsPresent(ALBUMS).map(y => `<option value="${y}">${y}</option>`).join('');
+
+let hybView = 'prints';
+function hybRender(){
+  const c = hybCat.value, y = hybYear.value;
+  const list = ALBUMS.filter(a => (c === 'all' || a.c === c) && (y === 'all' || yearOf(a) === y));
+  hybCount.innerHTML = list.length === ALBUMS.length
+    ? `Showing all <strong>${ALBUMS.length}</strong> albums`
+    : `Showing <strong>${list.length}</strong> of ${ALBUMS.length} albums`;
+
+  const mount = $('hybridMount');
+  if (list.length === 0){
+    mount.innerHTML = `<div class="railEmpty" style="text-align:center; padding:var(--sp-9)">No albums match those filters. The empty state is the same in all three views — one component, not three.</div>`;
+    return;
+  }
+  if (hybView === 'prints')      mount.innerHTML = renderShelf(list);
+  else if (hybView === 'spine')  mount.innerHTML = renderSpine(list);
+  else                           mount.innerHTML = renderLedger(list, 'hyb', false);
+}
+document.querySelectorAll('.viewToggle button').forEach(b => {
+  b.addEventListener('click', () => {
+    hybView = b.dataset.view;
+    document.querySelectorAll('.viewToggle button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    hybRender();
+  });
+});
+hybCat.addEventListener('change', hybRender);
+hybYear.addEventListener('change', hybRender);
+hybRender();
+</script>
+</body>
+</html>
