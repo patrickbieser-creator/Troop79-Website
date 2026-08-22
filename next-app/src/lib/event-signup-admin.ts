@@ -225,3 +225,43 @@ export function signupEntryInsertRow(input: {
     updated_by: input.updatedBy
   };
 }
+
+/* ── "Add a person" candidates (2026-08-21) ────────────────────────────── */
+
+export interface AddCandidateRow {
+  personId: number;
+  displayName: string;
+  isScout: boolean;
+  /** Had an entry on this signup that was Removed — Add will REINSTATE it
+   *  (addSignupEntry's existing-entry path), history intact. */
+  removed: boolean;
+}
+
+/**
+ * Who a leader can still add by hand: everyone in the active directory
+ * without a LIVE entry. People previously Removed are offered too, flagged,
+ * because the action already reinstates them safely — hiding them (the
+ * original design, "use Restore instead") left a leader with no way forward
+ * in the Add panel and read as "it only lets me add once" (Patrick,
+ * 2026-08-21). Guest rows (no person) never affect the list.
+ */
+export function addCandidatesFor(
+  directory: readonly { person_id: number; display_name: string; scout_id: string | null }[],
+  entries: readonly { person_id: number | null; status: string }[]
+): AddCandidateRow[] {
+  const live = new Set<number>();
+  const removed = new Set<number>();
+  for (const e of entries) {
+    if (e.person_id == null) continue;
+    if (e.status === 'cancelled') removed.add(e.person_id);
+    else live.add(e.person_id);
+  }
+  return directory
+    .filter((p) => !live.has(p.person_id))
+    .map((p) => ({
+      personId: p.person_id,
+      displayName: p.display_name,
+      isScout: p.scout_id != null,
+      removed: removed.has(p.person_id) && !live.has(p.person_id)
+    }));
+}

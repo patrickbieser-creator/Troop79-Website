@@ -14,9 +14,11 @@
  * time. The picker stays open and the field re-focuses after each add.
  *
  * Anyone already on the roster is absent from the list — the server filters
- * them out. Someone previously REMOVED is not offered here either; the
- * "Removed" section's Restore button is the right control for them, because it
- * re-checks capacity and revives their original entry with its history intact.
+ * them out. Someone previously REMOVED is offered, flagged "removed earlier —
+ * will be restored": the action reinstates their original entry (capacity
+ * re-checked, history intact), the same thing the Removed section's Restore
+ * does. Hiding them here (the first design) read as "it only lets me add
+ * once" (Patrick, 2026-08-21).
  */
 
 import { useMemo, useRef, useState, useTransition } from 'react';
@@ -29,6 +31,8 @@ export interface AddCandidate {
   displayName: string;
   isScout: boolean;
   household: string | null;
+  /** Removed from this roster earlier — adding REINSTATES the original entry. */
+  removed: boolean;
 }
 
 type Participation = 'full' | 'driver_only' | 'contributor';
@@ -150,8 +154,9 @@ export function AddPerson({
 
       {needle && shown.length === 0 && (
         <p className={styles.panelHint}>
-          Nobody left to add matches &ldquo;{q}&rdquo;. Anyone already on this roster is not listed;
-          if they were removed earlier, use Restore in the Removed section instead.
+          Nobody left to add matches &ldquo;{q}&rdquo; &mdash; anyone already on this roster is not
+          listed. Only active roster people appear; someone brand new to the troop is added on
+          the Roster page first.
         </p>
       )}
 
@@ -168,6 +173,7 @@ export function AddPerson({
               <span className={styles.addMeta}>
                 {c.isScout ? 'Scout' : 'Adult'}
                 {c.household ? ` · ${c.household}` : ''}
+                {c.removed ? ' · removed earlier — will be restored' : ''}
               </span>
             </button>
           </li>

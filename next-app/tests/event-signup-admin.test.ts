@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { adminClient } from './helpers/admin-client';
 import { createTestEvent, deleteTestEvent, createTestScout, deleteTestScout } from './helpers/signup-fixtures';
-import { backfillEventPrices, slotClaimants, questionAnswers, diffClaimEdits, signupEntryInsertRow } from '../src/lib/event-signup-admin';
+import { backfillEventPrices, slotClaimants, questionAnswers, diffClaimEdits, signupEntryInsertRow, addCandidatesFor } from '../src/lib/event-signup-admin';
 
 /**
  * Coverage for the event-builder warn/backfill logic added 2026-07-25:
@@ -413,5 +413,38 @@ describe('signupEntryInsertRow (pure)', () => {
   it('SignupEntries_SchemaHasNoAdultNameColumn_SoTheOldPayloadCannotComeBack', async () => {
     const { error } = await adminClient().from('signup_entries').select('adult_name').limit(1);
     expect(error).not.toBeNull();
+  });
+});
+
+/**
+ * "Add a person" candidate list (Patrick, 2026-08-21: "only allows one add…
+ * if a user clicks done they can not add another"). The live failure was
+ * v1.69's dropped-column insert; the remaining trap was DESIGN: anyone the
+ * leader had Removed was hidden from Add (only Restore offered them back),
+ * even though addSignupEntry already reinstates a cancelled entry safely.
+ * Removed people are now offered, flagged, so Add always has a way forward.
+ */
+describe('addCandidatesFor (pure)', () => {
+  const directory = [
+    { person_id: 1, display_name: 'Adi Alfred', scout_id: 'S1' },
+    { person_id: 2, display_name: 'Ben Bieser', scout_id: 'S2' },
+    { person_id: 3, display_name: 'Nina Bendre', scout_id: null }
+  ];
+
+  it('AddCandidates_ExcludesPeopleWithALiveEntry', () => {
+    const out = addCandidatesFor(directory, [{ person_id: 1, status: 'yes' }]);
+    expect(out.map((c) => c.personId)).toEqual([2, 3]);
+  });
+
+  it('AddCandidates_OffersRemovedPeople_FlaggedAsRemoved', () => {
+    const out = addCandidatesFor(directory, [{ person_id: 2, status: 'cancelled' }]);
+    const ben = out.find((c) => c.personId === 2);
+    expect(ben?.removed).toBe(true);
+    expect(out.find((c) => c.personId === 1)?.removed).toBe(false);
+  });
+
+  it('AddCandidates_MarksScoutsAndAdults_AndSkipsGuestRowsWithoutAPerson', () => {
+    const out = addCandidatesFor(directory, [{ person_id: null, status: 'yes' }]);
+    expect(out.map((c) => [c.personId, c.isScout])).toEqual([[1, true], [2, true], [3, false]]);
   });
 });

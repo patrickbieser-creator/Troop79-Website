@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { addCandidatesFor } from '@/lib/event-signup-admin';
 import {
   isParticipantClass,
   isYouthClass,
@@ -211,39 +212,24 @@ async function load(signupId: number) {
     }
   );
 
-  /*
-   * Who a leader could still add by hand.
-   *
-   * Excludes anyone with a live entry — and also anyone REMOVED, because
-   * Restore is the right control for them: it revives the original entry with
-   * its payment and job history rather than creating a fresh one.
-   */
-  const alreadyOn = new Set(
-    ((entries ?? []) as { person_id: number | null }[])
-      .map((e) => e.person_id)
-      .filter((id): id is number => id != null)
-  );
+  // Who a leader could still add by hand — everyone active without a LIVE
+  // entry; people Removed earlier are offered too, flagged, and Add
+  // reinstates their original entry (lib/event-signup-admin addCandidatesFor).
   const { data: directory } = await supabase
     .from('person_directory')
     .select('person_id, display_name, scout_id, active')
     .eq('active', true)
     .order('display_name');
 
-  const addCandidates: AddCandidate[] = ((directory ?? []) as {
-    person_id: number;
-    display_name: string;
-    scout_id: string | null;
-  }[])
-    .filter((p) => !alreadyOn.has(p.person_id))
-    .map((p) => ({
-      personId: p.person_id,
-      displayName: p.display_name,
-      isScout: p.scout_id != null,
-      // Household is not resolved here: the roster's own household lookup is
-      // built per-ENTRY, and nobody in this list has an entry yet. Scout/Adult
-      // is enough to tell two similar names apart in practice.
-      household: null
-    }));
+  const addCandidates: AddCandidate[] = addCandidatesFor(
+    (directory ?? []) as { person_id: number; display_name: string; scout_id: string | null }[],
+    (entries ?? []) as { person_id: number | null; status: string }[]
+  ).map((c) => ({
+    ...c,
+    // Household is not resolved here: the roster's own household lookup is
+    // built per-ENTRY. Scout/Adult is enough to tell two similar names apart.
+    household: null
+  }));
 
   return {
     signup: sig,
