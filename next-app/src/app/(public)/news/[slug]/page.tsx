@@ -5,6 +5,10 @@ import { loadArticleBySlug, formatDateLong } from '@/lib/news-feed';
 import { articleCategoryLabel } from '@/lib/feed-logic';
 import { ArticleBody } from '@/lib/article-body/ArticleBody';
 import styles from './article-detail.module.css';
+import { JsonLd } from '@/app/_components/json-ld';
+import { createAdminClient } from '@/lib/supabase/server';
+import { siteUrl } from '@/lib/site-url';
+import { loadSeoSettings, articleJsonLd, breadcrumbJsonLd } from '@/lib/seo';
 
 function catClass(type: string): string {
   if (type === 'news') return styles.catNews;
@@ -35,9 +39,38 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   const article = await loadArticleBySlug(slug);
   if (!article) notFound();
 
+  /* Article structured data (2026-08-22) — the node that lets a story appear
+     as a real article rather than an untyped page, and carries the byline and
+     publish date that a bare <h1> does not. */
+  const seoSettings = await loadSeoSettings(createAdminClient());
+  const origin = siteUrl();
 
   return (
     <main className={styles.articlePage}>
+      <JsonLd
+        data={[
+          articleJsonLd(
+            {
+              slug: article.slug,
+              title: article.title,
+              excerpt: article.excerpt,
+              published_at: article.published_at ?? article.created_at,
+              author_name: article.author_name,
+              image_url: article.heroMedia?.cdn_url ?? null
+            },
+            seoSettings,
+            origin
+          ),
+          breadcrumbJsonLd(
+            [
+              { name: 'Home', path: '/' },
+              { name: 'News & Events', path: '/news' },
+              { name: article.title, path: `/news/${article.slug}` }
+            ],
+            origin
+          )
+        ]}
+      />
       <div className={styles.articleHead}>
         <span className={`${styles.catTag} ${catClass(article.type)}`}>{articleCategoryLabel(article.categories)}</span>
         <h1 className={styles.articleHeadline}>{article.title}</h1>

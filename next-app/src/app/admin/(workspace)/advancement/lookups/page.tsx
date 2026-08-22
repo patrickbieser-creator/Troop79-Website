@@ -42,7 +42,9 @@ import { SkillAssignEditor, type AssignPerson } from './skill-assign-editor';
 import { CategoriesEditor } from './categories-editor';
 import { ArticleTokensEditor } from './article-tokens-editor';
 import { SiteTextEditor } from './site-text-editor';
+import { SeoEditor } from './seo-editor';
 import { loadSiteText, SITE_TEXT_KEYS, type SiteTextKey } from '@/lib/site-text';
+import { SEO_KEYS, type SeoSettingKey } from '@/lib/seo';
 import { loadArticleTokens } from '@/lib/article-tokens-server';
 import { loadCalendarCategories } from '@/lib/calendar';
 import {
@@ -64,7 +66,8 @@ import {
   updateCalendarCategory,
   deleteCalendarCategory,
   saveArticleTokens,
-  saveSiteText
+  saveSiteText,
+  saveSeoSettings
 } from './actions';
 import styles from './lookups.module.css';
 import { PageTitle } from '../../_components/page-title';
@@ -356,6 +359,13 @@ export default async function LookupsPage() {
     const v = siteTextMap.get(def.key);
     if (v) siteText[def.key] = v;
   }
+  // Same site_settings read — seo.* keys live in the same table, so the SEO
+  // card costs no extra query.
+  const seoValues: Partial<Record<SeoSettingKey, string>> = {};
+  for (const def of SEO_KEYS) {
+    const v = siteTextMap.get(def.key);
+    if (v) seoValues[def.key] = v;
+  }
   const leadersLite = leaders.map((l) => ({ code: l.code, name: l.name }));
 
   // Classify sign-off initials: youth = linked to an ACTIVE scout; aging out
@@ -539,6 +549,13 @@ export default async function LookupsPage() {
           sub="the follow-up sent from an event roster’s “Chase the non-responders” panel · blank means the built-in wording · {title} and {deadline} are filled when it’s sent"
         >
           <SiteTextEditor values={siteText} onSave={saveSiteText} />
+        </Card>
+
+        <Card
+          title="Search &amp; AI visibility"
+          sub="robots.txt, the sitemap, and what search engines and AI assistants are told about the troop · saved changes are live immediately, no deploy"
+        >
+          <SeoEditor values={seoValues} onSave={saveSeoSettings} />
         </Card>
       </div>
 

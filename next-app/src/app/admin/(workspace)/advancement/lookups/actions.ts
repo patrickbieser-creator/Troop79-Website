@@ -13,6 +13,7 @@ import {
 } from '@/lib/calendar-categories';
 import { ARTICLE_TOKENS, isValidTokenValue } from '@/lib/article-tokens';
 import { SITE_TEXT_KEYS } from '@/lib/site-text';
+import { SEO_KEYS } from '@/lib/seo';
 
 /** The event-tab kinds an event can be classified as — Day Outing/Fundraiser
  *  have no natural quantity of their own, Camping/Hiking are implied by
@@ -1310,5 +1311,46 @@ export async function saveSiteText(formData: FormData): Promise<Result> {
     if (error) return { ok: false, error: error.message };
   }
   revalidatePath('/admin/advancement/lookups');
+  return { ok: true };
+}
+
+// ── Search & AI visibility (robots.txt, sitemap, JSON-LD) ───────────────────
+// Patrick, 2026-08-22: "implement and make available editing of the
+// robots.txt". Same site_settings contract as the reminder email — blank
+// clears the row and falls back to the built-in default in lib/seo.ts.
+//
+// The robots.txt body gets a bigger cap than site text (8000 vs 2000): it is a
+// whole file, and a truncated robots.txt is a live SEO defect rather than an
+// awkward sentence.
+export async function saveSeoSettings(formData: FormData): Promise<Result> {
+  let session;
+  try {
+    session = await requireCapability('roster.manage');
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  const supabase = createAdminClient();
+  const upserts: { key: string; value: string; updated_by: string }[] = [];
+  const clears: string[] = [];
+  for (const def of SEO_KEYS) {
+    const raw = String(formData.get(def.key) ?? '').trim();
+    const cap = def.key === 'seo.robots_txt' ? 8000 : 500;
+    if (raw === '') clears.push(def.key);
+    else upserts.push({ key: def.key, value: raw.slice(0, cap), updated_by: session.label });
+  }
+  if (clears.length) {
+    const { error } = await supabase.from('site_settings').delete().in('key', clears);
+    if (error) return { ok: false, error: error.message };
+  }
+  if (upserts.length) {
+    const { error } = await supabase.from('site_settings').upsert(upserts, { onConflict: 'key' });
+    if (error) return { ok: false, error: error.message };
+  }
+  revalidatePath('/admin/advancement/lookups');
+  // Both crawler-facing routes read site_settings at request time, but the
+  // public layout's Organization block is part of every rendered page.
+  revalidatePath('/robots.txt');
+  revalidatePath('/sitemap.xml');
+  revalidatePath('/', 'layout');
   return { ok: true };
 }

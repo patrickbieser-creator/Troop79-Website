@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 22, 2026</strong> &nbsp;&middot;&nbsp; v1.73.2</p>
+      <p>Last updated: <strong>August 22, 2026</strong> &nbsp;&middot;&nbsp; v1.74.0</p>
     </div>
   </div>
 
@@ -494,6 +494,63 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.74.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.74.0</span>
+        <span class="release-date">August 22, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">The site can finally be found: sitemap, robots.txt, and structured data</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>A real sitemap.</strong> <code>/sitemap.xml</code> is generated from live
+              content &mdash; every public page, every news story, every event, every category,
+              every merit badge and rank guide. It was a 404 until today, which meant search
+              engines had to stumble across the site page by page.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>An editable robots.txt.</strong> <code>/robots.txt</code> was also a 404.
+              It now exists, allows the public site, and closes the leader workspace, member
+              area and sign-in to crawlers &mdash; and leaders can edit it under
+              <strong>Lookups &amp; Admin &rarr; Search &amp; AI visibility</strong> without a
+              deploy.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Structured data (JSON-LD).</strong> The site had none. Every public page
+              now carries an <em>Organization</em> listing that says who the troop is, where it
+              meets, and that it is part of Scouting America; every event page carries an
+              <em>Event</em> listing; every story carries an <em>Article</em> listing with its
+              byline and date. This is what search engines turn into rich results and what AI
+              assistants read when someone asks about scouting in Milwaukee.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Shared links get a title and a summary.</strong> Open Graph and Twitter
+              card tags, a canonical URL, and a default share image setting &mdash; a link to the
+              site pasted into a text or a Facebook post now previews properly instead of
+              appearing bare.
+            </span>
+          </li>
+          <li>
+            <span>
+              The troop&rsquo;s address, meeting place, public phone/email and links to other
+              profiles (Facebook, the BeAScout pin, a Google Business Profile) are all editable
+              in the same panel. Individual scout pages are deliberately <em>not</em> submitted
+              to search engines &mdash; there is a switch for it and it ships off.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

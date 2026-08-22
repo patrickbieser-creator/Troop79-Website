@@ -13,6 +13,10 @@ import { ArticleBody } from '@/lib/article-body/ArticleBody';
 import { centralToday } from '@/lib/dates';
 import { MeetingAgenda } from './meeting-agenda';
 import { Notice } from '@/app/_components/notice';
+import { JsonLd } from '@/app/_components/json-ld';
+import { createAdminClient } from '@/lib/supabase/server';
+import { siteUrl } from '@/lib/site-url';
+import { loadSeoSettings, eventJsonLd, breadcrumbJsonLd } from '@/lib/seo';
 import styles from './event-detail.module.css';
 
 /*
@@ -150,8 +154,39 @@ export default async function EventDetailPage({
     ? await Promise.all([getPublicMeetingForEntry(entry.id), getPublishedMeetingNav()])
     : [null, []];
 
+  const seoSettings = await loadSeoSettings(createAdminClient());
+  const origin = siteUrl();
+
   return (
     <main className={styles.page}>
+      {/* Event structured data (2026-08-22). Events are what search engines
+          actually surface as a rich result for a local youth organization, so
+          this is the highest-value node on the site after Organization — which
+          the public layout emits on every page. */}
+      <JsonLd
+        data={[
+          eventJsonLd(
+            {
+              id: entry.id,
+              title: entry.title,
+              entry_date: entry.entry_date,
+              end_date: entry.end_date,
+              location: entry.location,
+              summary: plainSummary(entry.description)
+            },
+            seoSettings,
+            origin
+          ),
+          breadcrumbJsonLd(
+            [
+              { name: 'Home', path: '/' },
+              { name: 'Events', path: '/events' },
+              { name: entry.title, path: `/events/${entry.id}` }
+            ],
+            origin
+          )
+        ]}
+      />
       <p className={styles.breadcrumb}>
         <Link href={back.href}>← {back.label}</Link>
       </p>
