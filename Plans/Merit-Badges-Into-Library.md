@@ -148,6 +148,28 @@ fix riding along, not just a move.
 viewing scout's row is a later enhancement, not part of this move.
 
 
+### The link sweep (exact, confirmed with Patrick 2026-08-22)
+
+Retiring `/merit-badges` and `/merit-badges/[mbId]` leaves seven touchpoints. No redirects
+(Patrick: the sitemap URLs are hours old and unlikely to be crawled), so every one of these is
+a real edit, not a safety net — a missed line is a live 404 for a visitor, not just a crawler.
+
+| # | File | Today | Change |
+|---|---|---|---|
+| 1 | `app/(public)/advancement/page.tsx:208` | The "MERIT BADGE PROGRESS / See every merit badge → / OPEN CATALOG" stripe | **Remove the stripe entirely.** It is the only merit-badge furniture on that page; nothing else there changes. |
+| 2 | `app/(public)/library/page.tsx:308` | `Full catalog →` at the top-right of the BROWSE BY MERIT BADGE divider | **Remove.** The grid below it becomes the full catalog, so repointing it at itself would be a link to nowhere new. |
+| 3 | `app/(public)/library/mb/[mbId]/page.tsx:139` | Dek: "For requirements and troop progress, see the **badge tracker page**." | **Rewrite the sentence.** After the merge that link is self-referential — the requirements and troop progress are now ON this page. |
+| 4 | `app/(public)/library/mb/[mbId]/page.tsx:12` | Header comment: "no scout data renders either way" | **Rewrite.** The page now renders scout names by decision (first + last initial). A stale comment contradicting the code reads as a violation, not a policy change. |
+| 5 | `app/_components/site-footer.tsx:28` | Footer nav: `Merit Badges` → `/merit-badges` | **Point at `/library`** (Patrick, 2026-08-22). A dead footer link appears on every page of the site, so this one is the highest-blast-radius miss. |
+| 6 | `app/(public)/about/page.tsx:104` | Prose link "merit badge tracker" | Repoint at `/library`. |
+| 7 | `lib/seo.ts` | `/merit-badges` in `STATIC_SITEMAP_PATHS`; `buildSitemap()` emits `/merit-badges/{id}` per badge | Drop the static entry; switch the per-badge loop to `/library/mb/{id}`. **`tests/seo.test.ts` asserts `/merit-badges/camping` today** — it fails until updated in the same commit, which is the intended tripwire. |
+
+Also confirmed: **keep the Resources / Progress toggle** (item 2 above) after seeing that it is the
+only thing preserving at-a-glance troop progress once the catalog retires. `/library`'s LAYOUT is
+unchanged — same tiles, same grid, same rank accordions, same search — but the page is not
+untouched: one link out (#2), one control in (the toggle).
+
+
 ## Open Questions
 
 - [ ] **PII confirmation (the big one):** `/library/mb/[mbId]` will now display scout names (first name + last initial) and appear in the sitemap. The audience is unchanged — both pages are and were fully public — but this reverses the library badge page's deliberate "no scout data renders here" design (recorded in that file's own header, from Patrick's 2026-08-07 personalization ask). Confirm: troop-wide scout-name grid on a public, sitemap-advertised library page is intended. If not, the grid needs a gate or the move stops.
