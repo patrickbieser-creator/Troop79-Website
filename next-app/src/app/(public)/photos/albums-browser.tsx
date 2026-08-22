@@ -1,129 +1,48 @@
 'use client';
 
 /**
- * Client half of /photos: header with the filter cluster top-right
- * (Category + Year dropdowns and search — Patrick's revision of the chip
- * design) and year-grouped album cards that link out to Google Photos.
- * (A "Latest Albums" strip existed at launch but duplicated the top of the
- * newest year group — removed 2026-07-12.)
+ * Client half of /photos — the header, the filter cluster, the view tabs, and
+ * whichever of the four views is active.
  *
- * Filter state syncs to ?category=&year=&q= via replaceState so filtered
- * views can be shared (e.g. in the Bugle), and is read back on mount —
- * keeping the page itself statically rendered.
+ * FOUR VIEWS OF ONE FILTERED SET (Patrick, 2026-08-22, after Brad's six
+ * concepts in prototypes/photo-library-concepts.html): Prints, Timeline, List,
+ * Almanac. The filters sit ABOVE the tabs on purpose — narrowing the set is a
+ * different act from choosing how to draw it, and a visitor who filters to
+ * "Summer Camp" should keep that when they switch to the timeline.
+ *
+ * Filter and view state sync to ?view=&category=&year=&q= via replaceState so
+ * a filtered view is shareable (e.g. in the Bugle), and are read back on
+ * mount — which keeps the page itself statically rendered. The chosen view
+ * also persists in localStorage, because it is a preference rather than
+ * something you mean to send someone.
  */
 
 import { useEffect, useMemo, useState } from 'react';
-/* eslint-disable @next/next/no-img-element -- Bunny CDN covers, plain img with onError fallback */
-import type { PhotoAlbum } from '@/lib/supabase/types';
+import { TabStrip } from '@/app/_components/tab-strip';
+import {
+  DEFAULT_PHOTO_VIEW,
+  PHOTO_VIEWS,
+  PHOTO_VIEW_LABELS,
+  filterAlbums,
+  isPhotoView,
+  yearOf,
+  type PhotoView,
+  type PhotoViewAlbum
+} from '@/lib/photo-views';
+import type { CategoryColorMap } from '@/lib/calendar-categories';
+import { Almanac, Ledger, PrintShelf, TimelineSpine } from './views';
 import styles from './photos.module.css';
 
-export interface AlbumWithCover extends PhotoAlbum {
-  cover_url: string | null;
-  cover_alt: string | null;
-}
+export type AlbumWithCover = PhotoViewAlbum;
 
-/**
- * Album accent class by category. Keyed by plain string, not CalendarCategory,
- * because `photo_albums.category` is free text with no constraint — albums
- * created before the 2026-07-18 calendar rename still hold the old labels, and
- * they should keep their color rather than silently falling through to none.
- * Both spellings map to the same style.
- */
-const CATEGORY_CLASS: Record<string, string> = {
-  // current labels
-  'Campout / Overnight': styles.catCampout,
-  'Day Activity / Outing': styles.catOuting,
-  'Ceremony / Recognition': styles.catCoh,
-  // legacy labels, still present on older album rows
-  Campout: styles.catCampout,
-  Outing: styles.catOuting,
-  'Court of Honor': styles.catCoh,
-  Ceremony: styles.catCoh,
-  // unchanged
-  'Summer Camp': styles.catSummerCamp,
-  'High Adventure': styles.catHighAdventure,
-  'Service Project': styles.catService,
-  Fundraiser: styles.catFundraiser,
-  'Troop Meeting': styles.catMeeting
+const VIEW_STORAGE_KEY = 'troop79.photos.view';
+
+const VIEW_HINTS: Record<PhotoView, string> = {
+  prints: 'Albums as a shelf of prints, newest year first.',
+  spine: 'One rail down the years — every album on its exact date, gaps included.',
+  ledger: 'A sortable index. No images, so it loads instantly and scans fast.',
+  almanac: 'Years down, calendar quarters across — the shape of a troop year.'
 };
-
-const EXT_ICON = (
-  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <path d="M14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3zm-9 0H3v18h18v-9h-2v7H5V5h7V3z" />
-  </svg>
-);
-
-function displayMonth(iso: string): string {
-  return new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
-    new Date(`${iso}T12:00:00Z`)
-  );
-}
-
-const yearOf = (a: PhotoAlbum) => a.event_date.slice(0, 4);
-
-function Cover({ album }: { album: AlbumWithCover }) {
-  const [broken, setBroken] = useState(false);
-  const hasCover = album.cover_url && !broken;
-  return (
-    <div className={`${styles.albumCover} ${hasCover ? '' : styles.noCover}`}>
-      {hasCover ? (
-        <img
-          src={album.cover_url!}
-          alt=""
-          loading="lazy"
-          onError={() => setBroken(true)}
-        />
-      ) : (
-        <span className={styles.monogram} aria-hidden="true">
-          <span className={styles.mono79}>79</span>
-          <span className={styles.monoLabel}>Troop Album</span>
-        </span>
-      )}
-      <span className={styles.gpBadge}>{EXT_ICON} Google Photos</span>
-    </div>
-  );
-}
-
-function AlbumCard({ album }: { album: AlbumWithCover }) {
-  const ariaBits = [album.title, album.category, displayMonth(album.event_date)];
-  if (album.photo_count) ariaBits.push(`${album.photo_count} photos`);
-  ariaBits.push('Opens Google Photos in a new tab');
-
-  return (
-    <a
-      className={styles.albumCard}
-      href={album.google_url}
-      target="_blank"
-      rel="noopener noreferrer"
-      title={album.title}
-      aria-label={ariaBits.join('. ')}
-    >
-      <Cover album={album} />
-      <div className={styles.albumBody}>
-        <span className={`${styles.catTag} ${CATEGORY_CLASS[album.category] ?? ''}`}>
-          {album.category}
-        </span>
-        <h3 className={styles.albumTitle}>{album.title}</h3>
-        {album.description && <p className={styles.albumDesc}>{album.description}</p>}
-        <p className={styles.albumMeta}>
-          <span>{displayMonth(album.event_date)}</span>
-          {album.photo_count ? (
-            <>
-              <span className={styles.metaDot} aria-hidden="true">
-                &middot;
-              </span>
-              <span>{album.photo_count} photos</span>
-            </>
-          ) : null}
-          <span className={styles.metaDot} aria-hidden="true">
-            &middot;
-          </span>
-          <span className={styles.metaExt}>Google Photos {EXT_ICON}</span>
-        </p>
-      </div>
-    </a>
-  );
-}
 
 interface Filters {
   category: string;
@@ -131,22 +50,41 @@ interface Filters {
   query: string;
 }
 
-export function AlbumsBrowser({ albums }: { albums: AlbumWithCover[] }) {
+export function AlbumsBrowser({
+  albums,
+  colors
+}: {
+  albums: AlbumWithCover[];
+  colors: CategoryColorMap;
+}) {
   const [filters, setFilters] = useState<Filters>({ category: 'all', year: 'all', query: '' });
+  const [view, setView] = useState<PhotoView>(DEFAULT_PHOTO_VIEW);
   const { category, year, query } = filters;
+
   const setCategory = (category: string) => setFilters((f) => ({ ...f, category }));
   const setYear = (year: string) => setFilters((f) => ({ ...f, year }));
   const setQuery = (query: string) => setFilters((f) => ({ ...f, query }));
 
-  // Shareable-link support: hydrate filters from ?category=&year=&q= once on
-  // mount. Deliberate one-time setState-in-effect — the page is statically
-  // prerendered (no searchParams on the server), so the URL is only readable
-  // here; useSearchParams would force the whole page behind a Suspense
-  // fallback instead.
+  /* Shareable-link support: hydrate from the URL once on mount, then fall back
+     to the remembered view. Deliberate one-time setState-in-effect — the page
+     is statically prerendered (no searchParams on the server), so the URL is
+     only readable here; useSearchParams would force the whole page behind a
+     Suspense fallback instead. */
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
-    if (!p.get('category') && !p.get('year') && !p.get('q')) return;
+    const urlView = p.get('view');
+    let stored: string | null = null;
+    try {
+      stored = window.localStorage.getItem(VIEW_STORAGE_KEY);
+    } catch {
+      // Private mode / blocked storage — the default view is fine.
+    }
+    const nextView = isPhotoView(urlView) ? urlView : isPhotoView(stored) ? stored : DEFAULT_PHOTO_VIEW;
+    // The rule reports once per effect, at the FIRST setState — so the
+    // directive belongs here rather than above setFilters below.
     // eslint-disable-next-line react-hooks/set-state-in-effect
+    setView(nextView);
+    if (!p.get('category') && !p.get('year') && !p.get('q')) return;
     setFilters({
       category: p.get('category') ?? 'all',
       year: p.get('year') ?? 'all',
@@ -156,12 +94,18 @@ export function AlbumsBrowser({ albums }: { albums: AlbumWithCover[] }) {
 
   useEffect(() => {
     const p = new URLSearchParams();
+    if (view !== DEFAULT_PHOTO_VIEW) p.set('view', view);
     if (category !== 'all') p.set('category', category);
     if (year !== 'all') p.set('year', year);
     if (query) p.set('q', query);
     const qs = p.toString();
     window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
-  }, [category, year, query]);
+    try {
+      window.localStorage.setItem(VIEW_STORAGE_KEY, view);
+    } catch {
+      // Nothing to do — remembering the view is a convenience, not a feature.
+    }
+  }, [view, category, year, query]);
 
   const sorted = useMemo(
     () => [...albums].sort((a, b) => b.event_date.localeCompare(a.event_date)),
@@ -174,19 +118,10 @@ export function AlbumsBrowser({ albums }: { albums: AlbumWithCover[] }) {
     return [...counts.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [sorted]);
 
-  const q = query.trim().toLowerCase();
-  const results = sorted.filter((a) => {
-    if (category !== 'all' && a.category !== category) return false;
-    if (year !== 'all' && yearOf(a) !== year) return false;
-    if (q && !(a.title + ' ' + (a.description ?? '') + ' ' + a.category).toLowerCase().includes(q)) {
-      return false;
-    }
-    return true;
-  });
+  const results = useMemo(() => filterAlbums(sorted, filters), [sorted, filters]);
+
   function clearFilters() {
-    setCategory('all');
-    setYear('all');
-    setQuery('');
+    setFilters({ category: 'all', year: 'all', query: '' });
   }
 
   return (
@@ -267,26 +202,27 @@ export function AlbumsBrowser({ albums }: { albums: AlbumWithCover[] }) {
       </div>
 
       <main className={styles.mainContent}>
-        {years.map((y) => {
-          const inYear = results.filter((a) => yearOf(a) === y);
-          if (inYear.length === 0) return null;
-          return (
-            <section key={y} className={styles.yearGroup} aria-label={`Albums from ${y}`}>
-              <div className={styles.yearHeading}>
-                <h2>{y}</h2>
-                <span className={styles.yearCount}>
-                  {inYear.length} album{inYear.length === 1 ? '' : 's'}
-                </span>
-                <span className={styles.yearRule} aria-hidden="true" />
-              </div>
-              <div className={styles.albumGrid}>
-                {inYear.map((a) => (
-                  <AlbumCard key={a.id} album={a} />
-                ))}
-              </div>
-            </section>
-          );
-        })}
+        <div className={styles.viewBar}>
+          <TabStrip
+            ariaLabel="How to show the albums"
+            activeKey={view}
+            items={PHOTO_VIEWS.map((v) => ({
+              key: v,
+              label: PHOTO_VIEW_LABELS[v],
+              onSelect: () => setView(v)
+            }))}
+          />
+          <p className={styles.viewHint}>{VIEW_HINTS[view]}</p>
+        </div>
+
+        {results.length > 0 && (
+          <>
+            {view === 'prints' && <PrintShelf albums={results} colors={colors} />}
+            {view === 'spine' && <TimelineSpine albums={results} colors={colors} />}
+            {view === 'ledger' && <Ledger albums={results} colors={colors} />}
+            {view === 'almanac' && <Almanac albums={results} colors={colors} />}
+          </>
+        )}
 
         {results.length === 0 && (
           <div className={styles.emptyState}>
@@ -310,10 +246,9 @@ export function AlbumsBrowser({ albums }: { albums: AlbumWithCover[] }) {
         )}
 
         <aside className={styles.albumsNote} aria-label="About these albums">
-          <strong>Have photos to share?</strong>{' '}
-          Albums are hosted on Google Photos so anyone at an event can contribute. Ask the
-          Scoutmaster for the shared-album link after each outing &mdash; new albums appear here as
-          they&rsquo;re added.
+          <strong>Have photos to share?</strong> Albums are hosted on Google Photos so anyone at an
+          event can contribute. Ask the Scoutmaster for the shared-album link after each outing
+          &mdash; new albums appear here as they&rsquo;re added.
         </aside>
       </main>
     </>

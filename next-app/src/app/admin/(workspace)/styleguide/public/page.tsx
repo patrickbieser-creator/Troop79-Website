@@ -167,7 +167,7 @@ const SCOREBOARD: ReadonlyArray<readonly [string, string, string]> = [
   [
     'Inline styles',
     '146 sites / 31 files (~140 convertible)',
-    'STRUCK (B) — 13 survivors in 6 files, every one genuinely dynamic and commented (category colors, --month-lanes/--lane-count, fill %, tree-depth indents)'
+    'STRUCK (B) — 18 survivors in 7 files, every one genuinely dynamic and commented (category colors, --month-lanes/--lane-count, fill %, tree-depth indents; +5 in the four photo-library views, 2026-08-22 — DB category colour + proportional bar)'
   ],
   [
     'Second-lineage palette',
@@ -436,8 +436,11 @@ export default function PublicStyleguidePage() {
           controls); categorical tags (<code>.catTag</code>, <code>.tagChip</code>,{' '}
           <code>.tagEagle</code>&hellip;) by rule; photos&rsquo; rich empty block; the
           printed Clipboard&rsquo;s divider + pencil-grid greys (print fidelity); the
-          celebration-gold award pair (mint <code>--award-gold</code> on a 3rd use); 13
-          dynamic inline sites.
+          celebration-gold award pair (mint <code>--award-gold</code> on a 3rd use); 18
+          dynamic inline sites (the photo library&rsquo;s four views added 5 on
+          2026-08-22 &mdash; each paints a category colour that lives in{' '}
+          <code>calendar_categories</code> and is editable in Lookups, which no class
+          can express).
         </div>
       </section>
 

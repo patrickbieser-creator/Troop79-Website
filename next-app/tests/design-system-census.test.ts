@@ -71,9 +71,14 @@ describe('Design-system census (public)', () => {
   });
 
   it('PublicTsx_ContainsOnlySanctionedInlineStyles_PerPhaseDCloseout', () => {
-    // 13 genuinely-dynamic sites in 6 files, each /* dynamic */-commented.
+    // 18 genuinely-dynamic sites in 7 files, each /* dynamic */-commented.
     const SANCTIONED: Record<string, number> = {
       '(public)/events/month-grid.tsx': 5,
+      // The four photo-library views (2026-08-22). Every site paints a
+      // CATEGORY COLOUR that lives in calendar_categories and is editable in
+      // Lookups, plus one proportional bar width — none of which a class can
+      // express, since the values are data.
+      '(public)/photos/views.tsx': 5,
       '(public)/scouts/[id]/page.tsx': 2,
       '(public)/merit-badges/[mbId]/page.tsx': 2,
       '(public)/events/[id]/page.tsx': 2,
