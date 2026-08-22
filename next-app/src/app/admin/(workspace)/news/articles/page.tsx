@@ -26,6 +26,8 @@ import { AddButton } from '../../_components/add-button';
 import { PageTitle } from '../../_components/page-title';
 import { ArticlesToolbar } from './articles-toolbar';
 import { ArticlesTable } from './articles-table';
+import { FrontPageOrder, type FrontPageItem } from './front-page-order';
+import { loadPromotedEntries } from '@/lib/home-feed';
 import styles from './articles.module.css';
 
 const PAGE_SIZE = 25;
@@ -75,7 +77,7 @@ async function loadArticles(parsed: ReturnType<typeof parseSearch>) {
 
   let q = supabase
     .from('articles')
-    .select('*, article_tags(tags(id, name))', { count: 'exact' });
+    .select('*, article_categories(category_label)', { count: 'exact' });
 
   // Exclusive, not additive: the Archived tab shows archived posts only.
   q = parsed.archived ? q.not('archived_at', 'is', null) : q.is('archived_at', null);
@@ -93,10 +95,12 @@ async function loadArticles(parsed: ReturnType<typeof parseSearch>) {
   const { data, count, error } = await q;
   if (error) return { rows: [] as ArticleRowVM[], total: 0 };
 
-  type RawRow = Article & { article_tags: { tags: { id: number; name: string } | null }[] };
+  // Categories from the ONE taxonomy (2026-08-21) — still surfaced as
+  // `tagNames` so the row view-model and table don't churn.
+  type RawRow = Article & { article_categories: { category_label: string }[] };
   const rows: ArticleRowVM[] = ((data ?? []) as RawRow[]).map((r) => ({
     ...r,
-    tagNames: (r.article_tags ?? []).map((at) => at.tags?.name).filter((n): n is string => !!n)
+    tagNames: (r.article_categories ?? []).map((ac) => ac.category_label)
   }));
   return { rows, total: count ?? 0 };
 }
@@ -165,11 +169,12 @@ export default async function ArticlesPage({
   // This page previously had no guard of its own — it leaned on the proxy and
   // then read the leader cookie for a display name. Both are now the actor
   // (Phase C, 2026-08-16).
-  const [{ rows, total }, tabCounts, actor, pendingCount] = await Promise.all([
+  const [{ rows, total }, tabCounts, actor, pendingCount, frontPage] = await Promise.all([
     loadArticles(parsed),
     loadTabCounts(parsed),
     requireCapability('news.write'),
-    countPending()
+    countPending(),
+    loadFrontPage()
   ]);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const pageStart = total === 0 ? 0 : (parsed.page - 1) * PAGE_SIZE + 1;
@@ -216,6 +221,8 @@ export default async function ArticlesPage({
         <AddButton href="/admin/news/articles/new">+ Add News</AddButton>
       </div>
 
+      {!parsed.archived && <FrontPageOrder ordered={frontPage.ordered} available={frontPage.available} />}
+
       <ArticlesToolbar
         q={parsed.q}
         type={parsed.type}
@@ -253,4 +260,52 @@ export default async function ArticlesPage({
       </div>
     </>
   );
+}
+
+/**
+ * The front-page panel's data: everything currently featured (articles +
+ * promoted events) in featured_order, plus the candidates a leader can add —
+ * the newest published articles and every in-window promoted event.
+ */
+type FrontPageCandidate = FrontPageItem & { featured: boolean; order: number | null };
+
+async function loadFrontPage(): Promise<{ ordered: FrontPageItem[]; available: FrontPageItem[] }> {
+  const supabase = createAdminClient();
+  const [{ data: arts }, promoted] = await Promise.all([
+    supabase
+      .from('articles_public')
+      .select('id, title, featured, featured_order, published_at')
+      .order('published_at', { ascending: false })
+      .limit(40),
+    loadPromotedEntries()
+  ]);
+  const articleItems: FrontPageCandidate[] = ((arts ?? []) as {
+    id: number;
+    title: string;
+    featured: boolean;
+    featured_order: number | null;
+  }[]).map((a) => ({
+    key: `a${a.id}`,
+    kind: 'article' as const,
+    id: a.id,
+    label: `${a.title} · news`,
+    featured: a.featured,
+    order: a.featured_order
+  }));
+  const eventItems: FrontPageCandidate[] = promoted.map((e) => ({
+    key: `e${e.id}`,
+    kind: 'event' as const,
+    id: e.id,
+    label: `${e.title} · event ${e.entry_date}`,
+    featured: e.featured,
+    order: e.featured_order ?? null
+  }));
+  const all = [...articleItems, ...eventItems];
+  const strip = (c: FrontPageCandidate): FrontPageItem => ({ key: c.key, kind: c.kind, id: c.id, label: c.label });
+  const ordered = all
+    .filter((i) => i.featured)
+    .sort((x, y) => (x.order ?? 9999) - (y.order ?? 9999))
+    .map(strip);
+  const available = all.filter((i) => !i.featured).map(strip);
+  return { ordered, available };
 }

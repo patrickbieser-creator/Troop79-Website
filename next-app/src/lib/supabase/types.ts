@@ -368,11 +368,9 @@ export interface Media {
   created_at: string;
 }
 
-export interface Tag {
-  id: number;
-  name: string;
-  slug: string;
-}
+/* `Tag` is gone (2026-08-21): news shares the ONE taxonomy with calendar
+   entries — calendar_categories, joined via article_categories. See
+   lib/news-feed NewsCategory. */
 
 /*
  * The CalendarCategory union that used to stand here is gone (D-082):
@@ -409,6 +407,8 @@ export interface CalendarEntry {
   status: 'draft' | 'published';
   show_on_homepage: boolean;
   featured: boolean;
+  /** Position in the home page's curated order (2026-08-21); null = unordered. */
+  featured_order: number | null;
   promo_start: string | null;
   promo_end: string | null;
   excerpt: string | null;

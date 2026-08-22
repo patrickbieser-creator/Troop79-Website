@@ -39,13 +39,11 @@ import { LookupCard } from './lookup-card';
 import { HouseholdsManager, type HouseholdRow } from './households-manager';
 import { SkillsEditor, type SkillRow } from './skills-editor';
 import { SkillAssignEditor, type AssignPerson } from './skill-assign-editor';
-import { TagsManager } from './tags-manager';
 import { CategoriesEditor } from './categories-editor';
 import { ArticleTokensEditor } from './article-tokens-editor';
 import { SiteTextEditor } from './site-text-editor';
 import { loadSiteText, SITE_TEXT_KEYS, type SiteTextKey } from '@/lib/site-text';
 import { loadArticleTokens } from '@/lib/article-tokens-server';
-import type { Tag } from '@/lib/supabase/types';
 import { loadCalendarCategories } from '@/lib/calendar';
 import {
   createEvent,
@@ -126,7 +124,6 @@ async function loadLookups() {
     eventsRes,
     serviceProjectsRes,
     leadershipPositionsRes,
-    tagsRes,
     officialTextRes
   ] = await Promise.all([
     supabase.from('leaders').select('*').order('code'),
@@ -173,7 +170,6 @@ async function loadLookups() {
     supabase.from('events').select('id, name, default_kind, start_date').order('name'),
     supabase.from('service_projects').select('id, name').order('name'),
     supabase.from('leadership_positions').select('id, name').order('name'),
-    supabase.from('tags').select('*').order('name'),
     // Verbatim official BSA text, keyed by (source, parent_id, code) — see
     // the requirement_official_text migration for why not a bigserial FK.
     // Small today (ranks only), but paginate defensively per the PostgREST
@@ -328,7 +324,6 @@ async function loadLookups() {
     skills,
     skillIdsByLeader,
     skillIdsByScout,
-    tags: (tagsRes.data ?? []) as Tag[],
     householdRows
   };
 }
@@ -349,7 +344,6 @@ export default async function LookupsPage() {
     skills,
     skillIdsByLeader,
     skillIdsByScout,
-    tags,
     householdRows
   } = await loadLookups();
   const [calendarCategories, articleTokens, siteTextMap] = await Promise.all([
@@ -521,8 +515,8 @@ export default async function LookupsPage() {
 
       <div className={styles.grid}>
         <Card
-          title="Calendar Categories"
-          sub={`${calendarCategories.length} categories · every event AND photo album picks from this list · renaming one updates every entry that used it · a category in use can't be deleted`}
+          title="Categories"
+          sub={`${calendarCategories.length} categories · the ONE taxonomy — every event, photo album AND news story picks from this list (tags merged in, 2026-08-21) · renaming one updates everything that used it · a category in use can't be deleted · each has a public page at /tags/<slug>`}
         >
           <CategoriesEditor
             rows={calendarCategories}
@@ -532,12 +526,6 @@ export default async function LookupsPage() {
           />
         </Card>
 
-        <Card
-          title="Tags"
-          sub={`${tags.length} tags · the controlled vocabulary scouts pick from when drafting articles`}
-        >
-          <TagsManager tags={tags} />
-        </Card>
 
         <Card
           title="Article Typography"

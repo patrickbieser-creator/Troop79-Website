@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import type { Article, Media, Tag } from '@/lib/supabase/types';
+import type { Article, Media } from '@/lib/supabase/types';
 import { MediaPicker } from '../../_components/media-picker';
 import { DatePickerField } from '../../../_components/date-picker-field';
 import {
@@ -17,15 +17,23 @@ import styles from './article-editor.module.css';
 import { Badge } from '../../../_components/badge';
 import { PageTitle } from '../../../_components/page-title';
 
+/** A category from the ONE taxonomy (calendar_categories) — the same list
+ *  events and photo albums pick from (Patrick, 2026-08-21). */
+export interface CategoryOption {
+  label: string;
+  color: string;
+}
+
 interface Props {
   article: Article | null;
-  selectedTagIds: number[];
+  /** Category labels currently on the article. */
+  selectedCategories: string[];
   heroMedia: Media | null;
-  allTags: Tag[];
+  allCategories: CategoryOption[];
   sessionName: string;
 }
 
-export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags }: Props) {
+export function ArticleEditor({ article, selectedCategories, heroMedia, allCategories }: Props) {
   const router = useRouter();
   // See ArticlesTable: news.write is the only way onto this screen now.
   const isLeader = true;
@@ -35,7 +43,7 @@ export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags }: P
   const [excerpt, setExcerpt] = useState(article?.excerpt ?? '');
   const [featured, setFeatured] = useState(article?.featured ?? false);
   const [body, setBody] = useState(article?.body ?? '');
-  const [tagIds, setTagIds] = useState<Set<number>>(new Set(selectedTagIds));
+  const [categories, setCategories] = useState<Set<string>>(new Set(selectedCategories));
   const [hero, setHero] = useState<Media | null>(heroMedia);
 
   // Event fields are gone (Event→News promotion): an event is a calendar
@@ -52,11 +60,11 @@ export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags }: P
   const bodyRef = useRef<MarkdownEditorHandle>(null);
   const blockTools = useMarkdownBlockTools(bodyRef);
 
-  function toggleTag(id: number) {
-    setTagIds((prev) => {
+  function toggleCategory(label: string) {
+    setCategories((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
       return next;
     });
   }
@@ -68,7 +76,7 @@ export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags }: P
     fd.set('featured', featured ? '1' : '');
     fd.set('body', body);
     if (hero) fd.set('heroMediaId', String(hero.id));
-    fd.set('tagIds', Array.from(tagIds).join(','));
+    fd.set('categories', JSON.stringify(Array.from(categories)));
     fd.set('autoArchiveAt', autoArchiveAt);
     return fd;
   }
@@ -170,19 +178,23 @@ export function ArticleEditor({ article, selectedTagIds, heroMedia, allTags }: P
           </div>
 
           <div className={styles.field}>
-            <label className="adminLabel">Tags</label>
+            <label className="adminLabel">Categories</label>
+            {/* The ONE taxonomy (2026-08-21): the same Calendar Categories
+                events and albums use — manage the list under Lookups & Admin.
+                The first picked is the card chip on the home page. */}
             <div className={styles.tagPicker}>
-              {allTags.map((t) => (
+              {allCategories.map((c) => (
                 <button
-                  key={t.id}
+                  key={c.label}
                   type="button"
-                  className={`${styles.tagChip} ${tagIds.has(t.id) ? styles.tagChipSelected : ''}`}
-                  onClick={() => toggleTag(t.id)}
+                  className={`${styles.tagChip} ${categories.has(c.label) ? styles.tagChipSelected : ''}`}
+                  onClick={() => toggleCategory(c.label)}
                 >
-                  {t.name}
+                  {c.label}
                 </button>
               ))}
             </div>
+            <div className={styles.hint}>Same list as Calendar Categories; the first one picked is the card label.</div>
           </div>
 
           <div className={styles.field}>

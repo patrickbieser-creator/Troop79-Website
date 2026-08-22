@@ -1,7 +1,7 @@
 import Link from 'next/link';
-import { loadAllTags, articleTypeLabel, formatDateLong } from '@/lib/news-feed';
+import { loadCategoryCloud, formatDateLong } from '@/lib/news-feed';
 import { loadMergedHomeFeed } from '@/lib/home-feed';
-import { eventCardExcerpt } from '@/lib/feed-logic';
+import { eventCardExcerpt, articleCategoryLabel } from '@/lib/feed-logic';
 import { loadCalendarEntries, formatCalendarDateParts } from '@/lib/calendar';
 import { FeedCard, catClass, entryHeroMedia, entryDateLine } from '../_components/feed-cards';
 import { SectionDivider } from '../_components/section-divider';
@@ -29,7 +29,7 @@ export default async function Home({
   const [{ hero, gridItems, totalPages }, { upcoming }, tags] = await Promise.all([
     loadMergedHomeFeed(page),
     loadCalendarEntries(),
-    loadAllTags()
+    loadCategoryCloud()
   ]);
   const sidebarEvents = upcoming.slice(0, 5);
 
@@ -57,7 +57,7 @@ export default async function Home({
                           <img src={a.heroMedia.cdn_url} alt={a.heroMedia.alt_text ?? ''} />
                         </Link>
                       )}
-                      <span className={`${styles.catTag} ${catClass(a.type)}`}>{articleTypeLabel(a.type)}</span>
+                      <span className={`${styles.catTag} ${catClass(a.type)}`}>{articleCategoryLabel(a.categories)}</span>
                       <h2 className={styles.heroHeadline}>
                         <Link href={`/news/${a.slug}`}>{a.title}</Link>
                       </h2>
@@ -158,11 +158,19 @@ export default async function Home({
 
                 {tags.length > 0 && (
                   <div className={styles.sidebarModule}>
-                    <h3 className={styles.sidebarModuleTitle}>Browse by Tag</h3>
+                    <h3 className={styles.sidebarModuleTitle}>Browse by Category</h3>
+                    {/* The ONE taxonomy (2026-08-21): only categories with something
+                        to show — news, events, resources — counted live. */}
                     <div className={styles.tagListSidebar}>
                       {tags.map((t) => (
-                        <Link key={t.id} href={`/tags/${t.slug}`} className={styles.tagChipSidebar}>
-                          {t.name}
+                        <Link
+                          key={t.slug}
+                          href={`/tags/${t.slug}`}
+                          className={styles.tagChipSidebar}
+                          title={`${t.articles} news · ${t.events} upcoming event${t.events === 1 ? '' : 's'}${t.resources ? ` · ${t.resources} resources` : ''}`}
+                        >
+                          {t.label}
+                          <span className={styles.tagCount}>{t.articles + t.events + t.resources}</span>
                         </Link>
                       ))}
                     </div>

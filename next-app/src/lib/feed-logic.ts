@@ -13,15 +13,20 @@
  *  - No `active`/`is_recurring` checks — those columns don't exist here, and
  *    every calendar entry is dated, so a null promo_end means "through
  *    end_date ?? entry_date".
- *  - pickHero is EVENT-WINS-WHILE-IN-WINDOW (Patrick, 2026-08-08), not OMG's
- *    most-recent-wins: a featured promoted event takes the hero for its promo
- *    window; the featured article resumes when the window closes.
+ *  - The hero used to be EVENT-WINS-WHILE-IN-WINDOW (Patrick, 2026-08-08);
+ *    since 2026-08-21 the page follows an explicit FRONT-PAGE ORDER
+ *    (orderFrontPage): the featured set — events and articles together — in
+ *    the order the admin arranged, then everything else by date; the hero is
+ *    simply the first card.
  */
 
 export interface FeedArticleBase {
   id: number;
   published_at: string | null;
   created_at: string;
+  /** Front-page curation (2026-08-21): featured + order = the curated slot. */
+  featured: boolean;
+  featured_order: number | null;
 }
 
 /** The promotion-relevant slice of a calendar_entries row. */
@@ -32,6 +37,7 @@ export interface PromotedEntryBase {
   description: string | null;
   show_on_homepage: boolean;
   featured: boolean;
+  featured_order: number | null;
   promo_start: string | null;
   promo_end: string | null;
   excerpt: string | null;
@@ -111,22 +117,56 @@ export function mergeFeed<A extends FeedArticleBase, E extends PromotedEntryBase
 }
 
 /**
- * Homepage hero. A featured, in-window promoted event WINS for its window —
- * it's the time-sensitive card, and the editor's featured checkbox is an
- * explicit act. Newest featured event wins when several are in window; the
- * featured article resumes once no event qualifies.
+ * The FRONT-PAGE ORDER (Patrick, 2026-08-21: "We clearly need a way to change
+ * the display order of news on the home page"): the featured set — articles
+ * AND promoted events together — comes first in featured_order (ordered ones
+ * before unordered, then newest first), and everything else follows by date,
+ * newest first. A featured event counts as featured only inside its promo
+ * window; outside it, it's just a dated card (its flag is dormant, not wrong).
+ * The admin News page's "Front page order" panel writes featured/featured_order;
+ * this is the one place that reads them.
  */
-export function pickHero<A extends FeedArticleBase, E extends PromotedEntryBase>(
-  featuredArticle: A | null,
+export function orderFrontPage<A extends FeedArticleBase, E extends PromotedEntryBase>(
+  articles: A[],
   entries: E[],
   today: Date
+): FeedItem<A, E>[] {
+  const items: FeedItem<A, E>[] = [
+    ...articles.map((article) => ({ kind: 'article', article }) as FeedItem<A, E>),
+    ...entries.map((entry) => ({ kind: 'event', entry }) as FeedItem<A, E>)
+  ];
+  const isFeatured = (it: FeedItem<A, E>) =>
+    it.kind === 'article' ? it.article.featured : it.entry.featured && isPromoActive(it.entry, today);
+  const orderOf = (it: FeedItem<A, E>) =>
+    it.kind === 'article' ? it.article.featured_order : it.entry.featured_order;
+  return items.sort((x, y) => {
+    const fx = isFeatured(x);
+    const fy = isFeatured(y);
+    if (fx !== fy) return fx ? -1 : 1;
+    if (fx && fy) {
+      const ox = orderOf(x);
+      const oy = orderOf(y);
+      if (ox != null && oy != null && ox !== oy) return ox - oy;
+      if (ox != null && oy == null) return -1;
+      if (ox == null && oy != null) return 1;
+    }
+    return feedItemMs(y) - feedItemMs(x);
+  });
+}
+
+/** Homepage hero = the first card of the front-page order (the top of the
+ *  curated list when anything is featured; otherwise simply the newest). */
+export function pickHero<A extends FeedArticleBase, E extends PromotedEntryBase>(
+  items: FeedItem<A, E>[]
 ): FeedItem<A, E> | null {
-  const heroEntry = entries
-    .filter((e) => e.featured && isPromoActive(e, today))
-    .sort((a, b) => entryFeedMs(b) - entryFeedMs(a))[0];
-  if (heroEntry) return { kind: 'event', entry: heroEntry };
-  if (featuredArticle) return { kind: 'article', article: featuredArticle };
-  return null;
+  return items[0] ?? null;
+}
+
+/** Chip text for an article card: its first category from the ONE taxonomy
+ *  (shared with calendar entries), or "News" when uncategorized — so article
+ *  and event cards read the same way (Patrick, 2026-08-21). */
+export function articleCategoryLabel(categories: readonly { label: string }[]): string {
+  return categories[0]?.label ?? 'News';
 }
 
 const EXCERPT_MAX = 160;

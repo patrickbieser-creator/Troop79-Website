@@ -1,17 +1,21 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { loadArticlesByTag, articleTypeLabel, formatDateLong } from '@/lib/news-feed';
-import type { ArticleCard } from '@/lib/news-feed';
+import { loadCategoryPage, formatDateLong } from '@/lib/news-feed';
+import { articleCategoryLabel } from '@/lib/feed-logic';
+import { formatCalendarDateParts } from '@/lib/calendar-shared';
 import styles from '../../../_components/news-cards.module.css';
 import local from '../tags.module.css';
 import { EmptyState } from '@/app/_components/empty-state';
+import { SectionDivider } from '@/app/_components/section-divider';
 
-function catClass(type: ArticleCard['type']): string {
-  if (type === 'news') return styles.catNews;
-  return styles.catRecognition;
-}
-
-export default async function TagArchivePage({
+/**
+ * /tags/[slug] — ONE category across the whole site (Patrick, 2026-08-21:
+ * "offer a search result sort of experience since news, event, and resources
+ * could all be tagged"). Events (upcoming, then recent), news (paged), and
+ * resources when any carry the category (none yet — by design; the column
+ * is ready). The category is the same row calendar entries use.
+ */
+export default async function CategoryPage({
   params,
   searchParams
 }: {
@@ -22,36 +26,89 @@ export default async function TagArchivePage({
   const { page: pageRaw } = await searchParams;
   const page = Math.max(1, parseInt(pageRaw ?? '1', 10) || 1);
 
-  const { tag, rows, totalPages } = await loadArticlesByTag(slug, page);
-  if (!tag) notFound();
+  const data = await loadCategoryPage(slug, page);
+  if (!data) notFound();
+  const { category, rows, totalPages, upcoming, past, resources } = data;
+  const empty = rows.length === 0 && upcoming.length === 0 && past.length === 0 && resources.length === 0;
 
   return (
     <>
       <div className={styles.sectionHeader}>
-        <span className={styles.sectionLabel}>Tagged: {tag.name}</span>
+        <span className={styles.sectionLabel}>Category: {category.label}</span>
+        <Link href="/news" className={local.backLink}>
+          ← All news &amp; events
+        </Link>
       </div>
       <main className={styles.mainContent}>
-        {rows.length === 0 ? (
-          <EmptyState>No articles tagged &ldquo;{tag.name}&rdquo; yet.</EmptyState>
-        ) : (
-          <div className={`${styles.storyGrid} ${local.gridGapTop}`}>
-            {rows.map((a) => (
-              <Link key={a.id} href={`/news/${a.slug}`} className={styles.storyCard}>
-                {a.heroMedia && (
-                  <div className={styles.storyCardImg}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={a.heroMedia.cdn_url} alt={a.heroMedia.alt_text ?? ''} />
+        {empty && <EmptyState>Nothing in &ldquo;{category.label}&rdquo; yet.</EmptyState>}
+
+        {(upcoming.length > 0 || past.length > 0) && (
+          <section aria-label="Events">
+            <SectionDivider label={upcoming.length > 0 ? 'Upcoming events' : 'Recent events'} />
+            <ul className={local.eventList}>
+              {[...upcoming, ...past].map((ev) => {
+                const { month, day } = formatCalendarDateParts(ev.entry_date);
+                return (
+                  <li key={ev.id} className={local.eventItem}>
+                    <div className={local.eventDate}>
+                      <span className={local.eMonth}>{month}</span>
+                      <span className={local.eDay}>{day}</span>
+                    </div>
+                    <div>
+                      <Link href={`/events/${ev.id}`} className={local.eventTitle}>
+                        {ev.title}
+                      </Link>
+                      {ev.location && <p className={local.eventMeta}>{ev.location}</p>}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
+
+        {rows.length > 0 && (
+          <section aria-label="News">
+            <SectionDivider label="News" />
+            <div className={`${styles.storyGrid} ${local.gridGapTop}`}>
+              {rows.map((a) => (
+                <Link key={a.id} href={`/news/${a.slug}`} className={styles.storyCard}>
+                  {a.heroMedia && (
+                    <div className={styles.storyCardImg}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={a.heroMedia.cdn_url} alt={a.heroMedia.alt_text ?? ''} />
+                    </div>
+                  )}
+                  <div className={styles.storyCardBody}>
+                    <span className={`${styles.catTag} ${styles.catEvents}`}>{articleCategoryLabel(a.categories)}</span>
+                    <h3 className={styles.cardHeadline}>{a.title}</h3>
+                    {a.excerpt && <p className={styles.cardSummary}>{a.excerpt}</p>}
+                    <p className={styles.cardMeta}>{formatDateLong(a.published_at ?? a.created_at)}</p>
                   </div>
-                )}
-                <div className={styles.storyCardBody}>
-                  <span className={`${styles.catTag} ${catClass(a.type)}`}>{articleTypeLabel(a.type)}</span>
-                  <h3 className={styles.cardHeadline}>{a.title}</h3>
-                  {a.excerpt && <p className={styles.cardSummary}>{a.excerpt}</p>}
-                  <p className={styles.cardMeta}>{formatDateLong(a.published_at ?? a.created_at)}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {resources.length > 0 && (
+          <section aria-label="Resources">
+            <SectionDivider label="Resources" />
+            <ul className={local.resourceList}>
+              {resources.map((r) => (
+                <li key={r.id}>
+                  {r.url ? (
+                    <a href={r.url} target="_blank" rel="noopener noreferrer">
+                      {r.title}
+                    </a>
+                  ) : (
+                    <Link href="/library">{r.title}</Link>
+                  )}
+                  {r.blurb && <span className={local.resourceBlurb}> — {r.blurb}</span>}
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
 
         {totalPages > 1 && (

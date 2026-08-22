@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { LedgerKind } from '@/lib/supabase/types';
-import { slugify } from '@/lib/slugify';
+
 import { cascadeLibraryReqRename } from '@/lib/library-data';
 import {
   CATEGORY_TEMPLATES,
@@ -973,39 +973,8 @@ export async function promoteScoutToAdult(formData: FormData): Promise<Result> {
   return { ok: true };
 }
 
-// ── Tags ──────────────────────────────────────────────────────────────────
-// Moved into Lookups & Admin (was its own /admin/news/tags page) — one place
-// for the troop's editable taxonomy instead of two.
-
-export async function createTag(formData: FormData): Promise<Result> {
-  try {
-    await requireCapability('roster.manage');
-  } catch {
-    return { ok: false, error: 'Not authenticated' };
-  }
-  const name = String(formData.get('name') ?? '').trim();
-  if (!name) return { ok: false, error: 'Tag name is required.' };
-
-  const supabase = createAdminClient();
-  const { error } = await supabase.from('tags').insert({ name, slug: slugify(name) });
-  if (error) return { ok: false, error: error.message };
-  revalidatePath('/admin/advancement/lookups');
-  return { ok: true };
-}
-
-/** Deletes a tag. Cascades to remove it from any article that had it (article_tags FK). */
-export async function deleteTag(id: number): Promise<Result> {
-  try {
-    await requireCapability('roster.manage');
-  } catch {
-    return { ok: false, error: 'Not authenticated' };
-  }
-  const supabase = createAdminClient();
-  const { error } = await supabase.from('tags').delete().eq('id', id);
-  if (error) return { ok: false, error: error.message };
-  revalidatePath('/admin/advancement/lookups');
-  return { ok: true };
-}
+// ── Tags ── gone (2026-08-21): news shares the ONE taxonomy with the
+// calendar — manage categories above; article_categories joins to them.
 
 // ── Internal Requirement Codes (top-level rows) ─────────────────────────────
 

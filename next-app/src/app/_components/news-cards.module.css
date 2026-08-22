@@ -118,3 +118,11 @@
   .heroHeadline { font-size: 22px; }
   .storyGrid { grid-template-columns: 1fr; }
 }
+
+/* Live counts on the home page's category cloud (2026-08-21, one taxonomy). */
+.tagCount {
+  margin-left: 6px;
+  font-size: var(--fs-2xs);
+  color: var(--text-meta);
+  font-variant-numeric: tabular-nums;
+}

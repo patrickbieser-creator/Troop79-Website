@@ -14,10 +14,13 @@
  */
 
 import { useRouter } from 'next/navigation';
-import type { Tag } from '@/lib/supabase/types';
+import type { NewsCategory } from '@/lib/news-feed';
 import styles from './news-controls.module.css';
 
-export function TagFilter({ tags, currentSlug }: { tags: Tag[]; currentSlug?: string }) {
+/** Categories come from the ONE taxonomy shared with the calendar
+ *  (calendar_categories, 2026-08-21) — only those with content, via
+ *  loadCategoryCloud. The /tags/<slug> URL shape is kept. */
+export function TagFilter({ tags, currentSlug }: { tags: NewsCategory[]; currentSlug?: string }) {
   const router = useRouter();
 
   return (
@@ -39,10 +42,10 @@ export function TagFilter({ tags, currentSlug }: { tags: Tag[]; currentSlug?: st
           router.push(slug ? `/tags/${slug}` : '/news');
         }}
       >
-        <option value="">All topics</option>
+        <option value="">All categories</option>
         {tags.map((t) => (
-          <option key={t.id} value={t.slug}>
-            {t.name}
+          <option key={t.slug} value={t.slug}>
+            {t.label}
           </option>
         ))}
       </select>

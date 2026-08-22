@@ -1,8 +1,8 @@
 import Link from 'next/link';
-import { articleTypeLabel, formatDateLong } from '@/lib/news-feed';
+import { formatDateLong } from '@/lib/news-feed';
 import type { ArticleCard } from '@/lib/news-feed';
 import type { FeedItem, PromotedEntry } from '@/lib/home-feed';
-import { eventCardExcerpt } from '@/lib/feed-logic';
+import { articleCategoryLabel, eventCardExcerpt } from '@/lib/feed-logic';
 import type { Media } from '@/lib/supabase/types';
 import styles from './news-cards.module.css';
 
@@ -13,10 +13,12 @@ import styles from './news-cards.module.css';
  * card is common.
  */
 
+/** One chip style for every card — articles and events share the ONE
+ *  taxonomy now (2026-08-21), so the chip means the same thing on both. The
+ *  type argument is kept for the legacy 'recognition' rows only. */
 export function catClass(type: ArticleCard['type'] | 'event'): string {
-  if (type === 'news') return styles.catNews;
-  if (type === 'event') return styles.catEvents;
-  return styles.catRecognition;
+  if (type === 'recognition') return styles.catRecognition;
+  return styles.catEvents;
 }
 
 export function entryHeroMedia(entry: PromotedEntry): Media | null {
@@ -40,7 +42,7 @@ export function FeedCard({ item }: { item: FeedItem }) {
           </div>
         )}
         <div className={styles.storyCardBody}>
-          <span className={`${styles.catTag} ${catClass(a.type)}`}>{articleTypeLabel(a.type)}</span>
+          <span className={`${styles.catTag} ${catClass(a.type)}`}>{articleCategoryLabel(a.categories)}</span>
           <h3 className={styles.cardHeadline}>{a.title}</h3>
           {a.excerpt && <p className={styles.cardSummary}>{a.excerpt}</p>}
           <p className={styles.cardMeta}>{formatDateLong(a.published_at ?? a.created_at)}</p>

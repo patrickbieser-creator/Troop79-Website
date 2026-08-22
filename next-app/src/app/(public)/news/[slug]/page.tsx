@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { loadArticleBySlug, articleTypeLabel, formatDateLong } from '@/lib/news-feed';
+import { loadArticleBySlug, formatDateLong } from '@/lib/news-feed';
+import { articleCategoryLabel } from '@/lib/feed-logic';
 import { ArticleBody } from '@/lib/article-body/ArticleBody';
 import styles from './article-detail.module.css';
 
@@ -38,7 +39,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   return (
     <main className={styles.articlePage}>
       <div className={styles.articleHead}>
-        <span className={`${styles.catTag} ${catClass(article.type)}`}>{articleTypeLabel(article.type)}</span>
+        <span className={`${styles.catTag} ${catClass(article.type)}`}>{articleCategoryLabel(article.categories)}</span>
         <h1 className={styles.articleHeadline}>{article.title}</h1>
         <p className={styles.articleByline}>
           By <strong>{article.author_name}</strong>
@@ -61,11 +62,11 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
       <ArticleBody body={article.body} />
 
-      {article.tags.length > 0 && (
+      {article.categories.length > 0 && (
         <div className={styles.tagRow}>
-          {article.tags.map((t) => (
-            <Link key={t.id} href={`/tags/${t.slug}`} className={styles.tagChip}>
-              {t.name}
+          {article.categories.map((t) => (
+            <Link key={t.slug} href={`/tags/${t.slug}`} className={styles.tagChip}>
+              {t.label}
             </Link>
           ))}
         </div>

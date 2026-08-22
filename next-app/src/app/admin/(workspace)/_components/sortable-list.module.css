@@ -91,3 +91,9 @@
   border-radius: 3px;
   min-width: 200px;
 }
+
+/* Drag and drop (2026-08-21) — the grip is the visible affordance; the whole
+   row is draggable. */
+.grip { cursor: grab; color: var(--admin-gray-400); font-size: 12px; letter-spacing: -2px; user-select: none; padding-right: 2px; }
+.row:active .grip { cursor: grabbing; }
+.rowDragOver { outline: 2px dashed var(--admin-navy); outline-offset: -2px; }

@@ -21,12 +21,19 @@ interface ArticleFields {
   body: string;
   heroMediaId: number | null;
   autoArchiveAt: string | null;
-  tagIds: number[];
+  /** Category labels from the ONE taxonomy (calendar_categories). */
+  categories: string[];
 }
 
 function parseFields(formData: FormData): ArticleFields {
   const heroMediaIdRaw = formData.get('heroMediaId');
-  const tagIdsRaw = String(formData.get('tagIds') ?? '');
+  let categories: string[] = [];
+  try {
+    const parsed = JSON.parse(String(formData.get('categories') ?? '[]'));
+    if (Array.isArray(parsed)) categories = parsed.map((c) => String(c).trim()).filter(Boolean);
+  } catch {
+    categories = [];
+  }
   return {
     title: String(formData.get('title') ?? '').trim(),
     excerpt: String(formData.get('excerpt') ?? '').trim(),
@@ -34,12 +41,7 @@ function parseFields(formData: FormData): ArticleFields {
     heroMediaId: heroMediaIdRaw ? Number(heroMediaIdRaw) : null,
     autoArchiveAt: String(formData.get('autoArchiveAt') ?? '').trim() || null,
     featured: String(formData.get('featured') ?? '') === '1',
-    tagIds: tagIdsRaw
-      ? tagIdsRaw
-          .split(',')
-          .map((s) => Number(s.trim()))
-          .filter((n) => Number.isFinite(n))
-      : []
+    categories
   };
 }
 
@@ -57,11 +59,22 @@ async function uniqueSlug(supabase: ReturnType<typeof createAdminClient>, title:
   }
 }
 
-async function setTags(supabase: ReturnType<typeof createAdminClient>, articleId: number, tagIds: number[]) {
-  await supabase.from('article_tags').delete().eq('article_id', articleId);
-  if (tagIds.length > 0) {
-    await supabase.from('article_tags').insert(tagIds.map((tag_id) => ({ article_id: articleId, tag_id })));
+/** Replace the article's categories (ONE taxonomy, 2026-08-21). Unknown
+ *  labels are refused by the FK, which is the right failure: the list is
+ *  governed under Lookups & Admin, not here. */
+async function setCategories(
+  supabase: ReturnType<typeof createAdminClient>,
+  articleId: number,
+  labels: string[]
+): Promise<string | null> {
+  await supabase.from('article_categories').delete().eq('article_id', articleId);
+  if (labels.length > 0) {
+    const { error } = await supabase
+      .from('article_categories')
+      .insert([...new Set(labels)].map((category_label) => ({ article_id: articleId, category_label })));
+    if (error) return error.message;
   }
+  return null;
 }
 
 interface ActionResult {
@@ -100,7 +113,7 @@ export async function createArticle(formData: FormData): Promise<ActionResult> {
     .single();
   if (error || !data) return { ok: false, error: error?.message ?? 'Insert failed.' };
 
-  await setTags(supabase, data.id, fields.tagIds);
+  await setCategories(supabase, data.id, fields.categories);
   revalidateNews();
   return { ok: true, id: data.id };
 }
@@ -132,13 +145,13 @@ export async function cloneArticle(id: number): Promise<ActionResult> {
 
   const { data: source, error: fetchError } = await supabase
     .from('articles')
-    .select('*, article_tags(tag_id)')
+    .select('*, article_categories(category_label)')
     .eq('id', id)
     .maybeSingle();
   if (fetchError) return { ok: false, error: fetchError.message };
   if (!source) return { ok: false, error: 'That post no longer exists.' };
 
-  const src = source as Article & { article_tags: { tag_id: number }[] };
+  const src = source as Article & { article_categories: { category_label: string }[] };
 
   const title = `(Clone) ${src.title}`;
   const slug = await uniqueSlug(supabase, title);
@@ -162,10 +175,10 @@ export async function cloneArticle(id: number): Promise<ActionResult> {
     .single();
   if (error || !created) return { ok: false, error: error?.message ?? 'Copy failed.' };
 
-  await setTags(
+  await setCategories(
     supabase,
     created.id,
-    (src.article_tags ?? []).map((t) => t.tag_id)
+    (src.article_categories ?? []).map((c) => c.category_label)
   );
   revalidateNews();
   return { ok: true, id: created.id };
@@ -205,7 +218,7 @@ export async function updateArticle(id: number, formData: FormData): Promise<Act
     .eq('id', id);
   if (error) return { ok: false, error: error.message };
 
-  await setTags(supabase, id, fields.tagIds);
+  await setCategories(supabase, id, fields.categories);
   revalidateNews();
   revalidatePath(`/news/${slug}`);
   return { ok: true, id };
@@ -273,5 +286,54 @@ export async function setFeatured(id: number, featured: boolean, order: number |
 }
 
 export interface ArticleWithTags extends Article {
+  /** Category labels (ONE taxonomy) — kept under the old name so the list
+   *  page's types don't churn. */
   tags: { id: number; name: string }[];
+}
+
+/**
+ * FRONT-PAGE ORDER (Patrick, 2026-08-21: "We clearly need a way to change the
+ * display order of news on the home page… drag and drop… ideal"). The list is
+ * the featured set — articles AND promoted calendar entries — in display
+ * order. Everything listed becomes featured with featured_order = position;
+ * anything previously featured but not listed is un-featured. The home page
+ * reads this through feed-logic orderFrontPage.
+ */
+export async function saveFrontPageOrder(
+  items: { kind: 'article' | 'event'; id: number }[]
+): Promise<ActionResult> {
+  await requireCapability('news.write');
+  const supabase = createAdminClient();
+  const articleIds = items.filter((i) => i.kind === 'article').map((i) => i.id);
+  const entryIds = items.filter((i) => i.kind === 'event').map((i) => i.id);
+
+  // Un-feature what dropped out of the list.
+  const clearA = supabase
+    .from('articles')
+    .update({ featured: false, featured_order: null })
+    .eq('featured', true);
+  const clearE = supabase
+    .from('calendar_entries')
+    .update({ featured: false, featured_order: null })
+    .eq('featured', true);
+  const [ra, re] = await Promise.all([
+    articleIds.length ? clearA.not('id', 'in', `(${articleIds.join(',')})`) : clearA,
+    entryIds.length ? clearE.not('id', 'in', `(${entryIds.join(',')})`) : clearE
+  ]);
+  if (ra.error) return { ok: false, error: ra.error.message };
+  if (re.error) return { ok: false, error: re.error.message };
+
+  // Write positions (1-based, across both kinds).
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    const table = it.kind === 'article' ? 'articles' : 'calendar_entries';
+    const { error } = await supabase
+      .from(table)
+      .update({ featured: true, featured_order: i + 1 })
+      .eq('id', it.id);
+    if (error) return { ok: false, error: error.message };
+  }
+  revalidateNews();
+  revalidatePath('/');
+  return { ok: true };
 }

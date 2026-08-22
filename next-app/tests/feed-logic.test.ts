@@ -4,6 +4,7 @@ import {
   isPromoActive,
   mergeFeed,
   pickHero,
+  orderFrontPage,
   eventCardExcerpt,
   plainSummary,
   type PromotedEntryBase,
@@ -29,6 +30,7 @@ function entry(over: Partial<PromotedEntryBase> & Record<string, unknown> = {}):
     description: null,
     show_on_homepage: true,
     featured: false,
+    featured_order: null,
     promo_start: null,
     promo_end: null,
     excerpt: null,
@@ -43,6 +45,8 @@ function entry(over: Partial<PromotedEntryBase> & Record<string, unknown> = {}):
 function article(over: Partial<FeedArticleBase> & Record<string, unknown> = {}): FeedArticleBase & Record<string, unknown> {
   return {
     id: 10,
+    featured: false,
+    featured_order: null,
     slug: 'a-story',
     title: 'A Story',
     published_at: '2026-08-10T12:00:00Z',
@@ -103,36 +107,49 @@ describe('feed merge', () => {
   });
 });
 
-describe('hero pick (event wins while in window)', () => {
-  it('Hero_IsTheFeaturedPromotedEvent_WhileInWindow', () => {
-    const hero = pickHero(article(), [entry({ featured: true })], TODAY);
-    expect(hero?.kind).toBe('event');
+describe('hero pick (first card of the front-page order — 2026-08-21)', () => {
+  // The EVENT-WINS-WHILE-IN-WINDOW rule (2026-08-08) is superseded by the
+  // explicit front-page order (Patrick, 2026-08-21): featured items in their
+  // arranged order lead, and the hero is simply the first card. An event's
+  // featured flag still counts only inside its promo window.
+  it('Hero_IsTheFeaturedPromotedEvent_WhileInWindow_WhenItLeadsTheOrder', () => {
+    const items = orderFrontPage(
+      [article({ featured: true, featured_order: 2 })],
+      [entry({ featured: true, featured_order: 1 })],
+      TODAY
+    );
+    expect(pickHero(items)?.kind).toBe('event');
   });
 
-  it('Hero_FallsBackToFeaturedArticle_WhenNoEventIsFeatured', () => {
-    const hero = pickHero(article(), [entry({ featured: false })], TODAY);
-    expect(hero?.kind).toBe('article');
+  it('Hero_IsTheFeaturedArticle_WhenNoEventIsFeatured', () => {
+    const items = orderFrontPage([article({ featured: true, featured_order: 1 })], [entry({ featured: false })], TODAY);
+    expect(pickHero(items)?.kind).toBe('article');
   });
 
-  it('Hero_FallsBackToFeaturedArticle_WhenFeaturedEventOutOfWindow', () => {
-    const hero = pickHero(article(), [entry({ featured: true, promo_start: '2026-09-01' })], TODAY);
-    expect(hero?.kind).toBe('article');
+  it('Hero_IsTheFeaturedArticle_WhenTheFeaturedEventIsOutOfWindow', () => {
+    const items = orderFrontPage(
+      [article({ featured: true, featured_order: 2 })],
+      [entry({ featured: true, featured_order: 1, promo_start: '2026-09-01' })],
+      TODAY
+    );
+    expect(pickHero(items)?.kind).toBe('article');
   });
 
-  it('Hero_IsNull_WhenNothingQualifies', () => {
-    expect(pickHero(null, [], TODAY)).toBeNull();
+  it('Hero_IsNull_WhenTheFeedIsEmpty', () => {
+    expect(pickHero(orderFrontPage([], [], TODAY))).toBeNull();
   });
 
-  it('Hero_PicksNewestFeaturedEvent_WhenSeveralAreInWindow', () => {
-    const hero = pickHero(
-      null,
+  it('Hero_FollowsTheArrangedOrder_NotRecency_WhenSeveralEventsAreFeatured', () => {
+    const items = orderFrontPage(
+      [],
       [
-        entry({ id: 1, featured: true, promo_start: '2026-08-01' }),
-        entry({ id: 2, featured: true, promo_start: '2026-08-14' })
+        entry({ id: 1, featured: true, featured_order: 1, promo_start: '2026-08-01' }),
+        entry({ id: 2, featured: true, featured_order: 2, promo_start: '2026-08-14' })
       ],
       TODAY
     );
-    expect(hero?.kind === 'event' && hero.entry.id).toBe(2);
+    const hero = pickHero(items);
+    expect(hero?.kind === 'event' && hero.entry.id).toBe(1);
   });
 });
 

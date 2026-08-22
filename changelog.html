@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.72.0</p>
+      <p>Last updated: <strong>August 21, 2026</strong> &nbsp;&middot;&nbsp; v1.73.0</p>
     </div>
   </div>
 
@@ -494,6 +494,72 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.73.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.73.0</span>
+        <span class="release-date">August 21, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">One taxonomy for events and news</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Tags and Calendar Categories are one list now.</strong> News articles pick
+              from the same Categories events and photo albums use (Lookups &amp; Admin &rarr;
+              Categories; the separate Tags card is gone). Existing tags were folded in: exact
+              matches merged, the obvious synonyms mapped (Fundraising &rarr; Fundraiser, Camping
+              &rarr; Campout / Overnight, Recruiting &rarr; Recruiting / Outreach, Court of Honor
+              &rarr; Ceremony / Recognition, Advancement &rarr; Advancement Event, Meetings &rarr;
+              Troop Meeting), and the rest (Community, Merit Badges, Scout News) became categories.
+              Renaming a category updates every event, album <em>and</em> story that used it; one in
+              use can&rsquo;t be deleted.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Cards finally agree.</strong> An article card&rsquo;s chip is its first
+              category (&ldquo;Fundraiser&rdquo;), the same way an event card shows its category
+              &mdash; the &ldquo;News&rdquo; type label that looked like a stray tag is gone
+              (uncategorized stories still read &ldquo;News&rdquo;).
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Browse by Category</strong> on the home page is live: only categories with
+              something in them, with counts, and each <code>/tags/&lt;slug&gt;</code> page is now a
+              search-result view across the site &mdash; upcoming and recent events, news, and (when
+              they carry one) resources. Meeting / No-Meeting are operational and stay out of the
+              cloud.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Front page order</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Drag-and-drop ordering of the home page</strong> from the admin News page: a
+              &ldquo;Front page order&rdquo; panel lists the featured stories <em>and</em> promoted
+              events; drag (or use the arrows) to arrange them, add any recent story or in-window
+              event, remove one to let it fall back into date order. The first item is the hero; the
+              rest follow in order, then everything else newest-first. This replaces the old
+              &ldquo;featured event always wins the hero&rdquo; rule &mdash; the order is now an
+              explicit decision.
+            </span>
+          </li>
+          <li>
+            <span>
+              Admin news list gained an <strong>Edit</strong> button per row (beside Clone/Publish/
+              Archive/Delete) and its Tags column reads Categories.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

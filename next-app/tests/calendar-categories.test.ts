@@ -78,7 +78,16 @@ describe('calendar_categories lookup', () => {
       .not('label', 'like', 'ZZVITEST%');
     const rows = (data ?? []) as CalendarCategoryRow[];
 
-    expect(rows).toHaveLength(14);
+    // The vocabulary is EXTENSIBLE now (2026-08-21: news tags merged into this
+    // list — see 20260822130000_one_taxonomy), so assert the seeded fourteen
+    // are all present rather than that nothing else is.
+    const SEEDED = [
+      'Troop Meeting', 'Campout / Overnight', 'Day Activity / Outing', 'High Adventure', 'Summer Camp',
+      'Service Project', 'Fundraiser', 'Advancement Event', 'Training', 'Ceremony / Recognition',
+      'Leadership / Planning', 'Recruiting / Outreach', 'Social Event', 'No Meeting'
+    ];
+    const labels = new Set(rows.map((r) => r.label));
+    for (const l of SEEDED) expect(labels.has(l), `seeded category missing: ${l}`).toBe(true);
     expect(rows.find((r) => r.behavior === 'meeting')?.label).toBe('Troop Meeting');
     expect(rows.find((r) => r.behavior === 'no_meeting')?.label).toBe('No Meeting');
     // The Bugle's printed legend colors must survive the move to the DB.

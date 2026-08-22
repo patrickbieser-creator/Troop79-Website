@@ -3,7 +3,7 @@ import { Button } from '@/app/_components/button';
 import { EmptyState } from '@/app/_components/empty-state';
 import { TagFilter } from './tag-filter';
 import controls from './news-controls.module.css';
-import { loadNewsIndex, loadAllTags } from '@/lib/news-feed';
+import { loadNewsIndex, loadCategoryCloud } from '@/lib/news-feed';
 import { getIdentitySessionIfValid } from '@/lib/family-access';
 import { loadPromotedEntries, type FeedItem } from '@/lib/home-feed';
 import { mergeFeed } from '@/lib/feed-logic';
@@ -37,7 +37,7 @@ export default async function NewsIndexPage({
 
   const [{ rows, totalPages }, tags, promoted, identity] = await Promise.all([
     loadNewsIndex(page, archive),
-    loadAllTags(),
+    loadCategoryCloud(),
     !archive && page === 1 ? loadPromotedEntries() : Promise.resolve([]),
     getIdentitySessionIfValid()
   ]);

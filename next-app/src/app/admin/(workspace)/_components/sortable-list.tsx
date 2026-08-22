@@ -1,10 +1,13 @@
 'use client';
 
+import { useRef, useState } from 'react';
 import styles from './sortable-list.module.css';
 
 /**
  * Reusable ordered-list editor. Renders the current order with Up/Down/Remove
- * buttons per row. Designed to be reused by any editor that needs to pick a
+ * buttons per row, and rows can be DRAGGED into place (HTML5 drag and drop,
+ * added 2026-08-21 for the home page's "Front page order" — the arrows stay
+ * for keyboard and touch). Designed to be reused by any editor that needs to pick a
  * subset from a catalog and present it in a sortable order (MB counselors,
  * future patrol assignments, etc.).
  *
@@ -53,6 +56,29 @@ export function SortableList<T extends SortableItem>({
     onChange([...items, found]);
   }
 
+  // Drag and drop: remember the dragged index in a REF (drag events fire in
+  // quick succession and a state write may not have committed by the drop);
+  // dropping on a row moves the dragged item to that row's position.
+  const dragFrom = useRef<number | null>(null);
+  const [dragOver, setDragOver] = useState<number | null>(null);
+  const setDragFrom = (i: number | null) => {
+    dragFrom.current = i;
+  };
+  function dropAt(to: number) {
+    const from = dragFrom.current;
+    if (from === null || from === to) {
+      setDragFrom(null);
+      setDragOver(null);
+      return;
+    }
+    const next = items.slice();
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    onChange(next);
+    setDragFrom(null);
+    setDragOver(null);
+  }
+
   return (
     <div className={styles.wrap}>
       {items.length === 0 ? (
@@ -60,7 +86,31 @@ export function SortableList<T extends SortableItem>({
       ) : (
         <ul className={styles.list}>
           {items.map((it, i) => (
-            <li key={it.key} className={styles.row}>
+            <li
+              key={it.key}
+              className={`${styles.row} ${dragOver === i ? styles.rowDragOver : ''}`}
+              draggable
+              onDragStart={(e) => {
+                setDragFrom(i);
+                e.dataTransfer.effectAllowed = 'move';
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                if (dragOver !== i) setDragOver(i);
+              }}
+              onDragLeave={() => setDragOver((d) => (d === i ? null : d))}
+              onDrop={(e) => {
+                e.preventDefault();
+                dropAt(i);
+              }}
+              onDragEnd={() => {
+                setDragFrom(null);
+                setDragOver(null);
+              }}
+            >
+              <span className={styles.grip} aria-hidden="true" title="Drag to reorder">
+                ⋮⋮
+              </span>
               <span className={styles.position}>{i + 1}</span>
               <span className={styles.label}>{it.label}</span>
               <div className={styles.controls}>

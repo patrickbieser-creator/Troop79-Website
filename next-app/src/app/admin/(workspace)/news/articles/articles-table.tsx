@@ -97,7 +97,7 @@ export function ArticlesTable({ rows, sp, sort, dir, sessionName }: Props) {
             {sortLink('status', 'Status')}
             {sortLink('author', 'Author')}
             {sortLink('date', 'Date')}
-            <th>Tags</th>
+            <th>Categories</th>
             <th>Featured</th>
             <th className={styles.actionsCell}>Actions</th>
           </tr>
@@ -168,10 +168,14 @@ export function ArticlesTable({ rows, sp, sort, dir, sessionName }: Props) {
                     )}
                   </td>
                   <td className={styles.actionsCell}>
-                    {/* No explicit Edit — the title link is the one way in
-                        (D-108 stretched-link sweep, 2026-08-21; Calendar and
-                        the roster tables dropped their duplicates the same
-                        day). Actions hold real operations only. */}
+                    {/* Edit is BACK (Patrick, 2026-08-21: "add an edit button
+                        to the news list" — same call he made for the calendar
+                        rows). Same destination as the title link. */}
+                    {canEdit && (
+                      <Link href={`/admin/news/articles/${r.id}`} className={styles.actionBtn} title="Open this post in the editor">
+                        Edit
+                      </Link>
+                    )}
                     {/* Clone, matching the Calendar's row actions. The copy is
                         always a draft, so it is offered on published and
                         archived posts alike — those are the ones most worth
