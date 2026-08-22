@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Session Summary — Classification, One Taxonomy, Front-Page Order (2026-08-21)</title>
+<style>
+  :root {
+    --nw-teal: #1e3a4a;   /* Troop 79 navy (BRAND.md primary) */
+    --nw-green: #3d5a3e;  /* Troop 79 forest (BRAND.md accent) */
+    --paper: #faf6ef;
+    --ink: #2a2a2a;
+    --meta: #6d7580;
+    --line: #e2e4e8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 15px; color: var(--ink); background: var(--paper); line-height: 1.55; }
+  .header { background: var(--nw-teal); color: #fff; padding: 40px 64px; }
+  .header .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.6); margin-bottom: 8px; }
+  .header h1 { font-size: 30px; font-weight: 600; margin-bottom: 6px; }
+  .header .sub { font-size: 14px; color: rgba(255,255,255,.75); }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 36px 24px 64px; }
+  h2 { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--nw-green); border-bottom: 2px solid var(--nw-green); padding-bottom: 6px; margin: 36px 0 14px; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .metric { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+  .metric .num { font-size: 26px; font-weight: 700; color: var(--nw-teal); }
+  .metric .lbl { font-size: 12px; color: var(--meta); margin-top: 2px; }
+  ul { padding-left: 22px; }
+  li { margin-bottom: 9px; }
+  .card { background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--nw-green); border-radius: 4px; padding: 14px 18px; margin-bottom: 12px; }
+  .card.warn { border-left-color: #c0392b; }
+  .card .t { font-weight: 700; color: var(--nw-teal); }
+  code { background: #f0f1f3; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+  .footer { text-align: center; font-size: 12px; color: var(--meta); padding: 24px; border-top: 1px solid var(--line); margin-top: 40px; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); font-size: 13.5px; }
+  th { text-align: left; background: #f0f1f3; padding: 8px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--meta); }
+  td { padding: 8px 12px; border-top: 1px solid var(--line); vertical-align: top; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="eyebrow">Troop 79 &middot; Session Summary &middot; Operator</div>
+  <h1>Classification, One Taxonomy, Front-Page Order</h1>
+  <div class="sub">August 21, 2026 &middot; 11:42 PM CDT &middot; v1.69.0 &rarr; v1.73.1 &middot; www.troop-79.com</div>
+</div>
+<div class="wrap">
+
+  <h2>Key Metrics</h2>
+  <div class="metrics">
+    <div class="metric"><div class="num">8</div><div class="lbl">Releases shipped (v1.69.0&ndash;v1.73.1)</div></div>
+    <div class="metric"><div class="num">12</div><div class="lbl">Commits pushed to main</div></div>
+    <div class="metric"><div class="num">5</div><div class="lbl">Migrations (each pushed to prod before code)</div></div>
+    <div class="metric"><div class="num">808</div><div class="lbl">Tests (703 &rarr; 808, all failing-first)</div></div>
+    <div class="metric"><div class="num">10</div><div class="lbl">Decisions recorded (D-176&ndash;185)</div></div>
+    <div class="metric"><div class="num">7</div><div class="lbl">Backlog items added (incl. 3 assessments)</div></div>
+  </div>
+
+  <h2>What Was Accomplished</h2>
+  <ul>
+    <li><strong>Participant classification, end to end (v1.70.0)</strong> &mdash; seven classes on every sign-up entry, defaulted from the roster person (Junior Leader = grade 9&ndash;12 <em>as of the event date</em>, with a per-scout override), enforced by a SQL trigger that mirrors the TypeScript rule; named guest rows on the public form and the admin roster; class column, youth/adult tiles, Edit-per-row and Add-a-guest on the event roster. Plan written from Patrick&rsquo;s seven answers, built, archived.</li>
+    <li><strong>One taxonomy (v1.73.0/.1)</strong> &mdash; tags folded into Calendar Categories for events, albums and news (synonyms mapped in SQL, the rest became categories); article and event cards chip the same thing; a live &ldquo;Browse by Category&rdquo; cloud and <code>/category/&lt;slug&gt;</code> search-result pages across events, news and (future) resources.</li>
+    <li><strong>Front-page drag-and-drop order</strong> &mdash; featured stories and promoted events in one arranged list; hero = first card; the shared SortableList gained drag-and-drop.</li>
+    <li><strong>Passkeys done right (v1.72.0)</strong> &mdash; the button appears only on a browser known to hold one (holders seeded on code/link sign-in and from the Members page), nothing otherwise, plus platform autofill.</li>
+    <li><strong>Admin form standard (v1.71.x)</strong> &mdash; white fields on tinted form surfaces via two tokens and one scoped rule; the structural follow-up (shared FormPanel) is queued.</li>
+    <li><strong>Financial Ledger (v1.69.0)</strong> &mdash; tinted Kind pills on an indexed categorical scale, running Total Funds from full history, &ldquo;Financial Ledger&rdquo; nav; public DateField v2 (typed entry + calendar on public tokens); June 15 grade rollover; editable reminder email in Lookups; Member Sign In layout.</li>
+    <li><strong>Bugs fixed</strong> &mdash; &ldquo;Add a person&rdquo; wrote dropped columns (now a tested payload builder); Builder deadline field collapsed; calendar/news rows regained Edit; Add-a-person now offers Removed people.</li>
+    <li><strong>Assessments recorded in the backlog</strong> &mdash; photo-thumbnail byte audit (26 of 30 covers are 1&ndash;4 MB PNGs; resize-before-upload + backfill proposed), album-vs-news card differentiation ideas, SEO + LLM-visibility assessment (no sitemap/robots/JSON-LD/OG today; off-site GBP + BeAScout are the big levers), finance filter UX, grade-promotion mechanics.</li>
+  </ul>
+
+  <h2>Decisions</h2>
+  <div class="card"><span class="t">D-176</span> Participant class on the ENTRY, defaulted from the person; JL derived at the event date with roster override; guests are named rows; SQL trigger twin of defaultClassFor.</div>
+  <div class="card"><span class="t">D-177</span> Event roster: one line per name, per-row Edit for jobs &amp; class; Add-a-person offers Removed people (reinstate); explicit Edit buttons restored on calendar/news rows.</div>
+  <div class="card"><span class="t">D-178</span> Passkeys: primary when the browser is known to hold one, hidden otherwise; identity-free hint cookie seeded for existing holders; conditional-UI autofill stays armed.</div>
+  <div class="card"><span class="t">D-179</span> Admin form standard: <code>--admin-field-bg</code> (white) by one scoped rule; <code>--admin-form-bg</code> on form surfaces; FormPanel component to follow.</div>
+  <div class="card"><span class="t">D-180</span> Editable site text: <code>site_settings</code> key/value, blank = default; first the reminder email.</div>
+  <div class="card"><span class="t">D-181</span> ONE taxonomy: calendar_categories for events/albums/news; tags dropped; <code>/category/&lt;slug&gt;</code>; category cloud excludes behavior categories.</div>
+  <div class="card"><span class="t">D-182</span> Front-page order: featured set across articles + events by featured_order; hero = first card (supersedes event-wins).</div>
+  <div class="card"><span class="t">D-183</span> Grade rollover June 15.</div>
+  <div class="card"><span class="t">D-184</span> Public DateField v2 on public tokens (reverses D-174 option b), parity by behavior not import.</div>
+  <div class="card"><span class="t">D-185</span> Financial Ledger: indexed categorical tint scale; running Total Funds from the full history.</div>
+
+  <h2>Open Items / Next Steps</h2>
+  <ul>
+    <li>Production eyes-on for v1.69.0 &rarr; v1.73.1; set the Front page order; tag the untagged stories.</li>
+    <li>Photo thumbnails: resize-before-upload + backfill the 26 heavy covers (alt text + one broken space-in-URL cover too).</li>
+    <li>SEO/LLM: sitemap + robots, Organization/Event JSON-LD, OG/Twitter meta, canonical, Join-page geo content + FAQ, llms.txt; Google Business Profile + BeAScout + council links.</li>
+    <li>Shared FormPanel/FormSection admin component; album-vs-news card differentiation (Brad to mock).</li>
+    <li>B-004 password rotation (still open); <code>.kindHiking</code> tint pick; finance filter UX (park as a plan); resources get categories later (column ready).</li>
+  </ul>
+
+</div>
+<div class="footer">Troop 79 &middot; Operator session summary &middot; 2026-08-21 11:42 PM CDT</div>
+</body>
+</html>
