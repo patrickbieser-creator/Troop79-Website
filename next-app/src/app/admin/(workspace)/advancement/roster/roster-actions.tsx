@@ -23,6 +23,7 @@ export function RosterActions({ className }: { className?: string }) {
       <ActionsMenu
         ariaLabel="Roster actions"
         options={[
+          { value: 'patrols', label: 'Assign patrols…' },
           { value: 'family-roster', label: 'Family Roster (print / PDF)' },
           { value: 'print-screen', label: 'Print this screen' }
         ]}
@@ -33,6 +34,7 @@ export function RosterActions({ className }: { className?: string }) {
              The real document now lives at /admin/roster-print. Printing the
              screen stays available because it is genuinely what you want when
              you have filtered or sorted the table for a specific job. */
+          if (v === 'patrols') router.push('/admin/advancement/roster/patrols');
           if (v === 'family-roster') router.push('/admin/roster-print');
           if (v === 'print-screen') window.print();
         }}

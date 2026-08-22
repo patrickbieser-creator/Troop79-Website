@@ -1,0 +1,198 @@
+/*
+ * Bulk patrol assignment (2026-08-22). Admin tokens only — no raw hex, no
+ * public-palette reads (AGENTS.md firewall).
+ */
+
+/* ── Live counts, doubling as bucket selectors ───────────────────────────── */
+.countsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--admin-space-4);
+  margin-bottom: var(--admin-space-8);
+}
+.countChip {
+  font: inherit;
+  font-size: var(--admin-text-base);
+  font-weight: 600;
+  color: var(--admin-gray-800);
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: 999px;
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: border-color .15s ease, color .15s ease;
+}
+.countChip:hover {
+  border-color: var(--admin-navy);
+  color: var(--admin-navy);
+}
+.countChipNone {
+  border-style: dashed;
+  color: var(--admin-gray-600);
+}
+.countNum {
+  display: inline-block;
+  margin-left: var(--admin-space-3);
+  font-weight: 700;
+  color: var(--admin-navy);
+}
+
+/* ── Bulk bar ────────────────────────────────────────────────────────────── */
+.bulkBar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--admin-space-5);
+  background: var(--admin-form-bg);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: 4px;
+  padding: var(--admin-space-5) var(--admin-space-6);
+  margin-bottom: var(--admin-space-6);
+}
+.bulkCheck {
+  display: flex;
+  align-items: center;
+  gap: var(--admin-space-3);
+  font-size: var(--admin-text-base);
+  font-weight: 600;
+  color: var(--admin-gray-800);
+  cursor: pointer;
+}
+.bulkWord {
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-600);
+}
+.bulkSelect,
+.bulkInput,
+.rowSelect {
+  font: inherit;
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-900);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: 3px;
+  padding: 4px 8px;
+}
+.bulkInput {
+  min-width: 12rem;
+}
+.rowSelect {
+  min-width: 11rem;
+}
+.bulkBtn {
+  font: inherit;
+  font-size: var(--admin-text-base);
+  font-weight: 700;
+  letter-spacing: .04em;
+  background: var(--admin-navy);
+  color: var(--admin-white);
+  border: 1px solid var(--admin-navy);
+  border-radius: 3px;
+  padding: 5px 14px;
+  cursor: pointer;
+}
+.bulkBtn:hover:not(:disabled) { background: var(--admin-navy-hover); }
+.bulkBtn:disabled { opacity: .45; cursor: default; }
+
+/* ── Table ───────────────────────────────────────────────────────────────── */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--admin-text-md);
+}
+.table th {
+  text-align: left;
+  font-size: var(--admin-text-2xs);
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--admin-gray-600);
+  border-bottom: 1px solid var(--admin-gray-300);
+  padding: var(--admin-space-3) var(--admin-space-4);
+}
+.table td {
+  border-bottom: 1px solid var(--admin-gray-100);
+  padding: var(--admin-space-3) var(--admin-space-4);
+  vertical-align: middle;
+}
+.checkCol { width: 2.5rem; }
+.nameCell { font-weight: 600; color: var(--admin-gray-900); }
+.muted { color: var(--admin-gray-600); }
+
+/* A pending change is visible before it is saved — the whole point of the
+   draft is that you can look at the shape of the troop before committing. */
+.rowChanged {
+  background: var(--admin-status-info-bg);
+}
+.rowChanged .nameCell::after {
+  content: '•';
+  color: var(--admin-warning);
+  margin-left: var(--admin-space-3);
+  font-weight: 700;
+}
+
+/* ── Save bar ────────────────────────────────────────────────────────────── */
+.saveBar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--admin-space-6);
+  margin-top: var(--admin-space-8);
+  padding-top: var(--admin-space-6);
+  border-top: 1px solid var(--admin-gray-200);
+}
+.saveCount {
+  margin-right: auto;
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-600);
+}
+.discardBtn {
+  font: inherit;
+  font-size: var(--admin-text-base);
+  background: var(--admin-white);
+  color: var(--admin-gray-700);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: 3px;
+  padding: 5px 14px;
+  cursor: pointer;
+}
+.discardBtn:hover:not(:disabled) { border-color: var(--admin-navy); color: var(--admin-navy); }
+.discardBtn:disabled { opacity: .45; cursor: default; }
+.saveBtn {
+  font: inherit;
+  font-size: var(--admin-text-base);
+  font-weight: 700;
+  letter-spacing: .04em;
+  background: var(--admin-navy);
+  color: var(--admin-white);
+  border: 1px solid var(--admin-navy);
+  border-radius: 3px;
+  padding: 6px 16px;
+  cursor: pointer;
+}
+.saveBtn:hover:not(:disabled) { background: var(--admin-navy-hover); }
+.saveBtn:disabled { opacity: .45; cursor: default; }
+
+.backLink {
+  font-size: var(--admin-text-base);
+  color: var(--admin-navy);
+  white-space: nowrap;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 800px) {
+  .table th:nth-child(3),
+  .table td:nth-child(3),
+  .table th:nth-child(4),
+  .table td:nth-child(4) {
+    display: none;
+  }
+  .bulkBar { gap: var(--admin-space-4); }
+}
