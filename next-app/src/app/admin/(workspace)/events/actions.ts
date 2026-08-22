@@ -2,6 +2,7 @@
 
 import { isParticipantClass, personKindFor, GUEST_CLASSES, type ParticipantClass } from '@/lib/participant-class';
 import { revalidatePath } from 'next/cache';
+import { eventRevalidatePaths } from '@/lib/event-signup';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { sendEmail, renderEmail } from '@/lib/email';
@@ -26,10 +27,9 @@ import {
 type Result = { ok: boolean; error?: string };
 
 function revalidateEvent(calendarEntryId: number, signupId?: number) {
-  revalidatePath('/admin/events');
-  if (signupId) revalidatePath(`/admin/events/${signupId}`);
-  revalidatePath(`/events/${calendarEntryId}`);
-  revalidatePath('/events');
+  // The list lives in lib/event-signup so it can be tested — it silently
+  // omitted the public signup form until 2026-08-22.
+  for (const p of eventRevalidatePaths(calendarEntryId, signupId)) revalidatePath(p);
 }
 
 /**
