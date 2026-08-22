@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Session Summary — SEO, the Library, the Family Roster, and Three Silent Bugs (2026-08-22)</title>
+<style>
+  :root {
+    --nw-teal: #1e3a4a;   /* Troop 79 navy (BRAND.md primary) */
+    --nw-green: #3d5a3e;  /* Troop 79 forest (BRAND.md accent) */
+    --paper: #faf6ef;
+    --ink: #2a2a2a;
+    --meta: #6d7580;
+    --line: #e2e4e8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 15px; color: var(--ink); background: var(--paper); line-height: 1.55; }
+  .header { background: var(--nw-teal); color: #fff; padding: 40px 64px; }
+  .header .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.6); margin-bottom: 8px; }
+  .header h1 { font-size: 30px; font-weight: 600; margin-bottom: 6px; }
+  .header .sub { font-size: 14px; color: rgba(255,255,255,.75); }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 36px 24px 64px; }
+  h2 { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--nw-green); border-bottom: 2px solid var(--nw-green); padding-bottom: 6px; margin: 36px 0 14px; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .metric { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+  .metric .num { font-size: 26px; font-weight: 700; color: var(--nw-teal); }
+  .metric .lbl { font-size: 12px; color: var(--meta); margin-top: 2px; }
+  ul { padding-left: 22px; }
+  li { margin-bottom: 9px; }
+  .card { background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--nw-green); border-radius: 4px; padding: 14px 18px; margin-bottom: 12px; }
+  .card.warn { border-left-color: #c0392b; }
+  .card .t { font-weight: 700; color: var(--nw-teal); }
+  .footer { text-align: center; font-size: 12px; color: var(--meta); padding: 24px; border-top: 1px solid var(--line); margin-top: 40px; }
+  code { background: #f0f1f3; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="eyebrow">Troop 79 &middot; Session Summary</div>
+  <h1>SEO, the Library, the Family Roster &mdash; and three bugs that were failing silently</h1>
+  <div class="sub">Saturday, 22 August 2026 &middot; v1.73.2 &rarr; v1.80.0</div>
+</div>
+
+<div class="wrap">
+
+  <h2>At a glance</h2>
+  <div class="metrics">
+    <div class="metric"><div class="num">12</div><div class="lbl">code commits</div></div>
+    <div class="metric"><div class="num">9</div><div class="lbl">releases (v1.73.2&ndash;v1.80.0)</div></div>
+    <div class="metric"><div class="num">967</div><div class="lbl">tests (from 808)</div></div>
+    <div class="metric"><div class="num">8</div><div class="lbl">decisions (D-186&ndash;D-193)</div></div>
+    <div class="metric"><div class="num">0</div><div class="lbl">migrations</div></div>
+  </div>
+
+  <h2>What shipped</h2>
+  <div class="card">
+    <div class="t">The site can be found &mdash; v1.74.0</div>
+    <code>/robots.txt</code> and <code>/sitemap.xml</code> were both 404 and the site carried
+    <strong>zero</strong> structured data. Now: a sitemap generated from live content (372 URLs),
+    an <em>editable</em> robots.txt, Organization / Event / Article / Breadcrumb JSON-LD, and OG
+    cards so a shared link previews. A sitemap is an active invitation to index, so individual
+    scout pages stay out of it unless a leader opts in.
+  </div>
+  <div class="card">
+    <div class="t">Merit badges live in one place &mdash; v1.78.0</div>
+    The tracker folded into <code>/library/mb/[mbId]</code> and <code>/merit-badges</code>
+    retired. The catalog keeps at-a-glance progress through a Resources / Progress toggle rather
+    than the old three-number-per-tile grid &mdash; across 69 badges, &ldquo;in progress&rdquo; is
+    zero on 56 of them. Admin deliberately unchanged.
+  </div>
+  <div class="card">
+    <div class="t">A family roster worth printing &mdash; v1.75.0</div>
+    &ldquo;Print Roster&rdquo; used to print whichever admin tab was open. Now a real document,
+    organised by household, with Who-to-call and Patrol pages. No PDF library &mdash; the browser
+    already has one. Medical content, BSA IDs and birthdates are permanently absent.
+  </div>
+  <div class="card">
+    <div class="t">Photo library, four ways &mdash; v1.77.0 / v1.79.0</div>
+    Prints, Timeline, List and Almanac over one filtered set, from six prototyped concepts.
+    The Timeline is the only view that shows the troop&rsquo;s <em>gaps</em> &mdash; there are no
+    albums at all for 2023 or 2024, which year headings hide completely.
+  </div>
+  <div class="card">
+    <div class="t">Also</div>
+    Bulk patrol assignment (v1.76.0), editable bylines and frozen published slugs (v1.79.0),
+    admin sub-nav headers (v1.73.2), and the signup builder&rsquo;s reordered job list, tinted
+    panels and out-of-event date note (v1.80.0).
+  </div>
+
+  <h2>Three bugs that reported success</h2>
+  <div class="card warn">
+    <div class="t">Renaming a published post moved its URL</div>
+    <code>updateArticle</code> regenerated the slug from the title on <em>every</em> save. Any
+    link already shared started 404ing, and nothing in the editor ever mentioned slugs. Slugs now
+    freeze at publish.
+  </div>
+  <div class="card warn">
+    <div class="t">A clone could lose a whole layer and still say it worked</div>
+    The deep clone read its child rows as <code>const { data: rows } = await &hellip;</code>,
+    dropping the error &mdash; one transient failure and the jobs vanished with no message. This
+    is the exact defect class <code>lib/db.ts</code> was written to kill after the 2026-08-16
+    outage, and the clone was ignoring it.
+  </div>
+  <div class="card warn">
+    <div class="t">The catalog and the badge page disagreed</div>
+    Archery read <strong>12</strong> on the grid and <strong>6</strong> one click away &mdash;
+    both right, counting different nouns (every award ever vs. scouts currently in the troop).
+    Pre-existing; putting the numbers one click apart is what exposed it.
+  </div>
+
+  <h2>Worth knowing</h2>
+  <ul>
+    <li><strong>The local dev database is now a production snapshot</strong> (Patrick&rsquo;s
+      request; the documented recovery path, never <code>db reset</code>). It is what let the
+      clone report be diagnosed against the real event rather than by argument.</li>
+    <li><strong>Four finance tests went red and were right to.</strong> They hardcoded
+      <code>kind: 'income'</code> &mdash; but that lookup is one a treasurer may edit, and
+      production has deleted it. They now read a kind from the table.</li>
+    <li><strong>The styleguide was lying.</strong> It said admin panels are white; D-179 had
+      since split form surfaces from display cards. Two screens were still white-on-white, and
+      anyone reading the guide would have concluded they were the correct ones.</li>
+    <li><strong>Only <code>next build</code> caught one break.</strong> Importing a helper into a
+      client component dragged the Supabase server client into the client bundle. Lint, typecheck
+      and 967 tests all passed &mdash; the four-part gate earned its keep.</li>
+  </ul>
+
+  <h2>Next</h2>
+  <ul>
+    <li><strong>Print the family roster.</strong> Its content is verified; its printed layout has
+      never been seen (the capture tool timed out on that page repeatedly).</li>
+    <li><strong>The SEO fields are filled in DEV only</strong> &mdash; production still publishes
+      just &ldquo;Milwaukee, WI&rdquo;. The exact values to paste are in the backlog. Still
+      missing and most valuable: <code>sameAs</code> URLs and a Google Business Profile.</li>
+    <li>Production eyes-on for v1.73.2 &rarr; v1.80.0.</li>
+    <li>Patrol assignments &mdash; the bulk screen exists; 23 of 28 scouts still need one.</li>
+    <li>Photo thumbnails (<code>Plans/Photo-Thumbnails.md</code>, ready to activate) &mdash; more
+      urgent now that Prints is the default tab.</li>
+    <li>Admin MB Progress adopts the extracted, tested fold.</li>
+  </ul>
+
+</div>
+<div class="footer">Troop 79 &middot; Operator session summary &middot; 2026-08-22 1:55 PM CDT</div>
+</body>
+</html>
