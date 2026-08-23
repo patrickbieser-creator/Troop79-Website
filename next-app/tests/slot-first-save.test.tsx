@@ -39,7 +39,10 @@ const server: SignupSlot = {
   filled: 2
 };
 
-function renderBoard(existingClaims: { slotId: number; personKey: string; comment?: string | null }[]) {
+function renderBoard(
+  existingClaims: { slotId: number; personKey: string; comment?: string | null }[],
+  opts: { allowGuests?: boolean; existingGuests?: { name: string; cls: 'youth_guest' | 'adult_guest' | 'webelos' | 'cub_scout' }[] } = {}
+) {
   return render(
     <SlotFirstForm
       eventId={35}
@@ -47,8 +50,9 @@ function renderBoard(existingClaims: { slotId: number; personKey: string; commen
       household={household}
       households={[household]}
       slots={[server]}
-      allowGuests={false}
+      allowGuests={opts.allowGuests ?? false}
       guestPrompt={null}
+      existingGuests={opts.existingGuests ?? []}
       existingClaims={existingClaims}
       submitAction={vi.fn()}
       cancelAction={vi.fn()}
@@ -110,6 +114,41 @@ describe('slot-first form — saving edits', () => {
     renderBoard([]);
     expect(saveBtn().textContent).toMatch(/submit family signup/i);
     expect(saveBtn().disabled).toBe(true);
+  });
+});
+
+describe('slot-first form — guests (Patrick, 2026-08-23: "I added the guest Fred Pike and clicked Save Changes, nothing happened")', () => {
+  // The guest WAS saved (a guest row under the host's entry) — the board just
+  // never showed it again: saved guests were not seeded back into the form and
+  // the recap did not mention them. Now they are, and the recap lists them.
+  it('SavedGuests_AreSeededIntoTheForm_AndListedInTheRecap_SaveStaysClean', () => {
+    renderBoard([{ slotId: 1, personKey: 'a0', comment: null }], { allowGuests: true, existingGuests: [{ name: 'Fred Pike', cls: 'adult_guest' }] });
+    expect(screen.getByDisplayValue('Fred Pike')).toBeTruthy();
+    expect(screen.getByText(/Fred Pike/, { selector: 'li, li *' })).toBeTruthy(); // the recap
+    expect(saveBtn().disabled).toBe(true); // nothing changed yet
+  });
+
+  it('AddingAGuest_MakesTheDraftDirty_AndRemovingItAgain_MakesItClean', async () => {
+    const user = userEvent.setup();
+    renderBoard([{ slotId: 1, personKey: 'a0', comment: null }], { allowGuests: true });
+    await user.click(screen.getByRole('button', { name: /add a guest/i }));
+    await user.type(screen.getByRole('textbox', { name: /guest name 1/i }), 'Fred Pike');
+    expect(saveBtn().disabled).toBe(false);
+    expect(screen.getByText(/Fred Pike/, { selector: 'li, li *' })).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: /remove guest 1/i }));
+    expect(saveBtn().disabled).toBe(true);
+  });
+
+  it('GuestsWithoutAHelper_CannotBeSaved_AndTheFormSaysWhy', async () => {
+    // A guest row hangs off a household member who is signed up; with no job
+    // claimed there is nobody to attach them to, so the action would silently
+    // drop them — the form blocks Save and explains instead.
+    const user = userEvent.setup();
+    renderBoard([], { allowGuests: true });
+    await user.click(screen.getByRole('button', { name: /add a guest/i }));
+    await user.type(screen.getByRole('textbox', { name: /guest name 1/i }), 'Fred Pike');
+    expect(saveBtn().disabled).toBe(true);
+    expect(screen.getByText(/pick a job for at least one person/i)).toBeTruthy();
   });
 });
 

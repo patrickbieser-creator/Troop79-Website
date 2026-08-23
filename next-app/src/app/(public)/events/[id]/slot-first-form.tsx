@@ -4,6 +4,7 @@ import { GuestRowsEditor, type GuestRowValue } from './guest-rows';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { SignupSlot } from '@/lib/event-signup';
+import { PARTICIPANT_CLASS_LABEL } from '@/lib/participant-class';
 import type { Household } from '@/lib/households';
 import { formatTimeOfDay } from '@/lib/calendar-shared';
 import styles from './event-detail.module.css';
@@ -55,6 +56,7 @@ export default function SlotFirstForm({
   slots,
   allowGuests,
   guestPrompt,
+  existingGuests = [],
   existingClaims,
   submitAction,
   cancelAction,
@@ -73,6 +75,10 @@ export default function SlotFirstForm({
   slots: SignupSlot[];
   allowGuests: boolean;
   guestPrompt: string | null;
+  /** The party's SAVED guest rows — seeded into the editor so a saved guest is
+   *  visible, editable and removable (Patrick, 2026-08-23: "I cannot get Fred
+   *  to show up anywhere"). */
+  existingGuests?: GuestRowValue[];
   existingClaims: ExistingClaim[];
   submitAction: (fd: FormData) => void;
   cancelAction: (fd: FormData) => void;
@@ -128,8 +134,9 @@ export default function SlotFirstForm({
   });
   const [open, setOpen] = useState<number | null>(null);
   const [fullNote, setFullNote] = useState<number | null>(null);
-  // Named guest rows (Plans/Participant-Classification.md).
-  const [guestRows, setGuestRows] = useState<GuestRowValue[]>([]);
+  // Named guest rows (Plans/Participant-Classification.md) — seeded from what
+  // is saved, same as the person-first form.
+  const [guestRows, setGuestRows] = useState<GuestRowValue[]>(() => existingGuests.map((g) => ({ ...g })));
   const [query, setQuery] = useState('');
 
   const claimersOf = (slotId: number) => claims[slotId] ?? [];
@@ -220,7 +227,16 @@ export default function SlotFirstForm({
     return m;
   }, [existingClaims]);
   const commentsDirty = Object.entries(claims).some(([slotId, keys]) => keys.length > 0 && (slotComments[Number(slotId)] ?? '').trim() !== (savedComments[Number(slotId)] ?? ''));
-  const dirty = draftClaimsKey !== savedClaimsKey || commentsDirty || guestRows.length > 0;
+  // Guests: compare the named rows (blank names ignored) with what is saved.
+  const guestsKey = (rows: GuestRowValue[]) => rows.map((g) => `${g.name.trim().toLowerCase()}|${g.cls}`).filter((k) => !k.startsWith('|')).sort().join(',');
+  const savedGuestsKey = useMemo(() => guestsKey(existingGuests), [existingGuests]);
+  const namedGuests = guestRows.filter((g) => g.name.trim());
+  const guestsDirty = guestsKey(guestRows) !== savedGuestsKey;
+  const dirty = draftClaimsKey !== savedClaimsKey || commentsDirty || guestsDirty;
+  // A guest row is stored under a household member who is signed up (the
+  // host); with nobody helping there is nobody to attach them to, and the
+  // action would drop them silently — block Save and say so instead.
+  const guestsNeedAHelper = namedGuests.length > 0 && activeEntries.length === 0;
 
   const claimsForSubmit = useMemo(() => {
     const byPerson: Record<string, number[]> = {};
@@ -613,7 +629,7 @@ export default function SlotFirstForm({
       {allowGuests && <GuestRowsEditor guests={guestRows} onChange={setGuestRows} prompt={guestPrompt} />}
 
       <div className={styles.recap}>
-        <p className={styles.dayHead}>Your household’s jobs</p>
+        <p className={styles.dayHead}>Your household’s jobs{namedGuests.length > 0 ? ' & guests' : ''}</p>
         {activeEntries.length === 0 ? (
           <p className={styles.recapEmpty}>
             No jobs claimed yet — pick one above and say who’s doing it.
@@ -638,6 +654,20 @@ export default function SlotFirstForm({
             })}
           </ul>
         )}
+        {namedGuests.length > 0 && (
+          <ul className={styles.recapList}>
+            {namedGuests.map((g, i) => (
+              <li key={`g${i}`}>
+                <strong>{g.name.trim()}</strong> <em>(Guest — {PARTICIPANT_CLASS_LABEL[g.cls]})</em>
+                <span className={styles.recapJobs}>
+                  {guestsNeedAHelper
+                    ? 'Guests are saved with whoever from your household is helping — pick a job for at least one person above.'
+                    : 'Comes along with your household — saved with Save changes.'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className={styles.formActions}>
@@ -647,8 +677,8 @@ export default function SlotFirstForm({
         <button
           type="submit"
           className={styles.gateBtn}
-          disabled={hasExisting ? !dirty : activeEntries.length === 0}
-          title={hasExisting && !dirty ? 'No changes to save yet' : undefined}
+          disabled={guestsNeedAHelper || (hasExisting ? !dirty : activeEntries.length === 0)}
+          title={guestsNeedAHelper ? 'Pick a job for at least one person first — guests are saved with them' : hasExisting && !dirty ? 'No changes to save yet' : undefined}
         >
           {hasExisting ? (dirty ? 'Save changes' : 'Saved') : 'Submit family signup'}
         </button>

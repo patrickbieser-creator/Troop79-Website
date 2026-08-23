@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import type { GuestRowValue } from '../guest-rows';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { familyGateConfigured } from '@/lib/family-access';
@@ -289,6 +290,9 @@ export default async function EventSignupPage({
                 slots={slots}
                 allowGuests={signup.allow_guests}
                 guestPrompt={signup.guest_prompt}
+                existingGuests={existing
+                  .filter((e) => e.guest_name)
+                  .map((e) => ({ name: e.guest_name as string, cls: e.participant_class as GuestRowValue['cls'] }))}
                 existingClaims={existingClaims}
                 hasExisting={existing.length > 0}
                 submitAction={submitSignupAction}
