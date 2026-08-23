@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Session Summary — Guests as People built &amp; deployed, photo thumbnails, No Meeting retired (2026-08-23)</title>
+<style>
+  :root {
+    --nw-teal: #1e3a4a;   /* Troop 79 navy (BRAND.md primary) */
+    --nw-green: #3d5a3e;  /* Troop 79 forest (BRAND.md accent) */
+    --paper: #faf6ef;
+    --ink: #2a2a2a;
+    --meta: #6d7580;
+    --line: #e2e4e8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 15px; color: var(--ink); background: var(--paper); line-height: 1.55; }
+  .header { background: var(--nw-teal); color: #fff; padding: 40px 64px; }
+  .header .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.6); margin-bottom: 8px; }
+  .header h1 { font-size: 30px; font-weight: 600; margin-bottom: 6px; }
+  .header .sub { font-size: 14px; color: rgba(255,255,255,.75); }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 36px 24px 64px; }
+  h2 { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--nw-green); border-bottom: 2px solid var(--nw-green); padding-bottom: 6px; margin: 36px 0 14px; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .metric { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+  .metric .num { font-size: 26px; font-weight: 700; color: var(--nw-teal); }
+  .metric .lbl { font-size: 12px; color: var(--meta); margin-top: 2px; }
+  ul { padding-left: 22px; }
+  li { margin-bottom: 9px; }
+  .card { background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--nw-green); border-radius: 4px; padding: 14px 18px; margin-bottom: 12px; }
+  .card.warn { border-left-color: #c0392b; }
+  .card .t { font-weight: 700; color: var(--nw-teal); }
+  .footer { text-align: center; font-size: 12px; color: var(--meta); padding: 24px; border-top: 1px solid var(--line); margin-top: 40px; }
+  code { background: #f0f1f3; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="eyebrow">Troop79-Website &middot; Operator session summary &middot; 23 Aug 2026 &middot; 1:42 PM CDT</div>
+  <h1>Guests as People built &amp; deployed, photo covers 12&times; lighter, the &ldquo;No Meeting&rdquo; category retired</h1>
+  <p class="sub">Twenty-third session. Six releases (v1.87.0 &rarr; v1.87.5), four production migrations, one production data backfill, one new house rule &mdash; all live.</p>
+</div>
+<div class="body">
+  <h2>At a glance</h2>
+  <div class="metrics">
+    <div class="metric"><div class="num">6</div><div class="lbl">releases deployed (v1.87.0&ndash;v1.87.5)</div></div>
+    <div class="metric"><div class="num">4</div><div class="lbl">migrations pushed to production</div></div>
+    <div class="metric"><div class="num">1230</div><div class="lbl">tests (from 1159)</div></div>
+    <div class="metric"><div class="num">6</div><div class="lbl">decisions (D-215&ndash;D-220)</div></div>
+    <div class="metric"><div class="num">60.7&rarr;4.9</div><div class="lbl">MB served by /photos</div></div>
+    <div class="metric"><div class="num">1</div><div class="lbl">new house rule (Save buttons)</div></div>
+  </div>
+
+  <h2>How it went</h2>
+  <p>Patrick said &ldquo;work on guests as people&rdquo; and the whole plan shipped in a day: schema, RPC, both family forms, the Builder, the leader&rsquo;s Add a guest, a People &rarr; Guests tab, then the Phase 3 tightening the same afternoon on his &ldquo;proceed.&rdquo; Two forks ran the admin side and the Guests tab while the orchestrator built the schema/RPC and public forms; a third fork executed the parked photo-thumbnails plan in parallel. qa-lead reviewed the code (go-with-changes, 82/100) and its two missing security tests were added before deploy. Mid-stream Patrick answered the Remove &rarr; re-register question (&ldquo;(a) RPC revives the cancelled row&rdquo;), sent a duplicate-header bug, then three UX rounds on the guest editor (status copy &rarr; member-style rows with an Attending toggle &rarr; locked until someone attends) plus &ldquo;Saving changes&hellip; &rarr; Done,&rdquo; a greyed-out Save, and the request that the Save behaviour become a written rule. Last: an evaluation and removal of the &ldquo;No Meeting&rdquo; calendar category.</p>
+  <p>Two things the tests could not see and the browser did: client components importing a value from <code>lib/event-signup</code> dragged the server Supabase client in and blanked the Builder (fixed by splitting <code>lib/guest-mode.ts</code> / <code>lib/guest-payload.ts</code> out); and the photo backfill&rsquo;s verify step HEADed the Bunny Storage API, which has no HEAD &mdash; the safety gate refused to repoint anything, the 29 orphaned uploads were deleted, verify was fixed (1-byte ranged GET + patient CDN check) and the re-run landed 29 covers.</p>
+
+  <h2>What shipped</h2>
+  <div class="card"><div class="t">Guests as People &mdash; Phases 0a&ndash;3 (v1.87.0, v1.87.1)</div>
+    <p><code>event_signups.guest_mode</code> none / count / named (Builder radiogroup, family prompt, priced-count warning, per-category presets); a named guest is a <code>people</code> row flagged <code>guest_host_household_id</code> &mdash; never a household member (DB guard), hidden from the directory and every picker; the RPC takes guest rows in its payload (25/household + 80-char caps, 20/event, re-pick validated against the household, dropped guests &rarr; &lsquo;no&rsquo;); &ldquo;add again&rdquo; picks and a typed-name confirm instead of silent merges; adult-only phone; leader Add a guest offers known guests; People &rarr; Guests tab (Merge into&hellip; / Forget / 12-month nudge); snapshot &ldquo;+N guests&rdquo; in count mode. Phase 3: <code>person_id NOT NULL</code>, <code>guest_name</code>/<code>allow_guests</code>/old CHECKs dropped, car-sync function re-created without the column.</p></div>
+  <div class="card"><div class="t">Remove &rarr; re-register revives the Removed row (v1.87.0)</div>
+    <p>Patrick&rsquo;s option (a): the RPC revives the latest cancelled row for a person instead of inserting a twin, so payments, placements, job claims and answers stay attached. qa-lead&rsquo;s caveat &mdash; a family re-submit silently un-removes a deliberate Remove &mdash; explained to Patrick; a roster marker is on the backlog.</p></div>
+  <div class="card"><div class="t">Photo thumbnails (v1.87.0) + production backfill</div>
+    <p>Browser resize before upload in every image picker (covers 1200 px, general 1600, JPEG ~q0.82, PNG only with real alpha, byte-identical pass-through for non-images/small files) with a &ldquo;4.0 MB &rarr; 180 KB&rdquo; line and a quiet per-file &ldquo;Keep original size&rdquo; exception; <code>safeImageUrl</code> on /photos; cdn_url spaces fixed (24 rows). Backfill run on production: 29 covers, 60.7 MB &rarr; 4.9 MB, originals kept, re-run is a no-op; /photos now serves ~5.1 MB of covers (was 62 MB).</p></div>
+  <div class="card"><div class="t">Sign-up form UX (v1.87.1&ndash;v1.87.5)</div>
+    <p>&ldquo;+ Add another parent or guardian&rdquo; (was &ldquo;another adult&rdquo;); guests as a GUESTS section in the Scouts/Adults style with the Attending / Can&rsquo;t make it toggle, editable name/class/phone and Remove; the section locked (heading + one-line why) until someone in the household is attending / has a job; &ldquo;Saving changes&hellip;&rdquo; overlay on submit and a brief &ldquo;Done&rdquo; flash on return; Save changes greyed and reading &ldquo;Saved&rdquo; until the draft differs; the duplicate &ldquo;Signing up the &hellip; household&rdquo; bar on job-board pages removed.</p></div>
+  <div class="card"><div class="t">The Save-button standard (rule)</div>
+    <p>Written into <code>next-app/AGENTS.md</code> and Architect PATTERNS: every Save/Submit on an already-saved form is disabled until dirty, labelled &ldquo;Save changes&rdquo;/&ldquo;Saved&rdquo;, greyed not hidden, with Saving&hellip; &rarr; Done feedback. An audit pass over every other form is the top backlog item.</p></div>
+  <div class="card"><div class="t">&ldquo;No Meeting&rdquo; category retired (v1.87.3)</div>
+    <p>Evaluated and removed on Patrick&rsquo;s go: a week with no meeting is a Troop Meeting titled &ldquo;No Troop Meeting&rdquo; (he was already doing this). Four entries recategorized with titles intact, lookup row deleted, behavior CHECK = (&lsquo;meeting&rsquo;), every <code>no_meeting</code> branch gone; the ICS feed, calendar filters and attendance % are unaffected by construction. Entry id 18 (6/28) needs Patrick&rsquo;s eye on its title.</p></div>
+
+  <h2>Deployed</h2>
+  <p>Each release went code-first then <code>supabase db push</code> for its migration (20260823140000/150000/160000 with v1.87.0; 170000 after v1.87.1; 180000 after v1.87.3), Vercel Ready checked between. Production smoke 200s; the family form, roster, Guests tab, Builder, count mode and the Saving/Done dialog were browser-verified on the dev server first.</p>
+
+  <h2>Worth knowing</h2>
+  <ul>
+    <li>The prod Supabase secret key lives in <code>next-app/.env.local</code> as <code>SUPABASE_PROD_SERVICE_ROLE_KEY</code> (Patrick placed it; never in chat). The CLI&rsquo;s <code>default</code> sb_secret key is rejected by PostgREST; legacy service_role is disabled.</li>
+    <li>Local <code>login_tokens</code> now requires <code>sent_to</code> &mdash; the dev-login mint script sets it.</li>
+    <li>The MCP browser tab goes unresponsive after a few interactions; a fresh tab and hydration wait fix it.</li>
+  </ul>
+
+  <h2>Next</h2>
+  <ul>
+    <li>Save-button audit across every form (top of backlog).</li>
+    <li>Production eyes-on for v1.86.x&ndash;v1.87.x.</li>
+    <li>Roster marker for &ldquo;re-added by family after Remove&rdquo;; &ldquo;host adult is responsible&rdquo; line; entry id 18 title.</li>
+    <li>SEO production fields + Google Business Profile; patrol assignments; B-004 password rotation.</li>
+  </ul>
+</div>
+<div class="footer">Troop79-Website &middot; Operator session summary &middot; 23 Aug 2026 1:42 PM CDT</div>
+</body>
+</html>
