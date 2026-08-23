@@ -67,7 +67,7 @@ export async function loadSnapshot(signupId: number): Promise<{ input: SnapshotI
       supabase.from('calendar_entries').select('id, title, entry_date, end_date, start_time, end_time, location').eq('id', s.calendar_entry_id).maybeSingle(),
       supabase
         .from('signup_entries')
-        .select('id, person_id, guest_name, participant_class, person_kind, status, participation, drives_out, drives_back, vehicle_seats_out, vehicle_seats_back, ride_out, ride_back, permission_slip_received, notes, household_id')
+        .select('id, person_id, guest_name, participant_class, person_kind, status, participation, drives_out, drives_back, vehicle_seats_out, vehicle_seats_back, ride_out, ride_back, permission_slip_received, notes, household_id, guest_count')
         .eq('event_signup_id', s.id)
         .neq('status', 'cancelled'),
       supabase.from('signup_entry_balances').select('entry_id, owed, paid, balance').eq('event_signup_id', s.id),
@@ -146,6 +146,7 @@ export async function loadSnapshot(signupId: number): Promise<{ input: SnapshotI
       paid: Number(bal?.paid ?? 0),
       balance: Number(bal?.balance ?? 0),
       notes: (e.notes as string | null) ?? null,
+      guestCount: Number(e.guest_count ?? 0),
       leaderAnswers: leaderAnsByEntry.get(id) ?? {},
       answers: ansByEntry.get(id) ?? {}
     };

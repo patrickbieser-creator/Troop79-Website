@@ -10,6 +10,7 @@ import {
   unclaimSlotFor,
   setEntryClass,
   addGuestEntry,
+  loadGuestsForHost,
   setEntryTransport,
   setLeaderAnswer
 } from '../../events/actions';
@@ -38,6 +39,8 @@ import { PAY_METHOD_LABEL, type PayMethod } from '@/lib/event-money';
 import { diffClaimEdits, type ClaimEdit } from '@/lib/event-signup-admin';
 import { bandJobsByDay, jobCoverage, jobHeaderTitle, jobWhen, resolveJobCodes } from '@/lib/job-codes';
 import type { RosterRow } from './page';
+import type { GuestMode } from '@/lib/guest-mode';
+import type { HouseholdGuest } from '@/lib/guest-payload';
 import styles from '../../events/events-admin.module.css';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
 import { SortHeader, useSortable, type SortDir } from '../../_components/use-sortable';
@@ -166,7 +169,8 @@ export function RosterTable({
   eventDate = '',
   groupSets = [],
   familyQuestionCount = 0,
-  hasCarSets = true
+  hasCarSets = true,
+  guestMode = 'none'
 }: {
   /** Every live (non-cancelled) entry; the grid itself shows status='yes'. */
   rows: RosterRow[];
@@ -200,7 +204,11 @@ export function RosterTable({
    *  all and Notes gets the room (service projects: jobs + notes matter, rides
    *  don't — Patrick, 2026-08-22). */
   hasCarSets?: boolean;
+  /** Guests as People: the "+N guests" column is a count-mode thing; named
+   *  guests are rows of their own, so the column hides otherwise. */
+  guestMode?: GuestMode;
 }) {
+  const showGuestCount = guestMode === 'count';
   // Attending tab = people who are coming (status yes AND participation full);
   // declines, waitlist, driver-only, contributors and removed share the other
   // tab, which keeps the Participation column (Patrick, 2026-08-22: "now that
@@ -265,7 +273,35 @@ export function RosterTable({
   const [guestName, setGuestName] = useState('');
   const [guestClass, setGuestClass] = useState<(typeof GUEST_CLASSES)[number]>('webelos');
   const [guestHost, setGuestHost] = useState<number | ''>('');
+  // Guests as People (Plans/Guests-As-People.md): a guest is a people row of
+  // the host's household — the dialog offers the household's known guests as
+  // one-click re-picks (the ONLY re-use path; a typed name is always a new
+  // person), and an optional phone for an adult guest (carpools).
+  const [guestPick, setGuestPick] = useState<number | null>(null);
+  const [guestPhone, setGuestPhone] = useState('');
+  const [knownGuests, setKnownGuests] = useState<HouseholdGuest[]>([]);
   const guestDialogRef = useRef<HTMLDialogElement>(null);
+  // Known guests follow the chosen host — fetched on the change itself (and
+  // when the dialog opens), not in an effect: the action is the external
+  // system; React state only receives its answer.
+  function loadKnownFor(hostId: number | '') {
+    setKnownGuests([]);
+    if (hostId === '') return;
+    // A failed lookup leaves the typed-name path usable — never a broken dialog.
+    loadGuestsForHost(Number(hostId), signupId).then((g) => setKnownGuests(g)).catch(() => setKnownGuests([]));
+  }
+  function pickKnownGuest(personId: number | null) {
+    setGuestPick(personId);
+    const g = personId != null ? knownGuests.find((k) => k.personId === personId) : null;
+    if (g) {
+      setGuestName(g.name);
+      setGuestClass(g.cls);
+      setGuestPhone(g.phone ?? '');
+    } else {
+      setGuestName('');
+      setGuestPhone('');
+    }
+  }
   useEffect(() => {
     const dlg = guestDialogRef.current;
     if (!dlg) return;
@@ -275,14 +311,23 @@ export function RosterTable({
   function openAddGuest() {
     setGuestName('');
     setGuestClass('webelos');
-    setGuestHost(rows.find((r) => r.hostEntryId === null)?.id ?? '');
+    setGuestPick(null);
+    setGuestPhone('');
+    const firstHost = rows.find((r) => r.hostEntryId === null)?.id ?? '';
+    setGuestHost(firstHost);
+    loadKnownFor(firstHost);
     setAddingGuest(true);
   }
   function saveGuest() {
-    if (!guestName.trim() || guestHost === '') return;
+    if ((guestPick == null && !guestName.trim()) || guestHost === '') return;
     start(async () => {
       setError(null);
-      const res = await addGuestEntry(signupId, calendarEntryId, Number(guestHost), guestName, guestClass);
+      const res = await addGuestEntry(signupId, calendarEntryId, Number(guestHost), {
+        personId: guestPick,
+        name: guestName,
+        cls: guestClass,
+        phone: guestClass === 'adult_guest' ? guestPhone : null
+      });
       if (!res.ok) {
         setError(res.error ?? 'Could not add the guest.');
         return;
@@ -496,10 +541,10 @@ export function RosterTable({
   const jobBands = bandJobsByDay(slots);
   const jobsInOrder = jobBands.flatMap((b) => b.jobs);
   const showAnswers = familyQuestionCount > 0;
-  // Name, Class, Guests, [Driving×2, Ride×2], Notes, Fee, Balance, actions
-  const colCount = 6 + (hasCarSets ? 4 : 0) + groupSets.length + (showJobs ? slots.length : 0) + (showAnswers ? 1 : 0) + leaderQuestions.length + 1;
+  // Name, Class, [Guests], [Driving×2, Ride×2], Notes, Fee, Balance, actions
+  const colCount = 5 + (showGuestCount ? 1 : 0) + (hasCarSets ? 4 : 0) + groupSets.length + (showJobs ? slots.length : 0) + (showAnswers ? 1 : 0) + leaderQuestions.length + 1;
   // Columns to the left of / right of the job block, for the day-band row.
-  const colsBeforeJobs = 3 + (hasCarSets ? 4 : 0) + groupSets.length;
+  const colsBeforeJobs = 2 + (showGuestCount ? 1 : 0) + (hasCarSets ? 4 : 0) + groupSets.length;
   const colsAfterJobs = (showAnswers ? 1 : 0) + leaderQuestions.length + 4;
   const printableLeader = printableLeaderQuestions(leaderQuestions);
   const [leaderDraft, setLeaderDraft] = useState<Record<string, string>>({});
@@ -654,7 +699,7 @@ export function RosterTable({
           <tr>
             <SortHeader label="Name" colKey="name" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} idleArrow={false} />
             <SortHeader label="Class" colKey="class" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} idleArrow={false} title={CLASS_LEGEND} />
-            <th scope="col">Guests</th>
+            {showGuestCount && <th scope="col">Guests</th>}
             {hasCarSets && (
               <>
                 <StackedHeader top="Driving" bottom="To" />
@@ -721,9 +766,11 @@ export function RosterTable({
                   </span>
                 )}
               </td>
-              <td className={styles.nowrap}>
-                {r.guests > 0 ? `+${r.guests}${r.guestNote ? ` (${r.guestNote})` : ''}` : '—'}
-              </td>
+              {showGuestCount && (
+                <td className={styles.nowrap}>
+                  {r.guests > 0 ? `+${r.guests}${r.guestNote ? ` (${r.guestNote})` : ''}` : '—'}
+                </td>
+              )}
               {/* Seats INCLUDING the driver — the number alone; the header says it's driving. */}
               {hasCarSets && (
                 <>
@@ -998,6 +1045,46 @@ export function RosterTable({
             <DialogHeader title="Add a guest" />
             <DialogBody>
               <label className={`adminLabel ${styles.payField}`}>
+                Brought by
+                <select
+                  value={guestHost}
+                  onChange={(e) => {
+                    const next = e.target.value ? Number(e.target.value) : '';
+                    setGuestHost(next);
+                    pickKnownGuest(null);
+                    loadKnownFor(next);
+                  }}
+                  aria-label="Brought by"
+                  autoFocus
+                >
+                  <option value="">Select who is bringing them…</option>
+                  {rows
+                    .filter((r) => r.hostEntryId === null)
+                    .map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              {knownGuests.length > 0 && (
+                <label className={`adminLabel ${styles.payField}`}>
+                  Someone they have brought before
+                  <select
+                    value={guestPick ?? ''}
+                    onChange={(e) => pickKnownGuest(e.target.value ? Number(e.target.value) : null)}
+                    aria-label="Someone they have brought before"
+                  >
+                    <option value="">Type a new name below…</option>
+                    {knownGuests.map((g) => (
+                      <option key={g.personId} value={g.personId}>
+                        {g.name} again ({PARTICIPANT_CLASS_LABEL[g.cls]})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <label className={`adminLabel ${styles.payField}`}>
                 Guest name
                 <input
                   type="text"
@@ -1005,7 +1092,8 @@ export function RosterTable({
                   onChange={(e) => setGuestName(e.target.value)}
                   aria-label="Guest name"
                   placeholder="e.g. Sam Lee"
-                  autoFocus
+                  maxLength={80}
+                  disabled={guestPick != null}
                 />
               </label>
               <label className={`adminLabel ${styles.payField}`}>
@@ -1022,23 +1110,19 @@ export function RosterTable({
                   ))}
                 </select>
               </label>
-              <label className={`adminLabel ${styles.payField}`}>
-                Brought by
-                <select
-                  value={guestHost}
-                  onChange={(e) => setGuestHost(e.target.value ? Number(e.target.value) : '')}
-                  aria-label="Brought by"
-                >
-                  <option value="">Select who is bringing them…</option>
-                  {rows
-                    .filter((r) => r.hostEntryId === null)
-                    .map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.name}
-                      </option>
-                    ))}
-                </select>
-              </label>
+              {guestClass === 'adult_guest' && (
+                <label className={`adminLabel ${styles.payField}`}>
+                  Phone (optional, for carpools)
+                  <input
+                    type="tel"
+                    value={guestPhone}
+                    onChange={(e) => setGuestPhone(e.target.value)}
+                    aria-label="Phone (optional, for carpools)"
+                    placeholder="e.g. 414-555-0100"
+                    maxLength={40}
+                  />
+                </label>
+              )}
             </DialogBody>
             <DialogActions>
               <button type="button" className={styles.rowEdit} onClick={() => setAddingGuest(false)} disabled={pending}>
@@ -1047,7 +1131,7 @@ export function RosterTable({
               <button
                 type="button"
                 className={styles.enableBtn}
-                disabled={pending || !guestName.trim() || guestHost === ''}
+                disabled={pending || (guestPick == null && !guestName.trim()) || guestHost === ''}
                 onClick={saveGuest}
               >
                 {pending ? 'Adding…' : 'Add guest'}

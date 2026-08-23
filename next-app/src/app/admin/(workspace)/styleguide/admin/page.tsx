@@ -672,6 +672,20 @@ export default function StyleguidePage() {
               <div className={util.cardSoon}>Card content</div>
             </div>
           </Specimen>
+          <Specimen
+            label="Blocks row — three-way mode (.modeRow, signup builder)"
+            note="A .toggleRow whose control is a radio group instead of one checkbox (Guests: none / count / named — Plans/Guests-As-People.md, 2026-08-23). Same rhythm and rule as its checkbox siblings; the hint under the choices changes with the choice, and an optional field (.modeField) can hang under it. Reach for this only when a block genuinely has three states — a two-state block stays a Toggle."
+          >
+            <fieldset className={ev.modeRow}>
+              <legend>Guests</legend>
+              <div className={ev.modeChoices} role="radiogroup" aria-label="Guest mode (specimen)">
+                <label className={ev.modeChoice}><input type="radio" name="sg-guest-mode" readOnly /> No guests</label>
+                <label className={ev.modeChoice}><input type="radio" name="sg-guest-mode" defaultChecked readOnly /> Count only</label>
+                <label className={ev.modeChoice}><input type="radio" name="sg-guest-mode" readOnly /> Named guests</label>
+              </div>
+              <span className={ev.toggleHint}>Families give a number (&ldquo;+3 guests&rdquo;) on their signup — a Court of Honor, a service project.</span>
+            </fieldset>
+          </Specimen>
         </div>
       </section>
 

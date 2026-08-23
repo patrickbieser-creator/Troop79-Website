@@ -137,10 +137,14 @@ export async function loadHouseholds(): Promise<Household[]> {
     // Inactive adults stay on record — attached to ledger history, past events
     // and relationships — but are no longer OFFERED. Without this the picker
     // accumulates everyone who has ever been on the roster.
+    // Guests (Plans/Guests-As-People.md) are people rows too, but they are
+    // nobody's party: without this filter every guest would surface as a
+    // standalone "household of one" in the family picker.
     supabase
       .from('people')
       .select('id, display_name, primary_email, default_vehicle_seats')
       .is('merged_into_person_id', null)
+      .is('guest_host_household_id', null)
       .eq('active', true),
     supabase
       .from('scouts')

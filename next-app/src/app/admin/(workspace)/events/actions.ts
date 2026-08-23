@@ -1,6 +1,8 @@
 'use server';
 
 import { isParticipantClass, personKindFor, GUEST_CLASSES, type ParticipantClass } from '@/lib/participant-class';
+import { guestModePresetFor } from '@/lib/guest-mode';
+import { isGuestMode, loadHouseholdGuests, type HouseholdGuest } from '@/lib/event-signup';
 import { revalidatePath } from 'next/cache';
 import { eventRevalidatePaths } from '@/lib/event-signup-shared';
 import { requireCapability } from '@/lib/require-capability';
@@ -44,21 +46,24 @@ function revalidateEvent(calendarEntryId: number, signupId?: number) {
  */
 const PRESETS: Record<
   string,
-  { attendance: boolean; drivers: boolean; slip: boolean; ahmrC: boolean; guests: boolean }
+  { attendance: boolean; drivers: boolean; slip: boolean; ahmrC: boolean }
 > = {
-  'Campout / Overnight': { attendance: true, drivers: true, slip: true, ahmrC: false, guests: false },
-  'Day Activity / Outing': { attendance: true, drivers: true, slip: true, ahmrC: false, guests: false },
-  'High Adventure': { attendance: true, drivers: true, slip: true, ahmrC: true, guests: false },
-  'Summer Camp': { attendance: true, drivers: true, slip: true, ahmrC: true, guests: false },
-  'Service Project': { attendance: false, drivers: true, slip: true, ahmrC: false, guests: true },
-  Fundraiser: { attendance: false, drivers: false, slip: false, ahmrC: false, guests: true },
-  'Advancement Event': { attendance: true, drivers: true, slip: false, ahmrC: false, guests: false },
-  Training: { attendance: true, drivers: false, slip: false, ahmrC: false, guests: false },
-  'Ceremony / Recognition': { attendance: true, drivers: false, slip: false, ahmrC: false, guests: true },
-  'Leadership / Planning': { attendance: true, drivers: false, slip: false, ahmrC: false, guests: false },
-  'Recruiting / Outreach': { attendance: false, drivers: false, slip: false, ahmrC: false, guests: true },
-  'Social Event': { attendance: false, drivers: false, slip: false, ahmrC: false, guests: true }
+  'Campout / Overnight': { attendance: true, drivers: true, slip: true, ahmrC: false },
+  'Day Activity / Outing': { attendance: true, drivers: true, slip: true, ahmrC: false },
+  'High Adventure': { attendance: true, drivers: true, slip: true, ahmrC: true },
+  'Summer Camp': { attendance: true, drivers: true, slip: true, ahmrC: true },
+  'Service Project': { attendance: false, drivers: true, slip: true, ahmrC: false },
+  Fundraiser: { attendance: false, drivers: false, slip: false, ahmrC: false },
+  'Advancement Event': { attendance: true, drivers: true, slip: false, ahmrC: false },
+  Training: { attendance: true, drivers: false, slip: false, ahmrC: false },
+  'Ceremony / Recognition': { attendance: true, drivers: false, slip: false, ahmrC: false },
+  'Leadership / Planning': { attendance: true, drivers: false, slip: false, ahmrC: false },
+  'Recruiting / Outreach': { attendance: false, drivers: false, slip: false, ahmrC: false },
+  'Social Event': { attendance: false, drivers: false, slip: false, ahmrC: false }
 };
+// Guest mode (none / count / named) is its own preset table —
+// lib/guest-mode guestModePresetFor — so it can be tested without this
+// 'use server' module (Plans/Guests-As-People.md).
 
 /** Enable signup on a calendar entry, seeded from its category preset. */
 export async function enableSignup(calendarEntryId: number): Promise<Result> {
@@ -77,8 +82,7 @@ export async function enableSignup(calendarEntryId: number): Promise<Result> {
     attendance: true,
     drivers: false,
     slip: false,
-    ahmrC: false,
-    guests: false
+    ahmrC: false
   };
 
   // Default deadline: 5 days before the event starts.
@@ -92,7 +96,8 @@ export async function enableSignup(calendarEntryId: number): Promise<Result> {
     drivers_needed: preset.drivers,
     needs_permission_slip: preset.slip,
     needs_ahmr_c: preset.ahmrC,
-    allow_guests: preset.guests
+    // allow_guests follows by trigger (one release); guest_mode is the truth.
+    guest_mode: guestModePresetFor(e.category)
   });
   if (error) return { ok: false, error: error.message };
 
@@ -106,6 +111,14 @@ export async function updateSignup(
   fields: Record<string, unknown>
 ): Promise<Result> {
   await requireCapability('calendar.write');
+  if ('guest_mode' in fields && !isGuestMode(fields.guest_mode)) {
+    return { ok: false, error: 'Guest mode must be none, count or named.' };
+  }
+  if ('guest_prompt' in fields && fields.guest_prompt != null) {
+    const prompt = String(fields.guest_prompt).trim();
+    if (prompt.length > 200) return { ok: false, error: 'Keep the guest prompt under 200 characters.' };
+    fields = { ...fields, guest_prompt: prompt || null };
+  }
   const supabase = createAdminClient();
   const { error } = await supabase
     .from('event_signups')
@@ -1021,43 +1034,147 @@ export async function setEntryClass(
  * under a roster entry that brought them — the admin half of decision 4
  * (families add theirs on the public form). Cascade-deletes with the host.
  */
+/** The host household a guest attaches to: the host entry's household_id,
+ *  else the household the host person belongs to. null ⇒ nothing to attach
+ *  a guest to (an unassigned scout / standalone adult). */
+async function hostHouseholdId(
+  supabase: ReturnType<typeof createAdminClient>,
+  host: { household_id: number | null; person_id: number | null }
+): Promise<number | null> {
+  if (host.household_id != null) return host.household_id;
+  if (host.person_id == null) return null;
+  const { data } = await supabase
+    .from('household_members')
+    .select('household_id')
+    .eq('person_id', host.person_id)
+    .order('household_id')
+    .limit(1)
+    .maybeSingle();
+  return (data as { household_id: number } | null)?.household_id ?? null;
+}
+
+/** The known guests of the household a roster entry belongs to — the Add a
+ *  guest dialog's "add again" picks (Plans/Guests-As-People.md). Leader-only. */
+export async function loadGuestsForHost(hostEntryId: number, signupId: number): Promise<HouseholdGuest[]> {
+  await requireCapability('calendar.write');
+  const supabase = createAdminClient();
+  const { data: host } = await supabase
+    .from('signup_entries')
+    .select('id, household_id, person_id')
+    .eq('id', hostEntryId)
+    .eq('event_signup_id', signupId)
+    .maybeSingle();
+  if (!host) return [];
+  const hh = await hostHouseholdId(supabase, host as { household_id: number | null; person_id: number | null });
+  return loadHouseholdGuests(hh);
+}
+
+function friendlyGuestError(message: string): string {
+  if (message.includes('GUEST_HOUSEHOLD_CAP'))
+    return 'This household already has 25 guests on record — forget some from People → Guests first.';
+  if (message.includes('GUEST_NAME_TOO_LONG')) return 'Keep the guest’s name under 80 characters.';
+  if (message.includes('GUEST_NAME_REQUIRED')) return 'Give the guest a name.';
+  if (message.includes('GUEST_CLASS')) return 'Pick a guest class.';
+  return message;
+}
+
+/**
+ * Leader adds a NAMED guest to a roster (Plans/Guests-As-People.md): the guest
+ * is a `people` row flagged as a guest of the host's household — a re-pick of
+ * one the household already brought (personId), or a new person created under
+ * the 25-per-household cap — and gets its own entry hosted by `hostEntryId`.
+ * A cancelled row for that person on this event is REVIVED, never twinned.
+ */
 export async function addGuestEntry(
   signupId: number,
   calendarEntryId: number,
   hostEntryId: number,
-  guestName: string,
-  guestClass: string
+  guest: { personId?: number | null; name?: string; cls: string; phone?: string | null }
 ): Promise<Result> {
   const session = await requireCapability('calendar.write');
-  const name = guestName.trim();
-  if (!name) return { ok: false, error: 'Give the guest a name.' };
-  if (!(GUEST_CLASSES as readonly string[]).includes(guestClass)) {
+  if (!(GUEST_CLASSES as readonly string[]).includes(guest.cls)) {
     return { ok: false, error: 'Pick a guest class.' };
   }
-  const cls = guestClass as ParticipantClass;
+  const cls = guest.cls as ParticipantClass;
+  const name = (guest.name ?? '').trim();
+  const phone = cls === 'adult_guest' ? (guest.phone ?? '').trim() || null : null;
+  if (guest.personId == null && !name) return { ok: false, error: 'Give the guest a name.' };
+
   const supabase = createAdminClient();
   const { data: host } = await supabase
     .from('signup_entries')
-    .select('id, household_id')
+    .select('id, household_id, person_id, host_entry_id')
     .eq('id', hostEntryId)
     .eq('event_signup_id', signupId)
     .maybeSingle();
   if (!host) return { ok: false, error: 'That host is not on this roster.' };
-  const { error } = await supabase.from('signup_entries').insert({
-    event_signup_id: signupId,
-    person_id: null,
-    guest_name: name,
+  const h = host as { id: number; household_id: number | null; person_id: number | null; host_entry_id: number | null };
+  if (h.host_entry_id != null) return { ok: false, error: 'A guest can’t host another guest — pick a household member.' };
+  const householdId = await hostHouseholdId(supabase, h);
+  if (householdId == null) return { ok: false, error: 'This host has no household to attach a guest to.' };
+
+  let personId: number;
+  if (guest.personId != null) {
+    const { data: person } = await supabase
+      .from('people')
+      .select('id, guest_host_household_id, merged_into_person_id')
+      .eq('id', guest.personId)
+      .maybeSingle();
+    const p = person as { id: number; guest_host_household_id: number | null; merged_into_person_id: number | null } | null;
+    if (!p || p.merged_into_person_id != null || p.guest_host_household_id !== householdId) {
+      return { ok: false, error: 'That person is not one of this household’s guests.' };
+    }
+    personId = p.id;
+    if (phone) {
+      await supabase.from('people').update({ primary_phone: phone, updated_at: new Date().toISOString() }).eq('id', personId);
+    }
+  } else {
+    const { data: created, error: createErr } = await supabase.rpc('ensure_guest_person', {
+      p_household_id: householdId,
+      p_name: name,
+      p_phone: phone,
+      p_actor: session.label
+    });
+    if (createErr) return { ok: false, error: friendlyGuestError(createErr.message) };
+    personId = Number(created);
+  }
+
+  const common = {
     host_entry_id: hostEntryId,
     // A guest belongs to the household that brought them — same as the
     // public form writes — so the roster's Household column reads right.
-    household_id: (host as { household_id?: number | null }).household_id ?? null,
+    household_id: householdId,
     participant_class: cls,
     person_kind: personKindFor(cls),
     status: 'yes',
     participation: 'full',
-    updated_by: session.label
-  });
-  if (error) return { ok: false, error: error.message };
+    updated_by: session.label,
+    updated_at: new Date().toISOString()
+  };
+  const { data: existing } = await supabase
+    .from('signup_entries')
+    .select('id, status')
+    .eq('event_signup_id', signupId)
+    .eq('person_id', personId)
+    .order('id', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (existing) {
+    if ((existing as { status: string }).status === 'yes') return { ok: false, error: 'They are already on this roster.' };
+    const { error } = await supabase
+      .from('signup_entries')
+      .update({ ...common, cancelled_at: null })
+      .eq('id', (existing as { id: number }).id);
+    if (error) return { ok: false, error: friendlyGuestError(error.message) };
+  } else {
+    const { error } = await supabase.from('signup_entries').insert({
+      event_signup_id: signupId,
+      person_id: personId,
+      ...common,
+      entered_by: session.label
+    });
+    if (error) return { ok: false, error: friendlyGuestError(error.message) };
+  }
   revalidatePath(`/admin/rosters/${signupId}`);
   revalidateEvent(calendarEntryId, signupId);
   return { ok: true };

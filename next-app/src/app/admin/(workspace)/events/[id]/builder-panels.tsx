@@ -13,6 +13,9 @@ import type { SlotClaimant, QuestionAnswerRow } from '@/lib/event-signup-admin';
 import { jobDateNote } from '@/lib/event-signup-shared';
 import { deriveJobCode, resolveJobCodes, JOB_CODE_MAX } from '@/lib/job-codes';
 import { SET_KINDS, SET_KIND_LABEL, presetSetsFor, type SetKind } from '@/lib/group-sets';
+import { GUEST_MODES, isGuestMode, type GuestMode } from '@/lib/guest-mode';
+import { GUEST_MODE_LABEL, GUEST_MODE_HINT, COUNT_MODE_PRICE_WARNING, defaultGuestPrompt } from '@/lib/guest-mode';
+import { Notice } from '../../_components/notice';
 import { DatePickerField } from '../../_components/date-picker-field';
 import { DateTimeField } from '../../_components/date-time-field';
 import { TabStrip } from '../../_components/tab-strip';
@@ -119,6 +122,7 @@ export function BuilderPanels({
 
   const attendance = b(signup.attendance_enabled);
   const slotDriven = !attendance && slots.length > 0;
+  const guestMode: GuestMode = isGuestMode(signup.guest_mode) ? signup.guest_mode : 'none';
 
   // Price tier draft
   const [pLabel, setPLabel] = useState('');
@@ -287,11 +291,43 @@ export function BuilderPanels({
           disabled={pending}
           onChange={(v) => save({ drivers_needed: v })} label="Drivers" hint="Offer seats per leg, there and back." 
         />
-        <Toggle
-          checked={b(signup.allow_guests)}
-          disabled={pending}
-          onChange={(v) => save({ allow_guests: v })} label="Guests" hint="Families can bring a counted number of guests." 
-        />
+        {/* Guests (Plans/Guests-As-People.md): a three-way MODE, not a toggle —
+            count (a Court of Honor's "+3"), named (every guest a person with a
+            ride and money), or none. allow_guests follows by trigger. */}
+        <fieldset className={styles.modeRow}>
+          <legend>Guests</legend>
+          <div className={styles.modeChoices} role="radiogroup" aria-label="Guest mode">
+            {GUEST_MODES.map((m) => (
+              <label key={m} className={styles.modeChoice}>
+                <input
+                  type="radio"
+                  name="guest_mode"
+                  value={m}
+                  checked={guestMode === m}
+                  disabled={pending}
+                  onChange={() => save({ guest_mode: m })}
+                />
+                {GUEST_MODE_LABEL[m]}
+              </label>
+            ))}
+          </div>
+          <span className={styles.toggleHint}>{GUEST_MODE_HINT[guestMode]}</span>
+          {guestMode !== 'none' && (
+            <label className={styles.modeField}>
+              <span className={`adminLabel ${styles.fieldLabel}`}>Prompt shown to families (optional)</span>
+              <input
+                type="text"
+                defaultValue={s(signup.guest_prompt)}
+                placeholder={defaultGuestPrompt(guestMode)}
+                maxLength={200}
+                onBlur={(e) => save({ guest_prompt: e.target.value || null })}
+              />
+            </label>
+          )}
+          {guestMode === 'count' && prices.length > 0 && (
+            <Notice variant="warning" className={styles.modeField}>{COUNT_MODE_PRICE_WARNING}</Notice>
+          )}
+        </fieldset>
         <Toggle
           checked={b(signup.needs_permission_slip)}
           disabled={pending}
@@ -397,6 +433,7 @@ export function BuilderPanels({
           automatically prices any existing entry wherever the choice is unambiguous.
         </p>
         {priceNote && <p className={styles.note}>{priceNote}</p>}
+        {guestMode === 'count' && <Notice variant="warning">{COUNT_MODE_PRICE_WARNING}</Notice>}
         {prices.length > 0 && (
           <table className={styles.miniTable}>
             <tbody>

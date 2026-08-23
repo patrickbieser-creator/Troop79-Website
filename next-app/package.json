@@ -26,7 +26,8 @@
     "import-troop-finances": "tsx --env-file=.env.local scripts/import-troop-finances.ts",
     "send-test-email": "tsx --env-file=.env.local scripts/send-test-email.ts",
     "import-event-sheet": "tsx --env-file=.env.local scripts/import-event-sheet.ts",
-    "refresh-local-from-prod": "bash scripts/refresh-local-from-prod.sh"
+    "refresh-local-from-prod": "bash scripts/refresh-local-from-prod.sh",
+    "backfill-photo-thumbnails": "tsx --env-file=.env.local scripts/backfill-photo-thumbnails.ts"
   },
   "dependencies": {
     "@next/third-parties": "^16.3.1",
@@ -54,6 +55,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "jsdom": "^30.0.1",
+    "sharp": "^0.34.5",
     "supabase": "^2.101.0",
     "tailwindcss": "^4",
     "tsx": "^4.22.3",

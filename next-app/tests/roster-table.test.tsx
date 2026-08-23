@@ -59,7 +59,7 @@ const SLOTS = [
   { id: 12, label: 'Bring a table' }
 ];
 
-function renderTable(rows: RosterRow[]) {
+function renderTable(rows: RosterRow[], opts: { guestMode?: 'none' | 'count' | 'named' } = {}) {
   return render(
     <RosterTable
       rows={rows}
@@ -68,6 +68,7 @@ function renderTable(rows: RosterRow[]) {
       calendarEntryId={2}
       slots={SLOTS}
       groupSets={[]}
+      guestMode={opts.guestMode ?? 'none'}
       // The Answers column exists only when the event asks families something
       // (Plans/Roster-Status-Tab.md item 7) — these fixtures assume it does.
       familyQuestionCount={1}
@@ -84,6 +85,8 @@ describe('RosterTable — one line per name', () => {
   });
 
   it('Guests_Answers_Notes_HaveTheirOwnColumns_AndFeeSitsBesideBalance', () => {
+    // The Guests (+N) column exists only in COUNT mode (Plans/Guests-As-
+    // People.md); in named mode guests are rows of their own.
     renderTable([
       row({
         id: 1,
@@ -94,7 +97,7 @@ describe('RosterTable — one line per name', () => {
         owed: 30,
         answers: ['Tent size: 4-person']
       })
-    ]);
+    ], { guestMode: 'count' });
     const headers = screen.getAllByRole('columnheader').map((h) => h.textContent?.replace(/[▲▼↕]/g, '').trim());
     for (const h of ['Guests', 'Answers', 'Notes', 'Fee', 'Balance']) expect(headers).toContain(h);
     // Participation is off the Attending grid (Patrick, 2026-08-22) — the tab IS attending.

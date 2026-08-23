@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import Image from 'next/image';
 import type { Media } from '@/lib/supabase/types';
 import { listMedia, setMediaAltText, uploadMedia } from '../media/actions';
+import { prepareImageForUpload, beforeAfterLine, type ResizeKind } from '@/lib/image-resize';
 import { TabStrip } from '../../_components/tab-strip';
 import { Dialog } from '../../_components/dialog';
 import styles from './media-picker.module.css';
@@ -24,6 +25,13 @@ interface MediaPickerProps {
    * visually highlight in the grid until a search brings them into view.
    */
   initialSelected?: Media[];
+  /**
+   * Resize-before-upload target (Plans/Photo-Thumbnails.md): 'cover' = 1200 px
+   * long edge (album covers), 'general' = 1600 px (everything else). The
+   * 4 MB screenshot never leaves the browser; the uploader sees "4.0 MB →
+   * 180 KB" beside the filename.
+   */
+  resizeKind?: ResizeKind;
 }
 
 type Tab = 'browse' | 'upload';
@@ -36,6 +44,9 @@ interface PendingUpload {
   caption: string;
   status: 'pending' | 'uploading' | 'done' | 'error';
   error?: string;
+  /** "4.0 MB → 180 KB" once the browser has resized it; absent when the
+   *  file was already small enough and went up byte-identical. */
+  sizeLine?: string;
 }
 
 function readImageDimensions(file: File): Promise<{ width: number; height: number } | null> {
@@ -54,7 +65,7 @@ function readImageDimensions(file: File): Promise<{ width: number; height: numbe
   });
 }
 
-export function MediaPicker({ mode, onClose, onInsert, initialSelected }: MediaPickerProps) {
+export function MediaPicker({ mode, onClose, onInsert, initialSelected, resizeKind = 'general' }: MediaPickerProps) {
   const [tab, setTab] = useState<Tab>('browse');
   const [search, setSearch] = useState('');
   const [media, setMedia] = useState<Media[]>([]);
@@ -157,9 +168,18 @@ export function MediaPicker({ mode, onClose, onInsert, initialSelected }: MediaP
     if (!item || !item.altText.trim()) return;
     setPending((prev) => prev.map((p) => (p.key === key ? { ...p, status: 'uploading' } : p)));
 
-    const dims = await readImageDimensions(item.file);
+    // Resize in the browser first (Plans/Photo-Thumbnails.md): a heavy image
+    // comes back re-encoded at the target long edge; a small one, a GIF or an
+    // undecodable file comes back exactly as chosen.
+    const prepared = await prepareImageForUpload(item.file, resizeKind);
+    const sizeLine = prepared.before != null ? beforeAfterLine(prepared.before, prepared.file.size) : undefined;
+    if (sizeLine) setPending((prev) => prev.map((p) => (p.key === key ? { ...p, sizeLine } : p)));
+    const dims =
+      prepared.width != null && prepared.height != null
+        ? { width: prepared.width, height: prepared.height }
+        : await readImageDimensions(prepared.file);
     const fd = new FormData();
-    fd.set('file', item.file);
+    fd.set('file', prepared.file);
     fd.set('altText', item.altText.trim());
     if (item.caption.trim()) fd.set('caption', item.caption.trim());
     if (dims) {
@@ -347,7 +367,10 @@ export function MediaPicker({ mode, onClose, onInsert, initialSelected }: MediaP
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img className={styles.uploadThumb} src={p.previewUrl} alt="" />
                     <div className={styles.uploadInfo}>
-                      <div className={styles.uploadName}>{p.file.name}</div>
+                      <div className={styles.uploadName}>
+                        {p.file.name}
+                        {p.sizeLine && <span className={styles.uploadSize}> · {p.sizeLine}</span>}
+                      </div>
                       {p.status === 'pending' && (
                         <div className={styles.altPrompt}>
                           <input

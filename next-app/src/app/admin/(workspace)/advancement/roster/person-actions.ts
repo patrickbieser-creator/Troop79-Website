@@ -303,6 +303,9 @@ export async function searchPeople(
     .from('people')
     .select('id, display_name, primary_email')
     .is('merged_into_person_id', null)
+    // Members only — a guest (Plans/Guests-As-People.md) is never a merge or
+    // relationship target; promotion merges the guest INTO a member.
+    .is('guest_host_household_id', null)
     .ilike('display_name', `%${term}%`)
     .order('display_name')
     .limit(15);

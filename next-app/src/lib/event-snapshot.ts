@@ -43,6 +43,9 @@ export interface SnapshotPerson {
   paid: number;
   balance: number;
   notes: string | null;
+  /** Count-mode guests on this entry ("+N guests", Plans/Guests-As-People.md).
+   *  Named guests are rows of their own and carry 0 here. */
+  guestCount?: number;
   /** question id → value, leader-only questions only. */
   leaderAnswers: Record<number, string>;
   /** question id → value, family questions. */
@@ -336,12 +339,17 @@ export function buildCounts(input: SnapshotInput): { label: string; value: numbe
   const going = input.people.filter((p) => p.status === 'yes' && p.participation === 'full');
   const byClass = new Map<string, number>();
   for (const p of going) byClass.set(p.classLabel, (byClass.get(p.classLabel) ?? 0) + 1);
+  // Count-mode guests (Plans/Guests-As-People.md): the host's "+N" joins the
+  // tally and the total — they eat, they need a seat — without a class row,
+  // because a counted guest has no class. Named guests are rows above.
+  const guests = going.reduce((n, p) => n + (p.guestCount ?? 0), 0);
   return [
     { label: 'Youth', value: going.filter((p) => p.isYouth).length },
     { label: 'Adults', value: going.filter((p) => !p.isYouth).length },
     ...[...byClass.entries()].sort().map(([label, value]) => ({ label, value })),
+    ...(guests > 0 ? [{ label: 'Guests (+N)', value: guests }] : []),
     { label: 'Driver-only', value: input.people.filter((p) => p.status === 'yes' && p.participation === 'driver_only').length },
-    { label: 'Total', value: going.length }
+    { label: 'Total', value: going.length + guests }
   ];
 }
 

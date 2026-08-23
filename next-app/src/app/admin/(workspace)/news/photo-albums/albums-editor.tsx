@@ -328,7 +328,7 @@ function AlbumForm({
       {err && <Notice>{err}</Notice>}
 
       {pickerOpen && (
-        <MediaPicker mode="single" onClose={() => setPickerOpen(false)} onInsert={onPickCover} />
+        <MediaPicker mode="single" resizeKind="cover" onClose={() => setPickerOpen(false)} onInsert={onPickCover} />
       )}
       </DialogBody>
 

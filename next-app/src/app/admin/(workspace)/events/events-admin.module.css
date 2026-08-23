@@ -49,6 +49,18 @@
 .toggleRow { display: flex; gap: 9px; align-items: flex-start; padding: 7px 0; font-size: 13.5px; border-bottom: 1px solid var(--admin-gray-100); }
 .toggleRow:last-of-type { border-bottom: none; }
 .toggleHint { display: block; font-size: 11.5px; color: var(--admin-gray-600); margin-top: 1px; }
+/* Three-way block (Guests: none / count / named — Plans/Guests-As-People.md,
+   2026-08-23): a toggleRow whose control is a radio group instead of one
+   checkbox. Same rhythm and rule as its siblings; the choices sit under the
+   label so the hint can change with the choice. */
+.modeRow { padding: 7px 0; font-size: 13.5px; border-bottom: 1px solid var(--admin-gray-100); }
+.modeRow:last-of-type { border-bottom: none; }
+.modeRow legend { font-weight: 700; padding: 0; }
+.modeChoices { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 5px; }
+.modeChoice { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
+.modeChoice input { margin: 0; }
+.modeField { margin-top: 8px; }
+.modeField input { width: 100%; max-width: 520px; padding: 7px 10px; border: 1px solid var(--admin-gray-300); border-radius: 3px; font-size: 13.5px; font-family: inherit; }
 .fieldGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 12px; }
 .fieldGrid label, .fullField { display: block; }
 .fullField { margin-bottom: 12px; }

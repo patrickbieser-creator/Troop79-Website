@@ -1,7 +1,6 @@
 'use server';
 
-import { personKindFor } from '@/lib/participant-class';
-import { normalizeGuestRows, staleClaims } from '@/lib/event-signup';
+import { normalizeGuestRows, guestEntriesFor, guestHostKey, staleClaims } from '@/lib/event-signup';
 import { placementPayloadFromForm } from '@/lib/group-sets';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -55,6 +54,14 @@ function friendlyError(message: string): string {
   if (message.includes('EVENT_FULL'))
     return 'This event filled up while you were signing up. Contact the Scoutmaster.';
   if (message.includes('GUESTS_NOT_ALLOWED')) return 'Guests aren’t allowed at this event.';
+  if (message.includes('GUEST_HOUSEHOLD_CAP'))
+    return 'Your household already has a lot of guests on record — ask a leader to tidy the list (People → Guests) before adding more.';
+  if (message.includes('GUEST_EVENT_CAP')) return 'That’s more than 20 guests on one sign-up — contact the Scoutmaster.';
+  if (message.includes('GUEST_NAME_TOO_LONG')) return 'A guest’s name is too long (80 characters max).';
+  if (message.includes('GUEST_NAME_REQUIRED')) return 'Give each guest a name, or remove the empty row.';
+  if (message.includes('GUEST_NEEDS_HOST') || message.includes('GUEST_NEEDS_HOUSEHOLD'))
+    return 'Guests are saved with whoever from your household is attending — mark at least one person as attending.';
+  if (message.includes('GUEST_CLASS_INVALID')) return 'Pick a guest type for each guest.';
   if (message.includes('AUDIENCE_MISMATCH'))
     return 'This event isn’t open to everyone you selected.';
   if (message.includes('PRICE_')) return 'That price option isn’t valid for this event — reload and try again.';
@@ -112,6 +119,18 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
 
   const supabase = createAdminClient();
   const actor = `family:${audience}`;
+
+  // Named guests (Plans/Guests-As-People.md) ride INSIDE the RPC payload, each
+  // hosted by the party's first attending member (an adult when there is one)
+  // — the RPC creates or re-picks the guest's people row, takes their seat,
+  // and turns a dropped guest's row to 'no'. With nobody attending there is
+  // nothing to attach a guest to, so the list is simply not sent (the RPC's
+  // reconcile then marks any saved guests 'no' along with the family).
+  const guestRows = normalizeGuestRows(String(formData.get('guests') ?? ''));
+  if (guestRows.length > 0) {
+    const hostKey = guestHostKey(entries as Record<string, unknown>[]);
+    if (hostKey) entries = [...entries, ...guestEntriesFor(guestRows, hostKey)];
+  }
 
   // Adults added on the fly become real people, not throwaway names on one
   // entry — that's what makes the roster improve over time. Done BEFORE the
@@ -183,44 +202,9 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
     }
   }
 
-  // Named guest rows (Plans/Participant-Classification.md): the party's
-  // guests are REPLACED on every submit — delete the ones hosted by this
-  // party's entries, then insert the normalized list under the first
-  // attending entry (an adult when there is one). No attending host → no
-  // guests; the RPC already refused nothing, so this is a silent no-op.
-  const guestRows = normalizeGuestRows(String(formData.get('guests') ?? ''));
+  // (Guest rows used to be deleted and re-inserted here; since Guests as
+  // People the RPC owns them — see the payload build above.)
   const partyEntryIds = writtenRows.map((r) => r.entry_id);
-  if (partyEntryIds.length > 0) {
-    await supabase.from('signup_entries').delete().in('host_entry_id', partyEntryIds);
-  }
-  if (guestRows.length > 0) {
-    const { data: hosts } = await supabase
-      .from('signup_entries')
-      .select('id, person_kind, status, participation')
-      .in('id', partyEntryIds)
-      .eq('status', 'yes')
-      .eq('participation', 'full');
-    const hostRows = (hosts ?? []) as { id: number; person_kind: string }[];
-    const host = hostRows.find((h) => h.person_kind === 'adult') ?? hostRows[0];
-    if (host) {
-      const { error: guestErr } = await supabase.from('signup_entries').insert(
-        guestRows.map((g) => ({
-          event_signup_id: signupId,
-          person_id: null,
-          guest_name: g.name,
-          host_entry_id: host.id,
-          participant_class: g.cls,
-          person_kind: personKindFor(g.cls),
-          status: 'yes',
-          participation: 'full',
-          household_id: householdId,
-          entered_by: actor,
-          updated_by: actor
-        }))
-      );
-      if (guestErr) redirect(`${back}&err=${encodeURIComponent(friendlyError(guestErr.message))}`);
-    }
-  }
 
   // Slot claims resolve per person, so they need the entry ids the RPC just
   // returned. Each claim goes through claim_signup_slot, which holds its own

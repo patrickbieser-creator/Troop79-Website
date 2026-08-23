@@ -13,6 +13,7 @@ import { requireCapability } from '@/lib/require-capability';
 import { isRideStatus, legTiles, type Leg, type RideStatus, type TransportCar } from '@/lib/transport';
 import type { LeaderQuestion } from '@/lib/leader-columns';
 import { RosterTable } from './roster-table';
+import { isGuestMode } from '@/lib/event-signup';
 import { AddPerson, type AddCandidate } from './add-person';
 import { EmailPanel } from './email-panel';
 import { emailConfigured } from '@/lib/email';
@@ -102,6 +103,9 @@ async function load(signupId: number) {
     calendar_entry_id: number;
     capacity: number | null;
     needs_permission_slip: boolean;
+    /** none | count | named (Plans/Guests-As-People.md) — the grid shows the
+     *  "+N guests" column only in count mode. */
+    guest_mode: string | null;
   };
 
   const [{ data: entry }, { data: entries }, { data: prices }, { data: slots }, { data: claims },
@@ -567,6 +571,7 @@ export default async function EventRosterPage({ params }: { params: Promise<{ id
         groupSets={data.groupSets}
         familyQuestionCount={data.familyQuestionCount}
         hasCarSets={hasCarSets}
+        guestMode={isGuestMode(signup.guest_mode) ? signup.guest_mode : 'none'}
       />
 
       <AddPerson

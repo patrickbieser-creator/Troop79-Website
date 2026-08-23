@@ -1,6 +1,6 @@
 'use client';
 
-import { GuestRowsEditor, type GuestRowValue } from './guest-rows';
+import { GuestRowsEditor, GuestCountField, type GuestRowValue } from './guest-rows';
 import { useMemo, useState } from 'react';
 import type {
   EventPrice,
@@ -9,8 +9,10 @@ import type {
   PartyMembership,
   PublicGroupSet,
   SignupQuestion,
-  SignupSlot
+  SignupSlot,
+  HouseholdGuest
 } from '@/lib/event-signup';
+import { guestHostKey } from '@/lib/guest-payload';
 import type { Household, HouseholdAdult } from '@/lib/households';
 import {
   defaultSeats,
@@ -56,6 +58,7 @@ export default function PersonFirstForm({
   existing,
   groupSets = [],
   existingMemberships = [],
+  householdGuests = [],
   submitAction,
   cancelAction
 }: {
@@ -71,6 +74,9 @@ export default function PersonFirstForm({
    *  "Tent preference". Blank = the leader decides. */
   groupSets?: PublicGroupSet[];
   existingMemberships?: PartyMembership[];
+  /** The household's guests on record (Plans/Guests-As-People.md) — offered
+   *  as one-click picks in named mode. */
+  householdGuests?: HouseholdGuest[];
   submitAction: (fd: FormData) => void;
   cancelAction: (fd: FormData) => void;
 }) {
@@ -211,13 +217,25 @@ export default function PersonFirstForm({
       </div>
     );
   };
-  // Named guest rows (Plans/Participant-Classification.md) — seeded from the
-  // party's existing guest entries so an edit shows who's already listed.
+  // Guests (Plans/Guests-As-People.md). Named mode: rows seeded from the
+  // party's existing guest entries (a guest row is one with a host) so an
+  // edit shows who's already listed — each carries its people id, so saving
+  // again re-picks the same person. Count mode: the number + note the host
+  // entry carries.
   const [guestRows, setGuestRows] = useState<GuestRowValue[]>(() =>
     existing
-      .filter((e) => e.guest_name)
-      .map((e) => ({ name: e.guest_name as string, cls: e.participant_class as GuestRowValue['cls'] }))
+      .filter((e) => e.host_entry_id != null && (e.status === 'yes' || e.status === 'waitlist'))
+      .map((e) => ({
+        personId: e.person_id,
+        name: e.guest_name ?? '',
+        cls: e.participant_class as GuestRowValue['cls'],
+        phone: householdGuests.find((g) => g.personId === e.person_id)?.phone ?? ''
+      }))
   );
+  const [guestCount, setGuestCount] = useState<{ count: number; note: string }>(() => {
+    const host = existing.find((e) => e.guest_count > 0);
+    return { count: host?.guest_count ?? 0, note: host?.guest_note ?? '' };
+  });
   const [notes, setNotes] = useState(existing[0]?.notes ?? '');
   const [newAdults, setNewAdults] = useState<AdHocAdult[]>([]);
   const [claims, setClaims] = useState<Record<number, string[]>>(() => {
@@ -427,8 +445,19 @@ export default function PersonFirstForm({
         answers: attending ? answerArr(`a:${a.key}`, 'adult') : []
       });
     }
+    // Count mode: "+N guests" rides on the host entry — the first attending
+    // member, an adult when there is one (the same rule the named rows use
+    // for their host). Named rows travel in the `guests` field instead.
+    if (signup.guest_mode === 'count' && guestCount.count > 0) {
+      const hostKey = guestHostKey(out);
+      const host = hostKey ? out.find((e) => e.key === hostKey) : null;
+      if (host) {
+        host.guest_count = guestCount.count;
+        host.guest_note = guestCount.note.trim() || null;
+      }
+    }
     return out;
-  }, [scoutChoice, adultChoice, tier, days, drives, rides, notes, scouts, adults, signup.drivers_needed]);
+  }, [scoutChoice, adultChoice, tier, days, drives, rides, notes, scouts, adults, signup.drivers_needed, signup.guest_mode, guestCount]);
 
   const anyChoice = entries.length > 0;
 
@@ -864,8 +893,21 @@ export default function PersonFirstForm({
         </div>
       )}
 
-      {signup.allow_guests && (
-        <GuestRowsEditor guests={guestRows} onChange={setGuestRows} prompt={signup.guest_prompt} />
+      {signup.guest_mode === 'named' && (
+        <GuestRowsEditor
+          guests={guestRows}
+          onChange={setGuestRows}
+          prompt={signup.guest_prompt}
+          previousGuests={householdGuests}
+        />
+      )}
+      {signup.guest_mode === 'count' && (
+        <GuestCountField
+          count={guestCount.count}
+          note={guestCount.note}
+          onChange={setGuestCount}
+          prompt={signup.guest_prompt}
+        />
       )}
 
       {signup.notes_prompt && (

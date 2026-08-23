@@ -20,6 +20,7 @@ const signup: EventSignup = {
   attendance_enabled: true,
   drivers_needed: true,
   allow_guests: false,
+  guest_mode: 'none',
   audience: 'both',
   payment_instructions: null,
   needs_permission_slip: false,

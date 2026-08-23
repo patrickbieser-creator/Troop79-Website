@@ -78,7 +78,7 @@ async function loadAllCandidates(): Promise<InternalCandidate[]> {
 
   const [{ data: directory }, { data: people }, households] = await Promise.all([
     supabase.from('person_directory').select('person_id, display_name, tab'),
-    supabase.from('people').select('id, primary_email').eq('active', true),
+    supabase.from('people').select('id, primary_email').eq('active', true).is('guest_host_household_id', null),
     loadHouseholds()
   ]);
 

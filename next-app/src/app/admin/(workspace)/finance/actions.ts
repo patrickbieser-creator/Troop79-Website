@@ -1,6 +1,7 @@
 'use server';
 
 import { feeAmount, isNotionalAccount, money, uncreditedOverpayment, type PayMethod } from '@/lib/event-money';
+import { GUEST_CLASSES } from '@/lib/participant-class';
 
 /**
  * Troop Finances — read + write actions (Plans/Troop-Finances.md).
@@ -489,14 +490,17 @@ export interface RecordEventFeePaymentInput {
 async function eventForSignupEntry(
   supabase: ReturnType<typeof createAdminClient>,
   signupEntryId: number
-): Promise<{ entry: { id: number; person_id: number | null; event_signup_id: number }; calendarEntryId: number | null; title: string | null } | null> {
+): Promise<{ entry: { id: number; person_id: number | null; event_signup_id: number; participant_class: string | null; isGuest: boolean }; calendarEntryId: number | null; title: string | null } | null> {
   const { data: entry } = await supabase
     .from('signup_entries')
-    .select('id, person_id, event_signup_id')
+    .select('id, person_id, event_signup_id, participant_class')
     .eq('id', signupEntryId)
     .maybeSingle();
   if (!entry) return null;
-  const e = entry as { id: number; person_id: number | null; event_signup_id: number };
+  const raw = entry as { id: number; person_id: number | null; event_signup_id: number; participant_class: string | null };
+  // A guest row carries a person_id since Guests as People (2026-08-23); the
+  // class is what says "guest" now, not a missing person.
+  const e = { ...raw, isGuest: raw.person_id == null || (GUEST_CLASSES as readonly string[]).includes(raw.participant_class ?? '') };
   const { data: sig } = await supabase
     .from('event_signups')
     .select('calendar_entry_id, calendar_entries!inner(title)')
@@ -656,7 +660,7 @@ export async function creditOverpaymentAction(input: {
   const supabase = createAdminClient();
   const ctx = await eventForSignupEntry(supabase, input.signupEntryId);
   if (!ctx) return { ok: false, error: 'Signup entry not found.' };
-  if (ctx.entry.person_id == null) return { ok: false, error: 'A guest has no scout account to credit.' };
+  if (ctx.entry.isGuest) return { ok: false, error: 'A guest has no scout account to credit.' };
   // Never credit more than the overpayment that is still uncredited — a second
   // click, a retry, or a stale tab must not mint a second credit (Patrick,
   // 2026-08-22: three clicks, three credits). Both figures are derived live.

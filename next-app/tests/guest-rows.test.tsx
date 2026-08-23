@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { GuestRowsEditor } from '../src/app/(public)/events/[id]/guest-rows';
+import { GuestRowsEditor, GuestCountField } from '../src/app/(public)/events/[id]/guest-rows';
 
 /**
  * Named guest rows on the public sign-up forms (Plans/Participant-
@@ -16,7 +16,7 @@ describe('GuestRowsEditor', () => {
     const onChange = vi.fn();
     render(<GuestRowsEditor guests={[]} onChange={onChange} />);
     await user.click(screen.getByRole('button', { name: /add a guest/i }));
-    expect(onChange).toHaveBeenLastCalledWith([{ name: '', cls: 'youth_guest' }]);
+    expect(onChange).toHaveBeenLastCalledWith([{ personId: null, name: '', cls: 'youth_guest', phone: '' }]);
   });
 
   it('RendersEachRow_WithNameInputAndClassSelect_AndRemoves', async () => {
@@ -25,8 +25,8 @@ describe('GuestRowsEditor', () => {
     render(
       <GuestRowsEditor
         guests={[
-          { name: 'Sam Lee', cls: 'webelos' },
-          { name: 'Aunt Jo', cls: 'adult_guest' }
+          { personId: null, name: 'Sam Lee', cls: 'webelos', phone: '' },
+          { personId: null, name: 'Aunt Jo', cls: 'adult_guest', phone: '' }
         ]}
         onChange={onChange}
       />
@@ -37,14 +37,81 @@ describe('GuestRowsEditor', () => {
     expect(classes[0].value).toBe('webelos');
     expect([...classes[0].options].map((o) => o.value)).toEqual(['webelos', 'cub_scout', 'youth_guest', 'adult_guest']);
     await user.click(screen.getAllByRole('button', { name: /remove/i })[0]);
-    expect(onChange).toHaveBeenLastCalledWith([{ name: 'Aunt Jo', cls: 'adult_guest' }]);
+    expect(onChange).toHaveBeenLastCalledWith([{ personId: null, name: 'Aunt Jo', cls: 'adult_guest', phone: '' }]);
+  });
+
+  it('AdultGuestRow_OffersAPhone_YouthRowDoesNot', () => {
+    render(
+      <GuestRowsEditor
+        guests={[
+          { personId: null, name: 'Sam Lee', cls: 'webelos', phone: '' },
+          { personId: null, name: 'Aunt Jo', cls: 'adult_guest', phone: '' }
+        ]}
+        onChange={() => {}}
+      />
+    );
+    expect(screen.queryByRole('textbox', { name: /guest phone 1/i })).toBeNull();
+    expect(screen.getByRole('textbox', { name: /guest phone 2/i })).toBeTruthy();
+  });
+
+  it('PreviousGuests_AreOfferedAsOneClickPicks_AndVanishOncePicked', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const grandma = { personId: 501, name: 'Grandma Pat', cls: 'adult_guest' as const, phone: '414-555-0100' };
+    const { rerender } = render(<GuestRowsEditor guests={[]} onChange={onChange} previousGuests={[grandma]} />);
+    await user.click(screen.getByRole('button', { name: 'Add Grandma Pat again' }));
+    expect(onChange).toHaveBeenLastCalledWith([{ personId: 501, name: 'Grandma Pat', cls: 'adult_guest', phone: '414-555-0100' }]);
+    rerender(
+      <GuestRowsEditor
+        guests={[{ personId: 501, name: 'Grandma Pat', cls: 'adult_guest', phone: '414-555-0100' }]}
+        onChange={onChange}
+        previousGuests={[grandma]}
+      />
+    );
+    expect(screen.queryByRole('button', { name: 'Add Grandma Pat again' })).toBeNull();
+    // A re-picked row is the person on record — the name is not editable.
+    expect((screen.getByRole('textbox', { name: /guest name 1/i }) as HTMLInputElement).readOnly).toBe(true);
+  });
+
+  it('TypedNameMatchingAGuestOnRecord_AsksToUseThemAgain_NeverMergesSilently', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const grandma = { personId: 501, name: 'Grandma Pat', cls: 'adult_guest' as const, phone: null };
+    render(
+      <GuestRowsEditor
+        guests={[{ personId: null, name: 'grandma pat', cls: 'youth_guest', phone: '' }]}
+        onChange={onChange}
+        previousGuests={[grandma]}
+      />
+    );
+    // The hidden field still carries the typed row (no personId) until confirmed.
+    const hidden = document.querySelector('input[type="hidden"][name="guests"]') as HTMLInputElement;
+    expect(JSON.parse(hidden.value)[0].personId).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Use Grandma Pat again' }));
+    expect(onChange).toHaveBeenLastCalledWith([{ personId: 501, name: 'Grandma Pat', cls: 'youth_guest', phone: '' }]);
   });
 
   it('CarriesTheListAsOneHiddenJsonField_NamedGuests', () => {
     const { container } = render(
-      <GuestRowsEditor guests={[{ name: 'Sam Lee', cls: 'cub_scout' }]} onChange={() => {}} />
+      <GuestRowsEditor guests={[{ personId: null, name: 'Sam Lee', cls: 'cub_scout', phone: '' }]} onChange={() => {}} />
     );
     const hidden = container.querySelector('input[type="hidden"][name="guests"]') as HTMLInputElement;
-    expect(JSON.parse(hidden.value)).toEqual([{ name: 'Sam Lee', cls: 'cub_scout' }]);
+    expect(JSON.parse(hidden.value)).toEqual([{ personId: null, name: 'Sam Lee', cls: 'cub_scout', phone: '' }]);
+  });
+});
+
+describe('GuestCountField (count mode)', () => {
+  it('CarriesANumberAndANote_BoundedTo0To200', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    // Controlled with a mock parent: the value never re-renders, so type into
+    // the initial '0' — '05' is still 5.
+    render(<GuestCountField count={0} note="" onChange={onChange} />);
+    const n = screen.getByRole('spinbutton', { name: /number of guests/i }) as HTMLInputElement;
+    expect(n.value).toBe('0');
+    await user.type(n, '5');
+    expect(onChange).toHaveBeenLastCalledWith({ count: 5, note: '' });
+    await user.type(screen.getByRole('textbox', { name: /who are the guests/i }), 'g');
+    expect(onChange).toHaveBeenLastCalledWith({ count: 0, note: 'g' });
   });
 });

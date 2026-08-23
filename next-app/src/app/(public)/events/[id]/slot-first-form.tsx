@@ -1,9 +1,10 @@
 'use client';
 
-import { GuestRowsEditor, type GuestRowValue } from './guest-rows';
+import { GuestRowsEditor, GuestCountField, type GuestRowValue } from './guest-rows';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { SignupSlot } from '@/lib/event-signup';
+import type { SignupSlot, GuestMode, HouseholdGuest } from '@/lib/event-signup';
+import { guestHostKey } from '@/lib/guest-payload';
 import { PARTICIPANT_CLASS_LABEL } from '@/lib/participant-class';
 import type { Household } from '@/lib/households';
 import { formatTimeOfDay } from '@/lib/calendar-shared';
@@ -54,9 +55,11 @@ export default function SlotFirstForm({
   household,
   households,
   slots,
-  allowGuests,
+  guestMode,
   guestPrompt,
   existingGuests = [],
+  existingGuestCount = { count: 0, note: '' },
+  householdGuests = [],
   existingClaims,
   submitAction,
   cancelAction,
@@ -73,12 +76,17 @@ export default function SlotFirstForm({
   household: Household | null;
   households: Household[];
   slots: SignupSlot[];
-  allowGuests: boolean;
+  /** none · count · named (Plans/Guests-As-People.md). */
+  guestMode: GuestMode;
   guestPrompt: string | null;
   /** The party's SAVED guest rows — seeded into the editor so a saved guest is
    *  visible, editable and removable (Patrick, 2026-08-23: "I cannot get Fred
    *  to show up anywhere"). */
   existingGuests?: GuestRowValue[];
+  /** Count mode: the "+N guests" the host entry already carries. */
+  existingGuestCount?: { count: number; note: string };
+  /** The household's guests on record — one-click picks in named mode. */
+  householdGuests?: HouseholdGuest[];
   existingClaims: ExistingClaim[];
   submitAction: (fd: FormData) => void;
   cancelAction: (fd: FormData) => void;
@@ -137,6 +145,7 @@ export default function SlotFirstForm({
   // Named guest rows (Plans/Participant-Classification.md) — seeded from what
   // is saved, same as the person-first form.
   const [guestRows, setGuestRows] = useState<GuestRowValue[]>(() => existingGuests.map((g) => ({ ...g })));
+  const [guestCount, setGuestCount] = useState<{ count: number; note: string }>(existingGuestCount);
   const [query, setQuery] = useState('');
 
   const claimersOf = (slotId: number) => claims[slotId] ?? [];
@@ -206,13 +215,20 @@ export default function SlotFirstForm({
           person_id: p.personId,
           status: mine.length > 0 ? 'yes' : 'no',
           participation: donationOnly ? 'contributor' : 'full',
-          // Legacy count stays 0 — guests are NAMED ROWS now (hidden `guests`
-          // field, written by the submit action under this party's host entry).
+          // Named guests travel in the `guests` field; the count (count mode)
+          // is attached to the host entry below.
           guest_count: 0,
           guest_note: null
         };
       });
   }, [claims, people, slots, ready, existingClaims]);
+  // Count mode: "+N guests" rides on the first helping member.
+  const entriesWithGuests = useMemo(() => {
+    if (guestMode !== 'count' || guestCount.count === 0) return entries;
+    const hostKey = guestHostKey(entries);
+    if (!hostKey) return entries;
+    return entries.map((e) => (e.key === hostKey ? { ...e, guest_count: guestCount.count, guest_note: guestCount.note.trim() || null } : e));
+  }, [entries, guestMode, guestCount]);
   const activeEntries = entries.filter((e) => e.status === 'yes');
 
   // Dirty = the board differs from what is saved: claims, notes, or a guest
@@ -227,16 +243,27 @@ export default function SlotFirstForm({
     return m;
   }, [existingClaims]);
   const commentsDirty = Object.entries(claims).some(([slotId, keys]) => keys.length > 0 && (slotComments[Number(slotId)] ?? '').trim() !== (savedComments[Number(slotId)] ?? ''));
-  // Guests: compare the named rows (blank names ignored) with what is saved.
-  const guestsKey = (rows: GuestRowValue[]) => rows.map((g) => `${g.name.trim().toLowerCase()}|${g.cls}`).filter((k) => !k.startsWith('|')).sort().join(',');
+  // Guests: compare the named rows (blank names ignored; a re-picked person
+  // by id) and the count with what is saved.
+  const guestsKey = (rows: GuestRowValue[]) =>
+    rows
+      .map((g) => (g.personId != null ? `p:${g.personId}|${g.cls}` : `${g.name.trim().toLowerCase()}|${g.cls}|${g.phone.trim()}`))
+      .filter((k) => !k.startsWith('|'))
+      .sort()
+      .join(',');
   const savedGuestsKey = useMemo(() => guestsKey(existingGuests), [existingGuests]);
-  const namedGuests = guestRows.filter((g) => g.name.trim());
-  const guestsDirty = guestsKey(guestRows) !== savedGuestsKey;
+  const namedGuests = guestMode === 'named' ? guestRows.filter((g) => g.name.trim()) : [];
+  const guestsDirty =
+    guestMode === 'named'
+      ? guestsKey(guestRows) !== savedGuestsKey
+      : guestMode === 'count'
+        ? guestCount.count !== existingGuestCount.count || guestCount.note.trim() !== existingGuestCount.note.trim()
+        : false;
   const dirty = draftClaimsKey !== savedClaimsKey || commentsDirty || guestsDirty;
   // A guest row is stored under a household member who is signed up (the
   // host); with nobody helping there is nobody to attach them to, and the
   // action would drop them silently — block Save and say so instead.
-  const guestsNeedAHelper = namedGuests.length > 0 && activeEntries.length === 0;
+  const guestsNeedAHelper = (namedGuests.length > 0 || (guestMode === 'count' && guestCount.count > 0)) && activeEntries.length === 0;
 
   const claimsForSubmit = useMemo(() => {
     const byPerson: Record<string, number[]> = {};
@@ -565,8 +592,11 @@ export default function SlotFirstForm({
         )}
       </span>
       <span className={styles.boardStatusActions}>
+        {/* Explicit empty ?household= — a verified visitor's prefill only
+            fires when the param is ABSENT (same trick as the person-first
+            page's "Not you? Change"). */}
         {ready && (
-          <a href={`/events/${eventId}`} className={styles.linkBtn}>
+          <a href={`/events/${eventId}/signup?household=`} className={styles.linkBtn}>
             Change household
           </a>
         )}
@@ -613,7 +643,7 @@ export default function SlotFirstForm({
       <input type="hidden" name="eventId" value={eventId} />
       <input type="hidden" name="signupId" value={signupId} />
       <input type="hidden" name="householdKey" value={household!.key} />
-      <input type="hidden" name="entries" value={JSON.stringify(entries)} />
+      <input type="hidden" name="entries" value={JSON.stringify(entriesWithGuests)} />
       <input type="hidden" name="slotClaims" value={JSON.stringify(claimsForSubmit)} />
       <input type="hidden" name="slotComments" value={JSON.stringify(slotComments)} />
       <input type="hidden" name="next" value={`/events/${eventId}`} />
@@ -626,10 +656,15 @@ export default function SlotFirstForm({
 
       {jobList}
 
-      {allowGuests && <GuestRowsEditor guests={guestRows} onChange={setGuestRows} prompt={guestPrompt} />}
+      {guestMode === 'named' && (
+        <GuestRowsEditor guests={guestRows} onChange={setGuestRows} prompt={guestPrompt} previousGuests={householdGuests} />
+      )}
+      {guestMode === 'count' && (
+        <GuestCountField count={guestCount.count} note={guestCount.note} onChange={setGuestCount} prompt={guestPrompt} />
+      )}
 
       <div className={styles.recap}>
-        <p className={styles.dayHead}>Your household’s jobs{namedGuests.length > 0 ? ' & guests' : ''}</p>
+        <p className={styles.dayHead}>Your household’s jobs{namedGuests.length > 0 || (guestMode === 'count' && guestCount.count > 0) ? ' & guests' : ''}</p>
         {activeEntries.length === 0 ? (
           <p className={styles.recapEmpty}>
             No jobs claimed yet — pick one above and say who’s doing it.
@@ -652,6 +687,19 @@ export default function SlotFirstForm({
                 </li>
               );
             })}
+          </ul>
+        )}
+        {guestMode === 'count' && guestCount.count > 0 && (
+          <ul className={styles.recapList}>
+            <li>
+              <strong>+{guestCount.count} {guestCount.count === 1 ? 'guest' : 'guests'}</strong>
+              {guestCount.note.trim() && <em> ({guestCount.note.trim()})</em>}
+              <span className={styles.recapJobs}>
+                {activeEntries.length === 0
+                  ? 'Guests are counted with whoever from your household is helping — pick a job for at least one person above.'
+                  : 'Counted with your household — saved with Save changes.'}
+              </span>
+            </li>
           </ul>
         )}
         {namedGuests.length > 0 && (

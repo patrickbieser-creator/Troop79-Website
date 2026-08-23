@@ -35,19 +35,30 @@ import {
   type HouseholdOption
 } from './people-table';
 import type { ScoutRow } from './scout-form';
+import { GuestsTable } from './guests-table';
+import {
+  buildGuestTabRows,
+  type GuestPersonRow,
+  type GuestEntryRow,
+  type GuestSignupRow,
+  type GuestEventRow
+} from '@/lib/guest-people';
 import styles from './roster.module.css';
 
 export const metadata = {
   title: 'Roster — Troop 79'
 };
 
-type TabKey = 'active_scout' | 'inactive_scout' | 'leader' | 'adult';
+type TabKey = 'active_scout' | 'inactive_scout' | 'leader' | 'adult' | 'guest';
 
+// Guests (Plans/Guests-As-People.md) are NOT in person_directory — they are
+// people flagged guest_host_household_id, read straight from `people` below.
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'active_scout', label: 'Active Scouts' },
   { key: 'inactive_scout', label: 'Inactive Scouts' },
   { key: 'leader', label: 'Leaders' },
-  { key: 'adult', label: 'Adults' }
+  { key: 'adult', label: 'Adults' },
+  { key: 'guest', label: 'Guests' }
 ];
 
 function fmtDate(iso: string | null): string {
@@ -90,7 +101,8 @@ export default async function RosterPage({
     rolesRes,
     relsRes,
     householdsRes,
-    membersRes
+    membersRes,
+    guestPeopleRes
   ] = await Promise.all([
     supabase.from('person_directory').select('*').order('display_name'),
     supabase.from('scouts').select('*').order('display_name'),
@@ -98,8 +110,41 @@ export default async function RosterPage({
     supabase.from('person_roles').select('id, person_id, role, start_date, end_date'),
     supabase.from('relationships').select('id, person_id, related_person_id, type, is_guardian'),
     supabase.from('households').select('id, label').order('label'),
-    supabase.from('household_members').select('household_id, person_id')
+    supabase.from('household_members').select('household_id, person_id'),
+    // Forgotten guests (active=false) are history, not roster — not listed.
+    supabase
+      .from('people')
+      .select('id, display_name, primary_phone, guest_host_household_id, created_at')
+      .not('guest_host_household_id', 'is', null)
+      .is('merged_into_person_id', null)
+      .eq('active', true)
+      .order('display_name')
   ]);
+
+  // Guests tab rows: their latest entry's class + the most recent event they
+  // came to, joined here (three small reads) and shaped by the pure helper.
+  const guestPeople = (guestPeopleRes.data ?? []) as unknown as GuestPersonRow[];
+  let guestEntries: GuestEntryRow[] = [];
+  let guestSignups: GuestSignupRow[] = [];
+  let guestEvents: GuestEventRow[] = [];
+  if (guestPeople.length > 0) {
+    const { data: ge } = await supabase
+      .from('signup_entries')
+      .select('id, person_id, participant_class, event_signup_id')
+      .in('person_id', guestPeople.map((g) => g.id))
+      .order('id', { ascending: false });
+    guestEntries = (ge ?? []) as unknown as GuestEntryRow[];
+    const signupIds = [...new Set(guestEntries.map((e) => e.event_signup_id))];
+    if (signupIds.length > 0) {
+      const { data: gs } = await supabase.from('event_signups').select('id, calendar_entry_id').in('id', signupIds);
+      guestSignups = (gs ?? []) as unknown as GuestSignupRow[];
+      const ceIds = [...new Set(guestSignups.map((x) => x.calendar_entry_id))];
+      if (ceIds.length > 0) {
+        const { data: gev } = await supabase.from('calendar_entries').select('id, title, entry_date').in('id', ceIds);
+        guestEvents = (gev ?? []) as unknown as GuestEventRow[];
+      }
+    }
+  }
 
   const today = centralToday();
   const directory = (directoryRes.data ?? []) as unknown as DirectoryPerson[];
@@ -124,9 +169,18 @@ export default async function RosterPage({
   }
   const nameById = Object.fromEntries(directory.map((p) => [p.person_id, p.display_name]));
 
+  const guestRows = buildGuestTabRows({
+    people: guestPeople,
+    entries: guestEntries,
+    signups: guestSignups,
+    events: guestEvents,
+    householdLabels: new Map(households.map((h) => [h.id, h.label])),
+    today
+  });
+
   const counts = TABS.map((t) => ({
     ...t,
-    n: directory.filter((p) => p.tab === t.key).length
+    n: t.key === 'guest' ? guestRows.length : directory.filter((p) => p.tab === t.key).length
   }));
 
   // Scout tabs follow the directory's classification, NOT scouts.active — an
@@ -196,7 +250,9 @@ export default async function RosterPage({
         </div>
       )}
 
-      {tab === 'active_scout' || tab === 'inactive_scout' ? (
+      {tab === 'guest' ? (
+        <GuestsTable rows={guestRows} />
+      ) : tab === 'active_scout' || tab === 'inactive_scout' ? (
         <ScoutsTable
           scouts={tabScouts}
           ranks={ranks}

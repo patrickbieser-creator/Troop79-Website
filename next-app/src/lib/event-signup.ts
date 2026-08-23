@@ -12,6 +12,12 @@
  */
 
 import { GUEST_CLASSES, type GuestClass, type ParticipantClass } from '@/lib/participant-class';
+import type { GuestMode } from '@/lib/guest-mode';
+import type { HouseholdGuest } from '@/lib/guest-payload';
+// Client-safe guest helpers live in their own modules (no server client);
+// re-exported here so server callers and tests keep one import.
+export { GUEST_MODES, isGuestMode, type GuestMode } from '@/lib/guest-mode';
+export { MAX_GUEST_ROWS, normalizeGuestRows, guestEntriesFor, guestHostKey, type GuestRow, type HouseholdGuest } from '@/lib/guest-payload';
 import { createAdminClient } from '@/lib/supabase/server';
 import { mustList, mustMaybe } from '@/lib/db';
 import type { CalendarEntry } from '@/lib/supabase/types';
@@ -60,7 +66,12 @@ export interface EventSignup {
   waitlist_enabled: boolean;
   attendance_enabled: boolean;
   drivers_needed: boolean;
+  /** Kept one release for the old readers; `guest_mode` is the truth
+   *  (Plans/Guests-As-People.md) — the DB keeps the two in sync. */
   allow_guests: boolean;
+  /** none · count (the host's entry carries "+N guests") · named (every guest
+   *  is a people row with its own entry). */
+  guest_mode: GuestMode;
   audience: 'scouts' | 'adults' | 'both';
   payment_instructions: string | null;
   needs_permission_slip: boolean;
@@ -131,10 +142,16 @@ export function signupLocked(signup: EventSignup): boolean {
 export interface HouseholdEntry {
   id: number;
   person_kind: 'scout' | 'adult';
-  /** null ONLY for named guest rows (Plans/Participant-Classification.md). */
+  /** Every row carries one since Guests as People (2026-08-23) — a named
+   *  guest is a `people` row too. Nullable in the type only until Phase 3
+   *  tightens the column (legacy guest rows were backfilled). */
   person_id: number | null;
   participant_class: ParticipantClass;
+  /** A guest row's display name — resolved from `people` for rows written
+   *  since Guests as People, from the legacy column before. null for a
+   *  household member (their name comes from the household). */
   guest_name: string | null;
+  /** Non-null ⇒ this row is a GUEST brought by that member's entry. */
   host_entry_id: number | null;
   status: 'yes' | 'no' | 'waitlist' | 'cancelled';
   participation: 'full' | 'driver_only' | 'contributor';
@@ -222,6 +239,24 @@ export async function loadPartySignup(
     rows = [...own, ...all.filter((r) => r.host_entry_id != null && ownIds.has(r.host_entry_id))];
   }
   if (rows.length === 0) return [];
+
+  // A guest row's name lives on its people row now (Guests as People); the
+  // legacy guest_name column is the fallback for any row the backfill missed.
+  const guestPersonIds = rows
+    .filter((r) => r.host_entry_id != null && r.person_id != null && !r.guest_name)
+    .map((r) => r.person_id as number);
+  if (guestPersonIds.length > 0) {
+    const { data: guestPeople } = await supabase
+      .from('people')
+      .select('id, display_name')
+      .in('id', guestPersonIds);
+    const nameById = new Map(((guestPeople ?? []) as { id: number; display_name: string }[]).map((p) => [p.id, p.display_name]));
+    for (const r of rows) {
+      if (r.host_entry_id != null && r.person_id != null && !r.guest_name) {
+        r.guest_name = nameById.get(r.person_id) ?? null;
+      }
+    }
+  }
 
   const { data: claims } = await supabase
     .from('signup_slot_claims')
@@ -405,7 +440,7 @@ export async function loadEventDetail(entryId: number): Promise<EventDetail | nu
     .from('event_signups')
     .select(
       'id, status, deadline, capacity, waitlist_enabled, attendance_enabled, drivers_needed, ' +
-        'allow_guests, audience, payment_instructions, needs_permission_slip, needs_ahmr_c, ' +
+        'allow_guests, guest_mode, audience, payment_instructions, needs_permission_slip, needs_ahmr_c, ' +
         // slots_intro is intentionally no longer selected: per-job
         // `signup_slots.description` replaced it (migration 20260808120000).
         // The column still exists and still holds text on live signups.
@@ -560,20 +595,42 @@ export async function loadPartyMemberships(entryIds: number[]): Promise<PartyMem
 
 /* ── Named guest rows from the public form (Plans/Participant-Classification.md) ── */
 
-export interface GuestRow {
-  name: string;
-  cls: GuestClass;
+/**
+ * A household's guests on record. GATE-ONLY — names. Active, un-merged guest
+ * people rows of the household; class defaults to the latest entry's
+ * participant_class (else youth_guest).
+ */
+export async function loadHouseholdGuests(householdId: number | null): Promise<HouseholdGuest[]> {
+  if (householdId == null) return [];
+  const supabase = createAdminClient();
+  const { data: people } = await supabase
+    .from('people')
+    .select('id, display_name, primary_phone')
+    .eq('guest_host_household_id', householdId)
+    .is('merged_into_person_id', null)
+    .eq('active', true)
+    .order('display_name');
+  const rows = (people ?? []) as { id: number; display_name: string; primary_phone: string | null }[];
+  if (rows.length === 0) return [];
+  const { data: entries } = await supabase
+    .from('signup_entries')
+    .select('person_id, participant_class, id')
+    .in('person_id', rows.map((r) => r.id))
+    .order('id', { ascending: false });
+  const lastClass = new Map<number, GuestClass>();
+  for (const e of (entries ?? []) as { person_id: number; participant_class: string }[]) {
+    if (!lastClass.has(e.person_id) && (GUEST_CLASSES as readonly string[]).includes(e.participant_class)) {
+      lastClass.set(e.person_id, e.participant_class as GuestClass);
+    }
+  }
+  return rows.map((r) => ({
+    personId: r.id,
+    name: r.display_name,
+    cls: lastClass.get(r.id) ?? 'youth_guest',
+    phone: r.primary_phone
+  }));
 }
 
-/** Bound on guests per submission — a family bringing a whole den is fine,
- *  an unbounded list from a crafted POST is not. */
-export const MAX_GUEST_ROWS = 20;
-
-/**
- * Normalize the form's `guests` JSON (never trusted): parse, trim and cap
- * names, keep only the four guest classes, drop blanks, collapse duplicates
- * (case-insensitive name + class), bound the count. Pure.
- */
 /** Claims the party holds that the form no longer asks for — the ones to
  *  delete after a submit. `wanted` is `"<entryId>:<slotId>"` for every claim
  *  the submit carried. Pure: the slot-first form's "remove Patrick" bug
@@ -584,29 +641,4 @@ export function staleClaims(
   wanted: ReadonlySet<string>
 ): { entryId: number; slotId: number }[] {
   return current.filter((c) => !wanted.has(`${c.entryId}:${c.slotId}`));
-}
-
-export function normalizeGuestRows(raw: string | null | undefined): GuestRow[] {
-  if (!raw) return [];
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return [];
-  }
-  if (!Array.isArray(parsed)) return [];
-  const out: GuestRow[] = [];
-  const seen = new Set<string>();
-  for (const item of parsed) {
-    if (!item || typeof item !== 'object') continue;
-    const name = String((item as { name?: unknown }).name ?? '').trim().slice(0, 80);
-    const cls = String((item as { cls?: unknown }).cls ?? '');
-    if (!name || !(GUEST_CLASSES as readonly string[]).includes(cls)) continue;
-    const key = `${name.toLowerCase()}|${cls}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push({ name, cls: cls as GuestClass });
-    if (out.length >= MAX_GUEST_ROWS) break;
-  }
-  return out;
 }

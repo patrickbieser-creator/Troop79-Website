@@ -207,6 +207,25 @@ describe('other sets, contacts, money, counts', () => {
       { label: 'Total', value: 4 }
     ]);
   });
+
+  it('Counts_IncludeCountModeGuests_AsPlusN_InTheTotal', () => {
+    // Guests as People: a count-mode event carries "+N" on the host's entry
+    // (a Court of Honor family bringing grandparents); the snapshot's counts
+    // used to ignore it entirely.
+    const withGuests: SnapshotInput = {
+      ...input,
+      people: input.people.map((p) => (p.entryId === 1 ? { ...p, guestCount: 3 } : p))
+    };
+    expect(buildCounts(withGuests)).toEqual([
+      { label: 'Youth', value: 3 },
+      { label: 'Adults', value: 1 },
+      { label: 'Adult', value: 1 },
+      { label: 'Scout', value: 3 },
+      { label: 'Guests (+N)', value: 3 },
+      { label: 'Driver-only', value: 1 },
+      { label: 'Total', value: 7 }
+    ]);
+  });
 });
 
 describe('jobs', () => {

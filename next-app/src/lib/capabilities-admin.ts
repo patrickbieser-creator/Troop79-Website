@@ -81,7 +81,8 @@ export interface AccessScreenData {
 
 export async function loadAccessScreen(supabase: SupabaseClient): Promise<AccessScreenData> {
   const [peopleRes, leadersRes, scoutsRes, grantsRes] = await Promise.all([
-    supabase.from('people').select('id, display_name').eq('active', true).order('display_name'),
+    // Guest people (guest_host_household_id) are never grant candidates.
+    supabase.from('people').select('id, display_name').eq('active', true).is('guest_host_household_id', null).order('display_name'),
     supabase.from('leaders').select('code, person_id, is_person, can_login'),
     supabase.from('scouts').select('person_id').eq('active', true),
     supabase.from('person_capabilities').select('person_id, capability, granted_at, granted_by')

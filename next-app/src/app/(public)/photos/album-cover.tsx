@@ -11,9 +11,13 @@
  * screenshots today (Plans/Photo-Thumbnails.md), and Prints is the DEFAULT
  * tab. Until that plan ships, lazy-loading below the fold is the only thing
  * standing between a visitor and 60 MB.
+ *
+ * `safeImageUrl` percent-encodes a raw space in a Bunny-synced URL
+ * (`Klondike Team-….jpg` never loaded) — idempotent on an encoded one.
  */
 
 import { useState } from 'react';
+import { safeImageUrl } from '@/lib/photo-backfill';
 import styles from './photos.module.css';
 
 export const EXT_ICON = (
@@ -38,7 +42,7 @@ export function AlbumCover({
   return (
     <span className={`${styles.albumCover} ${hasCover ? '' : styles.noCover} ${className ?? ''}`}>
       {hasCover ? (
-        <img src={url} alt={alt ?? ''} loading="lazy" onError={() => setBroken(true)} />
+        <img src={safeImageUrl(url) ?? undefined} alt={alt ?? ''} loading="lazy" onError={() => setBroken(true)} />
       ) : (
         <span className={styles.monogram} aria-hidden="true">
           <span className={styles.mono79}>79</span>

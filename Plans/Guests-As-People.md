@@ -1,7 +1,36 @@
 # Guests as People — per-event guest mode (none · count · named)
 
-**Status:** Designed 2026-08-23 (design pass Patrick asked for — "do the design pass"); NOT built.
+**Status:** BUILT 2026-08-23 through Phase 2 (v1.87.0, local gate green: lint / typecheck / 1226 tests /
+build; browser-verified on the dev server — Builder mode control, family named + count forms end to end,
+roster "guest of", People → Guests tab). qa-lead on the code: **go-with-changes, 82/100** — its two
+missing security tests were added (`tests/guest-actions-gate.test.ts`, re-pick-of-another-household in
+`tests/guests-as-people.test.ts`). **Phase 3 (drops) NOT done — after one soak.** Deploy: `supabase db
+push` (20260823140000 + 20260823150000 + 20260823160000) THEN `git push`.
 Reviews: tech-lead + qa-lead (PII of non-members) — see the Review section at the end.
+
+**What shipped (2026-08-23):** migrations `20260823140000_guest_mode_and_guest_people.sql` (guest_mode
++ two-way allow_guests sync, `people.guest_host_household_id` + the member/guest guard triggers,
+person_directory filter, guest-class guard on signup_entries, backfill, merge_people promotion) and
+`20260823150000_submit_household_signup_guests.sql` (`ensure_guest_person` with the 25/household cap +
+80-char names; guests INSIDE the RPC payload, host/mode/class validation, 20/event cap, re-pick only by
+person_id validated against the household, dropped guests → 'no', **and the Remove → re-register revive
+for members and guests** — Patrick chose (a)). Code: `lib/guest-mode.ts` (presets, labels), `lib/
+guest-payload.ts` (client-safe normalize/payload helpers), `lib/guest-people.ts` (Guests tab shaping),
+Builder radiogroup + prompt + priced-event warning, both family forms by mode (`GuestRowsEditor` with
+"add again" picks + typed-name confirm + adult phone; `GuestCountField`), leader Add a guest with known
+guests, People → Guests tab (Merge into… / Forget / 12-month nudge), pickers filtered, snapshot "+N
+guests". Prod had 0 legacy guest rows at build time, so the backfill is a no-op there.
+
+**Open questions — resolved by default (Patrick to override):** name match → pick-list only + confirm
+(tech-lead); adult phone collected, optional; counted guests take capacity seats; Guests tab under People.
+Still open: stating "the host adult is responsible" on the form (not added).
+
+**Phase 3 checklist (one soak later):** re-run the §5 backfill block (the OLD client may have written
+`person_id null + guest_name` rows in the minutes between db push and the code deploy), then
+`person_id SET NOT NULL`, drop `guest_name`, `allow_guests`, the sync trigger, and CHECKs
+`signup_entries_identity` / `signup_entries_guest_class` (verify their values first — qa-lead); the
+readers' `guest_name` fallbacks go with them. qa-lead warning to carry: a family re-submit now revives
+a leader-Removed row silently — worth a note on the roster's Remove.
 **Parked:** 2026-08-22 (Plans/Roster-Status-Tab.md item 5) → own plan 2026-08-23
 **Priority:** Medium-High (first real need: Fall Campout Oct 9 — siblings/parents as named guests with
 rides and money; Court of Honor — a count)

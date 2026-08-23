@@ -253,7 +253,10 @@ export default async function EventSignupPage({
               </p>
               {!slotFirst && <HouseholdPicker households={households} eventId={entry.id} />}
             </>
-          ) : (
+          ) : slotFirst ? null : (
+            /* The slot-first board carries its own status bar (household +
+               Change household + sign-out) — rendering this one too showed the
+               family two "Signing up the … household" lines (Patrick, 2026-08-23). */
             <p className={styles.householdBar}>
               <span>
                 {/* A standalone adult has no household to name — saying "the
@@ -288,11 +291,21 @@ export default async function EventSignupPage({
                 household={household}
                 households={households}
                 slots={slots}
-                allowGuests={signup.allow_guests}
+                guestMode={signup.guest_mode}
                 guestPrompt={signup.guest_prompt}
                 existingGuests={existing
-                  .filter((e) => e.guest_name)
-                  .map((e) => ({ name: e.guest_name as string, cls: e.participant_class as GuestRowValue['cls'] }))}
+                  .filter((e) => e.host_entry_id != null && (e.status === 'yes' || e.status === 'waitlist'))
+                  .map((e) => ({
+                    personId: e.person_id,
+                    name: e.guest_name ?? '',
+                    cls: e.participant_class as GuestRowValue['cls'],
+                    phone: ctx.householdGuests.find((g) => g.personId === e.person_id)?.phone ?? ''
+                  }))}
+                existingGuestCount={(() => {
+                  const host = existing.find((e) => e.guest_count > 0);
+                  return { count: host?.guest_count ?? 0, note: host?.guest_note ?? '' };
+                })()}
+                householdGuests={ctx.householdGuests}
                 existingClaims={existingClaims}
                 hasExisting={existing.length > 0}
                 submitAction={submitSignupAction}
@@ -320,6 +333,7 @@ export default async function EventSignupPage({
                   existing={existing}
                   groupSets={detail.groupSets}
                   existingMemberships={ctx.memberships}
+                  householdGuests={ctx.householdGuests}
                   submitAction={submitSignupAction}
                   cancelAction={cancelSignupAction}
                 />

@@ -63,6 +63,7 @@ export async function loadRosterPrintData(): Promise<RosterPrintInput> {
         .from('people')
         .select('id, display_name, primary_email, primary_phone')
         .is('merged_into_person_id', null)
+        .is('guest_host_household_id', null)
         .eq('active', true)
         .range(f, t)
     ),

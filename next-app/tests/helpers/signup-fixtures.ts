@@ -29,6 +29,8 @@ export async function createTestEvent(
     capacity?: number | null;
     waitlistEnabled?: boolean;
     audience?: 'scouts' | 'adults' | 'both';
+    /** Guests as people (Plans/Guests-As-People.md) — default 'none'. */
+    guestMode?: 'none' | 'count' | 'named';
   } = {}
 ): Promise<TestEvent> {
   const { data: entry, error: entryErr } = await admin
@@ -49,7 +51,8 @@ export async function createTestEvent(
       deadline: '2026-12-31T00:00:00Z',
       capacity: opts.capacity ?? null,
       waitlist_enabled: opts.waitlistEnabled ?? false,
-      audience: opts.audience ?? 'both'
+      audience: opts.audience ?? 'both',
+      guest_mode: opts.guestMode ?? 'none'
     })
     .select('id')
     .single();

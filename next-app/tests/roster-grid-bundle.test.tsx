@@ -300,8 +300,9 @@ describe('Roster grid — job-code columns (job-heavy events)', () => {
     expect(span(bandRow)).toBe(span(headRow));
     const bands = Array.from(bandRow.querySelectorAll<HTMLTableCellElement>('th[scope="colgroup"]'));
     expect(bands.reduce((n, th) => n + th.colSpan, 0)).toBe(JOBS.length);
-    // Left spacer = Name, Class, Guests + 4 car columns + 2 set columns.
-    expect((bandRow.querySelector('th') as HTMLTableCellElement).colSpan).toBe(3 + 4 + SETS.length);
+    // Left spacer = Name, Class + 4 car columns + 2 set columns (no Guests
+    // column outside count mode — Plans/Guests-As-People.md).
+    expect((bandRow.querySelector('th') as HTMLTableCellElement).colSpan).toBe(2 + 4 + SETS.length);
   });
 
   it('JobColumns_CanBeHiddenAndShownAsAGroup', async () => {

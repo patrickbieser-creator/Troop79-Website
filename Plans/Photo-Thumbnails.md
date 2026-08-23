@@ -1,6 +1,12 @@
 # Photo Thumbnails — Stop Shipping 62 MB of Screenshots
 
-**Status:** Parked — ready to activate (Q3 is the only real blocker)
+**Status:** BUILT 2026-08-23 (steps 1–4, 6, 7; v1.87.0) — `lib/image-resize.ts` (resizePlan +
+browser `prepareImageForUpload`), `lib/photo-backfill.ts` (pure decisions), `scripts/backfill-photo-
+thumbnails.ts` (dry-run default, `--write` to upload/verify/repoint, `--alt` fills empty alt, refuses a
+remote DB without `--allow-remote`), media-picker resize + before/after line, `safeImageUrl` on /photos,
+data migration `20260823160000_media_cdn_url_encode_spaces.sql` (24 rows). Defaults taken: Q1 1200 px,
+Q2 JPEG, Q3 originals KEPT, Q4 no Optimizer. **Step 5 — the PRODUCTION backfill — NOT run yet**
+(dry run on local: 29 heavy covers, 60.7 MB → ~5.9 MB projected). Command in the Notes below.
 **Parked:** 2026-08-22
 **Priority:** High
 
@@ -167,3 +173,13 @@ this is reversible. Idempotent, so a partial run can simply be re-run.
   the other direction.
 - Related: the SEO work shipped in v1.74.0 now lists `/photos` in the sitemap, which
   raises the stakes on its Core Web Vitals.
+
+## Production run (2026-08-23, pending Patrick's go)
+
+```
+cd next-app && NEXT_PUBLIC_SUPABASE_URL=https://qyovupepjdxikyepieps.supabase.co SUPABASE_SERVICE_ROLE_KEY=<prod service role key> npm run backfill-photo-thumbnails -- --allow-remote            # dry run
+cd next-app && NEXT_PUBLIC_SUPABASE_URL=https://qyovupepjdxikyepieps.supabase.co SUPABASE_SERVICE_ROLE_KEY=<prod service role key> npm run backfill-photo-thumbnails -- --allow-remote --write --alt
+```
+Prod service key: `npx supabase projects api-keys --project-ref qyovupepjdxikyepieps`. Bunny creds come
+from `.env.local` (same zone). Re-running is a no-op. Eyeball one 4 MB screenshot through the media
+picker in dev before relying on the browser resize (unit-tested + sharp-probed only).

@@ -65,6 +65,7 @@
   0%   { margin-left: -40%; }
   100% { margin-left: 100%; }
 }
+.uploadSize { font-weight: 400; color: var(--admin-gray-500); }
 .uploadStatus { font-family: var(--admin-font-ui); font-size: 11px; color: var(--admin-gray-500); margin-top: 3px; }
 .uploadItemError { border-color: var(--admin-danger); background: var(--admin-status-error-bg); }
 .uploadItemError .uploadStatus { color: var(--admin-danger); }

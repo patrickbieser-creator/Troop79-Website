@@ -3,9 +3,11 @@ import {
   loadPartySignup,
   loadPartyPlacements,
   loadPartyMemberships,
+  loadHouseholdGuests,
   isSlotFirst,
   signupLocked,
-  type PartyMembership
+  type PartyMembership,
+  type HouseholdGuest
 } from '@/lib/event-signup';
 import { summarizePlacements, type PlacementLine } from '@/lib/transport';
 import type { HouseholdEntry } from '@/lib/event-signup';
@@ -48,6 +50,9 @@ export interface SignupContext {
   placements: PlacementLine[];
   /** Raw set→group memberships for the form's self-select pickers. */
   memberships: PartyMembership[];
+  /** The household's guests on record (named mode only) — the form's
+   *  "add again" picks (Plans/Guests-As-People.md). */
+  householdGuests: HouseholdGuest[];
   gateState: 'anon' | 'no-household' | 'ready';
   slotFirst: boolean;
   locked: boolean;
@@ -130,6 +135,11 @@ export async function loadSignupContext(
       : [[], []];
   const placements = summarizePlacements(placementRows);
 
+  const householdGuests =
+    household && signup && signup.guest_mode === 'named'
+      ? await loadHouseholdGuests(storedHouseholdId(household.key))
+      : [];
+
   return {
     detail,
     audience,
@@ -141,6 +151,7 @@ export async function loadSignupContext(
     existingClaims,
     placements,
     memberships,
+    householdGuests,
     gateState: !gatedIn ? 'anon' : household ? 'ready' : 'no-household',
     slotFirst,
     locked: signup ? signupLocked(signup) : false
@@ -166,8 +177,8 @@ export function signedUpNames(ctx: SignupContext): string[] {
   for (const a of household.adults) byPerson.set(a.personId, a.name);
   return existing
     .filter((e) => e.status === 'yes' || e.status === 'waitlist')
-    // Named guest rows have no person — they show by guest_name (Plans/
-    // Participant-Classification.md).
-    .map((e) => (e.person_id != null ? byPerson.get(e.person_id) : e.guest_name ?? undefined))
+    // A guest row's person is not in the household — it shows by its
+    // resolved guest name (Plans/Guests-As-People.md).
+    .map((e) => (e.person_id != null ? byPerson.get(e.person_id) : undefined) ?? e.guest_name ?? undefined)
     .filter((n): n is string => !!n);
 }
