@@ -1,6 +1,6 @@
 'use client';
 
-import { GuestRowsEditor, GuestCountField, type GuestRowValue } from './guest-rows';
+import { GuestRowsEditor, GuestCountField, GuestsLocked, type GuestRowValue } from './guest-rows';
 import { SavingOverlay, intentOf, type SaveIntent } from './save-feedback';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -659,10 +659,16 @@ export default function SlotFirstForm({
 
       {jobList}
 
-      {guestMode === 'named' && (
+      {guestMode !== 'none' && activeEntries.length === 0 && (
+        <GuestsLocked
+          mode={guestMode}
+          why="Pick a job for at least one person in your household first — guests come along with them."
+        />
+      )}
+      {guestMode === 'named' && activeEntries.length > 0 && (
         <GuestRowsEditor guests={guestRows} onChange={setGuestRows} prompt={guestPrompt} previousGuests={householdGuests} />
       )}
-      {guestMode === 'count' && (
+      {guestMode === 'count' && activeEntries.length > 0 && (
         <GuestCountField count={guestCount.count} note={guestCount.note} onChange={setGuestCount} prompt={guestPrompt} />
       )}
 

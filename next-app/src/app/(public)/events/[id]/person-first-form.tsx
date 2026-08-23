@@ -1,6 +1,6 @@
 'use client';
 
-import { GuestRowsEditor, GuestCountField, type GuestRowValue } from './guest-rows';
+import { GuestRowsEditor, GuestCountField, GuestsLocked, type GuestRowValue } from './guest-rows';
 import { SavingOverlay, intentOf, type SaveIntent } from './save-feedback';
 import { useMemo, useState } from 'react';
 import type {
@@ -790,7 +790,13 @@ export default function PersonFirstForm({
 
       {/* Guests sit with the people, not with the jobs (Patrick, 2026-08-23:
           "display guest in the same style as scouts and adults at the top"). */}
-      {signup.guest_mode === 'named' && (
+      {signup.guest_mode !== 'none' && !guestHostKey(entries) && (
+        <GuestsLocked
+          mode={signup.guest_mode}
+          why="Mark at least one person in your household as Attending first — guests come along with them."
+        />
+      )}
+      {signup.guest_mode === 'named' && guestHostKey(entries) && (
         <GuestRowsEditor
           guests={guestRows}
           onChange={setGuestRows}
@@ -798,7 +804,7 @@ export default function PersonFirstForm({
           previousGuests={householdGuests}
         />
       )}
-      {signup.guest_mode === 'count' && (
+      {signup.guest_mode === 'count' && guestHostKey(entries) && (
         <GuestCountField
           count={guestCount.count}
           note={guestCount.note}

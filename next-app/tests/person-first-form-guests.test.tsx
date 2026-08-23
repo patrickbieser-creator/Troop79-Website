@@ -85,16 +85,33 @@ describe('PersonFirstForm — guest modes', () => {
     expect(scout.guest_count).toBe(0);
   });
 
+  it('FamilyForm_GuestSection_IsLockedUntilSomeoneInTheHouseholdIsAttending', async () => {
+    // Patrick, 2026-08-23: a guest rides with an attending member, so until
+    // there is one the section shows its heading and a note — nothing else.
+    const user = userEvent.setup();
+    renderForm({ guest_mode: 'named' }, { householdGuests: [grandma] });
+    expect(screen.getByText(/mark at least one person in your household as attending first/i)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Add Grandma Pat again' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /add a guest/i })).toBeNull();
+    expect(guestsField()).toBeNull();
+    await user.click(screen.getAllByRole('button', { name: 'Attending' })[1]);
+    expect(screen.queryByText(/mark at least one person/i)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Add Grandma Pat again' })).toBeTruthy();
+    // Marking that same person Can't make it locks it again (state is kept, nothing sent).
+    await user.click(screen.getAllByRole('button', { name: 'Can’t make it' })[1]);
+    expect(screen.getByText(/mark at least one person/i)).toBeTruthy();
+  });
+
   it('FamilyForm_NamedMode_ShowsRows_HidesNumber_AndOffersPreviousGuestsAsPicks', async () => {
     const user = userEvent.setup();
     renderForm({ guest_mode: 'named' }, { householdGuests: [grandma] });
+    await user.click(screen.getAllByRole('button', { name: 'Attending' })[1]);
     expect(screen.queryByRole('spinbutton', { name: /number of guests/i })).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Add Grandma Pat again' }));
     expect(JSON.parse(guestsField()!.value)).toEqual([
       { personId: 501, name: 'Grandma Pat', cls: 'adult_guest', phone: '414-555-0100', attending: true }
     ]);
     // Members' entries never carry a count in named mode.
-    await user.click(screen.getAllByRole('button', { name: 'Attending' })[1]);
     expect(entries().find((e) => e.key === 'a:pe82')!.guest_count).toBe(0);
   });
 

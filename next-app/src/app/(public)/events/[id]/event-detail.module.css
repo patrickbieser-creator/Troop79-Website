@@ -523,6 +523,7 @@
    phone; the "brought before" picks reuse the job-board chips; a typed name
    that matches a guest on record gets a confirm line under the row. */
 .guestAgain { margin: 0 0 var(--sp-3); }
+.guestLocked { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); font-style: italic; margin: 0; }
 .guestMatch { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); margin: 8px 0 0; }
 .guestNameInput { flex: 0 0 auto; width: min(100%, 22em); font-weight: 700; } /* .gateInput flexes to fill; inside the column-flex .personName that meant a tall box */
 .guestPhoneInput { flex: 1 1 14em; }

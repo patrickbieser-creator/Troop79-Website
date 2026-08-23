@@ -208,6 +208,22 @@ export function GuestRowsEditor({
   );
 }
 
+/**
+ * The Guests section before anyone in the household is attending (Patrick,
+ * 2026-08-23: "do not display the guest section until one person has signed
+ * up … leave the title and the horizontal rule … indicate that"). A guest is
+ * saved with whoever is attending, so until someone is there is nothing to
+ * attach them to — the heading stays, everything else waits.
+ */
+export function GuestsLocked({ mode, why }: { mode: 'count' | 'named'; why: string }) {
+  return (
+    <div className={styles.guestBlock} aria-disabled="true">
+      <p className={styles.dayHead}>{mode === 'count' ? 'Bringing guests?' : 'Guests'}</p>
+      <p className={styles.guestLocked}>{why}</p>
+    </div>
+  );
+}
+
 export function GuestCountField({
   count,
   note,

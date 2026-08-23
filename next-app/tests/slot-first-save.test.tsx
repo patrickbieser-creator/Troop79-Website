@@ -144,16 +144,17 @@ describe('slot-first form — guests (Patrick, 2026-08-23: "I added the guest Fr
     expect(saveBtn().disabled).toBe(true);
   });
 
-  it('GuestsWithoutAHelper_CannotBeSaved_AndTheFormSaysWhy', async () => {
+  it('GuestSection_IsLockedUntilSomeoneHasAJob_AndSaysWhy', () => {
     // A guest row hangs off a household member who is signed up; with no job
-    // claimed there is nobody to attach them to, so the action would silently
-    // drop them — the form blocks Save and explains instead.
-    const user = userEvent.setup();
-    renderBoard([], { guestMode: 'named' });
-    await user.click(screen.getByRole('button', { name: /add a guest/i }));
-    await user.type(screen.getByRole('textbox', { name: /guest name 1/i }), 'Fred Pike');
-    expect(saveBtn().disabled).toBe(true);
-    expect(screen.getByText(/pick a job for at least one person/i)).toBeTruthy();
+    // claimed there is nobody to attach them to — so the section shows only
+    // its heading and a note until someone claims one (Patrick, 2026-08-23).
+    const { unmount } = renderBoard([], { guestMode: 'named' });
+    expect(screen.queryByRole('button', { name: /add a guest/i })).toBeNull();
+    expect(screen.getByText(/pick a job for at least one person in your household first/i)).toBeTruthy();
+    unmount();
+    renderBoard([{ slotId: 1, personKey: 's0', comment: null }], { guestMode: 'named' });
+    expect(screen.queryByText(/pick a job for at least one person in your household first/i)).toBeNull();
+    expect(screen.getByRole('button', { name: /add a guest/i })).toBeTruthy();
   });
 
   it('CountMode_ShowsTheNumber_HidesNamedRows_AndRidesOnTheHelpingEntry', async () => {
