@@ -156,6 +156,27 @@ describe('PersonFirstForm — guest modes', () => {
     expect(screen.queryByRole('button', { name: 'Add Grandma Pat again' })).toBeNull();
   });
 
+  it('FamilyForm_SaveChanges_IsGreyedOutAndReadsSaved_UntilTheDraftDiffers', async () => {
+    // Patrick, 2026-08-23: "gray it out when it will do nothing."
+    const user = userEvent.setup();
+    const hostEntry = {
+      id: 900, person_kind: 'adult', person_id: 82, participant_class: 'adult', guest_name: null, host_entry_id: null,
+      status: 'yes', participation: 'full', price_id: null, days: null, guest_count: 0, guest_note: null, notes: null,
+      permission_slip_received: false, drives_out: false, drives_back: false, vehicle_seats_out: null, vehicle_seats_back: null,
+      ride_out: null, ride_back: null, claims: [], claimComments: {}, answers: []
+    } as unknown as HouseholdEntry;
+    renderForm({ guest_mode: 'named' }, { existing: [hostEntry] });
+    const btn = () => screen.getByRole('button', { name: /saved|save changes/i }) as HTMLButtonElement;
+    expect(btn().disabled).toBe(true);
+    expect(btn().textContent).toMatch(/saved/i);
+    await user.click(screen.getAllByRole('button', { name: 'Attending' })[0]); // the scout joins
+    expect(btn().disabled).toBe(false);
+    expect(btn().textContent).toMatch(/save changes/i);
+    await user.click(screen.getAllByRole('button', { name: 'Can’t make it' })[0]);
+    // A different draft from the saved one (the scout was unmarked before) — still a change.
+    expect(btn().disabled).toBe(false);
+  });
+
   it('FamilyForm_ShowsSavingChangesOverlay_TheMomentTheFormSubmits', async () => {
     const user = userEvent.setup();
     renderForm({ guest_mode: 'none' });

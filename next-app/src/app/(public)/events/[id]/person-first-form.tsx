@@ -467,6 +467,15 @@ export default function PersonFirstForm({
 
   const anyChoice = entries.length > 0;
 
+  // Dirty = the draft differs from what was on screen when the page loaded
+  // (which is what is saved — the page reloads after every save). Save
+  // changes is greyed out and reads "Saved" otherwise (Patrick, 2026-08-23:
+  // "gray it out when it will do nothing") — the same rule the job board has.
+  const draftKey = JSON.stringify({ entries, picks, claims, newAdults, guestRows, guestCount });
+  const [savedKey] = useState(() => draftKey); // captured once, on mount
+  const hasExisting = existing.length > 0;
+  const dirty = draftKey !== savedKey;
+
   /** Per-leg ride status for an attending person, only for legs they don't
    *  drive. Shown only when the event tracks transportation. */
   const rideFields = (key: string, name: string, drivenLegs: { out: boolean; back: boolean }) => {
@@ -978,8 +987,13 @@ export default function PersonFirstForm({
       )}
 
       <div className={styles.formActions}>
-        <button type="submit" className={styles.gateBtn} disabled={!anyChoice}>
-          {existing.length > 0 ? 'Save changes' : 'Submit family signup'}
+        <button
+          type="submit"
+          className={styles.gateBtn}
+          disabled={hasExisting ? !dirty : !anyChoice}
+          title={hasExisting && !dirty ? 'No changes to save yet' : undefined}
+        >
+          {hasExisting ? (dirty ? 'Save changes' : 'Saved') : 'Submit family signup'}
         </button>
       </div>
 
