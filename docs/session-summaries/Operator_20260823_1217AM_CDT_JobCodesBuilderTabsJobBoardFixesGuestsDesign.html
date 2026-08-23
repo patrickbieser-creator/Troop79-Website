@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Session Summary — Job-code columns, Builder tabs, job-board fixes &amp; the guests design (2026-08-23)</title>
+<style>
+  :root {
+    --nw-teal: #1e3a4a;   /* Troop 79 navy (BRAND.md primary) */
+    --nw-green: #3d5a3e;  /* Troop 79 forest (BRAND.md accent) */
+    --paper: #faf6ef;
+    --ink: #2a2a2a;
+    --meta: #6d7580;
+    --line: #e2e4e8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 15px; color: var(--ink); background: var(--paper); line-height: 1.55; }
+  .header { background: var(--nw-teal); color: #fff; padding: 40px 64px; }
+  .header .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.6); margin-bottom: 8px; }
+  .header h1 { font-size: 30px; font-weight: 600; margin-bottom: 6px; }
+  .header .sub { font-size: 14px; color: rgba(255,255,255,.75); }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 36px 24px 64px; }
+  h2 { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--nw-green); border-bottom: 2px solid var(--nw-green); padding-bottom: 6px; margin: 36px 0 14px; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .metric { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+  .metric .num { font-size: 26px; font-weight: 700; color: var(--nw-teal); }
+  .metric .lbl { font-size: 12px; color: var(--meta); margin-top: 2px; }
+  ul { padding-left: 22px; }
+  li { margin-bottom: 9px; }
+  .card { background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--nw-green); border-radius: 4px; padding: 14px 18px; margin-bottom: 12px; }
+  .card.warn { border-left-color: #c0392b; }
+  .card .t { font-weight: 700; color: var(--nw-teal); }
+  .footer { text-align: center; font-size: 12px; color: var(--meta); padding: 24px; border-top: 1px solid var(--line); margin-top: 40px; }
+  code { background: #f0f1f3; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="eyebrow">Troop 79 &middot; Session Summary</div>
+  <h1>Job-code columns, a tabbed Builder, job-board fixes &amp; the guests design</h1>
+  <div class="sub">Saturday 22 &rarr; Sunday 23 August 2026 &middot; Patrick&rsquo;s four-item list, then five live requests from production &middot; v1.86.0 &rarr; v1.86.2, all deployed</div>
+</div>
+
+<div class="wrap">
+
+  <h2>At a glance</h2>
+  <div class="metrics">
+    <div class="metric"><div class="num">3</div><div class="lbl">releases deployed (v1.86.0, .1, .2)</div></div>
+    <div class="metric"><div class="num">6</div><div class="lbl">code commits, pushed to main</div></div>
+    <div class="metric"><div class="num">2</div><div class="lbl">migrations, pushed to production</div></div>
+    <div class="metric"><div class="num">1165</div><div class="lbl">tests (from 1120)</div></div>
+    <div class="metric"><div class="num">7</div><div class="lbl">decisions (D-208&ndash;D-214)</div></div>
+    <div class="metric"><div class="num">1</div><div class="lbl">design plan written &amp; reviewed</div></div>
+  </div>
+
+  <h2>How it went</h2>
+  <div class="card">
+    <div class="t">Four numbered items, then a live stream of requests</div>
+    Patrick opened with &ldquo;1. build. 2. remove from the backlog. 3. build. 4. do the design
+    pass&rdquo; against the queue from last session. While that was underway he worked the live site
+    and sent in what he found &mdash; a Builder that was hard to read, a job board whose Save button
+    did nothing, a guest who vanished, a header that wrapped badly &mdash; each folded in, gated
+    (lint / typecheck / full suite / build) and shipped the same night. Three reviews ran in the
+    background (qa-lead on the code diff; tech-lead and qa-lead on the guests design) and their
+    findings were folded in before anything was committed.
+  </div>
+
+  <h2>What shipped</h2>
+  <div class="card">
+    <div class="t">Job-code columns for job-heavy events (item 3)</div>
+    A rummage sale has 20&ndash;30 jobs; the roster&rsquo;s single prose &ldquo;Jobs&rdquo; column was
+    unreadable at that scale. Each job now has a 1&ndash;5 character code (<code>signup_slots.code</code>,
+    leader-set in the Builder or derived from the name by <code>lib/job-codes.ts</code>, unique per
+    event) and the roster grid shows <strong>one narrow column per job</strong> headed by its code:
+    a tick when claimed with the note on hover, a thin day band when jobs span days, a Show/Hide
+    jobs toggle, and click-a-code sorts the claimers to the top. The Builder got a Code field
+    (derived code as the placeholder) and lists jobs as &ldquo;Setup crew (SC)&rdquo;; the printed
+    snapshot gained a Jobs section &mdash; the readable assignment list. Families never see codes.
+  </div>
+  <div class="card">
+    <div class="t">Event Logistics step 15 (item 1) and the backfill (item 2)</div>
+    The legacy &ldquo;seats besides the driver&rdquo; columns and their two-way sync are gone
+    (<code>20260823120000</code>); seats have been &ldquo;including the driver&rdquo; since v1.81 and
+    that is now the only representation. The Phase 5 historical backfill was removed from the
+    backlog at Patrick&rsquo;s word; the plan moved to <code>Plans/Completed/</code>.
+  </div>
+  <div class="card">
+    <div class="t">Signup Builder in tabs</div>
+    Blocks stays at the top; Settings (default), Price tiers, Jobs, Questions and Assignments are
+    now tabs under it so it is clear where one form ends and the next begins; &ldquo;Add a job&rdquo;
+    is tucked away until its right-side button is clicked, like the page&rsquo;s other add controls.
+  </div>
+  <div class="card warn">
+    <div class="t">Job board: three bugs from the Unity Church service project</div>
+    <strong>Save changes did nothing</strong> &mdash; it re-submitted unchanged data; it is now
+    disabled until something actually differs and reads &ldquo;Saved&rdquo; otherwise.
+    <strong>A removed name came back</strong> &mdash; the person was simply left out of the payload,
+    so the RPC never touched their entry and their claim survived; a removed person is now sent as
+    declined and the server deletes the stale claims. <strong>A guest &ldquo;showed up nowhere&rdquo;</strong>
+    &mdash; Fred Pike <em>was</em> saved (verified in production), but the form never re-seeded saved
+    guests and the recap ignored them; saved guests now come back into the editor, the recap lists
+    them, and a guest added before anyone has a job is held with a reason (a guest row needs a host).
+  </div>
+  <div class="card">
+    <div class="t">Delete permanently, with reasons</div>
+    On the roster&rsquo;s Other responses tab a Removed row can now be erased from the database
+    (two-click confirm). If ledger rows, guest rows it hosts, or a car it drives still reference it,
+    the delete is refused with each reason <em>and</em> how to clear it &mdash; the money FK would
+    refuse anyway; guests and cars would otherwise cascade away silently.
+  </div>
+  <div class="card">
+    <div class="t">Guests as people &mdash; designed and reviewed, not built (item 4)</div>
+    <code>Plans/Guests-As-People.md</code>: a per-event Guests mode (none / count / named, defaulted by
+    category), named guests as <code>people</code> rows flagged by host household (out of the directory
+    and pickers, a People &rarr; Guests tab), guest rows written inside the signup RPC with caps, re-use
+    only by pick-list or explicit confirm, promotion via the existing merge. tech-lead and qa-lead both
+    returned go-with-changes; every change is folded into the plan. Five open questions await Patrick.
+  </div>
+
+  <h2>Deployed</h2>
+  <div class="card">
+    v1.86.0: <code>supabase db push</code> <em>first</em> (the slot-code column is additive and the new
+    snapshot selects it explicitly &mdash; old DB + new code would have errored; the drop migration was
+    safe either way), then <code>git push</code>; Vercel success. v1.86.1 and v1.86.2 were code-only
+    pushes, each confirmed by Vercel and a production smoke check. Browser verification was <em>not</em>
+    done (the dev server was down) &mdash; first eyes-on is in production, listed in BACKLOG.
+  </div>
+
+  <h2>Worth knowing</h2>
+  <ul>
+    <li>Remove &rarr; re-register creates a <em>second</em> entry (the unique index is partial on
+      non-cancelled rows): no error, but payments and placements stay on the Removed row and
+      &ldquo;Put back&rdquo; on it would then fail. Logged in BACKLOG with a recommended fix.</li>
+    <li>The Add-a-guest button on the roster enables once the roster has one live entry &mdash; a guest
+      needs a host.</li>
+    <li>The job board is a <em>draft</em>: the &times; on a chip edits the draft, Save commits &mdash;
+      no confirm pop-up needed now that Save means something.</li>
+  </ul>
+
+  <h2>Next</h2>
+  <ul>
+    <li>Production eyes-on for v1.86.0&ndash;v1.86.2 (job-code columns, Builder tabs, job board, delete permanently).</li>
+    <li>Guests as people &mdash; Phase 0a (schema) on Patrick&rsquo;s go; answer the five open questions in the plan first.</li>
+    <li>Decide the remove &rarr; re-register fix (RPC revives the cancelled row is recommended).</li>
+    <li>Carried over: B-004 password rotation; the older queue (patrol assignments, SEO, photo thumbnails, finance filters).</li>
+  </ul>
+
+</div>
+<div class="footer">Troop79-Website &middot; Operator session summary &middot; 23 Aug 2026 12:17 AM CDT</div>
+</body>
+</html>
