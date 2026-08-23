@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 22, 2026</strong> &nbsp;&middot;&nbsp; v1.84.0</p>
+      <p>Last updated: <strong>August 22, 2026</strong> &nbsp;&middot;&nbsp; v1.85.0</p>
     </div>
   </div>
 
@@ -494,6 +494,61 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.85.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.85.0</span>
+        <span class="release-date">August 22, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Roster grid rework, one navigation bar for every event page, a workspace snapshot, and a money-safety guard</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>The roster grid, redesigned around the common case.</strong> The
+              &ldquo;Attending&rdquo; tab now shows only people who are actually coming; declines,
+              waitlist, driver-only, contributors and removed people moved to a new &ldquo;Other
+              responses&rdquo; tab. Driving and Ride collapsed into four narrow, sortable columns
+              with shorthand (a bare seat count; a driver shown as one name, no title); one column
+              per patrol/tent/crew instead of one crowded list; Class shown as a small colored tag
+              instead of a full word. Columns for jobs, family answers, and driving/rides now
+              appear only on events that actually use them &mdash; a service project with no
+              drivers no longer shows empty ride columns.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>One navigation bar across every event screen.</strong> Builder, Roster,
+              each ride/patrol/tent group, Money, and the Snapshot now share one row of tabs at
+              the top, and that row only shows what the event actually has &mdash; no Money tab on
+              an event with no fees, no ride-group tabs on an event with no cars or patrols.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Snapshot moved into the workspace.</strong> Reviewing the printable snapshot
+              is now its own tab alongside the roster and money screens, with a roster order
+              switch (by patrol, alphabetical, or adults/leaders/scouts); Print is a separate,
+              explicit step that opens the clean printable page.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Money tab: a guard rail before an account goes negative.</strong> Recording
+              a payment from a scout account or the scholarship fund now shows that account&rsquo;s
+              current balance up front, and if the payment would overdraw it, requires an explicit
+              acknowledgement before it can be recorded &mdash; with a one-click option to use the
+              scholarship fund instead. Also fixed: crediting an overpayment to a scout account
+              could be applied more than once by repeated clicking; it is now capped at the
+              overpayment actually outstanding, and a scout-account or scholarship payment is now
+              recorded with the correct sign against that account&rsquo;s own balance.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 
