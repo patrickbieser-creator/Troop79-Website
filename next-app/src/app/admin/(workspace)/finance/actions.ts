@@ -861,7 +861,7 @@ export async function getEventMoneyAction(signupId: number): Promise<EventMoneyD
     await Promise.all([
       supabase
         .from('signup_entries')
-        .select('id, person_id, guest_name, person_kind, status, participation, price_id, amount_override')
+        .select('id, person_id, person_kind, status, participation, price_id, amount_override')
         .eq('event_signup_id', signupId)
         .neq('status', 'cancelled'),
       supabase.from('signup_entry_balances').select('entry_id, owed, paid, balance, settled').eq('event_signup_id', signupId),
@@ -902,7 +902,7 @@ export async function getEventMoneyAction(signupId: number): Promise<EventMoneyD
     return {
       entryId: id,
       personId: e.person_id != null ? Number(e.person_id) : null,
-      name: (e.person_id != null ? nameOf.get(Number(e.person_id)) : null) ?? (e.guest_name ? String(e.guest_name) : 'Unknown'),
+      name: (e.person_id != null ? nameOf.get(Number(e.person_id)) : null) ?? 'Unknown',
       isScout: e.person_kind === 'scout',
       status: String(e.status),
       participation: String(e.participation),

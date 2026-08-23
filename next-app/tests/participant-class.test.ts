@@ -10,7 +10,7 @@ import {
   personKindFor
 } from '../src/lib/participant-class';
 import { adminClient } from './helpers/admin-client';
-import { createTestEvent, deleteTestEvent, createTestScout, deleteTestScout } from './helpers/signup-fixtures';
+import { createTestEvent, deleteTestEvent, createTestScout, deleteTestScout, TEST_PREFIX } from './helpers/signup-fixtures';
 
 /**
  * Participant classification (Plans/Participant-Classification.md, Patrick
@@ -121,10 +121,19 @@ describe('defaultClassFor (pure)', () => {
  */
 
 describe('signup_entries — participant_class + guest rows (db)', () => {
-  it('SignupEntries_RejectsAGuestRow_WithoutNameOrHost_AndAcceptsANamedHostedGuest', async () => {
+  it('SignupEntries_RejectsARowWithoutAPerson_AndAGuestPersonNeedsAGuestClass', async () => {
+    // Phase 3 of Guests as People (2026-08-23): person_id is NOT NULL again
+    // and guest_name is gone — a guest is a people row flagged with its host
+    // household, and its entry must carry one of the four guest classes.
     const admin = adminClient();
-    const event = await createTestEvent(admin);
+    const event = await createTestEvent(admin, { guestMode: 'named' });
     const scout = await createTestScout(admin, 'PCLS');
+    const { data: hh } = await admin.from('households').insert({ label: `${TEST_PREFIX} PCLS` }).select('id').single();
+    const { data: guest } = await admin
+      .from('people')
+      .insert({ display_name: `${TEST_PREFIX} Sam Lee`, guest_host_household_id: hh!.id })
+      .select('id')
+      .single();
     try {
       const { data: host, error: hostErr } = await admin
         .from('signup_entries')
@@ -140,7 +149,7 @@ describe('signup_entries — participant_class + guest rows (db)', () => {
         .single();
       expect(hostErr).toBeNull();
 
-      const bad = await admin.from('signup_entries').insert({
+      const noPerson = await admin.from('signup_entries').insert({
         event_signup_id: event.eventSignupId,
         person_id: null,
         person_kind: 'scout',
@@ -148,24 +157,22 @@ describe('signup_entries — participant_class + guest rows (db)', () => {
         status: 'yes',
         participation: 'full'
       });
-      expect(bad.error).not.toBeNull();
+      expect(noPerson.error).not.toBeNull();
 
       const wrongClass = await admin.from('signup_entries').insert({
         event_signup_id: event.eventSignupId,
-        person_id: null,
-        guest_name: 'Sam Lee',
+        person_id: guest!.id,
         host_entry_id: host!.id,
         person_kind: 'scout',
         participant_class: 'scout',
         status: 'yes',
         participation: 'full'
       });
-      expect(wrongClass.error).not.toBeNull();
+      expect(wrongClass.error?.message).toContain('GUEST_CLASS_INVALID');
 
       const good = await admin.from('signup_entries').insert({
         event_signup_id: event.eventSignupId,
-        person_id: null,
-        guest_name: 'Sam Lee',
+        person_id: guest!.id,
         host_entry_id: host!.id,
         person_kind: 'scout',
         participant_class: 'webelos',
@@ -186,6 +193,8 @@ describe('signup_entries — participant_class + guest rows (db)', () => {
       expect(unknown.error).not.toBeNull();
     } finally {
       await deleteTestEvent(admin, event);
+      await admin.from('people').delete().eq('id', guest!.id);
+      await admin.from('households').delete().eq('id', hh!.id);
       await deleteTestScout(admin, scout);
     }
   });

@@ -42,7 +42,6 @@ function row(over: Partial<RosterRow> & { id: number; name: string }): RosterRow
     notes: null,
     household: 'Pieper',
     participantClass: 'adult',
-    guestName: null,
     hostEntryId: null,
     claims: [],
     claimsDisplay: [],
@@ -162,7 +161,7 @@ describe('RosterTable — participant class', () => {
     renderTable([
       row({ id: 1, name: 'Kevin Pieper', participantClass: 'adult' }),
       row({ id: 2, name: 'Hazel Stollenwerk', kind: 'scout', participantClass: 'junior_leader' }),
-      row({ id: 3, name: 'Sam Lee', kind: 'scout', participantClass: 'webelos', guestName: 'Sam Lee', hostEntryId: 1 })
+      row({ id: 3, name: 'Sam Lee', kind: 'scout', participantClass: 'webelos', hostEntryId: 1 })
     ]);
     const headers = screen.getAllByRole('columnheader').map((h) => h.textContent?.replace(/[▲▼↕]/g, '').trim());
     expect(headers).toContain('Class');

@@ -129,7 +129,7 @@ describe('slot-first form — guests (Patrick, 2026-08-23: "I added the guest Fr
   it('SavedGuests_AreSeededIntoTheForm_AndListedInTheRecap_SaveStaysClean', () => {
     renderBoard([{ slotId: 1, personKey: 'a0', comment: null }], { guestMode: 'named', existingGuests: [{ name: 'Fred Pike', cls: 'adult_guest', personId: 77 }] });
     expect(screen.getByDisplayValue('Fred Pike')).toBeTruthy();
-    expect(screen.getByText(/Fred Pike/, { selector: 'li, li *' })).toBeTruthy(); // the recap
+    expect(screen.getByText('Fred Pike', { selector: 'strong' })).toBeTruthy(); // the recap (the row's own status line is a <p>)
     expect(saveBtn().disabled).toBe(true); // nothing changed yet
   });
 
@@ -139,7 +139,7 @@ describe('slot-first form — guests (Patrick, 2026-08-23: "I added the guest Fr
     await user.click(screen.getByRole('button', { name: /add a guest/i }));
     await user.type(screen.getByRole('textbox', { name: /guest name 1/i }), 'Fred Pike');
     expect(saveBtn().disabled).toBe(false);
-    expect(screen.getByText(/Fred Pike/, { selector: 'li, li *' })).toBeTruthy();
+    expect(screen.getByText('Fred Pike', { selector: 'strong' })).toBeTruthy(); // the recap
     await user.click(screen.getByRole('button', { name: /remove guest 1/i }));
     expect(saveBtn().disabled).toBe(true);
   });

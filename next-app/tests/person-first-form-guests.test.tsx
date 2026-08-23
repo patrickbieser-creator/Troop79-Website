@@ -19,7 +19,6 @@ const base: EventSignup = {
   waitlist_enabled: false,
   attendance_enabled: true,
   drivers_needed: false,
-  allow_guests: false,
   guest_mode: 'none',
   audience: 'both',
   payment_instructions: null,

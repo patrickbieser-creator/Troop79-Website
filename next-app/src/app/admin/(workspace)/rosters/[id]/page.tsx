@@ -42,7 +42,6 @@ export interface RosterRow {
    *  truth; `kind` is the legacy person_kind kept in step with it. */
   participantClass: ParticipantClass;
   /** Named guest rows (no person): who they are and which entry brought them. */
-  guestName: string | null;
   hostEntryId: number | null;
   status: string;
   participation: string;
@@ -284,7 +283,7 @@ async function load(signupId: number) {
   for (const e of (entries ?? []) as Record<string, unknown>[]) {
     entryNameById.set(
       Number(e.id),
-      (e.person_id ? peopleById.get(Number(e.person_id)) : null) ?? (e.guest_name ? String(e.guest_name) : 'Unknown')
+      (e.person_id ? peopleById.get(Number(e.person_id)) : null) ?? 'Unknown'
     );
   }
   const carNameFor = (entryId: number, leg: Leg) => {
@@ -302,10 +301,7 @@ async function load(signupId: number) {
     // person_id is NOT NULL and every row has one, so the legacy name
     // fallbacks went with their columns (D-066). 'Unknown' stays as the
     // last resort for a person row that was deleted out from under an entry.
-    const name =
-      (e.person_id ? peopleById.get(Number(e.person_id)) : null) ??
-      (e.guest_name ? String(e.guest_name) : null) ??
-      'Unknown';
+    const name = (e.person_id ? peopleById.get(Number(e.person_id)) : null) ?? 'Unknown';
     const participantClass: ParticipantClass = isParticipantClass(String(e.participant_class))
       ? (String(e.participant_class) as ParticipantClass)
       : e.person_kind === 'scout'
@@ -316,7 +312,6 @@ async function load(signupId: number) {
       name,
       kind: e.person_kind as 'scout' | 'adult',
       participantClass,
-      guestName: (e.guest_name as string | null) ?? null,
       hostEntryId: e.host_entry_id != null ? Number(e.host_entry_id) : null,
       status: String(e.status),
       participation: String(e.participation),

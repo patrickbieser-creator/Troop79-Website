@@ -84,28 +84,16 @@ describe('guests as people — schema (db)', () => {
     extraPeople = [];
   });
 
-  it('GuestMode_SyncsWithAllowGuests_BothWays_ForOneRelease', async () => {
+  it('GuestMode_IsTheOnlySwitch_AndIsCheckConstrained', async () => {
     admin = adminClient();
     event = await createTestEvent(admin, { guestMode: 'count' });
-    let { data } = await admin.from('event_signups').select('guest_mode, allow_guests').eq('id', event.eventSignupId).single();
-    expect(data).toEqual({ guest_mode: 'count', allow_guests: true });
-
-    // Old code writes allow_guests: false ⇒ none, true ⇒ named.
-    await admin.from('event_signups').update({ allow_guests: false }).eq('id', event.eventSignupId);
-    ({ data } = await admin.from('event_signups').select('guest_mode, allow_guests').eq('id', event.eventSignupId).single());
-    expect(data).toEqual({ guest_mode: 'none', allow_guests: false });
-
-    await admin.from('event_signups').update({ allow_guests: true }).eq('id', event.eventSignupId);
-    ({ data } = await admin.from('event_signups').select('guest_mode, allow_guests').eq('id', event.eventSignupId).single());
-    expect(data).toEqual({ guest_mode: 'named', allow_guests: true });
-
-    // New code writes guest_mode: the flag follows.
-    await admin.from('event_signups').update({ guest_mode: 'none' }).eq('id', event.eventSignupId);
-    ({ data } = await admin.from('event_signups').select('guest_mode, allow_guests').eq('id', event.eventSignupId).single());
-    expect(data).toEqual({ guest_mode: 'none', allow_guests: false });
-
+    const { data } = await admin.from('event_signups').select('guest_mode').eq('id', event.eventSignupId).single();
+    expect(data).toEqual({ guest_mode: 'count' });
     const bad = await admin.from('event_signups').update({ guest_mode: 'maybe' }).eq('id', event.eventSignupId);
     expect(bad.error).not.toBeNull();
+    // Phase 3 (2026-08-23): allow_guests is gone.
+    const legacy = await admin.from('event_signups').select('allow_guests').eq('id', event.eventSignupId);
+    expect(legacy.error).not.toBeNull();
   });
 
   it('GuestPerson_CannotAlsoBeAHouseholdMember_EitherWayRound', async () => {

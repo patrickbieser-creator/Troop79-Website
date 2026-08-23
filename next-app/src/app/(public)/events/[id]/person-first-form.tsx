@@ -770,11 +770,12 @@ export default function PersonFirstForm({
                 ])
               }
             >
-              + Add another adult
+              + Add another parent or guardian
             </button>
             <p className={styles.pickerHint}>
-              Missing a parent or guardian? Add them here — we’ll save them to your scout’s record so
-              you don’t have to type it again next time.
+              Missing a parent or guardian from the list above? Add them here — we’ll save them to your
+              scout’s record so you don’t have to type it again next time. (Friends, siblings and other
+              guests go under “Bringing anyone else?” below.)
             </p>
           </div>}
         </>

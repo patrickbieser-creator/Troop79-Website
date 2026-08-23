@@ -528,6 +528,7 @@
 .guestRowAdult { grid-template-columns: 1fr 1fr auto auto; }
 .guestAgain { margin: 0 0 var(--sp-3); }
 .guestMatch { grid-column: 1 / -1; font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); margin: 0; }
+.guestStatus { grid-column: 1 / -1; font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--forest); margin: 0; }
 .guestCountRow { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); align-items: center; }
 .guestCountRow .gateInput[type='number'] { width: 6em; }
 .guestCountRow .gateInput[type='text'] { flex: 1 1 16em; }

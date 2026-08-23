@@ -40,7 +40,7 @@ async function load(signupId: number) {
     supabase
       .from('signup_entries')
       .select(
-        'id, person_id, guest_name, participant_class, status, participation, drives_out, drives_back, vehicle_seats_out, vehicle_seats_back, ride_out, ride_back'
+        'id, person_id, participant_class, status, participation, drives_out, drives_back, vehicle_seats_out, vehicle_seats_back, ride_out, ride_back'
       )
       .eq('event_signup_id', sig.id)
       .neq('status', 'cancelled'),
@@ -104,7 +104,7 @@ async function load(signupId: number) {
     const person = e.person_id ? personById.get(Number(e.person_id)) : null;
     return {
       entryId: Number(e.id),
-      name: person?.display_name ?? (e.guest_name ? String(e.guest_name) : 'Unknown'),
+      name: person?.display_name ?? 'Unknown',
       participantClass: (isParticipantClass(String(e.participant_class))
         ? String(e.participant_class)
         : 'adult') as ParticipantClass,

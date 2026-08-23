@@ -40,6 +40,24 @@ describe('GuestRowsEditor', () => {
     expect(onChange).toHaveBeenLastCalledWith([{ personId: null, name: 'Aunt Jo', cls: 'adult_guest', phone: '' }]);
   });
 
+  it('ATypedRow_SaysItIsAlreadyOnTheSignup_ThereIsNoSeparateAddStep', () => {
+    // Patrick, 2026-08-23: "I typed in a name … I'm confused as to what to do
+    // next." The row itself answers: a blank row says type the name, a named
+    // row says they're coming and will be saved with Submit / Save changes.
+    render(
+      <GuestRowsEditor
+        guests={[
+          { personId: null, name: '', cls: 'youth_guest', phone: '' },
+          { personId: null, name: 'Fred Pike', cls: 'adult_guest', phone: '' }
+        ]}
+        onChange={() => {}}
+      />
+    );
+    expect(screen.getByText(/there’s no separate add step/i)).toBeTruthy();
+    expect(screen.getByText(/Fred Pike is coming with your household/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /add another guest/i })).toBeTruthy();
+  });
+
   it('AdultGuestRow_OffersAPhone_YouthRowDoesNot', () => {
     render(
       <GuestRowsEditor

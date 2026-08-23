@@ -66,11 +66,8 @@ export interface EventSignup {
   waitlist_enabled: boolean;
   attendance_enabled: boolean;
   drivers_needed: boolean;
-  /** Kept one release for the old readers; `guest_mode` is the truth
-   *  (Plans/Guests-As-People.md) — the DB keeps the two in sync. */
-  allow_guests: boolean;
   /** none · count (the host's entry carries "+N guests") · named (every guest
-   *  is a people row with its own entry). */
+   *  is a people row with its own entry). The only guest switch since Phase 3. */
   guest_mode: GuestMode;
   audience: 'scouts' | 'adults' | 'both';
   payment_instructions: string | null;
@@ -142,14 +139,14 @@ export function signupLocked(signup: EventSignup): boolean {
 export interface HouseholdEntry {
   id: number;
   person_kind: 'scout' | 'adult';
-  /** Every row carries one since Guests as People (2026-08-23) — a named
-   *  guest is a `people` row too. Nullable in the type only until Phase 3
-   *  tightens the column (legacy guest rows were backfilled). */
+  /** Every row carries one — a named guest is a `people` row too (NOT NULL
+   *  since Phase 3, 2026-08-23). The type stays nullable only because the
+   *  loaders are typed loosely; treat null as a data error. */
   person_id: number | null;
   participant_class: ParticipantClass;
-  /** A guest row's display name — resolved from `people` for rows written
-   *  since Guests as People, from the legacy column before. null for a
-   *  household member (their name comes from the household). */
+  /** DERIVED, not a column: a guest row's display name from its people row
+   *  (loadPartySignup fills it). null for a household member (their name
+   *  comes from the household). */
   guest_name: string | null;
   /** Non-null ⇒ this row is a GUEST brought by that member's entry. */
   host_entry_id: number | null;
@@ -192,7 +189,7 @@ export interface PartyIdentities {
 }
 
 const ENTRY_COLUMNS =
-  'id, person_kind, person_id, participant_class, guest_name, host_entry_id, status, participation, ' +
+  'id, person_kind, person_id, participant_class, host_entry_id, status, participation, ' +
   'price_id, days, guest_count, guest_note, notes, permission_slip_received, ' +
   'drives_out, drives_back, vehicle_seats_out, vehicle_seats_back, ride_out, ride_back';
 
@@ -221,7 +218,10 @@ export async function loadPartySignup(
   if (householdId != null) query = query.eq('household_id', householdId);
   const { data: entries } = await query;
 
-  const all = (entries ?? []) as unknown as Omit<HouseholdEntry, 'claims' | 'answers'>[];
+  const all = ((entries ?? []) as unknown as Omit<HouseholdEntry, 'claims' | 'answers' | 'guest_name'>[]).map((r) => ({
+    ...r,
+    guest_name: null as string | null
+  }));
   // Household path already filtered in SQL; identity path narrows here.
   // person_id-only: it's been NOT NULL since 20260720210000, and as of the
   // submit_household_signup party-membership check (2026-07-25) every future
@@ -240,10 +240,9 @@ export async function loadPartySignup(
   }
   if (rows.length === 0) return [];
 
-  // A guest row's name lives on its people row now (Guests as People); the
-  // legacy guest_name column is the fallback for any row the backfill missed.
+  // A guest row's name lives on its people row (Guests as People).
   const guestPersonIds = rows
-    .filter((r) => r.host_entry_id != null && r.person_id != null && !r.guest_name)
+    .filter((r) => r.host_entry_id != null && r.person_id != null)
     .map((r) => r.person_id as number);
   if (guestPersonIds.length > 0) {
     const { data: guestPeople } = await supabase
@@ -252,7 +251,7 @@ export async function loadPartySignup(
       .in('id', guestPersonIds);
     const nameById = new Map(((guestPeople ?? []) as { id: number; display_name: string }[]).map((p) => [p.id, p.display_name]));
     for (const r of rows) {
-      if (r.host_entry_id != null && r.person_id != null && !r.guest_name) {
+      if (r.host_entry_id != null && r.person_id != null) {
         r.guest_name = nameById.get(r.person_id) ?? null;
       }
     }
@@ -353,19 +352,15 @@ export async function loadPartyPlacements(eventSignupId: number, entryIds: numbe
 
   // Names: the party's own people (for "Maya —") and the drivers' family names.
   const driverEntryIds = [...groupById.values()].map((g) => g.driver_entry_id).filter((v): v is number => v != null);
-  const entryPeople = mustList<{ id: number; person_id: number | null; guest_name: string | null }>(
+  const entryPeople = mustList<{ id: number; person_id: number | null }>(
     await supabase
       .from('signup_entries')
-      .select('id, person_id, guest_name')
+      .select('id, person_id')
       .in('id', [...new Set([...entryIds, ...driverEntryIds])]),
     `${ctx}: entries`
   );
   const personIdByEntry = new Map<number, number | null>();
-  const guestNameByEntry = new Map<number, string | null>();
-  for (const e of entryPeople) {
-    personIdByEntry.set(e.id, e.person_id);
-    guestNameByEntry.set(e.id, e.guest_name);
-  }
+  for (const e of entryPeople) personIdByEntry.set(e.id, e.person_id);
   const personIds = [...personIdByEntry.values()].filter((v): v is number => v != null);
   const people = personIds.length
     ? mustList<{ id: number; display_name: string; last_name: string | null }>(
@@ -376,7 +371,7 @@ export async function loadPartyPlacements(eventSignupId: number, entryIds: numbe
   const personById = new Map(people.map((p) => [p.id, p]));
   const nameOf = (entryId: number) => {
     const pid = personIdByEntry.get(entryId);
-    return (pid != null ? personById.get(pid)?.display_name : null) ?? guestNameByEntry.get(entryId) ?? 'Someone';
+    return (pid != null ? personById.get(pid)?.display_name : null) ?? 'Someone';
   };
   const familyNameOf = (entryId: number | null) => {
     if (entryId == null) return null;
@@ -440,7 +435,7 @@ export async function loadEventDetail(entryId: number): Promise<EventDetail | nu
     .from('event_signups')
     .select(
       'id, status, deadline, capacity, waitlist_enabled, attendance_enabled, drivers_needed, ' +
-        'allow_guests, guest_mode, audience, payment_instructions, needs_permission_slip, needs_ahmr_c, ' +
+        'guest_mode, audience, payment_instructions, needs_permission_slip, needs_ahmr_c, ' +
         // slots_intro is intentionally no longer selected: per-job
         // `signup_slots.description` replaced it (migration 20260808120000).
         // The column still exists and still holds text on live signups.

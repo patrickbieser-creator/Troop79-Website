@@ -150,6 +150,17 @@ export function GuestRowsEditor({
                 >
                   Remove
                 </button>
+                {/* Patrick, 2026-08-23: "I typed in a name … I'm confused as to
+                    what to do next." There IS no next step — a typed row is on
+                    the signup — so say so, per row, the moment a name exists. */}
+                {g.name.trim() && !match && (
+                  <p className={styles.guestStatus}>
+                    ✓ {g.name.trim()} is coming with your household — included when you press Submit / Save changes.
+                  </p>
+                )}
+                {!g.name.trim() && (
+                  <p className={styles.guestStatus}>Type their name — that’s all; there’s no separate add step.</p>
+                )}
                 {match && (
                   <p className={styles.guestMatch}>
                     Looks like {match.name}, who you&rsquo;ve brought before.{' '}
@@ -169,7 +180,7 @@ export function GuestRowsEditor({
         </ul>
       )}
       <button type="button" className={styles.guestAdd} onClick={add}>
-        + Add a guest
+        {guests.length > 0 ? '+ Add another guest' : '+ Add a guest'}
       </button>
     </div>
   );

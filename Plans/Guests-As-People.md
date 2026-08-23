@@ -4,8 +4,10 @@
 build; browser-verified on the dev server — Builder mode control, family named + count forms end to end,
 roster "guest of", People → Guests tab). qa-lead on the code: **go-with-changes, 82/100** — its two
 missing security tests were added (`tests/guest-actions-gate.test.ts`, re-pick-of-another-household in
-`tests/guests-as-people.test.ts`). **Phase 3 (drops) NOT done — after one soak.** Deploy: `supabase db
-push` (20260823140000 + 20260823150000 + 20260823160000) THEN `git push`.
+`tests/guests-as-people.test.ts`). **Phase 3 DONE 2026-08-23 (Patrick: "proceed"):** `20260823170000_guests_phase3_drops.sql` — backfill re-run,
+`person_id NOT NULL`, CHECKs `signup_entries_identity`/`_guest_class` dropped, `guest_name` dropped (readers
+derive the name from the people row; `sync_car_groups_for_entry` re-created without it), `allow_guests` + sync
+trigger dropped. Deploy order for the tightening: code first (`git push`, Vercel Ready) then `db push`.
 Reviews: tech-lead + qa-lead (PII of non-members) — see the Review section at the end.
 
 **What shipped (2026-08-23):** migrations `20260823140000_guest_mode_and_guest_people.sql` (guest_mode
@@ -25,7 +27,7 @@ guests". Prod had 0 legacy guest rows at build time, so the backfill is a no-op 
 (tech-lead); adult phone collected, optional; counted guests take capacity seats; Guests tab under People.
 Still open: stating "the host adult is responsible" on the form (not added).
 
-**Phase 3 checklist (one soak later):** re-run the §5 backfill block (the OLD client may have written
+**Phase 3 checklist — EXECUTED 2026-08-23 (kept for the record):** re-run the §5 backfill block (the OLD client may have written
 `person_id null + guest_name` rows in the minutes between db push and the code deploy), then
 `person_id SET NOT NULL`, drop `guest_name`, `allow_guests`, the sync trigger, and CHECKs
 `signup_entries_identity` / `signup_entries_guest_class` (verify their values first — qa-lead); the

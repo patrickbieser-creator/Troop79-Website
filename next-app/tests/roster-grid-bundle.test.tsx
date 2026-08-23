@@ -41,7 +41,6 @@ function row(over: Partial<RosterRow> & { id: number; name: string }): RosterRow
     notes: null,
     household: 'Pieper',
     participantClass: 'adult',
-    guestName: null,
     hostEntryId: null,
     claims: [],
     claimsDisplay: [],
