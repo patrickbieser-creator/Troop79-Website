@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Session Summary — Roster grid, event navigation, snapshot &amp; money guard (2026-08-22)</title>
+<style>
+  :root {
+    --nw-teal: #1e3a4a;   /* Troop 79 navy (BRAND.md primary) */
+    --nw-green: #3d5a3e;  /* Troop 79 forest (BRAND.md accent) */
+    --paper: #faf6ef;
+    --ink: #2a2a2a;
+    --meta: #6d7580;
+    --line: #e2e4e8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 15px; color: var(--ink); background: var(--paper); line-height: 1.55; }
+  .header { background: var(--nw-teal); color: #fff; padding: 40px 64px; }
+  .header .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.6); margin-bottom: 8px; }
+  .header h1 { font-size: 30px; font-weight: 600; margin-bottom: 6px; }
+  .header .sub { font-size: 14px; color: rgba(255,255,255,.75); }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 36px 24px 64px; }
+  h2 { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--nw-green); border-bottom: 2px solid var(--nw-green); padding-bottom: 6px; margin: 36px 0 14px; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .metric { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+  .metric .num { font-size: 26px; font-weight: 700; color: var(--nw-teal); }
+  .metric .lbl { font-size: 12px; color: var(--meta); margin-top: 2px; }
+  ul { padding-left: 22px; }
+  li { margin-bottom: 9px; }
+  .card { background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--nw-green); border-radius: 4px; padding: 14px 18px; margin-bottom: 12px; }
+  .card.warn { border-left-color: #c0392b; }
+  .card .t { font-weight: 700; color: var(--nw-teal); }
+  .footer { text-align: center; font-size: 12px; color: var(--meta); padding: 24px; border-top: 1px solid var(--line); margin-top: 40px; }
+  code { background: #f0f1f3; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="eyebrow">Troop 79 &middot; Session Summary</div>
+  <h1>Roster grid, event navigation, snapshot &amp; a money guard rail</h1>
+  <div class="sub">Saturday, 22 August 2026 &middot; a long live-review pass driven by Patrick clicking through a Pinewoods practice event &middot; v1.85.0</div>
+</div>
+
+<div class="wrap">
+
+  <h2>At a glance</h2>
+  <div class="metrics">
+    <div class="metric"><div class="num">3</div><div class="lbl">code commits, pushed to main</div></div>
+    <div class="metric"><div class="num">42</div><div class="lbl">files changed</div></div>
+    <div class="metric"><div class="num">2</div><div class="lbl">migrations — applied locally, not yet in production</div></div>
+    <div class="metric"><div class="num">1123</div><div class="lbl">tests (from 1070)</div></div>
+    <div class="metric"><div class="num">5</div><div class="lbl">decisions (D-203&ndash;D-207)</div></div>
+  </div>
+
+  <h2>How it went</h2>
+  <div class="card">
+    <div class="t">Practice data, then a live click-through</div>
+    Built an event-sheet importer and a production&rarr;local refresh script so the whole logistics
+    feature set could be exercised against a realistic practice event (Pinewoods Campout) without
+    touching production. Patrick then worked through the roster, money, assignments and snapshot
+    screens turn by turn, calling out exactly what didn&rsquo;t work &mdash; a weaving column here, a
+    tab that made no sense there &mdash; and each was fixed and gated (lint/typecheck/test/build)
+    before moving to the next.
+  </div>
+
+  <h2>What shipped</h2>
+  <div class="card">
+    <div class="t">The roster grid, rebuilt around the common case</div>
+    A new <strong>Attending</strong> tab shows only people actually coming
+    (<code>status='yes' AND participation='full'</code>); declines, waitlist, driver-only,
+    contributors and removed people moved to a new <strong>Other responses</strong> tab. Driving and
+    Ride collapsed into four narrow, centered, sortable columns with shorthand &mdash; a bare seat
+    count, a driver named once with no title, a blank cell (not &ldquo;needs&rdquo;) when unplaced. One
+    column per patrol/tent/crew instead of one crowded list. Class renders as a small colored pill
+    (youth light, adult dark) with a full legend on hover. Feature columns &mdash; Jobs, Answers,
+    Driving/Ride, even the row Edit dialog&rsquo;s Transportation section &mdash; now appear only when
+    the event actually uses that feature, the same block-checklist philosophy the Builder already used.
+  </div>
+  <div class="card">
+    <div class="t">One navigation bar for every event page</div>
+    Builder, Roster, each assignment set, Money and Snapshot used to carry their own, mutually
+    inconsistent set of text links. A new shared, data-driven <code>EventNav</code> now renders
+    identically on all five &mdash; and only shows what the event has: no set tabs on an event with no
+    cars or patrols, no Money tab on an event with no fees. Found and fixed on the Unity Church service
+    project, which had been showing Rides &amp; Assignments and Money tabs for features it doesn&rsquo;t use.
+  </div>
+  <div class="card">
+    <div class="t">Snapshot moved into the workspace</div>
+    The printable snapshot used to render straight to a bare document. It now has a proper workspace
+    page (sidebar, the shared nav, a By-patrol / A&ndash;Z / Adults-JLs-Scouts order switch) with
+    printing as one explicit further step, opening the clean print view in a new tab. The printed
+    roster gained Patrol/Tent columns and a bare-number Grade; car cards stopped repeating the
+    driver&rsquo;s phone, which Contacts already carries.
+  </div>
+  <div class="card warn">
+    <div class="t">Money: two real bugs found and fixed while testing</div>
+    Clicking &ldquo;Credit to account&rdquo; more than once minted a duplicate scout-account credit
+    each time &mdash; crediting never changed the event&rsquo;s displayed balance, so the button
+    never went away. Separately, a payment recorded &ldquo;from&rdquo; the scout account had been
+    writing a <em>positive</em> row on that account (raising the balance) instead of debiting it.
+    Both are fixed: the balances view now nets credits, and notional accounts (scout account,
+    scholarship fund) store a fee payment as a negative row, a refund as positive. A new Record-payment
+    guard shows the chosen account&rsquo;s live balance and requires an explicit acknowledgement
+    before letting it go negative, with a one-click offer to use the scholarship fund instead.
+  </div>
+
+  <h2>Deployed &mdash; code first, migrations still pending</h2>
+  <div class="card">
+    Full workflow: build &rarr; test &rarr; commit &rarr; pull (nothing to merge) &rarr; changelog
+    &rarr; push to <code>origin/main</code>. Vercel will deploy from this push. The two new
+    migrations (<code>20260823100000</code>, <code>20260823110000</code>) are applied and verified
+    against local dev only &mdash; <code>supabase db push</code> is next session&rsquo;s first job,
+    once the Vercel deploy is confirmed.
+  </div>
+
+  <h2>Worth knowing</h2>
+  <ul>
+    <li>The Pinewoods practice event lives on local dev only, built from real historical spreadsheet
+      data via the new importer &mdash; it is separate from the still-unstarted Phase 5 backfill.</li>
+    <li>The importer refuses a non-localhost Supabase URL without <code>--allow-remote</code>, and is
+      idempotent/rollback-able via an <code>import_batch</code> tag.</li>
+    <li>Every UI tweak this session (driver-name format, sort-arrow style, pill colors, column order)
+      came from Patrick clicking the live dev server and reacting in real time &mdash; recorded in
+      detail in <code>Plans/Roster-Status-Tab.md</code> rather than repeated here.</li>
+  </ul>
+
+  <h2>Next</h2>
+  <ul>
+    <li><code>supabase db push</code> for the two pending migrations, once the Vercel deploy is confirmed.</li>
+    <li>Patrick asked for more detail in the roster row Edit dialog&rsquo;s job listing (the Unity
+      Church service project, 20&ndash;30 expected jobs on the rummage sale) &mdash; ask what detail
+      before building; related to the parked job-code-columns design.</li>
+    <li>Two still-parked designs from this session&rsquo;s notes: guests as people (per-event count
+      vs. named mode), and job-code columns for job-heavy events.</li>
+    <li>Carried over: Phase 5 backfill, B-004 password rotation, step-15 cleanup, and the
+      nineteenth-session queue (patrol assignments, SEO, photo thumbnails).</li>
+  </ul>
+
+</div>
+<div class="footer">Troop79-Website &middot; Operator session summary &middot; 22 Aug 2026 10:20 PM CDT</div>
+</body>
+</html>
