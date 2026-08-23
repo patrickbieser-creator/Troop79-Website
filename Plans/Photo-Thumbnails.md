@@ -6,8 +6,10 @@ thumbnails.ts` (dry-run default, `--write` to upload/verify/repoint, `--alt` fil
 remote DB without `--allow-remote`), media-picker resize + before/after line, `safeImageUrl` on /photos,
 data migration `20260823160000_media_cdn_url_encode_spaces.sql` (24 rows). Defaults taken: Q1 1200 px,
 Q2 JPEG, Q3 originals KEPT, Q4 no Optimizer. Per-file exception (Patrick, 2026-08-23): a quiet
-"Keep original size" checkbox under each pending upload skips the resize — off by default. **Step 5 — the PRODUCTION backfill — NOT run yet**
-(dry run on local: 29 heavy covers, 60.7 MB → ~5.9 MB projected). Command in the Notes below.
+"Keep original size" checkbox under each pending upload skips the resize — off by default. **Step 5 — the PRODUCTION backfill — RUN 2026-08-23:** 29 covers re-encoded, **60.7 MB → 4.9 MB**, every
+cover ≤ 248 KB, originals kept, re-run is a no-op. First attempt repointed nothing because the verify
+step HEADed the Bunny Storage API (no HEAD support) — fixed to a 1-byte ranged GET + patient CDN check;
+the 29 orphaned first-attempt objects were deleted from storage.
 **Parked:** 2026-08-22
 **Priority:** High
 

@@ -120,14 +120,24 @@ const io: BackfillIo = {
   async verify(cdnUrl) {
     // The CDN may take a moment; the storage endpoint is authoritative, then
     // the pull zone must answer too (that is what /photos will fetch).
+    // The Bunny Storage API has no HEAD (the first production run, 2026-08-23,
+    // failed every verify on that alone — 29 good derivatives uploaded, none
+    // repointed). A 1-byte ranged GET is the cheapest existence check it
+    // supports; then the pull zone must answer (that is what /photos fetches),
+    // HEAD first and a GET if HEAD is refused, with time for propagation.
     const c = cfg!;
     const path = cdnUrl.slice(`https://${c.pullZoneHost}/`.length);
-    const st = await fetch(`https://${c.storageHost}/${c.zone}/${path}`, { method: 'HEAD', headers: { AccessKey: c.apiKey } });
+    const st = await fetch(`https://${c.storageHost}/${c.zone}/${path}`, {
+      method: 'GET',
+      headers: { AccessKey: c.apiKey, Range: 'bytes=0-0' }
+    });
     if (!st.ok) return false;
-    for (let i = 0; i < 5; i++) {
-      const res = await fetch(cdnUrl, { method: 'HEAD', cache: 'no-store' });
-      if (res.ok) return true;
-      await new Promise((r) => setTimeout(r, 1500));
+    for (let i = 0; i < 12; i++) {
+      const head = await fetch(cdnUrl, { method: 'HEAD', cache: 'no-store' });
+      if (head.ok) return true;
+      const got = await fetch(cdnUrl, { method: 'GET', cache: 'no-store', headers: { Range: 'bytes=0-0' } });
+      if (got.ok) return true;
+      await new Promise((r) => setTimeout(r, 2500));
     }
     return false;
   },
