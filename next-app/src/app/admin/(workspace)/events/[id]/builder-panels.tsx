@@ -812,17 +812,15 @@ export function BuilderPanels({
                       {/* The name is the edit trigger as well as the label —
                           reaching for the thing you want to change is the
                           instinct the small Edit button alone didn't serve. */}
-                      <span className={styles.jobCode} title="Roster column code">
-                        {jobCodes.get(id)}
-                      </span>{' '}
                       <button
                         type="button"
                         className={styles.rowLabelBtn}
                         disabled={pending}
-                        title="Edit this job"
+                        title="Edit this job — the code in parentheses is its roster column header"
                         onClick={() => openSlotEdit(sl)}
                       >
-                        {s(sl.label)}
+                        {/* "Setup crew (SC)" — same font and size (Patrick, 2026-08-23). */}
+                        {s(sl.label)} ({jobCodes.get(id)})
                       </button>
                       {!isShift && <span className={styles.tag}>task</span>}
                       {b(sl.attendance_required) === false && (

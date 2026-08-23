@@ -18,7 +18,9 @@ import {
   questionAnswers,
   type BackfillPricesResult,
   type SlotClaimant,
-  type QuestionAnswerRow, signupEntryInsertRow } from '@/lib/event-signup-admin';
+  type QuestionAnswerRow, signupEntryInsertRow,
+  permanentDeleteGuard
+} from '@/lib/event-signup-admin';
 
 /*
  * Event Signup builder actions. House pattern throughout:
@@ -707,6 +709,57 @@ export async function restoreEntry(
     })
     .eq('id', entryId);
   if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/admin/rosters/${signupId}`);
+  revalidateEvent(calendarEntryId, signupId);
+  return { ok: true };
+}
+
+/**
+ * Permanently delete a roster row that is already Removed (Patrick,
+ * 2026-08-23: "so the record is permanently removed from the database").
+ * Remove stays the soft, undoable step; this is the hard one behind it, for a
+ * duplicate or a mistaken signup that should leave no trace. Guarded: only
+ * status 'cancelled', and never while a ledger row points at it (the FK has
+ * no ON DELETE — the database would refuse; the guard says why in words).
+ * Claims, answers, group memberships and hosted guest rows cascade.
+ */
+export async function deleteEntryPermanently(
+  entryId: number,
+  signupId: number,
+  calendarEntryId: number
+): Promise<Result> {
+  await requireCapability('calendar.write');
+  const supabase = createAdminClient();
+
+  const { data: entry } = await supabase
+    .from('signup_entries')
+    .select('id, status, event_signup_id')
+    .eq('id', entryId)
+    .maybeSingle();
+  const row = entry as { id: number; status: string; event_signup_id: number } | null;
+  if (!row || row.event_signup_id !== signupId) return { ok: false, error: 'Entry not found.' };
+
+  const [{ count: ledgerRows }, { count: hostedGuests }, { count: carsDriven }] = await Promise.all([
+    supabase.from('financial_transactions').select('id', { count: 'exact', head: true }).eq('signup_entry_id', entryId),
+    supabase.from('signup_entries').select('id', { count: 'exact', head: true }).eq('host_entry_id', entryId),
+    supabase.from('signup_groups').select('id', { count: 'exact', head: true }).eq('driver_entry_id', entryId)
+  ]);
+  const guard = permanentDeleteGuard({
+    status: row.status,
+    ledgerRows: ledgerRows ?? 0,
+    hostedGuests: hostedGuests ?? 0,
+    carsDriven: carsDriven ?? 0
+  });
+  if (!guard.ok) return guard;
+
+  const { error } = await supabase.from('signup_entries').delete().eq('id', entryId);
+  if (error) {
+    return {
+      ok: false,
+      error: error.code === '23503' ? 'Something else still references this row, so it cannot be deleted. Leave it as Removed.' : error.message
+    };
+  }
 
   revalidatePath(`/admin/rosters/${signupId}`);
   revalidateEvent(calendarEntryId, signupId);

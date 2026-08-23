@@ -216,14 +216,13 @@
    headed by its 1–5 char code (.thCenter + the sort button); the cell is a tick
    when claimed, blank otherwise, with the job / note on hover. When the jobs
    span days a thin band row groups the codes under "Fri 10/9 · Sat 10/10 ·
-   Anytime". .jobCode is the small code chip beside a label (Edit dialog,
-   Builder list). */
+   Anytime". Beside a label (Edit dialog, Builder list) the code is plain
+   text in parentheses — "Setup crew (SC)", same font and size (Patrick). */
 .bandRow th { border-bottom: none; padding-bottom: 0; }
 .jobBand { text-align: center; font-size: var(--admin-text-2xs); font-weight: var(--admin-weight-bold); letter-spacing: var(--admin-tracking-wide); text-transform: uppercase; color: var(--admin-gray-600); border-bottom: 1px solid var(--admin-gray-300); }
 .jobTick { color: var(--admin-forest); font-weight: var(--admin-weight-bold); }
 /* Builder: the job-code field is five characters wide on purpose. */
 .codeInput { width: 6.5ch !important; min-width: 0; flex: 0 0 auto; text-transform: uppercase; font-family: var(--admin-font-mono); }
-.jobCode { display: inline-block; font-family: var(--admin-font-mono); font-size: var(--admin-text-2xs); font-weight: var(--admin-weight-bold); letter-spacing: var(--admin-tracking-wide); color: var(--admin-gray-700); background: var(--admin-gray-100); border: 1px solid var(--admin-gray-200); border-radius: var(--admin-radius-sm); padding: 0 var(--admin-space-1); line-height: 1.5; vertical-align: middle; }
 /* Negative money (Patrick, 2026-08-22: "red, in parentheses, with a negative
    sign — all three to really make it stand out"). */
 .negMoney { color: var(--admin-danger); font-weight: var(--admin-weight-bold); white-space: nowrap; }

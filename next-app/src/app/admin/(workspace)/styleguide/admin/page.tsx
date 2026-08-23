@@ -574,9 +574,9 @@ export default function StyleguidePage() {
             <SortHeaderSpecimen />
           </Specimen>
           <Specimen
-            label="Roster grid — stacked header, tight cells, class pill, job-code columns (events-admin .thStack / .cellTight / .noteCell / .classPill / .jobBand / .jobTick / .jobCode)"
+            label="Roster grid — stacked header, tight cells, class pill, job-code columns (events-admin .thStack / .cellTight / .noteCell / .classPill / .jobBand / .jobTick)"
             canonical
-            note="Roster grid space-savers (2026-08-22): a two-word header stacks ('Driving' over 'To') so the column stays as narrow as its one-number cells; the two lines are separate spans so the accessible name still reads 'Driving To'. .noteCell keeps notes to one line with the full text on hover (title). .classPill is CATEGORICAL on the indexed scale — youth classes light (S red · JL teal · Cub gold · W orange · G plum), adult classes dark (A blue, adult-guest G plum) — not the status Badge, per badge.tsx's scope rule. Job-code columns (2026-08-23, job-heavy events): ONE narrow column per job headed by its 1–5 char code (.thCenter; full label · when · coverage in the title), a .jobTick when claimed, blank otherwise; when jobs span days a .jobBand row (scope=colgroup) groups the codes under 'Fri 10/9 · Sat 10/10 · Anytime'. .jobCode is the code chip beside a label (Edit dialog, Builder list). Codes come from lib/job-codes — leader-set or derived from the label, unique per event."
+            note="Roster grid space-savers (2026-08-22): a two-word header stacks ('Driving' over 'To') so the column stays as narrow as its one-number cells; the two lines are separate spans so the accessible name still reads 'Driving To'. .noteCell keeps notes to one line with the full text on hover (title). .classPill is CATEGORICAL on the indexed scale — youth classes light (S red · JL teal · Cub gold · W orange · G plum), adult classes dark (A blue, adult-guest G plum) — not the status Badge, per badge.tsx's scope rule. Job-code columns (2026-08-23, job-heavy events): ONE narrow column per job headed by its 1–5 char code (.thCenter; full label · when · coverage in the title), a .jobTick when claimed, blank otherwise; when jobs span days a .jobBand row (scope=colgroup) groups the codes under 'Fri 10/9 · Sat 10/10 · Anytime'. Beside a label (Edit dialog, Builder list) the code is plain text in parentheses — 'Setup crew (SC)'. Codes come from lib/job-codes — leader-set or derived from the label, unique per event."
           >
             <table className={ev.table}>
               <thead>
@@ -608,10 +608,6 @@ export default function StyleguidePage() {
                   <td className={ev.cellTight} title="Cashier" />
                   <td className={ev.cellTight} title="Setup crew"><span className={ev.jobTick}>✓</span></td>
                   <td className={`${ev.cellMuted} ${ev.noteCell}`}>—</td>
-                </tr>
-                <tr>
-                  <td>Code chip</td>
-                  <td colSpan={6}><span className={ev.jobCode}>CASH</span> Cashier · <span className={ev.jobCode}>SC</span> Setup crew</td>
                 </tr>
                 <tr>
                   <td>Six classes</td>

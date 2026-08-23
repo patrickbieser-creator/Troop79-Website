@@ -113,6 +113,26 @@ describe('Roster grid — main tab is attending people only', () => {
     // A removed person can come back from here.
     expect(screen.getByRole('button', { name: /put back/i })).toBeTruthy();
   });
+
+  it('OtherTab_RemovedRows_CanBeDeletedPermanently_WithATwoClickConfirm_OthersCannot', async () => {
+    // Patrick, 2026-08-23: "have an option to delete permanently any records
+    // with Removed so the record is permanently removed from the database".
+    const user = userEvent.setup();
+    renderTable([row({ id: 1, name: 'Kevin Pieper' }), row({ id: 2, name: 'Sam Decline', status: 'no' })], {
+      removed: [row({ id: 4, name: 'Rex Removed', status: 'cancelled' })]
+    });
+    await user.click(screen.getByRole('tab', { name: /other responses/i }));
+    const body = screen.getAllByRole('rowgroup')[1];
+    const rexRow = within(body).getAllByRole('row').find((r) => r.textContent?.includes('Rex Removed')) as HTMLElement;
+    const samRow = within(body).getAllByRole('row').find((r) => r.textContent?.includes('Sam Decline')) as HTMLElement;
+    expect(within(samRow).queryByRole('button', { name: /delete permanently/i })).toBeNull();
+    await user.click(within(rexRow).getByRole('button', { name: /delete permanently/i }));
+    // Second step: an explicit confirm, with a way back.
+    expect(within(rexRow).getByRole('button', { name: /confirm delete/i })).toBeTruthy();
+    await user.click(within(rexRow).getByRole('button', { name: /^keep$/i }));
+    expect(within(rexRow).getByRole('button', { name: /delete permanently/i })).toBeTruthy();
+    expect(within(rexRow).getByRole('button', { name: /put back/i })).toBeTruthy();
+  });
 });
 
 describe('Roster grid — narrow transport columns', () => {
@@ -310,7 +330,7 @@ describe('Roster grid — job-code columns (job-heavy events)', () => {
     expect(names).toEqual(['Zed Adult', 'Amy Adult']);
   });
 
-  it('EditDialog_JobList_ShowsTheCodeBeforeEachLabel', async () => {
+  it('EditDialog_JobList_ShowsTheCodeInParenthesesAfterEachLabel', async () => {
     const user = userEvent.setup();
     HTMLDialogElement.prototype.showModal = vi.fn(function (this: HTMLDialogElement) {
       this.setAttribute('open', '');
@@ -320,7 +340,7 @@ describe('Roster grid — job-code columns (job-heavy events)', () => {
     });
     renderTable([row({ id: 1, name: 'Kevin Pieper' })], { hasCarSets: false, slots: JOBS });
     await user.click(screen.getByRole('button', { name: /^edit/i }));
-    expect(screen.getByRole('checkbox', { name: /CASH.*Cashier/ })).toBeTruthy();
+    expect(screen.getByRole('checkbox', { name: /Cashier \(CASH\)/ })).toBeTruthy();
   });
 });
 

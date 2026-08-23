@@ -82,10 +82,11 @@ describe('Builder — Jobs tab: Add a job is hidden until asked for', () => {
     expect(screen.queryByRole('heading', { name: /add a job/i })).toBeNull();
   });
 
-  it('JobList_ShowsEachJobsRosterCode', async () => {
+  it('JobList_ShowsEachJobsRosterCode_InParenthesesAfterTheName', async () => {
+    // Patrick, 2026-08-23: "Setup Crew (SETUP)" — same font and size, no chip.
     const user = userEvent.setup();
     renderBuilder();
     await user.click(screen.getByRole('tab', { name: /jobs/i }));
-    expect(screen.getByText('CASH', { selector: 'span' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /^Cashier \(CASH\)$/ })).toBeTruthy();
   });
 });

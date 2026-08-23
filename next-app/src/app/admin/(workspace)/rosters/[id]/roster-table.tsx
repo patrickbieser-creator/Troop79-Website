@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   cancelEntry,
   restoreEntry,
+  deleteEntryPermanently,
   claimSlotFor,
   unclaimSlotFor,
   setEntryClass,
@@ -625,6 +626,14 @@ export function RosterTable({
               router.refresh();
             })
           }
+          onDelete={(r) =>
+            start(async () => {
+              setError(null);
+              const res = await deleteEntryPermanently(r.id, signupId, calendarEntryId);
+              if (!res.ok) setError(res.error ?? 'Could not delete.');
+              router.refresh();
+            })
+          }
         />
       ) : (
       <table className={styles.table}>
@@ -947,7 +956,7 @@ export function RosterTable({
                               })
                             }
                           />
-                          <span className={styles.jobCode}>{jobCodes.get(sl.id)}</span> {sl.label}
+                          {sl.label} ({jobCodes.get(sl.id)})
                           {slotDetail(sl) && <span className={styles.evCat}>{slotDetail(sl)}</span>}
                         </label>
                         {st.checked && (
@@ -1116,13 +1125,18 @@ function OtherResponses({
   rows,
   pending,
   onRestore,
-  onRemove
+  onRemove,
+  onDelete
 }: {
   rows: RosterRow[];
   pending: boolean;
   onRestore: (r: RosterRow) => void;
   onRemove: (r: RosterRow) => void;
+  /** Hard delete — Removed rows only (Patrick, 2026-08-23); two-click confirm
+   *  like Remove, since there is no undo past this point. */
+  onDelete: (r: RosterRow) => void;
 }) {
+  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const order = { waitlist: 0, no: 1, cancelled: 2 } as Record<string, number>;
   const sorted = [...rows].sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9) || a.name.localeCompare(b.name));
   return (
@@ -1161,9 +1175,39 @@ function OtherResponses({
               </td>
               <td className={styles.nowrap}>
                 {r.status === 'cancelled' ? (
-                  <button type="button" className={styles.rowEdit} disabled={pending} onClick={() => onRestore(r)}>
-                    Put back
-                  </button>
+                  confirmDelete === r.id ? (
+                    <>
+                      <button
+                        type="button"
+                        className={styles.dangerBtn}
+                        disabled={pending}
+                        onClick={() => {
+                          setConfirmDelete(null);
+                          onDelete(r);
+                        }}
+                      >
+                        Confirm delete
+                      </button>{' '}
+                      <button type="button" className={styles.rowEdit} onClick={() => setConfirmDelete(null)}>
+                        Keep
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button type="button" className={styles.rowEdit} disabled={pending} onClick={() => onRestore(r)}>
+                        Put back
+                      </button>{' '}
+                      <button
+                        type="button"
+                        className={styles.rowDel}
+                        disabled={pending}
+                        title="Erase this row from the database — claims, answers and placements go with it. No undo."
+                        onClick={() => setConfirmDelete(r.id)}
+                      >
+                        Delete permanently
+                      </button>
+                    </>
+                  )
                 ) : (
                   <button type="button" className={styles.rowDel} disabled={pending} onClick={() => onRemove(r)}>
                     Remove

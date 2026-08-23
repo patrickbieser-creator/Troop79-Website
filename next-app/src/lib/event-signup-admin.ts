@@ -167,6 +167,50 @@ export async function questionAnswers(
   });
 }
 
+/* ── Permanent delete of a Removed row (Patrick, 2026-08-23) ───────────── */
+
+/** Only a row already soft-removed (status 'cancelled') may be hard-deleted,
+ *  and only when no ledger row points at it — financial_transactions.
+ *  signup_entry_id has no ON DELETE, so the database would refuse anyway;
+ *  this turns that into a sentence. Claims, answers, group memberships and
+ *  any guest rows it hosts cascade away with it. Pure; the action calls it. */
+export interface PermanentDeleteFacts {
+  status: string;
+  /** financial_transactions rows pointing at the entry (voided ones included — they are history). */
+  ledgerRows: number;
+  /** Guest rows whose host_entry_id is this entry (they would cascade away). */
+  hostedGuests: number;
+  /** Cars (signup_groups) whose driver_entry_id is this entry (the car and its riders' placements would cascade away). */
+  carsDriven: number;
+}
+
+/** When something is still linked, the message says WHAT is linked and HOW to
+ *  clear it (Patrick, 2026-08-23: "provide the reason why it cannot be
+ *  permanently removed, and offer suggestions as to how those other items
+ *  could be undone"). */
+export function permanentDeleteGuard(facts: PermanentDeleteFacts): { ok: boolean; error?: string } {
+  if (facts.status !== 'cancelled') return { ok: false, error: 'Only a row marked Removed can be deleted permanently — remove it first.' };
+  const reasons: string[] = [];
+  const fixes: string[] = [];
+  if (facts.ledgerRows > 0) {
+    reasons.push(`${facts.ledgerRows} ${facts.ledgerRows === 1 ? 'ledger row (a payment, refund or credit) references' : 'ledger rows (payments, refunds or credits) reference'} it on the Money tab`);
+    fixes.push('on the Money tab, void the payment(s) (or reassign them to the right person with Activity Report → Reassign)');
+  }
+  if (facts.hostedGuests > 0) {
+    reasons.push(`${facts.hostedGuests} guest ${facts.hostedGuests === 1 ? 'row is' : 'rows are'} attached to it as their host`);
+    fixes.push('remove those guests first (Other responses → Remove, then Delete permanently), or add them again under another host');
+  }
+  if (facts.carsDriven > 0) {
+    reasons.push(`${facts.carsDriven === 1 ? 'a car on Cars there/back still lists them as driver' : `${facts.carsDriven} cars on Cars there/back still list them as driver`}`);
+    fixes.push('open that car on Rides & assignments and remove it or move its riders first');
+  }
+  if (reasons.length === 0) return { ok: true };
+  return {
+    ok: false,
+    error: `Can't delete permanently — ${reasons.join('; ')}. To clear this: ${fixes.join('; ')}. Or simply leave the row as Removed.`
+  };
+}
+
 /* ── Roster row "Edit" — jobs & commitments (2026-08-21) ───────────────── */
 
 export interface ClaimEdit {

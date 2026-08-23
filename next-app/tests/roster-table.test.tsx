@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { permanentDeleteGuard } from '../src/lib/event-signup-admin';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RosterTable } from '../src/app/admin/(workspace)/rosters/[id]/roster-table';
@@ -201,5 +202,32 @@ describe('RosterTable — participant class', () => {
     expect([...cls.options].map((o) => o.value)).toEqual(['webelos', 'cub_scout', 'youth_guest', 'adult_guest']);
     const host = screen.getByRole('combobox', { name: /brought by/i }) as HTMLSelectElement;
     expect([...host.options].some((o) => o.textContent === 'Kevin Pieper')).toBe(true);
+  });
+});
+
+describe('permanentDeleteGuard — hard delete of a Removed roster row', () => {
+  const clean = { status: 'cancelled', ledgerRows: 0, hostedGuests: 0, carsDriven: 0 };
+  it('OnlyRemovedRows_WithNothingLinked_MayBeDeleted', () => {
+    expect(permanentDeleteGuard(clean)).toEqual({ ok: true });
+    expect(permanentDeleteGuard({ ...clean, status: 'yes' }).ok).toBe(false);
+    expect(permanentDeleteGuard({ ...clean, status: 'no' }).ok).toBe(false);
+  });
+
+  it('LinkedData_BlocksTheDelete_AndTheMessageNamesEachReasonAndHowToClearIt', () => {
+    // Patrick, 2026-08-23: "provide the reason why it cannot be permanently
+    // removed, and offer suggestions as to how those other items could be undone".
+    const money = permanentDeleteGuard({ ...clean, ledgerRows: 2 });
+    expect(money.ok).toBe(false);
+    expect(money.error).toMatch(/2 ledger rows .* Money tab/);
+    expect(money.error).toMatch(/void the payment/);
+    const guests = permanentDeleteGuard({ ...clean, hostedGuests: 1 });
+    expect(guests.error).toMatch(/1 guest row is attached .* host/);
+    expect(guests.error).toMatch(/remove those guests first/);
+    const car = permanentDeleteGuard({ ...clean, carsDriven: 1 });
+    expect(car.error).toMatch(/still lists them as driver/);
+    expect(car.error).toMatch(/Rides & assignments/);
+    const all = permanentDeleteGuard({ ...clean, ledgerRows: 1, hostedGuests: 2, carsDriven: 1 });
+    expect(all.error).toMatch(/ledger row .*; 2 guest rows .*; a car /);
+    expect(all.error).toMatch(/leave the row as Removed/);
   });
 });
