@@ -7,14 +7,17 @@
  *
  * Two components, one per guest mode:
  *
- *   GuestRowsEditor  — NAMED mode. "Bringing anyone else?" — each guest is a
- *     name + class (Webelos / Cub Scout / Youth Guest / Adult Guest) and
- *     becomes a `people` row with its own sign-up entry under the household's
- *     entry. The household's guests on record are offered as one-click picks
- *     ("Add Grandma Pat again") so a recurring guest is the SAME person across
- *     events; a typed name that matches one of them gets a confirm, never a
- *     silent merge (People-Identity-Model's rule). An adult guest may carry a
- *     phone (optional, carpools); a youth guest never does.
+ *   GuestRowsEditor  — NAMED mode. A GUESTS section in the SAME style as the
+ *     Scouts and Adults sections (Patrick, 2026-08-23: "add the Attending-
+ *     style toggle to the guest rows … consistency will be a better UX"):
+ *     one .personRow per guest with an editable name, the Attending /
+ *     Can't make it toggle, and under it the class (Webelos / Cub Scout /
+ *     Youth Guest / Adult Guest), a phone for an adult guest, and Remove.
+ *     Each guest becomes a `people` row with its own sign-up entry under the
+ *     household's entry. Guests on record are offered as one-click picks
+ *     ("Add Grandma Pat again") so a recurring guest is the SAME person
+ *     across events; a typed name that matches one of them gets a confirm,
+ *     never a silent merge (People-Identity-Model's rule).
  *
  *   GuestCountField  — COUNT mode. "How many guests?" — a number + an optional
  *     note on the host's entry (Court of Honor, service project). Nobody is
@@ -22,8 +25,9 @@
  *
  * Both are controlled: the parent owns the values. The named list travels as
  * ONE hidden JSON field (`guests`) the submit action normalizes server-side
- * (lib/event-signup normalizeGuestRows — never trusts this payload); the count
- * rides on the host entry in the `entries` field.
+ * (lib/guest-payload normalizeGuestRows — never trusts this payload; a row
+ * toggled to "Can't make it" is simply not sent, and the RPC marks its saved
+ * entry 'no'); the count rides on the host entry in the `entries` field.
  */
 
 import { GUEST_CLASSES, PARTICIPANT_CLASS_LABEL, type GuestClass } from '@/lib/participant-class';
@@ -39,6 +43,9 @@ export interface GuestRowValue {
   /** Adult guests only — the input is hidden for youth classes and the
    *  server drops whatever a youth row carries. */
   phone: string;
+  /** The Attending / Can't make it toggle — same meaning as a member's.
+   *  false ⇒ not sent; their saved entry (if any) becomes 'no'. */
+  attending: boolean;
 }
 
 const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
@@ -59,9 +66,9 @@ export function GuestRowsEditor({
   const update = (i: number, patch: Partial<GuestRowValue>) =>
     onChange(guests.map((g, idx) => (idx === i ? { ...g, ...patch } : g)));
   const remove = (i: number) => onChange(guests.filter((_, idx) => idx !== i));
-  const add = () => onChange([...guests, { personId: null, name: '', cls: 'youth_guest', phone: '' }]);
+  const add = () => onChange([...guests, { personId: null, name: '', cls: 'youth_guest', phone: '', attending: true }]);
   const addAgain = (p: HouseholdGuest) =>
-    onChange([...guests, { personId: p.personId, name: p.name, cls: p.cls, phone: p.phone ?? '' }]);
+    onChange([...guests, { personId: p.personId, name: p.name, cls: p.cls, phone: p.phone ?? '', attending: true }]);
 
   const pickedIds = new Set(guests.map((g) => g.personId).filter((v): v is number => v != null));
   const unpicked = previousGuests.filter((p) => !pickedIds.has(p.personId));
@@ -75,10 +82,10 @@ export function GuestRowsEditor({
 
   return (
     <div className={styles.guestBlock}>
-      <p className={styles.dayHead}>Bringing anyone else?</p>
+      <p className={styles.dayHead}>Guests</p>
       <p className={styles.gateLede}>
         {prompt ??
-          'Friends, siblings, Webelos or Cub Scouts joining in — add each one by name so we can plan tents, food and leadership.'}
+          'Bringing anyone else? Friends, siblings, Webelos or Cub Scouts joining in — add each one by name so we can plan tents, food and leadership.'}
       </p>
       <input type="hidden" name="guests" value={JSON.stringify(guests)} />
       {unpicked.length > 0 && (
@@ -100,38 +107,52 @@ export function GuestRowsEditor({
           </div>
         </div>
       )}
-      {guests.length > 0 && (
-        <ul className={styles.guestRows}>
-          {guests.map((g, i) => {
-            const match = matchFor(g);
-            const adult = g.cls === 'adult_guest';
-            return (
-              <li key={i} className={`${styles.guestRow} ${adult ? styles.guestRowAdult : ''}`}>
+      {guests.map((g, i) => {
+        const match = matchFor(g);
+        const adult = g.cls === 'adult_guest';
+        return (
+          <div key={i} className={styles.personRow}>
+            <div className={styles.personMain}>
+              <span className={styles.personName}>
                 <input
                   type="text"
-                  className={styles.gateInput}
+                  className={`${styles.gateInput} ${styles.guestNameInput}`}
                   value={g.name}
-                  placeholder="Name"
+                  placeholder="Guest’s name"
                   aria-label={`Guest name ${i + 1}`}
                   maxLength={80}
                   readOnly={g.personId != null}
                   title={g.personId != null ? 'A guest on record — remove the row to start over' : undefined}
                   onChange={(e) => update(i, { name: e.target.value })}
                 />
-                {adult && (
-                  <input
-                    type="tel"
-                    className={styles.gateInput}
-                    value={g.phone}
-                    placeholder="Phone (optional, for carpools)"
-                    aria-label={`Guest phone ${i + 1}`}
-                    maxLength={40}
-                    autoComplete="off"
-                    onChange={(e) => update(i, { phone: e.target.value })}
-                  />
-                )}
+                <span className={styles.personSub}>{g.personId != null ? 'Guest · on record' : 'Guest'}</span>
+              </span>
+              <span className={styles.seg}>
+                <button
+                  type="button"
+                  className={`${styles.segBtn} ${g.attending ? styles.segYes : ''}`}
+                  aria-pressed={g.attending}
+                  aria-label={`Guest ${i + 1} attending`}
+                  onClick={() => update(i, { attending: true })}
+                >
+                  Attending
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.segBtn} ${!g.attending ? styles.segNo : ''}`}
+                  aria-pressed={!g.attending}
+                  aria-label={`Guest ${i + 1} can’t make it`}
+                  onClick={() => update(i, { attending: false })}
+                >
+                  Can’t make it
+                </button>
+              </span>
+            </div>
+            <div className={styles.guestFields}>
+              <label className={styles.rideField}>
+                <span className={styles.rideLeg}>Who</span>
                 <select
-                  className={styles.gateInput}
+                  className={styles.rideSelect}
                   value={g.cls}
                   aria-label={`Guest class ${i + 1}`}
                   onChange={(e) => update(i, { cls: e.target.value as GuestClass })}
@@ -142,43 +163,44 @@ export function GuestRowsEditor({
                     </option>
                   ))}
                 </select>
+              </label>
+              {adult && (
+                <input
+                  type="tel"
+                  className={`${styles.gateInput} ${styles.guestPhoneInput}`}
+                  value={g.phone}
+                  placeholder="Phone (optional, for carpools)"
+                  aria-label={`Guest phone ${i + 1}`}
+                  maxLength={40}
+                  autoComplete="off"
+                  onChange={(e) => update(i, { phone: e.target.value })}
+                />
+              )}
+              <button
+                type="button"
+                className={styles.guestRemove}
+                aria-label={`Remove guest ${i + 1}`}
+                onClick={() => remove(i)}
+              >
+                Remove
+              </button>
+            </div>
+            {match && (
+              <p className={styles.guestMatch}>
+                Looks like {match.name}, who you&rsquo;ve brought before.{' '}
                 <button
                   type="button"
-                  className={styles.guestRemove}
-                  aria-label={`Remove guest ${i + 1}`}
-                  onClick={() => remove(i)}
+                  className={styles.linkBtn}
+                  aria-label={`Use ${match.name} again`}
+                  onClick={() => update(i, { personId: match.personId, name: match.name, phone: g.phone || match.phone || '' })}
                 >
-                  Remove
+                  Use {match.name} again
                 </button>
-                {/* Patrick, 2026-08-23: "I typed in a name … I'm confused as to
-                    what to do next." There IS no next step — a typed row is on
-                    the signup — so say so, per row, the moment a name exists. */}
-                {g.name.trim() && !match && (
-                  <p className={styles.guestStatus}>
-                    ✓ {g.name.trim()} is coming with your household — included when you press Submit / Save changes.
-                  </p>
-                )}
-                {!g.name.trim() && (
-                  <p className={styles.guestStatus}>Type their name — that’s all; there’s no separate add step.</p>
-                )}
-                {match && (
-                  <p className={styles.guestMatch}>
-                    Looks like {match.name}, who you&rsquo;ve brought before.{' '}
-                    <button
-                      type="button"
-                      className={styles.linkBtn}
-                      aria-label={`Use ${match.name} again`}
-                      onClick={() => update(i, { personId: match.personId, name: match.name, phone: g.phone || match.phone || '' })}
-                    >
-                      Use {match.name} again
-                    </button>
-                  </p>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+              </p>
+            )}
+          </div>
+        );
+      })}
       <button type="button" className={styles.guestAdd} onClick={add}>
         {guests.length > 0 ? '+ Add another guest' : '+ Add a guest'}
       </button>

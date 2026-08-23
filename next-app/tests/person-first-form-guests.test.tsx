@@ -91,7 +91,7 @@ describe('PersonFirstForm — guest modes', () => {
     expect(screen.queryByRole('spinbutton', { name: /number of guests/i })).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Add Grandma Pat again' }));
     expect(JSON.parse(guestsField()!.value)).toEqual([
-      { personId: 501, name: 'Grandma Pat', cls: 'adult_guest', phone: '414-555-0100' }
+      { personId: 501, name: 'Grandma Pat', cls: 'adult_guest', phone: '414-555-0100', attending: true }
     ]);
     // Members' entries never carry a count in named mode.
     await user.click(screen.getAllByRole('button', { name: 'Attending' })[1]);
@@ -137,5 +137,16 @@ describe('PersonFirstForm — guest modes', () => {
     expect(JSON.parse(guestsField()!.value)[0].personId).toBe(501);
     // Already on the form — not offered again as a pick.
     expect(screen.queryByRole('button', { name: 'Add Grandma Pat again' })).toBeNull();
+  });
+
+  it('FamilyForm_ShowsSavingChangesOverlay_TheMomentTheFormSubmits', async () => {
+    const user = userEvent.setup();
+    renderForm({ guest_mode: 'none' });
+    await user.click(screen.getAllByRole('button', { name: 'Attending' })[1]);
+    expect(screen.queryByRole('status')).toBeNull();
+    const form = document.querySelector('form') as HTMLFormElement;
+    form.addEventListener('submit', (e) => e.preventDefault()); // jsdom: no real navigation
+    await user.click(screen.getByRole('button', { name: /submit family signup/i }));
+    expect(screen.getByRole('status').textContent).toMatch(/saving changes/i);
   });
 });

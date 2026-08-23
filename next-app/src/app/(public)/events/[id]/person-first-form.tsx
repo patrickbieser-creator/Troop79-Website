@@ -1,6 +1,7 @@
 'use client';
 
 import { GuestRowsEditor, GuestCountField, type GuestRowValue } from './guest-rows';
+import { SavingOverlay, intentOf, type SaveIntent } from './save-feedback';
 import { useMemo, useState } from 'react';
 import type {
   EventPrice,
@@ -224,14 +225,19 @@ export default function PersonFirstForm({
   // entry carries.
   const [guestRows, setGuestRows] = useState<GuestRowValue[]>(() =>
     existing
-      .filter((e) => e.host_entry_id != null && (e.status === 'yes' || e.status === 'waitlist'))
+      .filter((e) => e.host_entry_id != null)
       .map((e) => ({
         personId: e.person_id,
         name: e.guest_name ?? '',
         cls: e.participant_class as GuestRowValue['cls'],
-        phone: householdGuests.find((g) => g.personId === e.person_id)?.phone ?? ''
+        phone: householdGuests.find((g) => g.personId === e.person_id)?.phone ?? '',
+        // A saved guest marked 'no' comes back toggled to Can't make it — the
+        // same thing a member's row does.
+        attending: e.status === 'yes' || e.status === 'waitlist'
       }))
   );
+  // "Saving changes…" overlay from the moment the form submits (save-feedback.tsx).
+  const [saving, setSaving] = useState<SaveIntent | null>(null);
   const [guestCount, setGuestCount] = useState<{ count: number; note: string }>(() => {
     const host = existing.find((e) => e.guest_count > 0);
     return { count: host?.guest_count ?? 0, note: host?.guest_note ?? '' };
@@ -541,7 +547,8 @@ export default function PersonFirstForm({
   };
 
   return (
-    <form action={submitAction} className={styles.signupForm}>
+    <form action={submitAction} className={styles.signupForm} onSubmit={(e) => setSaving(intentOf(e))}>
+      <SavingOverlay intent={saving} />
       <input type="hidden" name="eventId" value={eventId} />
       <input type="hidden" name="signupId" value={signup.id} />
       <input type="hidden" name="householdKey" value={household.key} />
@@ -775,10 +782,29 @@ export default function PersonFirstForm({
             <p className={styles.pickerHint}>
               Missing a parent or guardian from the list above? Add them here — we’ll save them to your
               scout’s record so you don’t have to type it again next time. (Friends, siblings and other
-              guests go under “Bringing anyone else?” below.)
+              guests go under Guests, below.)
             </p>
           </div>}
         </>
+      )}
+
+      {/* Guests sit with the people, not with the jobs (Patrick, 2026-08-23:
+          "display guest in the same style as scouts and adults at the top"). */}
+      {signup.guest_mode === 'named' && (
+        <GuestRowsEditor
+          guests={guestRows}
+          onChange={setGuestRows}
+          prompt={signup.guest_prompt}
+          previousGuests={householdGuests}
+        />
+      )}
+      {signup.guest_mode === 'count' && (
+        <GuestCountField
+          count={guestCount.count}
+          note={guestCount.note}
+          onChange={setGuestCount}
+          prompt={signup.guest_prompt}
+        />
       )}
 
       {slots.length > 0 && (
@@ -894,22 +920,7 @@ export default function PersonFirstForm({
         </div>
       )}
 
-      {signup.guest_mode === 'named' && (
-        <GuestRowsEditor
-          guests={guestRows}
-          onChange={setGuestRows}
-          prompt={signup.guest_prompt}
-          previousGuests={householdGuests}
-        />
-      )}
-      {signup.guest_mode === 'count' && (
-        <GuestCountField
-          count={guestCount.count}
-          note={guestCount.note}
-          onChange={setGuestCount}
-          prompt={signup.guest_prompt}
-        />
-      )}
+
 
       {signup.notes_prompt && (
         <div className={styles.guestBlock}>
@@ -968,7 +979,7 @@ export default function PersonFirstForm({
 
       {existing.length > 0 && (
         <p className={styles.cancelRow}>
-          <button type="submit" formAction={cancelAction} className={styles.linkBtn}>
+          <button type="submit" formAction={cancelAction} className={styles.linkBtn} data-intent="cancel">
             Cancel our whole signup
           </button>
         </p>

@@ -504,9 +504,6 @@
 .linkBtnQuiet { font-family: var(--font-ui); font-size: 12.5px; color: var(--text-meta); line-height: 1.5; }
 
 /* Named guest rows (Plans/Participant-Classification.md, 2026-08-21). */
-.guestRows { list-style: none; margin: 0 0 var(--sp-3); padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
-.guestRow { display: grid; grid-template-columns: 1fr auto auto; gap: var(--sp-2); align-items: center; }
-.guestRow .gateInput { width: 100%; }
 .guestRemove,
 .guestAdd {
   font-family: var(--font-ui);
@@ -525,13 +522,23 @@
 /* Guests as people (Plans/Guests-As-People.md): an adult guest row carries a
    phone; the "brought before" picks reuse the job-board chips; a typed name
    that matches a guest on record gets a confirm line under the row. */
-.guestRowAdult { grid-template-columns: 1fr 1fr auto auto; }
 .guestAgain { margin: 0 0 var(--sp-3); }
-.guestMatch { grid-column: 1 / -1; font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); margin: 0; }
-.guestStatus { grid-column: 1 / -1; font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--forest); margin: 0; }
+.guestMatch { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); margin: 8px 0 0; }
+.guestNameInput { flex: 0 0 auto; width: min(100%, 22em); font-weight: 700; } /* .gateInput flexes to fill; inside the column-flex .personName that meant a tall box */
+.guestPhoneInput { flex: 1 1 14em; }
+.guestFields { margin-top: 9px; display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); align-items: center; }
+.guestFields .guestRemove { margin-left: auto; }
+/* Saving… / Done — the brief centred status while a sign-up saves (save-feedback.tsx). */
+.saveOverlay { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; background: rgba(30, 58, 74, 0.28); /* deliberate: the only scrim on the public side — the navy of --shadow-card at 28%; no overlay token exists */ }
+.saveDialog { display: flex; align-items: center; gap: var(--sp-3); background: var(--warm-white); border: 1px solid var(--border-light); border-radius: var(--rad-md); box-shadow: var(--shadow-hover); padding: var(--sp-4) var(--sp-5); font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-head); min-width: 16em; }
+.saveDone { color: var(--forest); }
+.saveCheck { font-size: 1.4em; font-weight: 700; }
+.saveSpinner { width: 1.1em; height: 1.1em; border: 2px solid var(--border-mid); border-top-color: var(--forest); border-radius: 50%; animation: saveSpin 0.8s linear infinite; }
+@keyframes saveSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .saveSpinner { animation: none; } }
 .guestCountRow { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); align-items: center; }
 .guestCountRow .gateInput[type='number'] { width: 6em; }
 .guestCountRow .gateInput[type='text'] { flex: 1 1 16em; }
 @media (max-width: 640px) {
-  .guestRow, .guestRowAdult { grid-template-columns: 1fr; }
+  .guestNameInput { width: 100%; }
 }

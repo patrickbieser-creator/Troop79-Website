@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { GuestRowValue } from '../guest-rows';
+import { SavedFlash } from '../save-feedback';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { familyGateConfigured } from '@/lib/family-access';
@@ -229,6 +230,7 @@ export default async function EventSignupPage({
         <div className={styles.gatedIn}>
           {sp.saved && (
             <>
+              <SavedFlash />
               <TrackOnMount event="event_signup_complete" params={{ event_id: entry.id }} />
               <Notice tone="success" className={styles.noticeGapBottom}>
                 ✓ Your signup is saved. You can come back and change it until the deadline.
@@ -238,6 +240,7 @@ export default async function EventSignupPage({
           {sp.signedout && (
             <Notice tone="success" className={styles.noticeGapBottom}>✓ Signed out of the family gate on this device.</Notice>
           )}
+          {sp.cancelled && <SavedFlash what="Your signup is cancelled." />}
           {sp.cancelled && (
             <Notice tone="success" className={styles.noticeGapBottom}>
               Your signup was cancelled and your spots went back to the pool.
@@ -294,12 +297,13 @@ export default async function EventSignupPage({
                 guestMode={signup.guest_mode}
                 guestPrompt={signup.guest_prompt}
                 existingGuests={existing
-                  .filter((e) => e.host_entry_id != null && (e.status === 'yes' || e.status === 'waitlist'))
+                  .filter((e) => e.host_entry_id != null)
                   .map((e) => ({
                     personId: e.person_id,
                     name: e.guest_name ?? '',
                     cls: e.participant_class as GuestRowValue['cls'],
-                    phone: ctx.householdGuests.find((g) => g.personId === e.person_id)?.phone ?? ''
+                    phone: ctx.householdGuests.find((g) => g.personId === e.person_id)?.phone ?? '',
+                    attending: e.status === 'yes' || e.status === 'waitlist'
                   }))}
                 existingGuestCount={(() => {
                   const host = existing.find((e) => e.guest_count > 0);

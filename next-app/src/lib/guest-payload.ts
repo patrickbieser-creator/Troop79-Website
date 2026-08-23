@@ -53,7 +53,11 @@ export function normalizeGuestRows(raw: string | null | undefined): GuestRow[] {
   const seen = new Set<string>();
   for (const item of parsed) {
     if (!item || typeof item !== 'object') continue;
-    const it = item as { name?: unknown; cls?: unknown; personId?: unknown; phone?: unknown };
+    const it = item as { name?: unknown; cls?: unknown; personId?: unknown; phone?: unknown; attending?: unknown };
+    // A row toggled to "Can't make it" is not sent at all — the RPC's
+    // reconcile turns its saved entry to 'no'. Absent means attending
+    // (older clients never carried the flag).
+    if (it.attending === false) continue;
     const name = String(it.name ?? '').trim().slice(0, 80);
     const cls = String(it.cls ?? '');
     const personId =

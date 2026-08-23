@@ -56,7 +56,7 @@ function renderBoard(
       slots={[server]}
       guestMode={opts.guestMode ?? 'none'}
       guestPrompt={null}
-      existingGuests={(opts.existingGuests ?? []).map((g) => ({ personId: g.personId ?? null, name: g.name, cls: g.cls, phone: '' }))}
+      existingGuests={(opts.existingGuests ?? []).map((g) => ({ personId: g.personId ?? null, name: g.name, cls: g.cls, phone: '', attending: true }))}
       existingGuestCount={opts.existingGuestCount}
       existingClaims={existingClaims}
       submitAction={vi.fn()}

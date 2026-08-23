@@ -42,6 +42,15 @@ describe('normalizeGuestRows (pure)', () => {
     expect(normalizeGuestRows('[{"personId":"x","name":"Sam","cls":"webelos"}]')).toEqual([{ personId: null, name: 'Sam', cls: 'webelos', phone: null }]);
   });
 
+  it('DropsARowToggledToCantMakeIt_AndTreatsAMissingFlagAsAttending', () => {
+    expect(
+      normalizeGuestRows('[{"name":"Stays","cls":"webelos"},{"name":"Skips","cls":"webelos","attending":false},{"name":"Also stays","cls":"cub_scout","attending":true}]')
+    ).toEqual([
+      { personId: null, name: 'Stays', cls: 'webelos', phone: null },
+      { personId: null, name: 'Also stays', cls: 'cub_scout', phone: null }
+    ]);
+  });
+
   it('ReturnsEmpty_ForGarbageOrMissingInput', () => {
     expect(normalizeGuestRows('not json')).toEqual([]);
     expect(normalizeGuestRows('{"name":"x"}')).toEqual([]);

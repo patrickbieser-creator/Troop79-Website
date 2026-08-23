@@ -1,6 +1,7 @@
 'use client';
 
 import { GuestRowsEditor, GuestCountField, type GuestRowValue } from './guest-rows';
+import { SavingOverlay, intentOf, type SaveIntent } from './save-feedback';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { SignupSlot, GuestMode, HouseholdGuest } from '@/lib/event-signup';
@@ -146,6 +147,7 @@ export default function SlotFirstForm({
   // is saved, same as the person-first form.
   const [guestRows, setGuestRows] = useState<GuestRowValue[]>(() => existingGuests.map((g) => ({ ...g })));
   const [guestCount, setGuestCount] = useState<{ count: number; note: string }>(existingGuestCount);
+  const [saving, setSaving] = useState<SaveIntent | null>(null);
   const [query, setQuery] = useState('');
 
   const claimersOf = (slotId: number) => claims[slotId] ?? [];
@@ -247,12 +249,12 @@ export default function SlotFirstForm({
   // by id) and the count with what is saved.
   const guestsKey = (rows: GuestRowValue[]) =>
     rows
-      .map((g) => (g.personId != null ? `p:${g.personId}|${g.cls}` : `${g.name.trim().toLowerCase()}|${g.cls}|${g.phone.trim()}`))
+      .map((g) => (g.personId != null ? `p:${g.personId}|${g.cls}|${g.attending ? 'y' : 'n'}` : `${g.name.trim().toLowerCase()}|${g.cls}|${g.phone.trim()}|${g.attending ? 'y' : 'n'}`))
       .filter((k) => !k.startsWith('|'))
       .sort()
       .join(',');
   const savedGuestsKey = useMemo(() => guestsKey(existingGuests), [existingGuests]);
-  const namedGuests = guestMode === 'named' ? guestRows.filter((g) => g.name.trim()) : [];
+  const namedGuests = guestMode === 'named' ? guestRows.filter((g) => g.name.trim() && g.attending) : [];
   const guestsDirty =
     guestMode === 'named'
       ? guestsKey(guestRows) !== savedGuestsKey
@@ -639,7 +641,8 @@ export default function SlotFirstForm({
   }
 
   return (
-    <form action={submitAction} className={styles.signupForm}>
+    <form action={submitAction} className={styles.signupForm} onSubmit={(e) => setSaving(intentOf(e))}>
+      <SavingOverlay intent={saving} />
       <input type="hidden" name="eventId" value={eventId} />
       <input type="hidden" name="signupId" value={signupId} />
       <input type="hidden" name="householdKey" value={household!.key} />
@@ -734,7 +737,7 @@ export default function SlotFirstForm({
 
       {hasExisting && (
         <p className={styles.cancelRow}>
-          <button type="submit" formAction={cancelAction} className={styles.linkBtn}>
+          <button type="submit" formAction={cancelAction} className={styles.linkBtn} data-intent="cancel">
             Cancel our whole signup
           </button>
         </p>
