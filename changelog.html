@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 22, 2026</strong> &nbsp;&middot;&nbsp; v1.85.0</p>
+      <p>Last updated: <strong>August 23, 2026</strong> &nbsp;&middot;&nbsp; v1.86.0</p>
     </div>
   </div>
 
@@ -494,6 +494,72 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.86.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.86.0</span>
+        <span class="release-date">August 23, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Job-code columns for job-heavy events, a tabbed Signup Builder, and two job-board fixes</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>One roster column per job, headed by a short code.</strong> For events with
+              many jobs (a rummage sale has 20&ndash;30), the roster grid no longer squeezes every
+              claim into one prose column. Each job gets its own narrow column headed by a 1&ndash;5
+              character code (&ldquo;SET&rdquo;, &ldquo;CASH&rdquo;, &ldquo;TRK&rdquo;) with the
+              full job name, when, and how many are needed on hover; a tick marks who has claimed
+              it, with their note on hover. When jobs span several days a thin band groups the
+              columns by day, the whole job block can be hidden with one click, and clicking a
+              code sorts the people who claimed that job to the top. Codes are set in the
+              Builder&rsquo;s new Code field or, left blank, derived from the job name; families
+              never see them. The printed snapshot gained a Jobs section &mdash; every job with who
+              claimed it and their notes, by day &mdash; so the paper is the readable assignment
+              list and the grid is for scanning.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Signup Builder in tabs.</strong> The Blocks checklist stays at the top; every
+              other section &mdash; Settings, Price tiers, Jobs, Questions, Assignments &mdash; is
+              now its own tab under it, Settings open by default, so it is clear where one form
+              ends and the next begins. In the Jobs tab the &ldquo;Add a job&rdquo; form is tucked
+              away until you click the Add a job button (on the right, like the page&rsquo;s other
+              add controls).
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Job board: removing a name now sticks, and Save means something.</strong> On
+              a slot-first signup (service projects, fundraisers), taking a person off a job and
+              pressing Save changes used to bring the name back &mdash; the person was simply left
+              out of what was sent, so nothing changed. A removed person is now saved as declined
+              and their job is released. Save changes is disabled until something actually
+              differs from what is saved (and reads &ldquo;Saved&rdquo; when nothing does).
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Sign-up page header on three lines</strong> &mdash; event title, then date
+              and time, then location &mdash; instead of one long dot-separated line that wrapped
+              mid-address.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Under the hood:</strong> the legacy &ldquo;seats besides the driver&rdquo;
+              columns and their sync are gone (Event Logistics step 15 &mdash; seat counts have
+              been &ldquo;including the driver&rdquo; since v1.81); the historical-backfill item
+              was removed from the backlog; and the guests-as-people design is written up and
+              reviewed (not built) in Plans/Guests-As-People.md.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 
