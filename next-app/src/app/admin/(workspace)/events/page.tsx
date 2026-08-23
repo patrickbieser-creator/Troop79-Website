@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { requireCapability } from '@/lib/require-capability';
 import { formatCalendarDateParts } from '@/lib/calendar-shared';
 import { loadCalendarCategories } from '@/lib/calendar';
-import { categoryColorMap, colorFor, labelsForBehavior } from '@/lib/calendar-categories';
+import { categoryColorMap, colorFor } from '@/lib/calendar-categories';
 import { EnableSignupButton } from './enable-button';
 import { PageTitle } from '../_components/page-title';
 import styles from './events-admin.module.css';
@@ -35,33 +35,20 @@ interface Row {
   slotCount: number;
 }
 
-/**
- * PostgREST `in` list literal: `("Label One","Label Two")`. Category labels are
- * user-entered and routinely contain the reserved `,` `.` `(` `)` characters
- * ("Campout / Overnight" today; anything tomorrow), so every value is quoted
- * and any embedded quote escaped.
- */
-function pgInList(values: string[]): string {
-  return `(${values.map((v) => `"${v.replace(/"/g, '\\"')}"`).join(',')})`;
-}
 
-async function loadRows(noMeetingLabels: string[]): Promise<Row[]> {
+async function loadRows(): Promise<Row[]> {
   // Leader-only: rosters carry guest notes, driving arrangements, payment
   // status and household composition. A scout-role session must not see them.
   await requireCapability('calendar.write');
   const supabase = createAdminClient();
   const today = new Date().toISOString().slice(0, 10);
 
-  // A cancelled-meeting week can't take a signup. Excluded by the category's
-  // BEHAVIOR flag, not its name — labels are renamable now (D-082) — and only
-  // when such a category exists, since an empty PostgREST in-list is invalid.
-  let entriesQuery = supabase
+  // Every upcoming entry lists, a "No Troop Meeting" week included (the
+  // "No Meeting" category that used to hide those is retired, 2026-08-23).
+  const entriesQuery = supabase
     .from('calendar_entries')
     .select('id, title, entry_date, category')
     .gte('entry_date', today);
-  if (noMeetingLabels.length > 0) {
-    entriesQuery = entriesQuery.not('category', 'in', pgInList(noMeetingLabels));
-  }
 
   const [{ data: entries }, { data: signups }, { data: slots }] = await Promise.all([
     entriesQuery.order('entry_date', { ascending: true }).limit(60),
@@ -100,7 +87,7 @@ async function loadRows(noMeetingLabels: string[]): Promise<Row[]> {
 
 export default async function EventSignupsAdminPage() {
   const categories = await loadCalendarCategories();
-  const rows = await loadRows(labelsForBehavior(categories, 'no_meeting'));
+  const rows = await loadRows();
   const colors = categoryColorMap(categories);
   const enabled = rows.filter((r) => r.signup);
 

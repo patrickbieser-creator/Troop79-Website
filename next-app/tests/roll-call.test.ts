@@ -221,7 +221,6 @@ describe('activity categories', () => {
       .select('label, counts_as_activity')
       .in('label', [
         'Troop Meeting',
-        'No Meeting',
         'Ceremony / Recognition',
         'Advancement Event',
         'Leadership / Planning'

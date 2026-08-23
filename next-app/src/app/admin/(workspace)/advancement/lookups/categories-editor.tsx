@@ -41,7 +41,6 @@ function nextSortOrder(rows: CalendarCategoryRow[]): number {
 
 function behaviorNote(behavior: CalendarCategoryRow['behavior']): string | null {
   if (behavior === 'meeting') return 'the weekly troop meeting';
-  if (behavior === 'no_meeting') return 'a cancelled meeting week';
   return null;
 }
 

@@ -84,12 +84,14 @@ describe('calendar_categories lookup', () => {
     const SEEDED = [
       'Troop Meeting', 'Campout / Overnight', 'Day Activity / Outing', 'High Adventure', 'Summer Camp',
       'Service Project', 'Fundraiser', 'Advancement Event', 'Training', 'Ceremony / Recognition',
-      'Leadership / Planning', 'Recruiting / Outreach', 'Social Event', 'No Meeting'
+      'Leadership / Planning', 'Recruiting / Outreach', 'Social Event'
     ];
     const labels = new Set(rows.map((r) => r.label));
     for (const l of SEEDED) expect(labels.has(l), `seeded category missing: ${l}`).toBe(true);
     expect(rows.find((r) => r.behavior === 'meeting')?.label).toBe('Troop Meeting');
-    expect(rows.find((r) => r.behavior === 'no_meeting')?.label).toBe('No Meeting');
+    // "No Meeting" was retired 2026-08-23 — a week with no meeting is a Troop
+    // Meeting titled "No Troop Meeting".
+    expect(rows.find((r) => r.label === 'No Meeting')).toBeUndefined();
     // The Bugle's printed legend colors must survive the move to the DB.
     expect(rows.find((r) => r.label === 'Campout / Overnight')?.color).toBe('#3d5a3e');
   });
@@ -125,9 +127,10 @@ describe('calendar_categories lookup', () => {
   });
 
   it('Delete_IsRejected_WhenTheCategoryCarriesABehavior', async () => {
-    const { error } = await admin.from('calendar_categories').delete().eq('label', 'No Meeting');
+    const { error } = await admin.from('calendar_categories').delete().eq('label', 'Troop Meeting');
     expect(error).not.toBeNull();
-    expect(error?.message).toMatch(/behavior/i);
+    // Troop Meeting is also in use by entries, so either guard may answer first.
+    expect(error?.message).toMatch(/behavior|foreign key/i);
   });
 
   it('Insert_IsRejected_WhenTheBehaviorIsAlreadyClaimed', async () => {
@@ -164,7 +167,7 @@ describe('category presentation helpers', () => {
     { label: 'Fundraiser', color: '#8b6914', sort_order: 70, behavior: null, template: 'activity', credit_kind: 'fundraiser', credit_unit: 'each', counts_as_activity: true },
     // Deliberately left unassigned: a category with no template must still
     // resolve, the same way an unknown color falls back to neutral.
-    { label: 'No Meeting', color: '#a0978a', sort_order: 140, behavior: 'no_meeting', template: null, credit_kind: null, credit_unit: null, counts_as_activity: false }
+    { label: 'Community', color: '#a0978a', sort_order: 140, behavior: null, template: null, credit_kind: null, credit_unit: null, counts_as_activity: true }
   ];
 
   it('TemplateOf_ReturnsTheAssignedTemplate_WhenTheCategoryCarriesOne', () => {
@@ -173,7 +176,7 @@ describe('category presentation helpers', () => {
   });
 
   it('TemplateOf_FallsBackToActivity_WhenNoTemplateIsAssigned', () => {
-    expect(templateOf(rows, 'No Meeting')).toBe(FALLBACK_CATEGORY_TEMPLATE);
+    expect(templateOf(rows, 'Community')).toBe(FALLBACK_CATEGORY_TEMPLATE);
   });
 
   it('TemplateOf_FallsBackToActivity_WhenTheCategoryIsUnknownToThisRender', () => {
@@ -196,17 +199,17 @@ describe('category presentation helpers', () => {
   });
 
   it('BehaviorOf_ResolvesByLabel_WhenTheCategoryCarriesOne', () => {
-    expect(behaviorOf(rows, 'No Meeting')).toBe('no_meeting');
+    expect(behaviorOf(rows, 'Troop Meeting')).toBe('meeting');
     expect(behaviorOf(rows, 'Fundraiser')).toBeNull();
     expect(behaviorOf(rows, 'Renamed Away')).toBeNull();
   });
 
   it('LabelsForBehavior_ReturnsCurrentLabels_ForTheMeetingsQuery', () => {
     // lib/meetings.ts used to hardcode ['Troop Meeting', 'No Meeting'].
-    expect(labelsForBehavior(rows, 'meeting', 'no_meeting')).toEqual(['Troop Meeting', 'No Meeting']);
+    expect(labelsForBehavior(rows, 'meeting')).toEqual(['Troop Meeting']);
   });
 
   it('SortedCategoryLabels_OrdersBySortOrder_NotAlphabetically', () => {
-    expect(sortedCategoryLabels(rows)).toEqual(['Troop Meeting', 'Fundraiser', 'No Meeting']);
+    expect(sortedCategoryLabels(rows)).toEqual(['Troop Meeting', 'Fundraiser', 'Community']);
   });
 });

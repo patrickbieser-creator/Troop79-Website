@@ -7,7 +7,7 @@ import { formatCalendarDateParts, formatTimeOfDay } from '@/lib/calendar-shared'
 import { loadCalendarCategories } from '@/lib/calendar';
 import { plainSummary } from '@/lib/feed-logic';
 import { calendarReturn } from '@/lib/calendar-return';
-import { behaviorOf, categoryColorMap, colorFor, templateOf } from '@/lib/calendar-categories';
+import { categoryColorMap, colorFor, templateOf } from '@/lib/calendar-categories';
 import { getPublicMeetingForEntry, getPublishedMeetingNav } from '@/lib/meetings';
 import { ArticleBody } from '@/lib/article-body/ArticleBody';
 import { centralToday } from '@/lib/dates';
@@ -265,7 +265,6 @@ export default async function EventDetailPage({
             location: entry.location
           }}
           meeting={meeting}
-          isNoMeeting={behaviorOf(categories, entry.category) === 'no_meeting'}
           nav={meetingNav}
           today={centralToday()}
         />

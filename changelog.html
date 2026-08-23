@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 23, 2026</strong> &nbsp;&middot;&nbsp; v1.87.2</p>
+      <p>Last updated: <strong>August 23, 2026</strong> &nbsp;&middot;&nbsp; v1.87.3</p>
     </div>
   </div>
 
@@ -494,6 +494,32 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.87.3 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.87.3</span>
+        <span class="release-date">August 23, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Change</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">The &ldquo;No Meeting&rdquo; category is retired</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>A week with no meeting is now simply a Troop Meeting titled &ldquo;No Troop
+              Meeting.&rdquo;</strong> The separate category only existed to carry a flag, and everything the
+              flag did was cosmetic &mdash; the title already says it, the calendar sorts and filters it like
+              any meeting, and the ICS feed (which never exported categories) is unchanged. The four existing
+              entries were re-categorised with their titles intact; the category is gone from the calendar
+              filters and from Lookups. Attendance percentages are unaffected (they count only dates where roll
+              was taken). The public page for such a week shows its date, title and description in place of an
+              agenda.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

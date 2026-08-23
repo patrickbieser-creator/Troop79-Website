@@ -127,8 +127,8 @@ export async function loadCategoryCloud(): Promise<CategoryCloudEntry[]> {
   const a = count(arts.data as { category_label: string }[] | null, 'category_label');
   const e = count(evs.data as { category: string }[] | null, 'category');
   const r = count(res.data as { category_label: string }[] | null, 'category_label');
-  // The two BEHAVIOR categories (the weekly meeting / a cancelled week) are
-  // operational, not topics — a "No Meeting" browse page helps nobody.
+  // A BEHAVIOR category (the weekly meeting) is operational, not a topic — a
+  // "Troop Meeting" browse page helps nobody.
   return ((cats.data ?? []) as (NewsCategory & { sort_order: number; behavior: string | null })[])
     .filter((c) => !c.behavior)
     .map((c) => ({

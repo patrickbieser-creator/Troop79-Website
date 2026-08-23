@@ -10,9 +10,10 @@
  * place, with its count and a way in. Agendas remain a meeting-only layer and
  * show as a column rather than as the thing the list is made of.
  *
- * Entries whose category tracks nothing at all — "No Meeting" — are left out:
- * a cancelled week has no attendance to take, and listing it would only pad the
- * screen.
+ * Entries whose category tracks nothing at all are left out. A week with no
+ * meeting is a Troop Meeting titled "No Troop Meeting" (2026-08-23) and lists
+ * like any meeting — no agenda, no roll; attendance % is unaffected because its
+ * denominator is dates where roll was taken.
  */
 
 import { createAdminClient } from '@/lib/supabase/server';

@@ -32,7 +32,6 @@ interface Props {
   meeting: PublicMeeting | null;
   /** Resolved from the category's BEHAVIOR flag by the page, never by comparing
    *  a label here — a rename would break that (D-082/D-085). */
-  isNoMeeting: boolean;
   /** Published meetings, ascending, for the prev/next strip and archive list. */
   nav: MeetingNavItem[];
   today: string;
@@ -52,7 +51,7 @@ function shortDate(iso: string): string {
   );
 }
 
-export function MeetingAgenda({ entry, meeting, isNoMeeting, nav, today }: Props) {
+export function MeetingAgenda({ entry, meeting, nav, today }: Props) {
   const date = entry.entry_date;
   // Position within the published set is by DATE, but every link is by ENTRY —
   // two meetings on one night are two neighbours, not one ambiguous date.
@@ -96,7 +95,7 @@ export function MeetingAgenda({ entry, meeting, isNoMeeting, nav, today }: Props
       {meeting ? (
         <MeetingBody meeting={meeting} date={date} />
       ) : (
-        <Placeholder entry={entry} isNoMeeting={isNoMeeting} isPast={isPast} />
+        <Placeholder entry={entry} isPast={isPast} />
       )}
 
       {recentArchive.length > 1 && (
@@ -264,26 +263,20 @@ function AgendaRow({ item, continuation }: { item: PublicSession; continuation: 
   );
 }
 
-function Placeholder({
-  entry,
-  isNoMeeting,
-  isPast
-}: {
-  entry: Props['entry'];
-  isNoMeeting: boolean;
-  isPast: boolean;
-}) {
+function Placeholder({ entry, isPast }: { entry: Props['entry']; isPast: boolean }) {
+  // A meeting with no agenda. A week with no meeting is just a Troop Meeting
+  // titled "No Troop Meeting" (Patrick, 2026-08-23 — the "No Meeting"
+  // category is retired), so there is no special card: the title says it, and
+  // whatever the entry's description says ("Memorial Day Weekend") is shown
+  // in place of the agenda — generically, for any agenda-less meeting.
   return (
     <div className={styles.noMeetingWrap}>
       <div className={styles.noMeetingCard}>
         <div className={styles.noMeetingDate}>{formatLongDate(entry.entry_date)}</div>
-        {isNoMeeting ? (
+        {entry.description ? (
           <>
-            <div className={styles.noMeetingReason}>{entry.title || 'No meeting'}</div>
-            <p className={styles.noMeetingMsg}>
-              {entry.description ??
-                'There is no troop meeting this week. Check the calendar for what’s next.'}
-            </p>
+            <div className={styles.noMeetingReason}>{entry.title}</div>
+            <p className={styles.noMeetingMsg}>{entry.description}</p>
           </>
         ) : isPast ? (
           <p className={styles.noMeetingMsg}>No agenda was published for this date.</p>

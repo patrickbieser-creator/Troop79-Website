@@ -13,11 +13,12 @@
  */
 
 /**
- * The only two categories any code branches on. Stored in the DB as a stable
- * handle so a rename ("No Meeting" → "No Meeting (Holiday)") can never
- * silently break the Meetings system the way a name comparison did.
+ * The only category any code branches on. Stored in the DB as a stable handle
+ * so a rename can never silently break the Meetings system the way a name
+ * comparison did. ('no_meeting' retired 2026-08-23 — a week with no meeting is
+ * a Troop Meeting titled "No Troop Meeting"; nothing branches on it.)
  */
-export type CategoryBehavior = 'meeting' | 'no_meeting';
+export type CategoryBehavior = 'meeting';
 
 /**
  * Which editor panel set and public renderer a category uses (Calendar
