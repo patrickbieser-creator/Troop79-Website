@@ -20,6 +20,9 @@ export interface SnapshotPerson {
   entryId: number;
   name: string;
   classLabel: string;
+  /** Grid shorthand (S / A / JL / Cub / W / G) for the roster table cell;
+   *  classLabel stays the full word for counts and contacts. */
+  classShort?: string;
   isYouth: boolean;
   status: string; // yes | waitlist
   participation: string;
@@ -86,11 +89,56 @@ export interface SnapshotRosterSection {
   rows: SnapshotPerson[];
 }
 
+/** How the printed roster is ordered (Patrick, 2026-08-22): by patrol (the
+ *  sheet), A–Z by last name, or by class — adults, junior leaders, scouts,
+ *  then everyone else. */
+export type RosterOrder = 'patrol' | 'alpha' | 'class';
+export const ROSTER_ORDERS: readonly RosterOrder[] = ['patrol', 'alpha', 'class'];
+export const ROSTER_ORDER_LABEL: Record<RosterOrder, string> = {
+  patrol: 'By patrol',
+  alpha: 'A–Z by last name',
+  class: 'Adults · JLs · Scouts'
+};
+export function parseRosterOrder(v: unknown): RosterOrder {
+  return v === 'alpha' || v === 'class' ? v : 'patrol';
+}
+
+/** adults 0 · junior leaders 1 · scouts 2 · everyone else 3. */
+export function classRank(classLabel: string): number {
+  const c = classLabel.trim().toLowerCase();
+  if (c === 'adult') return 0;
+  if (c === 'junior leader') return 1;
+  if (c === 'scout') return 2;
+  return 3;
+}
+
+/** "Anjali Sankpal-Tatera" → "sankpal-tatera anjali": last name first, so an
+ *  alphabetical roster reads the way the troop's paper lists do. */
+export function lastNameKey(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length < 2) return name.trim().toLowerCase();
+  return `${parts[parts.length - 1]} ${parts.slice(0, -1).join(' ')}`.toLowerCase();
+}
+
 /** Roster grouped by the first patrol/crew set when one exists (the sheet's
- *  Patrol column), else one flat section. Unplaced people go last. */
-export function buildRosterSections(input: SnapshotInput): SnapshotRosterSection[] {
+ *  Patrol column), else one flat section. Unplaced people go last.
+ *  `order='alpha'` (Patrick, 2026-08-22) ignores the sets: one section, A–Z by
+ *  last name — the other way the roster gets printed. */
+export function buildRosterSections(input: SnapshotInput, order: RosterOrder = 'patrol'): SnapshotRosterSection[] {
   const live = input.people.filter((p) => p.status === 'yes' || p.status === 'waitlist');
   const byName = (a: SnapshotPerson, b: SnapshotPerson) => a.name.localeCompare(b.name);
+  const byLast = (a: SnapshotPerson, b: SnapshotPerson) => lastNameKey(a.name).localeCompare(lastNameKey(b.name));
+  if (order === 'alpha') {
+    return [{ heading: 'Everyone, A–Z by last name', rows: [...live].sort(byLast) }];
+  }
+  if (order === 'class') {
+    return [
+      {
+        heading: 'Everyone — adults, junior leaders, scouts',
+        rows: [...live].sort((a, b) => classRank(a.classLabel) - classRank(b.classLabel) || byLast(a, b))
+      }
+    ];
+  }
   const grouping = input.sets.find((s) => s.kind === 'patrol' || s.kind === 'crew');
   if (!grouping) return [{ heading: 'Everyone', rows: [...live].sort(byName) }];
   const placed = new Set<number>();
@@ -159,6 +207,26 @@ export function buildCarManifests(input: SnapshotInput): {
 }
 
 /** The other sets (tents, teams, cooking groups) as name lists. */
+/** The non-car sets that print as roster COLUMNS ("Patrol", "Tent" …): every
+ *  non-car set except the one the roster is already sectioned by (order
+ *  'patrol' → the patrol/crew set is the heading, not a column). Returns each
+ *  set with a lookup from entry id → group name. */
+export function rosterSetColumns(
+  input: SnapshotInput,
+  order: RosterOrder
+): { id: number; label: string; groupNameFor: (entryId: number) => string }[] {
+  const grouping = order === 'patrol' ? input.sets.find((s) => s.kind === 'patrol' || s.kind === 'crew') : undefined;
+  return input.sets
+    .filter((s) => s.kind !== 'car' && s.id !== grouping?.id)
+    .map((s) => {
+      const nameByEntry = new Map<number, string>();
+      for (const g of s.groups) for (const id of g.memberEntryIds) nameByEntry.set(id, g.name);
+      // "Patrols" → "Patrol": the column is one person's value.
+      const label = s.label.replace(/s$/i, '');
+      return { id: s.id, label, groupNameFor: (entryId: number) => nameByEntry.get(entryId) ?? '' };
+    });
+}
+
 export function buildOtherSets(input: SnapshotInput): { label: string; groups: { name: string; capacity: number | null; members: string[] }[] }[] {
   const byId = new Map(input.people.map((p) => [p.entryId, p]));
   const grouping = input.sets.find((s) => s.kind === 'patrol' || s.kind === 'crew');

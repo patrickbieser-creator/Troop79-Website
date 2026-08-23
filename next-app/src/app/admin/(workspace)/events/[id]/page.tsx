@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { EventNav } from '../../rosters/[id]/event-nav';
+import { loadEventNav } from '../../rosters/[id]/event-nav-data';
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireCapability } from '@/lib/require-capability';
@@ -79,7 +81,9 @@ async function load(signupId: number) {
     member_count: memberCount.get(Number(r.id)) ?? 0
   }));
 
+  const nav = await loadEventNav(supabase, s.id, s.calendar_entry_id);
   return {
+    nav,
     signup: signup as Record<string, unknown>,
     entry: entry as Record<string, unknown> | null,
     prices: (prices ?? []) as Record<string, unknown>[],
@@ -110,16 +114,13 @@ export default async function EventBuilderPage({ params }: { params: Promise<{ i
               All signups
             </Link>{' '}
             ·{' '}
-            <Link href={`/admin/rosters/${signupId}`} className={styles.actionLink}>
-              Roster
-            </Link>{' '}
-            ·{' '}
             <Link href={`/events/${entryId}`} className={styles.actionLinkMuted}>
               View public page
             </Link>
           </>
         }
       />
+      <EventNav signupId={signupId} active="builder" sets={data.nav.sets} hasMoney={data.nav.hasMoney} />
 
       <BuilderPanels
         signupId={signupId}

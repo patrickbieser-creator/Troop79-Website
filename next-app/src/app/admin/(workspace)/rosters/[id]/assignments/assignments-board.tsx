@@ -10,9 +10,8 @@ import {
   updateGroup,
   deleteGroup
 } from '../../../events/actions';
-import { TabStrip } from '../../../_components/tab-strip';
-import { Badge } from '../../../_components/badge';
-import { PARTICIPANT_CLASS_LABEL, type ParticipantClass } from '@/lib/participant-class';
+import type { ParticipantClass } from '@/lib/participant-class';
+import { ClassPill } from '../../../events/class-pill';
 import {
   LEG_LABEL,
   RIDE_STATUSES,
@@ -79,17 +78,21 @@ export function AssignmentsBoard({
   signupId,
   calendarEntryId,
   sets,
-  people
+  people,
+  activeSetId = null
 }: {
   signupId: number;
   calendarEntryId: number;
   sets: BoardSet[];
   people: BoardPerson[];
+  /** The set to show — chosen by the top-level EventNav tab (`?set=`);
+   *  the board no longer carries its own set tabs (Patrick, 2026-08-22). */
+  activeSetId?: number | null;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [activeId, setActiveId] = useState<number | null>(sets[0]?.id ?? null);
+  const activeId: number | null = activeSetId ?? sets[0]?.id ?? null;
   const [dragging, setDragging] = useState<number | null>(null);
   const [over, setOver] = useState<string | null>(null);
   // Group CRUD for non-car sets (Plans/Event-Logistics.md §B) — cars are
@@ -234,11 +237,9 @@ export function AssignmentsBoard({
       onDragEnd={onDragEnd}
     >
       <span className={styles.chipName}>{p.name}</span>
-      {role === 'driver' ? (
-        <span className={styles.chipRole}>driver</span>
-      ) : (
-        <Badge variant="muted">{PARTICIPANT_CLASS_LABEL[p.participantClass]}</Badge>
-      )}
+      {/* Class pill on patrol / tent / crew chips only — same short colored pill
+          as the roster; car chips stay bare (Patrick, 2026-08-22). */}
+      {role === 'driver' ? <span className={styles.chipRole}>driver</span> : !isCar && <ClassPill cls={p.participantClass} />}
       {role !== 'driver' && moveSelect(p, groupId)}
       {role !== 'driver' && groupId != null && (
         <button
@@ -256,17 +257,6 @@ export function AssignmentsBoard({
 
   return (
     <>
-      <TabStrip
-        ariaLabel="Assignment sets"
-        activeKey={String(active.id)}
-        items={sets.map((s) => ({
-          key: String(s.id),
-          label: s.label,
-          count: s.groups.reduce((n, g) => n + g.memberEntryIds.length, 0),
-          onSelect: () => setActiveId(s.id)
-        }))}
-      />
-
       {tiles && (
         <div className={ev.tiles}>
           <div className={`${ev.tile} ${tiles.unplaced > 0 ? ev.tileWarn : ev.tileOk}`}>
@@ -361,7 +351,6 @@ export function AssignmentsBoard({
 
         {active.groups.map((g) => {
           const full = g.capacity != null && g.memberEntryIds.length >= g.capacity;
-          const driver = g.driverEntryId != null ? byId.get(g.driverEntryId) : null;
           const key = `g${g.id}`;
           return (
             <section
@@ -444,7 +433,7 @@ export function AssignmentsBoard({
                 <div className={styles.cardHead}>
                   <span className={styles.cardTitle}>
                     {g.name}
-                    {driver?.phone && <span className={styles.cardSub}>{driver.phone}</span>}
+                    {/* No phone on the card (Patrick, 2026-08-22) — the roster/contacts carry it. */}
                     {g.notes && <span className={styles.cardSub}>{g.notes}</span>}
                   </span>
                   <span className={styles.cardTools}>

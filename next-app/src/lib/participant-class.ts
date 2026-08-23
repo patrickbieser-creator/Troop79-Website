@@ -39,6 +39,19 @@ export const PARTICIPANT_CLASS_LABEL: Record<ParticipantClass, string> = {
   adult_guest: 'Adult Guest'
 };
 
+/** Grid / snapshot shorthand (Patrick, 2026-08-22 — "S, A, JL, Cub, W, G"):
+ *  the full label rides along in the cell's title. Both guest classes are
+ *  "G"; the youth/adult split is visible from the row's other cells. */
+export const PARTICIPANT_CLASS_SHORT: Record<ParticipantClass, string> = {
+  adult: 'A',
+  scout: 'S',
+  junior_leader: 'JL',
+  webelos: 'W',
+  cub_scout: 'Cub',
+  youth_guest: 'G',
+  adult_guest: 'G'
+};
+
 /** The classes a family (or leader) can add BY NAME as a guest row — people
  *  who are not on the troop roster. */
 export const GUEST_CLASSES = ['webelos', 'cub_scout', 'youth_guest', 'adult_guest'] as const;

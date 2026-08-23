@@ -80,7 +80,9 @@ export function SortHeader<K extends string>({
   sortKey,
   sortDir,
   toggle,
-  align
+  align,
+  idleArrow = true,
+  title
 }: {
   label: string;
   colKey: K;
@@ -88,18 +90,27 @@ export function SortHeader<K extends string>({
   sortDir: SortDir;
   toggle: (k: K) => void;
   align?: 'right';
+  /** false = no ↕ glyph on inactive headers (dense grids — Patrick, 2026-08-22,
+   *  event roster: "spurious quote marks"); aria-sort still carries the state,
+   *  and the active column still shows its arrow. */
+  idleArrow?: boolean;
+  /** Header tooltip (a legend for coded columns, e.g. the roster's Class). */
+  title?: string;
 }) {
   const active = sortKey === colKey;
   return (
     <th
       aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
       className={align === 'right' ? styles.alignRight : undefined}
+      title={title}
     >
       <button type="button" className={styles.sortBtn} onClick={() => toggle(colKey)}>
         {label}
-        <span className={active ? styles.sortArrow : styles.sortArrowIdle} aria-hidden="true">
-          {active ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}
-        </span>
+        {(active || idleArrow) && (
+          <span className={active ? styles.sortArrow : styles.sortArrowIdle} aria-hidden="true">
+            {active ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}
+          </span>
+        )}
       </button>
     </th>
   );

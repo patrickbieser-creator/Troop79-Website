@@ -14,14 +14,23 @@
 export interface LeaderPreset {
   prompt: string;
   appliesTo: 'scouts' | 'adults' | 'both';
+  /** Grid / snapshot header (Patrick, 2026-08-22: "Health form", "Registered");
+   *  the full prompt stays in the DB and the header tooltip. */
+  short?: string;
   /** Pre-suggest from a roster fact (a hint beside the cell, never auto-written). */
   hint?: 'health_form_date';
 }
 
 export const LEADER_PRESETS: readonly LeaderPreset[] = [
-  { prompt: 'Health form in hand', appliesTo: 'both', hint: 'health_form_date' },
-  { prompt: 'Registered with council', appliesTo: 'both' }
+  { prompt: 'Health form in hand', appliesTo: 'both', short: 'Health form', hint: 'health_form_date' },
+  { prompt: 'Registered with council', appliesTo: 'both', short: 'Registered' }
 ];
+
+/** What the column header reads: a preset's short form, else the prompt. */
+export function leaderColumnHeader(prompt: string): string {
+  const p = prompt.trim();
+  return LEADER_PRESETS.find((x) => x.prompt === p)?.short ?? p;
+}
 
 export interface LeaderQuestion {
   id: number;

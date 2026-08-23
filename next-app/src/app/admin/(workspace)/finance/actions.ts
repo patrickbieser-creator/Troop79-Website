@@ -1,5 +1,7 @@
 'use server';
 
+import { feeAmount, isNotionalAccount, money, uncreditedOverpayment, type PayMethod } from '@/lib/event-money';
+
 /**
  * Troop Finances — read + write actions (Plans/Troop-Finances.md).
  *
@@ -468,7 +470,9 @@ export async function addTransferAction(input: AddTransferInput): Promise<Result
 export interface RecordEventFeePaymentInput {
   signupEntryId: number;
   amount: number;
-  method: TransactionMethod;
+  /** Ledger methods plus 'scholarship' (the scholarship fund pays: account
+   *  'scholarship', method 'other'). */
+  method: PayMethod;
   /** For revalidating the roster/Money pages this payment was recorded from. */
   signupId?: number;
   /** Defaults to today. */
@@ -530,18 +534,22 @@ export async function recordEventFeePaymentAction(input: RecordEventFeePaymentIn
   const ctx = await eventForSignupEntry(supabase, input.signupEntryId);
   if (!ctx) return { ok: false, error: 'Signup entry not found.' };
 
-  const account: Account = input.method === 'scout_account' ? 'scout_account' : 'checking';
+  // Paid from a notional account (scout account, scholarship fund) = a NEGATIVE
+  // row on that account — its balance goes down; the event reads it as +paid
+  // (the balances view flips notional fee rows). Cash methods land in checking.
+  const account: Account = input.method === 'scout_account' ? 'scout_account' : input.method === 'scholarship' ? 'scholarship' : 'checking';
+  const storedMethod: TransactionMethod = input.method === 'scholarship' ? 'other' : input.method;
   const { error: insertError } = await supabase.from('financial_transactions').insert({
     occurred_on: input.occurredOn ?? new Date().toISOString().slice(0, 10),
     account,
-    amount: input.amount,
+    amount: isNotionalAccount(account) ? -Math.abs(input.amount) : input.amount,
     kind: 'event_fee',
-    method: input.method,
+    method: storedMethod,
     person_id: ctx.entry.person_id,
     signup_entry_id: ctx.entry.id,
     calendar_entry_id: ctx.calendarEntryId,
     activity_label: ctx.title,
-    memo: input.memo?.trim() || null,
+    memo: input.method === 'scholarship' ? `Scholarship fund${input.memo?.trim() ? ` — ${input.memo.trim()}` : ''}` : input.memo?.trim() || null,
     source: 'app',
     entered_by_person_id: actor.personId,
     idempotency_key: input.idempotencyKey ?? null
@@ -596,7 +604,7 @@ export async function voidEventFeePaymentAction(transactionId: number, signupId?
 export async function refundEventFeeAction(input: {
   signupEntryId: number;
   amount: number;
-  method: TransactionMethod;
+  method: PayMethod;
   memo?: string | null;
   signupId?: number;
   idempotencyKey?: string;
@@ -606,13 +614,15 @@ export async function refundEventFeeAction(input: {
   const supabase = createAdminClient();
   const ctx = await eventForSignupEntry(supabase, input.signupEntryId);
   if (!ctx) return { ok: false, error: 'Signup entry not found.' };
-  const account: Account = input.method === 'scout_account' ? 'scout_account' : 'checking';
+  const account: Account = input.method === 'scout_account' ? 'scout_account' : input.method === 'scholarship' ? 'scholarship' : 'checking';
   const { error } = await supabase.from('financial_transactions').insert({
     occurred_on: new Date().toISOString().slice(0, 10),
     account,
-    amount: -Math.abs(input.amount),
+    // A refund INTO a notional account is a positive row there (balance back up);
+    // the event reads it as −paid. Cash refunds are negative on checking.
+    amount: isNotionalAccount(account) ? Math.abs(input.amount) : -Math.abs(input.amount),
     kind: 'event_fee',
-    method: input.method,
+    method: input.method === 'scholarship' ? 'other' : input.method,
     person_id: ctx.entry.person_id,
     signup_entry_id: ctx.entry.id,
     calendar_entry_id: ctx.calendarEntryId,
@@ -647,6 +657,24 @@ export async function creditOverpaymentAction(input: {
   const ctx = await eventForSignupEntry(supabase, input.signupEntryId);
   if (!ctx) return { ok: false, error: 'Signup entry not found.' };
   if (ctx.entry.person_id == null) return { ok: false, error: 'A guest has no scout account to credit.' };
+  // Never credit more than the overpayment that is still uncredited — a second
+  // click, a retry, or a stale tab must not mint a second credit (Patrick,
+  // 2026-08-22: three clicks, three credits). Both figures are derived live.
+  const [{ data: bal }, { data: prior }] = await Promise.all([
+    supabase.from('signup_entry_balances').select('balance').eq('entry_id', ctx.entry.id).maybeSingle(),
+    supabase
+      .from('financial_transactions')
+      .select('amount')
+      .eq('signup_entry_id', ctx.entry.id)
+      .eq('account', 'scout_account')
+      .eq('kind', 'adjustment')
+      .gt('amount', 0)
+      .is('voided_at', null)
+  ]);
+  const credited = ((prior ?? []) as { amount: number }[]).reduce((n, r) => n + Number(r.amount), 0);
+  const room = uncreditedOverpayment(Number((bal as { balance: number } | null)?.balance ?? 0));
+  if (room <= 0) return { ok: false, error: credited > 0 ? `Already credited ${money(credited)} — nothing left to credit.` : 'Nothing is overpaid on this entry.' };
+  if (Math.abs(input.amount) > room + 0.005) return { ok: false, error: `Only ${money(room)} is still uncredited.` };
   const { error } = await supabase.from('financial_transactions').insert({
     occurred_on: new Date().toISOString().slice(0, 10),
     account: 'scout_account',
@@ -701,6 +729,11 @@ export interface AddEventExpenseInput {
    *  created; the expense row is written when it is paid out
    *  (markReimbursementPaidAction), the one writer for that money. */
   paidBy: 'troop' | number;
+  /** WHO paid — always an adult leader (Patrick, 2026-08-22: "we need to know
+   *  who paid for something"). For a troop-funds expense this is the leader who
+   *  used the card / wrote the check and lands in person_id on the expense
+   *  row; for a fronted expense the requester IS the payer. Required. */
+  payerPersonId: number;
   method: TransactionMethod;
   idempotencyKey?: string;
 }
@@ -713,6 +746,7 @@ export async function addEventExpenseAction(input: AddEventExpenseInput): Promis
   if (!(input.amount > 0)) return { ok: false, error: 'Amount must be positive.' };
   const memo = input.memo.trim();
   if (!memo) return { ok: false, error: 'Say what the expense was for.' };
+  if (!Number.isInteger(input.payerPersonId) || input.payerPersonId <= 0) return { ok: false, error: 'Say who paid.' };
   const supabase = createAdminClient();
   const { data: cal } = await supabase.from('calendar_entries').select('id, title').eq('id', input.calendarEntryId).maybeSingle();
   if (!cal) return { ok: false, error: 'Event not found.' };
@@ -725,6 +759,7 @@ export async function addEventExpenseAction(input: AddEventExpenseInput): Promis
       amount: -Math.abs(input.amount),
       kind: 'expense',
       method: input.method,
+      person_id: input.payerPersonId,
       memo,
       calendar_entry_id: input.calendarEntryId,
       activity_label: title,
@@ -830,7 +865,7 @@ export async function getEventMoneyAction(signupId: number): Promise<EventMoneyD
       supabase.from('people').select('id, display_name'),
       supabase
         .from('financial_transactions')
-        .select('id, occurred_on, amount, kind, method, memo, person_id, signup_entry_id, voided_at')
+        .select('id, occurred_on, amount, kind, method, memo, person_id, signup_entry_id, voided_at, account')
         .eq('calendar_entry_id', calendarEntryId)
         .order('occurred_on')
         .order('id'),
@@ -847,7 +882,7 @@ export async function getEventMoneyAction(signupId: number): Promise<EventMoneyD
   const balById = new Map(
     ((balances ?? []) as { entry_id: number; owed: number; paid: number; balance: number; settled: boolean }[]).map((b) => [b.entry_id, b])
   );
-  type Tx = { id: number; occurred_on: string; amount: number; kind: string; method: string | null; memo: string | null; person_id: number | null; signup_entry_id: number | null; voided_at: string | null };
+  type Tx = { id: number; occurred_on: string; amount: number; kind: string; method: string | null; memo: string | null; person_id: number | null; signup_entry_id: number | null; voided_at: string | null; account: string };
   const txRows = (tx ?? []) as Tx[];
   const txByEntry = new Map<number, Tx[]>();
   for (const t of txRows) if (t.signup_entry_id != null) txByEntry.set(t.signup_entry_id, [...(txByEntry.get(t.signup_entry_id) ?? []), t]);
@@ -878,9 +913,10 @@ export async function getEventMoneyAction(signupId: number): Promise<EventMoneyD
       transactions: mine.map((t) => ({
         id: t.id,
         occurredOn: t.occurred_on,
-        amount: Number(t.amount),
+        // The event's sign: a −30 scout-account fee row shows as a $30 payment here.
+        amount: feeAmount({ amount: Number(t.amount), kind: t.kind, account: t.account }),
         kind: t.kind,
-        method: t.method,
+        method: t.account === 'scholarship' ? 'scholarship' : t.method,
         memo: t.memo,
         voidedAt: t.voided_at
       }))
@@ -1483,4 +1519,32 @@ export async function getActivityReportAction(): Promise<
       .not('activity_label', 'is', null)
       .range(from, to)
   );
+}
+
+/** The scout-account balance behind a signup entry — shown in the Record
+ *  payment dialog when the method is "Scout account balance" (Patrick,
+ *  2026-08-22: "we need to see how much that Scout has available"). Derived
+ *  from the FULL scout_account history for that person (never a stored
+ *  figure); null balance = no person on the entry (a guest row). */
+export async function getScoutAccountBalanceForEntryAction(
+  signupEntryId: number
+): Promise<{ personId: number | null; balance: number | null; scholarshipBalance: number }> {
+  await requireAnyOf(['calendar.write', 'finance.manage']);
+  const supabase = createAdminClient();
+  const { data: entry } = await supabase.from('signup_entries').select('person_id').eq('id', signupEntryId).maybeSingle();
+  const personId = (entry as { person_id: number | null } | null)?.person_id ?? null;
+  const scholarshipRows = await fetchAllRows<FinancialTransactionRow>((from, to) =>
+    supabase.from('financial_transactions').select('account, amount, person_id, voided_at').eq('account', 'scholarship').range(from, to)
+  );
+  const scholarshipBalance = computeBalance(scholarshipRows, { account: 'scholarship' });
+  if (personId == null) return { personId: null, balance: null, scholarshipBalance };
+  const rows = await fetchAllRows<FinancialTransactionRow>((from, to) =>
+    supabase
+      .from('financial_transactions')
+      .select('account, amount, person_id, voided_at')
+      .eq('account', 'scout_account')
+      .eq('person_id', personId)
+      .range(from, to)
+  );
+  return { personId, balance: computeScoutAccountBalances(rows).get(personId) ?? 0, scholarshipBalance };
 }

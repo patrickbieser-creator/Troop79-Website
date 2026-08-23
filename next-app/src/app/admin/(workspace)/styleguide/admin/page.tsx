@@ -569,9 +569,54 @@ export default function StyleguidePage() {
           <Specimen
             label="Sortable headers — shared SortHeader + useSortable"
             canonical
-            note="Import from _components/use-sortable. aria-sort carries the state; initialKey null preserves a table's deliberate default order until the first click. Client-side tables only — finance's URL-param server sort is a different mechanism, deliberately separate."
+            note="Import from _components/use-sortable. aria-sort carries the state; initialKey null preserves a table's deliberate default order until the first click. Client-side tables only — finance's URL-param server sort is a different mechanism, deliberately separate. idleArrow={false} drops the ↕ on inactive headers for dense grids (event roster, 2026-08-22 — Patrick read them as stray quote marks); the active column still shows ▲/▼."
           >
             <SortHeaderSpecimen />
+          </Specimen>
+          <Specimen
+            label="Roster grid — stacked header, tight cells, class pill (events-admin .thStack / .cellTight / .noteCell / .classPill)"
+            canonical
+            note="Roster grid space-savers (2026-08-22): a two-word header stacks ('Driving' over 'To') so the column stays as narrow as its one-number cells; the two lines are separate spans so the accessible name still reads 'Driving To'. .noteCell keeps notes to one line with the full text on hover (title). .classPill is CATEGORICAL on the indexed scale — youth classes light (S red · JL teal · Cub gold · W orange · G plum), adult classes dark (A blue, adult-guest G plum) — not the status Badge, per badge.tsx's scope rule."
+          >
+            <table className={ev.table}>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Class</th>
+                  <th><span className={ev.thStack}><span>Driving</span> <span>To</span></span></th>
+                  <th><span className={ev.thStack}><span>Ride</span> <span>To</span></span></th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Patrick Bieser</td>
+                  <td title="Adult"><span className={`${ev.classPill} ${ev.classA}`}>A</span></td>
+                  <td className={ev.cellTight}>4</td>
+                  <td className={ev.cellTight} />
+                  <td className={`${ev.cellMuted} ${ev.noteCell}`} title="Arriving late Friday, bringing the trailer">Arriving late Friday, bringing the trailer</td>
+                </tr>
+                <tr>
+                  <td>Anjali Sankpal-Tatera</td>
+                  <td title="Scout"><span className={`${ev.classPill} ${ev.classS}`}>S</span></td>
+                  <td className={ev.cellTight} />
+                  <td className={ev.cellTight}>PBieser</td>
+                  <td className={`${ev.cellMuted} ${ev.noteCell}`}>—</td>
+                </tr>
+                <tr>
+                  <td>Six classes</td>
+                  <td colSpan={4}>
+                    <span className={`${ev.classPill} ${ev.classS}`}>S</span>{' '}
+                    <span className={`${ev.classPill} ${ev.classA}`}>A</span>{' '}
+                    <span className={`${ev.classPill} ${ev.classJL}`}>JL</span>{' '}
+                    <span className={`${ev.classPill} ${ev.classCub}`}>Cub</span>{' '}
+                    <span className={`${ev.classPill} ${ev.classW}`}>W</span>{' '}
+                    <span className={`${ev.classPill} ${ev.classG}`} title="Youth guest">G</span>{' '}
+                    <span className={`${ev.classPill} ${ev.classAG}`} title="Adult guest">G</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </Specimen>
           <Specimen
             label="Wrapped-card cluster"

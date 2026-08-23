@@ -49,7 +49,7 @@ function row(over: Partial<RosterRow> & { id: number; name: string }): RosterRow
     rideBack: 'needs_ride',
     carOut: null,
     carBack: null,
-    groups: [],
+    groupBySet: {},
     slipReceived: false,
     paid: 0,
     balance: 0,
@@ -82,7 +82,6 @@ function renderTable(rows: RosterRow[]) {
       removedRows={[]}
       signupId={4}
       calendarEntryId={35}
-      showSlip={false}
       slots={[]}
       leaderQuestions={QUESTIONS}
       eventDate="2026-10-09"
@@ -95,7 +94,9 @@ beforeEach(() => setLeaderAnswer.mockClear());
 describe('leader-only columns', () => {
   it('LeaderColumns_RenderAsHeaders_AndSingleChoiceAsACheckbox', () => {
     renderTable([row({ id: 1, name: 'Owen', leaderAnswers: { 21: 'Yes' } })]);
-    expect(screen.getByRole('columnheader', { name: 'Health form in hand' })).toBeTruthy();
+    // Short preset header on the grid (Plans/Roster-Status-Tab.md item 8);
+    // the full prompt is the header's tooltip.
+    expect(screen.getByRole('columnheader', { name: 'Health form' })).toBeTruthy();
     const box = screen.getByLabelText('Health form in hand — Owen') as HTMLInputElement;
     expect(box.type).toBe('checkbox');
     expect(box.checked).toBe(true);

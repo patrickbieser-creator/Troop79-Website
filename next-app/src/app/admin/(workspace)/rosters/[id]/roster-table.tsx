@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  setEntryFlag,
   cancelEntry,
   restoreEntry,
   claimSlotFor,
@@ -16,11 +15,12 @@ import {
 import {
   healthFormLikelyCurrent,
   isCheckboxColumn,
+  leaderColumnHeader,
   printableLeaderQuestions,
   LEADER_PRESETS,
   type LeaderQuestion
 } from '@/lib/leader-columns';
-import { LEG_LABEL, RIDE_STATUSES, RIDE_STATUS_LABEL, rideCell, type Leg, type RideStatus } from '@/lib/transport';
+import { LEG_LABEL, RIDE_STATUSES, RIDE_STATUS_LABEL, rideCell, rideShort, type Leg, type RideStatus } from '@/lib/transport';
 import {
   PARTICIPANT_CLASSES,
   PARTICIPANT_CLASS_LABEL,
@@ -29,35 +29,127 @@ import {
   type ParticipantClass
 } from '@/lib/participant-class';
 import { Badge } from '../../_components/badge';
-import { recordEventFeePaymentAction } from '../../finance/actions';
-import type { TransactionMethod } from '@/lib/finance';
+import { TabStrip } from '../../_components/tab-strip';
+import { ClassPill } from '../../events/class-pill';
+import { formatTimeOfDay } from '@/lib/calendar-shared';
+import { getScoutAccountBalanceForEntryAction, recordEventFeePaymentAction } from '../../finance/actions';
+import { PayGuard, wouldGoNegative, type AccountFacts } from '../../events/pay-guard';
+import { PAY_METHOD_LABEL, type PayMethod } from '@/lib/event-money';
 import { diffClaimEdits, type ClaimEdit } from '@/lib/event-signup-admin';
 import type { RosterRow } from './page';
 import styles from '../../events/events-admin.module.css';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
-import { SortHeader, useSortable } from '../../_components/use-sortable';
+import { SortHeader, useSortable, type SortDir } from '../../_components/use-sortable';
+import sortStyles from '../../_components/use-sortable.module.css';
 
-type RosterColKey = 'name' | 'household' | 'status' | 'owed';
+/** Sortable columns (Patrick, 2026-08-22: name, class, participation, ride
+ *  to/from, and every group-set column — `set:<id>`). */
+type RosterColKey = 'name' | 'owed' | 'class' | 'participation' | 'rideOut' | 'rideBack' | `set:${number}`;
 
 /** Module scope on purpose — see the note on useSortable. */
 function rosterValue(r: RosterRow, key: RosterColKey): unknown {
   switch (key) {
     case 'name':
       return r.name;
-    case 'household':
-      return r.household;
-    case 'status':
-      return r.status;
     case 'owed':
       return r.owed;
+    case 'class':
+      return PARTICIPANT_CLASS_LABEL[r.participantClass];
+    case 'participation':
+      return PARTICIPATION_LABEL[r.participation] ?? r.participation;
+    case 'rideOut':
+      return rideShort(r, 'out', r.carOut, r.name) || null; // blank (needs a ride) sorts last
+    case 'rideBack':
+      return rideShort(r, 'back', r.carBack, r.name) || null;
+    default:
+      return r.groupBySet[Number(key.slice(4))] ?? null;
   }
 }
 
-const PARTICIPATION_LABEL: Record<string, string> = {
-  full: 'attending',
-  driver_only: 'driver only',
-  contributor: 'contributor'
+/** The Other-responses tab's status word (Plans/Roster-Status-Tab.md item 1). */
+const OTHER_STATUS: Record<string, { label: string; variant: 'warning' | 'muted' | 'neutral' | 'success' }> = {
+  yes: { label: 'Yes', variant: 'success' }, // driver-only / contributor: signed up, not attending
+  waitlist: { label: 'Waitlist', variant: 'warning' },
+  no: { label: 'Declined', variant: 'muted' },
+  cancelled: { label: 'Removed', variant: 'muted' }
 };
+
+/** A two-line header ("Driving" over "To") — separate spans, so the accessible
+ *  name still reads "Driving To" while the column stays one number wide. */
+function StackedHeader({
+  top,
+  bottom,
+  sort
+}: {
+  top: string;
+  bottom: string;
+  /** Present = sortable; the same button + aria-sort contract as SortHeader. */
+  sort?: { colKey: RosterColKey; sortKey: RosterColKey | null; sortDir: SortDir; toggle: (k: RosterColKey) => void };
+}) {
+  const label = (
+    <span className={styles.thStack}>
+      <span>{top}</span> <span>{bottom}</span>
+    </span>
+  );
+  if (!sort) {
+    return (
+      <th scope="col" className={styles.thCenter}>
+        {label}
+      </th>
+    );
+  }
+  const active = sort.sortKey === sort.colKey;
+  return (
+    <th scope="col" className={styles.thCenter} aria-sort={active ? (sort.sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+      <button type="button" className={sortStyles.sortBtn} onClick={() => sort.toggle(sort.colKey)}>
+        {label}
+        {/* No idle ↕ here (Patrick: they read as stray quote marks) — the active column still shows its arrow. */}
+        {active && (
+          <span className={sortStyles.sortArrow} aria-hidden="true">
+            {sort.sortDir === 'asc' ? '▲' : '▼'}
+          </span>
+        )}
+      </button>
+    </th>
+  );
+}
+
+/** One line of facts under a job in the Edit dialog: "Sat Sep 2 · 9:00 AM–11:00 AM ·
+ *  2 of 3 claimed · Bring gloves" — only the parts the slot actually has. */
+function slotDetail(sl: {
+  slotDate?: string | null;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  description?: string | null;
+  needed?: number | null;
+  filled?: number;
+}): string {
+  const parts: string[] = [];
+  if (sl.slotDate) {
+    const d = new Date(`${sl.slotDate}T00:00:00`);
+    if (!Number.isNaN(d.getTime())) parts.push(d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).replace(',', ''));
+  }
+  if (sl.startsAt) parts.push(sl.endsAt ? `${formatTimeOfDay(sl.startsAt)}–${formatTimeOfDay(sl.endsAt)}` : formatTimeOfDay(sl.startsAt));
+  if (sl.needed != null) parts.push(`${sl.filled ?? 0} of ${sl.needed} claimed`);
+  else if (sl.filled) parts.push(`${sl.filled} claimed`);
+  if (sl.description) parts.push(sl.description);
+  return parts.join(' · ');
+}
+
+const PARTICIPATION_LABEL: Record<string, string> = {
+  full: 'Attend',
+  driver_only: 'Drv only',
+  contributor: 'Contributor'
+};
+
+/** Hover legends (Patrick, 2026-08-22: "so it's clear what the codes stand for
+ *  and what values there are") — on the Class / Participation headers and on
+ *  every cell, which also carries the row's own full value first. */
+const CLASS_LEGEND = 'Codes: S scout · A adult · JL junior leader · Cub cub scout · W Webelos · G guest (light = youth, dark = adult)';
+const PARTICIPATION_LEGEND =
+  'Values: Attend — attending the event · Drv only — an adult providing a car without attending (owes nothing, no seat) · Contributor — donates items / claims a job without attending';
+const classTitle = (cls: ParticipantClass) => `${PARTICIPANT_CLASS_LABEL[cls]}. ${CLASS_LEGEND}`;
+const participationTitle = (p: string) => `${PARTICIPATION_LABEL[p] ?? p}. ${PARTICIPATION_LEGEND}`;
 
 /** Roster table with leader-managed slip/payment ticks, a per-row jobs &
  *  commitments editor, and a CSV export. One troop-wide list — no patrol
@@ -75,23 +167,52 @@ export function RosterTable({
   removedRows,
   signupId,
   calendarEntryId,
-  showSlip,
   slots,
   leaderQuestions = [],
-  eventDate = ''
+  eventDate = '',
+  groupSets = [],
+  familyQuestionCount = 0,
+  hasCarSets = true
 }: {
+  /** Every live (non-cancelled) entry; the grid itself shows status='yes'. */
   rows: RosterRow[];
   removedRows: RosterRow[];
   signupId: number;
   calendarEntryId: number;
-  showSlip: boolean;
-  /** Every job on this signup — the editor's checklist. */
-  slots: { id: number; label: string }[];
+  /** Every job on this signup — the editor's checklist; no jobs → no Jobs column.
+   *  The optional facts print under each job in the Edit dialog so the editor
+   *  can pick the right one (Patrick, 2026-08-22). */
+  slots: {
+    id: number;
+    label: string;
+    slotDate?: string | null;
+    startsAt?: string | null;
+    endsAt?: string | null;
+    description?: string | null;
+    needed?: number | null;
+    filled?: number;
+  }[];
   /** Leader-only columns (Plans/Event-Logistics.md §D) — editable cells. */
   leaderQuestions?: LeaderQuestion[];
   /** For the health-form hint (a date within 12 months of the event). */
   eventDate?: string;
+  /** Non-car group sets, builder order — one grid column each (item 6). */
+  groupSets?: { id: number; label: string }[];
+  /** Family questions on the event — zero means no Answers column (item 7). */
+  familyQuestionCount?: number;
+  /** Event has car sets (Drivers block on). false → no Driving/Ride columns at
+   *  all and Notes gets the room (service projects: jobs + notes matter, rides
+   *  don't — Patrick, 2026-08-22). */
+  hasCarSets?: boolean;
 }) {
+  // Attending tab = people who are coming (status yes AND participation full);
+  // declines, waitlist, driver-only, contributors and removed share the other
+  // tab, which keeps the Participation column (Patrick, 2026-08-22: "now that
+  // the first tab is dedicated to attending, the participation column can go").
+  const isAttending = (r: RosterRow) => r.status === 'yes' && r.participation === 'full';
+  const mainRows = rows.filter(isAttending);
+  const otherRows = [...rows.filter((r) => !isAttending(r)), ...removedRows];
+  const [tab, setTab] = useState<'going' | 'other'>('going');
   const [pending, start] = useTransition();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -105,9 +226,25 @@ export function RosterTable({
   // the flag directly; un-checking voids the linked transaction and needs
   // no prompt.
   const [payingRow, setPayingRow] = useState<RosterRow | null>(null);
-  const [payMethod, setPayMethod] = useState<TransactionMethod>('venmo');
+  const [payMethod, setPayMethod] = useState<PayMethod>('venmo');
+  const [ackNegative, setAckNegative] = useState(false);
   const [payAmountText, setPayAmountText] = useState('');
   const payDialogRef = useRef<HTMLDialogElement>(null);
+  // "Scout account balance" as the method: show what that account holds
+  // (Patrick, 2026-08-22). Fetched on demand, per entry, from the full history.
+  const [acctBalance, setAcctBalance] = useState<AccountFacts | null>(null);
+  useEffect(() => {
+    if (!payingRow || (payMethod !== 'scout_account' && payMethod !== 'scholarship')) return;
+    let live = true;
+    getScoutAccountBalanceForEntryAction(payingRow.id).then((r) => {
+      if (live) setAcctBalance({ entryId: payingRow.id, balance: r.balance, scholarshipBalance: r.scholarshipBalance });
+    });
+    return () => {
+      live = false;
+    };
+  }, [payingRow, payMethod]);
+  const payFacts = payingRow && acctBalance?.entryId === payingRow.id ? acctBalance : null;
+  const payNeedsAck = !!payingRow && wouldGoNegative(payMethod, payFacts, Number(payAmountText)) && !ackNegative;
 
   useEffect(() => {
     const dlg = payDialogRef.current;
@@ -268,6 +405,7 @@ export function RosterTable({
 
   function openPayDialog(r: RosterRow) {
     setPayMethod('venmo');
+    setAckNegative(false);
     // Default to what is still due — installments are the common case now.
     setPayAmountText(String(r.balance > 0 ? r.balance : r.owed));
     setPayingRow(r);
@@ -304,7 +442,7 @@ export function RosterTable({
     });
   }
 
-  const defaultOrder = [...rows].sort(
+  const defaultOrder = [...mainRows].sort(
     (a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name)
   );
   // null initial key: the adults-then-scouts… (kind → name) compound grouping
@@ -316,22 +454,26 @@ export function RosterTable({
   );
 
   const exportCsv = () => {
+    // The CSV keeps the verbose wording and every status (the spreadsheets
+    // downstream rely on it); only the grid is abbreviated.
     const head = [
       'Type', 'Name', 'Household', 'Status', 'Participation', 'Tier', 'Days',
       'Owed', 'Guests', 'Guest note',
-      'Drives there (seats incl. driver)', 'Drives back (seats incl. driver)', 'Ride there', 'Ride back', 'Groups',
-      'Slip', 'Balance', 'Jobs', 'Answers',
+      'Driving to (seats incl. driver)', 'Driving from (seats incl. driver)', 'Ride to', 'Ride from',
+      ...groupSets.map((s) => s.label),
+      'Balance', 'Jobs', 'Answers',
       // Leader-only columns: checkbox/number always; free text only when the
       // leader flagged it printable (Plans/Event-Logistics.md §D).
       ...printableLeader.map((q) => q.prompt),
       'Notes'
     ];
-    const body = sorted.map((r) => [
+    const body = [...sorted, ...otherRows].map((r) => [
       PARTICIPANT_CLASS_LABEL[r.participantClass], r.name, r.household, r.status, r.participation, r.tierLabel ?? '',
       r.days ?? '', r.owed, r.guests, r.guestNote ?? '',
       r.drivesOut ? (r.vehicleSeatsOut ?? '') : '', r.drivesBack ? (r.vehicleSeatsBack ?? '') : '',
-      rideCell(r, 'out', r.carOut), rideCell(r, 'back', r.carBack), r.groups.join(' | '),
-      r.slipReceived ? 'Y' : 'N', r.owed === 0 ? '' : r.settled ? 'Paid' : `${r.balance} due`,
+      rideCell(r, 'out', r.carOut), rideCell(r, 'back', r.carBack),
+      ...groupSets.map((s) => r.groupBySet[s.id] ?? ''),
+      r.owed === 0 ? '' : r.settled ? 'Paid' : `${r.balance} due`,
       r.claimsDisplay.join(' | '), r.answers.join(' | '),
       ...printableLeader.map((q) => r.leaderAnswers[q.id] ?? ''),
       r.notes ?? ''
@@ -347,15 +489,11 @@ export function RosterTable({
     URL.revokeObjectURL(url);
   };
 
-  const toggle = (r: RosterRow, field: 'permission_slip_received', v: boolean) =>
-    start(async () => {
-      setError(null);
-      const res = await setEntryFlag(r.id, field, v, signupId, calendarEntryId);
-      if (!res.ok) setError(res.error ?? 'Could not save.');
-      else router.refresh();
-    });
-
-  const colCount = 15 + (showSlip ? 1 : 0) + leaderQuestions.length;
+  // Feature columns exist only when the event uses the feature (item 7).
+  const showJobs = slots.length > 0;
+  const showAnswers = familyQuestionCount > 0;
+  // Name, Class, Guests, [Driving×2, Ride×2], Notes, Fee, Balance, actions
+  const colCount = 6 + (hasCarSets ? 4 : 0) + groupSets.length + (showJobs ? 1 : 0) + (showAnswers ? 1 : 0) + leaderQuestions.length + 1;
   const printableLeader = printableLeaderQuestions(leaderQuestions);
   const [leaderDraft, setLeaderDraft] = useState<Record<string, string>>({});
   const saveLeader = (r: RosterRow, q: LeaderQuestion, value: string | null) =>
@@ -431,7 +569,14 @@ export function RosterTable({
   return (
     <section className={styles.panel}>
       <div className={styles.panelHead}>
-        <h2>Everyone signed up ({rows.length})</h2>
+        <TabStrip
+          ariaLabel="Roster views"
+          activeKey={tab}
+          items={[
+            { key: 'going', label: 'Attending', count: mainRows.length, onSelect: () => setTab('going') },
+            { key: 'other', label: 'Other responses', count: otherRows.length, onSelect: () => setTab('other') }
+          ]}
+        />
         <div>
           <button type="button" className={styles.enableBtn} onClick={openAddGuest} disabled={pending || rows.length === 0}>
             Add a guest
@@ -446,96 +591,126 @@ export function RosterTable({
       </div>
       {error && <p className={styles.err}>{error}</p>}
 
+      {tab === 'other' ? (
+        <OtherResponses
+          rows={otherRows}
+          pending={pending}
+          onRestore={(r) =>
+            start(async () => {
+              setError(null);
+              const res = await restoreEntry(r.id, signupId, calendarEntryId);
+              if (!res.ok) setError(res.error ?? 'Could not restore.');
+              router.refresh();
+            })
+          }
+          onRemove={(r) =>
+            start(async () => {
+              setError(null);
+              const res = await cancelEntry(r.id, signupId, calendarEntryId);
+              if (!res.ok) setError(res.error ?? 'Could not remove.');
+              router.refresh();
+            })
+          }
+        />
+      ) : (
       <table className={styles.table}>
         <thead>
           <tr>
-            <SortHeader label="Name" colKey="name" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
-            <th scope="col">Class</th>
-            <SortHeader label="Household" colKey="household" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
-            <SortHeader label="Status" colKey="status" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
-            <th scope="col">Participation</th>
+            <SortHeader label="Name" colKey="name" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} idleArrow={false} />
+            <SortHeader label="Class" colKey="class" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} idleArrow={false} title={CLASS_LEGEND} />
             <th scope="col">Guests</th>
-            <SortHeader label="Owed" colKey="owed" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
-            <th scope="col">Driving</th>
-            <th scope="col">Ride</th>
-            <th scope="col">Groups</th>
-            <th scope="col">Jobs</th>
-            <th scope="col">Answers</th>
-            {leaderQuestions.map((q) => (
-              <th key={q.id} scope="col" title="Leader-only column — families never see it">
-                {q.prompt}
-              </th>
+            {hasCarSets && (
+              <>
+                <StackedHeader top="Driving" bottom="To" />
+                <StackedHeader top="Driving" bottom="From" />
+                <StackedHeader top="Ride" bottom="To" sort={{ colKey: 'rideOut', sortKey, sortDir, toggle: toggleSort }} />
+                <StackedHeader top="Ride" bottom="From" sort={{ colKey: 'rideBack', sortKey, sortDir, toggle: toggleSort }} />
+              </>
+            )}
+            {groupSets.map((s) => (
+              <SortHeader key={s.id} label={s.label} colKey={`set:${s.id}`} sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} idleArrow={false} />
             ))}
+            {showJobs && <th scope="col">Jobs</th>}
+            {showAnswers && <th scope="col">Answers</th>}
+            {leaderQuestions.map((q) => {
+              // Two-word leader headers stack ("Health" over "form") — Patrick, 2026-08-22.
+              const label = leaderColumnHeader(q.prompt);
+              const space = label.indexOf(' ');
+              const title = `${q.prompt} — leader-only column, families never see it`;
+              return space > 0 ? (
+                <th key={q.id} scope="col" title={title}>
+                  <span className={styles.thStack}>
+                    <span>{label.slice(0, space)}</span> <span>{label.slice(space + 1)}</span>
+                  </span>
+                </th>
+              ) : (
+                <th key={q.id} scope="col" title={title}>
+                  {label}
+                </th>
+              );
+            })}
             <th scope="col">Notes</th>
-            {showSlip && <th scope="col">Slip</th>}
+            <SortHeader label="Fee" colKey="owed" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} idleArrow={false} />
             <th scope="col">Balance</th>
             <th scope="col" />
           </tr>
         </thead>
         <tbody>
           {sorted.map((r) => (
-            <tr key={r.id} className={r.status === 'waitlist' ? styles.waitRow : undefined}>
+            <tr key={r.id}>
               <td className={styles.nowrap}>
                 <span className={styles.evTitle}>{r.name}</span>
               </td>
-              <td className={styles.nowrap}>
-                <Badge variant={isYouthClass(r.participantClass) ? 'info' : 'neutral'}>
-                  {PARTICIPANT_CLASS_LABEL[r.participantClass]}
-                </Badge>
+              <td className={styles.nowrap} title={classTitle(r.participantClass)}>
+                <ClassPill cls={r.participantClass} />
                 {r.hostEntryId !== null && (
                   <span className={styles.guestOf}>
                     guest of {rows.find((h) => h.id === r.hostEntryId)?.name ?? '—'}
                   </span>
                 )}
               </td>
-              <td>{r.household}</td>
-              <td className={styles.nowrap}>
-                {r.status === 'waitlist' ? <strong>Waitlist</strong> : r.status}
-              </td>
-              <td className={`${styles.nowrap} ${styles.cellMuted}`}>
-                {PARTICIPATION_LABEL[r.participation] ?? r.participation}
-              </td>
               <td className={styles.nowrap}>
                 {r.guests > 0 ? `+${r.guests}${r.guestNote ? ` (${r.guestNote})` : ''}` : '—'}
+              </td>
+              {/* Seats INCLUDING the driver — the number alone; the header says it's driving. */}
+              {hasCarSets && (
+                <>
+                  <td className={styles.cellTight} title={r.drivesOut ? `Driving there · ${r.vehicleSeatsOut} seats incl. driver` : undefined}>
+                    {r.drivesOut ? r.vehicleSeatsOut : ''}
+                  </td>
+                  <td className={styles.cellTight} title={r.drivesBack ? `Driving back · ${r.vehicleSeatsBack} seats incl. driver` : undefined}>
+                    {r.drivesBack ? r.vehicleSeatsBack : ''}
+                  </td>
+                </>
+              )}
+              {hasCarSets && (['out', 'back'] as Leg[]).map((leg) => {
+                const travels = r.status === 'yes' && r.participation !== 'contributor';
+                const car = leg === 'out' ? r.carOut : r.carBack;
+                // Full wording ("Needs a ride", "Driving · 4 seats") stays on hover.
+                const full = travels ? rideCell(r, leg, car) : '—';
+                return (
+                  <td key={leg} className={`${styles.cellTight} ${styles.cellMuted}`} title={full}>
+                    {travels ? rideShort(r, leg, car, r.name) : '—'}
+                  </td>
+                );
+              })}
+              {groupSets.map((s) => (
+                <td key={s.id} className={`${styles.nowrap} ${styles.cellMuted}`}>
+                  {r.groupBySet[s.id] ?? ''}
+                </td>
+              ))}
+              {showJobs && <td>{r.claimsDisplay.join(', ') || '—'}</td>}
+              {showAnswers && <td className={styles.cellMuted}>{r.answers.join(' · ') || '—'}</td>}
+              {leaderQuestions.map((q) => leaderCell(r, q))}
+              {/* One line with hover when the grid is dense; the full note when
+                  there are no transport columns to make room for. */}
+              <td className={`${styles.cellMuted}${hasCarSets ? ` ${styles.noteCell}` : ''}`} title={r.notes ?? undefined}>
+                {r.notes || '—'}
               </td>
               <td className={styles.nowrap}>
                 {r.owed > 0 ? `$${r.owed}` : '—'}
                 {r.days ? <span className={styles.evCat}>{r.days} days</span> : null}
               </td>
-              <td className={styles.nowrap}>
-                {r.drivesOut || r.drivesBack
-                  ? [
-                      r.drivesOut && `there · ${r.vehicleSeatsOut} seats`,
-                      r.drivesBack && `back · ${r.vehicleSeatsBack} seats`
-                    ]
-                      .filter(Boolean)
-                      .join(' / ')
-                  : '—'}
-              </td>
-              <td className={`${styles.nowrap} ${styles.cellMuted}`}>
-                {r.status === 'yes' && r.participation !== 'contributor'
-                  ? (['out', 'back'] as Leg[])
-                      .filter((leg) => !(leg === 'out' ? r.drivesOut : r.drivesBack))
-                      .map((leg) => `${LEG_LABEL[leg].toLowerCase()}: ${rideCell(r, leg, leg === 'out' ? r.carOut : r.carBack)}`)
-                      .join(' · ') || '—'
-                  : '—'}
-              </td>
-              <td className={styles.cellMuted}>{r.groups.join(' · ') || '—'}</td>
-              <td>{r.claimsDisplay.join(', ') || '—'}</td>
-              <td className={styles.cellMuted}>{r.answers.join(' · ') || '—'}</td>
-              {leaderQuestions.map((q) => leaderCell(r, q))}
-              <td className={styles.cellMuted}>{r.notes || '—'}</td>
-              {showSlip && (
-                <td>
-                  <input
-                    type="checkbox"
-                    checked={r.slipReceived}
-                    disabled={pending || !isYouthClass(r.participantClass)}
-                    aria-label={`Permission slip received — ${r.name}`}
-                    onChange={(e) => toggle(r, 'permission_slip_received', e.target.checked)}
-                  />
-                </td>
-              )}
               <td className={styles.nowrap}>
                 {/* Derived, never a tick: owed − every linked payment (+ refunds).
                     Record here; void / refund / credit on the Money tab. */}
@@ -607,47 +782,15 @@ export function RosterTable({
               </td>
             </tr>
           ))}
-          {rows.length === 0 && (
+          {mainRows.length === 0 && (
             <tr>
               <td colSpan={colCount} className={styles.empty}>
-                Nobody has signed up yet.
+                {otherRows.length > 0 ? 'Nobody is attending yet — see Other responses.' : 'Nobody has signed up yet.'}
               </td>
             </tr>
           )}
         </tbody>
       </table>
-
-      {removedRows.length > 0 && (
-        <div className={styles.removedBlock}>
-          <p className={styles.panelHint}>
-            <strong>Removed ({removedRows.length}).</strong> Their spots are already back in the
-            pool — restore anyone taken off by mistake.
-          </p>
-          <ul className={styles.coverList}>
-            {removedRows.map((r) => (
-              <li key={r.id}>
-                <span>
-                  {r.name} <span className={styles.evCat}>{r.household}</span>
-                </span>
-                <button
-                  type="button"
-                  className={styles.rowEdit}
-                  disabled={pending}
-                  onClick={() =>
-                    start(async () => {
-                      setError(null);
-                      const res = await restoreEntry(r.id, signupId, calendarEntryId);
-                      if (!res.ok) setError(res.error ?? 'Could not restore.');
-                      router.refresh();
-                    })
-                  }
-                >
-                  Put back
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
       )}
 
       <Dialog ref={jobsDialogRef} onClose={() => setEditingRow(null)}>
@@ -669,7 +812,8 @@ export function RosterTable({
                   ))}
                 </select>
               </label>
-              {editingRow.participation !== 'contributor' && editingRow.status !== 'cancelled' && (
+              {/* Transportation only when the event has car sets — data-driven like the grid (Patrick, 2026-08-22). */}
+              {hasCarSets && editingRow.participation !== 'contributor' && editingRow.status !== 'cancelled' && (
                 <>
                   <p className={`adminLabel ${styles.jobsHeading}`}>Transportation</p>
                   <ul className={styles.jobsList}>
@@ -732,10 +876,9 @@ export function RosterTable({
                   <p className={styles.jobsEmpty}>Seat counts include the driver. Placing riders in cars happens on Rides &amp; assignments.</p>
                 </>
               )}
-              <p className={`adminLabel ${styles.jobsHeading}`}>Jobs &amp; commitments</p>
-              {slots.length === 0 ? (
-                <p className={styles.jobsEmpty}>This signup has no jobs defined yet — add them in the Builder.</p>
-              ) : (
+              {/* Jobs only when the event defines any (item 7 — no placeholder text). */}
+              {slots.length > 0 && <p className={`adminLabel ${styles.jobsHeading}`}>Jobs &amp; commitments</p>}
+              {slots.length === 0 ? null : (
                 <ul className={styles.jobsList}>
                   {slots.map((sl) => {
                     const st = editClaims.get(sl.id) ?? { checked: false, comment: '' };
@@ -754,6 +897,7 @@ export function RosterTable({
                             }
                           />
                           {sl.label}
+                          {slotDetail(sl) && <span className={styles.evCat}>{slotDetail(sl)}</span>}
                         </label>
                         {st.checked && (
                           <input
@@ -860,15 +1004,32 @@ export function RosterTable({
             <DialogBody>
               <label className={`adminLabel ${styles.payField}`}>
                 Method
-                <select value={payMethod} onChange={(e) => setPayMethod(e.target.value as TransactionMethod)}>
-                  <option value="venmo">Venmo</option>
-                  <option value="check">Check</option>
-                  <option value="cash">Cash</option>
-                  <option value="scout_account">Scout account balance</option>
-                  <option value="bank">Bank transfer</option>
-                  <option value="other">Other</option>
+                <select
+                  value={payMethod}
+                  onChange={(e) => {
+                    setPayMethod(e.target.value as PayMethod);
+                    setAckNegative(false);
+                  }}
+                >
+                  {(Object.keys(PAY_METHOD_LABEL) as PayMethod[]).map((m) => (
+                    <option key={m} value={m}>
+                      {PAY_METHOD_LABEL[m]}
+                    </option>
+                  ))}
                 </select>
               </label>
+              <PayGuard
+                method={payMethod}
+                facts={payFacts}
+                loading={payFacts == null}
+                amount={Number(payAmountText)}
+                acknowledged={ackNegative}
+                onAcknowledge={setAckNegative}
+                onUseScholarship={() => {
+                  setPayMethod('scholarship');
+                  setAckNegative(false);
+                }}
+              />
               <label className={`adminLabel ${styles.payField}`}>
                 Amount
                 <input
@@ -884,7 +1045,7 @@ export function RosterTable({
               <button type="button" className={styles.rowEdit} onClick={() => setPayingRow(null)}>
                 Cancel
               </button>
-              <button type="button" className={styles.enableBtn} disabled={pending} onClick={confirmPayment}>
+              <button type="button" className={styles.enableBtn} disabled={pending || payNeedsAck} onClick={confirmPayment}>
                 Record payment
               </button>
             </DialogActions>
@@ -892,5 +1053,83 @@ export function RosterTable({
         )}
       </Dialog>
     </section>
+  );
+}
+
+/** The Other-responses tab (Plans/Roster-Status-Tab.md item 1): declines,
+ *  waitlist and removed people together, out of the way of the 99% case.
+ *  A removed person comes back from here; a decline or waitlister can be
+ *  taken off the list. Rendered inside RosterTable's panel, sharing its
+ *  pending state and error banner. */
+function OtherResponses({
+  rows,
+  pending,
+  onRestore,
+  onRemove
+}: {
+  rows: RosterRow[];
+  pending: boolean;
+  onRestore: (r: RosterRow) => void;
+  onRemove: (r: RosterRow) => void;
+}) {
+  const order = { waitlist: 0, no: 1, cancelled: 2 } as Record<string, number>;
+  const sorted = [...rows].sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9) || a.name.localeCompare(b.name));
+  return (
+    <table className={styles.table}>
+      <thead>
+        <tr>
+          <th scope="col">Name</th>
+          <th scope="col">Class</th>
+          <th scope="col">Status</th>
+          <th scope="col" title={PARTICIPATION_LEGEND}>Participation</th>
+          <th scope="col">Household</th>
+          <th scope="col">Notes</th>
+          <th scope="col" />
+        </tr>
+      </thead>
+      <tbody>
+        {sorted.map((r) => {
+          const st = OTHER_STATUS[r.status] ?? { label: r.status, variant: 'neutral' as const };
+          return (
+            <tr key={r.id} className={r.status === 'waitlist' ? styles.waitRow : undefined}>
+              <td className={styles.nowrap}>
+                <span className={styles.evTitle}>{r.name}</span>
+              </td>
+              <td className={styles.nowrap} title={classTitle(r.participantClass)}>
+                <ClassPill cls={r.participantClass} />
+              </td>
+              <td className={styles.nowrap}>
+                <Badge variant={st.variant}>{st.label}</Badge>
+              </td>
+              <td className={`${styles.nowrap} ${styles.cellMuted}`} title={participationTitle(r.participation)}>
+                {PARTICIPATION_LABEL[r.participation] ?? r.participation}
+              </td>
+              <td className={styles.cellMuted}>{r.household}</td>
+              <td className={`${styles.cellMuted} ${styles.noteCell}`} title={r.notes ?? undefined}>
+                {r.notes || '—'}
+              </td>
+              <td className={styles.nowrap}>
+                {r.status === 'cancelled' ? (
+                  <button type="button" className={styles.rowEdit} disabled={pending} onClick={() => onRestore(r)}>
+                    Put back
+                  </button>
+                ) : (
+                  <button type="button" className={styles.rowDel} disabled={pending} onClick={() => onRemove(r)}>
+                    Remove
+                  </button>
+                )}
+              </td>
+            </tr>
+          );
+        })}
+        {sorted.length === 0 && (
+          <tr>
+            <td colSpan={7} className={styles.empty}>
+              No declines, waitlist or removals.
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
   );
 }

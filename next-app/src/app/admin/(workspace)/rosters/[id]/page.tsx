@@ -18,6 +18,8 @@ import { EmailPanel } from './email-panel';
 import { emailConfigured } from '@/lib/email';
 import styles from '../../events/events-admin.module.css';
 import { PageTitle } from '../../_components/page-title';
+import { EventNav } from './event-nav';
+import { loadEventNav } from './event-nav-data';
 
 export const metadata = { title: 'Event Roster — Troop 79' };
 
@@ -59,8 +61,9 @@ export interface RosterRow {
   /** Driver's name when placed in a car for that leg. */
   carOut: string | null;
   carBack: string | null;
-  /** "Patrols: Kraken", "Tents: Tent 3" — every non-car set they're placed in. */
-  groups: string[];
+  /** set id → group name for every non-car set they're placed in; the grid
+   *  shows one column per set (Plans/Roster-Status-Tab.md item 6). */
+  groupBySet: Record<number, string>;
   slipReceived: boolean;
   /** Derived money (signup_entry_balances): owed honours the per-person
    *  override; paid nets every linked payment and refund. */
@@ -167,15 +170,20 @@ async function load(signupId: number) {
   }[];
   const groupById = new Map(groupRows.map((g) => [g.id, g]));
   const membersByGroup = new Map<number, number[]>();
-  const groupTagsByEntry = new Map<number, string[]>();
+  const groupBySetByEntry = new Map<number, Record<number, string>>();
   for (const m of (allMembers ?? []) as { group_id: number; entry_id: number; set_id: number }[]) {
     membersByGroup.set(m.group_id, [...(membersByGroup.get(m.group_id) ?? []), m.entry_id]);
     const set = setById.get(m.set_id);
     const group = groupById.get(m.group_id);
     if (set && group && set.kind !== 'car') {
-      groupTagsByEntry.set(m.entry_id, [...(groupTagsByEntry.get(m.entry_id) ?? []), `${set.label}: ${group.name}`]);
+      groupBySetByEntry.set(m.entry_id, { ...(groupBySetByEntry.get(m.entry_id) ?? {}), [set.id]: group.name });
     }
   }
+  // One grid column per non-car set, in the builder's order (item 6).
+  const groupSets = setRows.filter((s) => s.kind !== 'car').map((s) => ({ id: s.id, label: s.label }));
+  // The event tab row: one tab per set (sort order puts Patrols / Tents ahead of
+  // Cars there / Cars back), Money only when the event has money.
+  const nav = await loadEventNav(supabase, sig.id, sig.calendar_entry_id);
   const cars: TransportCar[] = groupRows
     .filter((g) => carSetIds.includes(g.set_id) && g.driver_entry_id != null)
     .map((g) => ({
@@ -321,7 +329,7 @@ async function load(signupId: number) {
       rideBack: isRideStatus(e.ride_back) ? e.ride_back : null,
       carOut: e.drives_out === true ? null : carNameFor(Number(e.id), 'out'),
       carBack: e.drives_back === true ? null : carNameFor(Number(e.id), 'back'),
-      groups: groupTagsByEntry.get(Number(e.id)) ?? [],
+      groupBySet: groupBySetByEntry.get(Number(e.id)) ?? {},
       slipReceived: e.permission_slip_received === true,
       paid: bal ? Number(bal.paid) : 0,
       balance: bal ? Number(bal.balance) : owed,
@@ -401,7 +409,23 @@ async function load(signupId: number) {
     ridesBack,
     hasCarSets: carSetIds.length > 0,
     leaderQuestions,
-    slots: ((slots ?? []) as { id: number; label: string }[]).map((sl) => ({ id: sl.id, label: sl.label }))
+    groupSets,
+    nav,
+    // Feature columns exist only when the event uses the feature (item 7):
+    // the family-question count decides the Answers column.
+    familyQuestionCount: questionList.filter((q) => !q.leader_only).length,
+    // The Edit dialog's job list carries when / how many / what (Patrick,
+    // 2026-08-22: "need more detail so the editor can choose correctly").
+    slots: ((slots ?? []) as { id: number; label: string; slot_date: string | null; starts_at: string | null; ends_at: string | null; description: string | null; needed: number | null }[]).map((sl) => ({
+      id: sl.id,
+      label: sl.label,
+      slotDate: sl.slot_date,
+      startsAt: sl.starts_at,
+      endsAt: sl.ends_at,
+      description: sl.description,
+      needed: sl.needed,
+      filled: ((claims ?? []) as { slot_id: number }[]).filter((c) => c.slot_id === sl.id).length
+    }))
   };
 }
 
@@ -428,7 +452,6 @@ export default async function EventRosterPage({ params }: { params: Promise<{ id
       .join(' · ') || '—';
   const driverOnly = rows.filter((r) => r.participation === 'driver_only');
   const contributors = rows.filter((r) => r.participation === 'contributor');
-  const waitlisted = rows.filter((r) => r.status === 'waitlist');
   const guests = going.reduce((n, r) => n + r.guests, 0);
   const headcount = going.length + guests;
   const owedTotal = rows.reduce((n, r) => n + r.owed, 0);
@@ -446,28 +469,13 @@ export default async function EventRosterPage({ params }: { params: Promise<{ id
               All signups
             </Link>{' '}
             ·{' '}
-            <Link href={`/admin/events/${signupId}`} className={styles.actionLink}>
-              Builder
-            </Link>{' '}
-            ·{' '}
-            <Link href={`/admin/rosters/${signupId}/assignments`} className={styles.actionLink}>
-              Rides &amp; assignments
-            </Link>{' '}
-            ·{' '}
-            <Link href={`/admin/rosters/${signupId}/money`} className={styles.actionLink}>
-              Money
-            </Link>{' '}
-            ·{' '}
-            <Link href={`/admin/snapshot/${signupId}`} className={styles.actionLink}>
-              Snapshot
-            </Link>{' '}
-            ·{' '}
             <Link href={`/events/${String(data.entry.id)}`} className={styles.actionLinkMuted}>
               Public page
             </Link>
           </>
         }
       />
+      <EventNav signupId={signupId} active="roster" sets={data.nav.sets} hasMoney={data.nav.hasMoney} />
 
       <div className={styles.tiles}>
         <div className={styles.tile}>
@@ -553,9 +561,11 @@ export default async function EventRosterPage({ params }: { params: Promise<{ id
         removedRows={removedRows}
         signupId={signupId}
         calendarEntryId={Number(data.entry.id)}
-        showSlip={signup.needs_permission_slip}
         leaderQuestions={data.leaderQuestions}
         eventDate={String(data.entry.entry_date ?? '')}
+        groupSets={data.groupSets}
+        familyQuestionCount={data.familyQuestionCount}
+        hasCarSets={hasCarSets}
       />
 
       <AddPerson
@@ -563,13 +573,6 @@ export default async function EventRosterPage({ params }: { params: Promise<{ id
         signupId={signupId}
         calendarEntryId={Number(data.entry.id)}
       />
-
-      {waitlisted.length > 0 && (
-        <section className={styles.panel}>
-          <h2>Waitlist</h2>
-          <p className={styles.panelHint}>{waitlisted.map((r) => r.name).join(', ')}</p>
-        </section>
-      )}
 
       {contributors.length > 0 && (
         <section className={styles.panel}>

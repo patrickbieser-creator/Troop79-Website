@@ -121,6 +121,35 @@ export function rideCell(e: TransportEntry, leg: Leg, carDriverName: string | nu
   return '—';
 }
 
+/** Grid shorthand for a ride status (Patrick, 2026-08-22 — "shorthand is
+ *  fine"); the full RIDE_STATUS_LABEL stays in the tooltip, drawer and CSV. */
+export const RIDE_STATUS_SHORT: Record<RideStatus, string> = {
+  needs_ride: '',        // blank = still needs a ride (Patrick: "just leave it blank"); hover says so
+  self: 'self',
+  meeting_there: 'meeting',
+  not_traveling: '—'
+};
+
+/** "Patrick Bieser" → "PBieser" (Patrick, 2026-08-22: "all one word" — no
+ *  period, no space); a one-word name is returned whole. */
+export function driverShortName(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return name.trim();
+  return `${parts[0][0].toUpperCase()}${parts[parts.length - 1]}`;
+}
+
+/** The narrow Ride To / Ride From grid cell: the driver as "PBieser" when
+ *  placed in a car, else the status shorthand. On a leg they DRIVE the cell
+ *  names their own car (`selfName` → "PBieser") — a driver is assigned to
+ *  their own car by default (Patrick, 2026-08-22); '' when no name is given. */
+export function rideShort(e: TransportEntry, leg: Leg, carDriverName: string | null, selfName?: string | null): string {
+  if (drives(e, leg)) return selfName ? driverShortName(selfName) : '';
+  const r = ride(e, leg);
+  if (r === 'needs_ride') return carDriverName ? driverShortName(carDriverName) : RIDE_STATUS_SHORT.needs_ride;
+  if (r) return RIDE_STATUS_SHORT[r];
+  return '—';
+}
+
 /** A placement row as the family-facing loader shapes it. */
 export interface PlacementRow {
   entryId: number;

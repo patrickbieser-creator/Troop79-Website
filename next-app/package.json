@@ -24,7 +24,9 @@
     "test": "vitest run",
     "import-sparkler": "tsx --env-file=.env.local scripts/import-sparkler.ts",
     "import-troop-finances": "tsx --env-file=.env.local scripts/import-troop-finances.ts",
-    "send-test-email": "tsx --env-file=.env.local scripts/send-test-email.ts"
+    "send-test-email": "tsx --env-file=.env.local scripts/send-test-email.ts",
+    "import-event-sheet": "tsx --env-file=.env.local scripts/import-event-sheet.ts",
+    "refresh-local-from-prod": "bash scripts/refresh-local-from-prod.sh"
   },
   "dependencies": {
     "@next/third-parties": "^16.3.1",

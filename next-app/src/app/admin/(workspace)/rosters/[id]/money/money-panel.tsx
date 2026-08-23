@@ -9,12 +9,15 @@ import {
   setAmountOverrideAction,
   voidEventFeePaymentAction,
   addEventExpenseAction,
+  getScoutAccountBalanceForEntryAction,
   type EventMoneyData,
   type EventMoneyPerson
 } from '../../../finance/actions';
 import { addMilestone, deleteMilestone, emailPaymentReminders } from '../../../events/actions';
 import { TRANSACTION_METHODS, type TransactionMethod } from '@/lib/finance';
-import { milestoneStanding, money, summarizeEventMoney, type Milestone } from '@/lib/event-money';
+import { PayGuard, wouldGoNegative, type AccountFacts } from '../../../events/pay-guard';
+import { PAY_METHOD_LABEL, type PayMethod } from '@/lib/event-money';
+import { milestoneStanding, money, summarizeEventMoney, uncreditedOverpayment, type Milestone } from '@/lib/event-money';
 import { Badge } from '../../../_components/badge';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../../_components/dialog';
 import styles from '../../../events/events-admin.module.css';
@@ -31,6 +34,7 @@ const METHOD_LABEL: Record<string, string> = {
   check: 'Check',
   cash: 'Cash',
   scout_account: 'Scout account',
+  scholarship: 'Scholarship fund',
   bank: 'Bank / card',
   other: 'Other'
 };
@@ -73,7 +77,7 @@ export function MoneyPanel({
   const totals = useMemo(
     () =>
       summarizeEventMoney(
-        data.people.map((p) => ({ entryId: p.entryId, owed: p.owed, paid: p.paid })),
+        data.people.map((p) => ({ entryId: p.entryId, owed: p.owed, paid: p.paid, balance: p.balance })),
         [
           ...data.people.flatMap((p) =>
             p.transactions.map((t) => ({
@@ -121,8 +125,27 @@ export function MoneyPanel({
 
   // ── Pay / refund / credit dialog ─────────────────────────────────────────
   const [dlg, setDlg] = useState<{ mode: Mode; person: EventMoneyPerson } | null>(null);
+  // "Scout account balance" as the method: show what that account holds
+  // (Patrick, 2026-08-22). Fetched on demand, per entry, from the full history.
+  const [acctBalance, setAcctBalance] = useState<AccountFacts | null>(null);
   const [amountText, setAmountText] = useState('');
-  const [method, setMethod] = useState<TransactionMethod>('venmo');
+  const [method, setMethod] = useState<PayMethod>('venmo');
+  const [ackNegative, setAckNegative] = useState(false);
+  useEffect(() => {
+    if (!dlg || dlg.mode !== 'pay' || (method !== 'scout_account' && method !== 'scholarship')) return;
+    let live = true;
+    const entryId = dlg.person.entryId;
+    getScoutAccountBalanceForEntryAction(entryId).then((r) => {
+      if (live) setAcctBalance({ entryId, balance: r.balance, scholarshipBalance: r.scholarshipBalance });
+    });
+    return () => {
+      live = false;
+    };
+  }, [dlg, method]);
+  const payFacts = dlg && acctBalance?.entryId === dlg.person.entryId ? acctBalance : null;
+  // The guard (pay-guard.tsx): Record stays disabled until a would-go-negative
+  // amount is acknowledged (Patrick, 2026-08-22).
+  const payNeedsAck = !!dlg && dlg.mode === 'pay' && wouldGoNegative(method, payFacts, Number(amountText)) && !ackNegative;
   const [memo, setMemo] = useState('');
   const dlgRef = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -134,10 +157,13 @@ export function MoneyPanel({
   const openDlg = (mode: Mode, person: EventMoneyPerson) => {
     setMethod('venmo');
     setMemo('');
+    setAckNegative(false);
     setAmountText(
       mode === 'pay'
         ? String(person.balance > 0 ? person.balance : person.owed)
-        : String(person.balance < 0 ? -person.balance : person.paid)
+        : mode === 'credit'
+          ? String(uncreditedOverpayment(person.balance))
+          : String(person.balance < 0 ? -person.balance : person.paid)
     );
     setDlg({ mode, person });
   };
@@ -167,7 +193,10 @@ export function MoneyPanel({
   const [xDate, setXDate] = useState(today);
   const [xAmount, setXAmount] = useState('');
   const [xMemo, setXMemo] = useState('');
-  const [xPaidBy, setXPaidBy] = useState<string>('troop');
+  // Who paid (always an adult leader) + with what money: troop funds → an
+  // expense row naming them; their own → a reimbursement request (Patrick, 2026-08-22).
+  const [xPayer, setXPayer] = useState<string>('');
+  const [xPaidBy, setXPaidBy] = useState<'troop' | 'own'>('own');
   const [xMethod, setXMethod] = useState<TransactionMethod>('bank');
 
   // ── Milestone form ───────────────────────────────────────────────────────
@@ -312,7 +341,12 @@ export function MoneyPanel({
                     {money(p.paid)}
                     {p.credited > 0 && <span className={styles.evCat}>{money(p.credited)} credited to account</span>}
                   </td>
-                  <td className={styles.nowrap}>{money(p.balance)}</td>
+                  {/* Blank when nothing is owed either way (Patrick, 2026-08-22) — a $0 reads as a figure to check. */}
+                  {/* Negative = overpaid: red, parentheses, minus — all three (Patrick). */}
+                  <td className={styles.nowrap}>
+                    {p.balance === 0 ? '' : p.balance < 0 ? <span className={styles.negMoney}>({money(p.balance)})</span> : money(p.balance)}
+                    {/* Balance already nets the credit; the Paid cell carries the "$X credited" note. */}
+                  </td>
                   <td>{standingBadge(p.entryId, p)}</td>
                   <td className={styles.nowrap}>
                     <button type="button" className={styles.rowEdit} disabled={pending} onClick={() => openDlg('pay', p)}>
@@ -323,7 +357,7 @@ export function MoneyPanel({
                         Refund
                       </button>
                     )}{' '}
-                    {p.balance < 0 && p.personId != null && (
+                    {uncreditedOverpayment(p.balance) > 0 && p.personId != null && (
                       <button type="button" className={styles.rowEdit} disabled={pending} onClick={() => openDlg('credit', p)}>
                         Credit to account
                       </button>
@@ -390,35 +424,45 @@ export function MoneyPanel({
         <div className={styles.panelHead}>
           <h2>Expenses &amp; reimbursements</h2>
           <span className={styles.panelHint}>
-            The troop paid → an expense row now. A leader fronted it → a reimbursement request; the expense lands when
-            the treasurer pays it out.
+            Every expense names the leader who paid. Troop funds → an expense row now. Their own money → a
+            reimbursement request; the expense lands when the treasurer pays it out.
           </span>
         </div>
         {data.expenses.length === 0 && data.reimbursements.length === 0 ? (
           <p className={styles.empty}>No expenses recorded for this event yet.</p>
         ) : (
           <table className={styles.miniTable}>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Amount</th>
+                <th>Who paid</th>
+                <th>Kind</th>
+                <th>Method / status</th>
+                <th>What</th>
+              </tr>
+            </thead>
             <tbody>
               {data.expenses.map((e) => (
                 <tr key={`x${e.id}`} className={e.voidedAt ? styles.cellMuted : undefined}>
                   <td>{e.occurredOn}</td>
                   <td>{money(Math.abs(e.amount))}</td>
+                  <td>{e.voidedAt ? 'voided' : e.personName ?? ''}</td>
                   <td>{e.kind}</td>
                   <td>{e.method ? (METHOD_LABEL[e.method] ?? e.method) : '—'}</td>
                   <td>{e.memo ?? ''}</td>
-                  <td>{e.voidedAt ? 'voided' : e.personName ?? ''}</td>
                 </tr>
               ))}
               {data.reimbursements.map((r) => (
                 <tr key={`r${r.id}`}>
                   <td>{r.createdAt.slice(0, 10)}</td>
                   <td>{money(r.amount)}</td>
+                  <td>{r.requesterName}</td>
                   <td>reimbursement</td>
                   <td>
                     <Badge variant={r.status === 'paid' ? 'success' : r.status === 'denied' ? 'danger' : 'warning'}>{r.status}</Badge>
                   </td>
                   <td>{r.description}</td>
-                  <td>{r.requesterName}</td>
                 </tr>
               ))}
             </tbody>
@@ -435,14 +479,17 @@ export function MoneyPanel({
             value={xAmount}
             onChange={(e) => setXAmount(e.target.value)}
           />
-          <input placeholder="What for (e.g. Food — Pick n Save)" aria-label="Expense memo" value={xMemo} onChange={(e) => setXMemo(e.target.value)} />
-          <select aria-label="Paid by" value={xPaidBy} onChange={(e) => setXPaidBy(e.target.value)}>
-            <option value="troop">Troop paid (check / card / bank)</option>
+          <select aria-label="Who paid" value={xPayer} onChange={(e) => setXPayer(e.target.value)}>
+            <option value="">Who paid…</option>
             {adults.map((a) => (
               <option key={a.personId} value={String(a.personId)}>
-                {a.name} fronted it (reimburse)
+                {a.name}
               </option>
             ))}
+          </select>
+          <select aria-label="Paid with" value={xPaidBy} onChange={(e) => setXPaidBy(e.target.value as 'troop' | 'own')}>
+            <option value="own">their own money (reimburse)</option>
+            <option value="troop">troop funds (check / card / bank)</option>
           </select>
           {xPaidBy === 'troop' && (
             <select aria-label="Expense method" value={xMethod} onChange={(e) => setXMethod(e.target.value as TransactionMethod)}>
@@ -453,10 +500,12 @@ export function MoneyPanel({
               ))}
             </select>
           )}
+          {/* Inputs follow the column order above: Date · Amount · Who paid · Paid with · What (Patrick, 2026-08-22). */}
+          <input placeholder="What for (e.g. Food — Pick n Save)" aria-label="Expense memo" value={xMemo} onChange={(e) => setXMemo(e.target.value)} />
           <button
             type="button"
             className={styles.enableBtn}
-            disabled={pending || !xAmount || !xMemo.trim()}
+            disabled={pending || !xAmount || !xMemo.trim() || !xPayer}
             onClick={() =>
               run(
                 () =>
@@ -466,7 +515,8 @@ export function MoneyPanel({
                     occurredOn: xDate,
                     amount: Number(xAmount),
                     memo: xMemo,
-                    paidBy: xPaidBy === 'troop' ? 'troop' : Number(xPaidBy),
+                    paidBy: xPaidBy === 'troop' ? 'troop' : Number(xPayer),
+                    payerPersonId: Number(xPayer),
                     method: xPaidBy === 'troop' ? xMethod : 'other',
                     idempotencyKey: newKey()
                   }),
@@ -646,14 +696,35 @@ export function MoneyPanel({
               {dlg.mode !== 'credit' && (
                 <label className={`adminLabel ${styles.payField}`}>
                   Method
-                  <select value={method} onChange={(e) => setMethod(e.target.value as TransactionMethod)}>
+                  <select
+                    value={method}
+                    onChange={(e) => {
+                      setMethod(e.target.value as PayMethod);
+                      setAckNegative(false);
+                    }}
+                  >
                     {TRANSACTION_METHODS.map((m) => (
                       <option key={m} value={m}>
                         {METHOD_LABEL[m]}
                       </option>
                     ))}
+                    {dlg.mode === 'pay' && <option value="scholarship">{PAY_METHOD_LABEL.scholarship}</option>}
                   </select>
                 </label>
+              )}
+              {dlg.mode === 'pay' && (
+                <PayGuard
+                  method={method}
+                  facts={payFacts}
+                  loading={payFacts == null}
+                  amount={Number(amountText)}
+                  acknowledged={ackNegative}
+                  onAcknowledge={setAckNegative}
+                  onUseScholarship={() => {
+                    setMethod('scholarship');
+                    setAckNegative(false);
+                  }}
+                />
               )}
               {dlg.mode !== 'credit' && (
                 <label className={`adminLabel ${styles.payField}`}>
@@ -677,7 +748,7 @@ export function MoneyPanel({
               <button type="button" className={styles.rowEdit} onClick={() => setDlg(null)} disabled={pending}>
                 Cancel
               </button>
-              <button type="button" className={styles.enableBtn} onClick={submitDlg} disabled={pending}>
+              <button type="button" className={styles.enableBtn} onClick={submitDlg} disabled={pending || payNeedsAck}>
                 {pending ? 'Saving…' : dlg.mode === 'pay' ? 'Record payment' : dlg.mode === 'refund' ? 'Record refund' : 'Credit account'}
               </button>
             </DialogActions>

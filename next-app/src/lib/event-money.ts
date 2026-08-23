@@ -9,12 +9,40 @@
  */
 
 export const ROUND = (n: number) => Math.round(n * 100) / 100;
+
+/** Accounts that are notional sub-ledgers (per-scout balances, the
+ *  scholarship fund): a fee paid FROM one is a NEGATIVE row on that account
+ *  (the balance goes down), and the event sees it as +paid. Checking rows are
+ *  cash and carry the event's sign directly. */
+export const NOTIONAL_ACCOUNTS = ['scout_account', 'scholarship'] as const;
+export function isNotionalAccount(account: string | null | undefined): boolean {
+  return account === 'scout_account' || account === 'scholarship';
+}
+/** The amount as the EVENT sees it: notional-account fee rows flipped. */
+export function feeAmount(t: { amount: number; kind: string; account?: string | null }): number {
+  return t.kind === 'event_fee' && isNotionalAccount(t.account) ? -t.amount : t.amount;
+}
+/** A payment method as offered in the Record payment dialog — the ledger's
+ *  methods plus the scholarship fund (stored as account 'scholarship', method 'other'). */
+export type PayMethod = 'venmo' | 'check' | 'cash' | 'scout_account' | 'scholarship' | 'bank' | 'other';
+export const PAY_METHOD_LABEL: Record<PayMethod, string> = {
+  venmo: 'Venmo',
+  check: 'Check',
+  cash: 'Cash',
+  scout_account: 'Scout account balance',
+  scholarship: 'Scholarship fund',
+  bank: 'Bank transfer',
+  other: 'Other'
+};
 const cents = (n: number) => Math.round(n * 100);
 
 export interface EntryMoneyRow {
   entryId: number;
   owed: number;
   paid: number;
+  /** The view's balance (owed − paid + credited). When present it is the
+   *  truth for due / overpaid; owed − paid is the fallback for old callers. */
+  balance?: number;
 }
 
 export interface MoneyTransaction {
@@ -56,7 +84,7 @@ export function summarizeEventMoney(
   for (const b of balances) {
     owed += cents(b.owed);
     paid += cents(b.paid);
-    const diff = cents(b.owed) - cents(b.paid);
+    const diff = b.balance != null ? cents(b.balance) : cents(b.owed) - cents(b.paid);
     if (diff > 0) due += diff;
     else over += -diff;
   }
@@ -139,6 +167,16 @@ export function milestoneStanding(
 /** Upcoming-first ordering for the public list and the Money tab. */
 export function sortMilestones<T extends { dueOn: string; sort?: number }>(ms: readonly T[]): T[] {
   return [...ms].sort((a, b) => (a.dueOn < b.dueOn ? -1 : a.dueOn > b.dueOn ? 1 : (a.sort ?? 0) - (b.sort ?? 0)));
+}
+
+/** How much of an overpayment has NOT yet been credited to the scout account.
+ *  Since migration 20260823100000 the balances view nets credits
+ *  (balance = owed − paid + credited), so this is simply max(0, −balance):
+ *  a fully credited overpayment reads 0 → no Credit button, and the server
+ *  refuses a second credit (Patrick, 2026-08-22: three clicks, three $30
+ *  credits, one overpayment; then "shouldn't the balance be zero?" — yes). */
+export function uncreditedOverpayment(balance: number): number {
+  return Math.max(0, cents(-balance)) / 100;
 }
 
 export function money(n: number): string {

@@ -1,5 +1,39 @@
 import { describe, it, expect } from 'vitest';
-import { milestoneStanding, money, sortMilestones, summarizeEventMoney, type Milestone } from '../src/lib/event-money';
+import { feeAmount, milestoneStanding, money, sortMilestones, summarizeEventMoney, uncreditedOverpayment, type Milestone } from '../src/lib/event-money';
+
+describe('feeAmount (notional accounts)', () => {
+  it('FeeAmount_FlipsScoutAccountAndScholarshipFeeRows_ToTheEventsSign', () => {
+    // A $30 fee paid from the scout account is a −30 row on scout_account; the event sees +30.
+    expect(feeAmount({ amount: -30, kind: 'event_fee', account: 'scout_account' })).toBe(30);
+    expect(feeAmount({ amount: -30, kind: 'event_fee', account: 'scholarship' })).toBe(30);
+    // A refund back into the scout account is +30 there; the event sees −30.
+    expect(feeAmount({ amount: 30, kind: 'event_fee', account: 'scout_account' })).toBe(-30);
+    // Cash rows carry the event's sign already.
+    expect(feeAmount({ amount: 30, kind: 'event_fee', account: 'checking' })).toBe(30);
+    expect(feeAmount({ amount: -10, kind: 'event_fee', account: 'checking' })).toBe(-10);
+    // Only fees flip — a scout-account credit (adjustment) keeps its sign.
+    expect(feeAmount({ amount: 30, kind: 'adjustment', account: 'scout_account' })).toBe(30);
+  });
+});
+
+describe('uncreditedOverpayment', () => {
+  it('UncreditedOverpayment_IsTheNegativeBalance_WhichAlreadyNetsCredits', () => {
+    // The view: balance = owed − paid + credited. Owed 30, paid 60 → −30; after a $30 credit → 0.
+    expect(uncreditedOverpayment(-30)).toBe(30);
+    expect(uncreditedOverpayment(0)).toBe(0); // fully credited — no more Credit button
+    expect(uncreditedOverpayment(-20.25)).toBe(20.25);
+  });
+  it('UncreditedOverpayment_IsZero_WhenNothingIsOverpaid', () => {
+    expect(uncreditedOverpayment(15)).toBe(0);
+  });
+  it('SummarizeEventMoney_UsesTheViewBalance_SoACreditedOverpaymentIsNotOverpaid', () => {
+    const t = summarizeEventMoney([{ entryId: 1, owed: 30, paid: 60, balance: 0 }], [], []);
+    expect(t.overpaid).toBe(0);
+    expect(t.due).toBe(0);
+    const before = summarizeEventMoney([{ entryId: 1, owed: 30, paid: 60, balance: -30 }], [], []);
+    expect(before.overpaid).toBe(30);
+  });
+});
 
 /**
  * Event Logistics Phase 3 — the sheet's money block as pure functions

@@ -33,7 +33,7 @@ function row(over: Partial<RosterRow> & { id: number; name: string }): RosterRow
     rideBack: 'needs_ride',
     carOut: null,
     carBack: null,
-    groups: [],
+    groupBySet: {},
     slipReceived: false,
     paid: 0,
     balance: 0,
@@ -60,38 +60,61 @@ const SLOTS = [
 
 function renderTable(rows: RosterRow[]) {
   return render(
-    <RosterTable rows={rows} removedRows={[]} signupId={1} calendarEntryId={2} showSlip={false} slots={SLOTS} />
+    <RosterTable
+      rows={rows}
+      removedRows={[]}
+      signupId={1}
+      calendarEntryId={2}
+      slots={SLOTS}
+      groupSets={[]}
+      // The Answers column exists only when the event asks families something
+      // (Plans/Roster-Status-Tab.md item 7) — these fixtures assume it does.
+      familyQuestionCount={1}
+    />
   );
 }
 
 describe('RosterTable — one line per name', () => {
   it('NameCell_ShowsOnlyTheName_NoKindLine', () => {
-    renderTable([row({ id: 1, name: 'Kevin Pieper', kind: 'adult', participation: 'driver_only', guests: 2 })]);
+    renderTable([row({ id: 1, name: 'Kevin Pieper', kind: 'adult', guests: 2 })]);
     const body = screen.getAllByRole('rowgroup')[1];
     const firstCell = within(body).getAllByRole('cell')[0];
     expect(firstCell.textContent?.trim()).toBe('Kevin Pieper');
   });
 
-  it('Participation_Guests_Answers_Notes_HaveTheirOwnColumns', () => {
+  it('Guests_Answers_Notes_HaveTheirOwnColumns_AndFeeSitsBesideBalance', () => {
     renderTable([
       row({
         id: 1,
         name: 'Kevin Pieper',
-        participation: 'driver_only',
         guests: 2,
         guestNote: 'cousins',
         notes: 'arriving late',
+        owed: 30,
         answers: ['Tent size: 4-person']
       })
     ]);
-    const headers = screen.getAllByRole('columnheader').map((h) => h.textContent?.trim());
-    for (const h of ['Participation', 'Guests', 'Answers', 'Notes']) expect(headers).toContain(h);
+    const headers = screen.getAllByRole('columnheader').map((h) => h.textContent?.replace(/[▲▼↕]/g, '').trim());
+    for (const h of ['Guests', 'Answers', 'Notes', 'Fee', 'Balance']) expect(headers).toContain(h);
+    // Participation is off the Attending grid (Patrick, 2026-08-22) — the tab IS attending.
+    expect(headers).not.toContain('Participation');
+    expect(headers.indexOf('Fee')).toBe(headers.indexOf('Balance') - 1);
     const body = screen.getAllByRole('rowgroup')[1];
     const cells = within(body).getAllByRole('cell').map((c) => c.textContent?.trim());
-    expect(cells).toContain('driver only');
     expect(cells.some((c) => c?.startsWith('+2'))).toBe(true);
     expect(cells).toContain('Tent size: 4-person');
     expect(cells).toContain('arriving late');
+  });
+
+  it('DriverOnlyAndContributors_LiveOnTheOtherResponsesTab_WithParticipation', async () => {
+    const user = userEvent.setup();
+    renderTable([row({ id: 1, name: 'Kevin Pieper', participation: 'driver_only' }), row({ id: 2, name: 'Hazel', kind: 'scout' })]);
+    let body = screen.getAllByRole('rowgroup')[1];
+    expect(within(body).queryByText('Kevin Pieper')).toBeNull();
+    await user.click(screen.getByRole('tab', { name: /other responses/i }));
+    body = screen.getAllByRole('rowgroup')[1];
+    expect(within(body).getByText('Kevin Pieper')).toBeTruthy();
+    expect(within(body).getByText('Drv only')).toBeTruthy();
   });
 });
 
@@ -136,11 +159,13 @@ describe('RosterTable — participant class', () => {
       row({ id: 2, name: 'Hazel Stollenwerk', kind: 'scout', participantClass: 'junior_leader' }),
       row({ id: 3, name: 'Sam Lee', kind: 'scout', participantClass: 'webelos', guestName: 'Sam Lee', hostEntryId: 1 })
     ]);
-    const headers = screen.getAllByRole('columnheader').map((h) => h.textContent?.trim());
+    const headers = screen.getAllByRole('columnheader').map((h) => h.textContent?.replace(/[▲▼↕]/g, '').trim());
     expect(headers).toContain('Class');
-    expect(screen.getByText('Junior Leader')).toBeTruthy();
-    expect(screen.getByText('Webelos')).toBeTruthy();
-    expect(screen.getAllByText('Adult').length).toBeGreaterThan(0);
+    // Shorthand on the grid (Plans/Roster-Status-Tab.md item 4); the full
+    // label rides along in the cell's title.
+    expect(screen.getByText('JL').closest('td')?.getAttribute('title')).toMatch(/^Junior Leader\./);
+    expect(screen.getByText('W').closest('td')?.getAttribute('title')).toMatch(/^Webelos\./);
+    expect(screen.getAllByText('A').length).toBeGreaterThan(0);
   });
 
   it('EditDialog_OffersAClassSelect_DefaultingToTheRowsClass', async () => {

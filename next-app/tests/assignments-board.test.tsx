@@ -98,7 +98,8 @@ describe('AssignmentsBoard — cars', () => {
     expect(within(pool).queryByText('Gone')).toBeNull(); // cancelled
     const car = screen.getByLabelText('Jason Porter');
     expect(within(car).getByText('driver')).toBeTruthy();
-    expect(within(car).getByText('(414) 555-0100')).toBeTruthy();
+    // No phone on the car card (Patrick, 2026-08-22) — the roster and the snapshot's Contacts carry it.
+    expect(within(car).queryByText('(414) 555-0100')).toBeNull();
     expect(within(car).getByText('2 of 3 · 1 open')).toBeTruthy();
   });
 
@@ -179,11 +180,14 @@ describe('AssignmentsBoard — any other set', () => {
     expect(screen.getByLabelText('Group note')).toBeTruthy();
   });
 
-  it('Board_TabStrip_SwitchesSets', async () => {
-    const user = userEvent.setup();
-    render(<AssignmentsBoard signupId={1} calendarEntryId={2} sets={[carSet, tentSet]} people={people} />);
+  it('Board_ShowsTheSetThePagePicked_DefaultingToTheFirst', () => {
+    // The set tabs moved up to the page-level EventNav (Patrick, 2026-08-22);
+    // the board renders whichever set the page passes (?set=), else the first.
+    const { unmount } = render(<AssignmentsBoard signupId={1} calendarEntryId={2} sets={[carSet, tentSet]} people={people} />);
     expect(screen.getByLabelText('Needs a ride')).toBeTruthy();
-    await user.click(screen.getByRole('tab', { name: /Tents/ }));
+    expect(screen.queryByRole('tab')).toBeNull();
+    unmount();
+    render(<AssignmentsBoard signupId={1} calendarEntryId={2} sets={[carSet, tentSet]} people={people} activeSetId={tentSet.id} />);
     expect(screen.getByLabelText('Unassigned')).toBeTruthy();
   });
 });

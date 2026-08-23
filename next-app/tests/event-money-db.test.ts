@@ -82,7 +82,8 @@ describe('many payments per entry', () => {
   it('SignupEntryBalance_SumsManyPayments_AndRefunds', async () => {
     const e = await addEntry();
     await pay(e, 750.47);
-    await pay(e, 89.53, { method: 'scout_account', account: 'scout_account' });
+    // Paid FROM the scout account: a −89.53 row on that account; the event sees +89.53 (20260823110000).
+    await pay(e, -89.53, { method: 'scout_account', account: 'scout_account' });
     await pay(e, -100, { memo: 'refund' });
     const b = await balance(e);
     expect(Number(b.paid)).toBe(740);

@@ -7,6 +7,9 @@ import {
   buildMoneyLines,
   buildOtherSets,
   buildRosterSections,
+  classRank,
+  parseRosterOrder,
+  rosterSetColumns,
   printableQuestions,
   type SnapshotInput,
   type SnapshotPerson
@@ -111,6 +114,42 @@ describe('roster sections', () => {
       ['Kraken', ['Anjali']],
       ['Not in a patrol', ['Jason Porter', 'Mindy', 'Owen']]
     ]);
+  });
+
+  it('RosterSections_AlphaOrder_IsOneSectionByLastName', () => {
+    // Patrick, 2026-08-22: the other way the roster gets printed.
+    const s = buildRosterSections(input, 'alpha');
+    expect(s).toHaveLength(1);
+    expect(s[0].heading).toMatch(/last name/i);
+    // "Jason Porter" sorts under P, between the single-name rows it would otherwise lead.
+    expect(s[0].rows.map((r) => r.name)).toEqual(['Anjali', 'Mindy', 'Owen', 'Jason Porter', 'Violet']);
+  });
+
+  it('RosterSections_ClassOrder_IsAdultsThenJLsThenScouts_ThenTheRest_ByLastName', () => {
+    // Patrick, 2026-08-22: "adults first, junior leaders second, scouts third, anyone else after".
+    const s = buildRosterSections(input, 'class');
+    expect(s).toHaveLength(1);
+    const labels = s[0].rows.map((r) => r.classLabel);
+    const rank = (c: string) => classRank(c);
+    for (let i = 1; i < labels.length; i++) expect(rank(labels[i - 1])).toBeLessThanOrEqual(rank(labels[i]));
+    expect(labels[0]).toBe('Adult');
+    expect(classRank('Adult')).toBe(0);
+    expect(classRank('Junior Leader')).toBe(1);
+    expect(classRank('Scout')).toBe(2);
+    expect(classRank('Webelos')).toBe(3);
+    expect(parseRosterOrder('class')).toBe('class');
+    expect(parseRosterOrder('nonsense')).toBe('patrol');
+  });
+
+  it('RosterSetColumns_SkipTheSectioningSet_WhenGroupedByPatrol_AndSingularizeTheLabel', () => {
+    // The fixture has Patrols (the sectioning set), Cars there, and Tents (Tent A: Anjali, Owen).
+    const byPatrol = rosterSetColumns(input, 'patrol');
+    expect(byPatrol.map((c) => c.label)).toEqual(['Tent']);
+    const alpha = rosterSetColumns(input, 'alpha');
+    expect(alpha.map((c) => c.label)).toEqual(['Patrol', 'Tent']);
+    expect(alpha[0].groupNameFor(2)).toBe('Kraken');
+    expect(alpha[1].groupNameFor(2)).toBe('Tent A');
+    expect(alpha[1].groupNameFor(-1)).toBe('');
   });
 
   it('RosterSections_AreFlat_WhenThereIsNoPatrolOrCrewSet', () => {

@@ -5,6 +5,8 @@ import { requireCapability } from '@/lib/require-capability';
 import { isParticipantClass, type ParticipantClass } from '@/lib/participant-class';
 import { isRideStatus, type Leg } from '@/lib/transport';
 import { PageTitle } from '../../../_components/page-title';
+import { EventNav } from '../event-nav';
+import { loadEventNav } from '../event-nav-data';
 import styles from '../../../events/events-admin.module.css';
 import { AssignmentsBoard, type BoardPerson, type BoardSet } from './assignments-board';
 
@@ -118,15 +120,26 @@ async function load(signupId: number) {
     };
   });
 
-  return { sig, entry: entry as { id: number; title: string } | null, sets: boardSets, people: boardPeople };
+  const nav = await loadEventNav(supabase, sig.id, sig.calendar_entry_id);
+  return { sig, entry: entry as { id: number; title: string } | null, sets: boardSets, people: boardPeople, nav };
 }
 
-export default async function AssignmentsPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function AssignmentsPage({
+  params,
+  searchParams
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ set?: string }>;
+}) {
   const { id } = await params;
   const signupId = Number(id);
   if (!Number.isInteger(signupId) || signupId < 1) notFound();
   const data = await load(signupId);
   if (!data || !data.entry) notFound();
+  // Which set the board opens on — the top-level tab that was clicked
+  // (EventNav: one tab per set); falls back to the first set.
+  const wanted = Number((await searchParams).set);
+  const activeSetId = data.sets.some((s) => s.id === wanted) ? wanted : (data.sets[0]?.id ?? null);
 
   return (
     <>
@@ -134,12 +147,8 @@ export default async function AssignmentsPage({ params }: { params: Promise<{ id
         title={`${data.entry.title} — Rides & assignments`}
         sub={
           <>
-            <Link href={`/admin/rosters/${signupId}`} className={styles.actionLink}>
-              Roster
-            </Link>{' '}
-            ·{' '}
-            <Link href={`/admin/events/${signupId}`} className={styles.actionLinkMuted}>
-              Builder
+            <Link href="/admin/events" className={styles.actionLinkMuted}>
+              All signups
             </Link>{' '}
             ·{' '}
             <Link href={`/events/${data.entry.id}`} className={styles.actionLinkMuted}>
@@ -148,11 +157,13 @@ export default async function AssignmentsPage({ params }: { params: Promise<{ id
           </>
         }
       />
+      <EventNav signupId={signupId} active={activeSetId != null ? `set:${activeSetId}` : 'assignments'} sets={data.nav.sets} hasMoney={data.nav.hasMoney} />
       <AssignmentsBoard
         signupId={signupId}
         calendarEntryId={data.entry.id}
         sets={data.sets}
         people={data.people}
+        activeSetId={activeSetId}
       />
     </>
   );

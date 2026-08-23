@@ -4,6 +4,8 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { requireAnyOf } from '@/lib/require-capability';
 import { getEventMoneyAction } from '../../../finance/actions';
 import { PageTitle } from '../../../_components/page-title';
+import { EventNav } from '../event-nav';
+import { loadEventNav } from '../event-nav-data';
 import styles from '../../../events/events-admin.module.css';
 import { MoneyPanel } from './money-panel';
 
@@ -31,6 +33,7 @@ export default async function EventMoneyPage({ params }: { params: Promise<{ id:
   if (!sig) notFound();
   const s = sig as unknown as { calendar_entry_id: number; calendar_entries: { title: string } };
   const data = await getEventMoneyAction(signupId);
+  const nav = await loadEventNav(supabase, signupId, s.calendar_entry_id);
   if (!data) notFound();
 
   // Adults on this signup are the likely "paid by" candidates for an expense.
@@ -47,12 +50,8 @@ export default async function EventMoneyPage({ params }: { params: Promise<{ id:
         title={`${s.calendar_entries.title} — Money`}
         sub={
           <>
-            <Link href={`/admin/rosters/${signupId}`} className={styles.actionLink}>
-              Roster
-            </Link>{' '}
-            ·{' '}
-            <Link href={`/admin/rosters/${signupId}/assignments`} className={styles.actionLinkMuted}>
-              Rides &amp; assignments
+            <Link href="/admin/events" className={styles.actionLinkMuted}>
+              All signups
             </Link>{' '}
             ·{' '}
             <Link href="/admin/finance" className={styles.actionLinkMuted}>
@@ -61,6 +60,7 @@ export default async function EventMoneyPage({ params }: { params: Promise<{ id:
           </>
         }
       />
+      <EventNav signupId={signupId} active="money" sets={nav.sets} hasMoney={nav.hasMoney} />
       <MoneyPanel
         signupId={signupId}
         calendarEntryId={s.calendar_entry_id}
