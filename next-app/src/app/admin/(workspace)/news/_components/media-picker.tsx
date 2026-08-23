@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import Image from 'next/image';
 import type { Media } from '@/lib/supabase/types';
 import { listMedia, setMediaAltText, uploadMedia } from '../media/actions';
-import { prepareImageForUpload, beforeAfterLine, type ResizeKind } from '@/lib/image-resize';
+import { prepareImageForUpload, beforeAfterLine, formatBytes, type ResizeKind } from '@/lib/image-resize';
 import { TabStrip } from '../../_components/tab-strip';
 import { Dialog } from '../../_components/dialog';
 import styles from './media-picker.module.css';
@@ -47,6 +47,10 @@ interface PendingUpload {
   /** "4.0 MB → 180 KB" once the browser has resized it; absent when the
    *  file was already small enough and went up byte-identical. */
   sizeLine?: string;
+  /** Patrick, 2026-08-23: the seldom-used exception — upload the file exactly
+   *  as chosen (a print-quality original) instead of the browser-resized
+   *  derivative. Per file, off by default, deliberately quiet. */
+  keepOriginal?: boolean;
 }
 
 function readImageDimensions(file: File): Promise<{ width: number; height: number } | null> {
@@ -163,6 +167,10 @@ export function MediaPicker({ mode, onClose, onInsert, initialSelected, resizeKi
     setPending((prev) => prev.map((p) => (p.key === key ? { ...p, altText: value } : p)));
   }
 
+  function updateKeepOriginal(key: string, value: boolean) {
+    setPending((prev) => prev.map((p) => (p.key === key ? { ...p, keepOriginal: value } : p)));
+  }
+
   async function submitPending(key: string) {
     const item = pending.find((p) => p.key === key);
     if (!item || !item.altText.trim()) return;
@@ -171,8 +179,14 @@ export function MediaPicker({ mode, onClose, onInsert, initialSelected, resizeKi
     // Resize in the browser first (Plans/Photo-Thumbnails.md): a heavy image
     // comes back re-encoded at the target long edge; a small one, a GIF or an
     // undecodable file comes back exactly as chosen.
-    const prepared = await prepareImageForUpload(item.file, resizeKind);
-    const sizeLine = prepared.before != null ? beforeAfterLine(prepared.before, prepared.file.size) : undefined;
+    const prepared = item.keepOriginal
+      ? { file: item.file, before: null, width: null, height: null }
+      : await prepareImageForUpload(item.file, resizeKind);
+    const sizeLine = item.keepOriginal
+      ? `${formatBytes(item.file.size)} · original kept`
+      : prepared.before != null
+        ? beforeAfterLine(prepared.before, prepared.file.size)
+        : undefined;
     if (sizeLine) setPending((prev) => prev.map((p) => (p.key === key ? { ...p, sizeLine } : p)));
     const dims =
       prepared.width != null && prepared.height != null
@@ -387,6 +401,16 @@ export function MediaPicker({ mode, onClose, onInsert, initialSelected, resizeKi
                             Upload
                           </button>
                         </div>
+                      )}
+                      {p.status === 'pending' && (
+                        <label className={styles.keepOriginal}>
+                          <input
+                            type="checkbox"
+                            checked={p.keepOriginal ?? false}
+                            onChange={(e) => updateKeepOriginal(p.key, e.target.checked)}
+                          />{' '}
+                          Keep original size (skip the resize — for a print-quality file)
+                        </label>
                       )}
                       {p.status === 'uploading' && (
                         <div className={styles.progressTrack}>

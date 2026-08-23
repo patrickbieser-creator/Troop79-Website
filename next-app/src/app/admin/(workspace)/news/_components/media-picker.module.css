@@ -78,6 +78,9 @@
   border: 1px solid var(--admin-gray-300); border-radius: 2px; outline: none;
 }
 .altPrompt input:focus { border-color: var(--admin-navy); }
+/* The seldom-used "keep original size" exception — quiet on purpose. */
+.keepOriginal { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; font-family: var(--admin-font-ui); font-size: 11px; color: var(--admin-gray-500); cursor: pointer; }
+.keepOriginal input { margin: 0; }
 
 /* Browse tab */
 .browseBar { display: flex; gap: 10px; margin-bottom: 16px; }
