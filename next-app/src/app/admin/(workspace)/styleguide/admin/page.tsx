@@ -574,9 +574,9 @@ export default function StyleguidePage() {
             <SortHeaderSpecimen />
           </Specimen>
           <Specimen
-            label="Roster grid — stacked header, tight cells, class pill (events-admin .thStack / .cellTight / .noteCell / .classPill)"
+            label="Roster grid — stacked header, tight cells, class pill, job-code columns (events-admin .thStack / .cellTight / .noteCell / .classPill / .jobBand / .jobTick / .jobCode)"
             canonical
-            note="Roster grid space-savers (2026-08-22): a two-word header stacks ('Driving' over 'To') so the column stays as narrow as its one-number cells; the two lines are separate spans so the accessible name still reads 'Driving To'. .noteCell keeps notes to one line with the full text on hover (title). .classPill is CATEGORICAL on the indexed scale — youth classes light (S red · JL teal · Cub gold · W orange · G plum), adult classes dark (A blue, adult-guest G plum) — not the status Badge, per badge.tsx's scope rule."
+            note="Roster grid space-savers (2026-08-22): a two-word header stacks ('Driving' over 'To') so the column stays as narrow as its one-number cells; the two lines are separate spans so the accessible name still reads 'Driving To'. .noteCell keeps notes to one line with the full text on hover (title). .classPill is CATEGORICAL on the indexed scale — youth classes light (S red · JL teal · Cub gold · W orange · G plum), adult classes dark (A blue, adult-guest G plum) — not the status Badge, per badge.tsx's scope rule. Job-code columns (2026-08-23, job-heavy events): ONE narrow column per job headed by its 1–5 char code (.thCenter; full label · when · coverage in the title), a .jobTick when claimed, blank otherwise; when jobs span days a .jobBand row (scope=colgroup) groups the codes under 'Fri 10/9 · Sat 10/10 · Anytime'. .jobCode is the code chip beside a label (Edit dialog, Builder list). Codes come from lib/job-codes — leader-set or derived from the label, unique per event."
           >
             <table className={ev.table}>
               <thead>
@@ -585,6 +585,8 @@ export default function StyleguidePage() {
                   <th>Class</th>
                   <th><span className={ev.thStack}><span>Driving</span> <span>To</span></span></th>
                   <th><span className={ev.thStack}><span>Ride</span> <span>To</span></span></th>
+                  <th className={ev.thCenter} title="Cashier · Sat Oct 10 · 9:00 AM–12:00 PM · 1 of 2 claimed">CASH</th>
+                  <th className={ev.thCenter} title="Setup crew · Fri Oct 9 · 1 of 4 claimed">SC</th>
                   <th>Notes</th>
                 </tr>
               </thead>
@@ -594,6 +596,8 @@ export default function StyleguidePage() {
                   <td title="Adult"><span className={`${ev.classPill} ${ev.classA}`}>A</span></td>
                   <td className={ev.cellTight}>4</td>
                   <td className={ev.cellTight} />
+                  <td className={ev.cellTight} title="Cashier — has a cash box"><span className={ev.jobTick}>✓</span></td>
+                  <td className={ev.cellTight} title="Setup crew" />
                   <td className={`${ev.cellMuted} ${ev.noteCell}`} title="Arriving late Friday, bringing the trailer">Arriving late Friday, bringing the trailer</td>
                 </tr>
                 <tr>
@@ -601,11 +605,17 @@ export default function StyleguidePage() {
                   <td title="Scout"><span className={`${ev.classPill} ${ev.classS}`}>S</span></td>
                   <td className={ev.cellTight} />
                   <td className={ev.cellTight}>PBieser</td>
+                  <td className={ev.cellTight} title="Cashier" />
+                  <td className={ev.cellTight} title="Setup crew"><span className={ev.jobTick}>✓</span></td>
                   <td className={`${ev.cellMuted} ${ev.noteCell}`}>—</td>
                 </tr>
                 <tr>
+                  <td>Code chip</td>
+                  <td colSpan={6}><span className={ev.jobCode}>CASH</span> Cashier · <span className={ev.jobCode}>SC</span> Setup crew</td>
+                </tr>
+                <tr>
                   <td>Six classes</td>
-                  <td colSpan={4}>
+                  <td colSpan={6}>
                     <span className={`${ev.classPill} ${ev.classS}`}>S</span>{' '}
                     <span className={`${ev.classPill} ${ev.classA}`}>A</span>{' '}
                     <span className={`${ev.classPill} ${ev.classJL}`}>JL</span>{' '}

@@ -17,8 +17,9 @@ import {
  * usual capacity is remembered on their person record, and every attending
  * non-driver carries a ride status per leg that defaults to "needs a ride".
  *
- * seats_offered_* (seats BESIDES the driver) stays for one more release so
- * deployed clients keep working; a trigger keeps the two in step both ways.
+ * seats_offered_* (seats BESIDES the driver) was kept for one release with a
+ * trigger syncing the two; Event Logistics step 15 (2026-08-23) dropped the
+ * columns and the sync — vehicle_seats_* is the only representation now.
  */
 const admin = adminClient();
 
@@ -44,7 +45,7 @@ async function entry(
     .from('signup_entries')
     .insert({ event_signup_id: event.eventSignupId, status: 'yes', ...row })
     .select(
-      'id, drives_out, drives_back, seats_offered_out, seats_offered_back, vehicle_seats_out, vehicle_seats_back, ride_out, ride_back'
+      'id, drives_out, drives_back, vehicle_seats_out, vehicle_seats_back, ride_out, ride_back'
     )
     .single();
   if (error || !data) throw new Error(`entry insert failed: ${error?.message}`);
@@ -112,27 +113,49 @@ describe('ride status defaults (trigger + CHECK)', () => {
 });
 
 describe('seats including the driver', () => {
-  it('VehicleSeats_SyncWithLegacySeatsOffered_BothDirections', async () => {
-    // Old client: writes seats_offered (besides the driver) only.
-    const legacy = await entry(admin, {
+  it('SeatsOffered_ColumnsAreGone_VehicleSeatsIsTheOnlyRepresentation', async () => {
+    // Step 15: a writer still sending the legacy column is an error, not a
+    // silently-synced value.
+    const { error } = await admin.from('signup_entries').insert({
+      event_signup_id: event.eventSignupId,
+      status: 'yes',
       person_kind: 'adult',
       person_id: adultPersonId,
       drives_out: true,
       seats_offered_out: 3
     });
-    expect(legacy.vehicle_seats_out).toBe(4);
-    await admin.from('signup_entries').delete().eq('id', legacy.id as number);
+    expect(error).not.toBeNull();
+    expect(error?.message).toMatch(/seats_offered_out/);
 
-    // New client: writes vehicle seats (including the driver) only.
     const modern = await entry(admin, {
       person_kind: 'adult',
       person_id: adultPersonId,
       drives_back: true,
       vehicle_seats_back: 5
     });
-    expect(modern.seats_offered_back).toBe(4);
     expect(modern.vehicle_seats_back).toBe(5);
+    expect('seats_offered_back' in modern).toBe(false);
     await admin.from('signup_entries').delete().eq('id', modern.id as number);
+  });
+
+  it('VehicleSeats_AreNulled_WhenTheLegIsNotDriven', async () => {
+    // The normalizer's surviving job: seats only on a driven leg.
+    const row = await entry(admin, {
+      person_kind: 'adult',
+      person_id: adultPersonId,
+      drives_out: true,
+      vehicle_seats_out: 4
+    });
+    const { data, error } = await admin
+      .from('signup_entries')
+      .update({ drives_out: false })
+      .eq('id', row.id as number)
+      .select('vehicle_seats_out, ride_out')
+      .single();
+    expect(error).toBeNull();
+    expect(data?.vehicle_seats_out).toBeNull();
+    expect(data?.ride_out).toBe('needs_ride');
+    await admin.from('signup_entries').delete().eq('id', row.id as number);
   });
 
   it('VehicleSeats_RejectsZero_ADriverIsAlwaysOneSeat', async () => {
@@ -182,11 +205,10 @@ describe('submit_household_signup carries the new columns', () => {
     const entryId = (data as { entry_id: number }[])[0].entry_id;
     const { data: row } = await admin
       .from('signup_entries')
-      .select('vehicle_seats_out, seats_offered_out, ride_out, ride_back')
+      .select('vehicle_seats_out, ride_out, ride_back')
       .eq('id', entryId)
       .single();
     expect(row?.vehicle_seats_out).toBe(4);
-    expect(row?.seats_offered_out).toBe(3);
     expect(row?.ride_out).toBeNull();
     expect(row?.ride_back).toBe('self');
     await admin.from('signup_entries').delete().eq('id', entryId);

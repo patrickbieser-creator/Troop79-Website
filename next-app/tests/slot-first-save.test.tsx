@@ -1,0 +1,127 @@
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import SlotFirstForm from '../src/app/(public)/events/[id]/slot-first-form';
+import { staleClaims, type SignupSlot } from '../src/lib/event-signup';
+import type { Household } from '../src/lib/households';
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() })
+}));
+
+/**
+ * Slot-first (job board) form — saving edits (Patrick, 2026-08-23, two bug
+ * reports on the Unity Church service project): "Save changes appears and is
+ * active, yet does nothing" and "the name Patrick reappeared after I clicked
+ * Save Changes". The board is a DRAFT: the × on a chip edits the draft, Save
+ * commits it. A removed person must therefore be SENT (as declined), not
+ * merely omitted, and Save is live only when the draft differs from what is
+ * saved.
+ */
+const household: Household = {
+  key: '7',
+  label: 'Sankpal-Tatera',
+  scouts: [{ id: 'S1', displayName: 'Maya', personId: 11 }],
+  adults: [{ key: 'pe82', personId: 82, leaderCode: null, name: 'Patrick Bieser', relationship: 'Dad', email: null, defaultVehicleSeats: null }]
+};
+const server: SignupSlot = {
+  id: 1,
+  kind: 'shift',
+  label: 'Server',
+  description: null,
+  slot_date: '2026-09-02',
+  starts_at: '17:00:00',
+  ends_at: '19:00:00',
+  attendance_required: true,
+  eligibility: 'both',
+  needed: 4,
+  sort: 0,
+  filled: 2
+};
+
+function renderBoard(existingClaims: { slotId: number; personKey: string; comment?: string | null }[]) {
+  return render(
+    <SlotFirstForm
+      eventId={35}
+      signupId={9}
+      household={household}
+      households={[household]}
+      slots={[server]}
+      allowGuests={false}
+      guestPrompt={null}
+      existingClaims={existingClaims}
+      submitAction={vi.fn()}
+      cancelAction={vi.fn()}
+      gateAction={vi.fn()}
+      signOutAction={vi.fn()}
+      hasExisting={existingClaims.length > 0}
+      gateState="ready"
+      isFamilySession
+      gateConfigured
+    />
+  );
+}
+const entriesField = () => JSON.parse((document.querySelector('input[name="entries"]') as HTMLInputElement).value) as { key: string; status: string }[];
+const saveBtn = () => screen.getByRole('button', { name: /save changes|saved|submit family signup/i }) as HTMLButtonElement;
+
+describe('slot-first form — saving edits', () => {
+  it('Save_IsDisabledUntilTheDraftDiffersFromWhatIsSaved', async () => {
+    const user = userEvent.setup();
+    renderBoard([
+      { slotId: 1, personKey: 's0', comment: null },
+      { slotId: 1, personKey: 'a0', comment: null }
+    ]);
+    expect(saveBtn().disabled).toBe(true);
+    expect(saveBtn().textContent).toMatch(/saved/i);
+    await user.click(screen.getByRole('button', { name: 'Remove Patrick Bieser' }));
+    expect(saveBtn().disabled).toBe(false);
+    expect(saveBtn().textContent).toMatch(/save changes/i);
+  });
+
+  it('RemovingAPersonsLastJob_SendsThemAsDeclined_NotOmitted', async () => {
+    const user = userEvent.setup();
+    renderBoard([
+      { slotId: 1, personKey: 's0', comment: null },
+      { slotId: 1, personKey: 'a0', comment: null }
+    ]);
+    expect(entriesField().map((e) => [e.key, e.status])).toEqual([
+      ['s0', 'yes'],
+      ['a0', 'yes']
+    ]);
+    await user.click(screen.getByRole('button', { name: 'Remove Patrick Bieser' }));
+    expect(entriesField().map((e) => [e.key, e.status])).toEqual([
+      ['s0', 'yes'],
+      ['a0', 'no']
+    ]);
+    // The recap lists only who is still helping.
+    expect(screen.queryByText('Patrick Bieser', { selector: 'strong' })).toBeNull();
+  });
+
+  it('ChangingTheJobNote_MakesTheDraftDirty', async () => {
+    const user = userEvent.setup();
+    renderBoard([{ slotId: 1, personKey: 's0', comment: 'Running late' }]);
+    expect(saveBtn().disabled).toBe(true);
+    const note = screen.getByDisplayValue('Running late');
+    await user.type(note, ' — ten minutes');
+    expect(saveBtn().disabled).toBe(false);
+  });
+
+  it('FirstSubmit_NeedsAtLeastOneJob', () => {
+    renderBoard([]);
+    expect(saveBtn().textContent).toMatch(/submit family signup/i);
+    expect(saveBtn().disabled).toBe(true);
+  });
+});
+
+describe('staleClaims — what the server deletes after a submit', () => {
+  it('ClaimsTheFormNoLongerCarries_AreStale_TheRestStay', () => {
+    const current = [
+      { entryId: 100, slotId: 1 },
+      { entryId: 101, slotId: 1 },
+      { entryId: 101, slotId: 2 }
+    ];
+    const wanted = new Set(['100:1', '101:2']);
+    expect(staleClaims(current, wanted)).toEqual([{ entryId: 101, slotId: 1 }]);
+    expect(staleClaims(current, new Set(['100:1', '101:1', '101:2']))).toEqual([]);
+  });
+});

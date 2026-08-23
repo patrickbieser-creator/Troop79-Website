@@ -31,11 +31,11 @@ import {
 import { Badge } from '../../_components/badge';
 import { TabStrip } from '../../_components/tab-strip';
 import { ClassPill } from '../../events/class-pill';
-import { formatTimeOfDay } from '@/lib/calendar-shared';
 import { getScoutAccountBalanceForEntryAction, recordEventFeePaymentAction } from '../../finance/actions';
 import { PayGuard, wouldGoNegative, type AccountFacts } from '../../events/pay-guard';
 import { PAY_METHOD_LABEL, type PayMethod } from '@/lib/event-money';
 import { diffClaimEdits, type ClaimEdit } from '@/lib/event-signup-admin';
+import { bandJobsByDay, jobCoverage, jobHeaderTitle, jobWhen, resolveJobCodes } from '@/lib/job-codes';
 import type { RosterRow } from './page';
 import styles from '../../events/events-admin.module.css';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
@@ -44,7 +44,7 @@ import sortStyles from '../../_components/use-sortable.module.css';
 
 /** Sortable columns (Patrick, 2026-08-22: name, class, participation, ride
  *  to/from, and every group-set column — `set:<id>`). */
-type RosterColKey = 'name' | 'owed' | 'class' | 'participation' | 'rideOut' | 'rideBack' | `set:${number}`;
+type RosterColKey = 'name' | 'owed' | 'class' | 'participation' | 'rideOut' | 'rideBack' | `set:${number}` | `job:${number}`;
 
 /** Module scope on purpose — see the note on useSortable. */
 function rosterValue(r: RosterRow, key: RosterColKey): unknown {
@@ -62,6 +62,8 @@ function rosterValue(r: RosterRow, key: RosterColKey): unknown {
     case 'rideBack':
       return rideShort(r, 'back', r.carBack, r.name) || null;
     default:
+      // `job:<slotId>` — claimed sorts first (0 before 1, ascending).
+      if (key.startsWith('job:')) return r.claimDetails.some((c) => c.slotId === Number(key.slice(4))) ? 0 : 1;
       return r.groupBySet[Number(key.slice(4))] ?? null;
   }
 }
@@ -124,16 +126,7 @@ function slotDetail(sl: {
   needed?: number | null;
   filled?: number;
 }): string {
-  const parts: string[] = [];
-  if (sl.slotDate) {
-    const d = new Date(`${sl.slotDate}T00:00:00`);
-    if (!Number.isNaN(d.getTime())) parts.push(d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).replace(',', ''));
-  }
-  if (sl.startsAt) parts.push(sl.endsAt ? `${formatTimeOfDay(sl.startsAt)}–${formatTimeOfDay(sl.endsAt)}` : formatTimeOfDay(sl.startsAt));
-  if (sl.needed != null) parts.push(`${sl.filled ?? 0} of ${sl.needed} claimed`);
-  else if (sl.filled) parts.push(`${sl.filled} claimed`);
-  if (sl.description) parts.push(sl.description);
-  return parts.join(' · ');
+  return [jobWhen(sl), jobCoverage(sl), sl.description ?? ''].filter(Boolean).join(' · ');
 }
 
 const PARTICIPATION_LABEL: Record<string, string> = {
@@ -185,6 +178,8 @@ export function RosterTable({
   slots: {
     id: number;
     label: string;
+    /** Leader-set roster code (Builder); null → derived from the label. */
+    code?: string | null;
     slotDate?: string | null;
     startsAt?: string | null;
     endsAt?: string | null;
@@ -490,10 +485,21 @@ export function RosterTable({
   };
 
   // Feature columns exist only when the event uses the feature (item 7).
-  const showJobs = slots.length > 0;
+  // Jobs: ONE narrow column per job headed by its code (job-heavy events —
+  // Patrick, 2026-08-22: a rummage sale has 20–30 jobs; the old single Jobs
+  // column listing every claim as prose was unreadable). The group can be
+  // hidden as a whole so a campout roster with a couple of jobs stays clean.
+  const [jobsOpen, setJobsOpen] = useState(true);
+  const showJobs = slots.length > 0 && jobsOpen;
+  const jobCodes = resolveJobCodes(slots);
+  const jobBands = bandJobsByDay(slots);
+  const jobsInOrder = jobBands.flatMap((b) => b.jobs);
   const showAnswers = familyQuestionCount > 0;
   // Name, Class, Guests, [Driving×2, Ride×2], Notes, Fee, Balance, actions
-  const colCount = 6 + (hasCarSets ? 4 : 0) + groupSets.length + (showJobs ? 1 : 0) + (showAnswers ? 1 : 0) + leaderQuestions.length + 1;
+  const colCount = 6 + (hasCarSets ? 4 : 0) + groupSets.length + (showJobs ? slots.length : 0) + (showAnswers ? 1 : 0) + leaderQuestions.length + 1;
+  // Columns to the left of / right of the job block, for the day-band row.
+  const colsBeforeJobs = 3 + (hasCarSets ? 4 : 0) + groupSets.length;
+  const colsAfterJobs = (showAnswers ? 1 : 0) + leaderQuestions.length + 4;
   const printableLeader = printableLeaderQuestions(leaderQuestions);
   const [leaderDraft, setLeaderDraft] = useState<Record<string, string>>({});
   const saveLeader = (r: RosterRow, q: LeaderQuestion, value: string | null) =>
@@ -587,6 +593,14 @@ export function RosterTable({
           <button type="button" className={styles.enableBtn} onClick={exportCsv}>
             Export CSV
           </button>
+          {slots.length > 0 && (
+            <>
+              {' '}
+              <button type="button" className={styles.enableBtn} onClick={() => setJobsOpen((v) => !v)} aria-pressed={jobsOpen}>
+                {jobsOpen ? `Hide jobs (${slots.length})` : `Show jobs (${slots.length})`}
+              </button>
+            </>
+          )}
         </div>
       </div>
       {error && <p className={styles.err}>{error}</p>}
@@ -615,6 +629,19 @@ export function RosterTable({
       ) : (
       <table className={styles.table}>
         <thead>
+          {/* Day bands over the job block when the jobs span days — "Fri / Sat /
+              Sun" so 30 columns read as three blocks (untimed jobs last). */}
+          {showJobs && jobBands.length > 1 && (
+            <tr className={styles.bandRow}>
+              <th colSpan={colsBeforeJobs} />
+              {jobBands.map((b) => (
+                <th key={b.key} scope="colgroup" colSpan={b.jobs.length} className={styles.jobBand}>
+                  {b.label}
+                </th>
+              ))}
+              <th colSpan={colsAfterJobs} />
+            </tr>
+          )}
           <tr>
             <SortHeader label="Name" colKey="name" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} idleArrow={false} />
             <SortHeader label="Class" colKey="class" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} idleArrow={false} title={CLASS_LEGEND} />
@@ -630,7 +657,23 @@ export function RosterTable({
             {groupSets.map((s) => (
               <SortHeader key={s.id} label={s.label} colKey={`set:${s.id}`} sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} idleArrow={false} />
             ))}
-            {showJobs && <th scope="col">Jobs</th>}
+            {showJobs &&
+              jobsInOrder.map((sl) => {
+                const key = `job:${sl.id}` as const;
+                const active = sortKey === key;
+                return (
+                  <th key={sl.id} scope="col" className={styles.thCenter} title={jobHeaderTitle(sl)} aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                    <button type="button" className={sortStyles.sortBtn} onClick={() => toggleSort(key)}>
+                      {jobCodes.get(sl.id)}
+                      {active && (
+                        <span className={sortStyles.sortArrow} aria-hidden="true">
+                          {sortDir === 'asc' ? '▲' : '▼'}
+                        </span>
+                      )}
+                    </button>
+                  </th>
+                );
+              })}
             {showAnswers && <th scope="col">Answers</th>}
             {leaderQuestions.map((q) => {
               // Two-word leader headers stack ("Health" over "form") — Patrick, 2026-08-22.
@@ -699,7 +742,15 @@ export function RosterTable({
                   {r.groupBySet[s.id] ?? ''}
                 </td>
               ))}
-              {showJobs && <td>{r.claimsDisplay.join(', ') || '—'}</td>}
+              {showJobs &&
+                jobsInOrder.map((sl) => {
+                  const claim = r.claimDetails.find((c) => c.slotId === sl.id);
+                  return (
+                    <td key={sl.id} className={styles.cellTight} title={claim ? `${sl.label}${claim.comment ? ` — ${claim.comment}` : ''}` : sl.label}>
+                      {claim ? <span className={styles.jobTick}>✓</span> : ''}
+                    </td>
+                  );
+                })}
               {showAnswers && <td className={styles.cellMuted}>{r.answers.join(' · ') || '—'}</td>}
               {leaderQuestions.map((q) => leaderCell(r, q))}
               {/* One line with hover when the grid is dense; the full note when
@@ -896,7 +947,7 @@ export function RosterTable({
                               })
                             }
                           />
-                          {sl.label}
+                          <span className={styles.jobCode}>{jobCodes.get(sl.id)}</span> {sl.label}
                           {slotDetail(sl) && <span className={styles.evCat}>{slotDetail(sl)}</span>}
                         </label>
                         {st.checked && (

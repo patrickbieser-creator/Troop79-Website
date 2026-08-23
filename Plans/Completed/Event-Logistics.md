@@ -1,15 +1,16 @@
 # Event Logistics — the campout sheet, inside the site
 
-**Status:** Active — **Phases 0–4 BUILT and committed locally 2026-08-22** (d0bcdf0 Phase 0 schema,
-f5873db Phase 1 transportation v1.81.0, 65f499a Phase 2 assignments v1.82.0, 136cd13 Phase 3 money
-v1.83.0, Phase 4 leader columns + snapshot v1.84.0), each browser-verified on the dev server against
-the local Fall Campout signup. **NOT pushed, NOT deployed** — Patrick's call. Phase 5 (backfill two
-events) deliberately NOT started (Patrick, 2026-08-22: "No backfill at this time").
-**Deploy order for the Phase 3 migration (20260822210000): push the CODE first, then `supabase db
-push`** — it drops the one-payment index and `payment_received`; the new code tolerates both states.
-Still open: step 15 (drop `seats_offered_*` + the sync trigger once nothing reads them); the
-`signup_group_sets` self-select picker lands picks directly (no leader approval step); the public
-milestone list has no styleguide specimen (a content list on the event page, not a shared pattern).
+**Status:** COMPLETE — moved to Plans/Completed/ 2026-08-23. Phases 0–4 LIVE in production
+(v1.81.0–v1.84.0, 2026-08-22; d0bcdf0 Phase 0 schema, f5873db Phase 1 transportation, 65f499a
+Phase 2 assignments, 136cd13 Phase 3 money, Phase 4 leader columns + snapshot), each browser-
+verified on the dev server. **Step 15 DONE 2026-08-23** — migration `20260823120000_drop_seats_offered`
+(columns + the two-way sync gone; the normalizer keeps only ride-status defaults; RPC re-created
+without the legacy columns). **Phase 5 (backfill two events) REMOVED from the backlog by Patrick
+2026-08-23** ("remove from the backlog") — §F below stays as the design if it is ever wanted; the
+practice-data importer (`scripts/import-event-sheet.ts`, D-207) is a separate, shipped tool.
+Follow-ups that outlived this plan live in BACKLOG.md (self-select picker lands picks directly; the
+public milestone list has no styleguide specimen) and in Plans/Roster-Status-Tab.md (roster bundle,
+job-code columns built 2026-08-23) / Plans/Guests-As-People.md.
 Planning history: tech-lead + qa-lead reviewed the plan the same day, both go-with-changes (folded in
 below); Patrick signed off the two qa-lead items.
 **Created:** 2026-08-22
@@ -482,7 +483,7 @@ tab if a third is wanted. Both need a `calendar_entries` row (create if absent).
 **Phase 5 — Backfill + eyes-on** (~1 session)
 14. Import script + sanitized fixture; import Pinewoods '25 and BWCA '26 locally, then production;
     side-by-side with the sheet tabs; fix what real data breaks.
-15. Drop `seats_offered_*` once nothing reads them. Move this plan to Completed/.
+15. ~~Drop `seats_offered_*` once nothing reads them.~~ DONE 2026-08-23 (`20260823120000`). Plan moved to Completed/.
 
 Phases 1–4 each ship independently (each is a useful slice on its own); the snapshot grows a section
 per phase rather than waiting for the end. Reviews done 2026-08-22 (tech-lead go-with-changes,

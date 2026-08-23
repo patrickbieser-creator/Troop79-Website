@@ -144,8 +144,9 @@ describe('RosterTable — jobs & commitments Edit', () => {
       })
     ]);
     await user.click(screen.getByRole('button', { name: /^edit/i }));
-    const grub = screen.getByRole('checkbox', { name: 'Grubmaster' }) as HTMLInputElement;
-    const table = screen.getByRole('checkbox', { name: 'Bring a table' }) as HTMLInputElement;
+    // Labels carry the job code first ("GRBM Grubmaster") since the job-code columns (2026-08-23).
+    const grub = screen.getByRole('checkbox', { name: /Grubmaster/ }) as HTMLInputElement;
+    const table = screen.getByRole('checkbox', { name: /Bring a table/ }) as HTMLInputElement;
     expect(grub.checked).toBe(true);
     expect(table.checked).toBe(false);
     expect((screen.getByDisplayValue('Sat dinner') as HTMLInputElement).value).toBe('Sat dinner');

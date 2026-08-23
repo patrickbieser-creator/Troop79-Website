@@ -416,9 +416,10 @@ async function load(signupId: number) {
     familyQuestionCount: questionList.filter((q) => !q.leader_only).length,
     // The Edit dialog's job list carries when / how many / what (Patrick,
     // 2026-08-22: "need more detail so the editor can choose correctly").
-    slots: ((slots ?? []) as { id: number; label: string; slot_date: string | null; starts_at: string | null; ends_at: string | null; description: string | null; needed: number | null }[]).map((sl) => ({
+    slots: ((slots ?? []) as { id: number; label: string; code: string | null; slot_date: string | null; starts_at: string | null; ends_at: string | null; description: string | null; needed: number | null }[]).map((sl) => ({
       id: sl.id,
       label: sl.label,
+      code: sl.code,
       slotDate: sl.slot_date,
       startsAt: sl.starts_at,
       endsAt: sl.ends_at,

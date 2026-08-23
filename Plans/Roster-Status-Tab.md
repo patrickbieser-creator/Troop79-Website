@@ -1,7 +1,11 @@
 # Roster — Status Column Off the Main Grid
 
 **Status:** Built 2026-08-22 (items 1–4, 6–10 shipped together on Patrick's "build these");
-item 5 (guests as people + per-event guest mode) still OPEN — needs its own design pass
+**job-code columns BUILT 2026-08-23** (see "Job-heavy events" below — `signup_slots.code` +
+`lib/job-codes.ts`, one column per job headed by its code, day bands, Jobs show/hide, claimed-first
+sort, Builder code field, snapshot Jobs section); item 5 (guests as people + per-event guest mode)
+now has its own plan — `Plans/Guests-As-People.md` (designed 2026-08-23, tech-lead + qa-lead
+reviewed, NOT built)
 **Parked:** 2026-08-22
 **Priority:** Medium
 **Bundle:** Pinewoods practice-run findings (this file collects them; add the next ones below)
@@ -72,8 +76,14 @@ order)`, `lastNameKey`).
 sets (Drivers block off) the four Driving/Ride columns are not rendered at all (`hasCarSets`
 prop, item 7's rule) and Notes drops its one-line clamp — Jobs + Notes get the width; the Job
 coverage panel above the grid already carries the filled/needed tally.
-**Parked for design — job-heavy events (Patrick, 2026-08-22: "the rummage sale will have 20–30
-jobs; we should come up with a plan for how that's displayed on the roster").** Today Jobs is ONE
+**Job-heavy events — BUILT 2026-08-23 as proposed below** (Patrick, 2026-08-22: "the rummage sale
+will have 20–30 jobs; we should come up with a plan for how that's displayed on the roster").
+Decisions at build time: codes are leader-entered in the Builder with the derived code as the
+placeholder (initials for multi-word labels, consonant skeleton for one word, digit suffix on
+collision — `lib/job-codes.ts`; unique per event by a partial index on `upper(code)`); families
+never see codes; CSV keeps its one verbose Jobs column; the Builder's Jobs panel also gained "Add a
+job" hidden until clicked (button on the right) and the whole Builder moved its data-entry sections
+under a TabStrip (Settings default) — both Patrick, 2026-08-23. Before this, Jobs was ONE
 column listing each claim ("Grill — Sat lunch, Setup — Fri") — unreadable at 20–30 jobs. Proposal:
   1. **One narrow column per job**, header = a short **job code** (e.g. `SET`, `CASH`, `TRK`) with
      the full label + when/how many needed in the header tooltip; cell = ✓ (or the claim's note on

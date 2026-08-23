@@ -145,11 +145,21 @@ export default async function EventSignupPage({
 
       <header className={styles.head}>
         <h1 className={styles.title}>Sign up</h1>
-        {/* When and where, repeated here so the form stands on its own. */}
+        {/* When and where, repeated here so the form stands on its own. Three
+            lines — title, date & time, location (Patrick, 2026-08-23: "for all
+            events, list the title on line 1, date and time on line 2, and
+            location line 3") — the one-line dot-joined version wrapped badly. */}
         <p className={styles.dek}>
-          <strong>{entry.title}</strong> · {dateRange(entry.entry_date, entry.end_date)}
+          <strong>{entry.title}</strong>
+          <br />
+          {dateRange(entry.entry_date, entry.end_date)}
           {times ? ` · ${times}` : ''}
-          {entry.location ? ` · ${entry.location}` : ''}
+          {entry.location && (
+            <>
+              <br />
+              {entry.location}
+            </>
+          )}
         </p>
       </header>
 

@@ -24,12 +24,14 @@ import {
   buildCarManifests,
   buildContacts,
   buildCounts,
+  buildJobSections,
   buildMoneyLines,
   buildOtherSets,
   buildRosterSections,
   printableQuestions,
   rosterSetColumns,
   type SnapshotInput,
+  type SnapshotJob,
   type SnapshotPerson,
   type SnapshotQuestion,
   type SnapshotSet
@@ -60,7 +62,7 @@ export async function loadSnapshot(signupId: number): Promise<{ input: SnapshotI
   if (!sig) return null;
   const s = sig as { id: number; calendar_entry_id: number; needs_permission_slip: boolean };
 
-  const [{ data: entry }, { data: entries }, { data: balances }, { data: sets }, { data: questions }, { data: answers }, { data: people }, { data: scouts }, { data: households }, { data: relations }, tx, { data: reqs }, { data: ms }] =
+  const [{ data: entry }, { data: entries }, { data: balances }, { data: sets }, { data: questions }, { data: answers }, { data: people }, { data: scouts }, { data: households }, { data: relations }, tx, { data: reqs }, { data: ms }, { data: slotRows }] =
     await Promise.all([
       supabase.from('calendar_entries').select('id, title, entry_date, end_date, start_time, end_time, location').eq('id', s.calendar_entry_id).maybeSingle(),
       supabase
@@ -85,7 +87,8 @@ export async function loadSnapshot(signupId: number): Promise<{ input: SnapshotI
           .range(from, to)
       ),
       supabase.from('reimbursement_requests').select('id, requester_person_id, amount, description, status').eq('calendar_entry_id', s.calendar_entry_id),
-      supabase.from('event_milestones').select('id, kind, label, due_on, amount').eq('event_signup_id', s.id).order('due_on')
+      supabase.from('event_milestones').select('id, kind, label, due_on, amount').eq('event_signup_id', s.id).order('due_on'),
+      supabase.from('signup_slots').select('id, label, code, slot_date, starts_at, ends_at, needed, description, sort').eq('event_signup_id', s.id).order('sort').order('id')
     ]);
   if (!entry) return null;
   const cal = entry as { id: number; title: string; entry_date: string; end_date: string | null; start_time: string | null; end_time: string | null; location: string | null };
@@ -168,6 +171,29 @@ export async function loadSnapshot(signupId: number): Promise<{ input: SnapshotI
       .map((g) => ({ id: g.id, name: g.name, capacity: g.capacity, driverEntryId: g.driver_entry_id, notes: g.notes, memberEntryIds: membersByGroup.get(g.id) ?? [] }))
   }));
 
+  // Jobs + claims (the Jobs section — the readable assignment list for
+  // job-heavy events; Plans/Roster-Status-Tab.md). Claims by cancelled
+  // entries fall away in buildJobSections (not in `people`).
+  const slotList = (slotRows ?? []) as { id: number; label: string; code: string | null; slot_date: string | null; starts_at: string | null; ends_at: string | null; needed: number | null; description: string | null }[];
+  const { data: claimRows } = slotList.length
+    ? await supabase.from('signup_slot_claims').select('slot_id, signup_entry_id, comment').in('slot_id', slotList.map((x) => x.id))
+    : { data: [] as unknown[] };
+  const claimsBySlot = new Map<number, { entryId: number; comment: string | null }[]>();
+  for (const c of (claimRows ?? []) as { slot_id: number; signup_entry_id: number; comment: string | null }[]) {
+    claimsBySlot.set(c.slot_id, [...(claimsBySlot.get(c.slot_id) ?? []), { entryId: c.signup_entry_id, comment: c.comment }]);
+  }
+  const jobs: SnapshotJob[] = slotList.map((x) => ({
+    id: x.id,
+    label: x.label,
+    code: x.code,
+    slotDate: x.slot_date,
+    startsAt: x.starts_at,
+    endsAt: x.ends_at,
+    needed: x.needed,
+    description: x.description,
+    claims: claimsBySlot.get(x.id) ?? []
+  }));
+
   const reimb = ((reqs ?? []) as { id: number; requester_person_id: number; amount: number; description: string; status: string }[]).map((r) => ({
     requesterName: personById.get(r.requester_person_id)?.display_name ?? `#${r.requester_person_id}`,
     amount: Number(r.amount),
@@ -192,6 +218,7 @@ export async function loadSnapshot(signupId: number): Promise<{ input: SnapshotI
     people: peopleRows,
     questions: qRows.map<SnapshotQuestion>((q) => ({ id: q.id, prompt: q.prompt, inputType: q.input_type, leaderOnly: q.leader_only, printAllowed: q.print_allowed })),
     sets: snapshotSets,
+    jobs,
     expenses: tx.filter((t) => t.signup_entry_id == null && !t.voided_at).map((t) => ({ occurredOn: t.occurred_on, amount: Number(t.amount), memo: t.memo, method: t.method })),
     reimbursements: reimb,
     milestones: ((ms ?? []) as { id: number; kind: string; label: string; due_on: string; amount: number | null }[]).map((m) => ({ label: m.label, dueOn: m.due_on, amount: m.amount != null ? Number(m.amount) : null, kind: m.kind })),
@@ -228,6 +255,7 @@ export async function SnapshotDocument({
   const showStatus = input.people.some((p) => p.status === 'waitlist');
   const cars = buildCarManifests(input);
   const other = buildOtherSets(input);
+  const jobSections = buildJobSections(input);
   const contacts = buildContacts(input);
   const moneyLines = buildMoneyLines(input);
   const qCell = (p: SnapshotPerson, q: SnapshotQuestion) => {
@@ -400,6 +428,45 @@ export async function SnapshotDocument({
               </div>
             ))}
           </div>
+        </section>
+      )}
+
+      {/* 3b. Jobs — every job with who claimed it and their notes, by day.
+          The printed sheet is the readable assignment list; the roster
+          grid's code columns are for scanning (Plans/Roster-Status-Tab.md). */}
+      {jobSections.length > 0 && (
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Jobs</h2>
+          {jobSections.map((band) => (
+            <div key={band.label} className={styles.block}>
+              {jobSections.length > 1 && <h3 className={styles.sub}>{band.label}</h3>}
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Code</th>
+                    <th>Job</th>
+                    <th>When</th>
+                    <th>Who</th>
+                    <th>Filled</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {band.jobs.map((j) => (
+                    <tr key={j.code}>
+                      <td className={styles.muted}>{j.code}</td>
+                      <td>
+                        {j.label}
+                        {j.description && <span className={styles.muted}> · {j.description}</span>}
+                      </td>
+                      <td>{j.when}</td>
+                      <td>{j.claimants.length > 0 ? j.claimants.map((c) => (c.note ? `${c.name} (${c.note})` : c.name)).join(', ') : <span className={styles.blank} />}</td>
+                      <td className={styles.muted}>{j.coverage}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))}
         </section>
       )}
 

@@ -178,11 +178,17 @@ export default function SlotFirstForm({
       if (!slot) continue;
       for (const k of keys) claimedBy.set(k, [...(claimedBy.get(k) ?? []), slot]);
     }
+    // A person who HAD a job and now has none is sent as status 'no' — not
+    // simply left out (Patrick, 2026-08-23: "the name Patrick reappeared
+    // after I clicked Save Changes"). Absent meant untouched: their entry
+    // stayed 'yes' and their claim stayed. 'no' lets the RPC flip the entry;
+    // the action then drops the claims the form no longer carries.
+    const hadEntry = new Set(existingClaims.map((c) => c.personKey));
     return people
-      .filter((p) => (claimedBy.get(p.key) ?? []).length > 0)
+      .filter((p) => (claimedBy.get(p.key) ?? []).length > 0 || hadEntry.has(p.key))
       .map((p) => {
-        const mine = claimedBy.get(p.key)!;
-        const donationOnly = mine.every((s) => !s.attendance_required);
+        const mine = claimedBy.get(p.key) ?? [];
+        const donationOnly = mine.length > 0 && mine.every((s) => !s.attendance_required);
         return {
           key: p.key,
           person_kind: p.kind,
@@ -191,7 +197,7 @@ export default function SlotFirstForm({
           // membership check validates against.
           scout_id: p.scoutId ?? null,
           person_id: p.personId,
-          status: 'yes',
+          status: mine.length > 0 ? 'yes' : 'no',
           participation: donationOnly ? 'contributor' : 'full',
           // Legacy count stays 0 — guests are NAMED ROWS now (hidden `guests`
           // field, written by the submit action under this party's host entry).
@@ -199,7 +205,22 @@ export default function SlotFirstForm({
           guest_note: null
         };
       });
-  }, [claims, people, slots, ready]);
+  }, [claims, people, slots, ready, existingClaims]);
+  const activeEntries = entries.filter((e) => e.status === 'yes');
+
+  // Dirty = the board differs from what is saved: claims, notes, or a guest
+  // row typed. Save is disabled otherwise (Patrick, 2026-08-23: "the Save
+  // Changes button appears and is active, yet does nothing").
+  const claimsKey = (pairs: { slotId: number; personKey: string }[]) => pairs.map((c) => `${c.slotId}:${c.personKey}`).sort().join('|');
+  const savedClaimsKey = useMemo(() => claimsKey(existingClaims), [existingClaims]);
+  const draftClaimsKey = claimsKey(Object.entries(claims).flatMap(([slotId, keys]) => keys.map((personKey) => ({ slotId: Number(slotId), personKey }))));
+  const savedComments = useMemo(() => {
+    const m: Record<number, string> = {};
+    for (const c of existingClaims) if (c.comment) m[c.slotId] = c.comment.trim();
+    return m;
+  }, [existingClaims]);
+  const commentsDirty = Object.entries(claims).some(([slotId, keys]) => keys.length > 0 && (slotComments[Number(slotId)] ?? '').trim() !== (savedComments[Number(slotId)] ?? ''));
+  const dirty = draftClaimsKey !== savedClaimsKey || commentsDirty || guestRows.length > 0;
 
   const claimsForSubmit = useMemo(() => {
     const byPerson: Record<string, number[]> = {};
@@ -593,13 +614,13 @@ export default function SlotFirstForm({
 
       <div className={styles.recap}>
         <p className={styles.dayHead}>Your household’s jobs</p>
-        {entries.length === 0 ? (
+        {activeEntries.length === 0 ? (
           <p className={styles.recapEmpty}>
             No jobs claimed yet — pick one above and say who’s doing it.
           </p>
         ) : (
           <ul className={styles.recapList}>
-            {entries.map((e) => {
+            {activeEntries.map((e) => {
               const p = people.find((x) => x.key === e.key)!;
               const mine = Object.entries(claims)
                 .filter(([, keys]) => keys.includes(e.key))
@@ -620,8 +641,16 @@ export default function SlotFirstForm({
       </div>
 
       <div className={styles.formActions}>
-        <button type="submit" className={styles.gateBtn} disabled={entries.length === 0}>
-          {hasExisting ? 'Save changes' : 'Submit family signup'}
+        {/* First submit needs at least one job; after that, Save is live only
+            when something changed (a removed person is a change — it saves
+            them as declined and frees the job). */}
+        <button
+          type="submit"
+          className={styles.gateBtn}
+          disabled={hasExisting ? !dirty : activeEntries.length === 0}
+          title={hasExisting && !dirty ? 'No changes to save yet' : undefined}
+        >
+          {hasExisting ? (dirty ? 'Save changes' : 'Saved') : 'Submit family signup'}
         </button>
       </div>
 

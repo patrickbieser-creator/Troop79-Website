@@ -6,6 +6,7 @@ import { eventRevalidatePaths } from '@/lib/event-signup-shared';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { isRideStatus } from '@/lib/transport';
+import { isValidJobCode, normalizeJobCode, JOB_CODE_MAX } from '@/lib/job-codes';
 import { normalizeGroupName, normalizeSetLabel, validateNewSet } from '@/lib/group-sets';
 import { sendEmail, renderEmail } from '@/lib/email';
 import { recipientsForScouts } from '@/lib/email-recipients';
@@ -217,6 +218,9 @@ export async function addSlot(
     eligibility: 'scouts' | 'adults' | 'both';
     needed: number | null;
     attendance_required: boolean;
+    /** Roster column code (1–5 letters/digits, unique per event); blank →
+     *  derived from the label at display time (src/lib/job-codes.ts). */
+    code?: string | null;
   }
 ): Promise<Result> {
   await requireCapability('calendar.write');
@@ -224,11 +228,14 @@ export async function addSlot(
   if (slot.kind === 'shift' && (!slot.starts_at || !slot.ends_at)) {
     return { ok: false, error: 'A shift needs both a start and an end time.' };
   }
+  const code = normalizeJobCode(slot.code);
+  if (code && !isValidJobCode(code)) return { ok: false, error: jobCodeRule() };
   const supabase = createAdminClient();
   const { error } = await supabase.from('signup_slots').insert({
     event_signup_id: signupId,
     kind: slot.kind,
     label: slot.label.trim(),
+    code,
     description: slot.description?.trim() || null,
     slot_date: slot.slot_date || null,
     starts_at: slot.kind === 'shift' ? slot.starts_at : null,
@@ -238,9 +245,23 @@ export async function addSlot(
     // Shifts always require attendance (DB CHECK enforces it too).
     attendance_required: slot.kind === 'shift' ? true : slot.attendance_required
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: jobCodeError(error, code) ?? error.message };
   revalidateEvent(calendarEntryId, signupId);
   return { ok: true };
+}
+
+/** The code rule in words, for both slot actions. */
+function jobCodeRule(): string {
+  return `A job code is 1–${JOB_CODE_MAX} letters or digits (e.g. SET, CASH, TRK).`;
+}
+
+/** signup_slots_code_uniq (unique per event, case-insensitive) → a sentence;
+ *  anything else → null so the caller falls back to the raw message. */
+function jobCodeError(error: { code?: string; message: string }, code: string | null): string | null {
+  if (error.code === '23505' && code && /signup_slots_code_uniq/.test(error.message)) {
+    return `Another job on this event already uses the code ${code}. Pick a different one.`;
+  }
+  return null;
 }
 
 /** Deleting a claimed slot cascades away every claim on it (signup_slot_claims
@@ -512,10 +533,13 @@ export async function updateSlot(
     eligibility: 'scouts' | 'adults' | 'both';
     needed: number | null;
     attendance_required: boolean;
+    code?: string | null;
   }
 ): Promise<Result> {
   await requireCapability('calendar.write');
   if (!slot.label.trim()) return { ok: false, error: 'Give the job a name.' };
+  const code = normalizeJobCode(slot.code);
+  if (code && !isValidJobCode(code)) return { ok: false, error: jobCodeRule() };
 
   const supabase = createAdminClient();
   const { data: existing } = await supabase
@@ -551,6 +575,7 @@ export async function updateSlot(
     .from('signup_slots')
     .update({
       label: slot.label.trim(),
+      code,
       description: slot.description?.trim() || null,
       slot_date: slot.slot_date || null,
       starts_at: kind === 'shift' ? slot.starts_at : null,
@@ -560,7 +585,7 @@ export async function updateSlot(
       attendance_required: kind === 'shift' ? true : slot.attendance_required
     })
     .eq('id', slotId);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: jobCodeError(error, code) ?? error.message };
 
   revalidateEvent(calendarEntryId, signupId);
   return { ok: true };
@@ -990,8 +1015,8 @@ export async function addGuestEntry(
 /**
  * Leader sets one person's transport: which legs they drive (with seats
  * INCLUDING the driver) and the ride status for legs they don't. The DB
- * normalizer derives the legacy seats_offered_* and nulls a ride status on a
- * driven leg; sync_car_groups creates/resizes/retires the car.
+ * normalizer nulls a ride status on a driven leg (and seats on one not
+ * driven); sync_car_groups creates/resizes/retires the car.
  */
 export async function setEntryTransport(
   entryId: number,

@@ -4,6 +4,7 @@ import {
   buildCarManifests,
   buildContacts,
   buildCounts,
+  buildJobSections,
   buildMoneyLines,
   buildOtherSets,
   buildRosterSections,
@@ -208,6 +209,37 @@ describe('other sets, contacts, money, counts', () => {
   });
 });
 
+describe('jobs', () => {
+  const withJobs: SnapshotInput = {
+    ...input,
+    jobs: [
+      { id: 1, label: 'Setup crew', code: null, slotDate: '2025-09-19', startsAt: '16:00:00', endsAt: '18:00:00', needed: 3, description: null, claims: [{ entryId: 2, comment: 'bringing gloves' }, { entryId: 5, comment: null }] },
+      { id: 2, label: 'Cashier', code: 'CASH', slotDate: '2025-09-20', startsAt: null, endsAt: null, needed: null, description: 'Bring a cash box', claims: [] },
+      { id: 3, label: 'Bring a table', code: null, slotDate: null, startsAt: null, endsAt: null, needed: 2, description: null, claims: [{ entryId: 1, comment: null }] }
+    ]
+  };
+
+  it('JobsSection_ListsEveryJobWithCodeWhenClaimantsAndNotes_BandedByDay_UntimedLast', () => {
+    const sections = buildJobSections(withJobs);
+    expect(sections.map((s) => s.label)).toEqual(['Fri 9/19', 'Sat 9/20', 'Anytime']);
+    // Entry 5 is cancelled — its claim does not print; coverage counts live claimants only.
+    expect(sections[0].jobs[0]).toMatchObject({
+      code: 'SC',
+      label: 'Setup crew',
+      when: 'Fri Sep 19 · 4:00 PM–6:00 PM',
+      coverage: '1 of 3 claimed',
+      claimants: [{ name: 'Anjali', note: 'bringing gloves' }]
+    });
+    expect(sections[1].jobs[0]).toMatchObject({ code: 'CASH', description: 'Bring a cash box', claimants: [], coverage: '' });
+    expect(sections[2].jobs[0]).toMatchObject({ code: 'BAT', claimants: [{ name: 'Jason Porter', note: null }], coverage: '1 of 2 claimed' });
+  });
+
+  it('NoJobs_NoJobsSection', () => {
+    expect(buildJobSections(input)).toEqual([]);
+    expect(buildJobSections({ ...input, jobs: [] })).toEqual([]);
+  });
+});
+
 describe('no medical content', () => {
   it('Snapshot_ContainsEverySection_AndNoMedicalContent', () => {
     // Guard, not decoration: the document leaves the building on paper.
@@ -215,6 +247,7 @@ describe('no medical content', () => {
       sections: buildRosterSections(input),
       cars: buildCarManifests(input),
       other: buildOtherSets(input),
+      jobs: buildJobSections(input),
       contacts: buildContacts(input),
       money: buildMoneyLines(input),
       counts: buildCounts(input),

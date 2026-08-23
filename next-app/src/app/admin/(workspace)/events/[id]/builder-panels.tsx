@@ -11,9 +11,11 @@ import {
 import { LEADER_PRESETS } from '@/lib/leader-columns';
 import type { SlotClaimant, QuestionAnswerRow } from '@/lib/event-signup-admin';
 import { jobDateNote } from '@/lib/event-signup-shared';
+import { deriveJobCode, resolveJobCodes, JOB_CODE_MAX } from '@/lib/job-codes';
 import { SET_KINDS, SET_KIND_LABEL, presetSetsFor, type SetKind } from '@/lib/group-sets';
 import { DatePickerField } from '../../_components/date-picker-field';
 import { DateTimeField } from '../../_components/date-time-field';
+import { TabStrip } from '../../_components/tab-strip';
 import styles from '../events-admin.module.css';
 
 /*
@@ -89,6 +91,14 @@ export function BuilderPanels({
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
+  // Layout (Patrick, 2026-08-23): the Blocks checklist stays at the top; every
+  // other data-entry section is a TAB under it — Settings first and open by
+  // default, the rest in the order the page always had — so the forms are
+  // visually separated and it is clear where one ends and the next begins.
+  // Drafts live up here, so switching tabs never loses a half-typed job.
+  type BuilderTab = 'settings' | 'prices' | 'jobs' | 'questions' | 'assignments';
+  const [tab, setTab] = useState<BuilderTab>('settings');
+
   // Leader-only question draft (Plans/Event-Logistics.md §D)
   const [qLeader, setQLeader] = useState(false);
 
@@ -119,6 +129,13 @@ export function BuilderPanels({
   // Slot draft
   const [sKind, setSKind] = useState<'shift' | 'task'>('shift');
   const [sLabel, setSLabel] = useState('');
+  // Roster column code (job-heavy events, 2026-08-23). Blank = use the
+  // derived one the placeholder shows.
+  const [sCode, setSCode] = useState('');
+  // The add form is closed until "Add a job" is clicked (Patrick, 2026-08-23:
+  // hidden like the page's other add controls, button on the right). It stays
+  // open across adds — a build session enters jobs one after another.
+  const [addJobOpen, setAddJobOpen] = useState(false);
   const [sDesc, setSDesc] = useState('');
   const [sDate, setSDate] = useState('');
   const [sStart, setSStart] = useState('08:00');
@@ -161,12 +178,23 @@ export function BuilderPanels({
   const [qWho, setQWho] = useState<'scouts' | 'adults' | 'both'>('both');
   const [qReq, setQReq] = useState(true);
 
+  // Every job's code — leader-set or derived — so the list shows exactly what
+  // the roster grid will head each column with.
+  const jobCodes = resolveJobCodes(slots.map((sl) => ({ id: Number(sl.id), label: s(sl.label), code: s(sl.code) || null })));
+  const suggestedCode = sLabel.trim() ? deriveJobCode(sLabel, new Set(jobCodes.values())) : '';
+
+  const openAddJob = () => {
+    flushSync(() => setAddJobOpen(true));
+    sLabelRef.current?.focus();
+  };
+
   const submitSlot = () =>
     start(async () => {
       const name = sLabel.trim();
       const res = await addSlot(signupId, calendarEntryId, {
         kind: sKind,
         label: sLabel,
+        code: sCode || null,
         description: sDesc || null,
         slot_date: sDate || null,
         starts_at: sStart,
@@ -187,6 +215,7 @@ export function BuilderPanels({
       // shape. Description is per-job by definition, so carrying it forward
       // would silently mislabel the next one.
       setSLabel('');
+      setSCode('');
       setSDesc('');
       sLabelRef.current?.focus();
       router.refresh();
@@ -201,8 +230,10 @@ export function BuilderPanels({
     // (empty) value, the copied text lands unselected, and typing the next
     // job's name APPENDS to it — "Teardown crewPricing table".
     flushSync(() => {
+      setAddJobOpen(true);
       setSKind(s(sl.kind) === 'task' ? 'task' : 'shift');
       setSLabel(s(sl.label));
+      setSCode(''); // a copy needs its own code — the derived one is suggested
       setSDesc(s(sl.description));
       setSDate(s(sl.slot_date));
       setSStart(s(sl.starts_at).slice(0, 5) || '08:00');
@@ -222,6 +253,7 @@ export function BuilderPanels({
     setEditSlot(Number(sl.id));
     setESlot({
       label: s(sl.label),
+      code: s(sl.code),
       description: s(sl.description),
       slot_date: s(sl.slot_date),
       starts_at: s(sl.starts_at).slice(0, 5),
@@ -284,6 +316,22 @@ export function BuilderPanels({
         )}
       </section>
 
+      <TabStrip
+        ariaLabel="Builder sections"
+        className={styles.builderTabs}
+        activeKey={tab}
+        items={(
+          [
+            { key: 'settings', label: 'Settings' },
+            { key: 'prices', label: 'Price tiers', count: prices.length },
+            { key: 'jobs', label: 'Jobs', count: slots.length },
+            { key: 'questions', label: 'Questions', count: questions.length },
+            { key: 'assignments', label: 'Assignments', count: sets.length }
+          ] as { key: BuilderTab; label: string; count?: number }[]
+        ).map((t) => ({ key: t.key, label: t.label, count: t.count, onSelect: () => setTab(t.key) }))}
+      />
+
+      {tab === 'settings' && (
       <section className={styles.panel}>
         <h2>Settings</h2>
         <div className={styles.fieldGrid}>
@@ -338,7 +386,9 @@ export function BuilderPanels({
           />
         </label>
       </section>
+      )}
 
+      {tab === 'prices' && (
       <section className={styles.panel}>
         <h2>Price tiers</h2>
         <p className={styles.panelHint}>
@@ -518,11 +568,20 @@ export function BuilderPanels({
           </button>
         )}
       </section>
+      )}
 
+      {tab === 'jobs' && (
       <section className={styles.panel}>
-        <h2>
-          Jobs — shifts &amp; tasks{slots.length > 0 && ` (${slots.length})`}
-        </h2>
+        <div className={styles.panelHead}>
+          <h2>
+            Jobs — shifts &amp; tasks{slots.length > 0 && ` (${slots.length})`}
+          </h2>
+          {!addJobOpen && (
+            <button type="button" className={styles.enableBtn} onClick={openAddJob} disabled={pending}>
+              Add a job
+            </button>
+          )}
+        </div>
         <div className={styles.fieldGrid}>
           <label>
             <span className={`adminLabel ${styles.fieldLabel}`}>What families see this called</span>
@@ -537,7 +596,9 @@ export function BuilderPanels({
         <p className={styles.panelHint}>
           One mechanism: a task is a shift without times. A task that doesn’t need attendance (a
           donation) can be claimed by someone who isn’t coming. Detail that applies to one job goes
-          in that job’s own description — the event’s description covers the rest.
+          in that job’s own description — the event’s description covers the rest. Each job has a
+          short <strong>code</strong> — its column header on the roster grid; leave it blank to
+          use the suggested one.
         </p>
 
         {/* The list comes FIRST (Patrick + the event coordinator, 2026-08-22:
@@ -570,6 +631,15 @@ export function BuilderPanels({
                             value={eSlot.label ?? ''}
                             placeholder="Job name"
                             onChange={(ev) => setESlot((v) => ({ ...v, label: ev.target.value }))}
+                          />
+                          <input
+                            className={styles.codeInput}
+                            value={eSlot.code ?? ''}
+                            maxLength={JOB_CODE_MAX}
+                            placeholder={jobCodes.get(id) ?? 'code'}
+                            aria-label="Roster code"
+                            title="Roster column code — 1–5 letters or digits, unique on this event. Blank uses the suggested one."
+                            onChange={(ev) => setESlot((v) => ({ ...v, code: ev.target.value.toUpperCase() }))}
                           />
                           <DatePickerField
                             className={styles.dateField}
@@ -639,6 +709,7 @@ export function BuilderPanels({
                               start(async () => {
                                 const res = await updateSlot(id, signupId, calendarEntryId, {
                                   label: eSlot.label ?? '',
+                                  code: eSlot.code || null,
                                   description: eSlot.description || null,
                                   slot_date: eSlot.slot_date || null,
                                   starts_at: eSlot.starts_at || null,
@@ -741,6 +812,9 @@ export function BuilderPanels({
                       {/* The name is the edit trigger as well as the label —
                           reaching for the thing you want to change is the
                           instinct the small Edit button alone didn't serve. */}
+                      <span className={styles.jobCode} title="Roster column code">
+                        {jobCodes.get(id)}
+                      </span>{' '}
                       <button
                         type="button"
                         className={styles.rowLabelBtn}
@@ -826,6 +900,7 @@ export function BuilderPanels({
           </table>
         )}
 
+        {addJobOpen && (
         <form
           className={styles.addCard}
           onSubmit={(e) => {
@@ -849,6 +924,16 @@ export function BuilderPanels({
                 placeholder="e.g. Setup crew"
                 value={sLabel}
                 onChange={(e) => setSLabel(e.target.value)}
+              />
+            </label>
+            <label className={styles.addField} title="Roster column code — 1–5 letters or digits, unique on this event. Blank uses the suggested one.">
+              <span className="adminLabel">Code</span>
+              <input
+                className={styles.codeInput}
+                maxLength={JOB_CODE_MAX}
+                placeholder={suggestedCode || 'auto'}
+                value={sCode}
+                onChange={(e) => setSCode(e.target.value.toUpperCase())}
               />
             </label>
             <label className={styles.addField}>
@@ -915,6 +1000,9 @@ export function BuilderPanels({
             <button type="submit" className={styles.enableBtn} disabled={pending}>
               {pending ? 'Adding…' : 'Add job'}
             </button>
+            <button type="button" className={styles.rowEdit} onClick={() => setAddJobOpen(false)} disabled={pending}>
+              Done
+            </button>
             <span className={styles.addHint}>
               Enter adds the job and puts the cursor back in the name — everything else stays for
               the next one.
@@ -927,9 +1015,12 @@ export function BuilderPanels({
             </p>
           )}
         </form>
+        )}
 
       </section>
+      )}
 
+      {tab === 'questions' && (
       <section className={styles.panel}>
         <h2>Questions asked of each attendee</h2>
         <p className={styles.panelHint}>
@@ -1131,6 +1222,8 @@ export function BuilderPanels({
           ))}
         </p>
       </section>
+      )}
+      {tab === 'assignments' && (
       <section className={styles.panel}>
         <h2>Assignments</h2>
         <p className={styles.panelHint}>
@@ -1339,6 +1432,7 @@ export function BuilderPanels({
           </button>
         </div>
       </section>
+      )}
 
       <section className={styles.dangerPanel}>
         <h2>Remove signup from this event</h2>

@@ -136,7 +136,7 @@ describe('backfillEventPrices', () => {
         participation: 'driver_only',
         // signup_entries_driver_only requires an actual leg driven.
         drives_out: true,
-        seats_offered_out: 3
+        vehicle_seats_out: 4
       })
       .select('id')
       .single();

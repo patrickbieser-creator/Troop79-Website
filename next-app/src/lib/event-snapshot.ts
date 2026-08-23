@@ -15,6 +15,7 @@
 
 import { LEG_LABEL, type Leg, type RideStatus, RIDE_STATUS_LABEL } from '@/lib/transport';
 import { money } from '@/lib/event-money';
+import { bandJobsByDay, jobCoverage, jobWhen, resolveJobCodes } from '@/lib/job-codes';
 
 export interface SnapshotPerson {
   entryId: number;
@@ -64,6 +65,21 @@ export interface SnapshotSet {
   groups: { id: number; name: string; capacity: number | null; driverEntryId: number | null; notes: string | null; memberEntryIds: number[] }[];
 }
 
+/** A job (signup_slots row) with who claimed it — the Jobs section is the
+ *  readable assignment list for job-heavy events; the roster grid's code
+ *  columns are for scanning and editing (Plans/Roster-Status-Tab.md). */
+export interface SnapshotJob {
+  id: number;
+  label: string;
+  code: string | null;
+  slotDate: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  needed: number | null;
+  description: string | null;
+  claims: { entryId: number; comment: string | null }[];
+}
+
 export interface SnapshotInput {
   title: string;
   dateLabel: string;
@@ -71,6 +87,8 @@ export interface SnapshotInput {
   people: SnapshotPerson[];
   questions: SnapshotQuestion[];
   sets: SnapshotSet[];
+  /** Absent / empty → no Jobs section. */
+  jobs?: SnapshotJob[];
   expenses: { occurredOn: string; amount: number; memo: string | null; method: string | null }[];
   reimbursements: { requesterName: string; amount: number; status: string; description: string }[];
   milestones: { label: string; dueOn: string; amount: number | null; kind: string }[];
@@ -242,6 +260,42 @@ export function buildOtherSets(input: SnapshotInput): { label: string; groups: {
           members: g.memberEntryIds.map((id) => byId.get(id)?.name).filter((n): n is string => !!n).sort()
         }))
     }));
+}
+
+export interface SnapshotJobLine {
+  code: string;
+  label: string;
+  when: string;
+  coverage: string;
+  description: string | null;
+  claimants: { name: string; note: string | null }[];
+}
+
+/** Jobs banded by day (untimed last), every job with its code, when, who
+ *  claimed it (live entries only) and their notes, and "n of m claimed". */
+export function buildJobSections(input: SnapshotInput): { label: string; jobs: SnapshotJobLine[] }[] {
+  const jobs = input.jobs ?? [];
+  if (jobs.length === 0) return [];
+  const live = new Map(input.people.filter((p) => p.status === 'yes' || p.status === 'waitlist').map((p) => [p.entryId, p]));
+  const codes = resolveJobCodes(jobs);
+  return bandJobsByDay(jobs).map((band) => ({
+    label: band.label,
+    jobs: band.jobs.map((j) => {
+      const claimants = j.claims
+        .map((c) => ({ person: live.get(c.entryId), note: c.comment?.trim() || null }))
+        .filter((c): c is { person: SnapshotPerson; note: string | null } => !!c.person)
+        .map((c) => ({ name: c.person.name, note: c.note }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      return {
+        code: codes.get(j.id) ?? '',
+        label: j.label,
+        when: jobWhen(j),
+        coverage: jobCoverage({ needed: j.needed, filled: claimants.length }),
+        description: j.description,
+        claimants
+      };
+    })
+  }));
 }
 
 /** Contact list: adults with phone/email, youth with their guardian phone. */

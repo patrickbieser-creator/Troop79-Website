@@ -41,6 +41,8 @@
 /* Card/panel canon (Phase B, 2026-08-21). */
 .panel { background: var(--admin-form-bg); border: 1px solid var(--admin-gray-200); border-radius: var(--admin-radius); box-shadow: var(--admin-shadow-sm); padding: 16px; }
 .panel h2 { font-size: 14px; font-weight: 700; margin-bottom: 4px; color: var(--admin-gray-900); }
+/* Builder: the section tabs under the Blocks checklist (2026-08-23). */
+.builderTabs { margin: 4px 0 14px; }
 .panelHead { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
 .panelHint { font-size: 12.5px; color: var(--admin-gray-600); line-height: 1.5; margin-bottom: 12px; }
 .note { margin-top: 10px; font-size: 12.5px; background: var(--admin-status-success-bg); border-left: 3px solid var(--admin-forest); padding: 8px 11px; border-radius: 0 3px 3px 0; }
@@ -210,6 +212,18 @@
 /* A sortable stacked header wraps its label in the sort button; stretch the
    button so the label stays centered over the column (Patrick, 2026-08-22). */
 .thCenter > button { display: flex; width: 100%; justify-content: center; }
+/* Job-code columns (job-heavy events, 2026-08-23): one narrow column per job,
+   headed by its 1–5 char code (.thCenter + the sort button); the cell is a tick
+   when claimed, blank otherwise, with the job / note on hover. When the jobs
+   span days a thin band row groups the codes under "Fri 10/9 · Sat 10/10 ·
+   Anytime". .jobCode is the small code chip beside a label (Edit dialog,
+   Builder list). */
+.bandRow th { border-bottom: none; padding-bottom: 0; }
+.jobBand { text-align: center; font-size: var(--admin-text-2xs); font-weight: var(--admin-weight-bold); letter-spacing: var(--admin-tracking-wide); text-transform: uppercase; color: var(--admin-gray-600); border-bottom: 1px solid var(--admin-gray-300); }
+.jobTick { color: var(--admin-forest); font-weight: var(--admin-weight-bold); }
+/* Builder: the job-code field is five characters wide on purpose. */
+.codeInput { width: 6.5ch !important; min-width: 0; flex: 0 0 auto; text-transform: uppercase; font-family: var(--admin-font-mono); }
+.jobCode { display: inline-block; font-family: var(--admin-font-mono); font-size: var(--admin-text-2xs); font-weight: var(--admin-weight-bold); letter-spacing: var(--admin-tracking-wide); color: var(--admin-gray-700); background: var(--admin-gray-100); border: 1px solid var(--admin-gray-200); border-radius: var(--admin-radius-sm); padding: 0 var(--admin-space-1); line-height: 1.5; vertical-align: middle; }
 /* Negative money (Patrick, 2026-08-22: "red, in parentheses, with a negative
    sign — all three to really make it stand out"). */
 .negMoney { color: var(--admin-danger); font-weight: var(--admin-weight-bold); white-space: nowrap; }

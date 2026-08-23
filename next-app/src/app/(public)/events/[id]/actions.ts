@@ -1,7 +1,7 @@
 'use server';
 
 import { personKindFor } from '@/lib/participant-class';
-import { normalizeGuestRows } from '@/lib/event-signup';
+import { normalizeGuestRows, staleClaims } from '@/lib/event-signup';
 import { placementPayloadFromForm } from '@/lib/group-sets';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -226,6 +226,34 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
   // returned. Each claim goes through claim_signup_slot, which holds its own
   // lock and re-checks eligibility.
   const byKey = new Map(writtenRows.map((r) => [r.key, r.entry_id]));
+
+  // Reconcile FIRST: drop the party's claims the form no longer carries
+  // (Patrick, 2026-08-23 — removing a name on the job board and saving
+  // brought the name back: the person was absent from the payload, so their
+  // entry stayed 'yes' and the claim stayed). The form now sends a removed
+  // person as status 'no' (the RPC handles that above) and this deletes the
+  // claims nobody asked for. Only when the form carried a slotClaims field
+  // at all — a form without a jobs section must not wipe leader-made claims.
+  if (formData.has('slotClaims') && partyEntryIds.length > 0) {
+    const wanted = new Set<string>();
+    for (const [personKey, slotIds] of Object.entries(slotClaims)) {
+      const entryId = byKey.get(personKey);
+      if (!entryId) continue;
+      for (const slotId of slotIds) wanted.add(`${entryId}:${Number(slotId)}`);
+    }
+    const { data: current } = await supabase
+      .from('signup_slot_claims')
+      .select('slot_id, signup_entry_id')
+      .in('signup_entry_id', partyEntryIds);
+    const stale = staleClaims(
+      ((current ?? []) as { slot_id: number; signup_entry_id: number }[]).map((c) => ({ entryId: c.signup_entry_id, slotId: c.slot_id })),
+      wanted
+    );
+    for (const c of stale) {
+      await supabase.from('signup_slot_claims').delete().eq('slot_id', c.slotId).eq('signup_entry_id', c.entryId);
+    }
+  }
+
   for (const [personKey, slotIds] of Object.entries(slotClaims)) {
     const entryId = byKey.get(personKey);
     if (!entryId) continue;

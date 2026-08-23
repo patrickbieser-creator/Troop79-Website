@@ -574,6 +574,18 @@ export const MAX_GUEST_ROWS = 20;
  * names, keep only the four guest classes, drop blanks, collapse duplicates
  * (case-insensitive name + class), bound the count. Pure.
  */
+/** Claims the party holds that the form no longer asks for — the ones to
+ *  delete after a submit. `wanted` is `"<entryId>:<slotId>"` for every claim
+ *  the submit carried. Pure: the slot-first form's "remove Patrick" bug
+ *  (2026-08-23) was exactly this set never being computed — a removed person
+ *  was simply absent from the payload, so their entry and claim survived. */
+export function staleClaims(
+  current: readonly { entryId: number; slotId: number }[],
+  wanted: ReadonlySet<string>
+): { entryId: number; slotId: number }[] {
+  return current.filter((c) => !wanted.has(`${c.entryId}:${c.slotId}`));
+}
+
 export function normalizeGuestRows(raw: string | null | undefined): GuestRow[] {
   if (!raw) return [];
   let parsed: unknown;
