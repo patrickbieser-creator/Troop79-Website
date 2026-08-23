@@ -73,3 +73,27 @@ always has what&rsquo;s coming next.
 Found via browser verification on 2026-07-12 (also caused the footer's
 "© 2026Scout Troop 79"). Sweep check after adding prose with inline links:
 `curl -s localhost:3000/<page> | grep -oE '</a>[^ ,.<;)]{1,25}'` should return nothing.
+
+## Save buttons: dirty-gated, labelled, and loud about what they did (2026-08-23)
+
+Rule (Patrick, 2026-08-23, after the family sign-up form shipped a Save that "didn't change
+color after a save"): **every Save / Submit / Apply control on a form that edits something
+already saved follows one standard** — no exceptions, public or admin:
+
+1. **Disabled until the draft differs from what is saved.** Snapshot the draft on mount (the page
+   reloads after a save, so "on mount" IS "what is saved") and compare — `useState(() => draftKey)`
+   + `draftKey !== savedKey`. Never read a ref during render (the React-compiler lint forbids it).
+2. **The label says the state:** "Save changes" when dirty, **"Saved"** when clean (first-ever
+   submit keeps its own verb, e.g. "Submit family signup", gated on "anything chosen").
+   `title="No changes to save yet"` on the disabled state.
+3. **Feedback while it works and when it lands:** show a "Saving changes…" status the moment the
+   form submits and a brief "Done" flash when the page returns (public: `save-feedback.tsx`
+   `SavingOverlay` + `SavedFlash`, keyed on `?saved=1`; admin forms use the same idea with the
+   admin tokens — add an admin twin rather than importing across the firewall).
+4. **A control that will do nothing is greyed, not hidden** — the user should see it exists and
+   learn why it's off.
+
+Reference implementations: `src/app/(public)/events/[id]/person-first-form.tsx` (draftKey snapshot)
+and `slot-first-form.tsx` (claims/comments/guests keys). The Guests section's "locked until someone
+attends" placeholder is the same principle applied to a section. An audit of every other form
+against this rule is on the backlog.
