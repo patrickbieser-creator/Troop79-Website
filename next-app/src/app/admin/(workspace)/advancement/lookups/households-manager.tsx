@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { SaveButton, SaveFeedback, useSavePhase } from '../../_components/save-state';
 import { useRouter } from 'next/navigation';
 import { createHousehold, renameHousehold, deleteHousehold } from './household-actions';
 import styles from './lookups.module.css';
@@ -35,13 +36,18 @@ export function HouseholdsManager({ households }: { households: HouseholdRow[] }
     return acc;
   }, {});
 
+  const feedback = useSavePhase();
+
   function run(fn: () => Promise<{ ok: boolean; error?: string }>) {
     setError(null);
     startTransition(async () => {
       const res = await fn();
-      if (!res.ok) setError(res.error ?? 'Something went wrong.');
-      else {
+      if (!res.ok) {
+        feedback.fail();
+        setError(res.error ?? 'Something went wrong.');
+      } else {
         setEditing(null);
+        feedback.done();
         router.refresh();
       }
     });
@@ -49,6 +55,7 @@ export function HouseholdsManager({ households }: { households: HouseholdRow[] }
 
   return (
     <div>
+      <SaveFeedback phase={feedback.phase} />
       {error && <div className={styles.rowError}>{error}</div>}
 
       <div className={styles.addRow}>
@@ -130,13 +137,17 @@ export function HouseholdsManager({ households }: { households: HouseholdRow[] }
                 <td className={styles.actionsCell}>
                   {editing === h.id ? (
                     <>
-                      <button
+                      <SaveButton
                         className={styles.smallBtn}
-                        disabled={pending || !draft.trim()}
-                        onClick={() => run(() => renameHousehold(h.id, draft))}
-                      >
-                        Save
-                      </button>
+                        dirty={draft.trim() !== h.label}
+                        pending={pending}
+                        blocked={!draft.trim()}
+                        blockedReason="A name is required"
+                        onClick={() => {
+                          feedback.start();
+                          run(() => renameHousehold(h.id, draft));
+                        }}
+                      />
                       <button
                         className={styles.smallBtn}
                         disabled={pending}

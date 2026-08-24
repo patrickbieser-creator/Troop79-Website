@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { SaveButton, SaveFeedback, useSavedSnapshot, useSavePhase } from '../../_components/save-state';
 import { updateMeritBadge } from './actions';
 import { SortableList } from '../../_components/sortable-list';
 import { useLookupTable } from './use-lookup-table';
@@ -187,6 +188,12 @@ function MbForm({
   const [counselors, setCounselors] = useState<CounselorItem[]>(initialItems);
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  // Save standard (2026-08-24): the whole dialog — fields, counselors, the
+  // requirement tree — against what was loaded.
+  const { dirty } = useSavedSnapshot(
+    JSON.stringify({ name, eagle, scoutbookId, bsaPageUrl, workbookUrl, counselors: counselors.map((c) => c.key), reqTree })
+  );
+  const feedback = useSavePhase();
 
   function submit() {
     setErr(null);
@@ -202,13 +209,15 @@ function MbForm({
       JSON.stringify(counselors.map((c) => ({ leader_code: c.key })))
     );
     fd.set('reqTree', JSON.stringify(reqTree));
+    feedback.start();
     startTransition(async () => {
       const res = await updateMeritBadge(fd);
       if (!res.ok) {
+        feedback.fail();
         setErr(res.error ?? 'Save failed');
         return;
       }
-      onClose();
+      feedback.doneThen(onClose);
     });
   }
 
@@ -344,14 +353,15 @@ function MbForm({
         >
           Cancel
         </button>
-        <button
-          type="button"
+        <SaveButton
           className={styles.editSaveBtn}
+          dirty={dirty}
+          pending={isPending}
+          blocked={!name.trim()}
+          blockedReason="A name is required"
           onClick={submit}
-          disabled={isPending || !name.trim()}
-        >
-          {isPending ? 'Saving…' : 'Save changes'}
-        </button>
+        />
+        <SaveFeedback phase={feedback.phase} />
       </DialogActions>
     </>
   );

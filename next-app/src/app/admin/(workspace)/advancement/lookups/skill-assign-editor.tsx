@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { SaveButton, SaveFeedback, useSavePhase } from '../../_components/save-state';
 import { useLookupTable } from './use-lookup-table';
 import styles from './lookups.module.css';
 import { Notice } from '../../_components/notice';
@@ -41,6 +42,7 @@ export function SkillAssignEditor({ people, skills, keyField, noun, onSave }: Pr
   const [draft, setDraft] = useState<Set<string>>(new Set());
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const feedback = useSavePhase();
   const t = useLookupTable(people, (p) => `${p.name} ${p.sub ?? ""}`);
 
   const skillName = new Map(skills.map((s) => [s.id, s.name]));
@@ -65,18 +67,30 @@ export function SkillAssignEditor({ people, skills, keyField, noun, onSave }: Pr
     const fd = new FormData();
     fd.set(keyField, person.key);
     fd.set('skill_ids', JSON.stringify([...draft]));
+    feedback.start();
     startTransition(async () => {
       const res = await onSave(fd);
       if (!res.ok) {
+        feedback.fail();
         setErr(res.error ?? 'Save failed');
         return;
       }
       setOpenKey(null);
+      feedback.done();
     });
+  }
+
+  /** Save standard (2026-08-24): the ticked set vs the person's saved skills. */
+  function skillsDirty(person: AssignPerson): boolean {
+    const saved = new Set(person.skillIds);
+    if (saved.size !== draft.size) return true;
+    for (const id of draft) if (!saved.has(id)) return true;
+    return false;
   }
 
   return (
     <>
+      <SaveFeedback phase={feedback.phase} />
       {err && <Notice>{err}</Notice>}
       {t.searchEl}
       <div className={t.scrollClass}>
@@ -132,14 +146,12 @@ export function SkillAssignEditor({ people, skills, keyField, noun, onSave }: Pr
                     <>
                       {/* Navy: Save commits an edit, it doesn't add — the
                           Phase A primary-button decision (2026-08-21). */}
-                      <button
-                        type="button"
+                      <SaveButton
                         className={styles.editSaveBtn}
+                        dirty={skillsDirty(p)}
+                        pending={isPending}
                         onClick={() => save(p)}
-                        disabled={isPending}
-                      >
-                        Save
-                      </button>
+                      />
                       <button
                         type="button"
                         className={`${styles.editBtn} ${styles.gapLeft}`}

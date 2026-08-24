@@ -12,6 +12,7 @@
  */
 
 import { useState, useTransition } from 'react';
+import { SaveButton, SaveFeedback, useSavePhase } from '../../_components/save-state';
 import {
   CATEGORY_TEMPLATES,
   FALLBACK_CATEGORY_TEMPLATE,
@@ -56,6 +57,7 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
   const [editTemplate, setEditTemplate] = useState<CategoryTemplate>(FALLBACK_CATEGORY_TEMPLATE);
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const feedback = useSavePhase();
   const t = useLookupTable(rows, (r) => r.label, { alwaysSearch: true });
 
   function add() {
@@ -99,14 +101,27 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
     fd.set('color', editColor);
     fd.set('sort_order', editSort);
     fd.set('template', editTemplate);
+    feedback.start();
     startTransition(async () => {
       const res = await onUpdate(fd);
       if (!res.ok) {
+        feedback.fail();
         setErr(res.error ?? 'Save failed');
         return;
       }
       setEditing(null);
+      feedback.done();
     });
+  }
+
+  /** Save standard (2026-08-24): the inline row's draft vs the row itself. */
+  function editDirty(row: CalendarCategoryRow): boolean {
+    return (
+      editLabel !== row.label ||
+      editColor !== row.color ||
+      editSort !== String(row.sort_order) ||
+      editTemplate !== (row.template ?? FALLBACK_CATEGORY_TEMPLATE)
+    );
   }
 
   function remove(row: CalendarCategoryRow) {
@@ -128,6 +143,7 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
 
   return (
     <>
+      <SaveFeedback phase={feedback.phase} />
       <div className={styles.cardToolbar}>
         {t.searchEl}
         <AddButton onClick={() => setAdding(true)}>+ Add Category</AddButton>
@@ -263,14 +279,14 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
                     >
                       Cancel
                     </button>
-                    <button
-                      type="button"
+                    <SaveButton
                       className={`${styles.editSaveBtn} ${styles.gapLeft}`}
+                      dirty={editDirty(row)}
+                      pending={isPending}
+                      blocked={!editLabel.trim()}
+                      blockedReason="A label is required"
                       onClick={() => saveEdit(row.label)}
-                      disabled={isPending || !editLabel.trim()}
-                    >
-                      Save
-                    </button>
+                    />
                   </td>
                 </tr>
               ) : (

@@ -14,6 +14,7 @@
  */
 
 import { useState, useTransition } from 'react';
+import { SaveButton, SaveFeedback, useSavePhase } from '../../_components/save-state';
 import { ARTICLE_TOKENS, isValidTokenValue, type TokenValues } from '@/lib/article-tokens';
 import styles from './lookups.module.css';
 import { Notice } from '../../_components/notice';
@@ -44,17 +45,22 @@ export function ArticleTokensEditor({
     setSaved(false);
   }
 
+  const feedback = useSavePhase();
+
   function save() {
     setErr(null);
     setSaved(false);
     const fd = new FormData();
     for (const def of ARTICLE_TOKENS) fd.set(def.key, (draft[def.key] ?? '').trim());
+    feedback.start();
     startTransition(async () => {
       const res = await onSave(fd);
       if (!res.ok) {
+        feedback.fail();
         setErr(res.error ?? 'Save failed');
         return;
       }
+      feedback.done();
       setSaved(true);
     });
   }
@@ -129,14 +135,16 @@ export function ArticleTokensEditor({
         >
           Reset to defaults
         </button>
-        <button
-          type="button"
+        <SaveButton
           className={styles.editSaveBtn}
+          dirty={dirty}
+          pending={isPending}
+          dirtyLabel="Save styling"
+          blocked={invalid.length > 0}
+          blockedReason="Fix the highlighted values first"
           onClick={save}
-          disabled={isPending || invalid.length > 0 || !dirty}
-        >
-          {isPending ? 'Saving…' : 'Save styling'}
-        </button>
+        />
+        <SaveFeedback phase={feedback.phase} />
       </div>
     </>
   );

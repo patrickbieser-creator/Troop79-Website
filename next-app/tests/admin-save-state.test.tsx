@@ -93,3 +93,28 @@ describe('SaveFeedback — Saving… then a brief Done', () => {
     expect(screen.getByRole('status').textContent).toMatch(/Saving changes/);
   });
 });
+
+describe('useSavePhase.doneThen — dialogs flash Done, then close', () => {
+  function DlgHarness({ onClose }: { onClose: () => void }) {
+    const phase = useSavePhase();
+    return (
+      <>
+        <button type="button" onClick={() => phase.doneThen(onClose)}>save</button>
+        <SaveFeedback phase={phase.phase} />
+      </>
+    );
+  }
+  it('ShowsDone_ThenRunsTheCallback', () => {
+    vi.useFakeTimers();
+    const onClose = vi.fn();
+    render(<DlgHarness onClose={onClose} />);
+    fireEvent.click(screen.getByRole('button', { name: 'save' }));
+    expect(screen.getByRole('status').textContent).toMatch(/Done/);
+    expect(onClose).not.toHaveBeenCalled();
+    act(() => {
+      vi.advanceTimersByTime(800);
+    });
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+});

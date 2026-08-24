@@ -12,6 +12,7 @@
  */
 
 import { useState, useTransition } from 'react';
+import { SaveButton, SaveFeedback, useSavedSnapshot, useSavePhase } from '../../_components/save-state';
 import {
   SITE_TEXT_KEYS,
   SITE_TEXT_DEFAULTS,
@@ -35,6 +36,9 @@ export function SiteTextEditor({
   const [err, setErr] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [isPending, startTransition] = useTransition();
+  // Save standard (2026-08-24): off and "Saved" until a value differs.
+  const { dirty, markSaved } = useSavedSnapshot(JSON.stringify(draft));
+  const feedback = useSavePhase();
 
   function set(key: SiteTextKey, value: string) {
     setDraft((prev) => ({ ...prev, [key]: value }));
@@ -46,12 +50,16 @@ export function SiteTextEditor({
     setSaved(false);
     const fd = new FormData();
     for (const def of SITE_TEXT_KEYS) fd.set(def.key, (draft[def.key] ?? '').trim());
+    feedback.start();
     startTransition(async () => {
       const res = await onSave(fd);
       if (!res.ok) {
+        feedback.fail();
         setErr(res.error ?? 'Save failed');
         return;
       }
+      markSaved();
+      feedback.done();
       setSaved(true);
     });
   }
@@ -96,9 +104,14 @@ export function SiteTextEditor({
       {err && <Notice variant="error">{err}</Notice>}
       {saved && <Notice variant="success">Saved — the next reminder uses this wording.</Notice>}
       <div className={styles.editActions}>
-        <button type="button" className={styles.editSaveBtn} onClick={save} disabled={isPending}>
-          {isPending ? 'Saving…' : 'Save reminder email'}
-        </button>
+        <SaveButton
+          className={styles.editSaveBtn}
+          dirty={dirty}
+          pending={isPending}
+          dirtyLabel="Save reminder email"
+          onClick={save}
+        />
+        <SaveFeedback phase={feedback.phase} />
       </div>
     </div>
   );

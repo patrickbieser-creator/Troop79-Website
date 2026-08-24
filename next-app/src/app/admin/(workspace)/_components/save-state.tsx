@@ -40,11 +40,14 @@ export function useSavedSnapshot(draftKey: string): { dirty: boolean; markSaved:
 
 export type SavePhase = 'idle' | 'saving' | 'done' | 'failed';
 
-/** Drives SaveFeedback. `done()` shows the flash and clears it after `ms`. */
+/** Drives SaveFeedback. `done()` shows the flash and clears it after `ms`;
+ *  `doneThen(cb)` shows it briefly and THEN runs `cb` — for dialogs that
+ *  close on save, so the Done is seen before the dialog goes. */
 export function useSavePhase(ms = 1800): {
   phase: SavePhase;
   start: () => void;
   done: () => void;
+  doneThen: (cb: () => void, holdMs?: number) => void;
   fail: () => void;
 } {
   const [phase, setPhase] = useState<SavePhase>('idle');
@@ -65,6 +68,14 @@ export function useSavePhase(ms = 1800): {
       setPhase('done');
       timer.current = setTimeout(() => setPhase('idle'), ms);
     }, [ms]),
+    doneThen: useCallback((cb: () => void, holdMs = 700) => {
+      clear();
+      setPhase('done');
+      timer.current = setTimeout(() => {
+        setPhase('idle');
+        cb();
+      }, holdMs);
+    }, []),
     fail: useCallback(() => {
       clear();
       setPhase('failed');

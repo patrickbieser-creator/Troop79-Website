@@ -12,6 +12,7 @@
  */
 
 import { useEffect, useRef, useState, useTransition } from 'react';
+import { SaveButton, SaveFeedback, useSavedSnapshot, useSavePhase } from '../../_components/save-state';
 import { updateReqCode } from './actions';
 import { useLookupTable } from './use-lookup-table';
 import styles from './lookups.module.css';
@@ -100,6 +101,8 @@ function ReqCodeForm({ row, onClose }: { row: ReqRow; onClose: () => void }) {
   const [officialText, setOfficialText] = useState(row.officialText);
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const { dirty } = useSavedSnapshot(JSON.stringify({ code, label, officialText }));
+  const feedback = useSavePhase();
 
   function submit() {
     setErr(null);
@@ -113,13 +116,15 @@ function ReqCodeForm({ row, onClose }: { row: ReqRow; onClose: () => void }) {
     fd.set('code', code.trim());
     fd.set('label', label.trim());
     fd.set('official_text', officialText.trim());
+    feedback.start();
     startTransition(async () => {
       const res = await updateReqCode(fd);
       if (!res.ok) {
+        feedback.fail();
         setErr(res.error ?? 'Save failed');
         return;
       }
-      onClose();
+      feedback.doneThen(onClose);
     });
   }
 
@@ -170,9 +175,15 @@ function ReqCodeForm({ row, onClose }: { row: ReqRow; onClose: () => void }) {
         <button type="button" className={styles.editBtn} onClick={onClose} disabled={isPending}>
           Cancel
         </button>
-        <button type="button" className={styles.editSaveBtn} onClick={submit} disabled={isPending}>
-          {isPending ? 'Saving…' : 'Save changes'}
-        </button>
+        <SaveButton
+          className={styles.editSaveBtn}
+          dirty={dirty}
+          pending={isPending}
+          blocked={!code.trim() || !label.trim()}
+          blockedReason="Code and label are required"
+          onClick={submit}
+        />
+        <SaveFeedback phase={feedback.phase} />
       </DialogActions>
     </>
   );

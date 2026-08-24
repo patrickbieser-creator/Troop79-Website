@@ -17,6 +17,7 @@
  */
 
 import { useState, useTransition } from 'react';
+import { SaveButton, SaveFeedback, useSavedSnapshot, useSavePhase } from '../../_components/save-state';
 import { SEO_KEYS, SEO_DEFAULTS, seoFlagOn, type SeoSettingKey } from '@/lib/seo';
 import styles from './lookups.module.css';
 import { Notice } from '../../_components/notice';
@@ -35,6 +36,9 @@ export function SeoEditor({
   const [err, setErr] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [isPending, startTransition] = useTransition();
+  // Save standard (2026-08-24): off and "Saved" until a value differs.
+  const { dirty, markSaved } = useSavedSnapshot(JSON.stringify(draft));
+  const feedback = useSavePhase();
 
   function set(key: SeoSettingKey, value: string) {
     setDraft((prev) => ({ ...prev, [key]: value }));
@@ -46,12 +50,16 @@ export function SeoEditor({
     setSaved(false);
     const fd = new FormData();
     for (const def of SEO_KEYS) fd.set(def.key, (draft[def.key] ?? '').trim());
+    feedback.start();
     startTransition(async () => {
       const res = await onSave(fd);
       if (!res.ok) {
+        feedback.fail();
         setErr(res.error ?? 'Save failed');
         return;
       }
+      markSaved();
+      feedback.done();
       setSaved(true);
     });
   }
@@ -131,9 +139,14 @@ export function SeoEditor({
         </Notice>
       )}
       <div className={styles.editActions}>
-        <button type="button" className={styles.editSaveBtn} onClick={save} disabled={isPending}>
-          {isPending ? 'Saving…' : 'Save search settings'}
-        </button>
+        <SaveButton
+          className={styles.editSaveBtn}
+          dirty={dirty}
+          pending={isPending}
+          dirtyLabel="Save search settings"
+          onClick={save}
+        />
+        <SaveFeedback phase={feedback.phase} />
       </div>
     </div>
   );
