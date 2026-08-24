@@ -12,6 +12,7 @@ import { formatTimeOfDay } from '@/lib/calendar-shared';
 import styles from './event-detail.module.css';
 import { Notice } from '@/app/_components/notice';
 
+import { fmtDay } from '@/lib/format-date';
 /*
  * THE JOB BOARD — one list, not two.
  *
@@ -175,11 +176,7 @@ export default function SlotFirstForm({
     const out: { day: string; items: SignupSlot[] }[] = [];
     for (const s of slots) {
       const label = s.slot_date
-        ? new Date(`${s.slot_date}T12:00:00`).toLocaleDateString('en-US', {
-            weekday: 'long',
-            month: 'short',
-            day: 'numeric'
-          })
+        ? fmtDay(s.slot_date)
         : 'Anytime before the event';
       const g = out.find((x) => x.day === label);
       if (g) g.items.push(s);

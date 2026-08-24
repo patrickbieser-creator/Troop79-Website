@@ -41,7 +41,7 @@ import type { RosterOrder } from '@/lib/event-snapshot';
 import { formatTimeOfDay } from '@/lib/calendar-shared';
 import { SnapshotToolbar } from './snapshot-toolbar';
 import { centralToday } from '@/lib/dates';
-import { fmtDateLong } from '@/lib/format-date';
+import { fmtDate, fmtDateLong, fmtDay } from '@/lib/format-date';
 import styles from './snapshot.module.css';
 
 
@@ -209,8 +209,7 @@ export async function loadSnapshot(signupId: number): Promise<{ input: SnapshotI
     reimb.filter((r) => r.status === 'submitted' || r.status === 'approved')
   );
 
-  const longDay = (iso: string) =>
-    new Date(`${iso}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  const longDay = (iso: string) => fmtDay(iso, { year: true });
   const dateLabel =
     (cal.end_date && cal.end_date !== cal.entry_date ? `${longDay(cal.entry_date)} – ${longDay(cal.end_date)}` : longDay(cal.entry_date)) +
     (cal.start_time ? ` · ${formatTimeOfDay(cal.start_time)}${cal.end_time ? ` – ${formatTimeOfDay(cal.end_time)}` : ''}` : '');
@@ -524,7 +523,7 @@ export async function SnapshotDocument({
                 <ul className={styles.plainList}>
                   {input.milestones.map((m) => (
                     <li key={`${m.label}-${m.dueOn}`}>
-                      {m.dueOn} — {m.label}
+                      {fmtDate(m.dueOn)} — {m.label}
                       {m.amount != null ? ` ${money(m.amount)}` : ''}
                     </li>
                   ))}
@@ -544,7 +543,7 @@ export async function SnapshotDocument({
                 <tbody>
                   {input.expenses.map((e, i) => (
                     <tr key={i}>
-                      <td>{e.occurredOn}</td>
+                      <td>{fmtDate(e.occurredOn)}</td>
                       <td>{e.memo ?? ''}</td>
                       <td className={styles.num}>{money(Math.abs(e.amount))}</td>
                     </tr>

@@ -23,6 +23,7 @@ import { PageShell } from '@/app/_components/page-shell';
 import { SectionDivider } from '@/app/_components/section-divider';
 import { EmptyState } from '@/app/_components/empty-state';
 
+import { fmtDateFull } from '@/lib/format-date';
 export const metadata = {
   title: 'Meeting Plan — Scout Troop 79',
   description:
@@ -44,15 +45,7 @@ async function loadPlan(): Promise<MeetingPlanPayload | null> {
   return data[0].payload as MeetingPlanPayload;
 }
 
-function prettyDate(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric'
-  });
-}
+const prettyDate = (iso: string): string => fmtDateFull(iso);
 
 export default async function PublicMeetingPlanPage() {
   const plan = await loadPlan();

@@ -49,7 +49,9 @@ import { KindManager } from './kind-manager';
 import { ActionsMenu } from '../_components/actions-menu';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../_components/dialog';
 import styles from './finance.module.css';
+import { fmtDate } from '@/lib/format-date';
 
+import { centralToday } from '@/lib/dates';
 type FinanceModal = 'record' | 'transfer' | 'reconcile' | 'kinds';
 const MODAL_TITLES: Record<FinanceModal, string> = {
   record: 'Record a transaction',
@@ -58,7 +60,7 @@ const MODAL_TITLES: Record<FinanceModal, string> = {
   kinds: 'Manage Kinds'
 };
 
-const TODAY = () => new Date().toISOString().slice(0, 10);
+const TODAY = () => centralToday();
 
 /** Sortable column header — a plain link (URL-driven sort, matches the
  *  Advancement Ledger's convention), not a client-side sort, so the 50-row
@@ -859,7 +861,7 @@ function ReconciliationPanel({
             {s.lastReconciledAt ? (
               <>
                 {' '}
-                — last reconciled {s.lastReconciledAt} at ${s.lastStatementBalance?.toFixed(2)}
+                — last reconciled {fmtDate(s.lastReconciledAt)} at ${s.lastStatementBalance?.toFixed(2)}
                 {s.drift != null && Math.abs(s.drift) > 0.01 && (
                   <span className={styles.driftWarn}> (drift ${s.drift.toFixed(2)})</span>
                 )}

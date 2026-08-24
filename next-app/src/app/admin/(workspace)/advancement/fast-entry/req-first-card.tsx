@@ -8,6 +8,7 @@ import type { CatalogPayload, PickerItem } from './picker-types';
 import { DatePickerField } from '../../_components/date-picker-field';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
 import styles from './fast-entry.module.css';
+import { fmtDate } from '@/lib/format-date';
 
 interface Props {
   scouts: { id: string; display_name: string; current_rank: string | null }[];
@@ -300,7 +301,7 @@ export function ReqFirstCard({ scouts, leaders, catalog }: Props) {
               {totalEntries === 1 ? 'y' : 'ies'} — <strong>{selections.length}</strong>{' '}
               requirement{selections.length === 1 ? '' : 's'} ×{' '}
               <strong>{selectedScouts.size}</strong> scout
-              {selectedScouts.size === 1 ? '' : 's'}, dated <strong>{date}</strong>,
+              {selectedScouts.size === 1 ? '' : 's'}, dated <strong>{fmtDate(date)}</strong>,
               signed off by <strong>{byLabel}</strong>.
             </>
           }

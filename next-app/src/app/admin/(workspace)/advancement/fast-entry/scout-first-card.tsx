@@ -16,6 +16,7 @@ import { validateAwards } from './satisfaction';
 import { DatePickerField } from '../../_components/date-picker-field';
 import styles from './fast-entry.module.css';
 
+import { centralToday } from '@/lib/dates';
 interface Props {
   scouts: { id: string; display_name: string; current_rank: string | null }[];
   leaders: { code: string; name: string }[];
@@ -222,7 +223,7 @@ export function ScoutFirstCard({ scouts, leaders, catalog }: Props) {
         return;
       }
       // Optimistically move pending → completed in the local map.
-      const now = new Date().toISOString().slice(0, 10);
+      const now = centralToday();
       setCompletion((prev) => {
         const next = new Map(prev);
         for (const s of selections) {

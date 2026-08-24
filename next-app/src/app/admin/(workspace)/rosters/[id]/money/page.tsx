@@ -9,6 +9,7 @@ import { loadEventNav } from '../event-nav-data';
 import styles from '../../../events/events-admin.module.css';
 import { MoneyPanel } from './money-panel';
 
+import { centralToday } from '@/lib/dates';
 export const metadata = { title: 'Event Money — Troop 79' };
 
 /*
@@ -69,7 +70,7 @@ export default async function EventMoneyPage({ params }: { params: Promise<{ id:
           personId: a.person_id,
           name: a.display_name
         }))}
-        today={new Date().toISOString().slice(0, 10)}
+        today={centralToday()}
       />
     </>
   );

@@ -16,6 +16,7 @@ import {
 import styles from './articles.module.css';
 import { Badge } from '../../_components/badge';
 import { Notice } from '../../_components/notice';
+import { fmtDate } from '@/lib/format-date';
 
 type SortKey = 'title' | 'type' | 'status' | 'author' | 'date';
 
@@ -147,7 +148,7 @@ export function ArticlesTable({ rows, sp, sort, dir, sessionName }: Props) {
                   </td>
                   <td className={styles.nowrap}>{r.author_name}</td>
                   <td className={styles.nowrap}>
-                    {(r.published_at ?? r.created_at).slice(0, 10)}
+                    {fmtDate(r.published_at ?? r.created_at)}
                   </td>
                   <td className={styles.tagList}>{r.tagNames.join(', ') || '—'}</td>
                   <td className={styles.nowrap}>

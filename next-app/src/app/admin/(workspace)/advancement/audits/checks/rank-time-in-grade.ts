@@ -18,6 +18,7 @@
 import type { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import { centralToday } from '@/lib/dates';
+import { fmtDate } from '@/lib/format-date';
 import type { Finding } from '../types';
 
 const THRESHOLDS: { rankId: string; rankLabel: string; prereqRankId: string; prereqLabel: string; minMonths: number }[] = [
@@ -37,11 +38,6 @@ function monthsBetween(startISO: string, endISO: string): number {
 function addMonths(iso: string, n: number): string {
   const [y, m, d] = iso.split('-').map(Number);
   return new Date(Date.UTC(y, m - 1 + n, d)).toISOString().slice(0, 10);
-}
-
-function fmtDate(iso: string): string {
-  const [y, m, d] = iso.split('-');
-  return `${m}/${d}/${y}`;
 }
 
 export async function run(supabase: ReturnType<typeof createAdminClient>): Promise<Finding[]> {

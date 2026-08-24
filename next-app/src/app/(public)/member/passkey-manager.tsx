@@ -20,6 +20,7 @@ import { rememberPasskeyDeviceAction } from '../signin/actions';
 import { Button } from '@/app/_components/button';
 import { Notice } from '@/app/_components/notice';
 import surface from '@/app/_components/card.module.css';
+import { fmtDate } from '@/lib/format-date';
 import styles from './member.module.css';
 
 export interface PasskeyRow {
@@ -92,8 +93,8 @@ export function PasskeyManager({
                 <strong>{k.nickname || 'This device'}</strong>
                 <span className={styles.passkeyMeta}>
                   {k.last_used_at
-                    ? ` · last used ${k.last_used_at.slice(0, 10)}`
-                    : ` · added ${k.created_at.slice(0, 10)}`}
+                    ? ` · last used ${fmtDate(k.last_used_at)}`
+                    : ` · added ${fmtDate(k.created_at)}`}
                 </span>
               </span>
               <form action={remove}>

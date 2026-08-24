@@ -12,6 +12,7 @@ import {
 } from './actions';
 import type { ReconciliationFinding } from './checks/attendance-reconciliation';
 import styles from './audits.module.css';
+import { fmtDate } from '@/lib/format-date';
 
 type Status = { kind: 'ok' | 'err'; msg: string } | null;
 
@@ -58,7 +59,7 @@ export function ReconciliationFindingRow({ finding }: { finding: ReconciliationF
         <Link href={`/admin/calendar/${finding.entryId}/roll-call`} className={styles.scoutLink}>
           {finding.personName}
         </Link>{' '}
-        &mdash; {finding.entryTitle} ({finding.entryDate})
+        &mdash; {finding.entryTitle} ({fmtDate(finding.entryDate)})
       </div>
       <div className={styles.detailLines}>{finding.detail}</div>
 
@@ -213,11 +214,11 @@ export function ReconciliationFindingRow({ finding }: { finding: ReconciliationF
                     resolveDateDrift(
                       fd({ ledger_entry_id: finding.ledgerEntryId!, calendar_entry_id: finding.entryId })
                     ),
-                  `Credit re-dated to ${finding.entryDate}.`
+                  `Credit re-dated to ${fmtDate(finding.entryDate)}.`
                 )
               }
             >
-              {isPending ? '…' : `Align credit to ${finding.entryDate}`}
+              {isPending ? '…' : `Align credit to ${fmtDate(finding.entryDate)}`}
             </button>
           )}
 

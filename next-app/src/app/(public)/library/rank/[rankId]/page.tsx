@@ -13,6 +13,7 @@ import { ScoutSwitcher } from '../../_components/scout-switcher';
 import { PageHeader, KickerSep } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
 import { Badge } from '@/app/_components/badge';
+import { fmtMonthYear } from '@/lib/format-date';
 import styles from '../../library.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -89,10 +90,7 @@ export default async function LibraryRankPage({
                   {doneDate && (
                     <Badge tone="accent" caps={false}>
                       ✓{' '}
-                      {new Date(doneDate).toLocaleDateString('en-US', {
-                        month: 'short',
-                        year: 'numeric'
-                      })}
+                      {fmtMonthYear(doneDate)}
                     </Badge>
                   )}
                   {n > 0 ? (

@@ -13,6 +13,7 @@ import type { ActivityDrilldownRow } from '../actions';
 import { ActivityDrilldownButton } from './activity-drilldown';
 import parentStyles from '../finance.module.css';
 import styles from './report.module.css';
+import { fmtRange } from '@/lib/format-date';
 
 const ACCOUNT_LABEL: Record<string, string> = {
   checking: 'Checking',
@@ -24,10 +25,6 @@ const ACCOUNT_LABEL: Record<string, string> = {
 
 function money(n: number): string {
   return n < 0 ? `-$${Math.abs(n).toFixed(2)}` : `$${n.toFixed(2)}`;
-}
-
-function dateRange(first: string, last: string): string {
-  return first === last ? first : `${first} – ${last}`;
 }
 
 export function ActivityReport({
@@ -56,7 +53,7 @@ export function ActivityReport({
           <details>
             <summary className={`${styles.reportGrid} ${styles.summaryRow}`}>
               <span className={styles.activityName}>{s.activityLabel}</span>
-              <span className={styles.dateRange}>{dateRange(s.firstDate, s.lastDate)}</span>
+              <span className={styles.dateRange}>{fmtRange(s.firstDate, s.lastDate)}</span>
               <span className={styles.numCell}>{money(s.income)}</span>
               <span className={styles.numCell}>{money(s.expense)}</span>
               <span className={`${styles.numCell} ${s.net < 0 ? styles.negative : ''}`}>{money(s.net)}</span>

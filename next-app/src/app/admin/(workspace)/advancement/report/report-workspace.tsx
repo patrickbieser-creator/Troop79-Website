@@ -16,18 +16,19 @@ import {
 } from './actions';
 import styles from './report.module.css';
 import { SaveButton, SaveFeedback, useSavePhase } from '../../_components/save-state';
-import { formatShortDate } from '@/lib/dates';
+import { fmtDate, fmtRange } from '@/lib/format-date';
 import { Badge } from '../../_components/badge';
 import { TabStrip } from '../../_components/tab-strip';
 import { ActionsMenu } from '../../_components/actions-menu';
 
+import { centralToday } from '@/lib/dates';
 function addOneDay(iso: string): string {
   const d = new Date(`${iso}T12:00:00Z`);
   d.setUTCDate(d.getUTCDate() + 1);
   return d.toISOString().slice(0, 10);
 }
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  return centralToday();
 }
 
 export function ReportWorkspace({
@@ -149,10 +150,10 @@ export function ReportWorkspace({
           </div>
           {report?.status === 'published' && (
             <p className={styles.publishedNote}>
-              Published {new Date(report.publishedAt!).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              Published {fmtDate(report.publishedAt!)}
               {report.publishedBy ? ` by ${report.publishedBy}` : ''}
               {report.correctedAt && (
-                <> · corrected {new Date(report.correctedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}{report.correctedBy ? ` by ${report.correctedBy}` : ''}</>
+                <> · corrected {fmtDate(report.correctedAt)}{report.correctedBy ? ` by ${report.correctedBy}` : ''}</>
               )}
               . Editing here corrects it in place — the published date stays as it was.
             </p>
@@ -262,7 +263,7 @@ export function ReportWorkspace({
                   className={r.id === report?.id ? styles.reportLinkActive : styles.reportLink}
                 >
                   <span className={styles.reportRange}>
-                    {formatShortDate(r.startDate)} – {formatShortDate(r.endDate)}
+                    {fmtRange(r.startDate, r.endDate)}
                   </span>
                   <Badge variant={r.status === 'published' ? 'success' : 'warning'}>
                     {r.status === 'published' ? 'Published' : 'Draft'}

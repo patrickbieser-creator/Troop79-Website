@@ -7,6 +7,8 @@ import Link from 'next/link';
 import { InfoCell } from '../ledger/info-cell';
 import styles from './fast-entry.module.css';
 import type { LedgerKind } from '@/lib/supabase/types';
+import { centralToday } from '@/lib/dates';
+import { fmtDate, fmtDateFull } from '@/lib/format-date';
 
 export interface TapeRow {
   id: number;
@@ -38,19 +40,8 @@ const KIND_LABEL: Record<LedgerKind, string> = {
   meeting_attendance: 'Meeting'
 };
 
-function shortDate(s: string | null): string {
-  if (!s) return '—';
-  const [y, m, d] = s.split('-').map(Number);
-  return `${m}/${d}/${String(y).slice(2)}`;
-}
-
 export function AuditTape({ tape }: { tape: TapeRow[] }) {
-  const today = new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric'
-  });
+  const today = fmtDateFull(centralToday());
   return (
     <div className={styles.tape}>
       <div className={styles.tapeHeader}>
@@ -90,7 +81,7 @@ export function AuditTape({ tape }: { tape: TapeRow[] }) {
             <tbody>
               {tape.map((r) => (
                 <tr key={r.id}>
-                  <td className={styles.nowrap}>{shortDate(r.date)}</td>
+                  <td className={styles.nowrap}>{fmtDate(r.date)}</td>
                   <td className={styles.nowrap}>
                     <Link href={`/scouts/${r.scoutId}`} className={styles.scoutLink}>
                       {r.scoutName}

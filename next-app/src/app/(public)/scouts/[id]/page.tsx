@@ -29,7 +29,7 @@ import type { LedgerEntry, MeritBadgeRequirement } from '@/lib/supabase/types';
 import { publicScoutName } from '@/lib/scout-name';
 import { PrintButton } from './print-button';
 import { centralToday } from '@/lib/dates';
-import { fmtDate } from '@/lib/format-date';
+import { fmtDate, fmtDateLong } from '@/lib/format-date';
 import styles from './scout-detail.module.css';
 
 export async function generateMetadata({
@@ -123,7 +123,7 @@ function ScoutHeader({ detail }: { detail: ScoutDetail }) {
     );
   }
   if (scout.joined_date) {
-    metaParts.push(<span key="joined">Joined {longDate(scout.joined_date)}</span>);
+    metaParts.push(<span key="joined">Joined {fmtDateLong(scout.joined_date)}</span>);
   }
 
   return (
@@ -572,7 +572,7 @@ function MbQuotaGroup({
       </div>
       {rows.map((r) => (
         <div key={r.id} className={styles.miniRow}>
-          <span>{shortDate(r.date)}</span>
+          <span>{fmtDate(r.date)}</span>
           <span>{r.by ?? ''}</span>
           <span className={styles.miniRowLabel}>{r.name}</span>
         </div>
@@ -620,7 +620,7 @@ function RankReqRows({
           `${styles.miniRow} ${isBor ? styles.bor : ''} ${earned ? '' : styles.miniRowUnearned}`.trim()
         }
       >
-        <span>{earned ? shortDate(ledger!.date) : ''}</span>
+        <span>{earned ? fmtDate(ledger!.date) : ''}</span>
         <span>{earned ? (ledger!.by ?? '') : ''}</span>
         <span className={styles.miniRowLabel}>
           <span className={styles.reqCode}>{req.code}</span>
@@ -658,7 +658,7 @@ function RankReqRows({
         title={req.label}
         className={`${styles.miniRow} ${earned ? '' : styles.miniRowUnearned}`.trim()}
       >
-        <span>{earned && latest ? shortDate(latest.date) : ''}</span>
+        <span>{earned && latest ? fmtDate(latest.date) : ''}</span>
         <span>{earned && latest ? (latest.by ?? '') : ''}</span>
         <span className={styles.miniRowLabel}>
           <span className={styles.reqCode}>{req.code}</span>
@@ -679,7 +679,7 @@ function RankReqRows({
               `${styles.miniSubRow} ${childEarned ? '' : styles.miniRowUnearned}`.trim()
             }
           >
-            <span>{childEarned ? shortDate(ledger!.date) : ''}</span>
+            <span>{childEarned ? fmtDate(ledger!.date) : ''}</span>
             <span>{childEarned ? (ledger!.by ?? '') : ''}</span>
             <span className={styles.miniRowLabel}>{node.label}</span>
           </div>
@@ -753,7 +753,7 @@ function MeritBadgesPanel({ detail }: { detail: ScoutDetail }) {
 function MbRowEl({ row, eagle }: { row: MbDisplayRow; eagle: boolean }) {
   return (
     <div className={`${styles.mbRow} ${eagle ? styles.mbEagle : ''}`.trim()}>
-      <span>{shortDate(row.date)}</span>
+      <span>{fmtDate(row.date)}</span>
       <span>{row.by ?? ''}</span>
       <span className={styles.mbName}>{row.name}</span>
     </div>
@@ -811,7 +811,7 @@ function ActivitiesPanel({ detail }: { detail: ScoutDetail }) {
       ) : (
         acts.map((a) => (
           <div key={`${a.type}-${a.id}`} className={styles.actRow}>
-            <span>{shortDate(a.date)}</span>
+            <span>{fmtDate(a.date)}</span>
             <span>{a.type}</span>
             <span>
               {a.title}
@@ -849,7 +849,7 @@ function LeadershipPanel({ detail, compact }: { detail: ScoutDetail; compact?: b
         rows.map((e) => (
           <div key={e.id} className={styles.leadershipRow}>
             <span className={styles.dateRange}>
-              {shortDate(e.date)}
+              {fmtDate(e.date)}
               {!compact && ' – present'}
             </span>
             <span>{e.label ?? e.code}</span>
@@ -878,7 +878,7 @@ function ServicePanel({ detail }: { detail: ScoutDetail }) {
       ) : (
         rows.map((e) => (
           <div key={e.id} className={styles.serviceRow}>
-            <span className={styles.dateCell}>{shortDate(e.date)}</span>
+            <span className={styles.dateCell}>{fmtDate(e.date)}</span>
             <span>{e.label ?? e.code}</span>
             <span className={styles.hoursCell}>
               {e.qty} hr{e.qty === 1 ? '' : 's'}
@@ -985,7 +985,7 @@ function MbInProgressSection({ detail }: { detail: ScoutDetail }) {
                         <span className={styles.mbReqCode}>{e.code.split('-').slice(1).join('-')}</span>
                         <span className={styles.mbReqLabel}>{e.label ?? e.code}</span>
                         <span className={styles.mbReqMeta}>
-                          {shortDate(e.date)}
+                          {fmtDate(e.date)}
                           {e.by ? ` · ${e.by}` : ''}
                           {e.notes && <em className={styles.mbReqNotes}> — {e.notes}</em>}
                         </span>
@@ -1036,7 +1036,7 @@ function MbReqTree({
               <span className={styles.mbReqLabel}>{node.label}</span>
               {entry && (
                 <span className={styles.mbReqMeta}>
-                  {shortDate(entry.date)}
+                  {fmtDate(entry.date)}
                   {entry.by ? ` · ${entry.by}` : ''}
                   {entry.notes && <em className={styles.mbReqNotes}> — {entry.notes}</em>}
                 </span>
@@ -1063,20 +1063,4 @@ function MbReqTree({
       })}
     </>
   );
-}
-
-function shortDate(s: string | null): string {
-  if (!s) return '';
-  const [y, m, d] = s.split('-').map(Number);
-  return `${m}/${d}/${String(y).slice(2)}`;
-}
-
-function longDate(s: string): string {
-  const [y, m, d] = s.split('-').map(Number);
-  const dt = new Date(y, m - 1, d);
-  return dt.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
 }

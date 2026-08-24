@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { LedgerEntry, LedgerKind } from '@/lib/supabase/types';
 import { initialsFor } from '@/lib/initials';
+import { fmtDate } from '@/lib/format-date';
 import { RowActions } from './row-actions';
 import { InfoCell } from './info-cell';
 import { BulkEditModal } from './bulk-edit-modal';
@@ -286,7 +287,7 @@ export function LedgerTable({ rows, scouts, leaders, sp, sort, dir }: Props) {
                     <td className={styles.numCell}>{r.qty}</td>
                     <td className={styles.nowrap}>{r.unit}</td>
                     <td className={styles.nowrap}>
-                      {r.entered_at ? r.entered_at.slice(0, 10) : ''}
+                      {r.entered_at ? fmtDate(r.entered_at) : ''}
                       {r.entered_by && (
                         <span
                           title={`Entered by ${r.entered_by}`}

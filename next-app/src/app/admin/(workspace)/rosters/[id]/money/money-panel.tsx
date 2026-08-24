@@ -21,6 +21,7 @@ import { milestoneStanding, money, summarizeEventMoney, uncreditedOverpayment, t
 import { Badge } from '../../../_components/badge';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../../_components/dialog';
 import styles from '../../../events/events-admin.module.css';
+import { fmtDate } from '@/lib/format-date';
 
 /*
  * The Money tab (Plans/Event-Logistics.md §C). Everything here is derived
@@ -388,7 +389,7 @@ export function MoneyPanel({
                         <tbody>
                           {p.transactions.map((t) => (
                             <tr key={t.id} className={t.voidedAt ? styles.cellMuted : undefined}>
-                              <td>{t.occurredOn}</td>
+                              <td>{fmtDate(t.occurredOn)}</td>
                               <td>{money(t.amount)}</td>
                               <td>{t.kind === 'event_fee' ? (t.amount < 0 ? 'refund' : 'payment') : t.kind}</td>
                               <td>{t.method ? (METHOD_LABEL[t.method] ?? t.method) : '—'}</td>
@@ -445,7 +446,7 @@ export function MoneyPanel({
             <tbody>
               {data.expenses.map((e) => (
                 <tr key={`x${e.id}`} className={e.voidedAt ? styles.cellMuted : undefined}>
-                  <td>{e.occurredOn}</td>
+                  <td>{fmtDate(e.occurredOn)}</td>
                   <td>{money(Math.abs(e.amount))}</td>
                   <td>{e.voidedAt ? 'voided' : e.personName ?? ''}</td>
                   <td>{e.kind}</td>
@@ -455,7 +456,7 @@ export function MoneyPanel({
               ))}
               {data.reimbursements.map((r) => (
                 <tr key={`r${r.id}`}>
-                  <td>{r.createdAt.slice(0, 10)}</td>
+                  <td>{fmtDate(r.createdAt)}</td>
                   <td>{money(r.amount)}</td>
                   <td>{r.requesterName}</td>
                   <td>reimbursement</td>
@@ -545,7 +546,7 @@ export function MoneyPanel({
             <tbody>
               {milestones.map((m) => (
                 <tr key={m.id}>
-                  <td>{m.dueOn}</td>
+                  <td>{fmtDate(m.dueOn)}</td>
                   <td>
                     <strong>{m.label}</strong>
                   </td>

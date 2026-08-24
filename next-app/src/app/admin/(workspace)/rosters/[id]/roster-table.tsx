@@ -36,6 +36,7 @@ import { ClassPill } from '../../events/class-pill';
 import { getScoutAccountBalanceForEntryAction, recordEventFeePaymentAction } from '../../finance/actions';
 import { PayGuard, wouldGoNegative, type AccountFacts } from '../../events/pay-guard';
 import { PAY_METHOD_LABEL, type PayMethod } from '@/lib/event-money';
+import { fmtDate } from '@/lib/format-date';
 import { diffClaimEdits, type ClaimEdit } from '@/lib/event-signup-admin';
 import { bandJobsByDay, jobCoverage, jobHeaderTitle, jobWhen, resolveJobCodes } from '@/lib/job-codes';
 import type { RosterRow } from './page';
@@ -596,7 +597,7 @@ export function RosterTable({
     const key = `${r.id}:${q.id}`;
     const hint =
       LEADER_PRESETS.find((p) => p.prompt === q.prompt)?.hint === 'health_form_date' && !current && healthFormLikelyCurrent(r.healthFormDate, eventDate)
-        ? `form dated ${r.healthFormDate}`
+        ? `form dated ${fmtDate(r.healthFormDate)}`
         : null;
     if (isCheckboxColumn(q)) {
       const yes = (q.choices ?? [])[0];

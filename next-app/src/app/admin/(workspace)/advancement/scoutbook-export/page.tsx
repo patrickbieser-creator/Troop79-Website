@@ -22,6 +22,7 @@ import Link from 'next/link';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { centralToday } from '@/lib/dates';
+import { fmtDate } from '@/lib/format-date';
 import { loadScoutbookExport } from '@/lib/scoutbook-export';
 import { DateParamField } from '../../_components/date-param-field';
 import { ScoutbookActions } from './scoutbook-actions';
@@ -31,15 +32,6 @@ import { PageTitle } from '../../_components/page-title';
 export const metadata = {
   title: 'Scoutbook Export — Troop 79'
 };
-
-function fmtDate(iso: string): string {
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    timeZone: 'UTC'
-  }).format(new Date(`${iso}T12:00:00Z`));
-}
 
 function daysAgo(n: number, today: string): string {
   const d = new Date(`${today}T12:00:00Z`);
@@ -177,7 +169,7 @@ export default async function ScoutbookExportPage({
                   <td>{fmtDate(r.dateCompleted)}</td>
                   <td className={styles.mono}>{r.memberId}</td>
                   <td className={styles.mono}>{r.advancementId}</td>
-                  <td>{r.submittedAt ? `✓ ${fmtDate(r.submittedAt.slice(0, 10))}` : <span className={styles.muted}>—</span>}</td>
+                  <td>{r.submittedAt ? `✓ ${fmtDate(r.submittedAt)}` : <span className={styles.muted}>—</span>}</td>
                 </tr>
               ))
             )}

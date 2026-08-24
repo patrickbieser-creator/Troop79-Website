@@ -9,6 +9,7 @@ import { formatMonthDayYear } from '@/lib/advancement-report';
 import { PageHeader, KickerSep } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
 import { EmptyState } from '@/app/_components/empty-state';
+import { fmtDateLong } from '@/lib/format-date';
 import reportStyles from '../report.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -47,7 +48,7 @@ export default async function ReportArchivePage() {
                     {formatMonthDayYear(r.startDate)} – {formatMonthDayYear(r.endDate)}
                   </span>
                   <span className={reportStyles.archiveDate}>
-                    Published {formatMonthDayYear(r.publishedAt.slice(0, 10))}
+                    Published {fmtDateLong(r.publishedAt)}
                   </span>
                 </Link>
               </li>

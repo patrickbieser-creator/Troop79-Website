@@ -13,6 +13,7 @@
 
 import { createAdminClient } from '@/lib/supabase/server';
 import { fieldLabel, type ChangeEntityType, type ChangeRequestRow } from '@/lib/change-requests';
+import { fmtDate } from '@/lib/format-date';
 
 export interface AttentionItem {
   label: string;
@@ -24,10 +25,6 @@ export interface AttentionCategory {
   key: string;
   label: string;
   items: AttentionItem[];
-}
-
-function shortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 /**
@@ -90,7 +87,7 @@ async function loadPendingProfileUpdates(): Promise<AttentionCategory> {
       const tab = person?.tab === 'leader' ? 'leader' : 'adult';
       return {
         label: person?.display_name ?? `Person ${r.entity_id}`,
-        meta: `${fieldLabels} · submitted ${shortDate(r.submitted_at)}`,
+        meta: `${fieldLabels} · submitted ${fmtDate(r.submitted_at, { year: false })}`,
         href: `/admin/advancement/roster?tab=${tab}&open=${encodeURIComponent(r.entity_id)}`
       };
     }
@@ -102,7 +99,7 @@ async function loadPendingProfileUpdates(): Promise<AttentionCategory> {
     const tab = scout?.active === false ? 'inactive_scout' : 'active_scout';
     return {
       label: scout?.display_name ?? r.entity_id,
-      meta: `${fieldLabels} · submitted ${shortDate(r.submitted_at)}`,
+      meta: `${fieldLabels} · submitted ${fmtDate(r.submitted_at, { year: false })}`,
       href: `/admin/advancement/roster?tab=${tab}&open=${encodeURIComponent(r.entity_id)}`
     };
   });
@@ -124,7 +121,7 @@ async function loadPendingLibrarySubmissions(): Promise<AttentionCategory> {
     (data ?? []) as { id: number; title: string; submitted_by_label: string | null; created_at: string }[]
   ).map((r) => ({
     label: r.title,
-    meta: `${r.submitted_by_label ? `from ${r.submitted_by_label} · ` : ''}submitted ${shortDate(r.created_at)}`,
+    meta: `${r.submitted_by_label ? `from ${r.submitted_by_label} · ` : ''}submitted ${fmtDate(r.created_at, { year: false })}`,
     href: '/admin/library?tab=queue'
   }));
 
@@ -151,7 +148,7 @@ async function loadPendingProofSubmissions(): Promise<AttentionCategory> {
 
   const items: AttentionItem[] = rows.map((r) => ({
     label: scoutById.get(r.scout_id)?.display_name ?? r.scout_id,
-    meta: `${r.target_key} · submitted ${shortDate(r.created_at)}`,
+    meta: `${r.target_key} · submitted ${fmtDate(r.created_at, { year: false })}`,
     href: '/admin/library?tab=proof'
   }));
 
@@ -212,7 +209,7 @@ async function loadNewHouseholdMembers(): Promise<AttentionCategory> {
       meta: [
         relationship ? String(relationship) : null,
         by ? `added by ${by.display_name}` : 'added from the Profile page',
-        shortDate(r.submitted_at)
+        fmtDate(r.submitted_at, { year: false })
       ]
         .filter(Boolean)
         .join(' · '),

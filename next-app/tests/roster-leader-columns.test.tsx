@@ -120,7 +120,7 @@ describe('leader-only columns', () => {
       row({ id: 1, name: 'Owen', healthFormDate: '2026-03-01' }),
       row({ id: 2, name: 'Old', healthFormDate: '2024-01-01' })
     ]);
-    expect(screen.getByText('form dated 2026-03-01')).toBeTruthy();
-    expect(screen.queryByText('form dated 2024-01-01')).toBeNull();
+    expect(screen.getByText('form dated Mar 1, 2026')).toBeTruthy(); // date standard (2026-08-24): fmtDate, not ISO
+    expect(screen.queryByText('form dated Jan 1, 2024')).toBeNull();
   });
 });

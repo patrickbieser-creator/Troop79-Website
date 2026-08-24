@@ -10,6 +10,7 @@ import {
 } from '../actions';
 import { TRANSACTION_METHODS, type TransactionMethod } from '@/lib/finance';
 import styles from '../finance.module.css';
+import { fmtDate } from '@/lib/format-date';
 
 export function ReimbursementQueue({ requests }: { requests: ReimbursementQueueRow[] }) {
   const [pending, start] = useTransition();
@@ -74,7 +75,7 @@ export function ReimbursementQueue({ requests }: { requests: ReimbursementQueueR
           <tbody>
             {requests.map((r) => (
               <tr key={r.id}>
-                <td className={styles.nowrap}>{r.created_at.slice(0, 10)}</td>
+                <td className={styles.nowrap}>{fmtDate(r.created_at)}</td>
                 <td>{r.requesterName}</td>
                 <td>
                   {r.description}

@@ -9,6 +9,7 @@ import {
 } from './actions';
 import type { LedgerEntry, LedgerKind } from '@/lib/supabase/types';
 import { initialsFor } from '@/lib/initials';
+import { fmtDate } from '@/lib/format-date';
 import { DatePickerField } from '../../_components/date-picker-field';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
 import { Notice } from '../../_components/notice';
@@ -196,7 +197,7 @@ function EditForm({
           <>
             Entered by <strong>{row.entered_by ?? '—'}</strong>
             {row.entered_by && ` (${initialsFor(row.entered_by)})`}
-            {row.entered_at && ` on ${row.entered_at.slice(0, 10)}`}.
+            {row.entered_at && ` on ${fmtDate(row.entered_at)}`}.
             <br />
             Mutates the row in place. Audit columns (entered_by, entered_at) are
             preserved. Use Delete instead if the row is erroneous.

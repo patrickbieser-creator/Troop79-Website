@@ -30,6 +30,7 @@ import { Dialog } from '../../_components/dialog';
 import { Notice } from '../../_components/notice';
 import { SaveButton, SaveFeedback, useSavePhase } from '../../_components/save-state';
 import { ageOn, yptStatus } from '@/lib/demographics';
+import { fmtDate } from '@/lib/format-date';
 import styles from './roster.module.css';
 // Field CSS converged onto lookups' family (D-139 answered, 2026-08-21) —
 // roster.module.css's hand-copied .editGrid/.editField block is deleted.
@@ -880,7 +881,7 @@ function PersonEditor({
               <ul className={styles.chipList}>
                 {ended.map((r) => (
                   <li key={r.id} className={styles.roleChipEnded}>
-                    {ROLE_LABEL[r.role] ?? r.role} <span className={styles.muted}>to {r.end_date}</span>
+                    {ROLE_LABEL[r.role] ?? r.role} <span className={styles.muted}>to {fmtDate(r.end_date)}</span>
                     <button
                       className={styles.chipBtn}
                       disabled={disabled}

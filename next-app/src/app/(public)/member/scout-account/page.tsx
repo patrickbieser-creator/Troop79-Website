@@ -34,6 +34,7 @@ import { Button } from '@/app/_components/button';
 import { Notice } from '@/app/_components/notice';
 import surface from '@/app/_components/card.module.css';
 import memberStyles from '../member.module.css';
+import { fmtDate } from '@/lib/format-date';
 import styles from './scout-account.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -229,7 +230,7 @@ export default async function ScoutAccountPage({
                 .filter((r) => r.voided_at === null)
                 .map((r) => (
                   <tr key={r.id}>
-                    <td className={styles.nowrap}>{r.occurred_on}</td>
+                    <td className={styles.nowrap}>{fmtDate(r.occurred_on)}</td>
                     {multipleScouts && <td>{r.person_id != null ? (nameById.get(r.person_id) ?? '—') : '—'}</td>}
                     <td>{[r.activity_label, r.memo].filter(Boolean).join(' — ') || r.kind}</td>
                     <td className={styles.numCell}>

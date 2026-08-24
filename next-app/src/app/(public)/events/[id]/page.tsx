@@ -11,7 +11,7 @@ import { categoryColorMap, colorFor, templateOf } from '@/lib/calendar-categorie
 import { getPublicMeetingForEntry, getPublishedMeetingNav } from '@/lib/meetings';
 import { ArticleBody } from '@/lib/article-body/ArticleBody';
 import { centralToday } from '@/lib/dates';
-import { fmtDay } from '@/lib/format-date';
+import { fmtDate, fmtDay } from '@/lib/format-date';
 import { MeetingAgenda } from './meeting-agenda';
 import { Notice } from '@/app/_components/notice';
 import { JsonLd } from '@/app/_components/json-ld';
@@ -325,11 +325,7 @@ export default async function EventDetailPage({
                   {detail.milestones.map((m) => (
                     <li key={m.id}>
                       <span className={styles.milestoneDate}>
-                        {new Date(`${m.due_on}T12:00:00`).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric'
-                        })}
+                        {fmtDate(m.due_on)}
                       </span>
                       <span>
                         <strong>{m.label}</strong>

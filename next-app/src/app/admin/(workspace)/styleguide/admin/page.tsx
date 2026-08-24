@@ -24,6 +24,7 @@
 import sg from './styleguide.module.css';
 import { DialogDemo } from './dialog-demo';
 import { SaveDemo } from './save-demo';
+import { fmtDate, fmtDateLong, fmtDateFull, fmtDay, fmtDateTime, fmtMonthYear, fmtRange } from '@/lib/format-date';
 import { ActionsMenuSpecimen, SortHeaderSpecimen } from './specimens';
 import { TabStrip } from '../../_components/tab-strip';
 import { AddButton } from '../../_components/add-button';
@@ -842,6 +843,31 @@ export default function StyleguidePage() {
             </div>
           </div>
           <DialogDemo />
+        </div>
+      </section>
+
+      {/* ════ DATES ════ */}
+      <section className={sg.section}>
+        <h2 className={sg.sectionHead}>Dates</h2>
+        <div className={sg.specimenGrid}>
+          <Specimen
+            label="Date display standard — lib/format-date"
+            canonical
+            note="Patrick, 2026-08-24, after a sweep found 21 visible formats, 36 raw '2026-07-12' renders, four slash variants and a handful of genuine wrong-day bugs: ONE Central-pinned module. A `date` column ('YYYY-MM-DD') is a calendar day and is never fed to new Date() as an instant (UTC midnight = the evening before in Milwaukee); a timestamptz is always rendered in America/Chicago. fmtDate is the default for every table, list, hint and dialog. ISO is for data only — exports, URL params, picker values, the calendar-import preview. Slash forms are retired. toLocaleDateString / .slice(0, 10) outside lib/format-date are lint errors."
+          >
+            <table className={ledger.table}>
+              <thead><tr><th>Helper</th><th>Renders</th><th>Use for</th></tr></thead>
+              <tbody>
+                <tr><td><code>fmtDate</code></td><td>{fmtDate('2026-07-12')}</td><td>the default — tables, lists, hints, dialogs; <code>{'{ year: false }'}</code> inside a one-year list → {fmtDate('2026-07-12', { year: false })}</td></tr>
+                <tr><td><code>fmtDateLong</code></td><td>{fmtDateLong('2026-07-12')}</td><td>public prose, bylines, print headers</td></tr>
+                <tr><td><code>fmtDateFull</code></td><td>{fmtDateFull('2026-07-12')}</td><td>headings where the weekday matters</td></tr>
+                <tr><td><code>fmtDay</code></td><td>{fmtDay('2026-07-12')}</td><td>dense day headings, deadlines, job boards</td></tr>
+                <tr><td><code>fmtDateTime</code></td><td>{fmtDateTime('2026-07-12T20:04:00.000Z')}</td><td>any timestamp shown with its time; <code>{'{ zone: true }'}</code> in email</td></tr>
+                <tr><td><code>fmtMonthYear</code></td><td>{fmtMonthYear('2026-07-12')}</td><td>almanacs, &ldquo;updated&rdquo;, &ldquo;earned&rdquo; badges</td></tr>
+                <tr><td><code>fmtRange</code></td><td>{fmtRange('2026-07-12', '2026-07-14')} · {fmtRange('2026-07-30', '2026-08-02')}</td><td>multi-day events, report ranges</td></tr>
+              </tbody>
+            </table>
+          </Specimen>
         </div>
       </section>
 

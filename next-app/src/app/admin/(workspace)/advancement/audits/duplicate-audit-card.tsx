@@ -6,22 +6,7 @@ import Link from 'next/link';
 import { resolveDuplicateLedgerEntries } from './actions';
 import type { DuplicateGroup } from './checks/duplicate-records';
 import styles from './audits.module.css';
-
-function fmtDate(iso: string | null): string {
-  if (!iso) return '—';
-  const [y, m, d] = iso.split('-');
-  return `${m}/${d}/${y}`;
-}
-
-function fmtDateTime(iso: string): string {
-  return new Date(iso).toLocaleString('en-US', {
-    month: 'numeric',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit'
-  });
-}
+import { fmtDate, fmtDateTime } from '@/lib/format-date';
 
 export function DuplicateAuditCard({ group }: { group: DuplicateGroup }) {
   const router = useRouter();

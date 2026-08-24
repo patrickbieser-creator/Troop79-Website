@@ -6,6 +6,7 @@ import { DayPicker, getDefaultClassNames } from 'react-day-picker';
 import 'react-day-picker/style.css';
 import styles from './date-picker-field.module.css';
 
+import { fmtDate } from '@/lib/format-date';
 /**
  * Shared admin date field: a text input showing the formatted date, backed
  * by a react-day-picker calendar popover. Replaces bare `<input type="date">`
@@ -55,9 +56,8 @@ function toISO(date: Date): string {
 }
 
 function formatDisplay(iso: string): string {
-  const date = parseISO(iso);
-  if (!date) return '';
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  if (!parseISO(iso)) return '';
+  return fmtDate(iso);
 }
 
 /** Tolerant free-typed parser: ISO ('2026-07-25'), US slash ('7/25/2026'),

@@ -57,6 +57,7 @@ import { PageShell } from '@/app/_components/page-shell';
 import { SectionDivider } from '@/app/_components/section-divider';
 import { EmptyState } from '@/app/_components/empty-state';
 import styles from '../../library.module.css';
+import { fmtMonthYear } from '@/lib/format-date';
 import s from './mb-tracker.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -255,10 +256,7 @@ export default async function LibraryMbPage({
             {narrative.updated_by && (
               <p className={styles.narrativeCredit}>
                 Written by <strong>{narrative.updated_by}</strong> · updated{' '}
-                {new Date(narrative.updated_at).toLocaleDateString('en-US', {
-                  month: 'long',
-                  year: 'numeric'
-                })}
+                {fmtMonthYear(narrative.updated_at)}
               </p>
             )}
           </div>

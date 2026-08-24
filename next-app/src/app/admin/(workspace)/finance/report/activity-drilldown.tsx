@@ -13,6 +13,7 @@ import parentStyles from '../finance.module.css';
 import styles from './report.module.css';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
 import { Notice } from '../../_components/notice';
+import { fmtDate } from '@/lib/format-date';
 
 function money(n: number): string {
   return n < 0 ? `-$${Math.abs(n).toFixed(2)}` : `$${n.toFixed(2)}`;
@@ -65,7 +66,7 @@ export function ActivityDrilldownButton({
             <ul className={styles.drilldownList}>
               {rows.map((r) => (
                 <li key={r.id} className={r.voided_at ? styles.drilldownVoided : undefined}>
-                  <span className={styles.drilldownDate}>{r.occurred_on}</span>
+                  <span className={styles.drilldownDate}>{fmtDate(r.occurred_on)}</span>
                   <span>{r.account}</span>
                   <span>{r.kind}</span>
                   <span>{r.personName ?? '—'}</span>

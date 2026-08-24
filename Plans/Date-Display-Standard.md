@@ -2,7 +2,7 @@
 
 **Created:** 2026-08-24 (Patrick: "UTC dates and european formats slipping into lists and
 display … make a list of the variations … suggest standardizing … and where a variant makes sense")
-**Status:** INVENTORY DONE, standard PROPOSED, not built.
+**Status:** COMPLETE 2026-08-24 — v1.88.1 (lib + 7 wrong-day fixes) and v1.88.7 (sweep of ~95 sites, UTC-"today" defaults → centralToday(), ESLint guard, styleguide Dates section). Move to Plans/Completed/ at end-session. Left as-is on purpose: calendar-import preview (shows the file's own ISO), lib/dates.ts formatShortDate/formatLongDate (still exported; no src/app callers of formatShortDate remain), utility-date.tsx (visitor's own clock, eslint-disabled with reason).
 
 ## Inventory (2026-08-24 sweep, ~95 render sites, 40+ helpers)
 

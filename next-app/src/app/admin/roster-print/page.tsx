@@ -13,6 +13,7 @@ import { PrintToolbar } from './print-toolbar';
 import '../(workspace)/admin.css';
 import styles from './roster-print.module.css';
 
+import { fmtDateLong } from '@/lib/format-date';
 /**
  * The home roster — "a better, more useful printout of the roster that could
  * be in PDF format that would be available for leaders to keep by their phones
@@ -54,15 +55,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false }
 };
 
-function formatLongDate(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-    timeZone: 'UTC'
-  });
-}
+const formatLongDate = (iso: string): string => fmtDateLong(iso);
 
 export default async function RosterPrintPage() {
   await requireCapability('roster.manage');

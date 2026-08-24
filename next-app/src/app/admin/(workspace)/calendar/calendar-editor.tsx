@@ -19,6 +19,8 @@ import { CalendarEntryForm, type CalendarEntryRow } from './entry-form';
 import type { CalendarEntryMergePlan } from '@/lib/calendar-admin';
 import styles from './calendar.module.css';
 
+import { fmtDate } from '@/lib/format-date';
+import { formatTimeOfDay } from '@/lib/calendar-shared';
 type CalColKey = 'date' | 'category' | 'title' | 'author' | 'location';
 
 /** Module scope on purpose — see the note on useSortable. */
@@ -64,13 +66,7 @@ interface Props {
   onImport: (inserts: ImportRowFields[], updates: ImportUpdate[]) => Promise<ImportResult>;
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  });
-}
+const formatDate = (iso: string): string => fmtDate(iso);
 
 /** Local YYYY-MM-DD. Deliberately not toISOString(), which is UTC and can
  *  put an evening event on 'tomorrow' for anyone west of Greenwich. */
@@ -81,9 +77,7 @@ function todayLocal(): string {
   return `${d.getFullYear()}-${m}-${day}`;
 }
 
-function formatTime(hms: string): string {
-  return new Date(`2000-01-01T${hms}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-}
+const formatTime = (hms: string): string => formatTimeOfDay(hms);
 
 export function CalendarEditor({
   rows,

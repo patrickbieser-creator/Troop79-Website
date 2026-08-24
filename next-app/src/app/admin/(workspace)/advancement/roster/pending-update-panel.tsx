@@ -10,6 +10,7 @@ import {
 } from '@/lib/change-requests';
 import styles from '../lookups/lookups.module.css';
 import { Notice } from '../../_components/notice';
+import { fmtDateTime } from '@/lib/format-date';
 
 /**
  * "Pending Update" panel inside the Scout editor (Plans/Scout-Self-Service-Demographics.md)
@@ -96,12 +97,7 @@ export function PendingUpdatePanel({
       {error && <Notice>{error}</Notice>}
       <p className={styles.helpText}>
         {notice ? 'Added ' : 'Submitted '}
-        {new Date(request.submitted_at).toLocaleString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          hour: 'numeric',
-          minute: '2-digit'
-        })} through the public Profile page
+        {fmtDateTime(request.submitted_at)} through the public Profile page
         {request.submittedByName ? (
           <>
             {' '}by <strong>{request.submittedByName}</strong> (verified sign-in).

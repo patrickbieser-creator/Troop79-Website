@@ -502,7 +502,7 @@ function ProofQueueRow({ item }: { item: ProofQueueItem }) {
         <span className={styles.rowMeta}>
           {requirementHref ? <Link href={requirementHref}>{requirementLabel}</Link> : requirementLabel} ·{' '}
           {PROOF_TYPE_LABEL[s.proof_type]} · via {s.submitted_via} ·{' '}
-          {new Date(s.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          {fmtDate(s.created_at, { year: false })}
         </span>
       </div>
 
@@ -605,10 +605,7 @@ function ResourceRow({
               from <strong>{res.submitted_by_label}</strong> ·{' '}
             </>
           )}
-          {new Date(res.created_at).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric'
-          })}
+          {fmtDate(res.created_at)}
         </span>
         <span className={`${styles.statusPill} ${pillClass}`}>{res.status}</span>
       </div>

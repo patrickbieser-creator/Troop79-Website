@@ -7,6 +7,7 @@ import { categoryColorMap, colorFor } from '@/lib/calendar-categories';
 import styles from '../events/events-admin.module.css';
 import { PageTitle } from '../_components/page-title';
 
+import { centralToday } from '@/lib/dates';
 export const metadata = { title: 'Event Rosters — Troop 79' };
 
 /*
@@ -46,7 +47,7 @@ async function load(): Promise<RosterSummary[]> {
   // status and household composition. A scout-role session must not see them.
   await requireCapability('calendar.write');
   const supabase = createAdminClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = centralToday();
 
   const [{ data: signups }, { data: activeScouts }] = await Promise.all([
     supabase.from('event_signups').select('*'),

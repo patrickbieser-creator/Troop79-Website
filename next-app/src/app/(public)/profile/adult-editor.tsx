@@ -6,6 +6,7 @@ import { displayValue, pendingFields, type DraftValues } from '@/lib/profile-dra
 import { DateField } from '@/app/_components/date-field';
 import { EditField } from './edit-field';
 import { EditorActions } from './editor-actions';
+import { fmtDate } from '@/lib/format-date';
 import styles from './profile.module.css';
 
 export interface AdultProfileFields {
@@ -70,10 +71,7 @@ export default function AdultEditor({
       {pending && (
         <p className={styles.warnNote}>
           The information below is the update you submitted{' '}
-          {new Date(pending.submitted_at).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric'
-          })}
+          {fmtDate(pending.submitted_at)}
           , still awaiting a leader&rsquo;s review. {adult.displayName}&rsquo;s record keeps its
           current information until then — the fields marked below show what it still says. Edit
           and submit again to replace this update, or undo it to take it out of the queue.

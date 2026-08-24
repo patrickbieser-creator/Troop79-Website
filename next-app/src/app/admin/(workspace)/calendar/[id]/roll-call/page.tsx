@@ -20,6 +20,7 @@ import { creditRuleFor, defaultQtyFor, loadAttendance, loadCandidates } from '@/
 import { markAttended, markAbsent, setAttendanceQty, seedFromSignup } from './actions';
 import { RollCall } from './roll-call';
 import styles from './roll-call.module.css';
+import { fmtRange } from '@/lib/format-date';
 
 export const metadata = { title: 'Roll Call — Troop 79' };
 
@@ -64,8 +65,7 @@ export default async function RollCallPage({ params }: { params: Promise<{ id: s
           </Link>
           <h1>Roll Call</h1>
           <p className={styles.headMeta}>
-            {entry.title} &middot; {entry.entry_date}
-            {entry.end_date ? ` – ${entry.end_date}` : ''} &middot; {entry.category}
+            {entry.title} &middot; {fmtRange(entry.entry_date, entry.end_date)} &middot; {entry.category}
           </p>
         </div>
       </div>

@@ -50,6 +50,7 @@
 
 import type { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
+import { fmtDate } from '@/lib/format-date';
 import type { Finding } from '../types';
 
 const THRESHOLDS: { rankId: string; rankLabel: string; minActivities: number; minCampouts: number }[] = [
@@ -97,11 +98,6 @@ const KIND_LABEL: Record<string, string> = {
   fundraiser: 'Fundraisers',
   service_hours: 'Service projects'
 };
-
-function fmtDate(iso: string): string {
-  const [y, m, d] = iso.split('-');
-  return `${m}/${d}/${y}`;
-}
 
 /**
  * Walks a scout's distinct qualifying events in chronological order and
@@ -218,7 +214,7 @@ export async function run(supabase: ReturnType<typeof createAdminClient>): Promi
           .map((e) => e.date)
           .sort();
         if (dates.length) {
-          detailLines.push(`${KIND_LABEL[kind]} (${dates.length}): ${dates.map(fmtDate).join(', ')}`);
+          detailLines.push(`${KIND_LABEL[kind]} (${dates.length}): ${dates.map((d) => fmtDate(d)).join(', ')}`);
         }
       }
 

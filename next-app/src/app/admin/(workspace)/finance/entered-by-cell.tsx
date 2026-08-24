@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import styles from './finance.module.css';
 import { Dialog, DialogBody, DialogActions } from '../_components/dialog';
+import { fmtDate, fmtDateTime } from '@/lib/format-date';
 
 /**
  * Ledger Date cell — surfaces who entered the row and when (2026-08-19),
@@ -32,17 +33,13 @@ export function EnteredByCell({
     if (!open && dlg.open) dlg.close();
   }, [open]);
 
-  if (!enteredByName) return <>{occurredOn}</>;
+  if (!enteredByName) return <>{fmtDate(occurredOn)}</>;
 
-  const enteredOn = new Date(createdAt).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
+  const enteredOn = fmtDateTime(createdAt);
 
   return (
     <span className={styles.infoCell}>
-      <span>{occurredOn}</span>
+      <span>{fmtDate(occurredOn)}</span>
       <button
         type="button"
         className={styles.infoBubble}

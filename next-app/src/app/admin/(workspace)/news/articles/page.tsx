@@ -29,6 +29,7 @@ import { ArticlesTable } from './articles-table';
 import { FrontPageOrder, type FrontPageItem } from './front-page-order';
 import { loadPromotedEntries } from '@/lib/home-feed';
 import styles from './articles.module.css';
+import { fmtDate } from '@/lib/format-date';
 
 const PAGE_SIZE = 25;
 
@@ -296,7 +297,7 @@ async function loadFrontPage(): Promise<{ ordered: FrontPageItem[]; available: F
     key: `e${e.id}`,
     kind: 'event' as const,
     id: e.id,
-    label: `${e.title} · event ${e.entry_date}`,
+    label: `${e.title} · event ${fmtDate(e.entry_date)}`,
     featured: e.featured,
     order: e.featured_order ?? null
   }));

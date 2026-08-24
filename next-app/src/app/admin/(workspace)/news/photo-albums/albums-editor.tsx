@@ -12,6 +12,7 @@ import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_componen
 import { Notice } from '../../_components/notice';
 import { SaveButton, SaveFeedback, useSavedSnapshot, useSavePhase } from '../../_components/save-state';
 
+import { fmtDate } from '@/lib/format-date';
 type ActionResult = { ok: boolean; error?: string };
 
 export interface CoverInfo {
@@ -30,13 +31,7 @@ interface Props {
   onDelete: (id: number) => Promise<ActionResult>;
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  });
-}
+const formatDate = (iso: string): string => fmtDate(iso);
 
 export function AlbumsEditor({ rows, covers, categories, onCreate, onUpdate, onDelete }: Props) {
   const [openFor, setOpenFor] = useState<PhotoAlbum | 'new' | null>(null);

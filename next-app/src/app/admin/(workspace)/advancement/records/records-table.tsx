@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { setScoutbookSubmitted, setPresented } from '../ledger/actions';
 import { initialsFor } from '@/lib/initials';
+import { fmtDate } from '@/lib/format-date';
 import type { LedgerEntry, LedgerKind } from '@/lib/supabase/types';
 import styles from './records.module.css';
 
@@ -74,7 +75,7 @@ export function RecordsTable({ rows }: { rows: RecordRowVM[] }) {
 function Row({ row }: { row: RecordRowVM }) {
   return (
     <tr>
-      <td className={styles.nowrap}>{row.date}</td>
+      <td className={styles.nowrap}>{fmtDate(row.date)}</td>
       <td className={styles.nowrap}>{row.scoutName}</td>
       <td className={styles.nowrap}>
         <span className={`${styles.kindPill} ${KIND_CLASS[row.kind]}`}>{KIND_LABEL[row.kind]}</span>
@@ -146,7 +147,7 @@ function ConfirmCell({
         <input type="checkbox" checked={checked} disabled={isPending} onChange={toggle} />
         {checked ? (
           <span className={styles.confirmMeta}>
-            {at!.slice(0, 10)}
+            {fmtDate(at)}
             {by && <span title={by}> · {initialsFor(by)}</span>}
           </span>
         ) : (

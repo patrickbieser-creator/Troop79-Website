@@ -26,6 +26,7 @@ import {
 import { useMarkdownBlockTools } from '../../_components/markdown-block-tools';
 import { CalendarEntryForm, type CalendarEntryRow } from '../entry-form';
 import styles from './workbench.module.css';
+import { fmtDate, fmtRange } from '@/lib/format-date';
 
 type ActionResult = { ok: boolean; error?: string };
 
@@ -126,7 +127,7 @@ export function Workbench({
     });
   }
 
-  const dateLabel = entry.end_date ? `${entry.entry_date} – ${entry.end_date}` : entry.entry_date;
+  const dateLabel = entry.end_date ? fmtRange(entry.entry_date, entry.end_date) : fmtDate(entry.entry_date);
 
   return (
     <>

@@ -10,9 +10,10 @@
 import { NextResponse } from 'next/server';
 import { exportLedgerCsvTextAction } from '../actions';
 
+import { centralToday } from '@/lib/dates';
 export async function GET() {
   const csv = await exportLedgerCsvTextAction();
-  const filename = `troop-finances-${new Date().toISOString().slice(0, 10)}.csv`;
+  const filename = `troop-finances-${centralToday()}.csv`;
 
   return new NextResponse(csv, {
     headers: {

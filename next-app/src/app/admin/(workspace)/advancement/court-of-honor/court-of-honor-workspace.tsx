@@ -6,6 +6,7 @@ import { ArticleBody } from '@/lib/article-body/ArticleBody';
 import { ScoutAccordion, type RemoveTarget } from '@/app/_components/ScoutAccordion';
 import { DatePickerField } from '../../_components/date-picker-field';
 import { buildScoutView, toMarkdown } from '@/lib/advancement-report';
+import { fmtDate, fmtRange } from '@/lib/format-date';
 import {
   generateCourtOfHonorAction,
   regenerateCourtOfHonorAction,
@@ -21,8 +22,9 @@ import { Badge } from '../../_components/badge';
 import { TabStrip } from '../../_components/tab-strip';
 import { ActionsMenu } from '../../_components/actions-menu';
 
+import { centralToday } from '@/lib/dates';
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  return centralToday();
 }
 
 export function CourtOfHonorWorkspace({
@@ -162,10 +164,10 @@ export function CourtOfHonorWorkspace({
           </div>
           {report?.status === 'published' && (
             <p className={styles.publishedNote}>
-              Published {new Date(report.publishedAt!).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              Published {fmtDate(report.publishedAt!)}
               {report.publishedBy ? ` by ${report.publishedBy}` : ''}
               {report.correctedAt && (
-                <> · corrected {new Date(report.correctedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}{report.correctedBy ? ` by ${report.correctedBy}` : ''}</>
+                <> · corrected {fmtDate(report.correctedAt)}{report.correctedBy ? ` by ${report.correctedBy}` : ''}</>
               )}
               . Editing here corrects it in place — the published date stays as it was.
             </p>
@@ -286,7 +288,7 @@ export function CourtOfHonorWorkspace({
                 {report.presentedAt && (
                   <p className={styles.publishedNote}>
                     Confirmed presented{' '}
-                    {new Date(report.presentedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    {fmtDate(report.presentedAt)}
                     {report.presentedBy ? ` by ${report.presentedBy}` : ''}. Safe to run again — e.g. after
                     adding a scout back in — it only fills in items not already marked.
                   </p>
@@ -314,7 +316,7 @@ export function CourtOfHonorWorkspace({
                   className={r.id === report?.id ? styles.reportLinkActive : styles.reportLink}
                 >
                   <span>
-                    {r.startDate} – {r.endDate}
+                    {fmtRange(r.startDate, r.endDate)}
                   </span>
                   <Badge variant={r.status === 'published' ? 'success' : 'warning'}>
                     {r.status === 'published' ? 'Published' : 'Draft'}

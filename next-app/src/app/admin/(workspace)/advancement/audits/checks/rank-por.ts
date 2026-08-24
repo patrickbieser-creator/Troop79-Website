@@ -29,17 +29,13 @@
 
 import type { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
+import { fmtDate } from '@/lib/format-date';
 import type { Finding } from '../types';
 
 const THRESHOLDS: { rankId: string; rankLabel: string; prereqRankId: string; prereqLabel: string }[] = [
   { rankId: 'star', rankLabel: 'Star', prereqRankId: 'first-class', prereqLabel: 'First Class' },
   { rankId: 'life', rankLabel: 'Life', prereqRankId: 'star', prereqLabel: 'Star' }
 ];
-
-function fmtDate(iso: string): string {
-  const [y, m, d] = iso.split('-');
-  return `${m}/${d}/${y}`;
-}
 
 export async function run(supabase: ReturnType<typeof createAdminClient>): Promise<Finding[]> {
   const [awardRows, leadershipRows, rankReqsRes, existingRows, scoutsRes] = await Promise.all([

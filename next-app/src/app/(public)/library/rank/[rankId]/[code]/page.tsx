@@ -25,6 +25,7 @@ import { EmptyState } from '@/app/_components/empty-state';
 import { Button } from '@/app/_components/button';
 import { Badge } from '@/app/_components/badge';
 import { FieldHint } from '@/app/_components/form';
+import { fmtMonthYear } from '@/lib/format-date';
 import styles from '../../../library.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -132,7 +133,7 @@ export default async function LibraryRequirementPage({
             {isLeaf && ownDoneDate && (
               <Badge tone="accent" caps={false}>
                 ✓ Completed{' '}
-                {new Date(ownDoneDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                {fmtMonthYear(ownDoneDate)}
               </Badge>
             )}
           </span>
@@ -152,10 +153,7 @@ export default async function LibraryRequirementPage({
             {narrative.updated_by && (
               <p className={styles.narrativeCredit}>
                 Written by <strong>{narrative.updated_by}</strong> · updated{' '}
-                {new Date(narrative.updated_at).toLocaleDateString('en-US', {
-                  month: 'long',
-                  year: 'numeric'
-                })}
+                {fmtMonthYear(narrative.updated_at)}
               </p>
             )}
           </div>
@@ -218,10 +216,7 @@ export default async function LibraryRequirementPage({
                       {childDone && (
                         <Badge tone="accent" caps={false}>
                           ✓{' '}
-                          {new Date(childDone).toLocaleDateString('en-US', {
-                            month: 'short',
-                            year: 'numeric'
-                          })}
+                          {fmtMonthYear(childDone)}
                         </Badge>
                       )}
                     </Link>

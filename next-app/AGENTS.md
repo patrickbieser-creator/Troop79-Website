@@ -74,6 +74,20 @@ Found via browser verification on 2026-07-12 (also caused the footer's
 "© 2026Scout Troop 79"). Sweep check after adding prose with inline links:
 `curl -s localhost:3000/<page> | grep -oE '</a>[^ ,.<;)]{1,25}'` should return nothing.
 
+## Dates: one Central-pinned standard (2026-08-24)
+
+Every human-visible date goes through `src/lib/format-date.ts` — `fmtDate` ('Jul 12, 2026', the
+default for tables/lists/hints/dialogs), `fmtDateLong` (prose), `fmtDateFull` (weekday headings),
+`fmtDay` ('Sun, Jul 12' — dense day headings, deadlines), `fmtDateTime`, `fmtMonthYear`, `fmtRange`.
+Two input kinds, never confused: a `date` column ('YYYY-MM-DD') is a CALENDAR DAY (never
+`new Date(s)` — UTC midnight is the evening before in Milwaukee); a timestamptz is an instant in
+America/Chicago. "Today" for a default value is `centralToday()` from `lib/dates`, never
+`new Date().toISOString().slice(0, 10)` (that is tomorrow after 7 PM). ISO 'YYYY-MM-DD' is for data
+only — exports, URL params, picker values, the calendar-import preview. Slash forms are retired.
+**Enforced by ESLint** (`no-restricted-syntax` on `toLocaleDateString`/`toLocaleTimeString` and the
+UTC-today idiom under `src/app/**`); the helper table is on `/admin/styleguide/admin` → Dates.
+Inventory + rationale: `Plans/Date-Display-Standard.md`.
+
 ## Save buttons: dirty-gated, labelled, and loud about what they did (2026-08-23)
 
 Rule (Patrick, 2026-08-23, after the family sign-up form shipped a Save that "didn't change

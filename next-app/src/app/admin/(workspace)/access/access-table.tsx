@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { CAPABILITIES, CAPABILITY_LABEL, BUNDLES, type Capability } from '@/lib/capabilities';
 import type { GrantRow } from '@/lib/capabilities-admin';
 import styles from './access.module.css';
+import { fmtDate } from '@/lib/format-date';
 
 /** Short column headers — the full label is the cell's accessible name. */
 const SHORT: Record<Capability, string> = {
@@ -101,7 +102,7 @@ export function AccessTable({
                         aria-label={`${CAPABILITY_LABEL[cap]} — ${row.name}`}
                         title={
                           held && grantedBy
-                            ? `Granted by ${grantedBy}${row.grantedAt[cap] ? ` on ${row.grantedAt[cap].slice(0, 10)}` : ''}`
+                            ? `Granted by ${grantedBy}${row.grantedAt[cap] ? ` on ${fmtDate(row.grantedAt[cap])}` : ''}`
                             : CAPABILITY_LABEL[cap]
                         }
                         onClick={() => toggle(row, cap)}

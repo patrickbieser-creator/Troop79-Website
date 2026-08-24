@@ -15,6 +15,7 @@
 import type { createAdminClient } from '@/lib/supabase/server';
 import { buildReqTree, isGroupSatisfied, type ReqNode } from '@/lib/mb-helpers';
 import { fetchAllRows } from '@/lib/supabase/paginate';
+import { fmtDate } from '@/lib/format-date';
 import type { RankReqCatalogRow } from '@/lib/scout-detail';
 import type { Finding, MissingLeaf } from '../types';
 
@@ -52,12 +53,6 @@ function collectMissingLeaves(
       collectMissingLeaves(child, rankId, ledgerCodes, { code: node.code, label: node.label }, out);
     }
   }
-}
-
-function shortDate(s: string | null): string {
-  if (!s) return '—';
-  const [y, m, d] = s.split('-').map(Number);
-  return `${m}/${d}/${String(y).slice(2)}`;
 }
 
 export async function run(supabase: ReturnType<typeof createAdminClient>): Promise<Finding[]> {
@@ -132,7 +127,7 @@ export async function run(supabase: ReturnType<typeof createAdminClient>): Promi
       scoutId: award.scout_id,
       scoutName: scoutNameById.get(award.scout_id) ?? award.scout_id,
       groupLabel: rankLabelById.get(award.code) ?? award.code,
-      contextLine: `BoR on record ${shortDate(award.date)}${award.by ? ` · ${award.by}` : ''}`,
+      contextLine: `BoR on record ${fmtDate(award.date)}${award.by ? ` · ${award.by}` : ''}`,
       missing
     });
   }

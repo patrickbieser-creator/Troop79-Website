@@ -8,6 +8,7 @@ import { EnableSignupButton } from './enable-button';
 import { PageTitle } from '../_components/page-title';
 import styles from './events-admin.module.css';
 
+import { centralToday } from '@/lib/dates';
 export const metadata = { title: 'Event Signups — Troop 79' };
 
 /*
@@ -41,7 +42,7 @@ async function loadRows(): Promise<Row[]> {
   // status and household composition. A scout-role session must not see them.
   await requireCapability('calendar.write');
   const supabase = createAdminClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = centralToday();
 
   // Every upcoming entry lists, a "No Troop Meeting" week included (the
   // "No Meeting" category that used to hide those is retired, 2026-08-23).

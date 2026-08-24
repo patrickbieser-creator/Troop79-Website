@@ -5,6 +5,7 @@ import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { LEADER_PERSON_FIELDS, type FieldValue } from '@/lib/change-requests';
 
+import { centralToday } from '@/lib/dates';
 /**
  * Person-level edits behind the Roster's Leaders and Adults tabs.
  *
@@ -131,7 +132,7 @@ export async function createPerson(formData: FormData): Promise<Result & { perso
   if (roleRaw) {
     const { error: roleErr } = await supabase
       .from('person_roles')
-      .insert({ person_id: personId, role: roleRaw, start_date: new Date().toISOString().slice(0, 10) });
+      .insert({ person_id: personId, role: roleRaw, start_date: centralToday() });
     if (roleErr) {
       revalidatePath('/admin/advancement/roster');
       return { ok: false, error: `Created, but the role did not stick: ${roleErr.message}`, personId };
@@ -171,7 +172,7 @@ export async function addRole(personId: number, role: GrantableRole): Promise<Re
 
   const { error } = await supabase
     .from('person_roles')
-    .insert({ person_id: personId, role, start_date: new Date().toISOString().slice(0, 10) });
+    .insert({ person_id: personId, role, start_date: centralToday() });
   if (error) return { ok: false, error: error.message };
 
   revalidate();
@@ -186,7 +187,7 @@ export async function endRole(roleId: number): Promise<Result> {
   const supabase = createAdminClient();
   const { error } = await supabase
     .from('person_roles')
-    .update({ end_date: new Date().toISOString().slice(0, 10) })
+    .update({ end_date: centralToday() })
     .eq('id', roleId)
     .is('end_date', null);
   if (error) return { ok: false, error: error.message };

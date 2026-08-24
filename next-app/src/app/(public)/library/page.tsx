@@ -32,6 +32,7 @@ import { SectionDivider } from '@/app/_components/section-divider';
 import { EmptyState } from '@/app/_components/empty-state';
 import { Button } from '@/app/_components/button';
 import { Badge } from '@/app/_components/badge';
+import { fmtMonthYear } from '@/lib/format-date';
 import styles from './library.module.css';
 
 // New public pages must opt out of static prerendering or they freeze at
@@ -297,10 +298,7 @@ function RankDrill({ data }: { data: HomeData }) {
                       {doneDate && (
                         <Badge tone="accent" caps={false}>
                           ✓{' '}
-                          {new Date(doneDate).toLocaleDateString('en-US', {
-                            month: 'short',
-                            year: 'numeric'
-                          })}
+                          {fmtMonthYear(doneDate)}
                         </Badge>
                       )}
                       {n > 0 ? (

@@ -14,6 +14,7 @@ import { loadAllLogins, loadRecentFailedLogins, type LoginMethod } from '@/lib/l
 import styles from '../dashboard.module.css';
 import { PageTitle } from '../../../_components/page-title';
 
+import { fmtDateTime } from '@/lib/format-date';
 const PAGE_SIZE = 50;
 
 const METHOD_LABEL: Record<LoginMethod, string> = {
@@ -22,17 +23,7 @@ const METHOD_LABEL: Record<LoginMethod, string> = {
   passkey: 'Passkey'
 };
 
-function fullDateTime(iso: string): string {
-  // Explicit timeZone — see dashboard/page.tsx's shortDateTime for why.
-  return new Date(iso).toLocaleString('en-US', {
-    timeZone: 'America/Chicago',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit'
-  });
-}
+const fullDateTime = (iso: string): string => fmtDateTime(iso);
 
 export const metadata = {
   title: 'Recent Logins — Troop 79'

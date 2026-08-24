@@ -15,6 +15,7 @@ import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatLongDate } from '@/lib/dates';
+import { fmtDate } from '@/lib/format-date';
 import styles from './meetings.module.css';
 import { ActionsMenu } from '../../_components/actions-menu';
 import { Badge } from '../../_components/badge';
@@ -212,7 +213,7 @@ export function AttendanceList({ rows, onDeleteAgenda }: Props) {
               const total = row.scoutCount + row.adultCount;
               return (
                 <tr key={row.entryId}>
-                  <td className={styles.dateCell}>{row.entryDate}</td>
+                  <td className={styles.dateCell}>{fmtDate(row.entryDate)}</td>
                   <td>
                     <Link href={`/admin/calendar/${row.entryId}/roll-call`}>{row.title}</Link>
                   </td>

@@ -11,6 +11,7 @@ export function UtilityDate() {
     // against the server-rendered (blank) output.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setDate(
+      // eslint-disable-next-line no-restricted-syntax -- the visitor's own clock, by design (client effect)
       new Date().toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',

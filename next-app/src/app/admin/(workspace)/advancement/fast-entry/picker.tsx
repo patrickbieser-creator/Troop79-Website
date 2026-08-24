@@ -21,6 +21,7 @@ import {
   type ReqTreeNode
 } from './picker-types';
 import styles from './fast-entry.module.css';
+import { fmtDate } from '@/lib/format-date';
 
 type TabId = string;
 
@@ -923,7 +924,7 @@ export function ItemRow({
       <span className={styles.pickerLabel}>{label}</span>
       {completion?.date && (
         <span className={styles.pickerDateBadge}>
-          Done {completion.date}
+          Done {fmtDate(completion.date)}
           {completion.by ? ` · ${completion.by}` : ''}
         </span>
       )}
@@ -1475,7 +1476,7 @@ function HistoryPanel({
       <div className={styles.historyHeader}>History ({rows.length})</div>
       {rows.map((r) => (
         <div key={r.id} className={styles.historyRow}>
-          <span className={styles.historyDate}>{r.date ?? '—'}</span>
+          <span className={styles.historyDate}>{fmtDate(r.date)}</span>
           <span className={styles.historyLabel}>{r.label ?? r.code}</span>
           <span className={styles.historyQty}>
             {r.qty} {r.unit}

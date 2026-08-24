@@ -17,6 +17,7 @@ import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import { signedReceiptMediaUrl } from '@/lib/receipt-media';
+import { centralToday } from '@/lib/dates';
 import {
   FINANCE_PAGE_SIZE,
   computeBalance,
@@ -544,7 +545,7 @@ export async function recordEventFeePaymentAction(input: RecordEventFeePaymentIn
   const account: Account = input.method === 'scout_account' ? 'scout_account' : input.method === 'scholarship' ? 'scholarship' : 'checking';
   const storedMethod: TransactionMethod = input.method === 'scholarship' ? 'other' : input.method;
   const { error: insertError } = await supabase.from('financial_transactions').insert({
-    occurred_on: input.occurredOn ?? new Date().toISOString().slice(0, 10),
+    occurred_on: input.occurredOn ?? centralToday(),
     account,
     amount: isNotionalAccount(account) ? -Math.abs(input.amount) : input.amount,
     kind: 'event_fee',
@@ -620,7 +621,7 @@ export async function refundEventFeeAction(input: {
   if (!ctx) return { ok: false, error: 'Signup entry not found.' };
   const account: Account = input.method === 'scout_account' ? 'scout_account' : input.method === 'scholarship' ? 'scholarship' : 'checking';
   const { error } = await supabase.from('financial_transactions').insert({
-    occurred_on: new Date().toISOString().slice(0, 10),
+    occurred_on: centralToday(),
     account,
     // A refund INTO a notional account is a positive row there (balance back up);
     // the event reads it as −paid. Cash refunds are negative on checking.
@@ -680,7 +681,7 @@ export async function creditOverpaymentAction(input: {
   if (room <= 0) return { ok: false, error: credited > 0 ? `Already credited ${money(credited)} — nothing left to credit.` : 'Nothing is overpaid on this entry.' };
   if (Math.abs(input.amount) > room + 0.005) return { ok: false, error: `Only ${money(room)} is still uncredited.` };
   const { error } = await supabase.from('financial_transactions').insert({
-    occurred_on: new Date().toISOString().slice(0, 10),
+    occurred_on: centralToday(),
     account: 'scout_account',
     amount: Math.abs(input.amount),
     kind: 'adjustment',
@@ -1197,7 +1198,7 @@ export async function markReimbursementPaidAction(id: number, method: Transactio
   const { data: txn, error: txnError } = await supabase
     .from('financial_transactions')
     .insert({
-      occurred_on: new Date().toISOString().slice(0, 10),
+      occurred_on: centralToday(),
       account: 'checking',
       amount: -Math.abs(Number(req.amount)),
       kind: 'reimbursement',

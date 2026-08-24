@@ -14,6 +14,7 @@ import { requireCapability } from '@/lib/require-capability';
 import type { LedgerEntry, LedgerKind } from '@/lib/supabase/types';
 import { loadAttentionCategories } from './attention-items';
 import { loadRecentLogins } from '@/lib/login-events';
+import { fmtDate, fmtDateTime } from '@/lib/format-date';
 import styles from './dashboard.module.css';
 import { PageTitle } from '../../_components/page-title';
 
@@ -257,26 +258,6 @@ function shortLabelFor(
   }
 }
 
-function shortDate(s: string | null): string {
-  if (!s) return '—';
-  const [y, m, d] = s.split('-').map(Number);
-  return `${m}/${d}/${String(y).slice(2)}`;
-}
-
-function shortDateTime(iso: string): string {
-  // Explicit timeZone — Patrick, 2026-08-17: without it, toLocaleString()
-  // renders in the SERVER's runtime timezone (UTC on Vercel), not Central,
-  // which read as "six hours ahead" for every login timestamp.
-  return new Date(iso).toLocaleString('en-US', {
-    timeZone: 'America/Chicago',
-    month: 'numeric',
-    day: 'numeric',
-    year: '2-digit',
-    hour: 'numeric',
-    minute: '2-digit'
-  });
-}
-
 const METHOD_LABEL: Record<'link' | 'code' | 'passkey', string> = {
   link: 'Email link',
   code: 'Code',
@@ -337,7 +318,7 @@ export default async function DashboardPage() {
           value={data.stats.cohCandidates}
           sub={
             data.stats.lastCohDate
-              ? `since ${data.stats.lastCohDate}`
+              ? `since ${fmtDate(data.stats.lastCohDate)}`
               : 'no prior COH on file'
           }
         />
@@ -372,7 +353,7 @@ export default async function DashboardPage() {
               <tbody>
                 {data.recentRows.map((r) => (
                   <tr key={r.id}>
-                    <td className={styles.dateCell}>{shortDate(r.date)}</td>
+                    <td className={styles.dateCell}>{fmtDate(r.date)}</td>
                     <td className={styles.scoutCell}>
                       <Link href={`/scouts/${r.scoutId}`}>{r.scoutName}</Link>
                     </td>
@@ -473,7 +454,7 @@ export default async function DashboardPage() {
               <tbody>
                 {recentLogins.map((e) => (
                   <tr key={e.id}>
-                    <td className={styles.dateCell}>{shortDateTime(e.createdAt)}</td>
+                    <td className={styles.dateCell}>{fmtDateTime(e.createdAt)}</td>
                     <td className={styles.scoutCell}>
                       {e.personName ?? 'Unknown'}
                       {e.isFirstLogin && <span className={styles.kindPill}>First login</span>}
