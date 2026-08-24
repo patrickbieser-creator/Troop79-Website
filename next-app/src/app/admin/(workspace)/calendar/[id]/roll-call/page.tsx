@@ -60,7 +60,7 @@ export default async function RollCallPage({ params }: { params: Promise<{ id: s
     <>
       <div className={styles.head}>
         <div>
-          <Link href={`/admin/calendar/${entryId}`} className={styles.backLink}>
+          <Link href={`/admin/calendar/${entryId}?tab=roll-call`} className={styles.backLink}>
             &larr; Back to the entry
           </Link>
           <h1>Roll Call</h1>

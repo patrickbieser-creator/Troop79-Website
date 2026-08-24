@@ -104,6 +104,22 @@ export function usesAgenda(rows: CalendarCategoryRow[], category: string): boole
 }
 
 /**
+ * True when this category's entries belong on the Roll Call list.
+ *
+ * Decided by the TEMPLATE, not by ledger credit (Patrick, 2026-08-24: "add a
+ * roll call option to the leadership and planning events"). The list used to
+ * infer "tracks attendance" from `credit_kind !== null || counts_as_activity`,
+ * which silently dropped every category that grants no credit and is not a 1a
+ * activity — Leadership / Planning above all, though a PLC or committee
+ * meeting has a roll call like any other meeting. People attend meetings and
+ * activities; nobody attends an announcement. Same fallback posture as
+ * templateOf(): an unknown or untemplated category is listed, not hidden.
+ */
+export function tracksAttendance(rows: CalendarCategoryRow[], category: string): boolean {
+  return templateOf(rows, category) !== 'announcement';
+}
+
+/**
  * Current labels for the given behaviors, for queries that used to hardcode
  * category names (`lib/meetings.ts`, the rosters/events screens).
  */

@@ -9,6 +9,7 @@ import {
   labelsForBehavior,
   sortedCategoryLabels,
   templateOf,
+  tracksAttendance,
   usesAgenda,
   type CalendarCategoryRow
 } from '@/lib/calendar-categories';
@@ -186,6 +187,29 @@ describe('category presentation helpers', () => {
   it('UsesAgenda_IsTrueOnlyForTheMeetingTemplate', () => {
     expect(usesAgenda(rows, 'Troop Meeting')).toBe(true);
     expect(usesAgenda(rows, 'Fundraiser')).toBe(false);
+  });
+
+  // Roll Call list gate (Patrick, 2026-08-24: "add a roll call option to the
+  // leadership and planning events"). Whether a category tracks attendance is
+  // decided by its TEMPLATE — people attend meetings and activities, nobody
+  // attends an announcement — not by whether it grants ledger credit.
+  // Leadership / Planning grants none and is not a 1a activity, yet a PLC has
+  // a roll call like any meeting.
+  it('TracksAttendance_IsTrueForMeetingAndActivityTemplates', () => {
+    const withPlc: CalendarCategoryRow[] = [
+      ...rows,
+      { label: 'Leadership / Planning', color: '#4c5c6a', sort_order: 110, behavior: null, template: 'meeting', credit_kind: null, credit_unit: null, counts_as_activity: false },
+      { label: 'Scout News', color: '#a0978a', sort_order: 160, behavior: null, template: 'announcement', credit_kind: null, credit_unit: null, counts_as_activity: true }
+    ];
+    expect(tracksAttendance(withPlc, 'Leadership / Planning')).toBe(true);
+    expect(tracksAttendance(withPlc, 'Troop Meeting')).toBe(true);
+    expect(tracksAttendance(withPlc, 'Fundraiser')).toBe(true);
+    expect(tracksAttendance(withPlc, 'Scout News')).toBe(false);
+  });
+
+  it('TracksAttendance_FallsBackToTrue_WhenTheCategoryIsUnknownOrUntemplated', () => {
+    expect(tracksAttendance(rows, 'Community')).toBe(true);
+    expect(tracksAttendance(rows, 'Invented Yesterday')).toBe(true);
   });
 
   it('ColorFor_ReturnsTheLookupColor_WhenCategoryIsKnown', () => {

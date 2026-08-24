@@ -21,15 +21,25 @@ import { categoryColorMap, colorFor, templateOf } from '@/lib/calendar-categorie
 import { createMeeting } from '../../advancement/meetings/actions';
 import { updateEntryStory, updateCalendarEntry, createCalendarEntry } from '../actions';
 import type { CalendarEntryRow } from '../entry-form';
-import { Workbench, type WorkbenchEntry } from './workbench';
+import { Workbench, type WorkbenchEntry, type WorkbenchTab } from './workbench';
 
 export const metadata = { title: 'Calendar Entry — Troop 79' };
 
-export default async function CalendarEntryPage({ params }: { params: Promise<{ id: string }> }) {
+const TABS: WorkbenchTab[] = ['details', 'story', 'agenda', 'roll-call', 'signup'];
+
+export default async function CalendarEntryPage({
+  params,
+  searchParams
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
+}) {
   await requireCapability('calendar.write');
-  const { id } = await params;
+  const [{ id }, sp] = await Promise.all([params, searchParams]);
   const entryId = Number(id);
   if (!Number.isInteger(entryId) || entryId <= 0) notFound();
+  // `?tab=roll-call` etc. — the layer screens' back links land on their own tab.
+  const initialTab = TABS.find((t) => t === sp.tab);
 
   const supabase = createAdminClient();
   // Everything, plus the promotion hero — the Details panel is the full entry
@@ -45,14 +55,16 @@ export default async function CalendarEntryPage({ params }: { params: Promise<{ 
   if (!entry) notFound();
 
   // Unconditional now — everyone who reaches this page is a leader.
-  const [{ data: meeting }, { data: signup }] = await Promise.all([
+  const [{ data: meeting }, { data: signup }, { count: attendanceCount }] = await Promise.all([
     supabase
       .from('meetings')
       .select('id, status')
       .eq('calendar_entry_id', entryId)
       .is('archived_at', null)
       .maybeSingle(),
-    supabase.from('event_signups').select('id').eq('calendar_entry_id', entryId).maybeSingle()
+    supabase.from('event_signups').select('id').eq('calendar_entry_id', entryId).maybeSingle(),
+    // Count only — the Roll Call tab's pill. Scoped to one entry, so no cap risk.
+    supabase.from('event_attendance').select('id', { count: 'exact', head: true }).eq('calendar_entry_id', entryId)
   ]);
 
   const row = entry as unknown as CalendarEntryRow;
@@ -81,6 +93,8 @@ export default async function CalendarEntryPage({ params }: { params: Promise<{ 
       template={templateOf(categories, workbenchEntry.category)}
       meeting={meeting ? { id: meeting.id as number, status: meeting.status as string } : null}
       signupId={signup ? (signup.id as number) : null}
+      attendanceCount={attendanceCount ?? 0}
+      initialTab={initialTab}
       onSaveStory={updateEntryStory}
       onCreateEntry={createCalendarEntry}
       onAddAgenda={createMeeting}

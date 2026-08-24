@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 24, 2026</strong> &nbsp;&middot;&nbsp; v1.88.9</p>
+      <p>Last updated: <strong>August 24, 2026</strong> &nbsp;&middot;&nbsp; v1.89.0</p>
     </div>
   </div>
 
@@ -494,6 +494,62 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.89.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.89.0</span>
+        <span class="release-date">August 24, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Roll Call and agendas for Leadership / Planning meetings</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>PLC and committee meetings are on the Roll Call list now.</strong> Whether an event tracks
+              attendance is decided by its category&rsquo;s template &mdash; people attend meetings and activities,
+              nobody attends an announcement &mdash; not by whether it grants ledger credit. Leadership / Planning
+              grants none and is not a rank-requirement activity, yet a PLC has a roll call like any meeting.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Add agenda from the list.</strong> A meeting-template entry with no agenda yet offers
+              <em>Add agenda</em> right on its Roll Call row and opens the editor &mdash; the same action the entry&rsquo;s
+              workbench has.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Attendance Report: Scouts and Adults</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Two tabs.</strong> <em>Scouts</em> reads the meeting-attendance ledger as before; <em>Adults</em>
+              reads Roll Call&rsquo;s presence records for leaders and parents at troop meetings. Each tab&rsquo;s
+              percentage is out of the meetings where that group&rsquo;s attendance was actually taken.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Calendar entry workbench: one tab per layer</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Details &middot; Story &middot; Agenda &middot; Roll Call &middot; Signup</strong> across the top of
+              the entry, in the same pill tabs used everywhere else, so what an entry offers is evident at a glance
+              instead of stacked down the page. Every panel stays mounted behind its tab, so a half-written story
+              survives a look at Roll Call; the Story tab shows a dot while it holds an unsaved draft, and the Roll
+              Call tab shows how many people are marked present. Agenda appears only on meeting-template entries.
+              Recorded on the styleguide as the <em>tabbed workbench</em> pattern for long multipart editors.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

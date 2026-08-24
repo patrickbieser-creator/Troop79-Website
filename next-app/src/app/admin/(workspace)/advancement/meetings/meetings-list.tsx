@@ -30,9 +30,13 @@ export interface AttendanceListRow {
   title: string;
   entryDate: string;
   category: string;
-  /** The agenda layer, when this entry has one. Meetings only. */
+  /** The agenda layer, when this entry has one. Meeting-template categories only. */
   agendaId: number | null;
   agendaStatus: string | null;
+  /** No agenda yet, and the category's template carries one — so offer to
+   *  add it here (Patrick, 2026-08-24: "also an agenda option" for PLC and
+   *  committee meetings). Same action the entry's workbench has. */
+  canAddAgenda?: boolean;
   scoutCount: number;
   adultCount: number;
 }
@@ -42,9 +46,10 @@ interface Props {
   /** The Central calendar day — the Current/Past boundary (Patrick, 2026-08-24). */
   today: string;
   onDeleteAgenda: (id: number) => Promise<{ ok: boolean; error?: string }>;
+  onAddAgenda?: (fd: FormData) => Promise<{ ok: boolean; error?: string; id?: number }>;
 }
 
-export function AttendanceList({ rows, today, onDeleteAgenda }: Props) {
+export function AttendanceList({ rows, today, onDeleteAgenda, onAddAgenda }: Props) {
   const router = useRouter();
   const [err, setErr] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -122,6 +127,24 @@ export function AttendanceList({ rows, today, onDeleteAgenda }: Props) {
       const res = await onDeleteAgenda(row.agendaId!);
       setBusyId(null);
       if (!res.ok) setErr(res.error ?? 'Delete failed.');
+    });
+  }
+
+  function addAgenda(row: AttendanceListRow) {
+    if (!onAddAgenda) return;
+    setErr(null);
+    setBusyId(row.entryId);
+    const fd = new FormData();
+    fd.set('calendar_entry_id', String(row.entryId));
+    fd.set('title', row.title);
+    startTransition(async () => {
+      const res = await onAddAgenda(fd);
+      setBusyId(null);
+      if (!res.ok || !res.id) {
+        setErr(res.error ?? 'Could not add the agenda.');
+        return;
+      }
+      router.push(`/admin/advancement/meetings/${res.id}`);
     });
   }
 
@@ -300,6 +323,17 @@ export function AttendanceList({ rows, today, onDeleteAgenda }: Props) {
                           {busyId === row.entryId ? '…' : 'Delete agenda'}
                         </button>
                       </>
+                    )}
+                    {!row.agendaId && row.canAddAgenda && onAddAgenda && (
+                      <button
+                        type="button"
+                        className={styles.editBtn}
+                        onClick={() => addAgenda(row)}
+                        disabled={busyId === row.entryId}
+                        title="Start an agenda for this meeting and open the editor"
+                      >
+                        {busyId === row.entryId ? '…' : 'Add agenda'}
+                      </button>
                     )}
                   </td>
                 </tr>

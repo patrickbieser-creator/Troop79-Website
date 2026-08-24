@@ -478,6 +478,23 @@ export default function StyleguidePage() {
               ]}
             />
           </Specimen>
+          <Specimen
+            label="Tabbed workbench — long multipart editors"
+            canonical
+            note="Patrick 2026-08-24 (calendar entry workbench): a record with several independently-saved parts gets ONE pill tab per part, above the panel, so the options are evident at the top instead of stacked down the page. Rules: the same TabStrip in onSelect mode; every panel stays MOUNTED and is hidden with the `hidden` attribute (role=tabpanel, aria-label = tab name) so an unsaved draft on one tab survives a look at another; a tab whose part has content shows it as the count pill (Roll Call: people present); a tab with an unsaved draft gets a trailing • in its label; tabs a record can't have (Agenda on a non-meeting) are omitted, not disabled. Optional ?tab= deep link for back links from the part's own screen. Reference: calendar/[id]/workbench.tsx."
+          >
+            <TabStrip
+              ariaLabel="Specimen workbench"
+              activeKey="story"
+              items={[
+                { key: 'details', label: 'Details' },
+                { key: 'story', label: 'Story •' },
+                { key: 'agenda', label: 'Agenda' },
+                { key: 'roll-call', label: 'Roll Call', count: 14 },
+                { key: 'signup', label: 'Signup' }
+              ]}
+            />
+          </Specimen>
         </div>
       </section>
 

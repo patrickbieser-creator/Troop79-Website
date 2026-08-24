@@ -10,17 +10,21 @@
  * place, with its count and a way in. Agendas remain a meeting-only layer and
  * show as a column rather than as the thing the list is made of.
  *
- * Entries whose category tracks nothing at all are left out. A week with no
- * meeting is a Troop Meeting titled "No Troop Meeting" (2026-08-23) and lists
- * like any meeting — no agenda, no roll; attendance % is unaffected because its
- * denominator is dates where roll was taken.
+ * Entries whose category tracks nothing at all — announcements — are left out;
+ * the gate is the category's template (`tracksAttendance`), so a Leadership /
+ * Planning meeting lists even though it grants no ledger credit (Patrick,
+ * 2026-08-24). A week with no meeting is a Troop Meeting titled "No Troop
+ * Meeting" (2026-08-23) and lists like any meeting — no agenda, no roll;
+ * attendance % is unaffected because its denominator is dates where roll was
+ * taken.
  */
 
 import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import { requireCapability } from '@/lib/require-capability';
+import { tracksAttendance, usesAgenda, type CalendarCategoryRow } from '@/lib/calendar-categories';
 import { AttendanceList, type AttendanceListRow } from './meetings-list';
-import { deleteMeeting } from './actions';
+import { createMeeting, deleteMeeting } from './actions';
 import { PageTitle } from '../../_components/page-title';
 import { centralToday } from '@/lib/dates';
 
@@ -37,7 +41,7 @@ async function loadRows(): Promise<AttendanceListRow[]> {
         .from('calendar_entries')
         .select('id, title, entry_date, category')
         .order('entry_date', { ascending: false }),
-      supabase.from('calendar_categories').select('label, credit_kind, counts_as_activity'),
+      supabase.from('calendar_categories').select('label, template'),
       supabase.from('meetings').select('id, status, calendar_entry_id').is('archived_at', null),
       /*
        * PAGINATED. `event_attendance` passed 1,000 rows the moment the backfill
@@ -62,11 +66,8 @@ async function loadRows(): Promise<AttendanceListRow[]> {
     ((scouts ?? []) as { person_id: number }[]).map((s) => s.person_id)
   );
 
-  const trackable = new Set(
-    ((categories ?? []) as { label: string; credit_kind: string | null; counts_as_activity: boolean }[])
-      .filter((c) => c.credit_kind !== null || c.counts_as_activity)
-      .map((c) => c.label)
-  );
+  // Only label + template are loaded; the helpers read nothing else.
+  const categoryRows = (categories ?? []) as CalendarCategoryRow[];
 
   const meetingByEntry = new Map(
     ((meetings ?? []) as { id: number; status: string; calendar_entry_id: number }[]).map((m) => [
@@ -84,7 +85,7 @@ async function loadRows(): Promise<AttendanceListRow[]> {
   }
 
   return ((entries ?? []) as { id: number; title: string; entry_date: string; category: string }[])
-    .filter((e) => trackable.has(e.category))
+    .filter((e) => tracksAttendance(categoryRows, e.category))
     .map((e) => {
       const meeting = meetingByEntry.get(e.id);
       const count = counts.get(e.id);
@@ -95,6 +96,7 @@ async function loadRows(): Promise<AttendanceListRow[]> {
         category: e.category,
         agendaId: meeting?.id ?? null,
         agendaStatus: meeting?.status ?? null,
+        canAddAgenda: !meeting && usesAgenda(categoryRows, e.category),
         scoutCount: count?.scouts ?? 0,
         adultCount: count?.adults ?? 0
       };
@@ -114,7 +116,12 @@ export default async function RollCallListPage() {
           category carries. Meetings also carry an agenda, edited separately."
       />
 
-      <AttendanceList rows={rows} today={centralToday()} onDeleteAgenda={deleteMeeting} />
+      <AttendanceList
+        rows={rows}
+        today={centralToday()}
+        onDeleteAgenda={deleteMeeting}
+        onAddAgenda={createMeeting}
+      />
     </>
   );
 }

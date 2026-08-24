@@ -12,6 +12,15 @@
  * table, so an announcement that grows an agenda or a meeting that grows a
  * signup needs no conversion and no migration. Presentation adapts; the data
  * model does not.
+ *
+ * One TAB per layer (Patrick, 2026-08-24: "introduce that same tab format we
+ * have used elsewhere … so at the top of the form it's evident what options
+ * are available"). The panels used to stack down the page, so the agenda and
+ * roll-call options sat below a full entry form and a markdown editor. The
+ * shared pill TabStrip is the strip; every panel stays MOUNTED and is hidden
+ * with the `hidden` attribute rather than unmounted, so a half-written story
+ * or an edited-but-unsaved Details form survives a look at another tab. This
+ * is the "tabbed workbench" pattern on /admin/styleguide/admin → Tab Strips.
  */
 
 import { useRef, useState, useTransition } from 'react';
@@ -24,11 +33,14 @@ import {
   type MarkdownEditorHandle
 } from '../../_components/markdown-split-pane';
 import { useMarkdownBlockTools } from '../../_components/markdown-block-tools';
+import { TabStrip, type TabStripItem } from '../../_components/tab-strip';
 import { CalendarEntryForm, type CalendarEntryRow } from '../entry-form';
 import styles from './workbench.module.css';
 import { fmtDate, fmtRange } from '@/lib/format-date';
 
 type ActionResult = { ok: boolean; error?: string };
+
+export type WorkbenchTab = 'details' | 'story' | 'agenda' | 'roll-call' | 'signup';
 
 export interface WorkbenchEntry {
   id: number;
@@ -56,6 +68,10 @@ interface Props {
   meeting: { id: number; status: string } | null;
   /** The signup layer, when one exists. */
   signupId: number | null;
+  /** People marked present so far — the Roll Call tab's count pill. */
+  attendanceCount: number;
+  /** Which tab opens first — deep links from the layer screens' back links. */
+  initialTab?: WorkbenchTab;
   onSaveStory: (fd: FormData) => Promise<ActionResult>;
   onAddAgenda?: (fd: FormData) => Promise<{ ok: boolean; error?: string; id?: number }>;
 }
@@ -75,10 +91,16 @@ export function Workbench({
   template,
   meeting,
   signupId,
+  attendanceCount,
+  initialTab,
   onSaveStory,
   onAddAgenda
 }: Props) {
   const router = useRouter();
+  const hasAgendaTab = template === 'meeting';
+  const [tab, setTab] = useState<WorkbenchTab>(() =>
+    initialTab && (initialTab !== 'agenda' || hasAgendaTab) ? initialTab : 'details'
+  );
   const [story, setStory] = useState(entry.details_md ?? '');
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -129,6 +151,20 @@ export function Workbench({
 
   const dateLabel = entry.end_date ? fmtRange(entry.entry_date, entry.end_date) : fmtDate(entry.entry_date);
 
+  // A dot on the Story tab says "unsaved draft here" while you look elsewhere.
+  const tabs: TabStripItem[] = [
+    { key: 'details', label: 'Details', onSelect: () => setTab('details') },
+    { key: 'story', label: storyDirty ? 'Story •' : 'Story', onSelect: () => setTab('story') },
+    ...(hasAgendaTab ? [{ key: 'agenda', label: 'Agenda', onSelect: () => setTab('agenda') }] : []),
+    {
+      key: 'roll-call',
+      label: 'Roll Call',
+      count: attendanceCount > 0 ? attendanceCount : undefined,
+      onSelect: () => setTab('roll-call')
+    },
+    { key: 'signup', label: 'Signup', onSelect: () => setTab('signup') }
+  ];
+
   return (
     <>
       <div className={styles.head}>
@@ -158,11 +194,13 @@ export function Workbench({
 
       {err && <div className={styles.error}>{err}</div>}
 
+      <TabStrip ariaLabel="Entry layers" activeKey={tab} items={tabs} className={styles.tabs} />
+
       {/* ── the entry's own fields ──
           Editable here, not read-only. This panel is why "Edit" disappeared
           from the list: the workbench is the entry's editor, and having to
           leave it to fix a title was the whole complaint. */}
-      <section className={styles.panel}>
+      <section className={styles.panel} role="tabpanel" aria-label="Details" hidden={tab !== 'details'}>
         <div className={styles.panelHead}>
           <h2>Details</h2>
         </div>
@@ -177,7 +215,7 @@ export function Workbench({
       </section>
 
       {/* ── story layer ── */}
-      <section className={styles.panel}>
+      <section className={styles.panel} role="tabpanel" aria-label="Story" hidden={tab !== 'story'}>
         <div className={styles.panelHead}>
           <h2>Story</h2>
           <div>
@@ -212,8 +250,8 @@ export function Workbench({
       </section>
 
       {/* ── agenda layer (meeting template, leaders only) ── */}
-      {template === 'meeting' && (
-        <section className={styles.panel}>
+      {hasAgendaTab && (
+        <section className={styles.panel} role="tabpanel" aria-label="Agenda" hidden={tab !== 'agenda'}>
           <div className={styles.panelHead}>
             <h2>Agenda</h2>
             <div>
@@ -252,7 +290,7 @@ export function Workbench({
           Every entry has one, not just meetings — that is the whole point of
           Roll Call. Its own route because taking attendance is a data-entry
           session, not editing. */}
-      <section className={styles.panel}>
+      <section className={styles.panel} role="tabpanel" aria-label="Roll Call" hidden={tab !== 'roll-call'}>
         <div className={styles.panelHead}>
           <h2>Roll Call</h2>
           <div>
@@ -264,11 +302,17 @@ export function Workbench({
         <p className={styles.panelNote}>
           Who was at this event. Seeded from the signup where there is one, and correctable by
           hand for anyone who told you verbally or turned up on the day.
+          {attendanceCount > 0 && (
+            <>
+              {' '}
+              <strong>{attendanceCount}</strong> marked present so far.
+            </>
+          )}
         </p>
       </section>
 
       {/* ── signup layer ── */}
-      <section className={styles.panel}>
+      <section className={styles.panel} role="tabpanel" aria-label="Signup" hidden={tab !== 'signup'}>
           <div className={styles.panelHead}>
             <h2>Signup</h2>
             <div>

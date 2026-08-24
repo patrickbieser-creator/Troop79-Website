@@ -45,6 +45,25 @@ describe('Roll Call — Current and Past tabs', () => {
     expect(titlesInOrder()).toEqual(['Yesterday', 'Last winter']);
   });
 
+  // "Also an agenda option" (Patrick, 2026-08-24): a meeting-template entry
+  // with no agenda yet — a PLC, a committee meeting — offers Add agenda right
+  // in the list, the same action the entry's workbench has.
+  it('AddAgenda_IsOfferedOnlyWhereTheCategoryUsesAnAgenda_AndNoneExistsYet', async () => {
+    const user = userEvent.setup();
+    const onAddAgenda = vi.fn().mockResolvedValue({ ok: true, id: 99 });
+    const plc = { ...row('2026-08-30', 'PLC Meeting'), category: 'Leadership / Planning', canAddAgenda: true };
+    const campout = { ...row('2026-09-12', 'Fall campout'), category: 'Campout / Overnight', canAddAgenda: false };
+    const withAgenda = { ...row('2026-09-06', 'Next meeting'), agendaId: 7, agendaStatus: 'draft', canAddAgenda: false };
+    render(<AttendanceList rows={[plc, campout, withAgenda]} today={TODAY} onDeleteAgenda={vi.fn()} onAddAgenda={onAddAgenda} />);
+    const buttons = screen.getAllByRole('button', { name: 'Add agenda' });
+    expect(buttons).toHaveLength(1);
+    await user.click(buttons[0]);
+    expect(onAddAgenda).toHaveBeenCalledTimes(1);
+    const fd = onAddAgenda.mock.calls[0][0] as FormData;
+    expect(fd.get('calendar_entry_id')).toBe(String(plc.entryId));
+    expect(fd.get('title')).toBe('PLC Meeting');
+  });
+
   it('DateToggle_FlipsTheViewsNaturalOrder', async () => {
     const user = userEvent.setup();
     render(<AttendanceList rows={rows} today={TODAY} onDeleteAgenda={vi.fn()} />);
