@@ -3,7 +3,8 @@
 import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import type { Article, Media } from '@/lib/supabase/types';
+import type { Article, AuthorRole, Media } from '@/lib/supabase/types';
+import { dateOfIso } from '@/lib/article-publish';
 import { MediaPicker } from '../../_components/media-picker';
 import { DatePickerField } from '../../../_components/date-picker-field';
 import {
@@ -55,6 +56,10 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
   // Event fields are gone (Event→News promotion): an event is a calendar
   // entry promoted from the Calendar editor, never an article.
   const [autoArchiveAt, setAutoArchiveAt] = useState(article?.auto_archive_at ?? '');
+  // News editor gaps (2026-08-24): a post can be backdated, and the byline's
+  // role is a choice instead of a hard-coded 'leader' (lib/article-publish).
+  const [publishedOn, setPublishedOn] = useState(dateOfIso(article?.published_at));
+  const [authorRole, setAuthorRole] = useState<AuthorRole>(article?.author_role ?? 'leader');
 
   // The hero picker is article-only — every other insert (image, gallery,
   // gallery link, video, table) plus edit-in-place moved to the shared block
@@ -86,6 +91,8 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
     if (hero) fd.set('heroMediaId', String(hero.id));
     fd.set('categories', JSON.stringify(Array.from(categories)));
     fd.set('autoArchiveAt', autoArchiveAt);
+    fd.set('publishedOn', publishedOn);
+    fd.set('authorRole', authorRole);
     return fd;
   }
 
@@ -142,6 +149,15 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
               their type until edited surfaces need otherwise. */}
           <div className={styles.fieldRow}>
             <div className={styles.field}>
+              <label className="adminLabel" htmlFor="publishedOn">Published on</label>
+              <DatePickerField id="publishedOn" value={publishedOn} onChange={setPublishedOn} />
+              <div className={styles.hint}>
+                {published
+                  ? 'Change it to backdate a story written after the fact — the feed sorts by this date.'
+                  : 'Leave blank to stamp the day it is published; set it to backdate.'}
+              </div>
+            </div>
+            <div className={styles.field}>
               <label className="adminLabel" htmlFor="autoArchiveAt">Auto-archive on (optional)</label>
               <DatePickerField id="autoArchiveAt" value={autoArchiveAt} onChange={setAutoArchiveAt} />
             </div>
@@ -197,6 +213,21 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
             <div className={styles.hint}>
               Who the post is credited to. Defaults to you; change it when a scout or another
               leader wrote it. Leave it blank to keep the current byline.
+            </div>
+          </div>
+
+          <div className={styles.field}>
+            <label className="adminLabel" htmlFor="authorRole">Written by a</label>
+            <select
+              id="authorRole"
+              value={authorRole}
+              onChange={(e) => setAuthorRole(e.target.value === 'scout' ? 'scout' : 'leader')}
+            >
+              <option value="leader">Leader</option>
+              <option value="scout">Scout</option>
+            </select>
+            <div className={styles.hint}>
+              Credits the post to a scout when the byline names one.
             </div>
           </div>
 

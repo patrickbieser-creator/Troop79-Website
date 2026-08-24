@@ -5,7 +5,8 @@ import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { resolveArticleSlug, resolveByline } from '@/lib/article-slug';
 import { slugify } from '@/lib/slugify';
-import type { Article , ArticleStatus } from '@/lib/supabase/types';
+import { publishedAtFromDate, resolveAuthorRole } from '@/lib/article-publish';
+import type { Article, ArticleStatus, AuthorRole } from '@/lib/supabase/types';
 
 function revalidateNews() {
   revalidatePath('/admin/news/articles');
@@ -28,6 +29,10 @@ interface ArticleFields {
   authorName: string;
   /** Category labels from the ONE taxonomy (calendar_categories). */
   categories: string[];
+  /** "Published on" picker, 'YYYY-MM-DD'; blank means "leave it alone". */
+  publishedOn: string;
+  /** Byline role; '' means "keep the current one". */
+  authorRole: string;
 }
 
 function parseFields(formData: FormData): ArticleFields {
@@ -48,7 +53,9 @@ function parseFields(formData: FormData): ArticleFields {
     featured: String(formData.get('featured') ?? '') === '1',
     slug: String(formData.get('slug') ?? '').trim(),
     authorName: String(formData.get('authorName') ?? '').trim(),
-    categories
+    categories,
+    publishedOn: String(formData.get('publishedOn') ?? '').trim(),
+    authorRole: String(formData.get('authorRole') ?? '').trim()
   };
 }
 
@@ -113,7 +120,10 @@ export async function createArticle(formData: FormData): Promise<ActionResult> {
       featured: fields.featured,
       status: 'draft',
       author_name: resolveByline(fields.authorName, session.label),
-      author_role: 'leader',
+      author_role: resolveAuthorRole(fields.authorRole, 'leader'),
+      // A backdated draft keeps its date through Publish (publishArticle only
+      // stamps now() when nothing is set).
+      published_at: publishedAtFromDate(fields.publishedOn, null),
       auto_archive_at: fields.autoArchiveAt
     })
     .select('id')
@@ -202,11 +212,17 @@ export async function updateArticle(id: number, formData: FormData): Promise<Act
 
   const { data: existing, error: fetchError } = await supabase
     .from('articles')
-    .select('author_name, slug, status')
+    .select('author_name, author_role, slug, status, published_at')
     .eq('id', id)
     .single();
   if (fetchError || !existing) return { ok: false, error: 'Article not found.' };
-  const current = existing as { author_name: string; slug: string; status: ArticleStatus };
+  const current = existing as {
+    author_name: string;
+    author_role: AuthorRole;
+    slug: string;
+    status: ArticleStatus;
+    published_at: string | null;
+  };
   const fields = parseFields(formData);
   if (!fields.title) return { ok: false, error: 'Title is required.' };
 
@@ -237,6 +253,10 @@ export async function updateArticle(id: number, formData: FormData): Promise<Act
       // Editable byline: a post written by a scout or another leader gets
       // credited to them. Blank means "leave it alone", never anonymous.
       author_name: resolveByline(fields.authorName, current.author_name),
+      author_role: resolveAuthorRole(fields.authorRole, current.author_role),
+      // Backdating (2026-08-24): the picker can move a post's date; blank or
+      // the same day leaves the stored instant exactly as it was.
+      published_at: publishedAtFromDate(fields.publishedOn, current.published_at) ?? current.published_at,
       updated_at: new Date().toISOString()
     })
     .eq('id', id);
