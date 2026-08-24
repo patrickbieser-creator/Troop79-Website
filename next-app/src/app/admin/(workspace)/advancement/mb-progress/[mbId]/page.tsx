@@ -17,12 +17,17 @@ import { requireCapability } from '@/lib/require-capability';
 import {
   buildReqTree,
   flattenLeaves,
-  topLevelCodeOf,
   bsaPageUrl,
   workbookUrl,
   type ReqNode
 } from '@/lib/mb-helpers';
 import { fetchAllRows } from '@/lib/supabase/paginate';
+import {
+  foldLedger,
+  gridGroups,
+  mbStats,
+  startedScouts as startedScoutsOf
+} from '@/lib/mb-scout-progress';
 import type {
   MeritBadge,
   MeritBadgeRequirement,
@@ -90,19 +95,13 @@ async function loadDetail(mbId: string) {
   const reqTree = buildReqTree((reqsRes.data ?? []) as MeritBadgeRequirement[]);
   const leaves = flattenLeaves(reqTree);
 
-  const byScout = new Map<string, { awarded: boolean; codes: Set<string> }>();
-  for (const e of ledgerRows) {
-    const slot = byScout.get(e.scout_id) ?? { awarded: false, codes: new Set<string>() };
-    if (e.kind === 'merit_badge_award' && e.code === `MB:${mbId}`) {
-      slot.awarded = true;
-    } else if (e.code.startsWith(`${mbId}-`)) {
-      slot.codes.add(e.code.slice(mbId.length + 1));
-    }
-    byScout.set(e.scout_id, slot);
-  }
+  // The fold is shared with the Library's merit badge grid via lib/ (the
+  // sanctioned way across the admin↔public firewall) — adopted 2026-08-24,
+  // the follow-up promised when it was extracted in v1.78.0.
+  const byScout = foldLedger(ledgerRows, mbId);
 
   const allScouts = (scoutsRes.data ?? []) as Scout[];
-  const startedScouts = allScouts.filter((s) => byScout.has(s.id));
+  const startedScouts = startedScoutsOf(allScouts, byScout);
 
   const leaderNameByCode = new Map<string, string>();
   for (const l of (leadersRes.data ?? []) as { code: string; name: string }[]) {
@@ -138,23 +137,15 @@ export default async function MbProgressDetailPage({
   if (!data) notFound();
 
   const { mb, reqTree, leaves, startedScouts, byScout, totalActive, counselors } = data;
-  const completedCount = startedScouts.filter((s) => byScout.get(s.id)!.awarded).length;
-  const partialCount = startedScouts.length - completedCount;
-  const notStarted = Math.max(totalActive - startedScouts.length, 0);
+  const {
+    earned: completedCount,
+    inProgress: partialCount,
+    notStarted
+  } = mbStats(startedScouts, byScout, totalActive);
 
-  // Group leaves by top-level parent code so the header can show parent spans.
-  const groupOf = new Map<string, string>();
-  for (const leaf of leaves) {
-    const top = topLevelCodeOf(reqTree, leaf.code);
-    if (top) groupOf.set(leaf.code, top);
-  }
-  const groups: { topCode: string; topLabel: string; leaves: ReqNode[] }[] = [];
-  for (const top of reqTree) {
-    const myLeaves = leaves.filter((l) => groupOf.get(l.code) === top.code);
-    if (myLeaves.length > 0) {
-      groups.push({ topCode: top.code, topLabel: top.label, leaves: myLeaves });
-    }
-  }
+  // Header column groups: one band per top-level requirement, spanning its
+  // leaves (empty groups dropped — colSpan 0 shears the header).
+  const { groups } = gridGroups(reqTree, leaves);
 
   return (
     <>
@@ -234,8 +225,8 @@ export default async function MbProgressDetailPage({
                   {groups.map((g) => (
                     <th
                       key={`grp-${g.topCode}`}
-                      colSpan={g.leaves.length}
-                      title={g.topLabel}
+                      colSpan={g.spans}
+                      title={g.topNode.label}
                       className={styles.groupHeaderTop}
                     >
                       {g.topCode}
