@@ -16,7 +16,7 @@
  */
 
 import { useState, useTransition } from 'react';
-import { SaveButton, SaveFeedback, useSavedSnapshot, useSavePhase } from '../_components/save-state';
+import { DiscardButton, SaveButton, SaveFeedback, useDraftSnapshot, useSavePhase } from '../_components/save-state';
 import type { CalendarEntry, Media } from '@/lib/supabase/types';
 import type { CalendarCategoryRow } from '@/lib/calendar-categories';
 // MediaPicker still lives under news/ — the hero image it picks is the same
@@ -90,12 +90,21 @@ export function CalendarEntryForm({
   // Save standard (AGENTS.md "Save buttons", rolled out 2026-08-24 — this form
   // was Patrick's example of where it was missing): Save is off and reads
   // "Saved" until something differs from what is saved; Saving… → Done.
-  const draftKey = JSON.stringify({
+  const { dirty, markSaved, saved } = useDraftSnapshot({
     entryDate, endDate, startTime, endTime, dayNote, category, title, description, location,
     onCalendar, isDraft, showOnHomepage, featured, promoStart, promoEnd, excerpt,
-    heroMediaId: heroMedia?.id ?? null, autoArchiveAt
+    heroMedia, autoArchiveAt
   });
-  const { dirty, markSaved } = useSavedSnapshot(draftKey);
+  /** Discard: every field back to the last save (Patrick, 2026-08-24). */
+  function discard() {
+    setEntryDate(saved.entryDate); setEndDate(saved.endDate); setStartTime(saved.startTime);
+    setEndTime(saved.endTime); setDayNote(saved.dayNote); setCategory(saved.category);
+    setTitle(saved.title); setDescription(saved.description); setLocation(saved.location);
+    setOnCalendar(saved.onCalendar); setIsDraft(saved.isDraft); setShowOnHomepage(saved.showOnHomepage);
+    setFeatured(saved.featured); setPromoStart(saved.promoStart); setPromoEnd(saved.promoEnd);
+    setExcerpt(saved.excerpt); setHeroMedia(saved.heroMedia); setAutoArchiveAt(saved.autoArchiveAt);
+    setErr(null);
+  }
   const feedback = useSavePhase();
 
   function submit() {
@@ -353,6 +362,7 @@ export function CalendarEntryForm({
           Cancel
         </button>
       )}
+      {inline && !isNew && <DiscardButton dirty={dirty} pending={isPending} onClick={discard} />}
       <SaveButton
         className={styles.editSaveBtn}
         dirty={dirty}

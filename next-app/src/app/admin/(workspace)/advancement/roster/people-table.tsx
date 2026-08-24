@@ -28,7 +28,7 @@ import { AddButton } from '../../_components/add-button';
 import { SortHeader, useSortable } from '../../_components/use-sortable';
 import { Dialog } from '../../_components/dialog';
 import { Notice } from '../../_components/notice';
-import { SaveButton, SaveFeedback, useSavePhase } from '../../_components/save-state';
+import { DiscardButton, SaveButton, SaveFeedback, useSavePhase } from '../../_components/save-state';
 import { ageOn, yptStatus } from '@/lib/demographics';
 import { fmtDate } from '@/lib/format-date';
 import styles from './roster.module.css';
@@ -744,6 +744,11 @@ function PersonEditor({
             </label>
           </div>
           <div className={styles.inlineRow}>
+            <DiscardButton
+              dirty={JSON.stringify(demo) !== JSON.stringify(demoFromFields(detail.fields))}
+              pending={disabled}
+              onClick={() => setDemo(demoFromFields(detail.fields))}
+            />
             <SaveButton
               className={fields.editSaveBtn}
               dirty={JSON.stringify(demo) !== JSON.stringify(demoFromFields(detail.fields))}

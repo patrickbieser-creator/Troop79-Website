@@ -106,6 +106,11 @@ already saved follows one standard** — no exceptions, public or admin:
    admin tokens — add an admin twin rather than importing across the firewall).
 4. **A control that will do nothing is greyed, not hidden** — the user should see it exists and
    learn why it's off.
+5. **A way back (Patrick, 2026-08-24):** every in-page form that stays open after saving has a
+   **Discard changes** beside Save — greyed until dirty, and it returns the form to the LAST SAVED
+   state (not what the page loaded with). Dialogs and inline row editors satisfy this with their
+   Cancel: closing is discarding. Admin: `DiscardButton` + `useDraftSnapshot(draft).saved` for
+   controlled forms, `useFormDirty(ref).reset()` for uncontrolled ones.
 
 Reference implementations: `src/app/(public)/events/[id]/person-first-form.tsx` (draftKey snapshot)
 and `slot-first-form.tsx` (claims/comments/guests keys). The Guests section's "locked until someone

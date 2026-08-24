@@ -17,7 +17,7 @@ import { createArticle, updateArticle, publishArticle } from '../actions';
 import styles from './article-editor.module.css';
 import { Badge } from '../../../_components/badge';
 import { PageTitle } from '../../../_components/page-title';
-import { SaveButton, SaveFeedback, useSavedSnapshot, useSavePhase } from '../../../_components/save-state';
+import { DiscardButton, SaveButton, SaveFeedback, useDraftSnapshot, useSavePhase } from '../../../_components/save-state';
 
 /** A category from the ONE taxonomy (calendar_categories) — the same list
  *  events and photo albums pick from (Patrick, 2026-08-21). */
@@ -72,11 +72,17 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
   // Save standard (2026-08-24): Save draft is off and reads "Saved" until the
   // draft differs from the stored post. The editor leaves for the list on
   // success, so the Saving… overlay covers until the navigation lands.
-  const draftKey = JSON.stringify({
+  const { dirty, saved } = useDraftSnapshot({
     title, excerpt, authorName, slug, featured, body, categories: [...categories].sort(),
-    heroId: hero?.id ?? null, autoArchiveAt, publishedOn, authorRole
+    hero, autoArchiveAt, publishedOn, authorRole
   });
-  const { dirty } = useSavedSnapshot(draftKey);
+  /** Discard: every field back to what the editor opened with (Patrick, 2026-08-24). */
+  function discard() {
+    setTitle(saved.title); setExcerpt(saved.excerpt); setAuthorName(saved.authorName); setSlug(saved.slug);
+    setFeatured(saved.featured); setBody(saved.body); setCategories(new Set(saved.categories)); setHero(saved.hero);
+    setAutoArchiveAt(saved.autoArchiveAt); setPublishedOn(saved.publishedOn); setAuthorRole(saved.authorRole);
+    setError(null);
+  }
   const feedback = useSavePhase();
   const bodyRef = useRef<MarkdownEditorHandle>(null);
   const blockTools = useMarkdownBlockTools(bodyRef);
@@ -307,6 +313,7 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
           </div>
 
           <div className={styles.formActions}>
+            {!isNew && <DiscardButton dirty={dirty} pending={isSaving} onClick={discard} />}
             <SaveButton
               className={styles.btnSecondary}
               dirty={dirty}

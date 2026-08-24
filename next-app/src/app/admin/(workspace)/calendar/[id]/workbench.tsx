@@ -15,7 +15,7 @@
  */
 
 import { useRef, useState, useTransition } from 'react';
-import { SaveButton, SaveFeedback, useSavedSnapshot, useSavePhase } from '../../_components/save-state';
+import { DiscardButton, SaveButton, SaveFeedback, useDraftSnapshot, useSavePhase } from '../../_components/save-state';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { CalendarCategoryRow, CategoryTemplate } from '@/lib/calendar-categories';
@@ -84,7 +84,7 @@ export function Workbench({
   const [isPending, startTransition] = useTransition();
   // Save standard (AGENTS.md "Save buttons", 2026-08-24): the story's Save is
   // off and reads "Saved" until the text differs from what is saved.
-  const { dirty: storyDirty, markSaved: markStorySaved } = useSavedSnapshot(story);
+  const { dirty: storyDirty, markSaved: markStorySaved, saved: savedStory } = useDraftSnapshot(story);
   const storyFeedback = useSavePhase();
   // D-081's promise was that `details_md` gets the NEWS EDITOR's experience,
   // not merely a textarea with a preview — so the story panel takes the same
@@ -181,6 +181,7 @@ export function Workbench({
         <div className={styles.panelHead}>
           <h2>Story</h2>
           <div>
+            <DiscardButton dirty={storyDirty} pending={isPending} onClick={() => setStory(savedStory)} />
             <SaveButton
               className={styles.primaryBtn}
               dirty={storyDirty}

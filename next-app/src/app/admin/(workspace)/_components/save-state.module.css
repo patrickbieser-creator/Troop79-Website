@@ -5,6 +5,24 @@
  */
 .saveBtn:disabled { opacity: .55; cursor: not-allowed; }
 
+/* Discard is the quiet sibling of Save: outlined, same height, greyed when
+   there is nothing to discard. Screens may stack their own secondary class. */
+.discardBtn {
+  font-family: var(--admin-font-ui);
+  font-size: var(--admin-text-sm);
+  font-weight: var(--admin-weight-semibold);
+  padding: var(--admin-space-2) var(--admin-space-4);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-white);
+  color: var(--admin-gray-700);
+  cursor: pointer;
+  transition: var(--admin-transition);
+  margin-right: var(--admin-space-2);
+}
+.discardBtn:hover:not(:disabled) { border-color: var(--admin-gray-500); color: var(--admin-gray-900); }
+.discardBtn:disabled { opacity: .55; cursor: not-allowed; }
+
 .overlay {
   position: fixed;
   inset: 0;

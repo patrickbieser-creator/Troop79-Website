@@ -7,6 +7,8 @@ import {
   SaveFeedback,
   useSavedSnapshot,
   useFormDirty,
+  useDraftSnapshot,
+  DiscardButton,
   useSavePhase
 } from '../src/app/admin/(workspace)/_components/save-state';
 
@@ -145,6 +147,60 @@ describe('useFormDirty — uncontrolled forms snapshot their FormData', () => {
     render(<FormHarness />);
     await user.type(screen.getByLabelText('Where'), '!');
     await user.keyboard('{Backspace}');
+    expect(screen.getByRole('button', { name: 'Saved' })).toBeTruthy();
+  });
+});
+
+describe('DiscardButton + useDraftSnapshot — abandon changes, back to what is saved', () => {
+  function DraftHarness() {
+    const [title, setTitle] = useState('Campout');
+    const { dirty, markSaved, saved } = useDraftSnapshot({ title });
+    return (
+      <form>
+        <input aria-label="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
+        <SaveButton dirty={dirty} pending={false} onClick={markSaved} />
+        <DiscardButton dirty={dirty} onClick={() => setTitle(saved.title)} />
+      </form>
+    );
+  }
+  it('DisabledWhenClean_WithAReason', () => {
+    render(<DraftHarness />);
+    const btn = screen.getByRole('button', { name: 'Discard changes' }) as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+    expect(btn.getAttribute('title')).toBe('Nothing to discard');
+  });
+  it('RevertsToTheLastSavedValue_NotTheOriginal', () => {
+    render(<DraftHarness />);
+    const input = screen.getByLabelText('Title') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'Camporee' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    fireEvent.change(input, { target: { value: 'Jamboree' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }));
+    expect(input.value).toBe('Camporee');
+    expect((screen.getByRole('button', { name: 'Saved' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+describe('useFormDirty.reset — uncontrolled forms go back to what is saved', () => {
+  function ResetHarness() {
+    const ref = useRef<HTMLFormElement>(null);
+    const { dirty, markSaved, reset } = useFormDirty(ref);
+    return (
+      <form ref={ref}>
+        <input aria-label="Where" name="where" defaultValue="Church hall" />
+        <SaveButton dirty={dirty} pending={false} onClick={markSaved} />
+        <DiscardButton dirty={dirty} onClick={reset} />
+      </form>
+    );
+  }
+  it('ResetAfterASave_ReturnsToTheSavedValue', () => {
+    render(<ResetHarness />);
+    const input = screen.getByLabelText('Where') as HTMLInputElement;
+    fireEvent.input(input, { target: { value: 'Park pavilion' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    fireEvent.input(input, { target: { value: 'Somewhere else' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }));
+    expect(input.value).toBe('Park pavilion');
     expect(screen.getByRole('button', { name: 'Saved' })).toBeTruthy();
   });
 });

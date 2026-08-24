@@ -17,7 +17,7 @@ import {
   type CourtOfHonorRow
 } from './actions';
 import styles from './court-of-honor.module.css';
-import { SaveButton, SaveFeedback, useSavePhase } from '../../_components/save-state';
+import { DiscardButton, SaveButton, SaveFeedback, useSavePhase } from '../../_components/save-state';
 import { Badge } from '../../_components/badge';
 import { TabStrip } from '../../_components/tab-strip';
 import { ActionsMenu } from '../../_components/actions-menu';
@@ -189,6 +189,7 @@ export function CourtOfHonorWorkspace({
                 placeholder="Optional — e.g. “Held at Brookfield East.”"
                 onChange={(e) => setNote(e.target.value)}
               />
+              <DiscardButton dirty={note !== (report?.note ?? '')} pending={disabled} onClick={() => setNote(report?.note ?? '')} />
               <SaveButton
                 className={styles.smallBtn}
                 dirty={note !== (report?.note ?? '')}

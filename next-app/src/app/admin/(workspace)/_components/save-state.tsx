@@ -39,12 +39,31 @@ export function useSavedSnapshot(draftKey: string): { dirty: boolean; markSaved:
 }
 
 /**
+ * The same gate, keeping the saved DRAFT itself (not just its key) so the form
+ * can put it back — Patrick, 2026-08-24: "a cancel option, which abandons all
+ * changes and reverts the form to its previous saved state". `saved` is the
+ * object as of mount / the last markSaved(); a discard handler applies it to
+ * the form's setters.
+ */
+export function useDraftSnapshot<T>(draft: T): { dirty: boolean; markSaved: () => void; saved: T } {
+  const [saved, setSaved] = useState(() => ({ key: JSON.stringify(draft), value: draft }));
+  const draftKey = JSON.stringify(draft);
+  const markSaved = useCallback(() => setSaved({ key: draftKey, value: draft }), [draftKey, draft]);
+  return { dirty: draftKey !== saved.key, markSaved, saved: saved.value };
+}
+
+/**
  * The same gate for an UNCONTROLLED form (one read via `new FormData(form)` on
  * submit): the form's entries are snapshotted on mount, re-read on every
  * input/change event, and compared. The saved snapshot lives in a ref that is
  * only touched in effects and event handlers — never read during render.
  */
-export function useFormDirty(ref: RefObject<HTMLFormElement | null>): { dirty: boolean; markSaved: () => void } {
+export function useFormDirty(ref: RefObject<HTMLFormElement | null>): {
+  dirty: boolean;
+  markSaved: () => void;
+  /** Discard: back to what was last saved (form.reset() against re-synced defaults). */
+  reset: () => void;
+} {
   const saved = useRef<string | null>(null);
   const [dirty, setDirty] = useState(false);
   useEffect(() => {
@@ -64,7 +83,72 @@ export function useFormDirty(ref: RefObject<HTMLFormElement | null>): { dirty: b
     if (form) saved.current = serializeForm(form);
     setDirty(false);
   }, [ref]);
-  return { dirty, markSaved };
+  // Not form.reset(): that restores DEFAULTS, which React re-syncs from the
+  // defaultValue props on every render — so Discard would fall back to what the
+  // page loaded with, not to the last save. Write the saved entries back instead.
+  const reset = useCallback(() => {
+    const form = ref.current;
+    if (form && saved.current) restoreForm(form, saved.current);
+    setDirty(false);
+  }, [ref]);
+  return { dirty, markSaved, reset };
+}
+
+function restoreForm(form: HTMLFormElement, serialized: string) {
+  const byName = new Map<string, string[]>();
+  for (const [k, v] of JSON.parse(serialized) as [string, string][]) {
+    byName.set(k, [...(byName.get(k) ?? []), v]);
+  }
+  for (const el of Array.from(form.elements)) {
+    if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement)) continue;
+    if (!el.name) continue;
+    const vals = byName.get(el.name) ?? [];
+    if (el instanceof HTMLInputElement && (el.type === 'checkbox' || el.type === 'radio')) {
+      el.checked = vals.includes(el.value);
+    } else if (el instanceof HTMLInputElement && el.type === 'file') {
+      continue;
+    } else if (el instanceof HTMLSelectElement && el.multiple) {
+      for (const o of Array.from(el.options)) o.selected = vals.includes(o.value);
+    } else {
+      el.value = vals[0] ?? '';
+    }
+  }
+}
+
+/**
+ * The Discard half of the standard (Patrick, 2026-08-24: "a cancel option,
+ * which abandons all changes and reverts the form to its previous saved
+ * state"). Greyed — never hidden — when there is nothing to discard. The
+ * caller's onClick puts the saved draft back (useDraftSnapshot().saved) or
+ * calls useFormDirty().reset(). Dialogs and inline row editors keep their
+ * Cancel: closing IS discarding there.
+ */
+export function DiscardButton({
+  dirty,
+  pending = false,
+  label = 'Discard changes',
+  className,
+  onClick
+}: {
+  dirty: boolean;
+  pending?: boolean;
+  label?: string;
+  className?: string;
+  onClick: () => void;
+}) {
+  const disabled = !dirty || pending;
+  return (
+    <button
+      type="button"
+      className={`${styles.discardBtn}${className ? ` ${className}` : ''}`}
+      disabled={disabled}
+      title={!dirty ? 'Nothing to discard' : undefined}
+      aria-disabled={disabled || undefined}
+      onClick={onClick}
+    >
+      {label}
+    </button>
+  );
 }
 
 function serializeForm(form: HTMLFormElement): string {

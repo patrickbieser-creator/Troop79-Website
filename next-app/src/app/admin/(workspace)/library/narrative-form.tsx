@@ -9,7 +9,7 @@
  * "Saving changes…" overlay covers the round trip.
  */
 import { useRef, useState } from 'react';
-import { SaveButton, SaveFeedback, useFormDirty } from '../_components/save-state';
+import { DiscardButton, SaveButton, SaveFeedback, useFormDirty } from '../_components/save-state';
 
 export function NarrativeForm({
   action,
@@ -24,11 +24,12 @@ export function NarrativeForm({
   children: React.ReactNode;
 }) {
   const ref = useRef<HTMLFormElement>(null);
-  const { dirty } = useFormDirty(ref);
+  const { dirty, reset } = useFormDirty(ref);
   const [submitting, setSubmitting] = useState(false);
   return (
     <form ref={ref} action={action} className={className} onSubmit={() => setSubmitting(true)}>
       {children}
+      <DiscardButton dirty={dirty} pending={submitting} onClick={reset} />
       <SaveButton type="submit" className={buttonClassName} dirty={dirty} pending={submitting} dirtyLabel="Save narrative" />
       <SaveFeedback phase={submitting ? 'saving' : 'idle'} />
     </form>

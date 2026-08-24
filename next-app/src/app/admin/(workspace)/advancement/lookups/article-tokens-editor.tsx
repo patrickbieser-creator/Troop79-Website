@@ -14,7 +14,7 @@
  */
 
 import { useState, useTransition } from 'react';
-import { SaveButton, SaveFeedback, useSavePhase } from '../../_components/save-state';
+import { DiscardButton, SaveButton, SaveFeedback, useDraftSnapshot, useSavePhase } from '../../_components/save-state';
 import { ARTICLE_TOKENS, isValidTokenValue, type TokenValues } from '@/lib/article-tokens';
 import styles from './lookups.module.css';
 import { Notice } from '../../_components/notice';
@@ -46,6 +46,7 @@ export function ArticleTokensEditor({
   }
 
   const feedback = useSavePhase();
+  const snap = useDraftSnapshot(draft); // Discard target: the last save
 
   function save() {
     setErr(null);
@@ -60,6 +61,7 @@ export function ArticleTokensEditor({
         setErr(res.error ?? 'Save failed');
         return;
       }
+      snap.markSaved();
       feedback.done();
       setSaved(true);
     });
@@ -135,6 +137,7 @@ export function ArticleTokensEditor({
         >
           Reset to defaults
         </button>
+        <DiscardButton dirty={snap.dirty} pending={isPending} onClick={() => { setDraft(snap.saved); setErr(null); }} />
         <SaveButton
           className={styles.editSaveBtn}
           dirty={dirty}

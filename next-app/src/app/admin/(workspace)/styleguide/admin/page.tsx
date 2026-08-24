@@ -878,7 +878,7 @@ export default function StyleguidePage() {
           <Specimen
             label="Save standard — shared SaveButton + useSavedSnapshot + SaveFeedback"
             canonical
-            note="Patrick's rule (2026-08-23, rolled out across the workstation 2026-08-24): every Save on an already-saved thing is DISABLED until the draft differs from what is saved, reads “Saved” when clean and “Save changes” when dirty (a first-ever save keeps its own verb, e.g. Add Entry), shows “Saving changes…” the moment it submits and a brief “Done” when it lands, and is greyed — never hidden — when it would do nothing. Import from _components/save-state; pass the screen's own primary class so behaviour is shared and paint stays local. Public twin: events/[id]/save-feedback.tsx (no cross-firewall import)."
+            note="Patrick's rule (2026-08-23, rolled out across the workstation 2026-08-24): every Save on an already-saved thing is DISABLED until the draft differs from what is saved, reads “Saved” when clean and “Save changes” when dirty (a first-ever save keeps its own verb, e.g. Add Entry), shows “Saving changes…” the moment it submits and a brief “Done” when it lands, is greyed — never hidden — when it would do nothing, and (2026-08-24, Patrick) has a Discard changes beside it that returns the form to the LAST SAVED state; dialogs and inline row editors satisfy that with Cancel. Import from _components/save-state; pass the screen's own primary class so behaviour is shared and paint stays local. Public twin: events/[id]/save-feedback.tsx (no cross-firewall import)."
           >
             <SaveDemo />
           </Specimen>

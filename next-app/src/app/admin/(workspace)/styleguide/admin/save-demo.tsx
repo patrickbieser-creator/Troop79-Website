@@ -8,11 +8,11 @@
  */
 import { useState } from 'react';
 import sg from './styleguide.module.css';
-import { SaveButton, SaveFeedback, useSavedSnapshot, useSavePhase } from '../../_components/save-state';
+import { DiscardButton, SaveButton, SaveFeedback, useDraftSnapshot, useSavePhase } from '../../_components/save-state';
 
 export function SaveDemo() {
   const [title, setTitle] = useState('Fall Camporee');
-  const { dirty, markSaved } = useSavedSnapshot(title);
+  const { dirty, markSaved, saved } = useDraftSnapshot(title);
   const feedback = useSavePhase();
   return (
     <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -22,6 +22,7 @@ export function SaveDemo() {
         onChange={(e) => setTitle(e.target.value)}
         style={{ minWidth: '14em' }}
       />
+      <DiscardButton dirty={dirty} onClick={() => setTitle(saved)} />
       <SaveButton
         className={sg.demoBtn}
         dirty={dirty}

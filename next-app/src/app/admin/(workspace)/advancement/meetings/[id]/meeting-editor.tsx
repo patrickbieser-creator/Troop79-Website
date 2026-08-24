@@ -9,7 +9,7 @@ import styles from '../meetings.module.css';
 import { Badge } from '../../../_components/badge';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../../_components/dialog';
 import { Notice } from '../../../_components/notice';
-import { SaveButton, SaveFeedback, useFormDirty, useSavePhase } from '../../../_components/save-state';
+import { DiscardButton, SaveButton, SaveFeedback, useFormDirty, useSavePhase } from '../../../_components/save-state';
 
 type ActionResult = { ok: boolean; error?: string };
 
@@ -231,6 +231,7 @@ export function MeetingEditor({
           >
             <div className={styles.panelTitle}>
               <span>Logistics</span>
+              <DiscardButton dirty={logistics.dirty} pending={busyKey === 'logistics'} onClick={logistics.reset} />
               <SaveButton
                 type="submit"
                 className={styles.editBtn}

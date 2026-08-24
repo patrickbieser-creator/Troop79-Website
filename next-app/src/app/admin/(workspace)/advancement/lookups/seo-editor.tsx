@@ -17,7 +17,7 @@
  */
 
 import { useState, useTransition } from 'react';
-import { SaveButton, SaveFeedback, useSavedSnapshot, useSavePhase } from '../../_components/save-state';
+import { DiscardButton, SaveButton, SaveFeedback, useDraftSnapshot, useSavePhase } from '../../_components/save-state';
 import { SEO_KEYS, SEO_DEFAULTS, seoFlagOn, type SeoSettingKey } from '@/lib/seo';
 import styles from './lookups.module.css';
 import { Notice } from '../../_components/notice';
@@ -37,7 +37,7 @@ export function SeoEditor({
   const [saved, setSaved] = useState(false);
   const [isPending, startTransition] = useTransition();
   // Save standard (2026-08-24): off and "Saved" until a value differs.
-  const { dirty, markSaved } = useSavedSnapshot(JSON.stringify(draft));
+  const { dirty, markSaved, saved: savedDraft } = useDraftSnapshot(draft);
   const feedback = useSavePhase();
 
   function set(key: SeoSettingKey, value: string) {
@@ -139,6 +139,7 @@ export function SeoEditor({
         </Notice>
       )}
       <div className={styles.editActions}>
+        <DiscardButton dirty={dirty} pending={isPending} onClick={() => { setDraft(savedDraft); setErr(null); }} />
         <SaveButton
           className={styles.editSaveBtn}
           dirty={dirty}

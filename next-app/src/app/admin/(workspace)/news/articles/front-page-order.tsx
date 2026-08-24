@@ -12,7 +12,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { SortableList, type SortableItem } from '../../_components/sortable-list';
 import { Notice } from '../../_components/notice';
-import { SaveButton, SaveFeedback, useSavedSnapshot, useSavePhase } from '../../_components/save-state';
+import { DiscardButton, SaveButton, SaveFeedback, useDraftSnapshot, useSavePhase } from '../../_components/save-state';
 import { saveFrontPageOrder } from './actions';
 import styles from './articles.module.css';
 
@@ -27,7 +27,7 @@ export function FrontPageOrder({ ordered, available }: { ordered: FrontPageItem[
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
   // Save standard (2026-08-24): dirty = the order differs from what is saved.
-  const { dirty, markSaved } = useSavedSnapshot(items.map((i) => `${i.kind}:${i.id}`).join(','));
+  const { dirty, markSaved, saved } = useDraftSnapshot(items);
   const feedback = useSavePhase();
 
   function change(next: FrontPageItem[]) {
@@ -55,6 +55,7 @@ export function FrontPageOrder({ ordered, available }: { ordered: FrontPageItem[
       <div className={styles.frontPageHead}>
         <h2 className={styles.frontPageTitle}>Front page order</h2>
         <div className={styles.frontPageActions}>
+          <DiscardButton dirty={dirty} pending={pending} onClick={() => setItems(saved)} />
           <SaveButton
             className={styles.frontPageSave}
             dirty={dirty}

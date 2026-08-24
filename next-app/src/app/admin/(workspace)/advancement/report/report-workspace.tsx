@@ -15,7 +15,7 @@ import {
   type AdvancementReportRow
 } from './actions';
 import styles from './report.module.css';
-import { SaveButton, SaveFeedback, useSavePhase } from '../../_components/save-state';
+import { DiscardButton, SaveButton, SaveFeedback, useSavePhase } from '../../_components/save-state';
 import { fmtDate, fmtRange } from '@/lib/format-date';
 import { Badge } from '../../_components/badge';
 import { TabStrip } from '../../_components/tab-strip';
@@ -175,6 +175,7 @@ export function ReportWorkspace({
                 placeholder="Optional — e.g. “Light week, most of the troop was traveling.”"
                 onChange={(e) => setNote(e.target.value)}
               />
+              <DiscardButton dirty={note !== (report?.note ?? '')} pending={disabled} onClick={() => setNote(report?.note ?? '')} />
               <SaveButton
                 className={styles.smallBtn}
                 dirty={note !== (report?.note ?? '')}
