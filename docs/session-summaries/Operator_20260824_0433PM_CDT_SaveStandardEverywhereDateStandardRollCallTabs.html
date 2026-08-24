@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Session Summary — Save standard everywhere, one date standard, Roll Call tabs (2026-08-24)</title>
+<style>
+  :root { --nw-teal: #1e3a4a; --nw-green: #3d5a3e; --paper: #faf6ef; --ink: #2a2a2a; --meta: #6d7580; --line: #e2e4e8; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 15px; color: var(--ink); background: var(--paper); line-height: 1.55; }
+  .header { background: var(--nw-teal); color: #fff; padding: 40px 64px; }
+  .header .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.6); margin-bottom: 8px; }
+  .header h1 { font-size: 30px; font-weight: 600; margin-bottom: 6px; }
+  .header .sub { font-size: 14px; color: rgba(255,255,255,.75); }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 36px 24px 64px; }
+  h2 { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--nw-green); border-bottom: 2px solid var(--nw-green); padding-bottom: 6px; margin: 34px 0 14px; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .metric { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+  .metric .num { font-size: 26px; font-weight: 700; color: var(--nw-teal); }
+  .metric .lbl { font-size: 12px; color: var(--meta); margin-top: 2px; }
+  ul { padding-left: 22px; } li { margin-bottom: 9px; } p { margin-bottom: 10px; }
+  .card { background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--nw-green); border-radius: 4px; padding: 14px 18px; margin-bottom: 12px; }
+  .card .t { font-weight: 700; color: var(--nw-teal); }
+  table { width: 100%; border-collapse: collapse; background: #fff; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--meta); }
+  .footer { text-align: center; font-size: 12px; color: var(--meta); padding: 24px; border-top: 1px solid var(--line); margin-top: 40px; }
+  code { background: #f0f1f3; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="eyebrow">Troop79-Website &middot; Operator session summary &middot; 24 Aug 2026 &middot; 4:33 PM CDT</div>
+  <h1>The Save standard everywhere (with Discard), one date standard, Roll Call tabs</h1>
+  <p class="sub">Twenty-fourth session. Seventeen releases (v1.87.6 &rarr; v1.88.9), every one gated and deployed; two cross-cutting standards written into the codebase and enforced; seven backlog items closed.</p>
+</div>
+<div class="wrap">
+  <h2>At a glance</h2>
+  <div class="metrics">
+    <div class="metric"><div class="num">17</div><div class="lbl">releases deployed (v1.87.6&ndash;v1.88.9)</div></div>
+    <div class="metric"><div class="num">1271</div><div class="lbl">tests (from 1226)</div></div>
+    <div class="metric"><div class="num">6</div><div class="lbl">decisions (D-221&ndash;D-226)</div></div>
+    <div class="metric"><div class="num">23</div><div class="lbl">admin forms on the Save standard</div></div>
+    <div class="metric"><div class="num">~95</div><div class="lbl">date renders moved to one standard</div></div>
+    <div class="metric"><div class="num">0</div><div class="lbl">schema changes</div></div>
+  </div>
+
+  <h2>How it went</h2>
+  <p>Patrick worked the resume list top-down &mdash; the Remove note, the host-adult sentence, the June 28 calendar fix, the MB Progress refactor, the news editor gaps &mdash; then asked for two sweeps: make yesterday&rsquo;s Save behaviour universal, and find every date format on the site. Both became full standards rather than patches: an audit first (65 save controls; 21 date formats across ~95 sites), a plan file, shared pieces with tests, then area-by-area commits so nothing big landed at once. The date sweep was fanned out to three parallel agents by file partition and gated once.</p>
+  <p>Late in the day a 70-line partial implementation of Discard appeared uncommitted in the tree from an unknown second job. Rather than fight it, its hook was kept and the rest built around it. One lesson recorded: React 19 re-syncs <code>defaultValue</code> every render, so an uncontrolled form&rsquo;s Discard must write saved values back by field name, not call <code>form.reset()</code>.</p>
+
+  <h2>What shipped</h2>
+  <div class="card"><div class="t">Save standard rolled out to every admin edit form &mdash; v1.88.0 &rarr; v1.88.6, Discard in v1.88.8</div>
+    <p>Shared <code>_components/save-state</code>: dirty gate (controlled and uncontrolled forms), &ldquo;Save changes&rdquo; / &ldquo;Saved&rdquo;, Saving&hellip; &rarr; Done, and now &ldquo;Discard changes&rdquo; that returns to the last saved state. Applied to Calendar, the Builder editors, roster dialogs, News/Media, every Lookups editor, scout/person records, meetings, finance, notes, the patrol board and the Library narrative. Create-once forms and one-click actions deliberately left alone. Rule and pieces documented in <code>AGENTS.md</code>; live demo on the styleguide.</p></div>
+  <div class="card"><div class="t">One date display standard &mdash; v1.88.1, v1.88.7</div>
+    <p><code>lib/format-date</code>, Central-pinned, with calendar-day and timestamp inputs handled explicitly. Fixed genuinely wrong days: the public sign-up deadline (and in the reminder email), Library completed dates, and print pages stamping tomorrow after 7 PM. Retired 36 raw ISO renders and four slash variants; &ldquo;today&rdquo; defaults in finance and roles now use Milwaukee&rsquo;s today. An ESLint rule keeps it that way.</p></div>
+  <div class="card"><div class="t">Roll Call: Current / Past tabs &mdash; v1.88.9</div>
+    <p>Current is today and later with today on top; Past is most recent first. The year filter only offers years the view has and lets go of a stale choice on switch.</p></div>
+  <div class="card"><div class="t">Smaller items &mdash; v1.87.6 &rarr; v1.87.9</div>
+    <p>Remove explains it frees the seat but is not a ban; the Guests lede names the responsible adult; calendar entry 18 retitled &ldquo;No Troop Meeting&rdquo; in production; admin MB Progress adopts the Library&rsquo;s tested fold; the news editor can backdate a post and credit a scout.</p></div>
+
+  <h2>Decisions</h2>
+  <table>
+    <tr><th>ID</th><th>Decision</th></tr>
+    <tr><td>D-221</td><td>Roster Remove is a soft, undoable step &mdash; not a ban. Discipline happens outside the site.</td></tr>
+    <tr><td>D-222</td><td>The admin Save standard lives in shared <code>save-state</code> pieces; scope is edit forms only.</td></tr>
+    <tr><td>D-223</td><td>Discard returns to the last saved state; dialogs and row editors satisfy it with Cancel.</td></tr>
+    <tr><td>D-224</td><td>One Central-pinned date standard in <code>lib/format-date</code>; ISO is data, never display; ESLint-enforced.</td></tr>
+    <tr><td>D-225</td><td>News backdating semantics and an editable byline role.</td></tr>
+    <tr><td>D-226</td><td>Roll Call Current/Past split on Central today; per-view year filter. &ldquo;Junior Leader&rdquo; is just a patrol.</td></tr>
+  </table>
+
+  <h2>Next steps</h2>
+  <ul>
+    <li><strong>Production eyes-on</strong> for v1.87.6 &rarr; v1.88.9 &mdash; none of today&rsquo;s commits were browser-verified; the gate was lint / typecheck / tests / build.</li>
+    <li><strong>Shared admin Button, then FormPanel</strong> &mdash; 113 button class declarations across 32 stylesheets; place it in <code>src/app/admin/_components/</code> so print pages can import it.</li>
+    <li>B-004 password rotation (still open); <code>.gitattributes</code> for the CRLF noise; retire <code>lib/dates</code> formatters.</li>
+  </ul>
+</div>
+<div class="footer">Troop 79 Website &middot; Operator &middot; 2026-08-24</div>
+</body>
+</html>
