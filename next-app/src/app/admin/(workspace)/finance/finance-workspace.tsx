@@ -18,6 +18,7 @@
  */
 
 import { useEffect, useRef, useState, useTransition } from 'react';
+import { SaveFeedback, useSavePhase } from '../_components/save-state';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -118,6 +119,7 @@ export function FinanceWorkspace({
   kinds: TransactionKindRow[];
 }) {
   const [pending, start] = useTransition();
+  const editFeedback = useSavePhase(); // Save standard: Done flash after the edit dialog closes
   const [error, setError] = useState<string | null>(null);
   const [editingRow, setEditingRow] = useState<LedgerRow | null>(null);
   const router = useRouter();
@@ -545,19 +547,24 @@ export function FinanceWorkspace({
           kinds={kinds}
           pending={pending}
           onClose={() => setEditingRow(null)}
-          onSave={(input) =>
+          onSave={(input) => {
+            editFeedback.start();
             start(async () => {
               setError(null);
               const res = await editTransactionAction(input);
-              if (!res.ok) setError(res.error ?? 'Could not save changes.');
-              else {
+              if (!res.ok) {
+                editFeedback.fail();
+                setError(res.error ?? 'Could not save changes.');
+              } else {
                 setEditingRow(null);
+                editFeedback.done();
                 router.refresh();
               }
-            })
-          }
+            });
+          }}
         />
       )}
+      <SaveFeedback phase={editFeedback.phase} />
     </>
   );
 }

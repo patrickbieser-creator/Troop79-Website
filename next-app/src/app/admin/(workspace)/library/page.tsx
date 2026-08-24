@@ -55,6 +55,8 @@ import {
 } from './actions';
 import { ResourceEntryForm, type TargetOptionGroup } from './resource-entry-form';
 import { QuickAddResource } from './quick-add-resource';
+import { NarrativeForm } from './narrative-form';
+import { fmtDate } from '@/lib/format-date';
 import { TabStrip } from '../_components/tab-strip';
 import styles from './library.module.css';
 
@@ -973,7 +975,7 @@ function NarrativesTab({
       </form>
 
       {target && (
-        <form action={saveNarrativeAction} className={styles.narrForm}>
+        <NarrativeForm action={saveNarrativeAction} className={styles.narrForm} buttonClassName={styles.btnPrimary}>
           <input type="hidden" name="target" value={target} />
           <label className={`adminLabel ${styles.fieldLabel}`} htmlFor="narrative_md">
             Narrative for {(() => {
@@ -988,22 +990,14 @@ function NarrativesTab({
             defaultValue={existing?.narrative_md ?? ''}
             placeholder="This is the requirement scouts put off the longest — and the one they end up telling stories about…"
           />
-          <div className={styles.actionsRow}>
-            <button className={styles.btnPrimary} type="submit">
-              Save Narrative
-            </button>
-            {existing && (
+          {existing && (
+            <div className={styles.actionsRow}>
               <span className={styles.rowMeta}>
-                Last saved by {existing.updated_by ?? 'unknown'} ·{' '}
-                {new Date(existing.updated_at).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric'
-                })}
+                Last saved by {existing.updated_by ?? 'unknown'} · {fmtDate(existing.updated_at)}
               </span>
-            )}
-          </div>
-        </form>
+            </div>
+          )}
+        </NarrativeForm>
       )}
 
       {data.narratives.length > 0 && (

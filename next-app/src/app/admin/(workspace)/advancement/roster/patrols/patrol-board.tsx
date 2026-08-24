@@ -35,6 +35,7 @@ import { gradeFromGradYear, gradeLabel } from '@/lib/demographics';
 // name. Shared with the printable roster rather than written twice.
 import { rankLabel, type RosterPrintRank } from '@/lib/roster-print';
 import { Notice } from '../../../_components/notice';
+import { SaveButton, SaveFeedback, useSavePhase } from '../../../_components/save-state';
 import styles from './patrols.module.css';
 
 type ActionResult = { ok: boolean; error?: string; changed?: number };
@@ -59,6 +60,7 @@ export function PatrolBoard({
   const [err, setErr] = useState<string | null>(null);
   const [saved, setSaved] = useState<number | null>(null);
   const [isPending, startTransition] = useTransition();
+  const feedback = useSavePhase(); // Save standard (2026-08-24)
 
   const rows = useMemo(() => assignableScouts(scouts), [scouts]);
   const known = useMemo(() => distinctPatrols(scouts), [scouts]);
@@ -127,15 +129,18 @@ export function PatrolBoard({
   function save() {
     setErr(null);
     setSaved(null);
+    feedback.start();
     startTransition(async () => {
       const res = await onSave(draft);
       if (!res.ok) {
+        feedback.fail();
         setErr(res.error ?? 'Save failed');
         return;
       }
       setSaved(res.changed ?? 0);
       setDraft({});
       setSelected(new Set());
+      feedback.done();
     });
   }
 
@@ -303,14 +308,14 @@ export function PatrolBoard({
         >
           Discard
         </button>
-        <button
-          type="button"
+        <SaveButton
           className={styles.saveBtn}
+          dirty={changes.length > 0}
+          pending={isPending}
+          dirtyLabel="Save patrol assignments"
           onClick={save}
-          disabled={changes.length === 0 || isPending}
-        >
-          {isPending ? 'Saving…' : 'Save patrol assignments'}
-        </button>
+        />
+        <SaveFeedback phase={feedback.phase} />
       </div>
     </div>
   );

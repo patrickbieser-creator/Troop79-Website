@@ -12,6 +12,7 @@ import { initialsFor } from '@/lib/initials';
 import { DatePickerField } from '../../_components/date-picker-field';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
 import { Notice } from '../../_components/notice';
+import { SaveButton, SaveFeedback, useSavedSnapshot, useSavePhase } from '../../_components/save-state';
 import styles from './ledger.module.css';
 
 interface Props {
@@ -158,6 +159,9 @@ function EditForm({
   const [notes, setNotes] = useState(row.notes ?? '');
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  // Save standard (2026-08-24): the dialog's draft against the row it opened with.
+  const { dirty } = useSavedSnapshot(JSON.stringify({ date, scoutId, kind, code, label, by, qty, unit, notes }));
+  const feedback = useSavePhase();
 
   function submit() {
     setErr(null);
@@ -172,13 +176,15 @@ function EditForm({
     fd.set('qty', qty);
     fd.set('unit', unit);
     fd.set('notes', notes);
+    feedback.start();
     startTransition(async () => {
       const res = await updateLedgerEntry(fd);
       if (!res.ok) {
+        feedback.fail();
         setErr(res.error ?? 'Save failed');
         return;
       }
-      onSaved();
+      feedback.doneThen(onSaved);
     });
   }
 
@@ -305,14 +311,13 @@ function EditForm({
         >
           Cancel
         </button>
-        <button
-          type="button"
+        <SaveButton
           className={styles.editSaveBtn}
+          dirty={dirty}
+          pending={isPending}
           onClick={submit}
-          disabled={isPending}
-        >
-          {isPending ? 'Saving…' : 'Save changes'}
-        </button>
+        />
+        <SaveFeedback phase={feedback.phase} />
       </DialogActions>
     </>
   );

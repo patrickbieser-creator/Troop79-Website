@@ -16,6 +16,7 @@ import {
   type CourtOfHonorRow
 } from './actions';
 import styles from './court-of-honor.module.css';
+import { SaveButton, SaveFeedback, useSavePhase } from '../../_components/save-state';
 import { Badge } from '../../_components/badge';
 import { TabStrip } from '../../_components/tab-strip';
 import { ActionsMenu } from '../../_components/actions-menu';
@@ -45,6 +46,7 @@ export function CourtOfHonorWorkspace({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
+  const feedback = useSavePhase(); // Save standard (2026-08-24)
   const [copied, setCopied] = useState(false);
 
   const scoutView = useMemo(() => (report ? buildScoutView(report.contentJson) : []), [report]);
@@ -77,16 +79,19 @@ export function CourtOfHonorWorkspace({
     setError(null);
     setSaved(null);
     setBusy(true);
+    feedback.start();
     fn()
       .then((res) => {
         if (!res.ok) {
+          feedback.fail();
           setError(res.error ?? 'Something went wrong.');
           return;
         }
         if (res.report) setReport(res.report);
         setSaved(okMessage);
+        feedback.done();
       })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Something went wrong.'))
+      .catch((e) => { feedback.fail(); setError(e instanceof Error ? e.message : 'Something went wrong.'); })
       .finally(() => setBusy(false));
   }
 
@@ -182,9 +187,14 @@ export function CourtOfHonorWorkspace({
                 placeholder="Optional — e.g. “Held at Brookfield East.”"
                 onChange={(e) => setNote(e.target.value)}
               />
-              <button type="button" className={styles.smallBtn} onClick={saveNote} disabled={disabled}>
-                Save note
-              </button>
+              <SaveButton
+                className={styles.smallBtn}
+                dirty={note !== (report?.note ?? '')}
+                pending={disabled}
+                dirtyLabel="Save note"
+                onClick={saveNote}
+              />
+              <SaveFeedback phase={feedback.phase} />
             </section>
 
             <section className={styles.card}>

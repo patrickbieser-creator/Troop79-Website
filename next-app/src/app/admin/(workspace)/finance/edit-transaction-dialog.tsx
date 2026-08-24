@@ -18,6 +18,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { SaveButton, useSavedSnapshot } from '../_components/save-state';
 import {
   ACCOUNTS,
   TRANSACTION_METHODS,
@@ -121,6 +122,10 @@ function EditTransactionForm({
   const [personId, setPersonId] = useState(row.person_id ? String(row.person_id) : '');
   const [memo, setMemo] = useState(row.memo ?? '');
   const [activity, setActivity] = useState(row.activity_label ?? '');
+  // Save standard (2026-08-24): the whole draft against the row it opened with.
+  const { dirty } = useSavedSnapshot(
+    JSON.stringify({ occurredOn, account, amountText, sign, kind, method, personId, memo, activity })
+  );
 
   const lastReconciled = reconciliation.find((r) => r.account === account)?.lastReconciledAt ?? null;
   const staleWarning = lastReconciled && row.occurred_on <= lastReconciled;
@@ -243,9 +248,14 @@ function EditTransactionForm({
         <button type="button" className={styles.pagerBtn} onClick={onClose}>
           Cancel
         </button>
-        <button type="submit" className={styles.pagerBtn} disabled={pending}>
-          Save changes
-        </button>
+        <SaveButton
+          type="submit"
+          className={styles.pagerBtn}
+          dirty={dirty}
+          pending={pending}
+          blocked={!(Number(amountText) > 0)}
+          blockedReason="Amount must be more than zero"
+        />
       </div>
     </form>
     </DialogBody>

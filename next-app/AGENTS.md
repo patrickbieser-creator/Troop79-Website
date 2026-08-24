@@ -95,5 +95,14 @@ already saved follows one standard** — no exceptions, public or admin:
 
 Reference implementations: `src/app/(public)/events/[id]/person-first-form.tsx` (draftKey snapshot)
 and `slot-first-form.tsx` (claims/comments/guests keys). The Guests section's "locked until someone
-attends" placeholder is the same principle applied to a section. An audit of every other form
-against this rule is on the backlog.
+attends" placeholder is the same principle applied to a section.
+
+**Admin: use the shared pieces, don't hand-roll** (rolled out across every admin edit form
+2026-08-24, v1.88.0–v1.88.6 — `Plans/Save-Button-Rollout.md` has the audit):
+`src/app/admin/(workspace)/_components/save-state.tsx` — `useSavedSnapshot(draftKey)` for
+controlled forms, `useFormDirty(formRef)` for uncontrolled `<form>`s, `SaveButton` (pass the
+screen's own primary class; `isNew`/`newLabel` for a first save, `blocked`/`blockedReason` for a
+required-field gate), `useSavePhase` + `SaveFeedback` for Saving… → Done (`doneThen(onClose)` in
+dialogs so the Done shows before the dialog closes). Live demo: /admin/styleguide/admin → Save
+Buttons. Create-once forms and one-click actions (Approve, Grant, Accept…) are NOT dirty-gated —
+"anything filled in" and the click itself are their gates.
