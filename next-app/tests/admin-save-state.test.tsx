@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   SaveButton,
   SaveFeedback,
   useSavedSnapshot,
+  useFormDirty,
   useSavePhase
 } from '../src/app/admin/(workspace)/_components/save-state';
 
@@ -116,5 +117,34 @@ describe('useSavePhase.doneThen — dialogs flash Done, then close', () => {
     });
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('status')).toBeNull();
+  });
+});
+
+describe('useFormDirty — uncontrolled forms snapshot their FormData', () => {
+  function FormHarness() {
+    const ref = useRef<HTMLFormElement>(null);
+    const { dirty, markSaved } = useFormDirty(ref);
+    return (
+      <form ref={ref}>
+        <input aria-label="Where" name="where" defaultValue="Church hall" />
+        <SaveButton dirty={dirty} pending={false} onClick={markSaved} />
+      </form>
+    );
+  }
+  it('CleanOnMount_DirtyAfterTyping_CleanAgainAfterMarkSaved', async () => {
+    const user = userEvent.setup();
+    render(<FormHarness />);
+    expect((screen.getByRole('button', { name: 'Saved' }) as HTMLButtonElement).disabled).toBe(true);
+    await user.type(screen.getByLabelText('Where'), '!');
+    expect((screen.getByRole('button', { name: 'Save changes' }) as HTMLButtonElement).disabled).toBe(false);
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect((screen.getByRole('button', { name: 'Saved' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+  it('TypingBackToTheOriginal_IsCleanAgain', async () => {
+    const user = userEvent.setup();
+    render(<FormHarness />);
+    await user.type(screen.getByLabelText('Where'), '!');
+    await user.keyboard('{Backspace}');
+    expect(screen.getByRole('button', { name: 'Saved' })).toBeTruthy();
   });
 });

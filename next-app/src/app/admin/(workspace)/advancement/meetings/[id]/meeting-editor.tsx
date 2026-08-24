@@ -9,6 +9,7 @@ import styles from '../meetings.module.css';
 import { Badge } from '../../../_components/badge';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../../_components/dialog';
 import { Notice } from '../../../_components/notice';
+import { SaveButton, SaveFeedback, useFormDirty, useSavePhase } from '../../../_components/save-state';
 
 type ActionResult = { ok: boolean; error?: string };
 
@@ -65,6 +66,10 @@ export function MeetingEditor({
   /** The logistics form, so Publish can commit it before flipping status. */
   const formRef = useRef<HTMLFormElement>(null);
   const [, startTransition] = useTransition();
+  // Save standard (2026-08-24): the logistics form is uncontrolled, so its
+  // FormData is the draft; Saving… → Done on the panel.
+  const logistics = useFormDirty(formRef);
+  const feedback = useSavePhase();
 
   const preMeeting = sessions.filter((s) => s.section === 'pre_meeting');
   const agenda = sessions.filter((s) => s.section === 'agenda');
@@ -95,7 +100,20 @@ export function MeetingEditor({
   function saveLogistics(form: HTMLFormElement) {
     const fd = new FormData(form);
     fd.set('id', String(meeting.id));
-    run('logistics', () => onUpdateMeeting(fd), () => setSavedNote(true));
+    feedback.start();
+    run(
+      'logistics',
+      async () => {
+        const res = await onUpdateMeeting(fd);
+        if (!res.ok) feedback.fail();
+        return res;
+      },
+      () => {
+        logistics.markSaved();
+        feedback.done();
+        setSavedNote(true);
+      }
+    );
   }
 
   /**
@@ -213,9 +231,14 @@ export function MeetingEditor({
           >
             <div className={styles.panelTitle}>
               <span>Logistics</span>
-              <button type="submit" className={styles.editBtn} disabled={busyKey === 'logistics'}>
-                {busyKey === 'logistics' ? 'Saving…' : 'Save logistics'}
-              </button>
+              <SaveButton
+                type="submit"
+                className={styles.editBtn}
+                dirty={logistics.dirty}
+                pending={busyKey === 'logistics'}
+                dirtyLabel="Save logistics"
+              />
+              <SaveFeedback phase={feedback.phase} />
             </div>
             <div className={styles.logisticsGrid}>
               {/* The date belongs to the calendar entry now. Editing it from
@@ -503,6 +526,8 @@ function SessionForm({
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
+  const { dirty } = useFormDirty(formRef);
+  const feedback = useSavePhase();
 
   function submit() {
     const form = formRef.current;
@@ -511,13 +536,15 @@ function SessionForm({
     const fd = new FormData(form);
     fd.set('meeting_id', String(meetingId));
     if (row) fd.set('id', String(row.id));
+    feedback.start();
     startTransition(async () => {
       const res = isNew ? await onCreate(fd) : await onUpdate(fd);
       if (!res.ok) {
+        feedback.fail();
         setErr(res.error ?? 'Save failed.');
         return;
       }
-      onClose();
+      feedback.doneThen(onClose);
     });
   }
 
@@ -612,9 +639,15 @@ function SessionForm({
         <button type="button" className={styles.editBtn} onClick={onClose} disabled={isPending}>
           Cancel
         </button>
-        <button type="button" className={styles.editSaveBtn} onClick={submit} disabled={isPending}>
-          {isPending ? 'Saving…' : isNew ? 'Add item' : 'Save changes'}
-        </button>
+        <SaveButton
+          className={styles.editSaveBtn}
+          dirty={dirty}
+          pending={isPending}
+          isNew={isNew}
+          newLabel="Add item"
+          onClick={submit}
+        />
+        <SaveFeedback phase={feedback.phase} />
       </DialogActions>
     </form>
   );

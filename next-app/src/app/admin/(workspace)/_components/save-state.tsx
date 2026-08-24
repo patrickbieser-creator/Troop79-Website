@@ -29,13 +29,48 @@
  * Canonical rendering: /admin/styleguide/admin → "Save buttons".
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import styles from './save-state.module.css';
 
 export function useSavedSnapshot(draftKey: string): { dirty: boolean; markSaved: () => void } {
   const [savedKey, setSavedKey] = useState(() => draftKey);
   const markSaved = useCallback(() => setSavedKey(draftKey), [draftKey]);
   return { dirty: draftKey !== savedKey, markSaved };
+}
+
+/**
+ * The same gate for an UNCONTROLLED form (one read via `new FormData(form)` on
+ * submit): the form's entries are snapshotted on mount, re-read on every
+ * input/change event, and compared. The saved snapshot lives in a ref that is
+ * only touched in effects and event handlers — never read during render.
+ */
+export function useFormDirty(ref: RefObject<HTMLFormElement | null>): { dirty: boolean; markSaved: () => void } {
+  const saved = useRef<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+  useEffect(() => {
+    const form = ref.current;
+    if (!form) return;
+    saved.current = serializeForm(form);
+    const check = () => setDirty(serializeForm(form) !== saved.current);
+    form.addEventListener('input', check);
+    form.addEventListener('change', check);
+    return () => {
+      form.removeEventListener('input', check);
+      form.removeEventListener('change', check);
+    };
+  }, [ref]);
+  const markSaved = useCallback(() => {
+    const form = ref.current;
+    if (form) saved.current = serializeForm(form);
+    setDirty(false);
+  }, [ref]);
+  return { dirty, markSaved };
+}
+
+function serializeForm(form: HTMLFormElement): string {
+  const out: [string, string][] = [];
+  new FormData(form).forEach((v, k) => out.push([k, typeof v === 'string' ? v : v.name]));
+  return JSON.stringify(out);
 }
 
 export type SavePhase = 'idle' | 'saving' | 'done' | 'failed';

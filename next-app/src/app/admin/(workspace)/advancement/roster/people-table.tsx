@@ -28,6 +28,7 @@ import { AddButton } from '../../_components/add-button';
 import { SortHeader, useSortable } from '../../_components/use-sortable';
 import { Dialog } from '../../_components/dialog';
 import { Notice } from '../../_components/notice';
+import { SaveButton, SaveFeedback, useSavePhase } from '../../_components/save-state';
 import { ageOn, yptStatus } from '@/lib/demographics';
 import styles from './roster.module.css';
 // Field CSS converged onto lookups' family (D-139 answered, 2026-08-21) —
@@ -374,6 +375,7 @@ function PersonEditor({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
+  const feedback = useSavePhase(); // Save standard (2026-08-24): Saving… → Done on every act()
 
   // Demographics form — one state object rather than 14 separate fields, so
   // re-seeding it from a fresh `detail` read is a single setState call, not
@@ -452,14 +454,16 @@ function PersonEditor({
     setError(null);
     setSaved(null);
     setBusy(true);
+    feedback.start();
     fn()
       .then(async (res) => {
-        if (!res.ok) { setError(res.error ?? 'Something went wrong.'); return; }
+        if (!res.ok) { feedback.fail(); setError(res.error ?? 'Something went wrong.'); return; }
         setDetail(await getPersonDetail(person.person_id));
         setSaved(okMessage);
+        feedback.done();
         onChanged();
       })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Something went wrong.'))
+      .catch((e) => { feedback.fail(); setError(e instanceof Error ? e.message : 'Something went wrong.'); })
       .finally(() => setBusy(false));
   }
 
@@ -475,6 +479,7 @@ function PersonEditor({
     // native <dialog> gives all three for free. Mounted only while open, so
     // showModal() runs once on mount.
     <Dialog ref={dialogRef} className={styles.editorDialog} onClose={onClose}>
+      <SaveFeedback phase={feedback.phase} />
       <div className={styles.editorPanel}>
         <div className={styles.editorHead}>
           <div>
@@ -738,13 +743,15 @@ function PersonEditor({
             </label>
           </div>
           <div className={styles.inlineRow}>
-            <button
+            <SaveButton
               className={fields.editSaveBtn}
-              disabled={disabled || !demo.firstName.trim() || !demo.lastName.trim()}
+              dirty={JSON.stringify(demo) !== JSON.stringify(demoFromFields(detail.fields))}
+              pending={disabled}
+              dirtyLabel="Save demographics"
+              blocked={!demo.firstName.trim() || !demo.lastName.trim()}
+              blockedReason="First and last name are required"
               onClick={saveDemographics}
-            >
-              Save demographics
-            </button>
+            />
           </div>
         </section>
 
@@ -786,15 +793,17 @@ function PersonEditor({
                     disabled={disabled}
                     onChange={(e) => setRenameLabel(e.target.value)}
                   />
-                  <button
+                  <SaveButton
                     className={styles.smallBtn}
-                    disabled={disabled || !renameLabel.trim()}
+                    dirty={renameLabel.trim() !== (households.find((h) => h.id === householdId)?.label ?? '')}
+                    pending={disabled}
+                    dirtyLabel="Save name"
+                    blocked={!renameLabel.trim()}
+                    blockedReason="A name is required"
                     onClick={() =>
                       act(() => renameHousehold(householdId, renameLabel), 'Household renamed.')
                     }
-                  >
-                    Save name
-                  </button>
+                  />
                   <button className={styles.smallBtn} disabled={disabled} onClick={() => setRenaming(false)}>
                     Cancel
                   </button>

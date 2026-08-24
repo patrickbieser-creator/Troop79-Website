@@ -9,6 +9,7 @@ import { ageOn, gradeFromGradYear, gradeLabel, gradYearFromGrade } from '@/lib/d
 import type { EditableScoutField } from '@/lib/change-requests';
 import { DatePickerField } from '../../_components/date-picker-field';
 import { Notice } from '../../_components/notice';
+import { SaveButton, SaveFeedback, useSavedSnapshot, useSavePhase } from '../../_components/save-state';
 import styles from '../lookups/lookups.module.css';
 
 export interface ScoutRow {
@@ -118,6 +119,15 @@ export function ScoutForm({
   const [jlOverride, setJlOverride] = useState<string>(row?.junior_leader_override ?? '');
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  // Save standard (2026-08-24): every field the form sends, against what it opened with.
+  const { dirty } = useSavedSnapshot(
+    JSON.stringify({
+      id, firstName, lastName, patrol, bsaMemberId, active, inactiveReason, addr1, addr2, city,
+      stateAbbr, zip, phone, email, healthFormDate, thingsWeShouldKnow, birthdate, gender, school,
+      grade, swimClass, jlOverride
+    })
+  );
+  const feedback = useSavePhase();
 
   // Rail nav + scroll-spy (Plans/Admin-Nav-And-Consistency.md, Section 3) — purely
   // additive wayfinding. Nothing is ever hidden: every section stays in the DOM and
@@ -200,13 +210,15 @@ export function ScoutForm({
     // `parents` is deliberately NOT sent — createScout/updateScout no longer
     // read or handle it at all. Parents are relationships now, saved as they
     // are edited (see scout-relations.tsx / person-actions.ts).
+    feedback.start();
     startTransition(async () => {
       const res = isNew ? await createScout(fd) : await updateScout(fd);
       if (!res.ok) {
+        feedback.fail();
         setErr(res.error ?? 'Save failed');
         return;
       }
-      onClose();
+      feedback.doneThen(onClose);
     });
   }
 
@@ -611,20 +623,17 @@ export function ScoutForm({
         >
           Cancel
         </button>
-        <button
-          type="button"
+        <SaveButton
           className={styles.editSaveBtn}
+          dirty={dirty}
+          pending={isPending}
+          isNew={isNew}
+          newLabel="Create Scout"
+          blocked={!firstName.trim() || !lastName.trim() || (isNew && !id.trim()) || (!active && !inactiveReason)}
+          blockedReason="First and last name are required (and a reason when inactive)"
           onClick={submit}
-          disabled={
-            isPending ||
-            !firstName.trim() ||
-            !lastName.trim() ||
-            (isNew && !id.trim()) ||
-            (!active && !inactiveReason)
-          }
-        >
-          {isPending ? 'Saving…' : isNew ? 'Create Scout' : 'Save changes'}
-        </button>
+        />
+        <SaveFeedback phase={feedback.phase} />
       </div>
     </div>
   );
