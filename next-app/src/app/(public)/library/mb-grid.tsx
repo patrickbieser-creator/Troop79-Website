@@ -18,6 +18,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { fmtDate, fmtMonthYear } from '@/lib/format-date';
 import { TabStrip } from '@/app/_components/tab-strip';
 import { SectionDivider } from '@/app/_components/section-divider';
 import {
@@ -112,7 +113,7 @@ export function MbGrid({ tiles }: { tiles: MbTile[] }) {
               // an otherwise-anonymous-looking tile, not decoration).
               title={
                 tile.awardDate
-                  ? `Completed ${new Date(tile.awardDate).toLocaleDateString('en-US')}`
+                  ? `Completed ${fmtDate(tile.awardDate)}`
                   : undefined
               }
             >
@@ -124,10 +125,7 @@ export function MbGrid({ tiles }: { tiles: MbTile[] }) {
                   </span>
                   <span className={styles.mbCompletedDate}>
                     ✓ Completed{' '}
-                    {new Date(tile.awardDate).toLocaleDateString('en-US', {
-                      month: 'short',
-                      year: 'numeric'
-                    })}
+                    {fmtMonthYear(tile.awardDate)}
                   </span>
                 </span>
               ) : (

@@ -12,6 +12,7 @@ import type { LibraryResource } from '@/lib/supabase/types';
 import { detectHost, resourceThumbnail, RESOURCE_KIND_ICON, RESOURCE_KIND_LABEL } from '@/lib/library';
 import { TrackedExternalLink } from '../../_components/tracked-external-link';
 import { Badge } from '@/app/_components/badge';
+import { fmtDateLong } from '@/lib/format-date';
 import styles from '../library.module.css';
 
 export interface AlsoOnLink {
@@ -35,11 +36,7 @@ export function ResourceCard({
       <li className={`${styles.postCard} ${pinned ? styles.postCardPinned : ''}`}>
         <p className={styles.postDate}>
           {pinned ? '★ ' : ''}
-          {new Date(resource.created_at).toLocaleDateString('en-US', {
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric'
-          })}
+          {fmtDateLong(resource.created_at)}
         </p>
         <h3 className={styles.postTitle}>{resource.title}</h3>
         {resource.body_md && <ArticleBody body={resource.body_md} />}

@@ -40,6 +40,8 @@ import { isCheckboxColumn, leaderColumnHeader } from '@/lib/leader-columns';
 import type { RosterOrder } from '@/lib/event-snapshot';
 import { formatTimeOfDay } from '@/lib/calendar-shared';
 import { SnapshotToolbar } from './snapshot-toolbar';
+import { centralToday } from '@/lib/dates';
+import { fmtDateLong } from '@/lib/format-date';
 import styles from './snapshot.module.css';
 
 
@@ -264,7 +266,7 @@ export async function SnapshotDocument({
     if (q.leaderOnly && q.inputType === 'choice' && isCheckboxColumn({ inputType: q.inputType, choices: [v ?? 'Yes'] }) && v) return '✓';
     return v ?? '';
   };
-  const printedOn = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  const printedOn = fmtDateLong(centralToday());
 
   return (
     <div className={styles.doc}>

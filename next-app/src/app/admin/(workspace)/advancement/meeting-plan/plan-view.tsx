@@ -14,6 +14,7 @@ import { DatePickerField } from '../../_components/date-picker-field';
 import styles from './meeting-plan.module.css';
 import { ActionsMenu } from '../../_components/actions-menu';
 import { TabStrip } from '../../_components/tab-strip';
+import { fmtDateTime } from '@/lib/format-date';
 
 export interface PublishedPlanRow {
   meeting_date: string;
@@ -190,7 +191,7 @@ export function PlanView({ published, defaultDate }: Props) {
                   <td className={styles.scoutName}>{p.meeting_date}</td>
                   <td>{p.title}</td>
                   <td className={styles.needsOuting}>
-                    {new Date(p.generated_at).toLocaleString()}
+                    {fmtDateTime(p.generated_at)}
                     {p.generated_by ? ` · ${p.generated_by}` : ''}
                   </td>
                   <td className={styles.alignRight}>

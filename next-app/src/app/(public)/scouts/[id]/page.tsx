@@ -28,6 +28,8 @@ import {
 import type { LedgerEntry, MeritBadgeRequirement } from '@/lib/supabase/types';
 import { publicScoutName } from '@/lib/scout-name';
 import { PrintButton } from './print-button';
+import { centralToday } from '@/lib/dates';
+import { fmtDate } from '@/lib/format-date';
 import styles from './scout-detail.module.css';
 
 export async function generateMetadata({
@@ -371,11 +373,7 @@ function Clipboard({ detail }: { detail: ScoutDetail }) {
   // scout, so a "needs to do" report is complete.
   const ranksToShow = detail.ranks.filter((r) => (catalogByRank.get(r.id)?.length ?? 0) > 0);
   const mbBuckets = buildMbRankBuckets(detail);
-  const todayShort = new Date().toLocaleDateString('en-US', {
-    month: 'numeric',
-    day: 'numeric',
-    year: 'numeric'
-  });
+  const todayShort = fmtDate(centralToday());
 
   // Fixed two-row-of-three layout: top row is Scout/Tenderfoot/Second Class,
   // bottom row is First Class / (Star+Life stacked) / Eagle. Star and Life

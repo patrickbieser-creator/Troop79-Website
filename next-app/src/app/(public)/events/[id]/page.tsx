@@ -11,6 +11,7 @@ import { categoryColorMap, colorFor, templateOf } from '@/lib/calendar-categorie
 import { getPublicMeetingForEntry, getPublishedMeetingNav } from '@/lib/meetings';
 import { ArticleBody } from '@/lib/article-body/ArticleBody';
 import { centralToday } from '@/lib/dates';
+import { fmtDay } from '@/lib/format-date';
 import { MeetingAgenda } from './meeting-agenda';
 import { Notice } from '@/app/_components/notice';
 import { JsonLd } from '@/app/_components/json-ld';
@@ -224,11 +225,7 @@ export default async function EventDetailPage({
           <div className={styles.fact}>
             <dt>Signup deadline</dt>
             <dd>
-              {new Date(signup.deadline).toLocaleDateString('en-US', {
-                weekday: 'short',
-                month: 'short',
-                day: 'numeric'
-              })}
+              {fmtDay(signup.deadline)}
               <span className={styles.factSub}>{locked ? 'Closed' : 'Open now'}</span>
             </dd>
           </div>

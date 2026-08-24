@@ -14,6 +14,7 @@ import { sendEmail, renderEmail } from '@/lib/email';
 import { recipientsForScouts } from '@/lib/email-recipients';
 import { siteUrl } from '@/lib/site-url';
 import { loadSiteText, reminderEmailCopy, paymentReminderEmailCopy } from '@/lib/site-text';
+import { fmtDateTime } from '@/lib/format-date';
 import {
   backfillEventPrices,
   slotClaimants,
@@ -504,9 +505,8 @@ export async function emailNonResponders(
 
   const recipients = await recipientsForScouts(missing);
   const title = String((entry as { title?: string } | null)?.title ?? 'an upcoming event');
-  const deadline = new Date(sig.deadline).toLocaleString('en-US', {
-    weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit'
-  });
+  // Central, said so: the server clock is UTC and the reader may be anywhere.
+  const deadline = fmtDateTime(sig.deadline, { zone: true });
 
   // Copy is editable in Lookups & Admin → "Event reminder email"
   // (lib/site-text; blank = the built-in default). {title}/{deadline} are
