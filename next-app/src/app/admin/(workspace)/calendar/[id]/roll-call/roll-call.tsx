@@ -7,6 +7,14 @@
  * Built for the way attendance is actually taken — a leader with a phone at the
  * back of a room, working down a list — so checking someone is one tap, the
  * list stays put, and nothing is behind a dialog.
+ *
+ * One TAB per directory group (Patrick, 2026-08-24: "rebuild the roll call
+ * page with the same tab pattern") — Scouts, Leaders, Adults, Inactive scouts
+ * — the tabbed-workbench pattern from /admin/styleguide/admin. The four
+ * sections used to stack, so the adults were a long scroll below the scouts;
+ * now each is a tab whose pill is the number marked present. Panels stay
+ * mounted and hide with `hidden`. Search applies to the open tab and says
+ * which other tabs hold a match.
  */
 
 import { useMemo, useState, useTransition } from 'react';
@@ -16,6 +24,7 @@ import { reconcileWithSignup } from '@/lib/attendance-shared';
 import styles from './roll-call.module.css';
 import { AddButton } from '../../../_components/add-button';
 import { Badge } from '../../../_components/badge';
+import { TabStrip } from '../../../_components/tab-strip';
 
 type Result = { ok: boolean; error?: string };
 
@@ -35,12 +44,13 @@ interface Props {
   onSeed: (entryId: number) => Promise<Result & { added?: number }>;
 }
 
-const TAB_LABEL: Record<string, string> = {
-  active_scout: 'Scouts',
-  inactive_scout: 'Inactive scouts',
-  leader: 'Leaders',
-  adult: 'Adults'
-};
+/** Tab order — the people you take roll for first come first. */
+const TAB_ORDER: { key: string; label: string }[] = [
+  { key: 'active_scout', label: 'Scouts' },
+  { key: 'leader', label: 'Leaders' },
+  { key: 'adult', label: 'Adults' },
+  { key: 'inactive_scout', label: 'Inactive scouts' }
+];
 
 export function RollCall({
   entryId,
@@ -75,22 +85,23 @@ export function RollCall({
   );
 
   const needle = q.trim().toLowerCase();
-  const shown = candidates.filter(
-    (c) => !needle || c.displayName.toLowerCase().includes(needle) || (c.scoutId ?? '').toLowerCase().includes(needle)
-  );
+  const matches = (c: AttendeeCandidate) =>
+    !needle || c.displayName.toLowerCase().includes(needle) || (c.scoutId ?? '').toLowerCase().includes(needle);
 
-  // Present first — once roll call is under way, the useful view is who you
-  // have, not the whole roster in alphabetical order.
+  // One group per directory tab, in TAB_ORDER; a group nobody is in has no
+  // tab. Anyone with a tab the order doesn't know lands in "Other".
   const groups = useMemo(() => {
-    const out = new Map<string, AttendeeCandidate[]>();
-    for (const c of shown) {
-      const key = TAB_LABEL[c.tab] ?? 'Other';
-      const list = out.get(key) ?? [];
-      list.push(c);
-      out.set(key, list);
+    const byKey = new Map<string, AttendeeCandidate[]>();
+    for (const c of candidates) {
+      const key = TAB_ORDER.some((t) => t.key === c.tab) ? c.tab : 'other';
+      byKey.set(key, [...(byKey.get(key) ?? []), c]);
     }
-    return [...out.entries()];
-  }, [shown]);
+    return [...TAB_ORDER, { key: 'other', label: 'Other' }]
+      .filter((t) => byKey.has(t.key))
+      .map((t) => ({ ...t, people: byKey.get(t.key)! }));
+  }, [candidates]);
+
+  const [tab, setTab] = useState(() => groups[0]?.key ?? 'active_scout');
 
   function run(personId: number, fn: () => Promise<Result>) {
     setErr(null);
@@ -164,6 +175,18 @@ export function RollCall({
         </div>
       )}
 
+      <TabStrip
+        ariaLabel="Who to take roll for"
+        activeKey={tab}
+        className={styles.tabs}
+        items={groups.map((g) => ({
+          key: g.key,
+          label: g.label,
+          count: g.people.filter((p) => attended.has(p.personId)).length,
+          onSelect: () => setTab(g.key)
+        }))}
+      />
+
       <input
         type="search"
         className={styles.search}
@@ -173,14 +196,38 @@ export function RollCall({
         onChange={(e) => setQ(e.target.value)}
       />
 
-      {groups.map(([label, people]) => (
-        <section key={label} className={styles.group}>
+      {groups.map((g) => {
+        const people = g.people.filter(matches);
+        const elsewhere = needle
+          ? groups.filter((o) => o.key !== g.key && o.people.some(matches)).map((o) => o.label)
+          : [];
+        return (
+        <section key={g.key} className={styles.group} role="tabpanel" aria-label={g.label} hidden={tab !== g.key}>
           <h2 className={styles.groupHead}>
-            {label}
+            {g.label}
             <span className={styles.groupCount}>
-              {people.filter((p) => attended.has(p.personId)).length} / {people.length}
+              {g.people.filter((p) => attended.has(p.personId)).length} / {g.people.length} present
             </span>
           </h2>
+          {people.length === 0 && (
+            <p className={styles.empty}>
+              Nobody on this tab matches that search.
+              {elsewhere.length > 0 && (
+                <>
+                  {' '}Try{' '}
+                  {elsewhere.map((label, i) => (
+                    <span key={label}>
+                      {i > 0 && ', '}
+                      <button type="button" className={styles.linkBtn} onClick={() => setTab(groups.find((o) => o.label === label)!.key)}>
+                        {label}
+                      </button>
+                    </span>
+                  ))}
+                  .
+                </>
+              )}
+            </p>
+          )}
           <ul className={styles.list}>
             {people.map((c) => {
               const row = byPerson.get(c.personId);
@@ -221,9 +268,8 @@ export function RollCall({
             })}
           </ul>
         </section>
-      ))}
-
-      {shown.length === 0 && <p className={styles.empty}>Nobody matches that search.</p>}
+        );
+      })}
     </>
   );
 }

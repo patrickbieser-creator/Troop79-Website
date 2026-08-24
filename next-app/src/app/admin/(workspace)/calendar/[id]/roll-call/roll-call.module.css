@@ -52,7 +52,15 @@
 }
 .search:focus { outline: none; border-color: var(--admin-navy); }
 
+/* Tabbed sheet (2026-08-24): one pill tab per directory group, the shared
+   TabStrip; `hidden` must beat the section's own display. */
+.tabs { margin-bottom: 12px; }
 .group { margin-bottom: 18px; }
+.group[hidden] { display: none; }
+.linkBtn {
+  background: none; border: none; padding: 0; font: inherit; cursor: pointer;
+  color: var(--admin-forest); text-decoration: underline;
+}
 .groupHead {
   display: flex; align-items: center; justify-content: space-between;
   font-family: var(--admin-font-ui);
