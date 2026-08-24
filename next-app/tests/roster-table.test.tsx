@@ -233,3 +233,13 @@ describe('permanentDeleteGuard — hard delete of a Removed roster row', () => {
     expect(all.error).toMatch(/leave the row as Removed/);
   });
 });
+
+describe('RosterTable — Remove explains that Remove is not a ban (Option 1, 2026-08-24)', () => {
+  it('RemoveConfirmStep_SaysFamilyCanSignUpAgain', async () => {
+    const user = userEvent.setup();
+    renderTable([row({ id: 1, name: 'Kevin Pieper' })]);
+    await user.click(screen.getByRole('button', { name: 'Remove' }));
+    expect(screen.getByRole('button', { name: 'Confirm' })).toBeTruthy();
+    expect(screen.getByText(/can sign up again from the family form/i)).toBeTruthy();
+  });
+});

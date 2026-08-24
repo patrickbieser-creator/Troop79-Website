@@ -80,6 +80,15 @@ const OTHER_STATUS: Record<string, { label: string; variant: 'warning' | 'muted'
   cancelled: { label: 'Removed', variant: 'muted' }
 };
 
+/** Remove is a soft, undoable step, not a ban: the family form hides a Removed
+ *  person, and if the household submits again with them ticked, the sign-up
+ *  RPC revives the same row (no twin). Patrick, 2026-08-24: that is fine —
+ *  "if the troop is going to remove somebody for disciplinary reasons, it will
+ *  be handled outside of the website workflow … talking to each other is a
+ *  better option" — so the UI just says so instead of pretending otherwise. */
+const REMOVE_NOTE = 'Frees their seat now. They can sign up again from the family form.';
+const REMOVED_HINT = 'Removed by a leader. Put back reinstates them; the family can also sign up again from the family form.';
+
 /** A two-line header ("Driving" over "To") — separate spans, so the accessible
  *  name still reads "Driving To" while the column stays one number wide. */
 function StackedHeader({
@@ -875,12 +884,16 @@ export function RosterTable({
                     >
                       Keep
                     </button>
+                    <span className={styles.cellMuted} style={{ display: 'block', whiteSpace: 'normal', maxWidth: '22ch', marginTop: 4 }}>
+                      {REMOVE_NOTE}
+                    </span>
                   </>
                 ) : (
                   <button
                     type="button"
                     className={styles.rowDel}
                     disabled={pending}
+                    title={REMOVE_NOTE}
                     onClick={() => setConfirming(r.id)}
                   >
                     Remove
@@ -1247,7 +1260,7 @@ function OtherResponses({
               <td className={styles.nowrap} title={classTitle(r.participantClass)}>
                 <ClassPill cls={r.participantClass} />
               </td>
-              <td className={styles.nowrap}>
+              <td className={styles.nowrap} title={r.status === 'cancelled' ? REMOVED_HINT : undefined}>
                 <Badge variant={st.variant}>{st.label}</Badge>
               </td>
               <td className={`${styles.nowrap} ${styles.cellMuted}`} title={participationTitle(r.participation)}>
@@ -1293,7 +1306,7 @@ function OtherResponses({
                     </>
                   )
                 ) : (
-                  <button type="button" className={styles.rowDel} disabled={pending} onClick={() => onRemove(r)}>
+                  <button type="button" className={styles.rowDel} disabled={pending} title={REMOVE_NOTE} onClick={() => onRemove(r)}>
                     Remove
                   </button>
                 )}
