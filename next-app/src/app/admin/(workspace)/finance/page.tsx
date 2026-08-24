@@ -22,6 +22,7 @@ import {
 } from './actions';
 import { FinanceWorkspace } from './finance-workspace';
 import { PageTitle } from '../_components/page-title';
+import { DateParamField } from '../_components/date-param-field';
 import styles from './finance.module.css';
 
 export const metadata = {
@@ -204,13 +205,15 @@ export default async function FinancePage({
             ))}
           </datalist>
         </label>
-        <label className={styles.toolbarField}>
+        {/* The flexible date picker used on the other admin range filters
+            (Patrick, 2026-08-24) — a GET-form adapter over DatePickerField. */}
+        <label className={styles.toolbarField} htmlFor="ledger-date-from">
           From
-          <input type="date" name="dateFrom" defaultValue={dateFrom ?? ''} aria-label="Filter: date from" />
+          <DateParamField id="ledger-date-from" name="dateFrom" defaultValue={dateFrom ?? ''} />
         </label>
-        <label className={styles.toolbarField}>
+        <label className={styles.toolbarField} htmlFor="ledger-date-to">
           To
-          <input type="date" name="dateTo" defaultValue={dateTo ?? ''} aria-label="Filter: date to" />
+          <DateParamField id="ledger-date-to" name="dateTo" defaultValue={dateTo ?? ''} />
         </label>
         <label className={styles.toolbarField}>
           Min $
