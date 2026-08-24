@@ -140,3 +140,10 @@ describe('GuestCountField (count mode)', () => {
     expect(onChange).toHaveBeenLastCalledWith({ count: 0, note: 'g' });
   });
 });
+
+describe('GuestRowsEditor — lede states who is responsible for a youth guest (Patrick, 2026-08-24)', () => {
+  it('Lede_SaysAnAdultFromTheHouseholdIsResponsible', () => {
+    render(<GuestRowsEditor guests={[]} onChange={vi.fn()} />);
+    expect(screen.getByText(/adult from your household is responsible/i)).toBeTruthy();
+  });
+});

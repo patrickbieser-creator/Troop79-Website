@@ -85,7 +85,8 @@ export function GuestRowsEditor({
       <p className={styles.dayHead}>Guests</p>
       <p className={styles.gateLede}>
         {prompt ??
-          'Bringing anyone else? Friends, siblings, Webelos or Cub Scouts joining in — add each one by name so we can plan tents, food and leadership.'}
+          'Bringing anyone else? Friends, siblings, Webelos or Cub Scouts joining in — add each one by name so we can plan tents, food and leadership.'}{' '}
+        An adult from your household is responsible for any youth guest you bring.
       </p>
       <input type="hidden" name="guests" value={JSON.stringify(guests)} />
       {unpicked.length > 0 && (
