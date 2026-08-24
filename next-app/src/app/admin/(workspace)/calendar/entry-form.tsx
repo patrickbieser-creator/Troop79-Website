@@ -16,6 +16,7 @@
  */
 
 import { useState, useTransition } from 'react';
+import { SaveButton, SaveFeedback, useSavedSnapshot, useSavePhase } from '../_components/save-state';
 import type { CalendarEntry, Media } from '@/lib/supabase/types';
 import type { CalendarCategoryRow } from '@/lib/calendar-categories';
 // MediaPicker still lives under news/ — the hero image it picks is the same
@@ -84,12 +85,21 @@ export function CalendarEntryForm({
   const [autoArchiveAt, setAutoArchiveAt] = useState(forceNew ? '' : (row?.auto_archive_at ?? ''));
   const [pickerOpen, setPickerOpen] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  // Save standard (AGENTS.md "Save buttons", rolled out 2026-08-24 — this form
+  // was Patrick's example of where it was missing): Save is off and reads
+  // "Saved" until something differs from what is saved; Saving… → Done.
+  const draftKey = JSON.stringify({
+    entryDate, endDate, startTime, endTime, dayNote, category, title, description, location,
+    onCalendar, isDraft, showOnHomepage, featured, promoStart, promoEnd, excerpt,
+    heroMediaId: heroMedia?.id ?? null, autoArchiveAt
+  });
+  const { dirty, markSaved } = useSavedSnapshot(draftKey);
+  const feedback = useSavePhase();
 
   function submit() {
     setErr(null);
-    setSaved(false);
     const fd = new FormData();
     if (row && !forceNew) fd.set('id', String(row.id));
     fd.set('entry_date', entryDate);
@@ -110,16 +120,20 @@ export function CalendarEntryForm({
     fd.set('excerpt', excerpt);
     fd.set('hero_media_id', heroMedia ? String(heroMedia.id) : '');
     fd.set('auto_archive_at', autoArchiveAt);
+    feedback.start();
     startTransition(async () => {
       const res = isNew ? await onCreate(fd) : await onUpdate(fd);
       if (!res.ok) {
+        feedback.fail();
         setErr(res.error ?? 'Save failed');
         return;
       }
       // The dialog's job is done on save; the workbench panel stays open,
       // because the leader is usually mid-way through the rest of the entry.
-      if (inline) setSaved(true);
-      else onClose();
+      if (inline) {
+        markSaved();
+        feedback.done();
+      } else onClose();
     });
   }
 
@@ -327,25 +341,28 @@ export function CalendarEntryForm({
       )}
 
       {err && <Notice>{err}</Notice>}
+      {inline && <SaveFeedback phase={feedback.phase} />}
     </>
   );
 
+  const incomplete = !entryDate.trim() || !category || !title.trim();
   const actionButtons = (
     <>
-      {inline && saved && <span className={styles.savedNote}>Saved</span>}
       {!inline && (
         <button type="button" className={styles.editBtn} onClick={onClose} disabled={isPending}>
           Cancel
         </button>
       )}
-      <button
-        type="button"
+      <SaveButton
         className={styles.editSaveBtn}
+        dirty={dirty}
+        pending={isPending}
+        isNew={isNew}
+        newLabel="Add Entry"
+        blocked={incomplete}
+        blockedReason="Date, category and title are required"
         onClick={submit}
-        disabled={isPending || !entryDate.trim() || !category || !title.trim()}
-      >
-        {isPending ? 'Saving…' : isNew ? 'Add Entry' : 'Save details'}
-      </button>
+      />
     </>
   );
 

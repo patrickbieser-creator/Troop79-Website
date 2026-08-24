@@ -15,6 +15,7 @@
  */
 
 import { useRef, useState, useTransition } from 'react';
+import { SaveButton, SaveFeedback, useSavedSnapshot, useSavePhase } from '../../_components/save-state';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { CalendarCategoryRow, CategoryTemplate } from '@/lib/calendar-categories';
@@ -79,8 +80,11 @@ export function Workbench({
   const router = useRouter();
   const [story, setStory] = useState(entry.details_md ?? '');
   const [err, setErr] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
   const [isPending, startTransition] = useTransition();
+  // Save standard (AGENTS.md "Save buttons", 2026-08-24): the story's Save is
+  // off and reads "Saved" until the text differs from what is saved.
+  const { dirty: storyDirty, markSaved: markStorySaved } = useSavedSnapshot(story);
+  const storyFeedback = useSavePhase();
   // D-081's promise was that `details_md` gets the NEWS EDITOR's experience,
   // not merely a textarea with a preview — so the story panel takes the same
   // insert toolbar, inline prompts and click-to-edit blocks the article
@@ -90,17 +94,19 @@ export function Workbench({
 
   function saveStory() {
     setErr(null);
-    setSaved(false);
     const fd = new FormData();
     fd.set('id', String(entry.id));
     fd.set('details_md', story);
+    storyFeedback.start();
     startTransition(async () => {
       const res = await onSaveStory(fd);
       if (!res.ok) {
+        storyFeedback.fail();
         setErr(res.error ?? 'Could not save the story.');
         return;
       }
-      setSaved(true);
+      markStorySaved();
+      storyFeedback.done();
     });
   }
 
@@ -174,15 +180,14 @@ export function Workbench({
         <div className={styles.panelHead}>
           <h2>Story</h2>
           <div>
-            {saved && <span className={styles.savedNote}>Saved</span>}
-            <button
-              type="button"
+            <SaveButton
               className={styles.primaryBtn}
+              dirty={storyDirty}
+              pending={isPending}
+              dirtyLabel="Save story"
               onClick={saveStory}
-              disabled={isPending}
-            >
-              {isPending ? 'Saving…' : 'Save story'}
-            </button>
+            />
+            <SaveFeedback phase={storyFeedback.phase} />
           </div>
         </div>
         <p className={styles.panelNote}>
@@ -192,10 +197,7 @@ export function Workbench({
         <MarkdownSplitPane
           ref={storyRef}
           value={story}
-          onChange={(v) => {
-            setStory(v);
-            setSaved(false);
-          }}
+          onChange={setStory}
           label="Story"
           cheatSheet
           toolbar={blockTools.toolbar}

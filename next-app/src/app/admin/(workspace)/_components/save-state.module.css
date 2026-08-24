@@ -1,0 +1,42 @@
+/**
+ * Save standard chrome (see save-state.tsx). The button's paint comes from the
+ * screen's own primary class — this only guarantees the disabled state reads
+ * as "off, not gone" no matter which class is stacked on it.
+ */
+.saveBtn:disabled { opacity: .55; cursor: not-allowed; }
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--admin-navy) 22%, transparent);
+}
+.dialog {
+  display: flex;
+  align-items: center;
+  gap: var(--admin-space-3);
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow-lg);
+  padding: var(--admin-space-4) var(--admin-space-6);
+  font-family: var(--admin-font-ui);
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-900);
+  min-width: 16em;
+}
+.done { color: var(--admin-forest); }
+.check { font-size: 1.4em; font-weight: var(--admin-weight-bold); }
+.spinner {
+  width: 1.1em;
+  height: 1.1em;
+  border: 2px solid var(--admin-gray-300);
+  border-top-color: var(--admin-navy);
+  border-radius: 50%;
+  animation: saveSpin 0.8s linear infinite;
+}
+@keyframes saveSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
