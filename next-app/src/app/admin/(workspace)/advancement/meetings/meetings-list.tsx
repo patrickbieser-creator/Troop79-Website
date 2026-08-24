@@ -20,6 +20,8 @@ import styles from './meetings.module.css';
 import { ActionsMenu } from '../../_components/actions-menu';
 import { Badge } from '../../_components/badge';
 import { Notice } from '../../_components/notice';
+import { TabStrip } from '../../_components/tab-strip';
+import { naturalDir, orderByDate, splitByToday, yearsOf, type RollCallTab } from '@/lib/roll-call-list';
 
 const PAGE_SIZE = 25;
 
@@ -37,34 +39,52 @@ export interface AttendanceListRow {
 
 interface Props {
   rows: AttendanceListRow[];
+  /** The Central calendar day — the Current/Past boundary (Patrick, 2026-08-24). */
+  today: string;
   onDeleteAgenda: (id: number) => Promise<{ ok: boolean; error?: string }>;
 }
 
-export function AttendanceList({ rows, onDeleteAgenda }: Props) {
+export function AttendanceList({ rows, today, onDeleteAgenda }: Props) {
   const router = useRouter();
   const [err, setErr] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [, startTransition] = useTransition();
 
+  // Two views (Patrick, 2026-08-24): Current — today and later, soonest first
+  // so today sits on top; Past — before today, most recent first. Every filter
+  // works in both; the year list only offers years the view actually has.
+  const [tab, setTab] = useState<RollCallTab>('current');
   const [q, setQ] = useState('');
   const [year, setYear] = useState('all');
   const [category, setCategory] = useState('all');
   const [taken, setTaken] = useState('all');
-  const [dir, setDir] = useState<'desc' | 'asc'>('desc');
+  // The Date button flips the view's natural order; switching views resets it.
+  const [flipped, setFlipped] = useState(false);
   const [page, setPage] = useState(1);
 
-  const years = useMemo(
-    () => [...new Set(rows.map((r) => r.entryDate.slice(0, 4)))].sort().reverse(),
-    [rows]
-  );
+  const split = useMemo(() => splitByToday(rows, today), [rows, today]);
+  const viewRows = tab === 'current' ? split.current : split.past;
+  const dir = flipped ? (naturalDir(tab) === 'asc' ? 'desc' : 'asc') : naturalDir(tab);
+
+  const years = useMemo(() => yearsOf(viewRows), [viewRows]);
   const categories = useMemo(
     () => [...new Set(rows.map((r) => r.category))].sort(),
     [rows]
   );
 
+  function switchTab(next: RollCallTab) {
+    if (next === tab) return;
+    setTab(next);
+    setFlipped(false);
+    // A year that only exists in the other view can't stay selected here.
+    const nextRows = next === 'current' ? split.current : split.past;
+    if (year !== 'all' && !yearsOf(nextRows).includes(year)) setYear('all');
+    resetPage();
+  }
+
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    const list = rows.filter((r) => {
+    const list = viewRows.filter((r) => {
       if (year !== 'all' && !r.entryDate.startsWith(year)) return false;
       if (category !== 'all' && r.category !== category) return false;
       const total = r.scoutCount + r.adultCount;
@@ -76,8 +96,8 @@ export function AttendanceList({ rows, onDeleteAgenda }: Props) {
       }
       return true;
     });
-    return dir === 'desc' ? list : [...list].sort((a, b) => a.entryDate.localeCompare(b.entryDate));
-  }, [rows, q, year, category, taken, dir]);
+    return orderByDate(list, dir);
+  }, [viewRows, q, year, category, taken, dir]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -107,6 +127,14 @@ export function AttendanceList({ rows, onDeleteAgenda }: Props) {
 
   return (
     <>
+      <TabStrip
+        ariaLabel="Current or past events"
+        activeKey={tab}
+        items={[
+          { key: 'current', label: 'Current', count: split.current.length, onSelect: () => switchTab('current') },
+          { key: 'past', label: 'Past', count: split.past.length, onSelect: () => switchTab('past') }
+        ]}
+      />
       <div className={styles.toolbar}>
         {/* Attendance Report isn't reachable from the main nav — kept as a
             nav: option here. "Calendar →" was dropped (2026-08-20): it
@@ -179,7 +207,10 @@ export function AttendanceList({ rows, onDeleteAgenda }: Props) {
         <button
           type="button"
           className={styles.editBtn}
-          onClick={() => setDir((d) => (d === 'desc' ? 'asc' : 'desc'))}
+          onClick={() => {
+            setFlipped((f) => !f);
+            resetPage();
+          }}
           aria-label="Toggle date sort direction"
         >
           Date {dir === 'desc' ? '↓' : '↑'}
@@ -205,7 +236,11 @@ export function AttendanceList({ rows, onDeleteAgenda }: Props) {
               <td colSpan={6} className={styles.muted}>
                 {rows.length === 0
                   ? 'Nothing on the calendar tracks attendance yet.'
-                  : 'No events match those filters.'}
+                  : viewRows.length === 0
+                    ? tab === 'current'
+                      ? 'Nothing coming up tracks attendance — see Past.'
+                      : 'No past events yet.'
+                    : 'No events match those filters.'}
               </td>
             </tr>
           ) : (
@@ -282,7 +317,7 @@ export function AttendanceList({ rows, onDeleteAgenda }: Props) {
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={safePage <= 1}
           >
-            ← Newer
+            ← Prev
           </button>
           <span className={`${styles.muted} ${styles.mutedUpright}`}>
             Page {safePage} of {totalPages} · {filtered.length} events
@@ -293,7 +328,7 @@ export function AttendanceList({ rows, onDeleteAgenda }: Props) {
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={safePage >= totalPages}
           >
-            Older →
+            Next →
           </button>
         </div>
       )}

@@ -22,6 +22,7 @@ import { requireCapability } from '@/lib/require-capability';
 import { AttendanceList, type AttendanceListRow } from './meetings-list';
 import { deleteMeeting } from './actions';
 import { PageTitle } from '../../_components/page-title';
+import { centralToday } from '@/lib/dates';
 
 export const metadata = {
   title: 'Roll Call — Troop 79'
@@ -113,7 +114,7 @@ export default async function RollCallListPage() {
           category carries. Meetings also carry an agenda, edited separately."
       />
 
-      <AttendanceList rows={rows} onDeleteAgenda={deleteMeeting} />
+      <AttendanceList rows={rows} today={centralToday()} onDeleteAgenda={deleteMeeting} />
     </>
   );
 }
