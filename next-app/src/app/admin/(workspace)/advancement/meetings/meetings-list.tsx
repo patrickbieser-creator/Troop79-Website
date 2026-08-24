@@ -14,8 +14,7 @@
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { formatLongDate } from '@/lib/dates';
-import { fmtDate } from '@/lib/format-date';
+import { fmtDate, fmtDateFull } from '@/lib/format-date';
 import styles from './meetings.module.css';
 import { ActionsMenu } from '../../_components/actions-menu';
 import { Badge } from '../../_components/badge';
@@ -116,7 +115,7 @@ export function AttendanceList({ rows, today, onDeleteAgenda, onAddAgenda }: Pro
     if (!row.agendaId) return;
     if (
       !window.confirm(
-        `Delete the ${row.agendaStatus} agenda for ${formatLongDate(row.entryDate)}? Its items go with it. Attendance is kept.`
+        `Delete the ${row.agendaStatus} agenda for ${fmtDateFull(row.entryDate)}? Its items go with it. Attendance is kept.`
       )
     ) {
       return;

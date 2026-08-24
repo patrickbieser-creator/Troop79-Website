@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import type { Meeting, MeetingSection, MeetingSession } from '@/lib/supabase/types';
-import { formatLongDate } from '@/lib/dates';
+import { fmtDateFull } from '@/lib/format-date';
 import type { PromotePayload } from '../actions';
 import styles from '../meetings.module.css';
 import { Badge } from '../../../_components/badge';
@@ -195,7 +195,7 @@ export function MeetingEditor({
             &larr; All meetings
           </Link>
           <h1>
-            {meeting.title} &mdash; {formatLongDate(entry.entry_date)}
+            {meeting.title} &mdash; {fmtDateFull(entry.entry_date)}
           </h1>
         </div>
         <div className={styles.headActions}>
@@ -249,7 +249,7 @@ export function MeetingEditor({
               <label className={styles.editField}>
                 <span className={styles.editLabel}>Date</span>
                 <span className={styles.readOnlyValue}>
-                  {formatLongDate(entry.entry_date)}{' '}
+                  {fmtDateFull(entry.entry_date)}{' '}
                   <Link href={`/admin/calendar/${entry.id}`}>Change on the calendar entry</Link>
                 </span>
               </label>
@@ -304,7 +304,7 @@ export function MeetingEditor({
               <span>Plan Suggestions</span>
             </div>
             <p className={styles.trayNote}>
-              The Meeting Plan engine&rsquo;s suggestions for {formatLongDate(entry.entry_date)}.
+              The Meeting Plan engine&rsquo;s suggestions for {fmtDateFull(entry.entry_date)}.
               Promoting copies one into the agenda as an editable item &mdash; the plan itself is
               never changed.
             </p>

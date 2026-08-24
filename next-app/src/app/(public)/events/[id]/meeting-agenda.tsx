@@ -15,7 +15,7 @@
  */
 
 import Link from 'next/link';
-import { formatLongDate } from '@/lib/dates';
+import { fmtDateFull } from '@/lib/format-date';
 import type { MeetingNavItem, PublicMeeting, PublicSession } from '@/lib/meetings';
 import styles from './meeting-agenda.module.css';
 
@@ -73,7 +73,7 @@ export function MeetingAgenda({ entry, meeting, nav, today }: Props) {
           <span className={styles.stripLinkDisabled}>&larr;</span>
         )}
         <div className={styles.dateStripCenter}>
-          <span className={styles.dateStripDate}>{formatLongDate(date)}</span>
+          <span className={styles.dateStripDate}>{fmtDateFull(date)}</span>
         </div>
         {next ? (
           <Link href={`/events/${next.entryId}`} className={styles.stripLink}>
@@ -105,11 +105,11 @@ export function MeetingAgenda({ entry, meeting, nav, today }: Props) {
             {recentArchive.map((n) =>
               n.entryId === entry.id ? (
                 <li key={n.entryId}>
-                  <span className={styles.archiveCurrent}>{formatLongDate(n.date)}</span>
+                  <span className={styles.archiveCurrent}>{fmtDateFull(n.date)}</span>
                 </li>
               ) : (
                 <li key={n.entryId}>
-                  <Link href={`/events/${n.entryId}`}>{formatLongDate(n.date)}</Link>
+                  <Link href={`/events/${n.entryId}`}>{fmtDateFull(n.date)}</Link>
                 </li>
               )
             )}
@@ -272,7 +272,7 @@ function Placeholder({ entry, isPast }: { entry: Props['entry']; isPast: boolean
   return (
     <div className={styles.noMeetingWrap}>
       <div className={styles.noMeetingCard}>
-        <div className={styles.noMeetingDate}>{formatLongDate(entry.entry_date)}</div>
+        <div className={styles.noMeetingDate}>{fmtDateFull(entry.entry_date)}</div>
         {entry.description ? (
           <>
             <div className={styles.noMeetingReason}>{entry.title}</div>

@@ -1,0 +1,23 @@
+# Line endings (2026-08-24): the repo is LF on disk and in the index; pin it so
+# core.autocrlf=true on Windows stops printing "LF will be replaced by CRLF"
+# on every commit and so diffs stay clean across machines and sessions.
+* text=auto eol=lf
+
+# Windows-native scripts want CRLF.
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binaries — never touch.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.docx binary
+*.xlsx binary
+*.zip binary

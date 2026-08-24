@@ -1,25 +1,34 @@
 import { describe, it, expect } from 'vitest';
-import { formatShortDate } from '../src/lib/dates';
+import { centralToday, isoDate, nextSunday } from '../src/lib/dates';
 
 /**
- * Compact numeric date for tight UI (the Weekly Advancement Report's
- * "Recent reports" cards — Patrick, 2026-08-21: "change the date to be
- * mm/dd/yy format"). Pure string work on a yyyy-mm-dd — no Date parsing,
- * so it can never shift a day across timezones.
+ * lib/dates is "what day is it" only (2026-08-24 — the two display formatters
+ * moved to lib/format-date). These pin the Central-time contract that the
+ * date display standard leans on.
  */
-describe('formatShortDate (pure)', () => {
-  it('FormatShortDate_RendersIsoAsMmDdYy', () => {
-    expect(formatShortDate('2026-07-06')).toBe('07/06/26');
-    expect(formatShortDate('2026-08-17')).toBe('08/17/26');
+describe('centralToday', () => {
+  it('CentralToday_IsAnIsoCalendarDay', () => {
+    expect(centralToday()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe('isoDate', () => {
+  it('IsoDate_UsesLocalFields_NotUtc', () => {
+    const d = new Date(2026, 6, 12, 23, 30); // local 11:30 PM Jul 12 — UTC may already be Jul 13
+    expect(isoDate(d)).toBe('2026-07-12');
+  });
+});
+
+describe('nextSunday', () => {
+  it('NextSunday_IsTodayWhenTodayIsSunday', () => {
+    expect(nextSunday('2026-07-12')).toBe('2026-07-12'); // a Sunday
   });
 
-  it('FormatShortDate_KeepsLeadingZeros_AndTwoDigitYear', () => {
-    expect(formatShortDate('2031-01-01')).toBe('01/01/31');
-    expect(formatShortDate('2000-12-31')).toBe('12/31/00');
+  it('NextSunday_RollsForwardFromAWeekday', () => {
+    expect(nextSunday('2026-07-08')).toBe('2026-07-12'); // Wednesday → Sunday
   });
 
-  it('FormatShortDate_PassesThroughAnythingThatIsNotIso_RatherThanInventingADate', () => {
-    expect(formatShortDate('')).toBe('');
-    expect(formatShortDate('not-a-date')).toBe('not-a-date');
+  it('NextSunday_CrossesAMonthBoundary', () => {
+    expect(nextSunday('2026-07-27')).toBe('2026-08-02');
   });
 });

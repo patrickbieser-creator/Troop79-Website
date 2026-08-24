@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 24, 2026</strong> &nbsp;&middot;&nbsp; v1.89.2</p>
+      <p>Last updated: <strong>August 24, 2026</strong> &nbsp;&middot;&nbsp; v1.89.3</p>
     </div>
   </div>
 
@@ -494,6 +494,35 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.89.3 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.89.3</span>
+        <span class="release-date">August 24, 2026</span>
+        <span class="release-label"><span class="badge badge-fix">Housekeeping</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Line endings pinned; lib/dates is &ldquo;what day is it&rdquo; only</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong><code>.gitattributes</code></strong> pins the repo to LF (<code>* text=auto eol=lf</code>, binaries
+              marked) so Windows checkouts stop printing the &ldquo;LF will be replaced by CRLF&rdquo; wall on every commit.
+              The index was already all-LF; renormalizing changed nothing.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong><code>formatShortDate</code> / <code>formatLongDate</code> retired</strong> from <code>lib/dates</code>;
+              the three remaining <code>formatLongDate</code> callers (public meeting agenda, agenda editor, Roll Call
+              list) use <code>fmtDateFull</code> from the date standard &mdash; identical output. <code>lib/dates</code> keeps
+              <code>centralToday</code> / <code>isoDate</code> / <code>nextSunday</code>, now with their own tests.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 
