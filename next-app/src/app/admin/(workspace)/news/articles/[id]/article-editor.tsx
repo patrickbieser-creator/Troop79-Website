@@ -17,6 +17,7 @@ import { createArticle, updateArticle, publishArticle } from '../actions';
 import styles from './article-editor.module.css';
 import { Badge } from '../../../_components/badge';
 import { PageTitle } from '../../../_components/page-title';
+import { SaveButton, SaveFeedback, useSavedSnapshot, useSavePhase } from '../../../_components/save-state';
 
 /** A category from the ONE taxonomy (calendar_categories) — the same list
  *  events and photo albums pick from (Patrick, 2026-08-21). */
@@ -68,6 +69,15 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
 
   const [error, setError] = useState<string | null>(null);
   const [isSaving, startTransition] = useTransition();
+  // Save standard (2026-08-24): Save draft is off and reads "Saved" until the
+  // draft differs from the stored post. The editor leaves for the list on
+  // success, so the Saving… overlay covers until the navigation lands.
+  const draftKey = JSON.stringify({
+    title, excerpt, authorName, slug, featured, body, categories: [...categories].sort(),
+    heroId: hero?.id ?? null, autoArchiveAt, publishedOn, authorRole
+  });
+  const { dirty } = useSavedSnapshot(draftKey);
+  const feedback = useSavePhase();
   const bodyRef = useRef<MarkdownEditorHandle>(null);
   const blockTools = useMarkdownBlockTools(bodyRef);
 
@@ -98,16 +108,19 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
 
   function handleSave(thenPublish: boolean) {
     setError(null);
+    feedback.start();
     startTransition(async () => {
       const fd = buildFormData();
       const res = article ? await updateArticle(article.id, fd) : await createArticle(fd);
       if (!res.ok || !res.id) {
+        feedback.fail();
         setError(res.error ?? 'Save failed.');
         return;
       }
       if (thenPublish) {
         const pubRes = await publishArticle(res.id);
         if (!pubRes.ok) {
+          feedback.fail();
           setError(pubRes.error ?? 'Publish failed.');
           return;
         }
@@ -294,18 +307,38 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
           </div>
 
           <div className={styles.formActions}>
-            <button type="button" className={styles.btnSecondary} disabled={isSaving} onClick={() => handleSave(false)}>
-              Save Draft
-            </button>
+            <SaveButton
+              className={styles.btnSecondary}
+              dirty={dirty}
+              pending={isSaving}
+              isNew={isNew}
+              newLabel="Save draft"
+              dirtyLabel="Save draft"
+              blocked={!title.trim()}
+              blockedReason="A title is required"
+              onClick={() => handleSave(false)}
+            />
             {isLeader ? (
-              <button type="button" className={styles.btnPrimary} disabled={isSaving} onClick={() => handleSave(true)}>
-                Save &amp; Publish
-              </button>
+              // Publishing an unchanged draft is still an action; a LIVE post
+              // with nothing changed has nothing to save or publish.
+              <SaveButton
+                className={styles.btnPrimary}
+                dirty={dirty || !published}
+                pending={isSaving}
+                isNew={isNew}
+                newLabel="Save & Publish"
+                dirtyLabel="Save & Publish"
+                savedLabel="Published"
+                blocked={!title.trim()}
+                blockedReason="A title is required"
+                onClick={() => handleSave(true)}
+              />
             ) : (
               <span className={styles.reviewNote}>A leader will review and publish this once saved.</span>
             )}
           </div>
           {error && <div className={styles.formError}>{error}</div>}
+          <SaveFeedback phase={feedback.phase} />
         </div>
 
         <div className={styles.previewPane}>

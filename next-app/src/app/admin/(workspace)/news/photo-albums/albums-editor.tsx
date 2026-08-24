@@ -10,6 +10,7 @@ import { AddButton } from '../../_components/add-button';
 import styles from './albums.module.css';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
 import { Notice } from '../../_components/notice';
+import { SaveButton, SaveFeedback, useSavedSnapshot, useSavePhase } from '../../_components/save-state';
 
 type ActionResult = { ok: boolean; error?: string };
 
@@ -43,6 +44,7 @@ export function AlbumsEditor({ rows, covers, categories, onCreate, onUpdate, onD
   const [busyId, setBusyId] = useState<number | null>(null);
   const [rowErr, setRowErr] = useState<{ id: number; msg: string } | null>(null);
   const [, startTransition] = useTransition();
+  const feedback = useSavePhase(); // Done flash after the album dialog closes (Save standard)
   const colors = categoryColorMap(categories);
 
   useEffect(() => {
@@ -159,9 +161,14 @@ export function AlbumsEditor({ rows, covers, categories, onCreate, onUpdate, onD
             onCreate={onCreate}
             onUpdate={onUpdate}
             onClose={() => setOpenFor(null)}
+            onSaved={() => {
+              setOpenFor(null);
+              feedback.done();
+            }}
           />
         )}
       </Dialog>
+      <SaveFeedback phase={feedback.phase} />
     </>
   );
 }
@@ -172,7 +179,8 @@ function AlbumForm({
   categories,
   onCreate,
   onUpdate,
-  onClose
+  onClose,
+  onSaved
 }: {
   row: PhotoAlbum | null;
   cover?: CoverInfo;
@@ -180,6 +188,8 @@ function AlbumForm({
   onCreate: (fd: FormData) => Promise<ActionResult>;
   onUpdate: (fd: FormData) => Promise<ActionResult>;
   onClose: () => void;
+  /** Called instead of onClose after a successful save, so the parent can flash Done. */
+  onSaved: () => void;
 }) {
   const isNew = row === null;
   const [googleUrl, setGoogleUrl] = useState(row?.google_url ?? '');
@@ -193,6 +203,9 @@ function AlbumForm({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const { dirty } = useSavedSnapshot(
+    JSON.stringify({ googleUrl, title, eventDate, category, description, photoCount, coverId })
+  );
 
   function submit() {
     setErr(null);
@@ -211,7 +224,7 @@ function AlbumForm({
         setErr(res.error ?? 'Save failed');
         return;
       }
-      onClose();
+      onSaved();
     });
   }
 
@@ -336,14 +349,16 @@ function AlbumForm({
         <button type="button" className={styles.editBtn} onClick={onClose} disabled={isPending}>
           Cancel
         </button>
-        <button
-          type="button"
+        <SaveButton
           className={styles.editSaveBtn}
+          dirty={dirty}
+          pending={isPending}
+          isNew={isNew}
+          newLabel="Add Album"
+          blocked={!googleUrl.trim() || !title.trim() || !eventDate || !category}
+          blockedReason="Link, title, date and category are required"
           onClick={submit}
-          disabled={isPending || !googleUrl.trim() || !title.trim() || !eventDate || !category}
-        >
-          {isPending ? 'Saving…' : isNew ? 'Add Album' : 'Save changes'}
-        </button>
+        />
       </DialogActions>
     </>
   );

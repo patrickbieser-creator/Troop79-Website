@@ -8,6 +8,7 @@ import styles from './media-manager.module.css';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
 import { PageTitle } from '../../_components/page-title';
 import { Notice } from '../../_components/notice';
+import { SaveButton, SaveFeedback, useSavedSnapshot, useSavePhase } from '../../_components/save-state';
 
 const PAGE_SIZE = 60;
 
@@ -22,6 +23,7 @@ export function MediaManagerView() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [editing, setEditing] = useState<Media | null>(null);
   const [deleting, setDeleting] = useState<Media | null>(null);
+  const feedback = useSavePhase(); // Done flash after the edit dialog closes (Save standard)
 
   useEffect(() => {
     let ignore = false;
@@ -185,7 +187,15 @@ export function MediaManagerView() {
         </div>
       )}
 
-      <EditDialog media={editing} onClose={() => setEditing(null)} onSaved={handleUpdated} />
+      <SaveFeedback phase={feedback.phase} />
+      <EditDialog
+        media={editing}
+        onClose={() => setEditing(null)}
+        onSaved={(m) => {
+          handleUpdated(m);
+          feedback.done();
+        }}
+      />
       <DeleteDialog media={deleting} onClose={() => setDeleting(null)} onDeleted={handleDeleted} />
     </>
   );
@@ -229,6 +239,7 @@ function EditForm({
   const [caption, setCaption] = useState(media.caption ?? '');
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const { dirty } = useSavedSnapshot(JSON.stringify({ altText, caption }));
 
   function submit() {
     setErr(null);
@@ -278,14 +289,14 @@ function EditForm({
         <button type="button" className={styles.editBtn} onClick={onClose} disabled={isPending}>
           Cancel
         </button>
-        <button
-          type="button"
+        <SaveButton
           className={styles.editSaveBtn}
+          dirty={dirty}
+          pending={isPending}
+          blocked={!altText.trim()}
+          blockedReason="Alt text is required"
           onClick={submit}
-          disabled={isPending || !altText.trim()}
-        >
-          {isPending ? 'Saving…' : 'Save changes'}
-        </button>
+        />
       </DialogActions>
     </>
   );

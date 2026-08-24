@@ -11,8 +11,8 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { SortableList, type SortableItem } from '../../_components/sortable-list';
-import { Badge } from '../../_components/badge';
 import { Notice } from '../../_components/notice';
+import { SaveButton, SaveFeedback, useSavedSnapshot, useSavePhase } from '../../_components/save-state';
 import { saveFrontPageOrder } from './actions';
 import styles from './articles.module.css';
 
@@ -24,27 +24,28 @@ export interface FrontPageItem extends SortableItem {
 export function FrontPageOrder({ ordered, available }: { ordered: FrontPageItem[]; available: FrontPageItem[] }) {
   const router = useRouter();
   const [items, setItems] = useState<FrontPageItem[]>(ordered);
-  const [dirty, setDirty] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
   const [pending, start] = useTransition();
+  // Save standard (2026-08-24): dirty = the order differs from what is saved.
+  const { dirty, markSaved } = useSavedSnapshot(items.map((i) => `${i.kind}:${i.id}`).join(','));
+  const feedback = useSavePhase();
 
   function change(next: FrontPageItem[]) {
     setItems(next);
-    setDirty(true);
-    setSaved(false);
   }
 
   function save() {
     setErr(null);
+    feedback.start();
     start(async () => {
       const res = await saveFrontPageOrder(items.map((i) => ({ kind: i.kind, id: i.id })));
       if (!res.ok) {
+        feedback.fail();
         setErr(res.error ?? 'Could not save the order.');
         return;
       }
-      setDirty(false);
-      setSaved(true);
+      markSaved();
+      feedback.done();
       router.refresh();
     });
   }
@@ -54,15 +55,14 @@ export function FrontPageOrder({ ordered, available }: { ordered: FrontPageItem[
       <div className={styles.frontPageHead}>
         <h2 className={styles.frontPageTitle}>Front page order</h2>
         <div className={styles.frontPageActions}>
-          {saved && !dirty && <Badge variant="success">Saved</Badge>}
-          <button
-            type="button"
+          <SaveButton
             className={styles.frontPageSave}
-            disabled={!dirty || pending}
+            dirty={dirty}
+            pending={pending}
+            dirtyLabel="Save order"
             onClick={save}
-          >
-            {pending ? 'Saving…' : 'Save order'}
-          </button>
+          />
+          <SaveFeedback phase={feedback.phase} />
         </div>
       </div>
       <p className={styles.frontPageHint}>
