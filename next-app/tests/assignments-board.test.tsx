@@ -163,10 +163,12 @@ describe('AssignmentsBoard — any other set', () => {
     await user.click(screen.getByLabelText('Edit Tent A'));
     const remove = screen.getByRole('button', { name: 'Remove' }) as HTMLButtonElement;
     expect(remove.disabled).toBe(true); // two people in Tent A
+    // Save standard (2026-08-24): nothing changed yet → "Saved", disabled.
+    expect((screen.getByRole('button', { name: 'Saved' }) as HTMLButtonElement).disabled).toBe(true);
     await user.clear(screen.getByLabelText('Group name'));
     await user.type(screen.getByLabelText('Group name'), 'Tent Alpha');
     await user.type(screen.getByLabelText('Group note'), 'by the creek');
-    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(updateGroup).toHaveBeenCalledWith(200, 1, 2, { name: 'Tent Alpha', capacity: 2, notes: 'by the creek' });
   });
 

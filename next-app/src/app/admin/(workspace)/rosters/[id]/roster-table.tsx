@@ -43,6 +43,7 @@ import type { GuestMode } from '@/lib/guest-mode';
 import type { HouseholdGuest } from '@/lib/guest-payload';
 import styles from '../../events/events-admin.module.css';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
+import { SaveButton, SaveFeedback, useSavePhase } from '../../_components/save-state';
 import { SortHeader, useSortable, type SortDir } from '../../_components/use-sortable';
 import sortStyles from '../../_components/use-sortable.module.css';
 
@@ -393,13 +394,31 @@ export function RosterTable({
     );
   }
 
-  function saveJobs() {
-    if (!editingRow) return;
-    const row = editingRow;
+  /** The Edit dialog's draft vs the row (Save standard, 2026-08-24): the
+   *  same diff saveJobs applies, computed up front so Save can be gated. */
+  function claimsDiffFor(row: RosterRow) {
     const after: ClaimEdit[] = [...editClaims.entries()]
       .filter(([, v]) => v.checked)
       .map(([slotId, v]) => ({ slotId, comment: v.comment.trim() || null }));
-    const diff = diffClaimEdits(row.claimDetails, after);
+    return diffClaimEdits(row.claimDetails, after);
+  }
+  const editDirty = (() => {
+    if (!editingRow) return false;
+    const diff = claimsDiffFor(editingRow);
+    return (
+      transportChanged(editingRow) ||
+      editClass !== editingRow.participantClass ||
+      diff.upsert.length > 0 ||
+      diff.remove.length > 0
+    );
+  })();
+  const feedback = useSavePhase();
+
+  function saveJobs() {
+    if (!editingRow) return;
+    const row = editingRow;
+    const diff = claimsDiffFor(row);
+    feedback.start();
     start(async () => {
       setError(null);
       try {
@@ -419,6 +438,7 @@ export function RosterTable({
             calendarEntryId
           );
           if (!res.ok) {
+            feedback.fail();
             setError(res.error ?? 'Could not save transportation.');
             return;
           }
@@ -426,6 +446,7 @@ export function RosterTable({
         if (editClass !== row.participantClass) {
           const res = await setEntryClass(row.id, editClass, signupId, calendarEntryId);
           if (!res.ok) {
+            feedback.fail();
             setError(res.error ?? 'Could not save the class.');
             return;
           }
@@ -433,6 +454,7 @@ export function RosterTable({
         for (const c of diff.upsert) {
           const res = await claimSlotFor(c.slotId, row.id, signupId, calendarEntryId, c.comment);
           if (!res.ok) {
+            feedback.fail();
             setError(res.error ?? 'Could not save jobs.');
             return;
           }
@@ -440,15 +462,18 @@ export function RosterTable({
         for (const slotId of diff.remove) {
           const res = await unclaimSlotFor(slotId, row.id, signupId, calendarEntryId);
           if (!res.ok) {
+            feedback.fail();
             setError(res.error ?? 'Could not save jobs.');
             return;
           }
         }
       } catch (err) {
+        feedback.fail();
         setError(err instanceof Error ? err.message : 'Could not save jobs.');
         return;
       }
       setEditingRow(null);
+      feedback.done();
       router.refresh();
     });
   }
@@ -629,6 +654,7 @@ export function RosterTable({
 
   return (
     <section className={styles.panel}>
+      <SaveFeedback phase={feedback.phase} />
       <div className={styles.panelHead}>
         <TabStrip
           ariaLabel="Roster views"
@@ -1044,9 +1070,12 @@ export function RosterTable({
               <button type="button" className={styles.rowEdit} onClick={() => setEditingRow(null)} disabled={pending}>
                 Cancel
               </button>
-              <button type="button" className={styles.enableBtn} disabled={pending} onClick={saveJobs}>
-                {pending ? 'Saving…' : 'Save'}
-              </button>
+              <SaveButton
+                className={styles.enableBtn}
+                dirty={editDirty}
+                pending={pending}
+                onClick={saveJobs}
+              />
             </DialogActions>
           </>
         )}

@@ -16,6 +16,7 @@ import { SET_KINDS, SET_KIND_LABEL, presetSetsFor, type SetKind } from '@/lib/gr
 import { GUEST_MODES, isGuestMode, type GuestMode } from '@/lib/guest-mode';
 import { GUEST_MODE_LABEL, GUEST_MODE_HINT, COUNT_MODE_PRICE_WARNING, defaultGuestPrompt } from '@/lib/guest-mode';
 import { Notice } from '../../_components/notice';
+import { SaveButton, SaveFeedback, useSavePhase } from '../../_components/save-state';
 import { DatePickerField } from '../../_components/date-picker-field';
 import { DateTimeField } from '../../_components/date-time-field';
 import { TabStrip } from '../../_components/tab-strip';
@@ -30,6 +31,29 @@ import styles from '../events-admin.module.css';
 type Rec = Record<string, unknown>;
 const b = (v: unknown) => v === true;
 const s = (v: unknown) => (v == null ? '' : String(v));
+
+/* The inline editors' drafts, seeded from the row — and the SAME shape is
+ * what "saved" means, so the Save standard's dirty gate (AGENTS.md "Save
+ * buttons", rolled out 2026-08-24) is a comparison against the seed. */
+const priceDraft = (p: Rec): Record<string, string> => ({
+  label: s(p.label),
+  amount: s(p.amount),
+  per: s(p.per),
+  applies_to: s(p.applies_to)
+});
+const slotDraft = (sl: Rec): Record<string, string> => ({
+  label: s(sl.label),
+  code: s(sl.code),
+  description: s(sl.description),
+  slot_date: s(sl.slot_date),
+  starts_at: s(sl.starts_at).slice(0, 5),
+  ends_at: s(sl.ends_at).slice(0, 5),
+  eligibility: s(sl.eligibility),
+  needed: sl.needed == null ? '' : s(sl.needed),
+  attendance_required: b(sl.attendance_required) ? '1' : ''
+});
+const sameDraft = (a: Record<string, string>, b2: Record<string, string>) =>
+  JSON.stringify(a) === JSON.stringify(b2);
 
 /** Declared at module scope on purpose: a component created inside render is a
  *  new type on every pass, so React remounts it and any state it holds is
@@ -91,6 +115,7 @@ export function BuilderPanels({
   category?: string;
 }) {
   const [pending, start] = useTransition();
+  const feedback = useSavePhase();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
@@ -255,21 +280,12 @@ export function BuilderPanels({
   const openSlotEdit = (sl: Rec) => {
     setSlotDeleteConfirm(null);
     setEditSlot(Number(sl.id));
-    setESlot({
-      label: s(sl.label),
-      code: s(sl.code),
-      description: s(sl.description),
-      slot_date: s(sl.slot_date),
-      starts_at: s(sl.starts_at).slice(0, 5),
-      ends_at: s(sl.ends_at).slice(0, 5),
-      eligibility: s(sl.eligibility),
-      needed: sl.needed == null ? '' : s(sl.needed),
-      attendance_required: b(sl.attendance_required) ? '1' : ''
-    });
+    setESlot(slotDraft(sl));
   };
 
   return (
     <div className={styles.builder}>
+      <SaveFeedback phase={feedback.phase} />
       {error && <p className={styles.err}>{error}</p>}
 
       <section className={styles.panel}>
@@ -471,11 +487,14 @@ export function BuilderPanels({
                             <option value="scouts">Scouts</option>
                             <option value="adults">Adults</option>
                           </select>
-                          <button
-                            type="button"
+                          <SaveButton
                             className={styles.enableBtn}
-                            disabled={pending}
-                            onClick={() =>
+                            dirty={!sameDraft(ePrice, priceDraft(p))}
+                            pending={pending}
+                            blocked={!(ePrice.label ?? '').trim()}
+                            blockedReason="A label is required"
+                            onClick={() => {
+                              feedback.start();
                               start(async () => {
                                 const res = await updatePrice(pid, signupId, calendarEntryId, {
                                   label: ePrice.label ?? '',
@@ -486,17 +505,18 @@ export function BuilderPanels({
                                     | 'adults'
                                     | 'both'
                                 });
-                                if (!res.ok) setError(res.error ?? 'Could not save tier.');
-                                else {
+                                if (!res.ok) {
+                                  feedback.fail();
+                                  setError(res.error ?? 'Could not save tier.');
+                                } else {
                                   setEditPrice(null);
                                   setPriceNote(res.note ?? null);
+                                  feedback.done();
                                   router.refresh();
                                 }
-                              })
-                            }
-                          >
-                            Save
-                          </button>
+                              });
+                            }}
+                          />
                           <button type="button" className={styles.rowDel} onClick={() => setEditPrice(null)}>
                             Cancel
                           </button>
@@ -522,12 +542,7 @@ export function BuilderPanels({
                         disabled={pending}
                         onClick={() => {
                           setEditPrice(pid);
-                          setEPrice({
-                            label: s(p.label),
-                            amount: s(p.amount),
-                            per: s(p.per),
-                            applies_to: s(p.applies_to)
-                          });
+                          setEPrice(priceDraft(p));
                         }}
                       >
                         Edit
@@ -738,11 +753,14 @@ export function BuilderPanels({
                               }
                             />
                           </label>
-                          <button
-                            type="button"
+                          <SaveButton
                             className={styles.enableBtn}
-                            disabled={pending}
-                            onClick={() =>
+                            dirty={!sameDraft(eSlot, slotDraft(sl))}
+                            pending={pending}
+                            blocked={!(eSlot.label ?? '').trim()}
+                            blockedReason="A job name is required"
+                            onClick={() => {
+                              feedback.start();
                               start(async () => {
                                 const res = await updateSlot(id, signupId, calendarEntryId, {
                                   label: eSlot.label ?? '',
@@ -758,17 +776,18 @@ export function BuilderPanels({
                                   needed: eSlot.needed ? Number(eSlot.needed) : null,
                                   attendance_required: eSlot.attendance_required === '1'
                                 });
-                                if (!res.ok) setSlotError(res.error ?? 'Could not save job.');
-                                else {
+                                if (!res.ok) {
+                                  feedback.fail();
+                                  setSlotError(res.error ?? 'Could not save job.');
+                                } else {
                                   setSlotError(null);
                                   setEditSlot(null);
+                                  feedback.done();
                                   router.refresh();
                                 }
-                              })
-                            }
-                          >
-                            Save
-                          </button>
+                              });
+                            }}
+                          />
                           <button type="button" className={styles.rowDel} onClick={() => setEditSlot(null)}>
                             Cancel
                           </button>

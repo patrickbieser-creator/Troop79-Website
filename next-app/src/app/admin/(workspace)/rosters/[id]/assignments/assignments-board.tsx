@@ -24,6 +24,16 @@ import {
 } from '@/lib/transport';
 import ev from '../../../events/events-admin.module.css';
 import styles from './assignments.module.css';
+import { SaveButton, SaveFeedback, useSavePhase } from '../../../_components/save-state';
+
+/** The group editor's draft, seeded from the group — the same shape is
+ *  "saved", so the Save standard's dirty gate is a comparison against it. */
+const groupDraft = (g: { id: number; name: string; capacity: number | null; notes: string | null }) => ({
+  id: g.id,
+  name: g.name,
+  capacity: g.capacity != null ? String(g.capacity) : '',
+  notes: g.notes ?? ''
+});
 
 /*
  * The assignment board (Plans/Event-Logistics.md §A/§B) — the campout sheet's
@@ -105,6 +115,7 @@ export function AssignmentsBoard({
   const byId = useMemo(() => new Map(people.map((p) => [p.entryId, p])), [people]);
   const live = useMemo(() => people.filter((p) => p.status === 'yes'), [people]);
 
+  const feedback = useSavePhase();
   const run = (fn: () => Promise<{ ok: boolean; error?: string }>) =>
     start(async () => {
       setError(null);
@@ -257,6 +268,7 @@ export function AssignmentsBoard({
 
   return (
     <>
+      <SaveFeedback phase={feedback.phase} />
       {tiles && (
         <div className={ev.tiles}>
           <div className={`${ev.tile} ${tiles.unplaced > 0 ? ev.tileWarn : ev.tileOk}`}>
@@ -389,24 +401,28 @@ export function AssignmentsBoard({
                     onChange={(e) => setEditingGroup({ ...editingGroup, notes: e.target.value })}
                   />
                   <div className={styles.groupEditActions}>
-                    <button
-                      type="button"
+                    <SaveButton
                       className={ev.enableBtn}
-                      disabled={pending}
-                      onClick={() =>
+                      dirty={JSON.stringify(editingGroup) !== JSON.stringify(groupDraft(g))}
+                      pending={pending}
+                      blocked={!isCar && !editingGroup.name.trim()}
+                      blockedReason="A group name is required"
+                      onClick={() => {
+                        feedback.start();
                         run(async () => {
                           const res = await updateGroup(g.id, signupId, calendarEntryId, {
                             name: isCar ? undefined : editingGroup.name,
                             capacity: isCar ? undefined : editingGroup.capacity ? Number(editingGroup.capacity) : null,
                             notes: editingGroup.notes
                           });
-                          if (res.ok) setEditingGroup(null);
+                          if (res.ok) {
+                            setEditingGroup(null);
+                            feedback.done();
+                          } else feedback.fail();
                           return res;
-                        })
-                      }
-                    >
-                      Save
-                    </button>
+                        });
+                      }}
+                    />
                     <button type="button" className={ev.rowEdit} onClick={() => setEditingGroup(null)}>
                       Cancel
                     </button>
@@ -447,14 +463,7 @@ export function AssignmentsBoard({
                       className={styles.cardEdit}
                       aria-label={`Edit ${g.name}`}
                       disabled={pending}
-                      onClick={() =>
-                        setEditingGroup({
-                          id: g.id,
-                          name: g.name,
-                          capacity: g.capacity != null ? String(g.capacity) : '',
-                          notes: g.notes ?? ''
-                        })
-                      }
+                      onClick={() => setEditingGroup(groupDraft(g))}
                     >
                       Edit
                     </button>
