@@ -62,15 +62,10 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         matchPath: '/admin/advancement/meeting-plan',
         capability: 'meeting_plan.use'
       },
-      {
-        // Roll Call deliberately keeps its own route: taking attendance is a
-        // data-entry session, not editing, so it does not fold into the
-        // Calendar workbench. Meetings are CREATED on the calendar entry.
-        label: 'Roll Call & Agendas',
-        href: '/admin/advancement/meetings',
-        matchPath: '/admin/advancement/meetings',
-        capability: 'advancement.write'
-      },
+      // "Roll Call & Agendas" retired 2026-08-24 (Patrick): the Calendar list
+      // carries every entry's agenda / signup / roll-call state as letter pills
+      // that open the layer's screen. The Roll Call SHEET keeps its own route
+      // under the entry — taking attendance is still a data-entry session.
       {
         label: 'Has/Needs Tool',
         href: '/admin/advancement/has-needs',
@@ -140,6 +135,14 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         label: 'Scoutbook Export',
         href: '/admin/advancement/scoutbook-export',
         matchPath: '/admin/advancement/scoutbook-export',
+        capability: 'advancement.write'
+      },
+      {
+        // Was an Actions ▾ option on the retired Roll Call list (2026-08-24);
+        // it is a report, so it lives with the reports — last, stand-alone.
+        label: 'Attendance Report',
+        href: '/admin/advancement/meetings/report',
+        matchPath: '/admin/advancement/meetings/report',
         capability: 'advancement.write'
       }
     ]

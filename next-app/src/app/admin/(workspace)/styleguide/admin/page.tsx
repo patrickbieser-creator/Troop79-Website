@@ -526,6 +526,21 @@ export default function StyleguidePage() {
             <Badge variant="muted">Historical</Badge>
           </Specimen>
           <Specimen
+            label="Letter status pills — calendar list (.pill)"
+            canonical
+            note="Patrick 2026-08-24, when the Roll Call list folded into the Calendar: a row that carries several LAYERS shows one letter per layer instead of a wordy Badge each — A agenda, S signup, R roll call taken, O on the calendar. Tones: green live, yellow draft, grey closed, white off (O flips: green ON calendar, white OFF). The whole word is the hover/aria-label; a pill whose layer has a screen renders as a Link to it. Rules + order: lib/calendar-list.ts statusPills(). Use it where one row summarizes several parts; keep Badges for a single status word."
+          >
+            <span className={cal.statusCell}>
+              <span className={`${cal.pill} ${cal.pillLive}`} title="Agenda published">A</span>
+              <span className={`${cal.pill} ${cal.pillDraft}`} title="Agenda draft">A</span>
+              <span className={`${cal.pill} ${cal.pillLive}`} title="Signup open">S</span>
+              <span className={`${cal.pill} ${cal.pillClosed}`} title="Signup closed">S</span>
+              <span className={`${cal.pill} ${cal.pillLive}`} title="Roll call taken">R</span>
+              <span className={`${cal.pill} ${cal.pillLive}`} title="On the troop calendar">O</span>
+              <span className={`${cal.pill} ${cal.pillOff}`} title="Off calendar">O</span>
+            </span>
+          </Specimen>
+          <Specimen
             label="Categorical tags — NOT Badges (deliberate)"
             note="Categories are not statuses — mapping them onto status colors would erase a real distinction. These keep their per-screen classes (meeting-plan shown; lookups' rank/MB and scoutbook-export's type badges likewise)."
           >

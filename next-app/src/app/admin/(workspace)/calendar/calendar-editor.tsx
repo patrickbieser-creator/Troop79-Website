@@ -3,15 +3,12 @@
 import { Fragment, useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { categoryColorMap, colorFor, type CalendarCategoryRow } from '@/lib/calendar-categories';
+import type { CalendarCategoryRow } from '@/lib/calendar-categories';
 import { splitByTab } from '@/lib/calendar-tabs';
-import type { ImportResult, ImportRowFields, ImportUpdate } from './actions';
-import { CalendarImport, type CalendarImportHandle } from './calendar-import';
+import { authorInitials, dateHover, dateLabel, statusPills, truncate } from '@/lib/calendar-list';
 import { DatePickerField } from '../_components/date-picker-field';
 import { TabStrip } from '../_components/tab-strip';
 import { AddButton } from '../_components/add-button';
-import { ActionsMenu } from '../_components/actions-menu';
-import { Badge } from '../_components/badge';
 import { Notice } from '../_components/notice';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../_components/dialog';
 import { SortHeader, useSortable } from '../_components/use-sortable';
@@ -20,8 +17,10 @@ import type { CalendarEntryMergePlan } from '@/lib/calendar-admin';
 import styles from './calendar.module.css';
 
 import { fmtDate } from '@/lib/format-date';
-import { formatTimeOfDay } from '@/lib/calendar-shared';
 type CalColKey = 'date' | 'category' | 'title' | 'author' | 'location';
+
+/** Location shows this many characters; the rest is on hover (Patrick, 2026-08-24). */
+const LOCATION_CHARS = 12;
 
 /** Module scope on purpose — see the note on useSortable. */
 function calendarValue(row: CalendarEntryRow, key: CalColKey): unknown {
@@ -63,7 +62,6 @@ interface Props {
   onMerge: (keepId: number, loseId: number, confirm?: boolean) => Promise<MergeResult>;
   onClone: (fd: FormData) => Promise<CloneResult>;
   onSetPromoted: (id: number, on: boolean) => Promise<ActionResult>;
-  onImport: (inserts: ImportRowFields[], updates: ImportUpdate[]) => Promise<ImportResult>;
 }
 
 const formatDate = (iso: string): string => fmtDate(iso);
@@ -77,8 +75,6 @@ function todayLocal(): string {
   return `${d.getFullYear()}-${m}-${day}`;
 }
 
-const formatTime = (hms: string): string => formatTimeOfDay(hms);
-
 export function CalendarEditor({
   rows,
   categories,
@@ -91,8 +87,7 @@ export function CalendarEditor({
   onDelete,
   onMerge,
   onClone,
-  onSetPromoted,
-  onImport
+  onSetPromoted
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -139,7 +134,6 @@ export function CalendarEditor({
    */
   const [cloneFor, setCloneFor] = useState<CalendarEntryRow | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const importRef = useRef<CalendarImportHandle>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [rowErr, setRowErr] = useState<{ id: number; msg: string } | null>(null);
   const [, startTransition] = useTransition();
@@ -157,7 +151,6 @@ export function CalendarEditor({
   const [mergeErr, setMergeErr] = useState<string | null>(null);
   const [mergeBusy, setMergeBusy] = useState(false);
 
-  const colors = categoryColorMap(categories);
   const today = todayLocal();
   // The multi-day rule and the newest-first Past ordering live in
   // lib/calendar-tabs.ts so they can be tested — they are retained behavior,
@@ -310,14 +303,11 @@ export function CalendarEditor({
   return (
     <>
       <div className={styles.toolbar}>
-        {/* Shared components (Phase A, 2026-08-21) replaced this screen's own
-            copies of the pill tabs, the green Add button (D-159 — always
-            visible, far right of the tab strip, never in Actions ▾), and the
-            Actions ▾ select (which had quietly diverged here by reusing
-            .filterSelect instead of the canonical shape). Behavior unchanged:
-            tab state stays in the URL, Add opens the add dialog, Import CSV
-            opens CalendarImport via ref; per-row Promote/Clone/Merge/Delete
-            stay on the table, out of the menu. */}
+        {/* Shared components (Phase A, 2026-08-21): the pill tabs and the green
+            Add button (D-159 — always visible, far right of the tab strip).
+            Actions ▾ and its one option, Import CSV, retired 2026-08-24
+            (Patrick: a one-time import; resurrect from git if ever needed).
+            Per-row Promote/Clone/Merge/Delete stay on the table. */}
         <TabStrip
           className={styles.toolbarTabs}
           ariaLabel="Calendar range"
@@ -338,19 +328,6 @@ export function CalendarEditor({
           ]}
         />
         <AddButton onClick={() => push({ new: '1' })}>+ Add Event</AddButton>
-        <ActionsMenu
-          ariaLabel="Calendar actions"
-          options={[{ value: 'import', label: 'Import CSV' }]}
-          onAction={(v) => {
-            if (v === 'import') importRef.current?.open();
-          }}
-        />
-        <CalendarImport
-          ref={importRef}
-          rows={rows}
-          categories={categories.map((c) => c.label)}
-          onImport={onImport}
-        />
       </div>
 
       <div className={styles.toolbarRow}>
@@ -399,9 +376,14 @@ export function CalendarEditor({
       <table className={styles.table}>
         <thead>
           <tr>
+            {/* One line per event (Patrick, 2026-08-24, when the Roll Call list
+                folded in here): Date is the day only, Event is the title
+                (ellipsis past the column), Category is the quiet grey text
+                Roll Call used, Author is initials, Location is 12 characters —
+                everything trimmed away is on the cell's hover. */}
             <SortHeader label="Date" colKey="date" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
+            <SortHeader label="Event" colKey="title" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
             <SortHeader label="Category" colKey="category" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
-            <SortHeader label="Title" colKey="title" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
             <th>Status</th>
             <SortHeader label="Author" colKey="author" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
             <SortHeader label="Location" colKey="location" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
@@ -427,35 +409,27 @@ export function CalendarEditor({
             shownSorted.map((row) => (
               <Fragment key={row.id}>
               <tr>
-                <td className={styles.dateCell}>
-                  {formatDate(row.entry_date)}
-                  {row.end_date && <> &rarr; {formatDate(row.end_date)}</>}
-                  {row.start_time && (
-                    <div className={styles.muted}>
-                      {formatTime(row.start_time)}
-                      {row.end_time && <> &ndash; {formatTime(row.end_time)}</>}
-                    </div>
-                  )}
-                  {row.day_note && <div className={styles.muted}>{row.day_note}</div>}
-                </td>
-                <td>
-                  <span className={styles.catTag}>
-                    {/* inline: dynamic — per-category color from the lookup table */}
-                    <span className={styles.catPip} style={{ background: colorFor(colors, row.category) }} />
-                    {row.category}
-                  </span>
+                <td className={styles.dateCell} title={dateHover(row)}>
+                  {dateLabel(row.entry_date, row.end_date)}
                 </td>
                 <td className={styles.titleCell}>
                   {/* The title is the way in, as it is on News. Clicking a row's
                       subject to edit it is the habit both screens should share. */}
-                  <Link href={`/admin/calendar/${row.id}`}>{row.title}</Link>
+                  <Link href={`/admin/calendar/${row.id}`} title={row.title}>
+                    {row.title}
+                  </Link>
                   {rowErr?.id === row.id && <Notice>{rowErr.msg}</Notice>}
                 </td>
+                <td className={`${styles.muted} ${styles.nowrap}`}>{row.category}</td>
                 <td className={styles.nowrap}>
                   <StatusPills row={row} />
                 </td>
-                <td className={styles.muted}>{row.author_name || '—'}</td>
-                <td>{row.location || <span className={styles.muted}>—</span>}</td>
+                <td className={`${styles.muted} ${styles.nowrap}`} title={row.author_name ?? undefined}>
+                  {authorInitials(row.author_name)}
+                </td>
+                <td className={styles.nowrap} title={row.location ?? undefined}>
+                  {row.location ? truncate(row.location, LOCATION_CHARS) : <span className={styles.muted}>—</span>}
+                </td>
                 <td className={styles.nowrap}>
                   {/* Flipped straight from the list, the way News flips
                       Featured. Turning it off parks the promo window rather than
@@ -683,39 +657,31 @@ function CloneForm({
 }
 
 /**
- * What still needs doing on this entry, at a glance.
+ * What this entry carries, at a glance — and the way into each layer.
  *
- * News has shown a status pill per row since it shipped; the calendar showed
- * nothing, even though an entry now carries layers that each have a state —
- * an agenda can be draft, a signup can be closed, an entry can be off the
- * calendar entirely. A leader opens this screen asking "what is unfinished?",
- * and the answer was previously "open each one and see".
- *
- * Nothing here means the entry is a plain calendar line with no layers, which
- * is a perfectly finished state — so it renders as a quiet dash rather than a
- * pill saying "OK".
+ * One letter per layer (Patrick, 2026-08-24, when the Roll Call list folded
+ * in here): A agenda, S signup, R roll call taken, O on the calendar. Green is
+ * live, yellow is a draft, grey is closed, white is off-calendar. The whole
+ * word is on hover; A, S and R open the layer's own screen. Rules and order
+ * are `statusPills` in lib/calendar-list.ts. Specimen: /admin/styleguide/admin
+ * → Badges & Status Pills.
  */
 function StatusPills({ row }: { row: CalendarEntryRow }) {
-  const pills: { label: string; tone: 'draft' | 'closed' | 'muted' }[] = [];
-
-  if (row.agendaStatus === 'draft') pills.push({ label: 'Draft agenda', tone: 'draft' });
-  if (row.agendaStatus === 'published') pills.push({ label: 'Agenda', tone: 'muted' });
-  if (row.signupStatus === 'closed') pills.push({ label: 'Signup closed', tone: 'closed' });
-  if (row.signupStatus === 'open') pills.push({ label: 'Signup open', tone: 'muted' });
-  if (!row.on_calendar) pills.push({ label: 'Off calendar', tone: 'closed' });
-
-  if (pills.length === 0) return <span className={styles.muted}>—</span>;
-
+  const tone = { live: styles.pillLive, draft: styles.pillDraft, closed: styles.pillClosed, off: styles.pillOff };
   return (
     <span className={styles.statusCell}>
-      {pills.map((p) => (
-        <Badge
-          key={p.label}
-          variant={p.tone === 'draft' ? 'warning' : p.tone === 'closed' ? 'neutral' : 'muted'}
-        >
-          {p.label}
-        </Badge>
-      ))}
+      {statusPills(row).map((p) => {
+        const cls = `${styles.pill} ${tone[p.tone]}`;
+        return p.href ? (
+          <Link key={p.letter} href={p.href} className={cls} title={p.label} aria-label={p.label}>
+            {p.letter}
+          </Link>
+        ) : (
+          <span key={p.letter} className={cls} title={p.label} aria-label={p.label} role="img">
+            {p.letter}
+          </span>
+        );
+      })}
     </span>
   );
 }

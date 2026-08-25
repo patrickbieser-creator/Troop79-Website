@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import { fetchAllRows } from '@/lib/supabase/paginate';
 import { loadCalendarCategories } from '@/lib/calendar';
 import type { CalendarEntry, Media } from '@/lib/supabase/types';
 
@@ -14,8 +15,7 @@ import {
   deleteCalendarEntry,
   mergeCalendarEntries,
   cloneCalendarEntry,
-  setEntryPromoted,
-  importCalendarEntries
+  setEntryPromoted
 } from './actions';
 
 export const metadata = {
@@ -30,14 +30,23 @@ async function loadData() {
   const [
     { data, error },
     { data: agendas, error: agendaError },
-    { data: signups, error: signupError }
+    { data: signups, error: signupError },
+    attendance,
+    { data: scouts }
   ] = await Promise.all([
     supabase
       .from('calendar_entries')
       .select('*, hero_media:hero_media_id(*)')
       .order('entry_date', { ascending: true }),
-    supabase.from('meetings').select('calendar_entry_id, status').is('archived_at', null),
-    supabase.from('event_signups').select('calendar_entry_id, status')
+    supabase.from('meetings').select('id, calendar_entry_id, status').is('archived_at', null),
+    supabase.from('event_signups').select('id, calendar_entry_id, status'),
+    // The Roll Call list folded in here (2026-08-24), and with it its
+    // PAGINATED attendance read: event_attendance passed 1,000 rows the day
+    // the backfill landed, and PostgREST caps an unbounded read SILENTLY.
+    fetchAllRows<{ calendar_entry_id: number; person_id: number }>((from, to) =>
+      supabase.from('event_attendance').select('calendar_entry_id, person_id').range(from, to)
+    ),
+    supabase.from('scouts').select('person_id').not('person_id', 'is', null)
   ]);
   // Surfaced rather than swallowed: `const { data } = await …` turns a failed
   // query into an empty calendar, which reads as "nothing scheduled" instead of
@@ -47,29 +56,44 @@ async function loadData() {
   if (signupError) throw new Error(`Signup layers failed to load: ${signupError.message}`);
 
   // Layer state, resolved once for the whole list rather than per row. This is
-  // what the Status column reports: an entry's own state is only half the
-  // story now that it carries layers, and "which of these still needs work?"
-  // is the question a leader actually opens this screen with.
-  const agendaStatus = new Map(
-    ((agendas ?? []) as { calendar_entry_id: number; status: string }[]).map((m) => [
+  // what the Status column's letter pills report: an entry's own state is only
+  // half the story now that it carries layers, and "which of these still needs
+  // work?" is the question a leader actually opens this screen with.
+  const agendaByEntry = new Map(
+    ((agendas ?? []) as { id: number; calendar_entry_id: number; status: string }[]).map((m) => [
       m.calendar_entry_id,
-      m.status
+      m
     ])
   );
-  const signupStatus = new Map(
-    ((signups ?? []) as { calendar_entry_id: number; status: string }[]).map((s) => [
+  const signupByEntry = new Map(
+    ((signups ?? []) as { id: number; calendar_entry_id: number; status: string }[]).map((s) => [
       s.calendar_entry_id,
-      s.status
+      s
     ])
   );
+  const scoutPeople = new Set(((scouts ?? []) as { person_id: number }[]).map((s) => s.person_id));
+  const counts = new Map<number, { scouts: number; adults: number }>();
+  for (const a of attendance) {
+    const c = counts.get(a.calendar_entry_id) ?? { scouts: 0, adults: 0 };
+    if (scoutPeople.has(a.person_id)) c.scouts += 1;
+    else c.adults += 1;
+    counts.set(a.calendar_entry_id, c);
+  }
 
   const entries = ((data ?? []) as unknown as (CalendarEntry & { hero_media: Media | null })[]).map(
-    (e) => ({
-      ...e,
-      hasAgenda: agendaStatus.has(e.id),
-      agendaStatus: agendaStatus.get(e.id) ?? null,
-      signupStatus: signupStatus.get(e.id) ?? null
-    })
+    (e) => {
+      const agenda = agendaByEntry.get(e.id);
+      const signup = signupByEntry.get(e.id);
+      return {
+        ...e,
+        hasAgenda: agenda !== undefined,
+        agendaId: agenda?.id ?? null,
+        agendaStatus: agenda?.status ?? null,
+        signupId: signup?.id ?? null,
+        signupStatus: signup?.status ?? null,
+        attendance: counts.get(e.id) ?? null
+      };
+    }
   );
   return { entries: entries as CalendarEntryRow[] };
 }
@@ -111,10 +135,11 @@ export default async function CalendarAdminPage({
             Everything that happens on a date, whether or not it&rsquo;s on the troop calendar
             &mdash; meetings, campouts, fundraisers, and outside opportunities like district merit
             badge clinics. Add one here, then <strong>Edit</strong>{' '}
-            it to add a story, an agenda or a signup; the category you pick decides which of those
-            the entry starts with. On-calendar entries feed the public calendar and .ics
-            subscription; any entry can promote itself into the homepage news feed for a window
-            &mdash; no separate article needed.
+            it to add a story, an agenda, a signup or take roll call. The Status pills say what each
+            entry carries &mdash; <strong>A</strong>genda, <strong>S</strong>ignup, <strong>R</strong>oll
+            call taken, <strong>O</strong>n the calendar &mdash; green when live, yellow while a draft;
+            click one to open that layer. On-calendar entries feed the public calendar and .ics
+            subscription; any entry can promote itself into the homepage news feed for a window.
           </>
         }
       />
@@ -132,7 +157,6 @@ export default async function CalendarAdminPage({
         onDelete={deleteCalendarEntry}
         onMerge={mergeCalendarEntries}
         onClone={cloneCalendarEntry}
-        onImport={importCalendarEntries}
       />
     </>
   );

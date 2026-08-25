@@ -1,127 +1,16 @@
 /**
- * /admin/advancement/meetings — the Roll Call work list, for EVERY event.
+ * /admin/advancement/meetings — retired 2026-08-24 (Patrick: "Merge 'roll
+ * call and agendas' into 'calendar' … Our goal is to eliminate this section").
  *
- * It used to list `meetings` rows only, which meant the one screen that
- * answered "who was at what" could only answer it for Sunday nights. Campouts,
- * service projects and fundraisers had attendance too — scattered across
- * ledger rows entered days later — and no screen showed it.
- *
- * Rows are now calendar ENTRIES, so every event with attendance appears in one
- * place, with its count and a way in. Agendas remain a meeting-only layer and
- * show as a column rather than as the thing the list is made of.
- *
- * Entries whose category tracks nothing at all — announcements — are left out;
- * the gate is the category's template (`tracksAttendance`), so a Leadership /
- * Planning meeting lists even though it grants no ledger credit (Patrick,
- * 2026-08-24). A week with no meeting is a Troop Meeting titled "No Troop
- * Meeting" (2026-08-23) and lists like any meeting — no agenda, no roll;
- * attendance % is unaffected because its denominator is dates where roll was
- * taken.
+ * The Roll Call work list now IS the Calendar list: every entry shows its
+ * agenda / signup / roll-call state as letter pills that open the layer's own
+ * screen. The route stays as a redirect so old bookmarks and the nav's muscle
+ * memory land somewhere useful. The agenda editor (/[id]) and the Attendance
+ * Report (/report, now under Reports & Exports) keep their routes.
  */
 
-import { createAdminClient } from '@/lib/supabase/server';
-import { fetchAllRows } from '@/lib/supabase/paginate';
-import { requireCapability } from '@/lib/require-capability';
-import { tracksAttendance, usesAgenda, type CalendarCategoryRow } from '@/lib/calendar-categories';
-import { AttendanceList, type AttendanceListRow } from './meetings-list';
-import { createMeeting, deleteMeeting } from './actions';
-import { PageTitle } from '../../_components/page-title';
-import { centralToday } from '@/lib/dates';
+import { redirect } from 'next/navigation';
 
-export const metadata = {
-  title: 'Roll Call — Troop 79'
-};
-
-async function loadRows(): Promise<AttendanceListRow[]> {
-  const supabase = createAdminClient();
-
-  const [{ data: entries, error }, { data: categories }, { data: meetings }, attendance] =
-    await Promise.all([
-      supabase
-        .from('calendar_entries')
-        .select('id, title, entry_date, category')
-        .order('entry_date', { ascending: false }),
-      supabase.from('calendar_categories').select('label, template'),
-      supabase.from('meetings').select('id, status, calendar_entry_id').is('archived_at', null),
-      /*
-       * PAGINATED. `event_attendance` passed 1,000 rows the moment the backfill
-       * landed (1,316 on production), and PostgREST caps an unbounded read at
-       * 1,000 SILENTLY — no error, just missing rows. The symptom was an event
-       * whose roll call had plainly been taken still reading "not taken",
-       * because its rows fell in the dropped remainder.
-       *
-       * This table only grows: every event, every person, forever. It belongs
-       * on the same footing as ledger_entries and merit_badge_requirements
-       * (D-028).
-       */
-      fetchAllRows<{ calendar_entry_id: number; person_id: number }>((from, to) =>
-        supabase.from('event_attendance').select('calendar_entry_id, person_id').range(from, to)
-      )
-    ]);
-  if (error) throw new Error(`Calendar entries failed to load: ${error.message}`);
-
-  // Which people are scouts — the split the roll call list reports.
-  const { data: scouts } = await supabase.from('scouts').select('person_id').not('person_id', 'is', null);
-  const scoutPeople = new Set(
-    ((scouts ?? []) as { person_id: number }[]).map((s) => s.person_id)
-  );
-
-  // Only label + template are loaded; the helpers read nothing else.
-  const categoryRows = (categories ?? []) as CalendarCategoryRow[];
-
-  const meetingByEntry = new Map(
-    ((meetings ?? []) as { id: number; status: string; calendar_entry_id: number }[]).map((m) => [
-      m.calendar_entry_id,
-      m
-    ])
-  );
-
-  const counts = new Map<number, { scouts: number; adults: number }>();
-  for (const a of attendance) {
-    const c = counts.get(a.calendar_entry_id) ?? { scouts: 0, adults: 0 };
-    if (scoutPeople.has(a.person_id)) c.scouts += 1;
-    else c.adults += 1;
-    counts.set(a.calendar_entry_id, c);
-  }
-
-  return ((entries ?? []) as { id: number; title: string; entry_date: string; category: string }[])
-    .filter((e) => tracksAttendance(categoryRows, e.category))
-    .map((e) => {
-      const meeting = meetingByEntry.get(e.id);
-      const count = counts.get(e.id);
-      return {
-        entryId: e.id,
-        title: e.title,
-        entryDate: e.entry_date,
-        category: e.category,
-        agendaId: meeting?.id ?? null,
-        agendaStatus: meeting?.status ?? null,
-        canAddAgenda: !meeting && usesAgenda(categoryRows, e.category),
-        scoutCount: count?.scouts ?? 0,
-        adultCount: count?.adults ?? 0
-      };
-    });
-}
-
-export default async function RollCallListPage() {
-  await requireCapability('advancement.write');
-  const rows = await loadRows();
-
-  return (
-    <>
-      <PageTitle
-        title="Roll Call"
-        sub="Who was at what — every event that tracks attendance, not just meetings. Open one to
-          take or correct its roll call; marking a scout present grants the ledger credit its
-          category carries. Meetings also carry an agenda, edited separately."
-      />
-
-      <AttendanceList
-        rows={rows}
-        today={centralToday()}
-        onDeleteAgenda={deleteMeeting}
-        onAddAgenda={createMeeting}
-      />
-    </>
-  );
+export default function RetiredRollCallListPage() {
+  redirect('/admin/calendar');
 }

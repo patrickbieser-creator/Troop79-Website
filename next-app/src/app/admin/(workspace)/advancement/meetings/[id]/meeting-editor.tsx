@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { Meeting, MeetingSection, MeetingSession } from '@/lib/supabase/types';
 import { fmtDateFull } from '@/lib/format-date';
 import type { PromotePayload } from '../actions';
@@ -42,6 +43,10 @@ interface Props {
   onDeleteSession: (id: number, meetingId: number) => Promise<ActionResult>;
   onMoveSession: (id: number, meetingId: number, direction: 'up' | 'down') => Promise<ActionResult>;
   onPromote: (payload: PromotePayload) => Promise<ActionResult>;
+  /** Removes the agenda layer (items included; attendance is kept). Lived on
+   *  the retired Roll Call list; now at the top of the agenda (Patrick,
+   *  2026-08-24). */
+  onDeleteMeeting: (id: number) => Promise<ActionResult>;
 }
 
 export function MeetingEditor({
@@ -55,8 +60,10 @@ export function MeetingEditor({
   onUpdateSession,
   onDeleteSession,
   onMoveSession,
-  onPromote
+  onPromote,
+  onDeleteMeeting
 }: Props) {
+  const router = useRouter();
   const [err, setErr] = useState<string | null>(null);
   const [savedNote, setSavedNote] = useState(false);
   const [openFor, setOpenFor] = useState<MeetingSession | { newIn: MeetingSection } | null>(null);
@@ -187,12 +194,33 @@ export function MeetingEditor({
     });
   }
 
+  function deleteAgenda() {
+    if (
+      !window.confirm(
+        `Delete the ${meeting.status} agenda for ${fmtDateFull(entry.entry_date)}? Its items go with it. The calendar entry and its attendance are kept.`
+      )
+    ) {
+      return;
+    }
+    setErr(null);
+    setBusyKey('delete-agenda');
+    startTransition(async () => {
+      const res = await onDeleteMeeting(meeting.id);
+      if (!res.ok) {
+        setBusyKey(null);
+        setErr(res.error ?? 'Could not delete the agenda.');
+        return;
+      }
+      router.push(`/admin/calendar/${entry.id}?tab=agenda`);
+    });
+  }
+
   return (
     <>
       <div className={styles.editorHead}>
         <div>
-          <Link href="/admin/advancement/meetings" className={styles.backLink}>
-            &larr; All meetings
+          <Link href={`/admin/calendar/${entry.id}?tab=agenda`} className={styles.backLink}>
+            &larr; Back to the entry
           </Link>
           <h1>
             {meeting.title} &mdash; {fmtDateFull(entry.entry_date)}
@@ -212,6 +240,15 @@ export function MeetingEditor({
             disabled={busyKey === 'publish'}
           >
             {busyKey === 'publish' ? '…' : published ? 'Unpublish' : 'Publish'}
+          </button>
+          <button
+            type="button"
+            className={`${styles.editBtn} ${styles.dangerBtn}`}
+            onClick={deleteAgenda}
+            disabled={busyKey === 'delete-agenda'}
+            title="Remove this agenda and its items. The calendar entry and attendance stay."
+          >
+            {busyKey === 'delete-agenda' ? '…' : 'Delete agenda'}
           </button>
         </div>
       </div>

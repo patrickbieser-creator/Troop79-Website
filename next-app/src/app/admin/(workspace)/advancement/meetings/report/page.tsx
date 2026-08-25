@@ -156,8 +156,8 @@ export default async function AttendanceReportPage({
       />
 
       <form method="get" className={`${styles.toolbar} ${styles.toolbarStart}`}>
-        <Link href="/admin/advancement/meetings" className={styles.editBtn}>
-          ← Roll Call
+        <Link href="/admin/calendar" className={styles.editBtn}>
+          ← Calendar
         </Link>
         <span className={styles.spacer} />
         <label className={`${styles.muted} ${styles.filterLabel}`} htmlFor="from">
@@ -197,7 +197,7 @@ export default async function AttendanceReportPage({
             <tr>
               <td colSpan={4} className={styles.muted}>
                 No {noun} meeting attendance on record{from || to ? ' in this range' : ''} yet — take
-                roll call from the Roll Call list{who === 'scouts' ? ', or import history' : ''}.
+                roll call from a meeting on the Calendar{who === 'scouts' ? ', or import history' : ''}.
               </td>
             </tr>
           ) : (

@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 24, 2026</strong> &nbsp;&middot;&nbsp; v1.89.3</p>
+      <p>Last updated: <strong>August 24, 2026</strong> &nbsp;&middot;&nbsp; v1.90.0</p>
     </div>
   </div>
 
@@ -494,6 +494,46 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.90.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.90.0</span>
+        <span class="release-date">August 24, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Roll Call &amp; Agendas folded into the Calendar</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>One list.</strong> The Roll Call &amp; Agendas screen is gone from the nav (its URL redirects to the
+              Calendar). Every calendar row now shows what it carries as <strong>letter pills</strong> in the Status
+              column &mdash; <strong>A</strong>genda, <strong>S</strong>ignup, <strong>R</strong>oll call taken,
+              <strong>O</strong>n the calendar &mdash; green when live, yellow while a draft, grey when closed, and
+              white for an off-calendar entry. The whole word is on hover; A, S and R open the agenda editor, the signup
+              builder and the Roll Call sheet. The R pill&rsquo;s hover carries the count (&ldquo;12 scouts + 3 adults&rdquo;).
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Every event on one line.</strong> Date is <em>Aug 30, 2026</em> only (a same-year span drops the
+              year: <em>Oct 9&ndash;11</em>), with the weekday, time and day note on hover; the Title column is now
+              <em>Event</em> and truncates with an ellipsis (full title on hover); Category is quiet grey text; Author
+              shows as <em>PBieser</em> (full name on hover); Location shows 12 characters (the rest on hover).
+              Promoted/Hero and Edit &middot; Clone &middot; Merge &middot; Delete are unchanged.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Moved, not lost.</strong> <em>Delete agenda</em> sits at the top of the agenda editor. The
+              <em>Attendance Report</em> is the last item under Reports &amp; Exports. Import CSV and the Actions
+              &#9662; menu are retired from the calendar (a one-time import; it lives in git if ever needed).
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

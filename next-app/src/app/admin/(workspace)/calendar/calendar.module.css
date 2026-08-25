@@ -167,13 +167,28 @@ textarea.editInput { resize: vertical; min-height: 68px; line-height: 1.5; }
 /* overflow-wrap guards against an unbroken long title blowing the column out
    (the Section 2 truncation sweep, 2026-08-21) — wrapping, not ellipsis, so
    nothing a leader typed is ever hidden. */
-.titleCell { overflow-wrap: anywhere; }
+/* One line per event (2026-08-24): the title takes what is left of the row
+   and ends in an ellipsis; the full title is the link's hover. */
+.titleCell { max-width: 0; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .titleCell a { color: var(--admin-navy); font-weight: 600; }
 .titleCell a:hover { text-decoration: underline; }
 
-/* .statusPill family retired Phase A (2026-08-21) — the shared Badge
-   component carries it now; this cell just spaces adjacent badges. */
-.statusCell { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+/* Letter status pills (2026-08-24): A agenda · S signup · R roll call taken ·
+   O on the calendar. Tones follow the status tokens — green live, yellow
+   draft, grey closed, white off-calendar. Specimen on the admin styleguide. */
+.statusCell { display: inline-flex; gap: 4px; }
+.pill {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border-radius: 50%;
+  font-family: var(--admin-font-ui); font-size: 10px; font-weight: 700; line-height: 1;
+  border: 1px solid transparent; text-decoration: none; cursor: help;
+}
+a.pill { cursor: pointer; }
+a.pill:hover { outline: 2px solid var(--admin-navy); outline-offset: 1px; }
+.pillLive { background: var(--admin-status-success-bg); color: var(--admin-forest); border-color: color-mix(in srgb, var(--admin-forest) 35%, var(--admin-white)); }
+.pillDraft { background: var(--admin-status-warning-bg); color: var(--admin-accent-gold); border-color: color-mix(in srgb, var(--admin-accent-gold) 40%, var(--admin-white)); }
+.pillClosed { background: var(--admin-gray-100); color: var(--admin-gray-500); border-color: var(--admin-gray-200); }
+.pillOff { background: var(--admin-white); color: var(--admin-gray-400); border-color: var(--admin-gray-300); }
 .nowrap { white-space: nowrap; }
 
 /* .newBtn deleted Phase B (2026-08-21) — dead copy, no consumers (the header

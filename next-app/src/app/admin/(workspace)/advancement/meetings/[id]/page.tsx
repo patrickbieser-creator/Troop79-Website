@@ -22,7 +22,8 @@ import {
   updateSession,
   deleteSession,
   moveSession,
-  promotePlanSession
+  promotePlanSession,
+  deleteMeeting
 } from '../actions';
 
 export const metadata = {
@@ -103,6 +104,7 @@ export default async function MeetingEditorPage({ params }: { params: Promise<{ 
       onDeleteSession={deleteSession}
       onMoveSession={moveSession}
       onPromote={promotePlanSession}
+      onDeleteMeeting={deleteMeeting}
     />
   );
 }

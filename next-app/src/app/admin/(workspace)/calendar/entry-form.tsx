@@ -43,6 +43,12 @@ export type CalendarEntryRow = CalendarEntry & {
   hasAgenda: boolean;
   agendaStatus: string | null;
   signupStatus: string | null;
+  /** Layer ids, so the list's status pills can open each layer's screen
+   *  (2026-08-24 — the Roll Call list folded into the Calendar). */
+  agendaId?: number | null;
+  signupId?: number | null;
+  /** People marked present, split the way Roll Call reports it. Null = none. */
+  attendance?: { scouts: number; adults: number } | null;
 };
 
 export function CalendarEntryForm({
