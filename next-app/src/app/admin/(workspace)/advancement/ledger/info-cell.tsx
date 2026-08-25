@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import styles from './ledger.module.css';
 import { Dialog, DialogBody, DialogActions } from '../../_components/dialog';
+import { Button } from '../../../_components/button';
 
 interface Props {
   short: string;
@@ -53,9 +54,9 @@ export function InfoCell({ short, full, notes }: Props) {
           </DialogBody>
           <DialogActions>
             <form method="dialog">
-              <button type="submit" className={styles.editSaveBtn}>
+              <Button type="submit" variant="primary">
                 Close
-              </button>
+              </Button>
             </form>
           </DialogActions>
         </Dialog>

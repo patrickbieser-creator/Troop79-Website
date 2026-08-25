@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 24, 2026</strong> &nbsp;&middot;&nbsp; v1.90.1</p>
+      <p>Last updated: <strong>August 24, 2026</strong> &nbsp;&middot;&nbsp; v1.91.0</p>
     </div>
   </div>
 
@@ -494,6 +494,49 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.91.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.91.0</span>
+        <span class="release-date">August 24, 2026</span>
+        <span class="release-label"><span class="badge badge-fix">Housekeeping</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">One admin Button, one form surface</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Shared <code>Button</code>.</strong> Every admin button &mdash; Save, Publish, Edit, Clone, Delete,
+              pagers, print &mdash; now renders one component with five variants (primary navy, secondary, outlined
+              danger, solid danger for dialog confirms, quiet link) and two sizes, replacing the ~113 hand-copied
+              button classes across 32 stylesheets. Nothing should look different; the next &ldquo;buttons get 1px
+              more padding&rdquo; decision is now one file. Lives above the workspace route group so the printable
+              roster and campout snapshot use it too.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Shared <code>FormPanel</code> / <code>FormSection</code>.</strong> The tinted surface that holds
+              fields, and the scout editor&rsquo;s numbered section card, are components now &mdash; the form-surface
+              tint is one token read in one place.
+            </span>
+          </li>
+          <li>
+            <span>
+              Styleguide: Buttons and Form Surfaces specimens; a &ldquo;Shared Button component (variants)&rdquo;
+              scoreboard row that must stay empty of new entries. Rule written into <code>AGENTS.md</code>.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>&ldquo;Event Rosters&rdquo; is &ldquo;Event Management&rdquo;</strong> in the admin nav and page title
+              &mdash; the page runs the event (roster, cars, money, snapshot), not just its list.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

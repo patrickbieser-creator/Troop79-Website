@@ -20,6 +20,7 @@ import { SaveButton, SaveFeedback, useSavePhase } from '../../_components/save-s
 import { DatePickerField } from '../../_components/date-picker-field';
 import { DateTimeField } from '../../_components/date-time-field';
 import { TabStrip } from '../../_components/tab-strip';
+import { Button } from '../../../_components/button';
 import styles from '../events-admin.module.css';
 
 /*
@@ -488,7 +489,6 @@ export function BuilderPanels({
                             <option value="adults">Adults</option>
                           </select>
                           <SaveButton
-                            className={styles.enableBtn}
                             dirty={!sameDraft(ePrice, priceDraft(p))}
                             pending={pending}
                             blocked={!(ePrice.label ?? '').trim()}
@@ -580,9 +580,8 @@ export function BuilderPanels({
             <option value="scouts">Scouts</option>
             <option value="adults">Adults</option>
           </select>
-          <button
-            type="button"
-            className={styles.enableBtn}
+          <Button
+            variant="primary"
             disabled={pending}
             onClick={() =>
               start(async () => {
@@ -598,7 +597,7 @@ export function BuilderPanels({
             }
           >
             Add tier
-          </button>
+          </Button>
         </div>
         {prices.length > 0 && (
           <button
@@ -629,9 +628,9 @@ export function BuilderPanels({
             Jobs — shifts &amp; tasks{slots.length > 0 && ` (${slots.length})`}
           </h2>
           {!addJobOpen && (
-            <button type="button" className={styles.enableBtn} onClick={openAddJob} disabled={pending}>
+            <Button variant="primary" onClick={openAddJob} disabled={pending}>
               Add a job
-            </button>
+            </Button>
           )}
         </div>
         <div className={styles.fieldGrid}>
@@ -754,7 +753,6 @@ export function BuilderPanels({
                             />
                           </label>
                           <SaveButton
-                            className={styles.enableBtn}
                             dirty={!sameDraft(eSlot, slotDraft(sl))}
                             pending={pending}
                             blocked={!(eSlot.label ?? '').trim()}
@@ -817,9 +815,8 @@ export function BuilderPanels({
                           </p>
                         )}
                         <div className={styles.addRow}>
-                          <button
-                            type="button"
-                            className={styles.dangerBtn}
+                          <Button
+                            variant="danger"
                             disabled={pending}
                             onClick={() =>
                               start(async () => {
@@ -849,7 +846,7 @@ export function BuilderPanels({
                             }
                           >
                             {claimed ? 'Yes, remove anyway' : 'Yes, remove'}
-                          </button>
+                          </Button>
                           <button
                             type="button"
                             className={styles.rowEdit}
@@ -1051,9 +1048,9 @@ export function BuilderPanels({
             />
           </label>
           <div className={styles.addCardActions}>
-            <button type="submit" className={styles.enableBtn} disabled={pending}>
+            <Button type="submit" variant="primary" disabled={pending}>
               {pending ? 'Adding…' : 'Add job'}
-            </button>
+            </Button>
             <button type="button" className={styles.rowEdit} onClick={() => setAddJobOpen(false)} disabled={pending}>
               Done
             </button>
@@ -1097,9 +1094,8 @@ export function BuilderPanels({
                           </p>
                         )}
                         <div className={styles.addRow}>
-                          <button
-                            type="button"
-                            className={styles.dangerBtn}
+                          <Button
+                            variant="danger"
                             disabled={pending}
                             onClick={() =>
                               start(async () => {
@@ -1111,7 +1107,7 @@ export function BuilderPanels({
                             }
                           >
                             Yes, remove anyway
-                          </button>
+                          </Button>
                           <button
                             type="button"
                             className={styles.rowEdit}
@@ -1217,9 +1213,8 @@ export function BuilderPanels({
             <input type="checkbox" checked={qLeader} onChange={(e) => setQLeader(e.target.checked)} />
             leader only
           </label>
-          <button
-            type="button"
-            className={styles.enableBtn}
+          <Button
+            variant="primary"
             disabled={pending}
             onClick={() =>
               start(async () => {
@@ -1241,7 +1236,7 @@ export function BuilderPanels({
             }
           >
             Add question
-          </button>
+          </Button>
         </div>
         {/* Leader-only column presets (Plans/Event-Logistics.md §D): the
             sheet's "Health Forms" and "Registered?" ticks. A single-choice
@@ -1342,9 +1337,8 @@ export function BuilderPanels({
                         <td colSpan={4}>
                           <p className={styles.err}>{setDeleteConfirm.message}</p>
                           <div className={styles.addRow}>
-                            <button
-                              type="button"
-                              className={styles.dangerBtn}
+                            <Button
+                              variant="danger"
                               disabled={pending}
                               onClick={() =>
                                 start(async () => {
@@ -1356,7 +1350,7 @@ export function BuilderPanels({
                               }
                             >
                               Yes, remove anyway
-                            </button>
+                            </Button>
                             <button type="button" className={styles.rowEdit} onClick={() => setSetDeleteConfirm(null)}>
                               Keep it
                             </button>
@@ -1459,9 +1453,8 @@ export function BuilderPanels({
             <input type="checkbox" checked={gSelf} onChange={(e) => setGSelf(e.target.checked)} />
             families pick
           </label>
-          <button
-            type="button"
-            className={styles.enableBtn}
+          <Button
+            variant="primary"
             disabled={pending}
             onClick={() =>
               start(async () => {
@@ -1483,7 +1476,7 @@ export function BuilderPanels({
             }
           >
             Add a set
-          </button>
+          </Button>
         </div>
       </section>
       )}
@@ -1498,9 +1491,8 @@ export function BuilderPanels({
         {dangerWarning && <p className={styles.err}>{dangerWarning}</p>}
         {dangerArmed ? (
           <div className={styles.addRow}>
-            <button
-              type="button"
-              className={styles.dangerBtn}
+            <Button
+              variant="danger"
               disabled={pending}
               onClick={() =>
                 start(async () => {
@@ -1514,7 +1506,7 @@ export function BuilderPanels({
               }
             >
               Yes, delete this signup
-            </button>
+            </Button>
             <button
               type="button"
               className={styles.rowEdit}
@@ -1527,9 +1519,8 @@ export function BuilderPanels({
             </button>
           </div>
         ) : (
-          <button
-            type="button"
-            className={styles.dangerBtn}
+          <Button
+            variant="danger"
             disabled={pending}
             onClick={() =>
               start(async () => {
@@ -1547,7 +1538,7 @@ export function BuilderPanels({
             }
           >
             Remove signup
-          </button>
+          </Button>
         )}
       </section>
     </div>

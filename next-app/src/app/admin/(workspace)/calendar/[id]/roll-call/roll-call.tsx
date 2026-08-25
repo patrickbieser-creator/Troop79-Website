@@ -25,6 +25,7 @@ import styles from './roll-call.module.css';
 import { AddButton } from '../../../_components/add-button';
 import { Badge } from '../../../_components/badge';
 import { TabStrip } from '../../../_components/tab-strip';
+import { Button } from '../../../../_components/button';
 
 type Result = { ok: boolean; error?: string };
 
@@ -220,9 +221,9 @@ export function RollCall({
                   {elsewhere.map((label, i) => (
                     <span key={label}>
                       {i > 0 && ', '}
-                      <button type="button" className={styles.linkBtn} onClick={() => setTab(groups.find((o) => o.label === label)!.key)}>
+                      <Button variant="quiet" size="sm" onClick={() => setTab(groups.find((o) => o.label === label)!.key)}>
                         {label}
-                      </button>
+                      </Button>
                     </span>
                   ))}
                   .

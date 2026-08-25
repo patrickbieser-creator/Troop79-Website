@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import styles from './finance.module.css';
 import { Dialog, DialogBody, DialogActions } from '../_components/dialog';
+import { Button } from '../../_components/button';
 
 const TRUNCATE_AT = 40;
 
@@ -47,9 +48,9 @@ export function MemoCell({ memo }: { memo: string | null }) {
           </DialogBody>
           <DialogActions>
             <form method="dialog">
-              <button type="submit" className={styles.infoDialogClose}>
+              <Button variant="primary" type="submit">
                 Close
-              </button>
+              </Button>
             </form>
           </DialogActions>
         </Dialog>

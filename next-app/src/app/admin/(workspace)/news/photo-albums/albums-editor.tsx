@@ -11,6 +11,7 @@ import styles from './albums.module.css';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
 import { Notice } from '../../_components/notice';
 import { SaveButton, SaveFeedback, useSavedSnapshot, useSavePhase } from '../../_components/save-state';
+import { Button } from '../../../_components/button';
 
 import { fmtDate } from '@/lib/format-date';
 type ActionResult = { ok: boolean; error?: string };
@@ -122,22 +123,21 @@ export function AlbumsEditor({ rows, covers, categories, onCreate, onUpdate, onD
                   </td>
                   <td>{row.photo_count ?? <span className={styles.muted}>—</span>}</td>
                   <td className={styles.actionsCell}>
-                    <button
-                      type="button"
-                      className={styles.editBtn}
+                    <Button
+                      size="sm"
                       onClick={() => setOpenFor(row)}
                       disabled={busyId === row.id}
                     >
                       Edit
-                    </button>
-                    <button
-                      type="button"
-                      className={`${styles.editBtn} ${styles.dangerBtn}`}
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="sm"
                       onClick={() => onDeleteClick(row)}
                       disabled={busyId === row.id}
                     >
                       {busyId === row.id ? '…' : 'Delete'}
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               );
@@ -314,20 +314,19 @@ function AlbumForm({
             ) : (
               <span className={styles.coverNone}>79</span>
             )}
-            <button type="button" className={styles.editBtn} onClick={() => setPickerOpen(true)}>
+            <Button size="sm" onClick={() => setPickerOpen(true)}>
               {coverPreview ? 'Change' : 'Choose…'}
-            </button>
+            </Button>
             {coverPreview && (
-              <button
-                type="button"
-                className={styles.editBtn}
+              <Button
+                size="sm"
                 onClick={() => {
                   setCoverId(null);
                   setCoverPreview(null);
                 }}
               >
                 Remove
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -341,11 +340,10 @@ function AlbumForm({
       </DialogBody>
 
       <DialogActions>
-        <button type="button" className={styles.editBtn} onClick={onClose} disabled={isPending}>
+        <Button onClick={onClose} disabled={isPending}>
           Cancel
-        </button>
+        </Button>
         <SaveButton
-          className={styles.editSaveBtn}
           dirty={dirty}
           pending={isPending}
           isNew={isNew}

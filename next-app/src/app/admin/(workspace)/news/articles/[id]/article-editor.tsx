@@ -18,6 +18,7 @@ import styles from './article-editor.module.css';
 import { Badge } from '../../../_components/badge';
 import { PageTitle } from '../../../_components/page-title';
 import { DiscardButton, SaveButton, SaveFeedback, useDraftSnapshot, useSavePhase } from '../../../_components/save-state';
+import { Button } from '../../../../_components/button';
 
 /** A category from the ONE taxonomy (calendar_categories) — the same list
  *  events and photo albums pick from (Patrick, 2026-08-21). */
@@ -203,9 +204,9 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
                 <img src={hero.cdn_url} alt="" className={styles.heroImg} />
               )}
             </div>
-            <button type="button" className={styles.chooseBtn} onClick={() => setHeroPicking(true)}>
+            <Button onClick={() => setHeroPicking(true)}>
               {hero ? 'Change Hero Image' : 'Choose Hero Image'}
-            </button>
+            </Button>
           </div>
 
           <div className={styles.field}>
@@ -315,7 +316,6 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
           <div className={styles.formActions}>
             {!isNew && <DiscardButton dirty={dirty} pending={isSaving} onClick={discard} />}
             <SaveButton
-              className={styles.btnSecondary}
               dirty={dirty}
               pending={isSaving}
               isNew={isNew}
@@ -329,7 +329,6 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
               // Publishing an unchanged draft is still an action; a LIVE post
               // with nothing changed has nothing to save or publish.
               <SaveButton
-                className={styles.btnPrimary}
                 dirty={dirty || !published}
                 pending={isSaving}
                 isNew={isNew}

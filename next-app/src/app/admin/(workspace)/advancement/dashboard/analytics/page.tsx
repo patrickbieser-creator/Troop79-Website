@@ -13,10 +13,10 @@
  * (Bunny CDN, Resend) rather than crashing the page.
  */
 
-import Link from 'next/link';
 import { requireCapability } from '@/lib/require-capability';
 import styles from '../dashboard.module.css';
 import { PageTitle } from '../../../_components/page-title';
+import { Button } from '../../../../_components/button';
 
 export const metadata = {
   title: 'Site Analytics — Troop 79'
@@ -34,9 +34,7 @@ export default async function AnalyticsPage() {
         sub="Traffic and engagement for troop-79.com, via Google Analytics 4 and Looker Studio."
       >
         <div className={styles.actions}>
-          <Link href="/admin/advancement/dashboard" className={styles.btn}>
-            ← Dashboard
-          </Link>
+          <Button href="/admin/advancement/dashboard">← Dashboard</Button>
         </div>
       </PageTitle>
 

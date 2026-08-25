@@ -11,17 +11,8 @@
   text-transform: uppercase; color: var(--admin-gray-500); margin-bottom: 4px;
 }
 
-.updateBtn {
-  font-family: inherit; font-size: 12px; font-weight: 700; letter-spacing: .04em;
-  background: var(--admin-navy); color: var(--admin-white); border: 1px solid var(--admin-navy);
-  padding: 8px 16px; border-radius: 3px; cursor: pointer;
-}
-.downloadBtn {
-  font-family: inherit; font-size: 12px; font-weight: 700; letter-spacing: .04em;
-  background: var(--admin-forest); color: var(--admin-white); border: 1px solid var(--admin-forest);
-  padding: 8px 16px; border-radius: 3px; cursor: pointer; text-decoration: none; display: inline-block;
-}
-.downloadBtnDisabled { opacity: .5; pointer-events: none; }
+/* .updateBtn retired 2026-08-24 → shared Button. .downloadBtn / .downloadBtnDisabled
+   were already unused (no consumers) — removed in the same pass. */
 
 .actionsBar { margin-bottom: 14px; }
 /* Actions ▾ select moved to the shared ActionsMenu component

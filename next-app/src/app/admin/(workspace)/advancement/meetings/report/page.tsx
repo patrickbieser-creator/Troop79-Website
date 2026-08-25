@@ -28,6 +28,7 @@ import { DateParamField } from '../../../_components/date-param-field';
 import { TabStrip } from '../../../_components/tab-strip';
 import styles from '../meetings.module.css';
 import { PageTitle } from '../../../_components/page-title';
+import { Button } from '../../../../_components/button';
 
 export const metadata = {
   title: 'Attendance Report — Troop 79'
@@ -156,9 +157,9 @@ export default async function AttendanceReportPage({
       />
 
       <form method="get" className={`${styles.toolbar} ${styles.toolbarStart}`}>
-        <Link href="/admin/calendar" className={styles.editBtn}>
+        <Button href="/admin/calendar" size="sm">
           ← Calendar
-        </Link>
+        </Button>
         <span className={styles.spacer} />
         <label className={`${styles.muted} ${styles.filterLabel}`} htmlFor="from">
           From
@@ -172,9 +173,9 @@ export default async function AttendanceReportPage({
         {who !== 'scouts' && <input type="hidden" name="who" value={who} />}
         {/* Navy: this is a form submit, not an Add — the Phase A primary-button
             decision (2026-08-21) reserves green for create actions. */}
-        <button type="submit" className={styles.editSaveBtn}>
+        <Button type="submit" variant="primary">
           Apply
-        </button>
+        </Button>
       </form>
 
       <table className={styles.table}>

@@ -21,6 +21,7 @@ import { useRouter } from 'next/navigation';
 import { createTransactionKindAction, renameTransactionKindAction, deleteTransactionKindAction } from './actions';
 import type { TransactionKindRow } from '@/lib/finance';
 import styles from './finance.module.css';
+import { Button } from '../../_components/button';
 
 export function KindManager({ kinds }: { kinds: TransactionKindRow[] }) {
   const router = useRouter();
@@ -104,22 +105,22 @@ export function KindManager({ kinds }: { kinds: TransactionKindRow[] }) {
               {k.label !== k.code && <span className={styles.muted}> ({k.code})</span>}
             </span>
             <span>
-              <button
-                type="button"
-                className={styles.saveBtnAlt}
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => rename(k)}
                 disabled={isPending && busyCode === k.code}
               >
                 Rename
-              </button>
-              <button
-                type="button"
-                className={styles.saveBtnAlt}
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => remove(k)}
                 disabled={isPending && busyCode === k.code}
               >
                 {isPending && busyCode === k.code ? '…' : 'Delete'}
-              </button>
+              </Button>
             </span>
           </li>
         ))}
@@ -144,17 +145,17 @@ export function KindManager({ kinds }: { kinds: TransactionKindRow[] }) {
               }
             }}
           />
-          <button type="button" className={styles.saveBtn} onClick={add} disabled={!newName.trim() || isPending}>
+          <Button variant="primary" onClick={add} disabled={!newName.trim() || isPending}>
             Add
-          </button>
-          <button type="button" className={styles.saveBtnAlt} onClick={() => setAdding(false)} disabled={isPending}>
+          </Button>
+          <Button variant="secondary" onClick={() => setAdding(false)} disabled={isPending}>
             Cancel
-          </button>
+          </Button>
         </div>
       ) : (
-        <button type="button" className={styles.saveBtnAlt} onClick={() => setAdding(true)} disabled={isPending}>
+        <Button variant="secondary" onClick={() => setAdding(true)} disabled={isPending}>
           + Add Kind
-        </button>
+        </Button>
       )}
     </div>
   );

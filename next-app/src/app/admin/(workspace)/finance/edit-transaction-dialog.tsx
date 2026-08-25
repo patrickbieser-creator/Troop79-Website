@@ -19,6 +19,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { SaveButton, useSavedSnapshot } from '../_components/save-state';
+import { Button } from '../../_components/button';
 import {
   ACCOUNTS,
   TRANSACTION_METHODS,
@@ -245,12 +246,11 @@ function EditTransactionForm({
         <textarea rows={2} value={memo} onChange={(e) => setMemo(e.target.value)} />
       </label>
       <div className={styles.editDialogActions}>
-        <button type="button" className={styles.pagerBtn} onClick={onClose}>
+        <Button variant="secondary" onClick={onClose}>
           Cancel
-        </button>
+        </Button>
         <SaveButton
           type="submit"
-          className={styles.pagerBtn}
           dirty={dirty}
           pending={pending}
           blocked={!(Number(amountText) > 0)}

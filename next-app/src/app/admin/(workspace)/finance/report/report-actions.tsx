@@ -14,6 +14,7 @@ import { RenameActivityPanel } from './rename-activity-panel';
 import parentStyles from '../finance.module.css';
 import { ActionsMenu } from '../../_components/actions-menu';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
+import { Button } from '../../../_components/button';
 
 type ReportModal = 'rename';
 
@@ -69,9 +70,9 @@ export function ReportActions({
           )}
         </DialogBody>
         <DialogActions>
-          <button type="button" className={parentStyles.saveBtnAlt} onClick={() => setActiveModal(null)}>
+          <Button variant="secondary" onClick={() => setActiveModal(null)}>
             Close
-          </button>
+          </Button>
         </DialogActions>
       </Dialog>
     </>

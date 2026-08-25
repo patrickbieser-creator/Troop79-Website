@@ -5,6 +5,7 @@ import { useLookupTable } from './use-lookup-table';
 import styles from './lookups.module.css';
 import { AddButton } from '../../_components/add-button';
 import { Notice } from '../../_components/notice';
+import { Button } from '../../../_components/button';
 
 type ActionResult = { ok: boolean; error?: string };
 
@@ -142,9 +143,9 @@ export function SkillsEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
             Older scout may teach
           </label>
           <div className={styles.addPanelActions}>
-            <button type="button" className={styles.editBtn} onClick={cancelAdd} disabled={isPending}>
+            <Button variant="secondary" size="sm" onClick={cancelAdd} disabled={isPending}>
               Cancel
-            </button>
+            </Button>
             <AddButton onClick={add} disabled={isPending || !newName.trim()}>
               Add Skill
             </AddButton>
@@ -179,22 +180,23 @@ export function SkillsEditor({ rows, onCreate, onUpdate, onDelete }: Props) {
                 </label>
               </td>
               <td className={styles.cellRight}>
-                <button
-                  type="button"
-                  className={styles.editBtn}
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={() => rename(row)}
                   disabled={busyId === row.id}
                 >
                   Rename
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.editBtn} ${styles.dangerBtn} ${styles.gapLeft}`}
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  className={styles.gapLeft}
                   onClick={() => remove(row)}
                   disabled={busyId === row.id}
                 >
                   Delete
-                </button>
+                </Button>
               </td>
             </tr>
           ))}

@@ -27,6 +27,7 @@
 import { useMemo, useState } from 'react';
 import { useLookupCard } from './lookup-card';
 import styles from './lookups.module.css';
+import { Button } from '../../../_components/button';
 
 const COLLAPSED_ROWS = 15;
 const SEARCH_THRESHOLD = 50;
@@ -68,15 +69,15 @@ export function useLookupTable<T>(
     hidden > 0 ? (
       <p className={styles.summary}>
         Showing {rows.length} of {matching.length}.{' '}
-        <button type="button" className={styles.linkBtn} onClick={() => setShowAll(true)}>
+        <Button variant="quiet" onClick={() => setShowAll(true)}>
           Show all
-        </button>
+        </Button>
       </p>
     ) : !expanded && showAll && matching.length > COLLAPSED_ROWS ? (
       <p className={styles.summary}>
-        <button type="button" className={styles.linkBtn} onClick={() => setShowAll(false)}>
+        <Button variant="quiet" onClick={() => setShowAll(false)}>
           Show first {COLLAPSED_ROWS} only
-        </button>
+        </Button>
       </p>
     ) : searchable && q ? (
       <p className={styles.summary}>

@@ -24,6 +24,7 @@ import { FinanceWorkspace } from './finance-workspace';
 import { PageTitle } from '../_components/page-title';
 import { DateParamField } from '../_components/date-param-field';
 import styles from './finance.module.css';
+import { Button } from '../../_components/button';
 
 export const metadata = {
   title: 'Financial Ledger — Troop 79'
@@ -246,13 +247,13 @@ export default async function FinancePage({
             the treasurer just picked. */}
         <input type="hidden" name="sort" value={sort} />
         <input type="hidden" name="dir" value={dir} />
-        <button type="submit" className={styles.pagerBtn}>
+        <Button variant="secondary" type="submit">
           Filter
-        </button>
+        </Button>
         {(account || kind || personId || activity || dateFrom || dateTo || amountMin != null || amountMax != null) && (
-          <Link href="/admin/finance" className={styles.pagerBtn}>
+          <Button variant="secondary" href="/admin/finance">
             Clear
-          </Link>
+          </Button>
         )}
       </form>
 

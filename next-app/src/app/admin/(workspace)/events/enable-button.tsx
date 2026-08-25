@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { enableSignup } from './actions';
+import { Button } from '../../_components/button';
 import styles from './events-admin.module.css';
 
 /** Enables signup seeded from the event's category preset. The preset is only
@@ -14,9 +15,8 @@ export function EnableSignupButton({ calendarEntryId }: { calendarEntryId: numbe
 
   return (
     <>
-      <button
-        type="button"
-        className={styles.enableBtn}
+      <Button
+        variant="primary"
         disabled={pending}
         onClick={() =>
           start(async () => {
@@ -27,7 +27,7 @@ export function EnableSignupButton({ calendarEntryId }: { calendarEntryId: numbe
         }
       >
         {pending ? 'Enabling…' : 'Enable signup'}
-      </button>
+      </Button>
       {error && <span className={styles.err}>{error}</span>}
     </>
   );

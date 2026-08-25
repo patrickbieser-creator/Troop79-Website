@@ -20,6 +20,7 @@ import { RESOURCE_KIND_ICON, RESOURCE_KIND_LABEL, type ResourceKind } from '@/li
 import { MediaPicker } from '../news/_components/media-picker';
 import { MarkdownSplitPane, type MarkdownEditorHandle } from '../_components/markdown-split-pane';
 import styles from './library.module.css';
+import { Button } from '../../_components/button';
 
 export interface TargetOptionGroup {
   group: string;
@@ -148,13 +149,9 @@ export function ResourceEntryForm({ targetGroups, onCreate, onUploadDocument, em
 
         {kind === 'image' && (
           <div className={styles.fieldFull}>
-            <button
-              type="button"
-              className={styles.btnSecondary}
-              onClick={() => setPicker('image')}
-            >
+            <Button variant="secondary" onClick={() => setPicker('image')}>
               Choose from the media library…
-            </button>
+            </Button>
           </div>
         )}
 
@@ -189,9 +186,9 @@ export function ResourceEntryForm({ targetGroups, onCreate, onUploadDocument, em
               cheatSheet
               placeholder="Write in markdown — ## heading, **bold**, - list…"
               toolbar={
-                <button type="button" className={styles.btnSecondary} onClick={() => setPicker('body')}>
+                <Button variant="secondary" onClick={() => setPicker('body')}>
                   Insert image
-                </button>
+                </Button>
               }
             />
             <input type="hidden" name="body_md" value={body} />
@@ -236,9 +233,9 @@ export function ResourceEntryForm({ targetGroups, onCreate, onUploadDocument, em
               </optgroup>
             ))}
           </select>
-          <button type="button" className={styles.btnSecondary} onClick={addPlacement}>
+          <Button variant="secondary" onClick={addPlacement}>
             + Place
-          </button>
+          </Button>
         </div>
         {placements.length === 0 ? (
           <span className={styles.fieldHint}>
@@ -265,12 +262,12 @@ export function ResourceEntryForm({ targetGroups, onCreate, onUploadDocument, em
       </div>
 
       <div className={styles.actionsRow}>
-        <button className={styles.btnPrimary} type="submit" name="intent" value="publish">
+        <Button variant="primary" type="submit" name="intent" value="publish">
           Publish
-        </button>
-        <button className={styles.btnSecondary} type="submit" name="intent" value="draft">
+        </Button>
+        <Button variant="secondary" type="submit" name="intent" value="draft">
           Save as draft
-        </button>
+        </Button>
       </div>
 
       {picker && (

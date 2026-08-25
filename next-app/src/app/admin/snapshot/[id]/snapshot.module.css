@@ -23,7 +23,7 @@
 
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--admin-space-6); flex-wrap: wrap; margin-bottom: var(--admin-space-6); padding-bottom: var(--admin-space-4); border-bottom: 1px solid var(--admin-gray-200); font-size: var(--admin-text-sm); color: var(--admin-gray-600); }
 .toolbarActions { display: flex; gap: var(--admin-space-4); align-items: center; }
-.printBtn { background: var(--admin-navy); color: var(--admin-white); border: none; border-radius: var(--admin-radius-sm); padding: 6px 13px; font-size: var(--admin-text-sm); font-weight: var(--admin-weight-bold); cursor: pointer; }
+/* .printBtn retired 2026-08-25 → shared Button (primary) */
 .backLink { color: var(--admin-navy); text-decoration: underline; }
 
 .cover { margin-bottom: var(--admin-space-4); }

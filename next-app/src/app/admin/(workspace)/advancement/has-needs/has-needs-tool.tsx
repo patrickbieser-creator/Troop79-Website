@@ -13,6 +13,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { optionalityLabel } from '@/lib/mb-helpers';
+import { Button } from '../../../_components/button';
 import styles from './has-needs.module.css';
 
 export interface PickerTreeNode {
@@ -123,14 +124,14 @@ export function HasNeedsTool({ ranks, scouts }: { ranks: PickerRank[]; scouts: R
       <div className={styles.picker}>
         <div className={styles.pickerHeader}>
           <span className="adminLabel">Requirements</span>
-          <button
-            type="button"
-            className={styles.clearBtn}
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => setChecked(new Set())}
             disabled={checked.size === 0}
           >
             Clear all
-          </button>
+          </Button>
         </div>
         {ranks.map((rank) => {
           const rows = flattenRank(rank.id, rank.tree);

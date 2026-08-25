@@ -47,6 +47,7 @@ import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_componen
 import { SaveButton, SaveFeedback, useSavePhase } from '../../_components/save-state';
 import { SortHeader, useSortable, type SortDir } from '../../_components/use-sortable';
 import sortStyles from '../../_components/use-sortable.module.css';
+import { Button } from '../../../_components/button';
 
 /** Sortable columns (Patrick, 2026-08-22: name, class, participation, ride
  *  to/from, and every group-set column — `set:<id>`). */
@@ -666,21 +667,21 @@ export function RosterTable({
           ]}
         />
         <div>
-          <button type="button" className={styles.enableBtn} onClick={openAddGuest} disabled={pending || rows.length === 0}>
+          <Button variant="primary" onClick={openAddGuest} disabled={pending || rows.length === 0}>
             Add a guest
-          </button>{' '}
-          <button type="button" className={styles.enableBtn} onClick={() => window.print()}>
+          </Button>{' '}
+          <Button variant="primary" onClick={() => window.print()}>
             Print
-          </button>{' '}
-          <button type="button" className={styles.enableBtn} onClick={exportCsv}>
+          </Button>{' '}
+          <Button variant="primary" onClick={exportCsv}>
             Export CSV
-          </button>
+          </Button>
           {slots.length > 0 && (
             <>
               {' '}
-              <button type="button" className={styles.enableBtn} onClick={() => setJobsOpen((v) => !v)} aria-pressed={jobsOpen}>
+              <Button variant="primary" onClick={() => setJobsOpen((v) => !v)} aria-pressed={jobsOpen}>
                 {jobsOpen ? `Hide jobs (${slots.length})` : `Show jobs (${slots.length})`}
-              </button>
+              </Button>
             </>
           )}
         </div>
@@ -1072,7 +1073,6 @@ export function RosterTable({
                 Cancel
               </button>
               <SaveButton
-                className={styles.enableBtn}
                 dirty={editDirty}
                 pending={pending}
                 onClick={saveJobs}
@@ -1171,14 +1171,13 @@ export function RosterTable({
               <button type="button" className={styles.rowEdit} onClick={() => setAddingGuest(false)} disabled={pending}>
                 Cancel
               </button>
-              <button
-                type="button"
-                className={styles.enableBtn}
+              <Button
+                variant="primary"
                 disabled={pending || (guestPick == null && !guestName.trim()) || guestHost === ''}
                 onClick={saveGuest}
               >
                 {pending ? 'Adding…' : 'Add guest'}
-              </button>
+              </Button>
             </DialogActions>
           </>
         )}
@@ -1232,9 +1231,9 @@ export function RosterTable({
               <button type="button" className={styles.rowEdit} onClick={() => setPayingRow(null)}>
                 Cancel
               </button>
-              <button type="button" className={styles.enableBtn} disabled={pending || payNeedsAck} onClick={confirmPayment}>
+              <Button variant="primary" disabled={pending || payNeedsAck} onClick={confirmPayment}>
                 Record payment
-              </button>
+              </Button>
             </DialogActions>
           </>
         )}
@@ -1304,9 +1303,8 @@ function OtherResponses({
                 {r.status === 'cancelled' ? (
                   confirmDelete === r.id ? (
                     <>
-                      <button
-                        type="button"
-                        className={styles.dangerBtn}
+                      <Button
+                        variant="danger"
                         disabled={pending}
                         onClick={() => {
                           setConfirmDelete(null);
@@ -1314,7 +1312,7 @@ function OtherResponses({
                         }}
                       >
                         Confirm delete
-                      </button>{' '}
+                      </Button>{' '}
                       <button type="button" className={styles.rowEdit} onClick={() => setConfirmDelete(null)}>
                         Keep
                       </button>

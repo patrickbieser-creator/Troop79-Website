@@ -25,6 +25,7 @@ import {
 import ev from '../../../events/events-admin.module.css';
 import styles from './assignments.module.css';
 import { SaveButton, SaveFeedback, useSavePhase } from '../../../_components/save-state';
+import { Button } from '../../../../_components/button';
 
 /** The group editor's draft, seeded from the group — the same shape is
  *  "saved", so the Save standard's dirty gate is a comparison against it. */
@@ -318,9 +319,8 @@ export function AssignmentsBoard({
             value={newCap}
             onChange={(e) => setNewCap(e.target.value)}
           />
-          <button
-            type="button"
-            className={ev.enableBtn}
+          <Button
+            variant="primary"
             disabled={pending || !newName.trim()}
             onClick={() =>
               run(async () => {
@@ -337,7 +337,7 @@ export function AssignmentsBoard({
             }
           >
             Add {active.kind === 'patrol' ? 'patrol' : active.kind === 'tent' ? 'tent' : 'group'}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -402,7 +402,6 @@ export function AssignmentsBoard({
                   />
                   <div className={styles.groupEditActions}>
                     <SaveButton
-                      className={ev.enableBtn}
                       dirty={JSON.stringify(editingGroup) !== JSON.stringify(groupDraft(g))}
                       pending={pending}
                       blocked={!isCar && !editingGroup.name.trim()}

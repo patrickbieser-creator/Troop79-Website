@@ -58,6 +58,7 @@ import { QuickAddResource } from './quick-add-resource';
 import { NarrativeForm } from './narrative-form';
 import { fmtDate } from '@/lib/format-date';
 import { TabStrip } from '../_components/tab-strip';
+import { Button } from '../../_components/button';
 import styles from './library.module.css';
 
 export const metadata = {
@@ -538,9 +539,9 @@ function ProofQueueRow({ item }: { item: ProofQueueItem }) {
       <div className={styles.actionsRow}>
         <form action={approveSubmissionAction} className={styles.inlineForm}>
           <input type="hidden" name="id" value={s.id} />
-          <button className={styles.btnPrimary} type="submit">
+          <Button variant="primary" type="submit">
             Approve — Write to Ledger
-          </button>
+          </Button>
         </form>
       </div>
       <form className={styles.declineForm} action={returnSubmissionAction}>
@@ -550,9 +551,9 @@ function ProofQueueRow({ item }: { item: ProofQueueItem }) {
           name="feedback_md"
           placeholder="Feedback for the household (kept on the record)"
         />
-        <button className={styles.btnDanger} type="submit">
+        <Button variant="danger" type="submit">
           Return
-        </button>
+        </Button>
       </form>
     </div>
   );
@@ -699,27 +700,27 @@ function ResourceRow({
             </div>
           </div>
           <div className={styles.actionsRow}>
-            <button className={styles.btnSecondary} formAction={saveResourceAction}>
+            <Button variant="secondary" type="submit" formAction={saveResourceAction}>
               Save
-            </button>
+            </Button>
             {tab === 'queue' && (
-              <button className={styles.btnPrimary} formAction={approveResourceAction}>
+              <Button variant="primary" type="submit" formAction={approveResourceAction}>
                 Approve &amp; Publish
-              </button>
+              </Button>
             )}
             {tab === 'published' && (
-              <button className={styles.btnDanger} formAction={archiveResourceAction}>
+              <Button variant="danger" type="submit" formAction={archiveResourceAction}>
                 Archive
-              </button>
+              </Button>
             )}
           </div>
         </form>
       ) : (
         <form className={styles.actionsRow}>
           <input type="hidden" name="id" value={res.id} />
-          <button className={styles.btnSecondary} formAction={restoreResourceAction}>
+          <Button variant="secondary" type="submit" formAction={restoreResourceAction}>
             Restore to Queue
-          </button>
+          </Button>
         </form>
       )}
 
@@ -765,9 +766,9 @@ function ResourceRow({
             <input type="hidden" name="tab" value={tab} />
             {group && <input type="hidden" name="group" value={group} />}
             <TargetSelect catalog={data.catalog} name="target" includeMbReq={false} />
-            <button className={styles.btnSecondary} type="submit">
+            <Button variant="secondary" type="submit">
               + Place
-            </button>
+            </Button>
           </form>
         </div>
       )}
@@ -780,9 +781,9 @@ function ResourceRow({
             name="reason"
             placeholder="Decline note (kept on the archived record)"
           />
-          <button className={styles.btnDanger} type="submit">
+          <Button variant="danger" type="submit">
             Decline
-          </button>
+          </Button>
         </form>
       )}
     </div>
@@ -885,12 +886,12 @@ function TopicsTab({ topics }: { topics: LibraryTopic[] }) {
             aria-label="Sort order"
           />
           <span className={`${styles.actionsRow} ${styles.actionsRowTight}`}>
-            <button className={styles.btnSecondary} formAction={updateTopicAction}>
+            <Button variant="secondary" type="submit" formAction={updateTopicAction}>
               Save
-            </button>
-            <button className={styles.btnDanger} formAction={toggleTopicRetiredAction}>
+            </Button>
+            <Button variant="danger" type="submit" formAction={toggleTopicRetiredAction}>
               {t.retired_at ? 'Restore' : 'Retire'}
-            </button>
+            </Button>
           </span>
         </form>
       ))}
@@ -917,9 +918,9 @@ function TopicsTab({ topics }: { topics: LibraryTopic[] }) {
           defaultValue={99}
           aria-label="Sort order"
         />
-        <button className={styles.btnPrimary} type="submit">
+        <Button variant="primary" type="submit">
           + New Shelf
-        </button>
+        </Button>
       </form>
       <p className={`${styles.pageLede} ${styles.pageLedeSpaced}`}>
         Renaming a shelf is safe — placements key on the slug, which never changes, so the
@@ -966,13 +967,13 @@ function NarrativesTab({
           includeMbReq={false}
           topicsAllowed={false}
         />
-        <button className={styles.btnSecondary} type="submit">
+        <Button variant="secondary" type="submit">
           Load
-        </button>
+        </Button>
       </form>
 
       {target && (
-        <NarrativeForm action={saveNarrativeAction} className={styles.narrForm} buttonClassName={styles.btnPrimary}>
+        <NarrativeForm action={saveNarrativeAction} className={styles.narrForm}>
           <input type="hidden" name="target" value={target} />
           <label className={`adminLabel ${styles.fieldLabel}`} htmlFor="narrative_md">
             Narrative for {(() => {

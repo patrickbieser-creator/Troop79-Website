@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { resolveDuplicateLedgerEntries } from './actions';
 import type { DuplicateGroup } from './checks/duplicate-records';
 import styles from './audits.module.css';
+import { Button } from '../../../_components/button';
 import { fmtDate, fmtDateTime } from '@/lib/format-date';
 
 export function DuplicateAuditCard({ group }: { group: DuplicateGroup }) {
@@ -72,9 +73,9 @@ export function DuplicateAuditCard({ group }: { group: DuplicateGroup }) {
       </div>
 
       <div className={styles.fillRow}>
-        <button type="button" className={styles.saveBtn} onClick={resolve} disabled={isPending}>
+        <Button variant="primary" onClick={resolve} disabled={isPending}>
           {isPending ? 'Saving…' : `Keep #${keepId}, delete ${group.records.length - 1}`}
-        </button>
+        </Button>
         {status && (
           <span className={status.kind === 'ok' ? styles.statusOk : styles.statusErr}>{status.msg}</span>
         )}

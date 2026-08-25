@@ -6,6 +6,7 @@ import type { LedgerEntry } from '@/lib/supabase/types';
 import { DatePickerField } from '../../_components/date-picker-field';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
 import { Notice } from '../../_components/notice';
+import { Button } from '../../../_components/button';
 import styles from './ledger.module.css';
 
 type Row = LedgerEntry & { scoutName?: string };
@@ -224,17 +225,16 @@ export function BulkEditModal({ rows, scouts, leaders, onClose, onSaved }: Props
       </DialogBody>
 
       <DialogActions>
-        <button
-          type="button"
-          className={styles.actionBtn}
+        <Button
+          variant="quiet"
+          size="sm"
           onClick={onClose}
           disabled={isPending}
         >
           Cancel
-        </button>
-        <button
-          type="button"
-          className={styles.editSaveBtn}
+        </Button>
+        <Button
+          variant="primary"
           onClick={submit}
           disabled={isPending || changeCount === 0}
         >
@@ -243,7 +243,7 @@ export function BulkEditModal({ rows, scouts, leaders, onClose, onSaved }: Props
             : changeCount === 0
               ? 'Apply changes'
               : `Apply ${changeCount} change${changeCount === 1 ? '' : 's'} to ${rows.length} rows`}
-        </button>
+        </Button>
       </DialogActions>
     </Dialog>
   );

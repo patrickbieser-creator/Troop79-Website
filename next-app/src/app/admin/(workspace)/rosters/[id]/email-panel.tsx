@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { emailNonResponders } from '../../events/actions';
+import { Button } from '../../../_components/button';
 import styles from '../../events/events-admin.module.css';
 
 /**
@@ -41,9 +42,9 @@ export function EmailPanel({ signupId, configured }: { signupId: number; configu
     <section className={styles.panel}>
       <div className={styles.panelHead}>
         <h2>Chase the non-responders</h2>
-        <button type="button" className={styles.enableBtn} disabled={pending} onClick={() => run(false)}>
+        <Button variant="primary" disabled={pending} onClick={() => run(false)}>
           {pending ? 'Working…' : 'Preview recipients'}
-        </button>
+        </Button>
       </div>
       <p className={styles.panelHint}>
         Emails the parents of active scouts with no entry yet. Nothing sends until you press Send —
@@ -61,14 +62,13 @@ export function EmailPanel({ signupId, configured }: { signupId: number; configu
           </p>
           <p className={styles.nrList}>{preview.join(' · ') || 'Nobody to chase — everyone has replied.'}</p>
           {preview.length > 0 && (
-            <button
-              type="button"
-              className={styles.enableBtn}
+            <Button
+              variant="primary"
               disabled={pending}
               onClick={() => run(true)}
             >
               Send to these {preview.length}
-            </button>
+            </Button>
           )}
         </>
       )}

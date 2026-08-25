@@ -11,6 +11,7 @@ import {
 import { TRANSACTION_METHODS, type TransactionMethod } from '@/lib/finance';
 import styles from '../finance.module.css';
 import { fmtDate } from '@/lib/format-date';
+import { Button } from '../../../_components/button';
 
 export function ReimbursementQueue({ requests }: { requests: ReimbursementQueueRow[] }) {
   const [pending, start] = useTransition();
@@ -99,18 +100,18 @@ export function ReimbursementQueue({ requests }: { requests: ReimbursementQueueR
                 <td className={styles.nowrap}>
                   {r.status === 'submitted' && (
                     <>
-                      <button type="button" className={styles.pagerBtn} disabled={pending} onClick={() => approve(r.id)}>
+                      <Button variant="secondary" size="sm" disabled={pending} onClick={() => approve(r.id)}>
                         Approve
-                      </button>{' '}
-                      <button type="button" className={styles.pagerBtn} disabled={pending} onClick={() => deny(r.id)}>
+                      </Button>{' '}
+                      <Button variant="secondary" size="sm" disabled={pending} onClick={() => deny(r.id)}>
                         Deny
-                      </button>
+                      </Button>
                     </>
                   )}
                   {r.status === 'approved' && (
-                    <button type="button" className={styles.pagerBtn} disabled={pending} onClick={() => markPaid(r.id)}>
+                    <Button variant="secondary" size="sm" disabled={pending} onClick={() => markPaid(r.id)}>
                       Mark paid
-                    </button>
+                    </Button>
                   )}
                 </td>
               </tr>

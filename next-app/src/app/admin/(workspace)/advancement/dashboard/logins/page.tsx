@@ -7,12 +7,12 @@
  * kept out of the main list rather than mixed in as routine noise).
  */
 
-import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireCapability } from '@/lib/require-capability';
 import { loadAllLogins, loadRecentFailedLogins, type LoginMethod } from '@/lib/login-events';
 import styles from '../dashboard.module.css';
 import { PageTitle } from '../../../_components/page-title';
+import { Button } from '../../../../_components/button';
 
 import { fmtDateTime } from '@/lib/format-date';
 const PAGE_SIZE = 50;
@@ -53,9 +53,7 @@ export default async function AllLoginsPage({
         sub="Every successful sign-in, family and leader alike — same flow since the identity unification."
       >
         <div className={styles.actions}>
-          <Link href="/admin/advancement/dashboard" className={styles.btn}>
-            ← Dashboard
-          </Link>
+          <Button href="/admin/advancement/dashboard">← Dashboard</Button>
         </div>
       </PageTitle>
 
@@ -99,14 +97,10 @@ export default async function AllLoginsPage({
         {totalPages > 1 && (
           <div className={`${styles.actions} ${styles.actionsEnd}`}>
             {page > 1 && (
-              <Link href={`/admin/advancement/dashboard/logins?page=${page - 1}`} className={styles.btn}>
-                ← Newer
-              </Link>
+              <Button href={`/admin/advancement/dashboard/logins?page=${page - 1}`}>← Newer</Button>
             )}
             {page < totalPages && (
-              <Link href={`/admin/advancement/dashboard/logins?page=${page + 1}`} className={styles.btn}>
-                Older →
-              </Link>
+              <Button href={`/admin/advancement/dashboard/logins?page=${page + 1}`}>Older →</Button>
             )}
           </div>
         )}

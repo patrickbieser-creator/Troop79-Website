@@ -9,6 +9,7 @@ import styles from './roster.module.css';
 import fields from '../lookups/lookups.module.css';
 import { Notice } from '../../_components/notice';
 import { Dialog } from '../../_components/dialog';
+import { Button } from '../../../_components/button';
 
 /**
  * "Add Adult" — the same shape as the Scout editor's create path (a dialog off
@@ -102,9 +103,9 @@ export function AdultForm({
             A leader, committee member, counselor, or a parent with no scout in the troop.
           </p>
         </div>
-        <button className={styles.smallBtn} onClick={onClose} disabled={isPending}>
+        <Button size="sm" onClick={onClose} disabled={isPending}>
           Cancel
-        </button>
+        </Button>
       </div>
 
       {error && <Notice>{error}</Notice>}
@@ -235,12 +236,12 @@ export function AdultForm({
       </p>
 
       <div className={fields.editActions}>
-        <button className={styles.smallBtn} onClick={onClose} disabled={isPending}>
+        <Button size="sm" onClick={onClose} disabled={isPending}>
           Cancel
-        </button>
-        <button className={fields.editSaveBtn} onClick={save} disabled={!canSave}>
+        </Button>
+        <Button variant="primary" onClick={save} disabled={!canSave}>
           {isPending ? 'Adding…' : 'Add adult'}
-        </button>
+        </Button>
       </div>
       </div>
     </Dialog>

@@ -12,6 +12,7 @@ import {
 } from './actions';
 import type { ReconciliationFinding } from './checks/attendance-reconciliation';
 import styles from './audits.module.css';
+import { Button } from '../../../_components/button';
 import { fmtDate } from '@/lib/format-date';
 
 type Status = { kind: 'ok' | 'err'; msg: string } | null;
@@ -66,9 +67,8 @@ export function ReconciliationFindingRow({ finding }: { finding: ReconciliationF
       {!resolved && (
         <div className={`${styles.fillRow} ${styles.fillRowFlush}`}>
           {finding.kind === 'credit_missing' && finding.personId != null && (
-            <button
-              type="button"
-              className={styles.saveBtn}
+            <Button
+              variant="primary"
               disabled={disabled}
               title={
                 finding.rollCallQty == null
@@ -99,15 +99,14 @@ export function ReconciliationFindingRow({ finding }: { finding: ReconciliationF
                 : finding.rollCallQty != null
                   ? `Write the missing credit (${finding.rollCallQty})`
                   : 'Write the missing credit'}
-            </button>
+            </Button>
           )}
 
           {finding.kind === 'credit_orphaned' && finding.ledgerEntryId != null && (
             <>
               {finding.personId != null && (
-                <button
-                  type="button"
-                  className={styles.saveBtn}
+                <Button
+                  variant="primary"
                   disabled={disabled}
                   onClick={() =>
                     run(
@@ -124,11 +123,10 @@ export function ReconciliationFindingRow({ finding }: { finding: ReconciliationF
                   }
                 >
                   {isPending ? '…' : 'They were there — add attendance'}
-                </button>
+                </Button>
               )}
-              <button
-                type="button"
-                className={styles.saveBtnAlt}
+              <Button
+                variant="secondary"
                 disabled={disabled}
                 onClick={() =>
                   run(
@@ -144,7 +142,7 @@ export function ReconciliationFindingRow({ finding }: { finding: ReconciliationF
                 }
               >
                 {isPending ? '…' : "They weren't there — remove the credit"}
-              </button>
+              </Button>
             </>
           )}
 
@@ -154,9 +152,8 @@ export function ReconciliationFindingRow({ finding }: { finding: ReconciliationF
             finding.rollCallQty != null &&
             finding.ledgerQty != null && (
               <>
-                <button
-                  type="button"
-                  className={styles.saveBtn}
+                <Button
+                  variant="primary"
                   disabled={disabled}
                   onClick={() =>
                     run(
@@ -176,10 +173,9 @@ export function ReconciliationFindingRow({ finding }: { finding: ReconciliationF
                   }
                 >
                   {isPending ? '…' : `Use Roll Call's ${finding.rollCallQty}`}
-                </button>
-                <button
-                  type="button"
-                  className={styles.saveBtnAlt}
+                </Button>
+                <Button
+                  variant="secondary"
                   disabled={disabled}
                   onClick={() =>
                     run(
@@ -199,14 +195,13 @@ export function ReconciliationFindingRow({ finding }: { finding: ReconciliationF
                   }
                 >
                   {isPending ? '…' : `Use the ledger's ${finding.ledgerQty}`}
-                </button>
+                </Button>
               </>
             )}
 
           {finding.kind === 'date_drift' && finding.ledgerEntryId != null && (
-            <button
-              type="button"
-              className={styles.saveBtn}
+            <Button
+              variant="primary"
               disabled={disabled}
               onClick={() =>
                 run(
@@ -219,7 +214,7 @@ export function ReconciliationFindingRow({ finding }: { finding: ReconciliationF
               }
             >
               {isPending ? '…' : `Align credit to ${fmtDate(finding.entryDate)}`}
-            </button>
+            </Button>
           )}
 
           {status && <span className={status.kind === 'ok' ? styles.statusOk : styles.statusErr}>{status.msg}</span>}

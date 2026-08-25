@@ -9,6 +9,7 @@ import { DatePickerField } from '../../_components/date-picker-field';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
 import styles from './fast-entry.module.css';
 import { fmtDate } from '@/lib/format-date';
+import { Button } from '../../../_components/button';
 
 interface Props {
   scouts: { id: string; display_name: string; current_rank: string | null }[];
@@ -222,9 +223,9 @@ export function ReqFirstCard({ scouts, leaders, catalog }: Props) {
               ({selectedScouts.size} selected)
             </span>
           </span>
-          <button type="button" onClick={selectAll} className={styles.linkBtn}>
+          <Button variant="quiet" onClick={selectAll}>
             {selectedScouts.size === scouts.length ? 'Clear all' : 'Select all'}
-          </button>
+          </Button>
         </div>
         <div className={styles.scoutGrid}>
           {scouts.map((s) => (
@@ -256,17 +257,14 @@ export function ReqFirstCard({ scouts, leaders, catalog }: Props) {
             {status.msg}
           </span>
         )}
-        <button
-          type="button"
-          className={styles.btn}
+        <Button
           onClick={clear}
           disabled={isPending}
         >
           Clear
-        </button>
-        <button
-          type="button"
-          className={styles.btnPrimary}
+        </Button>
+        <Button
+          variant="primary"
           onClick={openConfirm}
           disabled={
             isPending ||
@@ -288,7 +286,7 @@ export function ReqFirstCard({ scouts, leaders, catalog }: Props) {
           }
         >
           {totalEntries > 0 ? `Save (${totalEntries})` : 'Save'}
-        </button>
+        </Button>
       </div>
 
       {/* Confirmation modal — nothing is written until "Add …" is clicked. */}
@@ -358,24 +356,21 @@ export function ReqFirstCard({ scouts, leaders, catalog }: Props) {
         </DialogBody>
 
         <DialogActions>
-          <button
-            type="button"
-            className={styles.btn}
+          <Button
             onClick={() => setConfirmOpen(false)}
             disabled={isPending}
           >
             Cancel
-          </button>
-          <button
-            type="button"
-            className={styles.btnPrimary}
+          </Button>
+          <Button
+            variant="primary"
             onClick={commit}
             disabled={isPending}
           >
             {isPending
               ? 'Saving…'
               : `Add ${totalEntries} entr${totalEntries === 1 ? 'y' : 'ies'}`}
-          </button>
+          </Button>
         </DialogActions>
       </Dialog>
     </div>

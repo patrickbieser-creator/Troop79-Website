@@ -21,6 +21,7 @@ import type { LedgerEntry, LedgerKind, Scout } from '@/lib/supabase/types';
 import { LedgerToolbar } from './ledger-toolbar';
 import { LedgerTable } from './ledger-table';
 import { PageTitle } from '../../_components/page-title';
+import { buttonClass } from '../../../_components/button';
 import styles from './ledger.module.css';
 
 const PAGE_SIZE = 50;
@@ -247,14 +248,14 @@ export default async function LedgerPage({
       <div className={styles.pager}>
         <Link
           href={urlWith(raw, { page: String(parsed.page - 1) })}
-          className={`${styles.pagerBtn} ${parsed.page <= 1 ? styles.pagerBtnDisabled : ''}`}
+          className={buttonClass('secondary', 'sm', parsed.page <= 1 ? styles.pagerBtnDisabled : undefined)}
           aria-disabled={parsed.page <= 1}
         >
           ← Previous
         </Link>
         <Link
           href={urlWith(raw, { page: String(parsed.page + 1) })}
-          className={`${styles.pagerBtn} ${parsed.page >= totalPages ? styles.pagerBtnDisabled : ''}`}
+          className={buttonClass('secondary', 'sm', parsed.page >= totalPages ? styles.pagerBtnDisabled : undefined)}
           aria-disabled={parsed.page >= totalPages}
         >
           Next →

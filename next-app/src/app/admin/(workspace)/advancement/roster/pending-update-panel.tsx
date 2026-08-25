@@ -11,6 +11,7 @@ import {
 import styles from '../lookups/lookups.module.css';
 import { Notice } from '../../_components/notice';
 import { fmtDateTime } from '@/lib/format-date';
+import { Button } from '../../../_components/button';
 
 /**
  * "Pending Update" panel inside the Scout editor (Plans/Scout-Self-Service-Demographics.md)
@@ -146,29 +147,21 @@ export function PendingUpdatePanel({
       <div className={`${styles.editActions} ${styles.gapTop}`}>
         {rejecting ? (
           <>
-            <button className={styles.editBtn} disabled={busy} onClick={() => setRejecting(false)}>
+            <Button variant="secondary" size="sm" disabled={busy} onClick={() => setRejecting(false)}>
               Cancel
-            </button>
-            <button
-              className={`${styles.editBtn} ${styles.dangerBtn}`}
-              disabled={busy}
-              onClick={reject}
-            >
+            </Button>
+            <Button variant="danger" size="sm" disabled={busy} onClick={reject}>
               Confirm reject
-            </button>
+            </Button>
           </>
         ) : (
           <>
             {!notice && (
-              <button
-                className={`${styles.editBtn} ${styles.dangerBtn}`}
-                disabled={busy}
-                onClick={() => setRejecting(true)}
-              >
+              <Button variant="danger" size="sm" disabled={busy} onClick={() => setRejecting(true)}>
                 Reject
-              </button>
+              </Button>
             )}
-            <button className={styles.editSaveBtn} disabled={busy} onClick={approve}>
+            <Button variant="primary" disabled={busy} onClick={approve}>
               {notice
                 ? busy
                   ? 'Acknowledging…'
@@ -176,7 +169,7 @@ export function PendingUpdatePanel({
                 : busy
                   ? 'Applying…'
                   : 'Approve'}
-            </button>
+            </Button>
           </>
         )}
       </div>

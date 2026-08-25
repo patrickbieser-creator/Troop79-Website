@@ -131,24 +131,7 @@
 /* .addBtn retired Phase A (2026-08-21) — the shared AddButton component
    (its 6×12 padding drift folds into the canonical 7×14). */
 
-/* Row action buttons */
-.editBtn {
-  font-family: inherit;
-  font-size: 11px;
-  font-weight: 600;
-  background: var(--admin-white);
-  border: 1px solid var(--admin-gray-300);
-  color: var(--admin-gray-700);
-  padding: 3px 9px;
-  border-radius: 3px;
-  cursor: pointer;
-  margin-left: 4px;
-}
-.editBtn:hover {
-  border-color: var(--admin-navy);
-  color: var(--admin-navy);
-}
-.editBtn:disabled { opacity: .5; cursor: not-allowed; }
+/* .editBtn retired 2026-08-25 → shared Button (variant="secondary" size="sm") */
 /* Promote to adult is an irreversible domain state change, not a no-op like
    Cancel — needs its own visual weight so it doesn't read as interchangeable
    with Cancel/editBtn. Amber, matching the warning-tag color used elsewhere
@@ -536,23 +519,7 @@
   padding-top: 12px;
   border-top: 1px solid var(--admin-gray-200);
 }
-.editSaveBtn {
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .04em;
-  background: var(--admin-navy);
-  color: var(--admin-white);
-  border: 1px solid var(--admin-navy);
-  padding: 6px 14px;
-  border-radius: 3px;
-  cursor: pointer;
-}
-.editSaveBtn:hover { background: var(--admin-navy-hover); }
-.editSaveBtn:disabled {
-  opacity: .55;
-  cursor: not-allowed;
-}
+/* .editSaveBtn retired 2026-08-25 → shared Button (variant="primary", via SaveButton) */
 
 @media (max-width: 560px) {
   .editGrid { grid-template-columns: 1fr; }
@@ -578,10 +545,7 @@
   color: var(--admin-gray-900); outline: none;
 }
 .tableSearch:focus { border-color: var(--admin-navy); }
-.linkBtn {
-  background: none; border: none; padding: 0; font: inherit; cursor: pointer;
-  color: var(--admin-navy); text-decoration: underline;
-}
+/* .linkBtn retired 2026-08-25 → shared Button (variant="quiet") */
 
 .tagList {
   background: var(--admin-white);

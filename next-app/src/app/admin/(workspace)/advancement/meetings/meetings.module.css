@@ -46,28 +46,11 @@
 /* .statusPill family retired Phase A (2026-08-21) — the shared Badge
    component (_components/badge) carries it now. */
 
-.editBtn {
-  font-family: inherit; font-size: 11px; font-weight: 600; background: var(--admin-white);
-  border: 1px solid var(--admin-gray-300); color: var(--admin-gray-700); padding: 3px 9px;
-  border-radius: 3px; cursor: pointer; margin-left: 4px;
-}
-.editBtn:first-child { margin-left: 0; }
-.editBtn:hover { border-color: var(--admin-navy); color: var(--admin-navy); }
-.editBtn:disabled { opacity: .5; cursor: not-allowed; }
-.dangerBtn { color: var(--admin-danger); border-color: color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white)); }
-.dangerBtn:hover { background: var(--admin-status-error-bg); border-color: var(--admin-danger); color: var(--admin-danger); }
-.publishBtn {
-  font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: .04em;
-  background: var(--admin-forest); color: var(--admin-white); border: 1px solid var(--admin-forest);
-  padding: 5px 12px; border-radius: 3px; cursor: pointer;
-}
-.publishBtn:hover { background: var(--admin-forest-dark); }
-.publishBtn:disabled { opacity: .55; cursor: not-allowed; }
-.unpublishBtn {
-  font-family: inherit; font-size: 11px; font-weight: 600; background: var(--admin-white);
-  border: 1px solid var(--admin-gray-300); color: var(--admin-gray-700); padding: 5px 12px;
-  border-radius: 3px; cursor: pointer;
-}
+/* .editBtn/.dangerBtn retired 2026-08-25 → shared Button (secondary/danger, size="sm"). */
+/* .publishBtn/.unpublishBtn retired 2026-08-25 → shared Button (variant="primary"/"secondary"
+   size="sm") — publishBtn was forest green here; the Phase A decision reserves green for
+   Add/create, so this converts to navy like every other publish action. */
+.editActions { display: flex; gap: 6px; }
 
 /* ── editor layout ─────────────────────────────────────────────────────── */
 
@@ -195,13 +178,8 @@
 .editInput:focus { border-color: var(--admin-navy); }
 textarea.editInput { resize: vertical; min-height: 64px; }
 
-.editSaveBtn {
-  font-family: inherit; font-size: 12px; font-weight: 700; letter-spacing: .04em;
-  background: var(--admin-navy); color: var(--admin-white); border: 1px solid var(--admin-navy);
-  padding: 6px 14px; border-radius: 3px; cursor: pointer;
-}
-.editSaveBtn:hover { background: var(--admin-navy-hover); }
-.editSaveBtn:disabled { opacity: .55; cursor: not-allowed; }
+/* .editSaveBtn retired 2026-08-25 → shared Button (variant="primary"; SaveButton
+   already renders this paint by default). */
 
 @media (max-width: 560px) {
   .editGrid { grid-template-columns: 1fr; }

@@ -10,6 +10,7 @@
 
 import Link from 'next/link';
 import styles from './roster-print.module.css';
+import { Button } from '../_components/button';
 
 export function PrintToolbar() {
   return (
@@ -21,9 +22,9 @@ export function PrintToolbar() {
       </p>
       <div className={styles.toolbarActions}>
         <Link href="/admin/advancement/roster" className={styles.backLink}>&larr; Back to roster</Link>
-        <button type="button" className={styles.printBtn} onClick={() => window.print()}>
+        <Button variant="primary" onClick={() => window.print()}>
           Print
-        </button>
+        </Button>
       </div>
     </div>
   );

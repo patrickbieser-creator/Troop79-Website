@@ -19,6 +19,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { SaveFeedback, useSavePhase } from '../_components/save-state';
+import { Button } from '../../_components/button';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -343,9 +344,9 @@ export function FinanceWorkspace({
             {activeModal === 'kinds' && <KindManager kinds={kinds} />}
           </DialogBody>
           <DialogActions>
-            <button type="button" className={styles.saveBtnAlt} onClick={() => setActiveModal(null)}>
+            <Button variant="secondary" onClick={() => setActiveModal(null)}>
               Close
-            </button>
+            </Button>
           </DialogActions>
         </Dialog>
       )}
@@ -373,17 +374,16 @@ export function FinanceWorkspace({
                   }
                 }}
               />
-              <button
-                type="button"
-                className={styles.saveBtn}
+              <Button
+                variant="primary"
                 onClick={createKind}
                 disabled={!newKindName.trim() || pending}
               >
                 Add
-              </button>
-              <button type="button" className={styles.saveBtnAlt} onClick={() => setAddingKind(false)} disabled={pending}>
+              </Button>
+              <Button variant="secondary" onClick={() => setAddingKind(false)} disabled={pending}>
                 Cancel
-              </button>
+              </Button>
             </>
           ) : (
             <>
@@ -395,9 +395,9 @@ export function FinanceWorkspace({
                   </option>
                 ))}
               </select>
-              <button type="button" className={styles.saveBtnAlt} onClick={() => setAddingKind(true)} disabled={pending}>
+              <Button variant="secondary" onClick={() => setAddingKind(true)} disabled={pending}>
                 + New Kind
-              </button>
+              </Button>
               <input
                 type="text"
                 list="activity-labels"
@@ -405,22 +405,20 @@ export function FinanceWorkspace({
                 value={bulkActivity}
                 onChange={(e) => setBulkActivity(e.target.value)}
               />
-              <button
-                type="button"
-                className={styles.saveBtn}
+              <Button
+                variant="primary"
                 onClick={applyBulkReassign}
                 disabled={(!bulkKind && !bulkActivity.trim()) || pending}
               >
                 {pending ? '…' : 'Apply'}
-              </button>
-              <button
-                type="button"
-                className={styles.saveBtnAlt}
+              </Button>
+              <Button
+                variant="secondary"
                 onClick={() => setSelectedIds(new Set())}
                 disabled={pending}
               >
                 Clear selection
-              </button>
+              </Button>
             </>
           )}
           {bulkStatus && <span className={bulkStatus.kind === 'ok' ? styles.statusOk : styles.statusErr}>{bulkStatus.msg}</span>}
@@ -507,17 +505,17 @@ export function FinanceWorkspace({
                   <td className={styles.numCell}>
                     {!r.voided_at && (
                       <>
-                        <button
-                          type="button"
-                          className={styles.pagerBtn}
+                        <Button
+                          variant="secondary"
+                          size="sm"
                           disabled={pending}
                           onClick={() => setEditingRow(r)}
                         >
                           Edit
-                        </button>{' '}
-                        <button
-                          type="button"
-                          className={styles.pagerBtn}
+                        </Button>{' '}
+                        <Button
+                          variant="secondary"
+                          size="sm"
                           disabled={pending}
                           onClick={() =>
                             start(async () => {
@@ -529,7 +527,7 @@ export function FinanceWorkspace({
                           }
                         >
                           Void
-                        </button>
+                        </Button>
                       </>
                     )}
                   </td>
@@ -744,9 +742,9 @@ export function RecordTransactionForm({
             onChange={(e) => setF((s) => ({ ...s, memo: e.target.value }))}
           />
         </label>
-        <button type="submit" className={styles.pagerBtn} disabled={pending}>
+        <Button variant="secondary" type="submit" disabled={pending}>
           Add transaction
-        </button>
+        </Button>
       </form>
     </>
   );
@@ -816,9 +814,9 @@ function TransferForm({
           Memo
           <textarea rows={2} value={memo} onChange={(e) => setMemo(e.target.value)} />
         </label>
-        <button type="submit" className={styles.pagerBtn} disabled={pending || fromAccount === toAccount}>
+        <Button variant="secondary" type="submit" disabled={pending || fromAccount === toAccount}>
           Record transfer
-        </button>
+        </Button>
       </form>
     </>
   );
@@ -898,9 +896,9 @@ function ReconciliationPanel({
           Note
           <input type="text" value={note} onChange={(e) => setNote(e.target.value)} />
         </label>
-        <button type="submit" className={styles.pagerBtn} disabled={pending}>
+        <Button variant="secondary" type="submit" disabled={pending}>
           Save reconciliation
-        </button>
+        </Button>
       </form>
     </>
   );

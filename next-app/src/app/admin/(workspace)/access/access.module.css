@@ -121,28 +121,7 @@
   gap: var(--admin-space-3);
   white-space: nowrap;
 }
-.smallBtn {
-  border: 1px solid var(--admin-gray-300);
-  background: var(--admin-white);
-  border-radius: var(--admin-radius);
-  padding: var(--admin-space-2) var(--admin-space-4);
-  font-size: var(--admin-text-base);
-  cursor: pointer;
-  color: var(--admin-gray-700);
-}
-.smallBtn:hover {
-  background: var(--admin-gray-100);
-}
-/* Canonical outlined danger (Phase A decision, 2026-08-21) — was one of the
-   two off-token hardcoded reds the audit flagged. */
-.dangerBtn {
-  border-color: color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white));
-  color: var(--admin-danger);
-}
-.dangerBtn:hover {
-  background: var(--admin-status-error-bg);
-  border-color: var(--admin-danger);
-}
+/* .smallBtn / .dangerBtn retired 2026-08-24 → shared Button (secondary/danger, size sm) */
 
 .bundleBar {
   display: flex;

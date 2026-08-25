@@ -60,12 +60,7 @@
   margin-bottom: 8px;
 }
 .heroImg { width: 100%; height: 100%; object-fit: cover; }
-.chooseBtn {
-  font-family: var(--admin-font-ui); font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
-  color: var(--admin-navy); background: var(--admin-gray-50); border: 1px solid var(--admin-gray-300);
-  padding: 7px 12px; border-radius: 2px; cursor: pointer; transition: all var(--admin-transition);
-}
-.chooseBtn:hover { background: var(--admin-navy); color: var(--admin-white); border-color: var(--admin-navy); }
+/* .chooseBtn retired 2026-08-25 → shared Button (secondary, default size). */
 
 .tagPicker { display: flex; gap: 8px; flex-wrap: wrap; }
 .tagChip {
@@ -95,15 +90,7 @@
   display: flex; align-items: center; gap: 10px; margin-top: 24px; padding-top: 16px;
   border-top: 1px solid var(--admin-gray-200);
 }
-.btnPrimary, .btnSecondary {
-  font-family: var(--admin-font-ui); font-size: 12px; font-weight: 700; letter-spacing: .05em;
-  text-transform: uppercase; padding: 10px 18px; border-radius: 2px; border: none; cursor: pointer; transition: background var(--admin-transition);
-}
-.btnPrimary { background: var(--admin-navy); color: var(--admin-white); }
-.btnPrimary:hover { background: var(--admin-navy-hover); }
-.btnPrimary:disabled { background: var(--admin-gray-300); cursor: not-allowed; }
-.btnSecondary { background: transparent; color: var(--admin-navy); border: 1px solid var(--admin-gray-300); }
-.btnSecondary:hover { background: var(--admin-gray-100); }
+/* .btnPrimary / .btnSecondary retired 2026-08-25 → shared Button (both rendered via SaveButton already). */
 .reviewNote { font-size: 12px; color: var(--admin-gray-500); font-style: italic; }
 .formError { color: var(--admin-danger); font-size: 12px; margin-top: 8px; }
 

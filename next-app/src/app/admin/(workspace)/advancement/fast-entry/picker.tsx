@@ -21,6 +21,7 @@ import {
   type ReqTreeNode
 } from './picker-types';
 import styles from './fast-entry.module.css';
+import { Button } from '../../../_components/button';
 import { fmtDate } from '@/lib/format-date';
 
 type TabId = string;
@@ -1018,14 +1019,12 @@ function LeadershipTab({
         </label>
       )}
       <div>
-        <button
-          type="button"
-          className={styles.btn}
+        <Button
           onClick={add}
           disabled={!resolvedName}
         >
           + Add Leadership
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -1309,14 +1308,12 @@ function EventsTab({
         </label>
       </div>
       <div>
-        <button
-          type="button"
-          className={styles.btn}
+        <Button
           onClick={add}
           disabled={!canSubmit}
         >
           + Add Event
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -1420,14 +1417,12 @@ function ServiceTab({
         />
       </label>
       <div>
-        <button
-          type="button"
-          className={styles.btn}
+        <Button
           onClick={add}
           disabled={!resolvedName}
         >
           + Add Service
-        </button>
+        </Button>
       </div>
     </div>
   );

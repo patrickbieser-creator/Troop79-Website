@@ -21,16 +21,11 @@
   color: var(--admin-gray-700);
 }
 
-.editBtn {
-  font-family: inherit; font-size: 11px; font-weight: 600; background: var(--admin-white);
-  border: 1px solid var(--admin-gray-300); color: var(--admin-gray-700); padding: 3px 9px;
-  border-radius: 3px; cursor: pointer; margin-left: 4px;
-}
-.editBtn:first-child { margin-left: 0; }
-.editBtn:hover { border-color: var(--admin-navy); color: var(--admin-navy); }
-.editBtn:disabled { opacity: .5; cursor: not-allowed; }
-.dangerBtn { color: var(--admin-danger); border-color: color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white)); }
-.dangerBtn:hover { background: var(--admin-status-error-bg); border-color: var(--admin-danger); color: var(--admin-danger); }
+/* .editBtn / .dangerBtn: no consumer left in this screen (2026-08-25 sweep →
+   shared Button, secondary/danger, size="sm") — kept only because
+   styleguide/admin/page.tsx's Danger specimen renders them directly. */
+/* .editBtn / .dangerBtn retired 2026-08-24 → shared Button; the styleguide's Danger
+   specimen renders the component now. */
 
 /* Edit-dialog chrome retired Phase A (2026-08-21) — the shared Dialog
    component (_components/dialog) carries the approved spec, centering fix
@@ -49,13 +44,7 @@
 .editInput:focus { border-color: var(--admin-navy); }
 
 /* .editError retired Phase B (2026-08-21) — shared Notice component. */
-.editSaveBtn {
-  font-family: inherit; font-size: 12px; font-weight: 700; letter-spacing: .04em;
-  background: var(--admin-navy); color: var(--admin-white); border: 1px solid var(--admin-navy);
-  padding: 6px 14px; border-radius: 3px; cursor: pointer;
-}
-.editSaveBtn:hover { background: var(--admin-navy-hover); }
-.editSaveBtn:disabled { opacity: .55; cursor: not-allowed; }
+/* .editSaveBtn retired 2026-08-25 → shared Button (variant="primary"). */
 
 @media (max-width: 560px) {
   .editGrid { grid-template-columns: 1fr; }

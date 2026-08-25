@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ROSTER_ORDERS, ROSTER_ORDER_LABEL, type RosterOrder } from '@/lib/event-snapshot';
 import styles from './snapshot.module.css';
+import { Button } from '../../_components/button';
 
 /** Screen-only header on the snapshot document; hidden by @media print.
  *  Carries the roster print-order switch (Patrick, 2026-08-22): by patrol —
@@ -31,9 +32,9 @@ export function SnapshotToolbar({ signupId, order }: { signupId: number; order: 
         <Link href={`/admin/rosters/${signupId}`} className={styles.backLink}>
           &larr; Back to roster
         </Link>
-        <button type="button" className={styles.printBtn} onClick={() => window.print()}>
+        <Button variant="primary" onClick={() => window.print()}>
           Print
-        </button>
+        </Button>
       </div>
     </div>
   );

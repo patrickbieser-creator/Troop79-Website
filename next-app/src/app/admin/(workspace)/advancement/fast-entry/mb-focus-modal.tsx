@@ -22,6 +22,7 @@ import {
   type PickerItem
 } from './picker-types';
 import styles from './fast-entry.module.css';
+import { Button } from '../../../_components/button';
 
 interface Props {
   /** The badge to focus on. `null` closes the modal. */
@@ -433,17 +434,13 @@ export function MbFocusModal({
             ) : (
               <span className={styles.mbModalHint}>⌘/Ctrl + Enter to save</span>
             )}
-            <button
-              type="button"
-              className={styles.btn}
+            <Button
               onClick={onClose}
               disabled={isPending}
             >
               Cancel
-            </button>
-            <button
-              type="button"
-              className={styles.btn}
+            </Button>
+            <Button
               onClick={() => save(false)}
               disabled={!canSave}
               title={
@@ -453,10 +450,9 @@ export function MbFocusModal({
               }
             >
               {isPending ? 'Saving…' : 'Save & keep going'}
-            </button>
-            <button
-              type="button"
-              className={styles.btnPrimary}
+            </Button>
+            <Button
+              variant="primary"
               onClick={() => save(true)}
               disabled={!canSave}
               title={
@@ -474,7 +470,7 @@ export function MbFocusModal({
                 : selected.length > 0
                   ? `Save & Close (${selected.length})`
                   : 'Save & Close'}
-            </button>
+            </Button>
           </div>
         </div>
       )}

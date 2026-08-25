@@ -136,23 +136,9 @@
   font-size: 13px;
   color: var(--admin-gray-500);
 }
-.pagerBtn {
-  display: inline-block;
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 6px 12px;
-  border: 1px solid var(--admin-gray-300);
-  border-radius: var(--admin-radius-sm);
-  color: var(--admin-gray-700);
-  background: var(--admin-white);
-  text-decoration: none;
-  cursor: pointer;
-}
-.pagerBtn:hover {
-  border-color: var(--admin-navy);
-  color: var(--admin-navy);
-}
+/* .pagerBtn retired 2026-08-25 → shared Button (secondary, size="sm") via
+   buttonClass(), since the pager is a Link (Button href-mode has no
+   `disabled`, so aria-disabled needs the raw class string). */
 .pagerBtnDisabled {
   pointer-events: none;
   opacity: .5;

@@ -8,7 +8,7 @@ import styles from '../events/events-admin.module.css';
 import { PageTitle } from '../_components/page-title';
 
 import { centralToday } from '@/lib/dates';
-export const metadata = { title: 'Event Rosters — Troop 79' };
+export const metadata = { title: 'Event Management — Troop 79' };
 
 /*
  * Event Rosters — the OPERATIONAL view, distinct from Event Signups.
@@ -139,7 +139,7 @@ export default async function EventRostersPage() {
   return (
     <>
       <PageTitle
-        title="Event Rosters"
+        title="Event Management"
         sub={
           <>
             Who&rsquo;s coming to what, and what still needs chasing. To create or configure a

@@ -37,31 +37,8 @@
   background: var(--admin-field-bg);
   min-width: 180px;
 }
-/* Navy per the Phase A primary-button decision (2026-08-21) — Generate is a
-   commit action, not an Add; this green one-off slipped past the original
-   audit list and was caught in the Phase B browser pass. */
-.generateBtn {
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .04em;
-  padding: 8px 16px;
-  border-radius: 3px;
-  border: 1px solid var(--admin-navy);
-  background: var(--admin-navy);
-  color: var(--admin-white);
-  cursor: pointer;
-}
-.generateBtn:hover:not(:disabled) {
-  background: var(--admin-navy-hover);
-}
-.generateBtn:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-.publishBtn {
-  composes: generateBtn;
-}
+/* .generateBtn / .publishBtn retired 2026-08-24 → shared Button
+   (variant="primary"); .publishBtn had no consumer already. */
 .barNote {
   font-size: 12px;
   color: var(--admin-gray-500);
@@ -382,21 +359,7 @@
   color: var(--admin-navy);
   margin-bottom: 8px;
 }
-.smallBtn {
-  font-family: inherit;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 4px 10px;
-  border-radius: 3px;
-  border: 1px solid var(--admin-gray-300);
-  background: var(--admin-white);
-  color: var(--admin-gray-700);
-  cursor: pointer;
-}
-.smallBtn:hover {
-  border-color: var(--admin-danger);
-  color: var(--admin-danger);
-}
+/* .smallBtn retired 2026-08-24 → shared Button (variant="secondary" size="sm"). */
 .empty {
   padding: 28px;
   text-align: center;

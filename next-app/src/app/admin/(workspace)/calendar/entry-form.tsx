@@ -17,6 +17,7 @@
 
 import { useState, useTransition } from 'react';
 import { DiscardButton, SaveButton, SaveFeedback, useDraftSnapshot, useSavePhase } from '../_components/save-state';
+import { Button } from '../../_components/button';
 import type { CalendarEntry, Media } from '@/lib/supabase/types';
 import type { CalendarCategoryRow } from '@/lib/calendar-categories';
 // MediaPicker still lives under news/ — the hero image it picks is the same
@@ -321,13 +322,13 @@ export function CalendarEntryForm({
             </label>
             <label className={styles.editField}>
               <span className={styles.editLabel}>Card image (optional)</span>
-              <button type="button" className={styles.editBtn} onClick={() => setPickerOpen(true)}>
+              <Button size="sm" onClick={() => setPickerOpen(true)}>
                 {heroMedia ? 'Change image' : 'Choose image'}
-              </button>
+              </Button>
               {heroMedia && (
-                <button type="button" className={styles.editBtn} onClick={() => setHeroMedia(null)}>
+                <Button size="sm" onClick={() => setHeroMedia(null)}>
                   Remove
-                </button>
+                </Button>
               )}
             </label>
             <label className={styles.editField}>
@@ -364,13 +365,12 @@ export function CalendarEntryForm({
   const actionButtons = (
     <>
       {!inline && (
-        <button type="button" className={styles.editBtn} onClick={onClose} disabled={isPending}>
+        <Button size="sm" onClick={onClose} disabled={isPending}>
           Cancel
-        </button>
+        </Button>
       )}
       {inline && !isNew && <DiscardButton dirty={dirty} pending={isPending} onClick={discard} />}
       <SaveButton
-        className={styles.editSaveBtn}
         dirty={dirty}
         pending={isPending}
         isNew={isNew}

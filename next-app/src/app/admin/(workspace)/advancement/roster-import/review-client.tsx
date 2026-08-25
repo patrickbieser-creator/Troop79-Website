@@ -18,6 +18,7 @@ import styles from './roster-import.module.css';
 import { Badge } from '../../_components/badge';
 import { Notice } from '../../_components/notice';
 import { TabStrip } from '../../_components/tab-strip';
+import { Button } from '../../../_components/button';
 
 export interface BatchSummary {
   id: number;
@@ -254,15 +255,15 @@ export function ReviewClient({
               Name-only and new-person rows are excluded and stay for you to read.
             </span>
           </div>
-          <button
-            className={styles.primaryBtn}
+          <Button
+            variant="primary"
             disabled={pending}
             onClick={() =>
               run(() => acceptAllClean(activeBatch.id), `Accepted ${cleanCount} unambiguous rows.`)
             }
           >
             Accept all {cleanCount}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -364,29 +365,29 @@ export function ReviewClient({
 
                   <div className={styles.actions}>
                     {isNew ? (
-                      <button
-                        className={styles.primaryBtn}
+                      <Button
+                        variant="primary"
                         disabled={pending}
                         onClick={() => run(() => createPersonFromRow(r.import_row_id))}
                       >
                         Create new person
-                      </button>
+                      </Button>
                     ) : (
-                      <button
-                        className={styles.primaryBtn}
+                      <Button
+                        variant="primary"
                         disabled={pending}
                         onClick={() => run(() => acceptSuggestion(r.suggestion_id, fieldsFor(r)))}
                       >
                         Accept — same person
-                      </button>
+                      </Button>
                     )}
-                    <button
-                      className={styles.secondaryBtn}
+                    <Button
+                      variant="secondary"
                       disabled={pending}
                       onClick={() => run(() => rejectSuggestion(r.suggestion_id))}
                     >
                       Not a match
-                    </button>
+                    </Button>
                   </div>
 
                   <PersonPicker
@@ -532,13 +533,13 @@ function DupSide({
           <dd>{rels}</dd>
         </div>
       </dl>
-      <button
-        className={styles.primaryBtn}
+      <Button
+        variant="primary"
         disabled={disabled}
         onClick={() => onMerge(() => mergePeople(id, otherId), `Merged into ${name}.`)}
       >
         Keep this one
-      </button>
+      </Button>
     </div>
   );
 }
@@ -586,8 +587,10 @@ function PersonPicker({
         <ul className={styles.results}>
           {results.map((p) => (
             <li key={p.id}>
-              <button
-                className={styles.resultBtn}
+              <Button
+                variant="secondary"
+                size="sm"
+                className={styles.resultRow}
                 disabled={disabled}
                 onClick={() => {
                   setPicked(p.display_name);
@@ -598,7 +601,7 @@ function PersonPicker({
               >
                 {p.display_name}
                 {p.primary_email && <span className={styles.resultEmail}>{p.primary_email}</span>}
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
@@ -655,13 +658,14 @@ function RelationshipEntry({
                 )}
                 {rel.isGuardian && <span className={styles.guardianTag}>guardian</span>}
               </span>
-              <button
-                className={styles.removeBtn}
+              <Button
+                variant="secondary"
+                size="sm"
                 disabled={disabled}
                 onClick={() => onDone(() => removeRelationship(rel.id))}
               >
                 Remove
-              </button>
+              </Button>
             </li>
           ))}
         </ul>

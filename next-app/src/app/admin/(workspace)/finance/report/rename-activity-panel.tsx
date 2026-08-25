@@ -19,9 +19,9 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { RenameActivityPreview } from '../actions';
-import parentStyles from '../finance.module.css';
 import styles from './report.module.css';
 import { Notice } from '../../_components/notice';
+import { Button } from '../../../_components/button';
 
 export function RenameActivityPanel({
   activityLabels,
@@ -118,31 +118,21 @@ export function RenameActivityPanel({
       {done && <p>{done}</p>}
 
       {previewCount === null ? (
-        <button
-          type="button"
-          className={parentStyles.pagerBtn}
-          disabled={pending || !source || !target}
-          onClick={preview}
-        >
+        <Button variant="secondary" disabled={pending || !source || !target} onClick={preview}>
           Preview
-        </button>
+        </Button>
       ) : (
         <>
           <p>
             This will update <strong>{previewCount}</strong> transaction{previewCount === 1 ? '' : 's'} — including
             voided ones — from &ldquo;{source}&rdquo; to &ldquo;{target}&rdquo;.
           </p>
-          <button type="button" className={parentStyles.pagerBtn} disabled={pending} onClick={apply}>
+          <Button variant="secondary" disabled={pending} onClick={apply}>
             Apply
-          </button>{' '}
-          <button
-            type="button"
-            className={parentStyles.pagerBtn}
-            disabled={pending}
-            onClick={() => setPreviewCount(null)}
-          >
+          </Button>{' '}
+          <Button variant="secondary" disabled={pending} onClick={() => setPreviewCount(null)}>
             Cancel
-          </button>
+          </Button>
         </>
       )}
     </div>

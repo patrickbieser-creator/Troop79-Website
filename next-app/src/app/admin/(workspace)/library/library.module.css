@@ -112,33 +112,16 @@
 
 .actionsRow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
 .actionsRowTight { margin-top: 0; }
-/* Base styles live on every variant directly — the JSX applies a single
-   btnX class, so the variants can't rely on a separate .btn being present
-   (that's exactly how Save/Archive shipped unstyled on 2026-07-21). */
-.btnPrimary,
-.btnSecondary,
-.btnDanger {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: inherit; /* buttons don't inherit by default */
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  border-radius: 2px;
-  padding: 8px 14px;
-  border: none;
-  cursor: pointer;
-}
-/* Navy per the Phase A primary-button decision — was a forest primary. */
-.btnPrimary { background: var(--admin-navy); color: var(--admin-white); }
-.btnPrimary:hover { background: var(--admin-navy-hover); }
-.btnSecondary { background: var(--admin-white); color: var(--admin-navy); border: 1px solid var(--admin-gray-300); }
-.btnSecondary:hover { border-color: var(--admin-navy); color: var(--admin-navy); background: var(--admin-gray-100); }
-/* Outlined danger canon (Phase A decision). */
-.btnDanger { background: var(--admin-white); color: var(--admin-danger); border: 1px solid color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white)); }
-.btnDanger:hover { background: var(--admin-status-error-bg); border-color: var(--admin-danger); }
+/* .btnDanger retired 2026-08-25 → shared Button (danger). .btnPrimary and
+   .btnSecondary are RETAINED though every real consumer has moved to the
+   shared Button too — styleguide/admin/page.tsx renders them directly as a
+   Phase C "separate stylesheet from public library" specimen and that file
+   is out of scope for this pass. Base styles live on every variant directly
+   — the JSX applies a single btnX class, so the variants can't rely on a
+   separate .btn being present (that's exactly how Save/Archive shipped
+   unstyled on 2026-07-21). */
+/* .btnPrimary / .btnSecondary retired 2026-08-24 → shared Button (primary / secondary);
+   the styleguide's "Library's own family" specimen is gone with them. */
 
 .placementsBlock { border-top: 1px dashed var(--admin-gray-300); margin-top: 12px; padding-top: 10px; }
 .placementChips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }

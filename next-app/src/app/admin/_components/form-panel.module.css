@@ -1,0 +1,81 @@
+/* Shared admin form surfaces — see form-panel.tsx. Tokens only. */
+
+/* The tinted surface (form standard D-179): fields read white ON the tint. */
+.panel {
+  background: var(--admin-form-bg);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow-sm);
+  padding: 14px 16px 16px;
+  margin-bottom: 16px;
+}
+.panel input:not([type='checkbox']):not([type='radio']),
+.panel select,
+.panel textarea { background: var(--admin-white); }
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.title {
+  font-family: var(--admin-font-ui);
+  font-size: var(--admin-text-xs);
+  font-weight: var(--admin-weight-bold);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--admin-forest);
+  margin: 0;
+}
+.actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.note {
+  font-family: var(--admin-font-ui);
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-700);
+  margin: 0 0 10px;
+}
+
+/* Numbered section card — promoted from the scout editor's .editSectionCard. */
+.section {
+  background: var(--admin-form-bg);
+  border: 1px solid var(--admin-gray-200);
+  border-left: 4px solid var(--admin-navy);
+  border-radius: var(--admin-radius);
+  padding: 16px 18px;
+  margin-bottom: 14px;
+}
+.section:last-child { margin-bottom: 0; }
+.section input:not([type='checkbox']):not([type='radio']),
+.section select,
+.section textarea { background: var(--admin-white); }
+.sectionHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.sectionTitle {
+  font-family: var(--admin-font-ui);
+  font-size: var(--admin-text-sm);
+  font-weight: var(--admin-weight-bold);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--admin-navy);
+  margin: 0;
+}
+.num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--admin-navy);
+  color: var(--admin-white);
+  font-family: var(--admin-font-ui);
+  font-size: var(--admin-text-xs);
+  font-weight: var(--admin-weight-bold);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}

@@ -28,19 +28,18 @@ import { fmtDate, fmtDateLong, fmtDateFull, fmtDay, fmtDateTime, fmtMonthYear, f
 import { ActionsMenuSpecimen, SortHeaderSpecimen } from './specimens';
 import { TabStrip } from '../../_components/tab-strip';
 import { AddButton } from '../../_components/add-button';
+import { Button } from '../../../_components/button';
+import { FormPanel, FormSection } from '../../../_components/form-panel';
 import { Badge } from '../../_components/badge';
 import { PageTitle } from '../../_components/page-title';
 import { Notice } from '../../_components/notice';
 import dlg from '../../_components/dialog.module.css';
 import cal from '../../calendar/calendar.module.css';
 import ledger from '../../advancement/ledger/ledger.module.css';
-import coh from '../../advancement/court-of-honor/court-of-honor.module.css';
 import plan from '../../advancement/meeting-plan/meeting-plan.module.css';
 import ev from '../../events/events-admin.module.css';
-import albums from '../../news/photo-albums/albums.module.css';
 import mm from '../../news/media-manager/media-manager.module.css';
 import util from '../../utilities/utilities.module.css';
-import lib from '../../library/library.module.css';
 import board from '../../rosters/[id]/assignments/assignments.module.css';
 
 export const metadata = {
@@ -144,6 +143,13 @@ const SCOREBOARD: {
     phase: 'A',
     notes:
       'meetings/report’s green SUBMIT and lookups’ green Save were re-classed navy — submits are primaries, not Adds'
+  },
+  {
+    pattern: 'Shared Button component (variants)',
+    copies: '✓ SHIPPED 2026-08-24 — admin/_components/button; SaveButton/DiscardButton adopt it',
+    canonical: 'primary · secondary · danger · dangerSolid · quiet × md/sm — the ONLY button variants',
+    phase: 'D',
+    notes: 'this row is the guard: a new variant is added HERE and to the component, never as a per-screen class; per-screen leftovers are listed in the Buttons specimen notes'
   },
   {
     pattern: 'Primary buttons',
@@ -412,6 +418,22 @@ export default function StyleguidePage() {
         <h2 className={sg.sectionHead}>Buttons</h2>
         <div className={sg.specimenGrid}>
           <Specimen
+            label="Shared Button — every variant and size"
+            canonical
+            note="2026-08-24 (Patrick: 'let's do it'): ONE component for the 113 per-screen button classes. Import from admin/_components/button (one level above (workspace) so roster-print and snapshot reach it). variant: primary (navy — Save/Publish/Apply), secondary (default — Edit/Clone/Cancel/pager), danger (outlined, in-context), dangerSolid (ONLY the confirm inside a danger Dialog), quiet (link-styled). size: md (forms, panel heads) or sm (table rows, dense toolbars — the old .editBtn). href renders a Link; type defaults to button. SaveButton/DiscardButton render it by default. Variants row below must stay EMPTY of new entries — add a variant here, never a per-screen class."
+          >
+            <Button variant="primary">Save changes</Button>
+            <Button>Cancel</Button>
+            <Button variant="danger">Delete</Button>
+            <Button variant="dangerSolid">Delete permanently</Button>
+            <Button variant="quiet">Take Roll Call →</Button>
+            <Button variant="primary" size="sm">Apply</Button>
+            <Button size="sm">Edit</Button>
+            <Button size="sm" variant="danger">Delete</Button>
+            <Button href="/admin/styleguide/admin" size="sm">As a link</Button>
+            <Button disabled>Disabled</Button>
+          </Specimen>
+          <Specimen
             label="Add button — shared AddButton component"
             canonical
             note="Phase A COMPLETE (2026-08-21): every green Add in the workspace renders this component — calendar, articles, albums, the 7 lookups editors, roster (converted from its navy one-off, Patrick's call), and roll-call's seed action. Import from _components/add-button; href renders a Link, onClick a button; disabled supported."
@@ -419,34 +441,27 @@ export default function StyleguidePage() {
             <AddButton>+ Add Event</AddButton>
           </Specimen>
           <Specimen
-            label="Row actions"
+            label="Row actions — quiet, size sm"
             canonical
-            note="ledger .actionBtn / .actionBtnDanger — identical in articles; the quiet per-row Edit/Void/Delete idiom."
+            note="The per-row Edit / Void / Delete idiom (was ledger's .actionBtn, identical in articles — both retired 2026-08-24). variant='quiet' size='sm'; the destructive one is variant='danger' size='sm'."
           >
-            <button type="button" className={ledger.actionBtn}>Edit</button>
-            <button type="button" className={`${ledger.actionBtn} ${ledger.actionBtnDanger}`}>Void</button>
+            <Button variant="quiet" size="sm">Edit</Button>
+            <Button variant="danger" size="sm">Void</Button>
           </Specimen>
           <Specimen
             label="Primary — navy (decided 2026-08-21)"
             canonical
-            note="Patrick's Phase A call: primaries are NAVY (court-of-honor/report .primaryBtn); green stays reserved for Add/create, so color carries meaning. Workbench's forest Save (a public-token leak) and the green form submits were converted."
+            note="Patrick's Phase A call: primaries are NAVY; green stays reserved for Add/create, so color carries meaning. Now simply variant='primary' — court-of-honor's .primaryBtn, the last per-screen copy the styleguide pointed at, is gone."
           >
-            <button type="button" className={coh.primaryBtn}>Publish</button>
+            <Button variant="primary">Publish</Button>
           </Specimen>
           <Specimen
             label="Danger — both, with rules (decided 2026-08-21)"
             canonical
-            note="Patrick's Phase A call: OUTLINED for in-context destructive actions (rows, panels) — quiet until hovered; SOLID reserved for the confirm button inside a danger Dialog. All copies now share the tokens (color-mix border, status-error-bg hover)."
+            note="Patrick's Phase A call: OUTLINED (variant='danger') for in-context destructive actions — quiet until hovered; SOLID (variant='dangerSolid') reserved for the confirm button inside a danger Dialog."
           >
-            <button type="button" className={`${albums.editBtn} ${albums.dangerBtn}`}>Delete</button>
-            <button type="button" className={mm.deleteConfirmBtn}>Delete photo</button>
-          </Specimen>
-          <Specimen
-            label="Library's own family"
-            note="library .btnPrimary/.btnSecondary — Phase C discovery: this admin stylesheet is a SEPARATE file from the public library.module.css (which lives in (public)/library with ~19 importers). The admin copy has 3 workstation importers and was fully re-tokened; .btnPrimary is now navy per the primary decision."
-          >
-            <button type="button" className={lib.btnPrimary}>Approve</button>
-            <button type="button" className={lib.btnSecondary}>Decline</button>
+            <Button variant="danger">Delete</Button>
+            <Button variant="dangerSolid">Delete photo</Button>
           </Specimen>
         </div>
       </section>
@@ -704,6 +719,24 @@ export default function StyleguidePage() {
           leaving &ldquo;panels are white&rdquo; to mislead the next reader.
         </p>
         <div className={sg.specimenGrid}>
+          <Specimen
+            label="Shared FormPanel + FormSection — the surfaces that hold fields"
+            canonical
+            note="2026-08-24 (the FormPanel backlog item): import from admin/_components/form-panel. FormPanel = the tinted field surface (--admin-form-bg, gray-200 border, radius, shadow-sm) with optional uppercase title, actions slot (Save / Discard / feedback) and note; inputs inside it read white automatically. FormSection = the numbered section card promoted from the scout editor (navy left rule, circled number, uppercase title, actions, sectionRef for scroll-spy). Adopt on every long admin form; the next surface-tint decision is then ONE file, not an 11-stylesheet sweep."
+          >
+            <FormPanel title="Logistics" note="Where and when, for the public page." actions={<Button variant="primary" size="sm">Saved</Button>}>
+              <label className="adminLabel">
+                Location
+                <input defaultValue="Northwoods" />
+              </label>
+            </FormPanel>
+            <FormSection num={2} title="Contact" actions={<Button size="sm">Edit</Button>}>
+              <label className="adminLabel">
+                Email
+                <input defaultValue="troop@example.org" />
+              </label>
+            </FormSection>
+          </Specimen>
           <Specimen
             label="Card"
             canonical

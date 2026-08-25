@@ -163,44 +163,7 @@
   color: var(--admin-gray-900);
   background: var(--admin-field-bg);
 }
-.saveBtn {
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .04em;
-  padding: 8px 14px;
-  border-radius: 3px;
-  border: 1px solid var(--admin-forest);
-  background: var(--admin-forest);
-  color: var(--admin-white);
-  cursor: pointer;
-}
-.saveBtn:hover:not(:disabled) {
-  background: var(--admin-forest-dark);
-}
-.saveBtn:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-.saveBtnAlt {
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .04em;
-  padding: 8px 14px;
-  border-radius: 3px;
-  border: 1px solid var(--admin-gray-300);
-  background: var(--admin-white);
-  color: var(--admin-gray-900);
-  cursor: pointer;
-}
-.saveBtnAlt:hover:not(:disabled) {
-  border-color: var(--admin-gray-500);
-}
-.saveBtnAlt:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
+/* .saveBtn / .saveBtnAlt retired 2026-08-24 → shared Button (primary / secondary) */
 .statusOk {
   font-size: 12px;
   font-weight: 600;

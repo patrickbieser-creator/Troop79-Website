@@ -5,6 +5,7 @@ import { SaveButton, SaveFeedback, useSavePhase } from '../../_components/save-s
 import { useRouter } from 'next/navigation';
 import { createHousehold, renameHousehold, deleteHousehold } from './household-actions';
 import styles from './lookups.module.css';
+import { Button } from '../../../_components/button';
 
 export interface HouseholdRow {
   id: number;
@@ -72,8 +73,9 @@ export function HouseholdsManager({ households }: { households: HouseholdRow[] }
             }
           }}
         />
-        <button
-          className={styles.smallBtn}
+        <Button
+          variant="secondary"
+          size="sm"
           disabled={pending || !newLabel.trim()}
           onClick={() => {
             run(() => createHousehold(newLabel));
@@ -81,7 +83,7 @@ export function HouseholdsManager({ households }: { households: HouseholdRow[] }
           }}
         >
           + Add household
-        </button>
+        </Button>
       </div>
 
       <table className={styles.table}>
@@ -148,18 +150,20 @@ export function HouseholdsManager({ households }: { households: HouseholdRow[] }
                           run(() => renameHousehold(h.id, draft));
                         }}
                       />
-                      <button
-                        className={styles.smallBtn}
+                      <Button
+                        variant="secondary"
+                        size="sm"
                         disabled={pending}
                         onClick={() => setEditing(null)}
                       >
                         Cancel
-                      </button>
+                      </Button>
                     </>
                   ) : (
                     <>
-                      <button
-                        className={styles.smallBtn}
+                      <Button
+                        variant="secondary"
+                        size="sm"
                         disabled={pending}
                         onClick={() => {
                           setDraft(h.label);
@@ -167,10 +171,11 @@ export function HouseholdsManager({ households }: { households: HouseholdRow[] }
                         }}
                       >
                         Rename
-                      </button>
+                      </Button>
                       {h.members.length === 0 && (
-                        <button
-                          className={styles.smallBtn}
+                        <Button
+                          variant="secondary"
+                          size="sm"
                           disabled={pending}
                           onClick={() => {
                             if (window.confirm(`Delete the empty household "${h.label}"?`)) {
@@ -179,7 +184,7 @@ export function HouseholdsManager({ households }: { households: HouseholdRow[] }
                           }}
                         >
                           Delete
-                        </button>
+                        </Button>
                       )}
                     </>
                   )}

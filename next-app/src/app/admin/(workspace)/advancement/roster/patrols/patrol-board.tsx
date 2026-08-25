@@ -36,6 +36,7 @@ import { gradeFromGradYear, gradeLabel } from '@/lib/demographics';
 import { rankLabel, type RosterPrintRank } from '@/lib/roster-print';
 import { Notice } from '../../../_components/notice';
 import { SaveButton, SaveFeedback, useSavePhase } from '../../../_components/save-state';
+import { Button } from '../../../../_components/button';
 import styles from './patrols.module.css';
 
 type ActionResult = { ok: boolean; error?: string; changed?: number };
@@ -218,14 +219,13 @@ export function PatrolBoard({
           />
         )}
 
-        <button
-          type="button"
-          className={styles.bulkBtn}
+        <Button
+          variant="primary"
           onClick={assignSelected}
           disabled={selected.size === 0}
         >
           Assign {selected.size > 0 ? selected.size : ''}
-        </button>
+        </Button>
       </div>
 
       <table className={styles.table}>
@@ -295,9 +295,7 @@ export function PatrolBoard({
               : 'Every scout is in a patrol'
             : `${changes.length} change${changes.length === 1 ? '' : 's'} pending`}
         </span>
-        <button
-          type="button"
-          className={styles.discardBtn}
+        <Button
           onClick={() => {
             setDraft({});
             setSelected(new Set());
@@ -307,9 +305,8 @@ export function PatrolBoard({
           disabled={changes.length === 0 || isPending}
         >
           Discard
-        </button>
+        </Button>
         <SaveButton
-          className={styles.saveBtn}
           dirty={changes.length > 0}
           pending={isPending}
           dirtyLabel="Save patrol assignments"

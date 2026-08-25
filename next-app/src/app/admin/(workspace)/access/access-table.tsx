@@ -5,6 +5,7 @@ import { CAPABILITIES, CAPABILITY_LABEL, BUNDLES, type Capability } from '@/lib/
 import type { GrantRow } from '@/lib/capabilities-admin';
 import styles from './access.module.css';
 import { fmtDate } from '@/lib/format-date';
+import { Button } from '../../_components/button';
 
 /** Short column headers — the full label is the cell's accessible name. */
 const SHORT: Record<Capability, string> = {
@@ -130,9 +131,9 @@ export function AccessTable({
                         </option>
                       ))}
                     </select>
-                    <button
-                      type="button"
-                      className={styles.smallBtn}
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       disabled={pending || !bundleByPerson[row.personId]}
                       onClick={() =>
                         run(applyBundleAction, {
@@ -142,29 +143,29 @@ export function AccessTable({
                       }
                     >
                       Apply
-                    </button>
+                    </Button>
                   </div>
                 </td>
 
                 <td>
                   <div className={styles.rowActions}>
-                    <button
-                      type="button"
-                      className={styles.smallBtn}
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       disabled={pending || row.capabilities.length === 0}
                       onClick={() => run(revokeAllAction, { personId: row.personId })}
                     >
                       Clear grants
-                    </button>
-                    <button
-                      type="button"
-                      className={`${styles.smallBtn} ${styles.dangerBtn}`}
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="sm"
                       disabled={pending}
                       title="Bumps session_epoch — signs this person out of every device"
                       onClick={() => run(revokeSessionsAction, { personId: row.personId })}
                     >
                       Revoke sessions
-                    </button>
+                    </Button>
                   </div>
                 </td>
               </tr>
@@ -207,9 +208,9 @@ export function AccessTable({
             </option>
           ))}
         </select>
-        <button
-          type="button"
-          className={styles.smallBtn}
+        <Button
+          variant="secondary"
+          size="sm"
           disabled={pending || !addPersonId}
           onClick={() => {
             const sel = document.getElementById('add-capability') as HTMLSelectElement | null;
@@ -223,7 +224,7 @@ export function AccessTable({
           }}
         >
           Grant
-        </button>
+        </Button>
       </div>
     </>
   );

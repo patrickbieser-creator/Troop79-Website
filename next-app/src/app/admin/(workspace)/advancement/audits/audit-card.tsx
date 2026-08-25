@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { fillMissingRankRequirements } from './actions';
 import type { Finding } from './types';
 import { DatePickerField } from '../../_components/date-picker-field';
+import { Button } from '../../../_components/button';
 import styles from './audits.module.css';
 
 function todayISO(): string {
@@ -124,14 +125,13 @@ export function AuditCard({
             ))}
           </select>
         </label>
-        <button
-          type="button"
-          className={styles.saveBtn}
+        <Button
+          variant="primary"
           onClick={save}
           disabled={isPending || checked.size === 0 || !date || !by}
         >
           {isPending ? 'Saving…' : `Fill In (${checked.size})`}
-        </button>
+        </Button>
         {status && (
           <span className={status.kind === 'ok' ? styles.statusOk : styles.statusErr}>
             {status.msg}

@@ -29,6 +29,7 @@ import { SortHeader, useSortable } from '../../_components/use-sortable';
 import { Dialog } from '../../_components/dialog';
 import { Notice } from '../../_components/notice';
 import { DiscardButton, SaveButton, SaveFeedback, useSavePhase } from '../../_components/save-state';
+import { Button } from '../../../_components/button';
 import { ageOn, yptStatus } from '@/lib/demographics';
 import { fmtDate } from '@/lib/format-date';
 import styles from './roster.module.css';
@@ -231,9 +232,9 @@ export function PeopleTable({
             return (
               <tr key={p.person_id}>
                 <td>
-                  <button className={styles.linkBtn} onClick={() => setOpenPerson(p)}>
+                  <Button variant="quiet" onClick={() => setOpenPerson(p)}>
                     {p.display_name}
-                  </button>
+                  </Button>
                   {p.active ? (
                     <span className={styles.chipActiveTag} title="Offered in the family signup picker">
                       Active
@@ -491,9 +492,9 @@ function PersonEditor({
               {person.bsa_member_id && ` · BSA ${person.bsa_member_id}`}
             </p>
           </div>
-          <button className={styles.smallBtn} onClick={onClose}>
+          <Button size="sm" onClick={onClose}>
             Close
-          </button>
+          </Button>
         </div>
 
         {error && <Notice>{error}</Notice>}
@@ -576,8 +577,8 @@ function PersonEditor({
                 disabled={disabled}
                 onChange={(e) => setReason(e.target.value)}
               />
-              <button
-                className={styles.smallBtn}
+              <Button
+                size="sm"
                 disabled={disabled}
                 onClick={() =>
                   act(
@@ -587,14 +588,14 @@ function PersonEditor({
                 }
               >
                 Mark inactive
-              </button>
-              <button
-                className={styles.smallBtn}
+              </Button>
+              <Button
+                size="sm"
                 disabled={disabled}
                 onClick={() => setPendingInactive(false)}
               >
                 Cancel
-              </button>
+              </Button>
             </div>
           )}
         </section>
@@ -750,7 +751,6 @@ function PersonEditor({
               onClick={() => setDemo(demoFromFields(detail.fields))}
             />
             <SaveButton
-              className={fields.editSaveBtn}
               dirty={JSON.stringify(demo) !== JSON.stringify(demoFromFields(detail.fields))}
               pending={disabled}
               dirtyLabel="Save demographics"
@@ -800,7 +800,6 @@ function PersonEditor({
                     onChange={(e) => setRenameLabel(e.target.value)}
                   />
                   <SaveButton
-                    className={styles.smallBtn}
                     dirty={renameLabel.trim() !== (households.find((h) => h.id === householdId)?.label ?? '')}
                     pending={disabled}
                     dirtyLabel="Save name"
@@ -810,13 +809,13 @@ function PersonEditor({
                       act(() => renameHousehold(householdId, renameLabel), 'Household renamed.')
                     }
                   />
-                  <button className={styles.smallBtn} disabled={disabled} onClick={() => setRenaming(false)}>
+                  <Button size="sm" disabled={disabled} onClick={() => setRenaming(false)}>
                     Cancel
-                  </button>
+                  </Button>
                 </>
               ) : (
-                <button
-                  className={styles.smallBtn}
+                <Button
+                  size="sm"
                   disabled={disabled}
                   onClick={() => {
                     setRenameLabel(households.find((h) => h.id === householdId)?.label ?? '');
@@ -824,7 +823,7 @@ function PersonEditor({
                   }}
                 >
                   Rename this household
-                </button>
+                </Button>
               ))}
           </div>
 
@@ -836,8 +835,8 @@ function PersonEditor({
               disabled={disabled}
               onChange={(e) => setNewHouseholdLabel(e.target.value)}
             />
-            <button
-              className={styles.smallBtn}
+            <Button
+              size="sm"
               disabled={disabled || !newHouseholdLabel.trim()}
               onClick={() =>
                 act(
@@ -847,7 +846,7 @@ function PersonEditor({
               }
             >
               + New household
-            </button>
+            </Button>
           </div>
           <p className={styles.editorHint}>
             Two families can share a surname — name them apart (&ldquo;Stollenwerk (Joe &amp;
@@ -913,13 +912,13 @@ function PersonEditor({
                 </option>
               ))}
             </select>
-            <button
-              className={styles.smallBtn}
+            <Button
+              size="sm"
               disabled={disabled}
               onClick={() => act(() => addRole(person.person_id, newRole), 'Role added.')}
             >
               Add role
-            </button>
+            </Button>
           </div>
         </section>
 
@@ -1002,14 +1001,13 @@ function PersonEditor({
         <section className={styles.dangerSection}>
           <div className={`${styles.inlineRow} ${styles.inlineRowSplit}`}>
             <h3 className={`adminLabel ${styles.noMargin}`}>This is a duplicate, or should not exist</h3>
-            <button
-              type="button"
-              className={styles.smallBtn}
+            <Button
+              size="sm"
               onClick={() => setShowDanger((v) => !v)}
               aria-expanded={showDanger}
             >
               {showDanger ? 'Hide' : 'Show'}
-            </button>
+            </Button>
           </div>
           {showDanger && (
             <>
@@ -1032,8 +1030,8 @@ function PersonEditor({
               />
 
               <div className={styles.inlineRow}>
-                <button
-                  className={styles.dangerBtn}
+                <Button
+                  variant="danger"
                   disabled={disabled}
                   onClick={() => {
                     if (
@@ -1049,7 +1047,7 @@ function PersonEditor({
                   }}
                 >
                   Delete this person
-                </button>
+                </Button>
                 <span className={styles.editorHint}>
                   Only possible for a record nothing is attached to yet.
                 </span>
@@ -1103,8 +1101,9 @@ function PersonPicker({
         <ul className={styles.results}>
           {results.map((p) => (
             <li key={p.id}>
-              <button
-                className={styles.resultBtn}
+              <Button
+                size="sm"
+                className={styles.resultRow}
                 disabled={disabled}
                 onClick={() => {
                   setPicked(p.display_name);
@@ -1115,7 +1114,7 @@ function PersonPicker({
               >
                 {p.display_name}
                 {p.primary_email && <span className={styles.muted}> {p.primary_email}</span>}
-              </button>
+              </Button>
             </li>
           ))}
         </ul>

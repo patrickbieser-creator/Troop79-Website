@@ -133,7 +133,7 @@
 .table th.actionsCell, .table td.actionsCell { text-align: right; white-space: nowrap; }
 
 /* Shared buttons */
-.iconBtn, .editBtn {
+.iconBtn {
   font-family: inherit;
   font-size: 11px;
   font-weight: 600;
@@ -145,26 +145,10 @@
   cursor: pointer;
   margin-left: 4px;
 }
-.editBtn:first-child { margin-left: 0; }
-.editBtn:hover { border-color: var(--admin-navy); color: var(--admin-navy); }
-.editBtn:disabled { opacity: .5; cursor: not-allowed; }
-.dangerBtn { color: var(--admin-danger); border-color: color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white)); }
-.dangerBtn:hover { background: var(--admin-status-error-bg); border-color: var(--admin-danger); color: var(--admin-danger); }
+/* .editBtn / .dangerBtn retired 2026-08-25 → shared Button (secondary/danger, size="sm"). */
 
 .loadMoreRow { display: flex; justify-content: center; margin-bottom: 18px; }
-.loadMoreBtn {
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  background: var(--admin-white);
-  border: 1px solid var(--admin-gray-300);
-  color: var(--admin-navy);
-  padding: 7px 16px;
-  border-radius: 3px;
-  cursor: pointer;
-}
-.loadMoreBtn:hover { border-color: var(--admin-navy); }
-.loadMoreBtn:disabled { opacity: .5; cursor: not-allowed; }
+/* .loadMoreBtn retired 2026-08-25 → shared Button (secondary, default size). */
 
 .empty {
   padding: 50px 20px;
@@ -213,20 +197,8 @@
    component; only the list layout inside the blocked notice stays local. */
 .blockedList { margin: 6px 0 0; padding-left: 18px; }
 .blockedList li { margin-bottom: 2px; }
-.editSaveBtn {
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .04em;
-  background: var(--admin-navy);
-  color: var(--admin-white);
-  border: 1px solid var(--admin-navy);
-  padding: 6px 14px;
-  border-radius: 3px;
-  cursor: pointer;
-}
-.editSaveBtn:hover { background: var(--admin-navy-hover); }
-.editSaveBtn:disabled { opacity: .55; cursor: not-allowed; }
+/* .editSaveBtn retired 2026-08-25 → shared Button (variant="primary"). */
+/* .deleteConfirmBtn stays — referenced by styleguide/admin/page.tsx's Danger specimen. */
 .deleteConfirmBtn {
   font-family: inherit;
   font-size: 12px;

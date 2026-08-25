@@ -5,6 +5,7 @@ import { SaveButton, SaveFeedback, useSavePhase } from '../../_components/save-s
 import { useLookupTable } from './use-lookup-table';
 import styles from './lookups.module.css';
 import { Notice } from '../../_components/notice';
+import { Button } from '../../../_components/button';
 
 type ActionResult = { ok: boolean; error?: string };
 
@@ -147,24 +148,24 @@ export function SkillAssignEditor({ people, skills, keyField, noun, onSave }: Pr
                       {/* Navy: Save commits an edit, it doesn't add — the
                           Phase A primary-button decision (2026-08-21). */}
                       <SaveButton
-                        className={styles.editSaveBtn}
                         dirty={skillsDirty(p)}
                         pending={isPending}
                         onClick={() => save(p)}
                       />
-                      <button
-                        type="button"
-                        className={`${styles.editBtn} ${styles.gapLeft}`}
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className={styles.gapLeft}
                         onClick={() => setOpenKey(null)}
                         disabled={isPending}
                       >
                         Cancel
-                      </button>
+                      </Button>
                     </>
                   ) : (
-                    <button type="button" className={styles.editBtn} onClick={() => open(p)}>
+                    <Button variant="secondary" size="sm" onClick={() => open(p)}>
                       Edit
-                    </button>
+                    </Button>
                   )}
                 </td>
               </tr>

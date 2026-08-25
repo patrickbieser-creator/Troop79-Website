@@ -14,6 +14,7 @@ import styles from './report.module.css';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
 import { Notice } from '../../_components/notice';
 import { fmtDate } from '@/lib/format-date';
+import { Button } from '../../../_components/button';
 
 function money(n: number): string {
   return n < 0 ? `-$${Math.abs(n).toFixed(2)}` : `$${n.toFixed(2)}`;
@@ -49,9 +50,9 @@ export function ActivityDrilldownButton({
 
   return (
     <>
-      <button type="button" className={parentStyles.pagerBtn} onClick={openDrilldown}>
+      <Button variant="secondary" onClick={openDrilldown}>
         View transactions →
-      </button>
+      </Button>
       <Dialog
         ref={dialogRef}
         className={parentStyles.editDialog}
@@ -86,9 +87,9 @@ export function ActivityDrilldownButton({
         </DialogBody>
         <DialogActions>
           <form method="dialog">
-            <button type="submit" className={parentStyles.pagerBtn}>
+            <Button variant="secondary" type="submit">
               Close
-            </button>
+            </Button>
           </form>
         </DialogActions>
       </Dialog>

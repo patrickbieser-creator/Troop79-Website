@@ -46,7 +46,9 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         capability: 'advancement.write'
       },
       {
-        label: 'Event Rosters',
+        // "Event Rosters" → "Event Management" (Patrick, 2026-08-24): the
+        // page runs the event — roster, cars, money, snapshot — not just the list.
+        label: 'Event Management',
         href: '/admin/rosters',
         matchPath: '/admin/rosters',
         capability: 'calendar.write'

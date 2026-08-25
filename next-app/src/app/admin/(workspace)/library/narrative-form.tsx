@@ -14,12 +14,10 @@ import { DiscardButton, SaveButton, SaveFeedback, useFormDirty } from '../_compo
 export function NarrativeForm({
   action,
   className,
-  buttonClassName,
   children
 }: {
   action: (formData: FormData) => void | Promise<void>;
   className?: string;
-  buttonClassName?: string;
   /** The hidden target, label, textarea and any meta — rendered by the page. */
   children: React.ReactNode;
 }) {
@@ -30,7 +28,7 @@ export function NarrativeForm({
     <form ref={ref} action={action} className={className} onSubmit={() => setSubmitting(true)}>
       {children}
       <DiscardButton dirty={dirty} pending={submitting} onClick={reset} />
-      <SaveButton type="submit" className={buttonClassName} dirty={dirty} pending={submitting} dirtyLabel="Save narrative" />
+      <SaveButton type="submit" dirty={dirty} pending={submitting} dirtyLabel="Save narrative" />
       <SaveFeedback phase={submitting ? 'saving' : 'idle'} />
     </form>
   );

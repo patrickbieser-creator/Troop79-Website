@@ -41,25 +41,7 @@
   border-bottom: 1px solid var(--admin-gray-200);
   margin-bottom: 4px;
 }
-.clearBtn {
-  border: 1px solid var(--admin-gray-300);
-  background: var(--admin-white);
-  color: var(--admin-gray-700);
-  font-size: 11px;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.clearBtn:hover:not(:disabled) {
-  border-color: var(--admin-navy);
-  color: var(--admin-navy);
-}
-.clearBtn:disabled {
-  color: var(--admin-gray-300);
-  border-color: var(--admin-gray-200);
-  cursor: default;
-}
+/* .clearBtn retired 2026-08-24 → shared Button */
 
 .rankSection {
   border-bottom: 1px dashed var(--admin-gray-100);

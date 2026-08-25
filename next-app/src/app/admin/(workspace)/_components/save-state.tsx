@@ -31,6 +31,7 @@
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import styles from './save-state.module.css';
+import { Button } from '../../_components/button';
 
 export function useSavedSnapshot(draftKey: string): { dirty: boolean; markSaved: () => void } {
   const [savedKey, setSavedKey] = useState(() => draftKey);
@@ -137,17 +138,18 @@ export function DiscardButton({
   onClick: () => void;
 }) {
   const disabled = !dirty || pending;
+  // The shared Button paints it (2026-08-24); a screen may still stack a class.
   return (
-    <button
-      type="button"
-      className={`${styles.discardBtn}${className ? ` ${className}` : ''}`}
+    <Button
+      variant="secondary"
+      className={className}
       disabled={disabled}
       title={!dirty ? 'Nothing to discard' : undefined}
       aria-disabled={disabled || undefined}
       onClick={onClick}
     >
       {label}
-    </button>
+    </Button>
   );
 }
 
@@ -234,17 +236,20 @@ export function SaveButton({
   const disabled = pending || clean || blocked;
   const label = pending ? pendingLabel : isNew ? newLabel : dirty ? dirtyLabel : savedLabel;
   const title = clean ? 'No changes to save yet' : blocked ? blockedReason : undefined;
+  // Navy primary from the shared Button (2026-08-24) — every Save looks the
+  // same without each screen lending its own class. `className` still stacks.
   return (
-    <button
+    <Button
+      variant="primary"
       type={type}
-      className={`${styles.saveBtn}${className ? ` ${className}` : ''}`}
+      className={className}
       disabled={disabled}
       title={title}
       aria-disabled={disabled || undefined}
       onClick={onClick}
     >
       {label}
-    </button>
+    </Button>
   );
 }
 

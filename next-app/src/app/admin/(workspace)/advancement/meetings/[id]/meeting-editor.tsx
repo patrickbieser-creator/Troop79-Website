@@ -11,6 +11,7 @@ import { Badge } from '../../../_components/badge';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../../_components/dialog';
 import { Notice } from '../../../_components/notice';
 import { DiscardButton, SaveButton, SaveFeedback, useFormDirty, useSavePhase } from '../../../_components/save-state';
+import { Button } from '../../../../_components/button';
 
 type ActionResult = { ok: boolean; error?: string };
 
@@ -241,27 +242,27 @@ export function MeetingEditor({
         <div className={styles.headActions}>
           <Badge variant={published ? 'success' : 'neutral'}>{meeting.status}</Badge>
           {published && (
-            <Link href={`/events/${entry.id}`} className={styles.editBtn}>
+            <Button href={`/events/${entry.id}`} size="sm">
               View public page
-            </Link>
+            </Button>
           )}
-          <button
-            type="button"
-            className={published ? styles.unpublishBtn : styles.publishBtn}
+          <Button
+            variant={published ? 'secondary' : 'primary'}
+            size="sm"
             onClick={togglePublish}
             disabled={busyKey === 'publish'}
           >
             {busyKey === 'publish' ? '…' : published ? 'Unpublish' : 'Publish'}
-          </button>
-          <button
-            type="button"
-            className={`${styles.editBtn} ${styles.dangerBtn}`}
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
             onClick={deleteAgenda}
             disabled={busyKey === 'delete-agenda'}
             title="Remove this agenda and its items. The calendar entry and attendance stay."
           >
             {busyKey === 'delete-agenda' ? '…' : 'Delete agenda'}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -283,7 +284,6 @@ export function MeetingEditor({
               <DiscardButton dirty={logistics.dirty} pending={busyKey === 'logistics'} onClick={logistics.reset} />
               <SaveButton
                 type="submit"
-                className={styles.editBtn}
                 dirty={logistics.dirty}
                 pending={busyKey === 'logistics'}
                 dirtyLabel="Save logistics"
@@ -396,14 +396,13 @@ export function MeetingEditor({
                     ) : (
                       <span />
                     )}
-                    <button
-                      type="button"
-                      className={styles.editBtn}
+                    <Button
+                      size="sm"
                       onClick={() => promote(c)}
                       disabled={busyKey === `promote-${c.key}`}
                     >
                       {busyKey === `promote-${c.key}` ? 'Adding…' : addedKeys.has(c.key) ? 'Add again' : 'Add to agenda'}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ))
@@ -483,9 +482,9 @@ function SessionPanel({
     <div className={styles.panel}>
       <div className={styles.panelTitle}>
         <span>{title}</span>
-        <button type="button" className={styles.editBtn} onClick={onAdd}>
+        <Button size="sm" onClick={onAdd}>
           + Add item
-        </button>
+        </Button>
       </div>
       {rows.length === 0 ? (
         <p className={styles.muted}>{emptyNote}</p>
@@ -537,18 +536,18 @@ function SessionPanel({
                 ↓
               </button>
             </div>
-            <div>
-              <button type="button" className={styles.editBtn} onClick={() => onEdit(s)}>
+            <div className={styles.editActions}>
+              <Button size="sm" onClick={() => onEdit(s)}>
                 Edit
-              </button>
-              <button
-                type="button"
-                className={`${styles.editBtn} ${styles.dangerBtn}`}
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
                 onClick={() => onDelete(s)}
                 disabled={busyKey === `del-${s.id}`}
               >
                 {busyKey === `del-${s.id}` ? '…' : 'Remove'}
-              </button>
+              </Button>
             </div>
           </div>
         ))
@@ -686,11 +685,10 @@ function SessionForm({
       </DialogBody>
 
       <DialogActions>
-        <button type="button" className={styles.editBtn} onClick={onClose} disabled={isPending}>
+        <Button size="sm" onClick={onClose} disabled={isPending}>
           Cancel
-        </button>
+        </Button>
         <SaveButton
-          className={styles.editSaveBtn}
           dirty={dirty}
           pending={isPending}
           isNew={isNew}

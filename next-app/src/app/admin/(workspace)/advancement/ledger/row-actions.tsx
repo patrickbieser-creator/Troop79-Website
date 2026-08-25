@@ -14,6 +14,7 @@ import { DatePickerField } from '../../_components/date-picker-field';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
 import { Notice } from '../../_components/notice';
 import { SaveButton, SaveFeedback, useSavedSnapshot, useSavePhase } from '../../_components/save-state';
+import { Button } from '../../../_components/button';
 import styles from './ledger.module.css';
 
 interface Props {
@@ -90,30 +91,30 @@ export function RowActions({ row, scouts, leaders }: Props) {
   return (
     <>
       {!isHidden && (
-        <button
-          type="button"
-          className={styles.actionBtn}
+        <Button
+          variant="quiet"
+          size="sm"
           onClick={() => setEditOpen(true)}
         >
           Edit
-        </button>
+        </Button>
       )}
       {isHidden ? (
-        <button type="button" className={styles.actionBtn} onClick={onRestore}>
+        <Button variant="quiet" size="sm" onClick={onRestore}>
           Restore
-        </button>
+        </Button>
       ) : (
         <>
-          <button type="button" className={styles.actionBtn} onClick={onArchive}>
+          <Button variant="quiet" size="sm" onClick={onArchive}>
             Archive
-          </button>
-          <button
-            type="button"
-            className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
             onClick={onDelete}
           >
             Delete
-          </button>
+          </Button>
         </>
       )}
 
@@ -304,16 +305,15 @@ function EditForm({
       </DialogBody>
 
       <DialogActions>
-        <button
-          type="button"
-          className={styles.actionBtn}
+        <Button
+          variant="quiet"
+          size="sm"
           onClick={onCancel}
           disabled={isPending}
         >
           Cancel
-        </button>
+        </Button>
         <SaveButton
-          className={styles.editSaveBtn}
           dirty={dirty}
           pending={isPending}
           onClick={submit}

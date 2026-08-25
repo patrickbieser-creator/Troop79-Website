@@ -14,6 +14,7 @@ import { DatePickerField } from '../../_components/date-picker-field';
 import styles from './meeting-plan.module.css';
 import { ActionsMenu } from '../../_components/actions-menu';
 import { TabStrip } from '../../_components/tab-strip';
+import { Button } from '../../../_components/button';
 import { fmtDate, fmtDateTime } from '@/lib/format-date';
 
 export interface PublishedPlanRow {
@@ -106,14 +107,13 @@ export function PlanView({ published, defaultDate }: Props) {
           Meeting date
           <DatePickerField value={meetingDate} onChange={changeDate} />
         </label>
-        <button
-          type="button"
-          className={styles.generateBtn}
+        <Button
+          variant="primary"
           onClick={generate}
           disabled={isPending || !meetingDate}
         >
           {isPending ? 'Working…' : 'Generate Plan'}
-        </button>
+        </Button>
         {payload && (
           // Actions ▾ (2026-08-20, D-156 shape) — Generate Plan stays inline
           // next to its date field; Publish to Site is the one field-free
@@ -195,14 +195,14 @@ export function PlanView({ published, defaultDate }: Props) {
                     {p.generated_by ? ` · ${p.generated_by}` : ''}
                   </td>
                   <td className={styles.alignRight}>
-                    <button
-                      type="button"
-                      className={styles.smallBtn}
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       onClick={() => unpublish(p.meeting_date)}
                       disabled={isPending}
                     >
                       Remove
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               ))}

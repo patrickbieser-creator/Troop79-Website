@@ -7,6 +7,7 @@ import type { GuestTabRow } from '@/lib/guest-people';
 import { forgetGuest, promoteGuest } from './guest-actions';
 import { searchPeople } from './person-actions';
 import { Notice } from '../../_components/notice';
+import { Button } from '../../../_components/button';
 import styles from './roster.module.css';
 
 /**
@@ -110,9 +111,8 @@ export function GuestsTable({ rows }: { rows: GuestTabRow[] }) {
                 <td>{r.phone ?? <span className={styles.muted}>—</span>}</td>
                 <td>
                   <div className={styles.inlineRow}>
-                    <button
-                      type="button"
-                      className={styles.smallBtn}
+                    <Button
+                      size="sm"
                       disabled={pending}
                       aria-expanded={merging === r.personId}
                       onClick={() => {
@@ -122,10 +122,10 @@ export function GuestsTable({ rows }: { rows: GuestTabRow[] }) {
                       }}
                     >
                       Merge into…
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.deleteBtn}
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="sm"
                       disabled={pending}
                       onClick={() => {
                         if (
@@ -139,7 +139,7 @@ export function GuestsTable({ rows }: { rows: GuestTabRow[] }) {
                       }}
                     >
                       Forget
-                    </button>
+                    </Button>
                   </div>
                   {merging === r.personId && (
                     <div className={styles.pickerBlock}>
@@ -157,9 +157,9 @@ export function GuestsTable({ rows }: { rows: GuestTabRow[] }) {
                         <ul className={styles.results}>
                           {results.map((p) => (
                             <li key={p.id}>
-                              <button
-                                type="button"
-                                className={styles.resultBtn}
+                              <Button
+                                size="sm"
+                                className={styles.resultRow}
                                 disabled={pending}
                                 onClick={() => {
                                   if (!window.confirm(`Merge ${r.name} into ${p.display_name}? Their sign-up history moves over and the guest record is retired.`)) return;
@@ -168,7 +168,7 @@ export function GuestsTable({ rows }: { rows: GuestTabRow[] }) {
                               >
                                 {p.display_name}
                                 {p.primary_email && <span className={styles.muted}> · {p.primary_email}</span>}
-                              </button>
+                              </Button>
                             </li>
                           ))}
                         </ul>

@@ -14,6 +14,16 @@ fits); never read the public palette tokens (`--navy`, `--forest`, `--bark`,
 check the styleguide for an existing pattern before writing a new class; inline
 `style={{…}}` only for genuinely dynamic values.
 
+**Buttons and form surfaces are components, not classes (2026-08-24):** every admin button is
+`<Button>` from `src/app/admin/_components/button` — variants primary (navy) / secondary /
+danger (outlined) / dangerSolid (danger-Dialog confirm only) / quiet, sizes md / sm, `href`
+renders a Link; `SaveButton`/`DiscardButton` render it already. Every surface that holds fields
+is `<FormPanel>` or the numbered `<FormSection>` from `admin/_components/form-panel`. Both live
+one level ABOVE `(workspace)` so `/admin/roster-print` and `/admin/snapshot` can use them. Do not
+add a `.xyzBtn` / `.panel` class to a screen stylesheet — add a variant to the component and a
+row to the styleguide scoreboard. Genuinely different controls (icon buttons, chips, sort
+headers, toggles, tab strips) keep their own classes.
+
 **Keep the styleguide in the same commit as the change:** adding a new admin UI pattern,
 class family, token, or shared component means adding its specimen (and scoreboard row, if
 it has variants) to the styleguide page; retiring a variant means deleting its specimen and

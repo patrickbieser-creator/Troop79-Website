@@ -20,6 +20,7 @@ import { fmtDate, fmtRange } from '@/lib/format-date';
 import { Badge } from '../../_components/badge';
 import { TabStrip } from '../../_components/tab-strip';
 import { ActionsMenu } from '../../_components/actions-menu';
+import { Button } from '../../../_components/button';
 
 import { centralToday } from '@/lib/dates';
 function addOneDay(iso: string): string {
@@ -144,9 +145,9 @@ export function ReportWorkspace({
               <span className={styles.dateLabel}>End</span>
               <DatePickerField value={endDate} onChange={setEndDate} disabled={disabled} />
             </label>
-            <button type="button" className={styles.primaryBtn} onClick={generate} disabled={disabled || !canGenerate}>
+            <Button variant="primary" onClick={generate} disabled={disabled || !canGenerate}>
               {busy ? 'Working…' : report ? 'Regenerate' : 'Generate'}
-            </button>
+            </Button>
           </div>
           {report?.status === 'published' && (
             <p className={styles.publishedNote}>
@@ -177,7 +178,6 @@ export function ReportWorkspace({
               />
               <DiscardButton dirty={note !== (report?.note ?? '')} pending={disabled} onClick={() => setNote(report?.note ?? '')} />
               <SaveButton
-                className={styles.smallBtn}
                 dirty={note !== (report?.note ?? '')}
                 pending={disabled}
                 dirtyLabel="Save note"
@@ -211,9 +211,9 @@ export function ReportWorkspace({
               )}
               {view === 'markdown' && (
                 <div className={styles.markdownPane}>
-                  <button type="button" className={styles.smallBtn} onClick={copyMarkdown}>
+                  <Button variant="secondary" size="sm" onClick={copyMarkdown}>
                     {copied ? 'Copied ✓' : 'Copy markdown'}
-                  </button>
+                  </Button>
                   <pre className={styles.markdownPre}>{report.contentMd}</pre>
                 </div>
               )}

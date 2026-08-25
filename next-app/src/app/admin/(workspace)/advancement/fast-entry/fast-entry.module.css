@@ -79,43 +79,7 @@
   gap: 8px;
   margin-top: 6px;
 }
-.btn,
-.btnPrimary {
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .04em;
-  padding: 8px 16px;
-  border-radius: 3px;
-  border: 1px solid var(--admin-gray-300);
-  cursor: pointer;
-}
-.btn {
-  background: var(--admin-white);
-  color: var(--admin-gray-700);
-}
-.btn:hover {
-  border-color: var(--admin-navy);
-  color: var(--admin-navy);
-}
-.btn:disabled {
-  opacity: .55;
-  cursor: not-allowed;
-}
-.btnPrimary {
-  background: var(--admin-navy);
-  color: var(--admin-white);
-  border-color: var(--admin-navy);
-}
-.btnPrimary:hover {
-  background: var(--admin-navy-hover);
-  color: var(--admin-white);
-}
-.btnPrimary:disabled {
-  background: var(--admin-gray-300);
-  border-color: var(--admin-gray-300);
-  cursor: not-allowed;
-}
+/* .btn/.btnPrimary retired 2026-08-25 → shared Button (default secondary / variant="primary"). */
 
 .statusOk {
   font-size: 12px;
@@ -997,7 +961,7 @@
 .fieldLabelNote      { font-weight: var(--admin-weight-regular); color: var(--admin-gray-500); text-transform: none; letter-spacing: 0; }
 .fieldLabelNoteFaint { font-weight: var(--admin-weight-regular); color: var(--admin-gray-400); text-transform: none; letter-spacing: 0; }
 .labelRow { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: var(--admin-space-2); }
-.linkBtn  { background: none; border: none; color: var(--admin-navy); font-size: var(--admin-text-sm); font-weight: var(--admin-weight-bold); cursor: pointer; }
+/* .linkBtn retired 2026-08-25 → shared Button (variant="quiet"). */
 .checkingNote   { font-size: var(--admin-text-base); color: var(--admin-gray-500); margin-top: var(--admin-space-6); }
 .statusErrBlock { margin-top: var(--admin-space-6); display: block; }
 .helpTightTop   { margin-top: -2px; margin-bottom: var(--admin-space-4); }

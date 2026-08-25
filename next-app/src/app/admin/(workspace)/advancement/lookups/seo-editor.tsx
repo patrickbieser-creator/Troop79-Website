@@ -141,7 +141,6 @@ export function SeoEditor({
       <div className={styles.editActions}>
         <DiscardButton dirty={dirty} pending={isPending} onClick={() => { setDraft(savedDraft); setErr(null); }} />
         <SaveButton
-          className={styles.editSaveBtn}
           dirty={dirty}
           pending={isPending}
           dirtyLabel="Save search settings"

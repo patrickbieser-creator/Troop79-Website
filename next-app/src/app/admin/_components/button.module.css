@@ -1,0 +1,76 @@
+/* Shared admin Button — see button.tsx. Tokens only (admin.css). The recipe
+   is the one 32 stylesheets had each copied by hand: UI font, semibold,
+   3px radius, 1px border, hover shifts the border/background, disabled dims
+   to .55 and keeps the cursor honest. */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: var(--admin-font-ui);
+  font-size: var(--admin-text-base);
+  font-weight: var(--admin-weight-semibold);
+  line-height: 1.2;
+  padding: var(--admin-space-2) var(--admin-space-4);
+  border-radius: var(--admin-radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color .12s ease, border-color .12s ease, color .12s ease;
+}
+.btn:disabled,
+.btn[aria-disabled='true'] { opacity: .55; cursor: not-allowed; }
+.btn:focus-visible { outline: 2px solid var(--admin-navy); outline-offset: 2px; }
+
+/* sm — the old .editBtn shape: table rows, dense toolbars. */
+.sm {
+  font-size: var(--admin-text-xs);
+  padding: 3px 9px;
+  border-radius: 3px;
+}
+
+/* primary — solid navy (Phase A decision: green is Add's, not Save's). */
+.primary {
+  background: var(--admin-navy);
+  border-color: var(--admin-navy);
+  color: var(--admin-white);
+  letter-spacing: .04em;
+}
+.primary:hover:not(:disabled) { background: var(--admin-navy-hover); border-color: var(--admin-navy-hover); }
+
+/* secondary — white, grey border, navy on hover. */
+.secondary {
+  background: var(--admin-white);
+  border-color: var(--admin-gray-300);
+  color: var(--admin-gray-700);
+}
+.secondary:hover:not(:disabled) { border-color: var(--admin-navy); color: var(--admin-navy); }
+
+/* danger — outlined, quiet until hovered (in-context destructive actions). */
+.danger {
+  background: var(--admin-white);
+  border-color: color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white));
+  color: var(--admin-danger);
+}
+.danger:hover:not(:disabled) { background: var(--admin-status-error-bg); border-color: var(--admin-danger); }
+
+/* dangerSolid — the confirm inside a danger Dialog, nowhere else. */
+.dangerSolid {
+  background: var(--admin-danger);
+  border-color: var(--admin-danger);
+  color: var(--admin-white);
+}
+.dangerSolid:hover:not(:disabled) { background: var(--admin-danger-dark); border-color: var(--admin-danger-dark); }
+
+/* quiet — a link that happens to be a button. */
+.quiet {
+  background: none;
+  border-color: transparent;
+  color: var(--admin-forest);
+  text-decoration: underline;
+  padding-left: 0;
+  padding-right: 0;
+}
+.quiet:hover:not(:disabled) { color: var(--admin-navy); }

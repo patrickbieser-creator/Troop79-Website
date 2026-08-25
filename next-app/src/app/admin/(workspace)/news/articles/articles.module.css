@@ -85,30 +85,7 @@
    was quiet enough to survive since this table shipped. Matching the selector's
    specificity fixes it, and puts the actions where the Calendar's are. */
 .table th.actionsCell, .table td.actionsCell { text-align: right; white-space: nowrap; }
-.actionBtn {
-  background: none;
-  border: 1px solid var(--admin-gray-300);
-  color: var(--admin-gray-700);
-  font-family: inherit;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: var(--admin-radius-sm);
-  cursor: pointer;
-  margin-left: 6px;
-  transition: all .15s ease;
-  /* Edit is a <Link>, the rest are <button>s — anchors need these to sit on the
-     same baseline and lose their underline. */
-  display: inline-block;
-  text-decoration: none;
-  line-height: normal;
-}
-.actionBtn:first-child { margin-left: 0; }
-.actionBtn:hover { border-color: var(--admin-navy); color: var(--admin-navy); }
-.actionBtn:disabled { opacity: .5; cursor: not-allowed; }
-.actionBtnPrimary { border-color: var(--admin-navy); color: var(--admin-navy); font-weight: 700; }
-.actionBtnDanger { color: var(--admin-danger); border-color: color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white)); }
-.actionBtnDanger:hover { background: var(--admin-status-error-bg); border-color: var(--admin-danger); color: var(--admin-danger); }
+/* .actionBtn / .actionBtnPrimary / .actionBtnDanger retired 2026-08-25 → shared Button (secondary/primary/danger, size="sm"). */
 
 .pager {
   display: flex;

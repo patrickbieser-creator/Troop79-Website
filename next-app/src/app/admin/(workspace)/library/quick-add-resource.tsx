@@ -14,6 +14,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ResourceEntryForm, type TargetOptionGroup } from './resource-entry-form';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../_components/dialog';
 import { AddButton } from '../_components/add-button';
+import { Button } from '../../_components/button';
 import styles from './library.module.css';
 
 interface Props {
@@ -58,9 +59,9 @@ export function QuickAddResource({ targetGroups, onCreate, onUploadDocument }: P
               />
             </DialogBody>
             <DialogActions>
-              <button type="button" className={styles.btnSecondary} onClick={() => setOpen(false)}>
+              <Button variant="secondary" onClick={() => setOpen(false)}>
                 Cancel
-              </button>
+              </Button>
             </DialogActions>
           </>
         )}

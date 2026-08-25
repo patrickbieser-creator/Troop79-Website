@@ -13,6 +13,7 @@ import styles from './roster.module.css';
 import fields from '../lookups/lookups.module.css';
 import { AddButton } from '../../_components/add-button';
 import { Notice } from '../../_components/notice';
+import { Button } from '../../../_components/button';
 
 /**
  * Parents and guardians on a scout record.
@@ -111,14 +112,14 @@ export function ScoutRelations({ scoutPersonId }: { scoutPersonId: number | null
               {r.isGuardian && <span className={styles.guardianTag}>guardian</span>}
               {!r.active && <span className={styles.chipInactiveTag}>Inactive</span>}
             </span>
-            <button
-              type="button"
-              className={styles.unlinkBtn}
+            <Button
+              variant="danger"
+              size="sm"
               disabled={busy}
               onClick={() => act(() => removeRelationship(r.relationshipId), `Unlinked ${r.name}.`)}
             >
               Unlink
-            </button>
+            </Button>
           </div>
           <div className={fields.editGrid}>
             <div className={fields.editField}>
@@ -156,13 +157,12 @@ export function ScoutRelations({ scoutPersonId }: { scoutPersonId: number | null
         <div className={styles.parentRow}>
           <div className={styles.parentRowHeader}>
             <span className={styles.parentRowLabel}>Add parent / guardian</span>
-            <button
-              type="button"
-              className={styles.editBtn}
+            <Button
+              size="sm"
               onClick={() => { setShowAdd(false); setMode('none'); }}
             >
               Cancel
-            </button>
+            </Button>
           </div>
 
           <div className={styles.inlineRow}>
@@ -190,24 +190,22 @@ export function ScoutRelations({ scoutPersonId }: { scoutPersonId: number | null
             </label>
           </div>
           <div className={styles.inlineRow}>
-            <button
-              type="button"
-              className={styles.editBtn}
+            <Button
+              size="sm"
               disabled={busy}
               aria-pressed={mode === 'link'}
               onClick={() => setMode(mode === 'link' ? 'none' : 'link')}
             >
               Find someone on record
-            </button>
-            <button
-              type="button"
-              className={styles.editBtn}
+            </Button>
+            <Button
+              size="sm"
               disabled={busy}
               aria-pressed={mode === 'create'}
               onClick={() => setMode(mode === 'create' ? 'none' : 'create')}
             >
               + New adult
-            </button>
+            </Button>
           </div>
 
           {mode === 'link' && (
@@ -270,15 +268,15 @@ function AdultPicker({
         <ul className={styles.results}>
           {results.map((p) => (
             <li key={p.id}>
-              <button
-                type="button"
-                className={styles.resultBtn}
+              <Button
+                size="sm"
+                className={styles.resultRow}
                 disabled={disabled}
                 onClick={() => onPick(p.id, p.display_name)}
               >
                 {p.display_name}
                 {p.primary_email && <span className={styles.muted}> {p.primary_email}</span>}
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
@@ -336,14 +334,13 @@ function NewAdultForm({
         If this email already belongs to someone on record, they are linked instead of a second
         copy being created.
       </p>
-      <button
-        type="button"
-        className={styles.editBtn}
+      <Button
+        size="sm"
         disabled={disabled || !name.trim()}
         onClick={() => onCreate(name, email, phone)}
       >
         Add and link
-      </button>
+      </Button>
     </div>
   );
 }

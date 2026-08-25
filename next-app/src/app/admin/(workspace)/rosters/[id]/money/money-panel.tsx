@@ -20,6 +20,7 @@ import { PAY_METHOD_LABEL, type PayMethod } from '@/lib/event-money';
 import { milestoneStanding, money, summarizeEventMoney, uncreditedOverpayment, type Milestone } from '@/lib/event-money';
 import { Badge } from '../../../_components/badge';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../../_components/dialog';
+import { Button } from '../../../../_components/button';
 import styles from '../../../events/events-admin.module.css';
 import { fmtDate } from '@/lib/format-date';
 
@@ -297,9 +298,8 @@ export function MoneyPanel({
                           value={overrideText}
                           onChange={(e) => setOverrideText(e.target.value)}
                         />
-                        <button
-                          type="button"
-                          className={styles.enableBtn}
+                        <Button
+                          variant="primary"
                           disabled={pending}
                           onClick={() =>
                             run(
@@ -310,7 +310,7 @@ export function MoneyPanel({
                           }
                         >
                           Save
-                        </button>
+                        </Button>
                         <button type="button" className={styles.rowEdit} onClick={() => setOverrideFor(null)}>
                           Cancel
                         </button>
@@ -503,9 +503,8 @@ export function MoneyPanel({
           )}
           {/* Inputs follow the column order above: Date · Amount · Who paid · Paid with · What (Patrick, 2026-08-22). */}
           <input placeholder="What for (e.g. Food — Pick n Save)" aria-label="Expense memo" value={xMemo} onChange={(e) => setXMemo(e.target.value)} />
-          <button
-            type="button"
-            className={styles.enableBtn}
+          <Button
+            variant="primary"
             disabled={pending || !xAmount || !xMemo.trim() || !xPayer}
             onClick={() =>
               run(
@@ -529,7 +528,7 @@ export function MoneyPanel({
             }
           >
             Add expense
-          </button>
+          </Button>
         </div>
       </section>
 
@@ -593,9 +592,8 @@ export function MoneyPanel({
             <option value="scouts">Scouts</option>
             <option value="adults">Adults</option>
           </select>
-          <button
-            type="button"
-            className={styles.enableBtn}
+          <Button
+            variant="primary"
             disabled={pending || !mLabel.trim() || !mDue || (mKind === 'payment' && !mAmount)}
             onClick={() =>
               run(
@@ -615,7 +613,7 @@ export function MoneyPanel({
             }
           >
             Add milestone
-          </button>
+          </Button>
         </div>
         {milestones.some((m) => m.kind === 'payment') && (
           <div className={styles.addRow}>
@@ -648,9 +646,8 @@ export function MoneyPanel({
             {mailPreview && (
               <>
                 <span className={styles.panelHint}>To: {mailPreview.join(', ') || '(nobody)'}</span>
-                <button
-                  type="button"
-                  className={styles.enableBtn}
+                <Button
+                  variant="primary"
                   disabled={pending || mailPreview.length === 0}
                   onClick={() =>
                     start(async () => {
@@ -667,7 +664,7 @@ export function MoneyPanel({
                   }
                 >
                   Send reminder
-                </button>
+                </Button>
                 <button type="button" className={styles.rowEdit} onClick={() => setMailPreview(null)}>
                   Cancel
                 </button>
@@ -749,9 +746,9 @@ export function MoneyPanel({
               <button type="button" className={styles.rowEdit} onClick={() => setDlg(null)} disabled={pending}>
                 Cancel
               </button>
-              <button type="button" className={styles.enableBtn} onClick={submitDlg} disabled={pending || payNeedsAck}>
+              <Button variant="primary" onClick={submitDlg} disabled={pending || payNeedsAck}>
                 {pending ? 'Saving…' : dlg.mode === 'pay' ? 'Record payment' : dlg.mode === 'refund' ? 'Record refund' : 'Credit account'}
-              </button>
+              </Button>
             </DialogActions>
           </>
         )}

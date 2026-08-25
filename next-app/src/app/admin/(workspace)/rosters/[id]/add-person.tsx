@@ -24,6 +24,7 @@
 import { useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { addSignupEntry } from '../../events/actions';
+import { Button } from '../../../_components/button';
 import styles from '../../events/events-admin.module.css';
 
 export interface AddCandidate {
@@ -92,16 +93,15 @@ export function AddPerson({
       <section className={styles.panel}>
         <div className={styles.panelHead}>
           <h2>Someone missing?</h2>
-          <button
-            type="button"
-            className={styles.enableBtn}
+          <Button
+            variant="primary"
             onClick={() => {
               setOpen(true);
               setTimeout(() => searchRef.current?.focus(), 0);
             }}
           >
             + Add a person
-          </button>
+          </Button>
         </div>
         <p className={styles.panelHint}>
           For the RSVPs that never reached the website &mdash; told to you at a meeting, sent by
@@ -115,9 +115,9 @@ export function AddPerson({
     <section className={styles.panel}>
       <div className={styles.panelHead}>
         <h2>Add a person</h2>
-        <button type="button" className={styles.enableBtn} onClick={() => setOpen(false)}>
+        <Button variant="primary" onClick={() => setOpen(false)}>
           Done
-        </button>
+        </Button>
       </div>
 
       <p className={styles.panelHint}>

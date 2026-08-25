@@ -11,6 +11,8 @@ import { DatePickerField } from '../../_components/date-picker-field';
 import { Notice } from '../../_components/notice';
 import { SaveButton, SaveFeedback, useSavedSnapshot, useSavePhase } from '../../_components/save-state';
 import styles from '../lookups/lookups.module.css';
+import { FormSection } from '../../../_components/form-panel';
+import { Button } from '../../../_components/button';
 
 export interface ScoutRow {
   /** people.id — the scout's identity in the person spine. */
@@ -615,16 +617,15 @@ export function ScoutForm({
             Promote to adult (18+)
           </button>
         )}
-        <button
+        <Button
           type="button"
-          className={styles.editBtn}
+          variant="secondary"
           onClick={onClose}
           disabled={isPending}
         >
           Cancel
-        </button>
+        </Button>
         <SaveButton
-          className={styles.editSaveBtn}
           dirty={dirty}
           pending={isPending}
           isNew={isNew}
@@ -639,28 +640,5 @@ export function ScoutForm({
   );
 }
 
-function FormSection({
-  num,
-  title,
-  actions,
-  sectionRef,
-  children
-}: {
-  num: number;
-  title: string;
-  actions?: React.ReactNode;
-  sectionRef?: (el: HTMLDivElement | null) => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className={styles.editSectionCard} ref={sectionRef} data-section={num - 1}>
-      <div className={styles.editSectionCardHead}>
-        <span className={styles.editSectionNum}>{num}</span>
-        <h4>{title}</h4>
-        {actions && <div className={styles.pushRight}>{actions}</div>}
-      </div>
-      {children}
-    </div>
-  );
-}
+// FormSection promoted to the shared admin/_components/form-panel (2026-08-24).
 

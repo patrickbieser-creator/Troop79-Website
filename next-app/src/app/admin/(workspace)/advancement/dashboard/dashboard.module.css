@@ -63,33 +63,7 @@
   gap: 8px;
   flex-shrink: 0;
 }
-.btn {
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .04em;
-  padding: 8px 14px;
-  border-radius: 3px;
-  border: 1px solid var(--admin-gray-300);
-  background: var(--admin-white);
-  color: var(--admin-gray-700);
-  cursor: pointer;
-  text-transform: none;
-  text-decoration: none;
-}
-.btn:hover {
-  border-color: var(--admin-navy);
-  color: var(--admin-navy);
-}
-.btnPrimary {
-  background: var(--admin-navy);
-  color: var(--admin-white);
-  border-color: var(--admin-navy);
-}
-.btnPrimary:hover {
-  background: var(--admin-navy-hover);
-  color: var(--admin-white);
-}
+/* .btn / .btnPrimary retired 2026-08-24 → shared Button */
 
 /* Stats strip */
 .stats {

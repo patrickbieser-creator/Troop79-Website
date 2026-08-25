@@ -9,6 +9,7 @@ import styles from './lookups.module.css';
 import { AddButton } from '../../_components/add-button';
 import { Notice } from '../../_components/notice';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
+import { Button } from '../../../_components/button';
 
 export interface MbRow {
   id: string;
@@ -109,13 +110,13 @@ export function MbEditor({ rows, leaders, counselorsByMb, reqTreesByMb }: Props)
                   )}
                 </td>
                 <td className={styles.cellRight}>
-                  <button
-                    type="button"
-                    className={styles.editBtn}
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={() => setOpenFor(m)}
                   >
                     Edit
-                  </button>
+                  </Button>
                 </td>
               </tr>
             );
@@ -345,16 +346,15 @@ function MbForm({
       </DialogBody>
 
       <DialogActions>
-        <button
-          type="button"
-          className={styles.editBtn}
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={onClose}
           disabled={isPending}
         >
           Cancel
-        </button>
+        </Button>
         <SaveButton
-          className={styles.editSaveBtn}
           dirty={dirty}
           pending={isPending}
           blocked={!name.trim()}

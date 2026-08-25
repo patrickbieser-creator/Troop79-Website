@@ -133,12 +133,7 @@
 .removedBlock { margin-top: 16px; padding-top: 12px; border-top: 1px dashed var(--admin-gray-300); }
 .dangerPanel { background: var(--admin-white); border: 1px solid color-mix(in srgb, var(--admin-danger) 30%, white); border-left: 3px solid var(--admin-danger); border-radius: 5px; padding: 16px; }
 .dangerPanel h2 { font-size: 14px; font-weight: 700; color: var(--admin-danger); margin-bottom: 4px; }
-/* Canonical outlined danger (Phase A decision, 2026-08-21) — was the
-   workspace's lone SOLID danger button; solid is now reserved for the
-   confirm inside a danger Dialog. */
-.dangerBtn { background: var(--admin-white); color: var(--admin-danger); border: 1px solid color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white)); border-radius: 3px; padding: 6px 13px; font-size: 12.5px; font-weight: 700; cursor: pointer; }
-.dangerBtn:hover:not(:disabled) { background: var(--admin-status-error-bg); border-color: var(--admin-danger); }
-.dangerBtn:disabled { opacity: .5; cursor: not-allowed; }
+/* .dangerBtn retired 2026-08-25 → shared Button (variant="danger"). */
 
 /* ── Add-a-person picker on the Event Roster ─────────────────────────────── */
 

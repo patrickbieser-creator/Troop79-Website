@@ -18,6 +18,7 @@ import { DiscardButton, SaveButton, SaveFeedback, useDraftSnapshot, useSavePhase
 import { ARTICLE_TOKENS, isValidTokenValue, type TokenValues } from '@/lib/article-tokens';
 import styles from './lookups.module.css';
 import { Notice } from '../../_components/notice';
+import { Button } from '../../../_components/button';
 
 type ActionResult = { ok: boolean; error?: string };
 
@@ -125,9 +126,9 @@ export function ArticleTokensEditor({
 
       <div className={styles.tokenActions}>
         {saved && <span className={styles.tokenSaved}>Saved &mdash; live on the site.</span>}
-        <button
-          type="button"
-          className={styles.editBtn}
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={() => {
             setDraft({});
             setSaved(false);
@@ -136,10 +137,9 @@ export function ArticleTokensEditor({
           title="Clear every field, restoring the built-in defaults"
         >
           Reset to defaults
-        </button>
+        </Button>
         <DiscardButton dirty={snap.dirty} pending={isPending} onClick={() => { setDraft(snap.saved); setErr(null); }} />
         <SaveButton
-          className={styles.editSaveBtn}
           dirty={dirty}
           pending={isPending}
           dirtyLabel="Save styling"

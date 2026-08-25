@@ -15,6 +15,7 @@ import {
 import { validateAwards } from './satisfaction';
 import { DatePickerField } from '../../_components/date-picker-field';
 import styles from './fast-entry.module.css';
+import { Button } from '../../../_components/button';
 
 import { centralToday } from '@/lib/dates';
 interface Props {
@@ -369,17 +370,14 @@ export function ScoutFirstCard({ scouts, leaders, catalog }: Props) {
             <strong>{selections.length}</strong> pending
           </span>
         )}
-        <button
-          type="button"
-          className={styles.btn}
+        <Button
           onClick={clear}
           disabled={isPending}
         >
           Clear
-        </button>
-        <button
-          type="button"
-          className={styles.btnPrimary}
+        </Button>
+        <Button
+          variant="primary"
           onClick={save}
           disabled={
             isPending ||
@@ -405,7 +403,7 @@ export function ScoutFirstCard({ scouts, leaders, catalog }: Props) {
             : selections.length > 0
               ? `Save (${selections.length})`
               : 'Save'}
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -78,20 +78,8 @@
 .rowSelect {
   min-width: 11rem;
 }
-.bulkBtn {
-  font: inherit;
-  font-size: var(--admin-text-base);
-  font-weight: 700;
-  letter-spacing: .04em;
-  background: var(--admin-navy);
-  color: var(--admin-white);
-  border: 1px solid var(--admin-navy);
-  border-radius: 3px;
-  padding: 5px 14px;
-  cursor: pointer;
-}
-.bulkBtn:hover:not(:disabled) { background: var(--admin-navy-hover); }
-.bulkBtn:disabled { opacity: .45; cursor: default; }
+/* .bulkBtn retired 2026-08-25 → shared Button (variant="primary"; solid navy,
+   overriding the sweep's default name-based grouping — paint here is primary). */
 
 /* ── Table ───────────────────────────────────────────────────────────────── */
 .table {
@@ -145,32 +133,8 @@
   font-size: var(--admin-text-base);
   color: var(--admin-gray-600);
 }
-.discardBtn {
-  font: inherit;
-  font-size: var(--admin-text-base);
-  background: var(--admin-white);
-  color: var(--admin-gray-700);
-  border: 1px solid var(--admin-gray-200);
-  border-radius: 3px;
-  padding: 5px 14px;
-  cursor: pointer;
-}
-.discardBtn:hover:not(:disabled) { border-color: var(--admin-navy); color: var(--admin-navy); }
-.discardBtn:disabled { opacity: .45; cursor: default; }
-.saveBtn {
-  font: inherit;
-  font-size: var(--admin-text-base);
-  font-weight: 700;
-  letter-spacing: .04em;
-  background: var(--admin-navy);
-  color: var(--admin-white);
-  border: 1px solid var(--admin-navy);
-  border-radius: 3px;
-  padding: 6px 16px;
-  cursor: pointer;
-}
-.saveBtn:hover:not(:disabled) { background: var(--admin-navy-hover); }
-.saveBtn:disabled { opacity: .45; cursor: default; }
+/* .discardBtn retired 2026-08-25 → shared Button (variant="secondary"). */
+/* .saveBtn retired 2026-08-25 → shared Button (SaveButton already renders primary). */
 
 .backLink {
   font-size: var(--admin-text-base);

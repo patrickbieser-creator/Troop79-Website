@@ -7,6 +7,7 @@ import { listMedia, setMediaAltText, uploadMedia } from '../media/actions';
 import { prepareImageForUpload, beforeAfterLine, formatBytes, type ResizeKind } from '@/lib/image-resize';
 import { TabStrip } from '../../_components/tab-strip';
 import { Dialog } from '../../_components/dialog';
+import { Button } from '../../../_components/button';
 import styles from './media-picker.module.css';
 
 interface MediaPickerProps {
@@ -268,17 +269,16 @@ export function MediaPicker({ mode, onClose, onInsert, initialSelected, resizeKi
                     if (e.key === 'Enter') confirmAltPrompt();
                   }}
                 />
-                <button
-                  className={styles.btnPrimary}
-                  type="button"
+                <Button
+                  variant="primary"
                   disabled={isSaving || !altPromptValue.trim()}
                   onClick={confirmAltPrompt}
                 >
                   Save &amp; Select
-                </button>
-                <button className={styles.btnSecondary} type="button" onClick={() => setAltPromptId(null)}>
+                </Button>
+                <Button onClick={() => setAltPromptId(null)}>
                   Cancel
-                </button>
+                </Button>
               </div>
             )}
 
@@ -392,14 +392,13 @@ export function MediaPicker({ mode, onClose, onInsert, initialSelected, resizeKi
                             value={p.altText}
                             onChange={(e) => updatePendingAlt(p.key, e.target.value)}
                           />
-                          <button
-                            className={styles.btnPrimary}
-                            type="button"
+                          <Button
+                            variant="primary"
                             disabled={!p.altText.trim()}
                             onClick={() => submitPending(p.key)}
                           >
                             Upload
-                          </button>
+                          </Button>
                         </div>
                       )}
                       {p.status === 'pending' && (
@@ -435,12 +434,11 @@ export function MediaPicker({ mode, onClose, onInsert, initialSelected, resizeKi
             <strong>{selectedList.length}</strong> selected
           </span>
           <div className={styles.footActions}>
-            <button className={styles.btnSecondary} type="button" onClick={onClose}>
+            <Button onClick={onClose}>
               Cancel
-            </button>
-            <button
-              className={styles.btnPrimary}
-              type="button"
+            </Button>
+            <Button
+              variant="primary"
               disabled={selectedList.length === 0}
               onClick={() => {
                 onInsert(selectedList);
@@ -448,7 +446,7 @@ export function MediaPicker({ mode, onClose, onInsert, initialSelected, resizeKi
               }}
             >
               Insert Selected
-            </button>
+            </Button>
           </div>
         </div>
     </Dialog>

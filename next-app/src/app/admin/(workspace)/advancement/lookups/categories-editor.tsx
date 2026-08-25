@@ -13,6 +13,7 @@
 
 import { useState, useTransition } from 'react';
 import { SaveButton, SaveFeedback, useSavePhase } from '../../_components/save-state';
+import { Button } from '../../../_components/button';
 import {
   CATEGORY_TEMPLATES,
   FALLBACK_CATEGORY_TEMPLATE,
@@ -189,14 +190,14 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
             ))}
           </select>
           <div className={styles.addPanelActions}>
-            <button
-              type="button"
-              className={styles.editBtn}
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => setAdding(false)}
               disabled={isPending}
             >
               Cancel
-            </button>
+            </Button>
             <AddButton onClick={add} disabled={isPending || !newLabel.trim()}>
               Add Category
             </AddButton>
@@ -271,16 +272,16 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
                     />
                   </td>
                   <td className={styles.cellRight}>
-                    <button
-                      type="button"
-                      className={styles.editBtn}
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       onClick={() => setEditing(null)}
                       disabled={isPending}
                     >
                       Cancel
-                    </button>
+                    </Button>
                     <SaveButton
-                      className={`${styles.editSaveBtn} ${styles.gapLeft}`}
+                      className={styles.gapLeft}
                       dirty={editDirty(row)}
                       pending={isPending}
                       blocked={!editLabel.trim()}
@@ -305,25 +306,26 @@ export function CategoriesEditor({ rows, onCreate, onUpdate, onDelete }: Props) 
                   </td>
                   <td className={styles.muted}>{row.sort_order}</td>
                   <td className={styles.cellRight}>
-                    <button
-                      type="button"
-                      className={styles.editBtn}
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       onClick={() => beginEdit(row)}
                       disabled={isPending}
                     >
                       Edit
-                    </button>
+                    </Button>
                     {/* A behavior-carrying category is undeletable by the DB —
                         don't offer a button that can only ever fail. */}
                     {row.behavior === null && (
-                      <button
-                        type="button"
-                        className={`${styles.editBtn} ${styles.dangerBtn} ${styles.gapLeft}`}
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        className={styles.gapLeft}
                         onClick={() => remove(row)}
                         disabled={isPending}
                       >
                         Delete
-                      </button>
+                      </Button>
                     )}
                   </td>
                 </tr>

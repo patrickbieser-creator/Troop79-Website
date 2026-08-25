@@ -18,6 +18,7 @@ import type { LedgerEntry, LedgerKind, Scout } from '@/lib/supabase/types';
 import { RecordsTable } from './records-table';
 import styles from './records.module.css';
 import { PageTitle } from '../../_components/page-title';
+import { buttonClass } from '../../../_components/button';
 
 export const metadata = {
   title: 'Submit & Present — Troop 79 Admin'
@@ -166,14 +167,14 @@ export default async function RecordsPage({
       <div className={styles.pager}>
         <Link
           href={urlWith(raw, { page: String(parsed.page - 1) })}
-          className={`${styles.pagerBtn} ${parsed.page <= 1 ? styles.pagerBtnDisabled : ''}`}
+          className={buttonClass('secondary', 'sm', parsed.page <= 1 ? styles.pagerBtnDisabled : undefined)}
           aria-disabled={parsed.page <= 1}
         >
           ← Previous
         </Link>
         <Link
           href={urlWith(raw, { page: String(parsed.page + 1) })}
-          className={`${styles.pagerBtn} ${parsed.page >= totalPages ? styles.pagerBtnDisabled : ''}`}
+          className={buttonClass('secondary', 'sm', parsed.page >= totalPages ? styles.pagerBtnDisabled : undefined)}
           aria-disabled={parsed.page >= totalPages}
         >
           Next →

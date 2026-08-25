@@ -28,6 +28,7 @@ import { DateParamField } from '../../_components/date-param-field';
 import { ScoutbookActions } from './scoutbook-actions';
 import styles from './scoutbook-export.module.css';
 import { PageTitle } from '../../_components/page-title';
+import { Button } from '../../../_components/button';
 
 export const metadata = {
   title: 'Scoutbook Export — Troop 79'
@@ -80,9 +81,9 @@ export default async function ScoutbookExportPage({
           <span className={styles.fieldLabel}>To</span>
           <DateParamField name="to" defaultValue={to} />
         </label>
-        <button type="submit" className={styles.updateBtn}>
+        <Button type="submit" variant="primary">
           Update
-        </button>
+        </Button>
       </form>
 
       <ScoutbookActions

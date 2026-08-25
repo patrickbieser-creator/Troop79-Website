@@ -239,25 +239,7 @@
   resize: vertical;
 }
 /* .editError → shared Notice; .editActions → DialogActions (Phase B, 2026-08-21). */
-.editSaveBtn {
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .04em;
-  background: var(--admin-navy);
-  color: var(--admin-white);
-  border: 1px solid var(--admin-navy);
-  padding: 6px 14px;
-  border-radius: 3px;
-  cursor: pointer;
-}
-.editSaveBtn:hover {
-  background: var(--admin-navy-hover);
-}
-.editSaveBtn:disabled {
-  opacity: .55;
-  cursor: not-allowed;
-}
+/* .editSaveBtn retired 2026-08-24 → shared Button (variant="primary") */
 
 @media (max-width: 560px) {
   .editGrid { grid-template-columns: 1fr; }
@@ -267,32 +249,13 @@
   text-align: right;
   white-space: nowrap;
 }
-.actionBtn {
-  background: none;
-  border: 1px solid var(--admin-gray-300);
-  color: var(--admin-gray-700);
-  font-family: inherit;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: var(--admin-radius-sm);
-  cursor: pointer;
-  margin-left: 6px;
-  transition: all .15s ease;
-}
-.actionBtn:hover {
-  border-color: var(--admin-navy);
-  color: var(--admin-navy);
-}
-.actionBtnDanger {
-  color: var(--admin-danger);
-  border-color: color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white));
-}
-.actionBtnDanger:hover {
-  background: var(--admin-status-error-bg);
-  border-color: var(--admin-danger);
-  color: var(--admin-danger);
-}
+/* .actionBtn / .actionBtnDanger retired from production 2026-08-24 → shared
+   Button (quiet/danger, size="sm"). Left in place ONLY because
+   /admin/styleguide/admin's "Row actions" specimen renders these two classes
+   directly (ledger.actionBtn / ledger.actionBtnDanger) to document the old
+   per-row idiom — do not delete without updating that specimen first. */
+/* .actionBtn / .actionBtnDanger retired 2026-08-24 → shared Button (quiet/danger, size="sm");
+   the styleguide's Row actions specimen renders the component now. */
 
 /* Row selection + bulk actions */
 .checkboxCol {
@@ -489,25 +452,14 @@
   font-size: 13px;
   color: var(--admin-gray-500);
 }
-.pagerBtn {
-  display: inline-block;
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 6px 12px;
-  border: 1px solid var(--admin-gray-300);
-  border-radius: var(--admin-radius-sm);
-  color: var(--admin-gray-700);
-  background: var(--admin-white);
-  cursor: pointer;
-}
-.pagerBtn:hover {
-  border-color: var(--admin-navy);
-  color: var(--admin-navy);
-}
+/* .pagerBtn retired 2026-08-24 → shared Button (buttonClass('secondary','sm'),
+   the pager is a next/link Link, not a <button>, so it composes the class
+   string directly rather than rendering <Button>). .pagerBtnDisabled stays —
+   Button's [aria-disabled='true'] rule (button.module.css) already dims
+   opacity for the disabled look, but only pointer-events:none actually blocks
+   a Link click, which Button has no equivalent for; trimmed to just that. */
 .pagerBtnDisabled {
   pointer-events: none;
-  opacity: .5;
 }
 
 /* ── Phase C — classes replacing repeated inline styles ──────────────── */

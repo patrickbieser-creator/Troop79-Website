@@ -12,6 +12,7 @@ import { AddButton } from '../_components/add-button';
 import { Notice } from '../_components/notice';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../_components/dialog';
 import { SortHeader, useSortable } from '../_components/use-sortable';
+import { Button } from '../../_components/button';
 import { CalendarEntryForm, type CalendarEntryRow } from './entry-form';
 import type { CalendarEntryMergePlan } from '@/lib/calendar-admin';
 import styles from './calendar.module.css';
@@ -462,39 +463,37 @@ export function CalendarEditor({
                       link sweep had left the title as the only way in; an
                       explicit control beside Clone/Merge/Delete is what the
                       row reads as needing. Same destination as the title. */}
-                  <Link
+                  <Button
                     href={`/admin/calendar/${row.id}`}
-                    className={styles.editBtn}
+                    size="sm"
                     title="Open this entry in the workbench"
                   >
                     Edit
-                  </Link>
-                  <button
-                    type="button"
-                    className={styles.editBtn}
+                  </Button>
+                  <Button
+                    size="sm"
                     onClick={() => setCloneFor(row)}
                     disabled={busyId === row.id}
                     title="Copy this entry — write-up, agenda and signup structure — onto a new date"
                   >
                     Clone
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.editBtn}
+                  </Button>
+                  <Button
+                    size="sm"
                     onClick={() => onMergeClick(row)}
                     disabled={busyId === row.id || mergeFor !== null}
                     title="Fold this entry into another one — attendance and ledger credit come along, this row goes away"
                   >
                     Merge…
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.editBtn} ${styles.dangerBtn}`}
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
                     onClick={() => onDeleteClick(row)}
                     disabled={busyId === row.id}
                   >
                     {busyId === row.id ? '…' : 'Delete'}
-                  </button>
+                  </Button>
                 </td>
               </tr>
               {mergeFor?.id === row.id && (
@@ -525,17 +524,16 @@ export function CalendarEditor({
                             </option>
                           ))}
                       </select>
-                      <button
-                        type="button"
-                        className={styles.editBtn}
+                      <Button
+                        size="sm"
                         onClick={onMergeSubmit}
                         disabled={mergeTarget === '' || mergeBusy}
                       >
                         {mergeBusy ? '…' : mergePreview !== null ? 'Confirm merge' : 'Preview merge'}
-                      </button>
-                      <button type="button" className={styles.editBtn} onClick={onMergeCancel} disabled={mergeBusy}>
+                      </Button>
+                      <Button size="sm" onClick={onMergeCancel} disabled={mergeBusy}>
                         Cancel
-                      </button>
+                      </Button>
                     </div>
                     {mergePreview !== null && <p className={styles.panelHint}>{mergePreview}</p>}
                     {mergeErr && <p className={styles.err}>{mergeErr}</p>}
@@ -640,17 +638,16 @@ function CloneForm({
       </DialogBody>
 
       <DialogActions>
-        <button type="button" className={styles.editBtn} onClick={onClose} disabled={isPending}>
+        <Button size="sm" onClick={onClose} disabled={isPending}>
           Cancel
-        </button>
-        <button
-          type="button"
-          className={styles.editSaveBtn}
+        </Button>
+        <Button
+          variant="primary"
           onClick={submit}
           disabled={isPending || !date.trim()}
         >
           {isPending ? 'Copying…' : 'Clone and open'}
-        </button>
+        </Button>
       </DialogActions>
     </>
   );

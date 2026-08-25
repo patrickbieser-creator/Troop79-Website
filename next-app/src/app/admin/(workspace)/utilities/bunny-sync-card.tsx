@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { syncBunnyLibrary } from '../news/media/actions';
 import styles from './utilities.module.css';
+import { Button } from '../../_components/button';
 
 export function BunnySyncCard() {
   const [isPending, startTransition] = useTransition();
@@ -29,9 +30,9 @@ export function BunnySyncCard() {
         indexed yet — covers photos uploaded straight to Bunny outside the News CMS. Safe to re-run
         any time; already-indexed photos are skipped.
       </p>
-      <button type="button" className={styles.syncBtn} disabled={isPending} onClick={runSync}>
+      <Button variant="primary" disabled={isPending} onClick={runSync}>
         {isPending ? 'Syncing…' : 'Sync Bunny Library'}
-      </button>
+      </Button>
       {result && (
         <div className={`${styles.result} ${result.ok ? styles.resultOk : styles.resultError}`}>
           {result.message}

@@ -9,6 +9,7 @@ import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_componen
 import { PageTitle } from '../../_components/page-title';
 import { Notice } from '../../_components/notice';
 import { SaveButton, SaveFeedback, useSavedSnapshot, useSavePhase } from '../../_components/save-state';
+import { Button } from '../../../_components/button';
 
 const PAGE_SIZE = 60;
 
@@ -122,16 +123,16 @@ export function MediaManagerView() {
                   </span>
                 </div>
                 <div className={styles.thumbActions}>
-                  <button type="button" className={styles.editBtn} onClick={() => setEditing(item)}>
+                  <Button size="sm" onClick={() => setEditing(item)}>
                     Edit
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.editBtn} ${styles.dangerBtn}`}
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
                     onClick={() => setDeleting(item)}
                   >
                     Delete
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -162,16 +163,16 @@ export function MediaManagerView() {
                 <td>{item.caption || <span className={styles.muted}>—</span>}</td>
                 <td>{item.uploaded_by}</td>
                 <td className={styles.actionsCell}>
-                  <button type="button" className={styles.editBtn} onClick={() => setEditing(item)}>
+                  <Button size="sm" onClick={() => setEditing(item)}>
                     Edit
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.editBtn} ${styles.dangerBtn}`}
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
                     onClick={() => setDeleting(item)}
                   >
                     Delete
-                  </button>
+                  </Button>
                 </td>
               </tr>
             ))}
@@ -181,9 +182,9 @@ export function MediaManagerView() {
 
       {!loading && media.length < total && (
         <div className={styles.loadMoreRow}>
-          <button type="button" className={styles.loadMoreBtn} disabled={loadingMore} onClick={loadMore}>
+          <Button disabled={loadingMore} onClick={loadMore}>
             {loadingMore ? 'Loading…' : `Load more (${total - media.length} remaining)`}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -286,11 +287,10 @@ function EditForm({
       </DialogBody>
 
       <DialogActions>
-        <button type="button" className={styles.editBtn} onClick={onClose} disabled={isPending}>
+        <Button onClick={onClose} disabled={isPending}>
           Cancel
-        </button>
+        </Button>
         <SaveButton
-          className={styles.editSaveBtn}
           dirty={dirty}
           pending={isPending}
           blocked={!altText.trim()}
@@ -388,13 +388,13 @@ function DeleteConfirm({
       </DialogBody>
 
       <DialogActions>
-        <button type="button" className={styles.editBtn} onClick={onClose} disabled={isPending}>
+        <Button onClick={onClose} disabled={isPending}>
           {blockedBy ? 'Close' : 'Cancel'}
-        </button>
+        </Button>
         {!blockedBy && (
-          <button type="button" className={styles.deleteConfirmBtn} onClick={confirmDelete} disabled={isPending}>
+          <Button variant="dangerSolid" onClick={confirmDelete} disabled={isPending}>
             {isPending ? 'Deleting…' : 'Delete photo'}
-          </button>
+          </Button>
         )}
       </DialogActions>
     </>

@@ -28,6 +28,7 @@
 import Link from 'next/link';
 import { useEffect } from 'react';
 import styles from './admin.module.css';
+import { Button } from '../_components/button';
 
 function isRefusal(message: string): boolean {
   return (
@@ -68,9 +69,9 @@ export default function WorkspaceError({
       <p className={styles.errorActions}>
         <Link href="/admin/advancement/dashboard">← Back to the dashboard</Link>
         {!refused ? (
-          <button type="button" onClick={reset} className={styles.errorRetry}>
+          <Button variant="secondary" onClick={reset}>
             Try again
-          </button>
+          </Button>
         ) : null}
       </p>
     </div>

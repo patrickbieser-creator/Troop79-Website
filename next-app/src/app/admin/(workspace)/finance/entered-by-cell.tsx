@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import styles from './finance.module.css';
 import { Dialog, DialogBody, DialogActions } from '../_components/dialog';
 import { fmtDate, fmtDateTime } from '@/lib/format-date';
+import { Button } from '../../_components/button';
 
 /**
  * Ledger Date cell — surfaces who entered the row and when (2026-08-19),
@@ -57,9 +58,9 @@ export function EnteredByCell({
         </DialogBody>
         <DialogActions>
           <form method="dialog">
-            <button type="submit" className={styles.infoDialogClose}>
+            <Button variant="primary" type="submit">
               Close
-            </button>
+            </Button>
           </form>
         </DialogActions>
       </Dialog>

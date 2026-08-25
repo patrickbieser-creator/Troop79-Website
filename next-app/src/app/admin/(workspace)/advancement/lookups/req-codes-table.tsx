@@ -18,6 +18,7 @@ import { useLookupTable } from './use-lookup-table';
 import styles from './lookups.module.css';
 import { Notice } from '../../_components/notice';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
+import { Button } from '../../../_components/button';
 
 export interface ReqRow {
   id: number;
@@ -77,9 +78,9 @@ export function ReqCodesTable({ rows }: { rows: ReqRow[] }) {
                   )}
                 </td>
                 <td className={styles.cellRight}>
-                  <button type="button" className={styles.editBtn} onClick={() => setOpenFor(r)}>
+                  <Button variant="secondary" size="sm" onClick={() => setOpenFor(r)}>
                     Edit
-                  </button>
+                  </Button>
                 </td>
               </tr>
             ))}
@@ -172,11 +173,10 @@ function ReqCodeForm({ row, onClose }: { row: ReqRow; onClose: () => void }) {
       </DialogBody>
 
       <DialogActions>
-        <button type="button" className={styles.editBtn} onClick={onClose} disabled={isPending}>
+        <Button variant="secondary" size="sm" onClick={onClose} disabled={isPending}>
           Cancel
-        </button>
+        </Button>
         <SaveButton
-          className={styles.editSaveBtn}
           dirty={dirty}
           pending={isPending}
           blocked={!code.trim() || !label.trim()}

@@ -16,6 +16,7 @@ import {
 import styles from './articles.module.css';
 import { Badge } from '../../_components/badge';
 import { Notice } from '../../_components/notice';
+import { Button } from '../../../_components/button';
 import { fmtDate } from '@/lib/format-date';
 
 type SortKey = 'title' | 'type' | 'status' | 'author' | 'date';
@@ -173,59 +174,56 @@ export function ArticlesTable({ rows, sp, sort, dir, sessionName }: Props) {
                         to the news list" — same call he made for the calendar
                         rows). Same destination as the title link. */}
                     {canEdit && (
-                      <Link href={`/admin/news/articles/${r.id}`} className={styles.actionBtn} title="Open this post in the editor">
+                      <Button href={`/admin/news/articles/${r.id}`} size="sm" title="Open this post in the editor">
                         Edit
-                      </Link>
+                      </Button>
                     )}
                     {/* Clone, matching the Calendar's row actions. The copy is
                         always a draft, so it is offered on published and
                         archived posts alike — those are the ones most worth
                         starting from. */}
                     {canEdit && (
-                      <button
-                        type="button"
-                        className={styles.actionBtn}
+                      <Button
+                        size="sm"
                         disabled={isPending}
                         title="Copy this post as a new draft"
                         onClick={() => runAction(r.id, () => cloneArticle(r.id))}
                       >
                         Clone
-                      </button>
+                      </Button>
                     )}
                     {isLeader && r.status !== 'published' && !r.archived_at && (
-                      <button
-                        type="button"
-                        className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
+                      <Button
+                        variant="primary"
+                        size="sm"
                         disabled={isPending}
                         onClick={() => runAction(r.id, () => publishArticle(r.id))}
                       >
                         Publish
-                      </button>
+                      </Button>
                     )}
                     {isLeader && !r.archived_at && (
-                      <button
-                        type="button"
-                        className={styles.actionBtn}
+                      <Button
+                        size="sm"
                         disabled={isPending}
                         onClick={() => runAction(r.id, () => archiveArticle(r.id))}
                       >
                         Archive
-                      </button>
+                      </Button>
                     )}
                     {isLeader && r.archived_at && (
-                      <button
-                        type="button"
-                        className={styles.actionBtn}
+                      <Button
+                        size="sm"
                         disabled={isPending}
                         onClick={() => runAction(r.id, () => unarchiveArticle(r.id))}
                       >
                         Unarchive
-                      </button>
+                      </Button>
                     )}
                     {isLeader && (
-                      <button
-                        type="button"
-                        className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
+                      <Button
+                        variant="danger"
+                        size="sm"
                         disabled={isPending}
                         onClick={() => {
                           if (window.confirm(`Permanently delete "${r.title}"? This cannot be undone.`)) {
@@ -234,7 +232,7 @@ export function ArticlesTable({ rows, sp, sort, dir, sessionName }: Props) {
                         }}
                       >
                         Delete
-                      </button>
+                      </Button>
                     )}
                   </td>
                 </tr>

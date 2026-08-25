@@ -214,7 +214,7 @@
 .errorBody { color: var(--admin-gray-600); }
 .errorHint { color: var(--admin-gray-500); font-size: var(--admin-text-lg); }
 .errorActions { display: flex; gap: var(--admin-space-6); margin-top: var(--admin-space-10); }
-.errorRetry { cursor: pointer; }
+/* .errorRetry retired 2026-08-25 → shared Button (secondary) */
 
 @media (max-width: 800px) {
   .workspace { grid-template-columns: 1fr; }
