@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin tables — 7 patterns (throwaway prototype)</title>
+<style>
+/* ── Tokens copied verbatim from next-app admin.css (subset) ─────────── */
+:root {
+  --admin-navy:#1e3a4a; --admin-navy-light:#2a5068; --admin-navy-hover:#163040;
+  --admin-forest:#3d7a4a; --admin-forest-dark:#2e6038;
+  --admin-danger:#c0392b; --admin-danger-hover:#a93226; --admin-danger-dark:#8c2f2f;
+  --admin-warning:#d4a017; --admin-accent-gold:#8b6914;
+  --admin-bg:#f5f6f8; --admin-white:#fff; --admin-form-bg:#eef1f5;
+  --admin-gray-50:#fafbfc; --admin-gray-100:#f0f1f3; --admin-gray-200:#e2e4e8; --admin-gray-300:#cdd1d6;
+  --admin-gray-400:#9ba1aa; --admin-gray-500:#6d7580; --admin-gray-600:#666; --admin-gray-700:#3a3f47;
+  --admin-gray-800:#2a2e34; --admin-gray-900:#1a1d21;
+  --admin-status-error-bg:#fdf0ef; --admin-status-warning-bg:#fdf3d6; --admin-status-success-bg:#f0f6f1; --admin-status-info-bg:#eef3f8;
+  --admin-radius:4px; --admin-radius-sm:3px; --admin-radius-lg:8px; --admin-radius-pill:999px;
+  --admin-shadow-sm:0 1px 3px rgba(0,0,0,.08); --admin-shadow-md:0 2px 8px rgba(0,0,0,.1);
+  --admin-transition:.15s ease;
+  --admin-text-2xs:9px; --admin-text-xs:10px; --admin-text-sm:11px; --admin-text-base:12px; --admin-text-md:13px; --admin-text-lg:14px; --admin-text-xl:16px; --admin-text-2xl:20px;
+  --admin-font-ui:'Open Sans',Arial,sans-serif; --admin-font-display:'Playfair Display',Georgia,serif; --admin-font-mono:'Menlo','Consolas',monospace;
+  --admin-cat-rank-bg:#e0e7ef; --admin-cat-mb-bg:#e3eee5;
+  --admin-cat-1-bg:#d6efef; --admin-cat-1-fg:#186e72; --admin-cat-2-bg:#ddeedd; --admin-cat-2-fg:#2f6b2f;
+  --admin-cat-3-bg:#fde0e0; --admin-cat-3-fg:#a03737; --admin-cat-4-bg:#fce6dc; --admin-cat-4-fg:#b54d22;
+  --admin-cat-5-bg:#fff0d6; --admin-cat-5-fg:#946b00; --admin-cat-6-bg:#ece0f0; --admin-cat-6-fg:#6b3f7a;
+  --admin-cat-7-bg:#dde8f7; --admin-cat-7-fg:#2b4f8a; --admin-cat-8-bg:#e6e6ea; --admin-cat-8-fg:#4a4a5a;
+  /* knob-driven runtime values (defaults = compact / no zebra / rules / sticky off) */
+  --k-pad-y:8px; --k-pad-x:10px; --k-zebra:transparent; --k-rule:var(--admin-gray-100);
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--admin-bg); color:var(--admin-gray-900); font:13px/1.45 var(--admin-font-ui); }
+a { color:var(--admin-navy); }
+code { font-family:var(--admin-font-mono); font-size:11.5px; background:var(--admin-gray-100); padding:0 4px; border-radius:2px; }
+.page { max-width:1180px; margin:0 auto; padding:20px 16px 60px; }
+h1 { font-family:var(--admin-font-display); font-size:var(--admin-text-2xl); margin:0 0 4px; color:var(--admin-navy); }
+.sub { color:var(--admin-gray-500); margin:0 0 18px; }
+.adminLabel { font-size:var(--admin-text-sm); font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--admin-gray-500); }
+
+/* ── Decision rule + knobs ───────────────────────────────────────────── */
+.rule { background:var(--admin-status-info-bg); border:1px solid #cfdbe8; border-left:4px solid var(--admin-navy); border-radius:var(--admin-radius); padding:12px 16px; margin-bottom:14px; }
+.rule h2 { margin:0 0 8px; font-size:var(--admin-text-lg); }
+.rule ol { margin:0; padding-left:20px; }
+.rule li { margin:3px 0; }
+.rule b { color:var(--admin-navy); }
+.knobs { position:sticky; top:0; z-index:20; display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; background:var(--admin-white); border:1px solid var(--admin-gray-200); border-radius:var(--admin-radius); box-shadow:var(--admin-shadow-sm); padding:8px 12px; margin-bottom:24px; font-size:var(--admin-text-base); }
+.knob { display:inline-flex; align-items:center; gap:6px; }
+.knob .adminLabel { font-size:var(--admin-text-xs); }
+.seg { display:inline-flex; border:1px solid var(--admin-gray-300); border-radius:var(--admin-radius-sm); overflow:hidden; }
+.seg button { font:inherit; font-size:var(--admin-text-sm); font-weight:600; border:0; background:var(--admin-white); color:var(--admin-gray-700); padding:4px 10px; cursor:pointer; }
+.seg button + button { border-left:1px solid var(--admin-gray-300); }
+.seg button[aria-pressed="true"] { background:var(--admin-navy); color:#fff; }
+.seg button:focus-visible, .btn:focus-visible, .sortBtn:focus-visible, .sumRow:focus-visible, .chip:focus-visible, .rowLink:focus-visible { outline:2px solid var(--admin-navy); outline-offset:1px; }
+
+/* ── Pattern section chrome ──────────────────────────────────────────── */
+.spec { margin-bottom:40px; }
+.spec > h2 { font-size:var(--admin-text-xl); margin:0 0 2px; }
+.spec > h2 small { font-weight:400; color:var(--admin-gray-500); font-size:var(--admin-text-md); margin-left:6px; }
+.used { font-size:var(--admin-text-base); color:var(--admin-gray-600); margin:0 0 10px; }
+.used b { color:var(--admin-gray-700); }
+.note { font-size:var(--admin-text-base); color:var(--admin-gray-600); margin:8px 0 0; }
+.note b { color:var(--admin-gray-700); }
+.subhead { margin:18px 0 6px; }
+.empty { padding:22px 12px; text-align:center; color:var(--admin-gray-500); font-size:var(--admin-text-base); font-style:italic; }
+.empty a { font-style:normal; font-weight:600; }
+.scrollX { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.twoCol { display:grid; grid-template-columns:1fr 280px; gap:16px; align-items:start; }
+@media (max-width:760px) { .twoCol { grid-template-columns:1fr; } }
+
+/* ── Buttons (shared admin Button — quiet / danger / sm) ─────────────── */
+.btn { font:inherit; font-size:var(--admin-text-base); font-weight:600; border:1px solid var(--admin-gray-300); background:var(--admin-white); color:var(--admin-gray-700); border-radius:var(--admin-radius-sm); padding:5px 10px; cursor:pointer; transition:background var(--admin-transition), border-color var(--admin-transition); }
+.btn:hover { background:var(--admin-gray-50); border-color:var(--admin-gray-400); }
+.btn.sm { font-size:var(--admin-text-sm); padding:3px 8px; }
+.btn.quiet { border-color:transparent; background:transparent; color:var(--admin-gray-600); }
+.btn.quiet:hover { background:var(--admin-gray-100); color:var(--admin-gray-900); }
+.btn.danger { color:var(--admin-danger-dark); border-color:transparent; background:transparent; }
+.btn.danger:hover { background:var(--admin-status-error-bg); }
+.btn.primary { background:var(--admin-navy); border-color:var(--admin-navy); color:#fff; }
+.btn.primary:hover { background:var(--admin-navy-hover); }
+
+/* ── Sortable header (shared SortHeader) ─────────────────────────────── */
+.sortBtn { font:inherit; color:inherit; text-transform:inherit; letter-spacing:inherit; background:none; border:0; padding:0; cursor:pointer; display:inline-flex; align-items:center; gap:4px; }
+.sortBtn:hover { color:var(--admin-navy); }
+.sortBtn .arr { font-size:9px; opacity:.55; }
+th[aria-sort="none"] .arr::before { content:'↕'; }
+th[aria-sort="ascending"] .arr::before { content:'▲'; }
+th[aria-sort="descending"] .arr::before { content:'▼'; }
+th[aria-sort="none"] .arr { opacity:.35; }
+.noIdle th[aria-sort="none"] .arr { display:none; }
+
+/* ── P1 DataTable · Compact (calendar canon) ─────────────────────────── */
+.tCompact { width:100%; border-collapse:collapse; font-size:12.5px; background:var(--admin-white); }
+.tCompact th, .tCompact td { padding:var(--k-pad-y) var(--k-pad-x); border-bottom:1px solid var(--k-rule); text-align:left; vertical-align:top; }
+.tCompact th { background:var(--admin-gray-50); font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--admin-gray-700); white-space:nowrap; }
+.tCompact tbody tr:last-child td { border-bottom:none; }
+.tCompact tbody tr:nth-child(even) td { background:var(--k-zebra); }
+.tCompact tbody tr.rowLink { cursor:pointer; transition:background var(--admin-transition); }
+.tCompact tbody tr.rowLink:hover td { background:var(--admin-status-info-bg); }
+.tCompact .rowLink:focus-within td { background:var(--admin-status-info-bg); }
+.actionsCell { text-align:right !important; white-space:nowrap; }
+.dateCell { font-family:var(--admin-font-mono); font-size:11.5px; color:var(--admin-gray-700); white-space:nowrap; }
+.goingCell { text-align:right !important; font-family:var(--admin-font-mono); font-size:11.5px; color:var(--admin-gray-700); font-variant-numeric:tabular-nums; }
+.muted { color:var(--admin-gray-400); font-style:italic; }
+.evTitle { font-weight:600; color:var(--admin-navy); text-decoration:none; }
+.evTitle:hover { text-decoration:underline; }
+.catTag { display:inline-flex; align-items:center; font-size:10.5px; font-weight:700; letter-spacing:.02em; color:var(--admin-gray-700); white-space:nowrap; }
+.catPip { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; }
+.pill { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; font-size:10px; font-weight:700; line-height:1; border:1px solid transparent; cursor:help; }
+.pillSlot { display:inline-block; width:18px; height:18px; }
+.pillLive { background:var(--admin-status-success-bg); color:var(--admin-forest); border-color:#b3cdb8; }
+.pillDraft { background:var(--admin-status-warning-bg); color:var(--admin-accent-gold); border-color:#dcc48e; }
+.pillClosed { background:var(--admin-gray-100); color:var(--admin-gray-500); border-color:var(--admin-gray-200); }
+.pillOff { background:var(--admin-status-error-bg); color:var(--admin-danger-dark); border-color:#e6a49e; }
+.pills { display:inline-flex; gap:3px; }
+.promoted { color:var(--admin-forest); font-weight:700; }
+/* Actions ▾ menu (one optional column) */
+.menuWrap { position:relative; display:inline-block; }
+.menu { position:absolute; right:0; top:100%; margin-top:2px; min-width:150px; background:var(--admin-white); border:1px solid var(--admin-gray-200); border-radius:var(--admin-radius); box-shadow:var(--admin-shadow-md); padding:4px 0; z-index:10; text-align:left; }
+.menu[hidden] { display:none; }
+.menu button { display:block; width:100%; text-align:left; font:inherit; font-size:var(--admin-text-base); background:none; border:0; padding:6px 12px; cursor:pointer; color:var(--admin-gray-800); }
+.menu button:hover { background:var(--admin-gray-100); }
+.menu button.dangerItem { color:var(--admin-danger-dark); }
+
+/* ── P2 DataTable · Card (ledger canon) ──────────────────────────────── */
+.tableWrap { background:var(--admin-white); border:1px solid var(--admin-gray-200); border-radius:var(--admin-radius); box-shadow:var(--admin-shadow-sm); overflow-x:auto; }
+.tCard { width:100%; border-collapse:collapse; font-size:13px; }
+.tCard th, .tCard td { padding:calc(var(--k-pad-y) + 2px) calc(var(--k-pad-x) + 2px); border-bottom:1px solid var(--k-rule); text-align:left; vertical-align:middle; }
+.tCard th { background:var(--admin-gray-50); border-bottom:2px solid var(--admin-gray-200); font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--admin-gray-600); white-space:nowrap; }
+.tCard tbody tr:nth-child(even) td { background:var(--k-zebra); }
+.tCard tbody tr:hover td { background:var(--admin-gray-50); }
+.numCell { text-align:right !important; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.neg { color:var(--admin-danger-dark); }
+.codeCell { font-family:var(--admin-font-mono); font-size:12px; color:var(--admin-gray-700); }
+.kind { display:inline-block; font-size:var(--admin-text-xs); font-weight:700; letter-spacing:.04em; text-transform:uppercase; padding:2px 8px; border-radius:var(--admin-radius-pill); white-space:nowrap; }
+.k1 { background:var(--admin-cat-1-bg); color:var(--admin-cat-1-fg); } .k2 { background:var(--admin-cat-2-bg); color:var(--admin-cat-2-fg); }
+.k3 { background:var(--admin-cat-3-bg); color:var(--admin-cat-3-fg); } .k5 { background:var(--admin-cat-5-bg); color:var(--admin-cat-5-fg); }
+.k7 { background:var(--admin-cat-7-bg); color:var(--admin-cat-7-fg); }
+.tCard tfoot td { font-weight:700; background:var(--admin-gray-50); border-top:2px solid var(--admin-gray-200); }
+
+/* ── P3 DataTable · Dense Grid (events-admin roster) ─────────────────── */
+.tDense { width:100%; border-collapse:collapse; background:var(--admin-white); border:1px solid var(--admin-gray-200); border-radius:5px; font-size:13.5px; }
+.tDense th { text-align:left; font-size:10.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--admin-gray-600); padding:calc(var(--k-pad-y) + 1px) var(--k-pad-x); border-bottom:1px solid var(--admin-gray-200); vertical-align:bottom; }
+.tDense td { padding:calc(var(--k-pad-y) + 1px) var(--k-pad-x); border-bottom:1px solid var(--k-rule); vertical-align:top; }
+.tDense tbody tr:last-child td { border-bottom:none; }
+.tDense tbody tr:nth-child(even) td { background:var(--k-zebra); }
+.thStack { display:inline-flex; flex-direction:column; line-height:1.15; }
+.thStack > span:last-child { color:var(--admin-gray-500); }
+.thCenter { text-align:center !important; }
+.thCenter .thStack { align-items:center; }
+.cellTight { white-space:nowrap; text-align:center; }
+.noteCell { max-width:16ch; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--admin-gray-600); }
+.bandRow th { border-bottom:none; padding-bottom:0; }
+.jobBand { text-align:center !important; font-size:9px; letter-spacing:.06em; color:var(--admin-gray-600); border-bottom:1px solid var(--admin-gray-300) !important; }
+.jobTick { color:var(--admin-forest); font-weight:700; }
+.classPill { display:inline-block; font-size:10px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; padding:2px 8px; border-radius:var(--admin-radius-pill); white-space:nowrap; }
+.classS { background:var(--admin-cat-3-bg); color:var(--admin-cat-3-fg); } .classJL { background:var(--admin-cat-1-bg); color:var(--admin-cat-1-fg); }
+.classCub { background:var(--admin-cat-5-bg); color:var(--admin-cat-5-fg); } .classW { background:var(--admin-cat-4-bg); color:var(--admin-cat-4-fg); }
+.classG { background:var(--admin-cat-6-bg); color:var(--admin-cat-6-fg); } .classA { background:var(--admin-cat-7-fg); color:#fff; } .classAG { background:var(--admin-cat-6-fg); color:#fff; }
+/* mb-progress matrix candidate: rotated requirement headers */
+.tMatrix th.rot { height:74px; padding:0 2px; vertical-align:bottom; text-align:center; }
+.tMatrix th.rot > span { writing-mode:vertical-rl; transform:rotate(180deg); display:inline-block; font-size:10px; letter-spacing:.04em; white-space:nowrap; }
+.tMatrix td.cellTight { width:28px; padding-left:2px; padding-right:2px; }
+.done { color:var(--admin-forest); font-weight:700; }
+.part { color:var(--admin-accent-gold); font-weight:700; }
+.rowHead { font-weight:600; white-space:nowrap; }
+.sticky1 th:first-child, .sticky1 td:first-child { position:sticky; left:0; background:var(--admin-white); z-index:1; box-shadow:1px 0 0 var(--admin-gray-200); }
+
+/* ── P4 RecordList ───────────────────────────────────────────────────── */
+.recordList { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+.record { display:grid; grid-template-columns:auto 1fr auto; gap:6px 14px; background:var(--admin-white); border:1px solid var(--admin-gray-200); border-radius:var(--admin-radius); box-shadow:var(--admin-shadow-sm); padding:12px 14px; }
+.record .sev { align-self:start; font-size:var(--admin-text-xs); font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:3px 8px; border-radius:var(--admin-radius-sm); white-space:nowrap; }
+.sevHigh { background:var(--admin-status-error-bg); color:var(--admin-danger-dark); } .sevMed { background:var(--admin-status-warning-bg); color:var(--admin-accent-gold); } .sevLow { background:var(--admin-gray-100); color:var(--admin-gray-600); }
+.record h3 { margin:0 0 3px; font-size:var(--admin-text-md); }
+.record p { margin:0; color:var(--admin-gray-700); font-size:var(--admin-text-base); }
+.record .meta { margin-top:6px; font-size:var(--admin-text-sm); color:var(--admin-gray-500); }
+.record .acts { display:flex; gap:4px; align-self:start; }
+@media (max-width:600px) { .record { grid-template-columns:1fr; } .record .acts { justify-content:flex-end; } }
+.recent { background:var(--admin-white); border:1px solid var(--admin-gray-200); border-radius:var(--admin-radius); box-shadow:var(--admin-shadow-sm); }
+.recent h3 { margin:0; padding:10px 12px; border-bottom:1px solid var(--admin-gray-200); }
+.recent ul { list-style:none; margin:0; padding:4px 0; }
+.recent li a { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 12px; text-decoration:none; color:var(--admin-gray-800); font-size:var(--admin-text-base); border-left:3px solid transparent; }
+.recent li a:hover { background:var(--admin-gray-50); }
+.recent li.active a { border-left-color:var(--admin-navy); background:var(--admin-status-info-bg); font-weight:600; }
+.recent .when { display:block; font-size:var(--admin-text-sm); color:var(--admin-gray-500); font-weight:400; }
+.badge { font-size:var(--admin-text-xs); font-weight:700; letter-spacing:.04em; text-transform:uppercase; padding:2px 7px; border-radius:var(--admin-radius-sm); white-space:nowrap; }
+.bFinal { background:var(--admin-status-success-bg); color:var(--admin-forest-dark); } .bDraft { background:var(--admin-status-warning-bg); color:var(--admin-accent-gold); }
+
+/* ── P5 Board ────────────────────────────────────────────────────────── */
+.board { display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:12px; }
+.col { background:var(--admin-white); border:1px solid var(--admin-gray-200); border-radius:var(--admin-radius); box-shadow:var(--admin-shadow-sm); padding:10px; min-height:150px; display:flex; flex-direction:column; }
+.col.pool { border:2px dashed var(--admin-gray-300); background:var(--admin-gray-50); box-shadow:none; }
+.col.over { border-color:var(--admin-navy); background:var(--admin-status-info-bg); }
+.colHead { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.colHead h3 { margin:0; font-size:var(--admin-text-md); }
+.cap { font-size:var(--admin-text-xs); font-weight:700; padding:2px 8px; border-radius:var(--admin-radius-pill); background:var(--admin-gray-100); color:var(--admin-gray-600); font-variant-numeric:tabular-nums; }
+.cap.full { background:var(--admin-status-success-bg); color:var(--admin-forest-dark); } .cap.overCap { background:var(--admin-status-error-bg); color:var(--admin-danger-dark); }
+.chips { display:flex; flex-wrap:wrap; gap:5px; flex:1; align-content:flex-start; }
+.chip { font-size:11.5px; background:var(--admin-white); border:1px solid var(--admin-gray-300); border-radius:10px; padding:2px 9px; cursor:grab; user-select:none; }
+.chip:active { cursor:grabbing; }
+.chip.dragging { opacity:.4; }
+.chip .r { color:var(--admin-gray-500); font-size:10px; margin-left:4px; }
+.chip.adult { border-color:var(--admin-cat-7-fg); }
+.colEmpty { color:var(--admin-gray-400); font-style:italic; font-size:var(--admin-text-base); padding:8px 0; }
+
+/* ── P6 ExpandableSummary ────────────────────────────────────────────── */
+.sumWrap { background:var(--admin-white); border:1px solid var(--admin-gray-200); border-radius:var(--admin-radius); box-shadow:var(--admin-shadow-sm); overflow:hidden; }
+.sumHead, .sumRow { display:grid; grid-template-columns:20px 1fr 110px 100px 100px 100px; gap:8px; align-items:center; padding:9px 12px; }
+.sumHead { background:var(--admin-gray-50); border-bottom:2px solid var(--admin-gray-200); font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--admin-gray-600); }
+.sumRow { width:100%; font:inherit; font-size:13px; text-align:left; background:var(--admin-white); border:0; border-bottom:1px solid var(--k-rule); cursor:pointer; color:inherit; }
+.sumRow:hover { background:var(--admin-gray-50); }
+.sumRow .chev { display:inline-block; transition:transform var(--admin-transition); color:var(--admin-gray-500); font-size:11px; }
+.sumRow[aria-expanded="true"] .chev { transform:rotate(90deg); }
+.sumRow[aria-expanded="true"] { background:var(--admin-status-info-bg); font-weight:600; }
+.sumDetail { background:var(--admin-form-bg); border-bottom:1px solid var(--admin-gray-200); padding:8px 12px 10px 40px; }
+.sumDetail[hidden] { display:none; }
+.sumDetail table { width:100%; border-collapse:collapse; font-size:12.5px; background:var(--admin-white); border:1px solid var(--admin-gray-200); }
+.sumDetail th, .sumDetail td { padding:5px 8px; border-bottom:1px solid var(--admin-gray-100); text-align:left; }
+.sumDetail th { font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--admin-gray-600); background:var(--admin-gray-50); }
+.sumTotal { background:var(--admin-gray-50); font-weight:700; border-top:2px solid var(--admin-gray-200); }
+.r { text-align:right; font-variant-numeric:tabular-nums; }
+.sumCol { color:var(--admin-gray-500); font-size:var(--admin-text-sm); }
+@media (max-width:640px) {
+  .sumHead { display:none; }
+  .sumRow { grid-template-columns:20px 1fr auto; grid-template-areas:"c a n" ". d d" ". i e"; }
+  .sumRow > :nth-child(1){grid-area:c} .sumRow > :nth-child(2){grid-area:a} .sumRow > :nth-child(3){grid-area:d;text-align:left;color:var(--admin-gray-500)}
+  .sumRow > :nth-child(4){grid-area:i;text-align:left} .sumRow > :nth-child(5){grid-area:e;text-align:left} .sumRow > :nth-child(6){grid-area:n}
+  .sumRow .sumCol { display:inline; }
+  .sumDetail { padding-left:12px; }
+}
+@media (min-width:641px) { .sumRow .sumCol { display:none; } }
+
+/* ── P7 PrintTable ───────────────────────────────────────────────────── */
+.printSheet { background:#fff; border:1px solid var(--admin-gray-200); padding:18px 22px; max-width:760px; }
+.printSheet h3 { margin:0 0 2px; font-family:var(--admin-font-display); font-size:16px; color:#000; }
+.printSheet .ph { font-size:11px; color:#444; margin-bottom:10px; }
+.tPrint { width:100%; border-collapse:collapse; font-size:11px; color:#000; }
+.tPrint th, .tPrint td { padding:4px 6px; border-bottom:1px solid #999; text-align:left; vertical-align:top; }
+.tPrint th { font-size:10px; text-transform:uppercase; letter-spacing:.04em; border-bottom:2px solid #000; }
+.tPrint ul { margin:0; padding-left:14px; }
+.tPrint .grp td { font-weight:700; padding-top:8px; border-bottom:1px solid #000; }
+.tPrint tr { break-inside:avoid; page-break-inside:avoid; }
+.tPrint thead { display:table-header-group; }
+.pageBreak { border:0; border-top:1px dashed #999; margin:12px 0; position:relative; }
+.pageBreak::after { content:'page break'; position:absolute; right:0; top:-8px; font-size:9px; color:#999; background:#fff; padding:0 4px; }
+/* "Print preview" toggle: strips app chrome, forces black on white */
+body.printPreview { background:#fff; }
+body.printPreview .knobs, body.printPreview .rule, body.printPreview .spec:not(#p7) { display:none; }
+body.printPreview #p7 .used, body.printPreview #p7 .note, body.printPreview #p7 > h2 { display:none; }
+body.printPreview .printSheet { border:0; max-width:none; padding:0; }
+@media print {
+  .knobs, .rule, .spec:not(#p7), #p7 .used, #p7 .note, #p7 > h2, .printToggle { display:none !important; }
+  .printSheet { border:0; padding:0; }
+  .pageBreak { break-after:page; page-break-after:always; border:0; } .pageBreak::after { display:none; }
+}
+
+/* ── Knob-driven states ──────────────────────────────────────────────── */
+body[data-density="comfortable"] { --k-pad-y:11px; --k-pad-x:14px; }
+body[data-zebra="on"] { --k-zebra:var(--admin-gray-50); }
+body[data-borders="none"] { --k-rule:transparent; }
+body[data-sticky="on"] .tCompact thead th, body[data-sticky="on"] .tCard thead th, body[data-sticky="on"] .tDense thead th { position:sticky; top:46px; z-index:2; }
+body[data-sticky="on"] .stickyHint { display:inline; }
+.stickyHint { display:none; color:var(--admin-forest); }
+.sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+.toolbar { margin:0 0 10px; }
+</style>
+</head>
+<body data-density="compact" data-zebra="off" data-borders="rules" data-sticky="off">
+<div class="page">
+  <h1>Admin tables — seven patterns</h1>
+  <p class="sub">Throwaway prototype · real admin tokens · light theme. Resize to 375px to check the responsive notes under each specimen.</p>
+
+  <section class="rule" aria-labelledby="ruleHead">
+    <h2 id="ruleHead">Which table do I use?</h2>
+    <ol>
+      <li>If it goes on <b>paper</b> → <b>PrintTable</b>.</li>
+      <li>Else if the user <b>moves items between buckets</b> → <b>Board</b>.</li>
+      <li>Else if a row <b>rolls up</b> child rows the user only sometimes needs → <b>ExpandableSummary</b>.</li>
+      <li>Else if each row is <b>prose</b> (a finding, a note) and cannot be scanned as columns → <b>RecordList</b> (sidebar variant for "recent N").</li>
+      <li>Else if it is a <b>matrix</b> (people × slots, scouts × requirements) with 8+ narrow columns → <b>Dense Grid</b>.</li>
+      <li>Else if rows carry <b>money or per-row buttons</b> → <b>DataTable · Card</b>.</li>
+      <li>Else (a list you scan and click into) → <b>DataTable · Compact</b>. Default when unsure.</li>
+    </ol>
+  </section>
+
+  <div class="knobs" role="group" aria-label="Tuning knobs">
+    <span class="knob"><span class="adminLabel">Density</span>
+      <span class="seg" data-knob="density"><button aria-pressed="true" data-v="compact">Compact</button><button aria-pressed="false" data-v="comfortable">Comfortable</button></span></span>
+    <span class="knob"><span class="adminLabel">Zebra</span>
+      <span class="seg" data-knob="zebra"><button aria-pressed="false" data-v="on">On</button><button aria-pressed="true" data-v="off">Off</button></span></span>
+    <span class="knob"><span class="adminLabel">Borders</span>
+      <span class="seg" data-knob="borders"><button aria-pressed="true" data-v="rules">Rules</button><button aria-pressed="false" data-v="none">None</button></span></span>
+    <span class="knob"><span class="adminLabel">Sticky header</span>
+      <span class="seg" data-knob="sticky"><button aria-pressed="false" data-v="on">On</button><button aria-pressed="true" data-v="off">Off</button></span>
+      <span class="stickyHint">scroll past a table to see it</span></span>
+  </div>
+
+  <!-- ═══ 1 · DataTable · Compact ═══ -->
+  <section class="spec" id="p1" aria-labelledby="h1p">
+    <h2 id="h1p">1 · DataTable · Compact <small>calendar canon — row-link rows, sortable</small></h2>
+    <p class="used"><b>Used by:</b> calendar list, scouts/people roster, meetings, meeting-plan, scoutbook-export, albums · <i>folds in:</i> dashboard, lookups, media-manager</p>
+    <div class="scrollX">
+      <table class="tCompact" id="calTable" data-sortable>
+        <thead><tr>
+          <th aria-sort="none"><button class="sortBtn" data-key="date">Date <span class="arr"></span></button></th>
+          <th aria-sort="none"><button class="sortBtn" data-key="text">Event <span class="arr"></span></button></th>
+          <th aria-sort="none"><button class="sortBtn" data-key="text">Category <span class="arr"></span></button></th>
+          <th>Status</th>
+          <th class="goingCell" aria-sort="none"><button class="sortBtn" data-key="num">Going <span class="arr"></span></button></th>
+          <th aria-sort="none"><button class="sortBtn" data-key="text">Author <span class="arr"></span></button></th>
+          <th>Location</th>
+          <th>Promoted</th>
+          <th class="actionsCell"><span class="sr">Actions</span></th>
+        </tr></thead>
+        <tbody>
+          <tr class="rowLink" data-href="#ev-1"><td class="dateCell" data-sort="2026-09-13">Sun 9/13</td><td><a class="evTitle" href="#ev-1">Troop Meeting — Court of Honor prep</a></td><td><span class="catTag"><span class="catPip" style="background:var(--admin-cat-7-fg)"></span>Meeting</span></td><td><span class="pills"><span class="pill pillLive" title="Roll call: live">R</span><span class="pill pillDraft" title="Agenda: draft">A</span><span class="pillSlot"></span></span></td><td class="goingCell">24</td><td>P. Bieser</td><td>St. Eugene Hall</td><td><span class="muted">—</span></td><td class="actionsCell"><span class="menuWrap"><button class="btn quiet sm" aria-haspopup="menu" aria-expanded="false">Actions ▾</button><div class="menu" role="menu" hidden><button role="menuitem">Edit</button><button role="menuitem">Duplicate</button><button role="menuitem">Open roll call</button><button role="menuitem" class="dangerItem">Cancel event</button></div></span></td></tr>
+          <tr class="rowLink" data-href="#ev-2"><td class="dateCell" data-sort="2026-10-09">Fri 10/9 – Sun 10/11</td><td><a class="evTitle" href="#ev-2">Fall Campout — Camp Long Lake</a></td><td><span class="catTag"><span class="catPip" style="background:var(--admin-cat-2-fg)"></span>Campout</span></td><td><span class="pills"><span class="pillSlot"></span><span class="pillSlot"></span><span class="pill pillLive" title="Signup: open">S</span></span></td><td class="goingCell">31</td><td>J. Okafor</td><td>Camp Long Lake, St. Cloud WI</td><td><span class="promoted" title="Promoted to the news feed">✓</span></td><td class="actionsCell"><span class="menuWrap"><button class="btn quiet sm" aria-haspopup="menu" aria-expanded="false">Actions ▾</button><div class="menu" role="menu" hidden><button role="menuitem">Edit</button><button role="menuitem">Duplicate</button><button role="menuitem">Open roster</button><button role="menuitem" class="dangerItem">Cancel event</button></div></span></td></tr>
+          <tr class="rowLink" data-href="#ev-3"><td class="dateCell" data-sort="2026-10-18">Sun 10/18</td><td><a class="evTitle" href="#ev-3">Wreath Sale Kickoff</a></td><td><span class="catTag"><span class="catPip" style="background:var(--admin-cat-3-fg)"></span>Fundraiser</span></td><td><span class="pills"><span class="pillSlot"></span><span class="pillSlot"></span><span class="pill pillDraft" title="Signup: draft">S</span></span></td><td class="goingCell"></td><td>M. Delgado</td><td>St. Eugene Hall</td><td><span class="muted">—</span></td><td class="actionsCell"><span class="menuWrap"><button class="btn quiet sm" aria-haspopup="menu" aria-expanded="false">Actions ▾</button><div class="menu" role="menu" hidden><button role="menuitem">Edit</button><button role="menuitem">Duplicate</button><button role="menuitem" class="dangerItem">Cancel event</button></div></span></td></tr>
+          <tr class="rowLink" data-href="#ev-4"><td class="dateCell" data-sort="2026-11-07">Sat 11/7</td><td><a class="evTitle" href="#ev-4">Scouting for Food — Route Day</a></td><td><span class="catTag"><span class="catPip" style="background:var(--admin-cat-1-fg)"></span>Service</span></td><td><span class="pills"><span class="pillSlot"></span><span class="pillSlot"></span><span class="pill pillClosed" title="Signup: closed">S</span></span></td><td class="goingCell">18</td><td>P. Bieser</td><td>Wauwatosa routes</td><td><span class="promoted">✓</span></td><td class="actionsCell"><span class="menuWrap"><button class="btn quiet sm" aria-haspopup="menu" aria-expanded="false">Actions ▾</button><div class="menu" role="menu" hidden><button role="menuitem">Edit</button><button role="menuitem">Open roster</button></div></span></td></tr>
+          <tr class="rowLink" data-href="#ev-5"><td class="dateCell" data-sort="2026-11-22">Sun 11/22</td><td><a class="evTitle" href="#ev-5">Patrol Leaders' Council</a></td><td><span class="catTag"><span class="catPip" style="background:var(--admin-cat-6-fg)"></span>Leadership</span></td><td><span class="pills"><span class="pill pillOff" title="Off calendar">O</span></span></td><td class="goingCell"></td><td>A. Scout</td><td class="muted">—</td><td><span class="muted">—</span></td><td class="actionsCell"><span class="menuWrap"><button class="btn quiet sm" aria-haspopup="menu" aria-expanded="false">Actions ▾</button><div class="menu" role="menu" hidden><button role="menuitem">Edit</button><button role="menuitem">Put on calendar</button></div></span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="subhead adminLabel">Empty state</p>
+    <div class="scrollX"><table class="tCompact"><thead><tr><th>Date</th><th>Event</th><th>Category</th><th>Status</th><th class="actionsCell"></th></tr></thead><tbody><tr><td colspan="5" class="empty">No events in this range. <a href="#">Add an event</a> or widen the date filter.</td></tr></tbody></table></div>
+    <p class="note"><b>Responsive:</b> scroll-x container; never stacks. Columns past Category are secondary — the real screen should let Location/Author collapse under 600px rather than stack the row. Whole row is clickable (data-href) but the title stays a real link for keyboard and middle-click; the Actions column stops propagation.</p>
+  </section>
+
+  <!-- ═══ 2 · DataTable · Card ═══ -->
+  <section class="spec" id="p2" aria-labelledby="h2p">
+    <h2 id="h2p">2 · DataTable · Card <small>ledger canon — tableWrap, 2px header rule, numCell, row buttons</small></h2>
+    <p class="used"><b>Used by:</b> ledger, records, finance, news articles, reimbursements, access, patrols</p>
+    <div class="tableWrap">
+      <table class="tCard" data-sortable>
+        <thead><tr>
+          <th aria-sort="descending"><button class="sortBtn" data-key="date">Date <span class="arr"></span></button></th>
+          <th aria-sort="none"><button class="sortBtn" data-key="text">Activity <span class="arr"></span></button></th>
+          <th>Kind</th>
+          <th aria-sort="none"><button class="sortBtn" data-key="text">Scout / Payee <span class="arr"></span></button></th>
+          <th>Memo</th>
+          <th class="numCell" aria-sort="none"><button class="sortBtn" data-key="num">Amount <span class="arr"></span></button></th>
+          <th class="actionsCell"><span class="sr">Actions</span></th>
+        </tr></thead>
+        <tbody>
+          <tr><td class="codeCell" data-sort="2026-08-22">2026-08-22</td><td>Fall Campout — Camp Long Lake</td><td><span class="kind k2">Camping</span></td><td>Avery Scout</td><td>Deposit, family paid online</td><td class="numCell" data-sort="45">$45.00</td><td class="actionsCell"><button class="btn quiet sm">Edit</button> <button class="btn danger sm">Void</button></td></tr>
+          <tr><td class="codeCell" data-sort="2026-08-20">2026-08-20</td><td>Wreath Sale 2025 payout</td><td><span class="kind k3">Fundraiser</span></td><td>Harper Lindqvist</td><td>Scout account credit, 35 wreaths</td><td class="numCell" data-sort="87.5">$87.50</td><td class="actionsCell"><button class="btn quiet sm">Edit</button> <button class="btn danger sm">Void</button></td></tr>
+          <tr><td class="codeCell" data-sort="2026-08-18">2026-08-18</td><td>Summer Camp — Camp Tesomas</td><td><span class="kind k2">Camping</span></td><td>Mateo Reyes-Kowalski</td><td>Balance due after camp</td><td class="numCell neg" data-sort="-120">−($120.00)</td><td class="actionsCell"><button class="btn quiet sm">Edit</button> <button class="btn danger sm">Void</button></td></tr>
+          <tr><td class="codeCell" data-sort="2026-08-15">2026-08-15</td><td>Reimbursement — propane, tarps</td><td><span class="kind k5">Supplies</span></td><td>J. Okafor</td><td>Receipt #4471, Fleet Farm</td><td class="numCell neg" data-sort="-63.18">−($63.18)</td><td class="actionsCell"><button class="btn quiet sm">Edit</button> <button class="btn danger sm">Void</button></td></tr>
+          <tr><td class="codeCell" data-sort="2026-08-09">2026-08-09</td><td>Scouting for Food</td><td><span class="kind k1">Service</span></td><td>Troop</td><td>Bag printing</td><td class="numCell neg" data-sort="-24">−($24.00)</td><td class="actionsCell"><button class="btn quiet sm">Edit</button> <button class="btn danger sm">Void</button></td></tr>
+        </tbody>
+        <tfoot><tr><td colspan="5">Net, 5 entries</td><td class="numCell neg">−($74.68)</td><td></td></tr></tfoot>
+      </table>
+    </div>
+    <p class="subhead adminLabel">Empty state</p>
+    <div class="tableWrap"><table class="tCard"><thead><tr><th>Date</th><th>Activity</th><th>Kind</th><th class="numCell">Amount</th><th class="actionsCell"></th></tr></thead><tbody><tr><td colspan="5" class="empty">No ledger entries match. Clear the Kind filter or <a href="#">record a transaction</a>.</td></tr></tbody></table></div>
+    <p class="note"><b>Responsive:</b> the card itself is the scroll-x container (already true in ledger.module.css). Money stays tabular-nums right-aligned at every width; negatives red-in-parens-with-minus per Patrick's 2026-08-22 rule.</p>
+  </section>
+
+  <!-- ═══ 3 · DataTable · Dense Grid ═══ -->
+  <section class="spec" id="p3" aria-labelledby="h3p">
+    <h2 id="h3p">3 · DataTable · Dense Grid <small>events-admin roster — stacked headers, class pills, job ticks</small></h2>
+    <p class="used"><b>Used by:</b> event roster grid only · <i>candidate:</i> mb-progress scout × requirement matrix (second specimen below)</p>
+    <div class="scrollX">
+      <table class="tDense noIdle" data-sortable>
+        <thead>
+          <tr class="bandRow"><th colspan="4"></th><th colspan="2" class="jobBand" scope="colgroup">Fri 10/9</th><th colspan="2" class="jobBand" scope="colgroup">Sat 10/10</th><th class="jobBand" scope="colgroup">Anytime</th><th></th></tr>
+          <tr>
+            <th aria-sort="ascending"><button class="sortBtn" data-key="text">Name <span class="arr"></span></button></th>
+            <th>Class</th>
+            <th class="thCenter"><span class="thStack"><span>Driving</span><span>To</span></span></th>
+            <th class="thCenter"><span class="thStack"><span>Ride</span><span>To</span></span></th>
+            <th class="thCenter" title="Setup crew · Fri 10/9 · 2 of 4 claimed">SC</th>
+            <th class="thCenter" title="Trailer tow · Fri 10/9 · 1 of 1 claimed">TOW</th>
+            <th class="thCenter" title="Cook · Sat 10/10 · 2 of 3 claimed">COOK</th>
+            <th class="thCenter" title="Fire · Sat 10/10 · 1 of 2 claimed">FIRE</th>
+            <th class="thCenter" title="Cashier · anytime · 0 of 1 claimed">CASH</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Patrick Bieser</td><td title="Adult"><span class="classPill classA">A</span></td><td class="cellTight">4</td><td class="cellTight"></td><td class="cellTight"><span class="jobTick">✓</span></td><td class="cellTight"><span class="jobTick">✓</span></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="noteCell" title="Arriving late Friday, bringing the trailer">Arriving late Friday, bringing the trailer</td></tr>
+          <tr><td>Avery Scout</td><td title="Scout"><span class="classPill classS">S</span></td><td class="cellTight"></td><td class="cellTight">PBieser</td><td class="cellTight"><span class="jobTick">✓</span></td><td class="cellTight"></td><td class="cellTight"><span class="jobTick">✓</span></td><td class="cellTight"></td><td class="cellTight"></td><td class="noteCell">—</td></tr>
+          <tr><td>Harper Lindqvist</td><td title="Junior leader"><span class="classPill classJL">JL</span></td><td class="cellTight"></td><td class="cellTight">JOkafor</td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"><span class="jobTick">✓</span></td><td class="cellTight"><span class="jobTick">✓</span></td><td class="cellTight"></td><td class="noteCell" title="Vegetarian; has the cook kit">Vegetarian; has the cook kit</td></tr>
+          <tr><td>Jamal Okafor</td><td title="Adult"><span class="classPill classA">A</span></td><td class="cellTight">6</td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="noteCell">—</td></tr>
+          <tr><td>Rowan Delgado</td><td title="Webelos"><span class="classPill classW">W</span></td><td class="cellTight"></td><td class="cellTight">JOkafor</td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="noteCell" title="First campout — parent Maria attending">First campout — parent Maria attending</td></tr>
+          <tr><td>Maria Delgado</td><td title="Adult guest"><span class="classPill classAG">G</span></td><td class="cellTight">3</td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="noteCell">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="subhead adminLabel">Candidate: mb-progress matrix (scout × requirement)</p>
+    <div class="scrollX">
+      <table class="tDense tMatrix sticky1">
+        <thead><tr>
+          <th>First Aid MB</th>
+          <th class="rot"><span>1a Explain</span></th><th class="rot"><span>1b Hurry cases</span></th><th class="rot"><span>1c First-aid kit</span></th><th class="rot"><span>2a Choking</span></th><th class="rot"><span>2b CPR</span></th><th class="rot"><span>2c AED</span></th><th class="rot"><span>3 Bleeding</span></th><th class="rot"><span>4 Shock</span></th><th class="rot"><span>5a Burns</span></th><th class="rot"><span>5b Heat/cold</span></th><th class="rot"><span>6 Splint</span></th><th class="rot"><span>7 Transport</span></th>
+          <th class="thCenter">Done</th>
+        </tr></thead>
+        <tbody>
+          <tr><td class="rowHead">Avery Scout</td><td class="cellTight done">✓</td><td class="cellTight done">✓</td><td class="cellTight done">✓</td><td class="cellTight done">✓</td><td class="cellTight part">◐</td><td class="cellTight"></td><td class="cellTight done">✓</td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight">5/12</td></tr>
+          <tr><td class="rowHead">Harper Lindqvist</td><td class="cellTight done">✓</td><td class="cellTight done">✓</td><td class="cellTight done">✓</td><td class="cellTight done">✓</td><td class="cellTight done">✓</td><td class="cellTight done">✓</td><td class="cellTight done">✓</td><td class="cellTight done">✓</td><td class="cellTight done">✓</td><td class="cellTight done">✓</td><td class="cellTight done">✓</td><td class="cellTight part">◐</td><td class="cellTight">11/12</td></tr>
+          <tr><td class="rowHead">Mateo Reyes-Kowalski</td><td class="cellTight done">✓</td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight">1/12</td></tr>
+          <tr><td class="rowHead">Rowan Delgado</td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight"></td><td class="cellTight muted">0/12</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="subhead adminLabel">Empty state</p>
+    <div class="scrollX"><table class="tDense"><thead><tr><th>Name</th><th>Class</th><th class="thCenter"><span class="thStack"><span>Driving</span><span>To</span></span></th><th>Notes</th></tr></thead><tbody><tr><td colspan="4" class="empty">Nobody has signed up yet. Signup opens Sep 20 — <a href="#">preview the signup form</a>.</td></tr></tbody></table></div>
+    <p class="note"><b>Responsive:</b> scroll-x only, with the first column sticky-left (the matrix shows it; the roster should get it too). Rotated headers are the matrix's one real difference from the roster — same cell grammar (tick / blank / short code), same pill vocabulary. Judgement call for Patrick: is "rotated header" a variant of Dense Grid or a reason to keep mb-progress separate?</p>
+  </section>
+
+  <!-- ═══ 4 · RecordList ═══ -->
+  <section class="spec" id="p4" aria-labelledby="h4p">
+    <h2 id="h4p">4 · RecordList <small>narrative card rows + "Recent" sidebar variant</small></h2>
+    <p class="used"><b>Used by:</b> audits findings · court-of-honor and report "Recent" sidebars</p>
+    <div class="twoCol">
+      <div>
+        <ul class="recordList">
+          <li class="record"><span class="sev sevHigh">High</span><div><h3>3 scouts have a Board of Review logged with no Scoutmaster Conference</h3><p>Avery Scout (Star), Harper Lindqvist (Life), Mateo Reyes-Kowalski (Second Class). The 95% SMC gate in the meeting-plan engine will skip them until the conference is entered.</p><div class="meta">Found 2026-08-24 · advancement · <a href="#">open records</a></div></div><div class="acts"><button class="btn quiet sm">Fix</button><button class="btn quiet sm">Dismiss</button></div></li>
+          <li class="record"><span class="sev sevMed">Medium</span><div><h3>Fall Campout signup has 31 going but only 22 seats offered</h3><p>Two drivers (P. Bieser 4, J. Okafor 6) plus the Delgado car. Either recruit drivers or cap the roster before Oct 2.</p><div class="meta">Found 2026-08-25 · events · <a href="#">open roster</a></div></div><div class="acts"><button class="btn quiet sm">Fix</button><button class="btn quiet sm">Dismiss</button></div></li>
+          <li class="record"><span class="sev sevLow">Low</span><div><h3>Wreath Sale Kickoff has no location</h3><p>Promoted events without a location render "TBD" on the public calendar.</p><div class="meta">Found 2026-08-25 · calendar</div></div><div class="acts"><button class="btn quiet sm">Fix</button><button class="btn quiet sm">Dismiss</button></div></li>
+        </ul>
+        <p class="subhead adminLabel">Empty state</p>
+        <div class="record" style="display:block"><div class="empty">No open findings. Last audit ran 2026-08-25 at 6:10 AM.</div></div>
+      </div>
+      <aside class="recent" aria-labelledby="recentHead">
+        <h3 id="recentHead" class="adminLabel">Recent reports</h3>
+        <ul>
+          <li class="active"><a href="#"><span>Court of Honor — Sep 2026<span class="when">edited today</span></span><span class="badge bDraft">Draft</span></a></li>
+          <li><a href="#"><span>Summer Camp snapshot<span class="when">Aug 3</span></span><span class="badge bFinal">Final</span></a></li>
+          <li><a href="#"><span>Court of Honor — May 2026<span class="when">May 17</span></span><span class="badge bFinal">Final</span></a></li>
+          <li><a href="#"><span>Spring roster print<span class="when">Apr 2</span></span><span class="badge bFinal">Final</span></a></li>
+        </ul>
+      </aside>
+    </div>
+    <p class="note"><b>Responsive:</b> stacks — the card grid collapses to one column under 600px and the sidebar drops below the list under 760px. This is the only list pattern that should ever stack.</p>
+  </section>
+
+  <!-- ═══ 5 · Board ═══ -->
+  <section class="spec" id="p5" aria-labelledby="h5p">
+    <h2 id="h5p">5 · Board <small>bucket columns, chips, capacity pills, dashed pool — drag works</small></h2>
+    <p class="used"><b>Used by:</b> assignments board only (Patrols / Tents / Cars)</p>
+    <div class="board" id="board">
+      <div class="col pool" data-cap="99"><div class="colHead"><h3>Unassigned</h3><span class="cap">3</span></div><div class="chips"><span class="chip" draggable="true" tabindex="0">Rowan Delgado<span class="r">Scout</span></span><span class="chip" draggable="true" tabindex="0">Quinn Abernathy<span class="r">Tenderfoot</span></span><span class="chip adult" draggable="true" tabindex="0">Maria Delgado<span class="r">Adult</span></span></div></div>
+      <div class="col" data-cap="4"><div class="colHead"><h3>Car · Bieser</h3><span class="cap">3 / 4</span></div><div class="chips"><span class="chip adult" draggable="true" tabindex="0">Patrick Bieser<span class="r">driver</span></span><span class="chip" draggable="true" tabindex="0">Avery Scout<span class="r">Star</span></span><span class="chip" draggable="true" tabindex="0">Harper Lindqvist<span class="r">Life</span></span></div></div>
+      <div class="col" data-cap="6"><div class="colHead"><h3>Car · Okafor</h3><span class="cap">2 / 6</span></div><div class="chips"><span class="chip adult" draggable="true" tabindex="0">Jamal Okafor<span class="r">driver</span></span><span class="chip" draggable="true" tabindex="0">Mateo Reyes-Kowalski<span class="r">2nd Class</span></span></div></div>
+      <div class="col" data-cap="3"><div class="colHead"><h3>Car · Delgado</h3><span class="cap">0 / 3</span></div><div class="chips"><span class="colEmpty">Drop riders here</span></div></div>
+    </div>
+    <p class="note"><b>Responsive:</b> columns wrap to a single stack under ~400px (auto-fit grid). Drag has no keyboard path here — the real screen needs a "Move to…" menu on each chip. Capacity pill goes green at full and red when over.</p>
+  </section>
+
+  <!-- ═══ 6 · ExpandableSummary ═══ -->
+  <section class="spec" id="p6" aria-labelledby="h6p">
+    <h2 id="h6p">6 · ExpandableSummary <small>grid summary rows → nested transaction table (JS toggle, no &lt;details&gt; per D-070)</small></h2>
+    <p class="used"><b>Used by:</b> finance activity report</p>
+    <div class="sumWrap">
+      <div class="sumHead" role="row"><span></span><span>Activity</span><span>Dates</span><span class="r">Income</span><span class="r">Expense</span><span class="r">Net</span></div>
+      <button class="sumRow" aria-expanded="false" aria-controls="d1"><span class="chev">▶</span><span>Fall Campout — Camp Long Lake</span><span><span class="sumCol">Dates </span>Oct 9–11</span><span class="r"><span class="sumCol">In </span>$1,395.00</span><span class="r"><span class="sumCol">Out </span>$1,212.40</span><span class="r"><span class="sumCol">Net </span>$182.60</span></button>
+      <div class="sumDetail" id="d1" hidden>
+        <table><thead><tr><th>Date</th><th>Who</th><th>Memo</th><th class="r">Amount</th></tr></thead><tbody>
+          <tr><td class="codeCell">2026-08-22</td><td>Avery Scout</td><td>Deposit</td><td class="r">$45.00</td></tr>
+          <tr><td class="codeCell">2026-08-22</td><td>Harper Lindqvist</td><td>Deposit</td><td class="r">$45.00</td></tr>
+          <tr><td class="codeCell">2026-10-06</td><td>Camp Long Lake</td><td>Site fee, 2 nights</td><td class="r neg">−($780.00)</td></tr>
+          <tr><td class="codeCell">2026-10-08</td><td>J. Okafor</td><td>Groceries, Pick 'n Save</td><td class="r neg">−($432.40)</td></tr>
+          <tr class="sumTotal"><td colspan="3">Net</td><td class="r">$182.60</td></tr>
+        </tbody></table>
+      </div>
+      <button class="sumRow" aria-expanded="false" aria-controls="d2"><span class="chev">▶</span><span>Wreath Sale 2025</span><span><span class="sumCol">Dates </span>Oct 18 – Dec 6</span><span class="r"><span class="sumCol">In </span>$6,240.00</span><span class="r"><span class="sumCol">Out </span>$3,870.00</span><span class="r"><span class="sumCol">Net </span>$2,370.00</span></button>
+      <div class="sumDetail" id="d2" hidden>
+        <table><thead><tr><th>Date</th><th>Who</th><th>Memo</th><th class="r">Amount</th></tr></thead><tbody>
+          <tr><td class="codeCell">2025-12-06</td><td>Families</td><td>Wreath orders, 312 units</td><td class="r">$6,240.00</td></tr>
+          <tr><td class="codeCell">2025-11-20</td><td>Mickman Brothers</td><td>Wholesale invoice</td><td class="r neg">−($3,870.00)</td></tr>
+          <tr class="sumTotal"><td colspan="3">Net</td><td class="r">$2,370.00</td></tr>
+        </tbody></table>
+      </div>
+      <button class="sumRow" aria-expanded="false" aria-controls="d3"><span class="chev">▶</span><span>Scouting for Food</span><span><span class="sumCol">Dates </span>Nov 7</span><span class="r"><span class="sumCol">In </span>$0.00</span><span class="r"><span class="sumCol">Out </span>$24.00</span><span class="r neg"><span class="sumCol">Net </span>−($24.00)</span></button>
+      <div class="sumDetail" id="d3" hidden>
+        <table><thead><tr><th>Date</th><th>Who</th><th>Memo</th><th class="r">Amount</th></tr></thead><tbody>
+          <tr><td class="codeCell">2026-08-09</td><td>Troop</td><td>Bag printing</td><td class="r neg">−($24.00)</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+    <p class="subhead adminLabel">Empty state</p>
+    <div class="sumWrap"><div class="empty">No activity in FY2026 yet. Entries appear here as soon as the ledger has a transaction tagged to an activity.</div></div>
+    <p class="note"><b>Responsive:</b> summary rows reflow to a 2-line card under 640px (label prefixes appear, header row hides); the nested table scrolls-x inside its detail panel. Toggle is a real <code>&lt;button aria-expanded&gt;</code> — arrow keys not needed, Tab/Enter suffice.</p>
+  </section>
+
+  <!-- ═══ 7 · PrintTable ═══ -->
+  <section class="spec" id="p7" aria-labelledby="h7p">
+    <h2 id="h7p">7 · PrintTable <small>3–6px pad, black on white, page-break rules</small></h2>
+    <p class="used"><b>Used by:</b> roster-print, snapshot</p>
+    <p class="toolbar"><button class="btn sm printToggle" id="printToggle" aria-pressed="false">Print preview</button></p>
+    <div class="printSheet">
+      <h3>Troop 79 — Fall Campout Roster</h3>
+      <div class="ph">Camp Long Lake · Oct 9–11, 2026 · printed 2026-08-25 · 31 attending</div>
+      <table class="tPrint">
+        <thead><tr><th style="width:30%">Name</th><th>Class</th><th>Patrol / Tent</th><th>Ride</th><th>Jobs</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr class="grp"><td colspan="6">Hawks Patrol</td></tr>
+          <tr><td>Avery Scout</td><td>Scout</td><td>Tent 1</td><td>Bieser</td><td><ul><li>Setup crew (Fri)</li><li>Cook (Sat)</li></ul></td><td></td></tr>
+          <tr><td>Harper Lindqvist</td><td>JL</td><td>Tent 1</td><td>Okafor</td><td><ul><li>Cook (Sat)</li><li>Fire (Sat)</li></ul></td><td>Vegetarian</td></tr>
+          <tr><td>Mateo Reyes-Kowalski</td><td>Scout</td><td>Tent 2</td><td>Okafor</td><td></td><td></td></tr>
+          <tr class="grp"><td colspan="6">Foxes Patrol</td></tr>
+          <tr><td>Quinn Abernathy</td><td>Scout</td><td>Tent 3</td><td>—</td><td></td><td>Needs a ride</td></tr>
+          <tr><td>Rowan Delgado</td><td>Webelos</td><td>Tent 3</td><td>Delgado</td><td></td><td>First campout; parent attending</td></tr>
+        </tbody>
+      </table>
+      <hr class="pageBreak">
+      <table class="tPrint">
+        <thead><tr><th style="width:30%">Adults</th><th>Class</th><th>Driving</th><th>Jobs</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Patrick Bieser</td><td>Adult</td><td>4 seats</td><td><ul><li>Setup crew (Fri)</li><li>Trailer tow (Fri)</li></ul></td><td>Late Friday</td></tr>
+          <tr><td>Jamal Okafor</td><td>Adult</td><td>6 seats</td><td></td><td></td></tr>
+          <tr><td>Maria Delgado</td><td>Guest</td><td>3 seats</td><td></td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="subhead adminLabel">Empty state</p>
+    <div class="printSheet"><h3>Troop 79 — Fall Campout Roster</h3><div class="ph">Camp Long Lake · Oct 9–11, 2026</div><div class="empty" style="color:#444">No one is signed up. Nothing to print.</div></div>
+    <p class="note"><b>Responsive:</b> not a screen pattern — on a phone it scrolls-x inside the sheet; the toggle above shows what the printer gets (chrome hidden, dashed line = forced page break, group rows keep-with-next).</p>
+  </section>
+</div>
+
+<script>
+/* ── Knobs → body data attributes (CSS does the rest) ─────────────── */
+document.querySelectorAll('.seg').forEach(seg => {
+  seg.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    seg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    document.body.dataset[seg.dataset.knob] = b.dataset.v;
+  });
+});
+
+/* ── Sortable headers: any table[data-sortable]; th > .sortBtn[data-key] ──
+   key = text | num | date. Cell value comes from td[data-sort] when present. */
+document.querySelectorAll('table[data-sortable]').forEach(table => {
+  const tbody = table.tBodies[0];
+  table.querySelectorAll('.sortBtn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const th = btn.closest('th'), row = th.parentElement;
+      const idx = [...row.children].indexOf(th);
+      const dir = th.getAttribute('aria-sort') === 'ascending' ? 'descending' : 'ascending';
+      row.querySelectorAll('th[aria-sort]').forEach(h => h.setAttribute('aria-sort', 'none'));
+      th.setAttribute('aria-sort', dir);
+      const val = tr => { const td = tr.children[idx]; const raw = td.dataset.sort ?? td.textContent.trim();
+        return btn.dataset.key === 'num' ? (parseFloat(raw.replace(/[^0-9.-]/g,'')) || 0) : raw.toLowerCase(); };
+      const rows = [...tbody.rows].filter(r => !r.querySelector('.empty'));
+      rows.sort((a, b) => { const x = val(a), y = val(b); return (x > y ? 1 : x < y ? -1 : 0) * (dir === 'ascending' ? 1 : -1); });
+      rows.forEach(r => tbody.appendChild(r));
+    });
+  });
+});
+
+/* ── Row-link rows: click anywhere → follow data-href; ignore clicks on controls ── */
+document.querySelectorAll('tr.rowLink').forEach(tr => {
+  tr.addEventListener('click', e => {
+    if (e.target.closest('a, button, .menuWrap')) return;
+    console.log('navigate →', tr.dataset.href);
+    tr.style.outline = '2px solid var(--admin-navy)'; setTimeout(() => tr.style.outline = '', 300);
+  });
+});
+
+/* ── Actions ▾ menu: one open at a time; Esc / outside click closes ── */
+function closeMenus() { document.querySelectorAll('.menu:not([hidden])').forEach(m => { m.hidden = true; m.previousElementSibling.setAttribute('aria-expanded', 'false'); }); }
+document.querySelectorAll('.menuWrap > button').forEach(b => {
+  b.addEventListener('click', e => { e.stopPropagation(); const m = b.nextElementSibling; const open = m.hidden; closeMenus(); m.hidden = !open; b.setAttribute('aria-expanded', open); if (open) m.querySelector('button').focus(); });
+});
+document.querySelectorAll('.menu button').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); console.log('action:', b.textContent); closeMenus(); }));
+document.addEventListener('click', closeMenus);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeMenus(); } });
+
+/* ── ExpandableSummary toggle (button + aria-expanded, not <details>) ── */
+document.querySelectorAll('.sumRow').forEach(b => {
+  b.addEventListener('click', () => { const d = document.getElementById(b.getAttribute('aria-controls')); const open = b.getAttribute('aria-expanded') === 'true'; b.setAttribute('aria-expanded', !open); d.hidden = open; });
+});
+
+/* ── Board: native drag between columns; capacity pill recomputes ── */
+(() => {
+  const board = document.getElementById('board'); if (!board) return; let dragging = null;
+  const refresh = () => board.querySelectorAll('.col').forEach(col => {
+    const chips = col.querySelector('.chips'), n = chips.querySelectorAll('.chip').length, cap = +col.dataset.cap, pill = col.querySelector('.cap');
+    let empty = chips.querySelector('.colEmpty');
+    if (n === 0 && !empty) { empty = document.createElement('span'); empty.className = 'colEmpty'; empty.textContent = col.classList.contains('pool') ? 'Everyone is placed' : 'Drop riders here'; chips.appendChild(empty); }
+    if (n > 0 && empty) empty.remove();
+    if (col.classList.contains('pool')) { pill.textContent = n; pill.className = 'cap'; return; }
+    pill.textContent = `${n} / ${cap}`; pill.className = 'cap' + (n > cap ? ' overCap' : n === cap ? ' full' : '');
+  });
+  board.addEventListener('dragstart', e => { const c = e.target.closest('.chip'); if (!c) return; dragging = c; c.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+  board.addEventListener('dragend', () => { if (dragging) dragging.classList.remove('dragging'); dragging = null; board.querySelectorAll('.over').forEach(c => c.classList.remove('over')); });
+  board.addEventListener('dragover', e => { const col = e.target.closest('.col'); if (!col || !dragging) return; e.preventDefault(); board.querySelectorAll('.over').forEach(c => c.classList.remove('over')); col.classList.add('over'); });
+  board.addEventListener('drop', e => { const col = e.target.closest('.col'); if (!col || !dragging) return; e.preventDefault(); col.querySelector('.chips').appendChild(dragging); refresh(); });
+  refresh();
+})();
+
+/* ── Print preview toggle: applies the @media print look on screen ── */
+const pt = document.getElementById('printToggle');
+pt.addEventListener('click', () => { const on = document.body.classList.toggle('printPreview'); pt.setAttribute('aria-pressed', on); pt.textContent = on ? 'Exit print preview' : 'Print preview'; if (on) pt.scrollIntoView({ block: 'start' }); });
+</script>
+</body>
+</html>
