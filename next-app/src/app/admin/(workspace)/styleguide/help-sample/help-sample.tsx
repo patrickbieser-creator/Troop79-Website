@@ -33,8 +33,9 @@ function contrast(fg: string, bg: string): number | null {
 export function HelpSample() {
   const [placement, setPlacement] = useState<HelpPlacement>('auto');
   const [maxWidth, setMaxWidth] = useState(320);
-  const [size, setSize] = useState<HelpBadgeSize>(16);
-  const [hoverOpens, setHoverOpens] = useState(true);
+  // Patrick's tuning (2026-08-25): 320 / 20px / click only — now the defaults.
+  const [size, setSize] = useState<HelpBadgeSize>(20);
+  const [hoverOpens, setHoverOpens] = useState(false);
   const [hoverDelay, setHoverDelay] = useState(150);
   const [ratios, setRatios] = useState<{ body: number | null; title: number | null }>({ body: null, title: null });
 

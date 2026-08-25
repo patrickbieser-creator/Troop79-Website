@@ -19,6 +19,7 @@ import { Badge } from '../../../_components/badge';
 import { PageTitle } from '../../../_components/page-title';
 import { DiscardButton, SaveButton, SaveFeedback, useDraftSnapshot, useSavePhase } from '../../../_components/save-state';
 import { Button } from '../../../../_components/button';
+import { FormSection } from '../../../../_components/form-panel';
 
 /** A category from the ONE taxonomy (calendar_categories) — the same list
  *  events and photo albums pick from (Patrick, 2026-08-21). */
@@ -159,6 +160,9 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
             )}
           </div>
 
+          {/* Numbered FormSections (2026-08-25): the standard for any admin
+              edit form with more than one group of fields — see AGENTS.md. */}
+          <FormSection num={1} title="Article">
           <div className={styles.field}>
             <label className="adminLabel" htmlFor="title">Title</label>
             <input id="title" type="text" value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -220,9 +224,11 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
             />
             <div className={styles.hint}>Shown on the home page and article cards. Keep it to 1-2 sentences.</div>
           </div>
+          </FormSection>
 
           {/* Body sits right under Excerpt (Patrick, 2026-08-25): summary, then
               the writing — the byline, address and categories come after. */}
+          <FormSection num={2} title="Body">
           <div className={styles.field}>
             <label className="adminLabel" htmlFor="body">Body</label>
             <MarkdownSource
@@ -239,7 +245,9 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
               {blockTools.prompts}
             </MarkdownSource>
           </div>
+          </FormSection>
 
+          <FormSection num={3} title="Attribution & address">
           <div className={styles.field}>
             <label className="adminLabel" htmlFor="authorName">Byline</label>
             <input
@@ -294,7 +302,9 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
               )}
             </div>
           </div>
+          </FormSection>
 
+          <FormSection num={4} title="Categories">
           <div className={styles.field}>
             <label className="adminLabel">Categories</label>
             {/* The ONE taxonomy (2026-08-21): the same Calendar Categories
@@ -314,6 +324,7 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
             </div>
             <div className={styles.hint}>Same list as Calendar Categories; the first one picked is the card label.</div>
           </div>
+          </FormSection>
 
           <div className={styles.formActions}>
             {!isNew && <DiscardButton dirty={dirty} pending={isSaving} onClick={discard} />}

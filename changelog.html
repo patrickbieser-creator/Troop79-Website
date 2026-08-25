@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 25, 2026</strong> &nbsp;&middot;&nbsp; v1.94.1</p>
+      <p>Last updated: <strong>August 25, 2026</strong> &nbsp;&middot;&nbsp; v1.95.1</p>
     </div>
   </div>
 
@@ -494,6 +494,78 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.95.1 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.95.1</span>
+        <span class="release-date">August 25, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Polish</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Numbered sections, a readable Dates guide, help badge tuned</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Numbered form sections are the standard.</strong> The news editor now groups its fields into
+              1 Article &middot; 2 Body &middot; 3 Attribution &amp; address &middot; 4 Categories, the same circled-number
+              sections the scout and calendar editors use; <code>AGENTS.md</code> makes them the rule for any admin
+              edit form with more than one group of fields.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Styleguide &rarr; Dates</strong> is a full-width table again (Helper &middot; Use for &middot; Example
+              &middot; Input kind) instead of being squeezed into a specimen tile.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Help badge defaults</strong> after tuning: 320px panel, 20px circle, opens on click only &mdash; never
+              on hover.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.95.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.95.0</span>
+        <span class="release-date">August 25, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">One Entry editor &mdash; Details and Story consolidated</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Details + Story are one form.</strong> The calendar workbench&rsquo;s first tab is <em>Entry</em>:
+              numbered sections for the entry (title, dates, times, category, location), the description, the story,
+              visibility, and the homepage feed &mdash; in the order a leader thinks. One Save, one Discard, one
+              &ldquo;Saved&rdquo;; the separate &ldquo;Save story&rdquo; and the Story tab&rsquo;s unsaved dot are gone.
+              Old <code>?tab=details</code> / <code>?tab=story</code> links open the Entry tab.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>The story gets the news editor&rsquo;s room.</strong> Same markdown engine as before (cheat sheet,
+              insert toolbar, gallery/video tokens, click-to-edit blocks) but the panel is full width now, so the
+              source and live preview sit side by side as they do for articles.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Description and card summary collapsed into one.</strong> The homepage card&rsquo;s separate
+              &ldquo;Card summary&rdquo; field is gone; the Description is the one short text everywhere (event page,
+              calendar, homepage card). The Add Entry dialog keeps the same sections minus the story &mdash; create,
+              then write on the workbench.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

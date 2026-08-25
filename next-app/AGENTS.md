@@ -18,7 +18,9 @@ check the styleguide for an existing pattern before writing a new class; inline
 `<Button>` from `src/app/admin/_components/button` — variants primary (navy) / secondary /
 danger (outlined) / dangerSolid (danger-Dialog confirm only) / quiet, sizes md / sm, `href`
 renders a Link; `SaveButton`/`DiscardButton` render it already. Every surface that holds fields
-is `<FormPanel>` or the numbered `<FormSection>` from `admin/_components/form-panel`. Both live
+is `<FormPanel>` or the numbered `<FormSection>` from `admin/_components/form-panel`; any admin
+edit form with more than one group of fields uses numbered `<FormSection>`s (1, 2, 3…, as the
+scout and news editors do) rather than one long run of fields. Both live
 one level ABOVE `(workspace)` so `/admin/roster-print` and `/admin/snapshot` can use them. Do not
 add a `.xyzBtn` / `.panel` class to a screen stylesheet — add a variant to the component and a
 row to the styleguide scoreboard. Genuinely different controls (icon buttons, chips, sort

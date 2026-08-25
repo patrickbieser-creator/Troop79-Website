@@ -10,8 +10,8 @@
  * hover or focus) wants it dismissible without moving the pointer (Esc),
  * hoverable (the pointer can travel onto the text), and persistent (it stays
  * until dismissed) — and touch has no hover at all. So: a real button that
- * opens on click / tap / Enter / Space, optionally on hover after a short
- * delay, closes on Esc (focus returns to the badge), on the × or on a click
+ * opens on click / tap / Enter / Space — not on hover (Patrick, 2026-08-25,
+ * after tuning: 320px, 20px circle, click only) — closes on Esc (focus returns to the badge), on the × or on a click
  * outside, and never on a timer. The panel is `role="dialog"` (non-modal)
  * so its title is announced and links inside are reachable.
  *
@@ -37,7 +37,8 @@ export interface HelpBadgeProps {
   maxWidth?: number;
   /** Visible circle size; the hit area is always ≥ 44px. */
   size?: HelpBadgeSize;
-  /** Open on hover too (after `hoverDelay` ms). Click always works. */
+  /** Open on hover too (after `hoverDelay` ms). Off by default (Patrick,
+   *  2026-08-25); click always works. */
   hoverOpens?: boolean;
   hoverDelay?: number;
   className?: string;
@@ -52,8 +53,8 @@ export function HelpBadge({
   children,
   placement = 'auto',
   maxWidth = 320,
-  size = 16,
-  hoverOpens = true,
+  size = 20,
+  hoverOpens = false,
   hoverDelay = 150,
   className
 }: HelpBadgeProps) {

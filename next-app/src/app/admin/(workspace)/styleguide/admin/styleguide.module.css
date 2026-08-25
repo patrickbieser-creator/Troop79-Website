@@ -233,3 +233,18 @@
 }
 .rules ul { margin: var(--admin-space-3) 0 0; padding-left: var(--admin-space-9); }
 .rules li { margin-bottom: var(--admin-space-2); }
+
+/* ── Dates helper table (2026-08-25) — full-width, scrolls sideways on a
+   narrow screen instead of squeezing seven helpers into a specimen column. */
+.tableWrap {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.dateTable td:first-child { white-space: nowrap; }
+.dateTable td:last-child { white-space: nowrap; color: var(--admin-gray-500); }
+.dateAlt {
+  display: block;
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-500);
+  margin-top: var(--admin-space-1);
+}

@@ -921,25 +921,87 @@ export default function StyleguidePage() {
       {/* ════ DATES ════ */}
       <section className={sg.section}>
         <h2 className={sg.sectionHead}>Dates</h2>
-        <div className={sg.specimenGrid}>
-          <Specimen
-            label="Date display standard — lib/format-date"
-            canonical
-            note="Patrick, 2026-08-24, after a sweep found 21 visible formats, 36 raw '2026-07-12' renders, four slash variants and a handful of genuine wrong-day bugs: ONE Central-pinned module. A `date` column ('YYYY-MM-DD') is a calendar day and is never fed to new Date() as an instant (UTC midnight = the evening before in Milwaukee); a timestamptz is always rendered in America/Chicago. fmtDate is the default for every table, list, hint and dialog. ISO is for data only — exports, URL params, picker values, the calendar-import preview. Slash forms are retired. toLocaleDateString / .slice(0, 10) outside lib/format-date are lint errors."
-          >
-            <table className={ledger.table}>
-              <thead><tr><th>Helper</th><th>Renders</th><th>Use for</th></tr></thead>
-              <tbody>
-                <tr><td><code>fmtDate</code></td><td>{fmtDate('2026-07-12')}</td><td>the default — tables, lists, hints, dialogs; <code>{'{ year: false }'}</code> inside a one-year list → {fmtDate('2026-07-12', { year: false })}</td></tr>
-                <tr><td><code>fmtDateLong</code></td><td>{fmtDateLong('2026-07-12')}</td><td>public prose, bylines, print headers</td></tr>
-                <tr><td><code>fmtDateFull</code></td><td>{fmtDateFull('2026-07-12')}</td><td>headings where the weekday matters</td></tr>
-                <tr><td><code>fmtDay</code></td><td>{fmtDay('2026-07-12')}</td><td>dense day headings, deadlines, job boards</td></tr>
-                <tr><td><code>fmtDateTime</code></td><td>{fmtDateTime('2026-07-12T20:04:00.000Z')}</td><td>any timestamp shown with its time; <code>{'{ zone: true }'}</code> in email</td></tr>
-                <tr><td><code>fmtMonthYear</code></td><td>{fmtMonthYear('2026-07-12')}</td><td>almanacs, &ldquo;updated&rdquo;, &ldquo;earned&rdquo; badges</td></tr>
-                <tr><td><code>fmtRange</code></td><td>{fmtRange('2026-07-12', '2026-07-14')} · {fmtRange('2026-07-30', '2026-08-02')}</td><td>multi-day events, report ranges</td></tr>
-              </tbody>
-            </table>
-          </Specimen>
+        <p className={sg.sectionNote}>
+          <strong>✓ Canonical — date display standard, <code>lib/format-date</code>.</strong>{' '}
+          Patrick, 2026-08-24, after a sweep found 21 visible formats, 36 raw &lsquo;2026-07-12&rsquo;
+          renders, four slash variants and a handful of genuine wrong-day bugs: ONE Central-pinned
+          module. A <code>date</code> column (&lsquo;YYYY-MM-DD&rsquo;) is a calendar day and is never
+          fed to <code>new Date()</code> as an instant (UTC midnight = the evening before in
+          Milwaukee); a timestamptz is always rendered in America/Chicago. <code>fmtDate</code> is
+          the default for every table, list, hint and dialog. ISO is for data only — exports, URL
+          params, picker values, the calendar-import preview. Slash forms are retired.{' '}
+          <code>toLocaleDateString</code> / <code>.slice(0, 10)</code> outside{' '}
+          <code>lib/format-date</code> are lint errors.
+        </p>
+        <div className={sg.tableWrap}>
+          <table className={`${sg.scoreTable} ${sg.dateTable}`}>
+            <thead>
+              <tr>
+                <th>Helper</th>
+                <th>Use for</th>
+                <th>Example output</th>
+                <th>Input kind</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>fmtDate</code></td>
+                <td>
+                  The default — tables, lists, hints, dialogs. <code>{'{ year: false }'}</code>{' '}
+                  inside a one-year list.
+                </td>
+                <td>
+                  {fmtDate('2026-07-12')}
+                  <span className={sg.dateAlt}>{fmtDate('2026-07-12', { year: false })} (year: false)</span>
+                </td>
+                <td>date column</td>
+              </tr>
+              <tr>
+                <td><code>fmtDateLong</code></td>
+                <td>Public prose, bylines, print headers.</td>
+                <td>{fmtDateLong('2026-07-12')}</td>
+                <td>date column</td>
+              </tr>
+              <tr>
+                <td><code>fmtDateFull</code></td>
+                <td>Headings where the weekday matters.</td>
+                <td>{fmtDateFull('2026-07-12')}</td>
+                <td>date column</td>
+              </tr>
+              <tr>
+                <td><code>fmtDay</code></td>
+                <td>Dense day headings, deadlines, job boards.</td>
+                <td>{fmtDay('2026-07-12')}</td>
+                <td>date column</td>
+              </tr>
+              <tr>
+                <td><code>fmtDateTime</code></td>
+                <td>
+                  Any timestamp shown with its time; <code>{'{ zone: true }'}</code> in email.
+                </td>
+                <td>
+                  {fmtDateTime('2026-07-12T20:04:00.000Z')}
+                  <span className={sg.dateAlt}>{fmtDateTime('2026-07-12T20:04:00.000Z', { zone: true })} (zone: true)</span>
+                </td>
+                <td>timestamptz (America/Chicago)</td>
+              </tr>
+              <tr>
+                <td><code>fmtMonthYear</code></td>
+                <td>Almanacs, &ldquo;updated&rdquo;, &ldquo;earned&rdquo; badges.</td>
+                <td>{fmtMonthYear('2026-07-12')}</td>
+                <td>date column</td>
+              </tr>
+              <tr>
+                <td><code>fmtRange</code></td>
+                <td>Multi-day events, report ranges.</td>
+                <td>
+                  {fmtRange('2026-07-12', '2026-07-14')}
+                  <span className={sg.dateAlt}>{fmtRange('2026-07-30', '2026-08-02')} (spans a month)</span>
+                </td>
+                <td>date columns (start, end)</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </section>
 
