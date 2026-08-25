@@ -22,12 +22,9 @@
  *   * DIRTY FORMS — if any form on the page is dirty (DirtyGuardProvider),
  *     the click opens a Discard-changes dialog instead of leaving.
  */
-import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import type { MouseEvent } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Dialog, DialogActions, DialogBody, DialogHeader } from './dialog';
-import { Button } from '../../_components/button';
-import { useDirtyGuard } from './dirty-guard';
+import { useGuardedNav } from './guarded-nav';
 import styles from './back-nav.module.css';
 
 export interface Crumb {
@@ -59,25 +56,13 @@ export function resolveBackHref(href: string): string {
 }
 
 export function BackNav({ back, current }: { back: BackTarget; current?: string }) {
-  const router = useRouter();
-  const guard = useDirtyGuard();
-  const [pending, setPending] = useState<string | null>(null);
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  // The shared Dialog is a plain <dialog>; callers open it (the app-wide pattern).
-  useEffect(() => {
-    if (pending) dialogRef.current?.showModal();
-  }, [pending]);
+  const { navigate, dialog } = useGuardedNav();
 
   function go(e: MouseEvent<HTMLAnchorElement>, href: string) {
     // Plain left click only — let modifier clicks open new tabs normally.
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
     e.preventDefault();
-    const target = resolveBackHref(href);
-    if (guard?.isDirty()) {
-      setPending(target);
-      return;
-    }
-    router.push(target);
+    navigate(resolveBackHref(href));
   }
 
   const parent = back.crumbs ? back.crumbs[back.crumbs.length - 1] : { label: back.label, href: back.href };
@@ -111,20 +96,7 @@ export function BackNav({ back, current }: { back: BackTarget; current?: string 
         </nav>
       )}
 
-      {pending && (
-        <Dialog ref={dialogRef} danger onClose={() => setPending(null)}>
-          <DialogHeader title="Discard changes?" sub="This page has unsaved changes. Leaving now loses them." />
-          <DialogBody>{null}</DialogBody>
-          <DialogActions>
-            <Button variant="secondary" size="sm" onClick={() => setPending(null)}>
-              Keep editing
-            </Button>
-            <Button variant="dangerSolid" size="sm" onClick={() => router.push(pending)}>
-              Discard changes
-            </Button>
-          </DialogActions>
-        </Dialog>
-      )}
+      {dialog}
     </>
   );
 }

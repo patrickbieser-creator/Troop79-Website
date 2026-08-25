@@ -11,6 +11,13 @@
  * a scout does not reach the calendar admin at all now. The routes behind each
  * panel still enforce leader-only themselves; hiding a panel was never the only
  * thing standing in the way, and still isn't.
+ *
+ * LOADS PER TAB (2026-08-25, Patrick: "overloaded … much slower on prod"):
+ * the entry, its categories, the meeting and signup rows and the attendance
+ * count are always read (cheap, they drive the tab strip); everything else —
+ * the agenda editor's sessions and candidates, the roll-call sheet, the
+ * signup builder, a roster / money / snapshot / assignments view — loads only
+ * for the tab (and `?view=`) that is actually open.
  */
 
 import { notFound } from 'next/navigation';
@@ -19,6 +26,7 @@ import { requireCapability } from '@/lib/require-capability';
 import { loadCalendarCategories } from '@/lib/calendar';
 import { categoryColorMap, colorFor, templateOf } from '@/lib/calendar-categories';
 import { creditRuleFor, defaultQtyFor, loadAttendance, loadCandidates } from '@/lib/attendance';
+import { parseRosterOrder } from '@/lib/event-snapshot';
 import {
   createMeeting,
   updateMeeting,
@@ -33,6 +41,12 @@ import {
 import { loadAgendaEditorData } from '../../advancement/meetings/load-agenda';
 import { loadBuilderData } from '../../events/[id]/load-builder';
 import { enableSignup } from '../../events/actions';
+import { loadEventNav, type EventNavData } from '../../rosters/[id]/event-nav-data';
+import type { EventNavKey } from '../../rosters/[id]/event-nav';
+import { loadRoster, RosterView, type RosterData } from '../../rosters/[id]/roster-view';
+import { MoneyView } from '../../rosters/[id]/money/money-view';
+import { SnapshotView } from '../../rosters/[id]/snapshot/snapshot-view';
+import { activeSetFor, AssignmentsView, loadAssignments } from '../../rosters/[id]/assignments/assignments-view';
 import type { Meeting } from '@/lib/supabase/types';
 import { updateCalendarEntry, createCalendarEntry } from '../actions';
 import { markAttended, markAbsent, setAttendanceQty, seedFromSignup } from './roll-call/actions';
@@ -44,24 +58,26 @@ export const metadata = { title: 'Calendar Entry — Troop 79' };
 const TABS: WorkbenchTab[] = ['entry', 'agenda', 'roll-call', 'signup'];
 /** Older links and bookmarks: Details and Story are both the Entry tab now. */
 const LEGACY_TABS: Record<string, WorkbenchTab> = { details: 'entry', story: 'entry' };
+type SignupViewName = 'roster' | 'assignments' | 'money' | 'snapshot';
+const VIEWS: SignupViewName[] = ['roster', 'assignments', 'money', 'snapshot'];
 
 export default async function CalendarEntryPage({
   params,
   searchParams
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; view?: string; set?: string; order?: string }>;
 }) {
   await requireCapability('calendar.write');
   const [{ id }, sp] = await Promise.all([params, searchParams]);
   const entryId = Number(id);
   if (!Number.isInteger(entryId) || entryId <= 0) notFound();
-  // `?tab=roll-call` etc. — the layer screens' back links land on their own tab.
-  const initialTab = TABS.find((t) => t === sp.tab) ?? (sp.tab ? LEGACY_TABS[sp.tab] : undefined);
+  const tab: WorkbenchTab = TABS.find((t) => t === sp.tab) ?? (sp.tab ? LEGACY_TABS[sp.tab] : undefined) ?? 'entry';
+  const view = VIEWS.find((v) => v === sp.view) ?? null;
 
   const supabase = createAdminClient();
-  // Everything, plus the promotion hero — the Details panel is the full entry
-  // editor now, not a summary.
+  // Everything, plus the promotion hero — the Entry panel is the full entry
+  // editor, not a summary.
   const [{ data: entry }, categories] = await Promise.all([
     supabase
       .from('calendar_entries')
@@ -72,10 +88,9 @@ export default async function CalendarEntryPage({
   ]);
   if (!entry) notFound();
 
-  // Unconditional now — everyone who reaches this page is a leader. The Roll
-  // Call sheet renders inside its tab (Patrick, 2026-08-24), so its loads —
-  // who is here, who could be, what the category credits — happen here too.
-  const [{ data: meeting }, { data: signup }, attendance, candidates] = await Promise.all([
+  // What the tab strip needs, always: which layers exist and how many were
+  // present (the Roll Call count pill) — one row, one row, one count.
+  const [{ data: meeting }, { data: signup }, { count: attendanceCount }] = await Promise.all([
     supabase
       .from('meetings')
       .select('*')
@@ -83,21 +98,63 @@ export default async function CalendarEntryPage({
       .is('archived_at', null)
       .maybeSingle(),
     supabase.from('event_signups').select('id').eq('calendar_entry_id', entryId).maybeSingle(),
-    loadAttendance(entryId),
-    loadCandidates(entryId)
+    supabase.from('event_attendance').select('id', { count: 'exact', head: true }).eq('calendar_entry_id', entryId)
   ]);
 
   const row = entry as unknown as CalendarEntryRow;
+  const template = templateOf(categories, row.category);
   const rule = creditRuleFor(categories as Parameters<typeof creditRuleFor>[0], row.category);
+  const signupId = signup ? (signup.id as number) : null;
 
-  // The agenda editor renders inside its tab (Patrick, 2026-08-24), so its
-  // sessions and the engine's suggestions load here when the layer exists.
-  // Same for the signup builder — the Signup tab shows the builder itself
-  // once a signup exists; before that, the tab offers to enable one.
-  const [agenda, builder] = await Promise.all([
-    meeting ? loadAgendaEditorData(meeting.id as number, row.entry_date, meeting.title as string) : null,
-    signup ? loadBuilderData(signup.id as number) : null
-  ]);
+  // ── the active tab's own data ──
+  const agenda =
+    tab === 'agenda' && meeting
+      ? await loadAgendaEditorData(meeting.id as number, row.entry_date, meeting.title as string)
+      : null;
+
+  const [attendance, candidates] =
+    tab === 'roll-call' ? await Promise.all([loadAttendance(entryId), loadCandidates(entryId)]) : [null, null];
+
+  let builder: Awaited<ReturnType<typeof loadBuilderData>> = null;
+  let signupNav: EventNavData | null = null;
+  let signupView: { key: EventNavKey; node: React.ReactNode } | null = null;
+  if (tab === 'signup' && signupId) {
+    if (!view) {
+      builder = await loadBuilderData(signupId);
+      signupNav = builder?.nav ?? null;
+    } else {
+      signupNav = await loadEventNav(supabase, signupId, entryId);
+      const base = `/admin/calendar/${entryId}?tab=signup`;
+      if (view === 'roster') {
+        const data = await loadRoster(signupId);
+        if (data && data.entry) signupView = { key: 'roster', node: <RosterView data={data as RosterData} signupId={signupId} /> };
+      } else if (view === 'money') {
+        signupView = { key: 'money', node: <MoneyView signupId={signupId} calendarEntryId={entryId} /> };
+      } else if (view === 'snapshot') {
+        const order = parseRosterOrder(sp.order);
+        signupView = {
+          key: 'snapshot',
+          node: (
+            <SnapshotView
+              signupId={signupId}
+              order={order}
+              orderHref={(o) => `${base}&view=snapshot${o === 'patrol' ? '' : `&order=${o}`}`}
+            />
+          )
+        };
+      } else if (view === 'assignments') {
+        const data = await loadAssignments(signupId);
+        if (data && data.entry) {
+          const activeSetId = activeSetFor(data, Number(sp.set));
+          signupView = {
+            key: activeSetId != null ? `set:${activeSetId}` : 'assignments',
+            node: <AssignmentsView data={data} signupId={signupId} activeSetId={activeSetId} />
+          };
+        }
+      }
+    }
+  }
+
   const workbenchEntry: WorkbenchEntry = {
     id: row.id,
     title: row.title,
@@ -115,12 +172,13 @@ export default async function CalendarEntryPage({
   return (
     <Workbench
       entry={workbenchEntry}
-      // The full row feeds the Details panel's form, which is the same
+      // The full row feeds the Entry panel's form, which is the same
       // component the list's "+ Add Entry" dialog uses.
       row={{ ...row, hasAgenda: false }}
       categories={categories}
       onSaveDetails={updateCalendarEntry}
-      template={templateOf(categories, workbenchEntry.category)}
+      template={template}
+      tab={tab}
       meeting={meeting ? { id: meeting.id as number, status: meeting.status as string } : null}
       agenda={
         meeting && agenda
@@ -139,23 +197,28 @@ export default async function CalendarEntryPage({
             }
           : null
       }
-      signupId={signup ? (signup.id as number) : null}
+      signupId={signupId}
       builder={builder}
-      attendanceCount={attendance.length}
-      rollCall={{
-        creditKind: rule.creditKind,
-        creditUnit: rule.creditUnit,
-        countsAsActivity: rule.countsAsActivity,
-        defaultQty: defaultQtyFor(rule.creditKind, row.entry_date, row.end_date ?? null),
-        hasSignup: signup !== null,
-        candidates,
-        attendance,
-        onMark: markAttended,
-        onUnmark: markAbsent,
-        onSetQty: setAttendanceQty,
-        onSeed: seedFromSignup
-      }}
-      initialTab={initialTab}
+      signupNav={signupNav}
+      signupView={signupView}
+      attendanceCount={attendanceCount ?? 0}
+      rollCall={
+        attendance && candidates
+          ? {
+              creditKind: rule.creditKind,
+              creditUnit: rule.creditUnit,
+              countsAsActivity: rule.countsAsActivity,
+              defaultQty: defaultQtyFor(rule.creditKind, row.entry_date, row.end_date ?? null),
+              hasSignup: signup !== null,
+              candidates,
+              attendance,
+              onMark: markAttended,
+              onUnmark: markAbsent,
+              onSetQty: setAttendanceQty,
+              onSeed: seedFromSignup
+            }
+          : null
+      }
       onCreateEntry={createCalendarEntry}
       onAddAgenda={createMeeting}
       onEnableSignup={enableSignup}

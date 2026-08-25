@@ -34,20 +34,32 @@ export interface EventNavSet {
 export function eventNavItems(
   signupId: number,
   sets: readonly EventNavSet[] = [],
-  opts: { hasMoney?: boolean; active?: EventNavKey; entryId?: number } = {}
+  opts: { hasMoney?: boolean; active?: EventNavKey; entryId?: number; inWorkbench?: boolean } = {}
 ): { key: EventNavKey; label: string; href: string }[] {
   const showMoney = (opts.hasMoney ?? true) || opts.active === 'money';
   // Builder is the calendar entry workbench's Signup tab (Patrick, 2026-08-25:
   // "calendar be the central point of activity"); the standalone
   // /admin/events/[id] page is a redirect there. Keyed by the ENTRY, so the
   // signup id alone can't build it — callers pass entryId from loadEventNav.
-  const builderHref = opts.entryId ? `/admin/calendar/${opts.entryId}?tab=signup` : `/admin/events/${signupId}`;
+  //
+  // INSIDE the workbench every tab stays on the workbench (Patrick, later that
+  // day: clicking Roster or Snapshot "change[s] the screen, losing the top
+  // table and creating a confusing UX") — the views render in the Signup tab
+  // via ?view=, and the standalone /admin/rosters/[id] pages remain for links
+  // from elsewhere.
+  const wb = opts.inWorkbench && opts.entryId ? `/admin/calendar/${opts.entryId}?tab=signup` : null;
+  const builderHref = wb ?? (opts.entryId ? `/admin/calendar/${opts.entryId}?tab=signup` : `/admin/events/${signupId}`);
+  const href = (view: string, standalone: string) => (wb ? `${wb}&view=${view}` : standalone);
   return [
     { key: 'builder', label: 'Builder', href: builderHref },
-    { key: 'roster', label: 'Roster', href: `/admin/rosters/${signupId}` },
-    ...sets.map((s) => ({ key: `set:${s.id}` as const, label: s.label, href: `/admin/rosters/${signupId}/assignments?set=${s.id}` })),
-    ...(showMoney ? [{ key: 'money' as const, label: 'Money', href: `/admin/rosters/${signupId}/money` }] : []),
-    { key: 'snapshot', label: 'Snapshot', href: `/admin/rosters/${signupId}/snapshot` }
+    { key: 'roster', label: 'Roster', href: href('roster', `/admin/rosters/${signupId}`) },
+    ...sets.map((s) => ({
+      key: `set:${s.id}` as const,
+      label: s.label,
+      href: wb ? `${wb}&view=assignments&set=${s.id}` : `/admin/rosters/${signupId}/assignments?set=${s.id}`
+    })),
+    ...(showMoney ? [{ key: 'money' as const, label: 'Money', href: href('money', `/admin/rosters/${signupId}/money`) }] : []),
+    { key: 'snapshot', label: 'Snapshot', href: href('snapshot', `/admin/rosters/${signupId}/snapshot`) }
   ];
 }
 
@@ -56,7 +68,8 @@ export function EventNav({
   entryId,
   active,
   sets = [],
-  hasMoney = true
+  hasMoney = true,
+  inWorkbench = false
 }: {
   signupId: number;
   /** The calendar entry the signup belongs to — where the Builder tab opens. */
@@ -65,8 +78,14 @@ export function EventNav({
   sets?: readonly EventNavSet[];
   /** false hides Money (no prices, no money rows) unless active === 'money'. */
   hasMoney?: boolean;
+  /** Rendered inside the workbench's Signup tab: every tab stays there (?view=). */
+  inWorkbench?: boolean;
 }) {
   return (
-    <TabStrip ariaLabel="Event pages" activeKey={active} items={eventNavItems(signupId, sets, { hasMoney, active, entryId })} />
+    <TabStrip
+      ariaLabel="Event pages"
+      activeKey={active}
+      items={eventNavItems(signupId, sets, { hasMoney, active, entryId, inWorkbench })}
+    />
   );
 }

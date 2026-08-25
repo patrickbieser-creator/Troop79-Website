@@ -1,5 +1,4 @@
 import { createAdminClient } from '@/lib/supabase/server';
-import { fetchAllRows } from '@/lib/supabase/paginate';
 import { loadCalendarCategories } from '@/lib/calendar';
 import type { CalendarEntry, Media } from '@/lib/supabase/types';
 
@@ -22,52 +21,36 @@ export const metadata = {
   title: 'Calendar — Troop 79'
 };
 
+/** Every column the list, the clone dialog and the promotion picker read —
+ *  NOT details_md (the markdown story), which the workbench alone edits and
+ *  which was riding along for every row (2026-08-25 perf pass). */
+const LIST_COLUMNS =
+  'id, entry_date, end_date, day_note, category, title, description, location, start_time, end_time, on_calendar, status, show_on_homepage, featured, featured_order, promo_start, promo_end, hero_media_id, auto_archive_at, author_name, created_at, hero_media:hero_media_id(*)';
+
 async function loadData() {
   const supabase = createAdminClient();
   // Oldest first: the tabs below split upcoming from past, and within each
   // an ascending run reads as a schedule rather than a reverse log.
   // hero_media joined for the promotion section's picker preview.
-  const [
-    { data, error },
-    { data: agendas, error: agendaError },
-    { data: signups, error: signupError },
-    attendance,
-    { data: scouts },
-    signupEntries
-  ] = await Promise.all([
-    supabase
-      .from('calendar_entries')
-      .select('*, hero_media:hero_media_id(*)')
-      .order('entry_date', { ascending: true }),
-    supabase.from('meetings').select('id, calendar_entry_id, status').is('archived_at', null),
-    supabase.from('event_signups').select('id, calendar_entry_id, status'),
-    // The Roll Call list folded in here (2026-08-24), and with it its
-    // PAGINATED attendance read: event_attendance passed 1,000 rows the day
-    // the backfill landed, and PostgREST caps an unbounded read SILENTLY.
-    fetchAllRows<{ calendar_entry_id: number; person_id: number }>((from, to) =>
-      supabase.from('event_attendance').select('calendar_entry_id, person_id').range(from, to)
-    ),
-    supabase.from('scouts').select('person_id').not('person_id', 'is', null),
-    // The Going column (2026-08-25): one paginated read of every "yes"
-    // reply, reduced per signup below — the same aggregate as the
-    // event_signup_headcount RPC, but ONE query for the whole list rather
-    // than one RPC round-trip per signup (the loop the retired /admin/events
-    // list ran).
-    fetchAllRows<{ event_signup_id: number; guest_count: number | null }>((from, to) =>
-      supabase
-        .from('signup_entries')
-        .select('event_signup_id, guest_count')
-        .eq('status', 'yes')
-        .eq('participation', 'full')
-        .range(from, to)
-    )
-  ]);
+  //
+  // Per-entry counts (R pill scouts/adults, Going) come from ONE aggregate —
+  // calendar_list_counts() — instead of paginated reads of the whole
+  // event_attendance and signup_entries tables reduced in Node (Patrick,
+  // 2026-08-25: "the calendar page … is getting much slower on prod").
+  const [{ data, error }, { data: agendas, error: agendaError }, { data: signups, error: signupError }, { data: countRows, error: countError }] =
+    await Promise.all([
+      supabase.from('calendar_entries').select(LIST_COLUMNS).order('entry_date', { ascending: true }),
+      supabase.from('meetings').select('id, calendar_entry_id, status').is('archived_at', null),
+      supabase.from('event_signups').select('id, calendar_entry_id, status'),
+      supabase.rpc('calendar_list_counts')
+    ]);
   // Surfaced rather than swallowed: `const { data } = await …` turns a failed
   // query into an empty calendar, which reads as "nothing scheduled" instead of
   // "something is broken" (the loadCalendarCategories grey-out lesson).
   if (error) throw new Error(`Calendar entries failed to load: ${error.message}`);
   if (agendaError) throw new Error(`Meeting layers failed to load: ${agendaError.message}`);
   if (signupError) throw new Error(`Signup layers failed to load: ${signupError.message}`);
+  if (countError) throw new Error(`Calendar counts failed to load: ${countError.message}`);
 
   // Layer state, resolved once for the whole list rather than per row. This is
   // what the Status column's letter pills report: an entry's own state is only
@@ -85,23 +68,19 @@ async function loadData() {
       s
     ])
   );
-  const scoutPeople = new Set(((scouts ?? []) as { person_id: number }[]).map((s) => s.person_id));
-  const counts = new Map<number, { scouts: number; adults: number }>();
-  for (const a of attendance) {
-    const c = counts.get(a.calendar_entry_id) ?? { scouts: 0, adults: 0 };
-    if (scoutPeople.has(a.person_id)) c.scouts += 1;
-    else c.adults += 1;
-    counts.set(a.calendar_entry_id, c);
-  }
-  const goingBySignup = new Map<number, number>();
-  for (const s of signupEntries) {
-    goingBySignup.set(s.event_signup_id, (goingBySignup.get(s.event_signup_id) ?? 0) + 1 + (s.guest_count ?? 0));
-  }
+  const counts = new Map(
+    ((countRows ?? []) as { calendar_entry_id: number; scouts: number; adults: number; going: number }[]).map((c) => [
+      c.calendar_entry_id,
+      c
+    ])
+  );
 
   const entries = ((data ?? []) as unknown as (CalendarEntry & { hero_media: Media | null })[]).map(
     (e) => {
       const agenda = agendaByEntry.get(e.id);
       const signup = signupByEntry.get(e.id);
+      const c = counts.get(e.id);
+      const present = (c?.scouts ?? 0) + (c?.adults ?? 0);
       return {
         ...e,
         hasAgenda: agenda !== undefined,
@@ -109,8 +88,8 @@ async function loadData() {
         agendaStatus: agenda?.status ?? null,
         signupId: signup?.id ?? null,
         signupStatus: signup?.status ?? null,
-        attendance: counts.get(e.id) ?? null,
-        going: signup ? (goingBySignup.get(signup.id) ?? 0) : null
+        attendance: present > 0 ? { scouts: c!.scouts, adults: c!.adults } : null,
+        going: signup ? (c?.going ?? 0) : null
       };
     }
   );

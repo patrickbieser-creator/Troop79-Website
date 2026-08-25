@@ -11,11 +11,13 @@ import type { CalendarEntryRow } from '../src/app/admin/(workspace)/calendar/ent
  * at the top of the form it's evident what options are available").
  *
  * The heavy editors are stubbed — this file tests the tab shell: which tabs
- * exist for which template, which panel shows, and that switching tabs keeps
- * the other panels (and their drafts) mounted.
+ * exist for which template, which panel shows, and that a tab click is a
+ * (guarded) URL navigation — since 2026-08-25 the page loads only the active
+ * tab's data and only that panel renders (Patrick: "overloaded … slower").
  */
+const push = vi.fn();
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() })
+  useRouter: () => ({ refresh: vi.fn(), push })
 }));
 vi.mock('../src/app/admin/(workspace)/_components/markdown-split-pane', () => ({
   MarkdownSplitPane: ({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) => (
@@ -68,24 +70,29 @@ function renderWorkbench(over: Partial<React.ComponentProps<typeof Workbench>> =
       signupId={null}
       builder={null}
       attendanceCount={0}
-      rollCall={{
-        creditKind: null,
-        creditUnit: null,
-        countsAsActivity: false,
-        defaultQty: 1,
-        hasSignup: false,
-        candidates: [{ personId: 1, displayName: 'Avery Scout', scoutId: 's1', tab: 'active_scout', signedUp: false }],
-        attendance: [],
-        onMark: vi.fn(),
-        onUnmark: vi.fn(),
-        onSetQty: vi.fn(),
-        onSeed: vi.fn()
-      }}
+      tab="entry"
+      signupNav={null}
+      signupView={null}
+      rollCall={null}
       onAddAgenda={vi.fn()}
       {...over}
     />
   );
 }
+
+const ROLL_CALL = {
+  creditKind: null,
+  creditUnit: null,
+  countsAsActivity: false,
+  defaultQty: 1,
+  hasSignup: false,
+  candidates: [{ personId: 1, displayName: 'Avery Scout', scoutId: 's1', tab: 'active_scout', signedUp: false }],
+  attendance: [],
+  onMark: vi.fn(),
+  onUnmark: vi.fn(),
+  onSetQty: vi.fn(),
+  onSeed: vi.fn()
+} as never;
 
 /** The LAYER tabs only — the Roll Call sheet nests its own Scouts/Adults strip. */
 function tabNames(): string[] {
@@ -108,21 +115,21 @@ describe('Calendar entry workbench — one tab per layer', () => {
     expect(tabNames()).toEqual(['Entry', 'Roll Call', 'Signup']);
   });
 
-  it('OpensOnEntry_AndOnlyThatPanelIsVisible', () => {
+  it('EntryTab_RendersOnlyTheEntryPanel_NothingElseIsMounted', () => {
     renderWorkbench();
     expect(screen.getByRole('tab', { name: 'Entry' }).getAttribute('aria-selected')).toBe('true');
-    expect(screen.getByRole('tabpanel', { name: 'Entry' }).hidden).toBe(false);
     expect(screen.getByRole('form', { name: 'Entry details form' })).toBeTruthy();
-    // Hidden panels leave the accessibility tree — Testing Library can't find them by role.
-    expect(screen.queryByRole('tabpanel', { name: 'Roll Call' })).toBeNull();
-    const rollPanel = document.querySelector('section[aria-label="Roll Call"]') as HTMLElement;
-    expect(rollPanel.hidden).toBe(true); // still mounted — just hidden
+    // Other tabs' panels are not in the DOM at all — their data was never loaded.
+    expect(document.querySelector('section[aria-label="Roll Call"]')).toBeNull();
+    expect(document.querySelector('section[aria-label="Signup"]')).toBeNull();
   });
 
-  it('LegacyStoryOrDetailsDeepLink_OpensTheEntryTab', () => {
-    // page.tsx maps ?tab=details|story → 'entry'; the workbench only knows 'entry'.
-    renderWorkbench({ initialTab: 'entry' });
-    expect(screen.getByRole('tab', { name: 'Entry' }).getAttribute('aria-selected')).toBe('true');
+  it('TabClick_IsAUrlNavigation_ToThatTab', async () => {
+    const user = userEvent.setup();
+    push.mockClear();
+    renderWorkbench();
+    await user.click(screen.getByRole('tab', { name: 'Agenda' }));
+    expect(push).toHaveBeenCalledWith('/admin/calendar/109?tab=agenda');
   });
 
   it('RollCallTab_CarriesTheAttendanceCount_WhenRollWasTaken', () => {
@@ -130,10 +137,8 @@ describe('Calendar entry workbench — one tab per layer', () => {
     expect(screen.getByRole('tab', { name: /Roll Call/ }).textContent).toContain('14');
   });
 
-  it('RollCallTab_ShowsTheSheetItself_WithItsOwnSubTabs', async () => {
-    const user = userEvent.setup();
-    renderWorkbench();
-    await user.click(screen.getByRole('tab', { name: 'Roll Call' }));
+  it('RollCallTab_ShowsTheSheetItself_WithItsOwnSubTabs', () => {
+    renderWorkbench({ tab: 'roll-call', rollCall: ROLL_CALL });
     const panel = within(screen.getByRole('tabpanel', { name: 'Roll Call' }));
     expect(panel.getByRole('tablist', { name: 'Who to take roll for' })).toBeTruthy(); // the sub-tab bar
     expect(panel.getByLabelText(/Avery Scout/)).toBeTruthy(); // a checkbox, no "Take Roll Call" button first
@@ -146,8 +151,7 @@ describe('Calendar entry workbench — one tab per layer', () => {
     // Enabling happens HERE (2026-08-25: the Calendar is the hub) — a button
     // that runs the action for this entry, not a link out to the signups list.
     const onEnableSignup = vi.fn(async () => ({ ok: true }));
-    const { unmount } = renderWorkbench({ onEnableSignup });
-    await user.click(screen.getByRole('tab', { name: 'Signup' }));
+    const { unmount } = renderWorkbench({ tab: 'signup', onEnableSignup });
     expect(screen.queryByRole('link', { name: 'Enable a signup' })).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Enable a signup' }));
     expect(onEnableSignup).toHaveBeenCalledWith(109);
@@ -155,9 +159,11 @@ describe('Calendar entry workbench — one tab per layer', () => {
     unmount();
 
     renderWorkbench({
+      tab: 'signup',
       signupId: 8,
+      signupNav: { entryId: 109, sets: [], hasMoney: false },
       builder: {
-        nav: { sets: [], hasMoney: false },
+        nav: { entryId: 109, sets: [], hasMoney: false },
         signup: { id: 8 },
         entry: { id: 109 },
         prices: [],
@@ -166,23 +172,35 @@ describe('Calendar entry workbench — one tab per layer', () => {
         sets: []
       } as never
     });
-    await user.click(screen.getByRole('tab', { name: 'Signup' }));
     expect(screen.getByLabelText('Signup builder').textContent).toBe('builder for signup 8');
     expect(screen.getByRole('navigation', { name: 'Event nav' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Enable a signup' })).toBeNull();
   });
 
-  it('AgendaTab_OffersAddAnAgenda_WhenNoneExists', async () => {
-    const user = userEvent.setup();
-    renderWorkbench();
-    await user.click(screen.getByRole('tab', { name: 'Agenda' }));
+  it('SignupTab_HostsARosterOrMoneyView_InPlaceOfTheBuilder', () => {
+    // Patrick, 2026-08-25: Roster / Snapshot used to leave the workbench,
+    // "losing the top table" — now the page renders the view inside the tab.
+    renderWorkbench({
+      tab: 'signup',
+      signupId: 8,
+      signupNav: { entryId: 109, sets: [], hasMoney: true },
+      signupView: { key: 'roster', node: <div aria-label="Roster view">roster for 8</div> }
+    });
+    expect(screen.getByLabelText('Roster view').textContent).toBe('roster for 8');
+    expect(screen.queryByLabelText('Signup builder')).toBeNull();
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('PLC Meeting'); // the head stays
+    expect(tabNames()).toEqual(['Entry', 'Agenda', 'Roll Call', 'Signup']);
+  });
+
+  it('AgendaTab_OffersAddAnAgenda_WhenNoneExists', () => {
+    renderWorkbench({ tab: 'agenda' });
     expect(screen.getByRole('button', { name: 'Add an agenda' })).toBeTruthy();
     expect(screen.queryByLabelText('Agenda editor')).toBeNull();
   });
 
-  it('AgendaTab_ShowsTheEditorItself_WhenAnAgendaExists', async () => {
-    const user = userEvent.setup();
+  it('AgendaTab_ShowsTheEditorItself_WhenAnAgendaExists', () => {
     renderWorkbench({
+      tab: 'agenda',
       meeting: { id: 3, status: 'draft' },
       agenda: {
         meeting: { id: 3, status: 'draft', title: 'PLC Meeting' } as never,
@@ -198,7 +216,6 @@ describe('Calendar entry workbench — one tab per layer', () => {
         onDeleteMeeting: vi.fn()
       }
     });
-    await user.click(screen.getByRole('tab', { name: 'Agenda' }));
     expect(screen.getByLabelText('Agenda editor').textContent).toBe('embedded agenda editor');
     expect(screen.queryByRole('button', { name: 'Add an agenda' })).toBeNull();
     expect(screen.queryByText(/Take Roll Call/)).toBeNull(); // the link at the bottom is gone

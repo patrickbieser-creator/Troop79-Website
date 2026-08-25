@@ -47,6 +47,19 @@ describe('EventNav', () => {
     expect(eventNavItems(3, []).map((i) => i.key)).toEqual(['builder', 'roster', 'money', 'snapshot']);
   });
 
+  it('EventNav_InsideTheWorkbench_EveryTabStaysOnTheWorkbench', () => {
+    // Patrick, 2026-08-25: Roster / Snapshot used to navigate away from the
+    // entry — now each is a ?view= on the Signup tab.
+    const hrefs = eventNavItems(7, SETS.slice(0, 1), { entryId: 42, inWorkbench: true }).map((i) => i.href);
+    expect(hrefs).toEqual([
+      '/admin/calendar/42?tab=signup',
+      '/admin/calendar/42?tab=signup&view=roster',
+      '/admin/calendar/42?tab=signup&view=assignments&set=31',
+      '/admin/calendar/42?tab=signup&view=money',
+      '/admin/calendar/42?tab=signup&view=snapshot'
+    ]);
+  });
+
   it('EventNav_HidesMoney_WhenTheEventHasNoMoney_UnlessYouAreOnIt', () => {
     expect(eventNavItems(3, [], { hasMoney: false }).map((i) => i.key)).toEqual(['builder', 'roster', 'snapshot']);
     expect(eventNavItems(3, [], { hasMoney: false, active: 'money' }).map((i) => i.key)).toEqual(['builder', 'roster', 'money', 'snapshot']);

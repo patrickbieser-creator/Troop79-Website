@@ -2,14 +2,12 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireAnyOf } from '@/lib/require-capability';
-import { getEventMoneyAction } from '../../../finance/actions';
 import { PageTitle } from '../../../_components/page-title';
 import { EventNav } from '../event-nav';
 import { loadEventNav } from '../event-nav-data';
 import styles from '../../../events/events-admin.module.css';
-import { MoneyPanel } from './money-panel';
+import { MoneyView } from './money-view';
 
-import { centralToday } from '@/lib/dates';
 export const metadata = { title: 'Event Money — Troop 79' };
 
 /*
@@ -33,17 +31,7 @@ export default async function EventMoneyPage({ params }: { params: Promise<{ id:
     .maybeSingle();
   if (!sig) notFound();
   const s = sig as unknown as { calendar_entry_id: number; calendar_entries: { title: string } };
-  const data = await getEventMoneyAction(signupId);
   const nav = await loadEventNav(supabase, signupId, s.calendar_entry_id);
-  if (!data) notFound();
-
-  // Adults on this signup are the likely "paid by" candidates for an expense.
-  const { data: adults } = await supabase
-    .from('person_directory')
-    .select('person_id, display_name, scout_id')
-    .eq('active', true)
-    .is('scout_id', null)
-    .order('display_name');
 
   return (
     <>
@@ -60,16 +48,7 @@ export default async function EventMoneyPage({ params }: { params: Promise<{ id:
         }
       />
       <EventNav signupId={signupId} entryId={nav.entryId} active="money" sets={nav.sets} hasMoney={nav.hasMoney} />
-      <MoneyPanel
-        signupId={signupId}
-        calendarEntryId={s.calendar_entry_id}
-        data={data}
-        adults={((adults ?? []) as { person_id: number; display_name: string }[]).map((a) => ({
-          personId: a.person_id,
-          name: a.display_name
-        }))}
-        today={centralToday()}
-      />
+      <MoneyView signupId={signupId} calendarEntryId={s.calendar_entry_id} />
     </>
   );
 }

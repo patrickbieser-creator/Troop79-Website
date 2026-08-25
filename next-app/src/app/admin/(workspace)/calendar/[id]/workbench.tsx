@@ -13,27 +13,31 @@
  * signup needs no conversion and no migration. Presentation adapts; the data
  * model does not.
  *
- * One TAB per layer (Patrick, 2026-08-24: "introduce that same tab format we
- * have used elsewhere … so at the top of the form it's evident what options
- * are available"). The panels used to stack down the page, so the agenda and
- * roll-call options sat below a full entry form and a markdown editor. The
- * shared pill TabStrip is the strip; every panel stays MOUNTED and is hidden
- * with the `hidden` attribute rather than unmounted, so an edited-but-unsaved
- * Entry form (fields and story alike) survives a look at another tab. This
- * is the "tabbed workbench" pattern on /admin/styleguide/admin → Tab Strips.
+ * One TAB per layer (Patrick, 2026-08-24). The tabs are URL state now
+ * (`?tab=`, 2026-08-25 — "the calendar page seems to be overloaded and is
+ * getting much slower on prod"): the page loads ONLY the active tab's data,
+ * and only that panel renders, instead of every layer's editor mounting
+ * hidden on every visit (D-227's trade-off, retired). A tab click is a guarded
+ * navigation — an unsaved Entry form gets the Discard-changes prompt rather
+ * than vanishing. The Signup tab hosts the whole event workspace: the builder,
+ * and via `?view=` the Roster / assignment sets / Money / Snapshot, so the
+ * event tab strip never leaves the entry's head (Patrick: clicking Roster or
+ * Snapshot "change[s] the screen, losing the top table").
  */
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, type ReactNode } from 'react';
 import { Button } from '../../../_components/button';
 import { useRouter } from 'next/navigation';
 import type { CalendarCategoryRow, CategoryTemplate } from '@/lib/calendar-categories';
 import { TabStrip, type TabStripItem } from '../../_components/tab-strip';
 import { BackNav } from '../../_components/back-nav';
+import { useGuardedNav } from '../../_components/guarded-nav';
 import { CalendarEntryForm, type CalendarEntryRow } from '../entry-form';
 import { RollCall, type RollCallProps } from './roll-call/roll-call';
 import { MeetingEditor, type MeetingEditorProps } from '../../advancement/meetings/[id]/meeting-editor';
 import { BuilderPanels } from '../../events/[id]/builder-panels';
-import { EventNav } from '../../rosters/[id]/event-nav';
+import { EventNav, type EventNavKey } from '../../rosters/[id]/event-nav';
+import type { EventNavData } from '../../rosters/[id]/event-nav-data';
 import type { BuilderData } from '../../events/[id]/load-builder';
 import styles from './workbench.module.css';
 import { fmtDate, fmtRange } from '@/lib/format-date';
@@ -59,30 +63,33 @@ export interface WorkbenchEntry {
 
 interface Props {
   entry: WorkbenchEntry;
-  /** The full row, for the Details panel's form. */
+  /** The full row, for the Entry panel's form. */
   row: CalendarEntryRow;
   categories: CalendarCategoryRow[];
   onSaveDetails: (fd: FormData) => Promise<ActionResult>;
   onCreateEntry: (fd: FormData) => Promise<ActionResult>;
   template: CategoryTemplate;
+  /** The active tab — URL state, resolved by the page. */
+  tab: WorkbenchTab;
   /** The agenda layer, when one exists. */
   meeting: { id: number; status: string } | null;
-  /** The agenda editor's data and writes, when the layer exists — it renders
-   *  INSIDE the Agenda tab (Patrick, 2026-08-24). */
+  /** The agenda editor's data and writes — loaded only when the Agenda tab is
+   *  the active one; it renders INSIDE the tab (Patrick, 2026-08-24). */
   agenda: Omit<MeetingEditorProps, 'entry' | 'embedded'> | null;
   /** The signup layer, when one exists. */
   signupId: number | null;
-  /** The signup builder's data, when the layer exists — the builder renders
-   *  INSIDE the Signup tab (Patrick, 2026-08-24). */
+  /** The builder's data — loaded only for the Signup tab's Builder view. */
   builder: BuilderData | null;
+  /** The event tab strip's data, for any Signup view. */
+  signupNav: EventNavData | null;
+  /** A Signup view other than the builder (roster / assignments / money /
+   *  snapshot), rendered on the server by the page and hosted here. */
+  signupView: { key: EventNavKey; node: ReactNode } | null;
   /** People marked present so far — the Roll Call tab's count pill. */
   attendanceCount: number;
-  /** The Roll Call sheet's data and writes — it renders INSIDE the tab
-   *  (Patrick, 2026-08-24: "display the take roll editor right away"). Every
+  /** The Roll Call sheet's data and writes — loaded only for its tab. Every
    *  checkbox saves on its own, so leaving the tab mid-roll loses nothing. */
-  rollCall: Omit<RollCallProps, 'entryId' | 'entryTitle'>;
-  /** Which tab opens first — deep links from the layer screens' back links. */
-  initialTab?: WorkbenchTab;
+  rollCall: Omit<RollCallProps, 'entryId' | 'entryTitle'> | null;
   onAddAgenda?: (fd: FormData) => Promise<{ ok: boolean; error?: string; id?: number }>;
   /** Enables a signup on this entry, in place (2026-08-25: the Calendar is
    *  the hub — no detour through the signups list to flip it on). */
@@ -102,21 +109,21 @@ export function Workbench({
   onSaveDetails,
   onCreateEntry,
   template,
+  tab,
   meeting,
   agenda,
   signupId,
   builder,
+  signupNav,
+  signupView,
   attendanceCount,
   rollCall,
-  initialTab,
   onAddAgenda,
   onEnableSignup
 }: Props) {
   const router = useRouter();
+  const { navigate, dialog } = useGuardedNav();
   const hasAgendaTab = template === 'meeting';
-  const [tab, setTab] = useState<WorkbenchTab>(() =>
-    initialTab && (initialTab !== 'agenda' || hasAgendaTab) ? initialTab : 'entry'
-  );
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -152,17 +159,21 @@ export function Workbench({
   }
 
   const dateLabel = entry.end_date ? fmtRange(entry.entry_date, entry.end_date) : fmtDate(entry.entry_date);
+  const tabHref = (key: WorkbenchTab) => `/admin/calendar/${entry.id}?tab=${key}`;
+  const go = (key: WorkbenchTab) => () => {
+    if (key !== tab) navigate(tabHref(key));
+  };
 
   const tabs: TabStripItem[] = [
-    { key: 'entry', label: 'Entry', onSelect: () => setTab('entry') },
-    ...(hasAgendaTab ? [{ key: 'agenda', label: 'Agenda', onSelect: () => setTab('agenda') }] : []),
+    { key: 'entry', label: 'Entry', onSelect: go('entry') },
+    ...(hasAgendaTab ? [{ key: 'agenda', label: 'Agenda', onSelect: go('agenda') }] : []),
     {
       key: 'roll-call',
       label: 'Roll Call',
       count: attendanceCount > 0 ? attendanceCount : undefined,
-      onSelect: () => setTab('roll-call')
+      onSelect: go('roll-call')
     },
-    { key: 'signup', label: 'Signup', onSelect: () => setTab('signup') }
+    { key: 'signup', label: 'Signup', onSelect: go('signup') }
   ];
 
   return (
@@ -193,27 +204,29 @@ export function Workbench({
       {err && <div className={styles.error}>{err}</div>}
 
       <TabStrip ariaLabel="Entry layers" activeKey={tab} items={tabs} className={styles.tabs} />
+      {dialog}
 
       {/* ── the entry: its own fields AND the story, one form ──
           Editable here, not read-only. This panel is why "Edit" disappeared
-          from the list: the workbench is the entry's editor, and having to
-          leave it to fix a title was the whole complaint. The Story used to
+          from the list: the workbench is the entry's editor. The Story used to
           be its own tab with its own Save (Patrick, 2026-08-25: "consolidate
           Details and story" on the news editor's pattern). */}
-      <section className={styles.panel} role="tabpanel" aria-label="Entry" hidden={tab !== 'entry'}>
-        <CalendarEntryForm
-          row={row}
-          variant="inline"
-          categories={categories}
-          onCreate={onCreateEntry}
-          onUpdate={onSaveDetails}
-          onClose={() => {}}
-        />
-      </section>
+      {tab === 'entry' && (
+        <section className={styles.panel} role="tabpanel" aria-label="Entry">
+          <CalendarEntryForm
+            row={row}
+            variant="inline"
+            categories={categories}
+            onCreate={onCreateEntry}
+            onUpdate={onSaveDetails}
+            onClose={() => {}}
+          />
+        </section>
+      )}
 
       {/* ── agenda layer (meeting template, leaders only) ── */}
-      {hasAgendaTab && (
-        <section className={styles.panel} role="tabpanel" aria-label="Agenda" hidden={tab !== 'agenda'}>
+      {tab === 'agenda' && hasAgendaTab && (
+        <section className={styles.panel} role="tabpanel" aria-label="Agenda">
           {/* The editor itself lives here (Patrick, 2026-08-24) — its own
               header (status, Publish, Delete agenda) sits under this one. */}
           {meeting && agenda ? (
@@ -223,11 +236,7 @@ export function Workbench({
               <div className={styles.panelHead}>
                 <h2>Agenda</h2>
                 <div>
-                  <Button
-                    variant="primary"
-                    onClick={addAgenda}
-                    disabled={isPending}
-                  >
+                  <Button variant="primary" onClick={addAgenda} disabled={isPending}>
                     {isPending ? 'Adding…' : 'Add an agenda'}
                   </Button>
                 </div>
@@ -243,57 +252,72 @@ export function Workbench({
       {/* ── attendance layer ──
           Every entry has one, not just meetings — that is the whole point of
           Roll Call. The sheet renders right here (Patrick, 2026-08-24); its
-          Scouts / Leaders / Adults strip is a SUB-tab bar under this one, so
-          the layer tabs stay put while you work down a list. Each checkbox
-          saves on its own — nothing is lost by switching tabs mid-roll. */}
-      <section className={styles.panel} role="tabpanel" aria-label="Roll Call" hidden={tab !== 'roll-call'}>
-        <div className={styles.panelHead}>
-          <h2>Roll Call</h2>
-        </div>
-        <p className={styles.panelNote}>
-          Who was at this event. Seeded from the signup where there is one, and correctable by
-          hand for anyone who told you verbally or turned up on the day. Every check saves as you go.
-        </p>
-        <RollCall entryId={entry.id} entryTitle={entry.title} {...rollCall} />
-      </section>
+          Scouts / Leaders / Adults strip is a SUB-tab bar under this one. */}
+      {tab === 'roll-call' && rollCall && (
+        <section className={styles.panel} role="tabpanel" aria-label="Roll Call">
+          <div className={styles.panelHead}>
+            <h2>Roll Call</h2>
+          </div>
+          <p className={styles.panelNote}>
+            Who was at this event. Seeded from the signup where there is one, and correctable by
+            hand for anyone who told you verbally or turned up on the day. Every check saves as you go.
+          </p>
+          <RollCall entryId={entry.id} entryTitle={entry.title} {...rollCall} />
+        </section>
+      )}
 
       {/* ── signup layer ──
-          The builder itself renders here once a signup exists (Patrick,
-          2026-08-24); before that the tab offers to enable one. EventNav
-          keeps Roster / Money / Assignments one click away. */}
-      <section className={styles.panel} role="tabpanel" aria-label="Signup" hidden={tab !== 'signup'}>
-        {signupId && builder && builder.entry ? (
-          <>
-            <EventNav signupId={signupId} entryId={entry.id} active="builder" sets={builder.nav.sets} hasMoney={builder.nav.hasMoney} />
-            <BuilderPanels
-              signupId={signupId}
-              calendarEntryId={entry.id}
-              entryDate={entry.entry_date}
-              endDate={entry.end_date}
-              signup={builder.signup}
-              prices={builder.prices}
-              slots={builder.slots}
-              questions={builder.questions}
-              sets={builder.sets}
-              category={entry.category}
-            />
-          </>
-        ) : (
-          <>
-            <div className={styles.panelHead}>
-              <h2>Signup</h2>
-              <div>
-                <Button type="button" onClick={enableSignupHere} disabled={isPending || !onEnableSignup}>
-                  Enable a signup
-                </Button>
+          The whole event workspace lives in this tab: the builder, and via
+          the event tab strip the Roster, each assignment set, Money and the
+          Snapshot — every one of them rendered HERE (2026-08-25), so the
+          entry's head and layer tabs stay put. Before a signup exists the tab
+          offers to enable one. */}
+      {tab === 'signup' && (
+        <section className={styles.panel} role="tabpanel" aria-label="Signup">
+          {signupId && signupNav ? (
+            <>
+              <EventNav
+                signupId={signupId}
+                entryId={entry.id}
+                active={signupView?.key ?? 'builder'}
+                sets={signupNav.sets}
+                hasMoney={signupNav.hasMoney}
+                inWorkbench
+              />
+              {signupView ? (
+                signupView.node
+              ) : builder && builder.entry ? (
+                <BuilderPanels
+                  signupId={signupId}
+                  calendarEntryId={entry.id}
+                  entryDate={entry.entry_date}
+                  endDate={entry.end_date}
+                  signup={builder.signup}
+                  prices={builder.prices}
+                  slots={builder.slots}
+                  questions={builder.questions}
+                  sets={builder.sets}
+                  category={entry.category}
+                />
+              ) : null}
+            </>
+          ) : (
+            <>
+              <div className={styles.panelHead}>
+                <h2>Signup</h2>
+                <div>
+                  <Button type="button" onClick={enableSignupHere} disabled={isPending || !onEnableSignup}>
+                    Enable a signup
+                  </Button>
+                </div>
               </div>
-            </div>
-            <p className={styles.panelNote}>
-              No signup on this entry. Not every event needs one — some you just come to.
-            </p>
-          </>
-        )}
-      </section>
+              <p className={styles.panelNote}>
+                No signup on this entry. Not every event needs one — some you just come to.
+              </p>
+            </>
+          )}
+        </section>
+      )}
     </>
   );
 }
