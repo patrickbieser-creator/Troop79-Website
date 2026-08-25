@@ -83,8 +83,13 @@ describe('Calendar list — one line per event', () => {
     renderList([row({ agendaId: 5, agendaStatus: 'draft', signupId: 8, signupStatus: 'open', attendance: { scouts: 12, adults: 3 } })]);
     expect(screen.getByRole('link', { name: 'Agenda draft' }).getAttribute('href')).toBe('/admin/advancement/meetings/5');
     expect(screen.getByRole('link', { name: 'Signup open' }).getAttribute('href')).toBe('/admin/events/8');
-    expect(screen.getByRole('link', { name: /Roll call taken — 12 scouts \+ 3 adults/ }).getAttribute('href')).toBe('/admin/calendar/109/roll-call');
-    expect(screen.getByRole('img', { name: 'On the troop calendar' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: /Roll call taken — 12 scouts \+ 3 adults/ }).getAttribute('href')).toBe('/admin/calendar/109?tab=roll-call');
+    expect(screen.queryByRole('img', { name: /calendar/ })).toBeNull(); // on-calendar is the norm — no O
+  });
+
+  it('OffCalendar_ShowsARedO_InItsOwnColumn', () => {
+    renderList([row({ on_calendar: false })]);
+    expect(screen.getByRole('img', { name: /Off calendar/ }).textContent).toBe('O');
   });
 
   it('RowActions_AreEditCloneMergeDelete_AndNothingElse', () => {

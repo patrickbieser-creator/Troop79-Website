@@ -174,9 +174,12 @@ textarea.editInput { resize: vertical; min-height: 68px; line-height: 1.5; }
 .titleCell a:hover { text-decoration: underline; }
 
 /* Letter status pills (2026-08-24): A agenda · S signup · R roll call taken ·
-   O on the calendar. Tones follow the status tokens — green live, yellow
-   draft, grey closed, white off-calendar. Specimen on the admin styleguide. */
+   O off the calendar. Tones follow the status tokens — green live, yellow
+   draft, grey closed, red off-calendar (O appears ONLY then). Every letter
+   keeps its own 18px slot so the pills align down the list. Specimen on the
+   admin styleguide. */
 .statusCell { display: inline-flex; gap: 4px; }
+.pillSlot { display: inline-block; width: 18px; height: 18px; }
 .pill {
   display: inline-flex; align-items: center; justify-content: center;
   width: 18px; height: 18px; border-radius: 50%;
@@ -188,7 +191,7 @@ a.pill:hover { outline: 2px solid var(--admin-navy); outline-offset: 1px; }
 .pillLive { background: var(--admin-status-success-bg); color: var(--admin-forest); border-color: color-mix(in srgb, var(--admin-forest) 35%, var(--admin-white)); }
 .pillDraft { background: var(--admin-status-warning-bg); color: var(--admin-accent-gold); border-color: color-mix(in srgb, var(--admin-accent-gold) 40%, var(--admin-white)); }
 .pillClosed { background: var(--admin-gray-100); color: var(--admin-gray-500); border-color: var(--admin-gray-200); }
-.pillOff { background: var(--admin-white); color: var(--admin-gray-400); border-color: var(--admin-gray-300); }
+.pillOff { background: var(--admin-status-error-bg); color: var(--admin-danger-dark); border-color: color-mix(in srgb, var(--admin-danger) 40%, var(--admin-white)); }
 .nowrap { white-space: nowrap; }
 
 /* .newBtn deleted Phase B (2026-08-21) — dead copy, no consumers (the header

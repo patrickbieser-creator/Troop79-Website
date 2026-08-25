@@ -28,6 +28,8 @@ import { TabStrip } from '../../../_components/tab-strip';
 
 type Result = { ok: boolean; error?: string };
 
+export type RollCallProps = Props;
+
 interface Props {
   entryId: number;
   entryTitle: string;

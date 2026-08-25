@@ -60,14 +60,14 @@ describe('dateHover — weekday, time, note', () => {
 describe('statusPills', () => {
   const base = { id: 7, on_calendar: true, agendaStatus: null, signupStatus: null, attendance: null };
 
-  it('PlainOnCalendarEntry_HasOnlyAGreenO', () => {
-    expect(statusPills(base)).toEqual([
-      { letter: 'O', label: 'On the troop calendar', tone: 'live', href: null }
-    ]);
+  it('PlainOnCalendarEntry_HasNoPills', () => {
+    expect(statusPills(base)).toEqual([]);
   });
 
-  it('OffCalendar_FlipsOToWhite', () => {
-    expect(statusPills({ ...base, on_calendar: false })[0]).toMatchObject({ letter: 'O', tone: 'off' });
+  it('OffCalendar_IsTheOnlyTimeOAppears_InRed', () => {
+    expect(statusPills({ ...base, on_calendar: false })).toEqual([
+      { letter: 'O', label: 'Off calendar — not published to the calendar or .ics feed', tone: 'off', href: null }
+    ]);
   });
 
   it('Agenda_PublishedIsGreen_DraftIsYellow_AndLinksToTheEditor', () => {
@@ -87,13 +87,13 @@ describe('statusPills', () => {
   it('RollCall_AppearsOnlyOnceTaken_WithTheCountInTheHover', () => {
     expect(statusPills(base).some((p) => p.letter === 'R')).toBe(false);
     const r = statusPills({ ...base, attendance: { scouts: 12, adults: 3 } }).find((p) => p.letter === 'R')!;
-    expect(r).toMatchObject({ tone: 'live', href: '/admin/calendar/7/roll-call' });
+    expect(r).toMatchObject({ tone: 'live', href: '/admin/calendar/7?tab=roll-call' });
     expect(r.label).toContain('12 scouts + 3 adults');
   });
 
-  it('Order_IsAgendaSignupRollCallOnCalendar', () => {
+  it('Order_IsAgendaSignupRollCallOffCalendar', () => {
     const letters = statusPills({
-      ...base, agendaId: 1, agendaStatus: 'draft', signupId: 2, signupStatus: 'open', attendance: { scouts: 1, adults: 0 }
+      ...base, on_calendar: false, agendaId: 1, agendaStatus: 'draft', signupId: 2, signupStatus: 'open', attendance: { scouts: 1, adults: 0 }
     }).map((p) => p.letter);
     expect(letters).toEqual(['A', 'S', 'R', 'O']);
   });

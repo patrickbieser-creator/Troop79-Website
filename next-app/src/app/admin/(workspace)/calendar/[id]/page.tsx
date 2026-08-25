@@ -18,8 +18,23 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { requireCapability } from '@/lib/require-capability';
 import { loadCalendarCategories } from '@/lib/calendar';
 import { categoryColorMap, colorFor, templateOf } from '@/lib/calendar-categories';
-import { createMeeting } from '../../advancement/meetings/actions';
+import { creditRuleFor, defaultQtyFor, loadAttendance, loadCandidates } from '@/lib/attendance';
+import {
+  createMeeting,
+  updateMeeting,
+  setMeetingStatus,
+  createSession,
+  updateSession,
+  deleteSession,
+  moveSession,
+  promotePlanSession,
+  deleteMeeting
+} from '../../advancement/meetings/actions';
+import { loadAgendaEditorData } from '../../advancement/meetings/load-agenda';
+import { loadBuilderData } from '../../events/[id]/load-builder';
+import type { Meeting } from '@/lib/supabase/types';
 import { updateEntryStory, updateCalendarEntry, createCalendarEntry } from '../actions';
+import { markAttended, markAbsent, setAttendanceQty, seedFromSignup } from './roll-call/actions';
 import type { CalendarEntryRow } from '../entry-form';
 import { Workbench, type WorkbenchEntry, type WorkbenchTab } from './workbench';
 
@@ -54,20 +69,32 @@ export default async function CalendarEntryPage({
   ]);
   if (!entry) notFound();
 
-  // Unconditional now — everyone who reaches this page is a leader.
-  const [{ data: meeting }, { data: signup }, { count: attendanceCount }] = await Promise.all([
+  // Unconditional now — everyone who reaches this page is a leader. The Roll
+  // Call sheet renders inside its tab (Patrick, 2026-08-24), so its loads —
+  // who is here, who could be, what the category credits — happen here too.
+  const [{ data: meeting }, { data: signup }, attendance, candidates] = await Promise.all([
     supabase
       .from('meetings')
-      .select('id, status')
+      .select('*')
       .eq('calendar_entry_id', entryId)
       .is('archived_at', null)
       .maybeSingle(),
     supabase.from('event_signups').select('id').eq('calendar_entry_id', entryId).maybeSingle(),
-    // Count only — the Roll Call tab's pill. Scoped to one entry, so no cap risk.
-    supabase.from('event_attendance').select('id', { count: 'exact', head: true }).eq('calendar_entry_id', entryId)
+    loadAttendance(entryId),
+    loadCandidates(entryId)
   ]);
 
   const row = entry as unknown as CalendarEntryRow;
+  const rule = creditRuleFor(categories as Parameters<typeof creditRuleFor>[0], row.category);
+
+  // The agenda editor renders inside its tab (Patrick, 2026-08-24), so its
+  // sessions and the engine's suggestions load here when the layer exists.
+  // Same for the signup builder — the Signup tab shows the builder itself
+  // once a signup exists; before that, the tab offers to enable one.
+  const [agenda, builder] = await Promise.all([
+    meeting ? loadAgendaEditorData(meeting.id as number, row.entry_date, meeting.title as string) : null,
+    signup ? loadBuilderData(signup.id as number) : null
+  ]);
   const workbenchEntry: WorkbenchEntry = {
     id: row.id,
     title: row.title,
@@ -92,8 +119,39 @@ export default async function CalendarEntryPage({
       onSaveDetails={updateCalendarEntry}
       template={templateOf(categories, workbenchEntry.category)}
       meeting={meeting ? { id: meeting.id as number, status: meeting.status as string } : null}
+      agenda={
+        meeting && agenda
+          ? {
+              meeting: meeting as Meeting,
+              sessions: agenda.sessions,
+              candidates: agenda.candidates,
+              onUpdateMeeting: updateMeeting,
+              onSetStatus: setMeetingStatus,
+              onCreateSession: createSession,
+              onUpdateSession: updateSession,
+              onDeleteSession: deleteSession,
+              onMoveSession: moveSession,
+              onPromote: promotePlanSession,
+              onDeleteMeeting: deleteMeeting
+            }
+          : null
+      }
       signupId={signup ? (signup.id as number) : null}
-      attendanceCount={attendanceCount ?? 0}
+      builder={builder}
+      attendanceCount={attendance.length}
+      rollCall={{
+        creditKind: rule.creditKind,
+        creditUnit: rule.creditUnit,
+        countsAsActivity: rule.countsAsActivity,
+        defaultQty: defaultQtyFor(rule.creditKind, row.entry_date, row.end_date ?? null),
+        hasSignup: signup !== null,
+        candidates,
+        attendance,
+        onMark: markAttended,
+        onUnmark: markAbsent,
+        onSetQty: setAttendanceQty,
+        onSeed: seedFromSignup
+      }}
       initialTab={initialTab}
       onSaveStory={updateEntryStory}
       onCreateEntry={createCalendarEntry}

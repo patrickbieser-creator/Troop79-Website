@@ -47,7 +47,13 @@ interface Props {
    *  the retired Roll Call list; now at the top of the agenda (Patrick,
    *  2026-08-24). */
   onDeleteMeeting: (id: number) => Promise<ActionResult>;
+  /** Rendered inside the calendar entry workbench's Agenda tab (2026-08-24):
+   *  no back link or page title of its own — the entry's header is above —
+   *  and deleting the agenda stays on the entry rather than navigating. */
+  embedded?: boolean;
 }
+
+export type MeetingEditorProps = Props;
 
 export function MeetingEditor({
   meeting,
@@ -61,7 +67,8 @@ export function MeetingEditor({
   onDeleteSession,
   onMoveSession,
   onPromote,
-  onDeleteMeeting
+  onDeleteMeeting,
+  embedded = false
 }: Props) {
   const router = useRouter();
   const [err, setErr] = useState<string | null>(null);
@@ -211,7 +218,8 @@ export function MeetingEditor({
         setErr(res.error ?? 'Could not delete the agenda.');
         return;
       }
-      router.push(`/admin/calendar/${entry.id}?tab=agenda`);
+      if (embedded) router.refresh();
+      else router.push(`/admin/calendar/${entry.id}?tab=agenda`);
     });
   }
 
@@ -219,12 +227,16 @@ export function MeetingEditor({
     <>
       <div className={styles.editorHead}>
         <div>
-          <Link href={`/admin/calendar/${entry.id}?tab=agenda`} className={styles.backLink}>
-            &larr; Back to the entry
-          </Link>
-          <h1>
-            {meeting.title} &mdash; {fmtDateFull(entry.entry_date)}
-          </h1>
+          {!embedded && (
+            <>
+              <Link href={`/admin/calendar/${entry.id}?tab=agenda`} className={styles.backLink}>
+                &larr; Back to the entry
+              </Link>
+              <h1>
+                {meeting.title} &mdash; {fmtDateFull(entry.entry_date)}
+              </h1>
+            </>
+          )}
         </div>
         <div className={styles.headActions}>
           <Badge variant={published ? 'success' : 'neutral'}>{meeting.status}</Badge>

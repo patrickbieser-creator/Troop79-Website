@@ -81,9 +81,10 @@ export interface StatusPillInput {
 /**
  * The Status column (Patrick, 2026-08-24): "single letter pills … Yellow is
  * for drafts. Green is for live for 'A' agendas, 'S' signups. 'R' roll call
- * taken, 'O' off calendar (but flip the pill so that it's green for all
- * on-calendar events, and white for off calendar)". A layer that does not
- * exist has no pill; the pills are also the way in to each layer's screen.
+ * taken, 'O' off calendar" — and, the same day: "Remove the off-calendar pill
+ * altogether if the item is on the calendar, but display it in a red tint if
+ * it is off". A layer that does not exist has no pill; the pills are also the
+ * way in to each layer's screen.
  */
 export function statusPills(row: StatusPillInput): StatusPill[] {
   const pills: StatusPill[] = [];
@@ -114,16 +115,25 @@ export function statusPills(row: StatusPillInput): StatusPill[] {
       letter: 'R',
       label: `Roll call taken — ${row.attendance!.scouts} scouts + ${row.attendance!.adults} adults`,
       tone: 'live',
-      href: `/admin/calendar/${row.id}/roll-call`
+      // The sheet lives in the entry's Roll Call tab (2026-08-24).
+      href: `/admin/calendar/${row.id}?tab=roll-call`
     });
   }
 
-  pills.push({
-    letter: 'O',
-    label: row.on_calendar ? 'On the troop calendar' : 'Off calendar — not published to the calendar or .ics feed',
-    tone: row.on_calendar ? 'live' : 'off',
-    href: null
-  });
+  // O only when it is the exception (Patrick, 2026-08-24): an on-calendar
+  // entry is the norm and shows nothing; off-calendar is red so it stands out.
+  if (!row.on_calendar) {
+    pills.push({
+      letter: 'O',
+      label: 'Off calendar — not published to the calendar or .ics feed',
+      tone: 'off',
+      href: null
+    });
+  }
 
   return pills;
 }
+
+/** Column order of the pills — each letter keeps its own column so the pills
+ *  line up down the list (Patrick, 2026-08-24). */
+export const PILL_COLUMNS: StatusPill['letter'][] = ['A', 'S', 'R', 'O'];

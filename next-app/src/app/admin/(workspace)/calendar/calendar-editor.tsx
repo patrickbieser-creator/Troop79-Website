@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { CalendarCategoryRow } from '@/lib/calendar-categories';
 import { splitByTab } from '@/lib/calendar-tabs';
-import { authorInitials, dateHover, dateLabel, statusPills, truncate } from '@/lib/calendar-list';
+import { PILL_COLUMNS, authorInitials, dateHover, dateLabel, statusPills, truncate } from '@/lib/calendar-list';
 import { DatePickerField } from '../_components/date-picker-field';
 import { TabStrip } from '../_components/tab-strip';
 import { AddButton } from '../_components/add-button';
@@ -668,16 +668,21 @@ function CloneForm({
  */
 function StatusPills({ row }: { row: CalendarEntryRow }) {
   const tone = { live: styles.pillLive, draft: styles.pillDraft, closed: styles.pillClosed, off: styles.pillOff };
+  const pills = statusPills(row);
   return (
     <span className={styles.statusCell}>
-      {statusPills(row).map((p) => {
+      {/* One slot per letter, always, so A/S/R/O line up down the list; an
+          absent layer leaves its slot empty. */}
+      {PILL_COLUMNS.map((letter) => {
+        const p = pills.find((x) => x.letter === letter);
+        if (!p) return <span key={letter} className={styles.pillSlot} aria-hidden="true" />;
         const cls = `${styles.pill} ${tone[p.tone]}`;
         return p.href ? (
-          <Link key={p.letter} href={p.href} className={cls} title={p.label} aria-label={p.label}>
+          <Link key={letter} href={p.href} className={cls} title={p.label} aria-label={p.label}>
             {p.letter}
           </Link>
         ) : (
-          <span key={p.letter} className={cls} title={p.label} aria-label={p.label} role="img">
+          <span key={letter} className={cls} title={p.label} aria-label={p.label} role="img">
             {p.letter}
           </span>
         );

@@ -481,7 +481,7 @@ export default function StyleguidePage() {
           <Specimen
             label="Tabbed workbench — long multipart editors"
             canonical
-            note="Patrick 2026-08-24 (calendar entry workbench): a record with several independently-saved parts gets ONE pill tab per part, above the panel, so the options are evident at the top instead of stacked down the page. Rules: the same TabStrip in onSelect mode; every panel stays MOUNTED and is hidden with the `hidden` attribute (role=tabpanel, aria-label = tab name) so an unsaved draft on one tab survives a look at another; a tab whose part has content shows it as the count pill (Roll Call: people present); a tab with an unsaved draft gets a trailing • in its label; tabs a record can't have (Agenda on a non-meeting) are omitted, not disabled. Optional ?tab= deep link for back links from the part's own screen. Reference: calendar/[id]/workbench.tsx."
+            note="Patrick 2026-08-24 (calendar entry workbench): a record with several independently-saved parts gets ONE pill tab per part, above the panel, so the options are evident at the top instead of stacked down the page. Rules: the same TabStrip in onSelect mode; every panel stays MOUNTED and is hidden with the `hidden` attribute (role=tabpanel, aria-label = tab name) so an unsaved draft on one tab survives a look at another; a tab whose part has content shows it as the count pill (Roll Call: people present); a tab with an unsaved draft gets a trailing • in its label; tabs a record can't have (Agenda on a non-meeting) are omitted, not disabled. Optional ?tab= deep link for back links from the part's own screen. A part with its own groups may nest a second TabStrip as a SUB-tab bar inside its panel (Roll Call's Scouts / Leaders / Adults) — the layer tabs stay put. Reference: calendar/[id]/workbench.tsx."
           >
             <TabStrip
               ariaLabel="Specimen workbench"
@@ -528,7 +528,7 @@ export default function StyleguidePage() {
           <Specimen
             label="Letter status pills — calendar list (.pill)"
             canonical
-            note="Patrick 2026-08-24, when the Roll Call list folded into the Calendar: a row that carries several LAYERS shows one letter per layer instead of a wordy Badge each — A agenda, S signup, R roll call taken, O on the calendar. Tones: green live, yellow draft, grey closed, white off (O flips: green ON calendar, white OFF). The whole word is the hover/aria-label; a pill whose layer has a screen renders as a Link to it. Rules + order: lib/calendar-list.ts statusPills(). Use it where one row summarizes several parts; keep Badges for a single status word."
+            note="Patrick 2026-08-24, when the Roll Call list folded into the Calendar: a row that carries several LAYERS shows one letter per layer instead of a wordy Badge each — A agenda, S signup, R roll call taken, O off the calendar. Tones: green live, yellow draft, grey closed, RED for the exception (O shows only when an entry is off-calendar; on-calendar is the norm and shows nothing). Every letter keeps its own 18px slot (.pillSlot) so pills align down a list. The whole word is the hover/aria-label; a pill whose layer has a screen renders as a Link to it. Rules + order: lib/calendar-list.ts statusPills() / PILL_COLUMNS. Use it where one row summarizes several parts; keep Badges for a single status word."
           >
             <span className={cal.statusCell}>
               <span className={`${cal.pill} ${cal.pillLive}`} title="Agenda published">A</span>
@@ -536,9 +536,16 @@ export default function StyleguidePage() {
               <span className={`${cal.pill} ${cal.pillLive}`} title="Signup open">S</span>
               <span className={`${cal.pill} ${cal.pillClosed}`} title="Signup closed">S</span>
               <span className={`${cal.pill} ${cal.pillLive}`} title="Roll call taken">R</span>
-              <span className={`${cal.pill} ${cal.pillLive}`} title="On the troop calendar">O</span>
               <span className={`${cal.pill} ${cal.pillOff}`} title="Off calendar">O</span>
             </span>
+            <div>
+              <span className={cal.statusCell}>
+                <span className={cal.pillSlot} aria-hidden="true" />
+                <span className={`${cal.pill} ${cal.pillLive}`} title="Signup open">S</span>
+                <span className={cal.pillSlot} aria-hidden="true" />
+                <span className={`${cal.pill} ${cal.pillOff}`} title="Off calendar">O</span>
+              </span>
+            </div>
           </Specimen>
           <Specimen
             label="Categorical tags — NOT Badges (deliberate)"

@@ -65,6 +65,12 @@
 /* `hidden` must beat the panel's display, or every tab shows at once. */
 .panel[hidden] { display: none; }
 
+/* A link-styled button for in-page tab switches (Agenda → "Take Roll Call"). */
+.linkBtn {
+  background: none; border: none; padding: 0; font: inherit; cursor: pointer;
+  color: var(--admin-forest); text-decoration: underline;
+}
+
 /* Card/panel canon (Phase B, 2026-08-21): white, gray-200 border, radius
    token, shadow-sm — padding/margins stay screen-local. */
 /* The form standard (D-179, v1.71.1): the SURFACE that holds fields is

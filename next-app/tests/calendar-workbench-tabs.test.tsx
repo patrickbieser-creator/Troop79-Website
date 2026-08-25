@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Workbench, type WorkbenchEntry } from '../src/app/admin/(workspace)/calendar/[id]/workbench';
 import type { CalendarEntryRow } from '../src/app/admin/(workspace)/calendar/entry-form';
@@ -28,6 +28,17 @@ vi.mock('../src/app/admin/(workspace)/_components/markdown-block-tools', () => (
 vi.mock('../src/app/admin/(workspace)/calendar/entry-form', () => ({
   CalendarEntryForm: () => <form aria-label="Entry details form" />
 }));
+vi.mock('../src/app/admin/(workspace)/events/[id]/builder-panels', () => ({
+  BuilderPanels: ({ signupId }: { signupId: number }) => <div aria-label="Signup builder">builder for signup {signupId}</div>
+}));
+vi.mock('../src/app/admin/(workspace)/rosters/[id]/event-nav', () => ({
+  EventNav: () => <nav aria-label="Event nav" />
+}));
+vi.mock('../src/app/admin/(workspace)/advancement/meetings/[id]/meeting-editor', () => ({
+  MeetingEditor: ({ embedded }: { embedded?: boolean }) => (
+    <div aria-label="Agenda editor">{embedded ? 'embedded agenda editor' : 'standalone'}</div>
+  )
+}));
 
 const entry: WorkbenchEntry = {
   id: 109,
@@ -53,8 +64,23 @@ function renderWorkbench(over: Partial<React.ComponentProps<typeof Workbench>> =
       onCreateEntry={vi.fn()}
       template="meeting"
       meeting={null}
+      agenda={null}
       signupId={null}
+      builder={null}
       attendanceCount={0}
+      rollCall={{
+        creditKind: null,
+        creditUnit: null,
+        countsAsActivity: false,
+        defaultQty: 1,
+        hasSignup: false,
+        candidates: [{ personId: 1, displayName: 'Avery Scout', scoutId: 's1', tab: 'active_scout', signedUp: false }],
+        attendance: [],
+        onMark: vi.fn(),
+        onUnmark: vi.fn(),
+        onSetQty: vi.fn(),
+        onSeed: vi.fn()
+      }}
       onSaveStory={vi.fn()}
       onAddAgenda={vi.fn()}
       {...over}
@@ -62,8 +88,11 @@ function renderWorkbench(over: Partial<React.ComponentProps<typeof Workbench>> =
   );
 }
 
+/** The LAYER tabs only — the Roll Call sheet nests its own Scouts/Adults strip. */
 function tabNames(): string[] {
-  return screen.getAllByRole('tab').map((t) => t.textContent ?? '');
+  return within(screen.getByRole('tablist', { name: 'Entry layers' }))
+    .getAllByRole('tab')
+    .map((t) => t.textContent ?? '');
 }
 
 describe('Calendar entry workbench — one tab per layer', () => {
@@ -105,10 +134,72 @@ describe('Calendar entry workbench — one tab per layer', () => {
     expect(screen.getByRole('tab', { name: /Roll Call/ }).textContent).toContain('14');
   });
 
+  it('RollCallTab_ShowsTheSheetItself_WithItsOwnSubTabs', async () => {
+    const user = userEvent.setup();
+    renderWorkbench();
+    await user.click(screen.getByRole('tab', { name: 'Roll Call' }));
+    const panel = within(screen.getByRole('tabpanel', { name: 'Roll Call' }));
+    expect(panel.getByRole('tablist', { name: 'Who to take roll for' })).toBeTruthy(); // the sub-tab bar
+    expect(panel.getByLabelText(/Avery Scout/)).toBeTruthy(); // a checkbox, no "Take Roll Call" button first
+    expect(screen.queryByRole('link', { name: 'Take Roll Call' })).toBeNull();
+    expect(tabNames()).toEqual(['Details', 'Story', 'Agenda', 'Roll Call', 'Signup']); // layer tabs still there
+  });
+
+  it('SignupTab_OffersToEnable_WhenThereIsNoSignup_AndShowsTheBuilderWhenThereIs', async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderWorkbench();
+    await user.click(screen.getByRole('tab', { name: 'Signup' }));
+    expect(screen.getByRole('link', { name: 'Enable a signup' })).toBeTruthy();
+    expect(screen.queryByLabelText('Signup builder')).toBeNull();
+    unmount();
+
+    renderWorkbench({
+      signupId: 8,
+      builder: {
+        nav: { sets: [], hasMoney: false },
+        signup: { id: 8 },
+        entry: { id: 109 },
+        prices: [],
+        slots: [],
+        questions: [],
+        sets: []
+      } as never
+    });
+    await user.click(screen.getByRole('tab', { name: 'Signup' }));
+    expect(screen.getByLabelText('Signup builder').textContent).toBe('builder for signup 8');
+    expect(screen.getByRole('navigation', { name: 'Event nav' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Enable a signup' })).toBeNull();
+  });
+
   it('AgendaTab_OffersAddAnAgenda_WhenNoneExists', async () => {
     const user = userEvent.setup();
     renderWorkbench();
     await user.click(screen.getByRole('tab', { name: 'Agenda' }));
     expect(screen.getByRole('button', { name: 'Add an agenda' })).toBeTruthy();
+    expect(screen.queryByLabelText('Agenda editor')).toBeNull();
+  });
+
+  it('AgendaTab_ShowsTheEditorItself_WhenAnAgendaExists', async () => {
+    const user = userEvent.setup();
+    renderWorkbench({
+      meeting: { id: 3, status: 'draft' },
+      agenda: {
+        meeting: { id: 3, status: 'draft', title: 'PLC Meeting' } as never,
+        sessions: [],
+        candidates: null,
+        onUpdateMeeting: vi.fn(),
+        onSetStatus: vi.fn(),
+        onCreateSession: vi.fn(),
+        onUpdateSession: vi.fn(),
+        onDeleteSession: vi.fn(),
+        onMoveSession: vi.fn(),
+        onPromote: vi.fn(),
+        onDeleteMeeting: vi.fn()
+      }
+    });
+    await user.click(screen.getByRole('tab', { name: 'Agenda' }));
+    expect(screen.getByLabelText('Agenda editor').textContent).toBe('embedded agenda editor');
+    expect(screen.queryByRole('button', { name: 'Add an agenda' })).toBeNull();
+    expect(screen.queryByText(/Take Roll Call/)).toBeNull(); // the link at the bottom is gone
   });
 });
