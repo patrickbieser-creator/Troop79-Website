@@ -24,19 +24,17 @@ export function RosterActions({ className }: { className?: string }) {
         ariaLabel="Roster actions"
         options={[
           { value: 'patrols', label: 'Assign patrols…' },
-          { value: 'family-roster', label: 'Family Roster (print / PDF)' },
-          { value: 'print-screen', label: 'Print this screen' }
+          { value: 'family-roster', label: 'Family Roster (print / PDF)' }
         ]}
         onAction={(v) => {
           /* "Print Roster" used to be window.print() over whichever tab was
              open, which printed the working table — Edit buttons, tab strip
              and all (Patrick, 2026-08-22: "the print a roster is a mess").
-             The real document now lives at /admin/roster-print. Printing the
-             screen stays available because it is genuinely what you want when
-             you have filtered or sorted the table for a specific job. */
+             The real document lives at /admin/roster-print; "Print this
+             screen" was retired 2026-08-25 (Patrick) — the browser's own
+             print does the same thing without a menu item. */
           if (v === 'patrols') router.push('/admin/advancement/roster/patrols');
           if (v === 'family-roster') router.push('/admin/roster-print');
-          if (v === 'print-screen') window.print();
         }}
       />
     </div>
