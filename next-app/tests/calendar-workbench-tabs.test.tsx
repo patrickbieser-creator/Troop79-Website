@@ -105,14 +105,14 @@ describe('Calendar entry workbench — one tab per layer', () => {
   // Details + Story became ONE Entry tab (Patrick, 2026-08-25: "consolidate
   // Details and story" on the news editor's pattern) — the form itself is
   // covered in calendar-entry-form.test.tsx.
-  it('MeetingTemplate_OffersEntryAgendaRollCallSignup_InThatOrder', () => {
+  it('MeetingTemplate_OffersEntryAgendaSignupRollCall_InThatOrder', () => {
     renderWorkbench();
-    expect(tabNames()).toEqual(['Entry', 'Agenda', 'Roll Call', 'Signup']);
+    expect(tabNames()).toEqual(['Entry', 'Agenda', 'Signup', 'Roll Call']);
   });
 
   it('ActivityTemplate_HasNoAgendaTab', () => {
     renderWorkbench({ template: 'activity' });
-    expect(tabNames()).toEqual(['Entry', 'Roll Call', 'Signup']);
+    expect(tabNames()).toEqual(['Entry', 'Signup', 'Roll Call']);
   });
 
   it('EntryTab_RendersOnlyTheEntryPanel_NothingElseIsMounted', () => {
@@ -143,7 +143,7 @@ describe('Calendar entry workbench — one tab per layer', () => {
     expect(panel.getByRole('tablist', { name: 'Who to take roll for' })).toBeTruthy(); // the sub-tab bar
     expect(panel.getByLabelText(/Avery Scout/)).toBeTruthy(); // a checkbox, no "Take Roll Call" button first
     expect(screen.queryByRole('link', { name: 'Take Roll Call' })).toBeNull();
-    expect(tabNames()).toEqual(['Entry', 'Agenda', 'Roll Call', 'Signup']); // layer tabs still there
+    expect(tabNames()).toEqual(['Entry', 'Agenda', 'Signup', 'Roll Call']); // layer tabs still there
   });
 
   it('SignupTab_OffersToEnable_WhenThereIsNoSignup_AndShowsTheBuilderWhenThereIs', async () => {
@@ -189,7 +189,7 @@ describe('Calendar entry workbench — one tab per layer', () => {
     expect(screen.getByLabelText('Roster view').textContent).toBe('roster for 8');
     expect(screen.queryByLabelText('Signup builder')).toBeNull();
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('PLC Meeting'); // the head stays
-    expect(tabNames()).toEqual(['Entry', 'Agenda', 'Roll Call', 'Signup']);
+    expect(tabNames()).toEqual(['Entry', 'Agenda', 'Signup', 'Roll Call']);
   });
 
   it('AgendaTab_OffersAddAnAgenda_WhenNoneExists', () => {

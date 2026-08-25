@@ -167,13 +167,15 @@ export function Workbench({
   const tabs: TabStripItem[] = [
     { key: 'entry', label: 'Entry', onSelect: go('entry') },
     ...(hasAgendaTab ? [{ key: 'agenda', label: 'Agenda', onSelect: go('agenda') }] : []),
+    // Signup before Roll Call (Patrick, 2026-08-25): you build the signup
+    // weeks ahead; roll call is the day-of step.
+    { key: 'signup', label: 'Signup', onSelect: go('signup') },
     {
       key: 'roll-call',
       label: 'Roll Call',
       count: attendanceCount > 0 ? attendanceCount : undefined,
       onSelect: go('roll-call')
-    },
-    { key: 'signup', label: 'Signup', onSelect: go('signup') }
+    }
   ];
 
   return (
