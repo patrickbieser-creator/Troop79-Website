@@ -538,8 +538,8 @@ export default function StyleguidePage() {
             <BackNav
               back={{
                 crumbs: [
-                  { label: 'Event Management', href: '/admin/rosters' },
-                  { label: 'Fall Campout', href: '/admin/rosters/1' }
+                  { label: 'Calendar', href: '/admin/calendar' },
+                  { label: 'Fall Campout', href: '/admin/calendar/1?tab=signup' }
                 ],
                 current: 'Money'
               }}
@@ -633,7 +633,10 @@ export default function StyleguidePage() {
       <section className={sg.section}>
         <h2 className={sg.sectionHead}>Data Tables</h2>
         <p className={sg.sectionNote}>
-          Tables consolidation wave 1 (2026-08-25, Patrick approved the seven patterns in{' '}
+          The shared rules live in <code>_components/data-table.module.css</code> (<code>.compact</code>,{' '}
+          <code>.rowLink</code>, <code>.actionsCell</code>, <code>.numCell</code>); a screen adopts them with{' '}
+          <code>composes</code> on its own <code>.table</code> class, as the calendar list does (rows tint on
+          hover / focus-within as one thing you open). Tables consolidation wave 1 (2026-08-25, Patrick approved the seven patterns in{' '}
           <a href="/prototypes/admin-tables-prototype.html">the prototype</a>): <strong>DataTable·Compact</strong>{' '}
           = calendar canon + albums, meetings, roster, scoutbook-export, meeting-plan, and now
           dashboard, lookups, media-manager and patrols (all literal 12.5px / 8px 10px / th 10px

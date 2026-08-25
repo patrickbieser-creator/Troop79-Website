@@ -1,0 +1,54 @@
+/**
+ * DataTable — the shared table patterns from the 2026-08-25 consolidation
+ * (Patrick approved the seven; prototype linked from /admin/styleguide).
+ *
+ *   .compact  — DataTable · Compact: a list you scan and click into. The
+ *               calendar list is the canon; screens adopt it with
+ *               `composes: compact from '../_components/data-table.module.css'`
+ *               on their own `.table` class so their markup doesn't change.
+ *
+ * Row behaviours: `.rowLink` rows tint on hover / focus-within so the row
+ * reads as one thing you open (the title is still the actual link); `.actionsCell`
+ * right-aligns the Actions ▾ column; `.numCell` right-aligns numbers.
+ * Card and Dense Grid join here in wave 2. Tokens only.
+ */
+
+.compact {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  background: var(--admin-white);
+}
+.compact th,
+.compact td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--admin-gray-100);
+  text-align: left;
+  vertical-align: top;
+}
+.compact th {
+  background: var(--admin-gray-50);
+  font-size: 10px;
+  font-weight: var(--admin-weight-bold);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--admin-gray-700);
+  white-space: nowrap;
+}
+.compact tbody tr:last-child td { border-bottom: none; }
+.compact th.actionsCell,
+.compact td.actionsCell { text-align: right; white-space: nowrap; }
+.compact th.numCell,
+.compact td.numCell { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* A row you open: hover and keyboard focus inside it tint the whole row. */
+.compact tbody tr.rowLink { transition: background var(--admin-transition); }
+.compact tbody tr.rowLink:hover td,
+.compact tbody tr.rowLink:focus-within td { background: var(--admin-status-info-bg); }
+
+/* Empty state lives in the table, one cell wide, so the columns stay put. */
+.compact td.empty {
+  padding: var(--admin-space-8) var(--admin-space-4);
+  text-align: center;
+  color: var(--admin-gray-500);
+}

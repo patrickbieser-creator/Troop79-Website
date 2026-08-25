@@ -1,14 +1,12 @@
 /* .pageTitle retired Phase B (2026-08-21) — shared PageTitle component. */
 
 .toolbar { display: flex; justify-content: flex-end; margin-bottom: 12px; }
-.table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-.table th, .table td { padding: 8px 10px; border-bottom: 1px solid var(--admin-gray-100); text-align: left; vertical-align: top; }
-.table th {
-  background: var(--admin-gray-50); font-size: 10px; font-weight: 700; letter-spacing: .06em;
-  text-transform: uppercase; color: var(--admin-gray-700);
-}
-.table tr:last-child td { border-bottom: none; }
-.table th.actionsCell, .table td.actionsCell { text-align: right; white-space: nowrap; }
+/* DataTable · Compact — the shared pattern (2026-08-25); this list is its
+   canon, so the rules live in _components/data-table.module.css and every
+   other Compact screen composes them the same way. */
+.table { composes: compact from '../_components/data-table.module.css'; }
+.rowLink { composes: rowLink from '../_components/data-table.module.css'; }
+.actionsCell { composes: actionsCell from '../_components/data-table.module.css'; }
 .mutedFootnote { font-size: 12px; margin-top: 8px; }
 /* .muted is italic by default; these two are running prose, not asides. */
 .mutedUprightIntro { font-style: normal; margin-bottom: 8px; }

@@ -43,7 +43,7 @@ export default async function SnapshotWorkspacePage({
     <>
       <PageTitle
         back={{
-          crumbs: [{ label: 'Event Management', href: '/admin/rosters' }, { label: String(s.calendar_entries.title), href: `/admin/rosters/${signupId}` }],
+          crumbs: [{ label: 'Calendar', href: '/admin/calendar' }, { label: String(s.calendar_entries.title), href: `/admin/calendar/${nav.entryId}?tab=signup` }],
           current: 'Snapshot'
         }}
         title={`${s.calendar_entries.title} — Snapshot`}

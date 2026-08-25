@@ -49,7 +49,7 @@ export default async function EventMoneyPage({ params }: { params: Promise<{ id:
     <>
       <PageTitle
         back={{
-          crumbs: [{ label: 'Event Management', href: '/admin/rosters' }, { label: String(s.calendar_entries.title), href: `/admin/rosters/${signupId}` }],
+          crumbs: [{ label: 'Calendar', href: '/admin/calendar' }, { label: String(s.calendar_entries.title), href: `/admin/calendar/${nav.entryId}?tab=signup` }],
           current: 'Money'
         }}
         title={`${s.calendar_entries.title} — Money`}

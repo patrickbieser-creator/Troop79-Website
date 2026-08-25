@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 25, 2026</strong> &nbsp;&middot;&nbsp; v1.96.1</p>
+      <p>Last updated: <strong>August 25, 2026</strong> &nbsp;&middot;&nbsp; v1.97.0</p>
     </div>
   </div>
 
@@ -494,6 +494,37 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.97.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.97.0</span>
+        <span class="release-date">August 25, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Calendar list on the shared Compact table; Event Management retired</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>DataTable &middot; Compact is a shared stylesheet now</strong> (<code>_components/data-table.module.css</code>)
+              and the calendar list is its first adopter: same scale as before, plus rows that tint on hover and
+              keyboard focus as one thing you open. Other Compact screens adopt it by composing their table class.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Event Management is gone from the admin.</strong> Its nav item is removed and
+              <code>/admin/rosters</code> redirects to the Calendar, which already carries signup status and the
+              Going count. An event&rsquo;s Roster, Money, Snapshot and assignment pages remain, one click from
+              the entry&rsquo;s Signup tab, and their breadcrumbs now read Calendar &rsaquo; event &rsaquo; page.
+              The chase-list columns it had (waitlist, slips out, unpaid, no reply) are not on the Calendar
+              yet &mdash; say the word if they should be.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

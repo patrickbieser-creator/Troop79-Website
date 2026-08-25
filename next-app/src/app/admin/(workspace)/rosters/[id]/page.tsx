@@ -462,7 +462,10 @@ export default async function EventRosterPage({ params }: { params: Promise<{ id
   return (
     <>
       <PageTitle
-        back={{ label: 'Event Management', href: '/admin/rosters' }}
+        back={{
+          crumbs: [{ label: 'Calendar', href: '/admin/calendar' }, { label: String(data.entry.title), href: `/admin/calendar/${data.nav.entryId}?tab=signup` }],
+          current: 'Roster'
+        }}
         title={`${String(data.entry.title)} — Roster`}
         sub={
           <Link href={`/events/${String(data.entry.id)}`} className={styles.actionLinkMuted}>

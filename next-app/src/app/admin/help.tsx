@@ -88,8 +88,8 @@ export const HELP = {
           <li>A cancelled reply drops out immediately.</li>
         </ul>
         <p>
-          Money, cars and tents are on the event&rsquo;s own pages — see{' '}
-          <Link href="/admin/rosters">Event Management</Link>. If the number here and the roster disagree, reload
+          Money, cars and tents are on the event&rsquo;s own pages, one click from its{' '}
+          <Link href="/admin/calendar">Signup tab</Link>. If the number here and the roster disagree, reload
           the page before reporting it.
         </p>
       </>

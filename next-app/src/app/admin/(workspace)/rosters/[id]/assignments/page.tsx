@@ -145,7 +145,7 @@ export default async function AssignmentsPage({
     <>
       <PageTitle
         back={{
-          crumbs: [{ label: 'Event Management', href: '/admin/rosters' }, { label: String(data.entry.title), href: `/admin/rosters/${signupId}` }],
+          crumbs: [{ label: 'Calendar', href: '/admin/calendar' }, { label: String(data.entry.title), href: `/admin/calendar/${data.nav.entryId}?tab=signup` }],
           current: 'Rides & assignments'
         }}
         title={`${data.entry.title} — Rides & assignments`}

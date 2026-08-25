@@ -44,15 +44,11 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         href: '/admin/advancement/fast-entry',
         matchPath: '/admin/advancement/fast-entry',
         capability: 'advancement.write'
-      },
-      {
-        // "Event Rosters" → "Event Management" (Patrick, 2026-08-24): the
-        // page runs the event — roster, cars, money, snapshot — not just the list.
-        label: 'Event Management',
-        href: '/admin/rosters',
-        matchPath: '/admin/rosters',
-        capability: 'calendar.write'
       }
+      // "Event Management" (the /admin/rosters chase-list) retired 2026-08-25
+      // (Patrick: "remove the event management from the admin") — the
+      // Calendar carries signup status and the Going count; an event's
+      // Roster / Money / Snapshot / assignments open from its Signup tab.
     ]
   },
   {

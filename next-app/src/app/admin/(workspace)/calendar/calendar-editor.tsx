@@ -412,7 +412,7 @@ export function CalendarEditor({
           ) : (
             shownSorted.map((row) => (
               <Fragment key={row.id}>
-              <tr>
+              <tr className={styles.rowLink}>
                 <td className={styles.dateCell} title={dateHover(row)}>
                   {dateLabel(row.entry_date, row.end_date)}
                 </td>
