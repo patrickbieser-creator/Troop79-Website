@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Session Summary — Roll Call into the Calendar, editors in their tabs, one admin Button (2026-08-25)</title>
+<style>
+  :root { --nw-teal: #1e3a4a; --nw-green: #3d5a3e; --paper: #faf6ef; --ink: #2a2a2a; --meta: #6d7580; --line: #e2e4e8; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 15px; color: var(--ink); background: var(--paper); line-height: 1.55; }
+  .header { background: var(--nw-teal); color: #fff; padding: 40px 64px; }
+  .header .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.6); margin-bottom: 8px; }
+  .header h1 { font-size: 30px; font-weight: 600; margin-bottom: 6px; }
+  .header .sub { font-size: 14px; color: rgba(255,255,255,.75); }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 36px 24px 64px; }
+  h2 { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--nw-green); border-bottom: 2px solid var(--nw-green); padding-bottom: 6px; margin: 34px 0 14px; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .metric { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+  .metric .num { font-size: 26px; font-weight: 700; color: var(--nw-teal); }
+  .metric .lbl { font-size: 12px; color: var(--meta); margin-top: 2px; }
+  ul { padding-left: 22px; } li { margin-bottom: 9px; } p { margin-bottom: 10px; }
+  .card { background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--nw-green); border-radius: 4px; padding: 14px 18px; margin-bottom: 12px; }
+  .card .t { font-weight: 700; color: var(--nw-teal); }
+  table { width: 100%; border-collapse: collapse; background: #fff; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--meta); }
+  .footer { text-align: center; font-size: 12px; color: var(--meta); padding: 24px; border-top: 1px solid var(--line); margin-top: 40px; }
+  code { background: #f0f1f3; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="eyebrow">Troop79-Website &middot; Operator session summary &middot; 25 Aug 2026 &middot; 12:35 AM CDT</div>
+  <h1>Roll Call folded into the Calendar, the editors moved into their tabs, and one admin Button</h1>
+  <p class="sub">Twenty-fifth session (the evening of 24 Aug into the small hours). Nine commits, v1.88.9 &rarr; v1.91.0, every one gated and deployed; one admin section retired, one refactor that touched 118 files with no intended visual change, and a long verification list closed by Patrick&rsquo;s own testing.</p>
+</div>
+<div class="wrap">
+  <h2>At a glance</h2>
+  <div class="metrics">
+    <div class="metric"><div class="num">9</div><div class="lbl">commits deployed (v1.89.0&ndash;v1.91.0 + 1)</div></div>
+    <div class="metric"><div class="num">1317</div><div class="lbl">tests (from 1271)</div></div>
+    <div class="metric"><div class="num">4</div><div class="lbl">decisions (D-227&ndash;D-230)</div></div>
+    <div class="metric"><div class="num">1</div><div class="lbl">admin section retired (Roll Call &amp; Agendas)</div></div>
+    <div class="metric"><div class="num">~100</div><div class="lbl">per-screen button classes retired</div></div>
+    <div class="metric"><div class="num">0</div><div class="lbl">schema changes</div></div>
+  </div>
+
+  <h2>How it went</h2>
+  <p>Patrick worked live, one ask at a time, each landing as its own release. It started small &mdash; give Leadership / Planning meetings a roll call &mdash; and the root cause turned out to be a heuristic (credit-or-activity) standing in for &ldquo;tracks attendance&rdquo;; the fix was a template gate. From there the asks compounded: tabs on the entry workbench, tabs on the Roll Call sheet, then the big one &mdash; fold Roll Call &amp; Agendas into the Calendar entirely, one line per event, with letter pills instead of wordy badges. That was specced by question-and-answer first (eight questions, all answered), then built in one pass. Three follow-ups the same evening put the Roll Call sheet, the agenda editor and the signup builder <em>inside</em> their tabs rather than behind a button.</p>
+  <p>The night closed with the backlog&rsquo;s oldest debt: a shared admin <code>Button</code> and <code>FormPanel</code>. The component, tests, Save/Discard adoption and styleguide were built by hand; the sweep across 38 stylesheets ran as three parallel agents, one per area, each returning a structured report. One agent caught a cross-folder regression another had introduced (a deleted class still imported by the roster); another found three finance buttons that had referenced never-defined classes since July. Every screen was then verified in the dev browser with a minted leader session, including an immediate-save round trip on a roll call checkbox (checked &rarr; count 1 &rarr; unchecked &rarr; 0, database left clean).</p>
+
+  <h2>What shipped</h2>
+  <div class="card"><div class="t">Roll Call &amp; Agendas is gone; the Calendar is the one list &mdash; v1.89.0, v1.90.0</div>
+    <p><code>tracksAttendance()</code> gates by template (meetings and activities, never announcements), so PLC and committee meetings list. Every calendar row is one line: day-only date with weekday/time on hover, Event title with ellipsis, muted category, author as initials, 12-character location. The Status column is letter pills &mdash; <strong>A</strong>genda (green published / yellow draft), <strong>S</strong>ignup (green open / grey closed), <strong>R</strong>oll call taken (count on hover), and a red <strong>O</strong> only when an entry is off the calendar &mdash; each in its own column, each a link into its layer. Import CSV and the Actions menu retired; Attendance Report moved under Reports &amp; Exports with Scouts / Adults tabs; Delete agenda sits at the top of the agenda editor; the old route redirects.</p></div>
+  <div class="card"><div class="t">The entry workbench and Roll Call sheet on the tab pattern &mdash; v1.89.0, v1.89.1, v1.90.1</div>
+    <p>Details &middot; Story &middot; Agenda &middot; Roll Call &middot; Signup as pill tabs; panels stay mounted so drafts survive a tab switch; the Story tab shows a dot while dirty. The Roll Call sheet became Scouts / Leaders / Adults / Inactive tabs with present-count pills and cross-tab search hints. Then the tabs began hosting the editors themselves: the Roll Call checklist, the full agenda editor (embedded, with its own status / Publish / Delete strip), and the signup builder with its event-pages strip. Recorded on the styleguide as the &ldquo;tabbed workbench&rdquo; pattern for long multipart editors.</p></div>
+  <div class="card"><div class="t">One shared admin Button, one FormPanel &mdash; v1.91.0</div>
+    <p><code>admin/_components/button</code> &mdash; primary / secondary / danger / dangerSolid / quiet, md / sm, <code>href</code> renders a Link &mdash; placed above the workspace route group so the printable roster and campout snapshot use it too. <code>SaveButton</code>/<code>DiscardButton</code> render it by default. <code>FormPanel</code>/<code>FormSection</code> promote the scout editor&rsquo;s numbered section card. Net &minus;236 lines; the styleguide&rsquo;s new scoreboard row is the guard against per-screen buttons returning. Also: &ldquo;Event Rosters&rdquo; renamed &ldquo;Event Management.&rdquo;</p></div>
+  <div class="card"><div class="t">Housekeeping &mdash; v1.89.2, v1.89.3</div>
+    <p>Finance ledger From/To on the flexible date picker; <code>.gitattributes</code> pins LF (the per-commit warning wall is gone); <code>lib/dates</code> is &ldquo;what day is it&rdquo; only; the SEO fields (meeting place, public email, share image) were written to production and are live in the Organization JSON-LD &mdash; <code>sameAs</code> URLs still to come from Patrick.</p></div>
+
+  <h2>Decisions</h2>
+  <table>
+    <tr><th>ID</th><th>Decision</th></tr>
+    <tr><td>D-227</td><td>Tabbed workbench: one pill tab per layer; panels stay mounted and hide with <code>hidden</code>; sub-tab strips allowed inside a panel.</td></tr>
+    <tr><td>D-228</td><td>Roll Call &amp; Agendas folded into the Calendar; attendance tracking gated by template; letter status pills in fixed columns, red O only off-calendar.</td></tr>
+    <tr><td>D-229</td><td>The workbench tabs host the editors &mdash; Roll Call sheet, agenda editor, signup builder render in place; legacy routes redirect.</td></tr>
+    <tr><td>D-230</td><td>One shared admin <code>Button</code> and <code>FormPanel</code>/<code>FormSection</code>; per-screen button classes are retired, not allowed.</td></tr>
+  </table>
+
+  <h2>Backlog movement</h2>
+  <p><strong>Closed by Patrick&rsquo;s report:</strong> passkey on a phone, printed family roster layout, Recent Logins, Court of Honor report, Troop Finances end-to-end, the v1.40&ndash;v1.45 signup path, the rummage-sale / Court of Honor / campout signup configs, Brad&rsquo;s photo-card ideas, the Fall Campout tracking item, and the &ldquo;Recent advancement&rdquo; link (it was the Weekly Advancement Report). <strong>Closed by work:</strong> Button + FormPanel, <code>.gitattributes</code>, <code>lib/dates</code>, SEO fields in production, the albums-browser colour bug (the class no longer exists).</p>
+  <p><strong>Added:</strong> the FormPanel adoption sweep; <code>sameAs</code> URLs; three decisions Patrick owes (Ceremony / Advancement Event on the list, the Signup tab&rsquo;s three tab rows on a phone, the Roll Call strip at phone width); small Button-sweep leftovers (pager links, the snapshot Print link).</p>
+
+  <h2>Next steps</h2>
+  <ul>
+    <li><strong>Production eyes-on for v1.87.6 &rarr; v1.91.0</strong> &mdash; 28 commits verified on dev only; the Button sweep above all.</li>
+    <li>Paste the <code>sameAs</code> URLs; consider a Google Business Profile.</li>
+    <li>B-004 password rotation remains open.</li>
+  </ul>
+</div>
+<div class="footer">Troop79-Website &middot; Operator &middot; generated by /northwoods:end-session &middot; 2026-08-25</div>
+</body>
+</html>
