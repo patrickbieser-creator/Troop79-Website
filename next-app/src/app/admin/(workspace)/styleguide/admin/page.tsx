@@ -32,6 +32,7 @@ import { Button } from '../../../_components/button';
 import { FormPanel, FormSection } from '../../../_components/form-panel';
 import { Badge } from '../../_components/badge';
 import { BackNav } from '../../_components/back-nav';
+import { HelpBadge } from '../../../_components/help-badge';
 import { RecentItemsList } from '../../_components/recent-items-list';
 import { PageTitle } from '../../_components/page-title';
 import { Notice } from '../../_components/notice';
@@ -517,6 +518,56 @@ export default function StyleguidePage() {
       </section>
 
       {/* ════ BADGES ════ */}
+      <section className={sg.section}>
+        <h2 className={sg.sectionHead}>Help Badge</h2>
+        <p className={sg.sectionNote}>
+          The <code>?</code> beside the thing it explains (Patrick, 2026-08-25; tuned on{' '}
+          <a href="/admin/styleguide/help-sample">the sample page</a>: 320px, 20px circle, click only).
+          A popover, not a tooltip &mdash; opens on click / tap / Enter, closes on Esc with focus
+          returning, on &times; or a click away; never on hover, never on a timer. Copy lives in{' '}
+          <code>admin/help.tsx</code>, keyed by id, so instructions are reviewed in one place; a typo
+          in an id throws in dev. Use it for REFERENCE (what a symbol means, how a number is
+          computed) &mdash; never for what a leader must know before acting. Rule: AGENTS.md &rarr;
+          On-screen instructions.
+        </p>
+        <div className={sg.specimenGrid}>
+          <div className={`${sg.specimen} ${sg.specimenCanonical}`}>
+            <div className={sg.specimenLabel}>In a table header</div>
+            <table className={cal.table}>
+              <thead>
+                <tr>
+                  <th>Event</th>
+                  <th>
+                    Status <HelpBadge id="calendar.status" />
+                  </th>
+                  <th className={cal.goingHead}>
+                    Going <HelpBadge id="calendar.going" />
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Fall Campout</td>
+                  <td>
+                    <span className={cal.statusCell}>
+                      <span className={`${cal.pill} ${cal.pillLive}`}>S</span>
+                    </span>
+                  </td>
+                  <td className={cal.goingCell}>23</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div className={`${sg.specimen} ${sg.specimenCanonical}`}>
+            <div className={sg.specimenLabel}>Beside a label</div>
+            <p className={sg.specimenNote}>
+              Promote to homepage <HelpBadge id="calendar.promote" /> &mdash; the badge follows the
+              words it explains, inline, and never wraps to its own line.
+            </p>
+          </div>
+        </div>
+      </section>
+
       <section className={sg.section}>
         <h2 className={sg.sectionHead}>Back Navigation</h2>
         <p className={sg.sectionNote}>

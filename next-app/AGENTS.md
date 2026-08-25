@@ -26,6 +26,16 @@ add a `.xyzBtn` / `.panel` class to a screen stylesheet — add a variant to the
 row to the styleguide scoreboard. Genuinely different controls (icon buttons, chips, sort
 headers, toggles, tab strips) keep their own classes.
 
+**On-screen instructions (2026-08-25):** before writing instructional prose on an admin screen,
+decide where it belongs, in this order (Brad's ladder): a leader must know it BEFORE acting (a gate,
+a consequence, an irreversible step) → visible text: the lede, a field hint, a Notice — never hidden;
+what the screen is for, in ≤ 2 sentences → the `PageTitle` lede; nothing here yet → the empty state
+carries it; the meaning of a symbol, column or disabled control → a `<HelpBadge id="…">` beside that
+thing, copy in `admin/help.tsx`; a paragraph of "how this section behaves" → a collapsible disclosure
+(useState toggle, D-070); otherwise leave it out. Default when undecided: a help badge — but never
+more than one per row or section, and not twenty identical ⓘs that all read as "skip me".
+Specimens: `/admin/styleguide/admin` → Help Badge; tuning page `/admin/styleguide/help-sample`.
+
 **Back navigation is one slot (2026-08-25):** `PageTitle` requires `back` — `null` on a list/root
 page (it then remembers its URL for children), `{ label, href }` on a depth-2 screen ("← Back to
 News"), `{ crumbs: [root, parent], current }` at depth 3+ (breadcrumbs). It renders `BackNav` above

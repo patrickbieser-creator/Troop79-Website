@@ -128,16 +128,15 @@ export default async function CalendarAdminPage({
     <>
       <PageTitle back={null}
         title="Calendar"
+        // Orientation only (2026-08-25, Brad's split): what the screen is for
+        // and the one verb. The pill legend is a ? badge on the Status header;
+        // the .ics / promotion consequences are hints beside their fields.
         sub={
           <>
             Everything that happens on a date, whether or not it&rsquo;s on the troop calendar
             &mdash; meetings, campouts, fundraisers, and outside opportunities like district merit
-            badge clinics. Add one here, then <strong>Edit</strong>{' '}
-            it to add a story, an agenda, a signup or take roll call. The Status pills say what each
-            entry carries &mdash; <strong>A</strong>genda, <strong>S</strong>ignup, <strong>R</strong>oll
-            call taken, <strong>O</strong>n the calendar &mdash; green when live, yellow while a draft;
-            click one to open that layer. On-calendar entries feed the public calendar and .ics
-            subscription; any entry can promote itself into the homepage news feed for a window.
+            badge clinics. Add one here, then open it to write the story, add an agenda or a signup,
+            or take roll call.
           </>
         }
       />

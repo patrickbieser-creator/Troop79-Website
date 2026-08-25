@@ -12,6 +12,7 @@ import { AddButton } from '../_components/add-button';
 import { Notice } from '../_components/notice';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../_components/dialog';
 import { SortHeader, useSortable } from '../_components/use-sortable';
+import { HelpBadge } from '../../_components/help-badge';
 import { Button } from '../../_components/button';
 import { CalendarEntryForm, type CalendarEntryRow } from './entry-form';
 import type { CalendarEntryMergePlan } from '@/lib/calendar-admin';
@@ -385,10 +386,17 @@ export function CalendarEditor({
             <SortHeader label="Date" colKey="date" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
             <SortHeader label="Event" colKey="title" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
             <SortHeader label="Category" colKey="category" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
-            <th>Status</th>
+            {/* Reference material lives beside the thing it explains (2026-08-25):
+                the A/S/R/O legend and the Going definition are ? badges here,
+                not paragraphs in the lede. Copy: admin/help.tsx. */}
+            <th>
+              Status <HelpBadge id="calendar.status" />
+            </th>
             {/* Going (Patrick, 2026-08-25): the signup headcount, blank at
                 zero and blank when there is no signup to count. */}
-            <th className={styles.goingHead}>Going</th>
+            <th className={styles.goingHead}>
+              Going <HelpBadge id="calendar.going" />
+            </th>
             <SortHeader label="Author" colKey="author" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
             <SortHeader label="Location" colKey="location" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
             <th>Promoted</th>

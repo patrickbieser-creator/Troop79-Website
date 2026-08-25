@@ -306,9 +306,10 @@ export function CalendarEntryForm({
               />{' '}
               On the troop calendar
               <span className={styles.muted}>
-                {' '}&mdash; uncheck for outside opportunities (district merit badge clinics, external
-                service days): they keep their event page and can appear in the news feed, but never
-                on our calendar.
+                {' '}&mdash; on-calendar entries feed the public calendar and the .ics subscription.
+                Uncheck for outside opportunities (district merit badge clinics, external service
+                days): they keep their event page and can appear in the news feed, but never on our
+                calendar or in the feed.
               </span>
             </span>
           </label>
@@ -350,6 +351,10 @@ export function CalendarEntryForm({
                 onChange={(e) => setShowOnHomepage(e.target.checked)}
               />{' '}
               Show in the homepage news feed
+              <span className={styles.muted}>
+                {' '}&mdash; the entry itself appears in the homepage feed for a window; turning it
+                off parks the window rather than clearing it.
+              </span>
             </span>
           </label>
 

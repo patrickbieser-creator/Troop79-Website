@@ -63,6 +63,14 @@ describe('Calendar list — one line per event', () => {
     expect(headers).toEqual(['Date', 'Event', 'Category', 'Status', 'Going', 'Author', 'Location', 'Promoted', 'Actions']);
   });
 
+  it('StatusAndGoingHeaders_CarryHelpBadges_InsteadOfALedeParagraph', () => {
+    // The pill legend moved out of the page lede into a ? beside the column
+    // it explains (2026-08-25, Brad's split); copy from admin/help.tsx.
+    renderList([row({})]);
+    expect(screen.getByRole('button', { name: 'Help: Status pills' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Help: Going' })).toBeTruthy();
+  });
+
   // Patrick, 2026-08-25: "one more column … which indicates the number going
   // … right after status and before author. If the number is 0 display nothing."
   it('Going_IsTheSignupHeadcount_AndBlankWhenZeroOrNoSignup', () => {
