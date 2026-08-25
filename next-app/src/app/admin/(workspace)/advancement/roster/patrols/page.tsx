@@ -1,13 +1,11 @@
-import Link from 'next/link';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import type { PatrolScout } from '@/lib/patrol-assign';
 import type { RosterPrintRank } from '@/lib/roster-print';
 import { PageTitle } from '../../../_components/page-title';
-import { PatrolBoard } from './patrol-board';
+import { PatrolTable } from './patrol-table';
 import { savePatrolAssignments } from './actions';
-import styles from './patrols.module.css';
 
 /**
  * /admin/advancement/roster/patrols — put every scout in a patrol in one pass.
@@ -43,15 +41,12 @@ export default async function PatrolsPage() {
   return (
     <>
       <PageTitle
+        back={{ label: 'Roster', href: '/admin/advancement/roster' }}
         title="Patrol assignments"
         sub="Select scouts, pick a patrol, assign — nothing saves until you press Save. Patrol names are free text: type a new one once and it joins the list."
-      >
-        <Link href="/admin/advancement/roster" className={styles.backLink}>
-          &larr; Back to roster
-        </Link>
-      </PageTitle>
+      />
 
-      <PatrolBoard scouts={scouts} ranks={ranks} onSave={savePatrolAssignments} />
+      <PatrolTable scouts={scouts} ranks={ranks} onSave={savePatrolAssignments} />
     </>
   );
 }

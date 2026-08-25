@@ -45,7 +45,7 @@ type ActionResult = { ok: boolean; error?: string; changed?: number };
 const NONE = '__none__';
 const NEW = '__new__';
 
-export function PatrolBoard({
+export function PatrolTable({
   scouts,
   ranks,
   onSave

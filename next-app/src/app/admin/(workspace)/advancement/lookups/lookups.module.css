@@ -37,7 +37,7 @@
 }
 .table th,
 .table td {
-  padding: 7px 10px;
+  padding: 8px 10px;
   border-bottom: 1px solid var(--admin-gray-100);
   text-align: left;
   vertical-align: top;

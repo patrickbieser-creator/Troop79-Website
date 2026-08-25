@@ -82,26 +82,29 @@
    overriding the sweep's default name-based grouping — paint here is primary). */
 
 /* ── Table ───────────────────────────────────────────────────────────────── */
+/* DataTable·Compact scale — literal values match the calendar canon
+   (Data Tables consolidation, Wave 1, 2026-08-25). */
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--admin-text-md);
+  font-size: 12.5px;
 }
-.table th {
-  text-align: left;
-  font-size: var(--admin-text-2xs);
-  font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--admin-gray-600);
-  border-bottom: 1px solid var(--admin-gray-300);
-  padding: var(--admin-space-3) var(--admin-space-4);
-}
+.table th,
 .table td {
+  padding: 8px 10px;
   border-bottom: 1px solid var(--admin-gray-100);
-  padding: var(--admin-space-3) var(--admin-space-4);
+  text-align: left;
   vertical-align: middle;
 }
+.table th {
+  background: var(--admin-gray-50);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--admin-gray-700);
+}
+.table tr:last-child td { border-bottom: none; }
 .checkCol { width: 2.5rem; }
 .nameCell { font-weight: 600; color: var(--admin-gray-900); }
 .muted { color: var(--admin-gray-600); }

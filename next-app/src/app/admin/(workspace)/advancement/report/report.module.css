@@ -80,29 +80,7 @@
 
 .sidebar { position: sticky; top: 16px; }
 .sidebarTitle { margin: 0 0 10px; } /* typography via global .adminLabel (.06em → .08em fold) */
-.reportList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
-/* Each recent report is a clickable CARD on the card canon (white, gray-200
-   border, radius, shadow-sm — same chrome as the Date-range panel), not a
-   bare text row with a hover-only background (Patrick, 2026-08-21: "it used
-   to be a button, now it's just text floating" — the old look only appeared
-   on the SELECTED report, and nothing is selected once the newest report is
-   published). Active = navy border + bold, same as before. */
-.reportLink, .reportLinkActive {
-  display: flex;
-  flex-wrap: wrap; /* badge drops below the range rather than splitting the date */
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px 8px;
-  font-size: 12px;
-  color: var(--admin-gray-700);
-  text-decoration: none;
-  padding: 8px 10px;
-  border-radius: var(--admin-radius-sm);
-  border: 1px solid var(--admin-gray-200);
-  background: var(--admin-white);
-  box-shadow: var(--admin-shadow-sm);
-}
-.reportRange { white-space: nowrap; }
-.reportLink:hover { border-color: var(--admin-navy); color: var(--admin-navy); }
-.reportLinkActive { border-color: var(--admin-navy); background: var(--admin-gray-100); font-weight: 700; }
+/* .reportList/.reportLink/.reportLinkActive/.reportRange retired 2026-08-25 →
+   shared RecentItemsList (_components/recent-items-list), which carries the
+   2026-08-21 clickable-card look. */
 /* .badgeDraft/.badgePublished retired Phase A (2026-08-21) — shared Badge. */

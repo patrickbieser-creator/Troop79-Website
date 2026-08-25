@@ -28,7 +28,7 @@ export default async function AdvancementReportPage({
 
   return (
     <>
-      <PageTitle
+      <PageTitle back={null}
         title="Weekly Advancement Report"
         sub="Generate a consolidated summary of what got signed off in a date range — for the Bugle
           and the public site. Filters on when a leader recorded something, not when the scout

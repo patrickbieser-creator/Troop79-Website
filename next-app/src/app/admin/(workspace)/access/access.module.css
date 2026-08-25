@@ -35,14 +35,16 @@
   box-shadow: var(--admin-shadow-sm);
 }
 
+/* DataTable·Card scale — literal values match the ledger canon
+   (Data Tables consolidation, Wave 1, 2026-08-25). */
 .table {
   border-collapse: collapse;
   width: 100%;
-  font-size: var(--admin-text-md);
+  font-size: 13px;
 }
 .table th,
 .table td {
-  padding: var(--admin-space-4) var(--admin-space-5);
+  padding: 10px 12px;
   border-bottom: 1px solid var(--admin-gray-100);
   text-align: left;
   vertical-align: middle;
@@ -52,10 +54,10 @@
   top: 0;
   background: var(--admin-gray-50);
   border-bottom: 2px solid var(--admin-gray-200);
-  font-size: var(--admin-text-sm);
-  font-weight: var(--admin-weight-bold);
+  font-size: 11px;
+  font-weight: 700;
   white-space: nowrap;
-  letter-spacing: var(--admin-tracking-wide);
+  letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--admin-gray-700);
 }

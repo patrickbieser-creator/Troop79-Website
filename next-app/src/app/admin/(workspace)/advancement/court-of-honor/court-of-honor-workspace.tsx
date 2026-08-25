@@ -19,6 +19,7 @@ import {
 import styles from './court-of-honor.module.css';
 import { DiscardButton, SaveButton, SaveFeedback, useSavePhase } from '../../_components/save-state';
 import { Badge } from '../../_components/badge';
+import { RecentItemsList } from '../../_components/recent-items-list';
 import { TabStrip } from '../../_components/tab-strip';
 import { ActionsMenu } from '../../_components/actions-menu';
 import { Button } from '../../../_components/button';
@@ -308,23 +309,20 @@ export function CourtOfHonorWorkspace({
         {recentReports.length === 0 ? (
           <p className={styles.hint}>None yet.</p>
         ) : (
-          <ul className={styles.reportList}>
-            {recentReports.map((r) => (
-              <li key={r.id}>
-                <a
-                  href={`/admin/advancement/court-of-honor?id=${r.id}`}
-                  className={r.id === report?.id ? styles.reportLinkActive : styles.reportLink}
-                >
-                  <span>
-                    {fmtRange(r.startDate, r.endDate)}
-                  </span>
-                  <Badge variant={r.status === 'published' ? 'success' : 'warning'}>
-                    {r.status === 'published' ? 'Published' : 'Draft'}
-                  </Badge>
-                </a>
-              </li>
-            ))}
-          </ul>
+          <RecentItemsList
+            ariaLabel="Recent ceremonies"
+            activeKey={report?.id ?? null}
+            items={recentReports.map((r) => ({
+              key: r.id,
+              href: `/admin/advancement/court-of-honor?id=${r.id}`,
+              label: fmtRange(r.startDate, r.endDate),
+              badge: (
+                <Badge variant={r.status === 'published' ? 'success' : 'warning'}>
+                  {r.status === 'published' ? 'Published' : 'Draft'}
+                </Badge>
+              )
+            }))}
+          />
         )}
       </aside>
     </div>

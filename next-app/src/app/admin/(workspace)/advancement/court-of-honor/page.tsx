@@ -32,7 +32,7 @@ export default async function CourtOfHonorPage({
 
   return (
     <>
-      <PageTitle
+      <PageTitle back={null}
         title="Court of Honor"
         sub={
           <>
