@@ -221,6 +221,25 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
             <div className={styles.hint}>Shown on the home page and article cards. Keep it to 1-2 sentences.</div>
           </div>
 
+          {/* Body sits right under Excerpt (Patrick, 2026-08-25): summary, then
+              the writing — the byline, address and categories come after. */}
+          <div className={styles.field}>
+            <label className="adminLabel" htmlFor="body">Body</label>
+            <MarkdownSource
+              id="body"
+              ref={bodyRef}
+              value={body}
+              onChange={setBody}
+              textareaClassName={styles.mdTextarea}
+              placeholder="Write your article in markdown…"
+              ariaLabel="Article body markdown source"
+              cheatSheet
+              toolbar={blockTools.toolbar}
+            >
+              {blockTools.prompts}
+            </MarkdownSource>
+          </div>
+
           <div className={styles.field}>
             <label className="adminLabel" htmlFor="authorName">Byline</label>
             <input
@@ -294,23 +313,6 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
               ))}
             </div>
             <div className={styles.hint}>Same list as Calendar Categories; the first one picked is the card label.</div>
-          </div>
-
-          <div className={styles.field}>
-            <label className="adminLabel" htmlFor="body">Body</label>
-            <MarkdownSource
-              id="body"
-              ref={bodyRef}
-              value={body}
-              onChange={setBody}
-              textareaClassName={styles.mdTextarea}
-              placeholder="Write your article in markdown…"
-              ariaLabel="Article body markdown source"
-              cheatSheet
-              toolbar={blockTools.toolbar}
-            >
-              {blockTools.prompts}
-            </MarkdownSource>
           </div>
 
           <div className={styles.formActions}>
