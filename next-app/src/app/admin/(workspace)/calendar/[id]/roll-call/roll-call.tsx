@@ -101,7 +101,12 @@ export function RollCall({
     }
     return [...TAB_ORDER, { key: 'other', label: 'Other' }]
       .filter((t) => byKey.has(t.key))
-      .map((t) => ({ ...t, people: byKey.get(t.key)! }));
+      // Alphabetical within the group (Patrick, 2026-08-25): the list flows
+      // down each column before the next, so a name is found by reading down.
+      .map((t) => ({
+        ...t,
+        people: [...byKey.get(t.key)!].sort((a, b) => a.displayName.localeCompare(b.displayName))
+      }));
   }, [candidates]);
 
   const [tab, setTab] = useState(() => groups[0]?.key ?? 'active_scout');

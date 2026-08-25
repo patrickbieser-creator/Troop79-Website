@@ -79,6 +79,25 @@ describe('Roll Call sheet — one tab per group', () => {
     expect(within(screen.getByRole('tabpanel', { name: 'Leaders' })).getByLabelText(/Casey Leader/)).toBeTruthy();
   });
 
+  it('Names_AreAlphabetical_WithinAGroup_WhateverOrderTheyArrivedIn', () => {
+    // Patrick, 2026-08-25: multi-column list, alphabetical DOWN each column —
+    // the columns are CSS; the order must hold regardless of load order.
+    renderSheet({
+      candidates: [
+        person(9, 'Zoe Scout', 'active_scout'),
+        person(1, 'Avery Scout', 'active_scout'),
+        person(5, 'Morgan Scout', 'active_scout')
+      ],
+      attendance: []
+    });
+    const panel = within(screen.getByRole('tabpanel', { name: 'Scouts' }));
+    expect(panel.getAllByRole('checkbox').map((c) => c.closest('label')?.textContent)).toEqual([
+      'Avery Scout',
+      'Morgan Scout',
+      'Zoe Scout'
+    ]);
+  });
+
   it('GroupsWithNobody_HaveNoTab', () => {
     renderSheet({ candidates: candidates.filter((c) => c.tab !== 'inactive_scout') });
     expect(screen.getAllByRole('tab')).toHaveLength(3);

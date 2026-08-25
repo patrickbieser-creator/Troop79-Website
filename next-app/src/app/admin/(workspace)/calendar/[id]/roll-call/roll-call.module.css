@@ -67,8 +67,13 @@
 }
 .groupCount { font-size: 11px; color: var(--admin-gray-500); letter-spacing: 0; }
 
-.list { list-style: none; margin: 0; padding: 0; }
+/* Multi-column within the available width (Patrick, 2026-08-25): CSS columns
+   fill top-to-bottom first, so the alphabetical run reads DOWN each column;
+   column-width lets the browser fit as many as the panel allows and drops to
+   one column on a phone by itself. */
+.list { list-style: none; margin: 0; padding: 0; columns: 260px; column-gap: 24px; }
 .row, .rowOn {
+  break-inside: avoid;
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 8px 10px; border-bottom: 1px solid var(--admin-gray-100); font-size: 13.5px;
 }
