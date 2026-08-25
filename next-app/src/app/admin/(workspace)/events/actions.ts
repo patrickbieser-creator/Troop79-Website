@@ -11,6 +11,9 @@ import { isRideStatus } from '@/lib/transport';
 import { isValidJobCode, normalizeJobCode, JOB_CODE_MAX } from '@/lib/job-codes';
 import { normalizeGroupName, normalizeSetLabel, validateNewSet } from '@/lib/group-sets';
 import { sendEmail, renderEmail } from '@/lib/email';
+import { validateLeaderRecipients } from '@/lib/signup-confirmation';
+import { loadHouseholdSnapshot, loadConfirmationConfig, buildConfirmation, dispatchConfirmations } from '@/lib/signup-confirmation-send';
+import { loadHouseholds } from '@/lib/households';
 import { recipientsForScouts } from '@/lib/email-recipients';
 import { siteUrl } from '@/lib/site-url';
 import { loadSiteText, reminderEmailCopy, paymentReminderEmailCopy } from '@/lib/site-text';
@@ -1643,4 +1646,73 @@ export async function emailPaymentReminders(
   });
   const res = await sendEmail({ to: [...to], subject: copy.subject, html, text, confirm });
   return { ok: res.status !== 'error', error: res.detail, status: res.status, to: res.to };
+}
+
+/* ── Confirmation email (Plans/Signup-Confirmation-Email.md) ─────────────── */
+
+export interface ConfirmationFields {
+  familyEnabled: boolean;
+  familyTemplateId: number | null;
+  /** Both or neither — half an override is no override. */
+  familySubject: string | null;
+  familyBody: string | null;
+  leaderEnabled: boolean;
+  leaderTemplateId: number | null;
+  leaderSubject: string | null;
+  leaderBody: string | null;
+  leaderUseFamily: boolean;
+  recipients: string[];
+}
+
+/** The builder block's one Save. */
+export async function updateConfirmation(signupId: number, calendarEntryId: number, f: ConfirmationFields): Promise<Result> {
+  await requireCapability('calendar.write');
+  const rec = validateLeaderRecipients(f.recipients);
+  if (!rec.ok) return { ok: false, error: rec.errors.join(' ') };
+  const pair = (subject: string | null, body: string | null) =>
+    subject?.trim() && body?.trim() ? { subject: subject.trim(), body: body.trim() } : { subject: null, body: null };
+  const fam = pair(f.familySubject, f.familyBody);
+  const lead = pair(f.leaderSubject, f.leaderBody);
+  const { error } = await createAdminClient()
+    .from('event_signups')
+    .update({
+      confirm_family_enabled: f.familyEnabled,
+      confirm_family_template_id: f.familyTemplateId,
+      confirm_family_subject: fam.subject,
+      confirm_family_body: fam.body,
+      confirm_leader_enabled: f.leaderEnabled,
+      confirm_leader_template_id: f.leaderTemplateId,
+      confirm_leader_subject: lead.subject,
+      confirm_leader_body: lead.body,
+      confirm_leader_use_family: f.leaderUseFamily,
+      confirm_recipients: rec.recipients
+    })
+    .eq('id', signupId);
+  if (error) return { ok: false, error: error.message };
+  revalidateEvent(calendarEntryId, signupId);
+  return { ok: true };
+}
+
+/** The roster's Resend: the family receipt again, logged as a resend. */
+export async function resendConfirmation(signupId: number, householdId: number): Promise<Result> {
+  await requireCapability('calendar.write');
+  const supabase = createAdminClient();
+  const loaded = await loadConfirmationConfig(supabase, signupId);
+  if (!loaded) return { ok: false, error: 'Signup not found.' };
+  if (!loaded.config.familyEnabled) return { ok: false, error: 'The family confirmation is off for this signup.' };
+  const party = (await loadHouseholds()).find((h) => h.key === `household:${householdId}`) ?? null;
+  const snap = await loadHouseholdSnapshot(supabase, signupId, party, householdId);
+  if (!snap.rows.length) return { ok: false, error: 'Nobody from that household is on this signup.' };
+  const { ctx, members } = await buildConfirmation(supabase, loaded.signup, party, householdId, null, 'resend', null, snap);
+  const { error } = await dispatchConfirmations({
+    signupId,
+    householdId,
+    config: { ...loaded.config, leaderEnabled: false },
+    ctx,
+    members,
+    submitterEmail: ctx.household.submitterEmail
+  });
+  await supabase.from('event_signups').update({ confirm_last_error: error }).eq('id', signupId);
+  revalidateEvent(loaded.signup.calendar_entry_id as number, signupId);
+  return error ? { ok: false, error } : { ok: true };
 }

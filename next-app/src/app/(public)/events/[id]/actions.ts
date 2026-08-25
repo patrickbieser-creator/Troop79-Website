@@ -11,6 +11,7 @@ import { FAMILY_COOKIE, signFamilySession } from '@/lib/family-session';
 import { secretMatches } from '@/lib/signed-cookie';
 import { safeInternalPath } from '@/lib/safe-redirect';
 import { loadHouseholdByKey, storedHouseholdId } from '@/lib/households';
+import { changeFor, loadHouseholdSnapshot, sendSignupConfirmations } from '@/lib/signup-confirmation-send';
 
 /**
  * Family gate: exchange the shared troop password for the family cookie.
@@ -170,6 +171,10 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
     ...(party?.adults.map((a) => a.personId) ?? [])
   ];
 
+  // For the confirmation email's "what changed" (and new-vs-update): the
+  // household's rows as they are BEFORE this write. Never blocks the submit.
+  const before = await loadHouseholdSnapshot(supabase, signupId, party, householdId).catch(() => null);
+
   const { data: written, error } = await supabase.rpc('submit_household_signup', {
     p_event_signup_id: signupId,
     p_entries: entries,
@@ -290,6 +295,18 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
     await supabase.rpc('place_in_group', { p_group_id: pick.groupId, p_entry_id: entryId, p_actor: actor });
   }
 
+  // The receipt (Plans/Signup-Confirmation-Email.md): family + leaders, each
+  // once, after everything above succeeded. It never throws.
+  const session = audience === 'household' ? await getIdentitySessionIfValid() : null;
+  await sendSignupConfirmations({
+    signupId,
+    party,
+    householdId,
+    submitterPersonId: session?.personId ?? null,
+    change: changeFor(before),
+    before
+  });
+
   revalidatePath(`/events/${eventId}`);
   revalidatePath('/events');
   redirect(`${back}&saved=1`);
@@ -313,6 +330,9 @@ export async function cancelSignupAction(formData: FormData): Promise<void> {
   // caller only ever names a household key, and we cancel exactly the people
   // that key resolves to.
   const party = await loadHouseholdByKey(householdKey);
+  const cancelHouseholdId = storedHouseholdId(householdKey);
+  // What is about to be dropped — the cancel receipt is built from this.
+  const before = await loadHouseholdSnapshot(supabase, signupId, party, cancelHouseholdId).catch(() => null);
   const { error } = await supabase.rpc('cancel_party_signup', {
     p_event_signup_id: signupId,
     p_actor: `family:${audience}`,
@@ -326,6 +346,17 @@ export async function cancelSignupAction(formData: FormData): Promise<void> {
   });
 
   if (error) redirect(`${back}&err=${encodeURIComponent(friendlyError(error.message))}`);
+  if (before && before.rows.length) {
+    const session = audience === 'household' ? await getIdentitySessionIfValid() : null;
+    await sendSignupConfirmations({
+      signupId,
+      party,
+      householdId: cancelHouseholdId,
+      submitterPersonId: session?.personId ?? null,
+      change: 'cancel',
+      before
+    });
+  }
   revalidatePath(`/events/${eventId}`);
   revalidatePath('/events');
   redirect(`${back}&cancelled=1`);
