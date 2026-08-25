@@ -157,7 +157,7 @@ export default async function AssignmentsPage({
           </>
         }
       />
-      <EventNav signupId={signupId} active={activeSetId != null ? `set:${activeSetId}` : 'assignments'} sets={data.nav.sets} hasMoney={data.nav.hasMoney} />
+      <EventNav signupId={signupId} entryId={data.nav.entryId} active={activeSetId != null ? `set:${activeSetId}` : 'assignments'} sets={data.nav.sets} hasMoney={data.nav.hasMoney} />
       <AssignmentsBoard
         signupId={signupId}
         calendarEntryId={data.entry.id}

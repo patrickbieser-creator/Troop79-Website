@@ -165,6 +165,9 @@ textarea.editInput { resize: vertical; min-height: 68px; line-height: 1.5; }
    admin styleguide. */
 .statusCell { display: inline-flex; gap: 4px; }
 .pillSlot { display: inline-block; width: 18px; height: 18px; }
+/* Going (2026-08-25): a short right-aligned count in the same quiet mono as the date; blank at zero. */
+.goingHead, .goingCell { text-align: right; white-space: nowrap; }
+.goingCell { font-family: 'Menlo', 'Consolas', monospace; font-size: 11.5px; color: var(--admin-gray-700); font-variant-numeric: tabular-nums; }
 .pill {
   display: inline-flex; align-items: center; justify-content: center;
   width: 18px; height: 18px; border-radius: 50%;

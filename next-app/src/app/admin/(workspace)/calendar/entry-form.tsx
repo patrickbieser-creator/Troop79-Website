@@ -50,6 +50,9 @@ export type CalendarEntryRow = CalendarEntry & {
   signupId?: number | null;
   /** People marked present, split the way Roll Call reports it. Null = none. */
   attendance?: { scouts: number; adults: number } | null;
+  /** Signup headcount (yes + full, guests included) for the Going column
+   *  (2026-08-25). Null when the entry has no signup. */
+  going?: number | null;
 };
 
 export function CalendarEntryForm({

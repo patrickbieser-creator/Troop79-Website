@@ -32,7 +32,8 @@ async function loadData() {
     { data: agendas, error: agendaError },
     { data: signups, error: signupError },
     attendance,
-    { data: scouts }
+    { data: scouts },
+    signupEntries
   ] = await Promise.all([
     supabase
       .from('calendar_entries')
@@ -46,7 +47,19 @@ async function loadData() {
     fetchAllRows<{ calendar_entry_id: number; person_id: number }>((from, to) =>
       supabase.from('event_attendance').select('calendar_entry_id, person_id').range(from, to)
     ),
-    supabase.from('scouts').select('person_id').not('person_id', 'is', null)
+    supabase.from('scouts').select('person_id').not('person_id', 'is', null),
+    // The Going column (2026-08-25): one paginated read of every "yes"
+    // reply, reduced per signup below — the same aggregate as the
+    // event_signup_headcount RPC, but ONE query for the whole list rather
+    // than one RPC round-trip per signup (the loop /admin/events runs).
+    fetchAllRows<{ event_signup_id: number; guest_count: number | null }>((from, to) =>
+      supabase
+        .from('signup_entries')
+        .select('event_signup_id, guest_count')
+        .eq('status', 'yes')
+        .eq('participation', 'full')
+        .range(from, to)
+    )
   ]);
   // Surfaced rather than swallowed: `const { data } = await …` turns a failed
   // query into an empty calendar, which reads as "nothing scheduled" instead of
@@ -79,6 +92,10 @@ async function loadData() {
     else c.adults += 1;
     counts.set(a.calendar_entry_id, c);
   }
+  const goingBySignup = new Map<number, number>();
+  for (const s of signupEntries) {
+    goingBySignup.set(s.event_signup_id, (goingBySignup.get(s.event_signup_id) ?? 0) + 1 + (s.guest_count ?? 0));
+  }
 
   const entries = ((data ?? []) as unknown as (CalendarEntry & { hero_media: Media | null })[]).map(
     (e) => {
@@ -91,7 +108,8 @@ async function loadData() {
         agendaStatus: agenda?.status ?? null,
         signupId: signup?.id ?? null,
         signupStatus: signup?.status ?? null,
-        attendance: counts.get(e.id) ?? null
+        attendance: counts.get(e.id) ?? null,
+        going: signup ? (goingBySignup.get(signup.id) ?? 0) : null
       };
     }
   );

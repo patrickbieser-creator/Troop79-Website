@@ -56,11 +56,25 @@ function renderList(rows: CalendarEntryRow[]) {
 }
 
 describe('Calendar list — one line per event', () => {
-  it('Columns_AreDateEventCategoryStatusAuthorLocationPromotedActions', () => {
+  it('Columns_AreDateEventCategoryStatusGoingAuthorLocationPromotedActions', () => {
     renderList([row({})]);
     // Sortable headers carry a direction glyph; only the words matter here.
     const headers = screen.getAllByRole('columnheader').map((h) => (h.textContent ?? '').replace(/[^A-Za-z]/g, ''));
-    expect(headers).toEqual(['Date', 'Event', 'Category', 'Status', 'Author', 'Location', 'Promoted', 'Actions']);
+    expect(headers).toEqual(['Date', 'Event', 'Category', 'Status', 'Going', 'Author', 'Location', 'Promoted', 'Actions']);
+  });
+
+  // Patrick, 2026-08-25: "one more column … which indicates the number going
+  // … right after status and before author. If the number is 0 display nothing."
+  it('Going_IsTheSignupHeadcount_AndBlankWhenZeroOrNoSignup', () => {
+    renderList([
+      row({ id: 1, title: 'Fall Campout', signupId: 8, signupStatus: 'open', going: 23 }),
+      row({ id: 2, title: 'Empty signup', signupId: 9, signupStatus: 'open', going: 0 }),
+      row({ id: 3, title: 'PLC Meeting', going: null })
+    ]);
+    const going = (title: string) => within(screen.getByRole('link', { name: title }).closest('tr')!).getAllByRole('cell')[4];
+    expect(going('Fall Campout').textContent).toBe('23');
+    expect(going('Empty signup').textContent).toBe('');
+    expect(going('PLC Meeting').textContent).toBe('');
   });
 
   it('Date_IsTheDayOnly_WithWeekdayAndTimeOnHover', () => {
@@ -81,8 +95,10 @@ describe('Calendar list — one line per event', () => {
 
   it('StatusPills_OpenTheirLayers', () => {
     renderList([row({ agendaId: 5, agendaStatus: 'draft', signupId: 8, signupStatus: 'open', attendance: { scouts: 12, adults: 3 } })]);
-    expect(screen.getByRole('link', { name: 'Agenda draft' }).getAttribute('href')).toBe('/admin/advancement/meetings/5');
-    expect(screen.getByRole('link', { name: 'Signup open' }).getAttribute('href')).toBe('/admin/events/8');
+    // Every pill opens the workbench on its tab (2026-08-25) — the list is
+    // the hub; nothing routes out to a standalone layer screen.
+    expect(screen.getByRole('link', { name: 'Agenda draft' }).getAttribute('href')).toBe('/admin/calendar/109?tab=agenda');
+    expect(screen.getByRole('link', { name: 'Signup open' }).getAttribute('href')).toBe('/admin/calendar/109?tab=signup');
     expect(screen.getByRole('link', { name: /Roll call taken — 12 scouts \+ 3 adults/ }).getAttribute('href')).toBe('/admin/calendar/109?tab=roll-call');
     expect(screen.queryByRole('img', { name: /calendar/ })).toBeNull(); // on-calendar is the norm — no O
   });

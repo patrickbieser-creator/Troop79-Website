@@ -61,7 +61,7 @@ export default async function EventMoneyPage({ params }: { params: Promise<{ id:
           </>
         }
       />
-      <EventNav signupId={signupId} active="money" sets={nav.sets} hasMoney={nav.hasMoney} />
+      <EventNav signupId={signupId} entryId={nav.entryId} active="money" sets={nav.sets} hasMoney={nav.hasMoney} />
       <MoneyPanel
         signupId={signupId}
         calendarEntryId={s.calendar_entry_id}

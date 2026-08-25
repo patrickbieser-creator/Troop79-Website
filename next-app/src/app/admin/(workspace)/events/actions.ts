@@ -1357,7 +1357,7 @@ export async function addGroupSet(
     .select('id')
     .single();
   if (error) return { ok: false, error: error.message };
-  revalidatePath(`/admin/events/${signupId}`);
+  revalidatePath(`/admin/calendar/${calendarEntryId}`);
   revalidatePath(`/admin/rosters/${signupId}`);
   revalidatePath(`/admin/rosters/${signupId}/assignments`);
   revalidateEvent(calendarEntryId, signupId);
@@ -1390,7 +1390,7 @@ export async function updateGroupSet(
     .eq('event_signup_id', signupId)
     .neq('kind', 'car');
   if (error) return { ok: false, error: error.message.includes('duplicate') ? 'A set with that label already exists.' : error.message };
-  revalidatePath(`/admin/events/${signupId}`);
+  revalidatePath(`/admin/calendar/${calendarEntryId}`);
   revalidatePath(`/admin/rosters/${signupId}/assignments`);
   revalidateEvent(calendarEntryId, signupId);
   return { ok: true };
@@ -1432,7 +1432,7 @@ export async function deleteGroupSet(
   }
   const { error } = await supabase.from('signup_group_sets').delete().eq('id', setId);
   if (error) return { ok: false, error: error.message };
-  revalidatePath(`/admin/events/${signupId}`);
+  revalidatePath(`/admin/calendar/${calendarEntryId}`);
   revalidatePath(`/admin/rosters/${signupId}`);
   revalidatePath(`/admin/rosters/${signupId}/assignments`);
   revalidateEvent(calendarEntryId, signupId);

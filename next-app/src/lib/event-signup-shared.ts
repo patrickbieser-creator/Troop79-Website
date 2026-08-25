@@ -28,12 +28,18 @@
 export function eventRevalidatePaths(calendarEntryId: number, signupId?: number): string[] {
   const paths = [
     '/admin/events',
+    // The calendar list (status pill + Going count) and the entry workbench,
+    // whose Signup tab hosts the builder (2026-08-25).
+    '/admin/calendar',
+    `/admin/calendar/${calendarEntryId}`,
     `/events/${calendarEntryId}`,
     // The slot-first signup form — the page that actually shows job dates.
     `/events/${calendarEntryId}/signup`,
     '/events'
   ];
-  if (signupId) paths.splice(1, 0, `/admin/events/${signupId}`);
+  // signupId is accepted for callers that have it; the builder no longer has
+  // a signup-keyed path of its own.
+  void signupId;
   return paths;
 }
 

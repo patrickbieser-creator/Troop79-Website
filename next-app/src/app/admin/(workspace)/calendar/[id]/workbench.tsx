@@ -321,7 +321,7 @@ export function Workbench({
       <section className={styles.panel} role="tabpanel" aria-label="Signup" hidden={tab !== 'signup'}>
         {signupId && builder && builder.entry ? (
           <>
-            <EventNav signupId={signupId} active="builder" sets={builder.nav.sets} hasMoney={builder.nav.hasMoney} />
+            <EventNav signupId={signupId} entryId={entry.id} active="builder" sets={builder.nav.sets} hasMoney={builder.nav.hasMoney} />
             <BuilderPanels
               signupId={signupId}
               calendarEntryId={entry.id}

@@ -55,7 +55,7 @@ export default async function SnapshotWorkspacePage({
           </>
         }
       />
-      <EventNav signupId={signupId} active="snapshot" sets={nav.sets} hasMoney={nav.hasMoney} />
+      <EventNav signupId={signupId} entryId={nav.entryId} active="snapshot" sets={nav.sets} hasMoney={nav.hasMoney} />
 
       <section className={styles.panel}>
         <div className={styles.panelHead}>

@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 24, 2026</strong> &nbsp;&middot;&nbsp; v1.91.0</p>
+      <p>Last updated: <strong>August 25, 2026</strong> &nbsp;&middot;&nbsp; v1.92.0</p>
     </div>
   </div>
 
@@ -494,6 +494,52 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.92.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.92.0</span>
+        <span class="release-date">August 25, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">The Calendar is the hub &mdash; step 1</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Going column.</strong> The admin calendar list shows how many people are signed up for each
+              event, right after the status pills &mdash; the signup headcount (yes + full, guests included), the same
+              number the roster uses. Zero shows nothing; a meeting with no signup shows nothing (its roll call is a
+              different fact and already has the R pill). One paginated read for the whole list, not one call per
+              event.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Every status pill opens the entry workbench.</strong> The A and S pills used to route out to
+              the standalone agenda editor and signup builder while R opened the workbench tab &mdash; three pills, two
+              navigation models. All of them now open <code>/admin/calendar/{id}</code> on the matching tab.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>The standalone signup builder is retired.</strong> <code>/admin/events/{signupId}</code> rendered
+              the exact panels the workbench&rsquo;s Signup tab already hosts; it is now a redirect there, so every old
+              link, bookmark and the event tab strip&rsquo;s <em>Builder</em> tab still land on the builder &mdash; inside
+              the calendar. The tab strip is keyed by the calendar entry now, so Builder no longer loops out of the
+              workbench it is embedded in.
+            </span>
+          </li>
+          <li>
+            <span>
+              Server actions that touch a signup&rsquo;s sets now refresh the calendar list and the entry workbench
+              instead of the retired builder route. UX sweep by Jenna, load-shape review by the Architect: no new
+              queries for the workbench, one for the list.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

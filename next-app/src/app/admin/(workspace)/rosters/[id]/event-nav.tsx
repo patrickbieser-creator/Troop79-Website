@@ -34,11 +34,16 @@ export interface EventNavSet {
 export function eventNavItems(
   signupId: number,
   sets: readonly EventNavSet[] = [],
-  opts: { hasMoney?: boolean; active?: EventNavKey } = {}
+  opts: { hasMoney?: boolean; active?: EventNavKey; entryId?: number } = {}
 ): { key: EventNavKey; label: string; href: string }[] {
   const showMoney = (opts.hasMoney ?? true) || opts.active === 'money';
+  // Builder is the calendar entry workbench's Signup tab (Patrick, 2026-08-25:
+  // "calendar be the central point of activity"); the standalone
+  // /admin/events/[id] page is a redirect there. Keyed by the ENTRY, so the
+  // signup id alone can't build it — callers pass entryId from loadEventNav.
+  const builderHref = opts.entryId ? `/admin/calendar/${opts.entryId}?tab=signup` : `/admin/events/${signupId}`;
   return [
-    { key: 'builder', label: 'Builder', href: `/admin/events/${signupId}` },
+    { key: 'builder', label: 'Builder', href: builderHref },
     { key: 'roster', label: 'Roster', href: `/admin/rosters/${signupId}` },
     ...sets.map((s) => ({ key: `set:${s.id}` as const, label: s.label, href: `/admin/rosters/${signupId}/assignments?set=${s.id}` })),
     ...(showMoney ? [{ key: 'money' as const, label: 'Money', href: `/admin/rosters/${signupId}/money` }] : []),
@@ -48,15 +53,20 @@ export function eventNavItems(
 
 export function EventNav({
   signupId,
+  entryId,
   active,
   sets = [],
   hasMoney = true
 }: {
   signupId: number;
+  /** The calendar entry the signup belongs to — where the Builder tab opens. */
+  entryId: number;
   active: EventNavKey;
   sets?: readonly EventNavSet[];
   /** false hides Money (no prices, no money rows) unless active === 'money'. */
   hasMoney?: boolean;
 }) {
-  return <TabStrip ariaLabel="Event pages" activeKey={active} items={eventNavItems(signupId, sets, { hasMoney, active })} />;
+  return (
+    <TabStrip ariaLabel="Event pages" activeKey={active} items={eventNavItems(signupId, sets, { hasMoney, active, entryId })} />
+  );
 }

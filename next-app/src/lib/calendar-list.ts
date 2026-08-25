@@ -95,7 +95,10 @@ export function statusPills(row: StatusPillInput): StatusPill[] {
       letter: 'A',
       label: live ? 'Agenda published' : `Agenda ${row.agendaStatus}`,
       tone: live ? 'live' : 'draft',
-      href: row.agendaId ? `/admin/advancement/meetings/${row.agendaId}` : null
+      // Every pill opens the entry workbench on its own tab (Patrick,
+      // 2026-08-25: "calendar be the central point of activity") — the tabs
+      // host the editors (D-229), so nothing routes out to a standalone screen.
+      href: `/admin/calendar/${row.id}?tab=agenda`
     });
   }
 
@@ -105,7 +108,7 @@ export function statusPills(row: StatusPillInput): StatusPill[] {
       letter: 'S',
       label: live ? 'Signup open' : `Signup ${row.signupStatus}`,
       tone: live ? 'live' : row.signupStatus === 'draft' ? 'draft' : 'closed',
-      href: row.signupId ? `/admin/events/${row.signupId}` : null
+      href: `/admin/calendar/${row.id}?tab=signup`
     });
   }
 
@@ -132,6 +135,18 @@ export function statusPills(row: StatusPillInput): StatusPill[] {
   }
 
   return pills;
+}
+
+/**
+ * The Going column (Patrick, 2026-08-25: "the number going … right after
+ * status and before author. If the number is 0 display nothing"). The count is
+ * the signup headcount — yes + full participation, guests included, the same
+ * definition as the event_signup_headcount RPC — so an entry with no signup is
+ * blank too: a meeting's roll call says who showed up, not who said they
+ * would, and it already has the R pill.
+ */
+export function goingLabel(going: number | null | undefined): string {
+  return going && going > 0 ? String(going) : '';
 }
 
 /** Column order of the pills — each letter keeps its own column so the pills

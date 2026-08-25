@@ -475,7 +475,7 @@ export default async function EventRosterPage({ params }: { params: Promise<{ id
           </>
         }
       />
-      <EventNav signupId={signupId} active="roster" sets={data.nav.sets} hasMoney={data.nav.hasMoney} />
+      <EventNav signupId={signupId} entryId={data.nav.entryId} active="roster" sets={data.nav.sets} hasMoney={data.nav.hasMoney} />
 
       <div className={styles.tiles}>
         <div className={styles.tile}>

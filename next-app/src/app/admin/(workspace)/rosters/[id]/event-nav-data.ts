@@ -10,6 +10,9 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { EventNavSet } from './event-nav';
 
 export interface EventNavData {
+  /** The calendar entry the signup is a layer of — the Builder tab opens the
+   *  entry workbench's Signup tab (2026-08-25), so the nav needs both ids. */
+  entryId: number;
   sets: EventNavSet[];
   hasMoney: boolean;
 }
@@ -24,6 +27,7 @@ export async function loadEventNav(supabase: SupabaseClient, signupId: number, c
   ]);
   const n = (r: { count: number | null }) => r.count ?? 0;
   return {
+    entryId: calendarEntryId,
     sets: ((sets ?? []) as { id: number; label: string }[]).map((s) => ({ id: s.id, label: s.label })),
     hasMoney: n(prices) + n(tx) + n(reqs) + n(ms) > 0
   };

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { authorInitials, dateHover, dateLabel, statusPills, truncate } from '../src/lib/calendar-list';
+import { authorInitials, dateHover, dateLabel, goingLabel, statusPills, truncate } from '../src/lib/calendar-list';
 
 /**
  * Admin calendar list row helpers (Patrick, 2026-08-24: the Roll Call list
@@ -70,16 +70,19 @@ describe('statusPills', () => {
     ]);
   });
 
-  it('Agenda_PublishedIsGreen_DraftIsYellow_AndLinksToTheEditor', () => {
+  // Every pill opens the entry workbench on that layer's tab (Patrick,
+  // 2026-08-25: "calendar be the central point of activity") — no pill routes
+  // out to a standalone layer screen any more.
+  it('Agenda_PublishedIsGreen_DraftIsYellow_AndOpensTheAgendaTab', () => {
     expect(statusPills({ ...base, agendaId: 3, agendaStatus: 'published' })[0]).toMatchObject({
-      letter: 'A', tone: 'live', href: '/admin/advancement/meetings/3'
+      letter: 'A', tone: 'live', href: '/admin/calendar/7?tab=agenda'
     });
     expect(statusPills({ ...base, agendaId: 3, agendaStatus: 'draft' })[0]).toMatchObject({ letter: 'A', tone: 'draft' });
   });
 
-  it('Signup_OpenIsGreen_ClosedIsGrey_AndLinksToTheBuilder', () => {
+  it('Signup_OpenIsGreen_ClosedIsGrey_AndOpensTheSignupTab', () => {
     expect(statusPills({ ...base, signupId: 9, signupStatus: 'open' })[0]).toMatchObject({
-      letter: 'S', tone: 'live', href: '/admin/events/9'
+      letter: 'S', tone: 'live', href: '/admin/calendar/7?tab=signup'
     });
     expect(statusPills({ ...base, signupId: 9, signupStatus: 'closed' })[0]).toMatchObject({ letter: 'S', tone: 'closed' });
   });
@@ -96,5 +99,21 @@ describe('statusPills', () => {
       ...base, on_calendar: false, agendaId: 1, agendaStatus: 'draft', signupId: 2, signupStatus: 'open', attendance: { scouts: 1, adults: 0 }
     }).map((p) => p.letter);
     expect(letters).toEqual(['A', 'S', 'R', 'O']);
+  });
+});
+
+/** The Going column (Patrick, 2026-08-25): the signup headcount, right after
+ *  Status; "If the number is 0 display nothing". Blank for entries with no
+ *  signup too — a meeting's roll call is a different fact (who showed up, not
+ *  who said they would) and already has its own pill. */
+describe('goingLabel', () => {
+  it('ZeroOrMissing_IsBlank', () => {
+    expect(goingLabel(0)).toBe('');
+    expect(goingLabel(null)).toBe('');
+    expect(goingLabel(undefined)).toBe('');
+  });
+
+  it('PositiveCount_IsTheNumber', () => {
+    expect(goingLabel(14)).toBe('14');
   });
 });

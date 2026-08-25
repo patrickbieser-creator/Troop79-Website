@@ -1,67 +1,29 @@
-import Link from 'next/link';
-import { EventNav } from '../../rosters/[id]/event-nav';
-import { notFound } from 'next/navigation';
-import { requireCapability } from '@/lib/require-capability';
-import { BuilderPanels } from './builder-panels';
-import { loadBuilderData } from './load-builder';
-import { PageTitle } from '../../_components/page-title';
-import styles from '../events-admin.module.css';
-
-export const metadata = { title: 'Event Builder — Troop 79' };
-
-/*
- * The event builder — a BLOCK CHECKLIST, not a per-event-type template.
- *
- * Every event composes the same small set of blocks; the category only seeds
- * which ones start on. A new event shape needs no new code, just a different
- * combination (Plans/Event-Signup.md). The loader lives in load-builder.ts so
- * the calendar entry workbench can render the same builder in its Signup tab.
+/**
+ * /admin/events/[signupId] — retired as a page 2026-08-25 (Patrick: "I would
+ * like to have calendar be the central point of activity"). The builder it
+ * rendered is the same `BuilderPanels` the calendar entry workbench hosts in
+ * its Signup tab (D-229), so this route now resolves the signup to its entry
+ * and redirects there — every older link, bookmark and EventNav tab still
+ * lands on the builder. `load-builder.ts` and `builder-panels.tsx` stay: the
+ * workbench imports them.
  */
 
-export default async function EventBuilderPage({ params }: { params: Promise<{ id: string }> }) {
+import { notFound, redirect } from 'next/navigation';
+import { createAdminClient } from '@/lib/supabase/server';
+import { requireCapability } from '@/lib/require-capability';
+
+export default async function EventBuilderRedirect({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const signupId = Number(id);
   if (!Number.isInteger(signupId) || signupId < 1) notFound();
 
-  // Leader-only: rosters carry guest notes, driving arrangements, payment
-  // status and household composition. A scout-role session must not see them.
+  // Same gate the page had: which entry a signup belongs to is leader data.
   await requireCapability('calendar.write');
-  const data = await loadBuilderData(signupId);
-  if (!data || !data.entry) notFound();
-
-  const entryId = data.entry.id as number;
-
-  return (
-    <>
-      <PageTitle
-        title={String(data.entry.title)}
-        sub={
-          <>
-            {String(data.entry.category)} ·{' '}
-            <Link href="/admin/events" className={styles.actionLinkMuted}>
-              All signups
-            </Link>{' '}
-            ·{' '}
-            <Link href={`/events/${entryId}`} className={styles.actionLinkMuted}>
-              View public page
-            </Link>
-          </>
-        }
-      />
-      <EventNav signupId={signupId} active="builder" sets={data.nav.sets} hasMoney={data.nav.hasMoney} />
-
-      <BuilderPanels
-        signupId={signupId}
-        calendarEntryId={entryId}
-        entryDate={String(data.entry.entry_date ?? '')}
-        endDate={(data.entry.end_date as string | null) ?? null}
-        signup={data.signup}
-        prices={data.prices}
-        slots={data.slots}
-        questions={data.questions}
-        sets={data.sets}
-        category={String(data.entry.category ?? '')}
-      />
-    </>
-  );
+  const { data } = await createAdminClient()
+    .from('event_signups')
+    .select('calendar_entry_id')
+    .eq('id', signupId)
+    .maybeSingle();
+  if (!data) notFound();
+  redirect(`/admin/calendar/${data.calendar_entry_id as number}?tab=signup`);
 }

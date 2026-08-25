@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { CalendarCategoryRow } from '@/lib/calendar-categories';
 import { splitByTab } from '@/lib/calendar-tabs';
-import { PILL_COLUMNS, authorInitials, dateHover, dateLabel, statusPills, truncate } from '@/lib/calendar-list';
+import { PILL_COLUMNS, authorInitials, dateHover, dateLabel, goingLabel, statusPills, truncate } from '@/lib/calendar-list';
 import { DatePickerField } from '../_components/date-picker-field';
 import { TabStrip } from '../_components/tab-strip';
 import { AddButton } from '../_components/add-button';
@@ -386,6 +386,9 @@ export function CalendarEditor({
             <SortHeader label="Event" colKey="title" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
             <SortHeader label="Category" colKey="category" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
             <th>Status</th>
+            {/* Going (Patrick, 2026-08-25): the signup headcount, blank at
+                zero and blank when there is no signup to count. */}
+            <th className={styles.goingHead}>Going</th>
             <SortHeader label="Author" colKey="author" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
             <SortHeader label="Location" colKey="location" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} />
             <th>Promoted</th>
@@ -395,7 +398,7 @@ export function CalendarEditor({
         <tbody>
           {shown.length === 0 ? (
             <tr>
-              <td colSpan={8} className={styles.muted}>
+              <td colSpan={9} className={styles.muted}>
                 {/* A filtered empty tab is a different situation from an empty
                     one — telling someone to add an entry when they have simply
                     mistyped a search is the wrong instruction. */}
@@ -424,6 +427,9 @@ export function CalendarEditor({
                 <td className={`${styles.muted} ${styles.nowrap}`}>{row.category}</td>
                 <td className={styles.nowrap}>
                   <StatusPills row={row} />
+                </td>
+                <td className={styles.goingCell} title={row.going ? `${row.going} going` : undefined}>
+                  {goingLabel(row.going)}
                 </td>
                 <td className={`${styles.muted} ${styles.nowrap}`} title={row.author_name ?? undefined}>
                   {authorInitials(row.author_name)}

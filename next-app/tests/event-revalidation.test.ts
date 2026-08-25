@@ -26,12 +26,16 @@ describe('event signup — revalidation paths (pure)', () => {
     const paths = eventRevalidatePaths(42, 7);
     expect(paths).toContain('/events');
     expect(paths).toContain('/admin/events');
-    expect(paths).toContain('/admin/events/7');
+    // The builder lives in the calendar workbench now (2026-08-25); the list
+    // carries the signup's status pill and Going count.
+    expect(paths).toContain('/admin/calendar');
+    expect(paths).toContain('/admin/calendar/42');
+    expect(paths.some((p) => p.startsWith('/admin/events/'))).toBe(false);
   });
 
-  it('EventRevalidatePaths_OmitsTheBuilderPath_WhenNoSignupIdIsKnown', () => {
+  it('EventRevalidatePaths_StillFlushesTheWorkbench_WhenNoSignupIdIsKnown', () => {
     const paths = eventRevalidatePaths(42);
-    expect(paths.some((p) => p.startsWith('/admin/events/'))).toBe(false);
+    expect(paths).toContain('/admin/calendar/42');
     // The public pages still flush — the entry changed either way.
     expect(paths).toContain('/events/42/signup');
   });

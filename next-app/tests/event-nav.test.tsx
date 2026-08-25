@@ -18,11 +18,14 @@ const SETS = [
 
 describe('EventNav', () => {
   it('EventNav_ListsBuilderRoster_EverySet_ThenMoneyAndSnapshot', () => {
-    render(<EventNav signupId={7} active="roster" sets={SETS} />);
+    render(<EventNav signupId={7} entryId={42} active="roster" sets={SETS} />);
     const tabs = screen.getAllByRole('tab');
     expect(tabs.map((t) => t.textContent)).toEqual(['Builder', 'Roster', 'Patrols', 'Tents', 'Cars there', 'Cars back', 'Money', 'Snapshot']);
+    // Builder is the calendar workbench's Signup tab (2026-08-25): the
+    // standalone /admin/events/[id] page retired, so the tab is keyed by the
+    // ENTRY, not the signup.
     expect(tabs.map((t) => t.getAttribute('href'))).toEqual([
-      '/admin/events/7',
+      '/admin/calendar/42?tab=signup',
       '/admin/rosters/7',
       '/admin/rosters/7/assignments?set=31',
       '/admin/rosters/7/assignments?set=32',
@@ -34,7 +37,7 @@ describe('EventNav', () => {
   });
 
   it('EventNav_MarksTheCurrentPageOrSetSelected', () => {
-    render(<EventNav signupId={7} active="set:32" sets={SETS} />);
+    render(<EventNav signupId={7} entryId={42} active="set:32" sets={SETS} />);
     const selected = screen.getAllByRole('tab').filter((t) => t.getAttribute('aria-selected') === 'true');
     expect(selected.map((t) => t.textContent)).toEqual(['Tents']);
   });
@@ -47,7 +50,7 @@ describe('EventNav', () => {
   it('EventNav_HidesMoney_WhenTheEventHasNoMoney_UnlessYouAreOnIt', () => {
     expect(eventNavItems(3, [], { hasMoney: false }).map((i) => i.key)).toEqual(['builder', 'roster', 'snapshot']);
     expect(eventNavItems(3, [], { hasMoney: false, active: 'money' }).map((i) => i.key)).toEqual(['builder', 'roster', 'money', 'snapshot']);
-    render(<EventNav signupId={3} active="roster" hasMoney={false} />);
+    render(<EventNav signupId={3} entryId={42} active="roster" hasMoney={false} />);
     expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Builder', 'Roster', 'Snapshot']);
   });
 });
