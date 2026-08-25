@@ -86,6 +86,8 @@ already used by the roster's "email non-responders" and the identity sign-in mai
       when the entry has no location.
 - [ ] Merge fields render from real data; an unknown `[token]` is left as typed (never crashes,
       never leaks HTML); all user content is escaped.
+- [ ] **Reply-To is the first leader address** in the cc list, on both messages (Patrick,
+      2026-08-25); when the list is empty, the troop address (`troopEmail()`).
 - [ ] The dev relay (`EMAIL_REDIRECT_TO`) applies, so local/dev never mails real families.
 
 ## Test Plan
@@ -112,6 +114,7 @@ Pure (db project):
 - [ ] `EditedSignup_ResendsBoth_MarkedAsUpdate()` — `[changed]` = "Updated signup", subject gets
       "Updated: " unless it already uses `[changed]`, the change line lists people/jobs/rides diffs.
 - [ ] `LeaderUseFamilyMessage_SendsTheFamilyReceipt_ToTheLeaders_WithLeaderTokensBlank()`.
+- [ ] `ReplyTo_IsTheFirstLeaderAddress_ElseTheTroopAddress()`.
 - [ ] `SendConfirmations_SkipAnAudienceThatIsOff_AndEverythingWhenUnconfigured()`.
 - [ ] `SendConfirmations_Failure_DoesNotThrow_AndIsLogged()`.
 - [ ] `Template_InUse_CannotBeDeleted_CanBeRetired()`.
@@ -236,7 +239,8 @@ among the written rows, every adult in the household (`households` → `people` 
 `participant_class` is an adult class); **leaders:** `confirm_recipients`. Then ONE dedup pass
 over both lists (trim + lower-case): an address in both goes to the family list only. Renders
 (the leader audience renders the family message instead when `confirm_leader_use_family` is on)
-and `sendEmail({ …, confirm: true })` per audience. For an **update** the sender diffs the
+and `sendEmail({ …, replyTo: confirm_recipients[0] ?? troopEmail(), confirm: true })` per
+audience (`sendEmail` gains an optional `replyTo`; Resend supports it directly). For an **update** the sender diffs the
 written rows against the previous rows (the RPC returns the household's current rows; the
 previous state is read just before the write) to fill `[changes]` and set `[changed]`. Try/catch per audience:
 on failure write `confirm_last_error` and continue to the redirect. Never `await` it before the
@@ -306,8 +310,6 @@ retry" per household from the log (Phase 2), and a **Resend confirmation** row a
 
 ## Open Questions
 
-- [ ] **Reply-to:** the troop address (`troopEmail()`) for the family message, or the first
-      leader address in the list? (Leader message: reply-to the family's email — assumed.)
 - [ ] **Cancellations:** no email on cancel in this cut (Patrick decided edits only, 2026-08-25);
       revisit when the log/Resend lands.
 - [ ] **Log table now or Phase 2?** Affects step 1 and the roster's "sent" column.
