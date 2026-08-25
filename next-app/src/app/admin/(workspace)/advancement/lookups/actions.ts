@@ -1109,7 +1109,6 @@ function revalidateCategories() {
   revalidatePath('/admin/advancement/lookups');
   revalidatePath('/admin/calendar');
   revalidatePath('/admin/news/photo-albums');
-  revalidatePath('/admin/events');
   revalidatePath('/admin/rosters');
   revalidatePath('/events');
   revalidatePath('/photos');

@@ -1501,7 +1501,7 @@ export function BuilderPanels({
                     setDangerWarning(res.error ?? 'Could not remove the signup.');
                     return;
                   }
-                  router.push('/admin/events');
+                  router.push(`/admin/calendar/${calendarEntryId}?tab=signup`);
                 })
               }
             >
@@ -1528,7 +1528,7 @@ export function BuilderPanels({
                 // before the leader agrees to anything.
                 const res = await disableSignup(signupId, calendarEntryId, false);
                 if (res.ok) {
-                  router.push('/admin/events');
+                  router.push(`/admin/calendar/${calendarEntryId}?tab=signup`);
                   return;
                 }
                 setDangerWarning(res.error ?? null);

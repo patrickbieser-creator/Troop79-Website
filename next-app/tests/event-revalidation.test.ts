@@ -25,7 +25,8 @@ describe('event signup — revalidation paths (pure)', () => {
   it('EventRevalidatePaths_IncludesTheEventsIndex_AndTheAdminSurfaces', () => {
     const paths = eventRevalidatePaths(42, 7);
     expect(paths).toContain('/events');
-    expect(paths).toContain('/admin/events');
+    // The Event Signups list retired into the Calendar (2026-08-25).
+    expect(paths).not.toContain('/admin/events');
     // The builder lives in the calendar workbench now (2026-08-25); the list
     // carries the signup's status pill and Going count.
     expect(paths).toContain('/admin/calendar');

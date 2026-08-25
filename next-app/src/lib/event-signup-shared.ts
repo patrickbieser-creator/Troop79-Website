@@ -27,7 +27,6 @@
  */
 export function eventRevalidatePaths(calendarEntryId: number, signupId?: number): string[] {
   const paths = [
-    '/admin/events',
     // The calendar list (status pill + Going count) and the entry workbench,
     // whose Signup tab hosts the builder (2026-08-25).
     '/admin/calendar',

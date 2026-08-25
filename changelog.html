@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 25, 2026</strong> &nbsp;&middot;&nbsp; v1.93.0</p>
+      <p>Last updated: <strong>August 25, 2026</strong> &nbsp;&middot;&nbsp; v1.94.0</p>
     </div>
   </div>
 
@@ -494,6 +494,35 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.94.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.94.0</span>
+        <span class="release-date">August 25, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">The Calendar is the hub &mdash; step 3: Event Signups retired</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong><code>/admin/events</code> is a redirect to the Calendar.</strong> After walking the flow with
+              its links removed (v1.92.1), nothing it showed was missing elsewhere: the S pill carries signup
+              status, the Going column carries headcount, and a signup is enabled from the entry&rsquo;s own Signup
+              tab. Bookmarks land on the Calendar.
+            </span>
+          </li>
+          <li>
+            <span>
+              Deleting or disabling a signup from the builder now returns you to the entry&rsquo;s Signup tab (which
+              offers to enable one again) instead of the retired list; category edits and signup actions no longer
+              refresh a page that does not exist. The list&rsquo;s one-click Enable button, used nowhere else, is gone.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

@@ -51,7 +51,8 @@ async function loadData() {
     // The Going column (2026-08-25): one paginated read of every "yes"
     // reply, reduced per signup below — the same aggregate as the
     // event_signup_headcount RPC, but ONE query for the whole list rather
-    // than one RPC round-trip per signup (the loop /admin/events runs).
+    // than one RPC round-trip per signup (the loop the retired /admin/events
+    // list ran).
     fetchAllRows<{ event_signup_id: number; guest_count: number | null }>((from, to) =>
       supabase
         .from('signup_entries')
