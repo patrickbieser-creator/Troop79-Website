@@ -634,3 +634,6 @@
 .checkInlineWide { display: inline-flex; align-items: center; gap: var(--admin-space-3); }
 .skillChecks { display: flex; flex-wrap: wrap; gap: var(--admin-space-2) var(--admin-space-7); }
 .skillCheck  { display: inline-flex; align-items: center; gap: var(--admin-space-2); font-size: var(--admin-text-base); white-space: nowrap; }
+
+/* Email templates card — one group per registered kind */
+.groupTitle { font-size: var(--admin-text-base); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--admin-gray-700); }

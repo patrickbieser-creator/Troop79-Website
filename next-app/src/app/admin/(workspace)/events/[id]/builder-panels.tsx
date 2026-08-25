@@ -21,6 +21,9 @@ import { DatePickerField } from '../../_components/date-picker-field';
 import { DateTimeField } from '../../_components/date-time-field';
 import { TabStrip } from '../../_components/tab-strip';
 import { Button } from '../../../_components/button';
+import { ConfirmationPanel } from './confirmation-panel';
+import type { EmailTemplateRow } from '../../advancement/lookups/email-template-actions';
+import type { ConfirmationContext } from '@/lib/signup-confirmation';
 import styles from '../events-admin.module.css';
 
 /*
@@ -98,7 +101,9 @@ export function BuilderPanels({
   slots,
   questions,
   sets = [],
-  category = ''
+  category = '',
+  templates = [],
+  previewCtx = null
 }: {
   signupId: number;
   calendarEntryId: number;
@@ -114,6 +119,9 @@ export function BuilderPanels({
   sets?: Rec[];
   /** calendar_entries.category — picks the Assignments presets. */
   category?: string;
+  /** The email template library + this event's preview context (Confirmation email block). */
+  templates?: EmailTemplateRow[];
+  previewCtx?: ConfirmationContext | null;
 }) {
   const [pending, start] = useTransition();
   const feedback = useSavePhase();
@@ -1271,6 +1279,15 @@ export function BuilderPanels({
           ))}
         </p>
       </section>
+      )}
+      {tab === 'questions' && previewCtx && (
+        <ConfirmationPanel
+          signupId={signupId}
+          calendarEntryId={calendarEntryId}
+          signup={signup}
+          templates={templates}
+          previewCtx={previewCtx}
+        />
       )}
       {tab === 'assignments' && (
       <section className={styles.panel}>

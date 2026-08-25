@@ -239,3 +239,7 @@
 .payWarn { margin-top: var(--admin-space-4); padding: var(--admin-space-4) var(--admin-space-6); background: var(--admin-status-warning-bg); border-left: 3px solid var(--admin-warning); border-radius: var(--admin-radius-sm); }
 .payWarn p { margin: 0 0 var(--admin-space-3); }
 .payWarn label { display: block; margin: var(--admin-space-3) 0; }
+
+/* Confirmation email block (Plans/Signup-Confirmation-Email.md) */
+.confirmSubject { font-size: var(--admin-text-md); color: var(--admin-gray-900); margin-bottom: var(--admin-space-4); overflow-wrap: anywhere; }
+.confirmActions { display: flex; gap: var(--admin-space-5); align-items: center; flex-wrap: wrap; margin-bottom: var(--admin-space-6); }

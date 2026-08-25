@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 25, 2026</strong> &nbsp;&middot;&nbsp; v1.100.3</p>
+      <p>Last updated: <strong>August 25, 2026</strong> &nbsp;&middot;&nbsp; v1.101.0</p>
     </div>
   </div>
 
@@ -494,6 +494,51 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.101.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.101.0</span>
+        <span class="release-date">August 25, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Signup confirmation emails</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Families get a receipt.</strong> When a household signs up (or edits, or cancels), every signed-up
+              member with an email gets a confirmation &mdash; who&rsquo;s going, guests, days, jobs, rides, price
+              tiers, amount due and how to pay, their answers, the location with a Google Maps link &mdash; marked
+              &ldquo;Updated&rdquo; or &ldquo;Cancelled&rdquo; with what changed. When only scouts signed up, every
+              parent is cc&rsquo;d. Nobody ever gets the same email twice.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Leaders get a notification.</strong> Up to five addresses on the signup receive a leader message
+              (household, contact details, choices, running headcount, a roster link) &mdash; or, with one tick,
+              exactly what the family received. Reply-To is the first leader address.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>A reusable template library.</strong> Lookups &amp; Admin &rarr; Email templates holds named
+              templates per kind, written in a message editor with merge-field buttons and a live preview from the
+              event&rsquo;s real details. The signup builder&rsquo;s new <em>Confirmation email</em> block (Questions tab)
+              picks a template for each audience and can customize it for this event without touching the library.
+              Kinds are open-ended, so the newsletter and reminders can join without a migration.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Every send is logged.</strong> The event roster shows &ldquo;Confirmation sent 2:14 PM&rdquo; or
+              &ldquo;failed&rdquo; per household with a Resend; a send failure never blocks a signup.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

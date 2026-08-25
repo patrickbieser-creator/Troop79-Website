@@ -43,6 +43,16 @@ import { CategoriesEditor } from './categories-editor';
 import { ArticleTokensEditor } from './article-tokens-editor';
 import { SiteTextEditor } from './site-text-editor';
 import { SeoEditor } from './seo-editor';
+import { EmailTemplatesEditor } from './email-templates-editor';
+import {
+  createEmailTemplate,
+  updateEmailTemplate,
+  retireEmailTemplate,
+  restoreEmailTemplate,
+  loadEmailTemplates
+} from './email-template-actions';
+import { samplePreviewContext } from '@/lib/signup-confirmation-preview';
+import { siteUrl } from '@/lib/site-url';
 import { loadSiteText, SITE_TEXT_KEYS, type SiteTextKey } from '@/lib/site-text';
 import { SEO_KEYS, type SeoSettingKey } from '@/lib/seo';
 import { loadArticleTokens } from '@/lib/article-tokens-server';
@@ -349,10 +359,11 @@ export default async function LookupsPage() {
     skillIdsByScout,
     householdRows
   } = await loadLookups();
-  const [calendarCategories, articleTokens, siteTextMap] = await Promise.all([
+  const [calendarCategories, articleTokens, siteTextMap, emailTemplates] = await Promise.all([
     loadCalendarCategories(),
     loadArticleTokens(),
-    loadSiteText(createAdminClient())
+    loadSiteText(createAdminClient()),
+    loadEmailTemplates()
   ]);
   const siteText: Partial<Record<SiteTextKey, string>> = {};
   for (const def of SITE_TEXT_KEYS) {
@@ -549,6 +560,20 @@ export default async function LookupsPage() {
           sub="the follow-up sent from an event roster’s “Chase the non-responders” panel · blank means the built-in wording · {title} and {deadline} are filled when it’s sent"
         >
           <SiteTextEditor values={siteText} onSave={saveSiteText} />
+        </Card>
+
+        <Card
+          title="Email templates"
+          sub="the library the signup builder's Confirmation email block picks from · grouped by kind · fields in [brackets] fill in when sent · a template in use is retired, not deleted"
+        >
+          <EmailTemplatesEditor
+            rows={emailTemplates}
+            previewCtx={samplePreviewContext(siteUrl())}
+            onCreate={createEmailTemplate}
+            onUpdate={updateEmailTemplate}
+            onRetire={retireEmailTemplate}
+            onRestore={restoreEmailTemplate}
+          />
         </Card>
 
         <Card

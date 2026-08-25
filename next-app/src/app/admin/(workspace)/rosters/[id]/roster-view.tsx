@@ -14,6 +14,8 @@ import { RosterTable } from './roster-table';
 import { isGuestMode } from '@/lib/event-signup';
 import { AddPerson, type AddCandidate } from './add-person';
 import { EmailPanel } from './email-panel';
+import { ResendConfirmation } from './resend-confirmation';
+import { fmtDateTime } from '@/lib/format-date';
 import { emailConfigured } from '@/lib/email';
 import styles from '../../events/events-admin.module.css';
 import { loadEventNav } from './event-nav-data';
@@ -103,6 +105,8 @@ export async function loadRoster(signupId: number) {
     /** none | count | named (Plans/Guests-As-People.md) — the grid shows the
      *  "+N guests" column only in count mode. */
     guest_mode: string | null;
+    /** Confirmation email (Plans/Signup-Confirmation-Email.md) — the roster's per-household status + Resend show only when on. */
+    confirm_family_enabled?: boolean;
   };
 
   const [{ data: entry }, { data: entries }, { data: prices }, { data: slots }, { data: claims },
@@ -394,10 +398,30 @@ export async function loadRoster(signupId: number) {
   const ridesOut = legTiles(transportEntries, cars, 'out');
   const ridesBack = legTiles(transportEntries, cars, 'back');
 
+  // Confirmation email status: the latest FAMILY log row per household.
+  const { data: logRows } = await supabase
+    .from('signup_confirmation_log')
+    .select('household_id, status, detail, sent_at')
+    .eq('event_signup_id', sig.id)
+    .eq('audience', 'family')
+    .order('sent_at', { ascending: false });
+  const confirmations: { householdId: number; household: string; status: string; detail: string | null; sentAt: string }[] = [];
+  for (const l of (logRows ?? []) as { household_id: number | null; status: string; detail: string | null; sent_at: string }[]) {
+    if (l.household_id == null || confirmations.some((c) => c.householdId === l.household_id)) continue;
+    confirmations.push({
+      householdId: l.household_id,
+      household: hhById.get(l.household_id) ?? '—',
+      status: l.status,
+      detail: l.detail,
+      sentAt: l.sent_at
+    });
+  }
+
   return {
     signup: sig,
     entry: entry as Record<string, unknown> | null,
     rows: liveRows,
+    confirmations,
     removedRows,
     nonResponders,
     slotCoverage,
@@ -515,6 +539,23 @@ export function RosterView({ data, signupId }: { data: RosterData; signupId: num
           <div className={styles.tileSub}>of ${owedTotal} owed</div>
         </div>
       </div>
+
+      {signup.confirm_family_enabled && data.confirmations.length > 0 && (
+        <section className={styles.panel}>
+          <h2>Confirmations</h2>
+          <ul className={styles.coverList}>
+            {data.confirmations.map((c) => (
+              <li key={c.householdId}>
+                <span>
+                  {c.household} —{' '}
+                  {c.status === 'failed' ? `failed — ${c.detail ?? 'unknown error'}` : `${c.status} ${fmtDateTime(c.sentAt)}`}
+                </span>
+                <ResendConfirmation signupId={signupId} householdId={c.householdId} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {slotCoverage.length > 0 && (
         <section className={styles.panel}>

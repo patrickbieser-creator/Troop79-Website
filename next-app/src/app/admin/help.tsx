@@ -94,6 +94,29 @@ export const HELP = {
         </p>
       </>
     )
+  },
+  'signup.confirmation': {
+    title: 'Confirmation email',
+    body: (
+      <>
+        <p>Two messages go out when a family submits, updates or cancels a signup.</p>
+        <dl>
+          <dt>Template</dt>
+          <dd>
+            Wording from the library under <Link href="/admin/advancement/lookups">Lookups &amp; Admin</Link> —
+            written once, picked per event. &ldquo;Built-in default&rdquo; is the shipped wording.
+          </dd>
+          <dt>Customize</dt>
+          <dd>Copies the template into this event only; the library is untouched. Reset to template drops the copy.</dd>
+          <dt>Leader addresses</dt>
+          <dd>
+            Up to five leaders who get the notification. The first is the Reply-To on every message; an address
+            that is also a family member on the signup gets the family receipt only.
+          </dd>
+        </dl>
+        <p>Fields in [brackets] fill in from the signup when the email is sent.</p>
+      </>
+    )
   }
 } satisfies Record<string, HelpEntry>;
 

@@ -8,6 +8,9 @@
 
 import { createAdminClient } from '@/lib/supabase/server';
 import { loadEventNav } from '../../rosters/[id]/event-nav-data';
+import { loadEmailTemplates } from '../../advancement/lookups/email-template-actions';
+import { previewContext } from '@/lib/signup-confirmation-preview';
+import { siteUrl } from '@/lib/site-url';
 
 export async function loadBuilderData(signupId: number) {
   const supabase = createAdminClient();
@@ -22,7 +25,7 @@ export async function loadBuilderData(signupId: number) {
   const [{ data: entry }, { data: prices }, { data: slots }, { data: questions }] = await Promise.all([
     supabase
       .from('calendar_entries')
-      .select('id, title, entry_date, end_date, category')
+      .select('id, title, entry_date, end_date, category, start_time, end_time, location')
       .eq('id', s.calendar_entry_id)
       .maybeSingle(),
     supabase
@@ -69,8 +72,27 @@ export async function loadBuilderData(signupId: number) {
     member_count: memberCount.get(Number(r.id)) ?? 0
   }));
 
-  const nav = await loadEventNav(supabase, s.id, s.calendar_entry_id);
+  const [nav, templates] = await Promise.all([loadEventNav(supabase, s.id, s.calendar_entry_id), loadEmailTemplates()]);
+  // The Confirmation email block previews with this event's real logistics.
+  const e = (entry ?? null) as { title?: string; entry_date?: string; end_date?: string | null; start_time?: string | null; end_time?: string | null; location?: string | null } | null;
+  const sig = signup as { deadline?: string | null; payment_instructions?: string | null };
+  const previewCtx = e
+    ? previewContext({
+        entryId: s.calendar_entry_id,
+        title: e.title ?? '',
+        entryDate: e.entry_date ?? '',
+        endDate: e.end_date,
+        startTime: e.start_time,
+        endTime: e.end_time,
+        location: e.location,
+        deadline: sig.deadline,
+        paymentInstructions: sig.payment_instructions,
+        siteUrl: siteUrl()
+      })
+    : null;
   return {
+    templates,
+    previewCtx,
     nav,
     signup: signup as Record<string, unknown>,
     entry: entry as Record<string, unknown> | null,

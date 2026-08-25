@@ -298,6 +298,8 @@ export function Workbench({
                   questions={builder.questions}
                   sets={builder.sets}
                   category={entry.category}
+                  templates={builder.templates}
+                  previewCtx={builder.previewCtx}
                 />
               ) : null}
             </>

@@ -37,6 +37,7 @@ import { RecentItemsList } from '../../_components/recent-items-list';
 import { PageTitle } from '../../_components/page-title';
 import { Notice } from '../../_components/notice';
 import dlg from '../../_components/dialog.module.css';
+import me from '../../_components/message-editor-dialog.module.css';
 import dt from '../../_components/data-table.module.css';
 import cal from '../../calendar/calendar.module.css';
 import plan from '../../advancement/meeting-plan/meeting-plan.module.css';
@@ -1109,6 +1110,57 @@ export default function StyleguidePage() {
             </div>
           </div>
           <DialogDemo />
+        </div>
+        <div className={`${sg.specimenLabel} ${sg.specimenLabelApproved}`}>✓ Message Editor (2026-08-25)</div>
+        <p className={sg.sectionNote}>
+          One shared editor for every email template (<code>_components/message-editor-dialog</code>,
+          Plans/Signup-Confirmation-Email.md): Subject, a strip of quiet merge-field buttons from the
+          template kind&rsquo;s registry (<code>lib/email-templates</code>) that insert{' '}
+          <code>[token]</code> at the caret, the Message textarea, and a live Preview rendered with the
+          event&rsquo;s real logistics and a sample family — stacked on phones, side by side ≥ 900px. Save
+          message / Discard per the Save standard; Cancel closes. Used by Lookups &amp; Admin → Email
+          templates (with a Name field) and the signup builder&rsquo;s Customize for this event…
+        </p>
+        <div className={`${dlg.dialog} ${me.wide} ${sg.dialogStatic}`}>
+          <div className={dlg.header}>
+            <h3 className={dlg.title}>Customize the family receipt</h3>
+            <p className={dlg.sub}>Signup — family receipt · fields in [brackets] fill in when the email is sent</p>
+          </div>
+          <div className={dlg.body}>
+            <div className={me.split}>
+              <div className={me.editor}>
+                <label className={me.field}>
+                  <span className={`adminLabel ${me.label}`}>Subject</span>
+                  <input type="text" defaultValue="Signed up: [event]" readOnly />
+                </label>
+                <div className={me.tokens}>
+                  {['event', 'date', 'location', 'amount_due', 'summary'].map((t) => (
+                    <Button key={t} variant="quiet" size="sm">[{t}]</Button>
+                  ))}
+                </div>
+                <label className={me.field}>
+                  <span className={`adminLabel ${me.label}`}>Message</span>
+                  <textarea rows={4} readOnly defaultValue="Hi [name] — you're signed up for [event] on [date]." />
+                </label>
+              </div>
+              <aside className={me.preview}>
+                <span className={`adminLabel ${me.label}`}>Preview</span>
+                <div className={me.previewCard}>
+                  <strong className={me.previewSubject}>Signed up: Fall Campout</strong>
+                  <p>Hi Dana Bieser — you&rsquo;re signed up for Fall Campout on Oct 9–11, 2026.</p>
+                  <ul className={me.previewList}>
+                    <li>Going: Avery Scout, Dana Bieser</li>
+                    <li>Amount due: $75.00</li>
+                  </ul>
+                </div>
+              </aside>
+            </div>
+          </div>
+          <div className={dlg.actions}>
+            <Button variant="secondary">Cancel</Button>
+            <Button variant="secondary" disabled>Discard changes</Button>
+            <Button variant="primary" disabled>Saved</Button>
+          </div>
         </div>
       </section>
 

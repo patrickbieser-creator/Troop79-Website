@@ -1,0 +1,54 @@
+/* Message editor dialog — tokens only (admin.css). Size-only override on the
+   shared Dialog (doubled selector, per the Dialogs spec). */
+.wide.wide { max-width: 1040px; }
+
+.split {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--admin-space-8);
+}
+@media (min-width: 900px) {
+  .split { grid-template-columns: 3fr 2fr; }
+}
+
+.editor { display: flex; flex-direction: column; gap: var(--admin-space-6); min-width: 0; }
+
+.field { display: block; }
+.label { display: block; margin-bottom: var(--admin-space-2); }
+.field input,
+.field textarea {
+  width: 100%;
+  padding: var(--admin-space-4) var(--admin-space-5);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  font-size: var(--admin-text-md);
+  font-family: inherit;
+  color: var(--admin-gray-900);
+  background: var(--admin-white);
+}
+.field textarea { resize: vertical; line-height: 1.5; min-height: 160px; }
+.field input:focus,
+.field textarea:focus { border-color: var(--admin-navy); outline: none; }
+
+.tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--admin-space-1) var(--admin-space-2);
+  font-family: var(--admin-font-mono);
+}
+
+.preview { min-width: 0; }
+.previewCard {
+  background: var(--admin-gray-50);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  padding: var(--admin-space-6) var(--admin-space-7);
+  font-size: var(--admin-text-md);
+  line-height: 1.5;
+  color: var(--admin-gray-900);
+  overflow-wrap: anywhere;
+}
+.previewSubject { display: block; margin-bottom: var(--admin-space-5); font-size: var(--admin-text-lg); }
+.previewCard p { margin-bottom: var(--admin-space-5); }
+.previewList { margin: var(--admin-space-5) 0 0 var(--admin-space-9); }
+.previewHint { margin-top: var(--admin-space-3); font-size: var(--admin-text-sm); color: var(--admin-gray-600); }
