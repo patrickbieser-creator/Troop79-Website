@@ -6,7 +6,7 @@
 .toolbarStart { justify-content: flex-start; }
 .spacer { flex: 1; }
 .alignRight { text-align: right; }
-.actionsCell { text-align: right; white-space: nowrap; }
+.actionsCell { composes: actionsCell from '../../_components/data-table.module.css'; }
 .mutedUpright { font-style: normal; }
 .filterLabel { font-style: normal; font-size: var(--admin-text-base); }
 /* .addBtn retired Phase A (2026-08-21): its one green-submit use (Attendance
@@ -33,13 +33,8 @@
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
 }
 
-.table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-.table th, .table td { padding: 8px 10px; border-bottom: 1px solid var(--admin-gray-100); text-align: left; vertical-align: top; }
-.table th {
-  background: var(--admin-gray-50); font-size: 10px; font-weight: 700; letter-spacing: .06em;
-  text-transform: uppercase; color: var(--admin-gray-700);
-}
-.table tr:last-child td { border-bottom: none; }
+/* DataTable · Compact — shared rules in _components/data-table.module.css (wave 2, 2026-08-25). */
+.table { composes: compact from '../../_components/data-table.module.css'; }
 .dateCell { font-family: 'Menlo', 'Consolas', monospace; font-size: 11.5px; color: var(--admin-gray-700); white-space: nowrap; }
 .muted { color: var(--admin-gray-400); font-style: italic; }
 

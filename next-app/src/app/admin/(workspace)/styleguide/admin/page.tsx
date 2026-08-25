@@ -36,8 +36,8 @@ import { RecentItemsList } from '../../_components/recent-items-list';
 import { PageTitle } from '../../_components/page-title';
 import { Notice } from '../../_components/notice';
 import dlg from '../../_components/dialog.module.css';
+import dt from '../../_components/data-table.module.css';
 import cal from '../../calendar/calendar.module.css';
-import ledger from '../../advancement/ledger/ledger.module.css';
 import plan from '../../advancement/meeting-plan/meeting-plan.module.css';
 import ev from '../../events/events-admin.module.css';
 import mm from '../../news/media-manager/media-manager.module.css';
@@ -203,12 +203,12 @@ const SCOREBOARD: {
   },
   {
     pattern: 'Data tables',
-    copies: '✓ DONE — both clusters normalized (2026-08-21)',
+    copies: '15 of 16 <table> screens compose the shared sheet (wave 2, 2026-08-25)',
     canonical:
-      'compact = calendar canon (albums, meetings, roster, scoutbook-export, meeting-plan — navy header normalized per Patrick); wrapped-card = ledger canon (articles, finance, records, access)',
+      'ONE stylesheet: _components/data-table.module.css — .compact (calendar canon; composed by albums, meetings, meeting-plan, roster, scoutbook-export, dashboard, lookups, media-manager, patrols), .card + .cardWrap (ledger canon, composes too; records, finance/reimbursements, articles, access), .dense (events-admin roster canon — rules still literal there, .dense ready to compose). Seven names: Compact, Card, Dense Grid, RecordList, Board, ExpandableSummary, PrintTable',
     phase: 'B',
     notes:
-      'Phase C did the inline-textAlign sweep; the tail session (2026-08-21) added the shared SortHeader/useSortable (_components/use-sortable — initialKey null keeps a table’s deliberate default order) adopted by scouts-table, people-table, event-roster table, calendar-editor; finance’s URL-param server sort is deliberately separate. Stretched-link rows landed too: calendar, scouts, people, articles dropped their duplicate Edit controls — the title link is the one way in'
+      'Left: events-admin .table onto .dense (another agent owns events/ this session); fast-entry’s audit tape (.tapeTable, a receipt-style tape, not one of the seven) keeps its own .cellRight for Qty; the .cellRight/.alignRight classes that remain (lookups, meeting-plan) are on Actions columns, not numbers — candidates for .actionsCell, not .numCell. History: Phase B normalized the two clusters (2026-08-21); Phase C swept inline textAlign; SortHeader/useSortable (_components/use-sortable) is the client-side sort; finance’s URL-param server sort is deliberately separate; stretched-link rows (.rowLink) on calendar, scouts, people, articles'
   },
   {
     pattern: 'Cards / panels',
@@ -633,19 +633,24 @@ export default function StyleguidePage() {
       <section className={sg.section}>
         <h2 className={sg.sectionHead}>Data Tables</h2>
         <p className={sg.sectionNote}>
-          The shared rules live in <code>_components/data-table.module.css</code> (<code>.compact</code>,{' '}
-          <code>.rowLink</code>, <code>.actionsCell</code>, <code>.numCell</code>); a screen adopts them with{' '}
-          <code>composes</code> on its own <code>.table</code> class, as the calendar list does (rows tint on
-          hover / focus-within as one thing you open). Tables consolidation wave 1 (2026-08-25, Patrick approved the seven patterns in{' '}
-          <a href="/prototypes/admin-tables-prototype.html">the prototype</a>): <strong>DataTable·Compact</strong>{' '}
-          = calendar canon + albums, meetings, roster, scoutbook-export, meeting-plan, and now
-          dashboard, lookups, media-manager and patrols (all literal 12.5px / 8px 10px / th 10px
-          uppercase on gray-50). <strong>DataTable·Card</strong> = ledger canon + articles, finance,
-          records, and now access (its sticky header kept). <strong>DataTable·Dense Grid</strong> is
-          the events roster grid, a third canon on purpose. Still to come in later waves: RecordList
-          (audits), Board (assignments — the only &ldquo;board&rdquo;; the patrol one is a Compact table
-          now), ExpandableSummary (finance activity report), PrintTable (roster-print / snapshot) get
-          named specimens; then the <code>.numCell</code>-vs-inline-<code>textAlign</code> sweep.
+          Seven named patterns (Patrick approved them in{' '}
+          <a href="/prototypes/admin-tables-prototype.html">the prototype</a>, 2026-08-25). The three
+          <code>&lt;table&gt;</code> patterns share one stylesheet, <code>_components/data-table.module.css</code>:{' '}
+          <code>.compact</code>, <code>.card</code> (+ <code>.cardWrap</code>), <code>.dense</code>, plus the
+          cell behaviours <code>.rowLink</code>, <code>.actionsCell</code>, <code>.numCell</code>,{' '}
+          <code>.empty</code>. A screen adopts one with <code>composes</code> on its own <code>.table</code>{' '}
+          class — no markup change, no per-screen table rules; genuine extras (column widths, sticky
+          headers, responsive hides) stay, and an override of a shared declaration uses the doubled
+          selector (<code>.table.table td</code>) so it wins regardless of bundle order.{' '}
+          <strong>DataTable·Compact</strong> — a list you scan and click into; calendar canon, composed by
+          albums, meetings, meeting-plan, roster, scoutbook-export, dashboard, lookups, media-manager,
+          patrols (wave 2). <strong>DataTable·Card</strong> — rows with money or per-row buttons in a wrapped
+          card; ledger canon (composes too, so there is one source), plus records, finance (+ its
+          reimbursements queue), articles, access (its sticky-thead extra kept). <strong>DataTable·Dense
+          Grid</strong> — a matrix with many narrow columns; events-admin roster is the canon and still
+          carries its own literal rules (<code>.dense</code> is ready for it to compose). The other four
+          are not <code>&lt;table&gt;</code>s: <strong>RecordList</strong>, <strong>Board</strong>,{' '}
+          <strong>ExpandableSummary</strong>, <strong>PrintTable</strong> — see their notes below.
         </p>
         <div className={sg.specimenGrid}>
           <Specimen
@@ -722,21 +727,74 @@ export default function StyleguidePage() {
             </table>
           </Specimen>
           <Specimen
-            label="Wrapped-card cluster"
+            label="DataTable·Card — shared .cardWrap / .card / .numCell / .actionsCell"
             canonical
-            note="ledger canon — .tableWrap card container, roomier padding, 2px header rule. Members: ledger, articles, finance, records, access. Numeric cells use .numCell."
+            note="Rendered straight from data-table.module.css. Ledger canon: white card with shadow (the card is the scroll-x container), 13px, 10px 12px cells, 11px uppercase headers over a 2px rule. Money is .numCell (right, tabular-nums; negatives red-in-parens-with-minus per 2026-08-22). Row actions are the shared Button, quiet / danger, size sm, in an .actionsCell. Composed by ledger, records, finance, articles, access."
           >
-            <div className={ledger.tableWrap}>
-              <table className={ledger.table}>
+            <div className={dt.cardWrap}>
+              <table className={dt.card}>
                 <thead>
-                  <tr><th>Activity</th><th className={ledger.numCell}>Amount</th></tr>
+                  <tr><th>Activity</th><th className={dt.numCell}>Amount</th><th className={dt.actionsCell}>Actions</th></tr>
                 </thead>
                 <tbody>
-                  <tr><td>Summer Camp</td><td className={ledger.numCell}>$425.00</td></tr>
-                  <tr><td>Wreath Sale</td><td className={ledger.numCell}>$118.50</td></tr>
+                  <tr>
+                    <td>Summer Camp</td>
+                    <td className={dt.numCell}>$425.00</td>
+                    <td className={dt.actionsCell}>
+                      <Button variant="quiet" size="sm">Edit</Button>
+                      <Button variant="danger" size="sm">Delete</Button>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Wreath Sale</td>
+                    <td className={dt.numCell}>$118.50</td>
+                    <td className={dt.actionsCell}>
+                      <Button variant="quiet" size="sm">Edit</Button>
+                      <Button variant="danger" size="sm">Delete</Button>
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
+          </Specimen>
+          <Specimen
+            label="DataTable·Dense Grid — shared .dense"
+            canonical
+            note="Rendered straight from data-table.module.css. Events-admin roster canon: the table is its own bordered white surface, 13.5px, 9px 12px cells, 10.5px uppercase gray-600 headers on a 1px rule, top-aligned cells. For a matrix (people × slots, scouts × requirements) with many narrow columns; the stacked-header / class-pill / job-tick extras stay in events-admin.module.css (specimen above)."
+          >
+            <table className={dt.dense}>
+              <thead>
+                <tr><th>Name</th><th>Fri</th><th>Sat</th><th>Sun</th><th className={dt.numCell}>Seats</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Patrick Bieser</td><td>✓</td><td>✓</td><td>✓</td><td className={dt.numCell}>4</td></tr>
+                <tr><td>Anjali Sankpal-Tatera</td><td>✓</td><td>✓</td><td /><td className={dt.numCell}>0</td></tr>
+              </tbody>
+            </table>
+          </Specimen>
+          <Specimen
+            label="RecordList — shared RecentItemsList"
+            note="Not a <table>: a list of records you open, one card each. Lives in _components/recent-items-list (specimen in Recent Items List, below); it replaced the two drifted .reportList copies on the advancement report and court-of-honor sidebars. The audits (advancement/report, court-of-honor) are its members — their earlier per-screen card findings (active card = navy border + aria-current) are folded into the component."
+          >
+            <p className={sg.specimenNote}>See <strong>Recent Items List</strong> below for the live specimen.</p>
+          </Specimen>
+          <Specimen
+            label="Board — rosters/[id]/assignments"
+            note="Not a <table>: capacity cards with chips you move between them. The Rides & assignments board is the only board in the workspace (the patrol page is a Compact table now); its specimen is Assignment Board, below."
+          >
+            <p className={sg.specimenNote}>See <strong>Assignment Board</strong> below for the live specimen.</p>
+          </Specimen>
+          <Specimen
+            label="ExpandableSummary — finance/report/activity-report.tsx"
+            note="Not a <table> on purpose: summary rows that expand into a drill-down. Built from <details> on one shared CSS-grid class (report.module.css .reportGrid) used by both the header and every row, so they stay aligned by construction — a native table header and a grid <details> body can't be guaranteed to align, and <details> can't legally be a <tr>. The rationale comment at the top of activity-report.tsx is the spec; do not rebuild it as a table."
+          >
+            <p className={sg.specimenNote}>Live at <strong>/admin/finance/report</strong>.</p>
+          </Specimen>
+          <Specimen
+            label="PrintTable — admin/roster-print + admin/snapshot"
+            note="The two print surfaces above (workspace) — /admin/roster-print and /admin/snapshot/[id] — share the same .table (token-sized: text-xs cells, 3px 6px padding, uppercase 2xs headers, break-inside: avoid on rows) and .plainList (bare list for sub-items) idiom, tuned for paper rather than the screen scales. Print-only; they do not compose data-table.module.css."
+          >
+            <p className={sg.specimenNote}>Live at <strong>/admin/roster-print</strong> and <strong>/admin/snapshot/[id]</strong>.</p>
           </Specimen>
         </div>
       </section>

@@ -21,7 +21,8 @@
 /* Wrapped-card table canon (Phase B, 2026-08-21) — with this screen's own
    sticky-header scroll mechanics preserved. */
 .tableWrap {
-  overflow: auto;
+  composes: cardWrap from '../_components/data-table.module.css';
+  overflow: auto; /* both axes — the composed cardWrap only scrolls x */
   /* An explicit height is what makes the sticky header work. `overflow-x: auto`
      alone computes overflow-y to `auto` too, so this element is already a
      scroll container in both axes — without a height cap it never scrolls
@@ -29,37 +30,14 @@
      that never moves. Verified broken in the browser 2026-08-16. */
   max-height: calc(100vh - 320px);
   min-height: 192px;
-  background: var(--admin-white);
-  border: 1px solid var(--admin-gray-200);
-  border-radius: var(--admin-radius);
-  box-shadow: var(--admin-shadow-sm);
 }
 
-/* DataTable·Card scale — literal values match the ledger canon
-   (Data Tables consolidation, Wave 1, 2026-08-25). */
-.table {
-  border-collapse: collapse;
-  width: 100%;
-  font-size: 13px;
-}
-.table th,
-.table td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--admin-gray-100);
-  text-align: left;
-  vertical-align: middle;
-}
+/* DataTable · Card — shared rules in _components/data-table.module.css (wave 2, 2026-08-25). */
+.table { composes: card from '../_components/data-table.module.css'; }
+/* This screen's extra: the header sticks inside the capped-height wrap. */
 .table thead th {
   position: sticky;
   top: 0;
-  background: var(--admin-gray-50);
-  border-bottom: 2px solid var(--admin-gray-200);
-  font-size: 11px;
-  font-weight: 700;
-  white-space: nowrap;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--admin-gray-700);
 }
 .table tbody tr:hover {
   background: var(--admin-gray-50);

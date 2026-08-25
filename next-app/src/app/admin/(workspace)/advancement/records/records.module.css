@@ -45,35 +45,9 @@
   color: var(--admin-accent-gold);
 }
 
-.tableWrap {
-  background: var(--admin-white);
-  border: 1px solid var(--admin-gray-200);
-  border-radius: var(--admin-radius);
-  box-shadow: var(--admin-shadow-sm);
-  overflow-x: auto;
-}
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-.table th,
-.table td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--admin-gray-100);
-  text-align: left;
-  vertical-align: middle;
-}
-.table th {
-  background: var(--admin-gray-50);
-  border-bottom: 2px solid var(--admin-gray-200);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--admin-gray-700);
-  white-space: nowrap;
-}
+/* DataTable · Card — shared rules in _components/data-table.module.css (wave 2, 2026-08-25). */
+.tableWrap { composes: cardWrap from '../../_components/data-table.module.css'; }
+.table { composes: card from '../../_components/data-table.module.css'; }
 .nowrap { white-space: nowrap; }
 .empty {
   padding: 36px 16px;

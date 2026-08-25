@@ -34,6 +34,18 @@ same spot. Never put a back link in `children`, `sub`, a toolbar, or a page foot
 Discard-changes prompt for free through the save-state hooks (`useRegisterDirty`). Specimen:
 `/admin/styleguide/admin` → Back Navigation.
 
+**Tables are seven named patterns, one stylesheet (2026-08-25):** DataTable·Compact, DataTable·Card,
+DataTable·Dense Grid, RecordList, Board, ExpandableSummary, PrintTable — specimens under Data Tables on
+`/admin/styleguide/admin`. The three `<table>` patterns live in
+`(workspace)/_components/data-table.module.css` (`.compact`, `.card` + `.cardWrap`, `.dense`, and the
+cell behaviours `.rowLink` / `.actionsCell` / `.numCell` / `.empty`). A screen adopts one with
+`composes` on its own `.table` class (`.table { composes: card from '../_components/data-table.module.css'; }`,
+`.tableWrap { composes: cardWrap … }`) — markup unchanged. **No new per-screen table rules**: a screen
+keeps only genuine extras (column widths, sticky thead, responsive hides), and an override of a shared
+declaration uses the doubled selector (`.table.table td`) so it wins regardless of bundle order. Numbers
+are `.numCell`, the Actions column is `.actionsCell`; RecordList is the `RecentItemsList` component,
+ExpandableSummary is `finance/report/activity-report.tsx` (its header comment is the spec).
+
 **Keep the styleguide in the same commit as the change:** adding a new admin UI pattern,
 class family, token, or shared component means adding its specimen (and scoreboard row, if
 it has variants) to the styleguide page; retiring a variant means deleting its specimen and

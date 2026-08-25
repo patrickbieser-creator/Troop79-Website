@@ -3,16 +3,34 @@
  * (Patrick approved the seven; prototype linked from /admin/styleguide).
  *
  *   .compact  — DataTable · Compact: a list you scan and click into. The
- *               calendar list is the canon; screens adopt it with
- *               `composes: compact from '../_components/data-table.module.css'`
- *               on their own `.table` class so their markup doesn't change.
+ *               calendar list is the canon; 12.5px, 8px 10px cells, 10px
+ *               uppercase headers on gray-50.
+ *   .card     — DataTable · Card: rows carrying money or per-row buttons.
+ *               The ledger is the canon; lives inside a `.cardWrap` surface
+ *               (white card, shadow, scroll-x), 13px, 10px 12px cells, 11px
+ *               headers over a 2px rule. Row actions are the shared Button
+ *               (quiet / danger, size sm).
+ *   .dense    — DataTable · Dense Grid: a matrix (people × slots) with many
+ *               narrow columns. The events-admin roster is the canon; the
+ *               table is its own bordered surface, 13.5px, 9px 12px cells,
+ *               10.5px headers on gray-600.
  *
- * Row behaviours: `.rowLink` rows tint on hover / focus-within so the row
- * reads as one thing you open (the title is still the actual link); `.actionsCell`
- * right-aligns the Actions ▾ column; `.numCell` right-aligns numbers.
- * Card and Dense Grid join here in wave 2. Tokens only.
+ * A screen adopts a pattern with
+ *   `.table { composes: compact from '../_components/data-table.module.css'; }`
+ * on its own `.table` class (Card screens also compose `.tableWrap` from
+ * `.cardWrap`) so its markup doesn't change. No new per-screen table rules —
+ * a screen keeps only its genuine extras (column widths, sticky headers,
+ * responsive hides). Overrides of a shared declaration use the doubled
+ * selector (`.table.table td`) so they win regardless of bundle order.
+ *
+ * Row behaviours (compose these too): `.rowLink` rows tint on hover /
+ * focus-within so the row reads as one thing you open (the title is still
+ * the actual link); `.actionsCell` right-aligns the Actions column;
+ * `.numCell` right-aligns numbers in tabular figures; `.empty` is the
+ * one-cell-wide empty state that keeps the columns put. Tokens only.
  */
 
+/* ── DataTable · Compact ─────────────────────────────────────────────── */
 .compact {
   width: 100%;
   border-collapse: collapse;
@@ -36,18 +54,92 @@
   white-space: nowrap;
 }
 .compact tbody tr:last-child td { border-bottom: none; }
-.compact th.actionsCell,
-.compact td.actionsCell { text-align: right; white-space: nowrap; }
-.compact th.numCell,
-.compact td.numCell { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ── DataTable · Card (ledger canon) ─────────────────────────────────── */
+.cardWrap {
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow-sm);
+  overflow-x: auto;
+}
+.card {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.card th,
+.card td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--admin-gray-100);
+  text-align: left;
+}
+.card th {
+  background: var(--admin-gray-50);
+  border-bottom: 2px solid var(--admin-gray-200);
+  font-size: 11px;
+  font-weight: var(--admin-weight-bold);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--admin-gray-700);
+  white-space: nowrap;
+}
+/* Sortable header links (ledger / finance) inherit the header colour. */
+.card th a {
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.card th a:hover { color: var(--admin-navy); }
+
+/* ── DataTable · Dense Grid (events-admin roster canon) ──────────────── */
+.dense {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: 5px;
+  font-size: 13.5px;
+}
+.dense th {
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: var(--admin-weight-bold);
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--admin-gray-600);
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--admin-gray-200);
+}
+.dense td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--admin-gray-100);
+  vertical-align: top;
+}
+.dense tbody tr:last-child td { border-bottom: none; }
+
+/* ── Shared cell behaviours (every pattern) ──────────────────────────── */
+.compact th.actionsCell, .compact td.actionsCell,
+.card th.actionsCell,    .card td.actionsCell,
+.dense th.actionsCell,   .dense td.actionsCell { text-align: right; white-space: nowrap; }
+
+.compact th.numCell, .compact td.numCell,
+.card th.numCell,    .card td.numCell,
+.dense th.numCell,   .dense td.numCell { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* A row you open: hover and keyboard focus inside it tint the whole row. */
-.compact tbody tr.rowLink { transition: background var(--admin-transition); }
-.compact tbody tr.rowLink:hover td,
-.compact tbody tr.rowLink:focus-within td { background: var(--admin-status-info-bg); }
+.compact tbody tr.rowLink,
+.card tbody tr.rowLink,
+.dense tbody tr.rowLink { transition: background var(--admin-transition); }
+.compact tbody tr.rowLink:hover td, .compact tbody tr.rowLink:focus-within td,
+.card tbody tr.rowLink:hover td,    .card tbody tr.rowLink:focus-within td,
+.dense tbody tr.rowLink:hover td,   .dense tbody tr.rowLink:focus-within td { background: var(--admin-status-info-bg); }
 
 /* Empty state lives in the table, one cell wide, so the columns stay put. */
-.compact td.empty {
+.compact td.empty,
+.card td.empty,
+.dense td.empty {
   padding: var(--admin-space-8) var(--admin-space-4);
   text-align: center;
   color: var(--admin-gray-500);

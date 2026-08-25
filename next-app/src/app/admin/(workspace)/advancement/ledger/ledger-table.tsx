@@ -231,7 +231,7 @@ export function LedgerTable({ rows, scouts, leaders, sp, sort, dir }: Props) {
               {sortLink('qty', 'Qty')}
               <th>Unit</th>
               {sortLink('entered', 'Entered')}
-              <th className={styles.thRight}>Actions</th>
+              <th className={styles.actionsCell}>Actions</th>
             </tr>
           </thead>
           <tbody>

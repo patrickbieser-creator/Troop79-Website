@@ -44,29 +44,9 @@
 .spacer { flex: 1; }
 .meta { font-size: 12px; color: var(--admin-gray-500); }
 
-.tableWrap {
-  background: var(--admin-white);
-  border: 1px solid var(--admin-gray-200);
-  border-radius: var(--admin-radius);
-  box-shadow: var(--admin-shadow-sm);
-  overflow-x: auto;
-}
-.table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.table th, .table td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--admin-gray-100);
-  text-align: left;
-}
-.table th {
-  background: var(--admin-gray-50);
-  border-bottom: 2px solid var(--admin-gray-200);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--admin-gray-700);
-  white-space: nowrap;
-}
+/* DataTable · Card — shared rules in _components/data-table.module.css (wave 2, 2026-08-25). */
+.tableWrap { composes: cardWrap from '../../_components/data-table.module.css'; }
+.table { composes: card from '../../_components/data-table.module.css'; }
 .nowrap { white-space: nowrap; }
 .titleCell a { color: var(--admin-navy); font-weight: 600; }
 .titleCell a:hover { text-decoration: underline; }
@@ -79,12 +59,7 @@
 .archivedRow { background: var(--admin-gray-50); color: var(--admin-gray-500); font-style: italic; }
 .empty { padding: 36px 16px; text-align: center; color: var(--admin-gray-500); font-style: italic; }
 
-/* `.table th, .table td { text-align: left }` above is a two-class descendant
-   selector and outranks a bare `.actionsCell`, so the buttons had been sitting
-   left-aligned in a column whose HEADER was right-aligned — the misalignment
-   was quiet enough to survive since this table shipped. Matching the selector's
-   specificity fixes it, and puts the actions where the Calendar's are. */
-.table th.actionsCell, .table td.actionsCell { text-align: right; white-space: nowrap; }
+.actionsCell { composes: actionsCell from '../../_components/data-table.module.css'; }
 /* .actionBtn / .actionBtnPrimary / .actionBtnDanger retired 2026-08-25 → shared Button (secondary/primary/danger, size="sm"). */
 
 .pager {

@@ -41,44 +41,13 @@
   color: var(--admin-gray-500);
 }
 
-.tableWrap {
-  background: var(--admin-white);
-  border: 1px solid var(--admin-gray-200);
-  border-radius: var(--admin-radius);
-  box-shadow: var(--admin-shadow-sm);
-  overflow-x: auto;
-}
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-.table th,
-.table td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--admin-gray-100);
-  text-align: left;
-}
-.table th {
-  background: var(--admin-gray-50);
-  border-bottom: 2px solid var(--admin-gray-200);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--admin-gray-700);
-  white-space: nowrap;
-}
-.table th a {
-  color: inherit;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.table th a:hover { color: var(--admin-navy); }
+/* DataTable · Card canon — the rules live in _components/data-table.module.css
+   (wave 2, 2026-08-25); this screen composes them like every other Card screen. */
+.tableWrap { composes: cardWrap from '../../_components/data-table.module.css'; }
+.table { composes: card from '../../_components/data-table.module.css'; }
 .sortAsc::after  { content: ' ▲'; font-size: 9px; opacity: .65; }
 .sortDesc::after { content: ' ▼'; font-size: 9px; opacity: .65; }
-.numCell { text-align: right; font-variant-numeric: tabular-nums; }
+.numCell { composes: numCell from '../../_components/data-table.module.css'; }
 .nowrap { white-space: nowrap; }
 .codeCell {
   font-family: 'Menlo', 'Consolas', monospace;
@@ -245,10 +214,7 @@
   .editGrid { grid-template-columns: 1fr; }
 }
 
-.actionsCell {
-  text-align: right;
-  white-space: nowrap;
-}
+.actionsCell { composes: actionsCell from '../../_components/data-table.module.css'; }
 /* .actionBtn / .actionBtnDanger retired from production 2026-08-24 → shared
    Button (quiet/danger, size="sm"). Left in place ONLY because
    /admin/styleguide/admin's "Row actions" specimen renders these two classes
@@ -463,5 +429,5 @@
 }
 
 /* ── Phase C — classes replacing repeated inline styles ──────────────── */
-.thRight { text-align: right; } /* th modifier — the module's th rule left-aligns */
+/* .thRight retired wave 2 (2026-08-25) → shared .actionsCell on the Actions th. */
 .entryMeta { color: var(--admin-gray-500); font-size: var(--admin-text-sm); margin-left: var(--admin-space-2); }

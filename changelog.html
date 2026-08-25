@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 25, 2026</strong> &nbsp;&middot;&nbsp; v1.97.0</p>
+      <p>Last updated: <strong>August 25, 2026</strong> &nbsp;&middot;&nbsp; v1.98.1</p>
     </div>
   </div>
 
@@ -494,6 +494,69 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.98.1 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.98.1</span>
+        <span class="release-date">August 25, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Polish</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Tables consolidation &mdash; wave 2</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Every Compact and Card table in the admin now composes the shared stylesheet
+              (<code>_components/data-table.module.css</code>: Compact, Card, Dense Grid, plus the shared row
+              behaviours) instead of carrying its own copy &mdash; albums, meetings, meeting plan, roster, Scoutbook
+              export, dashboard, lookups, media manager, patrols; ledger, records, finance, reimbursements, articles,
+              access. Styleguide specimens and the scoreboard say exactly which screen composes which; the seven
+              pattern names and the &ldquo;no new per-screen table rules&rdquo; rule are in <code>AGENTS.md</code>.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.98.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.98.0</span>
+        <span class="release-date">August 25, 2026</span>
+        <span class="release-label"><span class="badge badge-fix">Performance</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">A faster Calendar, and a Signup tab that keeps its head</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>The calendar list stops pulling the whole troop&rsquo;s history.</strong> Its per-entry counts
+              (roll call scouts/adults, Going) come from one database aggregate instead of every attendance row and
+              every signup reply crossing the wire in 1,000-row pages and being tallied in the app; and the list no
+              longer selects each entry&rsquo;s full markdown story. Patrick: &ldquo;the calendar page seems to be
+              overloaded and is getting much slower on prod.&rdquo;
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>The entry workbench loads one tab at a time.</strong> Tabs are part of the address now
+              (<code>?tab=</code>), so opening an entry reads only what that tab needs &mdash; the agenda editor, roll
+              call sheet and signup builder no longer all load and mount, hidden, on every visit. Clicking a tab is
+              a navigation; an unsaved Entry form gets the &ldquo;Discard changes?&rdquo; prompt first.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Roster, assignment sets, Money and Snapshot open inside the Signup tab.</strong> The event tab
+              strip used to jump to separate pages (&ldquo;losing the top table and creating a confusing UX&rdquo;);
+              each now renders under the entry&rsquo;s head and layer tabs via <code>?view=</code>. The standalone
+              pages remain for links from elsewhere.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

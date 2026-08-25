@@ -26,13 +26,8 @@
 }
 
 /* Compact table canon (Phase B, 2026-08-21). */
-.table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-.table th, .table td { padding: 8px 10px; border-bottom: 1px solid var(--admin-gray-100); text-align: left; vertical-align: top; }
-.table th {
-  background: var(--admin-gray-50); font-size: 10px; font-weight: 700; letter-spacing: .06em;
-  text-transform: uppercase; color: var(--admin-gray-700);
-}
-.table tr:last-child td { border-bottom: none; }
+/* DataTable · Compact — shared rules in _components/data-table.module.css (wave 2, 2026-08-25). */
+.table { composes: compact from '../../_components/data-table.module.css'; }
 .muted { color: var(--admin-gray-400); }
 .mono { font-family: 'Menlo', 'Consolas', monospace; font-size: 11.5px; }
 
