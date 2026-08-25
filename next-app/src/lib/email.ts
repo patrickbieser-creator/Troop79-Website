@@ -103,6 +103,9 @@ export async function sendEmail(opts: {
   html: string;
   text: string;
   confirm: boolean;
+  /** Per-message Reply-To (the signup confirmation uses the first leader
+   *  address); falls back to EMAIL_REPLY_TO, then none. */
+  replyTo?: string;
 }): Promise<SendResult> {
   const intended = [...new Set(opts.to.map((e) => e.trim().toLowerCase()).filter(Boolean))];
   if (intended.length === 0)
@@ -145,7 +148,7 @@ export async function sendEmail(opts: {
         subject,
         html: opts.html,
         text: opts.text,
-        replyTo: process.env.EMAIL_REPLY_TO || undefined
+        replyTo: opts.replyTo || process.env.EMAIL_REPLY_TO || undefined
       });
       if (error) failures.push(`${recipient}: ${error.message}`);
     } catch (err) {
