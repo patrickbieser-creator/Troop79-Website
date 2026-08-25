@@ -7,7 +7,9 @@ import { samplePreviewContext } from '../src/lib/signup-confirmation-preview';
 const updateConfirmation = vi.fn(async () => ({ ok: true }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
 vi.mock('../src/app/admin/(workspace)/events/actions', () => ({
-  updateConfirmation: (...args: unknown[]) => updateConfirmation(...(args as []))
+  updateConfirmation: (...args: unknown[]) => updateConfirmation(...(args as [])),
+  listSignupHouseholds: async () => [],
+  previewConfirmationContext: async () => null
 }));
 
 const templates = [

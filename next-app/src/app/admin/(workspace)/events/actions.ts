@@ -11,7 +11,7 @@ import { isRideStatus } from '@/lib/transport';
 import { isValidJobCode, normalizeJobCode, JOB_CODE_MAX } from '@/lib/job-codes';
 import { normalizeGroupName, normalizeSetLabel, validateNewSet } from '@/lib/group-sets';
 import { sendEmail, renderEmail } from '@/lib/email';
-import { validateLeaderRecipients } from '@/lib/signup-confirmation';
+import { validateLeaderRecipients, type ConfirmationContext } from '@/lib/signup-confirmation';
 import { loadHouseholdSnapshot, loadConfirmationConfig, buildConfirmation, dispatchConfirmations } from '@/lib/signup-confirmation-send';
 import { loadHouseholds } from '@/lib/households';
 import { recipientsForScouts } from '@/lib/email-recipients';
@@ -1715,4 +1715,27 @@ export async function resendConfirmation(signupId: number, householdId: number):
   await supabase.from('event_signups').update({ confirm_last_error: error }).eq('id', signupId);
   revalidateEvent(loaded.signup.calendar_entry_id as number, signupId);
   return error ? { ok: false, error } : { ok: true };
+}
+
+/** The households on this signup — the editor's "preview as" picker. */
+export async function listSignupHouseholds(signupId: number): Promise<{ id: number; label: string }[]> {
+  await requireCapability('calendar.write');
+  const supabase = createAdminClient();
+  const { data } = await supabase.from('signup_entries').select('household_id').eq('event_signup_id', signupId).neq('status', 'cancelled');
+  const ids = [...new Set(((data ?? []) as { household_id: number | null }[]).map((r) => r.household_id).filter((v): v is number => v != null))];
+  if (!ids.length) return [];
+  const { data: hh } = await supabase.from('households').select('id, label').in('id', ids).order('label');
+  return ((hh ?? []) as { id: number; label: string }[]).map((h) => ({ id: h.id, label: h.label }));
+}
+
+/** A real household's merge-field context, for the editor preview (Patrick, 2026-08-25). */
+export async function previewConfirmationContext(signupId: number, householdId: number): Promise<ConfirmationContext | null> {
+  await requireCapability('calendar.write');
+  const supabase = createAdminClient();
+  const loaded = await loadConfirmationConfig(supabase, signupId);
+  if (!loaded) return null;
+  const party = (await loadHouseholds()).find((h) => h.key === `household:${householdId}`) ?? null;
+  const snap = await loadHouseholdSnapshot(supabase, signupId, party, householdId);
+  const { ctx } = await buildConfirmation(supabase, loaded.signup, party, householdId, null, 'new', null, snap);
+  return ctx;
 }

@@ -73,12 +73,51 @@ export interface MessageTemplate {
 
 export interface RenderedMessage {
   subject: string;
-  /** Paragraphs — the body with tokens replaced, `[summary]` expanded in place. */
+  /** MARKDOWN — the body with tokens replaced, `[summary]` expanded in place
+   *  (Patrick, 2026-08-25: full markdown, rendered by lib/email-markdown). */
   body: string;
-  /** The echo-back lines; appended by the sender when the template lacked `[summary]`. */
+  /** The echo-back block (markdown); appended by the sender when the template lacked `[summary]`. */
+  summaryMd: string;
+  /** The same facts as plain lines, for callers that want them. */
   summaryLines: string[];
   hadSummary: boolean;
 }
+
+/**
+ * The default summary layout — a markdown block of captions + section tokens.
+ * It IS a template (Patrick: "the ability to edit the Going: section"): a
+ * message that places `[summary]` gets this; a message can instead place the
+ * section tokens itself with its own captions. Blank sections vanish.
+ */
+export const DEFAULT_SUMMARY_MD = [
+  '**Going**',
+  '[going]',
+  '',
+  '**Guests**',
+  '[guests]',
+  '',
+  '**Days**',
+  '[days]',
+  '',
+  '**Jobs**',
+  '[jobs]',
+  '',
+  '**Rides**',
+  '[rides]',
+  '',
+  '**Prices**',
+  '[prices]',
+  '',
+  '**Amount due:** [amount_due] [paid_note]',
+  '',
+  '[slip]',
+  '',
+  '**Your answers**',
+  '[answers]',
+  '',
+  '**Notes**',
+  '[notes]'
+].join('\n');
 
 const CHANGED_LABEL: Record<Change, string> = {
   new: 'New signup',
@@ -102,6 +141,15 @@ export function mapUrl(location: string | null): string {
   const q = (location ?? '').trim();
   return q ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}` : '';
 }
+
+/** `[map]` renders as a markdown link (Patrick: "with map link"). */
+export function mapLink(location: string | null): string {
+  const url = mapUrl(location);
+  return url ? `[Open in Google Maps](${url})` : '';
+}
+
+/** A markdown bullet list, or blank. */
+const list = (items: string[]) => items.map((i) => `- ${i}`).join('\n');
 
 function personLine(p: ConfirmationPerson): string {
   return p.status === 'yes' ? p.name : `${p.name} — ${p.status}`;
@@ -157,27 +205,31 @@ function values(ctx: ConfirmationContext, audience: Audience): Record<string, st
     date: e.endDate && e.endDate !== e.entryDate ? fmtRange(e.entryDate, e.endDate) : fmtDateLong(e.entryDate),
     time,
     location: e.location ?? '',
-    map: mapUrl(e.location),
+    map: mapLink(e.location),
     deadline: e.deadline ? fmtDay(e.deadline) : '',
     link: e.publicUrl,
     name: h.submitterName,
     scouts: joinNames(scouts),
     adults: joinNames(adults),
-    going,
-    guests: h.guests.join(', '),
-    days: h.days.join('; '),
-    jobs: h.jobs.join('; '),
-    rides: h.rides.join('; '),
-    answers: h.answers.join('\n'),
-    notes: h.notes.join('; '),
+    // Section tokens are markdown lists (2026-08-25): place them under your
+    // own captions, or let [summary] lay them out with the defaults.
+    going: list(h.people.map(personLine)),
+    going_count: going,
+    guests: list(h.guests),
+    days: list(h.days),
+    jobs: list(h.jobs),
+    rides: list(h.rides),
+    answers: list(h.answers),
+    notes: list(h.notes),
     slip: h.slip.join('; '),
-    prices: h.prices.join('; '),
+    prices: list(h.prices),
     amount_due: money(h.amountDue),
     paid: h.paid > 0 ? money(h.paid) : '',
+    paid_note: h.paid > 0 ? `(paid ${money(h.paid)})` : '',
     payment: h.payment ?? '',
     changed: CHANGED_LABEL[ctx.change],
     changes: ctx.changes ?? '',
-    summary: summaryLines(ctx).map((l) => `• ${l}`).join('\n')
+    summary: '' // filled below — it is itself a template
   };
   // The privacy line: a family template can never print contact details.
   const leaderOnly: Record<string, string> =
@@ -200,26 +252,42 @@ export function fillTokens(text: string, vals: Record<string, string>): string {
   return text.replace(TOKEN_RE, (m, key: string) => (key in vals ? vals[key] : m));
 }
 
-/** Collapse the blank spots a blank token leaves behind ("at , " → "at "). */
+/** Collapse the blank spots a blank token leaves behind ("at , " → "at "),
+ *  and drop a caption whose section came out empty ("**Guests**" over nothing). */
 function tidy(text: string): string {
   return text
     .replace(/\(\s*\)/g, '')
     .replace(/[ \t]+([,.;])/g, '$1')
     .replace(/[ \t]{2,}/g, ' ')
+    .replace(/^(\*\*[^*\n]+\*\*)\s*\n(?=\s*\n|\s*$)/gm, '')
+    .replace(/^\*\*[^*\n]+:\*\* *\n/gm, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
 
+/** The summary block for this household — the default layout, filled. */
+export function renderSummaryMd(ctx: ConfirmationContext, audience: Audience, layout: string = DEFAULT_SUMMARY_MD): string {
+  return tidy(fillTokens(layout, values(ctx, audience)));
+}
+
 export function renderMessage(template: MessageTemplate, ctx: ConfirmationContext, audience: Audience): RenderedMessage {
   const vals = values(ctx, audience);
+  const summaryMd = renderSummaryMd(ctx, audience);
+  vals.summary = summaryMd;
   const hadSummary = /\[summary\]/.test(template.body);
-  let subject = tidy(fillTokens(template.subject, vals));
+  let subject = tidy(fillTokens(template.subject, vals)).replace(/\n+/g, ' ');
   const prefix = SUBJECT_PREFIX[ctx.change];
   if (prefix && !/\[changed\]/.test(template.subject) && !subject.startsWith(prefix)) subject = prefix + subject;
   let body = fillTokens(template.body, vals);
   // An update / cancel says so up front when the template did not place [changes].
   if (ctx.changes && !/\[changes\]/.test(template.body)) body = `${ctx.changes}\n\n${body}`;
-  return { subject, body: tidy(body), summaryLines: summaryLines(ctx), hadSummary };
+  return { subject, body: tidy(body), summaryMd, summaryLines: summaryLines(ctx), hadSummary };
+}
+
+/** The complete markdown that goes out: the body, plus the summary when the
+ *  template did not place it (family receipts always carry the echo-back). */
+export function fullMessageMd(r: RenderedMessage, appendSummary: boolean): string {
+  return r.hadSummary || !appendSummary || !r.summaryMd ? r.body : `${r.body}\n\n${r.summaryMd}`;
 }
 
 /* ── recipients ──────────────────────────────────────────────────────────── */
@@ -347,11 +415,27 @@ export function describeChanges(before: SignupSnapshotRow[], after: SignupSnapsh
 export const DEFAULT_TEMPLATES: Record<Audience, MessageTemplate> = {
   family: {
     subject: 'Signed up: [event]',
-    body: "Hi [name] — you're signed up for [event] on [date]. We'll be at [location] ([map]). Amount due: [amount_due]. [payment] Reply to this email if anything changes before [deadline]."
+    body: [
+      "Hi [name] — you're signed up for **[event]** on [date].",
+      '',
+      "We'll be at [location]. [map]",
+      '',
+      '**Amount due:** [amount_due]. [payment]',
+      '',
+      'Reply to this email if anything changes before [deadline].',
+      '',
+      '[summary]'
+    ].join('\n')
   },
   leader: {
     subject: '[changed]: [household] — [event]',
-    body: '[household] ([email], [phone]) — [changed]: [going]. [jobs] [rides] Amount due [amount_due]. [headcount].\n\n[changes]'
+    body: [
+      '**[household]** ([email], [phone]) — [changed]. [headcount].',
+      '',
+      '[changes]',
+      '',
+      '[summary]'
+    ].join('\n')
   }
 };
 

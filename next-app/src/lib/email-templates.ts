@@ -40,7 +40,8 @@ const SIGNUP_FIELDS: TemplateField[] = [
   { token: 'name', label: 'Who signed up (adult)' },
   { token: 'scouts', label: 'Scouts going' },
   { token: 'adults', label: 'Adults going' },
-  { token: 'going', label: 'Headcount for this family' },
+  { token: 'going', label: 'Going (list)' },
+  { token: 'going_count', label: 'Going (count)' },
   { token: 'guests', label: 'Guests' },
   { token: 'days', label: 'Days chosen' },
   { token: 'jobs', label: 'Jobs claimed' },
@@ -51,10 +52,11 @@ const SIGNUP_FIELDS: TemplateField[] = [
   { token: 'prices', label: 'Price tiers' },
   { token: 'amount_due', label: 'Amount due' },
   { token: 'paid', label: 'Paid so far' },
+  { token: 'paid_note', label: '(paid …) note' },
   { token: 'payment', label: 'Payment instructions' },
   { token: 'changed', label: 'New / Updated / Cancelled' },
   { token: 'changes', label: 'What changed (updates)' },
-  { token: 'summary', label: 'The whole signup, as a list' }
+  { token: 'summary', label: 'The whole signup (default layout)' }
 ];
 
 /** Only a leader may see another family's contact details. */

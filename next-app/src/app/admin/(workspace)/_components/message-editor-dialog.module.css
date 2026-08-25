@@ -52,3 +52,67 @@
 .previewCard p { margin-bottom: var(--admin-space-5); }
 .previewList { margin: var(--admin-space-5) 0 0 var(--admin-space-9); }
 .previewHint { margin-top: var(--admin-space-3); font-size: var(--admin-text-sm); color: var(--admin-gray-600); }
+
+/* ── markdown body + real-email preview (2026-08-25) ─────────────────────── */
+.source.source {
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  min-height: 220px;
+  resize: vertical;
+}
+.source.source:focus { outline: none; border-color: var(--admin-navy); }
+.summaryHelper {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--admin-space-2) var(--admin-space-3);
+  margin-top: var(--admin-space-3);
+}
+.hint { font-size: var(--admin-text-sm); color: var(--admin-gray-600); }
+
+.previewHead { display: flex; align-items: baseline; justify-content: space-between; gap: var(--admin-space-3); }
+.textToggle {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: var(--admin-text-sm);
+  color: var(--admin-navy);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.previewAs {
+  display: flex;
+  align-items: center;
+  gap: var(--admin-space-3);
+  margin-bottom: var(--admin-space-3);
+}
+.previewAs select {
+  flex: 1;
+  min-width: 0;
+  padding: var(--admin-space-2) var(--admin-space-3);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  font: inherit;
+  font-size: var(--admin-text-sm);
+  background: var(--admin-white);
+}
+/* The frame a mail client gives the message; the email's own inline styles do the rest. */
+.emailFrame {
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius);
+  padding: var(--admin-space-6) var(--admin-space-7);
+  max-height: 560px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+.emailHtml { max-width: 560px; }
+.emailText {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: var(--admin-font-mono);
+  font-size: var(--admin-text-sm);
+  line-height: 1.5;
+  color: var(--admin-gray-900);
+}

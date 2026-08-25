@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 25, 2026</strong> &nbsp;&middot;&nbsp; v1.101.2</p>
+      <p>Last updated: <strong>August 25, 2026</strong> &nbsp;&middot;&nbsp; v1.102.0</p>
     </div>
   </div>
 
@@ -494,6 +494,44 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.102.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.102.0</span>
+        <span class="release-date">August 25, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Confirmation emails in markdown, with a real preview</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Write the message in markdown</strong> &mdash; headings, bold, lists, links &mdash; in the same
+              editor the news uses (cheat sheet, merge-field buttons). It renders to email-safe HTML that Gmail,
+              Apple Mail and Outlook all show the same way, with a plain-text twin made automatically. The
+              location&rsquo;s <code>[map]</code> is a real &ldquo;Open in Google Maps&rdquo; link.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>The Going: section is yours to edit.</strong> Each part of the echo-back is its own merge field
+              (<code>[going]</code>, <code>[guests]</code>, <code>[jobs]</code>, <code>[rides]</code>,
+              <code>[prices]</code>, <code>[answers]</code>&hellip;) rendered as a bullet list under whatever caption you
+              give it; &ldquo;Show the summary layout&rdquo; drops the default block into the editor to change. Sections
+              with nothing in them disappear.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Preview the real email.</strong> The editor&rsquo;s preview is the actual message as it will
+              arrive, and &ldquo;Preview as&rdquo; lets you pick a real household on this signup to see their names,
+              jobs and amount due in place. Seeded templates rewritten in markdown.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

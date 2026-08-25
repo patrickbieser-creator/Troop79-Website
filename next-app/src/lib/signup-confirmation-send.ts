@@ -18,12 +18,14 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/server';
-import { emailConfigured, renderEmail, sendEmail, troopEmail, type SendResult } from '@/lib/email';
+import { emailConfigured, sendEmail, troopEmail, type SendResult } from '@/lib/email';
+import { renderMarkdownEmail } from '@/lib/email-markdown';
 import { siteUrl } from '@/lib/site-url';
 import { GUEST_CLASSES } from '@/lib/participant-class';
 import type { Household } from '@/lib/households';
 import {
   describeChanges,
+  fullMessageMd,
   renderMessage,
   resolveMessage,
   resolveRecipients,
@@ -338,17 +340,9 @@ export async function buildConfirmation(
 
 /* ── dispatch ────────────────────────────────────────────────────────────── */
 
-function toEmail(rendered: ReturnType<typeof renderMessage>, action: { url: string; label: string }) {
-  const bullets = rendered.hadSummary ? [] : rendered.summaryLines;
-  const paragraphs = rendered.body.split(/\n{2,}/);
-  return renderEmail({
-    heading: rendered.subject,
-    intro: paragraphs[0] ?? '',
-    bullets,
-    outro: paragraphs.slice(1).join('\n\n') || undefined,
-    actionUrl: action.url,
-    actionLabel: action.label
-  });
+function toEmail(rendered: ReturnType<typeof renderMessage>, action: { url: string; label: string }, appendSummary: boolean) {
+  // Markdown → inline-styled HTML + a plain-text twin (lib/email-markdown).
+  return renderMarkdownEmail({ md: `# ${rendered.subject}\n\n${fullMessageMd(rendered, appendSummary)}`, actionUrl: action.url, actionLabel: action.label });
 }
 
 /**
@@ -394,7 +388,8 @@ export async function dispatchConfirmations(
     }
     const rendered = renderMessage(template, ctx, renderAs);
     const action = audience === 'leader' ? { url: ctx.event.rosterUrl, label: 'Open roster' } : { url: ctx.event.publicUrl, label: 'Open event' };
-    const { html, text } = toEmail(rendered, action);
+    // A family receipt always carries the echo-back; a leader note only when its template asks.
+    const { html, text } = toEmail(rendered, action, renderAs === 'family');
     try {
       const res = await deps.send({ to, subject: rendered.subject, html, text, replyTo });
       const failed = res.status === 'error';

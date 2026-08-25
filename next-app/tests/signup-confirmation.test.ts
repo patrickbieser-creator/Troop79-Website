@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   describeChanges,
   fillTokens,
+  fullMessageMd,
   mapUrl,
   renderMessage,
   resolveMessage,
@@ -70,7 +71,8 @@ describe('renderMessage — merge fields', () => {
     expect(fam.body).toContain('date=Oct 9–11, 2026');
     expect(fam.body).toContain('time=5:00 PM');
     expect(fam.body).toContain('scouts=Avery and Blake');
-    expect(fam.body).toContain('going=3 going (2 scouts, 1 adult)');
+    expect(fam.body).toContain('going_count=3 going (2 scouts, 1 adult)');
+    expect(fam.body).toContain('going=- Avery\n- Blake\n- Dana Bieser');
     expect(fam.body).toContain('amount_due=$120.00');
     expect(fam.body).toContain('payment=Venmo @troop79');
     expect(fam.body).toContain('deadline=Sun, Oct 4');
@@ -92,10 +94,10 @@ describe('renderMessage — merge fields', () => {
       'https://www.google.com/maps/search/?api=1&query=Camp%20Long%20Lake%2C%20St.%20Cloud%20WI'
     );
     expect(mapUrl(null)).toBe('');
-    const r = renderMessage({ subject: 's', body: 'At [location] ([map]).' }, ctx({}, {}), 'family');
-    expect(r.body).toContain('(https://www.google.com/maps/search/?api=1&query=');
-    const none = renderMessage({ subject: 's', body: 'At [location] ([map]).' }, { ...ctx(), event: { ...ctx().event, location: null } }, 'family');
-    expect(none.body).toBe('At.'); // the empty parens and the stray space are tidied away
+    const r = renderMessage({ subject: 's', body: 'At [location]. [map]' }, ctx({}, {}), 'family');
+    expect(r.body).toContain('[Open in Google Maps](https://www.google.com/maps/search/?api=1&query=');
+    const none = renderMessage({ subject: 's', body: 'At [location]. [map]' }, { ...ctx(), event: { ...ctx().event, location: null } }, 'family');
+    expect(none.body).toBe('At.'); // the stray space is tidied away
   });
 
   it('SummaryToken_OmitsBlankLines_AndIsFlagged_WhenTheTemplateLacksIt', () => {
@@ -106,10 +108,16 @@ describe('renderMessage — merge fields', () => {
     expect(lines.some((l) => l.startsWith('Guests'))).toBe(false); // blank → omitted
     const withIt = renderMessage({ subject: 's', body: 'Hi.\n\n[summary]' }, ctx(), 'family');
     expect(withIt.hadSummary).toBe(true);
-    expect(withIt.body).toContain('• Going: Avery, Blake, Dana Bieser');
+    // The summary is markdown: captions over bullet lists; empty sections vanish.
+    expect(withIt.body).toContain('**Going**\n- Avery\n- Blake\n- Dana Bieser');
+    expect(withIt.body).toContain('**Jobs**\n- Friday setup');
+    expect(withIt.body).toContain('**Amount due:** $120.00');
+    expect(withIt.body).not.toContain('**Guests**');
     const without = renderMessage({ subject: 's', body: 'Hi.' }, ctx(), 'family');
     expect(without.hadSummary).toBe(false);
-    expect(without.summaryLines.length).toBeGreaterThan(3);
+    expect(without.summaryMd).toContain('**Going**');
+    expect(fullMessageMd(without, true)).toBe(`Hi.\n\n${without.summaryMd}`);
+    expect(fullMessageMd(without, false)).toBe('Hi.');
   });
 
   it('RenderMessage_LeavesUnknownTokens_Alone', () => {

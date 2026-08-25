@@ -7,7 +7,7 @@
  * customization written in the shared message editor. One Save for the whole
  * block through updateConfirmation, per the Save standard.
  */
-import { useEffect, useId, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   DEFAULT_TEMPLATES,
@@ -19,7 +19,7 @@ import {
   type Audience,
   type ConfirmationContext
 } from '@/lib/signup-confirmation';
-import { updateConfirmation } from '../actions';
+import { listSignupHouseholds, previewConfirmationContext, updateConfirmation } from '../actions';
 import type { EmailTemplateRow } from '../../advancement/lookups/email-template-actions';
 import { MessageEditorDialog } from '../../_components/message-editor-dialog';
 import { Notice } from '../../_components/notice';
@@ -107,6 +107,9 @@ export function ConfirmationPanel({
   }, [editing]);
 
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
+  // Preview as a real household on this signup (the dialog loads them lazily).
+  const loadHouseholds = useCallback(() => listSignupHouseholds(signupId), [signupId]);
+  const loadContext = useCallback((householdId: number) => previewConfirmationContext(signupId, householdId), [signupId]);
   const errs = recipientErrors(draft.recipients);
   const blocked = errs.some(Boolean);
 
@@ -304,6 +307,8 @@ export function ConfirmationPanel({
           title={editing === 'family' ? 'Customize the family receipt' : 'Customize the leader notification'}
           initial={customized(editing) ? (overrideFor(editing) as { subject: string; body: string }) : (templateFor(editing) ?? DEFAULT_TEMPLATES[editing])}
           previewCtx={previewCtx}
+          loadHouseholds={loadHouseholds}
+          loadContext={loadContext}
           onSave={async (subject, body) => {
             set(editing === 'family' ? { familySubject: subject, familyBody: body } : { leaderSubject: subject, leaderBody: body });
             return { ok: true };

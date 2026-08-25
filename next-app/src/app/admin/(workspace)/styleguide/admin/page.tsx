@@ -1114,12 +1114,16 @@ export default function StyleguidePage() {
         <div className={`${sg.specimenLabel} ${sg.specimenLabelApproved}`}>✓ Message Editor (2026-08-25)</div>
         <p className={sg.sectionNote}>
           One shared editor for every email template (<code>_components/message-editor-dialog</code>,
-          Plans/Signup-Confirmation-Email.md): Subject, a strip of quiet merge-field buttons from the
-          template kind&rsquo;s registry (<code>lib/email-templates</code>) that insert{' '}
-          <code>[token]</code> at the caret, the Message textarea, and a live Preview rendered with the
-          event&rsquo;s real logistics and a sample family — stacked on phones, side by side ≥ 900px. Save
-          message / Discard per the Save standard; Cancel closes. Used by Lookups &amp; Admin → Email
-          templates (with a Name field) and the signup builder&rsquo;s Customize for this event…
+          Plans/Signup-Confirmation-Email.md): Subject (single line), the Message as <strong>markdown</strong> on
+          the news editor&rsquo;s <code>MarkdownSource</code> (cheat sheet, a toolbar strip of quiet merge-field
+          buttons from the template kind&rsquo;s registry in <code>lib/email-templates</code> that insert{' '}
+          <code>[token]</code> inline at the caret, and a &ldquo;Show the summary layout&rdquo; helper that drops
+          the editable Going / Guests / Days… block in), and a Preview that is the <strong>real email</strong>:
+          <code>lib/email-markdown</code>&rsquo;s inline-styled HTML in a white mail-client frame, with a Plain-text
+          toggle for the twin that goes out alongside it. Preview as the sample family (the event&rsquo;s real
+          logistics) or, in the builder, any household that has signed up — stacked on phones, side by side
+          &ge; 900px. Save message / Discard per the Save standard; Cancel closes. Used by Lookups &amp; Admin
+          &rarr; Email templates (with a Name field) and the signup builder&rsquo;s Customize for this event…
         </p>
         <div className={`${dlg.dialog} ${me.wide} ${sg.dialogStatic}`}>
           <div className={dlg.header}>
@@ -1140,18 +1144,25 @@ export default function StyleguidePage() {
                 </div>
                 <label className={me.field}>
                   <span className={`adminLabel ${me.label}`}>Message</span>
-                  <textarea rows={4} readOnly defaultValue="Hi [name] — you're signed up for [event] on [date]." />
+                  <textarea rows={4} readOnly defaultValue={"Hi [name] — you're signed up for **[event]** on [date].\n\n[summary]"} />
                 </label>
               </div>
               <aside className={me.preview}>
-                <span className={`adminLabel ${me.label}`}>Preview</span>
-                <div className={me.previewCard}>
-                  <strong className={me.previewSubject}>Signed up: Fall Campout</strong>
-                  <p>Hi Dana Bieser — you&rsquo;re signed up for Fall Campout on Oct 9–11, 2026.</p>
-                  <ul className={me.previewList}>
-                    <li>Going: Avery Scout, Dana Bieser</li>
-                    <li>Amount due: $75.00</li>
-                  </ul>
+                <div className={me.previewHead}>
+                  <span className={`adminLabel ${me.label}`}>Preview</span>
+                  <button type="button" className={me.textToggle}>Plain-text</button>
+                </div>
+                <div className={me.emailFrame}>
+                  <div className={me.emailHtml}>
+                    <strong className={me.previewSubject}>Signed up: Fall Campout</strong>
+                    <p>Hi Dana Bieser — you&rsquo;re signed up for <strong>Fall Campout</strong> on Oct 9–11, 2026.</p>
+                    <p><strong>Going</strong></p>
+                    <ul className={me.previewList}>
+                      <li>Avery Scout</li>
+                      <li>Dana Bieser</li>
+                    </ul>
+                    <p><strong>Amount due:</strong> $75.00</p>
+                  </div>
                 </div>
               </aside>
             </div>

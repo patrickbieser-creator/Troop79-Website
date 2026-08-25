@@ -58,7 +58,7 @@ describe('dispatchConfirmations', () => {
     expect(lead.subject).toBe('New signup: The Bieser family — Fall Campout');
     expect(lead.text).toContain('dana@example.org'); // leaders see contact details
     expect(fam.text).not.toContain('555'); // families never see the leader-only fields
-    expect(fam.text).toContain('Amount due: $45.00'); // the summary rides along
+    expect(fam.text).toContain('Amount due: $45.00'); // the summary rides along (markdown → text)
     expect(log.map((l) => [l.audience, l.status, l.recipients.length])).toEqual([['family', 'sent', 2], ['leader', 'sent', 1]]);
   });
 

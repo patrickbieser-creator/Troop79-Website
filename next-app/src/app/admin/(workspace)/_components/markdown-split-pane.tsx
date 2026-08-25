@@ -40,6 +40,9 @@ import styles from './markdown-split-pane.module.css';
 export interface MarkdownEditorHandle {
   /** Insert at the caret, normalizing to exactly one blank line either side. */
   insertAtCursor(token: string): void;
+  /** Insert INLINE at the caret — no blank-line normalization (merge fields
+   *  like `[event]` land mid-sentence; the message editor uses this). */
+  insertInline(text: string): void;
   /** Replace an exact source span — used to re-splice an edited block token. */
   replaceRange(start: number, end: number, token: string): void;
   focus(): void;
@@ -94,6 +97,17 @@ export function MarkdownSource({
         const afterPart = after ? '\n\n' + after : '';
         onChange(beforePart + token + afterPart);
         const cursorPos = beforePart.length + token.length;
+        requestAnimationFrame(() => {
+          el?.focus();
+          el?.setSelectionRange(cursorPos, cursorPos);
+        });
+      },
+      insertInline(text: string) {
+        const el = areaRef.current;
+        const start = el?.selectionStart ?? value.length;
+        const end = el?.selectionEnd ?? value.length;
+        onChange(value.slice(0, start) + text + value.slice(end));
+        const cursorPos = start + text.length;
         requestAnimationFrame(() => {
           el?.focus();
           el?.setSelectionRange(cursorPos, cursorPos);
