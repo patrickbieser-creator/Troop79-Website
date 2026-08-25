@@ -1,6 +1,6 @@
 # Signup Confirmation Email
 
-**Status:** Draft — awaiting Patrick's answers to the Open Questions
+**Status:** Ready — every open question answered 2026-08-25; build order is the Implementation Steps
 **Drafted:** 2026-08-25 (rev 5 — resend on edit as an update; scout-only signups cc every parent; strict dedup)
 **Priority:** High
 
@@ -116,7 +116,9 @@ Pure (db project):
 - [ ] `LeaderUseFamilyMessage_SendsTheFamilyReceipt_ToTheLeaders_WithLeaderTokensBlank()`.
 - [ ] `ReplyTo_IsTheFirstLeaderAddress_ElseTheTroopAddress()`.
 - [ ] `SendConfirmations_SkipAnAudienceThatIsOff_AndEverythingWhenUnconfigured()`.
-- [ ] `SendConfirmations_Failure_DoesNotThrow_AndIsLogged()`.
+- [ ] `SendConfirmations_Failure_DoesNotThrow_AndIsLogged()` — a `failed` log row + `confirm_last_error`.
+- [ ] `EverySend_WritesOneLogRowPerAudience_WithTheDedupedRecipients()`.
+- [ ] `Resend_FromTheRoster_SendsTheFamilyMessageAgain_LoggedAsResend()`.
 - [ ] `Template_InUse_CannotBeDeleted_CanBeRetired()`.
 DOM project:
 - [ ] `TemplateLibrary_ListsByAudience_AddEditRetire()`.
@@ -161,9 +163,25 @@ Columns on `event_signups` — the block is 1:1 with a signup:
 Resolution order for a message: event override → chosen template → the audience's seeded
 default (so a signup with the block on but nothing picked still sends something sensible).
 
-Plus a small `signup_confirmation_log` (signup_id, household_id, audience, sent_at, to text[],
-status, detail) so the roster can show "confirmation sent 2:14 PM" per household. (Phase 2 if
-Patrick wants the first cut lighter — `confirm_last_error` alone satisfies "visible to leaders".)
+`signup_confirmation_log` — **in the first cut** (Patrick, 2026-08-25):
+
+| column | type | notes |
+|---|---|---|
+| `id` | bigserial pk | |
+| `event_signup_id` | bigint references event_signups on delete cascade | |
+| `household_id` | bigint references households | null for the two household-less party shapes |
+| `audience` | text check in ('family','leader') | |
+| `change` | text check in ('new','update','resend') | `resend` = a leader clicked Resend on the roster |
+| `recipients` | text[] not null | after dedup and the dev relay (what was actually written to) |
+| `status` | text check in ('sent','skipped','failed') | |
+| `detail` | text | the provider error, or "email not configured" |
+| `sent_at` | timestamptz not null default now() | |
+
+One row per audience per send. The roster's per-household line reads the latest family row
+("Confirmation sent 2:14 PM" / "Confirmation failed — Resend"), and **Resend confirmation** is
+a row action that re-runs the family message for that household with `change = 'resend'`.
+`confirm_last_error` on the signup stays as the cheap "something is wrong with this signup's
+email" flag shown in the builder block.
 
 **Merge fields** — a pure module `lib/signup-confirmation.ts`. Patrick, 2026-08-25: "any
 reasonable field in the form that a family might want echoed back to them" — so the set is
@@ -270,8 +288,9 @@ Dialog with subject input, merge-field buttons for the audience (insert at curso
 (`renderMessage` with real event logistics + sample people), Save/Discard per the standard.
 Used by the library editor and the builder's Customize.
 
-**Roster surface** — `roster-view.tsx` shows a muted "Confirmation: sent 2:14 PM · failed —
-retry" per household from the log (Phase 2), and a **Resend confirmation** row action.
+**Roster surface** — `roster-view.tsx` shows a muted "Confirmation sent 2:14 PM" / "failed —
+Resend" per household from the log, and a **Resend confirmation** row action (family message,
+`change = 'resend'`, logged like any other send).
 
 **Defaults** — seeded templates (migration), two per audience:
 
@@ -304,7 +323,8 @@ retry" per household from the log (Phase 2), and a **Resend confirmation** row a
 6. Lookups & Admin → Email templates editor (the existing lookups table shape).
 7. Builder `ConfirmationPanel` (Family / Leaders sub-panels, pickers, Customize/Reset, recipients);
    help-map entry.
-8. Roster: `confirm_last_error` notice; (Phase 2) per-household sent status + Resend.
+8. Roster: per-household sent status from the log + **Resend confirmation** row action;
+   `confirm_last_error` notice in the builder block.
 9. Changelog; AGENTS.md note on the merge-field convention (the newsletter is the obvious next
    consumer of the library and the editor).
 
@@ -312,7 +332,6 @@ retry" per household from the log (Phase 2), and a **Resend confirmation** row a
 
 - [ ] **Cancellations:** no email on cancel in this cut (Patrick decided edits only, 2026-08-25);
       revisit when the log/Resend lands.
-- [ ] **Log table now or Phase 2?** Affects step 1 and the roster's "sent" column.
 - [ ] **Library scope:** signup templates only for now, or make `audience` open-ended so the
       newsletter / non-responder nudges can join later? (Assumed: the enum starts with the two;
       adding a value is a one-line migration.)
