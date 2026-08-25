@@ -157,10 +157,8 @@ export default async function AttendanceReportPage({
       />
 
       <form method="get" className={`${styles.toolbar} ${styles.toolbarStart}`}>
-        <Button href="/admin/calendar" size="sm">
-          ← Calendar
-        </Button>
-        <span className={styles.spacer} />
+        {/* The "← Calendar" button retired 2026-08-25 (Patrick) — the report is a
+            nav root; BackNav is the way back everywhere else. */}
         <label className={`${styles.muted} ${styles.filterLabel}`} htmlFor="from">
           From
         </label>
