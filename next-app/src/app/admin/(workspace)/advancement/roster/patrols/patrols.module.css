@@ -3,6 +3,9 @@
  * public-palette reads (AGENTS.md firewall).
  */
 
+/* The shared SearchField's row — same slot as the other roster tabs (2026-08-25). */
+.tableToolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 0 0 10px; }
+
 /* ── Live counts, doubling as bucket selectors ───────────────────────────── */
 .countsRow {
   display: flex;

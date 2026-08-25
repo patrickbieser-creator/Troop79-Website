@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   addRole,
@@ -25,6 +25,7 @@ import { PendingUpdatePanel } from './pending-update-panel';
 import { AdultForm } from './adult-form';
 import { DatePickerField } from '../../_components/date-picker-field';
 import { AddButton } from '../../_components/add-button';
+import { SearchField, useTableSearch } from '../../_components/search-field';
 import { SortHeader, useSortable } from '../../_components/use-sortable';
 import { Dialog } from '../../_components/dialog';
 import { Notice } from '../../_components/notice';
@@ -132,6 +133,9 @@ function personValue(p: DirectoryPerson, key: PeopleColKey): unknown {
   }
 }
 
+/** Module scope so the search hook's memo sees a stable matcher. */
+const peopleSearchFields = (p: DirectoryPerson) => [p.display_name, p.primary_email];
+
 export function PeopleTable({
   people,
   roles,
@@ -162,7 +166,6 @@ export function PeopleTable({
   // person who was no longer on the tab.
   const [openPerson, setOpenPerson] = useState<DirectoryPerson | null>(null);
   const [adding, setAdding] = useState(false);
-  const [q, setQ] = useState('');
 
   useEffect(() => {
     if (!openPersonId) return;
@@ -173,15 +176,9 @@ export function PeopleTable({
     if (match) setOpenPerson(match);
   }, [openPersonId, people]);
 
-  const visible = useMemo(() => {
-    const term = q.trim().toLowerCase();
-    if (!term) return people;
-    return people.filter(
-      (p) =>
-        p.display_name.toLowerCase().includes(term) ||
-        (p.primary_email ?? '').toLowerCase().includes(term)
-    );
-  }, [people, q]);
+  // The shared name search (2026-08-25); email still matches, quietly — a
+  // leader who remembers the address, not the name, is not wrong.
+  const { q, setQ, visible } = useTableSearch(people, peopleSearchFields);
 
   // null initial key: the server's display_name order IS the default; sorting
   // starts only when a header is clicked.
@@ -194,15 +191,7 @@ export function PeopleTable({
   return (
     <div>
       <div className={styles.tableToolbar}>
-        <input
-          className={styles.searchInput}
-          placeholder="Search name or email"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-        <span className={styles.toolbarCount}>
-          {visible.length} of {people.length}
-        </span>
+        <SearchField value={q} onChange={setQ} label="Search adults" resultCount={visible.length} totalCount={people.length} />
         {/* The front door adults never had — same toolbar position as the
             Scouts tab's "+ Add Scout". */}
         <AddButton onClick={() => setAdding(true)}>+ Add Adult</AddButton>

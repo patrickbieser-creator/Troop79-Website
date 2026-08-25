@@ -25,7 +25,7 @@ import sg from './styleguide.module.css';
 import { DialogDemo } from './dialog-demo';
 import { SaveDemo } from './save-demo';
 import { fmtDate, fmtDateLong, fmtDateFull, fmtDay, fmtDateTime, fmtMonthYear, fmtRange } from '@/lib/format-date';
-import { ActionsMenuSpecimen, SortHeaderSpecimen } from './specimens';
+import { ActionsMenuSpecimen, SearchFieldSpecimen, SortHeaderSpecimen } from './specimens';
 import { TabStrip } from '../../_components/tab-strip';
 import { AddButton } from '../../_components/add-button';
 import { Button } from '../../../_components/button';
@@ -681,6 +681,25 @@ export default function StyleguidePage() {
       </section>
 
       {/* ════ TABLES ════ */}
+      <section className={sg.section}>
+        <h2 className={sg.sectionHead}>List Search</h2>
+        <p className={sg.sectionNote}>
+          One name search for in-memory lists (Patrick, 2026-08-25; Jenna&rsquo;s pass):{' '}
+          <code>useTableSearch(rows, fields)</code> + <code>&lt;SearchField&gt;</code> from{' '}
+          <code>_components/search-field</code> &mdash; instant, case-insensitive, Esc clears, &ldquo;N of M&rdquo;
+          announced. Same slot on every screen: the table&rsquo;s toolbar row, after any sub-tab strip or
+          count, before the spacer and the Add button. Server-listed screens (Calendar, News, Ledger)
+          keep their URL-debounced <code>q</code>; the two are different canons for different data.
+          Consumers: roster Scouts / Leaders / Adults / Guests / Patrols.
+        </p>
+        <div className={sg.specimenGrid}>
+          <div className={`${sg.specimen} ${sg.specimenCanonical}`}>
+            <div className={sg.specimenLabel}>Canonical</div>
+            <SearchFieldSpecimen />
+          </div>
+        </div>
+      </section>
+
       <section className={sg.section}>
         <h2 className={sg.sectionHead}>Data Tables</h2>
         <p className={sg.sectionNote}>

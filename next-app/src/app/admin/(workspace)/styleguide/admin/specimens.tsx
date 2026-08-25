@@ -8,6 +8,7 @@
  */
 import { ActionsMenu } from '../../_components/actions-menu';
 import { SortHeader, useSortable } from '../../_components/use-sortable';
+import { SearchField, useTableSearch } from '../../_components/search-field';
 
 const SORT_ROWS = [
   { name: 'Violet Babby', nights: 12 },
@@ -50,5 +51,22 @@ export function ActionsMenuSpecimen() {
       ]}
       onAction={() => {}}
     />
+  );
+}
+
+/** The list search, live: three names, filter them. */
+const SEARCH_ROWS = [{ name: 'Avery Scout' }, { name: 'Blake Bieser' }, { name: 'Casey Okafor' }];
+const searchFields = (r: { name: string }) => [r.name];
+export function SearchFieldSpecimen() {
+  const { q, setQ, visible } = useTableSearch(SEARCH_ROWS, searchFields);
+  return (
+    <div>
+      <SearchField value={q} onChange={setQ} label="Search scouts" resultCount={visible.length} totalCount={SEARCH_ROWS.length} />
+      <ul>
+        {visible.map((r) => (
+          <li key={r.name}>{r.name}</li>
+        ))}
+      </ul>
+    </div>
   );
 }

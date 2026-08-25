@@ -7,6 +7,7 @@ import { ScoutForm, type ScoutRow } from './scout-form';
 import { SortHeader, useSortable } from '../../_components/use-sortable';
 import { TabStrip } from '../../_components/tab-strip';
 import { AddButton } from '../../_components/add-button';
+import { SearchField, useTableSearch } from '../../_components/search-field';
 import { Badge } from '../../_components/badge';
 import { Dialog } from '../../_components/dialog';
 import styles from './roster.module.css';
@@ -52,6 +53,8 @@ function fmtDate(iso: string | null): string {
 type SortableScout = ScoutRow & { _today: string; _rankLabel: Record<string, string> };
 
 /** Module scope on purpose — see the note on useSortable. */
+const scoutSearchFields = (s: { display_name: string }) => [s.display_name];
+
 function scoutValue(s: SortableScout, key: ColKey): unknown {
   switch (key) {
     case 'id':
@@ -144,8 +147,9 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId
     [scouts, tab, today, rankLabel]
   );
 
+  const { q, setQ, visible: searched } = useTableSearch(visible, scoutSearchFields);
   const { sorted, sortKey, sortDir, toggle } = useSortable<SortableScout, ColKey>(
-    visible,
+    searched,
     scoutValue,
     'name'
   );
@@ -176,6 +180,8 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId
             ]}
           />
         )}
+        <SearchField value={q} onChange={setQ} label="Search scouts" resultCount={searched.length} totalCount={visible.length} />
+        <span className={styles.toolbarSpacer} />
         <AddButton onClick={() => setOpenFor('new')}>+ Add Scout</AddButton>
       </div>
 

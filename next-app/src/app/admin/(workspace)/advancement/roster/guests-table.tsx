@@ -9,6 +9,7 @@ import { searchPeople } from './person-actions';
 import { Notice } from '../../_components/notice';
 import { Button } from '../../../_components/button';
 import styles from './roster.module.css';
+import { SearchField, useTableSearch } from '../../_components/search-field';
 
 /**
  * People → Guests (Plans/Guests-As-People.md Phase 2): every guest a
@@ -19,13 +20,18 @@ import styles from './roster.module.css';
  *
  * Forgotten guests are not listed — they are history, not roster.
  */
+/** Name or the household they came with — how a leader identifies "which family's guest". */
+const guestSearchFields = (r: GuestTabRow) => [r.name, r.hostLabel];
+
 export function GuestsTable({ rows }: { rows: GuestTabRow[] }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [merging, setMerging] = useState<number | null>(null);
-  const [q, setQ] = useState('');
+  const [mergeQuery, setMergeQuery] = useState('');
+  // The list's own name search (2026-08-25) — distinct from the merge picker's lookup above.
+  const { q, setQ, visible } = useTableSearch(rows, guestSearchFields);
   const [results, setResults] = useState<{ id: number; display_name: string; primary_email: string | null }[]>([]);
   const [searching, startSearch] = useTransition();
 
@@ -40,13 +46,13 @@ export function GuestsTable({ rows }: { rows: GuestTabRow[] }) {
       }
       setNotice(done);
       setMerging(null);
-      setQ('');
+      setMergeQuery('');
       setResults([]);
       router.refresh();
     });
 
   function search(value: string) {
-    setQ(value);
+    setMergeQuery(value);
     if (value.trim().length < 2) {
       setResults([]);
       return;
@@ -75,6 +81,11 @@ export function GuestsTable({ rows }: { rows: GuestTabRow[] }) {
       {error && <Notice variant="error">{error}</Notice>}
       {notice && <Notice variant="success">{notice}</Notice>}
 
+      {rows.length > 0 && (
+        <div className={styles.tableToolbar}>
+          <SearchField value={q} onChange={setQ} label="Search guests" resultCount={visible.length} totalCount={rows.length} />
+        </div>
+      )}
       {rows.length === 0 ? (
         <p className={styles.muted}>No guests on record. Families add theirs on an event’s sign-up form; leaders on an event’s Roster.</p>
       ) : (
@@ -90,7 +101,7 @@ export function GuestsTable({ rows }: { rows: GuestTabRow[] }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
+            {visible.map((r) => (
               <tr key={r.personId}>
                 <td>
                   {r.name}
@@ -117,7 +128,7 @@ export function GuestsTable({ rows }: { rows: GuestTabRow[] }) {
                       aria-expanded={merging === r.personId}
                       onClick={() => {
                         setMerging(merging === r.personId ? null : r.personId);
-                        setQ('');
+                        setMergeQuery('');
                         setResults([]);
                       }}
                     >
@@ -146,7 +157,7 @@ export function GuestsTable({ rows }: { rows: GuestTabRow[] }) {
                       <span className={styles.fieldLabel}>Merge {r.name} into the member they became…</span>
                       <input
                         className={styles.searchInput}
-                        value={q}
+                        value={mergeQuery}
                         placeholder="Type at least two letters"
                         aria-label={`Member to merge ${r.name} into`}
                         disabled={pending}

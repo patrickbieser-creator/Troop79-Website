@@ -36,6 +36,14 @@ thing, copy in `admin/help.tsx`; a paragraph of "how this section behaves" → a
 more than one per row or section, and not twenty identical ⓘs that all read as "skip me".
 Specimens: `/admin/styleguide/admin` → Help Badge; tuning page `/admin/styleguide/help-sample`.
 
+**List search is one component (2026-08-25):** a small, already-fetched table (the roster tabs,
+lookups) filters on the client with `useTableSearch(rows, fields)` + `<SearchField>` from
+`_components/search-field` — placeholder "Search by name…", `type="search"`, a real `aria-label`,
+Esc clears, "N of M" announced. It sits in the table's toolbar row: after any sub-tab strip or
+count, before the spacer and the Add button — the same slot on every screen. Server-listed
+screens (Calendar, News, Ledger) keep their URL-debounced `q` (tab counts follow the filter, the
+view is linkable); don't mix the two on one screen.
+
 **Back navigation is one slot (2026-08-25):** `PageTitle` requires `back` — `null` on a list/root
 page (it then remembers its URL for children), `{ label, href }` on a depth-2 screen ("← Back to
 News"), `{ crumbs: [root, parent], current }` at depth 3+ (breadcrumbs). It renders `BackNav` above

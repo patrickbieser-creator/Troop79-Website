@@ -38,12 +38,15 @@ import { Notice } from '../../../_components/notice';
 import { SaveButton, SaveFeedback, useSavePhase } from '../../../_components/save-state';
 import { Button } from '../../../../_components/button';
 import styles from './patrols.module.css';
+import { SearchField, useTableSearch } from '../../../_components/search-field';
 
 type ActionResult = { ok: boolean; error?: string; changed?: number };
 
 /** Sentinel for the "Unassigned" option — a select cannot carry null. */
 const NONE = '__none__';
 const NEW = '__new__';
+
+const patrolSearchFields = (s: { display_name: string }) => [s.display_name];
 
 export function PatrolTable({
   scouts,
@@ -64,6 +67,7 @@ export function PatrolTable({
   const feedback = useSavePhase(); // Save standard (2026-08-24)
 
   const rows = useMemo(() => assignableScouts(scouts), [scouts]);
+  const { q, setQ, visible: shown } = useTableSearch(rows, patrolSearchFields);
   const known = useMemo(() => distinctPatrols(scouts), [scouts]);
   // Names typed during this session join the dropdown immediately, so the
   // second scout into a brand-new patrol is one click, not retyping.
@@ -149,6 +153,9 @@ export function PatrolTable({
 
   return (
     <div>
+      <div className={styles.tableToolbar}>
+        <SearchField value={q} onChange={setQ} label="Search scouts" resultCount={shown.length} totalCount={rows.length} />
+      </div>
       <div className={styles.countsRow}>
         {counts.map((c) => (
           <button
@@ -241,7 +248,7 @@ export function PatrolTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((s) => {
+          {shown.map((s) => {
             const value = valueFor(s);
             const changed = changes.some((c) => c.id === s.id);
             return (

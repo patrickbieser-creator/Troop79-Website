@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { addCandidatesFor } from '@/lib/event-signup-admin';
 import {
   isParticipantClass,
