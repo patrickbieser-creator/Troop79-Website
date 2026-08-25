@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 25, 2026</strong> &nbsp;&middot;&nbsp; v1.92.0</p>
+      <p>Last updated: <strong>August 25, 2026</strong> &nbsp;&middot;&nbsp; v1.92.1</p>
     </div>
   </div>
 
@@ -494,6 +494,35 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.92.1 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.92.1</span>
+        <span class="release-date">August 25, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Polish</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Event Signups list steps out of the flow</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Enable a signup from the entry itself.</strong> The workbench&rsquo;s Signup tab used to send
+              you to the Event Signups list to flip a signup on; the button now enables it right there and the
+              builder appears in the tab.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>No more links to the Event Signups list.</strong> Event Management points at the Calendar
+              for creating or configuring a signup, and the per-event Roster / Money / Snapshot / assignment pages&rsquo;
+              &ldquo;All signups&rdquo; back-link is now &ldquo;Event Management&rdquo;. The list page itself stays
+              reachable by URL for now, so the new flow can be walked before it is retired.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

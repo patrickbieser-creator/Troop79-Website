@@ -143,9 +143,9 @@ export default async function EventRostersPage() {
         sub={
           <>
             Who&rsquo;s coming to what, and what still needs chasing. To create or configure a
-            signup, use{' '}
-            <Link href="/admin/events" className={styles.actionLink}>
-              Event Signups
+            signup, open the event in the{' '}
+            <Link href="/admin/calendar" className={styles.actionLink}>
+              Calendar
             </Link>
             .
           </>
@@ -155,11 +155,11 @@ export default async function EventRostersPage() {
       {rows.length === 0 ? (
         <section className={styles.panel}>
           <p className={styles.panelHint}>
-            No upcoming events have a signup yet. Enable one under{' '}
-            <Link href="/admin/events" className={styles.actionLink}>
-              Event Signups
-            </Link>
-            .
+            No upcoming events have a signup yet. Open an event in the{' '}
+            <Link href="/admin/calendar" className={styles.actionLink}>
+              Calendar
+            </Link>{' '}
+            and enable one on its Signup tab.
           </p>
         </section>
       ) : (

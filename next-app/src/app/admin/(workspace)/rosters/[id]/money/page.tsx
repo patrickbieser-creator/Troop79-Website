@@ -51,8 +51,8 @@ export default async function EventMoneyPage({ params }: { params: Promise<{ id:
         title={`${s.calendar_entries.title} — Money`}
         sub={
           <>
-            <Link href="/admin/events" className={styles.actionLinkMuted}>
-              All signups
+            <Link href="/admin/rosters" className={styles.actionLinkMuted}>
+              Event Management
             </Link>{' '}
             ·{' '}
             <Link href="/admin/finance" className={styles.actionLinkMuted}>

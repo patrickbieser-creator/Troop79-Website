@@ -45,8 +45,8 @@ export default async function SnapshotWorkspacePage({
         title={`${s.calendar_entries.title} — Snapshot`}
         sub={
           <>
-            <Link href="/admin/events" className={styles.actionLinkMuted}>
-              All signups
+            <Link href="/admin/rosters" className={styles.actionLinkMuted}>
+              Event Management
             </Link>{' '}
             ·{' '}
             <Link href={`/events/${s.calendar_entries.id}`} className={styles.actionLinkMuted}>

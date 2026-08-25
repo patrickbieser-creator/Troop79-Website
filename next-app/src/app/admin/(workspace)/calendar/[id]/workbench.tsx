@@ -90,6 +90,9 @@ interface Props {
   initialTab?: WorkbenchTab;
   onSaveStory: (fd: FormData) => Promise<ActionResult>;
   onAddAgenda?: (fd: FormData) => Promise<{ ok: boolean; error?: string; id?: number }>;
+  /** Enables a signup on this entry, in place (2026-08-25: the Calendar is
+   *  the hub — no detour through the signups list to flip it on). */
+  onEnableSignup?: (calendarEntryId: number) => Promise<{ ok: boolean; error?: string }>;
 }
 
 const TEMPLATE_NOTE: Record<CategoryTemplate, string> = {
@@ -113,7 +116,8 @@ export function Workbench({
   rollCall,
   initialTab,
   onSaveStory,
-  onAddAgenda
+  onAddAgenda,
+  onEnableSignup
 }: Props) {
   const router = useRouter();
   const hasAgendaTab = template === 'meeting';
@@ -165,6 +169,20 @@ export function Workbench({
         return;
       }
       // The editor renders in this tab once the page re-reads the layer.
+      router.refresh();
+    });
+  }
+
+  function enableSignupHere() {
+    if (!onEnableSignup) return;
+    setErr(null);
+    startTransition(async () => {
+      const res = await onEnableSignup(entry.id);
+      if (!res.ok) {
+        setErr(res.error ?? 'Could not enable the signup.');
+        return;
+      }
+      // The builder renders in this tab once the page re-reads the layer.
       router.refresh();
     });
   }
@@ -340,7 +358,7 @@ export function Workbench({
             <div className={styles.panelHead}>
               <h2>Signup</h2>
               <div>
-                <Button href="/admin/events">
+                <Button type="button" onClick={enableSignupHere} disabled={isPending || !onEnableSignup}>
                   Enable a signup
                 </Button>
               </div>

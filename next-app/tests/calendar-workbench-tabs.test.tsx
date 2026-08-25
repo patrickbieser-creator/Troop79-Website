@@ -147,9 +147,14 @@ describe('Calendar entry workbench — one tab per layer', () => {
 
   it('SignupTab_OffersToEnable_WhenThereIsNoSignup_AndShowsTheBuilderWhenThereIs', async () => {
     const user = userEvent.setup();
-    const { unmount } = renderWorkbench();
+    // Enabling happens HERE (2026-08-25: the Calendar is the hub) — a button
+    // that runs the action for this entry, not a link out to the signups list.
+    const onEnableSignup = vi.fn(async () => ({ ok: true }));
+    const { unmount } = renderWorkbench({ onEnableSignup });
     await user.click(screen.getByRole('tab', { name: 'Signup' }));
-    expect(screen.getByRole('link', { name: 'Enable a signup' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Enable a signup' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Enable a signup' }));
+    expect(onEnableSignup).toHaveBeenCalledWith(109);
     expect(screen.queryByLabelText('Signup builder')).toBeNull();
     unmount();
 
@@ -168,7 +173,7 @@ describe('Calendar entry workbench — one tab per layer', () => {
     await user.click(screen.getByRole('tab', { name: 'Signup' }));
     expect(screen.getByLabelText('Signup builder').textContent).toBe('builder for signup 8');
     expect(screen.getByRole('navigation', { name: 'Event nav' })).toBeTruthy();
-    expect(screen.queryByRole('link', { name: 'Enable a signup' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Enable a signup' })).toBeNull();
   });
 
   it('AgendaTab_OffersAddAnAgenda_WhenNoneExists', async () => {

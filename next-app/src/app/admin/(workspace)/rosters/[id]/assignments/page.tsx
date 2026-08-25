@@ -147,8 +147,8 @@ export default async function AssignmentsPage({
         title={`${data.entry.title} — Rides & assignments`}
         sub={
           <>
-            <Link href="/admin/events" className={styles.actionLinkMuted}>
-              All signups
+            <Link href="/admin/rosters" className={styles.actionLinkMuted}>
+              Event Management
             </Link>{' '}
             ·{' '}
             <Link href={`/events/${data.entry.id}`} className={styles.actionLinkMuted}>

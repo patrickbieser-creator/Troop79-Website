@@ -32,6 +32,7 @@ import {
 } from '../../advancement/meetings/actions';
 import { loadAgendaEditorData } from '../../advancement/meetings/load-agenda';
 import { loadBuilderData } from '../../events/[id]/load-builder';
+import { enableSignup } from '../../events/actions';
 import type { Meeting } from '@/lib/supabase/types';
 import { updateEntryStory, updateCalendarEntry, createCalendarEntry } from '../actions';
 import { markAttended, markAbsent, setAttendanceQty, seedFromSignup } from './roll-call/actions';
@@ -156,6 +157,7 @@ export default async function CalendarEntryPage({
       onSaveStory={updateEntryStory}
       onCreateEntry={createCalendarEntry}
       onAddAgenda={createMeeting}
+      onEnableSignup={enableSignup}
     />
   );
 }

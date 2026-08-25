@@ -465,8 +465,8 @@ export default async function EventRosterPage({ params }: { params: Promise<{ id
         title={`${String(data.entry.title)} — Roster`}
         sub={
           <>
-            <Link href="/admin/events" className={styles.actionLinkMuted}>
-              All signups
+            <Link href="/admin/rosters" className={styles.actionLinkMuted}>
+              Event Management
             </Link>{' '}
             ·{' '}
             <Link href={`/events/${String(data.entry.id)}`} className={styles.actionLinkMuted}>
