@@ -449,6 +449,18 @@ export function BuilderPanels({
       </section>
       )}
 
+      {/* The confirmation email block lives with the signup's Settings
+          (Patrick, 2026-08-25), not with the Questions. */}
+      {tab === 'settings' && previewCtx && (
+        <ConfirmationPanel
+          signupId={signupId}
+          calendarEntryId={calendarEntryId}
+          signup={signup}
+          templates={templates}
+          previewCtx={previewCtx}
+        />
+      )}
+
       {tab === 'prices' && (
       <section className={styles.panel}>
         <h2>Price tiers</h2>
@@ -1279,15 +1291,6 @@ export function BuilderPanels({
           ))}
         </p>
       </section>
-      )}
-      {tab === 'questions' && previewCtx && (
-        <ConfirmationPanel
-          signupId={signupId}
-          calendarEntryId={calendarEntryId}
-          signup={signup}
-          templates={templates}
-          previewCtx={previewCtx}
-        />
       )}
       {tab === 'assignments' && (
       <section className={styles.panel}>
