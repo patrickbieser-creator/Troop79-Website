@@ -1,0 +1,72 @@
+/* Throwaway — the help-badge tuning page. Delete with the folder. */
+
+.knobs {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--admin-space-4) var(--admin-space-6);
+  margin-bottom: var(--admin-space-8);
+  padding: var(--admin-space-3) var(--admin-space-4);
+  background: var(--admin-form-bg);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius-sm);
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-700);
+}
+.knobs label { display: inline-flex; align-items: center; gap: var(--admin-space-2); }
+.knobs select { font-size: var(--admin-text-sm); }
+.ratio {
+  margin-left: auto;
+  font-family: var(--admin-font-mono);
+  font-size: var(--admin-text-xs);
+  color: var(--admin-gray-600);
+}
+
+.lede {
+  margin: 0;
+  font-size: var(--admin-text-base);
+  line-height: 1.55;
+  color: var(--admin-gray-700);
+}
+.rightEdge { text-align: right; }
+
+.field { display: flex; flex-direction: column; gap: var(--admin-space-1); margin-bottom: var(--admin-space-4); }
+.field:last-child { margin-bottom: 0; }
+.field label { font-size: var(--admin-text-sm); font-weight: var(--admin-weight-semibold); color: var(--admin-gray-800); }
+.field input[type='checkbox'] { align-self: flex-start; }
+
+.hint {
+  margin: 0;
+  font-size: var(--admin-text-xs);
+  color: var(--admin-gray-600);
+  line-height: 1.45;
+}
+
+.empty {
+  padding: var(--admin-space-5);
+  border: 1px dashed var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-600);
+  line-height: 1.5;
+}
+
+.disclosure { font-size: var(--admin-text-sm); }
+.disclosureBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--admin-space-2);
+  padding: var(--admin-space-1) 0;
+  border: 0;
+  background: transparent;
+  color: var(--admin-navy);
+  font: inherit;
+  font-weight: var(--admin-weight-semibold);
+  cursor: pointer;
+}
+.disclosureBtn:focus-visible { outline: 2px solid var(--admin-navy); outline-offset: 2px; }
+.disclosureBody { margin-top: var(--admin-space-2); color: var(--admin-gray-700); line-height: 1.5; }
+.disclosureBody p { margin: 0 0 var(--admin-space-2); }

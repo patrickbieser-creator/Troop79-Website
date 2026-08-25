@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 25, 2026</strong> &nbsp;&middot;&nbsp; v1.92.1</p>
+      <p>Last updated: <strong>August 25, 2026</strong> &nbsp;&middot;&nbsp; v1.93.0</p>
     </div>
   </div>
 
@@ -494,6 +494,46 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.93.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.93.0</span>
+        <span class="release-date">August 25, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">The ? help badge &mdash; sample page for tuning</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>A <code>HelpBadge</code> component</strong> &mdash; the question mark in a circle that opens a small
+              panel of reference material beside the thing it explains. A popover, not a tooltip: opens on click,
+              tap, Enter or Space (and on hover after a short delay), closes on Esc with focus returning to the
+              badge, on its &times; or on a click away &mdash; never on a timer. Flips above when there is no room
+              below and slides sideways to stay on screen. 44px hit area, keyboard and touch friendly.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>One help map.</strong> Every badge&rsquo;s copy lives in <code>admin/help.tsx</code>, keyed by
+              id, so instructions can be reviewed in one place; entries can carry lists, emphasis and links. A typo
+              in an id fails loudly in development.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Throwaway tuning page at <code>/admin/styleguide/help-sample</code></strong> (URL only, not in
+              the nav): the badge after a form label, in a table header, mid-sentence in a lede and in a dialog
+              title; long content, keyboard flow, right- and bottom-edge behaviour; knobs for placement, width,
+              circle size, hover; the live contrast ratio; and the alternatives it should <em>not</em> replace
+              &mdash; inline field hints, a collapsible &ldquo;How this works&rdquo;, and empty-state text. Nothing
+              on a real screen uses the badge yet; that follows once the look is settled.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

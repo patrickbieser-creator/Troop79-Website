@@ -1,0 +1,128 @@
+/* HelpBadge — the ? circle and its popover. Tokens only (admin.css). */
+
+.wrap {
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 0;
+}
+
+.trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0 var(--admin-space-1);
+  border: 1px solid var(--admin-gray-400);
+  border-radius: var(--admin-radius-circle);
+  background: var(--admin-white);
+  color: var(--admin-gray-600);
+  font-family: var(--admin-font-ui);
+  font-weight: var(--admin-weight-semibold);
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color var(--admin-transition), color var(--admin-transition), background var(--admin-transition);
+}
+/* The hit target is 44px regardless of the visible circle (WCAG 2.5.8 wants
+   24px; 44 is the touch comfort floor). */
+.trigger::before {
+  content: '';
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+}
+.trigger[data-size='16'] { width: 16px; height: 16px; font-size: var(--admin-text-2xs); }
+.trigger[data-size='20'] { width: 20px; height: 20px; font-size: var(--admin-text-xs); }
+.trigger[data-size='24'] { width: 24px; height: 24px; font-size: var(--admin-text-sm); }
+
+.trigger:hover,
+.trigger:focus-visible {
+  border-color: var(--admin-navy);
+  color: var(--admin-navy);
+}
+.trigger:focus-visible {
+  outline: 2px solid var(--admin-navy);
+  outline-offset: 2px;
+}
+.trigger[aria-expanded='true'] {
+  background: var(--admin-navy);
+  border-color: var(--admin-navy);
+  color: var(--admin-white);
+}
+
+.panel {
+  position: absolute;
+  left: 50%;
+  z-index: 40;
+  box-sizing: border-box;
+  width: max-content;
+  min-width: 180px;
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow-md);
+  color: var(--admin-gray-800);
+  font-family: var(--admin-font-ui);
+  font-size: var(--admin-text-sm);
+  font-weight: var(--admin-weight-regular);
+  line-height: 1.45;
+  text-align: left;
+  white-space: normal;
+}
+.below { top: calc(100% + 6px); }
+.above { bottom: calc(100% + 6px); }
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--admin-space-3);
+  padding: var(--admin-space-2) var(--admin-space-3) var(--admin-space-2) var(--admin-space-4);
+  border-bottom: 1px solid var(--admin-gray-200);
+}
+.title {
+  font-weight: var(--admin-weight-semibold);
+  font-size: var(--admin-text-xs);
+  letter-spacing: var(--admin-tracking-wide);
+  text-transform: uppercase;
+  color: var(--admin-gray-700);
+}
+.close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--admin-radius-sm);
+  background: transparent;
+  color: var(--admin-gray-500);
+  font-size: var(--admin-text-md);
+  line-height: 1;
+  cursor: pointer;
+}
+.close:hover,
+.close:focus-visible { background: var(--admin-gray-100); color: var(--admin-gray-800); }
+.close:focus-visible { outline: 2px solid var(--admin-navy); outline-offset: 1px; }
+
+.body {
+  padding: var(--admin-space-3) var(--admin-space-4) var(--admin-space-4);
+  max-height: 60vh;
+  overflow: auto;
+}
+.body p { margin: 0 0 var(--admin-space-2); }
+.body p:last-child,
+.body ul:last-child,
+.body dl:last-child { margin-bottom: 0; }
+.body ul { margin: 0 0 var(--admin-space-2); padding-left: var(--admin-space-5); }
+.body li { margin-bottom: var(--admin-space-1); }
+.body a { color: var(--admin-navy); text-decoration: underline; }
+.body strong { font-weight: var(--admin-weight-semibold); }
+.body dl { display: grid; grid-template-columns: auto 1fr; gap: var(--admin-space-1) var(--admin-space-3); margin: 0; }
+.body dt { font-weight: var(--admin-weight-semibold); font-family: var(--admin-font-mono); color: var(--admin-gray-700); }
+.body dd { margin: 0; }
