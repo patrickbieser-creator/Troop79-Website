@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin back-nav prototype — Troop 79</title>
+<style>
+/* Tokens copied from next-app/src/app/admin/(workspace)/admin.css — throwaway prototype, do not ship. */
+:root {
+  --admin-navy: #1e3a4a; --admin-navy-light: #2a5068; --admin-navy-hover: #163040;
+  --admin-forest: #3d7a4a; --admin-danger: #c0392b; --admin-warning: #d4a017;
+  --admin-bg: #f5f6f8; --admin-white: #fff; --admin-form-bg: #eef1f5;
+  --admin-gray-50: #fafbfc; --admin-gray-100: #f0f1f3; --admin-gray-200: #e2e4e8; --admin-gray-300: #cdd1d6;
+  --admin-gray-400: #9ba1aa; --admin-gray-500: #6d7580; --admin-gray-600: #666; --admin-gray-700: #3a3f47;
+  --admin-gray-900: #1a1d21; --admin-status-success-bg: #f0f6f1; --admin-status-info-bg: #eef3f8;
+  --admin-radius: 4px; --admin-radius-sm: 3px; --admin-radius-lg: 8px; --admin-radius-pill: 999px;
+  --admin-shadow-sm: 0 1px 3px rgba(0,0,0,.08); --admin-transition: .15s ease;
+  --admin-text-sm: 11px; --admin-text-base: 12px; --admin-text-md: 13px; --admin-text-lg: 14px; --admin-text-xl: 16px;
+  --admin-font-ui: "Open Sans", Arial, sans-serif;
+  --focus: 0 0 0 3px rgba(42,80,104,.35);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--admin-gray-200); color: var(--admin-gray-900); font: 13px/1.45 var(--admin-font-ui); }
+a { color: var(--admin-navy-light); }
+:focus-visible { outline: none; box-shadow: var(--focus); border-radius: var(--admin-radius-sm); }
+
+/* ── Prototype knobs (not part of the admin) ── */
+.knobs { background: #fff8e1; border-bottom: 2px solid var(--admin-warning); padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: center; font-size: 12px; }
+.knobs strong { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #8b6914; }
+.knobs fieldset { border: 0; display: flex; gap: 10px; align-items: center; }
+.knobs legend { font-weight: 600; float: left; margin-right: 6px; }
+.knobs label { cursor: pointer; display: inline-flex; gap: 4px; align-items: center; }
+.knobs select { font: inherit; padding: 3px 6px; border: 1px solid var(--admin-gray-300); border-radius: 3px; background: #fff; }
+
+/* ── Admin chrome (mirrors admin.module.css) ── */
+.adminRoot { background: var(--admin-bg); display: flex; flex-direction: column; min-height: calc(100vh - 48px); }
+.topBar { background: var(--admin-navy); color: #fff; padding: 10px 24px; display: flex; align-items: center; justify-content: space-between; }
+.topBarBrand { font-weight: 700; letter-spacing: .06em; font-size: 13px; }
+.topBarRight { display: flex; align-items: center; gap: 16px; }
+.topBarUser { color: rgba(255,255,255,.7); font-size: 12px; }
+.topBarBtn { background: transparent; border: 1px solid rgba(255,255,255,.25); color: #fff; font-family: inherit; font-weight: 600; font-size: 11px; line-height: 1; letter-spacing: .06em; padding: 7px 12px; border-radius: 3px; text-transform: uppercase; cursor: pointer; }
+.topBarBtn:hover { background: rgba(255,255,255,.12); }
+.workspace { display: grid; grid-template-columns: 220px 1fr; flex: 1; }
+.subNav { background: #fff; border-right: 1px solid var(--admin-gray-200); padding: 18px 0; }
+.subNavSection { font-size: 14px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--admin-navy); padding: 16px 18px 6px; margin-top: 12px; }
+.subNavSection:first-child { margin-top: 0; }
+.subNavBtn { display: block; width: 100%; text-align: left; background: none; border: 0; border-left: 3px solid transparent; font-family: inherit; font-weight: 600; font-size: 13px; color: var(--admin-gray-700); padding: 9px 18px; cursor: pointer; transition: background var(--admin-transition); }
+.subNavBtn:hover { background: var(--admin-gray-100); color: var(--admin-navy); }
+.subNavBtnActive, .subNavBtnActive:hover { background: var(--admin-navy); color: #fff; border-left-color: var(--admin-warning); }
+.main { padding: 28px 32px; min-width: 0; }
+
+/* Phone toggle: narrow the content column and hide the rail (real admin collapses the rail below 768) */
+.phone .workspace { grid-template-columns: 1fr; }
+.phone .subNav { display: none; }
+.phone .main { max-width: 375px; margin: 0 auto; padding: 16px; background: #fff; border-left: 1px solid var(--admin-gray-200); border-right: 1px solid var(--admin-gray-200); min-height: 600px; }
+.phone .topBarUser { display: none; }
+
+/* ── PageTitle (mirrors page-title.module.css) + the new back slot ── */
+.pageTitle { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; border-bottom: 1px solid var(--admin-gray-200); padding-bottom: 14px; }
+.pageTitle h1 { font-size: 22px; font-weight: 700; color: var(--admin-navy); margin-bottom: 4px; }
+.pageTitle p { font-size: 13px; color: var(--admin-gray-500); max-width: 720px; line-height: 1.5; }
+.pageTitle .actions { display: flex; gap: 8px; flex-shrink: 0; }
+.btn { font-family: inherit; font-weight: 600; font-size: 12px; padding: 7px 12px; border-radius: var(--admin-radius); border: 1px solid var(--admin-gray-300); background: #fff; color: var(--admin-gray-700); cursor: pointer; }
+.btn.primary { background: var(--admin-navy); border-color: var(--admin-navy); color: #fff; }
+
+/* THE SLOT — one fixed position: above the h1, left-aligned, first focusable thing after the top bar. */
+.backSlot { margin-bottom: 10px; min-height: 24px; display: flex; align-items: center; }
+.backSlot a, .backSlot span { display: inline-flex; align-items: center; min-height: 24px; gap: 6px; font-size: 13px; font-weight: 600; text-decoration: none; line-height: 1; }
+.backSlot a { color: var(--admin-navy-light); border-radius: var(--admin-radius); transition: color var(--admin-transition), background var(--admin-transition); }
+.backSlot a:hover { color: var(--admin-navy); text-decoration: underline; }
+.backSlot .arrow { font-size: 15px; line-height: 1; }
+/* Crumbs */
+.crumbs ol { list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.crumbs li { display: inline-flex; align-items: center; gap: 4px; }
+.crumbs .sep { color: var(--admin-gray-400); font-size: 12px; padding: 0 2px; }
+.crumbs [aria-current="page"] { color: var(--admin-gray-700); font-weight: 600; }
+/* Style knob: pill */
+.stylePill .backSlot a { border: 1px solid var(--admin-gray-300); background: #fff; padding: 0 10px 0 8px; min-height: 28px; box-shadow: var(--admin-shadow-sm); }
+.stylePill .backSlot a:hover { text-decoration: none; background: var(--admin-gray-50); border-color: var(--admin-gray-400); }
+.stylePill .crumbs ol { border: 1px solid var(--admin-gray-300); background: #fff; border-radius: var(--admin-radius); padding: 2px 10px; min-height: 28px; box-shadow: var(--admin-shadow-sm); }
+.stylePill .crumbs a { border: 0; box-shadow: none; padding: 0 2px; min-height: 24px; }
+.stylePill .crumbs a:hover { background: none; text-decoration: underline; }
+/* Collapse: under ~420px (phone toggle), crumbs fold to "← Parent" (the immediate parent) */
+.phone .crumbs ol { display: none; }
+.phone .crumbs .collapsed { display: inline-flex; }
+.crumbs .collapsed { display: none; }
+/* Empty slot on root screens keeps the h1 position stable across screens */
+.backSlot.empty { color: var(--admin-gray-400); font-size: 11px; font-style: italic; }
+
+/* ── Tab strip (mirrors tab-strip.module.css) ── */
+.tabs { display: inline-flex; flex-wrap: wrap; gap: 2px; background: var(--admin-gray-100); border-radius: var(--admin-radius); padding: 2px; margin-bottom: 18px; }
+.tab { text-decoration: none; background: none; border: 0; border-radius: var(--admin-radius-sm); padding: 6px 14px; font-family: inherit; font-weight: 600; font-size: 13px; color: var(--admin-gray-600); cursor: pointer; display: inline-flex; gap: 7px; align-items: center; }
+.tab:hover { color: var(--admin-gray-900); }
+.tabOn { background: #fff; color: var(--admin-navy); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.tabCount { font-size: 11px; font-weight: 700; background: var(--admin-gray-200); color: var(--admin-gray-700); border-radius: var(--admin-radius-pill); padding: 1px 7px; }
+.tabOn .tabCount { background: var(--admin-navy); color: #fff; }
+
+/* ── Content filler ── */
+.card { background: #fff; border: 1px solid var(--admin-gray-200); border-radius: var(--admin-radius-lg); padding: 16px; margin-bottom: 14px; }
+.panel { background: var(--admin-form-bg); border-radius: var(--admin-radius-lg); padding: 14px 16px; margin-bottom: 14px; }
+.field { display: grid; gap: 4px; margin-bottom: 12px; }
+.field label { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--admin-gray-500); }
+.field input, .field textarea, .field select { font: inherit; padding: 7px 9px; border: 1px solid var(--admin-gray-300); border-radius: var(--admin-radius); background: #fff; width: 100%; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--admin-gray-500); padding: 8px 10px; border-bottom: 1px solid var(--admin-gray-200); }
+td { padding: 9px 10px; border-bottom: 1px solid var(--admin-gray-100); }
+tr.row:hover td { background: var(--admin-gray-50); }
+td a.rowlink { font-weight: 600; text-decoration: none; color: var(--admin-navy); }
+.pill { display: inline-flex; min-width: 20px; justify-content: center; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: var(--admin-radius-pill); background: var(--admin-status-success-bg); color: var(--admin-forest); border: 1px solid #cfe2d3; margin-right: 3px; }
+.pill.off { background: #fff; color: var(--admin-gray-400); border-color: var(--admin-gray-200); }
+.filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+.chip { font-family: inherit; font-weight: 600; font-size: 12px; padding: 5px 11px; border-radius: var(--admin-radius-pill); border: 1px solid var(--admin-gray-300); background: #fff; color: var(--admin-gray-700); cursor: pointer; }
+.chip.on { background: var(--admin-navy); border-color: var(--admin-navy); color: #fff; }
+.restored { background: var(--admin-status-info-bg); border: 1px solid #c9d8e6; color: var(--admin-navy); border-radius: var(--admin-radius); padding: 8px 12px; font-size: 12px; margin-bottom: 12px; display: none; }
+.restored.show { display: block; }
+.restored code { background: #fff; padding: 1px 5px; border-radius: 3px; }
+.devnote { margin-top: 24px; padding: 10px 12px; border-left: 3px solid var(--admin-warning); background: #fff8e1; font-size: 12px; color: #5c4a10; }
+.devnote code { font-size: 11px; background: #fff; padding: 1px 4px; border-radius: 3px; }
+.muted { color: var(--admin-gray-500); font-size: 12px; }
+.sr { position: absolute; left: -9999px; }
+</style>
+</head>
+<body>
+
+<div class="knobs" role="region" aria-label="Prototype controls">
+  <strong>Prototype knobs</strong>
+  <fieldset><legend>Treatment</legend>
+    <label><input type="radio" name="treat" value="A"> A · Back link</label>
+    <label><input type="radio" name="treat" value="B"> B · Breadcrumbs</label>
+    <label><input type="radio" name="treat" value="C" checked> C · Hybrid</label>
+  </fieldset>
+  <fieldset><legend>Style</legend>
+    <label><input type="radio" name="style" value="quiet" checked> Quiet text</label>
+    <label><input type="radio" name="style" value="pill"> Bordered pill</label>
+  </fieldset>
+  <label><input type="checkbox" id="kPhone"> Phone (375px)</label>
+  <label><input type="checkbox" id="kPreserve" checked> Preserve list state</label>
+  <label>Screen <select id="kScreen"></select></label>
+</div>
+
+<div class="adminRoot" id="root">
+  <div class="topBar">
+    <div class="topBarBrand">TROOP 79 · ADMIN</div>
+    <div class="topBarRight">
+      <span class="topBarUser">Signed in as Patrick Bieser</span>
+      <button class="topBarBtn" type="button">View site</button>
+      <button class="topBarBtn" type="button">Sign out</button>
+    </div>
+  </div>
+  <div class="workspace">
+    <nav class="subNav" aria-label="Admin sections" id="rail"></nav>
+    <main class="main" id="main"></main>
+  </div>
+</div>
+
+<script>
+/* ── Screen model. depth = number of crumbs incl. current. Each crumb has href + label.
+   listKey = which list this screen's parent restores state for (sessionStorage key). ── */
+const SCREENS = {
+  calendar: {
+    nav: 'Calendar', crumbs: [{label:'Calendar', href:'#calendar'}], listKey: 'calendar',
+    title: 'Calendar', sub: 'Everything that happens on a date — meetings, campouts, service, fundraisers.',
+    actions: ['+ Add entry'],
+    file: 'calendar/page.tsx — root list: PageTitle back={null}; list writes its ?tab= to sessionStorage["list:calendar"] on change.',
+    body: () => `
+      <div class="filters" id="calFilters">${chips('calendar', ['Upcoming','This month','Past','All'])}</div>
+      <div class="restored" id="restored-calendar"></div>
+      <div class="card"><table><thead><tr><th>Date</th><th>Entry</th><th>Layers</th></tr></thead><tbody>
+        <tr class="row"><td>Sun Sep 6</td><td><a class="rowlink" href="#entry">Troop meeting — Knots &amp; lashings</a></td><td><span class="pill">A</span><span class="pill off">S</span><span class="pill">R</span></td></tr>
+        <tr class="row"><td>Sep 18–20</td><td><a class="rowlink" href="#entry">Fall Campout — Mauthe Lake</a></td><td><span class="pill">A</span><span class="pill">S</span><span class="pill off">R</span></td></tr>
+        <tr class="row"><td>Sun Sep 27</td><td><a class="rowlink" href="#entry">Court of Honor</a></td><td><span class="pill off">A</span><span class="pill">S</span><span class="pill off">R</span></td></tr>
+        <tr class="row"><td>Sat Oct 3</td><td><a class="rowlink" href="#entry">Popcorn show-and-sell — Sendik's</a></td><td><span class="pill off">A</span><span class="pill">S</span><span class="pill off">R</span></td></tr>
+      </tbody></table></div>`
+  },
+  entry: {
+    nav: 'Calendar', crumbs: [{label:'Calendar', href:'#calendar'}, {label:'Fall Campout', href:'#entry'}],
+    title: 'Fall Campout — Mauthe Lake', sub: 'Sep 18–20 · Campout · On calendar',
+    actions: ['Discard changes','Save'],
+    file: 'calendar/[id]/page.tsx — PageTitle back={{href: lastList("calendar") ?? "/admin/calendar", label: "Calendar"}}; drop the muted "Back to Calendar" from the sub line.',
+    body: () => `
+      <div class="tabs" role="tablist" aria-label="Entry workbench">${tabs(['Details','Story','Agenda','Roll Call','Signup'], 'Details', {Agenda:'#agenda'})}</div>
+      <div class="panel">
+        <div class="field"><label for="f1">Title</label><input id="f1" value="Fall Campout — Mauthe Lake"></div>
+        <div class="field"><label for="f2">Location</label><input id="f2" value="Mauthe Lake Campground, Kettle Moraine SF"></div>
+        <div class="field"><label for="f3">Notes</label><textarea id="f3" rows="3">Depart from St. Alphonsus lot 5:30pm Friday. Bring a rain fly.</textarea></div>
+      </div>
+      <p class="muted">Click the <strong>Agenda</strong> tab to go one level deeper (screen 3).</p>`
+  },
+  agenda: {
+    nav: 'Calendar', crumbs: [{label:'Calendar', href:'#calendar'}, {label:'Fall Campout', href:'#entry'}, {label:'Agenda', href:'#agenda'}],
+    title: 'Agenda — Fall Campout', sub: 'Editing the meeting agenda layer for this entry.',
+    actions: ['Discard changes','Save'],
+    file: 'calendar/[id]/page.tsx (agenda tab hosts the editor) — back={{href:"/admin/calendar/{id}", label:"Fall Campout"}}; the editor no longer renders its own bespoke header or bottom-of-page "Back" footnote.',
+    body: () => `
+      <div class="panel">
+        <div class="field"><label for="a1">7:00 — Opening</label><input id="a1" value="Flags, Scout Oath &amp; Law — SPL"></div>
+        <div class="field"><label for="a2">7:10 — Skill block</label><input id="a2" value="Tarp shelters &amp; fire lays — patrol rotation"></div>
+        <div class="field"><label for="a3">7:45 — Patrol time</label><input id="a3" value="Campout duty roster; menu sign-off"></div>
+        <div class="field"><label for="a4">8:15 — Closing</label><input id="a4" value="Scoutmaster minute; announcements"></div>
+      </div>`
+  },
+  assignments: {
+    nav: 'Event Management', crumbs: [{label:'Event Management', href:'#rosters'}, {label:'Fall Campout', href:'#event'}, {label:'Tents', href:'#assignments'}],
+    title: 'Assignments — Tents', sub: 'Fall Campout · 14 scouts going · set: Tents',
+    actions: ['Save'],
+    file: 'rosters/[id]/assignments/page.tsx — back={{href:"/admin/rosters/{id}", label:"Fall Campout"}}; parent crumb href = lastList("rosters") so ?tab= survives; ?set= is this screen\'s own list state (written on change).',
+    body: () => `
+      <div class="filters">${chips('assignments', ['Tents','Cars','Cooks','Cleanup'])}</div>
+      <div class="card"><table><thead><tr><th>Tent</th><th>Scouts</th><th></th></tr></thead><tbody>
+        <tr class="row"><td>Tent 1</td><td>Owen K., Mateo R.</td><td><button class="btn">Edit</button></td></tr>
+        <tr class="row"><td>Tent 2</td><td>Jonah P., Eli S., Xavier M.</td><td><button class="btn">Edit</button></td></tr>
+        <tr class="row"><td>Tent 3</td><td>Damian T., Anjali B.</td><td><button class="btn">Edit</button></td></tr>
+        <tr class="row"><td>Unassigned</td><td>Henry W., Caleb N.</td><td><button class="btn">Assign</button></td></tr>
+      </tbody></table></div>
+      <p class="muted">Use the back control (not the rail) to go up — the Event screen shows what list state came back with you.</p>`
+  },
+  event: {
+    nav: 'Event Management', crumbs: [{label:'Event Management', href:'#rosters'}, {label:'Fall Campout', href:'#event'}],
+    title: 'Fall Campout — Mauthe Lake', sub: 'Sep 18–20 · 14 scouts · 6 adults · 4 cars',
+    actions: ['Snapshot'],
+    file: 'rosters/[id]/page.tsx — back={{href: lastList("rosters") ?? "/admin/rosters", label:"Event Management"}}; kills the bare "Event Management" link above the bespoke header.',
+    body: () => `
+      <div class="restored" id="restored-assignments"></div>
+      <div class="tabs" role="tablist" aria-label="Event sections">${tabs(['Roster','Assignments','Cars','Money'], 'Assignments', {Assignments:'#assignments'})}</div>
+      <div class="card"><table><thead><tr><th>Set</th><th>Filled</th><th></th></tr></thead><tbody>
+        <tr class="row"><td><a class="rowlink" href="#assignments">Tents</a></td><td>12 / 14</td><td><span class="pill">T</span></td></tr>
+        <tr class="row"><td><a class="rowlink" href="#assignments">Cars</a></td><td>14 / 14</td><td><span class="pill">C</span></td></tr>
+        <tr class="row"><td><a class="rowlink" href="#assignments">Cooks</a></td><td>3 / 6</td><td><span class="pill off">K</span></td></tr>
+      </tbody></table></div>`
+  },
+  rosters: {
+    nav: 'Event Management', crumbs: [{label:'Event Management', href:'#rosters'}], listKey: 'rosters',
+    title: 'Event Management', sub: 'Run the event — roster, cars, money, snapshot.', actions: [],
+    file: 'rosters/page.tsx — root list: back={null}; writes ?tab= to sessionStorage["list:rosters"].',
+    body: () => `
+      <div class="filters">${chips('rosters', ['Upcoming','Past'])}</div>
+      <div class="restored" id="restored-rosters"></div>
+      <div class="card"><table><thead><tr><th>Event</th><th>Going</th></tr></thead><tbody>
+        <tr class="row"><td><a class="rowlink" href="#event">Fall Campout — Mauthe Lake</a></td><td>14</td></tr>
+        <tr class="row"><td><a class="rowlink" href="#event">Popcorn show-and-sell</a></td><td>9</td></tr>
+      </tbody></table></div>`
+  },
+  article: {
+    nav: 'News', crumbs: [{label:'News', href:'#news'}, {label:'Fall Campout Recap', href:'#article'}],
+    title: 'Fall Campout Recap', sub: 'Draft · last saved 2 min ago',
+    actions: ['Discard changes','Save draft','Publish'],
+    file: 'news/articles/[id]/page.tsx — back={{href: lastList("articles") ?? "/admin/news/articles", label:"News"}}; removes "Back to News" from the PageTitle children (top-right).',
+    body: () => `
+      <div class="panel">
+        <div class="field"><label for="n1">Headline</label><input id="n1" value="Fall Campout Recap: Rain, Tarps, and Eleven Cobbler Pans"></div>
+        <div class="field"><label for="n2">Body (markdown)</label><textarea id="n2" rows="6">Fourteen scouts and six adults made it to Mauthe Lake despite Friday's downpour. The Hawk patrol's tarp shelter held; the Eagle patrol's did not.
+
+{{gallery:fall-campout-2026}}</textarea></div>
+      </div>`
+  },
+  news: {
+    nav: 'News', crumbs: [{label:'News', href:'#news'}], listKey: 'articles',
+    title: 'News', sub: 'Articles, media, photo albums.', actions: ['+ New article'],
+    file: 'news/articles/page.tsx — root list: back={null}.',
+    body: () => `
+      <div class="filters">${chips('articles', ['Drafts','Published','All'])}</div>
+      <div class="restored" id="restored-articles"></div>
+      <div class="card"><table><thead><tr><th>Article</th><th>Status</th></tr></thead><tbody>
+        <tr class="row"><td><a class="rowlink" href="#article">Fall Campout Recap</a></td><td>Draft</td></tr>
+        <tr class="row"><td><a class="rowlink" href="#article">Court of Honor — September</a></td><td>Published</td></tr>
+      </tbody></table></div>`
+  },
+  mbdetail: {
+    nav: 'MB Progress', crumbs: [{label:'MB Progress', href:'#mb'}, {label:'First Aid', href:'#mbdetail'}],
+    title: 'First Aid', sub: 'Eagle-required · 9 scouts in progress · counselor: Dr. Alvarez',
+    actions: [],
+    file: 'advancement/mb-progress/[mbId]/page.tsx — back={{href: lastList("mb-progress") ?? "/admin/advancement/mb-progress", label:"MB Progress"}}; replaces the "All Merit Badges" wording.',
+    body: () => `
+      <div class="card"><table><thead><tr><th>Scout</th><th>Reqs done</th><th>Blue card</th></tr></thead><tbody>
+        <tr class="row"><td>Owen K.</td><td>7 / 12</td><td>Open</td></tr>
+        <tr class="row"><td>Mateo R.</td><td>12 / 12</td><td>Ready to sign</td></tr>
+        <tr class="row"><td>Anjali B.</td><td>3 / 12</td><td>Open</td></tr>
+      </tbody></table></div>`
+  },
+  mb: {
+    nav: 'MB Progress', crumbs: [{label:'MB Progress', href:'#mb'}], listKey: 'mb-progress',
+    title: 'MB Progress', sub: 'Open merit badges by scout.', actions: [],
+    file: 'advancement/mb-progress/page.tsx — root list: back={null}.',
+    body: () => `
+      <div class="filters">${chips('mb-progress', ['Eagle-required','All badges'])}</div>
+      <div class="restored" id="restored-mb-progress"></div>
+      <div class="card"><table><thead><tr><th>Badge</th><th>In progress</th></tr></thead><tbody>
+        <tr class="row"><td><a class="rowlink" href="#mbdetail">First Aid</a></td><td>9</td></tr>
+        <tr class="row"><td><a class="rowlink" href="#mbdetail">Camping</a></td><td>6</td></tr>
+      </tbody></table></div>`
+  }
+};
+const SWITCHER = [['calendar','1 · Calendar list (root)'],['entry','2 · Calendar entry workbench'],['agenda','3 · Agenda editor'],['assignments','4 · Event → Assignments ?set=Tents'],['article','5 · News article editor'],['mbdetail','6 · MB Progress detail']];
+const RAIL = [['Overview',['Dashboard']],['Entry',['Fast Entry','Event Management']],['Planning',['Meeting Plan','Has/Needs Tool']],['Records',['Advancement Ledger','Roster','MB Progress']],['Site',['Calendar','News']]];
+const RAIL_TARGET = {'Event Management':'rosters','MB Progress':'mb','Calendar':'calendar','News':'news'};
+
+/* Simulated list state — one sessionStorage-style entry per list, exactly how the real thing would work. */
+const listState = { calendar: '?tab=upcoming', rosters: '?tab=upcoming', articles: '?tab=drafts', 'mb-progress': '?tab=eagle', assignments: '?set=Tents' };
+let cameBackTo = null; // { key, state } set when the back control is used
+
+const $ = s => document.querySelector(s);
+const knob = n => document.querySelector(`input[name="${n}"]:checked`).value;
+const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+
+function chips(key, labels){ const cur = (listState[key]||'').split('=')[1]; return labels.map(l => `<button class="chip${l.toLowerCase().startsWith((cur||'').toLowerCase().slice(0,4)) ? ' on':''}" data-list="${key}" data-val="${l}">${l}</button>`).join(''); }
+function tabs(list, on, links){ return list.map(t => `<a class="tab${t===on?' tabOn':''}" role="tab" aria-selected="${t===on}" href="${links[t]||'#'}">${t}</a>`).join(''); }
+
+/* ── The slot renderer. This is the whole proposal: PageTitle gets a required `back` prop and renders it here. ── */
+function renderBack(s){
+  const depth = s.crumbs.length;
+  if (depth === 1) return `<div class="backSlot empty" aria-hidden="true">(root screen — slot empty, h1 stays put)</div>`;
+  const parent = s.crumbs[depth-2];
+  const preserve = $('#kPreserve').checked;
+  const treat = knob('treat');
+  const useCrumbs = treat === 'B' || (treat === 'C' && depth >= 3);
+  const backLink = `<a href="${parent.href}" data-back="1" data-parent="1"><span class="arrow" aria-hidden="true">←</span> Back to ${esc(parent.label)}</a>`;
+  if (!useCrumbs) return `<div class="backSlot">${backLink}</div>`;
+  const items = s.crumbs.map((c,i) => i === depth-1
+    ? `<li><span aria-current="page">${esc(c.label)}</span></li>`
+    : `<li><a href="${c.href}" data-back="1"${i===depth-2?' data-parent="1"':''}>${esc(c.label)}</a><span class="sep" aria-hidden="true">›</span></li>`).join('');
+  return `<nav class="backSlot crumbs" aria-label="Breadcrumb"><ol>${items}</ol><a class="collapsed" href="${parent.href}" data-back="1" data-parent="1"><span class="arrow" aria-hidden="true">←</span> ${esc(parent.label)}</a></nav>`;
+}
+
+function render(id){
+  const s = SCREENS[id];
+  $('#rail').innerHTML = RAIL.map(([sec, items]) => `<div class="subNavSection">${sec}</div>` + items.map(i =>
+    `<button class="subNavBtn${i===s.nav?' subNavBtnActive':''}" data-nav="${RAIL_TARGET[i]||''}" ${RAIL_TARGET[i]?'':'disabled'}>${i}</button>`).join('')).join('');
+  $('#main').innerHTML = `
+    ${renderBack(s)}
+    <div class="pageTitle"><div class="text"><h1>${s.title}</h1><p>${s.sub}</p></div>
+      <div class="actions">${s.actions.map((a,i) => `<button class="btn${i===s.actions.length-1 && s.actions.length>1?' primary':''}">${a}</button>`).join('')}</div></div>
+    ${s.body()}
+    <div class="devnote"><strong>Real file:</strong> <code>next-app/src/app/admin/(workspace)/${s.file.split(' — ')[0]}</code> — ${s.file.split(' — ').slice(1).join(' — ')}</div>`;
+  // list-state restore banner: shown on the screen we came BACK to
+  if (cameBackTo) {
+    const el = document.getElementById('restored-' + cameBackTo.key);
+    if (el) { el.classList.add('show'); el.innerHTML = cameBackTo.state
+      ? `List state restored from sessionStorage["list:${cameBackTo.key}"] → <code>${cameBackTo.state}</code>. Filters below reflect it.`
+      : `"Preserve list state" is OFF — landed on the default list; your <code>${cameBackTo.dropped}</code> was dropped.`; }
+    cameBackTo = null;
+  }
+  const sel = $('#kScreen'); if (sel.value !== id && [...sel.options].some(o => o.value === id)) sel.value = id;
+  // Focus order proof: first Tab after the top bar lands on the back control (nothing focusable sits before it in <main>).
+  const first = $('#main a[data-back], #main .backSlot a'); if (first && document.activeElement !== first) first.focus();
+}
+
+/* ── Wiring ── */
+SWITCHER.forEach(([v,l]) => { const o = document.createElement('option'); o.value = v; o.textContent = l; $('#kScreen').appendChild(o); });
+$('#kScreen').addEventListener('change', e => go(e.target.value));
+document.querySelectorAll('input[name="treat"], input[name="style"], #kPreserve').forEach(i => i.addEventListener('change', () => { applyStyle(); render(current); }));
+$('#kPhone').addEventListener('change', e => { $('#root').classList.toggle('phone', e.target.checked); });
+function applyStyle(){ $('#root').classList.toggle('stylePill', knob('style') === 'pill'); }
+
+let current = 'calendar';
+function go(id){ current = id; render(id); }
+
+document.addEventListener('click', e => {
+  const chip = e.target.closest('.chip'); if (chip) { listState[chip.dataset.list] = (chip.dataset.list==='assignments'?'?set=':'?tab=') + chip.dataset.val; render(current); return; }
+  const nav = e.target.closest('[data-nav]'); if (nav && nav.dataset.nav) { go(nav.dataset.nav); return; }
+  const a = e.target.closest('a[href^="#"]'); if (!a) return;
+  e.preventDefault();
+  const target = a.getAttribute('href').slice(1);
+  if (a.dataset.back) {
+    const t = SCREENS[target];
+    // Leaving a screen with its own list state (Assignments ?set=) → the parent shows what came back.
+    const from = SCREENS[current];
+    const key = t.listKey || (current === 'assignments' && target === 'event' ? 'assignments' : null);
+    if (key) cameBackTo = $('#kPreserve').checked ? { key, state: listState[key] } : { key, state: null, dropped: listState[key] };
+  }
+  go(target);
+});
+/* Alt+← = the "one hop up" control, always the immediate parent */
+document.addEventListener('keydown', e => { if (e.altKey && e.key === 'ArrowLeft') { const b = $('#main a[data-parent]'); if (b) b.click(); } });
+
+applyStyle(); render(current);
+</script>
+</body>
+</html>
