@@ -34,14 +34,16 @@ import { loadAgendaEditorData } from '../../advancement/meetings/load-agenda';
 import { loadBuilderData } from '../../events/[id]/load-builder';
 import { enableSignup } from '../../events/actions';
 import type { Meeting } from '@/lib/supabase/types';
-import { updateEntryStory, updateCalendarEntry, createCalendarEntry } from '../actions';
+import { updateCalendarEntry, createCalendarEntry } from '../actions';
 import { markAttended, markAbsent, setAttendanceQty, seedFromSignup } from './roll-call/actions';
 import type { CalendarEntryRow } from '../entry-form';
 import { Workbench, type WorkbenchEntry, type WorkbenchTab } from './workbench';
 
 export const metadata = { title: 'Calendar Entry — Troop 79' };
 
-const TABS: WorkbenchTab[] = ['details', 'story', 'agenda', 'roll-call', 'signup'];
+const TABS: WorkbenchTab[] = ['entry', 'agenda', 'roll-call', 'signup'];
+/** Older links and bookmarks: Details and Story are both the Entry tab now. */
+const LEGACY_TABS: Record<string, WorkbenchTab> = { details: 'entry', story: 'entry' };
 
 export default async function CalendarEntryPage({
   params,
@@ -55,7 +57,7 @@ export default async function CalendarEntryPage({
   const entryId = Number(id);
   if (!Number.isInteger(entryId) || entryId <= 0) notFound();
   // `?tab=roll-call` etc. — the layer screens' back links land on their own tab.
-  const initialTab = TABS.find((t) => t === sp.tab);
+  const initialTab = TABS.find((t) => t === sp.tab) ?? (sp.tab ? LEGACY_TABS[sp.tab] : undefined);
 
   const supabase = createAdminClient();
   // Everything, plus the promotion hero — the Details panel is the full entry
@@ -154,7 +156,6 @@ export default async function CalendarEntryPage({
         onSeed: seedFromSignup
       }}
       initialTab={initialTab}
-      onSaveStory={updateEntryStory}
       onCreateEntry={createCalendarEntry}
       onAddAgenda={createMeeting}
       onEnableSignup={enableSignup}

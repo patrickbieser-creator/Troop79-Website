@@ -37,6 +37,8 @@
 .editGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; background: var(--admin-form-bg); padding: 12px 14px; border: 1px solid var(--admin-gray-200); border-radius: var(--admin-radius-sm);}
 .editField { display: block; margin-bottom: 12px; }
 .editFieldFull { display: block; grid-column: 1 / -1; margin-bottom: 12px; }
+/* The field grid INSIDE a numbered FormSection (2026-08-25): the section is the surface, so no tint/border of its own. */
+.fieldGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
 .editLabel {
   display: block; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
   color: var(--admin-gray-500); margin-bottom: 4px;
@@ -60,7 +62,7 @@ textarea.editInput { resize: vertical; min-height: 68px; line-height: 1.5; }
 /* .editSaveBtn retired 2026-08-24 → shared Button (variant="primary"). */
 
 @media (max-width: 560px) {
-  .editGrid { grid-template-columns: 1fr; }
+  .editGrid, .fieldGrid { grid-template-columns: 1fr; }
   .editFieldFull { grid-column: auto; }
 }
 
@@ -138,7 +140,8 @@ textarea.editInput { resize: vertical; min-height: 68px; line-height: 1.5; }
 /* The dialog capped this form at 580px; inline in the workbench there is no
    cap, and on a wide screen the two-column grid stretched each field to ~800px
    — a text input that wide is harder to read, not easier. */
-.formInline { padding: 0; max-width: 760px; }
+.formInline { padding: 0; }
+/* Full width (2026-08-25): the Story's split pane wants the room the news editor gives it. */
 /* The inline form's Save row — what .dialogActions used to give it before the
    shared Dialog component took over the dialog-mode chrome. */
 .inlineActions {

@@ -15,9 +15,12 @@
  * save, the inline panel stays put and says "Saved".
  */
 
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import { DiscardButton, SaveButton, SaveFeedback, useDraftSnapshot, useSavePhase } from '../_components/save-state';
 import { Button } from '../../_components/button';
+import { FormSection } from '../../_components/form-panel';
+import { MarkdownSplitPane, type MarkdownEditorHandle } from '../_components/markdown-split-pane';
+import { useMarkdownBlockTools } from '../_components/markdown-block-tools';
 import type { CalendarEntry, Media } from '@/lib/supabase/types';
 import type { CalendarCategoryRow } from '@/lib/calendar-categories';
 // MediaPicker still lives under news/ — the hero image it picks is the same
@@ -90,7 +93,10 @@ export function CalendarEntryForm({
   const [featured, setFeatured] = useState(row?.featured ?? false);
   const [promoStart, setPromoStart] = useState(forceNew ? '' : (row?.promo_start ?? ''));
   const [promoEnd, setPromoEnd] = useState(forceNew ? '' : (row?.promo_end ?? ''));
-  const [excerpt, setExcerpt] = useState(row?.excerpt ?? '');
+  // The Story (details_md) is part of this form now (2026-08-25) — one save.
+  const [story, setStory] = useState(row?.details_md ?? '');
+  const storyRef = useRef<MarkdownEditorHandle>(null);
+  const blockTools = useMarkdownBlockTools(storyRef);
   const [heroMedia, setHeroMedia] = useState<Media | null>(row?.hero_media ?? null);
   const [autoArchiveAt, setAutoArchiveAt] = useState(forceNew ? '' : (row?.auto_archive_at ?? ''));
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -102,7 +108,7 @@ export function CalendarEntryForm({
   // "Saved" until something differs from what is saved; Saving… → Done.
   const { dirty, markSaved, saved } = useDraftSnapshot({
     entryDate, endDate, startTime, endTime, dayNote, category, title, description, location,
-    onCalendar, isDraft, showOnHomepage, featured, promoStart, promoEnd, excerpt,
+    onCalendar, isDraft, showOnHomepage, featured, promoStart, promoEnd, story,
     heroMedia, autoArchiveAt
   });
   /** Discard: every field back to the last save (Patrick, 2026-08-24). */
@@ -112,7 +118,7 @@ export function CalendarEntryForm({
     setTitle(saved.title); setDescription(saved.description); setLocation(saved.location);
     setOnCalendar(saved.onCalendar); setIsDraft(saved.isDraft); setShowOnHomepage(saved.showOnHomepage);
     setFeatured(saved.featured); setPromoStart(saved.promoStart); setPromoEnd(saved.promoEnd);
-    setExcerpt(saved.excerpt); setHeroMedia(saved.heroMedia); setAutoArchiveAt(saved.autoArchiveAt);
+    setStory(saved.story); setHeroMedia(saved.heroMedia); setAutoArchiveAt(saved.autoArchiveAt);
     setErr(null);
   }
   const feedback = useSavePhase();
@@ -136,7 +142,9 @@ export function CalendarEntryForm({
     fd.set('featured', featured ? '1' : '');
     fd.set('promo_start', promoStart);
     fd.set('promo_end', promoEnd);
-    fd.set('excerpt', excerpt);
+    // Only the inline (workbench) form carries the Story; the dialog leaves
+    // details_md alone, and the action only writes it when present.
+    if (inline) fd.set('details_md', story);
     fd.set('hero_media_id', heroMedia ? String(heroMedia.id) : '');
     fd.set('auto_archive_at', autoArchiveAt);
     feedback.start();
@@ -156,197 +164,230 @@ export function CalendarEntryForm({
     });
   }
 
+  // Numbered sections in the order a leader thinks (Brad's prototype, Jenna's
+  // order, Patrick 2026-08-25): what, when, where → the short text → the
+  // write-up → who can see it → the homepage promotion. The dialog ("+ Add
+  // Entry") skips the Story: create first, then write on the workbench.
   const body = (
     <>
-      <div className={styles.editGrid}>
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>Date</span>
-          <DatePickerField value={entryDate} onChange={setEntryDate} />
-        </label>
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>End Date (multi-day only)</span>
-          <DatePickerField value={endDate} onChange={setEndDate} />
-        </label>
+      <FormSection num={1} title="Entry">
+        <div className={styles.fieldGrid}>
+          <label className={styles.editFieldFull}>
+            <span className={styles.editLabel}>Title</span>
+            <input
+              type="text"
+              className={styles.editInput}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+            />
+          </label>
 
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>Start Time (optional)</span>
-          <input type="time" className={styles.editInput} value={startTime} onChange={(e) => setStartTime(e.target.value)} />
-        </label>
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>End Time (optional)</span>
-          <input type="time" className={styles.editInput} value={endTime} onChange={(e) => setEndTime(e.target.value)} />
-        </label>
+          <label className={styles.editField}>
+            <span className={styles.editLabel}>Date</span>
+            <DatePickerField value={entryDate} onChange={setEntryDate} />
+          </label>
+          <label className={styles.editField}>
+            <span className={styles.editLabel}>End Date (multi-day only)</span>
+            <DatePickerField value={endDate} onChange={setEndDate} />
+          </label>
 
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>Category</span>
-          <select
-            className={styles.editInput}
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            required
-          >
-            <option value="">— Select —</option>
-            {categories.map((c) => (
-              <option key={c.label} value={c.label}>
-                {c.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>Day Note (optional, e.g. &ldquo;Sat&rdquo;)</span>
-          <input
-            type="text"
-            className={styles.editInput}
-            value={dayNote}
-            onChange={(e) => setDayNote(e.target.value)}
-            placeholder="Sat"
-          />
-        </label>
+          <label className={styles.editField}>
+            <span className={styles.editLabel}>Start Time (optional)</span>
+            <input type="time" className={styles.editInput} value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+          </label>
+          <label className={styles.editField}>
+            <span className={styles.editLabel}>End Time (optional)</span>
+            <input type="time" className={styles.editInput} value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+          </label>
 
-        <label className={styles.editFieldFull}>
-          <span className={styles.editLabel}>Title</span>
-          <input
-            type="text"
-            className={styles.editInput}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-          />
-        </label>
+          <label className={styles.editField}>
+            <span className={styles.editLabel}>Day Note (optional, e.g. &ldquo;Sat&rdquo;)</span>
+            <input
+              type="text"
+              className={styles.editInput}
+              value={dayNote}
+              onChange={(e) => setDayNote(e.target.value)}
+              placeholder="Sat"
+            />
+          </label>
+          <label className={styles.editField}>
+            <span className={styles.editLabel}>Category</span>
+            <select
+              className={styles.editInput}
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              required
+            >
+              <option value="">— Select —</option>
+              {categories.map((c) => (
+                <option key={c.label} value={c.label}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </label>
 
+          <label className={styles.editFieldFull}>
+            <span className={styles.editLabel}>Location (optional)</span>
+            <input
+              type="text"
+              className={styles.editInput}
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+            />
+          </label>
+        </div>
+      </FormSection>
+
+      <FormSection num={2} title="Description">
         <label className={styles.editFieldFull}>
           <span className={styles.editLabel}>Description (optional)</span>
           {/*
-            A textarea, not a single-line input (Patrick, 2026-08-15). The
-            column has always been unbounded `text` — the one-line input was
-            the only thing keeping descriptions short, and a real event needs
-            room to explain itself.
-
-            Every surface that shows this is sized for a summary, so length is
-            handled at the point of DISPLAY rather than by rationing input:
-            the calendar list clamps to one line, the month-grid day card to
-            two, and the homepage card runs it through eventCardExcerpt (160
-            chars, flattened to plain text at a word boundary). The event's own
-            page is the one place it prints in full, newlines and all.
+            The ONE short text (Patrick, 2026-08-25: the homepage "Card
+            summary" collapsed into this — "they seem to be doing the same
+            thing"). A textarea, not a single-line input (2026-08-15): the
+            column is unbounded text and a real event needs room. Every surface
+            that shows it is sized for a summary, so length is handled at the
+            point of DISPLAY: the calendar list clamps to one line, the
+            month-grid day card to two, the homepage card runs it through
+            eventCardExcerpt (160 chars at a word boundary). The event's own
+            page prints it in full.
           */}
           <textarea
             className={styles.editInput}
-            rows={4}
+            rows={3}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Totin' Chip, Open Advancement, Citizen in World"
           />
           <span className={styles.fieldHint}>
-            Shown in full on the event&rsquo;s own page. The calendar and homepage show the
-            beginning of it — put what matters first.
+            Shown in full on the event&rsquo;s own page and as the summary on the calendar and the
+            homepage card &mdash; put what matters first.
           </span>
         </label>
+      </FormSection>
 
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>Location (optional)</span>
-          <input
-            type="text"
-            className={styles.editInput}
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-          />
-        </label>
-        <label className={styles.editField}>
-          <span className={styles.editLabel}>Auto-archive on (optional)</span>
-          <DatePickerField value={autoArchiveAt} onChange={setAutoArchiveAt} />
-        </label>
+      {inline && (
+        <FormSection num={3} title="Story">
+          <p className={styles.fieldHint}>
+            The full write-up families read on the event page. Leave it empty when the calendar
+            line says everything &mdash; the rule of thumb is whether a family has to DECIDE
+            something.
+          </p>
+          {/* D-081: `details_md` gets the NEWS EDITOR's experience — the same
+              split pane, insert toolbar, inline prompts and click-to-edit
+              blocks, from the same shared hook. Full-width now that it is not
+              squeezed into its own tab (Jenna, 2026-08-25). */}
+          <MarkdownSplitPane
+            ref={storyRef}
+            value={story}
+            onChange={setStory}
+            label="Story"
+            cheatSheet
+            toolbar={blockTools.toolbar}
+            onEditBlock={blockTools.onEditBlock}
+            placeholder="What is this, who is it for, what should families bring or decide?"
+          >
+            {blockTools.prompts}
+          </MarkdownSplitPane>
+          {blockTools.pickers}
+        </FormSection>
+      )}
 
-        <label className={styles.editFieldFull}>
-          <span className={styles.editLabel}>
-            <input
-              type="checkbox"
-              checked={onCalendar}
-              onChange={(e) => setOnCalendar(e.target.checked)}
-            />{' '}
-            On the troop calendar
-            <span className={styles.muted}>
-              {' '}&mdash; uncheck for outside opportunities (district merit badge clinics, external
-              service days): they keep their event page and can appear in the news feed, but never
-              on our calendar.
-            </span>
-          </span>
-        </label>
-
-        {/* Independent of the checkbox above: that one controls the month
-            grid, this one controls whether the entry is live at all. Kept
-            adjacent so the difference is visible rather than inferred. */}
-        <label className={styles.editFieldFull}>
-          <span className={styles.editLabel}>
-            <input type="checkbox" checked={isDraft} onChange={(e) => setIsDraft(e.target.checked)} />{' '}
-            Save as a draft
-            <span className={styles.muted}>
-              {' '}&mdash; nobody but a leader can see it: no calendar, no event page, no signup, no
-              .ics feed. Use it while dates or details are still moving, then uncheck to publish.
-            </span>
-          </span>
-        </label>
-
-        {/* ── News promotion — replaces the Linked Article pattern ─────────
-            The event itself appears in the homepage feed for a window; no
-            companion article. Fields hide (and clear on save) when the
-            opt-in is off. */}
-        <label className={styles.editFieldFull}>
-          <span className={styles.editLabel}>
-            <input
-              type="checkbox"
-              checked={showOnHomepage}
-              onChange={(e) => setShowOnHomepage(e.target.checked)}
-            />{' '}
-            Show in the homepage news feed
-          </span>
-        </label>
-
-        {showOnHomepage && (
-          <>
-            <label className={styles.editField}>
-              <span className={styles.editLabel}>Promote from (blank = now)</span>
-              <DatePickerField value={promoStart} onChange={setPromoStart} />
-            </label>
-            <label className={styles.editField}>
-              <span className={styles.editLabel}>Promote until (blank = event date)</span>
-              <DatePickerField value={promoEnd} onChange={setPromoEnd} />
-            </label>
-            <label className={styles.editFieldFull}>
-              <span className={styles.editLabel}>Card summary (blank = description)</span>
+      <FormSection num={inline ? 4 : 3} title="Visibility">
+        <div className={styles.fieldGrid}>
+          <label className={styles.editFieldFull}>
+            <span className={styles.editLabel}>
               <input
-                type="text"
-                className={styles.editInput}
-                value={excerpt}
-                onChange={(e) => setExcerpt(e.target.value)}
-                maxLength={200}
-                placeholder="One sentence for the homepage card"
-              />
-            </label>
-            <label className={styles.editField}>
-              <span className={styles.editLabel}>Card image (optional)</span>
-              <Button size="sm" onClick={() => setPickerOpen(true)}>
-                {heroMedia ? 'Change image' : 'Choose image'}
-              </Button>
-              {heroMedia && (
-                <Button size="sm" onClick={() => setHeroMedia(null)}>
-                  Remove
-                </Button>
-              )}
-            </label>
-            <label className={styles.editField}>
-              <span className={styles.editLabel}>
-                <input
-                  type="checkbox"
-                  checked={featured}
-                  onChange={(e) => setFeatured(e.target.checked)}
-                />{' '}
-                Feature as homepage hero
+                type="checkbox"
+                checked={onCalendar}
+                onChange={(e) => setOnCalendar(e.target.checked)}
+              />{' '}
+              On the troop calendar
+              <span className={styles.muted}>
+                {' '}&mdash; uncheck for outside opportunities (district merit badge clinics, external
+                service days): they keep their event page and can appear in the news feed, but never
+                on our calendar.
               </span>
-            </label>
-          </>
-        )}
-      </div>
+            </span>
+          </label>
+
+          {/* Independent of the checkbox above: that one controls the month
+              grid, this one controls whether the entry is live at all. Kept
+              adjacent so the difference is visible rather than inferred. */}
+          <label className={styles.editFieldFull}>
+            <span className={styles.editLabel}>
+              <input type="checkbox" checked={isDraft} onChange={(e) => setIsDraft(e.target.checked)} />{' '}
+              Save as a draft
+              <span className={styles.muted}>
+                {' '}&mdash; nobody but a leader can see it: no calendar, no event page, no signup, no
+                .ics feed. Use it while dates or details are still moving, then uncheck to publish.
+              </span>
+            </span>
+          </label>
+
+          <label className={styles.editField}>
+            <span className={styles.editLabel}>Auto-archive on (optional)</span>
+            <DatePickerField value={autoArchiveAt} onChange={setAutoArchiveAt} />
+          </label>
+        </div>
+      </FormSection>
+
+      {/* ── News promotion — replaces the Linked Article pattern ─────────
+          The event itself appears in the homepage feed for a window; no
+          companion article. Fields hide (and clear on save) when the
+          opt-in is off. The card's summary is the Description; its image is
+          homepage-only (the event page never shows it), which is why the
+          picker lives here and not in section 1. */}
+      <FormSection num={inline ? 5 : 4} title="Homepage feed">
+        <div className={styles.fieldGrid}>
+          <label className={styles.editFieldFull}>
+            <span className={styles.editLabel}>
+              <input
+                type="checkbox"
+                checked={showOnHomepage}
+                onChange={(e) => setShowOnHomepage(e.target.checked)}
+              />{' '}
+              Show in the homepage news feed
+            </span>
+          </label>
+
+          {showOnHomepage && (
+            <>
+              <label className={styles.editField}>
+                <span className={styles.editLabel}>Promote from (blank = now)</span>
+                <DatePickerField value={promoStart} onChange={setPromoStart} />
+              </label>
+              <label className={styles.editField}>
+                <span className={styles.editLabel}>Promote until (blank = event date)</span>
+                <DatePickerField value={promoEnd} onChange={setPromoEnd} />
+              </label>
+              <label className={styles.editField}>
+                <span className={styles.editLabel}>Card image (optional)</span>
+                <Button size="sm" onClick={() => setPickerOpen(true)}>
+                  {heroMedia ? 'Change image' : 'Choose image'}
+                </Button>
+                {heroMedia && (
+                  <Button size="sm" onClick={() => setHeroMedia(null)}>
+                    Remove
+                  </Button>
+                )}
+              </label>
+              <label className={styles.editField}>
+                <span className={styles.editLabel}>
+                  <input
+                    type="checkbox"
+                    checked={featured}
+                    onChange={(e) => setFeatured(e.target.checked)}
+                  />{' '}
+                  Feature as homepage hero
+                </span>
+              </label>
+            </>
+          )}
+        </div>
+      </FormSection>
 
       {pickerOpen && (
         <MediaPicker

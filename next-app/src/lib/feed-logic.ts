@@ -201,10 +201,11 @@ export function plainSummary(text: string | null, max = EXCERPT_MAX): string | n
 }
 
 /**
- * Card summary for a promoted entry: the explicit excerpt, else the
- * description flattened to plain text and truncated at a word boundary.
+ * Card summary for a promoted entry: the description flattened to plain
+ * text and truncated at a word boundary. The separate `excerpt` column is
+ * retired (Patrick, 2026-08-25: the two "seem to be doing the same thing")
+ * and is no longer read.
  */
 export function eventCardExcerpt(entry: PromotedEntryBase): string | null {
-  if (entry.excerpt?.trim()) return entry.excerpt.trim();
   return plainSummary(entry.description);
 }

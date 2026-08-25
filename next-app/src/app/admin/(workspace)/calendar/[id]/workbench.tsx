@@ -18,22 +18,16 @@
  * are available"). The panels used to stack down the page, so the agenda and
  * roll-call options sat below a full entry form and a markdown editor. The
  * shared pill TabStrip is the strip; every panel stays MOUNTED and is hidden
- * with the `hidden` attribute rather than unmounted, so a half-written story
- * or an edited-but-unsaved Details form survives a look at another tab. This
+ * with the `hidden` attribute rather than unmounted, so an edited-but-unsaved
+ * Entry form (fields and story alike) survives a look at another tab. This
  * is the "tabbed workbench" pattern on /admin/styleguide/admin → Tab Strips.
  */
 
-import { useRef, useState, useTransition } from 'react';
-import { DiscardButton, SaveButton, SaveFeedback, useDraftSnapshot, useSavePhase } from '../../_components/save-state';
+import { useState, useTransition } from 'react';
 import { Button } from '../../../_components/button';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { CalendarCategoryRow, CategoryTemplate } from '@/lib/calendar-categories';
-import {
-  MarkdownSplitPane,
-  type MarkdownEditorHandle
-} from '../../_components/markdown-split-pane';
-import { useMarkdownBlockTools } from '../../_components/markdown-block-tools';
 import { TabStrip, type TabStripItem } from '../../_components/tab-strip';
 import { CalendarEntryForm, type CalendarEntryRow } from '../entry-form';
 import { RollCall, type RollCallProps } from './roll-call/roll-call';
@@ -46,7 +40,8 @@ import { fmtDate, fmtRange } from '@/lib/format-date';
 
 type ActionResult = { ok: boolean; error?: string };
 
-export type WorkbenchTab = 'details' | 'story' | 'agenda' | 'roll-call' | 'signup';
+/** 'entry' absorbed Details + Story (2026-08-25) — one form, one save. */
+export type WorkbenchTab = 'entry' | 'agenda' | 'roll-call' | 'signup';
 
 export interface WorkbenchEntry {
   id: number;
@@ -88,7 +83,6 @@ interface Props {
   rollCall: Omit<RollCallProps, 'entryId' | 'entryTitle'>;
   /** Which tab opens first — deep links from the layer screens' back links. */
   initialTab?: WorkbenchTab;
-  onSaveStory: (fd: FormData) => Promise<ActionResult>;
   onAddAgenda?: (fd: FormData) => Promise<{ ok: boolean; error?: string; id?: number }>;
   /** Enables a signup on this entry, in place (2026-08-25: the Calendar is
    *  the hub — no detour through the signups list to flip it on). */
@@ -115,46 +109,16 @@ export function Workbench({
   attendanceCount,
   rollCall,
   initialTab,
-  onSaveStory,
   onAddAgenda,
   onEnableSignup
 }: Props) {
   const router = useRouter();
   const hasAgendaTab = template === 'meeting';
   const [tab, setTab] = useState<WorkbenchTab>(() =>
-    initialTab && (initialTab !== 'agenda' || hasAgendaTab) ? initialTab : 'details'
+    initialTab && (initialTab !== 'agenda' || hasAgendaTab) ? initialTab : 'entry'
   );
-  const [story, setStory] = useState(entry.details_md ?? '');
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  // Save standard (AGENTS.md "Save buttons", 2026-08-24): the story's Save is
-  // off and reads "Saved" until the text differs from what is saved.
-  const { dirty: storyDirty, markSaved: markStorySaved, saved: savedStory } = useDraftSnapshot(story);
-  const storyFeedback = useSavePhase();
-  // D-081's promise was that `details_md` gets the NEWS EDITOR's experience,
-  // not merely a textarea with a preview — so the story panel takes the same
-  // insert toolbar, inline prompts and click-to-edit blocks the article
-  // editor has, from the same shared hook.
-  const storyRef = useRef<MarkdownEditorHandle>(null);
-  const blockTools = useMarkdownBlockTools(storyRef);
-
-  function saveStory() {
-    setErr(null);
-    const fd = new FormData();
-    fd.set('id', String(entry.id));
-    fd.set('details_md', story);
-    storyFeedback.start();
-    startTransition(async () => {
-      const res = await onSaveStory(fd);
-      if (!res.ok) {
-        storyFeedback.fail();
-        setErr(res.error ?? 'Could not save the story.');
-        return;
-      }
-      markStorySaved();
-      storyFeedback.done();
-    });
-  }
 
   function addAgenda() {
     if (!onAddAgenda) return;
@@ -189,10 +153,8 @@ export function Workbench({
 
   const dateLabel = entry.end_date ? fmtRange(entry.entry_date, entry.end_date) : fmtDate(entry.entry_date);
 
-  // A dot on the Story tab says "unsaved draft here" while you look elsewhere.
   const tabs: TabStripItem[] = [
-    { key: 'details', label: 'Details', onSelect: () => setTab('details') },
-    { key: 'story', label: storyDirty ? 'Story •' : 'Story', onSelect: () => setTab('story') },
+    { key: 'entry', label: 'Entry', onSelect: () => setTab('entry') },
     ...(hasAgendaTab ? [{ key: 'agenda', label: 'Agenda', onSelect: () => setTab('agenda') }] : []),
     {
       key: 'roll-call',
@@ -234,14 +196,13 @@ export function Workbench({
 
       <TabStrip ariaLabel="Entry layers" activeKey={tab} items={tabs} className={styles.tabs} />
 
-      {/* ── the entry's own fields ──
+      {/* ── the entry: its own fields AND the story, one form ──
           Editable here, not read-only. This panel is why "Edit" disappeared
           from the list: the workbench is the entry's editor, and having to
-          leave it to fix a title was the whole complaint. */}
-      <section className={styles.panel} role="tabpanel" aria-label="Details" hidden={tab !== 'details'}>
-        <div className={styles.panelHead}>
-          <h2>Details</h2>
-        </div>
+          leave it to fix a title was the whole complaint. The Story used to
+          be its own tab with its own Save (Patrick, 2026-08-25: "consolidate
+          Details and story" on the news editor's pattern). */}
+      <section className={styles.panel} role="tabpanel" aria-label="Entry" hidden={tab !== 'entry'}>
         <CalendarEntryForm
           row={row}
           variant="inline"
@@ -250,40 +211,6 @@ export function Workbench({
           onUpdate={onSaveDetails}
           onClose={() => {}}
         />
-      </section>
-
-      {/* ── story layer ── */}
-      <section className={styles.panel} role="tabpanel" aria-label="Story" hidden={tab !== 'story'}>
-        <div className={styles.panelHead}>
-          <h2>Story</h2>
-          <div>
-            <DiscardButton dirty={storyDirty} pending={isPending} onClick={() => setStory(savedStory)} />
-            <SaveButton
-              dirty={storyDirty}
-              pending={isPending}
-              dirtyLabel="Save story"
-              onClick={saveStory}
-            />
-            <SaveFeedback phase={storyFeedback.phase} />
-          </div>
-        </div>
-        <p className={styles.panelNote}>
-          The full write-up families read on the event page. Leave it empty when the calendar line
-          says everything — the rule of thumb is whether a family has to DECIDE something.
-        </p>
-        <MarkdownSplitPane
-          ref={storyRef}
-          value={story}
-          onChange={setStory}
-          label="Story"
-          cheatSheet
-          toolbar={blockTools.toolbar}
-          onEditBlock={blockTools.onEditBlock}
-          placeholder="What is this, who is it for, what should families bring or decide?"
-        >
-          {blockTools.prompts}
-        </MarkdownSplitPane>
-        {blockTools.pickers}
       </section>
 
       {/* ── agenda layer (meeting template, leaders only) ── */}

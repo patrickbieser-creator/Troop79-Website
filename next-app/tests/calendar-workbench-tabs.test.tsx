@@ -81,7 +81,6 @@ function renderWorkbench(over: Partial<React.ComponentProps<typeof Workbench>> =
         onSetQty: vi.fn(),
         onSeed: vi.fn()
       }}
-      onSaveStory={vi.fn()}
       onAddAgenda={vi.fn()}
       {...over}
     />
@@ -96,37 +95,34 @@ function tabNames(): string[] {
 }
 
 describe('Calendar entry workbench — one tab per layer', () => {
-  it('MeetingTemplate_OffersDetailsStoryAgendaRollCallSignup_InThatOrder', () => {
+  // Details + Story became ONE Entry tab (Patrick, 2026-08-25: "consolidate
+  // Details and story" on the news editor's pattern) — the form itself is
+  // covered in calendar-entry-form.test.tsx.
+  it('MeetingTemplate_OffersEntryAgendaRollCallSignup_InThatOrder', () => {
     renderWorkbench();
-    expect(tabNames()).toEqual(['Details', 'Story', 'Agenda', 'Roll Call', 'Signup']);
+    expect(tabNames()).toEqual(['Entry', 'Agenda', 'Roll Call', 'Signup']);
   });
 
   it('ActivityTemplate_HasNoAgendaTab', () => {
     renderWorkbench({ template: 'activity' });
-    expect(tabNames()).toEqual(['Details', 'Story', 'Roll Call', 'Signup']);
+    expect(tabNames()).toEqual(['Entry', 'Roll Call', 'Signup']);
   });
 
-  it('OpensOnDetails_AndOnlyThatPanelIsVisible', () => {
+  it('OpensOnEntry_AndOnlyThatPanelIsVisible', () => {
     renderWorkbench();
-    expect(screen.getByRole('tab', { name: 'Details' }).getAttribute('aria-selected')).toBe('true');
-    expect(screen.getByRole('tabpanel', { name: 'Details' }).hidden).toBe(false);
+    expect(screen.getByRole('tab', { name: 'Entry' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('tabpanel', { name: 'Entry' }).hidden).toBe(false);
+    expect(screen.getByRole('form', { name: 'Entry details form' })).toBeTruthy();
     // Hidden panels leave the accessibility tree — Testing Library can't find them by role.
-    expect(screen.queryByRole('tabpanel', { name: 'Story' })).toBeNull();
-    const storyPanel = document.querySelector('section[aria-label="Story"]') as HTMLElement;
-    expect(storyPanel.hidden).toBe(true); // still mounted — just hidden
+    expect(screen.queryByRole('tabpanel', { name: 'Roll Call' })).toBeNull();
+    const rollPanel = document.querySelector('section[aria-label="Roll Call"]') as HTMLElement;
+    expect(rollPanel.hidden).toBe(true); // still mounted — just hidden
   });
 
-  it('SwitchingToStory_ShowsStory_AndKeepsTheDraftWhenSwitchingBack', async () => {
-    const user = userEvent.setup();
-    renderWorkbench();
-    await user.click(screen.getByRole('tab', { name: 'Story' }));
-    expect(screen.getByRole('tabpanel', { name: 'Story' }).hidden).toBe(false);
-    expect(screen.queryByRole('tabpanel', { name: 'Details' })).toBeNull();
-    await user.type(screen.getByRole('textbox', { name: 'Story' }), 'Bring a headlamp');
-    expect(screen.getByRole('tab', { name: 'Story •' })).toBeTruthy(); // the unsaved-draft dot
-    await user.click(screen.getByRole('tab', { name: 'Details' }));
-    await user.click(screen.getByRole('tab', { name: 'Story •' }));
-    expect((screen.getByRole('textbox', { name: 'Story' }) as HTMLTextAreaElement).value).toBe('Bring a headlamp');
+  it('LegacyStoryOrDetailsDeepLink_OpensTheEntryTab', () => {
+    // page.tsx maps ?tab=details|story → 'entry'; the workbench only knows 'entry'.
+    renderWorkbench({ initialTab: 'entry' });
+    expect(screen.getByRole('tab', { name: 'Entry' }).getAttribute('aria-selected')).toBe('true');
   });
 
   it('RollCallTab_CarriesTheAttendanceCount_WhenRollWasTaken', () => {
@@ -142,7 +138,7 @@ describe('Calendar entry workbench — one tab per layer', () => {
     expect(panel.getByRole('tablist', { name: 'Who to take roll for' })).toBeTruthy(); // the sub-tab bar
     expect(panel.getByLabelText(/Avery Scout/)).toBeTruthy(); // a checkbox, no "Take Roll Call" button first
     expect(screen.queryByRole('link', { name: 'Take Roll Call' })).toBeNull();
-    expect(tabNames()).toEqual(['Details', 'Story', 'Agenda', 'Roll Call', 'Signup']); // layer tabs still there
+    expect(tabNames()).toEqual(['Entry', 'Agenda', 'Roll Call', 'Signup']); // layer tabs still there
   });
 
   it('SignupTab_OffersToEnable_WhenThereIsNoSignup_AndShowsTheBuilderWhenThereIs', async () => {

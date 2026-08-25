@@ -34,22 +34,6 @@ function revalidateCalendar(entryId?: number) {
  * Calendar entries are not a scout drafting surface the way News posts are —
  * which is also why the workbench no longer needs a panel-level role split.
  */
-export async function updateEntryStory(fd: FormData): Promise<ActionResult> {
-  await requireCapability('calendar.write');
-  const id = Number(fd.get('id'));
-  if (!Number.isInteger(id) || id <= 0) return { ok: false, error: 'Missing entry.' };
-  const body = String(fd.get('details_md') ?? '');
-
-  const supabase = createAdminClient();
-  const { error } = await supabase
-    .from('calendar_entries')
-    .update({ details_md: body.trim() || null })
-    .eq('id', id);
-  if (error) return { ok: false, error: error.message };
-  revalidateCalendar(id);
-  return { ok: true };
-}
-
 function fieldsFromForm(fd: FormData) {
   const entryDate = String(fd.get('entry_date') ?? '').trim();
   const endDate = String(fd.get('end_date') ?? '').trim();
@@ -88,7 +72,12 @@ function fieldsFromForm(fd: FormData) {
     featured: showOnHomepage && String(fd.get('featured') ?? '') === '1',
     promo_start: showOnHomepage ? String(fd.get('promo_start') ?? '').trim() || null : null,
     promo_end: showOnHomepage ? String(fd.get('promo_end') ?? '').trim() || null : null,
-    excerpt: showOnHomepage ? String(fd.get('excerpt') ?? '').trim() || null : null,
+    // Collapsed into description (Patrick, 2026-08-25) — always cleared so a
+    // stale card line can't outlive the field that set it.
+    excerpt: null,
+    // The Story rides along from the workbench form; the Add Entry dialog
+    // doesn't carry it, and must not blank it.
+    ...(fd.has('details_md') ? { details_md: String(fd.get('details_md') ?? '').trim() || null } : {}),
     hero_media_id: showOnHomepage && heroMediaIdRaw ? Number(heroMediaIdRaw) : null,
     auto_archive_at: String(fd.get('auto_archive_at') ?? '').trim() || null
   };

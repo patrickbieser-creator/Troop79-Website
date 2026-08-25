@@ -154,9 +154,10 @@ describe('hero pick (first card of the front-page order — 2026-08-21)', () => 
 });
 
 describe('event card excerpt', () => {
-  it('Excerpt_UsesExplicitExcerpt_WhenSet', () => {
-    expect(eventCardExcerpt(entry({ excerpt: ' Bring tables. ', description: 'ignored' }))).toBe(
-      'Bring tables.'
+  it('Excerpt_IgnoresTheRetiredExcerptColumn_DescriptionIsTheOneShortText', () => {
+    // Collapsed 2026-08-25 (Patrick): a stale excerpt must not outlive the field.
+    expect(eventCardExcerpt(entry({ excerpt: ' Bring tables. ', description: 'Three days out.' }))).toBe(
+      'Three days out.'
     );
   });
 
