@@ -42,9 +42,11 @@ already used by the roster's "email non-responders" and the identity sign-in mai
 
 ## Acceptance Criteria
 
-- [ ] **Template library** under Lookups & Admin → *Email templates*: list, add, edit, retire.
-      Each template has a name, an **audience** (Family or Leader), a subject and a body with
-      merge fields, edited in the shared message editor with a live preview. A template in use
+- [ ] **Template library** under Lookups & Admin → *Email templates*: list, add, edit, retire,
+      grouped by **kind**. Each template has a name, a kind (open-ended — `signup.family` and
+      `signup.leader` today, newsletter / nudges / reminders later without a migration), a
+      subject and a body with merge fields, edited in the shared message editor with a live
+      preview of that kind's fields. A template in use
       by a signup cannot be deleted (retire hides it from pickers; existing signups keep it).
 - [ ] The library ships with two seeded templates per audience (see Defaults) so the block
       works the moment it is switched on.
@@ -127,9 +129,10 @@ Pure (db project):
 - [ ] `Resend_FromTheRoster_SendsTheFamilyMessageAgain_LoggedAsResend()`.
 - [ ] `Template_InUse_CannotBeDeleted_CanBeRetired()`.
 DOM project:
-- [ ] `TemplateLibrary_ListsByAudience_AddEditRetire()`.
+- [ ] `TemplateLibrary_GroupsByKind_AddEditRetire()`.
+- [ ] `TemplateKinds_AreARegistry_NotAnEnum_NewKindNeedsNoMigration()`.
 - [ ] `ConfirmationBlock_IsOffByDefault_AndShowsFamilyAndLeaderPanelsWhenOn()`.
-- [ ] `ConfirmationBlock_TemplatePicker_IsFilteredByAudience()`.
+- [ ] `ConfirmationBlock_TemplatePicker_IsFilteredByKind()`.
 - [ ] `ConfirmationBlock_Customize_MarksTheMessageCustomized_AndResetRestoresTheTemplate()`.
 - [ ] `ConfirmationBlock_LeaderRecipients_ShowFieldError_OnBadEmail_AndCapAtFive()`.
 - [ ] `MessageEditor_InsertsTokenAtCursor_AndPreviewUpdatesLive()`.
@@ -146,11 +149,16 @@ DOM project:
 |---|---|---|
 | `id` | bigserial pk | |
 | `name` | text not null unique | "Campout confirmation" |
-| `audience` | text not null check in ('family','leader') | which merge fields and which recipients |
+| `kind` | text not null | open-ended (Patrick, 2026-08-25: "Library will be used soon for other emails") — a free string, NOT an enum: `signup.family`, `signup.leader` now; `newsletter`, `nudge.non-responder`, `reminder.slip` later. Each consumer declares the kinds it accepts and the merge fields it provides; the picker filters by kind |
 | `subject` | text not null | merge fields allowed |
 | `body` | text not null | merge fields allowed; line breaks → paragraphs |
 | `retired_at` | timestamptz | hidden from pickers; existing references keep working |
 | `created_at` / `updated_at` | timestamptz | |
+
+The message editor takes a **field set** (the tokens a kind provides, from a registry in
+`lib/email-templates.ts`: `{ kind, label, fields[] }`), so the same editor serves every future
+kind without change; the library page groups templates by kind and offers "New template" per
+registered kind. `signup.family` and `signup.leader` are the first two registrations.
 
 Columns on `event_signups` — the block is 1:1 with a signup:
 
@@ -339,9 +347,7 @@ Resend" per household from the log, and a **Resend confirmation** row action (fa
 
 ## Open Questions
 
-- [ ] **Library scope:** signup templates only for now, or make `audience` open-ended so the
-      newsletter / non-responder nudges can join later? (Assumed: the enum starts with the two;
-      adding a value is a one-line migration.)
+(none — every question answered 2026-08-25)
 
 ## Notes
 
