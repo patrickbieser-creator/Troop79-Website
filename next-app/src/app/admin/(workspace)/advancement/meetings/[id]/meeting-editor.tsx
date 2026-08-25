@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
+import { BackNav } from '../../../_components/back-nav';
 import { useRouter } from 'next/navigation';
 import type { Meeting, MeetingSection, MeetingSession } from '@/lib/supabase/types';
 import { fmtDateFull } from '@/lib/format-date';
@@ -230,9 +231,15 @@ export function MeetingEditor({
         <div>
           {!embedded && (
             <>
-              <Link href={`/admin/calendar/${entry.id}?tab=agenda`} className={styles.backLink}>
-                &larr; Back to the entry
-              </Link>
+              <BackNav
+                back={{
+                  crumbs: [
+                    { label: 'Calendar', href: '/admin/calendar' },
+                    { label: meeting.title, href: `/admin/calendar/${entry.id}?tab=agenda` }
+                  ],
+                  current: 'Agenda'
+                }}
+              />
               <h1>
                 {meeting.title} &mdash; {fmtDateFull(entry.entry_date)}
               </h1>

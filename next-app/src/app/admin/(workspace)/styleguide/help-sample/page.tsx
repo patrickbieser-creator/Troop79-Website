@@ -14,6 +14,7 @@ export default function HelpSamplePage() {
   return (
     <>
       <PageTitle
+        back={{ label: 'Styleguides', href: '/admin/styleguide' }}
         title="Help badge — sample"
         sub={
           <>

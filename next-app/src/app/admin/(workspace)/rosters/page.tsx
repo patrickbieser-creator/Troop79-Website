@@ -138,7 +138,7 @@ export default async function EventRostersPage() {
 
   return (
     <>
-      <PageTitle
+      <PageTitle back={null}
         title="Event Management"
         sub={
           <>

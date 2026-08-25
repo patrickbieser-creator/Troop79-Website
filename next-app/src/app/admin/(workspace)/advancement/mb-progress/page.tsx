@@ -58,7 +58,7 @@ export default async function MbProgressCatalogPage() {
   const { cards, totalActive } = await loadCatalog();
   return (
     <>
-      <PageTitle
+      <PageTitle back={null}
         title="Merit Badge Progress"
         sub="Live progress on every merit badge in the Troop 79 program. Click a
           card to drill in and sign off requirements per scout. Cards with a

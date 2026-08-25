@@ -62,7 +62,7 @@ export default async function RosterImportPage({
   if (batches.length === 0) {
     return (
       <>
-        <PageTitle title="Roster Import" sub="No import batches have been staged yet." />
+        <PageTitle back={null} title="Roster Import" sub="No import batches have been staged yet." />
         <div className={styles.empty}>
           Stage a file first:
           <code className={styles.code}>npm run import-roster-csv -- &quot;&lt;path&gt;&quot; --apply</code>
@@ -152,7 +152,7 @@ export default async function RosterImportPage({
 
   return (
     <>
-      <PageTitle
+      <PageTitle back={null}
         title="Roster Import"
         sub="Every row from a staged roster file, matched against the people already on record. A
           suggestion is only a proposal — nothing is written to the roster until you accept it, and

@@ -209,7 +209,7 @@ export default async function RosterPage({
 
   return (
     <>
-      <PageTitle
+      <PageTitle back={null}
         title="Troop Roster"
         sub={`Ages and grades derived from birthdate and graduation year as of ${fmtDate(today)}.
             Which tab someone appears on follows their current role — giving or ending a role moves

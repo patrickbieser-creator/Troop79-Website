@@ -49,12 +49,10 @@ export default async function AllLoginsPage({
   return (
     <>
       <PageTitle
+        back={{ label: 'Dashboard', href: '/admin/advancement/dashboard' }}
         title="Recent Logins"
         sub="Every successful sign-in, family and leader alike — same flow since the identity unification."
       >
-        <div className={styles.actions}>
-          <Button href="/admin/advancement/dashboard">← Dashboard</Button>
-        </div>
       </PageTitle>
 
       <div className={styles.card}>

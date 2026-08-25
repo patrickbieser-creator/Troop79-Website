@@ -127,7 +127,7 @@ export default async function FinancePage({
 
   return (
     <>
-      <PageTitle
+      <PageTitle back={null}
         title="Troop Finances"
         sub={
           canManage

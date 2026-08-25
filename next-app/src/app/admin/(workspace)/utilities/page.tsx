@@ -14,7 +14,7 @@ export const metadata = {
 export default function UtilitiesPage() {
   return (
     <>
-      <PageTitle title="Utilities" sub="One-off maintenance tools. Safe to run any time." />
+      <PageTitle back={null} title="Utilities" sub="One-off maintenance tools. Safe to run any time." />
 
       <div className={styles.grid}>
         <BunnySyncCard />

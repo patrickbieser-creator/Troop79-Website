@@ -65,7 +65,7 @@ export function MediaManagerView() {
 
   return (
     <>
-      <PageTitle
+      <PageTitle back={null}
         title="Media Manager"
         sub="Every photo in the library — uploaded here or synced in from Bunny. Edit alt text and
           captions, or delete photos that are no longer needed (deleting only removes it from this

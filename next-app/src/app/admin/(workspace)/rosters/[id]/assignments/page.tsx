@@ -144,17 +144,15 @@ export default async function AssignmentsPage({
   return (
     <>
       <PageTitle
+        back={{
+          crumbs: [{ label: 'Event Management', href: '/admin/rosters' }, { label: String(data.entry.title), href: `/admin/rosters/${signupId}` }],
+          current: 'Rides & assignments'
+        }}
         title={`${data.entry.title} — Rides & assignments`}
         sub={
-          <>
-            <Link href="/admin/rosters" className={styles.actionLinkMuted}>
-              Event Management
-            </Link>{' '}
-            ·{' '}
-            <Link href={`/events/${data.entry.id}`} className={styles.actionLinkMuted}>
-              Public page
-            </Link>
-          </>
+          <Link href={`/events/${data.entry.id}`} className={styles.actionLinkMuted}>
+            Public page
+          </Link>
         }
       />
       <EventNav signupId={signupId} entryId={data.nav.entryId} active={activeSetId != null ? `set:${activeSetId}` : 'assignments'} sets={data.nav.sets} hasMoney={data.nav.hasMoney} />

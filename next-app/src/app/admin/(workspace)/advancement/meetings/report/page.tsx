@@ -136,7 +136,7 @@ export default async function AttendanceReportPage({
 
   return (
     <>
-      <PageTitle
+      <PageTitle back={null}
         title="Attendance Report"
         sub={
           <>

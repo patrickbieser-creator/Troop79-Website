@@ -42,17 +42,15 @@ export default async function SnapshotWorkspacePage({
   return (
     <>
       <PageTitle
+        back={{
+          crumbs: [{ label: 'Event Management', href: '/admin/rosters' }, { label: String(s.calendar_entries.title), href: `/admin/rosters/${signupId}` }],
+          current: 'Snapshot'
+        }}
         title={`${s.calendar_entries.title} — Snapshot`}
         sub={
-          <>
-            <Link href="/admin/rosters" className={styles.actionLinkMuted}>
-              Event Management
-            </Link>{' '}
-            ·{' '}
-            <Link href={`/events/${s.calendar_entries.id}`} className={styles.actionLinkMuted}>
-              Public page
-            </Link>
-          </>
+          <Link href={`/events/${s.calendar_entries.id}`} className={styles.actionLinkMuted}>
+            Public page
+          </Link>
         }
       />
       <EventNav signupId={signupId} entryId={nav.entryId} active="snapshot" sets={nav.sets} hasMoney={nav.hasMoney} />

@@ -8,7 +8,6 @@
  * persisted; every check recomputes fresh on every page load.
  */
 
-import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireCapability } from '@/lib/require-capability';
 import { AuditCard } from './audit-card';
@@ -80,7 +79,7 @@ export default async function AuditsPage() {
 
   return (
     <>
-      <PageTitle
+      <PageTitle back={null}
         title="Audits"
         sub={
           <>
@@ -104,9 +103,6 @@ export default async function AuditsPage() {
         />
       ))}
 
-      <p className={styles.footnote}>
-        <Link href="/admin/advancement/dashboard">&larr; Back to Dashboard</Link>
-      </p>
     </>
   );
 }

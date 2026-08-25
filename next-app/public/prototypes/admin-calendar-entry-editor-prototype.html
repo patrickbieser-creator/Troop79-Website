@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototype — Calendar Entry editor (Details + Story consolidated)</title>
+<style>
+/* ── Tokens: copied from next-app/src/app/admin/(workspace)/admin.css ── */
+:root {
+  --admin-navy:#1e3a4a; --admin-navy-light:#2a5068; --admin-navy-hover:#163040;
+  --admin-forest:#3d7a4a; --admin-forest-dark:#2e6038;
+  --admin-danger:#c0392b; --admin-danger-hover:#a93226; --admin-danger-dark:#8c2f2f;
+  --admin-warning:#d4a017; --admin-accent-gold:#8b6914;
+  --admin-bg:#f5f6f8; --admin-white:#ffffff;
+  --admin-field-bg:#ffffff; --admin-field-bg-focus:#ffffff; --admin-form-bg:#eef1f5;
+  --admin-gray-50:#fafbfc; --admin-gray-100:#f0f1f3; --admin-gray-200:#e2e4e8; --admin-gray-300:#cdd1d6;
+  --admin-gray-400:#9ba1aa; --admin-gray-500:#6d7580; --admin-gray-600:#666666; --admin-gray-700:#3a3f47;
+  --admin-gray-800:#2a2e34; --admin-gray-900:#1a1d21;
+  --admin-status-error-bg:#fdf0ef; --admin-status-warning-bg:#fdf3d6; --admin-status-success-bg:#f0f6f1; --admin-status-info-bg:#eef3f8;
+  --admin-radius:4px; --admin-radius-sm:3px; --admin-radius-lg:8px; --admin-radius-pill:999px; --admin-radius-circle:50%;
+  --admin-shadow-sm:0 1px 3px rgba(0,0,0,.08); --admin-shadow-md:0 2px 8px rgba(0,0,0,.1);
+  --admin-transition:.15s ease;
+  --admin-font-ui:"Open Sans",Arial,sans-serif; --admin-font-display:"Playfair Display",Georgia,serif; --admin-font-mono:Menlo,Consolas,monospace;
+  /* preview aliases — public paper/ink, stand-ins for the sanctioned --admin-preview-* crossing */
+  --admin-preview-font-display:"Playfair Display",Georgia,serif; --admin-preview-font-body:Lora,Georgia,serif;
+  --admin-preview-paper-alt:#f3efe6; --admin-preview-ink:#2b2b2b; --admin-preview-ink-head:#1a1a1a; --admin-preview-ink-meta:#6b6b6b; --admin-preview-border:#e0dbd0;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--admin-bg); color:var(--admin-gray-900); font-family:var(--admin-font-ui); font-size:13px; line-height:1.45; }
+.wrap { max-width:1280px; margin:0 auto; padding:20px 24px 80px; }
+a { color:var(--admin-navy); }
+
+/* ── Prototype knobs (not product UI) ── */
+.knobs { position:sticky; top:0; z-index:5; display:flex; flex-wrap:wrap; gap:14px 22px; align-items:center; background:#fff8dc; border:1px solid var(--admin-warning); border-radius:var(--admin-radius); padding:8px 12px; margin-bottom:18px; font-size:12px; }
+.knobs strong { text-transform:uppercase; letter-spacing:.1em; font-size:10px; color:var(--admin-accent-gold); }
+.knobs label { display:inline-flex; gap:4px; align-items:center; cursor:pointer; }
+.knobs fieldset { border:0; padding:0; margin:0; display:inline-flex; gap:10px; align-items:center; }
+.knobs legend { float:left; font-weight:700; color:var(--admin-gray-700); margin-right:4px; }
+
+/* ── Workbench head (workbench.module.css) ── */
+.head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:18px; }
+.head h1 { font-family:var(--admin-font-display); font-size:24px; margin:4px 0 6px; }
+.backLink { font-size:12px; color:var(--admin-gray-700); text-decoration:none; }
+.backLink:hover { text-decoration:underline; }
+.headMeta { display:flex; flex-wrap:wrap; align-items:center; gap:10px; font-size:13px; color:var(--admin-gray-700); margin:0; }
+.cat { display:inline-block; padding:2px 8px; border-radius:3px; color:var(--admin-white); font-size:11px; font-weight:700; letter-spacing:.04em; }
+.flag { border:1px solid var(--admin-gray-200); border-radius:3px; padding:1px 6px; font-size:11px; text-transform:uppercase; letter-spacing:.08em; }
+.templateNote { margin:6px 0 0; font-size:12px; font-style:italic; color:var(--admin-gray-500); }
+.headActions { display:flex; gap:8px; flex-shrink:0; }
+
+/* ── Shared Button ── */
+.btn { font-family:inherit; font-size:12px; font-weight:600; padding:7px 14px; border-radius:var(--admin-radius-sm); border:1px solid var(--admin-gray-300); background:var(--admin-white); color:var(--admin-gray-700); cursor:pointer; transition:all var(--admin-transition); text-decoration:none; display:inline-flex; align-items:center; gap:6px; }
+.btn:hover:not(:disabled) { border-color:var(--admin-navy); color:var(--admin-navy); }
+.btn:focus-visible { outline:2px solid var(--admin-navy); outline-offset:2px; }
+.btn.primary { background:var(--admin-navy); border-color:var(--admin-navy); color:var(--admin-white); }
+.btn.primary:hover:not(:disabled) { background:var(--admin-navy-hover); color:var(--admin-white); }
+.btn.sm { font-size:11px; padding:4px 10px; }
+.btn.quiet { border-color:transparent; background:transparent; }
+.btn:disabled { opacity:.5; cursor:not-allowed; }
+
+/* ── Tab strip (tab-strip.module.css) ── */
+.tabs { display:inline-flex; flex-wrap:wrap; gap:2px; background:var(--admin-gray-100); border-radius:var(--admin-radius); padding:2px; margin-bottom:14px; }
+.tab { background:none; border:none; border-radius:var(--admin-radius-sm); padding:6px 14px; font-family:inherit; font-size:13px; font-weight:600; color:var(--admin-gray-600); cursor:pointer; display:inline-flex; align-items:center; gap:7px; }
+.tab:hover { color:var(--admin-gray-900); }
+.tab[aria-selected="true"] { background:var(--admin-white); color:var(--admin-navy); box-shadow:0 1px 2px rgba(0,0,0,.08); }
+.tabCount { font-size:11px; font-weight:700; background:var(--admin-gray-200); color:var(--admin-gray-700); border-radius:var(--admin-radius-pill); padding:1px 7px; }
+
+/* ── Panel (workbench.module.css .panel — tinted form surface, D-179) ── */
+.panel { border:1px solid var(--admin-gray-200); border-radius:var(--admin-radius); box-shadow:var(--admin-shadow-sm); padding:14px 16px 16px; margin-bottom:16px; background:var(--admin-form-bg); }
+.panelHead { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:4px; }
+.panelHead h2 { font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--admin-forest); margin:0; }
+.panelNote { font-size:12.5px; color:var(--admin-gray-700); margin:0 0 12px; }
+
+/* ── Fields ── */
+.field { margin-bottom:14px; min-width:0; }
+.field.full { grid-column:1 / -1; }
+.adminLabel { display:block; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--admin-gray-700); margin-bottom:5px; }
+.adminLabel .opt { font-weight:400; text-transform:none; letter-spacing:0; color:var(--admin-gray-500); }
+.field input[type=text], .field input[type=date], .field input[type=time], .field select, .field textarea {
+  width:100%; font-family:var(--admin-font-ui); font-size:14px; color:var(--admin-gray-700); border:1px solid var(--admin-gray-300); border-radius:2px; padding:8px 10px; background:var(--admin-field-bg); outline:none; transition:border-color var(--admin-transition);
+}
+.field input:focus, .field select:focus, .field textarea:focus { border-color:var(--admin-navy); outline:2px solid var(--admin-navy); outline-offset:-1px; }
+.hint { font-size:11px; color:var(--admin-gray-500); margin-top:4px; font-style:italic; }
+.check { display:flex; gap:8px; align-items:flex-start; font-size:13px; color:var(--admin-gray-800); cursor:pointer; }
+.check input { margin-top:3px; }
+.check .muted { color:var(--admin-gray-500); }
+
+/* grouped rows */
+.row { display:grid; gap:12px; }
+.row.when { grid-template-columns:1.2fr 1.2fr .9fr .9fr .8fr; }
+.row.two { grid-template-columns:1fr 1fr; }
+.row.logistics { grid-template-columns:2fr 1fr; }
+.row.dateTimes { grid-template-columns:1fr 1fr; }
+@media (max-width:1100px) { .row.when { grid-template-columns:1fr 1fr; } }
+
+/* numbered section rail — reads like FormSection */
+.sec { position:relative; padding-left:34px; margin-bottom:12px; }
+.sec::before { content:attr(data-n); position:absolute; left:0; top:0; width:22px; height:22px; border-radius:var(--admin-radius-circle); background:var(--admin-navy); color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+.sec + .sec { border-top:1px solid var(--admin-gray-200); padding-top:14px; }
+
+/* ── Body editor: two-column source | live preview (article-editor.module.css .editorShell) ── */
+.editorShell { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); border:1px solid var(--admin-gray-200); border-radius:3px; overflow:hidden; background:var(--admin-white); min-height:420px; }
+.editorShell.stacked { grid-template-columns:1fr; }
+.sourceCol { display:flex; flex-direction:column; min-width:0; border-right:1px solid var(--admin-gray-200); }
+.stacked .sourceCol { border-right:none; border-bottom:1px solid var(--admin-gray-200); }
+.toolbar { display:flex; gap:6px; flex-wrap:wrap; padding:8px 10px; border-bottom:1px solid var(--admin-gray-200); background:var(--admin-gray-50); }
+.source { width:100%; flex:1; border:none; padding:12px; font-family:var(--admin-font-mono); font-size:13px; line-height:1.55; resize:vertical; min-height:320px; background:transparent; color:var(--admin-gray-800); }
+.source:focus { outline:2px solid var(--admin-navy); outline-offset:-2px; }
+.cheatSheet { margin:10px; border:1px solid var(--admin-gray-200); border-radius:2px; background:var(--admin-gray-50); }
+.cheatSheet summary { cursor:pointer; padding:8px 12px; font-size:11px; font-weight:700; letter-spacing:.04em; color:var(--admin-navy); text-transform:uppercase; list-style:none; }
+.cheatSheet summary::-webkit-details-marker { display:none; }
+.cheatGrid { padding:4px 12px 12px; display:grid; grid-template-columns:auto 1fr; gap:4px 14px; font-size:11.5px; }
+.cheatGrid code { font-family:var(--admin-font-mono); background:var(--admin-white); border:1px solid var(--admin-gray-200); padding:1px 6px; border-radius:2px; color:var(--admin-forest); white-space:nowrap; }
+.cheatGrid span { color:var(--admin-gray-500); align-self:center; }
+
+.previewPane { background:var(--admin-preview-paper-alt); padding:18px 22px 30px; overflow-y:auto; max-height:640px; }
+.previewLabel { display:flex; align-items:center; gap:10px; font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--admin-preview-ink-meta); margin-bottom:12px; }
+.liveDot { width:7px; height:7px; border-radius:var(--admin-radius-circle); background:var(--admin-forest); box-shadow:0 0 0 3px rgba(61,122,74,.18); }
+.previewSurface { background:var(--admin-white); border:1px solid var(--admin-preview-border); border-radius:3px; box-shadow:var(--admin-shadow-sm); padding:22px 26px 28px; font-family:var(--admin-preview-font-body); color:var(--admin-preview-ink); font-size:15px; line-height:1.6; }
+.previewTitle { font-family:var(--admin-preview-font-display); font-size:24px; font-weight:700; color:var(--admin-preview-ink-head); margin:0 0 4px; }
+.previewDek { font-size:15px; color:var(--admin-preview-ink-meta); font-style:italic; margin:0 0 14px; }
+.previewMeta { font-family:var(--admin-font-ui); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--admin-preview-ink-meta); margin-bottom:12px; }
+.previewSurface h2 { font-family:var(--admin-preview-font-display); font-size:19px; margin:18px 0 6px; color:var(--admin-preview-ink-head); }
+.previewSurface h3 { font-family:var(--admin-preview-font-display); font-size:16px; margin:14px 0 4px; }
+.previewSurface p { margin:0 0 10px; }
+.previewSurface ul { margin:0 0 10px 20px; padding:0; }
+.previewEmpty { font-family:var(--admin-font-ui); font-size:13px; font-style:italic; color:var(--admin-gray-500); }
+.tok { border:1px dashed var(--admin-gray-400); border-radius:3px; padding:14px; margin:10px 0; background:var(--admin-gray-50); font-family:var(--admin-font-ui); font-size:12px; color:var(--admin-gray-700); display:flex; gap:12px; align-items:center; }
+.tok .thumb { width:64px; height:44px; flex-shrink:0; background:repeating-linear-gradient(135deg,var(--admin-gray-100) 0 8px,var(--admin-gray-200) 8px 16px); border-radius:2px; }
+.tok b { display:block; font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--admin-navy); }
+
+/* homepage promotion block */
+.promo { border:1px solid var(--admin-gray-200); border-radius:var(--admin-radius); background:var(--admin-white); padding:12px 14px; margin-top:8px; }
+.promo[hidden] { display:none; }
+.heroBox { width:100%; max-width:320px; aspect-ratio:16/9; border-radius:2px; background:repeating-linear-gradient(135deg,var(--admin-gray-50) 0 14px,var(--admin-gray-200) 14px 28px); margin-bottom:8px; display:flex; align-items:center; justify-content:center; color:var(--admin-gray-500); font-size:11px; }
+
+/* actions */
+.formActions { display:flex; align-items:center; gap:10px; margin-top:8px; padding-top:14px; border-top:1px solid var(--admin-gray-200); }
+.feedback { font-size:12px; color:var(--admin-forest); min-height:1em; }
+.feedback[data-phase=saving] { color:var(--admin-gray-500); }
+
+/* dev handoff */
+.impact { margin-top:24px; border:1px solid var(--admin-gray-200); border-radius:var(--admin-radius); background:var(--admin-white); padding:14px 16px; }
+.impact h3 { margin:0 0 8px; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--admin-navy); }
+.impact li { margin-bottom:6px; }
+.impact code { font-family:var(--admin-font-mono); font-size:11.5px; background:var(--admin-gray-100); padding:1px 5px; border-radius:2px; }
+
+/* 375px simulation + real mobile */
+.wrap.narrow { max-width:375px; padding:12px; border:1px solid var(--admin-gray-300); border-radius:12px; background:var(--admin-bg); }
+.narrow .head { flex-direction:column; }
+.narrow .row, .narrow .row.when, .narrow .row.two, .narrow .row.logistics { grid-template-columns:1fr; }
+.narrow .editorShell { grid-template-columns:1fr; }
+.narrow .sourceCol { border-right:none; border-bottom:1px solid var(--admin-gray-200); }
+.narrow .sec { padding-left:0; }
+.narrow .sec::before { position:static; display:inline-flex; margin-bottom:6px; }
+.narrow .field input, .narrow .field select, .narrow .field textarea { font-size:16px; } /* iOS no-zoom floor */
+@media (max-width:640px) {
+  .wrap { padding:12px; } .head { flex-direction:column; }
+  .row, .row.when, .row.two, .row.logistics { grid-template-columns:1fr; }
+  .editorShell { grid-template-columns:1fr; } .sourceCol { border-right:none; border-bottom:1px solid var(--admin-gray-200); }
+  .field input, .field select, .field textarea { font-size:16px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap" id="wrap">
+
+<!-- ═══ Prototype knobs — not product UI ═══ -->
+<div class="knobs" role="region" aria-label="Prototype knobs">
+  <strong>Prototype knobs</strong>
+  <fieldset><legend>Body position</legend>
+    <label><input type="radio" name="variant" value="A" checked> A · Jenna's order (Body mid-form)</label>
+    <label><input type="radio" name="variant" value="B"> B · News-mirror (compact logistics row, Body under Description)</label>
+  </fieldset>
+  <fieldset><legend>Preview</legend>
+    <label><input type="radio" name="preview" value="side" checked> Side-by-side</label>
+    <label><input type="radio" name="preview" value="stacked"> Stacked</label>
+  </fieldset>
+  <fieldset><legend>Homepage block</legend>
+    <label><input type="radio" name="promo" value="off" checked> Collapsed</label>
+    <label><input type="radio" name="promo" value="on"> Expanded</label>
+  </fieldset>
+  <label><input type="checkbox" id="knobNarrow"> Simulate 375px</label>
+</div>
+
+<!-- ═══ Workbench head ═══ -->
+<div class="head">
+  <div>
+    <a href="#" class="backLink">&larr; Back to Calendar</a>
+    <h1 id="headTitle">Fall Camporee — Camp Long Lake</h1>
+    <p class="headMeta">
+      <span class="cat" style="background:#3d7a4a">Campout</span>
+      <span id="headDate">Sep 25 – 27, 2026</span>
+      <span id="headLoc">Camp Long Lake, St. Cloud WI</span>
+      <span class="flag" id="headPromo" hidden>Promoted</span>
+    </p>
+    <p class="templateNote">Activity template — story and signup.</p>
+  </div>
+  <div class="headActions"><a class="btn" href="#">View public page</a></div>
+</div>
+
+<!-- ═══ Tab strip: Entry · Agenda · Roll Call · Signup ═══ -->
+<div class="tabs" role="tablist" aria-label="Entry layers">
+  <button class="tab" role="tab" aria-selected="true" id="tabEntry">Entry</button>
+  <button class="tab" role="tab" aria-selected="false">Agenda</button>
+  <button class="tab" role="tab" aria-selected="false">Roll Call <span class="tabCount">14</span></button>
+  <button class="tab" role="tab" aria-selected="false">Signup</button>
+</div>
+
+<!-- ═══ Entry panel ═══ -->
+<section class="panel" role="tabpanel" aria-labelledby="tabEntry">
+  <div class="panelHead"><h2>Entry</h2></div>
+  <p class="panelNote">Everything families see for this entry — the calendar line, the event page and (optionally) the homepage card — saved together.</p>
+
+  <form id="entryForm" novalidate>
+
+    <!-- 1 Title -->
+    <div class="sec" data-n="1" id="secTitle">
+      <div class="field"><label class="adminLabel" for="title">Title</label>
+        <input type="text" id="title" name="title" required value="Fall Camporee — Camp Long Lake"></div>
+    </div>
+
+    <!-- 2 When -->
+    <div class="sec" data-n="2" id="secWhen">
+      <div class="row when">
+        <div class="field"><label class="adminLabel" for="date">Date</label><input type="date" id="date" name="date" value="2026-09-25"></div>
+        <div class="field"><label class="adminLabel" for="endDate">End date <span class="opt">multi-day</span></label><input type="date" id="endDate" name="endDate" value="2026-09-27"></div>
+        <div class="field"><label class="adminLabel" for="start">Start</label><input type="time" id="start" name="start" value="17:30"></div>
+        <div class="field"><label class="adminLabel" for="end">End</label><input type="time" id="end" name="end" value="11:00"></div>
+        <div class="field"><label class="adminLabel" for="dayNote">Day note</label><input type="text" id="dayNote" name="dayNote" placeholder="Sat" value="Fri–Sun"></div>
+      </div>
+    </div>
+
+    <!-- 3 Category · Location -->
+    <div class="sec" data-n="3" id="secWhere">
+      <div class="row two">
+        <div class="field"><label class="adminLabel" for="category">Category</label>
+          <select id="category" name="category"><option>Campout</option><option>Meeting</option><option>Service</option><option>Fundraiser</option><option>Announcement</option></select></div>
+        <div class="field"><label class="adminLabel" for="location">Location <span class="opt">optional</span></label>
+          <input type="text" id="location" name="location" value="Camp Long Lake, St. Cloud WI"></div>
+      </div>
+    </div>
+
+    <!-- 4 Description (dek) -->
+    <div class="sec" data-n="4" id="secDesc">
+      <div class="field"><label class="adminLabel" for="description">Description <span class="opt">optional</span></label>
+        <textarea id="description" name="description" rows="3">Three-district camporee with patrol competitions, a Saturday night campfire, and Sunday chapel. Patrols cook for themselves.</textarea>
+        <div class="hint">Shown in full at the top of the event page; the calendar and homepage show the beginning of it — put what matters first.</div></div>
+    </div>
+
+    <!-- 5 Body / Story — two-column markdown editor -->
+    <div class="sec" data-n="5" id="secBody">
+      <div class="field">
+        <label class="adminLabel" for="body">Story <span class="opt">the full write-up families read on the event page — leave empty when the calendar line says everything</span></label>
+        <div class="editorShell" id="editorShell">
+          <div class="sourceCol">
+            <div class="toolbar" role="toolbar" aria-label="Insert">
+              <button type="button" class="btn sm" data-ins="{{image:/media/camporee-2025.jpg}}">Insert image</button>
+              <button type="button" class="btn sm" data-ins="{{gallery:fall-camporee-2026}}">Insert gallery</button>
+              <button type="button" class="btn sm" data-ins="[See the photos](/gallery/fall-camporee-2026)">Gallery link</button>
+              <button type="button" class="btn sm" data-ins="{{video:https://youtu.be/dQw4w9WgXcQ}}">Insert video</button>
+              <button type="button" class="btn sm" data-ins="| Item | Who |&#10;| --- | --- |&#10;| Tents | Patrol QM |">Insert table</button>
+            </div>
+            <textarea class="source" id="body" name="body" aria-label="Story markdown source" placeholder="What is this, who is it for, what should families bring or decide?">## What to expect
+
+Patrols compete in **orienteering**, fire-building and a Dutch-oven cook-off. Saturday night is the all-district campfire.
+
+## Bring
+
+- Full camping kit (see the [packing list](/library/packing-list))
+- $12 patrol food money to your Patrol Leader by Tuesday
+- Class A for chapel
+
+{{gallery:fall-camporee-2025}}</textarea>
+            <details class="cheatSheet"><summary>Markdown cheat sheet</summary>
+              <div class="cheatGrid">
+                <code>## Heading</code><span>Section heading</span>
+                <code>**bold**</code><span>Bold text</span>
+                <code>*italic*</code><span>Italic text</span>
+                <code>[text](url)</code><span>Link</span>
+                <code>- item</code><span>Bulleted list</span>
+                <code>{{gallery:slug}}</code><span>Photo gallery block (use the Insert Gallery button)</span>
+                <code>{{video:url}}</code><span>Video block</span>
+              </div></details>
+          </div>
+          <div class="previewPane" aria-live="polite">
+            <div class="previewLabel"><span class="liveDot" aria-hidden="true"></span> Live preview — event page</div>
+            <div class="previewSurface">
+              <h1 class="previewTitle" id="pvTitle"></h1>
+              <div class="previewMeta" id="pvMeta"></div>
+              <p class="previewDek" id="pvDek"></p>
+              <div id="pvBody"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6 Visibility -->
+    <div class="sec" data-n="6" id="secVis">
+      <div class="field"><label class="check"><input type="checkbox" id="onCalendar" name="onCalendar" checked>
+        <span>On the troop calendar <span class="muted">— uncheck for outside opportunities (district MB clinics, external service days): they keep their event page and can appear in the news feed, but never on our calendar.</span></span></label></div>
+      <div class="field"><label class="check"><input type="checkbox" id="isDraft" name="isDraft">
+        <span>Save as a draft <span class="muted">— nobody but a leader can see it: no calendar, no event page, no signup, no .ics feed.</span></span></label></div>
+    </div>
+
+    <!-- 7 Homepage feed — ONE conditional block -->
+    <div class="sec" data-n="7" id="secPromo">
+      <div class="field"><label class="check"><input type="checkbox" id="showOnHomepage" name="showOnHomepage" aria-controls="promoBlock" aria-expanded="false">
+        <span>Show in the homepage news feed <span class="muted">— the entry itself appears as a card for a window; no companion article.</span></span></label></div>
+      <div class="promo" id="promoBlock" hidden>
+        <div class="row two">
+          <div class="field"><label class="adminLabel" for="promoStart">Promote from <span class="opt">blank = now</span></label><input type="date" id="promoStart" name="promoStart"></div>
+          <div class="field"><label class="adminLabel" for="promoEnd">Promote until <span class="opt">blank = event date</span></label><input type="date" id="promoEnd" name="promoEnd"></div>
+        </div>
+        <div class="field"><label class="adminLabel" for="excerpt">Card summary <span class="opt">blank = description</span></label>
+          <input type="text" id="excerpt" name="excerpt" maxlength="200" placeholder="One sentence for the homepage card">
+          <div class="hint" id="excerptHint"></div></div>
+        <div class="row two">
+          <div class="field"><label class="adminLabel">Card image <span class="opt">optional</span></label>
+            <div class="heroBox" id="heroBox">No image — the card runs text-only</div>
+            <button type="button" class="btn sm" id="heroPick">Choose image</button>
+            <button type="button" class="btn sm" id="heroRemove" hidden>Remove</button></div>
+          <div class="field"><label class="adminLabel">Placement</label>
+            <label class="check"><input type="checkbox" id="featured" name="featured"><span>Feature as homepage hero</span></label></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 8 Actions -->
+    <div class="formActions">
+      <button type="button" class="btn" id="discardBtn" disabled>Discard changes</button>
+      <button type="button" class="btn primary" id="saveBtn" disabled title="No changes to save yet">Saved</button>
+      <span class="feedback" id="feedback" role="status"></span>
+    </div>
+  </form>
+</section>
+
+<!-- ═══ Dev impact ═══ -->
+<div class="impact">
+  <h3>Real files that change</h3>
+  <ul>
+    <li><code>calendar/entry-form.tsx</code> — grows a <code>body</code> field (details_md) rendered with <code>MarkdownSource</code> + <code>MarkdownPreview</code> in the news editor's shell (not <code>MarkdownSplitPane</code>); one <code>useDraftSnapshot</code> covers all 19 fields; form submit writes <code>details_md</code> alongside the rest. Field order per the variant picked; homepage promotion becomes one collapsible block. Dialog variant keeps Story hidden (a new entry from the list has no story yet).</li>
+    <li><code>calendar/[id]/workbench.tsx</code> — <code>WorkbenchTab</code> loses <code>'story'</code>, <code>'details'</code> becomes <code>'entry'</code>; the Story panel, <code>storyRef</code>, <code>blockTools</code>, <code>onSaveStory</code> and the Story-tab dirty dot are removed; <code>onSaveDetails</code> action persists <code>details_md</code>. Deep links <code>?tab=story</code> map to <code>entry</code>.</li>
+    <li><code>tests/calendar-workbench-tabs.test.tsx</code> — tab list becomes Entry · Agenda · Roll Call · Signup; the "Story • dot while dirty" assertion goes; add: editing the body dirties the ONE Save, Discard restores body + title together, promotion fields hidden until the checkbox is on.</li>
+  </ul>
+</div>
+
+</div>
+
+<script>
+/* ── Tiny markdown → HTML (prototype only; production uses ArticleBody) ── */
+function esc(s){ return s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function inline(s){
+  return esc(s)
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/\[(.+?)\]\((.+?)\)/g,'<a href="$2">$1</a>');
+}
+function card(kind, ref){
+  return `<div class="tok"><div class="thumb"></div><div><b>${kind}</b>${esc(ref)}</div></div>`;
+}
+function md(src){
+  const out=[]; let list=null;
+  const flush=()=>{ if(list){ out.push('<ul>'+list.map(i=>'<li>'+inline(i)+'</li>').join('')+'</ul>'); list=null; } };
+  src.split(/\r?\n/).forEach(line=>{
+    let m;
+    if((m=line.match(/^\{\{(gallery|video|image|gallerylink):(.+?)\}\}$/))){ flush(); out.push(card(m[1], m[2])); }
+    else if((m=line.match(/^(#{1,3})\s+(.*)/))){ flush(); const h=Math.max(2, m[1].length); /* # and ## both → h2; the title owns h1 */ out.push(`<h${h}>${inline(m[2])}</h${h}>`); }
+    else if((m=line.match(/^-\s+(.*)/))){ (list=list||[]).push(m[1]); }
+    else if(/^\|/.test(line)){ flush(); out.push(`<p style="font-family:var(--admin-font-mono);font-size:12px;margin:0">${esc(line)}</p>`); }
+    else if(line.trim()===''){ flush(); }
+    else { flush(); out.push('<p>'+inline(line)+'</p>'); }
+  });
+  flush(); return out.join('');
+}
+
+/* ── Form state, one snapshot for the whole form ── */
+const form=document.getElementById('entryForm');
+const fields=[...form.querySelectorAll('input,select,textarea')];
+let hero=null, savedHero=null;
+function snapshot(){ return JSON.stringify(fields.map(f=>f.type==='checkbox'?f.checked:f.value).concat([hero])); }
+let saved=snapshot();
+const saveBtn=document.getElementById('saveBtn'), discardBtn=document.getElementById('discardBtn'), feedback=document.getElementById('feedback');
+
+function fmtDate(iso){ if(!iso) return ''; const [y,m,d]=iso.split('-'); return new Date(y,m-1,d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+function render(){
+  const dirty=snapshot()!==saved;
+  saveBtn.disabled=!dirty; saveBtn.textContent=dirty?'Save changes':'Saved';
+  saveBtn.title=dirty?'':'No changes to save yet'; discardBtn.disabled=!dirty;
+  // live preview (title + dek + meta + body)
+  const t=form.title.value.trim();
+  document.getElementById('pvTitle').textContent=t||'Untitled entry';
+  const d1=fmtDate(form.date.value), d2=form.endDate.value?' – '+fmtDate(form.endDate.value):'';
+  document.getElementById('pvMeta').textContent=[form.category.value, d1+d2, form.location.value].filter(Boolean).join(' · ');
+  document.getElementById('pvDek').textContent=form.description.value.trim();
+  const b=form.body.value; document.getElementById('pvBody').innerHTML=b.trim()?md(b):'<p class="previewEmpty">Nothing written yet — the preview fills in as you type.</p>';
+  // header mirrors saved state only after save; promo flag mirrors the checkbox
+  document.getElementById('headPromo').hidden=!form.showOnHomepage.checked;
+  // conditional promotion block
+  const on=form.showOnHomepage.checked;
+  document.getElementById('promoBlock').hidden=!on;
+  form.showOnHomepage.setAttribute('aria-expanded', String(on));
+  document.getElementById('excerptHint').textContent=form.excerpt.value.trim()?`${form.excerpt.value.length}/200`:'Falls back to the first 160 characters of the description.';
+  document.getElementById('heroBox').textContent=hero?hero:'No image — the card runs text-only';
+  document.getElementById('heroPick').textContent=hero?'Change image':'Choose image';
+  document.getElementById('heroRemove').hidden=!hero;
+}
+form.addEventListener('input', render);
+form.addEventListener('change', render);
+
+/* insert toolbar — normalises to one blank line each side (MarkdownSource.insertAtCursor) */
+document.querySelectorAll('[data-ins]').forEach(btn=>btn.addEventListener('click',()=>{
+  const ta=form.body, tok=btn.dataset.ins, s=ta.selectionStart, e=ta.selectionEnd;
+  const before=ta.value.slice(0,s).replace(/\n*$/,''), after=ta.value.slice(e).replace(/^\n*/,'');
+  const bp=before?before+'\n\n':'', ap=after?'\n\n'+after:'';
+  ta.value=bp+tok+ap; const pos=bp.length+tok.length; ta.focus(); ta.setSelectionRange(pos,pos); render();
+}));
+
+/* hero picker stand-in */
+document.getElementById('heroPick').addEventListener('click',()=>{ hero='camporee-2025-campfire.jpg (Bunny CDN)'; render(); });
+document.getElementById('heroRemove').addEventListener('click',()=>{ hero=null; render(); });
+
+/* Save: Saving… → Done; header mirrors the saved title/date/location */
+saveBtn.addEventListener('click',()=>{
+  feedback.dataset.phase='saving'; feedback.textContent='Saving changes…'; saveBtn.disabled=true; discardBtn.disabled=true;
+  setTimeout(()=>{
+    saved=snapshot(); savedHero=hero;
+    document.getElementById('headTitle').textContent=form.title.value||'Untitled entry';
+    document.getElementById('headDate').textContent=fmtDate(form.date.value)+(form.endDate.value?' – '+fmtDate(form.endDate.value):'');
+    document.getElementById('headLoc').textContent=form.location.value;
+    feedback.dataset.phase='done'; feedback.textContent='Done'; render();
+    setTimeout(()=>{ feedback.textContent=''; },1800);
+  },700);
+});
+/* Discard: every field back to the last save */
+discardBtn.addEventListener('click',()=>{
+  const vals=JSON.parse(saved); fields.forEach((f,i)=>{ if(f.type==='checkbox') f.checked=vals[i]; else f.value=vals[i]; });
+  hero=savedHero; feedback.textContent=''; render(); form.title.focus();
+});
+/* Ctrl/Cmd+S saves when dirty */
+document.addEventListener('keydown',e=>{ if((e.ctrlKey||e.metaKey)&&e.key==='s'){ e.preventDefault(); if(!saveBtn.disabled) saveBtn.click(); } });
+
+/* ── Knobs ── */
+/* explicit refs — window.<id> lookups stop resolving once a section leaves the DOM in variant B */
+const $=id=>document.getElementById(id);
+const secs={title:$('secTitle'), when:$('secWhen'), where:$('secWhere'), desc:$('secDesc'), body:$('secBody'), vis:$('secVis'), promo:$('secPromo')};
+const {title:secTitle, when:secWhen, where:secWhere}=secs;
+const editorShell=$('editorShell'), promoBlock=$('promoBlock'), wrap=$('wrap');
+function applyVariant(v){
+  const order = v==='A'
+    ? ['title','when','where','desc','body','vis','promo']       // Jenna: body between description and the checkboxes
+    : ['logi','desc','body','vis','promo'];                        // news-mirror: compact logistics row, then dek, then body
+  let logi=document.getElementById('secLogi');
+  if(v==='B'){
+    if(!logi){ logi=document.createElement('div'); logi.className='sec'; logi.id='secLogi'; logi.dataset.n='1';
+      const grid=document.createElement('div'); grid.className='row logistics'; logi.appendChild(grid);
+      const left=document.createElement('div'), right=document.createElement('div');
+      grid.append(left,right);
+      left.append(secTitle.firstElementChild, secWhere.firstElementChild);                // Title + (Category · Location)
+      const dt=document.createElement('div'); dt.className='row dateTimes';
+      const when=secWhen.firstElementChild; right.append(when); when.classList.remove('when'); when.classList.add('dateTimes');
+    }
+    form.prepend(logi);
+    ['desc','body','vis','promo'].forEach((k,i)=>{ form.insertBefore(secs[k], form.lastElementChild); secs[k].dataset.n=i+2; });
+    [secTitle,secWhen,secWhere].forEach(s=>s.remove());
+  } else {
+    if(logi){
+      secTitle.append(logi.querySelector('.field')); secWhere.append(logi.querySelector('.row.two'));
+      const when=logi.querySelector('.row.dateTimes'); when.classList.remove('dateTimes'); when.classList.add('when'); secWhen.append(when);
+      logi.remove();
+    }
+    order.forEach((k,i)=>{ form.insertBefore(secs[k], form.lastElementChild); secs[k].dataset.n=i+1; });
+  }
+}
+document.querySelectorAll('[name=variant]').forEach(r=>r.addEventListener('change',e=>applyVariant(e.target.value)));
+document.querySelectorAll('[name=preview]').forEach(r=>r.addEventListener('change',e=>editorShell.classList.toggle('stacked', e.target.value==='stacked')));
+document.querySelectorAll('[name=promo]').forEach(r=>r.addEventListener('change',e=>{ form.showOnHomepage.checked=e.target.value==='on'; render(); }));
+document.getElementById('knobNarrow').addEventListener('change',e=>{ wrap.classList.toggle('narrow', e.target.checked); if(e.target.checked) editorShell.classList.add('stacked'); });
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{ document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected','false')); t.setAttribute('aria-selected','true'); }));
+
+render();
+</script>
+</body>
+</html>

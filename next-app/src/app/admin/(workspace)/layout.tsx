@@ -18,6 +18,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { SubNav } from './_components/sub-nav';
+import { DirtyGuardProvider } from './_components/dirty-guard';
 import { ArticleStyleTokens } from '@/lib/article-body/ArticleStyleTokens';
 import { TopBar } from './_components/top-bar';
 import { IS_DEV_DB } from '@/lib/dev-db';
@@ -85,7 +86,9 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
       <TopBar actorLabel={actor.label} actorKind={actor.kind} />
       <div className={styles.workspace}>
         <SubNav fullAdmin={fullAdmin} capabilities={[...actor.capabilities]} />
-        <main className={styles.main}>{children}</main>
+        <main className={styles.main}>
+          <DirtyGuardProvider>{children}</DirtyGuardProvider>
+        </main>
       </div>
       {/* Portal target for admin components (e.g. DatePickerField) that need
           top-level positioning outside their own stacking context. Since the

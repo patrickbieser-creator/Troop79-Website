@@ -406,7 +406,7 @@ export default async function LookupsPage() {
 
   return (
     <>
-      <PageTitle
+      <PageTitle back={null}
         title="Lookups & Admin"
         sub={
           <>

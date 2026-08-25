@@ -297,7 +297,7 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      <PageTitle
+      <PageTitle back={null}
         title="Leader Dashboard"
         sub="Operational overview for the advancement chair. Numbers update from the universal ledger."
       />

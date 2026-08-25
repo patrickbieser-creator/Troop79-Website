@@ -2,7 +2,6 @@
 
 import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import type { Article, AuthorRole, Media } from '@/lib/supabase/types';
 import { dateOfIso } from '@/lib/article-publish';
 import { MediaPicker } from '../../_components/media-picker';
@@ -141,13 +140,10 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
   return (
     <>
       <PageTitle
+        back={{ label: 'News', href: '/admin/news/articles' }}
         title={isNew ? 'New Post' : `Edit: ${article.title}`}
         sub="Write in markdown on the left; see exactly how it will look on the right."
-      >
-        <Link href="/admin/news/articles" className={styles.backLink}>
-          ← Back to News
-        </Link>
-      </PageTitle>
+      />
 
       <div className={styles.editorShell}>
         <div className={styles.editorPane}>

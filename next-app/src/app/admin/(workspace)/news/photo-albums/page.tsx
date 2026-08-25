@@ -44,7 +44,7 @@ export default async function PhotoAlbumsAdminPage() {
 
   return (
     <>
-      <PageTitle
+      <PageTitle back={null}
         title="Photo Albums"
         sub={
           <>

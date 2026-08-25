@@ -11,6 +11,7 @@
  */
 
 import Link from 'next/link';
+import { BackNav } from '../../../_components/back-nav';
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireCapability } from '@/lib/require-capability';
@@ -149,9 +150,7 @@ export default async function MbProgressDetailPage({
 
   return (
     <>
-      <Link href="/admin/advancement/mb-progress" className={styles.backLink}>
-        ← All Merit Badges
-      </Link>
+      <BackNav back={{ label: 'Merit Badge Progress', href: '/admin/advancement/mb-progress' }} />
       <div className={styles.detailHeader}>
         <div className={styles.detailTitle}>
           <h1>

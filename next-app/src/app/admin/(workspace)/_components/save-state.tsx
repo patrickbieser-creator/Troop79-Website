@@ -30,13 +30,17 @@
  */
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
+import { useRegisterDirty } from './dirty-guard';
 import styles from './save-state.module.css';
 import { Button } from '../../_components/button';
 
 export function useSavedSnapshot(draftKey: string): { dirty: boolean; markSaved: () => void } {
   const [savedKey, setSavedKey] = useState(() => draftKey);
   const markSaved = useCallback(() => setSavedKey(draftKey), [draftKey]);
-  return { dirty: draftKey !== savedKey, markSaved };
+  const dirty = draftKey !== savedKey;
+  // Every dirty form takes part in BackNav's Discard-changes prompt (2026-08-25).
+  useRegisterDirty(dirty);
+  return { dirty, markSaved };
 }
 
 /**
@@ -50,7 +54,9 @@ export function useDraftSnapshot<T>(draft: T): { dirty: boolean; markSaved: () =
   const [saved, setSaved] = useState(() => ({ key: JSON.stringify(draft), value: draft }));
   const draftKey = JSON.stringify(draft);
   const markSaved = useCallback(() => setSaved({ key: draftKey, value: draft }), [draftKey, draft]);
-  return { dirty: draftKey !== saved.key, markSaved, saved: saved.value };
+  const dirty = draftKey !== saved.key;
+  useRegisterDirty(dirty);
+  return { dirty, markSaved, saved: saved.value };
 }
 
 /**
@@ -67,6 +73,7 @@ export function useFormDirty(ref: RefObject<HTMLFormElement | null>): {
 } {
   const saved = useRef<string | null>(null);
   const [dirty, setDirty] = useState(false);
+  useRegisterDirty(dirty);
   useEffect(() => {
     const form = ref.current;
     if (!form) return;

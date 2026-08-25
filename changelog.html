@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 25, 2026</strong> &nbsp;&middot;&nbsp; v1.95.1</p>
+      <p>Last updated: <strong>August 25, 2026</strong> &nbsp;&middot;&nbsp; v1.96.1</p>
     </div>
   </div>
 
@@ -494,6 +494,74 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.96.1 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.96.1</span>
+        <span class="release-date">August 25, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Polish</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Tables consolidation &mdash; wave 1</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              Patrick approved the seven list/table patterns (Compact, Card, Dense Grid, RecordList, Board,
+              ExpandableSummary, PrintTable). This wave takes the cheap, low-risk steps: the Report and Court of
+              Honor &ldquo;Recent&rdquo; sidebars share one <code>RecentItemsList</code> component (two drifted
+              copies retired); Access joins the Card table scale and Patrols, Dashboard, Lookups and the Media
+              Manager join the Compact scale exactly; the patrol &ldquo;board&rdquo; is named a table, so
+              &ldquo;Board&rdquo; means only the drag-and-drop assignments board. Styleguide notes updated; the
+              prototypes are linked from the styleguide chooser.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.96.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.96.0</span>
+        <span class="release-date">August 25, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">One way back, in one place</p>
+        <ul class="change-list">
+          <li>
+            <span>
+              <strong>Every admin screen has the same back control, above the title.</strong> Two hops deep it
+              reads &ldquo;&larr; Back to News&rdquo;; three deep (an event&rsquo;s Money, Snapshot or
+              assignments; an agenda under its entry) it is a breadcrumb trail that folds to one hop on a phone.
+              The scattered versions &mdash; a link beside the title, a muted link in the sub line, a bare link
+              above a hand-rolled header, a footnote at the bottom of Audits &mdash; are gone.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Back remembers where you were.</strong> A list keeps its last URL for the session, so
+              coming back from an entry lands on the Past tab, the search, or the assignment set you left.
+            </span>
+          </li>
+          <li>
+            <span>
+              <strong>Unsaved changes get a prompt.</strong> If anything on the page is dirty, the back control
+              asks &ldquo;Discard changes?&rdquo; first &mdash; every form takes part automatically through the
+              shared save hooks.
+            </span>
+          </li>
+          <li>
+            <span>
+              Enforced going forward: <code>PageTitle</code> requires a <code>back</code> value (<code>null</code>
+              on the root lists), <code>AGENTS.md</code> carries the rule, and the styleguide has the specimens.
+              The styleguide chooser now links the help-badge sample and the three design prototypes.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
 

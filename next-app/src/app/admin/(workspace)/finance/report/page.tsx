@@ -37,7 +37,7 @@ export default async function FinanceReportPage() {
 
   return (
     <>
-      <PageTitle
+      <PageTitle back={null}
         title="Activity Report"
         sub="Every transaction grouped by event or fundraiser — income, expenses, and whether it nets
             out to what you expected. Totals blend every account (checking, savings, scout accounts,

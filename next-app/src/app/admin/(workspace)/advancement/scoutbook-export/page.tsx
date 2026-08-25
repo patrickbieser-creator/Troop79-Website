@@ -60,7 +60,7 @@ export default async function ScoutbookExportPage({
 
   return (
     <>
-      <PageTitle
+      <PageTitle back={null}
         title="Scoutbook Export"
         sub={
           <>

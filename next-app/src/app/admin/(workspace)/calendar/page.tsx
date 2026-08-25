@@ -147,7 +147,7 @@ export default async function CalendarAdminPage({
 
   return (
     <>
-      <PageTitle
+      <PageTitle back={null}
         title="Calendar"
         sub={
           <>

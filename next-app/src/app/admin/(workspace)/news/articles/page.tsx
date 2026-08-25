@@ -183,7 +183,7 @@ export default async function ArticlesPage({
 
   return (
     <>
-      <PageTitle
+      <PageTitle back={null}
         title="News"
         sub={
           <>

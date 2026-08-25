@@ -214,7 +214,7 @@ export default async function LedgerPage({
 
   return (
     <>
-      <PageTitle
+      <PageTitle back={null}
         title="Advancement Ledger"
         sub={
           <>

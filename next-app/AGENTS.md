@@ -26,6 +26,14 @@ add a `.xyzBtn` / `.panel` class to a screen stylesheet — add a variant to the
 row to the styleguide scoreboard. Genuinely different controls (icon buttons, chips, sort
 headers, toggles, tab strips) keep their own classes.
 
+**Back navigation is one slot (2026-08-25):** `PageTitle` requires `back` — `null` on a list/root
+page (it then remembers its URL for children), `{ label, href }` on a depth-2 screen ("← Back to
+News"), `{ crumbs: [root, parent], current }` at depth 3+ (breadcrumbs). It renders `BackNav` above
+the h1; screens without `PageTitle` (the calendar workbench head) render `BackNav` themselves in the
+same spot. Never put a back link in `children`, `sub`, a toolbar, or a page footer. Forms get the
+Discard-changes prompt for free through the save-state hooks (`useRegisterDirty`). Specimen:
+`/admin/styleguide/admin` → Back Navigation.
+
 **Keep the styleguide in the same commit as the change:** adding a new admin UI pattern,
 class family, token, or shared component means adding its specimen (and scoreboard row, if
 it has variants) to the styleguide page; retiring a variant means deleting its specimen and

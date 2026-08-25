@@ -114,7 +114,7 @@ export default async function HasNeedsPage() {
   const { pickerRanks, scouts } = await loadData();
   return (
     <>
-      <PageTitle
+      <PageTitle back={null}
         title="Has/Needs Tool"
         sub="Check one or more Scout, Tenderfoot, Second Class, or First Class
           requirements to see who already has them and who still needs them —

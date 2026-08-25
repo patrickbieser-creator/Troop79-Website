@@ -60,6 +60,7 @@ import { fmtDate } from '@/lib/format-date';
 import { TabStrip } from '../_components/tab-strip';
 import { Button } from '../../_components/button';
 import styles from './library.module.css';
+import { PageTitle } from '../_components/page-title';
 
 export const metadata = {
   title: 'Resource Library — Troop 79 Admin'
@@ -308,14 +309,19 @@ export default async function AdminLibraryPage({
 
   return (
     <div className={styles.wrap}>
-      <h1 className={styles.pageTitle}>Resource Library</h1>
-      <p className={styles.pageLede}>
-        Everything submitted queues here first — nothing publishes until you approve it.
-        Placements put one resource on many pages; pins float it to the top of a page.{' '}
-        <Link href="/library" className={styles.backLink}>
-          View the public library →
-        </Link>
-      </p>
+      <PageTitle
+        back={null}
+        title="Resource Library"
+        sub={
+          <>
+            Everything submitted queues here first — nothing publishes until you approve it.
+            Placements put one resource on many pages; pins float it to the top of a page.{' '}
+            <Link href="/library" className={styles.backLink}>
+              View the public library →
+            </Link>
+          </>
+        }
+      />
 
       {sp.err && <p className={styles.errBanner}>{sp.err}</p>}
       {sp.saved && <p className={styles.savedBanner}>Saved.</p>}

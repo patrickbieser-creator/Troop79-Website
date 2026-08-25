@@ -36,7 +36,7 @@ export default async function AccessPage() {
 
   return (
     <>
-      <PageTitle
+      <PageTitle back={null}
         title={<>Access &amp; Permissions</>}
         sub="Who can do what, per person. A capability is granted to a human, not to a password — and
           removing one takes effect on their next action, with no sign-out needed."

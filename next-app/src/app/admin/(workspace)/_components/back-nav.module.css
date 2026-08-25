@@ -1,0 +1,40 @@
+/* BackNav — quiet text in the fixed slot above the h1 (tokens only). */
+
+.nav {
+  margin-bottom: var(--admin-space-2);
+  font-family: var(--admin-font-ui);
+  font-size: var(--admin-text-sm);
+  line-height: 1.4;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--admin-space-1);
+  min-height: 24px; /* WCAG 2.5.8 target floor — the old 12px links missed it */
+  color: var(--admin-gray-600);
+  text-decoration: none;
+  border-radius: var(--admin-radius-sm);
+}
+.link:hover { color: var(--admin-navy); text-decoration: underline; }
+.link:focus-visible { outline: 2px solid var(--admin-navy); outline-offset: 2px; }
+
+.crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--admin-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.crumb { display: inline-flex; align-items: center; gap: var(--admin-space-2); color: var(--admin-gray-700); }
+.crumb + .crumb::before { content: '›'; color: var(--admin-gray-400); }
+.crumb[aria-current='page'] { color: var(--admin-gray-800); }
+
+/* The folded one-hop link only shows on phones; the trail only above. */
+.folded { display: none; }
+@media (max-width: 420px) {
+  .crumbs { display: none; }
+  .folded { display: inline-flex; }
+}

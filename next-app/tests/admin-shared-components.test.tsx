@@ -201,7 +201,7 @@ describe('Dialog', () => {
 describe('PageTitle', () => {
   it('SharedPageTitle_RendersHeadingSubAndActions', () => {
     render(
-      <PageTitle title="Calendar" sub="Everything that happens on a date.">
+      <PageTitle back={null} title="Calendar" sub="Everything that happens on a date.">
         <button type="button">+ Add Event</button>
       </PageTitle>
     );
@@ -211,7 +211,7 @@ describe('PageTitle', () => {
   });
 
   it('SharedPageTitle_OmitsSub_WhenAbsent', () => {
-    render(<PageTitle title="Utilities" />);
+    render(<PageTitle back={null} title="Utilities" />);
     const heading = screen.getByRole('heading', { level: 1, name: 'Utilities' });
     expect(heading.parentElement?.querySelector('p')).toBeNull();
   });

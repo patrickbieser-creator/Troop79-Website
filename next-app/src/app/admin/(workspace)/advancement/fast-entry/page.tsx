@@ -260,7 +260,7 @@ export default async function FastEntryPage() {
 
   return (
     <>
-      <PageTitle
+      <PageTitle back={null}
         title="Fast Entry"
         sub={
           <>

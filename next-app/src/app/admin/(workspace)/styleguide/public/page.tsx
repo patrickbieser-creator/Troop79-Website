@@ -185,6 +185,7 @@ export default function PublicStyleguidePage() {
   return (
     <>
       <PageTitle
+        back={{ label: 'Styleguides', href: '/admin/styleguide' }}
         title="Public Styleguide"
         sub={
           <>

@@ -48,17 +48,15 @@ export default async function EventMoneyPage({ params }: { params: Promise<{ id:
   return (
     <>
       <PageTitle
+        back={{
+          crumbs: [{ label: 'Event Management', href: '/admin/rosters' }, { label: String(s.calendar_entries.title), href: `/admin/rosters/${signupId}` }],
+          current: 'Money'
+        }}
         title={`${s.calendar_entries.title} — Money`}
         sub={
-          <>
-            <Link href="/admin/rosters" className={styles.actionLinkMuted}>
-              Event Management
-            </Link>{' '}
-            ·{' '}
-            <Link href="/admin/finance" className={styles.actionLinkMuted}>
-              Financial Ledger
-            </Link>
-          </>
+          <Link href="/admin/finance" className={styles.actionLinkMuted}>
+            Financial Ledger
+          </Link>
         }
       />
       <EventNav signupId={signupId} entryId={nav.entryId} active="money" sets={nav.sets} hasMoney={nav.hasMoney} />

@@ -31,6 +31,8 @@ import { AddButton } from '../../_components/add-button';
 import { Button } from '../../../_components/button';
 import { FormPanel, FormSection } from '../../../_components/form-panel';
 import { Badge } from '../../_components/badge';
+import { BackNav } from '../../_components/back-nav';
+import { RecentItemsList } from '../../_components/recent-items-list';
 import { PageTitle } from '../../_components/page-title';
 import { Notice } from '../../_components/notice';
 import dlg from '../../_components/dialog.module.css';
@@ -310,6 +312,7 @@ export default function StyleguidePage() {
       {/* The page's own header renders the shared PageTitle — the canonical
           specimen for the pattern, in use rather than in a jar. */}
       <PageTitle
+        back={{ label: 'Styleguides', href: '/admin/styleguide' }}
         title="Admin Styleguide"
         sub={
           <>
@@ -515,6 +518,37 @@ export default function StyleguidePage() {
 
       {/* ════ BADGES ════ */}
       <section className={sg.section}>
+        <h2 className={sg.sectionHead}>Back Navigation</h2>
+        <p className={sg.sectionNote}>
+          The one way back, in the one place (Patrick, 2026-08-25). <code>PageTitle</code> REQUIRES
+          a <code>back</code> prop and renders <code>BackNav</code> in a fixed slot above the h1:
+          <code>back=&#123;null&#125;</code> on a list (it remembers its own URL, filters and all, for
+          its children); <code>&#123; label, href &#125;</code> at depth 2 (&ldquo;&larr; Back to
+          News&rdquo;); <code>&#123; crumbs, current &#125;</code> at depth 3+ (breadcrumbs, last crumb
+          not a link, folds to one hop under 420px). A dirty form gets a Discard-changes dialog
+          before leaving. Never a back link in <code>children</code> or <code>sub</code> again.
+        </p>
+        <div className={sg.specimenGrid}>
+          <div className={`${sg.specimen} ${sg.specimenCanonical}`}>
+            <div className={sg.specimenLabel}>Depth 2 &mdash; back link</div>
+            <BackNav back={{ label: 'News', href: '/admin/news/articles' }} />
+          </div>
+          <div className={`${sg.specimen} ${sg.specimenCanonical}`}>
+            <div className={sg.specimenLabel}>Depth 3+ &mdash; breadcrumbs</div>
+            <BackNav
+              back={{
+                crumbs: [
+                  { label: 'Event Management', href: '/admin/rosters' },
+                  { label: 'Fall Campout', href: '/admin/rosters/1' }
+                ],
+                current: 'Money'
+              }}
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className={sg.section}>
         <h2 className={sg.sectionHead}>Badges &amp; Status Pills</h2>
         <p className={sg.sectionNote}>
           Phase A COMPLETE (2026-08-21): the four naming families (.badge / .statusPill /
@@ -599,12 +633,16 @@ export default function StyleguidePage() {
       <section className={sg.section}>
         <h2 className={sg.sectionHead}>Data Tables</h2>
         <p className={sg.sectionNote}>
-          Phase B COMPLETE (2026-08-21): both clusters normalized within themselves — compact
-          (calendar canon: albums, meetings, roster, scoutbook-export, plus meeting-plan,
-          whose navy header Patrick chose to normalize) and wrapped-card (ledger canon:
-          articles, finance, records, access). Remaining outliers (lookups, dashboard,
-          media-manager, events-admin) are documented, not drift-by-accident — they fold in
-          Phase C alongside the <code>.numCell</code>-vs-inline-<code>textAlign</code> sweep.
+          Tables consolidation wave 1 (2026-08-25, Patrick approved the seven patterns in{' '}
+          <a href="/prototypes/admin-tables-prototype.html">the prototype</a>): <strong>DataTable·Compact</strong>{' '}
+          = calendar canon + albums, meetings, roster, scoutbook-export, meeting-plan, and now
+          dashboard, lookups, media-manager and patrols (all literal 12.5px / 8px 10px / th 10px
+          uppercase on gray-50). <strong>DataTable·Card</strong> = ledger canon + articles, finance,
+          records, and now access (its sticky header kept). <strong>DataTable·Dense Grid</strong> is
+          the events roster grid, a third canon on purpose. Still to come in later waves: RecordList
+          (audits), Board (assignments — the only &ldquo;board&rdquo;; the patrol one is a Compact table
+          now), ExpandableSummary (finance activity report), PrintTable (roster-print / snapshot) get
+          named specimens; then the <code>.numCell</code>-vs-inline-<code>textAlign</code> sweep.
         </p>
         <div className={sg.specimenGrid}>
           <Specimen
@@ -701,6 +739,31 @@ export default function StyleguidePage() {
       </section>
 
       {/* ════ CARDS ════ */}
+      <section className={sg.section}>
+        <h2 className={sg.sectionHead}>Recent Items List</h2>
+        <p className={sg.sectionNote}>
+          The sidebar list of recent reports / ceremonies &mdash; one shared{' '}
+          <code>RecentItemsList</code> (<code>_components/recent-items-list</code>) since 2026-08-25,
+          replacing two drifted <code>.reportList</code> copies. Each item is a clickable card; the
+          active one carries the navy border and <code>aria-current=&quot;page&quot;</code>.
+          The RecordList pattern of the tables consolidation.
+        </p>
+        <div className={sg.specimenGrid}>
+          <div className={`${sg.specimen} ${sg.specimenCanonical}`}>
+            <div className={sg.specimenLabel}>Canonical</div>
+            <RecentItemsList
+              ariaLabel="Recent reports"
+              activeKey="b"
+              items={[
+                { key: 'a', href: '#', label: 'Fall 2026 Court of Honor', meta: 'Sep 14', badge: <Badge variant="success">Final</Badge> },
+                { key: 'b', href: '#', label: 'Weekly advancement', meta: 'Aug 24', badge: <Badge variant="warning">Draft</Badge> },
+                { key: 'c', href: '#', label: 'Summer camp recap', meta: 'Aug 2' }
+              ]}
+            />
+          </div>
+        </div>
+      </section>
+
       <section className={sg.section}>
         <h2 className={sg.sectionHead}>Cards &amp; Panels</h2>
         <p className={sg.sectionNote}>

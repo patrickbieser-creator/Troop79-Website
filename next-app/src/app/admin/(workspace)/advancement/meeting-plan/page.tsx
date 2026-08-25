@@ -41,7 +41,7 @@ export default async function MeetingPlanPage() {
 
   return (
     <>
-      <PageTitle
+      <PageTitle back={null}
         title="Meeting Plan"
         sub="Suggested advancement for a troop meeting, generated on demand from the ledger:
           up to three meeting-doable requirements per scout, grouped into sessions of eight

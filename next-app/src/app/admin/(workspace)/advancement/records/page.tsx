@@ -121,7 +121,7 @@ export default async function RecordsPage({
 
   return (
     <>
-      <PageTitle
+      <PageTitle back={null}
         title={<>Submit &amp; Present</>}
         sub={
           <>

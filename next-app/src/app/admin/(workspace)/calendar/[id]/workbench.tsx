@@ -25,10 +25,10 @@
 
 import { useState, useTransition } from 'react';
 import { Button } from '../../../_components/button';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { CalendarCategoryRow, CategoryTemplate } from '@/lib/calendar-categories';
 import { TabStrip, type TabStripItem } from '../../_components/tab-strip';
+import { BackNav } from '../../_components/back-nav';
 import { CalendarEntryForm, type CalendarEntryRow } from '../entry-form';
 import { RollCall, type RollCallProps } from './roll-call/roll-call';
 import { MeetingEditor, type MeetingEditorProps } from '../../advancement/meetings/[id]/meeting-editor';
@@ -169,9 +169,7 @@ export function Workbench({
     <>
       <div className={styles.head}>
         <div>
-          <Link href="/admin/calendar" className={styles.backLink}>
-            &larr; All calendar entries
-          </Link>
+          <BackNav back={{ label: 'Calendar', href: '/admin/calendar' }} current={entry.title} />
           <h1>{entry.title}</h1>
           <p className={styles.headMeta}>
             {/* inline: dynamic — per-category color from the lookup table */}

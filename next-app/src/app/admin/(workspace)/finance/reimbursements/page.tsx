@@ -18,7 +18,7 @@ export default async function ReimbursementsPage() {
 
   return (
     <>
-      <PageTitle
+      <PageTitle back={null}
         title="Reimbursements"
         sub="Approve, deny, or pay out requests families submit at /member/reimbursements."
       />
