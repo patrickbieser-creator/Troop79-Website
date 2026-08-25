@@ -1,17 +1,21 @@
 # Signup Confirmation Email
 
 **Status:** Draft — awaiting Patrick's answers to the Open Questions
-**Drafted:** 2026-08-25 (rev 3 — two audiences, template library)
+**Drafted:** 2026-08-25 (rev 4 — recipients: every signed-up family member; leaders may reuse the family message)
 **Priority:** High
 
 ## Overview
 
 When a family submits (or updates) a signup, the app sends **two different messages**:
 
-1. **Family confirmation** — the receipt, to the submitting household: what they signed up for,
-   where and when, what they owe and how to pay, echoed back in full.
-2. **Leader notification** — to up to **five** leader addresses set on the signup: who just
-   signed up, what they chose, and a link to the roster.
+1. **Family confirmation** — the receipt, to **every member of the family who signed up** and
+   has an email address (the adults, and any scout with an email on their person record),
+   plus the submitting adult: what they signed up for, where and when, what they owe and how
+   to pay, echoed back in full.
+2. **Leader notification** — to up to **five** leader addresses set on the signup (the "cc"
+   list): who just signed up, what they chose, and a link to the roster. A leader panel option,
+   **Use the family message**, sends the leaders the family receipt instead of a separate
+   leader template.
 
 Both are written from a **reusable template library**: site-wide templates (name · audience ·
 subject · body with merge fields), managed under Lookups & Admin, so "Campout confirmation",
@@ -53,10 +57,14 @@ already used by the roster's "email non-responders" and the identity sign-in mai
       and body, and a live **Preview** rendered with this event's real data (title, dates,
       location, deadline, payment instructions) and sample people. Save is dirty-gated with
       Discard, per the Save standard.
-- [ ] On a successful family submit (new or edited signup): the **Family** message goes to the
-      submitting household's adult address(es); the **Leader** message goes to each configured
-      leader address — every recipient individually, never a shared To:. Nothing is sent for an
-      audience that is off, and nothing at all when email is unconfigured.
+- [ ] On a successful family submit (new or edited signup): the **Family** message goes to
+      every signed-up member of the household who has an email (adults and scouts alike) plus
+      the submitting adult; the **Leader** message goes to each configured leader address —
+      every recipient individually, never a shared To:. Nothing is sent for an audience that
+      is off, and nothing at all when email is unconfigured.
+- [ ] The Leaders panel offers **Use the family message**: when on, the leader template picker
+      and Customize are hidden and every leader address receives the family receipt (rendered
+      for the family audience — leader-only fields stay blank).
 - [ ] A send failure never fails the signup; it is logged on the signup and visible to leaders.
 - [ ] The family message can echo the whole signup back — going, guests, days, jobs, rides, price
       tiers, amount due, payment instructions, question answers — via `[summary]` or appended
@@ -82,8 +90,11 @@ Pure (db project):
 - [ ] `RenderMessage_DateToken_IsARangeForMultiDay_AndOneDayOtherwise()` — `fmtRange` / `fmtDateLong`.
 - [ ] `ResolveMessage_UsesTheEventOverride_ElseTheTemplate_ElseTheSeededDefault()`.
 - [ ] `Recipients_AcceptUpToFive_RejectSixth_InvalidAndDuplicates()`.
-- [ ] `FamilyRecipients_AreTheHouseholdsAdults_Deduped_NeverTheLeaderList()` and
-      `LeaderRecipients_AreTheFive_NeverTheFamily()` — the two audiences never cross.
+- [ ] `FamilyRecipients_AreEverySignedUpMemberWithAnEmail_PlusTheSubmitter_Deduped()` — a scout
+      with an email gets it; a scout without one is skipped, not an error; a household adult who
+      did NOT sign up is not mailed unless they submitted.
+- [ ] `LeaderRecipients_AreTheFive_NeverTheFamily()` — the two lists never cross.
+- [ ] `LeaderUseFamilyMessage_SendsTheFamilyReceipt_ToTheLeaders_WithLeaderTokensBlank()`.
 - [ ] `SendConfirmations_SkipAnAudienceThatIsOff_AndEverythingWhenUnconfigured()`.
 - [ ] `SendConfirmations_Failure_DoesNotThrow_AndIsLogged()`.
 - [ ] `Template_InUse_CannotBeDeleted_CanBeRetired()`.
@@ -122,6 +133,7 @@ Columns on `event_signups` — the block is 1:1 with a signup:
 | `confirm_family_subject` / `confirm_family_body` | text | the per-event customization; null → use the template |
 | `confirm_leader_enabled` | boolean not null default false | |
 | `confirm_leader_template_id` | bigint references email_templates | |
+| `confirm_leader_use_family` | boolean not null default false | "Use the family message" — leaders get the family receipt; the leader template/override are ignored while on |
 | `confirm_leader_subject` / `confirm_leader_body` | text | |
 | `confirm_recipients` | text[] not null default '{}' | the leader list, ≤ 5 (`check (cardinality(confirm_recipients) <= 5)`) |
 | `confirm_last_error` | text | last send failure, cleared on the next success |
@@ -200,8 +212,11 @@ action button is "Open event", the leader's is "Open roster".
 `updated_by` stamp is written: `sendSignupConfirmations(signupId, householdKey, writtenRows,
 change)` loads the signup's confirm columns + the two resolved messages; builds one context from
 the written rows + the household (`loadHouseholdByKey` is already in hand) + the balance; for each
-enabled audience resolves recipients (family: household adults' emails; leaders:
-`confirm_recipients`), renders, and `sendEmail({ …, confirm: true })`. Try/catch per audience:
+enabled audience resolves recipients — **family:** the email of every person on the written
+rows (adults and scouts, via `people.email`) plus the submitting adult, deduped, skipping anyone
+without an address; **leaders:** `confirm_recipients` — renders (the leader audience renders the
+family message instead when `confirm_leader_use_family` is on), and
+`sendEmail({ …, confirm: true })`. Try/catch per audience:
 on failure write `confirm_last_error` and continue to the redirect. Never `await` it before the
 redirect if it would slow the family's submit past ~1s — Resend is fast; measure, fall back to
 Next's `after()` if not. `cancelSignupAction` does **not** email in this cut (Open Question 2).
@@ -216,7 +231,10 @@ block: `FormSection` "Confirmation email" with the master toggle; inside, two `F
 filtered, retired ones hidden unless selected), a one-line preview of the resolved subject,
 **Customize for this event…** (opens the message editor pre-filled; saving writes the
 `confirm_*_subject/body` override and marks the panel "Customized" with **Reset to template**),
-and for Leaders the five `RecipientRow` inputs (type=email, shared field kit, per-field error).
+and for Leaders the five `RecipientRow` inputs (type=email, shared field kit, per-field error)
+plus a **Use the family message** checkbox at the top of the panel — when ticked, the leader
+template picker, subject preview and Customize collapse away, and a hint says "Leaders receive
+exactly what the family receives".
 Saves through `updateConfirmation(signupId, entryId, fields)` (`calendar.write`); help badge on
 the block title (`help.tsx: signup.confirmation`) explaining template vs. customization.
 
@@ -270,8 +288,9 @@ retry" per household from the log (Phase 2), and a **Resend confirmation** row a
       `[changed]` = "Updated signup".) On cancel? (Assumed no in this cut.)
 - [ ] **Reply-to:** the troop address (`troopEmail()`) for the family message, or the first
       leader address in the list? (Leader message: reply-to the family's email — assumed.)
-- [ ] **Per-household or per-person?** One family email per household submit (assumed), one leader
-      email per submit (not one per scout).
+- [ ] **Scouts' emails:** the family receipt goes to every signed-up member with an address —
+      including scouts. Assumed fine (it is their signup); say so if scouts should be excluded
+      until a certain age.
 - [ ] **Log table now or Phase 2?** Affects step 1 and the roster's "sent" column.
 - [ ] **Library scope:** signup templates only for now, or make `audience` open-ended so the
       newsletter / non-responder nudges can join later? (Assumed: the enum starts with the two;
