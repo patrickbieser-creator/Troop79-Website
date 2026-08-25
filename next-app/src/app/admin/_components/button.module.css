@@ -65,12 +65,14 @@
 .dangerSolid:hover:not(:disabled) { background: var(--admin-danger-dark); border-color: var(--admin-danger-dark); }
 
 /* quiet — a link that happens to be a button. */
+/* Keeps a little side padding so adjacent quiet actions in a row ("Edit
+   Archive") don't read as one word. */
 .quiet {
   background: none;
   border-color: transparent;
   color: var(--admin-forest);
   text-decoration: underline;
-  padding-left: 0;
-  padding-right: 0;
+  padding-left: var(--admin-space-2);
+  padding-right: var(--admin-space-2);
 }
 .quiet:hover:not(:disabled) { color: var(--admin-navy); }
