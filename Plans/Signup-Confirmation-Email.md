@@ -73,7 +73,12 @@ already used by the roster's "email non-responders" and the identity sign-in mai
       `[changed]` = "Updated signup", the subject prefixed "Updated: " when the template's
       subject does not itself use `[changed]`, and a first line in the body noting what changed
       when it can be stated simply (people added/removed, jobs, rides); otherwise "Your signup
-      was updated." Cancellations do not send in this cut.
+      was updated."
+- [ ] **Cancellations send too** (Patrick, 2026-08-25): `cancelSignupAction` sends both messages
+      with `[changed]` = "Cancelled signup", subject prefixed "Cancelled: " unless the template
+      uses `[changed]`, `[changes]` = "Your signup for [event] was cancelled." and the family
+      receipt's summary showing what was cancelled. Same recipients rule; logged with
+      `change = 'cancel'`.
 - [ ] The Leaders panel offers **Use the family message**: when on, the leader template picker
       and Customize are hidden and every leader address receives the family receipt (rendered
       for the family audience — leader-only fields stay blank).
@@ -113,6 +118,7 @@ Pure (db project):
       the same cc typed twice: one email each; the family receipt wins a tie.
 - [ ] `EditedSignup_ResendsBoth_MarkedAsUpdate()` — `[changed]` = "Updated signup", subject gets
       "Updated: " unless it already uses `[changed]`, the change line lists people/jobs/rides diffs.
+- [ ] `CancelledSignup_SendsBoth_MarkedAsCancelled_WithThePreCancelSummary()`.
 - [ ] `LeaderUseFamilyMessage_SendsTheFamilyReceipt_ToTheLeaders_WithLeaderTokensBlank()`.
 - [ ] `ReplyTo_IsTheFirstLeaderAddress_ElseTheTroopAddress()`.
 - [ ] `SendConfirmations_SkipAnAudienceThatIsOff_AndEverythingWhenUnconfigured()`.
@@ -171,7 +177,7 @@ default (so a signup with the block on but nothing picked still sends something 
 | `event_signup_id` | bigint references event_signups on delete cascade | |
 | `household_id` | bigint references households | null for the two household-less party shapes |
 | `audience` | text check in ('family','leader') | |
-| `change` | text check in ('new','update','resend') | `resend` = a leader clicked Resend on the roster |
+| `change` | text check in ('new','update','cancel','resend') | `resend` = a leader clicked Resend on the roster |
 | `recipients` | text[] not null | after dedup and the dev relay (what was actually written to) |
 | `status` | text check in ('sent','skipped','failed') | |
 | `detail` | text | the provider error, or "email not configured" |
@@ -239,7 +245,7 @@ audiences except the *Leader only* group, which renders blank in a family templa
 | `[email]` / `[phone]` | the submitting adult's contact details |
 | `[roster_link]` | absolute URL of the event's admin roster (`/admin/calendar/{entryId}?tab=signup&view=roster`) |
 | `[headcount]` | the event's running total after this signup ("31 going of 40") |
-| `[changed]` | "New signup" or "Updated signup" — available to BOTH audiences (moved out of Leader-only in rev 5) |
+| `[changed]` | "New signup", "Updated signup" or "Cancelled signup" — available to BOTH audiences |
 | `[changes]` | for an update, the plain-language diff ("Added Blake; dropped the Friday setup job; now driving out with 3 seats"), or "Your signup was updated." when the diff is not simple; blank for a new signup |
 
 `renderMessage(template, ctx, audience)` → escaped text; `[unknown]` untouched. The email is
@@ -260,7 +266,10 @@ over both lists (trim + lower-case): an address in both goes to the family list 
 and `sendEmail({ …, replyTo: confirm_recipients[0] ?? troopEmail(), confirm: true })` per
 audience (`sendEmail` gains an optional `replyTo`; Resend supports it directly). For an **update** the sender diffs the
 written rows against the previous rows (the RPC returns the household's current rows; the
-previous state is read just before the write) to fill `[changes]` and set `[changed]`. Try/catch per audience:
+previous state is read just before the write) to fill `[changes]` and set `[changed]`.
+`cancelSignupAction` calls the same sender with `change = 'cancel'` after its write succeeds —
+the context is built from the rows as they were before cancellation, so the receipt says what
+was dropped. Try/catch per audience:
 on failure write `confirm_last_error` and continue to the redirect. Never `await` it before the
 redirect if it would slow the family's submit past ~1s — Resend is fast; measure, fall back to
 Next's `after()` if not. `cancelSignupAction` does **not** email in this cut (Open Question 2).
@@ -318,7 +327,7 @@ Resend" per household from the log, and a **Resend confirmation** row action (fa
    context builder, message resolution — pure tests first.
 3. `events/actions.ts`: `updateConfirmation`, `sendSignupConfirmations` (transport injected);
    `lookups/actions.ts`: template CRUD + retire.
-4. `submitSignupAction`: call the sender after success; log/ignore failures.
+4. `submitSignupAction` and `cancelSignupAction`: call the sender after success; log/ignore failures.
 5. `_components/message-editor-dialog.tsx` (shared) + styleguide specimen under Dialogs.
 6. Lookups & Admin → Email templates editor (the existing lookups table shape).
 7. Builder `ConfirmationPanel` (Family / Leaders sub-panels, pickers, Customize/Reset, recipients);
@@ -330,8 +339,6 @@ Resend" per household from the log, and a **Resend confirmation** row action (fa
 
 ## Open Questions
 
-- [ ] **Cancellations:** no email on cancel in this cut (Patrick decided edits only, 2026-08-25);
-      revisit when the log/Resend lands.
 - [ ] **Library scope:** signup templates only for now, or make `audience` open-ended so the
       newsletter / non-responder nudges can join later? (Assumed: the enum starts with the two;
       adding a value is a one-line migration.)
