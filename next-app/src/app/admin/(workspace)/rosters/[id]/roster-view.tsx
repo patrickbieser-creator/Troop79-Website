@@ -398,20 +398,30 @@ export async function loadRoster(signupId: number) {
   const ridesOut = legTiles(transportEntries, cars, 'out');
   const ridesBack = legTiles(transportEntries, cars, 'back');
 
-  // Confirmation email status: the latest FAMILY log row per household.
+  // Confirmation email status: the latest FAMILY log row per household —
+  // but only for households still ON the signup (Patrick, 2026-08-25: a
+  // family whose signup was cancelled and deleted was still listed, with a
+  // Resend, because its cancellation receipt was the latest row).
+  const liveHouseholds = new Set(
+    ((entries ?? []) as Record<string, unknown>[])
+      .filter((e) => e.status !== 'cancelled' && e.household_id != null)
+      .map((e) => Number(e.household_id))
+  );
   const { data: logRows } = await supabase
     .from('signup_confirmation_log')
-    .select('household_id, status, detail, sent_at')
+    .select('household_id, status, detail, sent_at, change')
     .eq('event_signup_id', sig.id)
     .eq('audience', 'family')
     .order('sent_at', { ascending: false });
-  const confirmations: { householdId: number; household: string; status: string; detail: string | null; sentAt: string }[] = [];
-  for (const l of (logRows ?? []) as { household_id: number | null; status: string; detail: string | null; sent_at: string }[]) {
-    if (l.household_id == null || confirmations.some((c) => c.householdId === l.household_id)) continue;
+  const confirmations: { householdId: number; household: string; status: string; change: string; detail: string | null; sentAt: string }[] = [];
+  for (const l of (logRows ?? []) as { household_id: number | null; status: string; change: string; detail: string | null; sent_at: string }[]) {
+    if (l.household_id == null || !liveHouseholds.has(l.household_id)) continue;
+    if (confirmations.some((c) => c.householdId === l.household_id)) continue;
     confirmations.push({
       householdId: l.household_id,
       household: hhById.get(l.household_id) ?? '—',
       status: l.status,
+      change: l.change,
       detail: l.detail,
       sentAt: l.sent_at
     });
@@ -548,7 +558,9 @@ export function RosterView({ data, signupId }: { data: RosterData; signupId: num
               <li key={c.householdId}>
                 <span>
                   {c.household} —{' '}
-                  {c.status === 'failed' ? `failed — ${c.detail ?? 'unknown error'}` : `${c.status} ${fmtDateTime(c.sentAt)}`}
+                  {c.status === 'failed'
+                    ? `failed — ${c.detail ?? 'unknown error'}`
+                    : `${c.change === 'update' ? 'update sent' : c.change === 'resend' ? 'resent' : c.status} ${fmtDateTime(c.sentAt)}`}
                 </span>
                 <ResendConfirmation signupId={signupId} householdId={c.householdId} />
               </li>
