@@ -191,7 +191,7 @@ export function PeopleTable({
   return (
     <div>
       <div className={styles.tableToolbar}>
-        <SearchField value={q} onChange={setQ} label="Search adults" resultCount={visible.length} totalCount={people.length} />
+        <SearchField value={q} onChange={setQ} label="Search adults" />
         {/* The front door adults never had — same toolbar position as the
             Scouts tab's "+ Add Scout". */}
         <AddButton onClick={() => setAdding(true)}>+ Add Adult</AddButton>

@@ -61,7 +61,7 @@ export function SearchFieldSpecimen() {
   const { q, setQ, visible } = useTableSearch(SEARCH_ROWS, searchFields);
   return (
     <div>
-      <SearchField value={q} onChange={setQ} label="Search scouts" resultCount={visible.length} totalCount={SEARCH_ROWS.length} />
+      <SearchField value={q} onChange={setQ} label="Search scouts" />
       <ul>
         {visible.map((r) => (
           <li key={r.name}>{r.name}</li>

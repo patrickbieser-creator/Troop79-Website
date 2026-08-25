@@ -168,9 +168,8 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId
   return (
     <>
       <div className={styles.tableToolbar}>
-        {only ? (
-          <span className={styles.toolbarCount}>{scouts.length} scouts</span>
-        ) : (
+        {/* The count lives on the tab (Patrick, 2026-08-25: "redundant"). */}
+        {!only && (
           <TabStrip
             ariaLabel="Scout status"
             activeKey={tab}
@@ -180,7 +179,7 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId
             ]}
           />
         )}
-        <SearchField value={q} onChange={setQ} label="Search scouts" resultCount={searched.length} totalCount={visible.length} />
+        <SearchField value={q} onChange={setQ} label="Search scouts" />
         <span className={styles.toolbarSpacer} />
         <AddButton onClick={() => setOpenFor('new')}>+ Add Scout</AddButton>
       </div>

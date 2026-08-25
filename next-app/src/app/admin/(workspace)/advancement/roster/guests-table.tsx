@@ -83,7 +83,7 @@ export function GuestsTable({ rows }: { rows: GuestTabRow[] }) {
 
       {rows.length > 0 && (
         <div className={styles.tableToolbar}>
-          <SearchField value={q} onChange={setQ} label="Search guests" resultCount={visible.length} totalCount={rows.length} />
+          <SearchField value={q} onChange={setQ} label="Search guests" />
         </div>
       )}
       {rows.length === 0 ? (

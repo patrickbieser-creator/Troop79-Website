@@ -154,7 +154,7 @@ export function PatrolTable({
   return (
     <div>
       <div className={styles.tableToolbar}>
-        <SearchField value={q} onChange={setQ} label="Search scouts" resultCount={shown.length} totalCount={rows.length} />
+        <SearchField value={q} onChange={setQ} label="Search scouts" />
       </div>
       <div className={styles.countsRow}>
         {counts.map((c) => (
