@@ -66,6 +66,70 @@ export interface ConfirmationContext {
   changes: string | null;
 }
 
+/**
+ * Which optional blocks the signup offered (Patrick, 2026-08-25: "suppress
+ * content in the summary for blocks not enabled"). Going is never a block —
+ * it is the signup. Each flag mirrors the family form's own condition for
+ * showing that section, so the receipt echoes exactly what was asked.
+ */
+export interface SignupBlocks {
+  /** guest_mode ≠ 'none' */
+  guests: boolean;
+  /** a per-day price exists */
+  days: boolean;
+  /** the signup has job slots */
+  jobs: boolean;
+  /** drivers_needed */
+  rides: boolean;
+  /** the signup has prices (also governs Amount due / payment) */
+  prices: boolean;
+  /** the signup has questions */
+  questions: boolean;
+  /** notes_prompt set, or guests (guest notes) */
+  notes: boolean;
+}
+
+export const ALL_BLOCKS: SignupBlocks = { guests: true, days: true, jobs: true, rides: true, prices: true, questions: true, notes: true };
+
+/** Derive the blocks from a signup row plus its child lists — the same rules the family form uses. */
+export function blocksFromSignup(
+  signup: Record<string, unknown>,
+  lists: { prices: { per?: unknown }[]; slots: unknown[]; questions: unknown[] }
+): SignupBlocks {
+  const guests = typeof signup.guest_mode === 'string' && signup.guest_mode !== 'none';
+  const notesPrompt = typeof signup.notes_prompt === 'string' && signup.notes_prompt.trim() !== '';
+  return {
+    guests,
+    days: lists.prices.some((p) => p.per === 'day'),
+    jobs: lists.slots.length > 0,
+    rides: signup.drivers_needed === true,
+    prices: lists.prices.length > 0,
+    questions: lists.questions.length > 0,
+    notes: notesPrompt || guests
+  };
+}
+
+/** Blank every section whose block is off, so no caption or token can print it. Pure. */
+export function applyBlocks(ctx: ConfirmationContext, blocks: SignupBlocks): ConfirmationContext {
+  const h = ctx.household;
+  return {
+    ...ctx,
+    household: {
+      ...h,
+      guests: blocks.guests ? h.guests : [],
+      days: blocks.days ? h.days : [],
+      jobs: blocks.jobs ? h.jobs : [],
+      rides: blocks.rides ? h.rides : [],
+      answers: blocks.questions ? h.answers : [],
+      notes: blocks.notes ? h.notes : [],
+      prices: blocks.prices ? h.prices : [],
+      amountDue: blocks.prices ? h.amountDue : 0,
+      paid: blocks.prices ? h.paid : 0,
+      payment: blocks.prices ? h.payment : null
+    }
+  };
+}
+
 export interface MessageTemplate {
   subject: string;
   body: string;
@@ -223,7 +287,9 @@ function values(ctx: ConfirmationContext, audience: Audience): Record<string, st
     notes: list(h.notes),
     slip: h.slip.join('; '),
     prices: list(h.prices),
-    amount_due: money(h.amountDue),
+    // Blank — not "$0.00" — when money was never part of this signup, so the
+    // caption above it vanishes like any other empty section.
+    amount_due: h.prices.length || h.amountDue > 0 || h.paid > 0 ? money(h.amountDue) : '',
     paid: h.paid > 0 ? money(h.paid) : '',
     paid_note: h.paid > 0 ? `(paid ${money(h.paid)})` : '',
     payment: h.payment ?? '',
@@ -260,7 +326,8 @@ function tidy(text: string): string {
     .replace(/[ \t]+([,.;])/g, '$1')
     .replace(/[ \t]{2,}/g, ' ')
     .replace(/^(\*\*[^*\n]+\*\*)\s*\n(?=\s*\n|\s*$)/gm, '')
-    .replace(/^\*\*[^*\n]+:\*\* *\n/gm, '')
+    // "**Amount due:** " / "**Amount due:** ." — a caption left with only punctuation
+    .replace(/^\*\*[^*\n]+:\*\*[ .,;]*(\n|$)/gm, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }

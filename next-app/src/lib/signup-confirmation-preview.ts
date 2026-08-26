@@ -6,7 +6,7 @@
  * so the builder loader and the library page can both build one.
  */
 
-import type { ConfirmationContext } from './signup-confirmation';
+import { applyBlocks, type ConfirmationContext, type SignupBlocks } from './signup-confirmation';
 
 export interface PreviewEventInput {
   entryId: number;
@@ -20,13 +20,15 @@ export interface PreviewEventInput {
   deadline?: string | null;
   paymentInstructions?: string | null;
   siteUrl: string;
+  /** The blocks this signup offers — sample facts for a block that is off are dropped. Omit = all on. */
+  blocks?: SignupBlocks;
 }
 
 export const SAMPLE_SCOUT = 'Avery Scout';
 export const SAMPLE_ADULT = 'Dana Bieser';
 
 export function previewContext(e: PreviewEventInput): ConfirmationContext {
-  return {
+  const ctx: ConfirmationContext = {
     event: {
       title: e.title,
       entryDate: e.entryDate,
@@ -63,6 +65,7 @@ export function previewContext(e: PreviewEventInput): ConfirmationContext {
     change: 'new',
     changes: null
   };
+  return e.blocks ? applyBlocks(ctx, e.blocks) : ctx;
 }
 
 /** A library-page preview with no event in hand: a plausible campout. */

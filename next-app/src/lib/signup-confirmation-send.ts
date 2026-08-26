@@ -24,6 +24,8 @@ import { siteUrl } from '@/lib/site-url';
 import { GUEST_CLASSES } from '@/lib/participant-class';
 import type { Household } from '@/lib/households';
 import {
+  applyBlocks,
+  blocksFromSignup,
   describeChanges,
   fullMessageMd,
   renderMessage,
@@ -226,14 +228,15 @@ export async function buildConfirmation(
   const entryId = signup.calendar_entry_id as number;
   const snap = change === 'cancel' && before ? before : after;
 
-  const [{ data: entry }, { data: prices }, { data: balances }, { count: goingCount }, { data: questions }] = await Promise.all([
+  const [{ data: entry }, { data: prices }, { data: balances }, { count: goingCount }, { data: questions }, { count: slotCount }] = await Promise.all([
     supabase.from('calendar_entries').select('id, title, entry_date, end_date, start_time, end_time, location').eq('id', entryId).maybeSingle(),
-    supabase.from('event_prices').select('id, label, amount').eq('event_signup_id', signupId),
+    supabase.from('event_prices').select('id, label, amount, per').eq('event_signup_id', signupId),
     snap.entries.length
       ? supabase.from('signup_entry_balances').select('entry_id, owed, paid').in('entry_id', snap.entries.map((e) => e.id))
       : Promise.resolve({ data: [] as { entry_id: number; owed: number; paid: number }[] }),
     supabase.from('signup_entries').select('id', { count: 'exact', head: true }).eq('event_signup_id', signupId).eq('status', 'yes').eq('participation', 'full'),
-    supabase.from('signup_questions').select('id, prompt').eq('event_signup_id', signupId).order('sort')
+    supabase.from('signup_questions').select('id, prompt').eq('event_signup_id', signupId).order('sort'),
+    supabase.from('signup_slots').select('id', { count: 'exact', head: true }).eq('event_signup_id', signupId)
   ]);
   const { data: answers } = snap.entries.length
     ? await supabase.from('signup_answers').select('signup_entry_id, question_id, value').in('signup_entry_id', snap.entries.map((e) => e.id))
@@ -284,7 +287,7 @@ export async function buildConfirmation(
     null;
   const capacity = signup.capacity as number | null;
 
-  const ctx: ConfirmationContext = {
+  const rawCtx: ConfirmationContext = {
     event: {
       title: e.title ?? 'the event',
       entryDate: e.entry_date ?? '',
@@ -323,6 +326,15 @@ export async function buildConfirmation(
           ? `Your signup for ${e.title ?? 'the event'} was cancelled.`
           : null
   };
+  // Only the blocks this signup offered speak in the receipt (2026-08-25).
+  const ctx = applyBlocks(
+    rawCtx,
+    blocksFromSignup(signup, {
+      prices: (prices ?? []) as { per?: unknown }[],
+      slots: Array.from({ length: slotCount ?? 0 }),
+      questions: questions ?? []
+    })
+  );
 
   // Every household member with their email — signed up or not — so the
   // recipient rule (every signed-up member + cc all parents when only scouts

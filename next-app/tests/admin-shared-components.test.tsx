@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TabStrip } from '../src/app/admin/(workspace)/_components/tab-strip';
 import { AddButton } from '../src/app/admin/(workspace)/_components/add-button';
@@ -195,6 +195,59 @@ describe('Dialog', () => {
     );
     await userEvent.click(screen.getByTestId('dlg'));
     expect(onBackdropAttempt).toHaveBeenCalledOnce();
+  });
+
+  // Patrick, 2026-08-25: the message editor "closes unexpectedly on keystrokes
+  // or mouse movements". A click whose target is the <dialog> element is NOT
+  // always the backdrop — the dialog's own scrollbar is the element, and a
+  // drag-select that starts in a field and releases elsewhere fires `click`
+  // on the common ancestor. Only a press-and-release both outside the box
+  // counts as a backdrop click.
+  function boxed(el: HTMLElement) {
+    el.getBoundingClientRect = () =>
+      ({ left: 100, top: 100, right: 500, bottom: 400, width: 400, height: 300, x: 100, y: 100, toJSON: () => ({}) }) as DOMRect;
+  }
+
+  it('SharedDialog_StaysOpen_WhenItsOwnScrollbarIsClicked', () => {
+    const onClose = vi.fn();
+    render(
+      <Dialog open onClose={onClose} data-testid="dlg">
+        <DialogBody>Inner content</DialogBody>
+      </Dialog>
+    );
+    const dlg = screen.getByTestId('dlg');
+    boxed(dlg);
+    fireEvent.pointerDown(dlg, { clientX: 495, clientY: 250 });
+    fireEvent.click(dlg, { clientX: 495, clientY: 250 });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('SharedDialog_StaysOpen_WhenADragStartedInsideReleasesOnTheBackdrop', () => {
+    const onClose = vi.fn();
+    render(
+      <Dialog open onClose={onClose} data-testid="dlg">
+        <DialogBody>Inner content</DialogBody>
+      </Dialog>
+    );
+    const dlg = screen.getByTestId('dlg');
+    boxed(dlg);
+    fireEvent.pointerDown(screen.getByText('Inner content'), { clientX: 200, clientY: 200 });
+    fireEvent.click(dlg, { clientX: 10, clientY: 10 });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('SharedDialog_Closes_WhenPressAndReleaseAreBothOnTheBackdrop', () => {
+    const onClose = vi.fn();
+    render(
+      <Dialog open onClose={onClose} data-testid="dlg">
+        <DialogBody>Inner content</DialogBody>
+      </Dialog>
+    );
+    const dlg = screen.getByTestId('dlg');
+    boxed(dlg);
+    fireEvent.pointerDown(dlg, { clientX: 10, clientY: 10 });
+    fireEvent.click(dlg, { clientX: 10, clientY: 10 });
+    expect(onClose).toHaveBeenCalledOnce();
   });
 });
 

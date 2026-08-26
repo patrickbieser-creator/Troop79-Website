@@ -10,6 +10,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { loadEventNav } from '../../rosters/[id]/event-nav-data';
 import { loadEmailTemplates } from '../../advancement/lookups/email-template-actions';
 import { previewContext } from '@/lib/signup-confirmation-preview';
+import { blocksFromSignup } from '@/lib/signup-confirmation';
 import { siteUrl } from '@/lib/site-url';
 
 export async function loadBuilderData(signupId: number) {
@@ -87,7 +88,12 @@ export async function loadBuilderData(signupId: number) {
         location: e.location,
         deadline: sig.deadline,
         paymentInstructions: sig.payment_instructions,
-        siteUrl: siteUrl()
+        siteUrl: siteUrl(),
+        blocks: blocksFromSignup(signup as Record<string, unknown>, {
+          prices: (prices ?? []) as { per?: unknown }[],
+          slots: slots ?? [],
+          questions: questions ?? []
+        })
       })
     : null;
   return {

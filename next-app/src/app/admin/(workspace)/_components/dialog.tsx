@@ -28,8 +28,17 @@
  * allowed — in-context destructive buttons stay outlined, per the Phase A
  * danger-button decision).
  */
-import { forwardRef } from 'react';
+import { forwardRef, useRef } from 'react';
 import styles from './dialog.module.css';
+
+/** True when the point is outside the dialog box — i.e. on the backdrop.
+ *  A zero-size rect (not laid out, e.g. jsdom) can't be judged: treat the
+ *  <dialog>-targeted click as the backdrop, the pre-2026-08-25 rule. */
+function onBackdrop(el: HTMLElement, x: number, y: number): boolean {
+  const r = el.getBoundingClientRect();
+  if (!r.width || !r.height) return true;
+  return x < r.left || x > r.right || y < r.top || y > r.bottom;
+}
 
 type DialogProps = {
   danger?: boolean;
@@ -57,13 +66,25 @@ export const Dialog = forwardRef<HTMLDialogElement, DialogProps>(function Dialog
   const cls = [styles.dialog, danger ? styles.danger : null, className]
     .filter(Boolean)
     .join(' ');
+  // A backdrop click is a press AND a release both outside the box. A click
+  // whose target is the <dialog> element is not proof of that (2026-08-25,
+  // the message editor "closing on mouse movement"): the dialog's own
+  // scrollbar is the element itself, and a drag that starts in a field and
+  // releases elsewhere fires `click` on the common ancestor.
+  const pressedOnBackdrop = useRef(false);
   return (
     <dialog
       ref={ref}
       className={cls}
       onClose={onClose}
+      onPointerDown={(e) => {
+        pressedOnBackdrop.current = e.target === e.currentTarget && onBackdrop(e.currentTarget, e.clientX, e.clientY);
+      }}
       onClick={(e) => {
+        const pressed = pressedOnBackdrop.current;
+        pressedOnBackdrop.current = false;
         if (e.target !== e.currentTarget) return;
+        if (!pressed || !onBackdrop(e.currentTarget, e.clientX, e.clientY)) return;
         if (closeOnBackdrop) e.currentTarget.close();
         else onBackdropAttempt?.();
       }}
