@@ -22,15 +22,26 @@ import { requireCapability } from '@/lib/require-capability';
  * demographic shape (that lived on the now-deleted roster/leader-form.tsx;
  * editing an adult's demographics moved to the Roster's PersonEditor on the
  * `people` spine, 2026-08-17 — see change-requests.ts's LEADER_PERSON_FIELDS).
+ * `person_id` replaces the retired `scout_id` for telling a youth leader from
+ * an adult (Plans/Retire-Roster-Contact-Columns.md).
  */
 interface LeaderRow {
   code: string;
   name: string;
   role: string | null;
   is_person: boolean;
-  scout_id: string | null;
+  person_id: number | null;
 }
-import type { ScoutRow } from '../roster/scout-form';
+/** Just enough of a scout to place them in the Meeting Plan's Scout
+ *  Instructors picker — none of a scout's contact/demographic fields, which
+ *  this page has no use for. */
+interface LookupScoutRow {
+  id: string;
+  display_name: string;
+  current_rank: string | null;
+  active: boolean;
+  person_id: number | null;
+}
 import { MbEditor, type MbRow, type CounselorRow, type EditReqNode } from './mb-editor';
 import { NameLookupEditor, type NameRow } from './name-lookup-editor';
 import { EventEditor, type EventRow } from './event-editor';
@@ -139,12 +150,10 @@ async function loadLookups() {
     leadershipPositionsRes,
     officialTextRes
   ] = await Promise.all([
-    supabase.from('leaders').select('*').order('code'),
+    supabase.from('leaders').select('code, name, role, is_person, person_id').order('code'),
     supabase
       .from('scouts')
-      .select(
-        'id, first_name, last_name, display_name, patrol, current_rank, bsa_member_id, birthdate, gender, school, graduation_year, swim_class, junior_leader_override, active, inactive_reason, address_line1, address_line2, city, state, zip, phone, email, health_form_date, things_we_should_know'
-      )
+      .select('id, display_name, current_rank, active, person_id')
       .order('display_name'),
     supabase
       .from('merit_badges')
@@ -324,7 +333,7 @@ async function loadLookups() {
 
   return {
     leaders: (leadersRes.data ?? []) as LeaderRow[],
-    scouts: (scoutsRes.data ?? []) as ScoutRow[],
+    scouts: (scoutsRes.data ?? []) as LookupScoutRow[],
     mbs,
     counselorsByMb,
     mbReqTrees,
@@ -381,9 +390,11 @@ export default async function LookupsPage() {
 
   // Classify sign-off initials: youth = linked to an ACTIVE scout; aging out
   // (scout inactive) automatically flips those initials to adult.
-  const activeScoutIds = new Set(scouts.filter((s) => s.active).map((s) => s.id));
+  const activeScoutPersonIds = new Set(
+    scouts.filter((s) => s.active && s.person_id != null).map((s) => s.person_id as number)
+  );
   const leaderType = (l: LeaderRow): 'adult' | 'youth' | 'source' =>
-    !l.is_person ? 'source' : l.scout_id && activeScoutIds.has(l.scout_id) ? 'youth' : 'adult';
+    !l.is_person ? 'source' : l.person_id != null && activeScoutPersonIds.has(l.person_id) ? 'youth' : 'adult';
 
   // What each adult's login label would be if their login_name override were
   // blank — shown as a placeholder hint in the edit dialog. Computed over the

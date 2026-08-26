@@ -130,6 +130,21 @@ Found via browser verification on 2026-07-12 (also caused the footer's
 "© 2026Scout Troop 79"). Sweep check after adding prose with inline links:
 `curl -s localhost:3000/<page> | grep -oE '</a>[^ ,.<;)]{1,25}'` should return nothing.
 
+## People are the spine: contact details live on `people` only (2026-08-26)
+
+A human's email, phone, address, birthdate, gender, BSA ID, health-form date, YPT date and
+"things we should know" live on **`people`** (and `person_emails` for addresses — one `is_primary`
+row per person, with `people.primary_email` kept as a trigger-maintained cache of it). `scouts`
+carries only the scout's record (rank, patrol, school, swim class, junior leader, active) and
+`leaders` only the leader's (code, role, login fields); `leaders.name` is a trigger-derived copy of
+`people.display_name`. Household membership is `household_members` (scouts AND adults) — never a
+`household_id` on a scout. **Never add a contact or demographic column to `scouts` or `leaders`**,
+never read one from them, and never put a parent's address on a scout's record: a scout with no
+email of their own has none, and the sign-in picker offers the household's parents instead. Write
+demographics through `lib/write-person-demographics` (one writer for scouts and adults). Guard:
+`tests/no-roster-contact-column-reads.test.ts`. Plan of record:
+`Plans/Retire-Roster-Contact-Columns.md`; audit: `Plans/People-Model-Audit-2026-08-26.md`.
+
 ## Dates: one Central-pinned standard (2026-08-24)
 
 Every human-visible date goes through `src/lib/format-date.ts` — `fmtDate` ('Jul 12, 2026', the

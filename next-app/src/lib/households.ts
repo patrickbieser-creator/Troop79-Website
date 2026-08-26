@@ -82,15 +82,18 @@ interface PersonRow {
   display_name: string;
   primary_email: string | null;
   default_vehicle_seats: number | null;
+  /** The scout's own birthdate, read via person_id — moved off `scouts`
+   *  (Plans/Retire-Roster-Contact-Columns.md). */
+  birthdate: string | null;
 }
 
 /** At 18 a scout is no longer a scout — they are an adult, and belong in the
  *  picker as one. An explicit aged_out reason counts on its own, because most
  *  historic records carry no birthdate. */
-function noLongerYouth(scout: ScoutRow): boolean {
+function noLongerYouth(scout: Pick<ScoutRow, 'inactive_reason'>, birthdate: string | null): boolean {
   if ((scout.inactive_reason ?? '').trim() === 'aged_out') return true;
-  if (!scout.birthdate) return false;
-  const eighteenth = new Date(`${scout.birthdate}T12:00:00Z`);
+  if (!birthdate) return false;
+  const eighteenth = new Date(`${birthdate}T12:00:00Z`);
   eighteenth.setUTCFullYear(eighteenth.getUTCFullYear() + 18);
   return eighteenth <= new Date();
 }
@@ -102,11 +105,9 @@ interface ScoutRow {
   id: string;
   display_name: string;
   last_name: string | null;
-  household_id: number | null;
   active: boolean;
   person_id: number | null;
   inactive_reason: string | null;
-  birthdate: string | null;
 }
 /** A parent_of edge, for the family word it carries. Replaced ParentRow when
  *  scout_parents was retired — the word moved to relationships.role_label. */
@@ -115,10 +116,7 @@ interface RelationRow {
   person_id: number;
   role_label: string | null;
 }
-interface LeaderRow extends LeaderLite {
-  email: string | null;
-  person_id: number | null;
-}
+type LeaderRow = LeaderLite;
 
 export async function loadHouseholds(): Promise<Household[]> {
   const supabase = createAdminClient();
@@ -142,20 +140,20 @@ export async function loadHouseholds(): Promise<Household[]> {
     // standalone "household of one" in the family picker.
     supabase
       .from('people')
-      .select('id, display_name, primary_email, default_vehicle_seats')
+      .select('id, display_name, primary_email, default_vehicle_seats, birthdate')
       .is('merged_into_person_id', null)
       .is('guest_host_household_id', null)
       .eq('active', true),
     supabase
       .from('scouts')
-      .select('id, display_name, last_name, household_id, active, person_id, inactive_reason, birthdate'),
+      .select('id, display_name, last_name, active, person_id, inactive_reason'),
     supabase
       .from('relationships')
       .select('id, person_id, role_label')
       .in('type', ['parent_of', 'guardian_of']),
     supabase
       .from('leaders')
-      .select('code, name, is_person, scout_id, can_login, login_name, email, person_id')
+      .select('code, name, is_person, can_login, login_name, person_id')
   ]);
 
   const labels = new Map(
@@ -166,7 +164,9 @@ export async function loadHouseholds(): Promise<Household[]> {
   const scouts = (scoutData ?? []) as ScoutRow[];
   const relations = (parentData ?? []) as RelationRow[];
   const leaders = (leaderData ?? []) as LeaderRow[];
-  const activeScoutIds = new Set(scouts.filter((s) => s.active).map((s) => s.id));
+  const activeScoutPersonIds = new Set(
+    scouts.filter((s) => s.active && s.person_id != null).map((s) => s.person_id as number)
+  );
 
   const scoutByPerson = new Map<number, ScoutRow>();
   for (const s of scouts) if (s.person_id != null) scoutByPerson.set(s.person_id, s);
@@ -209,11 +209,11 @@ export async function loadHouseholds(): Promise<Household[]> {
 
     const scout = scoutByPerson.get(personId);
     if (scout && scout.active) return null; // listed as a scout instead
-    if (scout && !scout.active && !noLongerYouth(scout)) return null; // youth who left
+    if (scout && !scout.active && !noLongerYouth(scout, person.birthdate)) return null; // youth who left
 
     const relation = relationByPerson.get(personId);
     const leader = leaderByPerson.get(personId);
-    const leaderIsAdult = leader ? isAdultPerson(leader, activeScoutIds) : false;
+    const leaderIsAdult = leader ? isAdultPerson(leader, activeScoutPersonIds) : false;
 
     return {
       key: `pe${personId}`,
@@ -221,10 +221,11 @@ export async function loadHouseholds(): Promise<Household[]> {
       leaderCode: leaderIsAdult ? (leader?.code ?? null) : null,
       name: person.display_name,
       relationship: relation?.role_label ?? null,
-      // scout_parents.email used to sit between these two. It is gone with the
-      // table and nothing is lost: every address it held is already on
-      // people.primary_email (verified against production before the drop).
-      email: person.primary_email ?? leader?.email ?? null,
+      // people.primary_email is the only source now (Plans/Retire-Roster-
+      // Contact-Columns.md) — the old scout_parents.email and leaders.email
+      // fallbacks are both gone; nothing has written either since the leader
+      // edit form was retired 2026-08-17.
+      email: person.primary_email ?? null,
       defaultVehicleSeats: person.default_vehicle_seats ?? null
     };
   }

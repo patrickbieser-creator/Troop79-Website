@@ -15,6 +15,7 @@ import {
 } from '@/lib/profile-draft';
 import ProfileEditor, { type ScoutProfileFields } from './profile-editor';
 import AdultEditor, { type AdultProfileFields } from './adult-editor';
+import type { PersonEmailRow } from '@/lib/person-emails';
 import styles from './profile.module.css';
 
 /**
@@ -65,6 +66,17 @@ interface Props {
   /** False when the household has no stored row or no scout — the RPC behind
    *  "add a member" needs both, so the form is hidden rather than failing. */
   canAddMember: boolean;
+  /** people.id of the verified session — the one adult whose email-address
+   *  controls render (Plans/Retire-Roster-Contact-Columns.md Phase 2). Null
+   *  when there is no session (shouldn't happen — this component only
+   *  renders in the 'ready' state — but keeps the prop honest). */
+  selfPersonId: number | null;
+  /** The self adult's own addresses. Empty for a household with no self
+   *  adult selected, or while viewing anyone else. */
+  selfEmails: PersonEmailRow[];
+  addEmailAction: (formData: FormData) => Promise<void>;
+  setPrimaryEmailAction: (formData: FormData) => Promise<void>;
+  removeEmailAction: (formData: FormData) => Promise<void>;
 }
 
 /** The editable field list for a member's kind. */
@@ -122,7 +134,12 @@ export default function HouseholdMembers({
   submitAdultAction,
   withdrawAction,
   addMemberAction,
-  canAddMember
+  canAddMember,
+  selfPersonId,
+  selfEmails,
+  addEmailAction,
+  setPrimaryEmailAction,
+  removeEmailAction
 }: Props) {
   const [selected, setSelected] = useState<MemberKey | null>(
     initialKey && members.some((m) => m.key === initialKey) ? initialKey : (members[0]?.key ?? null)
@@ -262,6 +279,11 @@ export default function HouseholdMembers({
               onDiscard={() => discard(current.key)}
               submitAction={submitAdultAction}
               withdrawAction={withdrawAction}
+              isSelf={selfPersonId != null && adults[current.key]?.personId === selfPersonId}
+              emails={selfPersonId != null && adults[current.key]?.personId === selfPersonId ? selfEmails : []}
+              addEmailAction={addEmailAction}
+              setPrimaryEmailAction={setPrimaryEmailAction}
+              removeEmailAction={removeEmailAction}
             />
           )}
         </section>

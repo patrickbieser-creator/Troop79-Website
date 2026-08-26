@@ -52,6 +52,13 @@ export const INACTIVE_REASON_LABEL: Record<InactiveReason, string> = {
   other: 'Other'
 };
 
+/**
+ * Contact/demographic facts (address, phone, email, birthdate, gender, BSA
+ * member id, health form date, things-we-should-know) moved to `people`,
+ * read via `person_id` (Plans/Retire-Roster-Contact-Columns.md). `scouts`
+ * keeps only patrol/rank/school-shaped facts — things true because this
+ * person is currently a scout.
+ */
 export interface Scout {
   id: string;
   first_name: string;
@@ -59,9 +66,6 @@ export interface Scout {
   display_name: string;
   patrol: string | null;
   current_rank: string | null;
-  bsa_member_id: string | null;
-  birthdate: string | null;
-  gender: 'M' | 'F' | null;
   school: string | null;
   /** Grade is derived from this (June 15 rollover) — see lib/demographics. */
   graduation_year: number | null;
@@ -71,19 +75,9 @@ export interface Scout {
   joined_date: string | null;
   last_activity: string | null;
   auth_user_id: string | null;
-  address_line1: string | null;
-  address_line2: string | null;
-  city: string | null;
-  state: string | null;
-  zip: string | null;
-  phone: string | null;
-  email: string | null;
-  health_form_date: string | null;
-  /** Freeform: food allergies, medical conditions, special needs (D-014
-   *  supersede). Admin-entered for now; the planned family self-service flow
-   *  (Plans/) will let households propose updates here too, gated through
-   *  review-approval before they take effect. */
-  things_we_should_know: string | null;
+  /** The person spine link — every contact/demographic fact lives on this
+   *  row's `people` counterpart. */
+  person_id: number | null;
 }
 
 export interface ScoutParent {
@@ -102,6 +96,13 @@ export interface ScoutParent {
   sort_order: number;
 }
 
+/**
+ * Contact/demographic fields (address, phone, email, birthdate, BSA member
+ * id, health form date, YPT completion, things-we-should-know) moved to
+ * `people`, read via `person_id` (Plans/Retire-Roster-Contact-Columns.md).
+ * `name` stays — trigger-derived from `people.display_name` for is_person
+ * leaders, and the login label outright for non-person sign-off sources.
+ */
 export interface Leader {
   code: string;
   name: string;
@@ -109,27 +110,13 @@ export interface Leader {
   /** false for sign-off *sources* imported from the spreadsheet ("Turner
    *  Hall", "Council Clinic", ...) — Roll Call lists people only. */
   is_person: boolean;
-  /** Set when these initials belong to a scout (youth leader). Youth =
-   *  scout_id set AND that scout is active; once the scout ages out
-   *  (inactive, 'aged_out') the same initials count as an adult. */
-  scout_id: string | null;
-  address_line1: string | null;
-  address_line2: string | null;
-  city: string | null;
-  state: string | null;
-  zip: string | null;
-  phone: string | null;
-  email: string | null;
-  health_form_date: string | null;
-  birthdate: string | null;
-  bsa_member_id: string | null;
-  /** YPT completion date; certification runs two years (derived status). */
-  ypt_completed: string | null;
-  /** Freeform: food allergies, medical conditions, special needs (D-014
-   *  supersede). Admin-entered for now; the planned family self-service flow
-   *  (Plans/) will let households propose updates here too, gated through
-   *  review-approval before they take effect. */
-  things_we_should_know: string | null;
+  can_login: boolean;
+  login_name: string | null;
+  /** Set when these initials belong to a scout (youth leader), matched
+   *  against that scout's own person_id. Youth = this person_id belongs to
+   *  an ACTIVE scout; once the scout ages out (inactive, 'aged_out') the
+   *  same initials count as an adult. */
+  person_id: number | null;
 }
 
 export interface MeritBadgeCounselor {

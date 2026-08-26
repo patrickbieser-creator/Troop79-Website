@@ -7,7 +7,9 @@ import { loadRosterPrintData } from '../src/lib/roster-print-data';
  * leaders.email/phone/address — columns nothing has written since the leader
  * edit form was retired on 2026-08-17 — so an adult's corrections on the
  * people spine never reached the one document leaders actually print. The
- * loader now prefers people.* and keeps leaders.* only as a fallback.
+ * loader now reads people.* only — Plans/Retire-Roster-Contact-Columns.md
+ * (2026-08-26) removed the leaders.* fallback entirely, so a null on the
+ * person row prints null even when a stale leaders.* value exists.
  */
 describe('loadRosterPrintData — adult contact source', () => {
   const personIds: number[] = [];
@@ -67,6 +69,46 @@ describe('loadRosterPrintData — adult contact source', () => {
       city: 'Milwaukee',
       state: 'WI',
       zip: '53211'
+    });
+  });
+
+  it('PrintedAdult_IsNull_WhenPersonHasNoAddress_EvenWithAStaleLeadersRow', async () => {
+    // Proves the leaders.* fallback is gone, not just outranked: a person
+    // with NOTHING on file prints null rather than falling back.
+    const admin = adminClient();
+    const { data: hh } = await admin.from('households').insert({ label: '[TEST] Printsource2' }).select('id').single();
+    householdIds.push(hh!.id as number);
+    const { data: p } = await admin
+      .from('people')
+      .insert({ display_name: '[TEST] Printsource2 Parent', active: true })
+      .select('id')
+      .single();
+    personIds.push(p!.id as number);
+    await admin.from('household_members').insert({ household_id: hh!.id, person_id: p!.id });
+    const code = `ZY${String(Date.now()).slice(-6)}`;
+    leaderCodes.push(code);
+    await admin.from('leaders').insert({
+      code,
+      name: '[TEST] Printsource2 Parent',
+      is_person: true,
+      person_id: p!.id,
+      phone: '111-111-1111',
+      email: 'stale2@example.com',
+      address_line1: '2 Old Leaders Rd',
+      city: 'Nowhere',
+      state: 'XX',
+      zip: '00000'
+    });
+
+    const data = await loadRosterPrintData();
+    const adult = data.adults.find((a) => a.personId === p!.id);
+    expect(adult).toMatchObject({
+      phone: null,
+      email: null,
+      address_line1: null,
+      city: null,
+      state: null,
+      zip: null
     });
   });
 });

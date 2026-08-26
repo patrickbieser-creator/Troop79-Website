@@ -16,6 +16,7 @@ import {
   type FieldValue
 } from '@/lib/change-requests';
 import { sendEmail, renderEmail, troopEmail } from '@/lib/email';
+import { addPersonEmail, setPrimaryEmail, removePersonEmail, type PersonEmailLabel } from '@/lib/person-emails';
 
 const PROFILE_PATH = '/profile';
 
@@ -406,4 +407,87 @@ export async function addHouseholdMemberAction(formData: FormData): Promise<void
 
   revalidatePath(PROFILE_PATH);
   redirect(`${back}?added=${encodeURIComponent(name)}`);
+}
+
+/*
+ * ── Email addresses (Plans/Retire-Roster-Contact-Columns.md Phase 2) ───────
+ *
+ * A verified adult manages their OWN addresses — add, promote, remove. All
+ * three write immediately, like addHouseholdMemberAction above: unlike a
+ * demographic edit, there is no leader review step for "which of my own
+ * inboxes should the site use", and lib/person-emails.ts already refuses the
+ * two cases that would leave the person unreachable (the last address, the
+ * primary without a replacement chosen first).
+ *
+ * OWNERSHIP IS THE SESSION, NOT A FORM FIELD. Every one of these three reads
+ * `session.personId` from requireHouseholdIdentity() and NEVER a personId out
+ * of its own formData — the household membership check the demographic-edit
+ * actions above run (`party.adults.find(...)`) would still only prove "some
+ * adult in my household", which is not the same claim as "this is MY own
+ * address" (a family added on /profile is one household of several adults,
+ * and one adult managing a housemate's inbox is exactly the case this must
+ * not allow). See tests/profile-email-actions.test.ts's source-property test,
+ * which asserts this by reading these three functions' own source.
+ */
+
+function emailBack(personId: number): string {
+  return `${PROFILE_PATH}?member=${encodeURIComponent(memberParam('adult', String(personId)))}`;
+}
+
+export async function addAdultEmailAction(formData: FormData): Promise<void> {
+  const { session } = await requireParty();
+  const back = emailBack(session.personId);
+
+  const email = String(formData.get('email') ?? '').trim();
+  const label = (String(formData.get('label') ?? 'home').trim() || 'home') as PersonEmailLabel;
+  if (!email) redirect(`${back}&err=${encodeURIComponent('Enter an email address.')}`);
+
+  try {
+    await addPersonEmail(createAdminClient(), session.personId, email, label);
+  } catch (e) {
+    redirect(
+      `${back}&err=${encodeURIComponent(e instanceof Error ? e.message : 'Could not add that address.')}`
+    );
+  }
+
+  revalidatePath(PROFILE_PATH);
+  redirect(`${back}&emailSaved=1`);
+}
+
+export async function setAdultPrimaryEmailAction(formData: FormData): Promise<void> {
+  const { session } = await requireParty();
+  const back = emailBack(session.personId);
+
+  const emailId = Number(formData.get('emailId'));
+  if (!Number.isInteger(emailId)) redirect(`${back}&err=${encodeURIComponent('Something went wrong.')}`);
+
+  try {
+    await setPrimaryEmail(createAdminClient(), session.personId, emailId);
+  } catch (e) {
+    redirect(
+      `${back}&err=${encodeURIComponent(e instanceof Error ? e.message : 'Could not update the primary address.')}`
+    );
+  }
+
+  revalidatePath(PROFILE_PATH);
+  redirect(`${back}&emailSaved=1`);
+}
+
+export async function removeAdultEmailAction(formData: FormData): Promise<void> {
+  const { session } = await requireParty();
+  const back = emailBack(session.personId);
+
+  const emailId = Number(formData.get('emailId'));
+  if (!Number.isInteger(emailId)) redirect(`${back}&err=${encodeURIComponent('Something went wrong.')}`);
+
+  try {
+    await removePersonEmail(createAdminClient(), session.personId, emailId);
+  } catch (e) {
+    redirect(
+      `${back}&err=${encodeURIComponent(e instanceof Error ? e.message : 'Could not remove that address.')}`
+    );
+  }
+
+  revalidatePath(PROFILE_PATH);
+  redirect(`${back}&emailSaved=1`);
 }

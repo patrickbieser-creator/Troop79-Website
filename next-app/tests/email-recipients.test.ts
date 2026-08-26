@@ -2,29 +2,27 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { adminClient } from './helpers/admin-client';
 import { createTestScout, deleteTestScout, TEST_PREFIX, type TestScout } from './helpers/signup-fixtures';
 import { recipientsForScouts } from '../src/lib/email-recipients';
+import { addPersonEmail } from '../src/lib/person-emails';
 
 /**
- * Regression coverage for the scout_parent_emails re-key to person_id
- * (2026-07-25). Before this, deliverability tracking (bounce/unsubscribe,
- * primary address) was keyed on scout_parent_id and email-recipients.ts had
- * to join through scout_parents to reach it — one of the two FKs blocking a
- * future scout_parents drop (held for a later session).
+ * recipientsForScouts — Plans/Retire-Roster-Contact-Columns.md Phase 2.
+ * Addresses now come from `person_emails` (every deliverable row of every
+ * parent), not the legacy scout_parent_emails, which this file used to seed
+ * directly. Real local Postgres, no mocks (D-049).
  */
-describe('recipientsForScouts — person_id-keyed scout_parent_emails', () => {
+describe('recipientsForScouts — person_emails', () => {
   const scouts: TestScout[] = [];
   const parentPersonIds: number[] = [];
-  const emailIds: number[] = [];
 
   afterEach(async () => {
     const admin = adminClient();
-    if (emailIds.length > 0) await admin.from('scout_parent_emails').delete().in('id', emailIds);
     for (const s of scouts.splice(0)) await deleteTestScout(admin, s);
     if (parentPersonIds.length > 0) {
       await admin.from('relationships').delete().in('person_id', parentPersonIds);
+      await admin.from('person_emails').delete().in('person_id', parentPersonIds);
       await admin.from('people').delete().in('id', parentPersonIds);
     }
     parentPersonIds.length = 0;
-    emailIds.length = 0;
   });
 
   async function makeParent(admin: ReturnType<typeof adminClient>, label: string, forScout: TestScout) {
@@ -44,33 +42,12 @@ describe('recipientsForScouts — person_id-keyed scout_parent_emails', () => {
     return person.id as number;
   }
 
-  async function addEmail(
-    admin: ReturnType<typeof adminClient>,
-    personId: number,
-    email: string,
-    opts: { isPrimary?: boolean; bouncedAt?: string } = {}
-  ) {
-    const { data, error } = await admin
-      .from('scout_parent_emails')
-      .insert({
-        person_id: personId,
-        email,
-        is_primary: opts.isPrimary ?? false,
-        bounced_at: opts.bouncedAt ?? null
-      })
-      .select('id')
-      .single();
-    if (error || !data) throw new Error(`fixture: scout_parent_emails insert failed: ${error?.message}`);
-    emailIds.push(data.id);
-  }
-
-  it('RecipientsForScouts_FindsPrimaryEmail_ByPersonId', async () => {
+  it('RecipientsForScouts_FindsThePrimaryEmail', async () => {
     const admin = adminClient();
     const scout = await createTestScout(admin, 'RecipPrimary');
     scouts.push(scout);
     const parentId = await makeParent(admin, 'Primary', scout);
-    await addEmail(admin, parentId, 'primary@example.test', { isPrimary: true });
-    await addEmail(admin, parentId, 'secondary@example.test');
+    await addPersonEmail(admin, parentId, 'primary@example.test'); // first address -> primary
 
     const recipients = await recipientsForScouts([scout.scoutId]);
     expect(recipients).toHaveLength(1);
@@ -78,16 +55,28 @@ describe('recipientsForScouts — person_id-keyed scout_parent_emails', () => {
     expect(recipients[0].scoutIds).toEqual([scout.scoutId]);
   });
 
+  it('RecipientsForScouts_MailsEveryDeliverableAddress_NotJustThePrimary', async () => {
+    const admin = adminClient();
+    const scout = await createTestScout(admin, 'RecipMulti');
+    scouts.push(scout);
+    const parentId = await makeParent(admin, 'Multi', scout);
+    await addPersonEmail(admin, parentId, 'home@example.test');
+    await addPersonEmail(admin, parentId, 'work@example.test', 'work');
+
+    const recipients = await recipientsForScouts([scout.scoutId]);
+    const emails = recipients.map((r) => r.email).sort();
+    expect(emails).toEqual(['home@example.test', 'work@example.test']);
+    for (const r of recipients) expect(r.scoutIds).toEqual([scout.scoutId]);
+  });
+
   it('RecipientsForScouts_SkipsBouncedAndUnsubscribed', async () => {
     const admin = adminClient();
     const scout = await createTestScout(admin, 'RecipBounce');
     scouts.push(scout);
     const parentId = await makeParent(admin, 'Bounce', scout);
-    await addEmail(admin, parentId, 'bounced@example.test', {
-      isPrimary: true,
-      bouncedAt: new Date(2026, 0, 1).toISOString()
-    });
-    await addEmail(admin, parentId, 'live@example.test');
+    const bounced = await addPersonEmail(admin, parentId, 'bounced@example.test');
+    await admin.from('person_emails').update({ bounced_at: new Date(2026, 0, 1).toISOString() }).eq('id', bounced.id);
+    await addPersonEmail(admin, parentId, 'live@example.test', 'work');
 
     const recipients = await recipientsForScouts([scout.scoutId]);
     expect(recipients).toHaveLength(1);
@@ -115,10 +104,44 @@ describe('recipientsForScouts — person_id-keyed scout_parent_emails', () => {
         { person_id: person.id, related_person_id: scoutA.personId, type: 'parent_of' },
         { person_id: person.id, related_person_id: scoutB.personId, type: 'parent_of' }
       ]);
-    await addEmail(admin, person.id, 'shared@example.test', { isPrimary: true });
+    await addPersonEmail(admin, person.id, 'shared@example.test');
 
     const recipients = await recipientsForScouts([scoutA.scoutId, scoutB.scoutId]);
     expect(recipients).toHaveLength(1);
     expect(recipients[0].scoutIds.sort()).toEqual([scoutA.scoutId, scoutB.scoutId].sort());
+  });
+
+  it('RecipientsForScouts_MergesTwoParentsWhoShareOneAddress_IntoOneRecipient', async () => {
+    const admin = adminClient();
+    const scout = await createTestScout(admin, 'RecipSharedAddr');
+    scouts.push(scout);
+    const parentA = await makeParent(admin, 'SharedA', scout);
+    const parentB = await makeParent(admin, 'SharedB', scout);
+    await addPersonEmail(admin, parentA, 'shared-inbox@example.test');
+    await addPersonEmail(admin, parentB, 'shared-inbox@example.test');
+
+    const recipients = await recipientsForScouts([scout.scoutId]);
+    expect(recipients).toHaveLength(1);
+    expect(recipients[0].email).toBe('shared-inbox@example.test');
+    expect(recipients[0].parentName).toContain('SharedA');
+    expect(recipients[0].parentName).toContain('SharedB');
+    expect(recipients[0].scoutIds).toEqual([scout.scoutId]);
+  });
+
+  it('RecipientsForScouts_WritingPrimaryEmailDirectly_StillProducesADeliverableAddress', async () => {
+    // people.primary_email is a two-way cache (the migration's trigger),
+    // so a writer that still sets it directly — a leader editing Demographics,
+    // say — feeds person_emails automatically. This is the same fallback
+    // this module has always had, now exercised through the live trigger
+    // rather than a copy of the column.
+    const admin = adminClient();
+    const scout = await createTestScout(admin, 'RecipDirectPrimary');
+    scouts.push(scout);
+    const parentId = await makeParent(admin, 'DirectPrimary', scout);
+    await admin.from('people').update({ primary_email: 'directwrite@example.test' }).eq('id', parentId);
+
+    const recipients = await recipientsForScouts([scout.scoutId]);
+    expect(recipients).toHaveLength(1);
+    expect(recipients[0].email).toBe('directwrite@example.test');
   });
 });

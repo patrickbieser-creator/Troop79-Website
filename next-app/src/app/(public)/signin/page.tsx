@@ -10,6 +10,8 @@ import { emailConfigured } from '@/lib/email';
 import { hasFamilyAccess } from '@/lib/family-access';
 import { NameSearch } from './name-search';
 import { cookies } from 'next/headers';
+import { createAdminClient } from '@/lib/supabase/server';
+import { deliverableEmailsFor, maskEmail } from '@/lib/identity-challenge';
 import { PasskeyButton } from './passkey-button';
 import { PasskeyAutofill } from './passkey-autofill';
 import { TroubleLine } from '../events/[id]/signup-panels';
@@ -54,6 +56,30 @@ const ERR_MESSAGES: Record<string, string> = {
   // (qa-lead review 2026-08-06; see signin/actions.ts's verifyCodeAction).
   invalid: 'That code didn’t match — check it and try again, or use the link in the email instead.'
 };
+
+/**
+ * The person's OTHER deliverable addresses, masked — feeds PersonCodeForm's
+ * "Send to a different address instead" (Plans/Retire-Roster-Contact-
+ * Columns.md Phase 2). Gated the same as the picker itself
+ * (hasFamilyAccess()): this state is only reachable after a code was already
+ * sent via the picker, but a Server Component render is not the Server
+ * Action that got here, so it re-checks rather than trusting the URL alone.
+ *
+ * `currentMasked` excludes the address the code just went to — masked-string
+ * comparison, the only form the destination arrives in at this point.
+ */
+async function otherAddressesFor(
+  personIdRaw: string,
+  currentMasked?: string
+): Promise<{ id: number; masked: string }[]> {
+  if (!(await hasFamilyAccess())) return [];
+  const personId = Number(personIdRaw);
+  if (!Number.isInteger(personId) || personId <= 0) return [];
+
+  const supabase = createAdminClient();
+  const rows = await deliverableEmailsFor(supabase, personId);
+  return rows.map((r) => ({ id: r.id, masked: maskEmail(r.email) })).filter((r) => r.masked !== currentMasked);
+}
 
 export default async function SignInPage({
   searchParams
@@ -129,7 +155,13 @@ export default async function SignInPage({
 
         {sent === '1' ? (
           person ? (
-            <PersonCodeForm personId={person} masked={masked} next={next} err={err} />
+            <PersonCodeForm
+              personId={person}
+              masked={masked}
+              next={next}
+              err={err}
+              otherAddresses={await otherAddressesFor(person, masked)}
+            />
           ) : (
             <CodeForm email={email} next={next} err={err} />
           )
@@ -331,12 +363,17 @@ function PersonCodeForm({
   personId,
   masked,
   next,
-  err
+  err,
+  otherAddresses
 }: {
   personId: string;
   masked?: string;
   next?: string;
   err?: string;
+  /** This person's other deliverable addresses, masked (Plans/Retire-Roster-
+   *  Contact-Columns.md Phase 2) — empty for the common one-address case, in
+   *  which nothing below renders. */
+  otherAddresses: { id: number; masked: string }[];
 }) {
   return (
     <FormCard>
@@ -380,6 +417,23 @@ function PersonCodeForm({
           Send another code
         </Button>
       </form>
+
+      {otherAddresses.length > 0 && (
+        <details className={pick.pickFallback}>
+          <summary>Send to a different address instead</summary>
+          <FieldHint>We have more than one address on file for you.</FieldHint>
+          {otherAddresses.map((addr) => (
+            <form action={requestForPersonAction} key={addr.id} className={pick.resendRow}>
+              <input type="hidden" name="personId" value={personId} />
+              <input type="hidden" name="emailId" value={addr.id} />
+              {next && <input type="hidden" name="next" value={next} />}
+              <Button variant="secondary" type="submit">
+                Send to {addr.masked}
+              </Button>
+            </form>
+          ))}
+        </details>
+      )}
     </FormCard>
   );
 }

@@ -13,11 +13,15 @@ import {
   submitChangeRequestAction,
   submitPersonChangeRequestAction,
   withdrawChangeRequestAction,
-  addHouseholdMemberAction
+  addHouseholdMemberAction,
+  addAdultEmailAction,
+  setAdultPrimaryEmailAction,
+  removeAdultEmailAction
 } from './actions';
 import { type ScoutProfileFields } from './profile-editor';
 import { type AdultProfileFields } from './adult-editor';
 import HouseholdMembers, { type HouseholdMemberView } from './household-members';
+import { listPersonEmails, type PersonEmailRow } from '@/lib/person-emails';
 import styles from './profile.module.css';
 
 /*
@@ -74,6 +78,7 @@ export default async function ProfilePage({
     nochange?: string;
     withdrawn?: string;
     added?: string;
+    emailSaved?: string;
     /** `scout:<id>` or `person:<personId>` — which member to open. */
     member?: string;
   }>;
@@ -102,6 +107,7 @@ export default async function ProfilePage({
   let householdEmpty = false;
   let householdLabel = '';
   let canAddMember = false;
+  let selfEmails: PersonEmailRow[] = [];
 
   if (state === 'ready' && session) {
     const household = await loadHouseholdByKey(session.householdKey);
@@ -115,6 +121,7 @@ export default async function ProfilePage({
     // reason add_parent_to_household needed one, and requiring it hid this
     // form from any family whose scouts had all aged out.
     canAddMember = storedHouseholdId(household?.key) != null;
+    selfEmails = await listPersonEmails(supabase, session.personId);
 
     const [{ data: scoutRows }, { data: personRows }, { data: pendingRows }] = await Promise.all([
       scoutIds.length > 0
@@ -232,6 +239,7 @@ export default async function ProfilePage({
           ✓ {decodeURIComponent(sp.added)} was added to your household.
         </p>
       )}
+      {sp.emailSaved === '1' && <p className={styles.savedNote}>✓ Your email addresses were updated.</p>}
       {sp.err && <p className={styles.errNote}>{decodeURIComponent(sp.err)}</p>}
 
       {state === 'ready' && (
@@ -287,6 +295,11 @@ export default async function ProfilePage({
           withdrawAction={withdrawChangeRequestAction}
           addMemberAction={addHouseholdMemberAction}
           canAddMember={canAddMember}
+          selfPersonId={session?.personId ?? null}
+          selfEmails={selfEmails}
+          addEmailAction={addAdultEmailAction}
+          setPrimaryEmailAction={setAdultPrimaryEmailAction}
+          removeEmailAction={removeAdultEmailAction}
         />
       )}
     </main>

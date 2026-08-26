@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
-import { mirrorRosterFieldsToPerson } from '@/lib/person-mirror';
+import { writePersonDemographics } from '@/lib/write-person-demographics';
 import type { LedgerKind } from '@/lib/supabase/types';
 
 import { cascadeLibraryReqRename } from '@/lib/library-data';
@@ -95,18 +95,6 @@ function readScoutExtras(formData: FormData) {
   };
 }
 
-/** Leader-only demographics. */
-function readLeaderExtras(formData: FormData) {
-  const str = (k: string) => {
-    const v = String(formData.get(k) ?? '').trim();
-    return v === '' ? null : v;
-  };
-  return {
-    bsa_member_id: str('bsa_member_id_leader'),
-    ypt_completed: str('ypt_completed')
-  };
-}
-
 function readCounselors(formData: FormData): CounselorInput[] {
   const raw = String(formData.get('counselors') ?? '[]');
   try {
@@ -152,60 +140,19 @@ function revalidateAll() {
 }
 
 // ── Scouts ────────────────────────────────────────────────────────────────
-
-/**
- * The people spine reads people.*; the roster forms write scouts.* / leaders.*.
- * Every save mirrors the shared demographics across (lib/person-mirror —
- * found live 2026-08-26 when a scout's changed email never reached sign-in).
- */
-async function mirrorScoutToPerson(
-  supabase: ReturnType<typeof createAdminClient>,
-  scoutId: string,
-  fields: { first_name: string; last_name: string; bsa_member_id: string | null } & ReturnType<typeof readDemoFields> & { gender: string | null }
-): Promise<void> {
-  const { data } = await supabase.from('scouts').select('person_id').eq('id', scoutId).maybeSingle();
-  const personId = (data as { person_id: number | null } | null)?.person_id ?? null;
-  await mirrorRosterFieldsToPerson(supabase, personId, {
-    first_name: fields.first_name,
-    last_name: fields.last_name,
-    email: fields.email,
-    phone: fields.phone,
-    address_line1: fields.address_line1,
-    address_line2: fields.address_line2,
-    city: fields.city,
-    state: fields.state,
-    zip: fields.zip,
-    birthdate: fields.birthdate,
-    gender: fields.gender,
-    bsa_member_id: fields.bsa_member_id,
-    health_form_date: fields.health_form_date,
-    things_we_should_know: fields.things_we_should_know
-  });
-}
-
-async function mirrorLeaderToPerson(
-  supabase: ReturnType<typeof createAdminClient>,
-  code: string,
-  fields: ReturnType<typeof readDemoFields> & { bsa_member_id: string | null; ypt_completed: string | null }
-): Promise<void> {
-  const { data } = await supabase.from('leaders').select('person_id').eq('code', code).maybeSingle();
-  const personId = (data as { person_id: number | null } | null)?.person_id ?? null;
-  // Names are not mirrored: leaders.name is one string, people carries first/last.
-  await mirrorRosterFieldsToPerson(supabase, personId, {
-    email: fields.email,
-    phone: fields.phone,
-    address_line1: fields.address_line1,
-    address_line2: fields.address_line2,
-    city: fields.city,
-    state: fields.state,
-    zip: fields.zip,
-    birthdate: fields.birthdate,
-    bsa_member_id: fields.bsa_member_id,
-    health_form_date: fields.health_form_date,
-    things_we_should_know: fields.things_we_should_know,
-    ypt_completed: fields.ypt_completed
-  });
-}
+//
+// Contact/demographic fields (address, phone, email, birthdate, gender, BSA
+// member id, health form date, things-we-should-know) live on `people`, via
+// the scout's `person_id` link — `scouts` keeps only patrol/rank/school-shaped
+// facts (Plans/Retire-Roster-Contact-Columns.md). writePersonDemographics()
+// is the one writer, shared with the adult editor
+// (roster/person-actions.ts's updatePersonDemographics).
+//
+// createLeader/updateLeader/deleteLeader were removed here (2026-08-26,
+// same change): the leader edit form that called them was retired
+// 2026-08-17 (adults are edited on the people spine from the Roster's
+// PersonEditor instead — see change-request-actions.ts / person-actions.ts),
+// and grep found zero remaining callers.
 
 export async function createScout(formData: FormData): Promise<Result> {
   try {
@@ -237,7 +184,31 @@ export async function createScout(formData: FormData): Promise<Result> {
   }
 
   const supabase = createAdminClient();
-  const demo = { ...readDemoFields(formData), ...readScoutExtras(formData) };
+  const demo = readDemoFields(formData);
+  const extras = readScoutExtras(formData);
+
+  // No trigger creates a scout's person row — the spine was backfilled once
+  // (20260720100000) and nothing has created one since, so this is the front
+  // door: every new scout gets a `people` row before the `scouts` row that
+  // points at it.
+  const { data: person, error: personErr } = await supabase
+    .from('people')
+    .insert({
+      first_name: firstName,
+      last_name: lastName,
+      display_name: `${firstName} ${lastName}`,
+      active: true
+    })
+    .select('id')
+    .single();
+  if (personErr || !person) {
+    return {
+      ok: false,
+      error: `Could not create the linked person record: ${personErr?.message ?? 'unknown error'}`
+    };
+  }
+  const personId = (person as { id: number }).id;
+
   const { error } = await supabase.from('scouts').insert({
     id,
     first_name: firstName,
@@ -245,15 +216,39 @@ export async function createScout(formData: FormData): Promise<Result> {
     display_name: `${firstName} ${lastName}`,
     patrol,
     current_rank: null, // computed from rank_award ledger entries via trigger
-    bsa_member_id: bsaMemberId,
     active,
     inactive_reason: inactiveReason,
-    joined_date: null,
-    last_activity: null,
-    ...demo
+    person_id: personId,
+    school: extras.school,
+    graduation_year: extras.graduation_year,
+    swim_class: extras.swim_class,
+    junior_leader_override: extras.junior_leader_override
   });
-  if (error) return { ok: false, error: error.message };
-  await mirrorScoutToPerson(supabase, id, { first_name: firstName, last_name: lastName, bsa_member_id: bsaMemberId, ...demo });
+  if (error) {
+    // Nothing points at the person row yet — clean it up rather than leave
+    // an orphan behind a failed scout create.
+    await supabase.from('people').delete().eq('id', personId);
+    return { ok: false, error: error.message };
+  }
+
+  const demoWrite = await writePersonDemographics(supabase, personId, {
+    primary_email: demo.email,
+    primary_phone: demo.phone,
+    address_line1: demo.address_line1,
+    address_line2: demo.address_line2,
+    city: demo.city,
+    state: demo.state,
+    zip: demo.zip,
+    birthdate: demo.birthdate,
+    gender: extras.gender,
+    bsa_member_id: bsaMemberId,
+    health_form_date: demo.health_form_date,
+    things_we_should_know: demo.things_we_should_know
+  });
+  if (demoWrite.error) {
+    return { ok: false, error: `Scout created, but demographics failed to save: ${demoWrite.error}` };
+  }
+
   revalidateAll();
   return { ok: true };
 }
@@ -286,7 +281,17 @@ export async function updateScout(formData: FormData): Promise<Result> {
   }
 
   const supabase = createAdminClient();
-  const demo = { ...readDemoFields(formData), ...readScoutExtras(formData) };
+  const demo = readDemoFields(formData);
+  const extras = readScoutExtras(formData);
+
+  const { data: existing, error: fetchErr } = await supabase
+    .from('scouts')
+    .select('person_id')
+    .eq('id', id)
+    .maybeSingle();
+  if (fetchErr) return { ok: false, error: fetchErr.message };
+  let personId = (existing as { person_id: number | null } | null)?.person_id ?? null;
+
   const { error } = await supabase
     .from('scouts')
     .update({
@@ -296,184 +301,62 @@ export async function updateScout(formData: FormData): Promise<Result> {
       patrol,
       // current_rank intentionally NOT updated here — the rank trigger keeps
       // it in sync with rank_award ledger rows.
-      bsa_member_id: bsaMemberId,
       active,
       inactive_reason: inactiveReason,
-      ...demo
+      school: extras.school,
+      graduation_year: extras.graduation_year,
+      swim_class: extras.swim_class,
+      junior_leader_override: extras.junior_leader_override
     })
     .eq('id', id);
   if (error) return { ok: false, error: error.message };
-  await mirrorScoutToPerson(supabase, id, { first_name: firstName, last_name: lastName, bsa_member_id: bsaMemberId, ...demo });
-  revalidateAll();
-  return { ok: true };
-}
 
-// ── Leaders ────────────────────────────────────────────────────────────────
-
-function readLeaderTypeFields(formData: FormData) {
-  const isPerson = String(formData.get('is_person') ?? 'true') !== 'false';
-  const scoutId = String(formData.get('scout_id') ?? '').trim() || null;
-  // Source rows (Camp, Clinic, ...) and adults never carry a scout link —
-  // only Youth does. Guards against a stale scout_id surviving a Type switch.
-  return { is_person: isPerson, scout_id: isPerson && scoutId ? scoutId : null };
-}
-
-function readLeaderLoginFields(formData: FormData) {
-  const canLogin = String(formData.get('can_login') ?? 'true') !== 'false';
-  const loginName = String(formData.get('login_name') ?? '').trim() || null;
-  return { can_login: canLogin, login_name: loginName };
-}
-
-export async function createLeader(formData: FormData): Promise<Result> {
-  try {
-    await requireCapability('roster.manage');
-  } catch {
-    return { ok: false, error: 'Not authenticated' };
-  }
-  const code = String(formData.get('code') ?? '').trim();
-  const name = String(formData.get('name') ?? '').trim();
-  const role = String(formData.get('role') ?? '').trim() || null;
-  if (!code) return { ok: false, error: 'Code (initials) is required' };
-  if (!name) return { ok: false, error: 'Name is required' };
-
-  const supabase = createAdminClient();
-  const demo = { ...readDemoFields(formData), ...readLeaderExtras(formData) };
-  const typeFields = readLeaderTypeFields(formData);
-  const loginFields = readLeaderLoginFields(formData);
-  const { error } = await supabase
-    .from('leaders')
-    .insert({ code, name, role, ...typeFields, ...loginFields, ...demo });
-  if (error) {
-    if (error.message.includes('duplicate key') || error.code === '23505') {
-      return { ok: false, error: `Code "${code}" already exists` };
+  // Defensive: every scout created through createScout above has a linked
+  // person, but an older row might not. Create one rather than silently
+  // dropping the demographics this save is trying to record.
+  if (personId == null) {
+    const { data: created, error: createErr } = await supabase
+      .from('people')
+      .insert({
+        first_name: firstName,
+        last_name: lastName,
+        display_name: `${firstName} ${lastName}`,
+        active: true
+      })
+      .select('id')
+      .single();
+    if (createErr || !created) {
+      return {
+        ok: false,
+        error: `Scout saved, but could not link a person record: ${createErr?.message ?? 'unknown error'}`
+      };
     }
-    return { ok: false, error: error.message };
-  }
-  await mirrorLeaderToPerson(supabase, code, demo);
-  revalidateAll();
-  return { ok: true };
-}
-
-/** Tables with a `leader_code` FK to leaders.code (no ON UPDATE CASCADE). */
-const LEADER_CODE_REFERRERS = [
-  'merit_badge_counselors',
-  'leader_skills',
-  'meeting_attendance_leaders',
-  'library_superusers'
-] as const;
-
-export async function updateLeader(formData: FormData): Promise<Result> {
-  try {
-    await requireCapability('roster.manage');
-  } catch {
-    return { ok: false, error: 'Not authenticated' };
-  }
-  const originalCode = String(formData.get('original_code') ?? '').trim();
-  const code = String(formData.get('code') ?? '').trim();
-  const name = String(formData.get('name') ?? '').trim();
-  const role = String(formData.get('role') ?? '').trim() || null;
-  if (!originalCode) return { ok: false, error: 'Missing original code' };
-  if (!code) return { ok: false, error: 'Code is required' };
-  if (!name) return { ok: false, error: 'Name is required' };
-
-  const supabase = createAdminClient();
-  const demo = { ...readDemoFields(formData), ...readLeaderExtras(formData) };
-  const typeFields = readLeaderTypeFields(formData);
-  const loginFields = readLeaderLoginFields(formData);
-
-  if (code === originalCode) {
-    const { error } = await supabase
-      .from('leaders')
-      .update({ name, role, ...typeFields, ...loginFields, ...demo })
-      .eq('code', code);
-    if (error) return { ok: false, error: error.message };
-    await mirrorLeaderToPerson(supabase, code, demo);
-    revalidateAll();
-    return { ok: true };
+    personId = (created as { id: number }).id;
+    const { error: linkErr } = await supabase.from('scouts').update({ person_id: personId }).eq('id', id);
+    if (linkErr) return { ok: false, error: `Scout saved, but could not link the new person record: ${linkErr.message}` };
   }
 
-  // Renaming the initials (the primary key). merit_badge_counselors,
-  // leader_skills, and meeting_attendance_leaders all FK to leaders.code
-  // without ON UPDATE CASCADE, so a direct rename would violate those
-  // constraints. Instead: insert the row under the new code, repoint every
-  // referencing table (including ledger_entries.by, which isn't an FK but
-  // is matched by convention), then delete the old row — each step is valid
-  // for the DB state at that moment.
-  const { data: clash } = await supabase
-    .from('leaders')
-    .select('code')
-    .eq('code', code)
-    .maybeSingle();
-  if (clash) return { ok: false, error: `Code "${code}" already exists` };
-
-  const { data: original, error: fetchErr } = await supabase
-    .from('leaders')
-    .select('*')
-    .eq('code', originalCode)
-    .single();
-  if (fetchErr || !original) {
-    return { ok: false, error: fetchErr?.message ?? `Leader "${originalCode}" not found` };
-  }
-
-  const { error: insErr } = await supabase.from('leaders').insert({
-    ...original,
-    code,
-    name,
-    role,
-    ...typeFields,
-    ...loginFields,
-    ...demo
+  const demoWrite = await writePersonDemographics(supabase, personId, {
+    first_name: firstName,
+    last_name: lastName,
+    display_name: `${firstName} ${lastName}`,
+    primary_email: demo.email,
+    primary_phone: demo.phone,
+    address_line1: demo.address_line1,
+    address_line2: demo.address_line2,
+    city: demo.city,
+    state: demo.state,
+    zip: demo.zip,
+    birthdate: demo.birthdate,
+    gender: extras.gender,
+    bsa_member_id: bsaMemberId,
+    health_form_date: demo.health_form_date,
+    things_we_should_know: demo.things_we_should_know
   });
-  if (insErr) return { ok: false, error: insErr.message };
-
-  for (const table of LEADER_CODE_REFERRERS) {
-    const { error: reassignErr } = await supabase
-      .from(table)
-      .update({ leader_code: code })
-      .eq('leader_code', originalCode);
-    if (reassignErr) {
-      return { ok: false, error: `Reassigning ${table}: ${reassignErr.message}` };
-    }
-  }
-  const { error: byErr } = await supabase
-    .from('ledger_entries')
-    .update({ by: code })
-    .eq('by', originalCode);
-  if (byErr) return { ok: false, error: `Reassigning ledger sign-offs: ${byErr.message}` };
-
-  const { error: delErr } = await supabase.from('leaders').delete().eq('code', originalCode);
-  if (delErr) return { ok: false, error: delErr.message };
-
-  await mirrorLeaderToPerson(supabase, code, demo);
-  revalidateAll();
-  return { ok: true };
-}
-
-export async function deleteLeader(formData: FormData): Promise<Result> {
-  try {
-    await requireCapability('roster.manage');
-  } catch {
-    return { ok: false, error: 'Not authenticated' };
-  }
-  const code = String(formData.get('code') ?? '').trim();
-  if (!code) return { ok: false, error: 'Code is required' };
-
-  const supabase = createAdminClient();
-  // Refuse to delete if any ledger rows still reference this signer.
-  const { count, error: countErr } = await supabase
-    .from('ledger_entries')
-    .select('id', { count: 'exact', head: true })
-    .eq('by', code);
-  if (countErr) return { ok: false, error: countErr.message };
-  if ((count ?? 0) > 0) {
-    return {
-      ok: false,
-      error: `Cannot delete: ${count} ledger entr${(count ?? 0) === 1 ? 'y' : 'ies'} still reference "${code}". Reassign or archive those first.`
-    };
+  if (demoWrite.error) {
+    return { ok: false, error: `Scout saved, but demographics failed to save: ${demoWrite.error}` };
   }
 
-  const { error } = await supabase.from('leaders').delete().eq('code', code);
-  if (error) return { ok: false, error: error.message };
   revalidateAll();
   return { ok: true };
 }
@@ -969,8 +852,9 @@ export async function setScoutInstructorSkills(formData: FormData): Promise<Resu
  * Promotes a scout who has turned 18 to adult status (Patrick, 2026-07-12).
  *
  * One source of truth, no age flag: a youth leader is a `leaders` row whose
- * scout_id points at an ACTIVE scout. Promotion therefore just (1) marks the
- * scout inactive with reason 'aged_out' (ledger history and clipboard are
+ * person_id matches an ACTIVE scout's person_id (leaders.scout_id retired,
+ * Plans/Retire-Roster-Contact-Columns.md). Promotion therefore just (1) marks
+ * the scout inactive with reason 'aged_out' (ledger history and clipboard are
  * preserved), and (2) ensures a linked leaders row exists so their initials
  * keep working for sign-offs — which now count as an ADULT everywhere (Leader
  * Skills picker, Meeting Plan teacher pool, leader Roll Call).
@@ -991,11 +875,14 @@ export async function promoteScoutToAdult(formData: FormData): Promise<Result> {
   const supabase = createAdminClient();
   const { data: scout, error: scoutErr } = await supabase
     .from('scouts')
-    .select('id, display_name, first_name, last_name, active')
+    .select('id, display_name, first_name, last_name, active, person_id')
     .eq('id', scoutId)
     .maybeSingle();
   if (scoutErr) return { ok: false, error: scoutErr.message };
   if (!scout) return { ok: false, error: 'Scout not found.' };
+  if (scout.person_id == null) {
+    return { ok: false, error: 'This scout has no linked person record — cannot promote to adult.' };
+  }
 
   // 1. Age the scout out (idempotent).
   const { error: updErr } = await supabase
@@ -1008,7 +895,7 @@ export async function promoteScoutToAdult(formData: FormData): Promise<Result> {
   const { data: linked } = await supabase
     .from('leaders')
     .select('code')
-    .eq('scout_id', scoutId)
+    .eq('person_id', scout.person_id)
     .maybeSingle();
   let leaderCode = linked?.code as string | undefined;
 
@@ -1021,11 +908,14 @@ export async function promoteScoutToAdult(formData: FormData): Promise<Result> {
     let candidate = base;
     for (let n = 2; taken.has(candidate); n++) candidate = `${base}${n}`;
     leaderCode = candidate;
+    // name is set here, not left to the people_sync_leader_name trigger —
+    // that trigger only fires on a later UPDATE of people.display_name, not
+    // on this INSERT, so a fresh row needs its initial value written.
     const { error: insErr } = await supabase.from('leaders').insert({
       code: candidate,
       name: scout.display_name,
       is_person: true,
-      scout_id: scoutId
+      person_id: scout.person_id
     });
     if (insErr) return { ok: false, error: insErr.message };
   }

@@ -6,6 +6,14 @@ import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { LEADER_PERSON_FIELDS, type FieldValue } from '@/lib/change-requests';
 import { requestChallengeForPerson, TOKEN_TTL_MINUTES } from '@/lib/identity-challenge';
+import {
+  listPersonEmails,
+  addPersonEmail,
+  setPrimaryEmail,
+  removePersonEmail,
+  type PersonEmailRow,
+  type PersonEmailLabel
+} from '@/lib/person-emails';
 
 import { centralToday } from '@/lib/dates';
 /**
@@ -824,10 +832,13 @@ export type SendSignInLinkResult =
  * Roster › adult/leader › "Send sign-in link" (Plans/Verified-Signup.md
  * Phase A). A leader-initiated verified-sign-in email, gated behind the SAME
  * capability as every other write in this file — the Roster tab is the only
- * place this action lives, and it takes only a person id, never an address:
- * `requestChallengeForPerson` resolves the destination itself
- * (`deliverableEmailFor`), so there is no path from this function's inputs to
- * an arbitrary email — see SendSignInLink_OnlyEverUsesTheRosterAddress in
+ * place this action lives, and it takes only a person id (and, since Phase 2
+ * of Plans/Retire-Roster-Contact-Columns.md, optionally an EMAIL ID, never a
+ * raw address): `requestChallengeForPerson` resolves the destination itself
+ * (`deliverableEmailFor`, or addressForPersonEmailId() when `emailId` is
+ * given — both keyed strictly to this person's own rows), so there is no path
+ * from this function's inputs to an arbitrary email — see
+ * SendSignInLink_OnlyEverUsesTheRosterAddress in
  * tests/roster-send-sign-in-link.test.ts, which asserts that by reading this
  * function's own source.
  *
@@ -835,13 +846,67 @@ export type SendSignInLinkResult =
  * (the column has existed, unused, since Phase 1 — see identity_auth_phase1.sql)
  * so Recent Logins can attribute the eventual sign-in to whoever sent it.
  */
-export async function sendSignInLink(personId: number): Promise<SendSignInLinkResult> {
+export async function sendSignInLink(personId: number, emailId?: number): Promise<SendSignInLinkResult> {
   const actor = await requireCapability('roster.manage');
   const supabase = createAdminClient();
   const result = await requestChallengeForPerson(supabase, personId, {
     ip: await callerIp(),
-    createdByLeader: actor.label
+    createdByLeader: actor.label,
+    emailId
   });
   if (!result.sent) return { ok: false, reason: result.reason };
   return { ok: true, masked: result.masked, expiresMinutes: TOKEN_TTL_MINUTES };
+}
+
+/* ── Email addresses (Plans/Retire-Roster-Contact-Columns.md Phase 2) ─────
+ *
+ * A leader manages any adult's or leader's addresses directly — unlike
+ * /profile's self-service version, there is no "only your own" restriction
+ * here, because a leader editing from the Roster IS the review (same
+ * reasoning updatePersonDemographics's own header gives). All four wrap
+ * lib/person-emails.ts, which owns the one-primary invariant and the
+ * refuse-last/refuse-primary removal rules — this file only adds the
+ * capability gate and the page revalidation every other write here does.
+ */
+
+export async function getPersonEmails(personId: number): Promise<PersonEmailRow[]> {
+  await requireCapability('roster.manage');
+  return listPersonEmails(createAdminClient(), personId);
+}
+
+export async function addPersonEmailAction(
+  personId: number,
+  email: string,
+  label: PersonEmailLabel
+): Promise<Result> {
+  await requireCapability('roster.manage');
+  try {
+    await addPersonEmail(createAdminClient(), personId, email, label);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Could not add that address.' };
+  }
+  revalidate();
+  return { ok: true };
+}
+
+export async function setPersonPrimaryEmailAction(personId: number, emailId: number): Promise<Result> {
+  await requireCapability('roster.manage');
+  try {
+    await setPrimaryEmail(createAdminClient(), personId, emailId);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Could not update the primary address.' };
+  }
+  revalidate();
+  return { ok: true };
+}
+
+export async function removePersonEmailAction(personId: number, emailId: number): Promise<Result> {
+  await requireCapability('roster.manage');
+  try {
+    await removePersonEmail(createAdminClient(), personId, emailId);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Could not remove that address.' };
+  }
+  revalidate();
+  return { ok: true };
 }

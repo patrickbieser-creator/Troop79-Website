@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import { emailsForPeople } from '@/lib/person-emails';
 
 /**
  * Who should receive troop mail for a given set of scouts.
@@ -9,11 +10,18 @@ import { createAdminClient } from '@/lib/supabase/server';
  * relationship (the roster-import / scout-relations path), not just one who
  * also happens to hold a scout_parents row.
  *
- * Bounce/unsubscribe tracking (scout_parent_emails) is keyed directly on
- * person_id (2026-07-25 re-key) — no scout_parents join needed for
- * deliverability status. A parent with a legacy scout_parents.email but no
- * scout_parent_emails row yet falls back to that, then to
- * people.primary_email.
+ * ADDRESSES COME FROM `person_emails` (Plans/Retire-Roster-Contact-Columns.md
+ * Phase 2), not the legacy scout_parent_emails — EVERY deliverable (non-
+ * bounced, non-unsubscribed) row of every parent, not just their primary. A
+ * parent who has added a work address alongside home gets troop mail at
+ * both; that is the point of the widening, not an accident of it. A parent
+ * with no person_emails rows at all (a relationship-only parent from before
+ * this table existed) falls back to people.primary_email.
+ *
+ * DEDUPED BY ADDRESS, ACROSS PEOPLE — not by parent. Two parents who share
+ * one inbox collapse to a single Recipient whose parentName names both
+ * ("Dana Ruiz & Alex Ruiz") and whose scoutIds is the union, so a shared
+ * household address is never mailed twice for the same event.
  */
 
 export interface Recipient {
@@ -60,48 +68,32 @@ export async function recipientsForScouts(scoutIds: string[]): Promise<Recipient
   }
   const parentPersonIds = [...scoutIdsByParentPerson.keys()];
 
-  // The scout_parents.email safety net that used to sit between the tracked
-  // address and people.primary_email is gone with the table (D-066). It cost
-  // nothing to remove: every address it held was already on
-  // people.primary_email, checked against production before the drop, and that
-  // is still the last fallback below.
-  const [{ data: people }, { data: addresses }] = await Promise.all([
+  const [{ data: people }, emailsByPerson] = await Promise.all([
     supabase.from('people').select('id, display_name, primary_email').in('id', parentPersonIds),
-    supabase
-      .from('scout_parent_emails')
-      .select('person_id, email, is_primary, bounced_at, unsubscribed_at')
-      .in('person_id', parentPersonIds)
+    emailsForPeople(supabase, parentPersonIds)
   ]);
   const peopleRows = (people ?? []) as { id: number; display_name: string; primary_email: string | null }[];
-  const addressRows = (addresses ?? []) as {
-    person_id: number;
-    email: string;
-    is_primary: boolean;
-    bounced_at: string | null;
-    unsubscribed_at: string | null;
-  }[];
-  const byPersonId = new Map<number, typeof addressRows>();
-  for (const a of addressRows) {
-    byPersonId.set(a.person_id, [...(byPersonId.get(a.person_id) ?? []), a]);
-  }
 
   const out = new Map<string, Recipient>();
   for (const person of peopleRows) {
-    const addrs = (byPersonId.get(person.id) ?? []).filter(isDeliverable);
-    // Prefer a live, tracked address; fall back to people.primary_email for a
-    // relationship-only parent who has none.
-    const chosen =
-      addrs.find((a) => a.is_primary)?.email ??
-      addrs[0]?.email ??
-      (person.primary_email ? person.primary_email.trim().toLowerCase() : null);
-    if (!chosen) continue;
+    const rows = emailsByPerson.get(person.id) ?? [];
+    const deliverable = rows.filter((e) => !e.bouncedAt && !e.unsubscribedAt).map((e) => e.email);
+    // A relationship-only parent with no person_emails rows yet falls back to
+    // people.primary_email — the same fallback this module has always had.
+    const targets = deliverable.length > 0 ? deliverable : person.primary_email ? [person.primary_email.trim().toLowerCase()] : [];
+    if (targets.length === 0) continue;
 
     const scoutIdsForParent = scoutIdsByParentPerson.get(person.id) ?? [];
-    const existing = out.get(chosen);
-    if (existing) {
-      for (const sid of scoutIdsForParent) if (!existing.scoutIds.includes(sid)) existing.scoutIds.push(sid);
-    } else {
-      out.set(chosen, { email: chosen, parentName: person.display_name, scoutIds: [...scoutIdsForParent] });
+    for (const email of targets) {
+      const existing = out.get(email);
+      if (existing) {
+        if (!existing.parentName.includes(person.display_name)) {
+          existing.parentName = `${existing.parentName} & ${person.display_name}`;
+        }
+        for (const sid of scoutIdsForParent) if (!existing.scoutIds.includes(sid)) existing.scoutIds.push(sid);
+      } else {
+        out.set(email, { email, parentName: person.display_name, scoutIds: [...scoutIdsForParent] });
+      }
     }
   }
   return [...out.values()];

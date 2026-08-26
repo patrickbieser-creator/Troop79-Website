@@ -120,19 +120,13 @@ describe('sign-in name picker', () => {
       active: true,
       person_id: scoutPersonId
     });
-    // Even with a legacy parent-email row keyed to the scout, nothing goes out.
-    await admin.from('scout_parent_emails').insert({ person_id: scoutPersonId, email: parentAddr, label: 'home', is_primary: true });
-    try {
-      const { candidates } = await searchSignInCandidates('Pickparent Scout');
-      const me = candidates.find((c) => c.personId === scoutPersonId);
-      expect(me?.maskedEmail).toBeNull();
-      expect(me?.parents.map((x) => x.personId)).toEqual([parentId]);
-      expect(me?.parents[0].maskedEmail).toBe(maskEmail(parentAddr));
-      const res = await requestChallengeForPerson(admin, scoutPersonId);
-      expect(res).toEqual({ sent: false, reason: 'unreachable' });
-    } finally {
-      await admin.from('scout_parent_emails').delete().eq('person_id', scoutPersonId);
-    }
+    const { candidates } = await searchSignInCandidates('Pickparent Scout');
+    const me = candidates.find((c) => c.personId === scoutPersonId);
+    expect(me?.maskedEmail).toBeNull();
+    expect(me?.parents.map((x) => x.personId)).toEqual([parentId]);
+    expect(me?.parents[0].maskedEmail).toBe(maskEmail(parentAddr));
+    const res = await requestChallengeForPerson(admin, scoutPersonId);
+    expect(res).toEqual({ sent: false, reason: 'unreachable' });
   });
 
   // ── the shared-address hazard ────────────────────────────────────────────

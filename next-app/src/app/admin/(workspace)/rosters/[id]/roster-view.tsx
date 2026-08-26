@@ -127,7 +127,7 @@ export async function loadRoster(signupId: number) {
       .eq('event_signup_id', sig.id)
       .order('sort')
       .order('id'),
-    supabase.from('scouts').select('id, display_name, active, household_id'),
+    supabase.from('scouts').select('id, display_name, active'),
     supabase.from('households').select('id, label'),
 
     // health_form_date is a DATE only — the hint beside the "Health form in

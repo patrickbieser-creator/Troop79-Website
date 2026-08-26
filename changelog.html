@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 26, 2026</strong> &nbsp;&middot;&nbsp; v1.106.4</p>
+      <p>Last updated: <strong>August 26, 2026</strong> &nbsp;&middot;&nbsp; v1.107.0</p>
     </div>
   </div>
 
@@ -494,6 +494,23 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.107.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.107.0</span>
+        <span class="release-date">August 26, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">One record per person &mdash; and more than one email</p>
+        <ul class="change-list">
+          <li><span><strong>A person&rsquo;s contact details now live in exactly one place.</strong> Since July the site kept a second copy of each scout&rsquo;s and leader&rsquo;s email, phone, address and birthdate on the old roster tables, and screens read whichever copy they happened to be built on &mdash; which is how a scout&rsquo;s changed email never reached sign-in. Every screen, export and printout now reads the person record, the roster forms write to it, and the duplicate columns are being retired.</span></li>
+          <li><span><strong>Adults can have more than one email address.</strong> On My Profile, add a second address, choose which is primary, or remove one (never the last). Leaders can do the same on the roster. A sign-in code goes to your primary address; if you have two, the sign-in screen offers &ldquo;Send to a different address instead.&rdquo; Troop emails and confirmations go to every address you keep.</span></li>
+          <li><span>Creating a scout now creates their person record at the same time; the old scout-only parent-email list is retired &mdash; every parent address lives on the parent.</span></li>
+        </ul>
       </div>
     </div>
 

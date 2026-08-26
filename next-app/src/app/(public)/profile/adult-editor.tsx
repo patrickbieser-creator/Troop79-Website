@@ -6,7 +6,9 @@ import { displayValue, pendingFields, type DraftValues } from '@/lib/profile-dra
 import { DateField } from '@/app/_components/date-field';
 import { EditField } from './edit-field';
 import { EditorActions } from './editor-actions';
+import { EmailEditor } from './email-editor';
 import { fmtDate } from '@/lib/format-date';
+import type { PersonEmailRow } from '@/lib/person-emails';
 import styles from './profile.module.css';
 
 export interface AdultProfileFields {
@@ -44,7 +46,12 @@ export default function AdultEditor({
   onChange,
   onDiscard,
   submitAction,
-  withdrawAction
+  withdrawAction,
+  isSelf,
+  emails,
+  addEmailAction,
+  setPrimaryEmailAction,
+  removeEmailAction
 }: {
   adult: AdultProfileFields;
   pending: ChangeRequestRow | null;
@@ -55,6 +62,16 @@ export default function AdultEditor({
   onDiscard: () => void;
   submitAction: (formData: FormData) => Promise<void>;
   withdrawAction: (formData: FormData) => Promise<void>;
+  /** True only for the household member who IS the verified session — the
+   *  one adult allowed to manage these addresses (Plans/Retire-Roster-
+   *  Contact-Columns.md Phase 2). Every other adult's email shows read-only. */
+  isSelf: boolean;
+  /** This adult's own addresses — only populated (and only rendered) when
+   *  `isSelf` is true; empty otherwise. */
+  emails: PersonEmailRow[];
+  addEmailAction: (formData: FormData) => Promise<void>;
+  setPrimaryEmailAction: (formData: FormData) => Promise<void>;
+  removeEmailAction: (formData: FormData) => Promise<void>;
 }) {
   const [isSubmitting, startTransition] = useTransition();
   const queued = pendingFields(pending);
@@ -123,22 +140,23 @@ export default function AdultEditor({
             />
           )}
         </EditField>
-        <EditField
-          label="Email"
-          name="primary_email"
-          queued={queued}
-          previous={displayValue(adult.primary_email)}
-        >
-          {(a) => (
-            <input
-              {...a}
-              className={styles.editInput}
-              type="email"
-              value={values.primary_email ?? ''}
-              onChange={(e) => onChange('primary_email', e.target.value)}
-            />
-          )}
-        </EditField>
+        {isSelf ? (
+          <EmailEditor
+            emails={emails}
+            addAction={addEmailAction}
+            setPrimaryAction={setPrimaryEmailAction}
+            removeAction={removeEmailAction}
+          />
+        ) : (
+          // Not editable here (Plans/Retire-Roster-Contact-Columns.md Phase 2):
+          // only the address's own owner may add/promote/remove it — see
+          // email-editor.tsx's header. Read-only, not part of the pending-
+          // proposal diff either.
+          <div className={styles.editField}>
+            <span className={styles.editLabel}>Email</span>
+            <p className={styles.helpText}>{displayValue(adult.primary_email) || 'No address on file'}</p>
+          </div>
+        )}
         <EditField
           label="Phone"
           name="primary_phone"

@@ -5,8 +5,12 @@ import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import {
   editableFieldsFor,
+  SCOUT_FIELD_TABLE,
+  SCOUT_FIELD_PEOPLE_COLUMN,
   type ChangeEntityType,
-  type ChangeRequestRow
+  type ChangeRequestRow,
+  type EditableScoutField,
+  type FieldValue
 } from '@/lib/change-requests';
 
 /**
@@ -14,23 +18,11 @@ import {
  * (Plans/Scout-Self-Service-Demographics.md). Nothing a family submits from
  * /profile touches the live record until approveChangeRequest runs it.
  *
- * Two entity types now: 'scout' applies to `scouts`, 'adult' applies to the
- * `people` spine. The apply step is one code path parameterised by the type's
- * table and field allowlist, so a new type can't quietly skip the allowlist.
+ * Two entity types now: 'adult' applies straight to the `people` spine;
+ * 'scout' splits across `scouts` (school/grade/swim class) and the scout's
+ * linked person row (everything else) — SCOUT_FIELD_TABLE
+ * (Plans/Retire-Roster-Contact-Columns.md) says which field goes where.
  */
-
-/**
- * Where an approved request writes, per entity type. Deliberately PARTIAL:
- * 'adult_added' is a notice with nothing to apply (the person already exists),
- * so approving it only marks it acknowledged. A type absent from this map
- * writes nothing rather than failing.
- */
-const APPLY_TARGET: Partial<
-  Record<ChangeEntityType, { table: 'scouts' | 'people'; numericId: boolean }>
-> = {
-  scout: { table: 'scouts', numericId: false },
-  adult: { table: 'people', numericId: true }
-};
 
 interface Result {
   ok: boolean;
@@ -85,27 +77,49 @@ export async function approveChangeRequest(id: number): Promise<Result> {
     return { ok: false, error: fetchErr?.message ?? 'Request not found or already reviewed.' };
   }
   const row = request as ChangeRequestRow;
+  const entityType = row.entity_type as ChangeEntityType;
 
-  const target = APPLY_TARGET[row.entity_type as ChangeEntityType];
-  if (target) {
-    // Re-filter through the allowlist here, at the privileged apply step —
-    // not just trusting that the write side already allowlisted it.
-    // proposed_changes is jsonb read back from the DB; this is the code that
-    // actually mutates the record with service-role privileges, so it
-    // shouldn't blindly trust a key set it didn't produce (qa-lead review,
-    // 2026-07-21).
-    const allowed: Record<string, unknown> = {};
-    for (const field of editableFieldsFor(row.entity_type as ChangeEntityType)) {
-      if (field in row.proposed_changes) allowed[field] = row.proposed_changes[field];
+  // Re-filter through the allowlist here, at the privileged apply step — not
+  // just trusting that the write side already allowlisted it. proposed_changes
+  // is jsonb read back from the DB; this is the code that actually mutates the
+  // record with service-role privileges, so it shouldn't blindly trust a key
+  // set it didn't produce (qa-lead review, 2026-07-21).
+  const allowed: Record<string, FieldValue> = {};
+  for (const field of editableFieldsFor(entityType)) {
+    if (field in row.proposed_changes) allowed[field] = row.proposed_changes[field];
+  }
+
+  if (entityType === 'adult' && Object.keys(allowed).length > 0) {
+    // people.id is an int — cast so PostgREST filters on the column's real
+    // type rather than a stringified id.
+    const { error: updErr } = await supabase.from('people').update(allowed).eq('id', Number(row.entity_id));
+    if (updErr) return { ok: false, error: updErr.message };
+  }
+
+  if (entityType === 'scout' && Object.keys(allowed).length > 0) {
+    const scoutPatch: Record<string, FieldValue> = {};
+    const personPatch: Record<string, FieldValue> = {};
+    for (const [field, value] of Object.entries(allowed)) {
+      const f = field as EditableScoutField;
+      if (SCOUT_FIELD_TABLE[f] === 'scouts') scoutPatch[field] = value;
+      else personPatch[SCOUT_FIELD_PEOPLE_COLUMN[f] ?? field] = value;
     }
-    if (Object.keys(allowed).length > 0) {
-      // `scouts.id` is text, `people.id` an int — cast so PostgREST filters on
-      // the column's real type rather than a stringified id.
-      const idValue = target.numericId ? Number(row.entity_id) : row.entity_id;
-      const { error: updErr } = await supabase
-        .from(target.table)
-        .update(allowed)
-        .eq('id', idValue);
+    if (Object.keys(scoutPatch).length > 0) {
+      const { error: updErr } = await supabase.from('scouts').update(scoutPatch).eq('id', row.entity_id);
+      if (updErr) return { ok: false, error: updErr.message };
+    }
+    if (Object.keys(personPatch).length > 0) {
+      const { data: scoutRow, error: scoutErr } = await supabase
+        .from('scouts')
+        .select('person_id')
+        .eq('id', row.entity_id)
+        .maybeSingle();
+      if (scoutErr) return { ok: false, error: scoutErr.message };
+      const personId = (scoutRow as { person_id: number | null } | null)?.person_id ?? null;
+      if (personId == null) {
+        return { ok: false, error: 'This scout has no linked person record — cannot apply contact changes.' };
+      }
+      const { error: updErr } = await supabase.from('people').update(personPatch).eq('id', personId);
       if (updErr) return { ok: false, error: updErr.message };
     }
   }

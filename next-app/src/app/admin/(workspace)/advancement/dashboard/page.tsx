@@ -25,8 +25,10 @@ interface ScoutLite {
   id: string;
   display_name: string;
   current_rank: string | null;
-  bsa_member_id: string | null;
   active: boolean;
+  /** bsa_member_id moved to people, read via this link (Plans/Retire-Roster-
+   *  Contact-Columns.md). */
+  person_id: number | null;
 }
 
 interface RankLite {
@@ -88,7 +90,7 @@ async function loadDashboard() {
     activeLedgerCountRes,
     cohRes
   ] = await Promise.all([
-    supabase.from('scouts').select('id, display_name, current_rank, bsa_member_id, active'),
+    supabase.from('scouts').select('id, display_name, current_rank, active, person_id'),
     supabase.from('ranks').select('id, display_name, sort_order').order('sort_order'),
     supabase
       .from('rank_requirements')
@@ -131,7 +133,14 @@ async function loadDashboard() {
   const lastCohDate = (cohRes.data?.[0]?.date as string | undefined) ?? null;
 
   // ── Stats ──────────────────────────────────────────────────────────
-  const missingBsa = activeScouts.filter((s) => !s.bsa_member_id).length;
+  // bsa_member_id lives on people now — one extra lookup by the active
+  // scouts' person_ids (Plans/Retire-Roster-Contact-Columns.md).
+  const activeScoutPersonIds = activeScouts.map((s) => s.person_id).filter((id): id is number => id != null);
+  const { data: bsaRows } = activeScoutPersonIds.length
+    ? await supabase.from('people').select('id, bsa_member_id').in('id', activeScoutPersonIds)
+    : { data: [] as { id: number; bsa_member_id: string | null }[] };
+  const bsaByPerson = new Map(((bsaRows ?? []) as { id: number; bsa_member_id: string | null }[]).map((p) => [p.id, p.bsa_member_id]));
+  const missingBsa = activeScouts.filter((s) => s.person_id == null || !bsaByPerson.get(s.person_id)).length;
   // COH Candidates: rank_award + merit_badge_award entries since the last COH.
   let cohCandidates = 0;
   if (lastCohDate) {

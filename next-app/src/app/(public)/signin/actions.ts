@@ -273,6 +273,12 @@ export async function unlockRosterAction(formData: FormData): Promise<void> {
  * could be POSTed here with NO password, ever, and it would still send a
  * real one-time code — worse than the bug being fixed, since it needed no
  * forged URL at all, just direct knowledge of this action's name.
+ *
+ * `emailId` (Plans/Retire-Roster-Contact-Columns.md Phase 2, optional) is how
+ * "Send to a different address instead" re-requests a challenge for one of
+ * this SAME person's other addresses — never a raw email, and never another
+ * person's id: requestChallengeForPerson()'s addressForPersonEmailId() only
+ * ever resolves an id that belongs to `personId` itself.
  */
 export async function requestForPersonAction(formData: FormData): Promise<void> {
   const next = String(formData.get('next') ?? '');
@@ -283,11 +289,17 @@ export async function requestForPersonAction(formData: FormData): Promise<void> 
   if (!Number.isInteger(personId) || personId <= 0) {
     redirect(signinUrl({ ...keep, err: 'invalid' }));
   }
+  const emailIdRaw = formData.get('emailId');
+  const emailId =
+    emailIdRaw != null && emailIdRaw !== '' && Number.isInteger(Number(emailIdRaw))
+      ? Number(emailIdRaw)
+      : undefined;
 
   const supabase = createAdminClient();
   const result = await requestChallengeForPerson(supabase, personId, {
     nextPath: next || null,
-    ip: await callerIp()
+    ip: await callerIp(),
+    emailId
   });
 
   if (!result.sent) {

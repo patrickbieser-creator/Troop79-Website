@@ -18,10 +18,16 @@ import {
   createHouseholdForPerson,
   renameHousehold,
   sendSignInLink,
+  getPersonEmails,
+  addPersonEmailAction,
+  setPersonPrimaryEmailAction,
+  removePersonEmailAction,
   type GrantableRole,
   type RelationshipInput,
   type PersonDetail
 } from './person-actions';
+import type { PersonEmailRow, PersonEmailLabel } from '@/lib/person-emails';
+import { FormSection } from '../../../_components/form-panel';
 import { PendingUpdatePanel } from './pending-update-panel';
 import { AdultForm } from './adult-form';
 import { DatePickerField } from '../../_components/date-picker-field';
@@ -378,6 +384,16 @@ function PersonEditor({
   const [linkBusy, setLinkBusy] = useState(false);
   const [linkSent, setLinkSent] = useState<string | null>(null);
   const [linkError, setLinkError] = useState<string | null>(null);
+  const [linkEmailId, setLinkEmailId] = useState<number | ''>('');
+
+  // Email addresses (Plans/Retire-Roster-Contact-Columns.md Phase 2) — a
+  // leader manages any adult's/leader's addresses directly, unlike /profile's
+  // self-only version (see person-actions.ts's header on that file). Own
+  // add-address draft state, separate from `busy`/`error` above so it does
+  // not fight with the Demographics form's own inputs.
+  const [emails, setEmails] = useState<PersonEmailRow[]>([]);
+  const [newEmail, setNewEmail] = useState('');
+  const [newEmailLabel, setNewEmailLabel] = useState<PersonEmailLabel>('home');
 
   // The editor renders what the SERVER says this person is, re-read after every
   // change. Relying on revalidatePath + router.refresh() to feed new props into
@@ -427,8 +443,8 @@ function PersonEditor({
   // Fresh read on open, so a dialog opened after someone else's edit is current.
   useEffect(() => {
     let live = true;
-    getPersonDetail(person.person_id)
-      .then((d) => { if (live) setDetail(d); })
+    Promise.all([getPersonDetail(person.person_id), getPersonEmails(person.person_id)])
+      .then(([d, e]) => { if (live) { setDetail(d); setEmails(e); } })
       .catch(() => {});
     return () => { live = false; };
   }, [person.person_id]);
@@ -466,7 +482,7 @@ function PersonEditor({
     setLinkBusy(true);
     setLinkSent(null);
     setLinkError(null);
-    sendSignInLink(person.person_id)
+    sendSignInLink(person.person_id, linkEmailId === '' ? undefined : linkEmailId)
       .then((res) => {
         if (res.ok) {
           setLinkSent(`Link sent to ${res.masked} — good for ${res.expiresMinutes} minutes.`);
@@ -486,7 +502,15 @@ function PersonEditor({
     fn()
       .then(async (res) => {
         if (!res.ok) { feedback.fail(); setError(res.error ?? 'Something went wrong.'); return; }
-        setDetail(await getPersonDetail(person.person_id));
+        // Also refreshed here, not just after an Email addresses action: a
+        // Demographics save can change primary_email, and the two-way trigger
+        // on person_emails means that changes the primary ROW too.
+        const [freshDetail, freshEmails] = await Promise.all([
+          getPersonDetail(person.person_id),
+          getPersonEmails(person.person_id)
+        ]);
+        setDetail(freshDetail);
+        setEmails(freshEmails);
         setSaved(okMessage);
         feedback.done();
         onChanged();
@@ -495,11 +519,20 @@ function PersonEditor({
       .finally(() => setBusy(false));
   }
 
+  function addEmail() {
+    const email = newEmail.trim();
+    if (!email) return;
+    act(() => addPersonEmailAction(person.person_id, email, newEmailLabel), 'Address added.');
+    setNewEmail('');
+    setNewEmailLabel('home');
+  }
+
   const disabled = busy;
   // What's actually on record server-side (detail.fields, refreshed after
   // every save) — not `demo.email`, which can hold an unsaved keystroke.
   // Matches what requestChallengeForPerson() will actually find.
   const rosterEmail = typeof detail.fields.primary_email === 'string' ? detail.fields.primary_email.trim() : '';
+  const deliverableEmails = emails.filter((e) => !e.bouncedAt && !e.unsubscribedAt);
   const householdId = detail.householdId;
   const current = detail.roles.filter((r) => !r.end_date);
   const ended = detail.roles.filter((r) => r.end_date);
@@ -523,6 +556,28 @@ function PersonEditor({
             </p>
           </div>
           <div className={styles.inlineRow}>
+            {/* Only shown with a real choice to make — one address is the
+                common case, and defaulting the select to "primary" (linkEmailId
+                stays '') already sends there with no extra control needed. */}
+            {deliverableEmails.length > 1 && (
+              <select
+                className={styles.select}
+                aria-label="Send to"
+                disabled={linkBusy}
+                // Reflects what sendLink() will actually use: linkEmailId
+                // when the leader picked one, otherwise whichever address
+                // requestChallengeForPerson() defaults to (the primary).
+                value={linkEmailId !== '' ? linkEmailId : (deliverableEmails.find((e) => e.isPrimary)?.id ?? deliverableEmails[0]?.id ?? '')}
+                onChange={(e) => setLinkEmailId(e.target.value ? Number(e.target.value) : '')}
+              >
+                {deliverableEmails.map((em) => (
+                  <option key={em.id} value={em.id}>
+                    {em.email}
+                    {em.isPrimary ? ' (primary)' : ''}
+                  </option>
+                ))}
+              </select>
+            )}
             <Button
               size="sm"
               disabled={linkBusy || !rosterEmail}
@@ -805,6 +860,75 @@ function PersonEditor({
             />
           </div>
         </section>
+
+        {/* ── Email addresses (Plans/Retire-Roster-Contact-Columns.md Phase 2) ── */}
+        <FormSection num={1} title="Email addresses">
+          <p className={styles.editorHint}>
+            One-click, not a save form — add, promote or remove an address and it takes effect right
+            away. The Demographics email field above still edits the same primary address; either
+            place keeps the other in sync.
+          </p>
+          {emails.length === 0 && <p className={styles.muted}>No addresses on file.</p>}
+          <ul className={styles.chipList}>
+            {emails.map((em) => (
+              <li key={em.id} className={styles.roleChip}>
+                {em.email}
+                <span className={styles.muted}>{em.label}</span>
+                {em.isPrimary && <span className={styles.guardianTag}>primary</span>}
+                {em.bouncedAt && <span className={styles.guardianTag}>bounced</span>}
+                {em.unsubscribedAt && <span className={styles.guardianTag}>unsubscribed</span>}
+                {!em.isPrimary && (
+                  <button
+                    className={styles.chipBtn}
+                    disabled={disabled}
+                    onClick={() =>
+                      act(() => setPersonPrimaryEmailAction(person.person_id, em.id), 'Primary address updated.')
+                    }
+                  >
+                    Make primary
+                  </button>
+                )}
+                <button
+                  className={styles.chipBtn}
+                  disabled={disabled || emails.length <= 1 || em.isPrimary}
+                  title={
+                    emails.length <= 1
+                      ? 'The only address on file — add another before removing this one'
+                      : em.isPrimary
+                        ? 'Set another address as primary first'
+                        : undefined
+                  }
+                  onClick={() => act(() => removePersonEmailAction(person.person_id, em.id), 'Address removed.')}
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className={styles.inlineRow}>
+            <input
+              className={styles.searchInput}
+              type="email"
+              placeholder="name@example.com"
+              value={newEmail}
+              disabled={disabled}
+              onChange={(e) => setNewEmail(e.target.value)}
+            />
+            <select
+              className={styles.select}
+              value={newEmailLabel}
+              disabled={disabled}
+              onChange={(e) => setNewEmailLabel(e.target.value as PersonEmailLabel)}
+            >
+              <option value="home">home</option>
+              <option value="work">work</option>
+              <option value="other">other</option>
+            </select>
+            <Button size="sm" disabled={disabled || !newEmail.trim()} onClick={addEmail}>
+              Add address
+            </Button>
+          </div>
+        </FormSection>
 
         {/* ── Household ─────────────────────────────────────────────── */}
         <section className={styles.editorSection}>

@@ -28,6 +28,9 @@ export interface RankReqCatalogRow {
 
 export interface ScoutDetail {
   scout: Scout;
+  /** people.bsa_member_id via scout.person_id — moved off `scouts`
+   *  (Plans/Retire-Roster-Contact-Columns.md). */
+  bsaMemberId: string | null;
   summary: ScoutSummaryRow | null;
   ranks: Rank[];
   rankReqs: RankReqCatalogRow[];
@@ -80,6 +83,18 @@ export async function loadScoutDetail(scoutId: string): Promise<ScoutDetail | nu
   ]);
 
   if (scoutRes.error || !scoutRes.data) return null;
+  const scout = scoutRes.data as Scout;
+
+  // bsa_member_id lives on people now (Plans/Retire-Roster-Contact-Columns.md).
+  let bsaMemberId: string | null = null;
+  if (scout.person_id != null) {
+    const { data: personRow } = await supabase
+      .from('people')
+      .select('bsa_member_id')
+      .eq('id', scout.person_id)
+      .maybeSingle();
+    bsaMemberId = (personRow as { bsa_member_id: string | null } | null)?.bsa_member_id ?? null;
+  }
 
   const ledger = {
     rankRequirements: [] as LedgerEntry[],
@@ -158,7 +173,8 @@ export async function loadScoutDetail(scoutId: string): Promise<ScoutDetail | nu
   }
 
   return {
-    scout: scoutRes.data as Scout,
+    scout,
+    bsaMemberId,
     summary: (summaryRes.data ?? null) as ScoutSummaryRow | null,
     ranks: (ranksRes.data ?? []) as Rank[],
     rankReqs: (rankReqsRes.data ?? []) as RankReqCatalogRow[],

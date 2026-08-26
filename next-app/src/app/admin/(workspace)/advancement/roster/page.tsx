@@ -23,6 +23,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { resolveAdminActor } from '@/lib/admin-actor';
 import { centralToday } from '@/lib/dates';
 import type { Rank } from '@/lib/supabase/types';
+import { loadScoutRows } from '@/lib/scout-row';
 import { RosterActions } from './roster-actions';
 import { TabStrip } from '../../_components/tab-strip';
 import { PageTitle } from '../../_components/page-title';
@@ -34,7 +35,6 @@ import {
   type RelationshipRow,
   type HouseholdOption
 } from './people-table';
-import type { ScoutRow } from './scout-form';
 import { GuestsTable } from './guests-table';
 import {
   buildGuestTabRows,
@@ -96,7 +96,7 @@ export default async function RosterPage({
   const supabase = createAdminClient();
   const [
     directoryRes,
-    scoutsRes,
+    allScouts,
     ranksRes,
     rolesRes,
     relsRes,
@@ -105,7 +105,7 @@ export default async function RosterPage({
     guestPeopleRes
   ] = await Promise.all([
     supabase.from('person_directory').select('*').order('display_name'),
-    supabase.from('scouts').select('*').order('display_name'),
+    loadScoutRows(supabase),
     supabase.from('ranks').select('id, display_name, sort_order').order('sort_order'),
     supabase.from('person_roles').select('id, person_id, role, start_date, end_date'),
     supabase.from('relationships').select('id, person_id, related_person_id, type, is_guardian'),
@@ -148,7 +148,6 @@ export default async function RosterPage({
 
   const today = centralToday();
   const directory = (directoryRes.data ?? []) as unknown as DirectoryPerson[];
-  const allScouts = (scoutsRes.data ?? []) as unknown as ScoutRow[];
   const ranks = ((ranksRes.data ?? []) as Rank[]).map((r) => ({
     id: r.id,
     display_name: r.display_name

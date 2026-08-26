@@ -65,19 +65,30 @@ export async function loadScoutbookExport(
         .order('date')
         .range(rangeFrom, rangeTo)
     ),
-    supabase.from('scouts').select('id, first_name, last_name, display_name, bsa_member_id'),
+    supabase.from('scouts').select('id, first_name, last_name, display_name, person_id'),
     supabase.from('merit_badges').select('id, name, scoutbook_id'),
     supabase.from('ranks').select('id, display_name, scoutbook_id')
   ]);
 
+  // bsa_member_id lives on people now (Plans/Retire-Roster-Contact-Columns.md).
+  const scoutRows = (scoutsRes.data ?? []) as {
+    id: string;
+    first_name: string;
+    last_name: string;
+    display_name: string;
+    person_id: number | null;
+  }[];
+  const scoutPersonIds = scoutRows.map((s) => s.person_id).filter((id): id is number => id != null);
+  const { data: peopleRows } = scoutPersonIds.length
+    ? await supabase.from('people').select('id, bsa_member_id').in('id', scoutPersonIds)
+    : { data: [] as { id: number; bsa_member_id: string | null }[] };
+  const bsaByPerson = new Map(((peopleRows ?? []) as { id: number; bsa_member_id: string | null }[]).map((p) => [p.id, p.bsa_member_id]));
+
   const scoutMap = new Map(
-    ((scoutsRes.data ?? []) as {
-      id: string;
-      first_name: string;
-      last_name: string;
-      display_name: string;
-      bsa_member_id: string | null;
-    }[]).map((s) => [s.id, s])
+    scoutRows.map((s) => [
+      s.id,
+      { ...s, bsa_member_id: s.person_id != null ? (bsaByPerson.get(s.person_id) ?? null) : null }
+    ])
   );
   const mbMap = new Map(
     ((mbsRes.data ?? []) as { id: string; name: string; scoutbook_id: string | null }[]).map((m) => [

@@ -8,7 +8,7 @@
  * scout → parents (recipientsForScouts); sign-in needs the opposite
  * direction, email/phone → person, which goes straight at `people`
  * (people_email_idx already indexes lower(trim(primary_email))) plus
- * `scout_parent_emails` — not through the scout graph, so an adult with no
+ * `person_emails` — not through the scout graph, so an adult with no
  * parent_of edge (committee member, chartered-org rep, an ASM whose kids
  * were never in the troop) is still reachable.
  *
@@ -129,14 +129,16 @@ async function resolveChallengeTarget(
 
   let personId = ((directPeople ?? []) as { id: number }[])[0]?.id ?? null;
 
-  // scout_parent_emails fallback (a tracked address that isn't people.primary_email —
-  // e.g. a parent who signs in with a different address than the one on file).
-  // Unlike the direct lookup above, this table has no active flag of its
-  // own — the resolved person's OWN active status is checked explicitly
-  // below rather than relying only on email deliverability.
+  // person_emails fallback (Plans/Retire-Roster-Contact-Columns.md Phase 2) —
+  // a tracked address that isn't people.primary_email, e.g. a parent who
+  // signs in with a SECOND address on file rather than their primary one, or
+  // a parent reachable only through a non-primary row. Unlike the direct
+  // lookup above, this table has no `active` flag of its own — the resolved
+  // person's OWN active status is checked explicitly below rather than
+  // relying only on email deliverability.
   if (!personId) {
     const { data: addrRows } = await supabase
-      .from('scout_parent_emails')
+      .from('person_emails')
       .select('person_id, bounced_at, unsubscribed_at')
       .ilike('email', needle)
       .limit(1);
@@ -220,6 +222,53 @@ export async function deliverableEmailFor(supabase: SupabaseClient, personId: nu
   return primary || null;
 }
 
+/**
+ * Every address a challenge for this person COULD go to — every non-bounced,
+ * non-unsubscribed row on `person_emails`, primary first (Plans/Retire-Roster-
+ * Contact-Columns.md Phase 2). deliverableEmailFor() above stays the PRIMARY
+ * only, unchanged, because every existing caller of it wants exactly that;
+ * this is for the new "send to a different address instead" surface on
+ * /signin and the Roster's send-sign-in-link picker, which need the whole
+ * list to offer a choice from.
+ */
+export async function deliverableEmailsFor(
+  supabase: SupabaseClient,
+  personId: number
+): Promise<{ id: number; email: string }[]> {
+  const { data } = await supabase
+    .from('person_emails')
+    .select('id, email, is_primary')
+    .eq('person_id', personId)
+    .is('bounced_at', null)
+    .is('unsubscribed_at', null);
+  const rows = (data ?? []) as { id: number; email: string; is_primary: boolean }[];
+  return rows
+    .sort((a, b) => (a.is_primary === b.is_primary ? 0 : a.is_primary ? -1 : 1))
+    .map((r) => ({ id: r.id, email: r.email }));
+}
+
+/**
+ * Resolve a caller-supplied `emailId` to the actual address it names —
+ * NEVER a raw address. Returns null unless the row both exists and belongs
+ * to this exact person, and is still deliverable, so a stale or foreign id
+ * fails exactly like "no address on file" rather than leaking whose it was.
+ */
+async function addressForPersonEmailId(
+  supabase: SupabaseClient,
+  personId: number,
+  emailId: number
+): Promise<string | null> {
+  const { data } = await supabase
+    .from('person_emails')
+    .select('email')
+    .eq('id', emailId)
+    .eq('person_id', personId)
+    .is('bounced_at', null)
+    .is('unsubscribed_at', null)
+    .maybeSingle();
+  return (data as { email: string } | null)?.email ?? null;
+}
+
 /** ChallengeTarget for a known person id — the picker's equivalent of
  *  resolveChallengeTarget(), minus the ambiguous email lookup. Keeps every one
  *  of that function's defence-in-depth checks (active, directory row,
@@ -291,18 +340,35 @@ export async function requestChallenge(
  * from "we have no way to reach you", which is a legitimate thing to say to
  * someone who already cleared the troop-password gate and picked themselves
  * off a list we showed them.
+ *
+ * `opts.emailId` (Plans/Retire-Roster-Contact-Columns.md Phase 2) targets one
+ * of the person's OTHER addresses — "send to a different address instead" on
+ * /signin, and the Roster's send-sign-in-link picker. Resolved through
+ * addressForPersonEmailId(), which only ever returns an address that both
+ * exists and belongs to this exact person — never trust an id as if it were
+ * already an address; a stray id from a stale page reads as "unreachable",
+ * the same as no address at all, rather than silently falling back to the
+ * primary.
  */
 export async function requestChallengeForPerson(
   supabase: SupabaseClient,
   personId: number,
-  opts: { nextPath?: string | null; ip?: string | null; createdByLeader?: string | null } = {}
+  opts: {
+    nextPath?: string | null;
+    ip?: string | null;
+    createdByLeader?: string | null;
+    emailId?: number | null;
+  } = {}
 ): Promise<
   { sent: true; masked: string } | { sent: false; reason: 'unreachable' | 'rate-limited' | 'failed' }
 > {
   const target = await targetForPerson(supabase, personId);
   if (!target) return { sent: false, reason: 'unreachable' };
 
-  const address = await deliverableEmailFor(supabase, personId);
+  const address =
+    opts.emailId != null
+      ? await addressForPersonEmailId(supabase, personId, opts.emailId)
+      : await deliverableEmailFor(supabase, personId);
   if (!address) return { sent: false, reason: 'unreachable' };
 
   const outcome = await mintAndSend(supabase, target, address, opts);
@@ -479,6 +545,36 @@ interface TokenRow {
   expires_at: string;
   consumed_at: string | null;
   attempts: number;
+  /** Only selected on the redeem paths — see markEmailVerified(). */
+  sent_to?: string | null;
+}
+
+/**
+ * A sign-in code or link redeemed through an address is proof someone reads
+ * that inbox — the one signal `person_emails.verified_at` exists to record
+ * (Plans/Retire-Roster-Contact-Columns.md Phase 2). `login_tokens.sent_to` is
+ * already the exact address a challenge went to (mintAndSend() writes it),
+ * so redemption is the one place this can be set without asking the person
+ * anything new. Best-effort: a verification stamp must never block or fail a
+ * sign-in that already succeeded.
+ */
+async function markEmailVerified(
+  supabase: SupabaseClient,
+  personId: number,
+  sentTo: string | null | undefined
+): Promise<void> {
+  const email = sentTo?.trim().toLowerCase();
+  if (!email) return;
+  try {
+    await supabase
+      .from('person_emails')
+      .update({ verified_at: new Date().toISOString() })
+      .eq('person_id', personId)
+      .ilike('email', email)
+      .is('verified_at', null);
+  } catch {
+    /* advisory only — the sign-in already succeeded */
+  }
 }
 
 /**
@@ -587,7 +683,11 @@ export async function redeemToken(
   if (!rawToken) return null;
   // Same tolerant lookup as the GET side — otherwise the landing page would
   // say "Continue as …" and then fail on submit.
-  const { data } = await findTokenRow(supabase, rawToken, 'id, person_id, next_path, expires_at, consumed_at, attempts');
+  const { data } = await findTokenRow(
+    supabase,
+    rawToken,
+    'id, person_id, next_path, expires_at, consumed_at, attempts, sent_to'
+  );
   const row = data as TokenRow | null;
   if (!row || row.consumed_at || new Date(row.expires_at) < new Date()) return null;
 
@@ -596,6 +696,7 @@ export async function redeemToken(
 
   await supabase.from('login_tokens').update({ consumed_at: new Date().toISOString() }).eq('id', row.id);
   await invalidateSiblingTokens(supabase, row.person_id, row.id);
+  await markEmailVerified(supabase, row.person_id, row.sent_to);
   return identity;
 }
 
@@ -650,7 +751,7 @@ async function redeemCodeForTarget(
 
   const { data } = await supabase
     .from('login_tokens')
-    .select('id, person_id, next_path, expires_at, consumed_at, attempts')
+    .select('id, person_id, next_path, expires_at, consumed_at, attempts, sent_to')
     .eq('person_id', target.personId)
     .is('consumed_at', null)
     .order('created_at', { ascending: false })
@@ -679,5 +780,6 @@ async function redeemCodeForTarget(
 
   await supabase.from('login_tokens').update({ consumed_at: new Date().toISOString() }).eq('id', row.id);
   await invalidateSiblingTokens(supabase, row.person_id, row.id);
+  await markEmailVerified(supabase, row.person_id, row.sent_to);
   return { ok: true, identity };
 }

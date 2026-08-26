@@ -279,3 +279,18 @@
   .editGrid { grid-template-columns: 1fr; }
   .editFieldFull { grid-column: auto; }
 }
+
+/* ── Email addresses (email-editor.tsx, Plans/Retire-Roster-Contact-Columns.md
+   Phase 2) — replaces the single primary_email input for the signed-in
+   adult's own record. Reuses .editCancelBtn/.editSaveBtn/.editInput/.pendingTag
+   rather than declaring a parallel button/input language. */
+.emailList { list-style: none; margin: 6px 0 10px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.emailRow {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  padding: 8px 10px; border: 1px solid var(--border-light); border-radius: 3px; background: var(--warm-white);
+  font-size: 13px;
+}
+.emailAddr { font-weight: 700; color: var(--text-head); }
+.emailMeta { font-size: 11px; color: var(--text-meta); text-transform: uppercase; letter-spacing: 0.04em; }
+.emailAddRow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 4px; }
+.emailAddRow .editInput { width: auto; flex: 1 1 200px; }

@@ -64,7 +64,7 @@ export async function loadSnapshot(signupId: number): Promise<{ input: SnapshotI
   if (!sig) return null;
   const s = sig as { id: number; calendar_entry_id: number; needs_permission_slip: boolean };
 
-  const [{ data: entry }, { data: entries }, { data: balances }, { data: sets }, { data: questions }, { data: answers }, { data: people }, { data: scouts }, { data: households }, { data: relations }, tx, { data: reqs }, { data: ms }, { data: slotRows }] =
+  const [{ data: entry }, { data: entries }, { data: balances }, { data: sets }, { data: questions }, { data: answers }, { data: people }, { data: scouts }, { data: households }, { data: householdMembers }, { data: relations }, tx, { data: reqs }, { data: ms }, { data: slotRows }] =
     await Promise.all([
       supabase.from('calendar_entries').select('id, title, entry_date, end_date, start_time, end_time, location').eq('id', s.calendar_entry_id).maybeSingle(),
       supabase
@@ -77,8 +77,9 @@ export async function loadSnapshot(signupId: number): Promise<{ input: SnapshotI
       supabase.from('signup_questions').select('id, prompt, input_type, choices, leader_only, print_allowed, sort').eq('event_signup_id', s.id).order('sort').order('id'),
       supabase.from('signup_answers').select('signup_entry_id, question_id, value'),
       supabase.from('people').select('id, display_name, primary_phone, primary_email'),
-      supabase.from('scouts').select('id, person_id, graduation_year, household_id'),
+      supabase.from('scouts').select('id, person_id, graduation_year'),
       supabase.from('households').select('id, label'),
+      supabase.from('household_members').select('household_id, person_id'),
       supabase.from('relationships').select('person_id, related_person_id, type').in('type', ['parent_of', 'guardian_of']),
       fetchAllRows<{ id: number; occurred_on: string; amount: number; kind: string; method: string | null; memo: string | null; signup_entry_id: number | null; voided_at: string | null }>((from, to) =>
         supabase
@@ -96,8 +97,14 @@ export async function loadSnapshot(signupId: number): Promise<{ input: SnapshotI
   const cal = entry as { id: number; title: string; entry_date: string; end_date: string | null; start_time: string | null; end_time: string | null; location: string | null };
 
   const personById = new Map(((people ?? []) as { id: number; display_name: string; primary_phone: string | null; primary_email: string | null }[]).map((p) => [p.id, p]));
-  const scoutByPerson = new Map(((scouts ?? []) as { id: string; person_id: number | null; graduation_year: number | null; household_id: number | null }[]).filter((x) => x.person_id != null).map((x) => [x.person_id as number, x]));
+  const scoutByPerson = new Map(((scouts ?? []) as { id: string; person_id: number | null; graduation_year: number | null }[]).filter((x) => x.person_id != null).map((x) => [x.person_id as number, x]));
   const hhLabel = new Map(((households ?? []) as { id: number; label: string }[]).map((h) => [h.id, h.label]));
+  // scouts.household_id retired (Plans/Retire-Roster-Contact-Columns.md) —
+  // household_members is the join for a scout's household now, same as
+  // every other reader.
+  const householdByPerson = new Map(
+    ((householdMembers ?? []) as { household_id: number; person_id: number }[]).map((m) => [m.person_id, m.household_id])
+  );
   // Guardian phones for youth: every parent_of/guardian_of relation's phone.
   const guardiansOf = new Map<number, number[]>();
   for (const r of (relations ?? []) as { person_id: number; related_person_id: number }[]) {
@@ -136,7 +143,11 @@ export async function loadSnapshot(signupId: number): Promise<{ input: SnapshotI
       grade,
       phone: youth ? (guardianPhones.join(' / ') || null) : (person?.primary_phone ?? null),
       email: youth ? null : (person?.primary_email ?? null),
-      household: e.household_id ? (hhLabel.get(Number(e.household_id)) ?? null) : scout?.household_id ? (hhLabel.get(scout.household_id) ?? null) : null,
+      household: e.household_id
+        ? (hhLabel.get(Number(e.household_id)) ?? null)
+        : pid != null && householdByPerson.has(pid)
+          ? (hhLabel.get(householdByPerson.get(pid)!) ?? null)
+          : null,
       drivesOut: e.drives_out === true,
       drivesBack: e.drives_back === true,
       vehicleSeatsOut: e.vehicle_seats_out ? Number(e.vehicle_seats_out) : null,

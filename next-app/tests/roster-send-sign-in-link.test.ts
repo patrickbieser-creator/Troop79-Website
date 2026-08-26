@@ -105,17 +105,29 @@ describe('sendSignInLink — source property', () => {
   it('SendSignInLink_OnlyEverUsesTheRosterAddress', () => {
     expect(start).toBeGreaterThan(-1);
 
-    // Signature: a person id, nothing shaped like an address.
+    // Signature: a person id, and (Phase 2) an optional email ID — never
+    // anything shaped like a raw address string.
     const signature = body.slice(0, body.indexOf(')') + 1);
     expect(signature).toContain('personId: number');
-    expect(signature).not.toMatch(/email|address/i);
+    expect(signature).not.toMatch(/email\s*:\s*string/i);
+    expect(signature).not.toMatch(/address/i);
 
     // The body never reads an email/address out of its own input — the
     // destination is resolved entirely inside requestChallengeForPerson()
-    // (deliverableEmailFor(), keyed on the roster's primary_email), so there
-    // is no path from a caller-supplied string to where the mail goes.
+    // (deliverableEmailFor() by default, or addressForPersonEmailId() when
+    // emailId is given — both keyed strictly to this person's own rows), so
+    // there is no path from a caller-supplied string to where the mail goes.
     expect(body).not.toMatch(/formData/i);
     expect(body).not.toMatch(/['"]email['"]/i);
+  });
+
+  it('SendSignInLink_EmailIdIsPassedThroughUnexamined', () => {
+    // An emailId, when given, is an id — this function does no lookup or
+    // validation of its own on it. Ownership is enforced inside
+    // requestChallengeForPerson() (addressForPersonEmailId()), not here.
+    expect(body).toContain('emailId?: number');
+    expect(body).toContain('emailId');
+    expect(body).toContain('requestChallengeForPerson(');
   });
 
   it('SendSignInLink_PassesTheActingLeadersLabel_AsCreatedByLeader', () => {

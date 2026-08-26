@@ -28,7 +28,11 @@ vi.mock('../src/app/admin/(workspace)/advancement/roster/person-actions', () => 
   deletePerson: vi.fn(),
   createHouseholdForPerson: vi.fn(),
   renameHousehold: vi.fn(),
-  sendSignInLink: vi.fn()
+  sendSignInLink: vi.fn(),
+  getPersonEmails: vi.fn(async () => []),
+  addPersonEmailAction: vi.fn(),
+  setPersonPrimaryEmailAction: vi.fn(),
+  removePersonEmailAction: vi.fn()
 }));
 
 function person(over: Partial<DirectoryPerson> & { person_id: number; display_name: string }): DirectoryPerson {

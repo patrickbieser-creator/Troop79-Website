@@ -36,7 +36,7 @@ export async function loadEngineInput(meetingDate: string, title: string): Promi
   ] = await Promise.all([
     supabase
       .from('scouts')
-      .select('id, display_name, patrol, current_rank')
+      .select('id, display_name, patrol, current_rank, person_id')
       .eq('active', true)
       .order('display_name'),
     supabase.from('ranks').select('id, display_name, sort_order').order('sort_order'),
@@ -75,7 +75,7 @@ export async function loadEngineInput(meetingDate: string, title: string): Promi
         .range(from, to)
     ),
     supabase.from('skills').select('id, name, youth_teachable, sort_order').order('sort_order'),
-    supabase.from('leaders').select('code, name, role, is_person, scout_id'),
+    supabase.from('leaders').select('code, name, role, is_person, person_id'),
     supabase.from('leader_skills').select('leader_code, skill_id'),
     supabase.from('merit_badge_counselors').select('mb_id, leader_code'),
     supabase.from('scout_instructors').select('scout_id, skill_id')
@@ -97,12 +97,17 @@ export async function loadEngineInput(meetingDate: string, title: string): Promi
 
   // The engine's leader pool is ADULTS: exclude non-person sign-off sources
   // (Camp, Clinic, ...) and youth leaders — initials linked to an ACTIVE
-  // scout. Once that scout ages out, the same initials rejoin this pool.
-  const activeScoutIds = new Set(((scoutsRes.data ?? []) as { id: string }[]).map((s) => s.id));
+  // scout's person_id. Once that scout ages out, the same initials rejoin
+  // this pool (Plans/Retire-Roster-Contact-Columns.md).
+  const activeScoutPersonIds = new Set(
+    ((scoutsRes.data ?? []) as { person_id: number | null }[])
+      .map((s) => s.person_id)
+      .filter((id): id is number => id != null)
+  );
   const adultLeaders = (
-    (leadersRes.data ?? []) as { code: string; name: string; role: string | null; is_person: boolean; scout_id: string | null }[]
+    (leadersRes.data ?? []) as { code: string; name: string; role: string | null; is_person: boolean; person_id: number | null }[]
   )
-    .filter((l) => l.is_person && !(l.scout_id && activeScoutIds.has(l.scout_id)))
+    .filter((l) => l.is_person && !(l.person_id != null && activeScoutPersonIds.has(l.person_id)))
     .map(({ code, name, role }) => ({ code, name, role }));
 
   const input: EngineInput = {

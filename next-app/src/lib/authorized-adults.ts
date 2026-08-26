@@ -17,7 +17,10 @@ export interface LeaderLite {
   code: string;
   name: string;
   is_person: boolean;
-  scout_id: string | null;
+  /** Set when these initials belong to a scout (youth leader) — matched
+   *  against an ACTIVE scout's own person_id, not the retired leaders.scout_id
+   *  (Plans/Retire-Roster-Contact-Columns.md). */
+  person_id: number | null;
   can_login: boolean;
   login_name: string | null;
 }
@@ -33,16 +36,19 @@ export interface AuthorizedAdult {
 }
 
 /** Real people who aren't a currently-active scout's youth-leader initials. */
-export function isAdultPerson(l: Pick<LeaderLite, 'is_person' | 'scout_id'>, activeScoutIds: Set<string>): boolean {
-  return l.is_person && !(l.scout_id && activeScoutIds.has(l.scout_id));
+export function isAdultPerson(
+  l: Pick<LeaderLite, 'is_person' | 'person_id'>,
+  activeScoutPersonIds: Set<number>
+): boolean {
+  return l.is_person && !(l.person_id != null && activeScoutPersonIds.has(l.person_id));
 }
 
 /** Pure — no DB access. Computes the adult pool + labels from data already in memory. */
 export function computeAdultPool(
   leaders: LeaderLite[],
-  activeScoutIds: Set<string>
+  activeScoutPersonIds: Set<number>
 ): AuthorizedAdult[] {
-  const adults = leaders.filter((l) => isAdultPerson(l, activeScoutIds));
+  const adults = leaders.filter((l) => isAdultPerson(l, activeScoutPersonIds));
   const autoLabels = autoLoginLabels(adults);
   return adults
     .map((a) => ({
@@ -89,12 +95,16 @@ export async function loadAdultLeaders(
   supabase: ReturnType<typeof createAdminClient>
 ): Promise<AuthorizedAdult[]> {
   const [leadersRes, scoutsRes] = await Promise.all([
-    supabase.from('leaders').select('code, name, is_person, scout_id, can_login, login_name'),
-    supabase.from('scouts').select('id').eq('active', true)
+    supabase.from('leaders').select('code, name, is_person, person_id, can_login, login_name'),
+    supabase.from('scouts').select('person_id').eq('active', true)
   ]);
   const leaders = (leadersRes.data ?? []) as LeaderLite[];
-  const activeScoutIds = new Set(((scoutsRes.data ?? []) as { id: string }[]).map((s) => s.id));
-  return computeAdultPool(leaders, activeScoutIds);
+  const activeScoutPersonIds = new Set(
+    ((scoutsRes.data ?? []) as { person_id: number | null }[])
+      .map((s) => s.person_id)
+      .filter((id): id is number => id != null)
+  );
+  return computeAdultPool(leaders, activeScoutPersonIds);
 }
 
 /** The actual login pool — adults with can_login = true. */

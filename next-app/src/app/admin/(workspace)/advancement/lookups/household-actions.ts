@@ -67,25 +67,24 @@ export async function renameHousehold(id: number, label: string): Promise<Result
 /**
  * Delete a household, refusing while anything still points at it.
  *
- * scouts.household_id is the one that matters: it is a legacy column the signup
- * flow still reads, and it is ON DELETE SET NULL, so removing a household out
- * from under a scout would silently blank their household rather than fail.
- * signup_entries.household_id records which family submitted a signup and must
- * never lose that.
+ * household_members is the one join that matters now: `scouts.household_id`
+ * was retired (Plans/Retire-Roster-Contact-Columns.md) — every scout that
+ * legacy column ever pointed at already has a household_members row of its
+ * own (backfilled 20260720130000), so that membership check alone covers
+ * scouts and adults both. signup_entries.household_id records which family
+ * submitted a signup and must never lose that.
  */
 export async function deleteHousehold(id: number): Promise<Result> {
   await requireCapability('roster.manage');
   const supabase = createAdminClient();
 
-  const [memberRes, scoutRes, signupRes] = await Promise.all([
+  const [memberRes, signupRes] = await Promise.all([
     supabase.from('household_members').select('person_id').eq('household_id', id).limit(1),
-    supabase.from('scouts').select('id').eq('household_id', id).limit(1),
     supabase.from('signup_entries').select('id').eq('household_id', id).limit(1)
   ]);
 
   const blockers: string[] = [];
   if (memberRes.data?.length) blockers.push('people in it');
-  if (scoutRes.data?.length) blockers.push(`a scout still assigned to it (${scoutRes.data[0].id})`);
   if (signupRes.data?.length) blockers.push('an event signup recorded against it');
 
   if (blockers.length > 0) {

@@ -7,9 +7,11 @@
  * TWO ENTITY TYPES. `change_requests` was built with a generic
  * (entity_type, entity_id) key on purpose, and this is the second type
  * cashing that in: /profile now edits the ADULTS of a household as well as
- * its scouts. A scout's editable fields live on `scouts`, an adult's on the
- * `people` spine, so the two field sets are genuinely different — everything
- * below is keyed by entity type rather than assuming the scout shape.
+ * its scouts. A scout's editable fields split across `scouts` (school,
+ * grade, swim class) and `people` via the scout's person_id link (everything
+ * else — SCOUT_FIELD_TABLE says which); an adult's live on `people` outright.
+ * The two field sets are genuinely different — everything below is keyed by
+ * entity type rather than assuming the scout shape.
  */
 
 export const EDITABLE_SCOUT_FIELDS = [
@@ -28,6 +30,35 @@ export const EDITABLE_SCOUT_FIELDS = [
 ] as const;
 
 export type EditableScoutField = (typeof EDITABLE_SCOUT_FIELDS)[number];
+
+/**
+ * Which table an approved EDITABLE_SCOUT_FIELDS key writes to
+ * (Plans/Retire-Roster-Contact-Columns.md). Most moved to the `people` spine
+ * via the scout's person_id link; school/graduation_year/swim_class stay on
+ * `scouts` — they are facts about being a scout, not about the person.
+ */
+export const SCOUT_FIELD_TABLE: Record<EditableScoutField, 'scouts' | 'people'> = {
+  address_line1: 'people',
+  address_line2: 'people',
+  city: 'people',
+  state: 'people',
+  zip: 'people',
+  phone: 'people',
+  email: 'people',
+  school: 'scouts',
+  graduation_year: 'scouts',
+  swim_class: 'scouts',
+  birthdate: 'people',
+  things_we_should_know: 'people'
+};
+
+/** The `people` column name for a scout field that moved there, where it
+ *  differs from the scout-side name (email/phone are primary_email/
+ *  primary_phone on people; everything else keeps its name). */
+export const SCOUT_FIELD_PEOPLE_COLUMN: Partial<Record<EditableScoutField, string>> = {
+  email: 'primary_email',
+  phone: 'primary_phone'
+};
 
 export const FIELD_LABEL: Record<EditableScoutField, string> = {
   address_line1: 'Address Line 1',

@@ -104,6 +104,9 @@ let submitScout: ActionMock;
 let submitAdult: ActionMock;
 let withdraw: ActionMock;
 let addMember: ActionMock;
+let addEmail: ActionMock;
+let setPrimaryEmail: ActionMock;
+let removeEmail: ActionMock;
 
 beforeEach(() => {
   const noop = (): ActionMock => vi.fn<(formData: FormData) => Promise<void>>(async () => {});
@@ -111,12 +114,17 @@ beforeEach(() => {
   submitAdult = noop();
   withdraw = noop();
   addMember = noop();
+  addEmail = noop();
+  setPrimaryEmail = noop();
+  removeEmail = noop();
 });
 
 function renderHousehold(opts: {
   pending?: Record<string, ChangeRequestRow>;
   members?: HouseholdMemberView[];
   initialKey?: string | null;
+  selfPersonId?: number | null;
+  selfEmails?: import('../src/lib/person-emails').PersonEmailRow[];
 } = {}) {
   return render(
     <HouseholdMembers
@@ -130,6 +138,11 @@ function renderHousehold(opts: {
       withdrawAction={withdraw}
       addMemberAction={addMember}
       canAddMember={false}
+      selfPersonId={opts.selfPersonId === undefined ? 501 : opts.selfPersonId}
+      selfEmails={opts.selfEmails ?? []}
+      addEmailAction={addEmail}
+      setPrimaryEmailAction={setPrimaryEmail}
+      removeEmailAction={removeEmail}
     />
   );
 }
@@ -152,12 +165,16 @@ describe('member switcher', () => {
     const user = userEvent.setup();
     renderHousehold({ initialKey: 'person:501' });
 
-    expect(field('Email').value).toBe('patrick@example.com');
+    // Email is no longer a shared EditField (Plans/Retire-Roster-Contact-
+    // Columns.md Phase 2 — the signed-in adult gets the EmailEditor, everyone
+    // else a read-only line), so Phone is what proves the D-098 regression
+    // stays caught: the selected member's OWN values, not a leaked instance.
+    expect(field('Phone').value).toBe('(414) 555-0101');
 
     await user.click(chip('Jamie Tester'));
 
     expect(screen.getByRole('heading', { name: 'Jamie Tester' })).toBeTruthy();
-    expect(field('Email').value).toBe('jamie@example.com');
+    expect(field('Phone').value).toBe('(414) 555-0102');
     expect(field('First Name').value).toBe('Jamie');
   });
 
@@ -202,6 +219,48 @@ describe('member switcher', () => {
     await user.type(field('City'), 'x');
 
     expect(chip('Patrick Tester').textContent).toContain('edited');
+  });
+});
+
+describe('email addresses — self vs. another household adult', () => {
+  // Plans/Retire-Roster-Contact-Columns.md Phase 2: only the signed-in
+  // adult gets add/promote/remove controls for their own addresses; every
+  // other adult in the household shows a read-only line instead. A rendering
+  // concern (same class of bug as D-098 above), so it belongs in this suite,
+  // not the db one.
+  const patrickEmails = [
+    {
+      id: 1,
+      personId: 501,
+      email: 'patrick@example.com',
+      label: 'home' as const,
+      isPrimary: true,
+      verifiedAt: null,
+      bouncedAt: null,
+      unsubscribedAt: null
+    }
+  ];
+
+  it('SelfAdult_SeesTheEmailEditor_WithAddPromoteRemoveControls', () => {
+    renderHousehold({ initialKey: 'person:501', selfPersonId: 501, selfEmails: patrickEmails });
+
+    // The EmailEditor's own address rows, not an <input>.
+    expect(screen.getByText('patrick@example.com')).toBeTruthy();
+    expect(screen.getByLabelText('New email address')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Add address' })).toBeTruthy();
+  });
+
+  it('AnotherAdult_SeesEmailReadOnly_NotTheEmailEditor', async () => {
+    const user = userEvent.setup();
+    renderHousehold({ initialKey: 'person:501', selfPersonId: 501, selfEmails: patrickEmails });
+
+    await user.click(chip('Jamie Tester'));
+
+    // Jamie's own address, shown as plain text — no add-address control for
+    // an address that isn't the signed-in adult's own.
+    expect(screen.getByText('jamie@example.com')).toBeTruthy();
+    expect(screen.queryByLabelText('New email address')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add address' })).toBeNull();
   });
 });
 
