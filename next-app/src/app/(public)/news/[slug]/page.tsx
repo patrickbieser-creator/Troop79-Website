@@ -1,9 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { cookies } from 'next/headers';
 import { loadArticleBySlug, loadArticlePreviewBySlug, formatDateLong } from '@/lib/news-feed';
-import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
+import { actorHas, resolveAdminActor } from '@/lib/admin-actor';
 import { articleCategoryLabel } from '@/lib/feed-logic';
 import { ArticleBody } from '@/lib/article-body/ArticleBody';
 import styles from './article-detail.module.css';
@@ -13,16 +12,15 @@ import { siteUrl } from '@/lib/site-url';
 import { loadSeoSettings, articleJsonLd, breadcrumbJsonLd } from '@/lib/seo';
 
 /**
- * Public lookup first; if it misses and the visitor holds a leader session,
+ * Public lookup first; if it misses and the visitor can write news (identity
+ * session with news.write — the legacy leader cookie died 2026-08-16),
  * fall back to the any-status preview (the editor's "Preview (unpublished)"
  * button). Anyone else gets the same 404 a guessed slug always got.
  */
 async function loadForVisitor(slug: string): Promise<{ article: Awaited<ReturnType<typeof loadArticleBySlug>>; preview: boolean }> {
   const article = await loadArticleBySlug(slug);
   if (article) return { article, preview: false };
-  const jar = await cookies();
-  const session = await verifySession(jar.get(LEADER_COOKIE.name)?.value);
-  if (session?.role !== 'leader') return { article: null, preview: false };
+  if (!actorHas(await resolveAdminActor(), 'news.write')) return { article: null, preview: false };
   return { article: await loadArticlePreviewBySlug(slug), preview: true };
 }
 
