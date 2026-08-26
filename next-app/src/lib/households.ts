@@ -357,3 +357,11 @@ export function storedHouseholdId(key: string | null | undefined): number | null
   if (!key || !/^\d+$/.test(key)) return null;
   return Number(key);
 }
+
+/** The `Household.key` loadHouseholds() gives a stored household — the inverse
+ *  of storedHouseholdId. Use it to find a party by households.id; never spell
+ *  the key by hand (a `household:<id>` guess silently matched nothing —
+ *  the roster's Resend, 2026-08-25). */
+export function storedHouseholdKey(householdId: number): string {
+  return String(householdId);
+}

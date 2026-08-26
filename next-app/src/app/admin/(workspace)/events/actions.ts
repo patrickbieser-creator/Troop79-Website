@@ -13,7 +13,7 @@ import { normalizeGroupName, normalizeSetLabel, validateNewSet } from '@/lib/gro
 import { sendEmail, renderEmail } from '@/lib/email';
 import { validateLeaderRecipients, type ConfirmationContext } from '@/lib/signup-confirmation';
 import { loadHouseholdSnapshot, loadConfirmationConfig, buildConfirmation, dispatchConfirmations } from '@/lib/signup-confirmation-send';
-import { loadHouseholds } from '@/lib/households';
+import { loadHouseholds, storedHouseholdKey } from '@/lib/households';
 import { recipientsForScouts } from '@/lib/email-recipients';
 import { siteUrl } from '@/lib/site-url';
 import { loadSiteText, reminderEmailCopy, paymentReminderEmailCopy } from '@/lib/site-text';
@@ -1700,7 +1700,7 @@ export async function resendConfirmation(signupId: number, householdId: number):
   const loaded = await loadConfirmationConfig(supabase, signupId);
   if (!loaded) return { ok: false, error: 'Signup not found.' };
   if (!loaded.config.familyEnabled) return { ok: false, error: 'The family confirmation is off for this signup.' };
-  const party = (await loadHouseholds()).find((h) => h.key === `household:${householdId}`) ?? null;
+  const party = (await loadHouseholds()).find((h) => h.key === storedHouseholdKey(householdId)) ?? null;
   const snap = await loadHouseholdSnapshot(supabase, signupId, party, householdId);
   if (!snap.rows.length) return { ok: false, error: 'Nobody from that household is on this signup.' };
   const { ctx, members } = await buildConfirmation(supabase, loaded.signup, party, householdId, null, 'resend', null, snap);
@@ -1734,7 +1734,7 @@ export async function previewConfirmationContext(signupId: number, householdId: 
   const supabase = createAdminClient();
   const loaded = await loadConfirmationConfig(supabase, signupId);
   if (!loaded) return null;
-  const party = (await loadHouseholds()).find((h) => h.key === `household:${householdId}`) ?? null;
+  const party = (await loadHouseholds()).find((h) => h.key === storedHouseholdKey(householdId)) ?? null;
   const snap = await loadHouseholdSnapshot(supabase, signupId, party, householdId);
   const { ctx } = await buildConfirmation(supabase, loaded.signup, party, householdId, null, 'new', null, snap);
   return ctx;
