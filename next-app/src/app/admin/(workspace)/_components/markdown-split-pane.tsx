@@ -150,22 +150,33 @@ interface PreviewProps {
    */
   title?: string;
   onEditBlock?: (info: EditableBlockInfo) => void;
-  /** Replaces the default preview chrome when the caller owns the surface. */
+  /** Replaces the outer pane (scroll/padding) when the caller owns it; the
+   *  label and paper card are always rendered. */
   className?: string;
   emptyNote?: string;
 }
 
+/**
+ * One preview look everywhere (Patrick, 2026-08-26 — the news editor's was
+ * the preferred design): a newsprint pane, the "● Live Preview" line, and
+ * the rendered story on a white paper card. `className` swaps only the outer
+ * pane (the article editor's full-height column); the label and card stay.
+ */
 export function MarkdownPreview({ value, title, onEditBlock, className, emptyNote }: PreviewProps) {
   return (
     <div className={className ?? styles.preview} aria-live="polite">
-      {title !== undefined && (
-        <div className={styles.previewTitle}>{title || 'Untitled'}</div>
-      )}
-      {value.trim() ? (
-        <ArticleBody body={value} onEditBlock={onEditBlock} />
-      ) : (
-        <p className={styles.previewEmpty}>{emptyNote ?? 'Nothing to preview yet.'}</p>
-      )}
+      <div className={styles.previewLabel}>
+        <span className={styles.liveDot} aria-hidden="true" />
+        Live Preview
+      </div>
+      <div className={styles.previewSurface}>
+        {title !== undefined && <div className={styles.previewTitle}>{title || 'Untitled'}</div>}
+        {value.trim() ? (
+          <ArticleBody body={value} onEditBlock={onEditBlock} />
+        ) : (
+          <p className={styles.previewEmpty}>{emptyNote ?? 'Nothing to preview yet.'}</p>
+        )}
+      </div>
     </div>
   );
 }

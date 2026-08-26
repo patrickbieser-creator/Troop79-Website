@@ -77,14 +77,7 @@
 /* ── Preview pane — WYSIWYG parity surface: tracks the PUBLIC site via the
    --admin-preview-* aliases (the one sanctioned coupling, see admin.css). */
 .previewPane { background: var(--admin-preview-paper-alt); padding: 30px 40px 60px; overflow-y: auto; max-height: calc(100vh - 240px); }
-.previewPaneLabel {
-  max-width: 760px; margin: 0 auto 18px; display: flex; align-items: center; gap: 10px;
-  font-family: var(--admin-font-ui); font-size: 10px; font-weight: 700; letter-spacing: .12em;
-  text-transform: uppercase; color: var(--admin-preview-ink-meta);
-}
-.liveDot { width: 7px; height: 7px; border-radius: var(--admin-radius-circle); background: var(--admin-forest); box-shadow: 0 0 0 3px color-mix(in srgb, var(--admin-forest) 18%, transparent); }
-.previewSurface { background: var(--admin-white); border: 1px solid var(--admin-preview-border); border-radius: 3px; box-shadow: var(--admin-shadow-sm); padding: 30px 34px 40px; max-width: 800px; margin: 0 auto; }
-.previewTitle { font-family: var(--admin-preview-font-display); font-size: 26px; font-weight: 700; color: var(--admin-preview-ink-head); margin-bottom: 14px; }
+/* Label, dot and paper card live in markdown-split-pane.module.css (shared, 2026-08-26). */
 
 .formActions {
   display: flex; align-items: center; gap: 10px; margin-top: 24px; padding-top: 16px;

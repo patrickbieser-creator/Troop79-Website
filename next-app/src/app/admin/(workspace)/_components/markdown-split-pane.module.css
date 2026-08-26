@@ -54,6 +54,20 @@
   min-width: 0;
 }
 .panes > .sourceCol { border-right: 1px solid var(--admin-gray-200); }
+/* Inside a split the source half is a form surface — the FormSection tint
+   with a white, bordered textarea on it — so it reads like the news editor's
+   Body field rather than a bare text well (Patrick, 2026-08-26). */
+.panes > .sourceCol,
+.panesSingle > .sourceCol { background: var(--admin-form-bg); padding: 10px; }
+.panes .source,
+.panesSingle .source {
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: 2px;
+  min-height: 320px;
+}
+.panes .source:focus,
+.panesSingle .source:focus { outline: none; border-color: var(--admin-navy); }
 @media (max-width: 900px) {
   .panes > .sourceCol { border-right: none; }
 }
@@ -68,7 +82,7 @@
   margin-bottom: 8px;
 }
 .panes .toolbar,
-.panesSingle .toolbar { padding: 8px 10px 0; margin-bottom: 0; }
+.panesSingle .toolbar { margin-bottom: 8px; }
 
 .source {
   width: 100%;
@@ -88,10 +102,27 @@
   /* The preview is paper, the source is a field (Patrick, 2026-08-25) — the
      same newsprint tint the article editor's preview pane uses. */
   background: var(--admin-preview-paper-alt);
-  padding: 12px 14px;
+  padding: 18px 20px 24px;
   overflow-x: auto;
   max-height: 520px;
   overflow-y: auto;
+}
+
+/* "● Live Preview" line + the paper card — moved here from the article editor
+   (2026-08-26) so every markdown surface shows the same preview chrome. */
+.previewLabel {
+  max-width: 760px; margin: 0 auto 14px; display: flex; align-items: center; gap: 10px;
+  font-family: var(--admin-font-ui); font-size: 10px; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--admin-preview-ink-meta);
+}
+.liveDot {
+  width: 7px; height: 7px; border-radius: var(--admin-radius-circle); background: var(--admin-forest);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--admin-forest) 18%, transparent);
+}
+.previewSurface {
+  background: var(--admin-white); border: 1px solid var(--admin-preview-border); border-radius: 3px;
+  box-shadow: var(--admin-shadow-sm); padding: 22px 26px 30px; max-width: 800px; margin: 0 auto;
+  min-height: 160px;
 }
 
 /* WYSIWYG parity — tracks the public article title via the sanctioned aliases. */
@@ -134,7 +165,7 @@
 }
 .cheatSheet summary::-webkit-details-marker { display: none; }
 .panes .cheatSheet,
-.panesSingle .cheatSheet { margin: 10px; }
+.panesSingle .cheatSheet { margin: 10px 0 0; }
 .cheatSheetGrid {
   padding: 4px 12px 12px;
   display: grid;

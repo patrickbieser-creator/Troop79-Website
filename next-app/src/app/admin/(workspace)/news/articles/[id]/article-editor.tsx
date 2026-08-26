@@ -359,19 +359,13 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
           <SaveFeedback phase={feedback.phase} />
         </div>
 
-        <div className={styles.previewPane}>
-          <div className={styles.previewPaneLabel}>
-            <span className={styles.liveDot} aria-hidden="true" />
-            Live Preview
-          </div>
-          <MarkdownPreview
-            className={styles.previewSurface}
-            value={body}
-            title={title || 'Untitled article'}
-            onEditBlock={blockTools.onEditBlock}
-            emptyNote="Nothing written yet — the preview fills in as you type."
-          />
-        </div>
+        <MarkdownPreview
+          className={styles.previewPane}
+          value={body}
+          title={title || 'Untitled article'}
+          onEditBlock={blockTools.onEditBlock}
+          emptyNote="Nothing written yet — the preview fills in as you type."
+        />
       </div>
 
       {heroPicking && (
