@@ -149,8 +149,35 @@ First time through, it asks for the troop password.
 That's the one from the Bugle.
 Enter it once and the site remembers you on that device.
 
-Once you're through, find your household,
-and you see your family.
+That password gets you onto the page.
+It's not enough, by itself, to sign anyone up.
+
+For that, the site needs to know which parent is saying yes.
+So instead of a form, you'll see a panel: "Sign in to sign up."
+It tells you what to expect — a one-time code by email, about a minute —
+and a button: Sign in.
+
+Type a few letters of your last name and pick yourself.
+
+A six-digit code and a link go to the email address we already have for you.
+Type the code, or tap the link. Either one works.
+
+And you're back here — signed in, right on this page,
+with your household already picked for you.
+
+The first time you do this, the site offers you something.
+Sign in next time with your phone, fingerprint, or face — no code to type.
+
+That's called a passkey. It's optional, you can remove it later on your profile,
+and it's the same thing your bank or Google already has you use.
+It even follows you to a new phone. Worth taking the offer.
+
+Notice this bar at the top of the form.
+It always says who's signed in and which household you're signing up —
+with a link to change households, and a link to sign out.
+That bar is on every signup page, so nobody has to guess who's driving.
+
+And here's your family.
 Every person in your household, listed.
 
 For each person, you answer for them individually.
@@ -194,11 +221,27 @@ to change your answer, add a person, or cancel.
 Plans change. The site expects that.
 Every change sends you a fresh confirmation, so you always have the current version.
 
+One more thing, and it's on purpose.
+
+If your scout signs in and opens a signup, they don't see this form.
+They see "Ask a parent to sign in."
+Scouts can look at everything on the site.
+Signing the family up, changing it, or cancelling it — that's a parent's job.
+
+And if you ever get stuck signing in,
+every one of these screens ends with the same line:
+"Trouble signing in? Text Patrick — or email" and then the troop email address.
+No phone number on the site — but you have it, and we'll get you sorted.
+
 
 
 ========== MEMBERS: SIGNING IN AS YOU ==========
 
 Now let's talk about signing in as you.
+
+If you already signed in to sign up for an event,
+this will look familiar — it's the exact same three steps,
+just reached from a different door.
 
 The last thing on the nav is "Members."
 This is the front door.

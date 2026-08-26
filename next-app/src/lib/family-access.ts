@@ -72,6 +72,66 @@ export async function requireFamilyAccess(): Promise<GateAudience> {
   return audience;
 }
 
+/**
+ * Verified Signup (Plans/Verified-Signup.md, Patrick 2026-08-26): who may
+ * WRITE a signup. The troop password is first base — it still opens the
+ * event page and /signin — but signing a family up, cancelling, or claiming a
+ * job needs a verified ADULT identity or a leader session.
+ *
+ *   'ok'      — leader session, or verified adult identity
+ *   'sign-in' — troop password only (or the retired shared scout role): must
+ *               go through /signin first
+ *   'parent'  — verified SCOUT identity: a parent has to sign in (Phase B
+ *               will let the scout ask them from here)
+ *   'anon'    — nothing cleared the gate at all
+ *
+ * Pure so the rule is testable without a cookie; the guard below wraps it.
+ */
+export type SignupWriteVerdict = 'ok' | 'sign-in' | 'parent' | 'anon';
+
+export function verifiedSignupVerdict(
+  audience: GateAudience | null,
+  subjectKind: 'adult' | 'scout' | null
+): SignupWriteVerdict {
+  if (audience === null) return 'anon';
+  if (audience === 'leader') return 'ok';
+  if (audience === 'household') return subjectKind === 'adult' ? 'ok' : 'parent';
+  return 'sign-in';
+}
+
+/**
+ * The Server Action guard for every signup write. Same throw-if-not shape as
+ * requireFamilyAccess(), which it replaces on those actions — and, like it,
+ * spends the epoch/revocation read on the verified path.
+ */
+export async function requireVerifiedSignupAccess(): Promise<GateAudience> {
+  const audience = await gateAudience();
+  const session = audience === 'household' ? await getIdentitySessionIfValid() : null;
+  return decideVerifiedSignupAccess(audience, session, (s) => isEpochCurrent(createAdminClient(), s));
+}
+
+/**
+ * The guard's decision with its inputs injected — the cookie read and the
+ * epoch DB read are the only things the wrapper above adds — so the
+ * throw-or-pass behaviour is testable directly (qa-lead, 2026-08-26: the
+ * revoked-session case is exactly the class of defect caught once before).
+ */
+export async function decideVerifiedSignupAccess(
+  audience: GateAudience | null,
+  session: IdentitySession | null,
+  epochCurrent: (s: IdentitySession) => Promise<boolean>
+): Promise<GateAudience> {
+  const verdict = verifiedSignupVerdict(audience, session?.subjectKind ?? null);
+  if (verdict === 'anon' || verdict === 'sign-in') throw new Error('Please sign in to sign up.');
+  if (verdict === 'parent') throw new Error('A parent needs to sign in to do this.');
+  if (audience === 'household') {
+    if (!session || !(await epochCurrent(session))) {
+      throw new Error('Your sign-in has been revoked — please sign in again.');
+    }
+  }
+  return audience as GateAudience;
+}
+
 /** True when the family password isn't configured on this server — the gate
  *  renders an explanatory message instead of an unusable form. */
 export function familyGateConfigured(): boolean {

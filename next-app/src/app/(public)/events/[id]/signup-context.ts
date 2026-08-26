@@ -17,7 +17,7 @@ import {
   storedHouseholdId,
   type Household
 } from '@/lib/households';
-import { gateAudience, getIdentitySessionIfValid } from '@/lib/family-access';
+import { gateAudience, getIdentitySessionIfValid, verifiedSignupVerdict, type SignupWriteVerdict } from '@/lib/family-access';
 import { resolveEffectiveHouseholdKey } from '@/lib/identity-session';
 import { leaderSessionPersonId } from '@/lib/session-person';
 
@@ -56,6 +56,13 @@ export interface SignupContext {
   gateState: 'anon' | 'no-household' | 'ready';
   slotFirst: boolean;
   locked: boolean;
+  /** Verified Signup (2026-08-26): may this visitor WRITE a signup? The page
+   *  branches on it — 'sign-in' and 'parent' get an explanatory panel instead
+   *  of the picker/form; the Server Actions enforce the same rule. */
+  verdict: SignupWriteVerdict;
+  /** Who is signed in, for the status bar — a verified person's display name
+   *  or a leader's label. Null for the troop-password-only visitor. */
+  signedInAs: string | null;
 }
 
 export async function loadSignupContext(
@@ -84,6 +91,7 @@ export async function loadSignupContext(
    * visitor on the site.
    */
   const verifiedSession = audience === 'household' ? await getIdentitySessionIfValid() : null;
+  const verdict = verifiedSignupVerdict(audience, verifiedSession?.subjectKind ?? null);
   const sessionPersonId =
     verifiedSession?.personId ?? (audience === 'leader' ? await leaderSessionPersonId() : null);
   // Resolved against the already-loaded roster rather than
@@ -154,7 +162,9 @@ export async function loadSignupContext(
     householdGuests,
     gateState: !gatedIn ? 'anon' : household ? 'ready' : 'no-household',
     slotFirst,
-    locked: signup ? signupLocked(signup) : false
+    locked: signup ? signupLocked(signup) : false,
+    verdict,
+    signedInAs: verifiedSession?.displayName ?? (audience === 'leader' ? 'a leader' : null)
   };
 }
 

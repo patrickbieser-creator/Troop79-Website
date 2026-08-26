@@ -29,6 +29,12 @@ export interface LoginEvent {
   ip: string | null;
   isFirstLogin: boolean;
   createdAt: string;
+  /** The leader's label who sent the link/code this login redeemed, or null
+   *  for a self-service sign-in. See leaderAttributionByEventId() below for
+   *  how this is derived — login_events carries no direct foreign key to the
+   *  login_tokens row it redeemed, so this is a best-effort join, not a hard
+   *  reference. */
+  sentByLeader: string | null;
 }
 
 /** Heuristic User-Agent -> "Device - Browser" label. Deliberately simple
@@ -121,7 +127,7 @@ interface RawLoginEventRow {
   created_at: string;
 }
 
-function mapRow(row: RawLoginEventRow, nameById: Map<number, string>): LoginEvent {
+function mapRow(row: RawLoginEventRow, nameById: Map<number, string>, leaderByEventId: Map<number, string>): LoginEvent {
   return {
     id: row.id,
     personId: row.person_id,
@@ -133,7 +139,8 @@ function mapRow(row: RawLoginEventRow, nameById: Map<number, string>): LoginEven
     deviceLabel: row.device_label ?? 'Unknown device',
     ip: row.ip,
     isFirstLogin: row.is_first_login,
-    createdAt: row.created_at
+    createdAt: row.created_at,
+    sentByLeader: leaderByEventId.get(row.id) ?? null
   };
 }
 
@@ -146,6 +153,48 @@ async function namesFor(supabase: SupabaseClient, personIds: number[]): Promise<
   return new Map(((data ?? []) as { id: number; display_name: string }[]).map((p) => [p.id, p.display_name]));
 }
 
+/**
+ * "… via link sent by {leader}" attribution (Plans/Verified-Signup.md
+ * Phase A). login_events carries no token_id — it's a separate insert made
+ * right after redemption (signin/actions.ts's setIdentityCookie), not a
+ * child row of login_tokens — so this is a best-effort join: same person,
+ * and the token's consumed_at lands within a few seconds of the login event's
+ * created_at (they're written by the same request, milliseconds apart).
+ * Restricted to tokens with a non-null created_by_leader — a self-service
+ * sign-in has none, so it never matches here.
+ */
+const ATTRIBUTION_WINDOW_MS = 5000;
+
+async function leaderAttributionByEventId(
+  supabase: SupabaseClient,
+  rows: RawLoginEventRow[]
+): Promise<Map<number, string>> {
+  const result = new Map<number, string>();
+  const personIds = Array.from(new Set(rows.map((r) => r.person_id).filter((id): id is number => id != null)));
+  if (personIds.length === 0) return result;
+
+  const { data } = await supabase
+    .from('login_tokens')
+    .select('person_id, created_by_leader, consumed_at')
+    .in('person_id', personIds)
+    .not('created_by_leader', 'is', null)
+    .not('consumed_at', 'is', null);
+  const tokens = (data ?? []) as { person_id: number; created_by_leader: string; consumed_at: string }[];
+  if (tokens.length === 0) return result;
+
+  for (const row of rows) {
+    if (row.person_id == null) continue;
+    const eventTime = new Date(row.created_at).getTime();
+    const match = tokens.find(
+      (t) =>
+        t.person_id === row.person_id &&
+        Math.abs(new Date(t.consumed_at).getTime() - eventTime) <= ATTRIBUTION_WINDOW_MS
+    );
+    if (match) result.set(row.id, match.created_by_leader);
+  }
+  return result;
+}
+
 /** The dashboard's own "last 15 logins" section — successful logins only. */
 export async function loadRecentLogins(supabase: SupabaseClient, limit = 15): Promise<LoginEvent[]> {
   const { data } = await supabase
@@ -155,11 +204,14 @@ export async function loadRecentLogins(supabase: SupabaseClient, limit = 15): Pr
     .order('created_at', { ascending: false })
     .limit(limit);
   const rows = (data ?? []) as RawLoginEventRow[];
-  const nameById = await namesFor(
-    supabase,
-    rows.map((r) => r.person_id).filter((id): id is number => id != null)
-  );
-  return rows.map((r) => mapRow(r, nameById));
+  const [nameById, leaderByEventId] = await Promise.all([
+    namesFor(
+      supabase,
+      rows.map((r) => r.person_id).filter((id): id is number => id != null)
+    ),
+    leaderAttributionByEventId(supabase, rows)
+  ]);
+  return rows.map((r) => mapRow(r, nameById, leaderByEventId));
 }
 
 /** The "view all" page — paginated, successful logins only. */
@@ -181,11 +233,77 @@ export async function loadAllLogins(
       .range(offset, offset + limit - 1)
   ]);
   const rows = (data ?? []) as RawLoginEventRow[];
-  const nameById = await namesFor(
-    supabase,
-    rows.map((r) => r.person_id).filter((id): id is number => id != null)
+  const [nameById, leaderByEventId] = await Promise.all([
+    namesFor(
+      supabase,
+      rows.map((r) => r.person_id).filter((id): id is number => id != null)
+    ),
+    leaderAttributionByEventId(supabase, rows)
+  ]);
+  return { events: rows.map((r) => mapRow(r, nameById, leaderByEventId)), total: count ?? 0 };
+}
+
+export interface HouseholdsSignedInStats {
+  /** Households with >=1 active scout AND >=1 successful login_events row
+   *  from any member (parent or scout). */
+  signedIn: number;
+  /** Households with >=1 active scout — the denominator. */
+  total: number;
+}
+
+/**
+ * "N of M households have signed in at least once" (Plans/Verified-Signup.md
+ * Phase A step 11 — feeds the Bugle reminder list until everyone has). M is
+ * households with at least one active scout; N is the subset of those where
+ * ANY member — a parent as well as the scout — has a successful login_events
+ * row. A parent signing in counts for the household same as the scout would.
+ */
+export async function loadHouseholdsSignedInStats(supabase: SupabaseClient): Promise<HouseholdsSignedInStats> {
+  const { data: scoutRows } = await supabase.from('scouts').select('person_id').eq('active', true);
+  const scoutPersonIds = Array.from(
+    new Set(
+      ((scoutRows ?? []) as { person_id: number | null }[])
+        .map((r) => r.person_id)
+        .filter((id): id is number => id != null)
+    )
   );
-  return { events: rows.map((r) => mapRow(r, nameById)), total: count ?? 0 };
+  if (scoutPersonIds.length === 0) return { signedIn: 0, total: 0 };
+
+  const { data: scoutMemberRows } = await supabase
+    .from('household_members')
+    .select('household_id, person_id')
+    .in('person_id', scoutPersonIds);
+  const activeScoutHouseholdIds = new Set(
+    ((scoutMemberRows ?? []) as { household_id: number; person_id: number }[]).map((r) => r.household_id)
+  );
+  const total = activeScoutHouseholdIds.size;
+  if (total === 0) return { signedIn: 0, total: 0 };
+
+  // Every member of one of those households, not just the scout — a parent's
+  // login counts toward that household having signed in.
+  const { data: allMemberRows } = await supabase
+    .from('household_members')
+    .select('household_id, person_id')
+    .in('household_id', Array.from(activeScoutHouseholdIds));
+  const householdByPerson = new Map<number, number>();
+  for (const r of (allMemberRows ?? []) as { household_id: number; person_id: number }[]) {
+    householdByPerson.set(r.person_id, r.household_id);
+  }
+  const memberPersonIds = Array.from(householdByPerson.keys());
+  if (memberPersonIds.length === 0) return { signedIn: 0, total };
+
+  const { data: loginRows } = await supabase
+    .from('login_events')
+    .select('person_id')
+    .eq('success', true)
+    .in('person_id', memberPersonIds);
+  const signedInHouseholds = new Set<number>();
+  for (const r of (loginRows ?? []) as { person_id: number | null }[]) {
+    if (r.person_id == null) continue;
+    const hh = householdByPerson.get(r.person_id);
+    if (hh != null) signedInHouseholds.add(hh);
+  }
+  return { signedIn: signedInHouseholds.size, total };
 }
 
 /** A distinct signal from the main list, deliberately not mixed in
@@ -203,5 +321,6 @@ export async function loadRecentFailedLogins(supabase: SupabaseClient, limit = 1
     supabase,
     rows.map((r) => r.person_id).filter((id): id is number => id != null)
   );
-  return rows.map((r) => mapRow(r, nameById));
+  // A failed attempt never redeemed a token — nothing to attribute.
+  return rows.map((r) => mapRow(r, nameById, new Map()));
 }

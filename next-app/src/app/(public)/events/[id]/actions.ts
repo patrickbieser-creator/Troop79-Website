@@ -6,7 +6,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/server';
-import { requireFamilyAccess, getIdentitySessionIfValid } from '@/lib/family-access';
+import { requireVerifiedSignupAccess, getIdentitySessionIfValid } from '@/lib/family-access';
 import { FAMILY_COOKIE, signFamilySession } from '@/lib/family-session';
 import { secretMatches } from '@/lib/signed-cookie';
 import { safeInternalPath } from '@/lib/safe-redirect';
@@ -93,14 +93,15 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
   const slotCommentsRaw = String(formData.get('slotComments') ?? '{}');
   const back = `/events/${eventId}/signup?household=${encodeURIComponent(householdKey)}`;
 
-  // requireFamilyAccess() now also rejects a revoked identity session (qa-lead
-  // 2026-08-06) — caught here rather than left to crash the request, same
-  // polish level as every other guard clause in this file.
+  // Verified Signup (2026-08-26): a troop-password-only visitor is refused
+  // here, server-side, not just by the page hiding the form. The guard also
+  // rejects a revoked identity session (qa-lead 2026-08-06) — caught rather
+  // than left to crash the request, same polish as every other guard clause.
   let audience;
   try {
-    audience = await requireFamilyAccess();
-  } catch {
-    redirect(`${back}&err=${encodeURIComponent('Your sign-in has been revoked — please sign in again.')}`);
+    audience = await requireVerifiedSignupAccess();
+  } catch (e) {
+    redirect(`${back}&err=${encodeURIComponent(e instanceof Error ? e.message : 'Please sign in to sign up.')}`);
   }
 
   let entries: unknown[];
@@ -320,9 +321,9 @@ export async function cancelSignupAction(formData: FormData): Promise<void> {
 
   let audience;
   try {
-    audience = await requireFamilyAccess();
-  } catch {
-    redirect(`${back}&err=${encodeURIComponent('Your sign-in has been revoked — please sign in again.')}`);
+    audience = await requireVerifiedSignupAccess();
+  } catch (e) {
+    redirect(`${back}&err=${encodeURIComponent(e instanceof Error ? e.message : 'Please sign in to sign up.')}`);
   }
 
   const supabase = createAdminClient();

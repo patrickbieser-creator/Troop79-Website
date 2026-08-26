@@ -145,6 +145,14 @@
 .cardHeaderLink:hover {
   color: var(--admin-navy);
 }
+/* "N of M households have signed in" (Recent Logins) and the redeemed-token
+   leader attribution inline on a login row — same muted small-print role in
+   both spots. */
+.cardSubLine {
+  font-size: 11px;
+  color: var(--admin-gray-500);
+  margin: -4px 0 10px;
+}
 
 .note {
   background: var(--admin-status-warning-bg);

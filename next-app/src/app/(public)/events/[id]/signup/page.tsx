@@ -3,7 +3,10 @@ import type { GuestRowValue } from '../guest-rows';
 import { SavedFlash } from '../save-feedback';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { familyGateConfigured } from '@/lib/family-access';
+import { familyGateConfigured, getIdentitySessionIfValid } from '@/lib/family-access';
+import { hasPasskey } from '@/lib/passkeys';
+import { createAdminClient } from '@/lib/supabase/server';
+import { PasskeyOffer } from '../passkey-offer';
 import { formatCalendarDateParts, formatTimeOfDay } from '@/lib/calendar-shared';
 import { calendarReturn } from '@/lib/calendar-return';
 import { loadSignupContext } from '../signup-context';
@@ -14,6 +17,9 @@ import {
   cancelSignupAction
 } from '../actions';
 import HouseholdPicker from '../household-picker';
+import { SignInToSignUpPanel, AskAParentPanel } from '../signup-panels';
+import { SignupStatusBar } from '../signup-status-bar';
+import { logOutEverywhereAction } from '../../../../_components/site-nav-actions';
 import SlotFirstForm from '../slot-first-form';
 import PersonFirstForm from '../person-first-form';
 import { TrackOnMount } from '../../../_components/track-on-mount';
@@ -93,6 +99,7 @@ export default async function EventSignupPage({
     m?: string;
     category?: string;
     q?: string;
+    welcome?: string;
   }>;
 }) {
   const { id } = await params;
@@ -103,8 +110,17 @@ export default async function EventSignupPage({
   const ctx = await loadSignupContext(numeric, sp.household);
   if (!ctx) notFound();
 
-  const { detail, audience, gatedIn, households, household, existing, existingClaims, gateState, slotFirst, locked } = ctx;
+  const { detail, audience, gatedIn, households, household, existing, existingClaims, gateState, slotFirst, locked, verdict, signedInAs } = ctx;
   const { entry, signup, prices, slots, questions, headcount } = detail;
+
+  // Passkey offer, once (Plans/Verified-Signup.md): only after a code/link
+  // sign-in that started from a signup page (?welcome=1, set by signin
+  // actions), only for a verified adult, only while they have no passkey.
+  let offerPasskey = false;
+  if (sp.welcome === '1' && verdict === 'ok' && audience === 'household') {
+    const session = await getIdentitySessionIfValid();
+    offerPasskey = !!session && session.subjectKind === 'adult' && !(await hasPasskey(createAdminClient(), session.personId));
+  }
 
   const back = calendarReturn(sp);
   /* Two ways out, and they mean different things: back to the event (what this
@@ -194,8 +210,8 @@ export default async function EventSignupPage({
           <form action={familyGateAction} className={styles.gate}>
             <p className={styles.gateLede}>
               One shared password for the whole troop — it&rsquo;s printed in the Bugle each week,
-              or ask any leader. You&rsquo;ll only enter it once on this device. No account, no
-              email.
+              or ask any leader. You&rsquo;ll only enter it once on this device. Then sign in with
+              your name so the troop knows who said yes.
             </p>
             {/* Back HERE after the gate, not to the event page — the visitor
                 clicked "Sign up", and landing them on the description would
@@ -238,7 +254,7 @@ export default async function EventSignupPage({
             </>
           )}
           {sp.signedout && (
-            <Notice tone="success" className={styles.noticeGapBottom}>✓ Signed out of the family gate on this device.</Notice>
+            <Notice tone="success" className={styles.noticeGapBottom}>✓ Signed out on this device.</Notice>
           )}
           {sp.cancelled && <SavedFlash what="Your signup is cancelled." />}
           {sp.cancelled && (
@@ -247,44 +263,43 @@ export default async function EventSignupPage({
             </Notice>
           )}
           {sp.err && <Notice tone="error" className={styles.noticeGapBottom}>{sp.err}</Notice>}
+          {offerPasskey && <PasskeyOffer next={`${eventHref}/signup`} />}
 
-          {!household ? (
-            <>
-              <p className={styles.gateOk}>
-                ✓ You&rsquo;re signed in
-                {slotFirst ? ' — pick a job below to find yourself.' : ' — now find yourself.'}
-              </p>
-              {!slotFirst && <HouseholdPicker households={households} eventId={entry.id} />}
-            </>
+          {/* Verified Signup (2026-08-26): the troop password is first base.
+              Writing a signup needs a verified adult (or a leader) — the
+              Server Actions enforce it; these panels explain it. */}
+          {verdict === 'sign-in' ? (
+            <SignInToSignUpPanel next={`${eventHref}/signup`} />
+          ) : verdict === 'parent' ? (
+            <AskAParentPanel signedInAs={signedInAs} next={`${eventHref}/signup`} />
+          ) : !household ? (
+            /* The slot-first board renders its own copy of the bar. */
+            !slotFirst && (
+              <>
+                <SignupStatusBar
+                  signedInAs={signedInAs}
+                  household={null}
+                  signOut={{ action: logOutEverywhereAction, next: `${eventHref}/signup?signedout=1` }}
+                />
+                <p className={styles.gateOk}>Now find yourself.</p>
+                <HouseholdPicker households={households} eventId={entry.id} />
+              </>
+            )
           ) : slotFirst ? null : (
-            /* The slot-first board carries its own status bar (household +
-               Change household + sign-out) — rendering this one too showed the
-               family two "Signing up the … household" lines (Patrick, 2026-08-23). */
-            <p className={styles.householdBar}>
-              <span>
-                {/* A standalone adult has no household to name — saying "the
-                    Jane Smith household" would read as a bug. */}
-                {household.scouts.length === 0 ? (
-                  <>
-                    Signing up <strong>{household.label}</strong>
-                  </>
-                ) : (
-                  <>
-                    Signing up the <strong>{household.label}</strong> household
-                  </>
-                )}
-              </span>
-              {/* Explicit ?household= (empty) rather than a bare link — a
-                  verified visitor's prefill only fires when the param is
-                  ABSENT, so an explicit empty value is how "switching" stays
-                  possible instead of the prefill winning it straight back. */}
-              <Link href={`${eventHref}/signup?household=`} className={styles.linkBtn}>
-                Not you? Change
-              </Link>
-            </p>
+            /* One bar, both forms: who is signed in and which household.
+               Explicit ?household= (empty) rather than a bare link — a
+               verified visitor's prefill only fires when the param is
+               ABSENT, so an explicit empty value is how "switching" stays
+               possible instead of the prefill winning it straight back. */
+            <SignupStatusBar
+              signedInAs={signedInAs}
+              household={{ label: household.label, standaloneAdult: household.scouts.length === 0 }}
+              changeHref={`${eventHref}/signup?household=`}
+              signOut={{ action: logOutEverywhereAction, next: `${eventHref}/signup?signedout=1` }}
+            />
           )}
 
-          {slotFirst ? (
+          {verdict !== 'ok' ? null : slotFirst ? (
             <section className={styles.block}>
               <h2 className={styles.blockHead}>{signup.slots_title ?? 'Jobs — pick one to sign up'}</h2>
               <TrackOnMount event="event_signup_start" params={{ event_id: entry.id }} />
@@ -315,9 +330,9 @@ export default async function EventSignupPage({
                 submitAction={submitSignupAction}
                 cancelAction={cancelSignupAction}
                 gateAction={familyGateAction}
-                signOutAction={familySignOutAction}
+                signOutAction={logOutEverywhereAction}
                 gateState={gateState}
-                isFamilySession={audience === 'family'}
+                signedInAs={signedInAs}
                 gateError={sp.gate}
                 gateConfigured={familyGateConfigured()}
               />
@@ -345,23 +360,13 @@ export default async function EventSignupPage({
             )
           )}
 
-          {audience === 'family' ? (
+          {audience === 'family' && (
             <form action={familySignOutAction} className={styles.signOutRow}>
               <input type="hidden" name="next" value={`${eventHref}/signup`} />
               <button type="submit" className={styles.linkBtn}>
                 Sign out of the family gate
               </button>
             </form>
-          ) : (
-            /* A leader/scout session already clears the gate, so signing out of
-               the FAMILY cookie would change nothing visible — the button would
-               look broken. Say so instead. */
-            <p className={styles.signOutRow}>
-              <span className={styles.linkBtnQuiet}>
-                You&rsquo;re seeing this as a signed-in {audience}, not through the family gate. To
-                view it as a family would, use a private window or sign out of the admin area.
-              </span>
-            </p>
           )}
         </div>
       )}

@@ -12,6 +12,7 @@ import { NameSearch } from './name-search';
 import { cookies } from 'next/headers';
 import { PasskeyButton } from './passkey-button';
 import { PasskeyAutofill } from './passkey-autofill';
+import { TroubleLine } from '../events/[id]/signup-panels';
 import { passkeysConfigured, passkeyPlacement, PASSKEY_HINT_COOKIE } from '@/lib/passkeys';
 import {
   passkeyAuthOptionsAction,
@@ -146,6 +147,8 @@ export default async function SignInPage({
             (lib/leader-session.ts is a different credential entirely, not a
             passwordless email — see that module's header), reached from
             here rather than a second top-level nav link. */}
+        <TroubleLine />
+
         <p className={styles.centerRow}>
           <Button variant="ghost" href="/admin/login">
             Leader or Scout? Sign in with the troop password

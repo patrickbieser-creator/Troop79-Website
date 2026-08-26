@@ -17,6 +17,7 @@ import {
   deletePerson,
   createHouseholdForPerson,
   renameHousehold,
+  sendSignInLink,
   type GrantableRole,
   type RelationshipInput,
   type PersonDetail
@@ -114,6 +115,16 @@ const GRANTABLE: GrantableRole[] = [
   'merit_badge_counselor',
   'external_contact'
 ];
+
+/** Copy for every way sendSignInLink() can fail to send — same three
+ *  outcomes requestChallengeForPerson() distinguishes (unlike the
+ *  enumeration-safe /signin path, a leader acting from the roster is allowed
+ *  to be told the truth). */
+const SEND_LINK_REASON: Record<'unreachable' | 'rate-limited' | 'failed', string> = {
+  unreachable: 'Add an email address first.',
+  'rate-limited': 'Already sent recently — try again in a few minutes.',
+  failed: "Couldn't send the link — try again."
+};
 
 const RELATION_WORDS: Record<RelationshipRow['type'], string> = {
   parent_of: 'parent of',
@@ -360,6 +371,13 @@ function PersonEditor({
   // its content in a way CSS couldn't override and shipped broken to
   // production twice (D-070, 2026-07-19) — not a mechanism to reach for here.
   const [showDanger, setShowDanger] = useState(false);
+  // "Send sign-in link" (Plans/Verified-Signup.md Phase A) — its own busy/
+  // result state, separate from `busy`/`error`/`saved` above: sending a link
+  // changes nothing about this person's record, so it must not disable every
+  // other control in the dialog or get stomped by the next act() refetch.
+  const [linkBusy, setLinkBusy] = useState(false);
+  const [linkSent, setLinkSent] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
 
   // The editor renders what the SERVER says this person is, re-read after every
   // change. Relying on revalidatePath + router.refresh() to feed new props into
@@ -444,6 +462,22 @@ function PersonEditor({
     act(() => updatePersonDemographics(person.person_id, fd), 'Demographics saved.');
   }
 
+  function sendLink() {
+    setLinkBusy(true);
+    setLinkSent(null);
+    setLinkError(null);
+    sendSignInLink(person.person_id)
+      .then((res) => {
+        if (res.ok) {
+          setLinkSent(`Link sent to ${res.masked} — good for ${res.expiresMinutes} minutes.`);
+        } else {
+          setLinkError(SEND_LINK_REASON[res.reason]);
+        }
+      })
+      .catch(() => setLinkError('Something went wrong.'))
+      .finally(() => setLinkBusy(false));
+  }
+
   function act(fn: () => Promise<{ ok: boolean; error?: string }>, okMessage: string) {
     setError(null);
     setSaved(null);
@@ -462,6 +496,10 @@ function PersonEditor({
   }
 
   const disabled = busy;
+  // What's actually on record server-side (detail.fields, refreshed after
+  // every save) — not `demo.email`, which can hold an unsaved keystroke.
+  // Matches what requestChallengeForPerson() will actually find.
+  const rosterEmail = typeof detail.fields.primary_email === 'string' ? detail.fields.primary_email.trim() : '';
   const householdId = detail.householdId;
   const current = detail.roles.filter((r) => !r.end_date);
   const ended = detail.roles.filter((r) => r.end_date);
@@ -484,10 +522,23 @@ function PersonEditor({
               {person.bsa_member_id && ` · BSA ${person.bsa_member_id}`}
             </p>
           </div>
-          <Button size="sm" onClick={onClose}>
-            Close
-          </Button>
+          <div className={styles.inlineRow}>
+            <Button
+              size="sm"
+              disabled={linkBusy || !rosterEmail}
+              title={rosterEmail ? undefined : 'Add an email address first'}
+              onClick={sendLink}
+            >
+              {linkBusy ? 'Sending…' : 'Send sign-in link'}
+            </Button>
+            <Button size="sm" onClick={onClose}>
+              Close
+            </Button>
+          </div>
         </div>
+
+        {linkSent && <div className={styles.savedNote}>{linkSent}</div>}
+        {linkError && <Notice>{linkError}</Notice>}
 
         {error && <Notice>{error}</Notice>}
         {saved && <div className={styles.savedNote}>{saved}</div>}

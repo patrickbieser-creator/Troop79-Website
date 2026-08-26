@@ -10,6 +10,7 @@ import { PARTICIPANT_CLASS_LABEL } from '@/lib/participant-class';
 import type { Household } from '@/lib/households';
 import { formatTimeOfDay } from '@/lib/calendar-shared';
 import styles from './event-detail.module.css';
+import { SignupStatusBar } from './signup-status-bar';
 import { Notice } from '@/app/_components/notice';
 
 import { fmtDay } from '@/lib/format-date';
@@ -69,7 +70,7 @@ export default function SlotFirstForm({
   signOutAction,
   hasExisting,
   gateState,
-  isFamilySession,
+  signedInAs,
   gateError,
   gateConfigured
 }: {
@@ -96,7 +97,8 @@ export default function SlotFirstForm({
   signOutAction: (fd: FormData) => void;
   hasExisting: boolean;
   gateState: GateState;
-  isFamilySession: boolean;
+  /** Who is signed in — shown on the status bar. */
+  signedInAs: string | null;
   gateError?: string;
   gateConfigured: boolean;
 }) {
@@ -578,50 +580,20 @@ export default function SlotFirstForm({
   // `asForm` matters: when the board stands alone (anon / no household) this
   // is its own <form>. Inside the submit form it must NOT be — nested forms
   // are invalid HTML and React reports a hydration error.
-  const statusBar = (asForm: boolean) => {
-    const inner = (
-      <>
-        <span>
-        {ready ? (
-          <>
-            Signing up the <strong>{household!.label}</strong> household
-          </>
-        ) : (
-          <>&#10003; You&rsquo;re signed in &mdash; no family chosen yet</>
-        )}
-      </span>
-      <span className={styles.boardStatusActions}>
-        {/* Explicit empty ?household= — a verified visitor's prefill only
-            fires when the param is ABSENT (same trick as the person-first
-            page's "Not you? Change"). */}
-        {ready && (
-          <a href={`/events/${eventId}/signup?household=`} className={styles.linkBtn}>
-            Change household
-          </a>
-        )}
-          {isFamilySession ? (
-            <button
-              type="submit"
-              className={styles.linkBtn}
-              formAction={asForm ? undefined : signOutAction}
-            >
-              Sign out
-            </button>
-          ) : (
-            <span className={styles.linkBtnQuiet}>signed in as a leader</span>
-          )}
-        </span>
-      </>
-    );
-    return asForm ? (
-      <form action={signOutAction} className={styles.boardStatus}>
-        <input type="hidden" name="next" value={`/events/${eventId}`} />
-        {inner}
-      </form>
-    ) : (
-      <div className={styles.boardStatus}>{inner}</div>
-    );
-  };
+  // One bar for both forms (Verified Signup, 2026-08-26) — says WHO is signed
+  // in, not just which household. Standalone (not-ready board) it is its own
+  // <form>; inside the submit form it must not be (nested forms are invalid
+  // HTML and React reports a hydration error), so sign-out becomes a
+  // formAction button there.
+  const statusBar = (asForm: boolean) => (
+    <SignupStatusBar
+      nested={!asForm}
+      signedInAs={signedInAs}
+      household={ready ? { label: household!.label, standaloneAdult: household!.scouts.length === 0 } : null}
+      changeHref={`/events/${eventId}/signup?household=`}
+      signOut={{ action: signOutAction, next: `/events/${eventId}/signup?signedout=1` }}
+    />
+  );
 
   if (!ready) {
     return (
@@ -629,7 +601,7 @@ export default function SlotFirstForm({
         {gateState === 'no-household' && statusBar(true)}
         <p className={styles.boardLede}>
           {gateState === 'anon'
-            ? 'Pick a job below to sign in and claim it — one shared troop password, no account needed.'
+            ? 'Pick a job below to sign in and claim it.'
             : 'Pick a job below, then choose your family.'}
         </p>
         {jobList}

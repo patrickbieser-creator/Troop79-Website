@@ -303,6 +303,18 @@ export async function finishAuthentication(
   return { ok: true, personId: cred.person_id };
 }
 
+/** Whether `personId` already holds at least one passkey — lets a caller
+ *  (the events signup passkey offer) skip the offer entirely rather than
+ *  invite someone to register a second one. head:true count query so this
+ *  never pulls a row's worth of columns just to answer a boolean. */
+export async function hasPasskey(supabase: SupabaseClient, personId: number): Promise<boolean> {
+  const { count } = await supabase
+    .from('passkey_credentials')
+    .select('id', { count: 'exact', head: true })
+    .eq('person_id', personId);
+  return (count ?? 0) > 0;
+}
+
 export async function listPasskeys(supabase: SupabaseClient, personId: number) {
   const { data } = await supabase
     .from('passkey_credentials')

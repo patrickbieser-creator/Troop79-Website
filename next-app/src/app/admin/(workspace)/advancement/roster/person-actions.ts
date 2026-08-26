@@ -1,9 +1,11 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { LEADER_PERSON_FIELDS, type FieldValue } from '@/lib/change-requests';
+import { requestChallengeForPerson, TOKEN_TTL_MINUTES } from '@/lib/identity-challenge';
 
 import { centralToday } from '@/lib/dates';
 /**
@@ -802,4 +804,44 @@ export async function renameHousehold(householdId: number, label: string): Promi
 
   revalidate();
   return { ok: true };
+}
+
+/** Mirrors signin/actions.ts's own callerIp() — that file is off-limits to
+ *  edit for this feature (a concurrent engineer owns it), and it doesn't
+ *  export the helper, so this is a deliberate duplicate of the same
+ *  x-forwarded-for read, not a new idea. */
+async function callerIp(): Promise<string | null> {
+  const h = await headers();
+  const forwarded = h.get('x-forwarded-for');
+  return forwarded ? forwarded.split(',')[0].trim() : null;
+}
+
+export type SendSignInLinkResult =
+  | { ok: true; masked: string; expiresMinutes: number }
+  | { ok: false; reason: 'unreachable' | 'rate-limited' | 'failed' };
+
+/**
+ * Roster › adult/leader › "Send sign-in link" (Plans/Verified-Signup.md
+ * Phase A). A leader-initiated verified-sign-in email, gated behind the SAME
+ * capability as every other write in this file — the Roster tab is the only
+ * place this action lives, and it takes only a person id, never an address:
+ * `requestChallengeForPerson` resolves the destination itself
+ * (`deliverableEmailFor`), so there is no path from this function's inputs to
+ * an arbitrary email — see SendSignInLink_OnlyEverUsesTheRosterAddress in
+ * tests/roster-send-sign-in-link.test.ts, which asserts that by reading this
+ * function's own source.
+ *
+ * `createdByLeader` records the acting leader's label on the login_tokens row
+ * (the column has existed, unused, since Phase 1 — see identity_auth_phase1.sql)
+ * so Recent Logins can attribute the eventual sign-in to whoever sent it.
+ */
+export async function sendSignInLink(personId: number): Promise<SendSignInLinkResult> {
+  const actor = await requireCapability('roster.manage');
+  const supabase = createAdminClient();
+  const result = await requestChallengeForPerson(supabase, personId, {
+    ip: await callerIp(),
+    createdByLeader: actor.label
+  });
+  if (!result.sent) return { ok: false, reason: result.reason };
+  return { ok: true, masked: result.masked, expiresMinutes: TOKEN_TTL_MINUTES };
 }

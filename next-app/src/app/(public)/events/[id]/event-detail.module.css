@@ -503,6 +503,13 @@
 .boardStatusActions { display: flex; gap: 14px; align-items: center; }
 .linkBtnQuiet { font-family: var(--font-ui); font-size: 12.5px; color: var(--text-meta); line-height: 1.5; }
 
+/* Verified Signup panels (2026-08-26): "Sign in to sign up" / "Ask a parent". */
+.signInPanel { font-family: var(--font-ui); background: var(--cream); border: 1px solid var(--border-light); border-radius: 4px; padding: var(--sp-5) var(--sp-5) var(--sp-4); margin-bottom: var(--sp-4); }
+.signInPanelTitle { font-family: var(--font-display); font-size: var(--fs-xl); color: var(--text-head); margin-bottom: var(--sp-2); }
+.signInPanelText { font-size: var(--fs-md); line-height: 1.55; color: var(--text-body); margin-bottom: var(--sp-4); max-width: 60ch; }
+.troubleLine { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); margin-top: var(--sp-4); }
+.troubleLine a { color: var(--navy); }
+
 /* Named guest rows (Plans/Participant-Classification.md, 2026-08-21). */
 .guestRemove,
 .guestAdd {

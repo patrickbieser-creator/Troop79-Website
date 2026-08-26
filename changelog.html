@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 26, 2026</strong> &nbsp;&middot;&nbsp; v1.105.2</p>
+      <p>Last updated: <strong>August 26, 2026</strong> &nbsp;&middot;&nbsp; v1.106.0</p>
     </div>
   </div>
 
@@ -494,6 +494,26 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.106.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.106.0</span>
+        <span class="release-date">August 26, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Signing up for an event now needs a parent&rsquo;s sign-in</p>
+        <ul class="change-list">
+          <li><span><strong>The troop password gets you to first base only.</strong> It still opens an event and the Sign In screen, but signing your family up, cancelling, or claiming a job now needs a parent signed in with their own name (one-time code by email, or a passkey). Before this, anyone holding the Bugle&rsquo;s password could sign up or cancel any family with no record of who did it. Enforced on the server, not just in the form.</span></li>
+          <li><span>The signup page explains the next step: <em>Sign in to sign up</em> for a password-only visitor; <em>Ask a parent to sign in</em> for a signed-in scout. A status bar on every signup form says who is signed in and which household is being signed up.</span></li>
+          <li><span>&ldquo;Trouble signing in? Text Patrick &mdash; or email the troop&rdquo; on the sign-in screen and the panels.</span></li>
+          <li><span>After signing in with a code from a signup page, the site offers once: <em>Next time, sign in with your phone, fingerprint, or face &mdash; no code to type.</em></span></li>
+          <li><span><strong>Leaders: &ldquo;Send sign-in link&rdquo;</strong> on an adult&rsquo;s roster record emails them a fresh sign-in link (to the address on the roster only). The dashboard&rsquo;s Recent Logins shows &ldquo;via link sent by&rdquo; and how many of the troop&rsquo;s households have signed in at least once.</span></li>
+          <li><span>Training scripts rewritten for the new flow; a Bugle notice is ready in <code>docs/bugle/</code>.</span></li>
+        </ul>
       </div>
     </div>
 

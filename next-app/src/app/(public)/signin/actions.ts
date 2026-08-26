@@ -46,6 +46,7 @@ import { hasFamilyAccess } from '@/lib/family-access';
 import { searchSignInCandidates, type SignInSearchResult } from '@/lib/signin-roster';
 import { IDENTITY_COOKIE, signIdentitySession, sessionMaxAgeFor } from '@/lib/identity-session';
 import { safeInternalPath } from '@/lib/safe-redirect';
+import { withWelcomeFlag } from '@/lib/welcome-flag';
 import { recordLoginEvent, type LoginMethod } from '@/lib/login-events';
 
 const SIGNIN_PATH = '/signin';
@@ -195,7 +196,7 @@ export async function verifyCodeAction(formData: FormData): Promise<void> {
 
   await setIdentityCookie(result.identity, 'code');
   await rememberPasskeyDeviceIfHolder(result.identity.personId);
-  redirect(safeInternalPath(result.identity.nextPath, '/profile'));
+  redirect(withWelcomeFlag(safeInternalPath(result.identity.nextPath, '/profile')));
 }
 
 /** Step 2 (link path): consumes the token and signs in. Called from the
@@ -214,7 +215,7 @@ export async function confirmTokenAction(formData: FormData): Promise<void> {
 
   await setIdentityCookie(identity, 'link');
   await rememberPasskeyDeviceIfHolder(identity.personId);
-  redirect(safeInternalPath(identity.nextPath, '/profile'));
+  redirect(withWelcomeFlag(safeInternalPath(identity.nextPath, '/profile')));
 }
 
 
@@ -341,7 +342,7 @@ export async function verifyCodeForPersonAction(formData: FormData): Promise<voi
 
   await setIdentityCookie(result.identity, 'code');
   await rememberPasskeyDeviceIfHolder(result.identity.personId);
-  redirect(safeInternalPath(result.identity.nextPath, '/profile'));
+  redirect(withWelcomeFlag(safeInternalPath(result.identity.nextPath, '/profile')));
 }
 
 /**

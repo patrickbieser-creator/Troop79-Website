@@ -4,7 +4,12 @@
 **Runtime:** ~50–55 minutes at a normal reading pace
 **Format:** Spoken lines are plain text. Lines in `▸ [BRACKETS]` are stage directions — do not read them aloud.
 **Suggested chapter breaks** are marked so you can cut this into shorter videos if you'd rather.
-**Revised:** 2026-08-25 for v1.102 — one sign-in per person (no shared passwords), Access & Permissions, the Calendar as the hub (Event Rosters, Event Signups and Roll Call & Agendas are all folded into it), event logistics (rides, assignments, money, snapshot), Troop Finances, the Advancement Report and Court of Honor, confirmation emails, and the Save / Back / help-badge standards.
+**Revised:** 2026-08-26 — event signup now requires a parent's verified sign-in (the escape hatch:
+add/edit a family's signup from the event roster, or send them a fresh sign-in link from the Roster's
+adult row). Previously revised 2026-08-25 for v1.102 — one sign-in per person (no shared passwords),
+Access & Permissions, the Calendar as the hub (Event Rosters, Event Signups and Roll Call & Agendas
+are all folded into it), event logistics (rides, assignments, money, snapshot), Troop Finances, the
+Advancement Report and Court of Honor, confirmation emails, and the Save / Back / help-badge standards.
 
 > **Recording note:** every section below is self-contained. If you want eight short
 > videos instead of one long one, cut at the `═══ CHAPTER` markers.
@@ -538,6 +543,23 @@ Edit a row to change their jobs, their class, or their transportation.
 Somebody signed up by texting you anyway?
 Add them here yourself — a member, a known guest, or someone you removed earlier.
 
+▸ [SCREEN: hold.]
+
+One more thing, since this changed today.
+
+Signing up now needs a parent to be signed in as *themselves* —
+the troop password alone doesn't sign anybody up any more.
+So when a family calls and says the site won't let them sign up, check two things.
+
+Are they signed in as a parent, and not their scout?
+A signed-in scout only sees "Ask a parent to sign in." That's by design.
+And is their email on file? Check it on the Roster, or ask them to check /profile.
+
+If either one's the problem, you have two fixes right here.
+Add them yourself, same as any other signup —
+or send them a fresh sign-in link, which we'll get to on the Roster screen.
+Either one gets a stuck family unstuck in under a minute.
+
 ▸ [SCREEN: point at Remove.]
 
 Remove is soft. It frees the seat and keeps everything attached —
@@ -894,6 +916,20 @@ That's a different thing and you set it deliberately.
 And somebody moves between Leaders and Adults
 by gaining or ending a role. Nothing else does it.
 Their household and their family relationships stay put either way.
+
+▸ [SCREEN: click the Adults tab, open one adult's row, point at "Send sign-in link."]
+
+One more button worth knowing, on every adult's row: "Send sign-in link."
+
+Event signup needs a parent to sign in as themselves now,
+so this is your fastest fix when a family's stuck.
+Click it, and we email that adult a fresh one-time code and link —
+exactly as if they'd started the sign-in themselves.
+
+It only ever goes to the address already sitting on the roster —
+there's no "type in any address" box, on purpose.
+If a second parent isn't on file yet, add their email here first,
+on that adult's Edit, then send the link.
 
 ▸ [SCREEN: open a scout record. Point at the numbered sections and the side rail.]
 

@@ -29,7 +29,10 @@ import { sendEmail, renderEmail } from '@/lib/email';
 import { siteUrl } from '@/lib/site-url';
 import type { IdentitySubjectKind } from '@/lib/identity-session';
 
-const TOKEN_TTL_MINUTES = 15;
+/** Exported so callers can quote the real expiry rather than a copied
+ *  constant (the Roster's "Send sign-in link" confirmation — Plans/Verified-Signup.md
+ *  Phase A). */
+export const TOKEN_TTL_MINUTES = 15;
 const MAX_PER_PERSON_15MIN = 3;
 const MAX_PER_IP_HOUR = 10;
 const MAX_WRONG_ATTEMPTS = 5;
@@ -302,7 +305,7 @@ export async function requestChallenge(
 export async function requestChallengeForPerson(
   supabase: SupabaseClient,
   personId: number,
-  opts: { nextPath?: string | null; ip?: string | null } = {}
+  opts: { nextPath?: string | null; ip?: string | null; createdByLeader?: string | null } = {}
 ): Promise<
   { sent: true; masked: string } | { sent: false; reason: 'unreachable' | 'rate-limited' | 'failed' }
 > {
@@ -333,7 +336,7 @@ async function mintAndSend(
   supabase: SupabaseClient,
   target: ChallengeTarget,
   contact: string,
-  opts: { nextPath?: string | null; ip?: string | null }
+  opts: { nextPath?: string | null; ip?: string | null; createdByLeader?: string | null }
 ): Promise<MintOutcome> {
 
   const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
@@ -366,7 +369,12 @@ async function mintAndSend(
     code_hash: codeHash,
     next_path: opts.nextPath || null,
     expires_at: new Date(Date.now() + TOKEN_TTL_MINUTES * 60 * 1000).toISOString(),
-    created_ip: opts.ip || null
+    created_ip: opts.ip || null,
+    // Roster "Send sign-in link" (Plans/Verified-Signup.md Phase A) — the
+    // acting leader's label, so Recent Logins can say who sent it on
+    // redemption. Null for every self-service request (the /signin flow
+    // never passes this).
+    created_by_leader: opts.createdByLeader || null
   });
   if (error) return 'failed';
 

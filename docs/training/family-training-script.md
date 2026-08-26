@@ -1,9 +1,9 @@
 # Troop 79 Website — Family Training Script
 
 **Audience:** Scouts and parents, first time seeing the site
-**Runtime:** ~13–15 minutes at a normal reading pace
+**Runtime:** ~14–16 minutes at a normal reading pace
 **Format:** Spoken lines are plain text. Lines in `▸ [BRACKETS]` are stage directions — do not read them aloud.
-**Revised:** 2026-08-25 for v1.102 — one sign-in for everyone (Members), the new signup form (rides, guests, tents, confirmation emails), merit badges inside the Library, the four photo views, and the weekly advancement report.
+**Revised:** 2026-08-26 — event signup now requires a parent's verified sign-in (troop password alone no longer signs a family up); the passkey offer; the "Ask a parent to sign in" scout view; the trouble line. Previously revised 2026-08-25 for v1.102 — one sign-in for everyone (Members), the new signup form (rides, guests, tents, confirmation emails), merit badges inside the Library, the four photo views, and the weekly advancement report.
 
 ---
 
@@ -13,6 +13,8 @@
 > - Use a **parent** account, not a leader's — a leader's sign-in adds admin links that families never see.
 > - Have one upcoming event with a real signup (prices, at least one job, drivers on) so every block renders.
 > - Have the troop password from the Bugle handy, but keep it off screen.
+> - Your parent account needs a real inbox you can check on camera — you'll receive an actual
+>   sign-in code during the signup demo.
 > - Confirm you are on **www.troop-79.com**, not a dev server.
 
 ---
@@ -218,10 +220,51 @@ First time through, it asks for the troop password.
 That's the one from the Bugle.
 Enter it once and the site remembers you on that device.
 
-▸ [SCREEN: enter the gate, then show the household picker and the person list.]
+That password gets you onto the page.
+It's not enough, by itself, to sign anyone up.
 
-Once you're through, find your household,
-and you see your family.
+▸ [SCREEN: show the "Sign in to sign up" panel.]
+
+For that, the site needs to know which parent is saying yes.
+So instead of a form, you'll see a panel: "Sign in to sign up."
+It tells you what to expect — a one-time code by email, about a minute —
+and a button: Sign in.
+
+▸ [SCREEN: click Sign in. Land on the sign-in page.]
+
+▸ [SCREEN: type a few letters of a last name, show the picker.]
+
+Type a few letters of your last name and pick yourself.
+
+▸ [SCREEN: show the "we sent a code to p***@gmail.com" screen. Enter the code — keystrokes hidden.]
+
+A six-digit code and a link go to the email address we already have for you.
+Type the code, or tap the link. Either one works.
+
+▸ [SCREEN: land back on the signup page, already signed in.]
+
+And you're back here — signed in, right on this page,
+with your household already picked for you.
+
+▸ [SCREEN: point at the passkey offer, if it appears.]
+
+The first time you do this, the site offers you something.
+Sign in next time with your phone, fingerprint, or face — no code to type.
+
+That's called a passkey. It's optional, you can remove it later on your profile,
+and it's the same thing your bank or Google already has you use.
+It even follows you to a new phone. Worth taking the offer.
+
+▸ [SCREEN: point at the status bar at the top of the form.]
+
+Notice this bar at the top of the form.
+It always says who's signed in and which household you're signing up —
+with a link to change households, and a link to sign out.
+That bar is on every signup page, so nobody has to guess who's driving.
+
+▸ [SCREEN: point at each person's row.]
+
+And here's your family.
 Every person in your household, listed.
 
 ▸ [SCREEN: walk through one person's row slowly.]
@@ -285,6 +328,22 @@ to change your answer, add a person, or cancel.
 Plans change. The site expects that.
 Every change sends you a fresh confirmation, so you always have the current version.
 
+▸ [SCREEN: sign out, sign back in as a scout, and open a signup to show "Ask a parent to sign in."]
+
+One more thing, and it's on purpose.
+
+If your scout signs in and opens a signup, they don't see this form.
+They see "Ask a parent to sign in."
+Scouts can look at everything on the site.
+Signing the family up, changing it, or cancelling it — that's a parent's job.
+
+▸ [SCREEN: point at the trouble line at the bottom of the panel.]
+
+And if you ever get stuck signing in,
+every one of these screens ends with the same line:
+"Trouble signing in? Text Patrick — or email" and then the troop email address.
+No phone number on the site — but you have it, and we'll get you sorted.
+
 ---
 
 ## 7 — Members: signing in as you
@@ -292,6 +351,10 @@ Every change sends you a fresh confirmation, so you always have the current vers
 ▸ [SCREEN: click "Members" in the nav.]
 
 Now let's talk about signing in as *you*.
+
+If you already signed in to sign up for an event,
+this will look familiar — it's the exact same three steps,
+just reached from a different door.
 
 The last thing on the nav is "Members."
 This is the front door.

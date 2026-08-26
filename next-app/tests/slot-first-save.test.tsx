@@ -65,7 +65,7 @@ function renderBoard(
       signOutAction={vi.fn()}
       hasExisting={existingClaims.length > 0}
       gateState="ready"
-      isFamilySession
+      signedInAs="Dana Bieser"
       gateConfigured
     />
   );

@@ -32,6 +32,8 @@ import { SectionDivider } from '@/app/_components/section-divider';
 import { PublicTabStripSpecimen } from './specimens';
 import { FormCard, Field, TextInput } from '@/app/_components/form';
 import { DateField } from '@/app/_components/date-field';
+import { SignInToSignUpPanel } from '@/app/(public)/events/[id]/signup-panels';
+import { SignupStatusBar } from '@/app/(public)/events/[id]/signup-status-bar';
 
 export const metadata = {
   title: 'Public Styleguide — Troop 79'
@@ -423,6 +425,19 @@ export default function PublicStyleguidePage() {
               <span className={lib.reqTag}>1a</span> <span className={lib.reqTag}>2</span>{' '}
               requirement tags — library-specific (mono code tags, NOT the Badge pattern).
             </p>
+          </div>
+
+          {/* Verified Signup (2026-08-26): the one status bar both signup forms
+              render, and the "Sign in to sign up" panel a troop-password-only
+              visitor sees. Trouble line: no number, no title — by decision. */}
+          <div className={sg.specimenBlock}>
+            <SignupStatusBar
+              signedInAs="Dana Bieser"
+              household={{ label: 'Bieser', standaloneAdult: false }}
+              changeHref="#specimen"
+              signOut={null}
+            />
+            <SignInToSignUpPanel next="/events/1/signup" />
           </div>
         </div>
 

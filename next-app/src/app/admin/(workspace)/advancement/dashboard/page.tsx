@@ -13,7 +13,7 @@ import { fetchAllRows } from '@/lib/supabase/paginate';
 import { requireCapability } from '@/lib/require-capability';
 import type { LedgerEntry, LedgerKind } from '@/lib/supabase/types';
 import { loadAttentionCategories } from './attention-items';
-import { loadRecentLogins } from '@/lib/login-events';
+import { loadRecentLogins, loadHouseholdsSignedInStats } from '@/lib/login-events';
 import { fmtDate, fmtDateTime } from '@/lib/format-date';
 import styles from './dashboard.module.css';
 import { PageTitle } from '../../_components/page-title';
@@ -266,10 +266,11 @@ const METHOD_LABEL: Record<'link' | 'code' | 'passkey', string> = {
 
 export default async function DashboardPage() {
   await requireCapability('advancement.write');
-  const [data, attentionCategories, recentLogins] = await Promise.all([
+  const [data, attentionCategories, recentLogins, householdsSignedIn] = await Promise.all([
     loadDashboard(),
     loadAttentionCategories(),
-    loadRecentLogins(createAdminClient(), 15)
+    loadRecentLogins(createAdminClient(), 15),
+    loadHouseholdsSignedInStats(createAdminClient())
   ]);
 
   return (
@@ -438,6 +439,10 @@ export default async function DashboardPage() {
               View all →
             </Link>
           </div>
+          <p className={styles.cardSubLine}>
+            {householdsSignedIn.signedIn} of {householdsSignedIn.total} households have signed in at
+            least once
+          </p>
           {recentLogins.length === 0 ? (
             <div className={styles.empty}>No logins recorded yet.</div>
           ) : (
@@ -458,6 +463,9 @@ export default async function DashboardPage() {
                     <td className={styles.scoutCell}>
                       {e.personName ?? 'Unknown'}
                       {e.isFirstLogin && <span className={styles.kindPill}>First login</span>}
+                      {e.sentByLeader && (
+                        <span className={styles.cardSubLine}> via link sent by {e.sentByLeader}</span>
+                      )}
                     </td>
                     <td>{e.roleSnapshot === 'leader' ? 'Leader' : 'Family'}</td>
                     <td>
