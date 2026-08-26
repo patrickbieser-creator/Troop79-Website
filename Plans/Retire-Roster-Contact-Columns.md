@@ -79,7 +79,7 @@ only place these facts are edited or read; `scouts` keeps rank/patrol/scout-only
   school, graduation_year, swim_class, household_id (or drop in favour of household_members —
   audit says 0 disagreements; decide), person_id, junior_leader_override. `leaders`: address*,
   phone, email, health_form_date, birthdate, bsa_member_id, ypt_completed, things_we_should_know.
-  Keep: code, name (login label), role, is_person, can_login, login_name, person_id.
+  Keep: code, role, is_person, can_login, login_name, person_id (`name` dropped — derived from `people.display_name`; non-person org codes like "Troop 118" keep their label in `login_name`/`code` — verify before dropping).
 - **`people` gains nothing** — it already has every moved column (`gender`, `ypt_completed`,
   `health_form_date`, `things_we_should_know`, `bsa_member_id` all exist).
 - **Scout form**: the row model (`ScoutRow` in scouts-table) joins `people` by `person_id`;
@@ -107,7 +107,7 @@ only place these facts are edited or read; `scouts` keeps rank/patrol/scout-only
 ## Open Questions
 
 - [x] `scouts.household_id` — **drop**; `household_members` is the spine join (scouts AND adults, movable). Patrick 2026-08-26. Repoint its 3 readers first: `lookups/household-actions.ts` delete guard, `rosters/[id]/roster-view.tsx`, `admin/snapshot/[id]/snapshot-document.tsx` fallback.
-- [ ] `leaders.name` — keep as login label or derive from `people`?
+- [x] `leaders.name` — **derive from `people`** (`display_name`; `authorized-adults` builds its login labels from the person). Patrick 2026-08-26. `leaders.name` joins the drop list; the 3 name disagreements (Dan/Daniel, Mike/Michael ×2) resolve to `people` automatically.
 - [ ] Multiple emails per person (Patrick's backlog item 2026-08-26) — design it here or after?
       Recommendation: after; this plan makes `people` the single home so a `person_emails` table
       has one parent.
