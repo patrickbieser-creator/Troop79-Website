@@ -153,6 +153,20 @@ export async function loadArticleBySlug(slug: string): Promise<ArticleCard | nul
   return toCard(data as RawArticleRow);
 }
 
+/**
+ * A leader's preview of an article in ANY status (draft / pending / published /
+ * archived) — the editor's "Preview (unpublished)" button (D-244). Reads the
+ * base table, not articles_public, so it must only ever be called behind a
+ * leader-session check: the public page falls back to it after the public
+ * lookup misses, never before.
+ */
+export async function loadArticlePreviewBySlug(slug: string): Promise<ArticleCard | null> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase.from('articles').select(CARD_SELECT).eq('slug', slug).maybeSingle();
+  if (error || !data) return null;
+  return toCard(data as RawArticleRow);
+}
+
 export interface CategoryEvent {
   id: number;
   title: string;

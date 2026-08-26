@@ -4,6 +4,15 @@
    are shared with the editor's live preview — not duplicated here. */
 
 .articlePage { max-width: 1180px; margin: 0 auto; padding: 28px 24px 60px; }
+.previewNotice {
+  max-width: 760px;
+  margin: 0 auto 18px;
+  padding: 8px 12px;
+  border: 1px dashed var(--bark);
+  background: var(--newsprint);
+  color: var(--text-body);
+  font-size: var(--fs-sm);
+}
 .articleHead { max-width: 760px; margin: 0 auto 22px; }
 .articleHeadline {
   font-family: var(--font-display); font-size: 40px; font-weight: 700; line-height: 1.18;

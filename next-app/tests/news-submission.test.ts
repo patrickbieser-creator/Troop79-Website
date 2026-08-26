@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { adminClient } from './helpers/admin-client';
-import { loadNewsIndex, loadArticleBySlug } from '../src/lib/news-feed';
+import { loadNewsIndex, loadArticleBySlug, loadArticlePreviewBySlug } from '../src/lib/news-feed';
 
 /**
  * Public story submission (Plans/Unified-Identity-And-Capabilities.md Phase C).
@@ -75,6 +75,18 @@ describe('news submission', () => {
     const id = await makeArticle('pending');
     const { data } = await admin.from('articles').select('slug').eq('id', id).single();
     expect(await loadArticleBySlug((data as { slug: string }).slug)).toBeNull();
+  });
+
+  it('DraftArticle_IsServedByThePreviewLoader_ButNotThePublicOne', async () => {
+    // The editor's "Preview (unpublished)" button (D-244) points at /news/[slug].
+    // The page reaches for the preview loader only behind a leader session;
+    // the public loader must keep refusing so the permalink stays dark.
+    const admin = adminClient();
+    const id = await makeArticle('draft');
+    const { data } = await admin.from('articles').select('slug').eq('id', id).single();
+    const slug = (data as { slug: string }).slug;
+    expect(await loadArticleBySlug(slug)).toBeNull();
+    expect((await loadArticlePreviewBySlug(slug))?.id).toBe(id);
   });
 
   it('PublishedArticle_IsPresent_OnTheSameIndex', async () => {

@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { loadArticleBySlug, formatDateLong } from '@/lib/news-feed';
+import { cookies } from 'next/headers';
+import { loadArticleBySlug, loadArticlePreviewBySlug, formatDateLong } from '@/lib/news-feed';
+import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
 import { articleCategoryLabel } from '@/lib/feed-logic';
 import { ArticleBody } from '@/lib/article-body/ArticleBody';
 import styles from './article-detail.module.css';
@@ -9,6 +11,20 @@ import { JsonLd } from '@/app/_components/json-ld';
 import { createAdminClient } from '@/lib/supabase/server';
 import { siteUrl } from '@/lib/site-url';
 import { loadSeoSettings, articleJsonLd, breadcrumbJsonLd } from '@/lib/seo';
+
+/**
+ * Public lookup first; if it misses and the visitor holds a leader session,
+ * fall back to the any-status preview (the editor's "Preview (unpublished)"
+ * button). Anyone else gets the same 404 a guessed slug always got.
+ */
+async function loadForVisitor(slug: string): Promise<{ article: Awaited<ReturnType<typeof loadArticleBySlug>>; preview: boolean }> {
+  const article = await loadArticleBySlug(slug);
+  if (article) return { article, preview: false };
+  const jar = await cookies();
+  const session = await verifySession(jar.get(LEADER_COOKIE.name)?.value);
+  if (session?.role !== 'leader') return { article: null, preview: false };
+  return { article: await loadArticlePreviewBySlug(slug), preview: true };
+}
 
 function catClass(type: string): string {
   if (type === 'news') return styles.catNews;
@@ -21,10 +37,11 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const article = await loadArticleBySlug(slug);
+  const { article, preview } = await loadForVisitor(slug);
   if (!article) return {};
   return {
     title: `${article.title} — Troop 79`,
+    ...(preview ? { robots: { index: false, follow: false } } : {}),
     description: article.excerpt ?? undefined,
     openGraph: {
       title: article.title,
@@ -36,7 +53,7 @@ export async function generateMetadata({
 
 export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const article = await loadArticleBySlug(slug);
+  const { article, preview } = await loadForVisitor(slug);
   if (!article) notFound();
 
   /* Article structured data (2026-08-22) — the node that lets a story appear
@@ -71,6 +88,11 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           )
         ]}
       />
+      {preview && (
+        <p className={styles.previewNotice} role="status">
+          Preview — this post is <strong>{article.status}</strong> and not visible to the public.
+        </p>
+      )}
       <div className={styles.articleHead}>
         <span className={`${styles.catTag} ${catClass(article.type)}`}>{articleCategoryLabel(article.categories)}</span>
         <h1 className={styles.articleHeadline}>{article.title}</h1>
