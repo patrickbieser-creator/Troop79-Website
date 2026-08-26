@@ -69,10 +69,9 @@ export default async function SignInPage({
     // rosterUnlocked below.
     person?: string;
     masked?: string;
-    via?: string;
   }>;
 }) {
-  const { sent, email, next, err, person, masked, via } = await searchParams;
+  const { sent, email, next, err, person, masked } = await searchParams;
   const configured = emailConfigured();
   // The troop password gates the roster, nothing else (Phase D, decision 3).
   //
@@ -130,7 +129,7 @@ export default async function SignInPage({
 
         {sent === '1' ? (
           person ? (
-            <PersonCodeForm personId={person} masked={masked} viaParent={via === 'parent'} next={next} err={err} />
+            <PersonCodeForm personId={person} masked={masked} next={next} err={err} />
           ) : (
             <CodeForm email={email} next={next} err={err} />
           )
@@ -331,14 +330,11 @@ function NamePicker({
 function PersonCodeForm({
   personId,
   masked,
-  viaParent = false,
   next,
   err
 }: {
   personId: string;
   masked?: string;
-  /** The code went to a PARENT's address (scout with no email of their own). */
-  viaParent?: boolean;
   next?: string;
   err?: string;
 }) {
@@ -349,15 +345,7 @@ function PersonCodeForm({
           &#10003;
         </div>
         <p>
-          {viaParent ? (
-            <>
-              You don&rsquo;t have an email on the roster, so the code went to a parent&rsquo;s address
-              {masked ? <> &mdash; <strong>{masked}</strong></> : null}. Ask them for it.
-            </>
-          ) : (
-            <>Code sent{masked ? <> to <strong>{masked}</strong></> : null}.</>
-          )}{' '}
-          It expires in 15 minutes.
+          Code sent{masked ? <> to <strong>{masked}</strong></> : null}. It expires in 15 minutes.
         </p>
       </div>
 

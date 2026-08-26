@@ -101,7 +101,7 @@ export function NameSearch({
             <ul className={styles.pickList}>
               {result.candidates.map((c) => (
                 <li key={c.personId}>
-                  <Row candidate={c} next={next} configured={configured} onPick={onPick} />
+                  <Row candidate={c} next={next} configured={configured} onPick={onPick} onCancel={() => setQuery('')} />
                 </li>
               ))}
             </ul>
@@ -121,24 +121,48 @@ function Row({
   candidate,
   next,
   configured,
-  onPick
+  onPick,
+  onCancel
 }: {
   candidate: SignInCandidate;
   next?: string;
   configured: boolean;
   onPick: (formData: FormData) => Promise<void>;
+  onCancel?: () => void;
 }) {
   if (!candidate.maskedEmail) {
     // Shown, not filtered out. Someone who searches their own name and finds
     // nothing concludes the site is broken; someone who finds themselves and
-    // reads "ask a leader" knows what to do next.
+    // reads what to do next knows. A scout with no email of their own is
+    // offered the household's parents BY NAME (Patrick, 2026-08-26) — the
+    // code goes to whoever is picked, never silently to a parent.
     return (
       <div className={styles.pickRowEmpty}>
         <span>
           {candidate.displayName}
           {candidate.isScout && <span className={styles.scoutTag}>scout</span>}
         </span>
-        <span className={styles.pickMeta}>no email on file &mdash; ask a leader</span>
+        {candidate.parents.length > 0 ? (
+          <span className={styles.pickParents}>
+            <span className={styles.pickMeta}>no email on file &mdash; sign in as a parent instead:</span>
+            {candidate.parents.map((p) => (
+              <form action={onPick} key={p.personId}>
+                {next && <input type="hidden" name="next" value={next} />}
+                <input type="hidden" name="personId" value={p.personId} />
+                <button type="submit" className={styles.pickParentBtn} disabled={!configured}>
+                  {p.displayName} <span className={styles.pickMeta}>{p.maskedEmail}</span>
+                </button>
+              </form>
+            ))}
+            {onCancel && (
+              <button type="button" className={styles.pickCancel} onClick={onCancel}>
+                Cancel
+              </button>
+            )}
+          </span>
+        ) : (
+          <span className={styles.pickMeta}>no email on file &mdash; ask a leader</span>
+        )}
       </div>
     );
   }
@@ -151,9 +175,7 @@ function Row({
           {candidate.displayName}
           {candidate.isScout && <span className={styles.scoutTag}>scout</span>}
         </span>
-        <span className={styles.pickMeta}>
-          {candidate.viaParent ? <>code goes to a parent: {candidate.maskedEmail}</> : candidate.maskedEmail}
-        </span>
+        <span className={styles.pickMeta}>{candidate.maskedEmail}</span>
       </button>
     </form>
   );

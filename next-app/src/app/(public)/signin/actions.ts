@@ -296,9 +296,7 @@ export async function requestForPersonAction(formData: FormData): Promise<void> 
     // fixes itself in a few minutes.
     redirect(signinUrl({ ...keep, err: result.reason, person: String(personId) }));
   }
-  redirect(
-    signinUrl({ ...keep, sent: '1', person: String(personId), masked: result.masked, via: result.viaParent ? 'parent' : undefined })
-  );
+  redirect(signinUrl({ ...keep, sent: '1', person: String(personId), masked: result.masked }));
 }
 
 /**

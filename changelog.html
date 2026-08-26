@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 26, 2026</strong> &nbsp;&middot;&nbsp; v1.106.1</p>
+      <p>Last updated: <strong>August 26, 2026</strong> &nbsp;&middot;&nbsp; v1.106.2</p>
     </div>
   </div>
 
@@ -494,6 +494,22 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.106.2 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.106.2</span>
+        <span class="release-date">August 26, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Fix</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">A sign-in code goes only to your own address</p>
+        <ul class="change-list">
+          <li><span><strong>A scout with no email on the roster is told so, and offered their parents by name.</strong> The old behaviour quietly sent the scout&rsquo;s code to a parent&rsquo;s inbox. Now the name picker says &ldquo;no email on file &mdash; sign in as a parent instead&rdquo; with a button per parent (masked address shown), or Cancel; nothing is sent until someone is picked, and the code goes to exactly the person chosen.</span></li>
+          <li><span>Data: 20 scouts had a parent&rsquo;s email copied onto their own record by the original import. Those were cleared (the parent&rsquo;s record already has the address); the seven scouts with a genuinely different address keep it.</span></li>
+        </ul>
       </div>
     </div>
 

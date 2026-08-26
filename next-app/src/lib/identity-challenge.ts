@@ -201,17 +201,15 @@ export function maskEmail(email: string): string {
 }
 
 /**
- * The address a challenge for this person would actually go to, honouring
- * the same bounce/unsubscribe rule as the contact-string path — and WHOSE
- * address it is. A scout with no email of their own gets a parent's
- * (scout_parent_emails), which is right, but it must be SAID on screen: found
- * live 2026-08-26 when Patrick signed in as a scout and the code went to her
- * parents with no warning. Null when we hold no deliverable way to reach them.
+ * The address a challenge for this person would actually go to: their OWN
+ * primary_email, nothing else. The old fallback to a parent's address
+ * (scout_parent_emails) is gone (Patrick, 2026-08-26) — found live when a
+ * scout's code went to her parents with nothing on screen saying so. A scout
+ * with no email of their own is unreachable here; the picker offers the
+ * household's parents instead, and the person who signs in is the person
+ * whose inbox it is. Null when we hold no address.
  */
-export async function deliveryFor(
-  supabase: SupabaseClient,
-  personId: number
-): Promise<{ email: string; viaParent: boolean } | null> {
+export async function deliverableEmailFor(supabase: SupabaseClient, personId: number): Promise<string | null> {
   const { data: person } = await supabase
     .from('people')
     .select('primary_email')
@@ -219,24 +217,7 @@ export async function deliveryFor(
     .eq('active', true)
     .maybeSingle();
   const primary = (person as { primary_email: string | null } | null)?.primary_email?.trim();
-  if (primary) return { email: primary, viaParent: false };
-
-  const { data: rows } = await supabase
-    .from('scout_parent_emails')
-    .select('email, bounced_at, unsubscribed_at')
-    .eq('person_id', personId);
-  for (const r of (rows ?? []) as {
-    email: string;
-    bounced_at: string | null;
-    unsubscribed_at: string | null;
-  }[]) {
-    if (r.email?.trim() && isDeliverable(r)) return { email: r.email.trim(), viaParent: true };
-  }
-  return null;
-}
-
-async function deliverableEmailFor(supabase: SupabaseClient, personId: number): Promise<string | null> {
-  return (await deliveryFor(supabase, personId))?.email ?? null;
+  return primary || null;
 }
 
 /** ChallengeTarget for a known person id — the picker's equivalent of
@@ -316,18 +297,17 @@ export async function requestChallengeForPerson(
   personId: number,
   opts: { nextPath?: string | null; ip?: string | null; createdByLeader?: string | null } = {}
 ): Promise<
-  | { sent: true; masked: string; viaParent: boolean }
-  | { sent: false; reason: 'unreachable' | 'rate-limited' | 'failed' }
+  { sent: true; masked: string } | { sent: false; reason: 'unreachable' | 'rate-limited' | 'failed' }
 > {
   const target = await targetForPerson(supabase, personId);
   if (!target) return { sent: false, reason: 'unreachable' };
 
-  const delivery = await deliveryFor(supabase, personId);
-  if (!delivery) return { sent: false, reason: 'unreachable' };
+  const address = await deliverableEmailFor(supabase, personId);
+  if (!address) return { sent: false, reason: 'unreachable' };
 
-  const outcome = await mintAndSend(supabase, target, delivery.email, opts);
+  const outcome = await mintAndSend(supabase, target, address, opts);
   if (outcome !== 'sent') return { sent: false, reason: outcome };
-  return { sent: true, masked: maskEmail(delivery.email), viaParent: delivery.viaParent };
+  return { sent: true, masked: maskEmail(address) };
 }
 
 /**
