@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session Summary — Confirmation emails live, jobs out of the roster grid, backlog sweep (2026-08-26)</title>
+<style>
+  :root { --nw-teal: #1e3a4a; --nw-green: #3d5a3e; --paper: #faf6ef; --ink: #2a2a2a; --meta: #6d7580; --line: #e2e4e8; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, "Segoe UI", Arial, sans-serif; color: var(--ink); background: var(--paper); line-height: 1.5; }
+  .header { background: var(--nw-teal); color: #fff; padding: 40px 64px; }
+  .header h1 { margin: 0 0 6px; font-size: 26px; font-weight: 700; }
+  .header .sub { opacity: .85; font-size: 14px; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 32px 64px 64px; }
+  h2 { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--nw-green); border-bottom: 2px solid var(--nw-green); padding-bottom: 6px; margin: 34px 0 14px; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .metric { background: #fff; border: 1px solid var(--line); border-radius: 4px; padding: 14px 16px; }
+  .metric .num { font-size: 26px; font-weight: 700; color: var(--nw-teal); }
+  .metric .lbl { font-size: 12px; color: var(--meta); text-transform: uppercase; letter-spacing: .06em; }
+  .card { background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--nw-green); border-radius: 4px; padding: 14px 18px; margin-bottom: 12px; }
+  .card .t { font-weight: 700; color: var(--nw-teal); }
+  .card p { margin: 6px 0 0; font-size: 14px; }
+  ul { margin: 6px 0 0; padding-left: 20px; font-size: 14px; }
+  li { margin-bottom: 4px; }
+  code { font-family: Menlo, Consolas, monospace; font-size: 12.5px; background: #f0f1f3; padding: 1px 4px; border-radius: 3px; }
+  .footer { color: var(--meta); font-size: 12px; margin-top: 40px; border-top: 1px solid var(--line); padding-top: 12px; }
+  @media (max-width: 640px) { .header, .wrap { padding-left: 20px; padding-right: 20px; } }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Confirmation emails live, jobs out of the roster grid, backlog sweep</h1>
+  <div class="sub">Troop 79 Website · Session 27 · August 25, 8:00 PM – August 26, 12:40 AM CDT · Operator (Fable 5) with Jenna</div>
+</div>
+<div class="wrap">
+
+<h2>Key metrics</h2>
+<div class="metrics">
+  <div class="metric"><div class="num">v1.104.0</div><div class="lbl">from v1.102.1 · 10 commits, all live</div></div>
+  <div class="metric"><div class="num">1408</div><div class="lbl">tests (from 1389)</div></div>
+  <div class="metric"><div class="num">5</div><div class="lbl">decisions D-240–D-244</div></div>
+  <div class="metric"><div class="num">8</div><div class="lbl">backlog items closed</div></div>
+  <div class="metric"><div class="num">0</div><div class="lbl">emails sent by the test suite, from now on</div></div>
+</div>
+
+<h2>What was accomplished</h2>
+<div class="card"><div class="t">Confirmation emails, tested live and corrected</div>
+<p>Patrick signed up for the Eagle Court of Honor on prod and read the receipt. Three findings, three fixes: the summary now speaks only to the blocks the signup offered (an attendance-only event no longer prints a Rides caption or "Amount due: $0.00"); the roster's <strong>Resend</strong> sent nothing because it looked the household up under the wrong key — the prod send log said so in one row; and the message editor stopped closing on its own (the dialog's scrollbar and drag-selects were being read as backdrop clicks — fixed for every admin dialog). The template picker's unstyled <code>&lt;select&gt;</code> was a one-line CSS miss.</p></div>
+<div class="card"><div class="t">The test suite stops mailing Patrick</div>
+<p>Seven <code>[test→…]</code> relay emails per <code>npm run test</code> traced to a live Resend key in <code>.env.local</code> reaching the identity-auth tests, which never needed delivery. <code>vitest.config.ts</code> now strips the credentials; <code>EMAIL_LIVE_TESTS=1</code> opts back in on purpose. A guard test keeps it that way.</p></div>
+<div class="card"><div class="t">Jobs leave the roster grid</div>
+<p>The per-job tick columns and day bands are gone ("a mess on the rummage sale"), with the Print and Hide-jobs buttons. Job coverage now names everyone signed up under each job — open by default, click to fold — and the two add buttons ("+ Add a scout or adult", "+ Add a guest") sit together under "Someone missing?". Edit / Remove right-aligned.</p></div>
+<div class="card"><div class="t">Backlog sweep — six items in one release</div>
+<p>Roster name search on both tabs; one <code>PublicPageLink</code> at six admin→public sites (Jenna's spec — including the news editor, which had no link at all; drafts say "Preview (unpublished)" instead of hiding); the troop's Facebook group and BeAScout pin published as <code>sameAs</code>; the calendar Story preview on newsprint; finance and news pagers on the shared button; the events grid and Lookups action columns composing the shared table patterns. Plus Patrick's training scripts committed from his standalone session.</p></div>
+
+<h2>Bugs fixed</h2>
+<ul>
+  <li>Roster Resend: "No deliverable addresses" — <code>household:&lt;id&gt;</code> vs the bare <code>&lt;id&gt;</code> key; also fixed the editor's preview-as-household picker.</li>
+  <li>Message editor closing on scrollbar clicks and drag-selects.</li>
+  <li>Receipt summary printing sections for blocks that were never offered; <code>$0.00</code> amount due on free events.</li>
+  <li>Template picker rendering in the browser's default font.</li>
+</ul>
+
+<h2>Decisions</h2>
+<ul>
+  <li><b>D-240</b> The confirmation summary speaks only to the blocks the signup offered (<code>SignupBlocks</code> / <code>applyBlocks</code>).</li>
+  <li><b>D-241</b> A dialog backdrop click is a press AND a release outside the box.</li>
+  <li><b>D-242</b> Jobs leave the roster grid; Job coverage (open, foldable, names) is the job UX; add buttons consolidated.</li>
+  <li><b>D-243</b> The test suite never reaches Resend; <code>EMAIL_LIVE_TESTS=1</code> is the deliberate opt-in.</li>
+  <li><b>D-244</b> One admin→public link: <code>PublicPageLink</code>, secondary/sm, same tab, never hidden.</li>
+</ul>
+
+<h2>Next steps</h2>
+<ul>
+  <li>Eyes-on in prod: the news editor's link on a draft, roster search, Job coverage on an event with real claims, the Story preview tint.</li>
+  <li><code>/admin/roster-print</code> is orphaned now that the grid's Print button is gone — retire or relink.</li>
+  <li>Small: <code>excerpt</code> column drop; template Retire semantics; verify-and-close the <code>claimSlotFor</code> item; URL-<code>q</code> hook consolidation; FormPanel sweep.</li>
+  <li>Open: B-004 password rotation; Patrick's pending decisions (kindHiking tint, Roll Call event kinds, backup treasurer).</li>
+</ul>
+
+<div class="footer">Troop 79 Website · Personal project · Generated by Operator via /northwoods:end-session · 2026-08-26</div>
+</div>
+</body>
+</html>
