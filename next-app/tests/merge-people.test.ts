@@ -67,6 +67,22 @@ describe('merge_people — signup_entries reassignment', () => {
     expect(entry?.person_id).toBe(survivor);
   });
 
+  it('Merge_DeactivatesTheLoser_SoItLeavesEveryActiveList', async () => {
+    // People-model audit 2026-08-26: all 13 merged-away rows were still
+    // active. A retired identity must not show up in active-filtered lists.
+    const admin = adminClient();
+    const survivor = await makePerson(admin, 'Survivor3');
+    const loser = await makePerson(admin, 'Loser3');
+    const { error: mergeErr } = await admin.rpc('merge_people', {
+      p_survivor: survivor,
+      p_loser: loser,
+      p_decided_by: 'test:merge'
+    });
+    expect(mergeErr).toBeNull();
+    const { data } = await admin.from('people').select('active, merged_into_person_id').eq('id', loser).single();
+    expect(data).toMatchObject({ active: false, merged_into_person_id: survivor });
+  });
+
   it('Merge_Blocks_WhenBothSidesHaveLiveSignupForSameEvent', async () => {
     const admin = adminClient();
     event = await createTestEvent(admin);

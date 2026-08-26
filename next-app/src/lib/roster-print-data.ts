@@ -19,6 +19,11 @@ interface PersonRow {
   display_name: string;
   primary_email: string | null;
   primary_phone: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
 }
 interface MemberRow {
   household_id: number;
@@ -61,7 +66,7 @@ export async function loadRosterPrintData(): Promise<RosterPrintInput> {
     fetchAllRows<PersonRow>((f, t) =>
       supabase
         .from('people')
-        .select('id, display_name, primary_email, primary_phone')
+        .select('id, display_name, primary_email, primary_phone, address_line1, address_line2, city, state, zip')
         .is('merged_into_person_id', null)
         .is('guest_host_household_id', null)
         .eq('active', true)
@@ -131,16 +136,20 @@ export async function loadRosterPrintData(): Promise<RosterPrintInput> {
       householdId: m.household_id,
       name: person.display_name,
       relationship: relationByPerson.get(m.person_id)?.role_label ?? null,
-      phone: leader?.phone ?? person.primary_phone ?? null,
+      // people.* is the truth for adult contact details — the leader edit
+      // form was retired 2026-08-17 and nothing writes leaders.* any more
+      // (people-model audit 2026-08-26). leaders.* survives only as a
+      // fallback for a row the spine never got a value for.
+      phone: person.primary_phone ?? leader?.phone ?? null,
       email: person.primary_email ?? leader?.email ?? null,
       leaderCode: leader?.code ?? null,
       role: leader?.role ?? null,
       isYouth,
-      address_line1: leader?.address_line1 ?? null,
-      address_line2: leader?.address_line2 ?? null,
-      city: leader?.city ?? null,
-      state: leader?.state ?? null,
-      zip: leader?.zip ?? null
+      address_line1: person.address_line1 ?? leader?.address_line1 ?? null,
+      address_line2: person.address_line2 ?? leader?.address_line2 ?? null,
+      city: person.city ?? leader?.city ?? null,
+      state: person.state ?? leader?.state ?? null,
+      zip: person.zip ?? leader?.zip ?? null
     });
   }
 
