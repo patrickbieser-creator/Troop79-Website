@@ -27,6 +27,7 @@
 
 import { useState, useTransition, type ReactNode } from 'react';
 import { Button } from '../../../_components/button';
+import { PublicPageLink } from '../../../_components/public-page-link';
 import { useRouter } from 'next/navigation';
 import type { CalendarCategoryRow, CategoryTemplate } from '@/lib/calendar-categories';
 import { TabStrip, type TabStripItem } from '../../_components/tab-strip';
@@ -197,9 +198,7 @@ export function Workbench({
           <p className={styles.templateNote}>{TEMPLATE_NOTE[template]}</p>
         </div>
         <div className={styles.headActions}>
-          <Button href={`/events/${entry.id}`}>
-            View public page
-          </Button>
+          <PublicPageLink href={`/events/${entry.id}`} />
         </div>
       </div>
 

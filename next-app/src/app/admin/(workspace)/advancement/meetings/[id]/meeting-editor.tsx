@@ -13,6 +13,7 @@ import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../../_compo
 import { Notice } from '../../../_components/notice';
 import { DiscardButton, SaveButton, SaveFeedback, useFormDirty, useSavePhase } from '../../../_components/save-state';
 import { Button } from '../../../../_components/button';
+import { PublicPageLink } from '../../../../_components/public-page-link';
 
 type ActionResult = { ok: boolean; error?: string };
 
@@ -248,11 +249,7 @@ export function MeetingEditor({
         </div>
         <div className={styles.headActions}>
           <Badge variant={published ? 'success' : 'neutral'}>{meeting.status}</Badge>
-          {published && (
-            <Button href={`/events/${entry.id}`} size="sm">
-              View public page
-            </Button>
-          )}
+          <PublicPageLink href={`/events/${entry.id}`} draft={!published} />
           <Button
             variant={published ? 'secondary' : 'primary'}
             size="sm"

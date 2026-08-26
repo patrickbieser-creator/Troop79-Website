@@ -23,6 +23,7 @@ import { requireCapability } from '@/lib/require-capability';
 import type { Article, ArticleType, ArticleStatus } from '@/lib/supabase/types';
 import { ArticlesTabs } from './articles-tabs';
 import { AddButton } from '../../_components/add-button';
+import { buttonClass } from '../../../_components/button';
 import { PageTitle } from '../../_components/page-title';
 import { ArticlesToolbar } from './articles-toolbar';
 import { ArticlesTable } from './articles-table';
@@ -243,14 +244,14 @@ export default async function ArticlesPage({
       <div className={styles.pager}>
         <Link
           href={urlWith(raw, { page: String(parsed.page - 1) })}
-          className={`${styles.pagerBtn} ${parsed.page <= 1 ? styles.pagerBtnDisabled : ''}`}
+          className={buttonClass('secondary', 'sm', parsed.page <= 1 ? styles.pagerBtnDisabled : undefined)}
           aria-disabled={parsed.page <= 1}
         >
           ← Previous
         </Link>
         <Link
           href={urlWith(raw, { page: String(parsed.page + 1) })}
-          className={`${styles.pagerBtn} ${parsed.page >= totalPages ? styles.pagerBtnDisabled : ''}`}
+          className={buttonClass('secondary', 'sm', parsed.page >= totalPages ? styles.pagerBtnDisabled : undefined)}
           aria-disabled={parsed.page >= totalPages}
         >
           Next →

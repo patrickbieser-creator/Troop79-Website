@@ -85,6 +85,9 @@
 .source:focus { outline: 2px solid var(--admin-navy); outline-offset: -2px; }
 
 .preview {
+  /* The preview is paper, the source is a field (Patrick, 2026-08-25) — the
+     same newsprint tint the article editor's preview pane uses. */
+  background: var(--admin-preview-paper-alt);
   padding: 12px 14px;
   overflow-x: auto;
   max-height: 520px;

@@ -52,6 +52,12 @@ same spot. Never put a back link in `children`, `sub`, a toolbar, or a page foot
 Discard-changes prompt for free through the save-state hooks (`useRegisterDirty`). Specimen:
 `/admin/styleguide/admin` → Back Navigation.
 
+**Admin → public links are one component (2026-08-25):** `PublicPageLink` from
+`admin/_components/public-page-link` — secondary / sm, same tab, "View public page" or "Preview
+(unpublished)" for a draft, never hidden. It goes in `PageTitle`'s children (the right-side actions)
+or the screen's `.headActions` when there is no PageTitle; never in `sub`, never a hand-rolled
+`<Link>`. Specimen: `/admin/styleguide/admin` → Back Navigation → Public Page Link.
+
 **Tables are seven named patterns, one stylesheet (2026-08-25):** DataTable·Compact, DataTable·Card,
 DataTable·Dense Grid, RecordList, Board, ExpandableSummary, PrintTable — specimens under Data Tables on
 `/admin/styleguide/admin`. The three `<table>` patterns live in

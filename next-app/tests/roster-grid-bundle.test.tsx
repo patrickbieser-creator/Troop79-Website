@@ -246,6 +246,21 @@ describe('Roster grid — one column per group set, feature columns only when us
   });
 });
 
+describe('Roster grid — name search (Jenna, 2026-08-25)', () => {
+  it('Search_FiltersTheAttendingGrid_ByNameHouseholdOrNotes', async () => {
+    const user = userEvent.setup();
+    renderTable([row({ id: 1, name: 'Kevin Pieper' }), row({ id: 2, name: 'Amy Adult', notes: 'bringing the trailer' })], { hasCarSets: false });
+    const box = screen.getByRole('searchbox', { name: 'Search the roster' });
+    await user.type(box, 'trailer');
+    expect(bodyCells()).toContain('Amy Adult');
+    expect(bodyCells()).not.toContain('Kevin Pieper');
+    await user.clear(box);
+    await user.type(box, 'kev');
+    expect(bodyCells()).toContain('Kevin Pieper');
+    expect(bodyCells()).not.toContain('Amy Adult');
+  });
+});
+
 describe('Roster grid — no job columns (Patrick, 2026-08-25)', () => {
   // "It was unwise to add the jobs as columns in the list grid. It's going to
   // be a mess on the rummage sale and not useful." The Job coverage list above

@@ -613,8 +613,9 @@
 .tokenSaved { font-size: 12px; color: var(--admin-forest); margin-right: auto; }
 
 /* ── Phase C — classes replacing repeated inline styles ──────────────── */
-.cellRight       { text-align: right; }
-.cellRightNowrap { text-align: right; white-space: nowrap; }
+/* Actions columns compose the shared cell behaviour (tables leftovers, 2026-08-25). */
+.cellRight       { composes: actionsCell from '../../_components/data-table.module.css'; }
+.cellRightNowrap { composes: actionsCell from '../../_components/data-table.module.css'; }
 .colTemplate { width: 170px; }
 .colOrder    { width: 70px; }
 .colThird    { width: 32%; }

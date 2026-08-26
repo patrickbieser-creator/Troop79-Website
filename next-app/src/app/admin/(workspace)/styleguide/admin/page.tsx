@@ -32,6 +32,7 @@ import { Button } from '../../../_components/button';
 import { FormPanel, FormSection } from '../../../_components/form-panel';
 import { Badge } from '../../_components/badge';
 import { BackNav } from '../../_components/back-nav';
+import { PublicPageLink } from '../../../_components/public-page-link';
 import { HelpBadge } from '../../../_components/help-badge';
 import { RecentItemsList } from '../../_components/recent-items-list';
 import { PageTitle } from '../../_components/page-title';
@@ -596,6 +597,25 @@ export default function StyleguidePage() {
                 current: 'Money'
               }}
             />
+          </div>
+        </div>
+
+        <h3 className={sg.subHead}>Public Page Link</h3>
+        <p className={sg.sectionNote}>
+          The admin &rarr; public link, one component (<code>PublicPageLink</code>, Jenna 2026-08-25):
+          secondary / sm, same tab, &ldquo;View public page&rdquo; &mdash; or &ldquo;Preview
+          (unpublished)&rdquo; for a draft, never hidden. It sits in <code>PageTitle</code>&rsquo;s
+          children (rosters, news editor) or the screen&rsquo;s <code>.headActions</code> where there is
+          no PageTitle (calendar workbench, meeting editor). Never in <code>sub</code>.
+        </p>
+        <div className={sg.specimenGrid}>
+          <div className={`${sg.specimen} ${sg.specimenCanonical}`}>
+            <div className={sg.specimenLabel}>Published</div>
+            <PublicPageLink href="/events/1" />
+          </div>
+          <div className={`${sg.specimen} ${sg.specimenCanonical}`}>
+            <div className={sg.specimenLabel}>Draft</div>
+            <PublicPageLink href="/news/fall-campout" draft />
           </div>
         </div>
       </section>

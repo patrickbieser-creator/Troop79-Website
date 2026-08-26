@@ -32,6 +32,7 @@ import {
 } from '@/lib/participant-class';
 import { Badge } from '../../_components/badge';
 import { TabStrip } from '../../_components/tab-strip';
+import { SearchField, useTableSearch } from '../../_components/search-field';
 import { ClassPill } from '../../events/class-pill';
 import { getScoutAccountBalanceForEntryAction, recordEventFeePaymentAction } from '../../finance/actions';
 import { PayGuard, wouldGoNegative, type AccountFacts } from '../../events/pay-guard';
@@ -53,6 +54,9 @@ import { Button } from '../../../_components/button';
 /** Sortable columns (Patrick, 2026-08-22: name, class, participation, ride
  *  to/from, and every group-set column — `set:<id>`). */
 type RosterColKey = 'name' | 'owed' | 'class' | 'participation' | 'rideOut' | 'rideBack' | `set:${number}`;
+
+/** Name search (Jenna, 2026-08-25): name, household, class, notes — what a leader scans the grid for. */
+const rosterSearchFields = (r: RosterRow) => [r.name, r.household, PARTICIPANT_CLASS_LABEL[r.participantClass], r.notes];
 
 /** Module scope on purpose — see the note on useSortable. */
 function rosterValue(r: RosterRow, key: RosterColKey): unknown {
@@ -531,6 +535,10 @@ export function RosterTable({
     rosterValue,
     null
   );
+  // One search box filters whichever tab is showing (list-search standard).
+  const { q, setQ, visible: shown } = useTableSearch(sorted, rosterSearchFields);
+  const term = q.trim().toLowerCase();
+  const otherShown = term ? otherRows.filter((r) => rosterSearchFields(r).some((f) => (f ?? '').toLowerCase().includes(term))) : otherRows;
 
   const exportCsv = () => {
     // The CSV keeps the verbose wording and every status (the spreadsheets
@@ -661,6 +669,7 @@ export function RosterTable({
             { key: 'other', label: 'Other responses', count: otherRows.length, onSelect: () => setTab('other') }
           ]}
         />
+        <SearchField value={q} onChange={setQ} label="Search the roster" />
         <div>
           <Button variant="primary" onClick={exportCsv}>
             Export CSV
@@ -671,7 +680,7 @@ export function RosterTable({
 
       {tab === 'other' ? (
         <OtherResponses
-          rows={otherRows}
+          rows={otherShown}
           pending={pending}
           onRestore={(r) =>
             start(async () => {
@@ -741,7 +750,7 @@ export function RosterTable({
           </tr>
         </thead>
         <tbody>
-          {sorted.map((r) => (
+          {shown.map((r) => (
             <tr key={r.id}>
               <td className={styles.nowrap}>
                 <span className={styles.evTitle}>{r.name}</span>

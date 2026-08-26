@@ -1,8 +1,7 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { PublicPageLink } from '../../../../_components/public-page-link';
 import { PageTitle } from '../../../_components/page-title';
 import { EventNav } from '../event-nav';
-import styles from '../../../events/events-admin.module.css';
 import { activeSetFor, AssignmentsView, loadAssignments } from './assignments-view';
 
 export const metadata = { title: 'Rides & Assignments — Troop 79' };
@@ -29,12 +28,9 @@ export default async function AssignmentsPage({
           current: 'Rides & assignments'
         }}
         title={`${data.entry.title} — Rides & assignments`}
-        sub={
-          <Link href={`/events/${data.entry.id}`} className={styles.actionLinkMuted}>
-            Public page
-          </Link>
-        }
-      />
+      >
+        <PublicPageLink href={`/events/${data.entry.id}`} />
+      </PageTitle>
       <EventNav signupId={signupId} entryId={data.nav.entryId} active={activeSetId != null ? `set:${activeSetId}` : 'assignments'} sets={data.nav.sets} hasMoney={data.nav.hasMoney} />
       <AssignmentsView data={data} signupId={signupId} activeSetId={activeSetId} />
     </>

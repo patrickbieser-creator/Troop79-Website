@@ -24,7 +24,7 @@ import { FinanceWorkspace } from './finance-workspace';
 import { PageTitle } from '../_components/page-title';
 import { DateParamField } from '../_components/date-param-field';
 import styles from './finance.module.css';
-import { Button } from '../../_components/button';
+import { Button, buttonClass } from '../../_components/button';
 
 export const metadata = {
   title: 'Financial Ledger — Troop 79'
@@ -281,14 +281,14 @@ export default async function FinancePage({
       <div className={styles.pager}>
         <Link
           href={urlWith(raw, { page: String(page - 1) })}
-          className={`${styles.pagerBtn} ${page <= 1 ? styles.pagerBtnDisabled : ''}`}
+          className={buttonClass('secondary', 'sm', page <= 1 ? styles.pagerBtnDisabled : undefined)}
           aria-disabled={page <= 1}
         >
           ← Previous
         </Link>
         <Link
           href={urlWith(raw, { page: String(page + 1) })}
-          className={`${styles.pagerBtn} ${page >= totalPages ? styles.pagerBtnDisabled : ''}`}
+          className={buttonClass('secondary', 'sm', page >= totalPages ? styles.pagerBtnDisabled : undefined)}
           aria-disabled={page >= totalPages}
         >
           Next →

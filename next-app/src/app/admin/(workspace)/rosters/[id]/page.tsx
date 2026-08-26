@@ -1,6 +1,5 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import styles from '../../events/events-admin.module.css';
+import { PublicPageLink } from '../../../_components/public-page-link';
 import { PageTitle } from '../../_components/page-title';
 import { EventNav } from './event-nav';
 import { loadRoster, RosterView, type RosterData } from './roster-view';
@@ -30,12 +29,9 @@ export default async function EventRosterPage({ params }: { params: Promise<{ id
           current: 'Roster'
         }}
         title={`${String(data.entry.title)} — Roster`}
-        sub={
-          <Link href={`/events/${String(data.entry.id)}`} className={styles.actionLinkMuted}>
-            Public page
-          </Link>
-        }
-      />
+      >
+        <PublicPageLink href={`/events/${String(data.entry.id)}`} />
+      </PageTitle>
       <EventNav signupId={signupId} entryId={data.nav.entryId} active="roster" sets={data.nav.sets} hasMoney={data.nav.hasMoney} />
       <RosterView data={data as RosterData} signupId={signupId} />
     </>

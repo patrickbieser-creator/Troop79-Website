@@ -377,26 +377,8 @@
   font-size: 13px;
   color: var(--admin-gray-500);
 }
-/* .pagerBtn retired 2026-08-25 → shared Button (secondary), EXCEPT the two
-   Prev/Next page.tsx links below — those need aria-disabled + pointer-events
-   for the boundary-page state, which the shared Button's href mode (a plain
-   Link, no disabled prop) doesn't carry. Kept for that one pair only. */
-.pagerBtn {
-  display: inline-block;
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 6px 12px;
-  border: 1px solid var(--admin-gray-300);
-  border-radius: var(--admin-radius-sm);
-  color: var(--admin-gray-700);
-  background: var(--admin-white);
-  cursor: pointer;
-}
-.pagerBtn:hover {
-  border-color: var(--admin-navy);
-  color: var(--admin-navy);
-}
+/* .pagerBtn retired 2026-08-25 → shared Button (buttonClass('secondary','sm'), as the
+   ledger does). Only .pagerBtnDisabled stays — pointer-events is what blocks a Link. */
 .pagerBtnDisabled {
   pointer-events: none;
   opacity: 0.5;

@@ -1,13 +1,12 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireCapability } from '@/lib/require-capability';
 import { parseRosterOrder, type RosterOrder } from '@/lib/event-snapshot';
+import { PublicPageLink } from '../../../../_components/public-page-link';
 import { PageTitle } from '../../../_components/page-title';
 import { EventNav } from '../event-nav';
 import { loadEventNav } from '../event-nav-data';
 import { SnapshotView } from './snapshot-view';
-import styles from '../../../events/events-admin.module.css';
 
 export const metadata = { title: 'Event Snapshot — Troop 79' };
 
@@ -46,12 +45,9 @@ export default async function SnapshotWorkspacePage({
           current: 'Snapshot'
         }}
         title={`${s.calendar_entries.title} — Snapshot`}
-        sub={
-          <Link href={`/events/${s.calendar_entries.id}`} className={styles.actionLinkMuted}>
-            Public page
-          </Link>
-        }
-      />
+      >
+        <PublicPageLink href={`/events/${s.calendar_entries.id}`} />
+      </PageTitle>
       <EventNav signupId={signupId} entryId={nav.entryId} active="snapshot" sets={nav.sets} hasMoney={nav.hasMoney} />
 
       <SnapshotView signupId={signupId} order={order} orderHref={orderHref} />
