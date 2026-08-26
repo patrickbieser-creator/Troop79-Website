@@ -95,10 +95,12 @@ export function mergeScoutRow(s: ScoutCoreRow, person: ScoutPersonContactRow | u
  *  fetch the Roster page and Lookups' scout picker both used to duplicate. */
 export async function loadScoutRows(
   supabase: SupabaseClient,
-  opts?: { activeOnly?: boolean }
+  opts?: { activeOnly?: boolean; ids?: string[] }
 ): Promise<ScoutRow[]> {
+  if (opts?.ids && opts.ids.length === 0) return [];
   let q = supabase.from('scouts').select(SCOUT_CORE_COLS).order('display_name');
   if (opts?.activeOnly) q = q.eq('active', true);
+  if (opts?.ids) q = q.in('id', opts.ids);
   const { data: scoutRows } = await q;
   const scouts = (scoutRows ?? []) as unknown as ScoutCoreRow[];
 

@@ -122,3 +122,14 @@ describe('loadScoutRows', () => {
     });
   });
 });
+
+describe('loadScoutRows ids filter', () => {
+  it('LoadScoutRows_ReturnsOnlyTheRequestedScouts_AndNothingForAnEmptyList', async () => {
+    const admin = adminClient();
+    const all = await loadScoutRows(admin);
+    expect(await loadScoutRows(admin, { ids: [] })).toEqual([]);
+    if (all.length === 0) return;
+    const one = await loadScoutRows(admin, { ids: [all[0].id] });
+    expect(one.map((s) => s.id)).toEqual([all[0].id]);
+  });
+});

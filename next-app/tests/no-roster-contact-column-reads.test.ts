@@ -113,3 +113,18 @@ describe('No code reads the retired roster contact columns', () => {
     expect(violationsFor('leaders', LEADER_DOOMED)).toEqual([]);
   });
 });
+
+describe('no template-built selects on scouts/leaders', () => {
+  it('NoScoutsOrLeadersSelect_IsBuiltFromAFieldListConstant', () => {
+    // The profile page built its scouts select from EDITABLE_SCOUT_FIELDS
+    // (a joined constant), which the literal-string check above cannot see —
+    // it kept selecting dropped columns after Push C (found live 2026-08-26).
+    const offenders: string[] = [];
+    for (const file of files) {
+      const src = fs.readFileSync(file, 'utf8');
+      const re = /\.from\('(scouts|leaders)'\)[\s\S]{0,120}?\.select\(`[^`]*\$\{/g;
+      if (re.test(src)) offenders.push(file);
+    }
+    expect(offenders).toEqual([]);
+  });
+});

@@ -5,7 +5,6 @@ import { getIdentitySessionIfValid } from '@/lib/family-access';
 import { isEpochCurrent } from '@/lib/identity-session';
 import { loadHouseholdByKey, storedHouseholdId } from '@/lib/households';
 import {
-  EDITABLE_SCOUT_FIELDS,
   EDITABLE_PERSON_FIELDS,
   type ChangeRequestRow
 } from '@/lib/change-requests';
@@ -21,6 +20,7 @@ import {
 import { type ScoutProfileFields } from './profile-editor';
 import { type AdultProfileFields } from './adult-editor';
 import HouseholdMembers, { type HouseholdMemberView } from './household-members';
+import { loadScoutRows } from '@/lib/scout-row';
 import { listPersonEmails, type PersonEmailRow } from '@/lib/person-emails';
 import styles from './profile.module.css';
 
@@ -37,22 +37,6 @@ import styles from './profile.module.css';
 
 export const metadata: Metadata = { title: 'Profile — Troop 79' };
 
-interface ScoutFieldRow {
-  id: string;
-  display_name: string;
-  address_line1: string | null;
-  address_line2: string | null;
-  city: string | null;
-  state: string | null;
-  zip: string | null;
-  phone: string | null;
-  email: string | null;
-  school: string | null;
-  graduation_year: number | null;
-  swim_class: string | null;
-  birthdate: string | null;
-  things_we_should_know: string | null;
-}
 
 interface PersonFieldRow {
   id: number;
@@ -123,13 +107,12 @@ export default async function ProfilePage({
     canAddMember = storedHouseholdId(household?.key) != null;
     selfEmails = await listPersonEmails(supabase, session.personId);
 
-    const [{ data: scoutRows }, { data: personRows }, { data: pendingRows }] = await Promise.all([
-      scoutIds.length > 0
-        ? supabase
-            .from('scouts')
-            .select(`id, display_name, ${EDITABLE_SCOUT_FIELDS.join(', ')}`)
-            .in('id', scoutIds)
-        : Promise.resolve({ data: [] }),
+    // A scout's contact fields live on people (Retire-Roster-Contact-Columns,
+    // 2026-08-26) — loadScoutRows merges the two. Found live the same evening:
+    // the old select of the dropped scouts.* columns errored and Anjali
+    // vanished from Patrick's household.
+    const [scoutRows, { data: personRows }, { data: pendingRows }] = await Promise.all([
+      loadScoutRows(supabase, { ids: scoutIds }),
       adultPersonIds.length > 0
         ? supabase
             .from('people')
@@ -153,7 +136,7 @@ export default async function ProfilePage({
       pendingByKey[`${row.entity_type === 'adult' ? 'person' : 'scout'}:${row.entity_id}`] = row;
     }
 
-    for (const r of (scoutRows ?? []) as unknown as ScoutFieldRow[]) {
+    for (const r of scoutRows) {
       const key = `scout:${r.id}`;
       scoutsByKey[key] = {
         id: r.id,
