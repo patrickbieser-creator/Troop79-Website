@@ -15,6 +15,7 @@ import type {
 } from '@/lib/event-signup';
 import { guestHostKey } from '@/lib/guest-payload';
 import type { Household, HouseholdAdult } from '@/lib/households';
+import { positionalToIdentityKey } from '@/lib/claim-keys';
 import {
   defaultSeats,
   LEG_LABEL,
@@ -246,7 +247,13 @@ export default function PersonFirstForm({
   const [newAdults, setNewAdults] = useState<AdHocAdult[]>([]);
   const [claims, setClaims] = useState<Record<number, string[]>>(() => {
     const init: Record<number, string[]> = {};
-    for (const c of existingClaims) init[c.slotId] = [...(init[c.slotId] ?? []), c.personKey];
+    // signup-context keys claims by position (a0, a1…); this form keys people
+    // by identity (a:<key>) — translate, or an existing claim's chip prints the
+    // raw key (lib/claim-keys; found live 2026-08-26).
+    for (const c of existingClaims) {
+      const key = positionalToIdentityKey(household, c.personKey);
+      if (key) init[c.slotId] = [...(init[c.slotId] ?? []), key];
+    }
     return init;
   });
   const [openSlot, setOpenSlot] = useState<number | null>(null);
