@@ -573,7 +573,7 @@ export function RosterView({ data, signupId }: { data: RosterData; signupId: num
       {slotCoverage.length > 0 && (
         <section className={styles.panel}>
           <h2>Job coverage</h2>
-          <p className={styles.panelHint}>Click a job to see who has signed up for it.</p>
+          <p className={styles.panelHint}>Click a job to fold or unfold who has signed up for it.</p>
           <JobCoverage items={slotCoverage} />
         </section>
       )}

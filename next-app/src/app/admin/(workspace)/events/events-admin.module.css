@@ -120,12 +120,12 @@
 .coverList li:last-child { border-bottom: none; }
 .covFull { color: var(--admin-gray-600); }
 /* Job coverage (2026-08-25): the job title is a disclosure; names open under it. */
-.covItem { display: block; }
+.coverList li.covItem { display: block; text-align: left; }
 .covRow { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
 .covToggle { background: none; border: none; padding: 0; font: inherit; color: var(--admin-navy); font-weight: 600; cursor: pointer; text-align: left; }
 .covToggle:hover { text-decoration: underline; }
 .covChevron { display: inline-block; width: 1em; color: var(--admin-gray-500); }
-.covNames { margin: 4px 0 2px 1.25em; color: var(--admin-gray-700); overflow-wrap: anywhere; }
+.covNames { display: block; text-align: left; margin: 4px 0 2px 1.25em; color: var(--admin-gray-700); overflow-wrap: anywhere; }
 /* Edit / Remove right-aligned (Patrick, 2026-08-25). */
 .table th.actionsCol, .table td.actionsCol { text-align: right; }
 .covShort { color: var(--admin-accent-gold); font-weight: 600; }

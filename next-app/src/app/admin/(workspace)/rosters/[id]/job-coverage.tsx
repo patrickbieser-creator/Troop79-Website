@@ -24,7 +24,8 @@ export function tally(c: { filled: number; needed: number | null }): string {
 }
 
 export function JobCoverage({ items }: { items: JobCoverageItem[] }) {
-  const [open, setOpen] = useState<Set<string>>(() => new Set());
+  // Every job starts open (Patrick, 2026-08-25) — click the title to fold it.
+  const [open, setOpen] = useState<Set<string>>(() => new Set(items.map((c) => c.label)));
   const toggle = (label: string) =>
     setOpen((prev) => {
       const next = new Set(prev);

@@ -15,29 +15,27 @@ const ITEMS = [
 ];
 
 describe('JobCoverage', () => {
-  it('JobCoverage_ListsEveryJob_WithItsTally_AndNoNamesUntilClicked', () => {
+  it('JobCoverage_ListsEveryJob_WithItsTally_AndNamesOpenByDefault', () => {
     render(<JobCoverage items={ITEMS} />);
     expect(screen.getByText('2 of 4 — 2 more needed')).toBeTruthy();
     expect(screen.getByText('1 signed up')).toBeTruthy();
-    expect(screen.queryByText(/Kevin Pieper/)).toBeNull();
+    expect(screen.getByText('Kevin Pieper, Amy Adult')).toBeTruthy();
   });
 
-  it('JobCoverage_ClickingAJob_ShowsItsNamesCommaSeparated_AndClickingAgainHides', async () => {
+  it('JobCoverage_ClickingAJob_FoldsItsNames_AndClickingAgainReopens', async () => {
     const user = userEvent.setup();
     render(<JobCoverage items={ITEMS} />);
     const btn = screen.getByRole('button', { name: /Setup crew/ });
-    expect(btn.getAttribute('aria-expanded')).toBe('false');
-    await user.click(btn);
     expect(btn.getAttribute('aria-expanded')).toBe('true');
-    expect(screen.getByText('Kevin Pieper, Amy Adult')).toBeTruthy();
     await user.click(btn);
+    expect(btn.getAttribute('aria-expanded')).toBe('false');
     expect(screen.queryByText('Kevin Pieper, Amy Adult')).toBeNull();
+    await user.click(btn);
+    expect(screen.getByText('Kevin Pieper, Amy Adult')).toBeTruthy();
   });
 
-  it('JobCoverage_AnUnclaimedJob_SaysNobodyYet_WhenOpened', async () => {
-    const user = userEvent.setup();
+  it('JobCoverage_AnUnclaimedJob_SaysNobodyYet', () => {
     render(<JobCoverage items={ITEMS} />);
-    await user.click(screen.getByRole('button', { name: /Cashier/ }));
     expect(screen.getByText('Nobody yet.')).toBeTruthy();
   });
 });
