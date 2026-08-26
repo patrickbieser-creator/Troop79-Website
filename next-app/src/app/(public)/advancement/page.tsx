@@ -9,6 +9,7 @@
  * renders the header, and stubs the rest.
  */
 
+import { fmtDate } from '@/lib/format-date';
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { Scout, ScoutSummaryRow, Rank } from '@/lib/supabase/types';
@@ -156,7 +157,9 @@ function buildRosterRows(data: AdvancementData): RosterRow[] {
       eagleMbCount: sum?.eagle_mb_count ?? 0,
       campingNights: sum?.camping_nights ?? 0,
       serviceHours: sum?.service_hours ?? 0,
-      lastActivity: s.last_activity,
+      // scouts.last_activity was dropped 2026-08-26 (it was never written);
+      // the summary view's last ledger date is what the column always meant.
+      lastActivity: sum?.last_activity_date ? fmtDate(sum.last_activity_date) : null,
       rankSortIndex: rank?.sort ?? -1
     };
   });

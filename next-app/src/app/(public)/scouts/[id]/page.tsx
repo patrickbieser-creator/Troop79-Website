@@ -29,7 +29,7 @@ import type { LedgerEntry, MeritBadgeRequirement } from '@/lib/supabase/types';
 import { publicScoutName } from '@/lib/scout-name';
 import { PrintButton } from './print-button';
 import { centralToday } from '@/lib/dates';
-import { fmtDate, fmtDateLong } from '@/lib/format-date';
+import { fmtDate } from '@/lib/format-date';
 import styles from './scout-detail.module.css';
 
 export async function generateMetadata({
@@ -121,9 +121,6 @@ function ScoutHeader({ detail }: { detail: ScoutDetail }) {
         no BSA ID on file
       </span>
     );
-  }
-  if (scout.joined_date) {
-    metaParts.push(<span key="joined">Joined {fmtDateLong(scout.joined_date)}</span>);
   }
 
   return (
