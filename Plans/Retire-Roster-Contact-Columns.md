@@ -106,7 +106,7 @@ only place these facts are edited or read; `scouts` keeps rank/patrol/scout-only
 
 ## Open Questions
 
-- [ ] `scouts.household_id` — drop in favour of `household_members` (0 disagreements today)?
+- [x] `scouts.household_id` — **drop**; `household_members` is the spine join (scouts AND adults, movable). Patrick 2026-08-26. Repoint its 3 readers first: `lookups/household-actions.ts` delete guard, `rosters/[id]/roster-view.tsx`, `admin/snapshot/[id]/snapshot-document.tsx` fallback.
 - [ ] `leaders.name` — keep as login label or derive from `people`?
 - [ ] Multiple emails per person (Patrick's backlog item 2026-08-26) — design it here or after?
       Recommendation: after; this plan makes `people` the single home so a `person_emails` table
