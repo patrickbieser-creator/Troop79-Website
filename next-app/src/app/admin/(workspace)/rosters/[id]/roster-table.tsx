@@ -38,7 +38,8 @@ import { PayGuard, wouldGoNegative, type AccountFacts } from '../../events/pay-g
 import { PAY_METHOD_LABEL, type PayMethod } from '@/lib/event-money';
 import { fmtDate } from '@/lib/format-date';
 import { diffClaimEdits, type ClaimEdit } from '@/lib/event-signup-admin';
-import { bandJobsByDay, jobCoverage, jobHeaderTitle, jobWhen, resolveJobCodes } from '@/lib/job-codes';
+import { jobCoverage, jobWhen, resolveJobCodes } from '@/lib/job-codes';
+import { AddPerson, type AddCandidate } from './add-person';
 import type { RosterRow } from './page';
 import type { GuestMode } from '@/lib/guest-mode';
 import type { HouseholdGuest } from '@/lib/guest-payload';
@@ -51,7 +52,7 @@ import { Button } from '../../../_components/button';
 
 /** Sortable columns (Patrick, 2026-08-22: name, class, participation, ride
  *  to/from, and every group-set column — `set:<id>`). */
-type RosterColKey = 'name' | 'owed' | 'class' | 'participation' | 'rideOut' | 'rideBack' | `set:${number}` | `job:${number}`;
+type RosterColKey = 'name' | 'owed' | 'class' | 'participation' | 'rideOut' | 'rideBack' | `set:${number}`;
 
 /** Module scope on purpose — see the note on useSortable. */
 function rosterValue(r: RosterRow, key: RosterColKey): unknown {
@@ -69,8 +70,6 @@ function rosterValue(r: RosterRow, key: RosterColKey): unknown {
     case 'rideBack':
       return rideShort(r, 'back', r.carBack, r.name) || null;
     default:
-      // `job:<slotId>` — claimed sorts first (0 before 1, ascending).
-      if (key.startsWith('job:')) return r.claimDetails.some((c) => c.slotId === Number(key.slice(4))) ? 0 : 1;
       return r.groupBySet[Number(key.slice(4))] ?? null;
   }
 }
@@ -182,8 +181,11 @@ export function RosterTable({
   groupSets = [],
   familyQuestionCount = 0,
   hasCarSets = true,
-  guestMode = 'none'
+  guestMode = 'none',
+  addCandidates = []
 }: {
+  /** "Someone missing?" — who a leader could add by hand; rendered under the grid. */
+  addCandidates?: AddCandidate[];
   /** Every live (non-cancelled) entry; the grid itself shows status='yes'. */
   rows: RosterRow[];
   removedRows: RosterRow[];
@@ -567,21 +569,13 @@ export function RosterTable({
   };
 
   // Feature columns exist only when the event uses the feature (item 7).
-  // Jobs: ONE narrow column per job headed by its code (job-heavy events —
-  // Patrick, 2026-08-22: a rummage sale has 20–30 jobs; the old single Jobs
-  // column listing every claim as prose was unreadable). The group can be
-  // hidden as a whole so a campout roster with a couple of jobs stays clean.
-  const [jobsOpen, setJobsOpen] = useState(true);
-  const showJobs = slots.length > 0 && jobsOpen;
+  // Jobs are NOT columns (Patrick, 2026-08-25: "a mess on the rummage sale") —
+  // the Job coverage list above the grid names the claimants; the codes still
+  // label the Edit dialog's checklist.
   const jobCodes = resolveJobCodes(slots);
-  const jobBands = bandJobsByDay(slots);
-  const jobsInOrder = jobBands.flatMap((b) => b.jobs);
   const showAnswers = familyQuestionCount > 0;
   // Name, Class, [Guests], [Driving×2, Ride×2], Notes, Fee, Balance, actions
-  const colCount = 5 + (showGuestCount ? 1 : 0) + (hasCarSets ? 4 : 0) + groupSets.length + (showJobs ? slots.length : 0) + (showAnswers ? 1 : 0) + leaderQuestions.length + 1;
-  // Columns to the left of / right of the job block, for the day-band row.
-  const colsBeforeJobs = 2 + (showGuestCount ? 1 : 0) + (hasCarSets ? 4 : 0) + groupSets.length;
-  const colsAfterJobs = (showAnswers ? 1 : 0) + leaderQuestions.length + 4;
+  const colCount = 5 + (showGuestCount ? 1 : 0) + (hasCarSets ? 4 : 0) + groupSets.length + (showAnswers ? 1 : 0) + leaderQuestions.length + 1;
   const printableLeader = printableLeaderQuestions(leaderQuestions);
   const [leaderDraft, setLeaderDraft] = useState<Record<string, string>>({});
   const saveLeader = (r: RosterRow, q: LeaderQuestion, value: string | null) =>
@@ -655,6 +649,7 @@ export function RosterTable({
   };
 
   return (
+    <>
     <section className={styles.panel}>
       <SaveFeedback phase={feedback.phase} />
       <div className={styles.panelHead}>
@@ -667,23 +662,9 @@ export function RosterTable({
           ]}
         />
         <div>
-          <Button variant="primary" onClick={openAddGuest} disabled={pending || rows.length === 0}>
-            Add a guest
-          </Button>{' '}
-          <Button variant="primary" onClick={() => window.print()}>
-            Print
-          </Button>{' '}
           <Button variant="primary" onClick={exportCsv}>
             Export CSV
           </Button>
-          {slots.length > 0 && (
-            <>
-              {' '}
-              <Button variant="primary" onClick={() => setJobsOpen((v) => !v)} aria-pressed={jobsOpen}>
-                {jobsOpen ? `Hide jobs (${slots.length})` : `Show jobs (${slots.length})`}
-              </Button>
-            </>
-          )}
         </div>
       </div>
       {error && <p className={styles.err}>{error}</p>}
@@ -720,19 +701,6 @@ export function RosterTable({
       ) : (
       <table className={styles.table}>
         <thead>
-          {/* Day bands over the job block when the jobs span days — "Fri / Sat /
-              Sun" so 30 columns read as three blocks (untimed jobs last). */}
-          {showJobs && jobBands.length > 1 && (
-            <tr className={styles.bandRow}>
-              <th colSpan={colsBeforeJobs} />
-              {jobBands.map((b) => (
-                <th key={b.key} scope="colgroup" colSpan={b.jobs.length} className={styles.jobBand}>
-                  {b.label}
-                </th>
-              ))}
-              <th colSpan={colsAfterJobs} />
-            </tr>
-          )}
           <tr>
             <SortHeader label="Name" colKey="name" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} idleArrow={false} />
             <SortHeader label="Class" colKey="class" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} idleArrow={false} title={CLASS_LEGEND} />
@@ -748,23 +716,6 @@ export function RosterTable({
             {groupSets.map((s) => (
               <SortHeader key={s.id} label={s.label} colKey={`set:${s.id}`} sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} idleArrow={false} />
             ))}
-            {showJobs &&
-              jobsInOrder.map((sl) => {
-                const key = `job:${sl.id}` as const;
-                const active = sortKey === key;
-                return (
-                  <th key={sl.id} scope="col" className={styles.thCenter} title={jobHeaderTitle(sl)} aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
-                    <button type="button" className={sortStyles.sortBtn} onClick={() => toggleSort(key)}>
-                      {jobCodes.get(sl.id)}
-                      {active && (
-                        <span className={sortStyles.sortArrow} aria-hidden="true">
-                          {sortDir === 'asc' ? '▲' : '▼'}
-                        </span>
-                      )}
-                    </button>
-                  </th>
-                );
-              })}
             {showAnswers && <th scope="col">Answers</th>}
             {leaderQuestions.map((q) => {
               // Two-word leader headers stack ("Health" over "form") — Patrick, 2026-08-22.
@@ -786,7 +737,7 @@ export function RosterTable({
             <th scope="col">Notes</th>
             <SortHeader label="Fee" colKey="owed" sortKey={sortKey} sortDir={sortDir} toggle={toggleSort} idleArrow={false} />
             <th scope="col">Balance</th>
-            <th scope="col" />
+            <th scope="col" className={styles.actionsCol} />
           </tr>
         </thead>
         <tbody>
@@ -835,15 +786,6 @@ export function RosterTable({
                   {r.groupBySet[s.id] ?? ''}
                 </td>
               ))}
-              {showJobs &&
-                jobsInOrder.map((sl) => {
-                  const claim = r.claimDetails.find((c) => c.slotId === sl.id);
-                  return (
-                    <td key={sl.id} className={styles.cellTight} title={claim ? `${sl.label}${claim.comment ? ` — ${claim.comment}` : ''}` : sl.label}>
-                      {claim ? <span className={styles.jobTick}>✓</span> : ''}
-                    </td>
-                  );
-                })}
               {showAnswers && <td className={styles.cellMuted}>{r.answers.join(' · ') || '—'}</td>}
               {leaderQuestions.map((q) => leaderCell(r, q))}
               {/* One line with hover when the grid is dense; the full note when
@@ -877,7 +819,7 @@ export function RosterTable({
                   </>
                 )}
               </td>
-              <td className={styles.nowrap}>
+              <td className={`${styles.nowrap} ${styles.actionsCol}`}>
                 <button
                   type="button"
                   className={styles.rowEdit}
@@ -1239,6 +1181,14 @@ export function RosterTable({
         )}
       </Dialog>
     </section>
+    <AddPerson
+      candidates={addCandidates}
+      signupId={signupId}
+      calendarEntryId={calendarEntryId}
+      onAddGuest={openAddGuest}
+      guestDisabled={pending || rows.length === 0}
+    />
+    </>
   );
 }
 

@@ -12,7 +12,8 @@ import { isRideStatus, legTiles, type Leg, type RideStatus, type TransportCar } 
 import type { LeaderQuestion } from '@/lib/leader-columns';
 import { RosterTable } from './roster-table';
 import { isGuestMode } from '@/lib/event-signup';
-import { AddPerson, type AddCandidate } from './add-person';
+import type { AddCandidate } from './add-person';
+import { JobCoverage } from './job-coverage';
 import { EmailPanel } from './email-panel';
 import { ResendConfirmation } from './resend-confirmation';
 import { fmtDateTime } from '@/lib/format-date';
@@ -359,8 +360,8 @@ export async function loadRoster(signupId: number) {
 
   const slotCoverage = ((slots ?? []) as { id: number; label: string; needed: number | null }[]).map(
     (sl) => {
-      const filled = liveRows.filter((r) => r.status === 'yes' && r.claims.includes(sl.label)).length;
-      return { label: sl.label, filled, needed: sl.needed };
+      const claimants = liveRows.filter((r) => r.status === 'yes' && r.claims.includes(sl.label));
+      return { label: sl.label, filled: claimants.length, needed: sl.needed, names: claimants.map((r) => r.name) };
     }
   );
 
@@ -572,20 +573,8 @@ export function RosterView({ data, signupId }: { data: RosterData; signupId: num
       {slotCoverage.length > 0 && (
         <section className={styles.panel}>
           <h2>Job coverage</h2>
-          <ul className={styles.coverList}>
-            {slotCoverage.map((c) => (
-              <li key={c.label}>
-                <span>{c.label}</span>
-                <span className={c.needed != null && c.filled >= c.needed ? styles.covFull : styles.covShort}>
-                  {c.needed == null
-                    ? `${c.filled} signed up`
-                    : c.filled >= c.needed
-                      ? `Full (${c.needed}/${c.needed})`
-                      : `${c.filled} of ${c.needed} — ${c.needed - c.filled} more needed`}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <p className={styles.panelHint}>Click a job to see who has signed up for it.</p>
+          <JobCoverage items={slotCoverage} />
         </section>
       )}
 
@@ -601,12 +590,7 @@ export function RosterView({ data, signupId }: { data: RosterData; signupId: num
         familyQuestionCount={data.familyQuestionCount}
         hasCarSets={hasCarSets}
         guestMode={isGuestMode(signup.guest_mode) ? signup.guest_mode : 'none'}
-      />
-
-      <AddPerson
-        candidates={data.addCandidates}
-        signupId={signupId}
-        calendarEntryId={Number(data.entry.id)}
+        addCandidates={data.addCandidates}
       />
 
       {contributors.length > 0 && (

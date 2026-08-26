@@ -47,11 +47,17 @@ const PARTICIPATION_LABEL: Record<Participation, string> = {
 export function AddPerson({
   candidates,
   signupId,
-  calendarEntryId
+  calendarEntryId,
+  onAddGuest,
+  guestDisabled = false
 }: {
   candidates: AddCandidate[];
   signupId: number;
   calendarEntryId: number;
+  /** Opens the roster's Add-a-guest dialog (RosterTable owns it) — the
+   *  button lives here beside "+ Add a scout or adult" (Patrick, 2026-08-25). */
+  onAddGuest?: () => void;
+  guestDisabled?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -93,15 +99,25 @@ export function AddPerson({
       <section className={styles.panel}>
         <div className={styles.panelHead}>
           <h2>Someone missing?</h2>
-          <Button
-            variant="primary"
-            onClick={() => {
-              setOpen(true);
-              setTimeout(() => searchRef.current?.focus(), 0);
-            }}
-          >
-            + Add a person
-          </Button>
+          <div>
+            <Button
+              variant="primary"
+              onClick={() => {
+                setOpen(true);
+                setTimeout(() => searchRef.current?.focus(), 0);
+              }}
+            >
+              + Add a scout or adult
+            </Button>
+            {onAddGuest && (
+              <>
+                {' '}
+                <Button variant="primary" onClick={onAddGuest} disabled={guestDisabled}>
+                  + Add a guest
+                </Button>
+              </>
+            )}
+          </div>
         </div>
         <p className={styles.panelHint}>
           For the RSVPs that never reached the website &mdash; told to you at a meeting, sent by
@@ -114,7 +130,7 @@ export function AddPerson({
   return (
     <section className={styles.panel}>
       <div className={styles.panelHead}>
-        <h2>Add a person</h2>
+        <h2>Add a scout or adult</h2>
         <Button variant="primary" onClick={() => setOpen(false)}>
           Done
         </Button>

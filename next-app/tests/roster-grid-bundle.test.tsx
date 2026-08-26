@@ -178,7 +178,7 @@ describe('Roster grid — one column per group set, feature columns only when us
     });
     const h = headers();
     for (const t of ['Driving To', 'Driving From', 'Ride To', 'Ride From']) expect(h).not.toContain(t);
-    expect(h).toContain('GRLL'); // the job's code column (one per job)
+    expect(h).not.toContain('GRLL'); // jobs are not columns (2026-08-25)
     expect(h).toContain('Notes');
     const note = screen.getByText('bringing the big cooler and a tent canopy').closest('td') as HTMLElement;
     // No one-line clamp class when there is room — the full note shows.
@@ -239,95 +239,46 @@ describe('Roster grid — one column per group set, feature columns only when us
       slots: [{ id: 11, label: 'Grubmaster', code: 'GRUB' }],
       familyQuestionCount: 1
     });
-    // Jobs are one column PER job now, headed by the code (see the job-code block below).
-    expect(headers()).toContain('GRUB');
+    // Jobs are not columns (Patrick, 2026-08-25) — the Job coverage list carries them.
+    expect(headers()).not.toContain('GRUB');
     expect(headers()).not.toContain('Jobs');
     expect(headers()).toContain('Answers');
   });
 });
 
-describe('Roster grid — job-code columns (job-heavy events)', () => {
-  // Patrick, 2026-08-22: "the rummage sale will have 20–30 jobs; we should come
-  // up with a plan for how that's displayed on the roster" — one narrow column
-  // per job headed by its code, ✓ when claimed, the note on hover.
+describe('Roster grid — no job columns (Patrick, 2026-08-25)', () => {
+  // "It was unwise to add the jobs as columns in the list grid. It's going to
+  // be a mess on the rummage sale and not useful." The Job coverage list above
+  // the grid (click a job → names) is the UX; the grid keeps Name … Notes.
   const JOBS = [
     { id: 11, label: 'Setup crew', slotDate: '2026-10-09', needed: 4, filled: 1 },
     { id: 12, label: 'Cashier', code: 'CASH', slotDate: '2026-10-10', startsAt: '09:00:00', endsAt: '12:00:00', needed: 2, filled: 0 },
     { id: 13, label: 'Bring a table' }
   ];
 
-  it('Jobs_AreOneColumnPerJob_HeadedByTheCode_WithTheFullLabelOnHover', () => {
+  it('Grid_HasNoJobColumnsOrDayBands_EvenWithJobs', () => {
     renderTable([row({ id: 1, name: 'Kevin Pieper', claimDetails: [{ slotId: 11, comment: 'bringing gloves' }] })], { hasCarSets: false, slots: JOBS });
     const hs = headers();
-    expect(hs).toContain('SC'); // derived from "Setup crew"
-    expect(hs).toContain('CASH'); // leader-set
-    expect(hs).toContain('BAT'); // derived from "Bring a table"
+    expect(hs).not.toContain('SC');
+    expect(hs).not.toContain('CASH');
+    expect(hs).not.toContain('BAT');
     expect(hs).not.toContain('Jobs');
-    const cash = screen.getByRole('columnheader', { name: 'CASH' });
-    expect(cash.getAttribute('title')).toBe('Cashier · Sat Oct 10 · 9:00 AM–12:00 PM · 0 of 2 claimed');
-  });
-
-  it('JobCell_IsATick_WhenClaimed_WithTheClaimNoteOnHover_BlankOtherwise', () => {
-    renderTable([row({ id: 1, name: 'Kevin Pieper', claimDetails: [{ slotId: 11, comment: 'bringing gloves' }] })], { hasCarSets: false, slots: JOBS });
-    const body = screen.getAllByRole('rowgroup')[screen.getAllByRole('rowgroup').length - 1];
-    const cells = within(body).getAllByRole('cell');
-    const tick = cells.find((c) => c.textContent?.trim() === '✓');
-    expect(tick).toBeTruthy();
-    expect(tick?.getAttribute('title')).toMatch(/Setup crew.*bringing gloves/);
-    // The other two job cells are blank (the job name still on hover).
-    expect(cells.filter((c) => c.getAttribute('title') === 'Cashier' || c.getAttribute('title') === 'Bring a table').map((c) => c.textContent?.trim())).toEqual(['', '']);
-  });
-
-  it('Jobs_AreBandedByDay_WhenTheySpanDays_UntimedLast', () => {
-    renderTable([row({ id: 1, name: 'Kevin Pieper' })], { hasCarSets: false, slots: JOBS });
-    const bands = screen.getAllByRole('columnheader').filter((h) => h.getAttribute('scope') === 'colgroup').map((h) => h.textContent?.trim());
-    expect(bands).toEqual(['Fri 10/9', 'Sat 10/10', 'Anytime']);
-    // Single-day events get no band row at all.
-    screen.getAllByRole('table')[0].remove();
-    renderTable([row({ id: 2, name: 'Amy Scout' })], { hasCarSets: false, slots: JOBS.filter((j) => j.slotDate === '2026-10-09') });
     expect(screen.queryAllByRole('columnheader').filter((h) => h.getAttribute('scope') === 'colgroup')).toHaveLength(0);
+    expect(screen.queryByText('✓')).toBeNull();
   });
 
-  it('JobBandRow_SpansExactlyTheJobColumns_WithCarSetAndLeaderColumnsPresent', () => {
-    // qa-lead, 2026-08-23: lock the band-row colspan arithmetic with every
-    // other column family present (car ×4, group sets, answers, notes, fee, balance, actions).
-    renderTable([row({ id: 1, name: 'Kevin Pieper' })], { hasCarSets: true, slots: JOBS, groupSets: SETS, familyQuestionCount: 1 });
-    const rows = screen.getAllByRole('row');
-    const bandRow = rows[0];
-    const headRow = rows[1];
-    const span = (tr: HTMLElement) => Array.from(tr.querySelectorAll('th')).reduce((n, th) => n + (th.colSpan || 1), 0);
-    expect(span(bandRow)).toBe(span(headRow));
-    const bands = Array.from(bandRow.querySelectorAll<HTMLTableCellElement>('th[scope="colgroup"]'));
-    expect(bands.reduce((n, th) => n + th.colSpan, 0)).toBe(JOBS.length);
-    // Left spacer = Name, Class + 4 car columns + 2 set columns (no Guests
-    // column outside count mode — Plans/Guests-As-People.md).
-    expect((bandRow.querySelector('th') as HTMLTableCellElement).colSpan).toBe(2 + 4 + SETS.length);
-  });
-
-  it('JobColumns_CanBeHiddenAndShownAsAGroup', async () => {
-    const user = userEvent.setup();
+  it('Toolbar_HasNoPrintOrHideJobsOrAddGuest_ButKeepsExportCsv', () => {
     renderTable([row({ id: 1, name: 'Kevin Pieper' })], { hasCarSets: false, slots: JOBS });
-    expect(headers()).toContain('CASH');
-    await user.click(screen.getByRole('button', { name: /hide jobs/i }));
-    expect(headers()).not.toContain('CASH');
-    expect(headers()).not.toContain('SC');
-    await user.click(screen.getByRole('button', { name: /show jobs \(3\)/i }));
-    expect(headers()).toContain('CASH');
+    expect(screen.queryByRole('button', { name: 'Print' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /hide jobs|show jobs/i })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Export CSV' })).toBeTruthy();
   });
 
-  it('JobCodeHeader_SortsClaimedFirst', async () => {
-    const user = userEvent.setup();
-    renderTable(
-      [
-        row({ id: 1, name: 'Amy Adult' }),
-        row({ id: 2, name: 'Zed Adult', claimDetails: [{ slotId: 12, comment: null }] })
-      ],
-      { hasCarSets: false, slots: JOBS }
-    );
-    await user.click(screen.getByRole('button', { name: 'CASH' }));
-    const body = screen.getAllByRole('rowgroup')[1];
-    const names = within(body).getAllByRole('row').map((r) => within(r).getAllByRole('cell')[0].textContent?.trim());
-    expect(names).toEqual(['Zed Adult', 'Amy Adult']);
+  it('AddButtons_LiveInTheSomeoneMissingBlock_WithPlusSigns', () => {
+    renderTable([row({ id: 1, name: 'Kevin Pieper' })], { hasCarSets: false, slots: JOBS });
+    expect(screen.getByRole('button', { name: '+ Add a scout or adult' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '+ Add a guest' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /^Add a person$/ })).toBeNull();
   });
 
   it('EditDialog_JobList_ShowsTheCodeInParenthesesAfterEachLabel', async () => {
