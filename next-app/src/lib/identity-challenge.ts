@@ -200,13 +200,18 @@ export function maskEmail(email: string): string {
   return `${head}${pad}@${domain}`;
 }
 
-/** The address a challenge for this person would actually go to, honouring
- *  the same bounce/unsubscribe rule as the contact-string path. Null when we
- *  hold no deliverable way to reach them. */
-async function deliverableEmailFor(
+/**
+ * The address a challenge for this person would actually go to, honouring
+ * the same bounce/unsubscribe rule as the contact-string path — and WHOSE
+ * address it is. A scout with no email of their own gets a parent's
+ * (scout_parent_emails), which is right, but it must be SAID on screen: found
+ * live 2026-08-26 when Patrick signed in as a scout and the code went to her
+ * parents with no warning. Null when we hold no deliverable way to reach them.
+ */
+export async function deliveryFor(
   supabase: SupabaseClient,
   personId: number
-): Promise<string | null> {
+): Promise<{ email: string; viaParent: boolean } | null> {
   const { data: person } = await supabase
     .from('people')
     .select('primary_email')
@@ -214,7 +219,7 @@ async function deliverableEmailFor(
     .eq('active', true)
     .maybeSingle();
   const primary = (person as { primary_email: string | null } | null)?.primary_email?.trim();
-  if (primary) return primary;
+  if (primary) return { email: primary, viaParent: false };
 
   const { data: rows } = await supabase
     .from('scout_parent_emails')
@@ -225,9 +230,13 @@ async function deliverableEmailFor(
     bounced_at: string | null;
     unsubscribed_at: string | null;
   }[]) {
-    if (r.email?.trim() && isDeliverable(r)) return r.email.trim();
+    if (r.email?.trim() && isDeliverable(r)) return { email: r.email.trim(), viaParent: true };
   }
   return null;
+}
+
+async function deliverableEmailFor(supabase: SupabaseClient, personId: number): Promise<string | null> {
+  return (await deliveryFor(supabase, personId))?.email ?? null;
 }
 
 /** ChallengeTarget for a known person id — the picker's equivalent of
@@ -307,17 +316,18 @@ export async function requestChallengeForPerson(
   personId: number,
   opts: { nextPath?: string | null; ip?: string | null; createdByLeader?: string | null } = {}
 ): Promise<
-  { sent: true; masked: string } | { sent: false; reason: 'unreachable' | 'rate-limited' | 'failed' }
+  | { sent: true; masked: string; viaParent: boolean }
+  | { sent: false; reason: 'unreachable' | 'rate-limited' | 'failed' }
 > {
   const target = await targetForPerson(supabase, personId);
   if (!target) return { sent: false, reason: 'unreachable' };
 
-  const address = await deliverableEmailFor(supabase, personId);
-  if (!address) return { sent: false, reason: 'unreachable' };
+  const delivery = await deliveryFor(supabase, personId);
+  if (!delivery) return { sent: false, reason: 'unreachable' };
 
-  const outcome = await mintAndSend(supabase, target, address, opts);
+  const outcome = await mintAndSend(supabase, target, delivery.email, opts);
   if (outcome !== 'sent') return { sent: false, reason: outcome };
-  return { sent: true, masked: maskEmail(address) };
+  return { sent: true, masked: maskEmail(delivery.email), viaParent: delivery.viaParent };
 }
 
 /**

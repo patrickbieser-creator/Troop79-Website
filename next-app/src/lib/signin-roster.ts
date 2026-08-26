@@ -45,6 +45,9 @@ export interface SignInCandidate {
   isScout: boolean;
   /** "d•••@gmail.com", or null when we hold no deliverable address. */
   maskedEmail: string | null;
+  /** The code goes to a PARENT's address (scout with no email of their own) —
+   *  the picker says so before the tap (2026-08-26). */
+  viaParent: boolean;
 }
 
 /** Below this, nothing is returned at all — the roster is not browsable. */
@@ -89,6 +92,20 @@ async function loadAllCandidates(): Promise<InternalCandidate[]> {
     ])
   );
 
+  // Same fallback the send itself uses (identity-challenge deliveryFor): a
+  // scout with no email of their own is reached through a parent's address.
+  // Resolved here in one query so the row can say "a parent's email" up front.
+  const parentEmailById = new Map<number, string>();
+  const { data: parentRows } = await supabase
+    .from('scout_parent_emails')
+    .select('person_id, email, is_primary')
+    .is('bounced_at', null)
+    .is('unsubscribed_at', null)
+    .order('is_primary', { ascending: false });
+  for (const r of (parentRows ?? []) as { person_id: number; email: string }[]) {
+    if (r.email?.trim() && !parentEmailById.has(r.person_id)) parentEmailById.set(r.person_id, r.email.trim());
+  }
+
   // Reachable = "resolveHouseholdKeyForPerson() would return a key" — NOT
   // "has a stored household_members row". loadHouseholds() already gives a
   // synthetic household-of-one to any adult with no stored row (households.ts:
@@ -119,12 +136,15 @@ async function loadAllCandidates(): Promise<InternalCandidate[]> {
   );
 
   return eligible.map((d) => {
-    const email = emailById.get(d.person_id);
+    const own = emailById.get(d.person_id);
+    const parent = own ? null : (parentEmailById.get(d.person_id) ?? null);
+    const email = own ?? parent;
     return {
       personId: d.person_id,
       displayName: labels.get(String(d.person_id)) ?? d.display_name,
       isScout: d.tab === 'active_scout',
       maskedEmail: email ? maskEmail(email) : null,
+      viaParent: !own && !!parent,
       fullName: d.display_name
     };
   });
@@ -150,11 +170,12 @@ export async function searchSignInCandidates(query: string): Promise<SignInSearc
   // and it is the one field that must not cross the wire.
   const candidates: SignInCandidate[] = matches
     .slice(0, MAX_RESULTS)
-    .map(({ personId, displayName, isScout, maskedEmail }) => ({
+    .map(({ personId, displayName, isScout, maskedEmail, viaParent }) => ({
       personId,
       displayName,
       isScout,
-      maskedEmail
+      maskedEmail,
+      viaParent
     }));
 
   return { candidates, truncated: matches.length > MAX_RESULTS };

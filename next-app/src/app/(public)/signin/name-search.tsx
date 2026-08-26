@@ -151,7 +151,9 @@ function Row({
           {candidate.displayName}
           {candidate.isScout && <span className={styles.scoutTag}>scout</span>}
         </span>
-        <span className={styles.pickMeta}>{candidate.maskedEmail}</span>
+        <span className={styles.pickMeta}>
+          {candidate.viaParent ? <>code goes to a parent: {candidate.maskedEmail}</> : candidate.maskedEmail}
+        </span>
       </button>
     </form>
   );

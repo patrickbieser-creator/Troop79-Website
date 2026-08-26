@@ -99,6 +99,36 @@ describe('sign-in name picker', () => {
     expect(maskEmail('')).toBe('•••');
   });
 
+  // ── a scout reached through a parent's address ───────────────────────────
+
+  it('ScoutWithNoOwnEmail_ShowsTheParentsMaskedAddress_AndSaysSo', async () => {
+    // Found live 2026-08-26: the code went to the parents with nothing on
+    // screen saying it would. The picker must show WHERE the code goes.
+    const admin = adminClient();
+    const hh = await makeHousehold('Via Parent');
+    const scoutPersonId = await makePerson(hh, '[TEST] Viaparent Scout', null);
+    const scoutId = `vitest-viaparent-${Date.now()}`;
+    scoutIds.push(scoutId);
+    await admin.from('scouts').insert({
+      id: scoutId,
+      first_name: '[TEST]',
+      last_name: 'Viaparent Scout',
+      display_name: '[TEST] Viaparent Scout',
+      active: true,
+      person_id: scoutPersonId
+    });
+    const parentAddr = `vitest-viaparent-${Date.now()}@example.com`;
+    await admin.from('scout_parent_emails').insert({ person_id: scoutPersonId, email: parentAddr, label: 'home', is_primary: true });
+    try {
+      const { candidates } = await searchSignInCandidates('Viaparent');
+      const me = candidates.find((c) => c.personId === scoutPersonId);
+      expect(me?.viaParent).toBe(true);
+      expect(me?.maskedEmail).toBe(maskEmail(parentAddr));
+    } finally {
+      await admin.from('scout_parent_emails').delete().eq('person_id', scoutPersonId);
+    }
+  });
+
   // ── the shared-address hazard ────────────────────────────────────────────
 
   it('ScoutSharingAParentsEmail_GetsTheirOwnToken_NotTheParents', async () => {
