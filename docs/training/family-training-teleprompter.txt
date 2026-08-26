@@ -1,0 +1,410 @@
+========== OPEN ==========
+
+Hi — I'm going to walk you through the Troop 79 website.
+
+Everything the troop does now lives in one place.
+
+The calendar. Signups for campouts — who's coming, who's driving, who's paying.
+Photos. Advancement. Merit badges.
+A library of stuff to help your scout get things done.
+And your own family's information.
+
+You don't need an app.
+You don't need a password to look around.
+You just need this address.
+
+Troop dash seven nine dot com.
+
+Let me show you what's here, and how you'll actually use it.
+
+
+
+========== THE FRONT PAGE ==========
+
+This is the front page.
+
+Think of it as the troop's newspaper.
+The big story at the top is whatever the leaders put first this week.
+
+Sometimes that's an announcement.
+More often it's the next big thing on the calendar —
+a campout, a fundraiser, a service project.
+
+Click the headline, or click "Details and Signup,"
+and you go straight to that event's own page.
+We'll come back to that in a minute.
+
+Over here on the right is the short version of the calendar.
+The next few things on the schedule.
+
+The whole row is clickable — the date block, the title, the location.
+Tap anywhere on it and you're on that event.
+
+Below that is everything else that's current.
+
+And down here, "Browse by Category."
+Campouts, service, fundraisers, courts of honor —
+click one and you get everything we've ever posted about that kind of thing,
+events and stories together.
+
+
+
+========== NEWS AND EVENTS ==========
+
+The nav bar across the top is how you get everywhere.
+
+"News and Events" is the full list —
+every announcement and every promoted event, newest first.
+
+These chips are the same categories.
+If you only want to see, say, Eagle projects or fundraisers, click the chip.
+
+"View archive" pulls up older posts we've retired off the main list.
+
+And this one's new — you can write for the site.
+
+If your scout wants to write up the campout,
+or you took the photos at the service project,
+"Share a story" sends it to the leaders.
+They read it, and they publish it.
+Scouts writing about what they did is exactly what this is for.
+
+
+
+========== THE CALENDAR ==========
+
+This is the real calendar.
+
+Everything is here — Sunday meetings, campouts,
+service projects, fundraisers, courts of honor.
+
+You can see it as a month, or as a list.
+
+The colors are categories.
+Click a category to show only that kind of thing.
+
+There's an Upcoming tab and a Past tab.
+Past is genuinely useful when you're trying to remember
+whether your scout was on that November campout.
+
+Now — this is the single most useful button on the site.
+
+"Subscribe."
+
+This puts the entire troop calendar
+inside the calendar app already on your phone.
+
+Not a copy. A live feed.
+When we add a campout or move a meeting, it changes on your phone too.
+
+Do this once, tonight, and you will never again
+be the family that showed up on the wrong Sunday.
+
+
+
+========== AN EVENT PAGE ==========
+
+Here's what an event page looks like.
+
+At the top: what it is, when it starts, when it ends, and where —
+with a map link.
+
+Then the description — what we're doing, what to bring,
+what the plan is.
+
+If there's a signup, the deadline is right here.
+
+If it costs something, the price is right here,
+broken out by who's paying — scouts, adults, sometimes per day —
+and how to pay.
+No guessing, no asking around.
+
+If the event needs help — drivers, a shift at the rummage sale,
+someone to bring the coolers — those jobs are listed here,
+with how many people we still need.
+
+If there's a cap, you can see how full it is.
+And if it needs the Part C health form, it says so right here.
+
+Everything on this page is public.
+Names are not. You'll see that we need four more drivers.
+You won't see who they are.
+
+When you're ready to commit, you click Sign Up.
+
+One more thing — Sunday meetings have event pages too.
+When the leaders post an agenda, it's here.
+And if there's nothing to sign up for, the page just says
+"no signup needed — just come."
+
+
+
+========== SIGNING UP ==========
+
+Signing up is its own page, on purpose.
+The event page tells you what it is.
+This page is where you say yes.
+
+First time through, it asks for the troop password.
+That's the one from the Bugle.
+Enter it once and the site remembers you on that device.
+
+Once you're through, find your household,
+and you see your family.
+Every person in your household, listed.
+
+For each person, you answer for them individually.
+Coming, or not coming.
+
+Which price applies.
+How many days, if it's a multi-day trip.
+
+Then rides. Can you drive?
+If so, how many seats in your vehicle — including you.
+And for each person, do they need a ride there, back, or both,
+or are they getting there on their own.
+
+That's how the leaders fill the cars.
+And once they do, this event page will tell you
+who you're riding with.
+
+Some campouts let scouts pick a tent partner here.
+
+Guests — grandparents, a younger sibling, a friend who's thinking about joining.
+Some events just ask how many.
+Some ask for names, because there's a headcount or a price per person.
+An adult from your household is responsible for any youth guest you bring.
+
+Claim a job if you can help.
+Answer any questions the leaders added — t-shirt size, dietary needs, that sort of thing.
+
+And a notes box, if there's something we should know.
+
+Save, and you're on the roster.
+
+You'll get a confirmation email —
+what you signed up for, who's coming, what you owe, and how to pay.
+Everyone in your family with an email on file gets it.
+
+Go back to the event page and it now tells you
+that you already signed up.
+
+And you can come back any time before the deadline
+to change your answer, add a person, or cancel.
+Plans change. The site expects that.
+Every change sends you a fresh confirmation, so you always have the current version.
+
+
+
+========== MEMBERS: SIGNING IN AS YOU ==========
+
+Now let's talk about signing in as you.
+
+The last thing on the nav is "Members."
+This is the front door.
+
+There is no password to make up and no password to forget.
+
+Step one: the troop password. Same one from the Bugle.
+That just unlocks the list of names.
+
+Step two: find your name.
+Type a few letters of your last name and pick yourself.
+
+Step three: we send a six-digit code and a link
+to the email address we already have for you.
+Type the code, or tap the link. Either one works.
+
+One thing to know: if your name says "no email on file,"
+or the masked address isn't yours, tell a leader and we'll fix it.
+That's usually the whole problem.
+
+And you're in.
+
+If you'd rather skip the code next time,
+you can save a passkey on your phone — Face ID, fingerprint, whatever you use.
+Optional. The emailed code always works.
+
+And if you ever share a device, "sign out everywhere" does what it says.
+
+
+
+========== WHAT'S IN MEMBERS ==========
+
+Three things live here today.
+
+Your household — we'll open that in a second.
+
+Scout account — what's in your scout's account from fundraising,
+and what it's been spent on.
+This used to be a question you had to email the treasurer.
+
+Reimbursements — paid for something for the troop out of pocket?
+Submit it with a photo of the receipt, and track it here
+until the treasurer pays it.
+
+The greyed-out cards aren't built yet —
+paying for a campout online, registration, health forms, the wreath sale.
+They're listed so you can see what's coming.
+If one of them would save you a phone call, tell a leader.
+
+
+
+========== YOUR HOUSEHOLD ==========
+
+This is your household.
+
+Address, phone numbers, emails, schools,
+graduation years, swim classification,
+and a "things we should know" box —
+allergies, medications, anything a leader should have
+before a campout.
+
+You edit it yourself. You don't email anybody.
+
+Your change goes into a queue,
+a leader approves it, and then it's live.
+
+That's deliberate. It keeps the roster clean
+and it keeps two people from quietly overwriting each other.
+
+You can also add a household member here —
+a parent who isn't on file, a sibling who just joined.
+
+Parents see this page. Scouts don't —
+a scout who signs in gets their own things,
+but not the household's contact details.
+
+
+
+========== ADVANCEMENT ==========
+
+This is the part parents ask about most.
+
+Top of the page: the whole troop at a glance.
+How many scouts at each rank. Where everybody sits.
+
+And this — "This week's advancement."
+
+Every week the leaders publish a report of what got signed off:
+who finished which requirements, who earned a badge, who made rank.
+It's the same list that goes in the Bugle.
+There's an archive, so you can look back.
+
+Below that, every active scout.
+You can sort it and filter it.
+
+Click a scout, and you get their clipboard.
+
+This is the whole picture.
+
+Rank timeline — when they earned what.
+Every requirement, signed off or not, including the board of review.
+Merit badges, finished and in progress.
+Leadership positions. Service hours. Nights camping.
+
+And there's a Print button.
+Before a scoutmaster conference or a board of review,
+print this and bring it. That's what it's for.
+
+
+
+========== THE LIBRARY ==========
+
+Which brings us to the Library.
+
+This is the answer to "how does my scout do this requirement at home?"
+
+You can search it.
+
+Or you can drill straight down through advancement.
+Pick a rank. Pick a requirement.
+
+And here's what we've collected for that exact requirement —
+videos, guides, links, and notes from our own leaders
+about how we do it in this troop.
+
+Merit badges live here too now.
+Every badge the troop offers.
+
+Flip this toggle and instead of resources
+you see progress — how many scouts have earned each one,
+who's working on it.
+
+Good place to look when your scout says "I don't know what to work on."
+
+Click a badge and you get its requirements,
+the resources for each, and who counsels it.
+
+There are also topic shelves for things
+that don't map to a requirement — gear, camping skills, that sort of thing.
+
+If you're signed in, you can pick your scout up here,
+and the library marks what they've already finished.
+
+And when they do finish something at home,
+there's an "I did this" button.
+It sends the proof to a leader to review and sign off.
+
+Last thing — if you find something genuinely good,
+"Suggest a Resource" sends it to us.
+Everything gets reviewed before it goes up. Nothing publishes automatically.
+
+
+
+========== PHOTOS ==========
+
+Photos.
+
+Every campout, court of honor, and service project
+since the troop started, as an album.
+
+Four ways to look at the same albums.
+
+Prints — the wall of covers.
+Timeline — by year, newest first.
+List — when you know the name.
+And Almanac — every year side by side, which is the fun one.
+
+Filter by category, click an album,
+and it opens in Google Photos where you can download the full-size shots.
+
+And if you took photos — there's a link for that. Send them in.
+
+
+
+========== ABOUT AND JOIN ==========
+
+"About" is the page for people who don't know us yet —
+who we are, how the troop works, what we believe.
+
+And "Join" is where you send families who ask.
+
+Short version: come to a Sunday meeting.
+There's nothing to fill out and nothing to buy first.
+
+If you know a family who's curious, send them this page.
+
+
+
+========== CLOSE ==========
+
+So — four things, if you remember nothing else.
+
+One. Subscribe to the calendar. Tonight. Takes ten seconds.
+
+Two. Sign up for events on the site, not by text message.
+That's how the leaders know how much food to buy,
+how many cars we need, and who's paid.
+
+Three. Sign in through Members and check your household,
+so we have the right phone number when it matters.
+
+Four. Read the confirmation email. It's the receipt.
+
+Everything's at troop dash seven nine dot com.
+
+If something's wrong or something's confusing,
+email us — the address is at the bottom of every page.
+
+Thanks. See you Sunday.
