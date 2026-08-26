@@ -160,6 +160,11 @@
      already use warning-bg + accent-gold. */
   --admin-cat-rank-bg: #e0e7ef;
   --admin-cat-mb-bg:   #e3eee5;
+  /* Hiking's own tint (Patrick, 2026-08-26): trail brown, the one hue the
+     ledger's kind pills didn't use — it had shared rank's navy-blue and read
+     as a rank chip. 6.3:1 on the pill text. */
+  --admin-cat-hiking-bg:  #efe5d3;
+  --admin-cat-hiking-ink: #6b4a1e;
 
   /* ── Indexed categorical scale (2026-08-21) — for DB-governed vocabularies
      with no fixed meaning per value (finance Kind pills first). Slots are

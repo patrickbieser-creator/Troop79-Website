@@ -69,7 +69,7 @@
 .kindMbReq          { background: var(--admin-cat-mb-bg); color: var(--admin-forest); }
 .kindMbAward        { background: var(--admin-status-warning-bg); color: var(--admin-accent-gold); }
 .kindCamping        { background: #d6efef; color: #186e72; }
-.kindHiking         { background: #e0e7ef; color: #2a4f63; }
+.kindHiking         { background: var(--admin-cat-hiking-bg); color: var(--admin-cat-hiking-ink); }
 .kindDayOuting      { background: #ddeedd; color: #2f6b2f; }
 .kindFundraiser     { background: #fde0e0; color: #a03737; }
 .kindService        { background: #fce6dc; color: #b54d22; }
