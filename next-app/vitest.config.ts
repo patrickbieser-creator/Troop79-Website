@@ -5,6 +5,15 @@ import { defineConfig } from 'vitest/config';
 // same way Server Actions do — see Tests/CLAUDE.md for why this project tests
 // at the supabase-js boundary instead of mocking the DB layer.
 process.loadEnvFile('.env.local');
+// The suite never mails anyone (Patrick, 2026-08-25: seven relay emails per
+// `npm run test` were spamming Gmail). identity-auth & co assert login_tokens
+// rows, not delivery, so a live Resend key in .env.local is stripped here and
+// sendEmail() reports 'skipped'. Opt back in for a deliberate end-to-end
+// send with EMAIL_LIVE_TESTS=1 (the dev relay still redirects to you).
+if (process.env.EMAIL_LIVE_TESTS !== '1') {
+  delete process.env.RESEND_API_KEY;
+  delete process.env.EMAIL_FROM;
+}
 
 // Mirrors tsconfig.json's "@/*" -> "./src/*" path — needed for any test that
 // imports a src/lib module by value (not just `import type`), since Vitest

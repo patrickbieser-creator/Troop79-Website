@@ -53,7 +53,11 @@ memory — don't add a second system before the first is proven insufficient).
 
 `vitest.config.ts` loads `.env.local` via `process.loadEnvFile()` (Node 24),
 so tests read the same `NEXT_PUBLIC_SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY`
-that point at the local Docker instance in dev.
+that point at the local Docker instance in dev. It then **deletes `RESEND_API_KEY` and
+`EMAIL_FROM`** so no test can reach Resend — the suite asserts `login_tokens` rows and log
+rows, never delivery (2026-08-25: a live key in `.env.local` was mailing seven `[test→…]`
+relay messages per run). `EMAIL_LIVE_TESTS=1 npm run test` opts back in deliberately; the
+dev relay (`EMAIL_REDIRECT_TO`) still applies. `tests/email-no-send-in-tests.test.ts` guards it.
 
 ## Running Tests
 
