@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
+import { mirrorRosterFieldsToPerson } from '@/lib/person-mirror';
 import type { LedgerKind } from '@/lib/supabase/types';
 
 import { cascadeLibraryReqRename } from '@/lib/library-data';
@@ -152,6 +153,60 @@ function revalidateAll() {
 
 // ── Scouts ────────────────────────────────────────────────────────────────
 
+/**
+ * The people spine reads people.*; the roster forms write scouts.* / leaders.*.
+ * Every save mirrors the shared demographics across (lib/person-mirror —
+ * found live 2026-08-26 when a scout's changed email never reached sign-in).
+ */
+async function mirrorScoutToPerson(
+  supabase: ReturnType<typeof createAdminClient>,
+  scoutId: string,
+  fields: { first_name: string; last_name: string; bsa_member_id: string | null } & ReturnType<typeof readDemoFields> & { gender: string | null }
+): Promise<void> {
+  const { data } = await supabase.from('scouts').select('person_id').eq('id', scoutId).maybeSingle();
+  const personId = (data as { person_id: number | null } | null)?.person_id ?? null;
+  await mirrorRosterFieldsToPerson(supabase, personId, {
+    first_name: fields.first_name,
+    last_name: fields.last_name,
+    email: fields.email,
+    phone: fields.phone,
+    address_line1: fields.address_line1,
+    address_line2: fields.address_line2,
+    city: fields.city,
+    state: fields.state,
+    zip: fields.zip,
+    birthdate: fields.birthdate,
+    gender: fields.gender,
+    bsa_member_id: fields.bsa_member_id,
+    health_form_date: fields.health_form_date,
+    things_we_should_know: fields.things_we_should_know
+  });
+}
+
+async function mirrorLeaderToPerson(
+  supabase: ReturnType<typeof createAdminClient>,
+  code: string,
+  fields: ReturnType<typeof readDemoFields> & { bsa_member_id: string | null; ypt_completed: string | null }
+): Promise<void> {
+  const { data } = await supabase.from('leaders').select('person_id').eq('code', code).maybeSingle();
+  const personId = (data as { person_id: number | null } | null)?.person_id ?? null;
+  // Names are not mirrored: leaders.name is one string, people carries first/last.
+  await mirrorRosterFieldsToPerson(supabase, personId, {
+    email: fields.email,
+    phone: fields.phone,
+    address_line1: fields.address_line1,
+    address_line2: fields.address_line2,
+    city: fields.city,
+    state: fields.state,
+    zip: fields.zip,
+    birthdate: fields.birthdate,
+    bsa_member_id: fields.bsa_member_id,
+    health_form_date: fields.health_form_date,
+    things_we_should_know: fields.things_we_should_know,
+    ypt_completed: fields.ypt_completed
+  });
+}
+
 export async function createScout(formData: FormData): Promise<Result> {
   try {
     await requireCapability('roster.manage');
@@ -198,6 +253,7 @@ export async function createScout(formData: FormData): Promise<Result> {
     ...demo
   });
   if (error) return { ok: false, error: error.message };
+  await mirrorScoutToPerson(supabase, id, { first_name: firstName, last_name: lastName, bsa_member_id: bsaMemberId, ...demo });
   revalidateAll();
   return { ok: true };
 }
@@ -247,6 +303,7 @@ export async function updateScout(formData: FormData): Promise<Result> {
     })
     .eq('id', id);
   if (error) return { ok: false, error: error.message };
+  await mirrorScoutToPerson(supabase, id, { first_name: firstName, last_name: lastName, bsa_member_id: bsaMemberId, ...demo });
   revalidateAll();
   return { ok: true };
 }
@@ -292,6 +349,7 @@ export async function createLeader(formData: FormData): Promise<Result> {
     }
     return { ok: false, error: error.message };
   }
+  await mirrorLeaderToPerson(supabase, code, demo);
   revalidateAll();
   return { ok: true };
 }
@@ -329,6 +387,7 @@ export async function updateLeader(formData: FormData): Promise<Result> {
       .update({ name, role, ...typeFields, ...loginFields, ...demo })
       .eq('code', code);
     if (error) return { ok: false, error: error.message };
+    await mirrorLeaderToPerson(supabase, code, demo);
     revalidateAll();
     return { ok: true };
   }
@@ -385,6 +444,7 @@ export async function updateLeader(formData: FormData): Promise<Result> {
   const { error: delErr } = await supabase.from('leaders').delete().eq('code', originalCode);
   if (delErr) return { ok: false, error: delErr.message };
 
+  await mirrorLeaderToPerson(supabase, code, demo);
   revalidateAll();
   return { ok: true };
 }
