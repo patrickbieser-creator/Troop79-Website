@@ -216,7 +216,6 @@ describe('adult household boundary', () => {
       last_name: label,
       display_name: `Scout ${label}`,
       active: true,
-      household_id: householdId,
       person_id: scoutPersonId
     });
     if (scoutErr) throw scoutErr;

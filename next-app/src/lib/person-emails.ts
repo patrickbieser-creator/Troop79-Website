@@ -137,18 +137,12 @@ export async function setPrimaryEmail(
   if (!target) throw new Error('That address does not belong to this person.');
   if ((target as { is_primary: boolean }).is_primary) return; // already primary — nothing to do
 
-  const { error: demoteErr } = await supabase
-    .from('person_emails')
-    .update({ is_primary: false })
-    .eq('person_id', personId)
-    .eq('is_primary', true);
-  if (demoteErr) throw new Error(`Could not update the primary address: ${demoteErr.message}`);
-
-  const { error: promoteErr } = await supabase
-    .from('person_emails')
-    .update({ is_primary: true })
-    .eq('id', emailId);
-  if (promoteErr) throw new Error(`Could not update the primary address: ${promoteErr.message}`);
+  // One statement (set_primary_email, migration 20260826230000): demote and
+  // promote together, so there is never a moment with no primary — qa-lead
+  // caught the two-round-trip version leaving people.primary_email NULL in
+  // between.
+  const { error } = await supabase.rpc('set_primary_email', { p_person_id: personId, p_email_id: emailId });
+  if (error) throw new Error(`Could not update the primary address: ${error.message}`);
 }
 
 /**

@@ -25,7 +25,7 @@ describe('loadRosterPrintData — adult contact source', () => {
     personIds.length = 0; householdIds.length = 0; leaderCodes.length = 0;
   });
 
-  it('PrintedAdult_UsesThePeopleAddressAndPhone_OverStaleLeadersColumns', async () => {
+  it('PrintedAdult_UsesThePeopleAddressAndPhone', async () => {
     const admin = adminClient();
     const { data: hh } = await admin.from('households').insert({ label: '[TEST] Printsource' }).select('id').single();
     householdIds.push(hh!.id as number);
@@ -51,13 +51,7 @@ describe('loadRosterPrintData — adult contact source', () => {
       code,
       name: '[TEST] Printsource Parent',
       is_person: true,
-      person_id: p!.id,
-      phone: '000-000-0000',
-      email: 'stale@example.com',
-      address_line1: '1 Old Leaders Rd',
-      city: 'Nowhere',
-      state: 'XX',
-      zip: '00000'
+      person_id: p!.id
     });
 
     const data = await loadRosterPrintData();
@@ -72,7 +66,7 @@ describe('loadRosterPrintData — adult contact source', () => {
     });
   });
 
-  it('PrintedAdult_IsNull_WhenPersonHasNoAddress_EvenWithAStaleLeadersRow', async () => {
+  it('PrintedAdult_IsNull_WhenPersonHasNoAddress', async () => {
     // Proves the leaders.* fallback is gone, not just outranked: a person
     // with NOTHING on file prints null rather than falling back.
     const admin = adminClient();
@@ -91,13 +85,7 @@ describe('loadRosterPrintData — adult contact source', () => {
       code,
       name: '[TEST] Printsource2 Parent',
       is_person: true,
-      person_id: p!.id,
-      phone: '111-111-1111',
-      email: 'stale2@example.com',
-      address_line1: '2 Old Leaders Rd',
-      city: 'Nowhere',
-      state: 'XX',
-      zip: '00000'
+      person_id: p!.id
     });
 
     const data = await loadRosterPrintData();

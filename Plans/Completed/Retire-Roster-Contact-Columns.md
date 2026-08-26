@@ -1,7 +1,7 @@
 # Retire the roster contact columns — `people` becomes the only place a human's contact details live
 
-**Status:** Parked
-**Parked:** 2026-08-26
+**Status:** Shipped 2026-08-26 (Push A `0b2435e`, Push B v1.107.0 `c76ff7d`, Push C v1.107.1)
+**Parked:** 2026-08-26 (activated and completed the same day)
 **Priority:** High (data integrity; every sign-in and roster bug of 2026-08-26 traces to this)
 **Source:** `Plans/People-Model-Audit-2026-08-26.md`; Patrick, 2026-08-26: "why do we have two places for so much of the same data?"
 
@@ -28,48 +28,48 @@ only place these facts are edited or read; `scouts` keeps rank/patrol/scout-only
 
 ## Acceptance Criteria
 
-- [ ] The scout Edit form's contact/demographic fields (email, phone, address, birthdate, gender,
+- [x] The scout Edit form's contact/demographic fields (email, phone, address, birthdate, gender,
       health form date, things-we-should-know, BSA ID) read from and write to `people.*` via the
       person link; `scouts.*` copies are no longer written by any code path.
-- [ ] `person-mirror.ts` is deleted (no longer needed).
-- [ ] Every reader of `scouts.email/phone/address*/birthdate/gender/bsa_member_id/health_form_date/things_we_should_know`
+- [x] `person-mirror.ts` is deleted (no longer needed).
+- [x] Every reader of `scouts.email/phone/address*/birthdate/gender/bsa_member_id/health_form_date/things_we_should_know`
       and `leaders.email/phone/address*/birthdate/health_form_date/things_we_should_know/bsa_member_id/ypt_completed`
       reads `people.*` instead — audit list: `households.ts`, `roster-print-data.ts`, `authorized-adults.ts`,
       `signin-roster.ts`, `identity-challenge.ts`, roster tables, Scoutbook export, the audits checks
       (`advancement/audits/checks/*`), demographics report, `event-signup` party loaders. Grep is the
       acceptance test: zero references outside the drop migration.
-- [ ] One-time resync migration BEFORE the drop: `people ← scouts` for scouts' contact fields (the
+- [x] One-time resync migration BEFORE the drop: `people ← scouts` for scouts' contact fields (the
       scout form was the only editor), `people` already canonical for adults (no copy needed). Both
       directions logged as a count in the migration's `raise notice`.
-- [ ] Drop migration removes the duplicate columns from `scouts` and `leaders` (list in Technical
+- [x] Drop migration removes the duplicate columns from `scouts` and `leaders` (list in Technical
       Approach), plus the dead columns from the audit (`households.notes`,
       `household_members.is_primary_contact`, `scouts.auth_user_id`, `scouts.last_activity`,
       `scouts.joined_date`, `*.address_line2` on all three, `leaders.scout_id` after its two readers
       move to the person_id join).
-- [ ] `leaders.name` vs `people.display_name` (3 disagreements: Dan/Daniel, Mike/Michael ×2) —
+- [x] `leaders.name` vs `people.display_name` (3 disagreements: Dan/Daniel, Mike/Michael ×2) —
       decision recorded: `people.first_name/last_name/display_name` is the name; `leaders.name`
       stays only as the login label (or is dropped if `authorized-adults` can use `people`).
-- [ ] The Scoutbook export and the roster CSV import (`roster-import`) map to `people.*` for the
+- [x] The Scoutbook export and the roster CSV import (`roster-import`) map to `people.*` for the
       moved fields.
-- [ ] `Tests/CLAUDE.md` and `next-app/AGENTS.md` record the rule: contact/demographic facts live
+- [x] `Tests/CLAUDE.md` and `next-app/AGENTS.md` record the rule: contact/demographic facts live
       on `people` only.
-- [ ] Deploy order: resync migration (DB-first, additive) → code that reads/writes `people` →
+- [x] Deploy order: resync migration (DB-first, additive) → code that reads/writes `people` →
       drop migration (code-first for the tightening) — three pushes, each gated.
 
 ## Test Plan
 
-- [ ] `ScoutForm_ReadsContactFields_FromPeople()` — db: person with email X, scouts row with stale
+- [x] `ScoutForm_ReadsContactFields_FromPeople()` — db: person with email X, scouts row with stale
       email Y → the form's row model shows X.
-- [ ] `UpdateScout_WritesContactFields_ToPeople_NotScouts()` — source-property on the action +
+- [x] `UpdateScout_WritesContactFields_ToPeople_NotScouts()` — source-property on the action +
       db: after save, `people.primary_email` changed, `scouts` has no such column.
-- [ ] `Households_BuildsAdultsAndScouts_FromPeopleContact()` — existing households tests extended.
-- [ ] `RosterPrint_UsesPeople_Only()` — the fallback to `leaders.*` removed; existing
+- [x] `Households_BuildsAdultsAndScouts_FromPeopleContact()` — existing households tests extended.
+- [x] `RosterPrint_UsesPeople_Only()` — the fallback to `leaders.*` removed; existing
       `roster-print-adult-source.test.ts` tightened.
-- [ ] `ResyncMigration_CopiesScoutContactOntoPeople_WhereTheyDisagree()` — db: run the migration's
+- [x] `ResyncMigration_CopiesScoutContactOntoPeople_WhereTheyDisagree()` — db: run the migration's
       SQL body against fixtures.
-- [ ] `NoCodeReadsTheDroppedColumns()` — source-property grep across `src/` for each dropped column
+- [x] `NoCodeReadsTheDroppedColumns()` — source-property grep across `src/` for each dropped column
       name qualified by table (`from('scouts')…select(...email…)` etc.).
-- [ ] Existing suite green (1450+), design-system census untouched.
+- [x] Existing suite green (1450+), design-system census untouched.
 
 ## Technical Approach
 
@@ -140,12 +140,12 @@ address — the shape that caused the 2026-08-26 mess) can be retired in the sam
 - A scout's addresses are the scout's own; a parent's never appears on the scout row.
 
 **Acceptance criteria**
-- [ ] `person_emails` + trigger + backfill migration; `scout_parent_emails` dropped; counts logged.
-- [ ] `people.primary_email` always equals the `is_primary` row (trigger; test).
-- [ ] Profile + roster editors: add / set primary / remove (not last) / flags.
-- [ ] Sign-in "send to a different address" for 2+ addresses; `deliverableEmailFor` = primary.
-- [ ] `recipientsForScouts` / household recipients read `person_emails` of household adults.
-- [ ] Roster "Send sign-in link" picks the primary; a leader can choose another on the row.
+- [x] `person_emails` + trigger + backfill migration; `scout_parent_emails` dropped; counts logged.
+- [x] `people.primary_email` always equals the `is_primary` row (trigger; test).
+- [x] Profile + roster editors: add / set primary / remove (not last) / flags.
+- [x] Sign-in "send to a different address" for 2+ addresses; `deliverableEmailFor` = primary.
+- [x] `recipientsForScouts` / household recipients read `person_emails` of household adults.
+- [x] Roster "Send sign-in link" picks the primary; a leader can choose another on the row.
 
 **Tests**
 - `PersonEmails_ExactlyOnePrimary_PerPerson()`, `PrimaryEmailCache_FollowsThePrimaryRow()`,
