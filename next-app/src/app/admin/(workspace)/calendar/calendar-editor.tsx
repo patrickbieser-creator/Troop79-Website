@@ -1,8 +1,9 @@
 'use client';
 
-import { Fragment, useCallback, useEffect, useRef, useState, useTransition } from 'react';
+import { Fragment, useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import { useUrlSearch } from '../_components/use-url-search';
 import type { CalendarCategoryRow } from '@/lib/calendar-categories';
 import { splitByTab } from '@/lib/calendar-tabs';
 import { PILL_COLUMNS, authorInitials, dateHover, dateLabel, goingLabel, statusPills, truncate } from '@/lib/calendar-list';
@@ -92,41 +93,13 @@ export function CalendarEditor({
   onSetPromoted
 }: Props) {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   /**
-   * Filter state pushes to the URL rather than living in useState. Search is
-   * debounced so typing doesn't push a history entry per keystroke; the local
-   * `text` mirror keeps the input responsive while that settles. Same shape as
-   * the News toolbar.
+   * Filter state pushes to the URL rather than living in useState — the one
+   * useUrlSearch hook (debounced q, focused-input guard), same as the News and
+   * Ledger toolbars. keepScroll: the list must not jump on a filter change.
    */
-  const [text, setText] = useState(q);
-  const inputFocusedRef = useRef(false);
-
-  useEffect(() => {
-    if (!inputFocusedRef.current) setText(q);
-  }, [q]);
-
-  const push = useCallback(
-    (updates: Record<string, string | null>) => {
-      const params = new URLSearchParams(searchParams.toString());
-      for (const [k, v] of Object.entries(updates)) {
-        if (v === null || v === '') params.delete(k);
-        else params.set(k, v);
-      }
-      router.push(`/admin/calendar${params.toString() ? `?${params.toString()}` : ''}`, {
-        scroll: false
-      });
-    },
-    [router, searchParams]
-  );
-
-  useEffect(() => {
-    if (text === q) return;
-    const t = setTimeout(() => push({ q: text }), 450);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [text]);
+  const { setText, push, inputProps } = useUrlSearch({ path: '/admin/calendar', q, keepScroll: true });
 
   /*
    * Row EDITING moved into the workbench, which is the single editor of record
@@ -338,14 +311,7 @@ export function CalendarEditor({
           className={styles.filterInput}
           placeholder="Search title, location…"
           aria-label="Search calendar entries"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onFocus={() => {
-            inputFocusedRef.current = true;
-          }}
-          onBlur={() => {
-            inputFocusedRef.current = false;
-          }}
+          {...inputProps}
         />
         <select
           className={styles.filterSelect}

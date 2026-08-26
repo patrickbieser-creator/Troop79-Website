@@ -49,7 +49,6 @@ function entry(over: Partial<CalendarEntryPublic> = {}): CalendarEntryPublic {
     featured: false,
     promo_start: null,
     promo_end: null,
-    excerpt: null,
     hero_media_id: null,
     auto_archive_at: null,
     hasSignup: false,

@@ -411,7 +411,6 @@ export interface CalendarEntry {
   featured_order: number | null;
   promo_start: string | null;
   promo_end: string | null;
-  excerpt: string | null;
   hero_media_id: number | null;
   auto_archive_at: string | null;
   /** Markdown event details shown on /events/[id]. Added by the Event Signup

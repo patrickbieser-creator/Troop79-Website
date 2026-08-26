@@ -68,13 +68,10 @@ function fieldsFromForm(fd: FormData) {
     status: String(fd.get('status') ?? 'published') === 'draft' ? 'draft' : 'published',
     show_on_homepage: showOnHomepage,
     // Promotion sub-fields are cleared when the opt-in is off, so stale
-    // windows/excerpts can't linger invisibly and spring back later.
+    // windows can't linger invisibly and spring back later.
     featured: showOnHomepage && String(fd.get('featured') ?? '') === '1',
     promo_start: showOnHomepage ? String(fd.get('promo_start') ?? '').trim() || null : null,
     promo_end: showOnHomepage ? String(fd.get('promo_end') ?? '').trim() || null : null,
-    // Collapsed into description (Patrick, 2026-08-25) — always cleared so a
-    // stale card line can't outlive the field that set it.
-    excerpt: null,
     // The Story rides along from the workbench form; the Add Entry dialog
     // doesn't carry it, and must not blank it.
     ...(fd.has('details_md') ? { details_md: String(fd.get('details_md') ?? '').trim() || null } : {}),
@@ -326,7 +323,7 @@ export async function createCalendarEntry(fd: FormData): Promise<ActionResult> {
  * Featured from its list.
  *
  * Deliberately NOT routed through fieldsFromForm/updateCalendarEntry: that path
- * clears promo_start/promo_end/excerpt/hero whenever the opt-in is off, which is
+ * clears promo_start/promo_end/hero whenever the opt-in is off, which is
  * right when a human is looking at those fields and wrong for a one-click
  * toggle. Turning promotion off from here parks the window rather than
  * destroying it, so turning it back on restores what was set up.

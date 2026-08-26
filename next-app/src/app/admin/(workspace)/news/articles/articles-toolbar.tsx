@@ -1,7 +1,6 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useUrlSearch } from '../../_components/use-url-search';
 import styles from './articles.module.css';
 
 interface Props {
@@ -19,34 +18,7 @@ const STATUS_OPTIONS = [
 ];
 
 export function ArticlesToolbar({ q, status, sort, dir }: Props) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [text, setText] = useState(q);
-  const [, startTransition] = useTransition();
-  const inputFocusedRef = useRef(false);
-
-  useEffect(() => {
-    if (!inputFocusedRef.current) setText(q);
-  }, [q]);
-
-  function push(updates: Record<string, string | null>) {
-    const params = new URLSearchParams(searchParams.toString());
-    for (const [k, v] of Object.entries(updates)) {
-      if (v === null || v === '') params.delete(k);
-      else params.set(k, v);
-    }
-    params.delete('page');
-    startTransition(() => {
-      router.push(`/admin/news/articles${params.toString() ? `?${params.toString()}` : ''}`);
-    });
-  }
-
-  useEffect(() => {
-    if (text === q) return;
-    const t = setTimeout(() => push({ q: text }), 450);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [text]);
+  const { push, inputProps } = useUrlSearch({ path: '/admin/news/articles', q, resetPage: true });
 
   return (
     <div className={styles.toolbar}>
@@ -55,14 +27,7 @@ export function ArticlesToolbar({ q, status, sort, dir }: Props) {
         className={styles.input}
         placeholder="Search title, excerpt…"
         aria-label="Search articles"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onFocus={() => {
-          inputFocusedRef.current = true;
-        }}
-        onBlur={() => {
-          inputFocusedRef.current = false;
-        }}
+        {...inputProps}
       />
       <select
         className={styles.select}

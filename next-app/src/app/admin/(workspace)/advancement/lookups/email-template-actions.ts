@@ -72,23 +72,18 @@ export async function updateEmailTemplate(fd: FormData): Promise<Result> {
   return { ok: true, id };
 }
 
-/** Retire (hide from pickers) — or delete outright when nothing references it. */
+/** Retire = hide from pickers, keep the row (Patrick, 2026-08-26). The first
+ *  cut deleted an unreferenced template outright, which could lose a leader's
+ *  writing under a button that said "Retire"; Restore undoes this. */
 export async function retireEmailTemplate(fd: FormData): Promise<Result> {
   await requireCapability('calendar.write');
   const id = Number(fd.get('id'));
   if (!Number.isInteger(id) || id <= 0) return { ok: false, error: 'Missing template.' };
-  const supabase = createAdminClient();
-  const { count } = await supabase
-    .from('event_signups')
-    .select('id', { count: 'exact', head: true })
-    .or(`confirm_family_template_id.eq.${id},confirm_leader_template_id.eq.${id}`);
-  if ((count ?? 0) > 0) {
-    const { error } = await supabase.from('email_templates').update({ retired_at: new Date().toISOString() }).eq('id', id);
-    if (error) return { ok: false, error: error.message };
-  } else {
-    const { error } = await supabase.from('email_templates').delete().eq('id', id);
-    if (error) return { ok: false, error: error.message };
-  }
+  const { error } = await createAdminClient()
+    .from('email_templates')
+    .update({ retired_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) return { ok: false, error: error.message };
   revalidate();
   return { ok: true, id };
 }

@@ -33,7 +33,6 @@ function entry(over: Partial<PromotedEntryBase> & Record<string, unknown> = {}):
     featured_order: null,
     promo_start: null,
     promo_end: null,
-    excerpt: null,
     hero_media_id: null,
     hero_media: null,
     auto_archive_at: null,
@@ -154,9 +153,9 @@ describe('hero pick (first card of the front-page order — 2026-08-21)', () => 
 });
 
 describe('event card excerpt', () => {
-  it('Excerpt_IgnoresTheRetiredExcerptColumn_DescriptionIsTheOneShortText', () => {
-    // Collapsed 2026-08-25 (Patrick): a stale excerpt must not outlive the field.
-    expect(eventCardExcerpt(entry({ excerpt: ' Bring tables. ', description: 'Three days out.' }))).toBe(
+  it('Excerpt_IsTheDescription_TheOneShortText', () => {
+    // Collapsed 2026-08-25 (Patrick); the excerpt column itself was dropped 2026-08-26.
+    expect(eventCardExcerpt(entry({ description: 'Three days out.' }))).toBe(
       'Three days out.'
     );
   });
@@ -169,7 +168,7 @@ describe('event card excerpt', () => {
   });
 
   it('Excerpt_IsNull_WhenNothingToSay', () => {
-    expect(eventCardExcerpt(entry({ excerpt: '  ', description: null }))).toBeNull();
+    expect(eventCardExcerpt(entry({ description: null }))).toBeNull();
   });
 
   it('Excerpt_StripsMarkdown_FromDescriptions', () => {

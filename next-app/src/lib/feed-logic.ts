@@ -40,7 +40,6 @@ export interface PromotedEntryBase {
   featured_order: number | null;
   promo_start: string | null;
   promo_end: string | null;
-  excerpt: string | null;
   auto_archive_at: string | null;
   created_at: string;
 }
@@ -202,9 +201,9 @@ export function plainSummary(text: string | null, max = EXCERPT_MAX): string | n
 
 /**
  * Card summary for a promoted entry: the description flattened to plain
- * text and truncated at a word boundary. The separate `excerpt` column is
+ * text and truncated at a word boundary. The separate `excerpt` column was
  * retired (Patrick, 2026-08-25: the two "seem to be doing the same thing")
- * and is no longer read.
+ * and dropped 2026-08-26.
  */
 export function eventCardExcerpt(entry: PromotedEntryBase): string | null {
   return plainSummary(entry.description);

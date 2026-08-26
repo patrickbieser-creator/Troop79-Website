@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 26, 2026</strong> &nbsp;&middot;&nbsp; v1.104.2</p>
+      <p>Last updated: <strong>August 26, 2026</strong> &nbsp;&middot;&nbsp; v1.105.0</p>
     </div>
   </div>
 
@@ -494,6 +494,23 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.105.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.105.0</span>
+        <span class="release-date">August 26, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Backlog: Retire keeps the template, one list-search hook, dead column dropped</p>
+        <ul class="change-list">
+          <li><span><strong>Retiring an email template keeps it.</strong> Retire used to delete a template outright when no signup referenced it. Now it always just hides it from the pickers, and Restore brings it back &mdash; a leader can&rsquo;t lose their writing under a button that says Retire.</span></li>
+          <li><span>The Calendar, News and Ledger search boxes share one URL-search hook (debounced, page reset, no clobbered keystrokes) instead of three copies.</span></li>
+          <li><span>The calendar&rsquo;s unused <code>excerpt</code> column is dropped (it collapsed into the description on Aug 25).</span></li>
+        </ul>
       </div>
     </div>
 

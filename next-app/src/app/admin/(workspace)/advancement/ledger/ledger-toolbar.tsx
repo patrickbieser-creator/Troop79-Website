@@ -1,7 +1,6 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useUrlSearch } from '../../_components/use-url-search';
 import styles from './ledger.module.css';
 
 interface Props {
@@ -29,44 +28,8 @@ const KIND_OPTIONS: { value: string; label: string }[] = [
 ];
 
 export function LedgerToolbar({ q, kind, hidden, sort, dir }: Props) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [text, setText] = useState(q);
-  const [, startTransition] = useTransition();
-  // True while the user is actively editing the search input. Disables the
-  // URL→state resync (otherwise the server's lagging response clobbers
-  // mid-flight keystrokes — the classic "every other letter disappears" bug).
-  const inputFocusedRef = useRef(false);
-
-  // Sync local state with URL only when the input is NOT focused. That
-  // covers external navigation (browser back, pasted URL) without fighting
-  // active typing.
-  useEffect(() => {
-    if (!inputFocusedRef.current) setText(q);
-  }, [q]);
-
-  function push(updates: Record<string, string | null>) {
-    const params = new URLSearchParams(searchParams.toString());
-    for (const [k, v] of Object.entries(updates)) {
-      if (v === null || v === '') params.delete(k);
-      else params.set(k, v);
-    }
-    params.delete('page'); // any filter change resets to page 1
-    startTransition(() => {
-      router.push(
-        `/admin/advancement/ledger${params.toString() ? `?${params.toString()}` : ''}`
-      );
-    });
-  }
-
-  // Debounced search push. 450ms gives a comfortable buffer for round-trip
-  // re-render before the next push fires.
-  useEffect(() => {
-    if (text === q) return;
-    const t = setTimeout(() => push({ q: text }), 450);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [text]);
+  // Debounce + focused-input guard live in useUrlSearch (2026-08-26).
+  const { push, inputProps } = useUrlSearch({ path: '/admin/advancement/ledger', q, resetPage: true });
 
   return (
     <div className={styles.toolbar}>
@@ -75,14 +38,7 @@ export function LedgerToolbar({ q, kind, hidden, sort, dir }: Props) {
         className={styles.input}
         placeholder="Search code, scout, label…"
         aria-label="Search ledger"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onFocus={() => {
-          inputFocusedRef.current = true;
-        }}
-        onBlur={() => {
-          inputFocusedRef.current = false;
-        }}
+        {...inputProps}
       />
       <select
         className={styles.select}
