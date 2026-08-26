@@ -12,6 +12,7 @@ import styles from '../lookups/lookups.module.css';
 import { Notice } from '../../_components/notice';
 import { fmtDateTime } from '@/lib/format-date';
 import { Button } from '../../../_components/button';
+import { FormPanel } from '../../../_components/form-panel';
 
 /**
  * "Pending Update" panel inside the Scout editor (Plans/Scout-Self-Service-Demographics.md)
@@ -131,17 +132,19 @@ export function PendingUpdatePanel({
       </table>
 
       {rejecting ? (
-        <div className={`${styles.editGrid} ${styles.gapTop}`}>
-          <label className={styles.editFieldFull}>
-            <span className={styles.editLabel}>Reason (optional)</span>
-            <input
-              className={styles.editInput}
-              value={reason}
-              disabled={busy}
-              onChange={(e) => setReason(e.target.value)}
-            />
-          </label>
-        </div>
+        <FormPanel className={styles.gapTop}>
+          <div className={styles.fieldGrid}>
+            <label className={styles.editFieldFull}>
+              <span className={styles.editLabel}>Reason (optional)</span>
+              <input
+                className={styles.editInput}
+                value={reason}
+                disabled={busy}
+                onChange={(e) => setReason(e.target.value)}
+              />
+            </label>
+          </div>
+        </FormPanel>
       ) : null}
 
       <div className={`${styles.editActions} ${styles.gapTop}`}>

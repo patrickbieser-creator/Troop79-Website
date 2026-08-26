@@ -14,6 +14,7 @@ import { Notice } from '../../../_components/notice';
 import { DiscardButton, SaveButton, SaveFeedback, useFormDirty, useSavePhase } from '../../../_components/save-state';
 import { Button } from '../../../../_components/button';
 import { PublicPageLink } from '../../../../_components/public-page-link';
+import { FormPanel } from '../../../../_components/form-panel';
 
 type ActionResult = { ok: boolean; error?: string };
 
@@ -277,23 +278,26 @@ export function MeetingEditor({
           {/* ── logistics ── */}
           <form
             ref={formRef}
-            className={styles.panel}
             onSubmit={(e) => {
               e.preventDefault();
               saveLogistics(e.currentTarget);
             }}
           >
-            <div className={styles.panelTitle}>
-              <span>Logistics</span>
-              <DiscardButton dirty={logistics.dirty} pending={busyKey === 'logistics'} onClick={logistics.reset} />
-              <SaveButton
-                type="submit"
-                dirty={logistics.dirty}
-                pending={busyKey === 'logistics'}
-                dirtyLabel="Save logistics"
-              />
-              <SaveFeedback phase={feedback.phase} />
-            </div>
+            <FormPanel
+              title="Logistics"
+              actions={
+                <>
+                  <DiscardButton dirty={logistics.dirty} pending={busyKey === 'logistics'} onClick={logistics.reset} />
+                  <SaveButton
+                    type="submit"
+                    dirty={logistics.dirty}
+                    pending={busyKey === 'logistics'}
+                    dirtyLabel="Save logistics"
+                  />
+                  <SaveFeedback phase={feedback.phase} />
+                </>
+              }
+            >
             <div className={styles.logisticsGrid}>
               {/* The date belongs to the calendar entry now. Editing it from
                   the agenda layer is precisely how the two used to drift out of
@@ -321,6 +325,7 @@ export function MeetingEditor({
               <Field label="Duty Roster URL" name="duty_roster_url" defaultValue={meeting.duty_roster_url ?? ''} />
             </div>
             {savedNote && <div className={styles.okNote}>Logistics saved.</div>}
+            </FormPanel>
           </form>
 
           {/* ── pre-meeting ── */}
@@ -352,10 +357,7 @@ export function MeetingEditor({
 
         {/* ── candidate tray ── */}
         <aside className={styles.tray}>
-          <div className={styles.panel}>
-            <div className={styles.panelTitle}>
-              <span>Plan Suggestions</span>
-            </div>
+          <FormPanel title="Plan Suggestions">
             <p className={styles.trayNote}>
               The Meeting Plan engine&rsquo;s suggestions for {fmtDateFull(entry.entry_date)}.
               Promoting copies one into the agenda as an editable item &mdash; the plan itself is
@@ -411,7 +413,7 @@ export function MeetingEditor({
                 </div>
               ))
             )}
-          </div>
+          </FormPanel>
         </aside>
       </div>
 
@@ -483,13 +485,14 @@ function SessionPanel({
   onMove: (s: MeetingSession, dir: 'up' | 'down') => void;
 }) {
   return (
-    <div className={styles.panel}>
-      <div className={styles.panelTitle}>
-        <span>{title}</span>
+    <FormPanel
+      title={title}
+      actions={
         <Button size="sm" onClick={onAdd}>
           + Add item
         </Button>
-      </div>
+      }
+    >
       {rows.length === 0 ? (
         <p className={styles.muted}>{emptyNote}</p>
       ) : (
@@ -556,7 +559,7 @@ function SessionPanel({
           </div>
         ))
       )}
-    </div>
+    </FormPanel>
   );
 }
 
@@ -615,7 +618,7 @@ function SessionForm({
 
       <DialogBody>
       <input type="hidden" name="section" value={section} />
-      <div className={styles.editGrid}>
+      <div className={styles.fieldGrid}>
         <label className={styles.editField}>
           <span className={styles.editLabel}>Time label</span>
           <input

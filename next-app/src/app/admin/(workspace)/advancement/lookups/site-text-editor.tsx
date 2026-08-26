@@ -21,6 +21,7 @@ import {
 } from '@/lib/site-text';
 import styles from './lookups.module.css';
 import { Notice } from '../../_components/notice';
+import { FormPanel } from '../../../_components/form-panel';
 
 type ActionResult = { ok: boolean; error?: string };
 
@@ -65,13 +66,13 @@ export function SiteTextEditor({
   }
 
   return (
-    <div>
+    <FormPanel>
       <p className={styles.helpText}>
         Sent from an event roster&rsquo;s &ldquo;Chase the non-responders&rdquo; panel to the
         parents of active scouts with no entry yet. Leave a field blank to use the built-in
         wording. Placeholders filled at send time: {REMINDER_EMAIL_PLACEHOLDERS.join(', ')}.
       </p>
-      <div className={styles.editGrid}>
+      <div className={styles.fieldGrid}>
         {SITE_TEXT_KEYS.map((def) => {
           const current = draft[def.key] ?? '';
           return (
@@ -113,6 +114,6 @@ export function SiteTextEditor({
         />
         <SaveFeedback phase={feedback.phase} />
       </div>
-    </div>
+    </FormPanel>
   );
 }

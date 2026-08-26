@@ -164,14 +164,14 @@
 .editDialog.editDialog {
   max-width: 720px;
 }
-.editGrid {
+/* .editGrid retired (2026-08-26, FormPanel adoption sweep) — the edit
+   dialog's field grid loses its own tint: DialogBody is already the
+   surface (form standard, dialog.module.css), so a nested tint doubled
+   up. .fieldGrid keeps the layout only. */
+.fieldGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px 14px;
-  background: var(--admin-form-bg);
-  padding: 12px 14px;
-  border: 1px solid var(--admin-gray-200);
-  border-radius: var(--admin-radius-sm);
 }
 .editField {
   display: block;
@@ -211,7 +211,7 @@
 /* .editSaveBtn retired 2026-08-24 → shared Button (variant="primary") */
 
 @media (max-width: 560px) {
-  .editGrid { grid-template-columns: 1fr; }
+  .fieldGrid { grid-template-columns: 1fr; }
 }
 
 .actionsCell { composes: actionsCell from '../../_components/data-table.module.css'; }

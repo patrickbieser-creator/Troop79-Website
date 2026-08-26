@@ -21,6 +21,7 @@ import { DiscardButton, SaveButton, SaveFeedback, useDraftSnapshot, useSavePhase
 import { SEO_KEYS, SEO_DEFAULTS, seoFlagOn, type SeoSettingKey } from '@/lib/seo';
 import styles from './lookups.module.css';
 import { Notice } from '../../_components/notice';
+import { FormPanel } from '../../../_components/form-panel';
 
 type ActionResult = { ok: boolean; error?: string };
 
@@ -65,7 +66,7 @@ export function SeoEditor({
   }
 
   return (
-    <div>
+    <FormPanel>
       <p className={styles.helpText}>
         What search engines and AI assistants read about the troop. The site publishes a{' '}
         <a href="/sitemap.xml" target="_blank" rel="noreferrer">
@@ -79,7 +80,7 @@ export function SeoEditor({
         Leave any field blank to use the built-in value.
       </p>
 
-      <div className={styles.editGrid}>
+      <div className={styles.fieldGrid}>
         {SEO_KEYS.map((def) => {
           const current = draft[def.key] ?? '';
           if (def.flag) {
@@ -148,6 +149,6 @@ export function SeoEditor({
         />
         <SaveFeedback phase={feedback.phase} />
       </div>
-    </div>
+    </FormPanel>
   );
 }

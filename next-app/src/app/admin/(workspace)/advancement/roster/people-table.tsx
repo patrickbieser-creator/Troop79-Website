@@ -31,11 +31,14 @@ import { Dialog } from '../../_components/dialog';
 import { Notice } from '../../_components/notice';
 import { DiscardButton, SaveButton, SaveFeedback, useSavePhase } from '../../_components/save-state';
 import { Button } from '../../../_components/button';
+import { FormPanel } from '../../../_components/form-panel';
 import { ageOn, yptStatus } from '@/lib/demographics';
 import { fmtDate } from '@/lib/format-date';
 import styles from './roster.module.css';
 // Field CSS converged onto lookups' family (D-139 answered, 2026-08-21) —
 // roster.module.css's hand-copied .editGrid/.editField block is deleted.
+// The Demographics grid sits in a FormPanel (2026-08-26 sweep) — .fieldGrid
+// carries no tint of its own; .editorSection (below) never had one either.
 import fields from '../lookups/lookups.module.css';
 
 export interface DirectoryPerson {
@@ -598,7 +601,8 @@ function PersonEditor({
             Pending Update rather than here, so nothing you type is ever silently overwritten by a
             family submission.
           </p>
-          <div className={fields.editGrid}>
+          <FormPanel>
+          <div className={fields.fieldGrid}>
             <label className={fields.editField}>
               <span className={fields.editLabel}>First Name</span>
               <input
@@ -733,6 +737,7 @@ function PersonEditor({
               />
             </label>
           </div>
+          </FormPanel>
           <div className={styles.inlineRow}>
             <DiscardButton
               dirty={JSON.stringify(demo) !== JSON.stringify(demoFromFields(detail.fields))}

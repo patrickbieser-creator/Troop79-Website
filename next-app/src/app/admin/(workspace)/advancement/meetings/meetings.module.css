@@ -61,24 +61,12 @@
 .editorGrid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 18px; align-items: start; }
 @media (max-width: 1080px) { .editorGrid { grid-template-columns: 1fr; } }
 
-/* Card/panel canon (Phase B, 2026-08-21): radius token + shadow-sm join the
-   .card cluster; padding stays screen-local. */
-/* The form standard (D-179, v1.71.1): a surface that holds fields is tinted so
-   the white fields inside it read as fields. The Logistics panel here is a
-   <form> with a field grid and was still on --admin-white, i.e. white on white
-   (Patrick, 2026-08-22 — the sibling of the calendar workbench fix in
-   v1.80.0). Applied to the class rather than one panel so the three panels on
-   this screen stay consistent with each other. */
-.panel {
-  background: var(--admin-form-bg); border: 1px solid var(--admin-gray-200);
-  border-radius: var(--admin-radius); box-shadow: var(--admin-shadow-sm);
-  padding: 14px 16px; margin-bottom: 16px;
-}
-.panelTitle {
-  font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
-  color: var(--admin-gray-500); margin-bottom: 10px;
-  display: flex; justify-content: space-between; align-items: center;
-}
+/* .panel / .panelTitle retired (2026-08-26, FormPanel adoption sweep) — the
+   Logistics form, the Plan Suggestions tray, and SessionPanel are all
+   <FormPanel title=… actions=…> now; the tint and head layout live there.
+   (The Logistics <form> itself stays bare — FormPanel is a <section>, so it
+   nests INSIDE the form rather than replacing it, keeping the Save button's
+   type="submit" wired to the real <form> element.) */
 
 .logisticsGrid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 12px; }
 @media (max-width: 720px) { .logisticsGrid { grid-template-columns: 1fr; } }
@@ -159,7 +147,10 @@
    retired Phase A (2026-08-21) — the shared Dialog component
    (_components/dialog) carries the approved spec, centering fix included. */
 
-.editGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; background: var(--admin-form-bg); padding: 12px 14px; border: 1px solid var(--admin-gray-200); border-radius: var(--admin-radius-sm);}
+/* .editGrid retired (2026-08-26, FormPanel adoption sweep) — DialogBody is
+   already the tinted surface for the session-item dialog, so .fieldGrid
+   carries the layout only. */
+.fieldGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
 .editField { display: block; margin-bottom: 12px; }
 .editFieldFull { display: block; grid-column: 1 / -1; margin-bottom: 12px; }
 .editLabel {
@@ -177,7 +168,7 @@ textarea.editInput { resize: vertical; min-height: 64px; }
    already renders this paint by default). */
 
 @media (max-width: 560px) {
-  .editGrid { grid-template-columns: 1fr; }
+  .fieldGrid { grid-template-columns: 1fr; }
   .editFieldFull { grid-column: auto; }
 }
 

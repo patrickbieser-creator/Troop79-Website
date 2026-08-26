@@ -207,7 +207,7 @@ function EditForm({
       />
 
       <DialogBody>
-      <div className={styles.editGrid}>
+      <div className={styles.fieldGrid}>
         <Field label="Date">
           <DatePickerField value={date} onChange={setDate} />
         </Field>

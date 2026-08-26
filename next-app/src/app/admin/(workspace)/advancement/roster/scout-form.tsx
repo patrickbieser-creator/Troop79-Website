@@ -268,7 +268,7 @@ export function ScoutForm({
           sectionRefs.current[0] = el;
         }}
       >
-        <div className={styles.editGrid}>
+        <div className={styles.fieldGrid}>
           <label className={styles.editField}>
             <span className={styles.editLabel}>Internal ID</span>
             <input
@@ -337,7 +337,7 @@ export function ScoutForm({
           sectionRefs.current[1] = el;
         }}
       >
-        <div className={styles.editGrid}>
+        <div className={styles.fieldGrid}>
           <label className={styles.editField}>
             <span className={styles.editLabel}>
               Birthdate{ageOn(birthdate || null) !== null ? ` · age ${ageOn(birthdate || null)}` : ''}
@@ -410,7 +410,7 @@ export function ScoutForm({
           sectionRefs.current[2] = el;
         }}
       >
-        <div className={styles.editGrid}>
+        <div className={styles.fieldGrid}>
           <label className={styles.editFieldFull}>
             <span className={styles.editLabel}>Address Line 1</span>
             <input

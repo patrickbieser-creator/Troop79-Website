@@ -29,6 +29,7 @@ import { ScoutbookActions } from './scoutbook-actions';
 import styles from './scoutbook-export.module.css';
 import { PageTitle } from '../../_components/page-title';
 import { Button } from '../../../_components/button';
+import { FormPanel } from '../../../_components/form-panel';
 
 export const metadata = {
   title: 'Scoutbook Export — Troop 79'
@@ -72,18 +73,22 @@ export default async function ScoutbookExportPage({
         }
       />
 
-      <form className={styles.form} method="get">
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>From</span>
-          <DateParamField name="from" defaultValue={from} />
-        </label>
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>To</span>
-          <DateParamField name="to" defaultValue={to} />
-        </label>
-        <Button type="submit" variant="primary">
-          Update
-        </Button>
+      <form method="get">
+        <FormPanel>
+          <div className={styles.filterRow}>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>From</span>
+              <DateParamField name="from" defaultValue={from} />
+            </label>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>To</span>
+              <DateParamField name="to" defaultValue={to} />
+            </label>
+            <Button type="submit" variant="primary">
+              Update
+            </Button>
+          </div>
+        </FormPanel>
       </form>
 
       <ScoutbookActions

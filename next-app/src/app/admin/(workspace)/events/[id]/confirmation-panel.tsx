@@ -25,7 +25,7 @@ import { MessageEditorDialog } from '../../_components/message-editor-dialog';
 import { Notice } from '../../_components/notice';
 import { Badge } from '../../_components/badge';
 import { DiscardButton, SaveButton, SaveFeedback, useDraftSnapshot, useSavePhase } from '../../_components/save-state';
-import { FormSection } from '../../../_components/form-panel';
+import { FormPanel, FormSection } from '../../../_components/form-panel';
 import { HelpBadge } from '../../../_components/help-badge';
 import { Button } from '../../../_components/button';
 import styles from '../events-admin.module.css';
@@ -211,16 +211,15 @@ export function ConfirmationPanel({
   const lastError = s(signup.confirm_last_error);
 
   return (
-    <section className={styles.panel}>
-      <div className={styles.panelHead}>
-        <h2>
-          Confirmation email <HelpBadge id="signup.confirmation" />
-        </h2>
-        <div className={styles.actions}>
+    <FormPanel
+      title={<>Confirmation email <HelpBadge id="signup.confirmation" /></>}
+      actions={
+        <>
           <DiscardButton dirty={snap.dirty} pending={pending} onClick={() => setDraft(snap.saved)} />
           <SaveButton dirty={snap.dirty} pending={pending} blocked={blocked} blockedReason="Fix the leader addresses first" onClick={save} />
-        </div>
-      </div>
+        </>
+      }
+    >
       <p className={styles.panelHint}>
         Sent automatically when a family submits, updates or cancels a signup. Pick a library template per audience, or
         customize the words for this event only.
@@ -317,6 +316,6 @@ export function ConfirmationPanel({
         />
       )}
       <SaveFeedback phase={feedback.phase} />
-    </section>
+    </FormPanel>
   );
 }

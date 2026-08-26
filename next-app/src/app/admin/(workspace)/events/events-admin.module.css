@@ -35,12 +35,11 @@
 .payField input, .payField select { border: 1px solid var(--admin-gray-200); border-radius: 3px; padding: 7px 9px; font-family: inherit; font-size: 13px; font-weight: 400; text-transform: none; letter-spacing: normal; color: var(--admin-gray-900); }
 
 .builder { display: flex; flex-direction: column; gap: 16px; }
-/* Card/panel canon (Phase B, 2026-08-21). */
-.panel { background: var(--admin-form-bg); border: 1px solid var(--admin-gray-200); border-radius: var(--admin-radius); box-shadow: var(--admin-shadow-sm); padding: 16px; }
-.panel h2 { font-size: 14px; font-weight: 700; margin-bottom: 4px; color: var(--admin-gray-900); }
+/* .panel / .panel h2 / .panelHead retired (2026-08-26, FormPanel adoption
+   sweep) — every builder section is now <FormPanel title=…> with an
+   optional actions prop; the tinted surface and head layout live there. */
 /* Builder: the section tabs under the Blocks checklist (2026-08-23). */
 .builderTabs { margin: 4px 0 14px; }
-.panelHead { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
 .panelHint { font-size: 12.5px; color: var(--admin-gray-600); line-height: 1.5; margin-bottom: 12px; }
 .note { margin-top: 10px; font-size: 12.5px; background: var(--admin-status-success-bg); border-left: 3px solid var(--admin-forest); padding: 8px 11px; border-radius: 0 3px 3px 0; }
 .toggleRow { display: flex; gap: 9px; align-items: flex-start; padding: 7px 0; font-size: 13.5px; border-bottom: 1px solid var(--admin-gray-100); }

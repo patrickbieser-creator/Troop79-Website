@@ -138,7 +138,7 @@ function ReqCodeForm({ row, onClose }: { row: ReqRow; onClose: () => void }) {
       />
 
       <DialogBody>
-      <div className={styles.editGrid}>
+      <div className={styles.fieldGrid}>
         <label className={styles.editField}>
           <span className={styles.editLabel}>Code</span>
           <input

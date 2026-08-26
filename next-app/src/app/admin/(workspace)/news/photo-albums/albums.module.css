@@ -25,7 +25,9 @@
 /* Edit-dialog chrome retired Phase A (2026-08-21) — the shared Dialog
    component (_components/dialog) carries the approved spec, centering fix
    included (this copy never had margin:auto, so tall content mis-centered). */
-.editGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; background: var(--admin-form-bg); padding: 12px 14px; border: 1px solid var(--admin-gray-200); border-radius: var(--admin-radius-sm);}
+/* .editGrid retired (2026-08-26, FormPanel adoption sweep) — DialogBody is
+   already the tinted surface, so .fieldGrid carries the layout only. */
+.fieldGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
 .editField { display: block; margin-bottom: 12px; }
 .editFieldFull { display: block; grid-column: 1 / -1; margin-bottom: 12px; }
 .editLabel {
@@ -42,7 +44,7 @@
 /* .editSaveBtn retired 2026-08-25 → shared Button (variant="primary"). */
 
 @media (max-width: 560px) {
-  .editGrid { grid-template-columns: 1fr; }
+  .fieldGrid { grid-template-columns: 1fr; }
   .editFieldFull { grid-column: auto; }
 }
 

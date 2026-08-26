@@ -218,20 +218,8 @@
   font-style: italic;
 }
 
-.formPanel {
-  background: var(--admin-form-bg);
-  border: 1px solid var(--admin-gray-200);
-  border-radius: var(--admin-radius);
-  box-shadow: var(--admin-shadow-sm);
-  padding: 12px 14px;
-  margin-bottom: 14px;
-}
-.formPanel summary {
-  cursor: pointer;
-  font-weight: 700;
-  font-size: 13px;
-  color: var(--admin-navy);
-}
+/* .formPanel / .formPanel summary retired (2026-08-26, FormPanel adoption
+   sweep) — dead: no <details> on this screen ever read them. */
 .formGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));

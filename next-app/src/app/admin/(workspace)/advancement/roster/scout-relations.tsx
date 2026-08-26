@@ -121,7 +121,7 @@ export function ScoutRelations({ scoutPersonId }: { scoutPersonId: number | null
               Unlink
             </Button>
           </div>
-          <div className={fields.editGrid}>
+          <div className={fields.fieldGrid}>
             <div className={fields.editField}>
               <span className={fields.editLabel}>Name</span>
               <div className={styles.readValue}>{r.name}</div>
@@ -300,7 +300,7 @@ function NewAdultForm({
 
   return (
     <div className={styles.parentRow}>
-      <div className={fields.editGrid}>
+      <div className={fields.fieldGrid}>
         <label className={fields.editField}>
           <span className={fields.editLabel}>Name</span>
           <input

@@ -239,7 +239,7 @@ function MbForm({
         <div className={styles.editSectionHeader}>
           <h4 className="adminLabel">Catalog</h4>
         </div>
-        <div className={styles.editGrid}>
+        <div className={styles.fieldGrid}>
           <label className={styles.editField}>
             <span className={styles.editLabel}>Name</span>
             <input

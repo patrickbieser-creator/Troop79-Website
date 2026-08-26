@@ -1,9 +1,10 @@
 /* .pageTitle retired Phase B (2026-08-21) — shared PageTitle component. */
 
-.form {
+/* .form retired (2026-08-26, FormPanel adoption sweep) — the date-range row
+   sits in a <FormPanel> now; .filterRow is layout only (the form element
+   itself stays bare so the native method="get" submit is unaffected). */
+.filterRow {
   display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap;
-  background: var(--admin-gray-50); border: 1px solid var(--admin-gray-200);
-  border-radius: 4px; padding: 14px 16px; margin-bottom: 20px;
 }
 .field { display: block; }
 .fieldLabel {

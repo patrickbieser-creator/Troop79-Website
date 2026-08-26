@@ -602,7 +602,7 @@ function CloneForm({
       />
 
       <DialogBody>
-      <div className={styles.editGrid}>
+      <div className={styles.fieldGrid}>
         <label className={styles.editField}>
           <span className={styles.editLabel}>Date for the copy</span>
           <DatePickerField value={date} onChange={setDate} />

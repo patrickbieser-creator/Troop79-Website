@@ -62,53 +62,13 @@
    The strip is the shared TabStrip; this only spaces it from the panel. */
 .tabs { margin-bottom: 14px; }
 
-/* `hidden` must beat the panel's display, or every tab shows at once. */
-.panel[hidden] { display: none; }
+/* .panel[hidden] / .panel / .panelHead / .panelNote retired (2026-08-26,
+   FormPanel adoption sweep) — the four tabs (Entry/Agenda/Roll Call/Signup)
+   are each a <FormPanel title=… actions=… note=…> now, one tab mounted at a
+   time (`{tab === '…' && …}`); the `[hidden]` override was already dead —
+   nothing here has set the `hidden` attribute since D-227 was retired. */
 
 /* .linkBtn retired 2026-08-24 → shared Button (variant="quiet") — was already unused. */
-
-/* Card/panel canon (Phase B, 2026-08-21): white, gray-200 border, radius
-   token, shadow-sm — padding/margins stay screen-local. */
-/* The form standard (D-179, v1.71.1): the SURFACE that holds fields is
-   tinted so white fields read as fields. This panel was left on
-   --admin-white, so every input on the calendar workbench sat white-on-white
-   — the one screen in the admin still doing it (Patrick and the event
-   coordinator, 2026-08-22: "does not have the background tinting on all
-   sections"). */
-.panel {
-  border: 1px solid var(--admin-gray-200);
-  border-radius: var(--admin-radius);
-  box-shadow: var(--admin-shadow-sm);
-  padding: 14px 16px 16px;
-  margin-bottom: 16px;
-  background: var(--admin-form-bg);
-}
-
-.panelHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 4px;
-}
-
-.panelHead h2 {
-  font-family: var(--admin-font-ui);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: var(--admin-forest);
-  margin: 0;
-}
-
-.panelNote {
-  font-family: var(--admin-font-ui);
-  font-size: 12.5px;
-  color: var(--admin-gray-700);
-  margin: 0 0 10px;
-}
-.panelNote a { color: var(--admin-forest); text-decoration: underline; }
 
 /* .btn / .primaryBtn retired 2026-08-24 → shared Button (secondary / primary). */
 

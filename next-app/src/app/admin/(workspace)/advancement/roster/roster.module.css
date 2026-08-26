@@ -137,15 +137,14 @@
    definitions in lookups.module.css so the Parents/Guardians grid, cards and
    select actually get styled instead of silently resolving to no class. */
 /* .editGrid/.editField/.editLabel/.editInput family DELETED 2026-08-21 —
-   converged onto lookups.module.css (the copy scout-form already used; D-139). */
+   converged onto lookups.module.css (the copy scout-form already used; D-139).
+   The stray @media override of the same name (never live — scout-relations.tsx
+   and friends read the class from lookups.module.css's own scope, not this
+   file's) was removed in the 2026-08-26 FormPanel adoption sweep. */
 .parentRow { background: var(--admin-gray-50); border: 1px solid var(--admin-gray-200); border-radius: 3px; padding: 10px 12px; margin-bottom: 8px; }
 .parentRowHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .parentRowLabel { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--admin-gray-500); }
 .select { border: 1px solid var(--admin-gray-300); border-radius: 3px; padding: 6px 9px; font-family: inherit; font-size: 13px; background: var(--admin-field-bg); color: var(--admin-gray-900); }
-@media (max-width: 560px) {
-  .editGrid { grid-template-columns: 1fr; }
-  .editFieldFull { grid-column: auto; }
-}
 /* .linkBtn retired 2026-08-25 → shared Button (variant="quiet"). */
 /* .smallBtn retired 2026-08-25 → shared Button (size="sm"). */
 .muted { color: var(--admin-gray-500); }

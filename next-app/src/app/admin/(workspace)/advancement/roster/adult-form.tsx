@@ -6,10 +6,13 @@ import type { HouseholdOption } from './people-table';
 import styles from './roster.module.css';
 // Field CSS converged onto lookups' family (D-139 answered, 2026-08-21) —
 // roster.module.css's hand-copied .editGrid/.editField block is deleted.
+// The fields sit in a FormPanel (2026-08-26 sweep) — .fieldGrid carries no
+// tint of its own any more, since this dialog has no DialogBody to supply one.
 import fields from '../lookups/lookups.module.css';
 import { Notice } from '../../_components/notice';
 import { Dialog } from '../../_components/dialog';
 import { Button } from '../../../_components/button';
+import { FormPanel } from '../../../_components/form-panel';
 
 /**
  * "Add Adult" — the same shape as the Scout editor's create path (a dialog off
@@ -110,7 +113,8 @@ export function AdultForm({
 
       {error && <Notice>{error}</Notice>}
 
-      <div className={fields.editGrid}>
+      <FormPanel>
+      <div className={fields.fieldGrid}>
         <label className={fields.editField}>
           <span className={fields.editLabel}>First Name</span>
           <input
@@ -234,6 +238,7 @@ export function AdultForm({
       <p className={styles.editorHint}>
         Roles, relationships and household moves are all editable afterwards by opening the person.
       </p>
+      </FormPanel>
 
       <div className={fields.editActions}>
         <Button size="sm" onClick={onClose} disabled={isPending}>

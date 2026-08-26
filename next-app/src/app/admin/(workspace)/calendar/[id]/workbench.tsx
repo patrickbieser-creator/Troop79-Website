@@ -28,6 +28,7 @@
 import { useState, useTransition, type ReactNode } from 'react';
 import { Button } from '../../../_components/button';
 import { PublicPageLink } from '../../../_components/public-page-link';
+import { FormPanel } from '../../../_components/form-panel';
 import { useRouter } from 'next/navigation';
 import type { CalendarCategoryRow, CategoryTemplate } from '@/lib/calendar-categories';
 import { TabStrip, type TabStripItem } from '../../_components/tab-strip';
@@ -213,7 +214,7 @@ export function Workbench({
           be its own tab with its own Save (Patrick, 2026-08-25: "consolidate
           Details and story" on the news editor's pattern). */}
       {tab === 'entry' && (
-        <section className={styles.panel} role="tabpanel" aria-label="Entry">
+        <FormPanel role="tabpanel" aria-label="Entry">
           <CalendarEntryForm
             row={row}
             variant="inline"
@@ -222,32 +223,30 @@ export function Workbench({
             onUpdate={onSaveDetails}
             onClose={() => {}}
           />
-        </section>
+        </FormPanel>
       )}
 
       {/* ── agenda layer (meeting template, leaders only) ── */}
       {tab === 'agenda' && hasAgendaTab && (
-        <section className={styles.panel} role="tabpanel" aria-label="Agenda">
+        <FormPanel
+          title={meeting && agenda ? undefined : 'Agenda'}
+          actions={
+            meeting && agenda ? undefined : (
+              <Button variant="primary" onClick={addAgenda} disabled={isPending}>
+                {isPending ? 'Adding…' : 'Add an agenda'}
+              </Button>
+            )
+          }
+          note={meeting && agenda ? undefined : 'No agenda yet. Adding one makes this entry publish as a meeting.'}
+          role="tabpanel"
+          aria-label="Agenda"
+        >
           {/* The editor itself lives here (Patrick, 2026-08-24) — its own
               header (status, Publish, Delete agenda) sits under this one. */}
-          {meeting && agenda ? (
+          {meeting && agenda && (
             <MeetingEditor {...agenda} entry={{ id: entry.id, entry_date: entry.entry_date }} embedded />
-          ) : (
-            <>
-              <div className={styles.panelHead}>
-                <h2>Agenda</h2>
-                <div>
-                  <Button variant="primary" onClick={addAgenda} disabled={isPending}>
-                    {isPending ? 'Adding…' : 'Add an agenda'}
-                  </Button>
-                </div>
-              </div>
-              <p className={styles.panelNote}>
-                No agenda yet. Adding one makes this entry publish as a meeting.
-              </p>
-            </>
           )}
-        </section>
+        </FormPanel>
       )}
 
       {/* ── attendance layer ──
@@ -255,16 +254,15 @@ export function Workbench({
           Roll Call. The sheet renders right here (Patrick, 2026-08-24); its
           Scouts / Leaders / Adults strip is a SUB-tab bar under this one. */}
       {tab === 'roll-call' && rollCall && (
-        <section className={styles.panel} role="tabpanel" aria-label="Roll Call">
-          <div className={styles.panelHead}>
-            <h2>Roll Call</h2>
-          </div>
-          <p className={styles.panelNote}>
-            Who was at this event. Seeded from the signup where there is one, and correctable by
-            hand for anyone who told you verbally or turned up on the day. Every check saves as you go.
-          </p>
+        <FormPanel
+          title="Roll Call"
+          note="Who was at this event. Seeded from the signup where there is one, and correctable by
+            hand for anyone who told you verbally or turned up on the day. Every check saves as you go."
+          role="tabpanel"
+          aria-label="Roll Call"
+        >
           <RollCall entryId={entry.id} entryTitle={entry.title} {...rollCall} />
-        </section>
+        </FormPanel>
       )}
 
       {/* ── signup layer ──
@@ -274,8 +272,20 @@ export function Workbench({
           entry's head and layer tabs stay put. Before a signup exists the tab
           offers to enable one. */}
       {tab === 'signup' && (
-        <section className={styles.panel} role="tabpanel" aria-label="Signup">
-          {signupId && signupNav ? (
+        <FormPanel
+          title={signupId && signupNav ? undefined : 'Signup'}
+          actions={
+            signupId && signupNav ? undefined : (
+              <Button type="button" onClick={enableSignupHere} disabled={isPending || !onEnableSignup}>
+                Enable a signup
+              </Button>
+            )
+          }
+          note={signupId && signupNav ? undefined : 'No signup on this entry. Not every event needs one — some you just come to.'}
+          role="tabpanel"
+          aria-label="Signup"
+        >
+          {signupId && signupNav && (
             <>
               <EventNav
                 signupId={signupId}
@@ -304,22 +314,8 @@ export function Workbench({
                 />
               ) : null}
             </>
-          ) : (
-            <>
-              <div className={styles.panelHead}>
-                <h2>Signup</h2>
-                <div>
-                  <Button type="button" onClick={enableSignupHere} disabled={isPending || !onEnableSignup}>
-                    Enable a signup
-                  </Button>
-                </div>
-              </div>
-              <p className={styles.panelNote}>
-                No signup on this entry. Not every event needs one — some you just come to.
-              </p>
-            </>
           )}
-        </section>
+        </FormPanel>
       )}
     </>
   );

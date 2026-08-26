@@ -160,14 +160,15 @@
   color: var(--admin-gray-500);
   line-height: 1.4;
 }
-.editGrid {
+/* .editGrid retired (2026-08-26, FormPanel adoption sweep) — .fieldGrid is
+   layout only. Every caller now gets its tint from whatever already wraps
+   it: a DialogBody, a FormSection/FormPanel, or (scout-relations.tsx) the
+   .parentRow card — callers with no tinted ancestor wrap the grid in a
+   FormPanel of their own. */
+.fieldGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px 14px;
-  background: var(--admin-form-bg);
-  padding: 12px 14px;
-  border: 1px solid var(--admin-gray-200);
-  border-radius: var(--admin-radius-sm);
 }
 .editField {
   display: block;
@@ -265,7 +266,7 @@
 /* ── Section-card + rail treatment (Plans/Admin-Nav-And-Consistency.md, Section 3) ──
    Additive, alongside .editSection above — nothing here changes what the ~7 other
    lookups.module.css editors render. Only scout-form.tsx opts in today. Field-level
-   classes (.editGrid/.editField/.editLabel/.editInput) are untouched and reused as-is.
+   classes (.fieldGrid/.editField/.editLabel/.editInput) are untouched and reused as-is.
    Dialog-level sizing (width/max-height) lives on roster.module.css's .editDialog —
    this file only owns the inner layout, since scout-form.tsx renders inside that
    dialog but scouts-table.tsx (the <dialog> owner) imports roster.module.css, not
@@ -503,7 +504,7 @@
 /* .editSaveBtn retired 2026-08-25 → shared Button (variant="primary", via SaveButton) */
 
 @media (max-width: 560px) {
-  .editGrid { grid-template-columns: 1fr; }
+  .fieldGrid { grid-template-columns: 1fr; }
   .editFieldFull { grid-column: auto; }
 }
 

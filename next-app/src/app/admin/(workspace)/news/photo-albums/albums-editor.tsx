@@ -240,7 +240,7 @@ function AlbumForm({
       />
 
       <DialogBody>
-      <div className={styles.editGrid}>
+      <div className={styles.fieldGrid}>
         <label className={styles.editFieldFull}>
           <span className={styles.editLabel}>Google Photos share link</span>
           <input

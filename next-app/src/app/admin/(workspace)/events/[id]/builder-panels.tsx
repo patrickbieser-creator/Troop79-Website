@@ -21,6 +21,7 @@ import { DatePickerField } from '../../_components/date-picker-field';
 import { DateTimeField } from '../../_components/date-time-field';
 import { TabStrip } from '../../_components/tab-strip';
 import { Button } from '../../../_components/button';
+import { FormPanel } from '../../../_components/form-panel';
 import { ConfirmationPanel } from './confirmation-panel';
 import type { EmailTemplateRow } from '../../advancement/lookups/email-template-actions';
 import type { ConfirmationContext } from '@/lib/signup-confirmation';
@@ -297,8 +298,7 @@ export function BuilderPanels({
       <SaveFeedback phase={feedback.phase} />
       {error && <p className={styles.err}>{error}</p>}
 
-      <section className={styles.panel}>
-        <h2>Blocks</h2>
+      <FormPanel title="Blocks">
         <p className={styles.panelHint}>
           Seeded from the event’s category — change anything. Turning attendance off makes this a
           job-first signup, where claiming a job <em>is</em> the RSVP.
@@ -375,7 +375,7 @@ export function BuilderPanels({
             RSVP.
           </p>
         )}
-      </section>
+      </FormPanel>
 
       <TabStrip
         ariaLabel="Builder sections"
@@ -393,8 +393,7 @@ export function BuilderPanels({
       />
 
       {tab === 'settings' && (
-      <section className={styles.panel}>
-        <h2>Settings</h2>
+      <FormPanel title="Settings">
         <div className={styles.fieldGrid}>
           <label>
             <span className={`adminLabel ${styles.fieldLabel}`}>Signup deadline</span>
@@ -446,7 +445,7 @@ export function BuilderPanels({
             onBlur={(e) => save({ notes_prompt: e.target.value || null })}
           />
         </label>
-      </section>
+      </FormPanel>
       )}
 
       {/* The confirmation email block lives with the signup's Settings
@@ -462,8 +461,7 @@ export function BuilderPanels({
       )}
 
       {tab === 'prices' && (
-      <section className={styles.panel}>
-        <h2>Price tiers</h2>
+      <FormPanel title="Price tiers">
         <p className={styles.panelHint}>
           No tiers = a free event. Costs differ by who’s attending, so add one per class of
           participant. Amount owed is always derived, never stored. Adding or editing a tier
@@ -638,21 +636,18 @@ export function BuilderPanels({
             Apply to existing entries
           </button>
         )}
-      </section>
+      </FormPanel>
       )}
 
       {tab === 'jobs' && (
-      <section className={styles.panel}>
-        <div className={styles.panelHead}>
-          <h2>
-            Jobs — shifts &amp; tasks{slots.length > 0 && ` (${slots.length})`}
-          </h2>
-          {!addJobOpen && (
-            <Button variant="primary" onClick={openAddJob} disabled={pending}>
-              Add a job
-            </Button>
-          )}
-        </div>
+      <FormPanel
+        title={<>Jobs — shifts &amp; tasks{slots.length > 0 && ` (${slots.length})`}</>}
+        actions={!addJobOpen && (
+          <Button variant="primary" onClick={openAddJob} disabled={pending}>
+            Add a job
+          </Button>
+        )}
+      >
         <div className={styles.fieldGrid}>
           <label>
             <span className={`adminLabel ${styles.fieldLabel}`}>What families see this called</span>
@@ -1088,12 +1083,11 @@ export function BuilderPanels({
         </form>
         )}
 
-      </section>
+      </FormPanel>
       )}
 
       {tab === 'questions' && (
-      <section className={styles.panel}>
-        <h2>Questions asked of each attendee</h2>
+      <FormPanel title="Questions asked of each attendee">
         <p className={styles.panelHint}>
           Per person, not per household — the ski outing needs every skier’s own height, weight and
           shoe size before the rental shop can stage gear. Answers are validated server-side.
@@ -1290,11 +1284,10 @@ export function BuilderPanels({
             </button>
           ))}
         </p>
-      </section>
+      </FormPanel>
       )}
       {tab === 'assignments' && (
-      <section className={styles.panel}>
-        <h2>Assignments</h2>
+      <FormPanel title="Assignments">
         <p className={styles.panelHint}>
           The campout sheet&rsquo;s Patrol / Tent / Crew / Team columns, per event. Presets follow the
           category; add any other set. People are placed on{' '}
@@ -1498,7 +1491,7 @@ export function BuilderPanels({
             Add a set
           </Button>
         </div>
-      </section>
+      </FormPanel>
       )}
 
       <section className={styles.dangerPanel}>
