@@ -21,13 +21,13 @@
  *
  *   MarkdownSource    — toolbar + textarea + inline prompts + cheat sheet
  *   MarkdownPreview   — the live ArticleBody surface (+ optional title line)
- *   MarkdownSplitPane — the two side by side with a preview toggle
+ *   MarkdownSplitPane — the two side by side, preview always on
  *
  * ArticleBody renders identically as a Server Component and inside a Client
  * Component, which is what makes one preview honest for all of them.
  */
 
-import { useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
+import { useImperativeHandle, useRef, type ReactNode, type Ref } from 'react';
 import { ArticleBody, type EditableBlockInfo } from '@/lib/article-body/ArticleBody';
 import styles from './markdown-split-pane.module.css';
 
@@ -215,28 +215,16 @@ export function MarkdownSplitPane({
   emptyNote,
   ...source
 }: SplitProps) {
-  // Preview is collapsible rather than always-on: on a narrow admin panel the
-  // side-by-side layout squeezes the source pane to uselessness.
-  const [showPreview, setShowPreview] = useState(true);
-
+  // Always-on preview, no label bar (Patrick, 2026-08-26): the FormSection
+  // title already names the field, and the "Hide preview" toggle went with
+  // it — below 900px the panes stack instead (see .panes media query), which
+  // is what the toggle existed for. `label` survives as the textarea's
+  // accessible name.
   return (
     <div className={styles.wrap}>
-      <div className={styles.head}>
-        <span className={`adminLabel ${styles.label}`}>{label}</span>
-        <button
-          type="button"
-          className={styles.toggle}
-          onClick={() => setShowPreview((v) => !v)}
-          aria-pressed={showPreview}
-        >
-          {showPreview ? 'Hide preview' : 'Show preview'}
-        </button>
-      </div>
-      <div className={showPreview ? styles.panes : styles.panesSingle}>
+      <div className={styles.panes}>
         <MarkdownSource {...source} ariaLabel={`${label} markdown source`} />
-        {showPreview && (
-          <MarkdownPreview value={source.value} onEditBlock={onEditBlock} emptyNote={emptyNote} />
-        )}
+        <MarkdownPreview value={source.value} onEditBlock={onEditBlock} emptyNote={emptyNote} />
       </div>
     </div>
   );

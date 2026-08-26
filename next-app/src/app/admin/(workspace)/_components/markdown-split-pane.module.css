@@ -8,39 +8,16 @@
   border: 1px solid var(--admin-gray-200);
   border-radius: 4px;
   background: var(--admin-white);
+  overflow: hidden;
 }
 
-.head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--admin-gray-200);
-}
-
-/* Typography comes from the global .adminLabel (Phase D). */
-.label {
-  font-family: var(--admin-font-ui);
-}
-
-.toggle {
-  font-family: var(--admin-font-ui);
-  font-size: 12px;
-  background: none;
-  border: 1px solid var(--admin-gray-200);
-  border-radius: 3px;
-  padding: 3px 8px;
-  cursor: pointer;
-  color: var(--admin-gray-700);
-}
-.toggle:hover { background: var(--admin-gray-100); }
-
+/* No label bar / preview toggle (2026-08-26) — the preview is always on and
+   the panes stack below 900px instead. */
 .panes {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0;
 }
-.panesSingle { display: block; }
 
 @media (max-width: 900px) {
   .panes { grid-template-columns: 1fr; }
@@ -57,17 +34,14 @@
 /* Inside a split the source half is a form surface — the FormSection tint
    with a white, bordered textarea on it — so it reads like the news editor's
    Body field rather than a bare text well (Patrick, 2026-08-26). */
-.panes > .sourceCol,
-.panesSingle > .sourceCol { background: var(--admin-form-bg); padding: 10px; }
-.panes .source,
-.panesSingle .source {
+.panes > .sourceCol { background: var(--admin-form-bg); padding: 10px; }
+.panes .source {
   background: var(--admin-white);
   border: 1px solid var(--admin-gray-300);
   border-radius: 2px;
   min-height: 320px;
 }
-.panes .source:focus,
-.panesSingle .source:focus { outline: none; border-color: var(--admin-navy); }
+.panes .source:focus { outline: none; border-color: var(--admin-navy); }
 @media (max-width: 900px) {
   .panes > .sourceCol { border-right: none; }
 }
@@ -81,8 +55,7 @@
   flex-wrap: wrap;
   margin-bottom: 8px;
 }
-.panes .toolbar,
-.panesSingle .toolbar { margin-bottom: 8px; }
+.panes .toolbar { margin-bottom: 8px; }
 
 .source {
   width: 100%;
@@ -164,8 +137,7 @@
   list-style: none;
 }
 .cheatSheet summary::-webkit-details-marker { display: none; }
-.panes .cheatSheet,
-.panesSingle .cheatSheet { margin: 10px 0 0; }
+.panes .cheatSheet { margin: 10px 0 0; }
 .cheatSheetGrid {
   padding: 4px 12px 12px;
   display: grid;
