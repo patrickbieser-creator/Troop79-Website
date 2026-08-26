@@ -108,9 +108,52 @@ only place these facts are edited or read; `scouts` keeps rank/patrol/scout-only
 
 - [x] `scouts.household_id` — **drop**; `household_members` is the spine join (scouts AND adults, movable). Patrick 2026-08-26. Repoint its 3 readers first: `lookups/household-actions.ts` delete guard, `rosters/[id]/roster-view.tsx`, `admin/snapshot/[id]/snapshot-document.tsx` fallback.
 - [x] `leaders.name` — **derive from `people`** (`display_name`; `authorized-adults` builds its login labels from the person). Patrick 2026-08-26. `leaders.name` joins the drop list; the 3 name disagreements (Dan/Daniel, Mike/Michael ×2) resolve to `people` automatically.
-- [ ] Multiple emails per person (Patrick's backlog item 2026-08-26) — design it here or after?
-      Recommendation: after; this plan makes `people` the single home so a `person_emails` table
-      has one parent.
+- [x] Multiple emails per person — **in this plan**, as Phase 2 (Patrick, 2026-08-26).
+
+## Phase 2 — Multiple emails per person
+
+**Why now:** once `people` is the only home for contact details, a `person_emails` table has one
+parent, and the legacy `scout_parent_emails` (keyed to the *scout*, holding the *parent's*
+address — the shape that caused the 2026-08-26 mess) can be retired in the same drop migration.
+
+**Model**
+- New table `person_emails`: `id`, `person_id → people`, `email` (unique per person,
+  case-insensitive), `label` ('home' | 'work' | 'other'), `is_primary` (exactly one per person —
+  partial unique index), `verified_at` (set when this address completes a sign-in), `bounced_at`,
+  `unsubscribed_at`, `created_at`. RLS zero-policy like the other spine tables (D-051).
+- `people.primary_email` stays as a **denormalized cache** of the primary row, maintained by a
+  trigger on `person_emails` — every existing reader keeps working unchanged; nothing reads
+  `person_emails` directly except the editors, sign-in delivery, and the Bugle recipient list.
+- Backfill: one `person_emails` row per non-null `people.primary_email` (primary); then
+  `scout_parent_emails` rows re-homed onto the **parent's** person (match by lower(email) to an
+  adult in the scout's household; unmatched rows go to a review list, never onto the scout);
+  `scout_parent_emails` dropped.
+
+**Behaviour**
+- Sign-in: the code goes to the person's **primary** address; if a person has 2+ deliverable
+  addresses the code screen offers "Send to a different address" listing the others masked. The
+  name picker shows the primary masked (unchanged).
+- `/profile`: a verified adult can add an address, set primary, remove one (never the last), and
+  sees bounced/unsubscribed flags. Roster adult editor: same controls for leaders.
+- Recipients (Bugle, confirmation emails, reminders): every non-bounced, non-unsubscribed address
+  of every adult in the household (`lib/email-recipients`), de-duplicated across people.
+- A scout's addresses are the scout's own; a parent's never appears on the scout row.
+
+**Acceptance criteria**
+- [ ] `person_emails` + trigger + backfill migration; `scout_parent_emails` dropped; counts logged.
+- [ ] `people.primary_email` always equals the `is_primary` row (trigger; test).
+- [ ] Profile + roster editors: add / set primary / remove (not last) / flags.
+- [ ] Sign-in "send to a different address" for 2+ addresses; `deliverableEmailFor` = primary.
+- [ ] `recipientsForScouts` / household recipients read `person_emails` of household adults.
+- [ ] Roster "Send sign-in link" picks the primary; a leader can choose another on the row.
+
+**Tests**
+- `PersonEmails_ExactlyOnePrimary_PerPerson()`, `PrimaryEmailCache_FollowsThePrimaryRow()`,
+  `Backfill_RehomesParentEmails_OntoTheParentNeverTheScout()`, `Profile_CannotRemoveTheLastAddress()`,
+  `SignIn_OffersOtherAddresses_WhenTwoOrMore()`, `Recipients_UnionAllHouseholdAdultAddresses_Deduped()`.
+
+**Steps** (after Phase 1 step 6): 8. migration + trigger + backfill; 9. editors; 10. sign-in +
+send-link; 11. recipients; 12. drop `scout_parent_emails`; 13. docs.
 
 ## Notes
 
