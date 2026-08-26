@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session Summary — The Calendar becomes the hub, one way back, seven tables, help badge, confirmation emails, security sweep (2026-08-25)</title>
+<style>
+  :root { --nw-teal: #1e3a4a; --nw-green: #3d5a3e; --paper: #faf6ef; --ink: #2a2a2a; --meta: #6d7580; --line: #e2e4e8; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, "Segoe UI", Arial, sans-serif; color: var(--ink); background: var(--paper); line-height: 1.5; }
+  .header { background: var(--nw-teal); color: #fff; padding: 40px 64px; }
+  .header h1 { margin: 0 0 6px; font-size: 26px; font-weight: 700; }
+  .header .sub { opacity: .85; font-size: 14px; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 32px 64px 64px; }
+  h2 { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--nw-green); border-bottom: 2px solid var(--nw-green); padding-bottom: 6px; margin: 34px 0 14px; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .metric { background: #fff; border: 1px solid var(--line); border-radius: 4px; padding: 14px 16px; }
+  .metric .num { font-size: 26px; font-weight: 700; color: var(--nw-teal); }
+  .metric .lbl { font-size: 12px; color: var(--meta); text-transform: uppercase; letter-spacing: .06em; }
+  .card { background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--nw-green); border-radius: 4px; padding: 14px 18px; margin-bottom: 12px; }
+  .card .t { font-weight: 700; color: var(--nw-teal); }
+  .card p { margin: 6px 0 0; font-size: 14px; }
+  ul { margin: 6px 0 0; padding-left: 20px; font-size: 14px; }
+  li { margin-bottom: 4px; }
+  code { font-family: Menlo, Consolas, monospace; font-size: 12.5px; background: #f0f1f3; padding: 1px 4px; border-radius: 3px; }
+  .footer { color: var(--meta); font-size: 12px; margin-top: 40px; border-top: 1px solid var(--line); padding-top: 12px; }
+  @media (max-width: 640px) { .header, .wrap { padding-left: 20px; padding-right: 20px; } }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>The Calendar becomes the hub</h1>
+  <div class="sub">Troop 79 Website · Session 26 · August 25, 2026, 7:30 AM – 7:00 PM CDT · Operator (Fable 5) with Jenna, Brad and tech-lead</div>
+</div>
+<div class="wrap">
+
+<h2>Key metrics</h2>
+<div class="metrics">
+  <div class="metric"><div class="num">v1.102.1</div><div class="lbl">from v1.91.0 · ~40 commits, all live</div></div>
+  <div class="metric"><div class="num">1389</div><div class="lbl">tests (from 1317)</div></div>
+  <div class="metric"><div class="num">7</div><div class="lbl">migrations, prod + local</div></div>
+  <div class="metric"><div class="num">9</div><div class="lbl">decisions D-231–D-239</div></div>
+  <div class="metric"><div class="num">0 / 0</div><div class="lbl">Supabase advisor errors / warnings</div></div>
+</div>
+
+<h2>What was accomplished</h2>
+<div class="card"><div class="t">The Calendar is the single point of activity</div>
+<p>Event Signups, the standalone builder and Event Management are retired into the Calendar. Every status pill opens the entry workbench; the list gained a Going column; Roster, assignment sets, Money and Snapshot now render <em>inside</em> the Signup tab so the entry's head and tabs never disappear. The workbench loads one tab at a time (tabs are URL state, guarded by a Discard-changes prompt) and the list's counts come from one SQL aggregate — the fix for "overloaded and getting much slower on prod".</p></div>
+<div class="card"><div class="t">One Entry editor</div>
+<p>Details and Story consolidated on the news editor's shell — numbered sections in Jenna's order, the story's split pane full width, one Save. Description and the homepage card summary collapsed into one field (prod rows migrated). Tabs: Entry · Agenda · Signup · Roll Call.</p></div>
+<div class="card"><div class="t">One way back, in one place</div>
+<p><code>PageTitle</code> now requires <code>back</code>: "← Back to Parent" at depth 2, breadcrumbs at depth 3+, folding on phones. Lists remember their URL so back restores the tab/search/set; dirty forms prompt before leaving — automatically, through the save-state hooks. Swept across all 38 admin screens.</p></div>
+<div class="card"><div class="t">Standards that enforce themselves</div>
+<p>Seven table/list patterns on one shared stylesheet, composed per screen (two waves, every Compact and Card screen migrated). The <code>?</code> help badge (popover, click-only, central copy) with an on-screen-instructions ladder in AGENTS.md; the calendar lede migrated. A shared name search on every roster tab. Numbered form sections in the news editor. Each has a styleguide specimen; prototypes are linked from the styleguide chooser.</p></div>
+<div class="card"><div class="t">Signup confirmation emails</div>
+<p>Spec first (five revisions as Patrick answered questions), then built in three parts: family receipt to every signed-up member (all parents cc'd when only scouts signed up), leader notification to up to five addresses or "use the family message", strict cross-list dedup, resend on edit and cancel, Reply-To the first leader, a send log with Resend on the roster, an open-ended template library under Lookups, and — the same day — full markdown with an email-safe renderer, a real-email preview, an editable Going: section and preview-as-a-real-household.</p></div>
+<div class="card"><div class="t">Supabase security sweep</div>
+<p>A stray unprotected backup table (RLS'd, then dropped), ten Security Definer views made <code>security_invoker</code>, EXECUTE revoked from anon/authenticated on every function (service-role explicit), <code>search_path</code> pinned everywhere, an always-true ledger policy dropped. Applied locally first with the suite green, then prod; the advisor now reads 0 errors, 0 warnings. Production data synced to the local dev database.</p></div>
+
+<h2>Bugs fixed</h2>
+<ul>
+  <li>A cancelled family still listed under roster Confirmations with a Resend — the panel now lists only households still on the signup and says what was sent.</li>
+  <li>Three finance buttons had referenced never-defined classes (found during the Button sweep follow-through).</li>
+</ul>
+
+<h2>Decisions</h2>
+<ul>
+  <li><b>D-231</b> The Calendar is the hub; event list pages retired; per-event pages hosted in the Signup tab.</li>
+  <li><b>D-232</b> Workbench tabs are URL state loading per tab; list counts via <code>calendar_list_counts()</code>.</li>
+  <li><b>D-233</b> One Entry editor; <code>excerpt</code> collapsed into <code>description</code>.</li>
+  <li><b>D-234</b> <code>PageTitle</code> requires <code>back</code>; hybrid back-link/crumbs; remembered lists; dirty prompt.</li>
+  <li><b>D-235</b> On-screen instructions ladder; help badge popover, click-only, central <code>help.tsx</code>.</li>
+  <li><b>D-236</b> Seven table patterns on one composed stylesheet.</li>
+  <li><b>D-237</b> Client <code>SearchField</code> vs URL <code>q</code> — two canons, never mixed.</li>
+  <li><b>D-238</b> Signup confirmation emails: two audiences, open-ended templates, markdown, dedup, log.</li>
+  <li><b>D-239</b> Database posture: RLS everywhere, service-role only, invoker views, pinned search_path.</li>
+</ul>
+
+<h2>Next steps</h2>
+<ul>
+  <li>Eyes-on in prod for v1.92 → v1.102, and one real confirmation email once <code>RESEND_API_KEY</code> / <code>EMAIL_FROM</code> are set on Vercel.</li>
+  <li>Roster grid: drop the job columns; job coverage list with click-to-expand names; header and action alignment (Patrick).</li>
+  <li>"View public page" links in one place with one treatment (Jenna MICRO first).</li>
+  <li>Small: calendar preview background, per-event roster search, URL-<code>q</code> hook consolidation, tables leftovers, <code>excerpt</code> column drop, template Retire semantics.</li>
+  <li>Open: B-004 password rotation; <code>seo.same_as</code> URLs.</li>
+</ul>
+
+<div class="footer">Troop 79 Website · Personal project · Generated by Operator via /northwoods:end-session · 2026-08-25</div>
+</div>
+</body>
+</html>
