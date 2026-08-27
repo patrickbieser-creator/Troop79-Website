@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { createAdminClient } from '@/lib/supabase/server';
 import { mustList } from '@/lib/db';
 import type { CalendarEntry } from '@/lib/supabase/types';
@@ -17,7 +18,7 @@ export { formatCalendarDateParts, formatTimeOfDay } from '@/lib/calendar-shared'
  * 14 rows on a lookup table: cheap enough to fetch per page render, and always
  * current, which a build-time constant could not be.
  */
-export async function loadCalendarCategories(): Promise<CalendarCategoryRow[]> {
+export const loadCalendarCategories = cache(async function loadCalendarCategories(): Promise<CalendarCategoryRow[]> {
   const supabase = createAdminClient();
   const res = await supabase
     .from('calendar_categories')
@@ -26,7 +27,7 @@ export async function loadCalendarCategories(): Promise<CalendarCategoryRow[]> {
   // Named in the backlog as the original example of this bug: a missing table
   // here greys out the whole site rather than erroring.
   return mustList(res, 'calendar: category vocabulary') as CalendarCategoryRow[];
-}
+});
 
 /*
  * The articles(slug) join and articleSlug are gone (Event→News promotion,

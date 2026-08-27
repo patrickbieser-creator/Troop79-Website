@@ -7,9 +7,9 @@ import { articleCategoryLabel } from '@/lib/feed-logic';
 import { ArticleBody } from '@/lib/article-body/ArticleBody';
 import styles from './article-detail.module.css';
 import { JsonLd } from '@/app/_components/json-ld';
-import { createAdminClient } from '@/lib/supabase/server';
 import { siteUrl } from '@/lib/site-url';
-import { loadSeoSettings, articleJsonLd, breadcrumbJsonLd } from '@/lib/seo';
+import { articleJsonLd, breadcrumbJsonLd } from '@/lib/seo';
+import { loadSiteSettings } from '@/lib/site-settings';
 
 /**
  * Public lookup first; if it misses and the visitor can write news (identity
@@ -57,7 +57,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   /* Article structured data (2026-08-22) — the node that lets a story appear
      as a real article rather than an untyped page, and carries the byline and
      publish date that a bare <h1> does not. */
-  const seoSettings = await loadSeoSettings(createAdminClient());
+  const seoSettings = await loadSiteSettings();
   const origin = siteUrl();
 
   return (

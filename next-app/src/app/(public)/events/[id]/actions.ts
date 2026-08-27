@@ -5,6 +5,7 @@ import { placementPayloadFromForm } from '@/lib/group-sets';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
+import { after } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireVerifiedSignupAccess, requireWritableHouseholdKey, getIdentitySessionIfValid } from '@/lib/family-access';
 import { FAMILY_COOKIE, signFamilySession } from '@/lib/family-session';
@@ -301,16 +302,22 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
   }
 
   // The receipt (Plans/Signup-Confirmation-Email.md): family + leaders, each
-  // once, after everything above succeeded. It never throws.
+  // once, after everything above succeeded. It never throws — and it no
+  // longer holds the redirect: templates, two snapshots and the Resend call
+  // were the "signup click is delayed" wait
+  // (Plans/Performance-Review-2026-08-27.md #2). after() runs it once the
+  // response is out; the family sees "Saved" at once, the mail follows.
   const session = audience === 'household' ? await getIdentitySessionIfValid() : null;
-  await sendSignupConfirmations({
-    signupId,
-    party,
-    householdId,
-    submitterPersonId: session?.personId ?? null,
-    change: changeFor(before),
-    before
-  });
+  after(() =>
+    sendSignupConfirmations({
+      signupId,
+      party,
+      householdId,
+      submitterPersonId: session?.personId ?? null,
+      change: changeFor(before),
+      before
+    })
+  );
 
   revalidatePath(`/events/${eventId}`);
   revalidatePath('/events');
@@ -358,14 +365,16 @@ export async function cancelSignupAction(formData: FormData): Promise<void> {
   if (error) redirect(`${back}&err=${encodeURIComponent(friendlyError(error.message))}`);
   if (before && before.rows.length) {
     const session = audience === 'household' ? await getIdentitySessionIfValid() : null;
-    await sendSignupConfirmations({
-      signupId,
-      party,
-      householdId: cancelHouseholdId,
-      submitterPersonId: session?.personId ?? null,
-      change: 'cancel',
-      before
-    });
+    after(() =>
+      sendSignupConfirmations({
+        signupId,
+        party,
+        householdId: cancelHouseholdId,
+        submitterPersonId: session?.personId ?? null,
+        change: 'cancel',
+        before
+      })
+    );
   }
   revalidatePath(`/events/${eventId}`);
   revalidatePath('/events');

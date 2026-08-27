@@ -22,6 +22,7 @@
  * lib/capabilities.ts so proxy.ts (Edge) can still import the vocabulary.
  */
 
+import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/server';
 import { LEADER_COOKIE, verifySession, type SessionRole } from '@/lib/leader-session';
@@ -98,7 +99,7 @@ function legacyCapabilities(): Set<Capability> {
  * layout, which shows "you don't have admin access" instead of bouncing to a
  * login the visitor has already completed.
  */
-export async function resolveAdminActor(): Promise<AdminActor | null> {
+export const resolveAdminActor = cache(async function resolveAdminActor(): Promise<AdminActor | null> {
   const jar = await cookies();
 
   const legacy = await verifySession(jar.get(LEADER_COOKIE.name)?.value);
@@ -132,7 +133,7 @@ export async function resolveAdminActor(): Promise<AdminActor | null> {
     legacyRole: null,
     subjectKind: identity.subjectKind
   };
-}
+});
 
 export function actorHas(actor: AdminActor | null, capability: Capability): boolean {
   return actor?.capabilities.has(capability) ?? false;

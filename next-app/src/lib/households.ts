@@ -39,6 +39,7 @@
  * shapes must stay stable even though what produces them changed completely.
  */
 
+import { cache } from 'react';
 import { createAdminClient } from '@/lib/supabase/server';
 import { isAdultPerson, type LeaderLite } from '@/lib/authorized-adults';
 
@@ -118,8 +119,45 @@ interface RelationRow {
 }
 type LeaderRow = LeaderLite;
 
-export async function loadHouseholds(): Promise<Household[]> {
+interface HouseholdRows {
+  householdData: { id: number; label: string }[];
+  memberData: MemberRow[];
+  peopleData: PersonRow[];
+  scoutData: ScoutRow[];
+  parentData: RelationRow[];
+  leaderData: LeaderRow[];
+}
+
+/** The whole roster, or — with a scope — one stored household's rows plus
+ *  the rows of the people named. Every downstream rule in buildHouseholds()
+ *  is per-household or per-person, so a scope that carries a household's
+ *  complete membership builds that household exactly as the full read does
+ *  (pinned by tests/household-by-key.test.ts). */
+async function fetchHouseholdRows(scope?: { householdIds: number[]; personIds: number[] }): Promise<HouseholdRows> {
   const supabase = createAdminClient();
+  const householdsQ = supabase.from('households').select('id, label');
+  const membersQ = supabase.from('household_members').select('household_id, person_id');
+  // Merged-away records are excluded here rather than everywhere downstream:
+  // a person merged into another must never appear as a second option.
+  // Inactive adults stay on record — attached to ledger history, past events
+  // and relationships — but are no longer OFFERED. Without this the picker
+  // accumulates everyone who has ever been on the roster.
+  // Guests (Plans/Guests-As-People.md) are people rows too, but they are
+  // nobody's party: without this filter every guest would surface as a
+  // standalone "household of one" in the family picker.
+  const peopleQ = supabase
+    .from('people')
+    .select('id, display_name, primary_email, default_vehicle_seats, birthdate')
+    .is('merged_into_person_id', null)
+    .is('guest_host_household_id', null)
+    .eq('active', true);
+  const scoutsQ = supabase.from('scouts').select('id, display_name, last_name, active, person_id, inactive_reason');
+  const relationsQ = supabase
+    .from('relationships')
+    .select('id, person_id, role_label')
+    .in('type', ['parent_of', 'guardian_of']);
+  const leadersQ = supabase.from('leaders').select('code, name, is_person, can_login, login_name, person_id');
+
   const [
     { data: householdData },
     { data: memberData },
@@ -127,43 +165,42 @@ export async function loadHouseholds(): Promise<Household[]> {
     { data: scoutData },
     { data: parentData },
     { data: leaderData }
-  ] = await Promise.all([
-    supabase.from('households').select('id, label'),
-    supabase.from('household_members').select('household_id, person_id'),
-    // Merged-away records are excluded here rather than everywhere downstream:
-    // a person merged into another must never appear as a second option.
-    // Inactive adults stay on record — attached to ledger history, past events
-    // and relationships — but are no longer OFFERED. Without this the picker
-    // accumulates everyone who has ever been on the roster.
-    // Guests (Plans/Guests-As-People.md) are people rows too, but they are
-    // nobody's party: without this filter every guest would surface as a
-    // standalone "household of one" in the family picker.
-    supabase
-      .from('people')
-      .select('id, display_name, primary_email, default_vehicle_seats, birthdate')
-      .is('merged_into_person_id', null)
-      .is('guest_host_household_id', null)
-      .eq('active', true),
-    supabase
-      .from('scouts')
-      .select('id, display_name, last_name, active, person_id, inactive_reason'),
-    supabase
-      .from('relationships')
-      .select('id, person_id, role_label')
-      .in('type', ['parent_of', 'guardian_of']),
-    supabase
-      .from('leaders')
-      .select('code, name, is_person, can_login, login_name, person_id')
-  ]);
-
-  const labels = new Map(
-    ((householdData ?? []) as { id: number; label: string }[]).map((h) => [h.id, h.label])
+  ] = await Promise.all(
+    scope
+      ? [
+          householdsQ.in('id', scope.householdIds),
+          membersQ.in('household_id', scope.householdIds),
+          peopleQ.in('id', scope.personIds),
+          scoutsQ.in('person_id', scope.personIds),
+          relationsQ.in('person_id', scope.personIds),
+          leadersQ.in('person_id', scope.personIds)
+        ]
+      : [householdsQ, membersQ, peopleQ, scoutsQ, relationsQ, leadersQ]
   );
-  const members = (memberData ?? []) as MemberRow[];
-  const people = new Map(((peopleData ?? []) as PersonRow[]).map((p) => [p.id, p]));
-  const scouts = (scoutData ?? []) as ScoutRow[];
-  const relations = (parentData ?? []) as RelationRow[];
-  const leaders = (leaderData ?? []) as LeaderRow[];
+
+  return {
+    householdData: (householdData ?? []) as { id: number; label: string }[],
+    memberData: (memberData ?? []) as MemberRow[],
+    peopleData: (peopleData ?? []) as PersonRow[],
+    scoutData: (scoutData ?? []) as ScoutRow[],
+    parentData: (parentData ?? []) as RelationRow[],
+    leaderData: (leaderData ?? []) as LeaderRow[]
+  };
+}
+
+export const loadHouseholds = cache(async (): Promise<Household[]> => buildHouseholds(await fetchHouseholdRows()));
+
+/** Pure: rows in, households out. Shared by the full roster read and the
+ *  one-household read so membership rules stay defined in exactly one place. */
+function buildHouseholds({ householdData, memberData, peopleData, scoutData, parentData, leaderData }: HouseholdRows): Household[] {
+  const labels = new Map(
+    householdData.map((h) => [h.id, h.label])
+  );
+  const members = memberData;
+  const people = new Map(peopleData.map((p) => [p.id, p]));
+  const scouts = scoutData;
+  const relations = parentData;
+  const leaders = leaderData;
   const activeScoutPersonIds = new Set(
     scouts.filter((s) => s.active && s.person_id != null).map((s) => s.person_id as number)
   );
@@ -312,9 +349,64 @@ export async function loadHouseholds(): Promise<Household[]> {
   return households.sort((a, b) => a.label.localeCompare(b.label));
 }
 
-export async function loadHouseholdByKey(key: string): Promise<Household | null> {
-  const all = await loadHouseholds();
-  return all.find((h) => h.key === key) ?? null;
+/**
+ * One household by key, reading only its own rows.
+ *
+ * Was `loadHouseholds().find(...)` — six unbounded reads of the whole troop to
+ * place one family, on every gated event and signup view
+ * (Plans/Performance-Review-2026-08-27.md #3). The scope is the stored
+ * household's full membership when the key (or the person a sentinel key
+ * names) has one, else the one person — which is exactly the set of rows
+ * buildHouseholds() consults to produce that household, so the result is
+ * identical to the full read's (tests/household-by-key.test.ts).
+ */
+export const loadHouseholdByKey = cache(async (key: string): Promise<Household | null> => {
+  const scope = await resolveHouseholdScope(key);
+  if (!scope) return null;
+  const built = buildHouseholds(await fetchHouseholdRows(scope));
+  return built.find((h) => h.key === key) ?? null;
+});
+
+async function resolveHouseholdScope(key: string): Promise<{ householdIds: number[]; personIds: number[] } | null> {
+  const supabase = createAdminClient();
+  const storedId = storedHouseholdId(key);
+  if (storedId != null) {
+    const { data } = await supabase.from('household_members').select('person_id').eq('household_id', storedId);
+    const personIds = ((data ?? []) as { person_id: number }[]).map((m) => m.person_id);
+    return personIds.length ? { householdIds: [storedId], personIds } : null;
+  }
+
+  let personId: number | null = null;
+  const scoutMatch = /^scout:(.+)$/.exec(key);
+  const leaderMatch = /^leader:(.+)$/.exec(key);
+  const personMatch = /^person:(\d+)$/.exec(key);
+  if (scoutMatch) {
+    const { data } = await supabase.from('scouts').select('person_id').eq('id', scoutMatch[1]).maybeSingle();
+    personId = (data as { person_id: number | null } | null)?.person_id ?? null;
+  } else if (leaderMatch) {
+    const { data } = await supabase.from('leaders').select('person_id').eq('code', leaderMatch[1]).maybeSingle();
+    personId = (data as { person_id: number | null } | null)?.person_id ?? null;
+  } else if (personMatch) {
+    personId = Number(personMatch[1]);
+  }
+  if (personId == null) return null;
+
+  // A person with a stored household is built as part of it (and `placed`
+  // there, so never as a household of one); the scope must be that whole
+  // household for the sentinel key to resolve the same way the full read does.
+  const { data: membership } = await supabase
+    .from('household_members')
+    .select('household_id')
+    .eq('person_id', personId)
+    .limit(1)
+    .maybeSingle();
+  const householdId = (membership as { household_id: number } | null)?.household_id ?? null;
+  if (householdId == null) return { householdIds: [], personIds: [personId] };
+  const { data: members } = await supabase.from('household_members').select('person_id').eq('household_id', householdId);
+  return {
+    householdIds: [householdId],
+    personIds: ((members ?? []) as { person_id: number }[]).map((m) => m.person_id)
+  };
 }
 
 /** Which household (by key) a given person_id belongs to, scout or adult —

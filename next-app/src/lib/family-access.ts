@@ -13,6 +13,7 @@
  * which stays framework-agnostic for the Edge middleware.
  */
 
+import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/server';
 import { FAMILY_COOKIE, verifyFamilySession } from '@/lib/family-session';
@@ -34,7 +35,7 @@ export type GateAudience = 'family' | 'leader' | 'scout' | 'household';
  * for why the epoch/revocation cost is spent there, not here. This function
  * stays pure crypto, same cost profile as before.
  */
-export async function gateAudience(): Promise<GateAudience | null> {
+export const gateAudience = cache(async function gateAudience(): Promise<GateAudience | null> {
   const jar = await cookies();
   const admin = await verifySession(jar.get(LEADER_COOKIE.name)?.value);
   if (admin) return admin.role;
@@ -42,7 +43,7 @@ export async function gateAudience(): Promise<GateAudience | null> {
   if (identity) return 'household';
   const family = await verifyFamilySession(jar.get(FAMILY_COOKIE.name)?.value);
   return family ? 'family' : null;
-}
+});
 
 export async function hasFamilyAccess(): Promise<boolean> {
   return (await gateAudience()) !== null;
@@ -204,10 +205,10 @@ export function familyGateConfigured(): boolean {
  *  signature checks out — signature only, no epoch/revocation read (see
  *  gateAudience()'s cost-profile note). Null for every other audience,
  *  including an unsigned/expired/tampered identity cookie. */
-export async function getIdentitySessionIfValid(): Promise<IdentitySession | null> {
+export const getIdentitySessionIfValid = cache(async function getIdentitySessionIfValid(): Promise<IdentitySession | null> {
   const jar = await cookies();
   return verifyIdentitySession(jar.get(IDENTITY_COOKIE.name)?.value);
-}
+});
 
 /**
  * Tier 2 guard (adult-only) — verified identity, subjectKind === 'adult',

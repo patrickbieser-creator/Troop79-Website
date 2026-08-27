@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { requireCapability } from '@/lib/require-capability';
-import { createAdminClient } from '@/lib/supabase/server';
 import { loadRosterPrintData } from '@/lib/roster-print-data';
 import {
   buildFamilyRoster,
@@ -8,7 +7,8 @@ import {
   buildPatrolRoster,
   rosterCounts
 } from '@/lib/roster-print';
-import { loadSeoSettings, resolveSeo } from '@/lib/seo';
+import { resolveSeo } from '@/lib/seo';
+import { loadSiteSettings } from '@/lib/site-settings';
 import { PrintToolbar } from './print-toolbar';
 import '../(workspace)/admin.css';
 import styles from './roster-print.module.css';
@@ -62,7 +62,7 @@ export default async function RosterPrintPage() {
 
   const [data, settings] = await Promise.all([
     loadRosterPrintData(),
-    loadSeoSettings(createAdminClient())
+    loadSiteSettings()
   ]);
 
   const families = buildFamilyRoster(data);

@@ -15,9 +15,9 @@ import { fmtDate, fmtDay } from '@/lib/format-date';
 import { MeetingAgenda } from './meeting-agenda';
 import { Notice } from '@/app/_components/notice';
 import { JsonLd } from '@/app/_components/json-ld';
-import { createAdminClient } from '@/lib/supabase/server';
 import { siteUrl } from '@/lib/site-url';
-import { loadSeoSettings, eventJsonLd, breadcrumbJsonLd } from '@/lib/seo';
+import { eventJsonLd, breadcrumbJsonLd } from '@/lib/seo';
+import { loadSiteSettings } from '@/lib/site-settings';
 import styles from './event-detail.module.css';
 
 /*
@@ -155,7 +155,7 @@ export default async function EventDetailPage({
     ? await Promise.all([getPublicMeetingForEntry(entry.id), getPublishedMeetingNav()])
     : [null, []];
 
-  const seoSettings = await loadSeoSettings(createAdminClient());
+  const seoSettings = await loadSiteSettings();
   const origin = siteUrl();
 
   return (

@@ -7,6 +7,7 @@
  * attendance-shared.ts.
  */
 
+import { cache } from 'react';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { TokenValues } from '@/lib/article-tokens';
 
@@ -18,7 +19,7 @@ import type { TokenValues } from '@/lib/article-tokens';
  * article page. This is the one place a swallowed error is the right call —
  * the fallback is complete and correct by construction.
  */
-export async function loadArticleTokens(): Promise<TokenValues> {
+export const loadArticleTokens = cache(async function loadArticleTokens(): Promise<TokenValues> {
   const supabase = createAdminClient();
   const { data, error } = await supabase.from('article_style_tokens').select('token, value');
   if (error || !data) return {};
@@ -27,4 +28,4 @@ export async function loadArticleTokens(): Promise<TokenValues> {
     out[row.token] = row.value;
   }
   return out;
-}
+});

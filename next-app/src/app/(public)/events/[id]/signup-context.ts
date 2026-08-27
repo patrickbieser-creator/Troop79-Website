@@ -11,9 +11,11 @@ import {
 } from '@/lib/event-signup';
 import { summarizePlacements, type PlacementLine } from '@/lib/transport';
 import type { HouseholdEntry } from '@/lib/event-signup';
+import { cache } from 'react';
 import {
   householdKeyForPerson,
   loadHouseholds,
+  loadHouseholdByKey,
   storedHouseholdId,
   type Household
 } from '@/lib/households';
@@ -75,7 +77,13 @@ export interface SignupContext {
   signedInAs: string | null;
 }
 
-export async function loadSignupContext(
+/**
+ * `cache()`d: the signup page calls this from generateMetadata AND the page
+ * body, the event page from the body and its sidebar — each was a separate
+ * ~30-round-trip walk to the same answer (Plans/Performance-Review-2026-08-27.md
+ * #1). One walk per request now; the key is (entryId, householdKeyParam).
+ */
+export const loadSignupContext = cache(async function loadSignupContext(
   entryId: number,
   householdKeyParam: string | undefined
 ): Promise<SignupContext | null> {
@@ -85,9 +93,6 @@ export async function loadSignupContext(
   const { signup, slots } = detail;
   const gatedIn = audience !== null;
   const slotFirst = isSlotFirst(signup, slots);
-
-  // Household roster and any existing entries are gate-only: they carry names.
-  const allHouseholds = gatedIn && signup ? await loadHouseholds() : [];
 
   /*
    * Identity prefill (Plans/Family-Identity-Auth.md Phase 2) — see
@@ -102,14 +107,6 @@ export async function loadSignupContext(
    */
   const verifiedSession = audience === 'household' ? await getIdentitySessionIfValid() : null;
   const verdict = verifiedSignupVerdict(audience, verifiedSession?.subjectKind ?? null);
-  const sessionPersonId =
-    verifiedSession?.personId ?? (audience === 'leader' ? await leaderSessionPersonId() : null);
-  // Resolved against the already-loaded roster rather than
-  // resolveHouseholdKeyForPerson(), which would load every household a second
-  // time on a page that has them in hand.
-  const sessionHouseholdKey =
-    verifiedSession?.householdKey ??
-    (sessionPersonId != null ? householdKeyForPerson(allHouseholds, sessionPersonId) : null);
   // Household scope (Patrick, 2026-08-27): only a superuser — leader session
   // or roster.manage — may name a household other than their own. Everyone
   // else is pinned to the session's household: the URL param is ignored HERE
@@ -117,10 +114,29 @@ export async function loadSignupContext(
   // mismatched key outright, and the roster of OTHER families (names) is
   // never even sent to the page.
   const canSwitchHousehold = gatedIn ? await canSwitchHouseholdFn(audience, verifiedSession) : false;
-  const householdKey = canSwitchHousehold
-    ? resolveEffectiveHouseholdKey(householdKeyParam, sessionHouseholdKey)
-    : (sessionHouseholdKey ?? undefined);
-  const households = canSwitchHousehold ? allHouseholds : allHouseholds.filter((h) => h.key === householdKey);
+
+  // Household roster and any existing entries are gate-only: they carry names.
+  // A superuser gets the whole roster (the picker needs it); everyone else
+  // gets exactly their own household, read by key — not the whole troop
+  // filtered down to one (Plans/Performance-Review-2026-08-27.md #3).
+  let households: Household[] = [];
+  let householdKey: string | undefined;
+  if (gatedIn && signup && canSwitchHousehold) {
+    households = await loadHouseholds();
+    const sessionPersonId =
+      verifiedSession?.personId ?? (audience === 'leader' ? await leaderSessionPersonId() : null);
+    // Resolved against the already-loaded roster rather than
+    // resolveHouseholdKeyForPerson(), which would load every household a
+    // second time on a page that has them in hand.
+    const sessionHouseholdKey =
+      verifiedSession?.householdKey ??
+      (sessionPersonId != null ? householdKeyForPerson(households, sessionPersonId) : null);
+    householdKey = resolveEffectiveHouseholdKey(householdKeyParam, sessionHouseholdKey);
+  } else if (gatedIn && signup && verifiedSession) {
+    householdKey = verifiedSession.householdKey;
+    const own = await loadHouseholdByKey(householdKey);
+    households = own ? [own] : [];
+  }
 
   const household = householdKey ? (households.find((h) => h.key === householdKey) ?? null) : null;
 
@@ -187,7 +203,7 @@ export async function loadSignupContext(
     canSwitchHousehold,
     signedInAs: verifiedSession?.displayName ?? (audience === 'leader' ? 'a leader' : null)
   };
-}
+});
 
 /**
  * Who in this party is already signed up, for the detail page's status line.

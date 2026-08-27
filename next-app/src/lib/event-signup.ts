@@ -11,6 +11,7 @@
  *   * (Phase 1 step 4) entry-level loaders return names and are gate-only.
  */
 
+import { cache } from 'react';
 import { GUEST_CLASSES, type GuestClass, type ParticipantClass } from '@/lib/participant-class';
 import type { GuestMode } from '@/lib/guest-mode';
 import type { HouseholdGuest } from '@/lib/guest-payload';
@@ -407,7 +408,7 @@ export async function loadPartyPlacements(eventSignupId: number, entryIds: numbe
   return rows;
 }
 
-export async function loadEventDetail(entryId: number): Promise<EventDetail | null> {
+export const loadEventDetail = cache(async function loadEventDetail(entryId: number): Promise<EventDetail | null> {
   const supabase = createAdminClient();
 
   const entryRes = await supabase
@@ -568,7 +569,7 @@ export async function loadEventDetail(entryId: number): Promise<EventDetail | nu
     milestones,
     headcount: typeof headcount === 'number' ? headcount : 0
   };
-}
+});
 
 export interface PartyMembership {
   entryId: number;
