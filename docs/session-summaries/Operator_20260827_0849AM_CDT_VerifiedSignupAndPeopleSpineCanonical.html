@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 28 — Verified Signup and the People Spine Made Canonical</title>
+<style>
+  :root { --nw-teal: #1e3a4a; --nw-green: #3d5a3e; --ink: #1a1a1a; --body: #363636; --meta: #787060; --cream: #faf6ef; --rule: #e2d9cc; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Open Sans", Arial, sans-serif; color: var(--body); background: var(--cream); line-height: 1.55; }
+  header { background: var(--nw-teal); color: #fff; padding: 28px 40px; }
+  header h1 { margin: 0 0 6px; font-family: Georgia, serif; font-size: 26px; }
+  header .sub { opacity: .85; font-size: 14px; }
+  main { max-width: 960px; margin: 0 auto; padding: 28px 40px 60px; }
+  h2 { font-family: Georgia, serif; color: var(--nw-teal); font-size: 20px; margin: 32px 0 10px; border-bottom: 2px solid var(--rule); padding-bottom: 6px; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 8px; }
+  .metric { background: #fff; border: 1px solid var(--rule); border-radius: 4px; padding: 12px 14px; }
+  .metric .n { font-size: 26px; font-weight: 700; color: var(--nw-green); }
+  .metric .l { font-size: 12px; color: var(--meta); text-transform: uppercase; letter-spacing: .06em; }
+  ul { padding-left: 20px; } li { margin: 6px 0; }
+  code { background: #fff; border: 1px solid var(--rule); padding: 1px 5px; border-radius: 2px; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; background: #fff; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { background: #f4efe6; color: var(--nw-teal); }
+  footer { color: var(--meta); font-size: 12px; text-align: center; padding: 20px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Session 28 — Verified Signup and the People Spine Made Canonical</h1>
+  <div class="sub">Troop 79 Website · 2026-08-26 07:00 → 2026-08-27 08:50 CDT · Operator (Fable 5) · v1.104.0 → v1.107.4</div>
+</header>
+<main>
+  <h2>Key metrics</h2>
+  <div class="metrics">
+    <div class="metric"><div class="n">24</div><div class="l">commits, all live</div></div>
+    <div class="metric"><div class="n">1408 → 1510</div><div class="l">tests</div></div>
+    <div class="metric"><div class="n">4</div><div class="l">prod migrations</div></div>
+    <div class="metric"><div class="n">6</div><div class="l">decisions D-245–D-250</div></div>
+    <div class="metric"><div class="n">2</div><div class="l">qa-lead SHIP (88, 91)</div></div>
+    <div class="metric"><div class="n">33</div><div class="l">prod people rows resynced</div></div>
+  </div>
+
+  <h2>What was accomplished</h2>
+  <p><strong>Verified Signup (D-245, v1.106.0–v1.106.2).</strong> Patrick signed out to test and found anyone with the Bugle's troop password could sign up, cancel or claim jobs for any family. The password is now "first base" only: a signup write requires a verified adult (or leader), enforced in the Server Actions; a signed-in scout sees "Ask a parent"; one status bar names who is signed in; "Text Patrick" trouble line (no number, no title); a one-time passkey offer; roster "Send sign-in link"; "N of 25 households have signed in" on the dashboard; training scripts and a Bugle notice rewritten. The sign-in code now goes only to the picked person's own address — a scout with no email is offered the household's parents by name (D-246) — and 22 scout rows carrying a parent's address were cleaned.</p>
+  <p><strong>People spine canonical (D-247–D-249, v1.106.3–v1.107.4).</strong> A roster email edit never reached sign-in because <code>scouts.*</code> and <code>people.*</code> had drifted since July. A full audit (<code>Plans/People-Model-Audit-2026-08-26.md</code>) led to the retirement plan, executed in three pushes: A — <code>people ← scouts</code> resync, <code>leaders.name</code> derived, <code>person_emails</code> with a two-way primary cache (D-248); B — every reader and writer on <code>people.*</code>, multi-email editors on My Profile and the roster, sign-in "send to a different address", recipients from <code>person_emails</code>; C — dropped 12 contact columns + <code>household_id</code> + 3 dead columns from <code>scouts</code>, 13 from <code>leaders</code>, and the <code>scout_parent_emails</code> table; <code>merge_people</code> deactivates the loser (D-249). Orphan and merged people rows resolved with Patrick. Two post-drop stragglers (profile scouts list, advancement "Last activity") and a job-chip "a2" bug fixed live.</p>
+  <p><strong>Morning backlog.</strong> Draft news preview for editors; one markdown editor look across News/Calendar/Library; Retire keeps the template; <code>excerpt</code> column dropped; one <code>useUrlSearch</code> hook; FormPanel adoption sweep (28 files); Hiking pill on its own tint (D-250).</p>
+
+  <h2>Blockers resolved</h2>
+  <ul>
+    <li>Draft news preview 404: the check looked at the legacy leader cookie, dead since 08-16 — switched to the identity actor with <code>news.write</code>.</li>
+    <li>Scout's roster email edit invisible to sign-in — root cause the unsynced spine; fixed structurally (D-247).</li>
+    <li>Migration files written as cp1252 (em dashes) rejected by psql — rewritten UTF-8; scratchpad tooling now forces UTF-8.</li>
+  </ul>
+
+  <h2>Decisions</h2>
+  <table>
+    <tr><th>ID</th><th>Decision</th></tr>
+    <tr><td>D-245</td><td>Verified Signup — troop password is first base; a signup write needs a verified adult; scouts ask a parent; Phase B parked.</td></tr>
+    <tr><td>D-246</td><td>A sign-in code goes only to the picked person's own address; a no-email scout picks a parent by name.</td></tr>
+    <tr><td>D-247</td><td><code>people</code> is the one home for contact details; roster contact columns, <code>scouts.household_id</code> and <code>scout_parent_emails</code> dropped; <code>leaders.name</code> derived.</td></tr>
+    <tr><td>D-248</td><td>Multiple emails per person: <code>person_emails</code> with <code>people.primary_email</code> as a trigger cache; atomic <code>set_primary_email</code>.</td></tr>
+    <tr><td>D-249</td><td><code>merge_people()</code> deactivates the loser (13 rows backfilled).</td></tr>
+    <tr><td>D-250</td><td>Small decisions closed: Roll Call keeps Ceremony/Advancement; finance.manage = Melissa/Jason/Mindy; Retire keeps the row; excerpt dropped; useUrlSearch; FormPanel sweep; hiking tint; markdown editor look; draft preview.</td></tr>
+  </table>
+
+  <h2>Next steps</h2>
+  <ul>
+    <li>Patrick's prod walk of Verified Signup and the email editors; paste the Bugle notice; weekly reminders until 25/25 households have signed in. Add Jeremy Kimble's email.</li>
+    <li>Roster: one global name search above the tabs; consistent grid layouts (Jenna review).</li>
+    <li>Verified Signup Phase B after one real signup cycle (spec + tests in <code>Plans/Verified-Signup.md</code>).</li>
+    <li>Small: move the four <code>select('*')</code> scouts sites to <code>SCOUT_CORE_COLS</code>; sweep stale emails off merged rows; qa-lead's two missing rendering tests; <code>/admin/roster-print</code> orphan; B-004 password rotation.</li>
+  </ul>
+
+  <h2>Files of record</h2>
+  <ul>
+    <li><code>Plans/Verified-Signup.md</code> (Phase A shipped, Phase B parked)</li>
+    <li><code>Plans/People-Model-Audit-2026-08-26.md</code></li>
+    <li><code>Plans/Completed/Retire-Roster-Contact-Columns.md</code></li>
+    <li><code>docs/bugle/verified-signup-notice.md</code>, <code>docs/training/*</code></li>
+    <li><code>next-app/AGENTS.md</code> — "People are the spine" rule</li>
+  </ul>
+</main>
+<footer>Troop 79 Website · session summary generated by Operator · 2026-08-27</footer>
+</body>
+</html>
