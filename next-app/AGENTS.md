@@ -42,7 +42,9 @@ lookups) filters on the client with `useTableSearch(rows, fields)` + `<SearchFie
 Esc clears, "N of M" announced. It sits in the table's toolbar row: after any sub-tab strip or
 count, before the spacer and the Add button — the same slot on every screen. Server-listed
 screens (Calendar, News, Ledger) keep their URL-debounced `q` (tab counts follow the filter, the
-view is linkable); don't mix the two on one screen.
+view is linkable); don't mix the two on one screen. One exception by design: the Roster has a single
+`RosterSearch` ABOVE its TabStrip (2026-08-27) that spans every tab and deep-links a hit to
+`?tab=X&open=ID` — its tabs carry no search of their own; don't add one back.
 
 **Back navigation is one slot (2026-08-25):** `PageTitle` requires `back` — `null` on a list/root
 page (it then remembers its URL for children), `{ label, href }` on a depth-2 screen ("← Back to

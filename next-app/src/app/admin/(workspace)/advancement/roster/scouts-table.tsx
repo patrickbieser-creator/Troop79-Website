@@ -7,7 +7,6 @@ import { ScoutForm, type ScoutRow } from './scout-form';
 import { SortHeader, useSortable } from '../../_components/use-sortable';
 import { TabStrip } from '../../_components/tab-strip';
 import { AddButton } from '../../_components/add-button';
-import { SearchField, useTableSearch } from '../../_components/search-field';
 import { Badge } from '../../_components/badge';
 import { Dialog } from '../../_components/dialog';
 import styles from './roster.module.css';
@@ -51,9 +50,6 @@ function fmtDate(iso: string | null): string {
 /** The lookups the comparator needs, carried on the row so the sort function
  *  can live at module scope instead of being rebuilt each render. */
 type SortableScout = ScoutRow & { _today: string; _rankLabel: Record<string, string> };
-
-/** Module scope on purpose — see the note on useSortable. */
-const scoutSearchFields = (s: { display_name: string }) => [s.display_name];
 
 function scoutValue(s: SortableScout, key: ColKey): unknown {
   switch (key) {
@@ -147,9 +143,9 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId
     [scouts, tab, today, rankLabel]
   );
 
-  const { q, setQ, visible: searched } = useTableSearch(visible, scoutSearchFields);
+  // The name search moved above the tabs (RosterSearch, 2026-08-27).
   const { sorted, sortKey, sortDir, toggle } = useSortable<SortableScout, ColKey>(
-    searched,
+    visible,
     scoutValue,
     'name'
   );
@@ -179,7 +175,6 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId
             ]}
           />
         )}
-        <SearchField value={q} onChange={setQ} label="Search scouts" />
         <span className={styles.toolbarSpacer} />
         <AddButton onClick={() => setOpenFor('new')}>+ Add Scout</AddButton>
       </div>

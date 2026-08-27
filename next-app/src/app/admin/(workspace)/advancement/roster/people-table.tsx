@@ -32,7 +32,7 @@ import { PendingUpdatePanel } from './pending-update-panel';
 import { AdultForm } from './adult-form';
 import { DatePickerField } from '../../_components/date-picker-field';
 import { AddButton } from '../../_components/add-button';
-import { SearchField, useTableSearch } from '../../_components/search-field';
+import { Badge } from '../../_components/badge';
 import { SortHeader, useSortable } from '../../_components/use-sortable';
 import { Dialog } from '../../_components/dialog';
 import { Notice } from '../../_components/notice';
@@ -153,9 +153,6 @@ function personValue(p: DirectoryPerson, key: PeopleColKey): unknown {
   }
 }
 
-/** Module scope so the search hook's memo sees a stable matcher. */
-const peopleSearchFields = (p: DirectoryPerson) => [p.display_name, p.primary_email];
-
 export function PeopleTable({
   people,
   roles,
@@ -196,14 +193,11 @@ export function PeopleTable({
     if (match) setOpenPerson(match);
   }, [openPersonId, people]);
 
-  // The shared name search (2026-08-25); email still matches, quietly — a
-  // leader who remembers the address, not the name, is not wrong.
-  const { q, setQ, visible } = useTableSearch(people, peopleSearchFields);
-
   // null initial key: the server's display_name order IS the default; sorting
   // starts only when a header is clicked.
+  // The name search moved above the tabs (RosterSearch, 2026-08-27).
   const { sorted, sortKey, sortDir, toggle } = useSortable<DirectoryPerson, PeopleColKey>(
-    visible,
+    people,
     personValue,
     null
   );
@@ -211,7 +205,7 @@ export function PeopleTable({
   return (
     <div>
       <div className={styles.tableToolbar}>
-        <SearchField value={q} onChange={setQ} label="Search adults" />
+        <span className={styles.toolbarSpacer} />
         {/* The front door adults never had — same toolbar position as the
             Scouts tab's "+ Add Scout". */}
         <AddButton onClick={() => setAdding(true)}>+ Add Adult</AddButton>
@@ -241,16 +235,23 @@ export function PeopleTable({
             return (
               <tr key={p.person_id}>
                 <td>
-                  <Button variant="quiet" onClick={() => setOpenPerson(p)}>
+                  {/* Same bare name trigger and status Badge as the Scouts tab
+                      (Jenna's roster alignment, 2026-08-27). */}
+                  <button
+                    type="button"
+                    className={styles.nameBtn}
+                    onClick={() => setOpenPerson(p)}
+                    title="Edit this person"
+                  >
                     {p.display_name}
-                  </Button>
+                  </button>{' '}
                   {p.active ? (
-                    <span className={styles.chipActiveTag} title="Offered in the family signup picker">
+                    <Badge variant="success" title="Offered in the family signup picker">
                       Active
-                    </span>
+                    </Badge>
                   ) : (
-                    <span
-                      className={styles.chipInactiveTag}
+                    <Badge
+                      variant="danger"
                       title={
                         p.person_inactive_reason
                           ? `Not offered at signup — ${p.person_inactive_reason}`
@@ -258,7 +259,7 @@ export function PeopleTable({
                       }
                     >
                       Inactive
-                    </span>
+                    </Badge>
                   )}
                 </td>
                 <td>{p.primary_email || <span className={styles.muted}>—</span>}</td>
@@ -290,13 +291,6 @@ export function PeopleTable({
               </tr>
             );
           })}
-          {visible.length === 0 && (
-            <tr>
-              <td colSpan={5} className={styles.muted}>
-                Nobody matches that search.
-              </td>
-            </tr>
-          )}
         </tbody>
       </table>
 

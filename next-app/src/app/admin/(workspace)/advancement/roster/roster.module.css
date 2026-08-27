@@ -162,6 +162,11 @@
 .toolbarCount { font-size: 12px; color: var(--admin-gray-500); }
 /* The list search is the shared SearchField (2026-08-25); the spacer pushes Add to the right. */
 .toolbarSpacer { flex: 1; }
+/* The global roster search (2026-08-27) inerts the TabStrip while a query is
+   active — dimmed so a control that does nothing looks like it does nothing. */
+.tabsInert { opacity: .45; }
+/* The guest row a search result deep-linked to (?open=) — guests have no editor. */
+.rowHighlight.rowHighlight td { background: var(--admin-status-warning-bg); }
 /* .rowError retired Phase B (2026-08-21) — shared Notice component. */
 /* .editorOverlay retired Phase B (2026-08-21) — the hand-rolled fixed overlay
    became the shared Dialog (Esc/backdrop close now work; Section 2 finding #1).
@@ -200,10 +205,8 @@
 }
 .results .resultRow:hover:not(:disabled) { background: var(--admin-gray-50); }
 .savedNote { padding: 8px 12px; margin-bottom: 10px; border-radius: 3px; font-size: 12.5px; background: var(--admin-status-success-bg); border: 1px solid color-mix(in srgb, var(--admin-forest) 30%, var(--admin-white)); color: var(--admin-forest-dark); }
-.chipActiveTag { margin-left: 8px; font-size: 10px; font-weight: 700; letter-spacing: .04em; background: var(--admin-status-success-bg); color: var(--admin-forest-dark); border: 1px solid color-mix(in srgb, var(--admin-forest) 30%, var(--admin-white)); border-radius: 2px; padding: 1px 7px; }
-/* Red, not grey. Inactive is a state a leader needs to notice while scanning
-   a list of 80 people — grey-on-grey read as decoration and disappeared. */
-.chipInactiveTag { margin-left: 8px; font-size: 10px; font-weight: 700; letter-spacing: .04em; background: var(--admin-status-error-bg); color: var(--admin-danger-dark); border: 1px solid color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white)); border-radius: 2px; padding: 1px 7px; }
+/* .chipActiveTag / .chipInactiveTag retired 2026-08-27 → shared Badge (success/danger),
+   the Scouts tab's treatment — Jenna's roster alignment. */
 .readValue { font-size: 13px; color: var(--admin-gray-900); padding: 6px 0; }
 .readValue a { color: var(--admin-navy); }
 .dangerSection { margin-top: 26px; padding-top: 16px; border-top: 1px solid color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white)); }

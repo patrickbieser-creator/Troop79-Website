@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { PARTICIPANT_CLASS_LABEL } from '@/lib/participant-class';
 import type { GuestTabRow } from '@/lib/guest-people';
@@ -9,7 +9,6 @@ import { searchPeople } from './person-actions';
 import { Notice } from '../../_components/notice';
 import { Button } from '../../../_components/button';
 import styles from './roster.module.css';
-import { SearchField, useTableSearch } from '../../_components/search-field';
 
 /**
  * People → Guests (Plans/Guests-As-People.md Phase 2): every guest a
@@ -20,18 +19,21 @@ import { SearchField, useTableSearch } from '../../_components/search-field';
  *
  * Forgotten guests are not listed — they are history, not roster.
  */
-/** Name or the household they came with — how a leader identifies "which family's guest". */
-const guestSearchFields = (r: GuestTabRow) => [r.name, r.hostLabel];
-
-export function GuestsTable({ rows }: { rows: GuestTabRow[] }) {
+export function GuestsTable({
+  rows,
+  openGuestId
+}: {
+  rows: GuestTabRow[];
+  /** ?open=<people.id> from the global roster search — guests have no
+   *  editor to open, so the row is highlighted and scrolled to instead. */
+  openGuestId?: string;
+}) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [merging, setMerging] = useState<number | null>(null);
   const [mergeQuery, setMergeQuery] = useState('');
-  // The list's own name search (2026-08-25) — distinct from the merge picker's lookup above.
-  const { q, setQ, visible } = useTableSearch(rows, guestSearchFields);
   const [results, setResults] = useState<{ id: number; display_name: string; primary_email: string | null }[]>([]);
   const [searching, startSearch] = useTransition();
 
@@ -69,6 +71,11 @@ export function GuestsTable({ rows }: { rows: GuestTabRow[] }) {
 
   const nudges = rows.filter((r) => r.forgetNudge).length;
 
+  useEffect(() => {
+    if (!openGuestId) return;
+    document.getElementById(`guest-${openGuestId}`)?.scrollIntoView({ block: 'center' });
+  }, [openGuestId]);
+
   return (
     <div>
       {nudges > 0 && (
@@ -81,11 +88,6 @@ export function GuestsTable({ rows }: { rows: GuestTabRow[] }) {
       {error && <Notice variant="error">{error}</Notice>}
       {notice && <Notice variant="success">{notice}</Notice>}
 
-      {rows.length > 0 && (
-        <div className={styles.tableToolbar}>
-          <SearchField value={q} onChange={setQ} label="Search guests" />
-        </div>
-      )}
       {rows.length === 0 ? (
         <p className={styles.muted}>No guests on record. Families add theirs on an event’s sign-up form; leaders on an event’s Roster.</p>
       ) : (
@@ -101,8 +103,12 @@ export function GuestsTable({ rows }: { rows: GuestTabRow[] }) {
             </tr>
           </thead>
           <tbody>
-            {visible.map((r) => (
-              <tr key={r.personId}>
+            {rows.map((r) => (
+              <tr
+                key={r.personId}
+                id={`guest-${r.personId}`}
+                className={String(r.personId) === openGuestId ? styles.rowHighlight : undefined}
+              >
                 <td>
                   {r.name}
                   {r.forgetNudge && <span className={styles.warnTag}>forget?</span>}

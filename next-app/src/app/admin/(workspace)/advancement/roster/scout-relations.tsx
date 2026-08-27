@@ -13,6 +13,7 @@ import styles from './roster.module.css';
 import fields from '../lookups/lookups.module.css';
 import { AddButton } from '../../_components/add-button';
 import { Notice } from '../../_components/notice';
+import { Badge } from '../../_components/badge';
 import { Button } from '../../../_components/button';
 
 /**
@@ -110,7 +111,7 @@ export function ScoutRelations({ scoutPersonId }: { scoutPersonId: number | null
             <span className={styles.parentRowLabel}>
               {TYPE_LABEL[r.type] ?? r.type}
               {r.isGuardian && <span className={styles.guardianTag}>guardian</span>}
-              {!r.active && <span className={styles.chipInactiveTag}>Inactive</span>}
+              {!r.active && <> <Badge variant="danger">Inactive</Badge></>}
             </span>
             <Button
               variant="danger"
