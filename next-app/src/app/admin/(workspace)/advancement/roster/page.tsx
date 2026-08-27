@@ -271,7 +271,12 @@ export default async function RosterPage({
         <RosterActions className={styles.actionsBar} />
       </PageTitle>
 
+      {/* Keyed on the URL: a result row soft-navigates to ?tab=X&open=ID, and
+          without a remount the query (client state) would survive it — the
+          result table would stay up and the editor never open (found live,
+          v1.108.0). */}
       <RosterSearch
+        key={`${tab}:${openScoutId ?? ''}`}
         rows={searchRows}
         tabs={
           /* Shared TabStrip (Phase A, 2026-08-21), link mode — tab state stays
