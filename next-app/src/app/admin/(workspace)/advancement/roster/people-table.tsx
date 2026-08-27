@@ -139,7 +139,7 @@ const RELATION_WORDS: Record<RelationshipRow['type'], string> = {
   emergency_contact_for: 'emergency contact for'
 };
 
-type PeopleColKey = 'name' | 'email' | 'phone';
+type PeopleColKey = 'name' | 'email' | 'phone' | 'bsa';
 
 /** Module scope on purpose — see the note on useSortable. */
 function personValue(p: DirectoryPerson, key: PeopleColKey): unknown {
@@ -150,6 +150,8 @@ function personValue(p: DirectoryPerson, key: PeopleColKey): unknown {
       return p.primary_email;
     case 'phone':
       return p.primary_phone;
+    case 'bsa':
+      return p.bsa_member_id;
   }
 }
 
@@ -227,6 +229,9 @@ export function PeopleTable({
             <SortHeader label="Phone" colKey="phone" sortKey={sortKey} sortDir={sortDir} toggle={toggle} />
             <th>Roles</th>
             <th>Household</th>
+            <SortHeader label="BSA ID" colKey="bsa" sortKey={sortKey} sortDir={sortDir} toggle={toggle} />
+            {/* Status is the LAST column on every roster grid (Patrick, 2026-08-27). */}
+            <th>Status</th>
           </tr>
         </thead>
         <tbody>
@@ -244,7 +249,29 @@ export function PeopleTable({
                     title="Edit this person"
                   >
                     {p.display_name}
-                  </button>{' '}
+                  </button>
+                </td>
+                <td>{p.primary_email || <span className={styles.muted}>—</span>}</td>
+                <td>{p.primary_phone || <span className={styles.muted}>—</span>}</td>
+                <td>
+                  {p.roles
+                    ? p.roles
+                        .split(', ')
+                        .map((r) => ROLE_LABEL[r] ?? r)
+                        .join(', ')
+                    : <span className={styles.muted}>none</span>}
+                </td>
+                <td>
+                  {/* "Vest (4)" — the member count in parentheses keeps the row to
+                      one line (Patrick, 2026-08-27). */}
+                  {hh ? (
+                    `${households.find((h) => h.id === hh)?.label ?? ''} (${(householdMembers[hh] ?? []).length})`
+                  ) : (
+                    <span className={styles.muted}>—</span>
+                  )}
+                </td>
+                <td className={styles.mono}>{p.bsa_member_id || <span className={styles.muted}>—</span>}</td>
+                <td>
                   {p.active ? (
                     <Badge variant="success" title="Offered in the family signup picker">
                       Active
@@ -260,29 +287,6 @@ export function PeopleTable({
                     >
                       Inactive
                     </Badge>
-                  )}
-                </td>
-                <td>{p.primary_email || <span className={styles.muted}>—</span>}</td>
-                <td>{p.primary_phone || <span className={styles.muted}>—</span>}</td>
-                <td>
-                  {p.roles
-                    ? p.roles
-                        .split(', ')
-                        .map((r) => ROLE_LABEL[r] ?? r)
-                        .join(', ')
-                    : <span className={styles.muted}>none</span>}
-                </td>
-                <td>
-                  {hh ? (
-                    <>
-                      {households.find((h) => h.id === hh)?.label}
-                      <span className={styles.subText}>
-                        {(householdMembers[hh] ?? []).length} member
-                        {(householdMembers[hh] ?? []).length === 1 ? '' : 's'}
-                      </span>
-                    </>
-                  ) : (
-                    <span className={styles.muted}>—</span>
                   )}
                 </td>
                 {/* The trailing duplicate Edit button is gone (Section 2

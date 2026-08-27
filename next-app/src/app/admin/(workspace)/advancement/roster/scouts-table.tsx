@@ -35,7 +35,8 @@ type ColKey =
   | 'swim'
   | 'bsa'
   | 'health'
-  | 'status';
+  | 'status'
+  | 'reason';
 
 function fmtDate(iso: string | null): string {
   if (!iso) return '—';
@@ -79,7 +80,9 @@ function scoutValue(s: SortableScout, key: ColKey): unknown {
     case 'health':
       return s.health_form_date;
     case 'status':
-      return s.active ? 'Active' : (s.inactive_reason ? INACTIVE_REASON_LABEL[s.inactive_reason] : 'Inactive');
+      return s.active ? 'Active' : 'Inactive';
+    case 'reason':
+      return s.inactive_reason ? INACTIVE_REASON_LABEL[s.inactive_reason] : null;
     default:
       return null;
   }
@@ -194,12 +197,15 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId
             {head('BSA ID', 'bsa')}
             {head('Health Form', 'health')}
             {head('Status', 'status')}
+            {/* One line per scout (Patrick, 2026-08-27): the reason is its own
+                column on the Inactive tab rather than a second line under Status. */}
+            {tab === 'inactive' && head('Reason', 'reason')}
           </tr>
         </thead>
         <tbody>
           {sorted.length === 0 && (
             <tr>
-              <td colSpan={12} className={styles.muted}>
+              <td colSpan={tab === 'inactive' ? 13 : 12} className={styles.muted}>
                 {tab === 'active'
                   ? 'No active scouts.'
                   : 'No inactive scouts — nobody has been marked dropped, transferred, moved, or aged out.'}
@@ -240,12 +246,10 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId
                   <Badge variant={s.active ? 'success' : 'danger'}>
                     {s.active ? 'Active' : 'Inactive'}
                   </Badge>
-                  {!s.active && s.inactive_reason && (
-                    <span className={styles.subText}>
-                      {INACTIVE_REASON_LABEL[s.inactive_reason]}
-                    </span>
-                  )}
                 </td>
+                {tab === 'inactive' && (
+                  <td>{s.inactive_reason ? INACTIVE_REASON_LABEL[s.inactive_reason] : dash}</td>
+                )}
                 {/* The trailing duplicate Edit button is gone (Section 2
                     stretched-link sweep, 2026-08-21) — the scout's name is
                     the single way into the editor, as on Calendar/News. */}

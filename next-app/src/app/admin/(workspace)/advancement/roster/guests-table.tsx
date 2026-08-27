@@ -98,6 +98,7 @@ export function GuestsTable({
               <th>Guest of</th>
               <th>Class</th>
               <th>Last event</th>
+              <th>Date</th>
               <th>Phone</th>
               <th>Actions</th>
             </tr>
@@ -115,16 +116,10 @@ export function GuestsTable({
                 </td>
                 <td>{r.hostLabel}</td>
                 <td>{r.lastClass ? PARTICIPANT_CLASS_LABEL[r.lastClass] : <span className={styles.muted}>—</span>}</td>
-                <td>
-                  {r.lastEventTitle ? (
-                    <>
-                      {r.lastEventTitle}
-                      <span className={styles.subText}>{fmt(r.lastEventDate)}</span>
-                    </>
-                  ) : (
-                    <span className={styles.muted}>never signed up</span>
-                  )}
-                </td>
+                {/* Title and date are separate columns — one line per guest
+                    (Patrick, 2026-08-27). */}
+                <td>{r.lastEventTitle ?? <span className={styles.muted}>never signed up</span>}</td>
+                <td>{r.lastEventDate ? fmt(r.lastEventDate) : <span className={styles.muted}>—</span>}</td>
                 <td>{r.phone ?? <span className={styles.muted}>—</span>}</td>
                 <td>
                   <div className={styles.inlineRow}>
