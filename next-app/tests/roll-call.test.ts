@@ -6,6 +6,7 @@ import {
   ledgerCodeFor,
   reconcileWithSignup,
   qtyForMissingCreditResolution,
+  withOffDirectoryCandidates,
   type AttendeeCandidate
 } from '@/lib/attendance-shared';
 import { syncCredit, retireCredit, adoptLegacyCredit } from '@/lib/attendance-admin';
@@ -420,5 +421,25 @@ describe('the write cascade', () => {
       .eq('scout_id', SCOUT_ID);
     expect(data).toHaveLength(1);
     expect(data![0].calendar_entry_id).toBe(entryId);
+  });
+});
+
+describe('guests on the roll', () => {
+  // Bug (Patrick, 2026-08-27): a guest seeded from the signup held an
+  // attendance row but never appeared on the sheet — guests are not in
+  // person_directory — so the tab pill said "1" with nothing to unmark.
+  it('AppendsPeopleWithASignupOrAttendanceRow_WhoAreNotInTheDirectory_AsGuests', () => {
+    const directory: AttendeeCandidate[] = [
+      { personId: 1, displayName: 'Avery', scoutId: 'A01', tab: 'active_scout', signedUp: true }
+    ];
+    const out = withOffDirectoryCandidates(
+      directory,
+      [{ id: 150, display_name: 'Henry' }, { id: 1, display_name: 'Avery' }],
+      new Set([150])
+    );
+    expect(out.map((c) => [c.personId, c.tab, c.signedUp])).toEqual([
+      [1, 'active_scout', true],
+      [150, 'guest', true]
+    ]);
   });
 });

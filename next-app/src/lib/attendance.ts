@@ -7,7 +7,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/server';
-import type { AttendanceRow, AttendeeCandidate } from '@/lib/attendance-shared';
+import { withOffDirectoryCandidates, type AttendanceRow, type AttendeeCandidate } from '@/lib/attendance-shared';
 
 export * from '@/lib/attendance-shared';
 
@@ -65,11 +65,29 @@ export async function loadCandidates(entryId: number): Promise<AttendeeCandidate
     }
   }
 
-  return (people ?? []).map((p) => ({
+  const directory: AttendeeCandidate[] = (people ?? []).map((p) => ({
     personId: p.person_id as number,
     displayName: p.display_name as string,
     scoutId: (p.scout_id as string) ?? null,
     tab: p.tab as string,
     signedUp: signedUp.has(p.person_id as number)
   }));
+
+  // Guests are not in the directory — anyone who signed up or already holds
+  // an attendance row must still be on the sheet, or they can't be unmarked.
+  const known = new Set(directory.map((c) => c.personId));
+  const { data: marked } = await supabase
+    .from('event_attendance')
+    .select('person_id')
+    .eq('calendar_entry_id', entryId);
+  const offDirectory = [
+    ...new Set([...signedUp, ...(marked ?? []).map((m) => m.person_id as number)])
+  ].filter((id) => !known.has(id));
+  if (offDirectory.length === 0) return directory;
+  const { data: extras } = await supabase.from('people').select('id, display_name').in('id', offDirectory);
+  return withOffDirectoryCandidates(
+    directory,
+    (extras ?? []) as { id: number; display_name: string }[],
+    signedUp
+  );
 }

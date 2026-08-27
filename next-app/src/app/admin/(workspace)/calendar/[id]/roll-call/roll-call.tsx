@@ -52,7 +52,8 @@ const TAB_ORDER: { key: string; label: string }[] = [
   { key: 'active_scout', label: 'Scouts' },
   { key: 'leader', label: 'Leaders' },
   { key: 'adult', label: 'Adults' },
-  { key: 'inactive_scout', label: 'Inactive scouts' }
+  { key: 'inactive_scout', label: 'Inactive scouts' },
+  { key: 'guest', label: 'Guests' }
 ];
 
 export function RollCall({
@@ -146,9 +147,6 @@ export function RollCall({
   return (
     <>
       <div className={styles.summary}>
-        <span className={styles.count}>
-          <strong>{attended.size}</strong> present
-        </span>
         <span className={styles.note}>
           {creditNote}
           {countsAsActivity

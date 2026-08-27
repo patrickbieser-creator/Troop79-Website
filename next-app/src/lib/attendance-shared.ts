@@ -38,6 +38,32 @@ export interface AttendanceRow {
   note: string | null;
 }
 
+/**
+ * People who can be on the roll but are NOT in person_directory — guests
+ * (Plans/Guests-As-People.md) — get a candidate row of their own when they
+ * signed up or already hold an attendance row. Without this a guest seeded
+ * from the signup was counted by the tab pill yet had no checkbox to unmark
+ * (Patrick, 2026-08-27: the Eagle Court of Honor's phantom "1 present").
+ * Pure; `loadCandidates` supplies the people rows.
+ */
+export function withOffDirectoryCandidates(
+  directory: AttendeeCandidate[],
+  people: { id: number; display_name: string }[],
+  signedUp: Set<number>
+): AttendeeCandidate[] {
+  const known = new Set(directory.map((c) => c.personId));
+  const extras = people
+    .filter((p) => !known.has(p.id))
+    .map((p) => ({
+      personId: p.id,
+      displayName: p.display_name,
+      scoutId: null,
+      tab: 'guest',
+      signedUp: signedUp.has(p.id)
+    }));
+  return [...directory, ...extras];
+}
+
 export interface AttendeeCandidate {
   personId: number;
   displayName: string;
