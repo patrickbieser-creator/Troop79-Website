@@ -71,6 +71,7 @@ export default function SlotFirstForm({
   hasExisting,
   gateState,
   signedInAs,
+  canSwitchHousehold,
   gateError,
   gateConfigured
 }: {
@@ -99,6 +100,9 @@ export default function SlotFirstForm({
   gateState: GateState;
   /** Who is signed in — shown on the status bar. */
   signedInAs: string | null;
+  /** Household scope (2026-08-27): only a superuser sees the find-a-family
+   *  search and "Change household"; a family is pinned to its own. */
+  canSwitchHousehold: boolean;
   gateError?: string;
   gateConfigured: boolean;
 }) {
@@ -345,6 +349,17 @@ export default function SlotFirstForm({
       );
     }
 
+    if (gateState === 'no-household' && !canSwitchHousehold) {
+      return (
+        <div className={styles.memberPick}>
+          <p className={styles.gateLede}>
+            There’s no household on record for you yet — ask a leader to add you to one, then come back
+            to claim “{sl.label}”.
+          </p>
+        </div>
+      );
+    }
+
     if (gateState === 'no-household') {
       return (
         <div className={styles.memberPick}>
@@ -495,7 +510,9 @@ export default function SlotFirstForm({
                           {gateState === 'anon'
                             ? 'Sign in to claim'
                             : gateState === 'no-household'
-                              ? 'Choose your family'
+                              ? canSwitchHousehold
+                                ? 'Choose the family'
+                                : 'Ask a leader'
                               : 'Sign up'}
                         </span>
                       </span>
@@ -590,7 +607,7 @@ export default function SlotFirstForm({
       nested={!asForm}
       signedInAs={signedInAs}
       household={ready ? { label: household!.label, standaloneAdult: household!.scouts.length === 0 } : null}
-      changeHref={`/events/${eventId}/signup?household=`}
+      changeHref={canSwitchHousehold ? `/events/${eventId}/signup?household=` : undefined}
       signOut={{ action: signOutAction, next: `/events/${eventId}/signup?signedout=1` }}
     />
   );
@@ -602,7 +619,9 @@ export default function SlotFirstForm({
         <p className={styles.boardLede}>
           {gateState === 'anon'
             ? 'Pick a job below to sign in and claim it.'
-            : 'Pick a job below, then choose your family.'}
+            : canSwitchHousehold
+              ? 'Pick a job below, then choose the family.'
+              : 'Pick a job below.'}
         </p>
         {jobList}
       </div>

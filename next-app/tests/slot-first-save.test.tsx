@@ -66,6 +66,7 @@ function renderBoard(
       hasExisting={existingClaims.length > 0}
       gateState="ready"
       signedInAs="Dana Bieser"
+      canSwitchHousehold={false}
       gateConfigured
     />
   );

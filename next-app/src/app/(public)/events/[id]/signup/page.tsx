@@ -107,7 +107,7 @@ export default async function EventSignupPage({
   const ctx = await loadSignupContext(numeric, sp.household);
   if (!ctx) notFound();
 
-  const { detail, audience, gatedIn, households, household, existing, existingClaims, gateState, slotFirst, locked, verdict, signedInAs } = ctx;
+  const { detail, audience, gatedIn, households, household, existing, existingClaims, gateState, slotFirst, locked, verdict, signedInAs, canSwitchHousehold } = ctx;
   const { entry, signup, prices, slots, questions, headcount } = detail;
 
   // The one-time passkey offer moved to the public layout (2026-08-27) — it
@@ -271,12 +271,25 @@ export default async function EventSignupPage({
                   household={null}
                   signOut={{ action: logOutEverywhereAction, next: `${eventHref}/signup?signedout=1` }}
                 />
-                <p className={styles.gateOk}>Now find yourself.</p>
-                <HouseholdPicker households={households} eventId={entry.id} />
+                {canSwitchHousehold ? (
+                  <>
+                    <p className={styles.gateOk}>Now find the family you&rsquo;re signing up.</p>
+                    <HouseholdPicker households={households} eventId={entry.id} />
+                  </>
+                ) : (
+                  /* Household scope (2026-08-27): a family is pinned to its
+                     own household — with none on record there is nothing to
+                     pick from, and no roster of other families to show. */
+                  <Notice tone="error" className={styles.noticeGapTop}>
+                    There&rsquo;s no household on record for you yet &mdash; ask a leader to add you to one,
+                    then come back to sign up.
+                  </Notice>
+                )}
               </>
             )
           ) : slotFirst ? null : (
             /* One bar, both forms: who is signed in and which household.
+               "Change household" is a superuser affordance only (2026-08-27).
                Explicit ?household= (empty) rather than a bare link — a
                verified visitor's prefill only fires when the param is
                ABSENT, so an explicit empty value is how "switching" stays
@@ -284,7 +297,7 @@ export default async function EventSignupPage({
             <SignupStatusBar
               signedInAs={signedInAs}
               household={{ label: household.label, standaloneAdult: household.scouts.length === 0 }}
-              changeHref={`${eventHref}/signup?household=`}
+              changeHref={canSwitchHousehold ? `${eventHref}/signup?household=` : undefined}
               signOut={{ action: logOutEverywhereAction, next: `${eventHref}/signup?signedout=1` }}
             />
           )}
@@ -323,6 +336,7 @@ export default async function EventSignupPage({
                 signOutAction={logOutEverywhereAction}
                 gateState={gateState}
                 signedInAs={signedInAs}
+                canSwitchHousehold={canSwitchHousehold}
                 gateError={sp.gate}
                 gateConfigured={familyGateConfigured()}
               />

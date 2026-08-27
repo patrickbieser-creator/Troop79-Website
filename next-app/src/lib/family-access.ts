@@ -18,6 +18,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { FAMILY_COOKIE, verifyFamilySession } from '@/lib/family-session';
 import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
 import { IDENTITY_COOKIE, isEpochCurrent, verifyIdentitySession, type IdentitySession } from '@/lib/identity-session';
+import { hasCapability } from '@/lib/capabilities';
 
 export type GateAudience = 'family' | 'leader' | 'scout' | 'household';
 
@@ -130,6 +131,67 @@ export async function decideVerifiedSignupAccess(
     }
   }
   return audience as GateAudience;
+}
+
+/**
+ * Household scope (Patrick, 2026-08-27: "remove Change household entirely
+ * except for superusers"). A verified adult signs up THEIR OWN household —
+ * the `?household=` param and the posted householdKey are requests, never
+ * authority. A superuser — a leader session, or a verified adult holding
+ * `roster.manage` (the capability that already means "acts for other
+ * families": send sign-in link, revoke, merge) — keeps the picker for the
+ * phone-call case. Supersedes Family-Identity-Auth Phase 2's "(b) prefill"
+ * over "(c) lock" for everyone else; the carpool/guardian case is now "text
+ * a leader".
+ *
+ * Pure so the rule is testable without a cookie; the async wrappers below
+ * add only the cookie and the capability read.
+ */
+export function householdSwitchAllowed(audience: GateAudience | null, holdsRosterManage: boolean): boolean {
+  if (audience === 'leader') return true;
+  return audience === 'household' && holdsRosterManage;
+}
+
+export function resolveWritableHouseholdKey(input: {
+  requested: string;
+  sessionHouseholdKey: string | null;
+  canSwitch: boolean;
+}): string {
+  if (input.canSwitch) {
+    if (!input.requested) throw new Error('Choose a household first.');
+    return input.requested;
+  }
+  if (!input.sessionHouseholdKey) {
+    throw new Error('There is no household on record for you yet — ask a leader to add you to one.');
+  }
+  if (input.requested && input.requested !== input.sessionHouseholdKey) {
+    throw new Error('You can only sign up your own household.');
+  }
+  return input.sessionHouseholdKey;
+}
+
+/** May this request pick a household other than its own? One capability
+ *  read at most; a leader session answers without it. */
+export async function canSwitchHousehold(
+  audience: GateAudience | null,
+  session: IdentitySession | null
+): Promise<boolean> {
+  if (audience === 'leader') return true;
+  if (audience !== 'household' || !session || session.subjectKind !== 'adult') return false;
+  return hasCapability(createAdminClient(), session.personId, 'roster.manage', session.epoch);
+}
+
+/** The Server Action half: which household this write may touch. Call AFTER
+ *  requireVerifiedSignupAccess() — that guard settles who may write at all;
+ *  this settles for whom. Throws with a message fit to show. */
+export async function requireWritableHouseholdKey(requested: string, audience: GateAudience): Promise<string> {
+  const session = audience === 'household' ? await getIdentitySessionIfValid() : null;
+  const canSwitch = await canSwitchHousehold(audience, session);
+  return resolveWritableHouseholdKey({
+    requested,
+    sessionHouseholdKey: session?.householdKey ?? null,
+    canSwitch
+  });
 }
 
 /** True when the family password isn't configured on this server — the gate

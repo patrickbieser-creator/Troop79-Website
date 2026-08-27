@@ -6,7 +6,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/server';
-import { requireVerifiedSignupAccess, getIdentitySessionIfValid } from '@/lib/family-access';
+import { requireVerifiedSignupAccess, requireWritableHouseholdKey, getIdentitySessionIfValid } from '@/lib/family-access';
 import { FAMILY_COOKIE, signFamilySession } from '@/lib/family-session';
 import { secretMatches } from '@/lib/signed-cookie';
 import { safeInternalPath } from '@/lib/safe-redirect';
@@ -87,19 +87,23 @@ function friendlyError(message: string): string {
 export async function submitSignupAction(formData: FormData): Promise<void> {
   const eventId = Number(formData.get('eventId'));
   const signupId = Number(formData.get('signupId'));
-  const householdKey = String(formData.get('householdKey') ?? '');
+  const requestedHouseholdKey = String(formData.get('householdKey') ?? '');
   const entriesRaw = String(formData.get('entries') ?? '[]');
   const slotClaimsRaw = String(formData.get('slotClaims') ?? '{}');
   const slotCommentsRaw = String(formData.get('slotComments') ?? '{}');
-  const back = `/events/${eventId}/signup?household=${encodeURIComponent(householdKey)}`;
+  const back = `/events/${eventId}/signup?household=${encodeURIComponent(requestedHouseholdKey)}`;
 
   // Verified Signup (2026-08-26): a troop-password-only visitor is refused
   // here, server-side, not just by the page hiding the form. The guard also
   // rejects a revoked identity session (qa-lead 2026-08-06) — caught rather
   // than left to crash the request, same polish as every other guard clause.
+  // Household scope (2026-08-27): the posted key is a request — a family is
+  // pinned to its own household; only a superuser may name another.
   let audience;
+  let householdKey: string;
   try {
     audience = await requireVerifiedSignupAccess();
+    householdKey = await requireWritableHouseholdKey(requestedHouseholdKey, audience);
   } catch (e) {
     redirect(`${back}&err=${encodeURIComponent(e instanceof Error ? e.message : 'Please sign in to sign up.')}`);
   }
@@ -316,12 +320,17 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
 export async function cancelSignupAction(formData: FormData): Promise<void> {
   const eventId = Number(formData.get('eventId'));
   const signupId = Number(formData.get('signupId'));
-  const householdKey = String(formData.get('householdKey') ?? '');
-  const back = `/events/${eventId}/signup?household=${encodeURIComponent(householdKey)}`;
+  const requestedHouseholdKey = String(formData.get('householdKey') ?? '');
+  const back = `/events/${eventId}/signup?household=${encodeURIComponent(requestedHouseholdKey)}`;
 
+  // Same two guards as submitSignupAction: who may write, then for whom —
+  // cancelling another family's signup was the sharpest edge of the old
+  // any-household rule (2026-08-27).
   let audience;
+  let householdKey: string;
   try {
     audience = await requireVerifiedSignupAccess();
+    householdKey = await requireWritableHouseholdKey(requestedHouseholdKey, audience);
   } catch (e) {
     redirect(`${back}&err=${encodeURIComponent(e instanceof Error ? e.message : 'Please sign in to sign up.')}`);
   }

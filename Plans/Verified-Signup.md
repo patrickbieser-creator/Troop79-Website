@@ -35,9 +35,14 @@ Phase A — verified signup (ship first, in one release):
 - [ ] `/events/[id]/signup` with only the family-password cookie shows the **"Sign in to sign up"**
       panel (no household picker, no form): what to expect (code by email, ~1 minute), a primary
       button to `/signin?next=/events/[id]/signup`, and the trouble line.
-- [ ] A verified **adult** session lands back on the signup page with the picker pre-selected to
-      their own household; **Change household** remains available (carpool / guardian case) and
+- [x] A verified **adult** session lands back on the signup page with the picker pre-selected to
+      their own household; ~~**Change household** remains available (carpool / guardian case)~~ and
       every write still records `entered_by_person_id` / `updated_by_person_id`.
+      **Superseded 2026-08-27 (Patrick: "remove it entirely except for superusers", v1.110.0):**
+      a family is pinned to its own household server-side (`requireWritableHouseholdKey` in
+      `lib/family-access.ts` — the posted key is a request, a mismatch is rejected, other
+      families' names never reach the page); only a leader session or a `roster.manage` holder
+      keeps the picker and "Change household". The carpool/guardian case is "text a leader".
 - [ ] A verified **scout** session sees "Ask a parent to sign in" (no form, no picker).
 - [ ] A leader session behaves exactly as today.
 - [ ] `submitSignupAction`, `cancelSignupAction`, `claimSlot`/`unclaimSlot` (every Server Action

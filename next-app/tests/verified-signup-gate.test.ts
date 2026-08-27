@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { verifiedSignupVerdict, decideVerifiedSignupAccess } from '../src/lib/family-access';
+import {
+  verifiedSignupVerdict,
+  decideVerifiedSignupAccess,
+  householdSwitchAllowed,
+  resolveWritableHouseholdKey
+} from '../src/lib/family-access';
 import type { IdentitySession } from '../src/lib/identity-session';
 
 /**
@@ -79,5 +84,54 @@ describe('signup write actions', () => {
       expect(body, name).toContain('requireVerifiedSignupAccess(');
       expect(body, name).not.toContain('requireFamilyAccess(');
     }
+  });
+
+  it('EveryWriteAction_ResolvesTheHouseholdThroughTheScopeGuard_NotThePostedKey', () => {
+    // Patrick, 2026-08-27: "remove Change household entirely except for
+    // superusers" — the posted householdKey is a request, not authority.
+    for (const name of ['submitSignupAction', 'cancelSignupAction']) {
+      const start = src.indexOf(`export async function ${name}`);
+      const end = src.indexOf('\nexport async function', start + 1);
+      const body = src.slice(start, end === -1 ? undefined : end);
+      expect(body, name).toContain('requireWritableHouseholdKey(');
+    }
+  });
+});
+
+/**
+ * Household scope (Patrick, 2026-08-27): a verified adult signs up THEIR OWN
+ * household, full stop. Only a superuser — a leader session, or a verified
+ * adult holding `roster.manage` — may act for another family (the phone-call
+ * case). Before this any verified adult could pick, submit for, or cancel any
+ * household on the roster.
+ */
+describe('household scope', () => {
+  it('OnlyALeaderSession_OrARosterManager_MaySwitchHousehold', () => {
+    expect(householdSwitchAllowed('leader', false)).toBe(true);
+    expect(householdSwitchAllowed('household', true)).toBe(true);
+    expect(householdSwitchAllowed('household', false)).toBe(false);
+    expect(householdSwitchAllowed('family', true)).toBe(false);
+    expect(householdSwitchAllowed(null, true)).toBe(false);
+  });
+
+  it('AFamily_IsPinnedToItsOwnHousehold_WhateverTheRequestSays', () => {
+    expect(resolveWritableHouseholdKey({ requested: '7', sessionHouseholdKey: '7', canSwitch: false })).toBe('7');
+    expect(resolveWritableHouseholdKey({ requested: '', sessionHouseholdKey: '7', canSwitch: false })).toBe('7');
+    expect(() => resolveWritableHouseholdKey({ requested: '9', sessionHouseholdKey: '7', canSwitch: false })).toThrow(
+      /own household/
+    );
+    expect(() => resolveWritableHouseholdKey({ requested: '9', sessionHouseholdKey: null, canSwitch: false })).toThrow(
+      /no household on record/i
+    );
+  });
+
+  it('ASuperuser_MayNameAnyHousehold_ButMustNameOne', () => {
+    expect(resolveWritableHouseholdKey({ requested: '9', sessionHouseholdKey: '7', canSwitch: true })).toBe('9');
+    expect(resolveWritableHouseholdKey({ requested: 'leader:PB', sessionHouseholdKey: null, canSwitch: true })).toBe(
+      'leader:PB'
+    );
+    expect(() => resolveWritableHouseholdKey({ requested: '', sessionHouseholdKey: null, canSwitch: true })).toThrow(
+      /choose/i
+    );
   });
 });

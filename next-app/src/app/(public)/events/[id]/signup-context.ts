@@ -17,7 +17,13 @@ import {
   storedHouseholdId,
   type Household
 } from '@/lib/households';
-import { gateAudience, getIdentitySessionIfValid, verifiedSignupVerdict, type SignupWriteVerdict } from '@/lib/family-access';
+import {
+  gateAudience,
+  getIdentitySessionIfValid,
+  verifiedSignupVerdict,
+  canSwitchHousehold as canSwitchHouseholdFn,
+  type SignupWriteVerdict
+} from '@/lib/family-access';
 import { resolveEffectiveHouseholdKey } from '@/lib/identity-session';
 import { leaderSessionPersonId } from '@/lib/session-person';
 
@@ -60,6 +66,10 @@ export interface SignupContext {
    *  branches on it — 'sign-in' and 'parent' get an explanatory panel instead
    *  of the picker/form; the Server Actions enforce the same rule. */
   verdict: SignupWriteVerdict;
+  /** Household scope (2026-08-27): may this visitor pick another household?
+   *  True for a leader session or a `roster.manage` holder; the picker and
+   *  "Change household" render only then. The Server Actions enforce it. */
+  canSwitchHousehold: boolean;
   /** Who is signed in, for the status bar — a verified person's display name
    *  or a leader's label. Null for the troop-password-only visitor. */
   signedInAs: string | null;
@@ -77,7 +87,7 @@ export async function loadSignupContext(
   const slotFirst = isSlotFirst(signup, slots);
 
   // Household roster and any existing entries are gate-only: they carry names.
-  const households = gatedIn && signup ? await loadHouseholds() : [];
+  const allHouseholds = gatedIn && signup ? await loadHouseholds() : [];
 
   /*
    * Identity prefill (Plans/Family-Identity-Auth.md Phase 2) — see
@@ -99,8 +109,18 @@ export async function loadSignupContext(
   // time on a page that has them in hand.
   const sessionHouseholdKey =
     verifiedSession?.householdKey ??
-    (sessionPersonId != null ? householdKeyForPerson(households, sessionPersonId) : null);
-  const householdKey = resolveEffectiveHouseholdKey(householdKeyParam, sessionHouseholdKey);
+    (sessionPersonId != null ? householdKeyForPerson(allHouseholds, sessionPersonId) : null);
+  // Household scope (Patrick, 2026-08-27): only a superuser — leader session
+  // or roster.manage — may name a household other than their own. Everyone
+  // else is pinned to the session's household: the URL param is ignored HERE
+  // (the page just shows their own family), the write actions REJECT a
+  // mismatched key outright, and the roster of OTHER families (names) is
+  // never even sent to the page.
+  const canSwitchHousehold = gatedIn ? await canSwitchHouseholdFn(audience, verifiedSession) : false;
+  const householdKey = canSwitchHousehold
+    ? resolveEffectiveHouseholdKey(householdKeyParam, sessionHouseholdKey)
+    : (sessionHouseholdKey ?? undefined);
+  const households = canSwitchHousehold ? allHouseholds : allHouseholds.filter((h) => h.key === householdKey);
 
   const household = householdKey ? (households.find((h) => h.key === householdKey) ?? null) : null;
 
@@ -164,6 +184,7 @@ export async function loadSignupContext(
     slotFirst,
     locked: signup ? signupLocked(signup) : false,
     verdict,
+    canSwitchHousehold,
     signedInAs: verifiedSession?.displayName ?? (audience === 'leader' ? 'a leader' : null)
   };
 }
