@@ -19,7 +19,7 @@ vi.mock('@simplewebauthn/browser', () => ({
   startRegistration: (...args: unknown[]) => startRegistration(...args)
 }));
 
-import { PasskeyOffer } from '../src/app/(public)/events/[id]/passkey-offer';
+import { PasskeyOffer } from '../src/app/_components/passkey-offer';
 
 const NEXT = '/events/12/signup?welcome=1';
 

@@ -2,15 +2,15 @@
 
 /**
  * The one-time "sign in faster next time" offer (Plans/Verified-Signup.md,
- * Phase A acceptance criterion): shown once, right after a code/link
- * sign-in that started from a signup page — the one moment someone has just
+ * Phase A; site-wide since 2026-08-27): shown once, right after ANY code/link
+ * sign-in, on whatever page comes next — the one moment someone has just
  * proven who they are and is already in a security frame of mind.
  *
- * MOUNTING IS THE PAGE'S JOB, NOT THIS COMPONENT'S. This component knows
+ * MOUNTING IS THE GATE'S JOB, NOT THIS COMPONENT'S. This component knows
  * nothing about who is signed in or whether they already hold a passkey —
- * the page decides whether to render it at all (the `?welcome=1` signal set
- * by signin/actions.ts's withWelcomeFlag(), AND hasPasskey() from
- * lib/passkeys.ts coming back false). Adults-only is enforced independently,
+ * passkey-offer-gate.tsx (mounted once in the public layout) decides: the
+ * `t79_welcome` cookie set by signin/actions.ts, AND
+ * passkeyOfferEligibleAction() answering yes. Adults-only is enforced independently,
  * server-side, by passkeyRegisterOptionsAction()'s requireAdultForPasskey()
  * — a scout session gets a thrown error here, not a UI branch, exactly the
  * same ceremony passkey-manager.tsx (/member) uses.
@@ -25,7 +25,7 @@
 import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { startRegistration } from '@simplewebauthn/browser';
-import { passkeyRegisterOptionsAction, passkeyRegisterVerifyAction } from '../../signin/actions';
+import { passkeyRegisterOptionsAction, passkeyRegisterVerifyAction } from '@/app/(public)/signin/actions';
 import { Button } from '@/app/_components/button';
 import { Notice } from '@/app/_components/notice';
 import surface from '@/app/_components/card.module.css';
@@ -54,7 +54,7 @@ function rememberDismissed(): void {
  *  path) — kept as part of the props contract so the "Manage on your
  *  profile" link can carry it forward as a return path, the same `next`
  *  convention every other identity surface in this app uses. */
-export function PasskeyOffer({ next }: { next: string }) {
+export function PasskeyOffer({ next, onAnswered }: { next: string; onAnswered?: () => void }) {
   const [dismissed, setDismissed] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +71,7 @@ export function PasskeyOffer({ next }: { next: string }) {
 
   function dismiss() {
     rememberDismissed();
+    onAnswered?.();
     setDismissed(true);
   }
 
@@ -91,6 +92,7 @@ export function PasskeyOffer({ next }: { next: string }) {
         const result = await passkeyRegisterVerifyAction(JSON.stringify(response), nickname);
         if (result.ok) {
           rememberDismissed();
+          onAnswered?.();
           setDone(true);
         } else {
           setError(result.error ?? 'That didn’t work.');

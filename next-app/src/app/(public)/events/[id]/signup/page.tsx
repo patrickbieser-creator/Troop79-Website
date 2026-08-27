@@ -4,9 +4,7 @@ import { SavedFlash } from '../save-feedback';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { familyGateConfigured, getIdentitySessionIfValid } from '@/lib/family-access';
-import { hasPasskey } from '@/lib/passkeys';
 import { createAdminClient } from '@/lib/supabase/server';
-import { PasskeyOffer } from '../passkey-offer';
 import { formatCalendarDateParts, formatTimeOfDay } from '@/lib/calendar-shared';
 import { calendarReturn } from '@/lib/calendar-return';
 import { loadSignupContext } from '../signup-context';
@@ -99,7 +97,6 @@ export default async function EventSignupPage({
     m?: string;
     category?: string;
     q?: string;
-    welcome?: string;
   }>;
 }) {
   const { id } = await params;
@@ -113,14 +110,8 @@ export default async function EventSignupPage({
   const { detail, audience, gatedIn, households, household, existing, existingClaims, gateState, slotFirst, locked, verdict, signedInAs } = ctx;
   const { entry, signup, prices, slots, questions, headcount } = detail;
 
-  // Passkey offer, once (Plans/Verified-Signup.md): only after a code/link
-  // sign-in that started from a signup page (?welcome=1, set by signin
-  // actions), only for a verified adult, only while they have no passkey.
-  let offerPasskey = false;
-  if (sp.welcome === '1' && verdict === 'ok' && audience === 'household') {
-    const session = await getIdentitySessionIfValid();
-    offerPasskey = !!session && session.subjectKind === 'adult' && !(await hasPasskey(createAdminClient(), session.personId));
-  }
+  // The one-time passkey offer moved to the public layout (2026-08-27) — it
+  // now follows any code/link sign-in, not only one that began here.
 
   const back = calendarReturn(sp);
   /* Two ways out, and they mean different things: back to the event (what this
@@ -263,7 +254,6 @@ export default async function EventSignupPage({
             </Notice>
           )}
           {sp.err && <Notice tone="error" className={styles.noticeGapBottom}>{sp.err}</Notice>}
-          {offerPasskey && <PasskeyOffer next={`${eventHref}/signup`} />}
 
           {/* Verified Signup (2026-08-26): the troop password is first base.
               Writing a signup needs a verified adult (or a leader) — the

@@ -1,4 +1,5 @@
 import { SiteNav } from '../_components/site-nav';
+import { PasskeyOfferGate } from '../_components/passkey-offer-gate';
 import { SiteFooter } from '../_components/site-footer';
 import { ArticleStyleTokens } from '@/lib/article-body/ArticleStyleTokens';
 import { JsonLd } from '../_components/json-ld';
@@ -22,6 +23,10 @@ export default async function PublicLayout({ children }: { children: React.React
           that renders prose — news, event stories, the library — agrees. */}
       <ArticleStyleTokens />
       <SiteNav />
+      {/* One-time passkey offer after a code/link sign-in — on whatever page
+          comes next (lib/passkey-offer.ts). Client-side so this layout never
+          reads cookies() and the ISR pages stay static. */}
+      <PasskeyOfferGate />
       {children}
       <SiteFooter />
     </>

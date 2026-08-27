@@ -1,0 +1,37 @@
+/* The one-time passkey offer shown after any code/link sign-in, on whatever
+   page comes next (lib/passkey-offer.ts; was signup-only until 2026-08-27).
+   Tokens only; no hard-coded palette (see globals.css). */
+
+/* The layout-level gate's wrapper: a narrow shell above the page's own main. */
+.gateWrap {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: var(--sp-6) var(--sp-6) 0;
+}
+
+.offer {
+  padding: var(--sp-5) var(--sp-6);
+  margin-bottom: var(--sp-6);
+}
+
+.heading {
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-lg);
+  color: var(--navy);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.manage {
+  margin: var(--sp-3) 0 0;
+  font-size: var(--fs-md);
+}
+
+.notice {
+  margin-top: var(--sp-3);
+}

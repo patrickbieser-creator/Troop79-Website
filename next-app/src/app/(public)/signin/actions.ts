@@ -36,7 +36,9 @@ import {
   deletePasskey,
   PASSKEY_HINT_COOKIE,
   passkeyHintCookieOptions,
-  listPasskeys
+  listPasskeys,
+  passkeysConfigured,
+  hasPasskey
 } from '@/lib/passkeys';
 import type {
   AuthenticationResponseJSON,
@@ -46,7 +48,7 @@ import { hasFamilyAccess } from '@/lib/family-access';
 import { searchSignInCandidates, type SignInSearchResult } from '@/lib/signin-roster';
 import { IDENTITY_COOKIE, signIdentitySession, sessionMaxAgeFor } from '@/lib/identity-session';
 import { safeInternalPath } from '@/lib/safe-redirect';
-import { withWelcomeFlag } from '@/lib/welcome-flag';
+import { WELCOME_COOKIE, welcomeCookieOptions, shouldOfferPasskey } from '@/lib/passkey-offer';
 import { recordLoginEvent, type LoginMethod } from '@/lib/login-events';
 
 const SIGNIN_PATH = '/signin';
@@ -196,7 +198,8 @@ export async function verifyCodeAction(formData: FormData): Promise<void> {
 
   await setIdentityCookie(result.identity, 'code');
   await rememberPasskeyDeviceIfHolder(result.identity.personId);
-  redirect(withWelcomeFlag(safeInternalPath(result.identity.nextPath, '/profile')));
+  await setWelcomeCookie();
+  redirect(safeInternalPath(result.identity.nextPath, '/profile'));
 }
 
 /** Step 2 (link path): consumes the token and signs in. Called from the
@@ -215,7 +218,8 @@ export async function confirmTokenAction(formData: FormData): Promise<void> {
 
   await setIdentityCookie(identity, 'link');
   await rememberPasskeyDeviceIfHolder(identity.personId);
-  redirect(withWelcomeFlag(safeInternalPath(identity.nextPath, '/profile')));
+  await setWelcomeCookie();
+  redirect(safeInternalPath(identity.nextPath, '/profile'));
 }
 
 
@@ -354,7 +358,8 @@ export async function verifyCodeForPersonAction(formData: FormData): Promise<voi
 
   await setIdentityCookie(result.identity, 'code');
   await rememberPasskeyDeviceIfHolder(result.identity.personId);
-  redirect(withWelcomeFlag(safeInternalPath(result.identity.nextPath, '/profile')));
+  await setWelcomeCookie();
+  redirect(safeInternalPath(result.identity.nextPath, '/profile'));
 }
 
 /**
@@ -469,6 +474,27 @@ async function requireAdultForPasskey() {
     throw new Error('Your sign-in has been revoked — please sign in again.');
   }
   return session;
+}
+
+/** Signal the one-time passkey offer (lib/passkey-offer.ts) — set on every
+ *  code/link sign-in, scouts included; the public layout's PasskeyOfferGate
+ *  reads it on whatever page comes next and passkeyOfferEligibleAction()
+ *  filters scouts and passkey holders out downstream. A passkey sign-in
+ *  never sets it. */
+async function setWelcomeCookie(): Promise<void> {
+  const jar = await cookies();
+  jar.set(WELCOME_COOKIE.name, '1', welcomeCookieOptions());
+}
+
+/** The gate's one question: should this browser see the passkey offer now?
+ *  Verified adult, no passkey yet, server configured — anything else is no,
+ *  with no detail (the gate clears its cookie either way). */
+export async function passkeyOfferEligibleAction(): Promise<boolean> {
+  const session = await getIdentitySessionIfValid();
+  if (!session) return false;
+  const configured = passkeysConfigured();
+  const holds = configured ? await hasPasskey(createAdminClient(), session.personId) : false;
+  return shouldOfferPasskey({ configured, subjectKind: session.subjectKind, hasPasskey: holds });
 }
 
 export async function passkeyRegisterOptionsAction(): Promise<string | null> {

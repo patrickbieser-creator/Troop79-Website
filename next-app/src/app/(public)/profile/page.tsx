@@ -230,6 +230,12 @@ export default async function ProfilePage({
           <span>
             Signed in as <strong>{session!.displayName}</strong> ({householdLabel} household)
           </span>
+          {/* Adults only — scouts stay on codes (D-119). */}
+          {session!.subjectKind === 'adult' && (
+            <Link href={`/member?next=${encodeURIComponent('/profile')}`}>
+              Sign in with your phone, fingerprint, or face &rarr;
+            </Link>
+          )}
         </div>
       )}
 
