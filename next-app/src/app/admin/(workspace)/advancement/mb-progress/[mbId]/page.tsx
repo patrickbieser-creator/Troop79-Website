@@ -34,6 +34,7 @@ import type {
   MeritBadgeRequirement,
   Scout
 } from '@/lib/supabase/types';
+import { SCOUT_CORE_COLS } from '@/lib/scout-row';
 import styles from '../mb-progress.module.css';
 
 const RANK_LABEL: Record<string, string> = {
@@ -80,7 +81,7 @@ async function loadDetail(mbId: string) {
           .is('deleted_at', null)
           .range(from, to)
       ),
-      supabase.from('scouts').select('*').eq('active', true).order('display_name'),
+      supabase.from('scouts').select(SCOUT_CORE_COLS).eq('active', true).order('display_name'),
       supabase.from('scouts').select('id', { count: 'exact', head: true }).eq('active', true),
       supabase
         .from('merit_badge_counselors')
@@ -101,7 +102,7 @@ async function loadDetail(mbId: string) {
   // the follow-up promised when it was extracted in v1.78.0.
   const byScout = foldLedger(ledgerRows, mbId);
 
-  const allScouts = (scoutsRes.data ?? []) as Scout[];
+  const allScouts = (scoutsRes.data ?? []) as unknown as Scout[];
   const startedScouts = startedScoutsOf(allScouts, byScout);
 
   const leaderNameByCode = new Map<string, string>();

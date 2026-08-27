@@ -13,6 +13,7 @@ import { fmtDate } from '@/lib/format-date';
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { Scout, ScoutSummaryRow, Rank } from '@/lib/supabase/types';
+import { SCOUT_CORE_COLS } from '@/lib/scout-row';
 import { publicScoutName } from '@/lib/scout-name';
 import styles from './advancement.module.css';
 import { RosterTable, type RosterRow } from './roster-table';
@@ -42,7 +43,7 @@ interface AdvancementData {
 async function loadData(): Promise<AdvancementData | null> {
   const supabase = createAdminClient();
   const [scoutsRes, summaryRes, ranksRes] = await Promise.all([
-    supabase.from('scouts').select('*').eq('active', true).order('display_name'),
+    supabase.from('scouts').select(SCOUT_CORE_COLS).eq('active', true).order('display_name'),
     supabase.from('scout_summary').select('*'),
     supabase.from('ranks').select('*').order('sort_order')
   ]);
@@ -58,7 +59,7 @@ async function loadData(): Promise<AdvancementData | null> {
   }
 
   return {
-    scouts: (scoutsRes.data ?? []) as Scout[],
+    scouts: (scoutsRes.data ?? []) as unknown as Scout[],
     summary,
     ranks: (ranksRes.data ?? []) as Rank[]
   };

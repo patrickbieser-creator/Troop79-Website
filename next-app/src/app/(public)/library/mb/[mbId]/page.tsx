@@ -35,6 +35,7 @@ import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import type { MeritBadge, MeritBadgeRequirement, Scout } from '@/lib/supabase/types';
+import { SCOUT_CORE_COLS } from '@/lib/scout-row';
 import { buildReqTree, flattenLeaves, topLevelCodeOf, bsaPageUrl, workbookUrl } from '@/lib/mb-helpers';
 import {
   foldLedger,
@@ -132,7 +133,7 @@ export default async function LibraryMbPage({
         .is('deleted_at', null)
         .range(from, to)
     ),
-    supabase.from('scouts').select('*').eq('active', true).order('display_name'),
+    supabase.from('scouts').select(SCOUT_CORE_COLS).eq('active', true).order('display_name'),
     supabase.from('scouts').select('id', { count: 'exact', head: true }).eq('active', true)
   ]);
   if (!mb) notFound();
@@ -143,7 +144,7 @@ export default async function LibraryMbPage({
 
   // ── Tracker (all four decisions live in lib/mb-scout-progress.ts) ────────
   const byScout = foldLedger(ledgerRows, mbId);
-  const started = startedScouts((scoutRows ?? []) as Scout[], byScout);
+  const started = startedScouts((scoutRows ?? []) as unknown as Scout[], byScout);
   const stats = mbStats(started, byScout, totalActive ?? 0);
   const groups = gridGroups(reqTree, leaves);
 

@@ -128,3 +128,19 @@ describe('no template-built selects on scouts/leaders', () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe('no select(*) on scouts/leaders', () => {
+  it('NoScoutsOrLeadersRead_SelectsStar', () => {
+    // select('*') is typed as "whatever the table had at type-generation
+    // time", so a dropped column reads as undefined at runtime instead of
+    // failing typecheck — two live regressions on 2026-08-26. Name the
+    // columns (SCOUT_CORE_COLS) so the next drop is a compile error.
+    const offenders: string[] = [];
+    for (const file of files) {
+      const src = fs.readFileSync(file, 'utf8');
+      const re = /\.from\('(scouts|leaders)'\)\s*(?:\/\/[^\n]*\n\s*)*\.select\(\s*['"`]\*['"`]/g;
+      if (re.test(src)) offenders.push(path.relative(SRC, file));
+    }
+    expect(offenders).toEqual([]);
+  });
+});

@@ -72,9 +72,8 @@ export interface Scout {
   swim_class: 'swimmer' | 'beginner' | 'nonswimmer' | null;
   active: boolean;
   inactive_reason: InactiveReason | null;
-  joined_date: string | null;
-  last_activity: string | null;
-  auth_user_id: string | null;
+  /** Junior Leader override for event sign-ups: null = derive from grade 9–12. */
+  junior_leader_override: 'yes' | 'no' | null;
   /** The person spine link — every contact/demographic fact lives on this
    *  row's `people` counterpart. */
   person_id: number | null;

@@ -6,6 +6,7 @@
 
 import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
+import { SCOUT_CORE_COLS } from '@/lib/scout-row';
 import type {
   LedgerEntry,
   MeritBadge,
@@ -60,7 +61,7 @@ export interface ScoutDetail {
 export async function loadScoutDetail(scoutId: string): Promise<ScoutDetail | null> {
   const supabase = createAdminClient();
   const [scoutRes, summaryRes, ranksRes, rankReqsRes, ledgerRows, mbRes] = await Promise.all([
-    supabase.from('scouts').select('*').eq('id', scoutId).maybeSingle(),
+    supabase.from('scouts').select(SCOUT_CORE_COLS).eq('id', scoutId).maybeSingle(),
     supabase.from('scout_summary').select('*').eq('scout_id', scoutId).maybeSingle(),
     supabase.from('ranks').select('*').order('sort_order'),
     supabase
@@ -83,7 +84,7 @@ export async function loadScoutDetail(scoutId: string): Promise<ScoutDetail | nu
   ]);
 
   if (scoutRes.error || !scoutRes.data) return null;
-  const scout = scoutRes.data as Scout;
+  const scout = scoutRes.data as unknown as Scout;
 
   // bsa_member_id lives on people now (Plans/Retire-Roster-Contact-Columns.md).
   let bsaMemberId: string | null = null;
