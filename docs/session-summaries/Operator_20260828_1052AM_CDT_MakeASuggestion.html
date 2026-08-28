@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 30 — Make a Suggestion</title>
+<style>
+  :root { --nw-teal: #1e3a4a; --nw-green: #3d5a3e; --ink: #1a1a1a; --body: #363636; --meta: #787060; --cream: #faf6ef; --rule: #e2d9cc; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Open Sans", Arial, sans-serif; color: var(--body); background: var(--cream); line-height: 1.55; }
+  header { background: var(--nw-teal); color: #fff; padding: 28px 40px; }
+  header h1 { margin: 0 0 6px; font-family: Georgia, serif; font-size: 26px; }
+  header .sub { opacity: .85; font-size: 14px; }
+  main { max-width: 960px; margin: 0 auto; padding: 28px 40px 60px; }
+  h2 { font-family: Georgia, serif; color: var(--nw-teal); font-size: 20px; margin: 32px 0 10px; border-bottom: 2px solid var(--rule); padding-bottom: 6px; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 8px; }
+  .metric { background: #fff; border: 1px solid var(--rule); border-radius: 4px; padding: 12px 14px; }
+  .metric .n { font-size: 26px; font-weight: 700; color: var(--nw-green); }
+  .metric .l { font-size: 12px; color: var(--meta); text-transform: uppercase; letter-spacing: .06em; }
+  ul { padding-left: 20px; } li { margin: 6px 0; }
+  code { background: #fff; border: 1px solid var(--rule); padding: 1px 5px; border-radius: 2px; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; background: #fff; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { background: #f4efe6; color: var(--nw-teal); }
+  footer { color: var(--meta); font-size: 12px; text-align: center; padding: 20px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Session 30 — Make a Suggestion</h1>
+  <div class="sub">Troop 79 Website · 2026-08-28 00:00 → 10:50 CDT · Operator (Fable 5) · v1.114.0 → v1.115.0</div>
+</header>
+<main>
+  <h2>Key metrics</h2>
+  <div class="metrics">
+    <div class="metric"><div class="n">1</div><div class="l">commit, live</div></div>
+    <div class="metric"><div class="n">1562 → 1580</div><div class="l">tests</div></div>
+    <div class="metric"><div class="n">1</div><div class="l">decision D-255</div></div>
+    <div class="metric"><div class="n">3 / 4</div><div class="l">qa-lead warnings fixed</div></div>
+    <div class="metric"><div class="n">1</div><div class="l">backlog item closed</div></div>
+  </div>
+
+  <h2>What was accomplished</h2>
+  <ul>
+    <li><strong>Make a Suggestion (v1.115.0)</strong> — a standard secondary button on the right of the "Leader Dashboard" title opens the shared admin Dialog with a feedback form. The leader's name and primary email are shown read-only from the session; only the suggestion is typed. The message goes to the troop inbox and <code>SUGGESTION_OWNER_EMAIL</code> (default Patrick) with Reply-To set to the leader.</li>
+    <li><strong>Server side</strong> — <code>sendSuggestionAction</code> requires <code>advancement.write</code>, resolves identity from <code>resolveAdminActor</code> (never the form), and reports a half-delivered message (one inbox failed) as a failure rather than success.</li>
+    <li><strong>Tests</strong> — pure lib (recipients, validation, escaping), the action with mocks (gate, session identity, every send outcome), and the dialog (prefill, submit, blank, server error). Full gate: lint 0, typecheck, 1580 tests, build.</li>
+    <li><strong>Backlog</strong> — the "advancement roster doesn't fit iPhone portrait" item closed (Mark fixed it). <code>/code-review</code> of the previous commit found only a "12 vs 13 commits" tile in the session-29 summary.</li>
+  </ul>
+
+  <h2>Decisions</h2>
+  <table>
+    <tr><th>ID</th><th>Decision</th></tr>
+    <tr><td>D-255</td><td>Suggestion form: identity from the session, fixed troop-owned recipients (sanctioned exception to "nothing sends automatically"), partial delivery reported as failure, no rate limit for the ~10-leader circle.</td></tr>
+  </table>
+
+  <h2>Next steps</h2>
+  <ul>
+    <li>Patrick's prod walk — Verified Signup, household scope, passkey offer, and one real "Make a Suggestion" send (tests never reach Resend).</li>
+    <li>Household move should bump <code>session_epoch</code>.</li>
+    <li>Performance follow-ups: ISR + tag cache for public catalog pages, Roll Call qty debounce, watch the first receipts-on prod signup.</li>
+    <li>Per-actor cooldown on the suggestion action if more feedback-style actions appear.</li>
+  </ul>
+
+  <h2>Files of record</h2>
+  <ul>
+    <li><code>next-app/src/lib/suggestion-email.ts</code></li>
+    <li><code>next-app/src/app/admin/(workspace)/advancement/dashboard/suggestion-actions.ts</code>, <code>suggestion-button.tsx</code>, <code>suggestion-button.module.css</code>, <code>page.tsx</code></li>
+    <li><code>next-app/tests/suggestion-email.test.ts</code>, <code>suggestion-action.test.ts</code>, <code>suggestion-dialog.test.tsx</code></li>
+    <li><code>changelog.html</code> (v1.115.0)</li>
+  </ul>
+</main>
+<footer>Troop 79 Website · session summary generated by Operator · 2026-08-28</footer>
+</body>
+</html>
