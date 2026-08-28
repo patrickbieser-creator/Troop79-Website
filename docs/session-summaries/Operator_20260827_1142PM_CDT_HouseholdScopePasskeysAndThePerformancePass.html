@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session 29 — Household Scope, Passkeys Everywhere, and the Performance Pass</title>
+<style>
+  :root { --nw-teal: #1e3a4a; --nw-green: #3d5a3e; --ink: #1a1a1a; --body: #363636; --meta: #787060; --cream: #faf6ef; --rule: #e2d9cc; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Open Sans", Arial, sans-serif; color: var(--body); background: var(--cream); line-height: 1.55; }
+  header { background: var(--nw-teal); color: #fff; padding: 28px 40px; }
+  header h1 { margin: 0 0 6px; font-family: Georgia, serif; font-size: 26px; }
+  header .sub { opacity: .85; font-size: 14px; }
+  main { max-width: 960px; margin: 0 auto; padding: 28px 40px 60px; }
+  h2 { font-family: Georgia, serif; color: var(--nw-teal); font-size: 20px; margin: 32px 0 10px; border-bottom: 2px solid var(--rule); padding-bottom: 6px; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 8px; }
+  .metric { background: #fff; border: 1px solid var(--rule); border-radius: 4px; padding: 12px 14px; }
+  .metric .n { font-size: 26px; font-weight: 700; color: var(--nw-green); }
+  .metric .l { font-size: 12px; color: var(--meta); text-transform: uppercase; letter-spacing: .06em; }
+  ul { padding-left: 20px; } li { margin: 6px 0; }
+  code { background: #fff; border: 1px solid var(--rule); padding: 1px 5px; border-radius: 2px; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; background: #fff; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { background: #f4efe6; color: var(--nw-teal); }
+  footer { color: var(--meta); font-size: 12px; text-align: center; padding: 20px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Session 29 — Household Scope, Passkeys Everywhere, and the Performance Pass</h1>
+  <div class="sub">Troop 79 Website · 2026-08-27 09:00 → 23:45 CDT · Operator (Fable 5) · v1.107.4 → v1.114.0</div>
+</header>
+<main>
+  <h2>Key metrics</h2>
+  <div class="metrics">
+    <div class="metric"><div class="n">12</div><div class="l">commits, all live</div></div>
+    <div class="metric"><div class="n">1510 → 1562</div><div class="l">tests</div></div>
+    <div class="metric"><div class="n">18 / 18</div><div class="l">performance items shipped</div></div>
+    <div class="metric"><div class="n">4</div><div class="l">decisions D-251–D-254</div></div>
+    <div class="metric"><div class="n">5</div><div class="l">qa-lead SHIP (88–92)</div></div>
+    <div class="metric"><div class="n">−45%</div><div class="l">signup page TTFB (warm)</div></div>
+  </div>
+
+  <h2>What was accomplished</h2>
+  <ul>
+    <li><strong>Roster</strong> — one global search above the tabs that deep-links a hit into its tab and editor; one-line grids on every tab (inactive reason, "Vest (3)", BSA ID, Status last, guest date). Roll Call gained a Guests group — the phantom "1 present" was a seeded guest with no checkbox — and lost its summary count.</li>
+    <li><strong>Passkeys everywhere</strong> — the one-time offer follows any code or link sign-in on whatever page comes next; profile links to passkey setup.</li>
+    <li><strong>Household scope</strong> — a family signs up its own household only; the picker survives for leaders and <code>roster.manage</code> holders; enforced in submit and cancel.</li>
+    <li><strong>Performance review</strong> — measured first (prod pg_stat_statements, curl timings, route table): queries 1–18 ms, the cost was sequential round trips between Vercel iad1 and Supabase us-east-2 with nothing cached and the signup context loaded twice. Eighteen ranked items in <code>Plans/Performance-Review-2026-08-27.md</code>.</li>
+    <li><strong>Performance releases</strong> — v1.111.0 <code>cache()</code> on the loaders, confirmation email in <code>after()</code>, scoped <code>loadHouseholdByKey</code>; v1.111.1 Signup Roster/Snapshot read only their own event (was whole-table, wrong past 1,000 rows) + four indexes; v1.112.0 Roll Call batched seeding + optimistic checkbox; v1.113.0 tag-cached layout reads, revalidation trimmed where it actually hurt; v1.114.0 the remaining nine items via four parallel agents — workbench/roster loaders, audits snapshot, advancement-catalog cache, signup write batching, calendar one-year window, memoised signup form rows, MB/photos/scout-detail dedupe.</li>
+    <li><strong>Data hygiene</strong> — <code>select('*')</code> scouts sites moved to <code>SCOUT_CORE_COLS</code> with a guard test; 11 duplicate <code>person_emails</code> on merged-away rows removed in prod.</li>
+  </ul>
+
+  <h2>Blockers resolved</h2>
+  <ul>
+    <li>Roll Call tab pill stuck at "1" after unmarking everyone — attendance row for a guest outside <code>person_directory</code>; guests now listed.</li>
+    <li>Passkey offer only on hard reload — server-action <code>redirect()</code> is a client-side navigation, so the layout gate re-checks on <code>usePathname()</code> (memory written).</li>
+    <li><code>seo.ts</code> is imported by a client component — the cached settings loader moved to its own server module.</li>
+  </ul>
+
+  <h2>Decisions</h2>
+  <table>
+    <tr><th>ID</th><th>Decision</th></tr>
+    <tr><td>D-251</td><td>Household scope: own household only; picker for superusers; server-enforced.</td></tr>
+    <tr><td>D-252</td><td>Passkey offer is layout-level and cookie-driven; Roster search is the one page-level search exception.</td></tr>
+    <tr><td>D-253</td><td>Performance architecture: React <code>cache()</code> per request; <code>unstable_cache</code> + tag + <code>updateTag</code> + hourly fallback for site-wide/catalog reads; <code>after()</code> for post-response work; <code>revalidatePath</code> on dynamic routes stays; <code>'use cache'</code> not adopted.</td></tr>
+    <tr><td>D-254</td><td>Roll Call: one <code>recordAttendance</code> core for ticks and seeding; optimistic per-person client with one debounced refresh.</td></tr>
+  </table>
+
+  <h2>Next steps</h2>
+  <ul>
+    <li>Patrick's prod walk of Verified Signup + household scope + passkey offer; Bugle notice.</li>
+    <li>Household move should bump <code>session_epoch</code> (small).</li>
+    <li>Performance follow-ups: ISR + tag cache for the force-dynamic public catalog pages; Roll Call qty input debounce; watch the first receipts-on prod signup (<code>confirm_last_error</code>).</li>
+    <li>Verified Signup Phase B after one real cycle; B-004 password rotation.</li>
+  </ul>
+
+  <h2>Files of record</h2>
+  <ul>
+    <li><code>Plans/Performance-Review-2026-08-27.md</code> — the ranked list, every row marked DONE with corrections (#9, #13).</li>
+    <li><code>next-app/tests/revalidation-scope.test.ts</code>, <code>tests/household-by-key.test.ts</code>, <code>tests/signup-roster-reads.test.ts</code> — the guards.</li>
+    <li><code>next-app/src/lib/site-settings.ts</code>, <code>advancement-catalog.ts</code>, <code>person-directory.ts</code>, <code>signup-roster-reads.ts</code> — the new loaders.</li>
+    <li>Memory: <code>next-caching-lessons</code>, <code>server-action-redirect-is-client-side</code>.</li>
+  </ul>
+</main>
+<footer>Troop 79 Website · session summary generated by Operator · 2026-08-27</footer>
+</body>
+</html>
