@@ -18,6 +18,8 @@ import { loadRecentLogins, loadHouseholdsSignedInStats } from '@/lib/login-event
 import { fmtDate, fmtDateTime } from '@/lib/format-date';
 import styles from './dashboard.module.css';
 import { PageTitle } from '../../_components/page-title';
+import { SuggestionButton } from './suggestion-button';
+import { loadSuggestionActor, sendSuggestionAction } from './suggestion-actions';
 
 const RECENT_LIMIT = 10;
 const LIKELY_READY_THRESHOLD = 0.6; // 60% of next-rank reqs done → surface
@@ -272,11 +274,12 @@ const METHOD_LABEL: Record<'link' | 'code' | 'passkey', string> = {
 
 export default async function DashboardPage() {
   await requireCapability('advancement.write');
-  const [data, attentionCategories, recentLogins, householdsSignedIn] = await Promise.all([
+  const [data, attentionCategories, recentLogins, householdsSignedIn, suggestionActor] = await Promise.all([
     loadDashboard(),
     loadAttentionCategories(),
     loadRecentLogins(createAdminClient(), 15),
-    loadHouseholdsSignedInStats(createAdminClient())
+    loadHouseholdsSignedInStats(createAdminClient()),
+    loadSuggestionActor()
   ]);
 
   return (
@@ -307,7 +310,13 @@ export default async function DashboardPage() {
       <PageTitle back={null}
         title="Leader Dashboard"
         sub="Operational overview for the advancement chair. Numbers update from the universal ledger."
-      />
+      >
+        <SuggestionButton
+          actorName={suggestionActor.name}
+          actorEmail={suggestionActor.email}
+          action={sendSuggestionAction}
+        />
+      </PageTitle>
 
       <div className={styles.stats}>
         <Stat
