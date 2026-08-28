@@ -16,6 +16,7 @@ import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireCapability } from '@/lib/require-capability';
 import { fetchAllRows } from '@/lib/supabase/paginate';
+import { loadSignupAnswers } from '@/lib/signup-roster-reads';
 import { isParticipantClass, isYouthClass, PARTICIPANT_CLASS_LABEL, PARTICIPANT_CLASS_SHORT, type ParticipantClass } from '@/lib/participant-class';
 import { gradeFromGradYear } from '@/lib/demographics';
 import { isRideStatus, LEG_LABEL, type Leg } from '@/lib/transport';
@@ -75,7 +76,7 @@ export async function loadSnapshot(signupId: number): Promise<{ input: SnapshotI
       supabase.from('signup_entry_balances').select('entry_id, owed, paid, balance').eq('event_signup_id', s.id),
       supabase.from('signup_group_sets').select('id, label, kind, leg, sort').eq('event_signup_id', s.id).order('sort').order('id'),
       supabase.from('signup_questions').select('id, prompt, input_type, choices, leader_only, print_allowed, sort').eq('event_signup_id', s.id).order('sort').order('id'),
-      supabase.from('signup_answers').select('signup_entry_id, question_id, value'),
+      loadSignupAnswers(supabase, s.id).then((data) => ({ data })),
       supabase.from('people').select('id, display_name, primary_phone, primary_email'),
       supabase.from('scouts').select('id, person_id, graduation_year'),
       supabase.from('households').select('id, label'),

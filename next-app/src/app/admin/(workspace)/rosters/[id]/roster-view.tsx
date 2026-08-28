@@ -1,4 +1,5 @@
 import { addCandidatesFor } from '@/lib/event-signup-admin';
+import { loadSignupClaims, loadSignupAnswers } from '@/lib/signup-roster-reads';
 import {
   isParticipantClass,
   isYouthClass,
@@ -119,8 +120,8 @@ export async function loadRoster(signupId: number) {
     supabase.from('signup_entries').select('*').eq('event_signup_id', sig.id),
     supabase.from('event_prices').select('*').eq('event_signup_id', sig.id),
     supabase.from('signup_slots').select('*').eq('event_signup_id', sig.id).order('sort'),
-    supabase.from('signup_slot_claims').select('slot_id, signup_entry_id, comment'),
-    supabase.from('signup_answers').select('signup_entry_id, question_id, value'),
+    loadSignupClaims(supabase, sig.id).then((data) => ({ data })),
+    loadSignupAnswers(supabase, sig.id).then((data) => ({ data })),
     supabase
       .from('signup_questions')
       .select('id, prompt, input_type, choices, applies_to, leader_only, print_allowed, sort')
