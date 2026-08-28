@@ -19,8 +19,13 @@ import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { WELCOME_COOKIE } from '@/lib/passkey-offer';
 import { passkeyOfferEligibleAction } from '@/app/(public)/signin/actions';
-import { PasskeyOffer } from './passkey-offer';
+import dynamic from 'next/dynamic';
 import styles from './passkey-offer.module.css';
+
+// Loaded only when the offer is actually shown: @simplewebauthn/browser
+// otherwise rides in every public page's shared chunk
+// (Plans/Performance-Review-2026-08-27.md #8).
+const PasskeyOffer = dynamic(() => import('./passkey-offer').then((m) => m.PasskeyOffer), { ssr: false });
 
 function hasWelcomeCookie(): boolean {
   if (typeof document === 'undefined') return false;

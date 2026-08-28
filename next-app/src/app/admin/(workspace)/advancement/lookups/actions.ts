@@ -1,6 +1,6 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, updateTag } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { writePersonDemographics } from '@/lib/write-person-demographics';
@@ -1226,7 +1226,10 @@ export async function saveArticleTokens(formData: FormData): Promise<Result> {
     if (error) return { ok: false, error: error.message };
   }
 
-  // Every surface that renders prose.
+  // Every surface that renders prose: updateTag expires the tagged DATA read
+  // (lib/article-tokens-server.ts); the layout purge drops the rendered PAGES
+  // that embedded the old values. Both are needed — neither covers the other.
+  updateTag('article-tokens');
   revalidatePath('/', 'layout');
   return { ok: true };
 }
@@ -1258,6 +1261,7 @@ export async function saveSiteText(formData: FormData): Promise<Result> {
     const { error } = await supabase.from('site_settings').upsert(upserts, { onConflict: 'key' });
     if (error) return { ok: false, error: error.message };
   }
+  updateTag('site-settings');
   revalidatePath('/admin/advancement/lookups');
   return { ok: true };
 }
@@ -1297,6 +1301,7 @@ export async function saveSeoSettings(formData: FormData): Promise<Result> {
   revalidatePath('/admin/advancement/lookups');
   // Both crawler-facing routes read site_settings at request time, but the
   // public layout's Organization block is part of every rendered page.
+  updateTag('site-settings');
   revalidatePath('/robots.txt');
   revalidatePath('/sitemap.xml');
   revalidatePath('/', 'layout');

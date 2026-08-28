@@ -8,6 +8,7 @@
  */
 
 import { cache } from 'react';
+import { unstable_cache } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { TokenValues } from '@/lib/article-tokens';
 
@@ -19,13 +20,22 @@ import type { TokenValues } from '@/lib/article-tokens';
  * article page. This is the one place a swallowed error is the right call —
  * the fallback is complete and correct by construction.
  */
-export const loadArticleTokens = cache(async function loadArticleTokens(): Promise<TokenValues> {
-  const supabase = createAdminClient();
-  const { data, error } = await supabase.from('article_style_tokens').select('token, value');
-  if (error || !data) return {};
-  const out: TokenValues = {};
-  for (const row of data as { token: string; value: string }[]) {
-    out[row.token] = row.value;
-  }
-  return out;
-});
+/** Across requests, under the `article-tokens` tag — the public layout reads
+ *  this on every page; saveArticleTokens() expires it
+ *  (Plans/Performance-Review-2026-08-27.md #8). */
+const cachedTokens = unstable_cache(
+  async (): Promise<TokenValues> => {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase.from('article_style_tokens').select('token, value');
+    if (error || !data) return {};
+    const out: TokenValues = {};
+    for (const row of data as { token: string; value: string }[]) {
+      out[row.token] = row.value;
+    }
+    return out;
+  },
+  ['article-tokens'],
+  { tags: ['article-tokens'] }
+);
+
+export const loadArticleTokens = cache((): Promise<TokenValues> => cachedTokens());

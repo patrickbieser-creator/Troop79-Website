@@ -319,8 +319,9 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
     })
   );
 
+  // Not `/events`: the list shows no signup data, and it is the one ISR page
+  // (Plans/Performance-Review-2026-08-27.md #9).
   revalidatePath(`/events/${eventId}`);
-  revalidatePath('/events');
   redirect(`${back}&saved=1`);
 }
 
@@ -376,8 +377,9 @@ export async function cancelSignupAction(formData: FormData): Promise<void> {
       })
     );
   }
+  // Not `/events`: the list shows no signup data, and it is the one ISR page
+  // (Plans/Performance-Review-2026-08-27.md #9).
   revalidatePath(`/events/${eventId}`);
-  revalidatePath('/events');
   redirect(`${back}&cancelled=1`);
 }
 

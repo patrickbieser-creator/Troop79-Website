@@ -62,13 +62,14 @@ export async function savePatrolAssignments(draft: PatrolDraft): Promise<Result>
 
   // Every surface that shows a patrol: the roster, this screen, the printable
   // family roster's Patrols page, the public advancement table and its filter,
-  // the meeting plan (which splits cohorts by patrol), and scout pages.
+  // the meeting plan (which splits cohorts by patrol).
   revalidatePath('/admin/advancement/roster');
   revalidatePath('/admin/advancement/roster/patrols');
   revalidatePath('/admin/roster-print');
   revalidatePath('/admin/advancement/meeting-plan');
   revalidatePath('/advancement');
-  revalidatePath('/', 'layout');
+  // Scout pages are rendered per request — no site-wide purge needed
+  // (Plans/Performance-Review-2026-08-27.md #9).
 
   return { ok: true, changed: changes.length };
 }
