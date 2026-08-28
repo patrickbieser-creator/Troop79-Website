@@ -75,3 +75,36 @@ describe('Roll Call — optimistic checkbox', () => {
     expect(refresh).not.toHaveBeenCalled();
   });
 });
+
+describe('Roll Call — a refresh mid-tap', () => {
+  it('KeepsTheInFlightTick_WhenFreshRowsArriveForAnEarlierOne', async () => {
+    let settle: (r: { ok: boolean }) => void = () => {};
+    const onMark = vi.fn(() => new Promise<{ ok: boolean }>((resolve) => (settle = resolve)));
+    const { rerender } = renderSheet({ onMark });
+
+    const blake = screen.getByLabelText(/Blake Scout/) as HTMLInputElement;
+    await userEvent.click(blake);
+    expect(blake.checked).toBe(true);
+
+    // An earlier tap's refresh delivers new rows that don't yet include Blake.
+    rerender(
+      <RollCall
+        entryId={109}
+        entryTitle="PLC Meeting"
+        creditKind={null}
+        creditUnit={null}
+        countsAsActivity={false}
+        defaultQty={1}
+        hasSignup={false}
+        candidates={candidates}
+        attendance={[...attendance]}
+        onMark={onMark}
+        onUnmark={vi.fn()}
+        onSetQty={vi.fn()}
+        onSeed={vi.fn()}
+      />
+    );
+    expect((screen.getByLabelText(/Blake Scout/) as HTMLInputElement).checked).toBe(true);
+    settle({ ok: true });
+  });
+});
