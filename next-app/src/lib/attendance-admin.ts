@@ -84,13 +84,16 @@ export async function syncCredit(
   ctx: EntryContext,
   personId: number,
   qty: number,
-  by: string
+  by: string,
+  /** Pass the scout id when the caller already looked it up (recordAttendance
+   *  does) — saves a round trip per person. */
+  knownScoutId?: string | null
 ): Promise<Result> {
   if (!ctx.creditKind) return { ok: true }; // category grants nothing
 
   let scoutId: string | null;
   try {
-    scoutId = await scoutIdFor(db, personId);
+    scoutId = knownScoutId !== undefined ? knownScoutId : await scoutIdFor(db, personId);
   } catch (e) {
     return { ok: false, error: (e as Error).message };
   }
@@ -193,4 +196,79 @@ export async function adoptLegacyCredit(
     .eq('scout_id', scoutId)
     .eq('code', ledgerCodeFor(ctx.creditKind, ctx.id, ctx.entryDate))
     .eq('date', ctx.entryDate);
+}
+
+/**
+ * Mark one person present: attendance row, legacy-credit adoption, then the
+ * ledger credit. The core of markAttended() and of seeding — one place, so a
+ * hand tick and a seeded row can never drift apart
+ * (Plans/Performance-Review-2026-08-27.md #5).
+ */
+export async function recordAttendance(
+  db: Db,
+  ctx: EntryContext,
+  personId: number,
+  qty: number | null,
+  source: 'manual' | 'signup',
+  by: string
+): Promise<Result> {
+  const effectiveQty = qty ?? ctx.defaultQty;
+
+  const { error: attErr } = await db.from('event_attendance').upsert(
+    {
+      calendar_entry_id: ctx.id,
+      person_id: personId,
+      qty: effectiveQty,
+      source,
+      recorded_by: by
+    },
+    { onConflict: 'calendar_entry_id,person_id' }
+  );
+  if (attErr) return { ok: false, error: attErr.message };
+
+  /*
+   * Adopt any pre-Roll-Call credit BEFORE writing our own. The retired meetings
+   * screen wrote MTG:<date> rows with no calendar_entry_id; syncCredit keys on
+   * that column, so without this the first Roll Call of a meeting somebody was
+   * already checked into would insert a second row for the same scout and date.
+   */
+  let scoutId: string | null;
+  try {
+    scoutId = await scoutIdFor(db, personId);
+    if (scoutId) await adoptLegacyCredit(db, ctx, scoutId);
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+
+  return syncCredit(db, ctx, personId, effectiveQty, by, scoutId);
+}
+
+/**
+ * Seed a roll call from a list of people with ONE context: the list is
+ * written a few people at a time (each person's rows are independent — a
+ * different attendance row, a different scout's ledger line), instead of the
+ * old one-at-a-time loop that re-authenticated, re-read the entry and
+ * revalidated four paths for every name. Thirty signups was ~240 sequential
+ * round trips; it is now ~4 per person, in parallel batches.
+ */
+export async function seedAttendance(
+  db: Db,
+  ctx: EntryContext,
+  personIds: number[],
+  by: string
+): Promise<{ added: number; problems: string[] }> {
+  const BATCH = 6;
+  let added = 0;
+  const problems: string[] = [];
+  const ids = [...new Set(personIds)];
+  for (let i = 0; i < ids.length; i += BATCH) {
+    const results = await Promise.all(
+      ids.slice(i, i + BATCH).map((personId) => recordAttendance(db, ctx, personId, null, 'signup', by))
+    );
+    for (const r of results) {
+      if (r.ok) added += 1;
+      else problems.push(r.error ?? 'unknown');
+    }
+  }
+  return { added, problems };
 }

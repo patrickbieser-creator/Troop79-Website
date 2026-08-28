@@ -443,3 +443,35 @@ describe('guests on the roll', () => {
     ]);
   });
 });
+
+describe('seeding from the signup (Plans/Performance-Review-2026-08-27.md #5)', () => {
+  it('SeedAttendance_MarksEveryoneOnce_AndCreditsOnlyTheScout', async () => {
+    const { recordAttendance, seedAttendance } = await import('@/lib/attendance-admin');
+    const ctx = { id: entryId, entryDate: '2027-09-10', title: `${FIXTURE} campout`, creditKind: 'camping_nights' as const, defaultQty: 2 };
+    await admin.from('event_attendance').delete().eq('calendar_entry_id', entryId);
+    await admin.from('ledger_entries').delete().eq('scout_id', SCOUT_ID);
+
+    // The loop used to re-authenticate, reload the entry and revalidate four
+    // paths PER PERSON; now one context serves the whole list and the rows
+    // are written a few at a time.
+    const res = await seedAttendance(admin, ctx, [scoutPersonId, adultPersonId, scoutPersonId], 'vitest');
+    expect(res.problems).toEqual([]);
+    expect(res.added).toBe(2); // the repeated id is one person, one row
+
+    const { data: att } = await admin.from('event_attendance').select('person_id, qty, source').eq('calendar_entry_id', entryId).order('person_id');
+    expect(att).toEqual(
+      [scoutPersonId, adultPersonId].sort((a, b) => a - b).map((person_id) => ({ person_id, qty: 2, source: 'signup' }))
+    );
+    const { data: led } = await admin.from('ledger_entries').select('scout_id, qty').eq('calendar_entry_id', entryId);
+    expect(led).toEqual([{ scout_id: SCOUT_ID, qty: 2 }]);
+
+    // A single hand-marked row goes through the same core.
+    const one = await recordAttendance(admin, ctx, scoutPersonId, 1, 'manual', 'vitest');
+    expect(one).toEqual({ ok: true });
+    const { data: after } = await admin.from('event_attendance').select('qty, source').eq('calendar_entry_id', entryId).eq('person_id', scoutPersonId).single();
+    expect(after).toEqual({ qty: 1, source: 'manual' });
+
+    await admin.from('event_attendance').delete().eq('calendar_entry_id', entryId);
+    await admin.from('ledger_entries').delete().eq('scout_id', SCOUT_ID);
+  });
+});

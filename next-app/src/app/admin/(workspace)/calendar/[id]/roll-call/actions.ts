@@ -15,9 +15,9 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { loadCalendarCategories } from '@/lib/calendar';
 import { creditRuleFor, defaultQtyFor } from '@/lib/attendance-shared';
 import {
-  adoptLegacyCredit,
+  recordAttendance,
   retireCredit,
-  scoutIdFor,
+  seedAttendance,
   syncCredit,
   type EntryContext,
   type Result
@@ -66,37 +66,9 @@ export async function markAttended(
   const ctx = await loadEntryContext(entryId);
   if (!ctx) return { ok: false, error: 'That entry no longer exists.' };
 
-  const supabase = createAdminClient();
-  const effectiveQty = qty ?? ctx.defaultQty;
-
-  const { error: attErr } = await supabase.from('event_attendance').upsert(
-    {
-      calendar_entry_id: entryId,
-      person_id: personId,
-      qty: effectiveQty,
-      source,
-      recorded_by: session.label
-    },
-    { onConflict: 'calendar_entry_id,person_id' }
-  );
-  if (attErr) return { ok: false, error: attErr.message };
-
-  /*
-   * Adopt any pre-Roll-Call credit BEFORE writing our own. The retired meetings
-   * screen wrote MTG:<date> rows with no calendar_entry_id; syncCredit keys on
-   * that column, so without this the first Roll Call of a meeting somebody was
-   * already checked into would insert a second row for the same scout and date.
-   */
-  try {
-    const scoutId = await scoutIdFor(supabase, personId);
-    if (scoutId) await adoptLegacyCredit(supabase, ctx, scoutId);
-  } catch (e) {
-    return { ok: false, error: (e as Error).message };
-  }
-
-  const creditResult = await syncCredit(supabase, ctx, personId, effectiveQty, session.label);
+  const result = await recordAttendance(createAdminClient(), ctx, personId, qty ?? null, source, session.label);
   revalidateRollCall(entryId);
-  return creditResult;
+  return result;
 }
 
 export async function markAbsent(entryId: number, personId: number): Promise<Result> {
@@ -162,7 +134,9 @@ export async function setAttendanceQty(
  * never touched by anything on this screen.
  */
 export async function seedFromSignup(entryId: number): Promise<Result & { added?: number }> {
-  await requireCapability('advancement.write');
+  const session = await requireCapability('advancement.write');
+  const ctx = await loadEntryContext(entryId);
+  if (!ctx) return { ok: false, error: 'That entry no longer exists.' };
   const supabase = createAdminClient();
 
   const { data: signup } = await supabase
@@ -182,13 +156,10 @@ export async function seedFromSignup(entryId: number): Promise<Result & { added?
     .map((e) => e.person_id as number | null)
     .filter((id): id is number => id != null);
 
-  let added = 0;
-  const problems: string[] = [];
-  for (const personId of personIds) {
-    const res = await markAttended(entryId, personId, null, 'signup');
-    if (res.ok) added += 1;
-    else problems.push(res.error ?? 'unknown');
-  }
+  // One authenticated context for the whole list, batched writes, one
+  // revalidation — not a markAttended() round per name
+  // (Plans/Performance-Review-2026-08-27.md #5).
+  const { added, problems } = await seedAttendance(supabase, ctx, personIds, session.label);
   revalidateRollCall(entryId);
   return problems.length
     ? { ok: true, added, error: `${added} added; ${problems.length} failed.` }

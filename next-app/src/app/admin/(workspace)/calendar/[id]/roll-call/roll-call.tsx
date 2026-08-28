@@ -17,7 +17,7 @@
  * which other tabs hold a match.
  */
 
-import { useMemo, useState, useTransition } from 'react';
+import { useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { AttendanceRow, AttendeeCandidate, CreditKind } from '@/lib/attendance-shared';
 import { reconcileWithSignup } from '@/lib/attendance-shared';
@@ -73,14 +73,59 @@ export function RollCall({
   const router = useRouter();
   const [q, setQ] = useState('');
   const [err, setErr] = useState<string | null>(null);
-  const [busy, setBusy] = useState<number | null>(null);
+  /** People whose write is in flight — only THEIR control is disabled. */
+  const [busy, setBusy] = useState<ReadonlySet<number>>(() => new Set());
+  const [seeding, setSeeding] = useState(false);
   const [, startTransition] = useTransition();
+
+  /*
+   * Optimistic rows (Plans/Performance-Review-2026-08-27.md #6). A tap flips
+   * the box at once; the server's answer arrives later. Overrides are tied
+   * to the `attendance` prop they were made against, so the moment a refresh
+   * delivers fresh rows they fall away without an effect — state-from-props
+   * without the setState-in-effect the React compiler lint forbids.
+   */
+  const [optimistic, setOptimistic] = useState<{ base: AttendanceRow[]; rows: Map<number, AttendanceRow | null> }>(
+    () => ({ base: attendance, rows: new Map() })
+  );
+  // …except for people whose write is STILL in flight: a refresh triggered by
+  // an earlier tap must not un-tick a later one before its own write lands.
+  const overrides = useMemo(
+    () =>
+      optimistic.base === attendance
+        ? optimistic.rows
+        : new Map([...optimistic.rows].filter(([personId]) => busy.has(personId))),
+    [optimistic, attendance, busy]
+  );
+  function setOverride(personId: number, row: AttendanceRow | null | undefined) {
+    setOptimistic((cur) => {
+      const rows = new Map(cur.base === attendance ? cur.rows : [...cur.rows].filter(([id]) => busy.has(id)));
+      if (row === undefined) rows.delete(personId);
+      else rows.set(personId, row);
+      return { base: attendance, rows };
+    });
+  }
 
   const byPerson = useMemo(() => {
     const m = new Map<number, AttendanceRow>();
     for (const a of attendance) m.set(a.personId, a);
+    for (const [personId, row] of overrides) {
+      if (row) m.set(personId, row);
+      else m.delete(personId);
+    }
     return m;
-  }, [attendance]);
+  }, [attendance, overrides]);
+
+  // One refresh for a burst of taps, off the critical path: the workbench
+  // re-render (its own ten queries) used to run after EVERY checkbox.
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function scheduleRefresh() {
+    if (refreshTimer.current) clearTimeout(refreshTimer.current);
+    refreshTimer.current = setTimeout(() => {
+      refreshTimer.current = null;
+      router.refresh();
+    }, 600);
+  }
 
   const attended = useMemo(() => new Set(byPerson.keys()), [byPerson]);
   const { missedSignup, unexpected } = useMemo(
@@ -112,29 +157,46 @@ export function RollCall({
 
   const [tab, setTab] = useState(() => groups[0]?.key ?? 'active_scout');
 
-  function run(personId: number, fn: () => Promise<Result>) {
+  /** Write for one person, showing `next` immediately; on failure the row
+   *  goes back to what the server last said and the error is shown. */
+  function run(personId: number, next: AttendanceRow | null, fn: () => Promise<Result>) {
     setErr(null);
-    setBusy(personId);
+    setBusy((cur) => new Set(cur).add(personId));
+    setOverride(personId, next);
     startTransition(async () => {
       const res = await fn();
-      setBusy(null);
-      if (!res.ok) setErr(res.error ?? 'That did not save.');
-      else router.refresh();
+      setBusy((cur) => {
+        const s = new Set(cur);
+        s.delete(personId);
+        return s;
+      });
+      if (!res.ok) {
+        setOverride(personId, undefined);
+        setErr(res.error ?? 'That did not save.');
+      } else scheduleRefresh();
     });
   }
 
   function toggle(c: AttendeeCandidate, on: boolean) {
-    run(c.personId, () =>
-      on ? onMark(entryId, c.personId) : onUnmark(entryId, c.personId)
-    );
+    const current = byPerson.get(c.personId);
+    const next: AttendanceRow | null = on
+      ? { id: current?.id ?? -c.personId, personId: c.personId, qty: null, source: 'manual', note: null }
+      : null;
+    run(c.personId, next, () => (on ? onMark(entryId, c.personId) : onUnmark(entryId, c.personId)));
+  }
+
+  function setQty(c: AttendeeCandidate, qty: number) {
+    const current = byPerson.get(c.personId);
+    if (!current) return;
+    run(c.personId, { ...current, qty }, () => onSetQty(entryId, c.personId, qty));
   }
 
   function seed() {
     setErr(null);
-    setBusy(-1);
+    setSeeding(true);
     startTransition(async () => {
       const res = await onSeed(entryId);
-      setBusy(null);
+      setSeeding(false);
       if (!res.ok) setErr(res.error ?? 'Could not seed from the signup.');
       else router.refresh();
     });
@@ -154,13 +216,13 @@ export function RollCall({
             : ' Does not count as a troop activity — this is a meeting.'}
         </span>
         {hasSignup && (
-          <AddButton onClick={seed} disabled={busy !== null}>
-            {busy === -1 ? 'Seeding…' : 'Mark everyone who signed up'}
+          <AddButton onClick={seed} disabled={seeding || busy.size > 0}>
+            {seeding ? 'Seeding…' : 'Mark everyone who signed up'}
           </AddButton>
         )}
       </div>
 
-      {err && <div className={styles.error}>{err}</div>}
+      {err && <div className={styles.error} role="alert">{err}</div>}
 
       {hasSignup && (missedSignup.length > 0 || unexpected.length > 0) && (
         <div className={styles.mismatch}>
@@ -244,7 +306,7 @@ export function RollCall({
                     <input
                       type="checkbox"
                       checked={isHere}
-                      disabled={busy !== null}
+                      disabled={seeding || busy.has(c.personId)}
                       onChange={(e) => toggle(c, e.target.checked)}
                     />
                     <span>{c.displayName}</span>
@@ -258,13 +320,9 @@ export function RollCall({
                         min={0}
                         step={creditUnit === 'hours' ? 0.5 : 1}
                         value={row?.qty ?? defaultQty}
-                        disabled={busy !== null}
+                        disabled={seeding || busy.has(c.personId)}
                         aria-label={`${creditUnit} for ${c.displayName}`}
-                        onChange={(e) =>
-                          run(c.personId, () =>
-                            onSetQty(entryId, c.personId, Number(e.target.value))
-                          )
-                        }
+                        onChange={(e) => setQty(c, Number(e.target.value))}
                       />
                       {creditUnit}
                     </span>
