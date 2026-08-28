@@ -27,52 +27,34 @@
  * rank_award and every other kind in this schema (confirmed with user).
  */
 
-import type { createAdminClient } from '@/lib/supabase/server';
-import { fetchAllRows } from '@/lib/supabase/paginate';
 import { fmtDate } from '@/lib/format-date';
 import type { Finding } from '../types';
+import { activeScouts, ledgerOfKind, type AuditInput } from '../audit-input';
 
 const THRESHOLDS: { rankId: string; rankLabel: string; prereqRankId: string; prereqLabel: string }[] = [
   { rankId: 'star', rankLabel: 'Star', prereqRankId: 'first-class', prereqLabel: 'First Class' },
   { rankId: 'life', rankLabel: 'Life', prereqRankId: 'star', prereqLabel: 'Star' }
 ];
 
-export async function run(supabase: ReturnType<typeof createAdminClient>): Promise<Finding[]> {
-  const [awardRows, leadershipRows, rankReqsRes, existingRows, scoutsRes] = await Promise.all([
-    fetchAllRows<{ scout_id: string; code: string; date: string }>((from, to) =>
-      supabase
-        .from('ledger_active')
-        .select('scout_id, code, date')
-        .eq('kind', 'rank_award')
-        .in('code', THRESHOLDS.map((t) => t.prereqRankId))
-        .range(from, to)
-    ),
-    fetchAllRows<{ scout_id: string; label: string | null; date: string }>((from, to) =>
-      supabase.from('ledger_active').select('scout_id, label, date').eq('kind', 'leadership').range(from, to)
-    ),
-    supabase
-      .from('rank_requirements')
-      .select('rank_id, label')
-      .in('rank_id', THRESHOLDS.map((t) => t.rankId))
-      .eq('code', '5'),
-    supabase
-      .from('ledger_active')
-      .select('scout_id, code')
-      .eq('kind', 'rank_requirement')
-      .in('code', THRESHOLDS.map((t) => `${t.rankId}-5`)),
-    supabase.from('scouts').select('id, display_name').eq('active', true)
-  ]);
+export async function run(input: AuditInput): Promise<Finding[]> {
+  const rankIds = new Set(THRESHOLDS.map((t) => t.rankId));
+  const prereqRankIds = new Set(THRESHOLDS.map((t) => t.prereqRankId));
+  const codes5 = new Set(THRESHOLDS.map((t) => `${t.rankId}-5`));
+  const awardRows = ledgerOfKind(input.ledger, ['rank_award']).filter((r) => prereqRankIds.has(r.code));
+  const leadershipRows = ledgerOfKind(input.ledger, ['leadership']);
+  const existingRows = ledgerOfKind(input.ledger, ['rank_requirement']).filter((r) => codes5.has(r.code));
+  const scouts = activeScouts(input.scouts);
 
   const labelByRank = new Map<string, string>();
-  for (const r of (rankReqsRes.data ?? []) as { rank_id: string; label: string }[]) {
-    labelByRank.set(r.rank_id, r.label);
+  for (const r of input.rankRequirements) {
+    if (r.code === '5' && rankIds.has(r.rank_id)) labelByRank.set(r.rank_id, r.label);
   }
   const scoutNameById = new Map<string, string>();
-  for (const s of (scoutsRes.data ?? []) as { id: string; display_name: string }[]) {
+  for (const s of scouts) {
     scoutNameById.set(s.id, s.display_name);
   }
   const existing = new Set<string>();
-  for (const row of (existingRows.data ?? []) as { scout_id: string; code: string }[]) {
+  for (const row of existingRows) {
     existing.add(`${row.scout_id}|||${row.code}`);
   }
 
@@ -90,7 +72,6 @@ export async function run(supabase: ReturnType<typeof createAdminClient>): Promi
     termsByScout.set(row.scout_id, list);
   }
 
-  const scouts = (scoutsRes.data ?? []) as { id: string; display_name: string }[];
   const findings: Finding[] = [];
   for (const scout of scouts) {
     for (const t of THRESHOLDS) {

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { adminClient } from './helpers/admin-client';
 import { run } from '@/app/admin/(workspace)/advancement/audits/checks/activity-thresholds';
+import { loadAuditInput } from '@/app/admin/(workspace)/advancement/audits/audit-input';
 
 /**
  * The "activity" umbrella (Patrick, 2026-08-14).
@@ -26,6 +27,13 @@ const SCOUT_ID = `zzvitest-act-${process.pid}`;
 /** Only this fixture scout's findings, so real roster data can't sway the test. */
 function findingsFor(all: Awaited<ReturnType<typeof run>>, rankLabel: string) {
   return all.filter((f) => f.scoutId === SCOUT_ID && f.groupLabel === rankLabel);
+}
+
+/** run() now takes a shared snapshot (item 10, perf review 2026-08-27)
+ *  instead of the raw client — reload it fresh each call so a test's write
+ *  right before is visible, the same as calling run(admin) used to be. */
+async function runCheck() {
+  return run(await loadAuditInput(admin));
 }
 
 async function logActivity(kind: string, code: string, date: string) {
@@ -63,7 +71,7 @@ describe('activity thresholds — the umbrella', () => {
     await logActivity('camping_nights', 'ZZVIT-CAMP-2', '2026-02-10');
     await logActivity('camping_nights', 'ZZVIT-CAMP-3', '2026-03-10');
 
-    const findings = await run(admin);
+    const findings = await runCheck();
     expect(findingsFor(findings, 'Second Class')).toHaveLength(0);
   });
 
@@ -73,7 +81,7 @@ describe('activity thresholds — the umbrella', () => {
     await logActivity('fundraiser', 'ZZVIT-FUND-1', '2026-04-10');
     await logActivity('service_hours', 'ZZVIT-SERV-1', '2026-05-10');
 
-    const findings = await run(admin);
+    const findings = await runCheck();
     const mine = findingsFor(findings, 'Second Class');
     expect(mine).toHaveLength(1);
     expect(mine[0].contextLine).toContain('5 activities');
@@ -82,7 +90,7 @@ describe('activity thresholds — the umbrella', () => {
 
   it('DayOutings_CountTowardTheUmbrella_ThoughTheyLogNoQuantity', async () => {
     await logActivity('day_outing', 'ZZVIT-DAY-1', '2026-06-10');
-    const findings = await run(admin);
+    const findings = await runCheck();
     expect(findingsFor(findings, 'Second Class')[0].contextLine).toContain('6 activities');
   });
 
@@ -92,18 +100,18 @@ describe('activity thresholds — the umbrella', () => {
     await logActivity('camping_nights', 'ZZVIT-CAMP-4', '2026-07-10');
     await logActivity('camping_nights', 'ZZVIT-CAMP-4', '2026-07-11');
 
-    const findings = await run(admin);
+    const findings = await runCheck();
     const mine = findingsFor(findings, 'Second Class')[0];
     expect(mine.contextLine).toContain('7 activities');
     expect(mine.contextLine).toContain('4 campouts');
   });
 
   it('Meetings_NeverCount_HoweverManyTheScoutAttends', async () => {
-    const before = findingsFor(await run(admin), 'Second Class')[0].contextLine;
+    const before = findingsFor(await runCheck(), 'Second Class')[0].contextLine;
     for (let i = 1; i <= 4; i += 1) {
       await logActivity('meeting_attendance', `MTG:2026-08-0${i}`, `2026-08-0${i}`);
     }
-    const after = findingsFor(await run(admin), 'Second Class')[0].contextLine;
+    const after = findingsFor(await runCheck(), 'Second Class')[0].contextLine;
     expect(after).toBe(before);
   });
 });

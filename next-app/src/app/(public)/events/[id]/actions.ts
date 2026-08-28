@@ -1,6 +1,6 @@
 'use server';
 
-import { normalizeGuestRows, guestEntriesFor, guestHostKey, staleClaims } from '@/lib/event-signup';
+import { normalizeGuestRows, guestEntriesFor, guestHostKey, staleClaims, groupStaleClaimsByEntry } from '@/lib/event-signup';
 import { placementPayloadFromForm } from '@/lib/group-sets';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -204,12 +204,18 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
     const session = await getIdentitySessionIfValid();
     const entryIds = writtenRows.map((r) => r.entry_id);
     if (session && entryIds.length > 0) {
-      await supabase.from('signup_entries').update({ updated_by_person_id: session.personId }).in('id', entryIds);
-      await supabase
-        .from('signup_entries')
-        .update({ entered_by_person_id: session.personId })
-        .in('id', entryIds)
-        .is('entered_by_person_id', null);
+      // Two disjoint-column writes on the same id set (one unconditional,
+      // one gated on entered_by_person_id still being null) — nothing here
+      // reads the other's result, so they go out together instead of one
+      // round trip after the other.
+      await Promise.all([
+        supabase.from('signup_entries').update({ updated_by_person_id: session.personId }).in('id', entryIds),
+        supabase
+          .from('signup_entries')
+          .update({ entered_by_person_id: session.personId })
+          .in('id', entryIds)
+          .is('entered_by_person_id', null)
+      ]);
     }
   }
 
@@ -244,9 +250,13 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
       ((current ?? []) as { slot_id: number; signup_entry_id: number }[]).map((c) => ({ entryId: c.signup_entry_id, slotId: c.slot_id })),
       wanted
     );
-    for (const c of stale) {
-      await supabase.from('signup_slot_claims').delete().eq('slot_id', c.slotId).eq('signup_entry_id', c.entryId);
-    }
+    // One `.in()` delete per entry rather than one per stale claim — a
+    // person dropping several jobs at once used to be several round trips.
+    await Promise.all(
+      groupStaleClaimsByEntry(stale).map(({ entryId, slotIds }) =>
+        supabase.from('signup_slot_claims').delete().eq('signup_entry_id', entryId).in('slot_id', slotIds)
+      )
+    );
   }
 
   for (const [personKey, slotIds] of Object.entries(slotClaims)) {
@@ -279,27 +289,32 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
     .eq('self_select', true)
     .neq('kind', 'car');
   const selfSetIds = new Set(((selfSets ?? []) as { id: number }[]).map((s) => s.id));
+  // Each pick is a distinct (setId, entryId) pair (placementPayloadFromForm
+  // is keyed that way), so no two picks touch the same group membership row
+  // — safe to run them concurrently instead of one at a time.
   const picks = placementPayloadFromForm(String(formData.get('placements') ?? ''), selfSetIds);
-  for (const pick of picks) {
-    const entryId = byKey.get(pick.personKey);
-    if (!entryId) continue;
-    if (pick.groupId == null) {
-      const { data: current } = await supabase
-        .from('signup_group_members')
-        .select('group_id')
-        .eq('set_id', pick.setId)
-        .eq('entry_id', entryId)
-        .maybeSingle();
-      if (current) {
-        await supabase.rpc('unplace_from_group', {
-          p_group_id: (current as { group_id: number }).group_id,
-          p_entry_id: entryId
-        });
+  await Promise.all(
+    picks.map(async (pick) => {
+      const entryId = byKey.get(pick.personKey);
+      if (!entryId) return;
+      if (pick.groupId == null) {
+        const { data: current } = await supabase
+          .from('signup_group_members')
+          .select('group_id')
+          .eq('set_id', pick.setId)
+          .eq('entry_id', entryId)
+          .maybeSingle();
+        if (current) {
+          await supabase.rpc('unplace_from_group', {
+            p_group_id: (current as { group_id: number }).group_id,
+            p_entry_id: entryId
+          });
+        }
+        return;
       }
-      continue;
-    }
-    await supabase.rpc('place_in_group', { p_group_id: pick.groupId, p_entry_id: entryId, p_actor: actor });
-  }
+      await supabase.rpc('place_in_group', { p_group_id: pick.groupId, p_entry_id: entryId, p_actor: actor });
+    })
+  );
 
   // The receipt (Plans/Signup-Confirmation-Email.md): family + leaders, each
   // once, after everything above succeeded. It never throws — and it no

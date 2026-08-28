@@ -13,6 +13,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/server';
+import { fetchAllRows } from '@/lib/supabase/paginate';
 import type { PhotoAlbum } from '@/lib/supabase/types';
 import { categoryColorMap, type CalendarCategoryRow } from '@/lib/calendar-categories';
 import type { PhotoViewAlbum } from '@/lib/photo-views';
@@ -26,14 +27,22 @@ export const metadata = {
     'Every Troop 79 campout, court of honor, and service project since 2022 — photo albums, all in one place.'
 };
 
+// Every column loadData's mapping below actually reads — drops created_at/
+// updated_at, neither of which reaches PhotoViewAlbum (perf item 18,
+// 2026-08-27). Read through fetchAllRows: past PostgREST's 1,000-row cap a
+// plain select would silently drop the oldest albums.
+const ALBUM_COLUMNS = 'id, title, event_date, category, google_url, cover_media_id, description, photo_count';
+
 async function loadData(): Promise<{ albums: PhotoViewAlbum[]; colors: Record<string, string> }> {
   const supabase = createAdminClient();
   const [{ data: albumRows }, { data: categoryRows }] = await Promise.all([
-    supabase.from('photo_albums').select('*').order('event_date', { ascending: false }),
+    fetchAllRows((from, to) =>
+      supabase.from('photo_albums').select(ALBUM_COLUMNS).order('event_date', { ascending: false }).order('id').range(from, to)
+    ).then((data) => ({ data })),
     supabase.from('calendar_categories').select('label, color')
   ]);
 
-  const rows = (albumRows ?? []) as PhotoAlbum[];
+  const rows = (albumRows ?? []) as unknown as PhotoAlbum[];
   const coverIds = [...new Set(rows.map((a) => a.cover_media_id).filter((x): x is number => x != null))];
   const covers = new Map<number, { cdn_url: string; alt_text: string | null }>();
   if (coverIds.length > 0) {

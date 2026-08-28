@@ -22,8 +22,8 @@
  * under a decade of noise.
  */
 
-import type { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
+import type { AuditInput } from '../audit-input';
 
 export type ReconciliationKind =
   | 'credit_missing'
@@ -79,37 +79,28 @@ interface LedgerRow {
   calendar_entry_id: number;
 }
 
-export async function run(
-  supabase: ReturnType<typeof createAdminClient>
-): Promise<ReconciliationFinding[]> {
-  const [attendanceRows, ledgerRows, entriesRes, categoriesRes, scouts, people] =
-    await Promise.all([
-      fetchAllRows<AttendanceRow>((from, to) =>
-        supabase.from('event_attendance').select('calendar_entry_id, person_id, qty').range(from, to)
-      ),
-      fetchAllRows<LedgerRow>((from, to) =>
-        supabase
-          .from('ledger_active')
-          .select('id, scout_id, date, qty, calendar_entry_id')
-          .not('calendar_entry_id', 'is', null)
-          .range(from, to)
-      ),
-      supabase.from('calendar_entries').select('id, title, entry_date, category'),
-      supabase.from('calendar_categories').select('label, credit_kind'),
-      /*
-       * Paginated even though both tables are small today. A truncated `scouts`
-       * read does not merely slow this check down — a scout missing from the
-       * map is treated as an ADULT, silently skipped, and their missing credit
-       * never reported. The one screen whose job is catching integrity problems
-       * should not have an integrity problem of its own.
-       */
-      fetchAllRows<{ id: string; person_id: number | null; display_name: string }>((from, to) =>
-        supabase.from('scouts').select('id, person_id, display_name').range(from, to)
-      ),
-      fetchAllRows<{ id: number; display_name: string }>((from, to) =>
-        supabase.from('people').select('id, display_name').range(from, to)
-      )
-    ]);
+export async function run(input: AuditInput): Promise<ReconciliationFinding[]> {
+  const { supabase, scouts } = input;
+  const ledgerRows: LedgerRow[] = input.ledger.filter(
+    (row): row is typeof row & { calendar_entry_id: number } => row.calendar_entry_id != null
+  );
+  const [attendanceRows, entriesRes, categoriesRes, people] = await Promise.all([
+    fetchAllRows<AttendanceRow>((from, to) =>
+      supabase.from('event_attendance').select('calendar_entry_id, person_id, qty').range(from, to)
+    ),
+    supabase.from('calendar_entries').select('id, title, entry_date, category'),
+    supabase.from('calendar_categories').select('label, credit_kind'),
+    /*
+     * Paginated even though the table is small today. A truncated `people`
+     * read does not merely slow this check down — a name falling back to
+     * "Person <id>" hides who a finding is actually about. The one screen
+     * whose job is catching integrity problems should not have an
+     * integrity problem of its own.
+     */
+    fetchAllRows<{ id: number; display_name: string }>((from, to) =>
+      supabase.from('people').select('id, display_name').range(from, to)
+    )
+  ]);
 
   const entryById = new Map(
     ((entriesRes.data ?? []) as { id: number; title: string; entry_date: string; category: string }[]).map(

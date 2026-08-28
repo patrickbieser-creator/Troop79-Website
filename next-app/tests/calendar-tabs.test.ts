@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { splitByTab, lastDay } from '@/lib/calendar-tabs';
+import { splitByTab, lastDay, rollingWindowStart } from '@/lib/calendar-tabs';
 
 /**
  * The admin calendar list's Upcoming / Past tabs are RETAINED BEHAVIOR across
@@ -52,5 +52,24 @@ describe('calendar tab split', () => {
 
   it('LastDay_UsesEntryDate_WhenThereIsNoEndDate', () => {
     expect(lastDay({ entry_date: '2026-08-14', end_date: null })).toBe('2026-08-14');
+  });
+});
+
+describe('rollingWindowStart', () => {
+  it('WindowStart_IsOneYearBeforeToday_ByDefault', () => {
+    expect(rollingWindowStart('2026-08-14')).toBe('2025-08-14');
+  });
+
+  it('WindowStart_HonorsAnExplicitYearsBack', () => {
+    expect(rollingWindowStart('2026-08-14', 2)).toBe('2024-08-14');
+  });
+
+  it('WindowStart_HandlesLeapDay_ByLandingOnFeb28', () => {
+    // 2024 was a leap year; 2023 was not — Feb 29 has no same-day-last-year.
+    expect(rollingWindowStart('2024-02-29')).toBe('2023-03-01');
+  });
+
+  it('WindowStart_CrossesAYearBoundary_Correctly', () => {
+    expect(rollingWindowStart('2026-01-05')).toBe('2025-01-05');
   });
 });

@@ -9,8 +9,8 @@
 
 import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
-import type { Skill } from '@/lib/supabase/types';
-import type { EngineInput, EngineMbReqRow, EngineRankReqRow } from './engine';
+import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
+import type { EngineInput } from './engine';
 
 export type LoadEngineInputResult =
   | { ok: true; input: EngineInput }
@@ -19,37 +19,29 @@ export type LoadEngineInputResult =
 export async function loadEngineInput(meetingDate: string, title: string): Promise<LoadEngineInputResult> {
   const supabase = createAdminClient();
 
+  // CATALOG half (ranks, rank/MB requirement trees, merit badges, skills) —
+  // only changes when a leader saves Lookups, so it comes from the shared
+  // `advancement-catalog` cache instead of its own 5-query fan-out on every
+  // Agenda-tab open (Plans/Performance-Review-2026-08-27.md #11). The
+  // per-scout half below (ledger, mb_progress, and the roster/teacher
+  // tables) stays live.
   const [
+    catalog,
     scoutsRes,
-    ranksRes,
-    rankReqsRes,
-    mbsRes,
-    mbReqRows,
     mbProgressRows,
     rankReqLedgerRows,
     mbReqLedgerRows,
-    skillsRes,
     leadersRes,
     leaderSkillsRes,
     counselorsRes,
     scoutInstructorsRes
   ] = await Promise.all([
+    loadAdvancementCatalog(),
     supabase
       .from('scouts')
       .select('id, display_name, patrol, current_rank, person_id')
       .eq('active', true)
       .order('display_name'),
-    supabase.from('ranks').select('id, display_name, sort_order').order('sort_order'),
-    supabase
-      .from('rank_requirements')
-      .select('id, rank_id, parent_id, code, label, complete_rule, complete_n, sort_order, venue, skill_id'),
-    supabase.from('merit_badges').select('id, name, eagle'),
-    fetchAllRows<EngineMbReqRow>((from, to) =>
-      supabase
-        .from('merit_badge_requirements')
-        .select('id, mb_id, parent_id, code, label, complete_rule, complete_n, sort_order, venue')
-        .range(from, to)
-    ),
     // mb_progress is roughly (badges-in-progress × scouts) and can climb past
     // the 1000-row cap as the troop's badge activity grows — paginate so the
     // planner never runs on a silently-truncated progress set.
@@ -74,7 +66,6 @@ export async function loadEngineInput(meetingDate: string, title: string): Promi
         .eq('kind', 'merit_badge_requirement')
         .range(from, to)
     ),
-    supabase.from('skills').select('id, name, youth_teachable, sort_order').order('sort_order'),
     supabase.from('leaders').select('code, name, role, is_person, person_id'),
     supabase.from('leader_skills').select('leader_code, skill_id'),
     supabase.from('merit_badge_counselors').select('mb_id, leader_code'),
@@ -83,10 +74,6 @@ export async function loadEngineInput(meetingDate: string, title: string): Promi
 
   const firstError =
     scoutsRes.error ??
-    ranksRes.error ??
-    rankReqsRes.error ??
-    mbsRes.error ??
-    skillsRes.error ??
     leadersRes.error ??
     leaderSkillsRes.error ??
     counselorsRes.error ??
@@ -115,14 +102,14 @@ export async function loadEngineInput(meetingDate: string, title: string): Promi
     title,
     generatedAt: new Date().toISOString(),
     scouts: (scoutsRes.data ?? []) as EngineInput['scouts'],
-    ranks: (ranksRes.data ?? []) as EngineInput['ranks'],
-    rankReqs: (rankReqsRes.data ?? []) as EngineRankReqRow[],
-    mbs: (mbsRes.data ?? []) as EngineInput['mbs'],
-    mbReqs: mbReqRows,
+    ranks: catalog.ranks,
+    rankReqs: catalog.rankRequirements,
+    mbs: catalog.meritBadges,
+    mbReqs: catalog.meritBadgeRequirements,
     mbProgress: mbProgressRows as EngineInput['mbProgress'],
     rankReqLedger: rankReqLedgerRows,
     mbReqLedger: mbReqLedgerRows,
-    skills: (skillsRes.data ?? []) as Skill[],
+    skills: catalog.skills,
     leaders: adultLeaders as EngineInput['leaders'],
     leaderSkills: (leaderSkillsRes.data ?? []) as EngineInput['leaderSkills'],
     counselors: (counselorsRes.data ?? []) as EngineInput['counselors'],

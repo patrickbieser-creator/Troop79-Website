@@ -2,7 +2,7 @@
 
 import { GuestRowsEditor, GuestCountField, GuestsLocked, type GuestRowValue } from './guest-rows';
 import { SavingOverlay, intentOf, type SaveIntent } from './save-feedback';
-import { useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import type {
   EventPrice,
   EventSignup,
@@ -14,7 +14,7 @@ import type {
   HouseholdGuest
 } from '@/lib/event-signup';
 import { guestHostKey } from '@/lib/guest-payload';
-import type { Household, HouseholdAdult } from '@/lib/households';
+import type { Household, HouseholdAdult, HouseholdScout } from '@/lib/households';
 import { positionalToIdentityKey } from '@/lib/claim-keys';
 import {
   defaultSeats,
@@ -49,6 +49,503 @@ interface AdHocAdult {
 
 const money = (n: number) => `$${Number.isInteger(n) ? n : n.toFixed(2)}`;
 
+/** Stable "no group sets" default. A `= []` default parameter mints a NEW
+ *  array on every call where the argument is omitted — since every row reads
+ *  `groupSets` as a prop, that would hand each ScoutRow/AdultRow a changed
+ *  reference on every keystroke and defeat their React.memo entirely
+ *  (Performance-Review-2026-08-27 #15, caught by
+ *  tests/person-first-form-row-memo.test.tsx). */
+const NO_GROUP_SETS: PublicGroupSet[] = [];
+
+/** A single eligible tier needs no picker — it's implied. Pure, so it can live
+ *  outside the component and be reused per-row without a fresh closure. */
+const pickAutoTier = (tiers: EventPrice[]): EventPrice | null => (tiers.length === 1 ? tiers[0] : null);
+
+/** Same rule the old inline `chosenTier(key, kind)` used — an auto tier always
+ *  wins, otherwise fall back to whatever this person picked. Pure (module
+ *  scope, not a per-render closure) so useMemo/React.memo deps stay honest
+ *  instead of tripping exhaustive-deps (Performance-Review-2026-08-27 #15). */
+const resolveChosenTier = (auto: EventPrice | null, prices: EventPrice[], tierId: number | null): EventPrice | null => {
+  if (auto) return auto;
+  return tierId ? (prices.find((p) => p.id === tierId) ?? null) : null;
+};
+
+/** Price + days picker for one attending person. Memoised (Performance-Review
+ *  #15): rendering the price/day picker for every household member on every
+ *  keystroke elsewhere was the multiplier the item was named for. */
+const TierPicker = memo(function TierPicker({
+  personKey,
+  opts,
+  auto,
+  active,
+  tierId,
+  days,
+  onTierSelect,
+  onDaysChange
+}: {
+  personKey: string;
+  opts: EventPrice[];
+  auto: EventPrice | null;
+  active: EventPrice | null;
+  tierId: number | null;
+  days: number;
+  onTierSelect: (key: string, priceId: number) => void;
+  onDaysChange: (key: string, value: number) => void;
+}) {
+  if (opts.length === 0) return null;
+  return (
+    <div className={styles.personExtra}>
+      {!auto && (
+        <div className={styles.tierPick}>
+          <span className={styles.miniLabel}>Price</span>
+          <div className={styles.pillRow}>
+            {opts.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                className={`${styles.pill} ${tierId === p.id ? styles.pillOn : ''}`}
+                aria-pressed={tierId === p.id}
+                onClick={() => onTierSelect(personKey, p.id)}
+              >
+                {p.label} — {money(p.amount)}
+                {p.per === 'day' && '/day'}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {active?.per === 'day' && (
+        <label className={styles.daysRow}>
+          <span className={styles.miniLabel}>Days attending</span>
+          <input
+            type="number"
+            min={1}
+            max={14}
+            value={days}
+            onChange={(e) => onDaysChange(personKey, Math.max(1, Number(e.target.value) || 1))}
+            className={styles.numInput}
+          />
+          <span className={styles.dayMath}>
+            {money(active.amount)} × {days} ={' '}
+            <strong>{money(active.amount * days)}</strong>
+          </span>
+        </label>
+      )}
+    </div>
+  );
+});
+
+/** Free-text / choice answers for one person. Memoised for the same reason as
+ *  TierPicker — a keystroke in one person's answer must not re-render every
+ *  other person's fields. */
+const QuestionFields = memo(function QuestionFields({
+  personKey,
+  qs,
+  values,
+  onChange
+}: {
+  personKey: string;
+  qs: SignupQuestion[];
+  values: Record<number, string> | undefined;
+  onChange: (key: string, questionId: number, value: string) => void;
+}) {
+  if (qs.length === 0) return null;
+  return (
+    <div className={styles.qaGrid}>
+      {qs.map((q) => (
+        <label key={q.id} className={styles.qaField}>
+          <span className={styles.miniLabel}>
+            {q.prompt}
+            {!q.required && <span className={styles.optional}> (optional)</span>}
+          </span>
+          {q.input_type === 'choice' ? (
+            <div className={styles.pillRow}>
+              {(q.choices ?? []).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  className={`${styles.pill} ${values?.[q.id] === c ? styles.pillOn : ''}`}
+                  aria-pressed={values?.[q.id] === c}
+                  onClick={() => onChange(personKey, q.id, c)}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <input
+              type={q.input_type === 'number' ? 'number' : 'text'}
+              className={styles.numInputWide}
+              value={values?.[q.id] ?? ''}
+              onChange={(e) => onChange(personKey, q.id, e.target.value)}
+            />
+          )}
+        </label>
+      ))}
+    </div>
+  );
+});
+
+/** Per-leg ride status for an attending person, only for legs they don't
+ *  drive. Shown only when the event tracks transportation. Memoised. */
+const RideFields = memo(function RideFields({
+  personKey,
+  name,
+  drivenLegs,
+  driversNeeded,
+  values,
+  onChange
+}: {
+  personKey: string;
+  name: string;
+  drivenLegs: { out: boolean; back: boolean };
+  driversNeeded: boolean;
+  values: Record<Leg, RideStatus> | undefined;
+  onChange: (key: string, leg: Leg, value: RideStatus) => void;
+}) {
+  if (!driversNeeded) return null;
+  const legs = (['out', 'back'] as Leg[]).filter((l) => !drivenLegs[l]);
+  if (legs.length === 0) return null;
+  return (
+    <div className={styles.rideRow}>
+      <span className={styles.miniLabel}>Getting there &amp; back</span>
+      {legs.map((leg) => (
+        <label key={leg} className={styles.rideField}>
+          <span className={styles.rideLeg}>{LEG_LABEL[leg]}</span>
+          <select
+            className={styles.rideSelect}
+            aria-label={`${name} — ${LEG_LABEL[leg].toLowerCase()}`}
+            value={values?.[leg] ?? 'needs_ride'}
+            onChange={(e) => onChange(personKey, leg, e.target.value as RideStatus)}
+          >
+            {RIDE_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {RIDE_STATUS_LABEL[s]}
+              </option>
+            ))}
+          </select>
+        </label>
+      ))}
+    </div>
+  );
+});
+
+/** "Tent preference" pickers — one select per self-select set, for an
+ *  attending person. A full group is offered only if it's the one they're
+ *  already in. Blank = the leader places them. Memoised. */
+const PickFields = memo(function PickFields({
+  personKey,
+  name,
+  groupSets,
+  values,
+  onChange
+}: {
+  personKey: string;
+  name: string;
+  groupSets: PublicGroupSet[];
+  values: Record<number, number | ''> | undefined;
+  onChange: (key: string, setId: number, groupId: number | '') => void;
+}) {
+  if (groupSets.length === 0) return null;
+  return (
+    <div className={styles.rideRow}>
+      {groupSets.map((gs) => {
+        const current = values?.[gs.id] ?? '';
+        return (
+          <label key={gs.id} className={styles.rideField}>
+            <span className={styles.rideLeg}>{gs.label}</span>
+            <select
+              className={styles.rideSelect}
+              aria-label={`${name} — ${gs.label}`}
+              value={current}
+              onChange={(e) => onChange(personKey, gs.id, e.target.value === '' ? '' : Number(e.target.value))}
+            >
+              <option value="">No preference — leaders will place me</option>
+              {gs.groups.map((g) => {
+                const full = g.capacity != null && g.filled >= g.capacity && g.id !== current;
+                return (
+                  <option key={g.id} value={g.id} disabled={full}>
+                    {g.name}
+                    {g.capacity != null ? ` (${g.filled}/${g.capacity}${full ? ' full' : ''})` : ''}
+                  </option>
+                );
+              })}
+            </select>
+          </label>
+        );
+      })}
+    </div>
+  );
+});
+
+/** One scout's row: RSVP toggle, price, questions, ride status, tent pick.
+ *  Wrapped in React.memo so a keystroke anywhere else in the household
+ *  (another person's note, the household notes box, a slot claim) does not
+ *  re-render this row — the fix for Performance-Review-2026-08-27 #15.
+ *  `renderProbe` is test-only instrumentation: PersonFirstForm never passes
+ *  it in production, and it never reaches markup — see
+ *  tests/person-first-form-row-memo.test.tsx. */
+const ScoutRow = memo(function ScoutRow({
+  s,
+  choice,
+  tierId,
+  days,
+  activeTier,
+  tiers,
+  auto,
+  questions,
+  answers,
+  rides,
+  driversNeeded,
+  groupSets,
+  picks,
+  onChoice,
+  onTierSelect,
+  onDaysChange,
+  onAnswerChange,
+  onRideChange,
+  onPickChange,
+  renderProbe
+}: {
+  s: HouseholdScout;
+  choice: ScoutChoice;
+  tierId: number | null;
+  days: number;
+  activeTier: EventPrice | null;
+  tiers: EventPrice[];
+  auto: EventPrice | null;
+  questions: SignupQuestion[];
+  answers: Record<number, string> | undefined;
+  rides: Record<Leg, RideStatus> | undefined;
+  driversNeeded: boolean;
+  groupSets: PublicGroupSet[];
+  picks: Record<number, number | ''> | undefined;
+  onChoice: (id: string, choice: ScoutChoice) => void;
+  onTierSelect: (key: string, priceId: number) => void;
+  onDaysChange: (key: string, value: number) => void;
+  onAnswerChange: (key: string, questionId: number, value: string) => void;
+  onRideChange: (key: string, leg: Leg, value: RideStatus) => void;
+  onPickChange: (key: string, setId: number, groupId: number | '') => void;
+  renderProbe?: (key: string) => void;
+}) {
+  const key = `s:${s.id}`;
+  renderProbe?.(key);
+  return (
+    <div className={styles.personRow}>
+      <div className={styles.personMain}>
+        <span className={styles.personName}>{s.displayName}</span>
+        <span className={styles.seg}>
+          <button
+            type="button"
+            className={`${styles.segBtn} ${choice === 'yes' ? styles.segYes : ''}`}
+            aria-pressed={choice === 'yes'}
+            onClick={() => onChoice(s.id, 'yes')}
+          >
+            Attending
+          </button>
+          <button
+            type="button"
+            className={`${styles.segBtn} ${choice === 'no' ? styles.segNo : ''}`}
+            aria-pressed={choice === 'no'}
+            onClick={() => onChoice(s.id, 'no')}
+          >
+            Can’t make it
+          </button>
+        </span>
+      </div>
+      {choice === 'yes' && (
+        <TierPicker
+          personKey={key}
+          opts={tiers}
+          auto={auto}
+          active={activeTier}
+          tierId={tierId}
+          days={days}
+          onTierSelect={onTierSelect}
+          onDaysChange={onDaysChange}
+        />
+      )}
+      {choice === 'yes' && <QuestionFields personKey={key} qs={questions} values={answers} onChange={onAnswerChange} />}
+      {choice === 'yes' && (
+        <RideFields
+          personKey={key}
+          name={s.displayName}
+          drivenLegs={{ out: false, back: false }}
+          driversNeeded={driversNeeded}
+          values={rides}
+          onChange={onRideChange}
+        />
+      )}
+      {choice === 'yes' && (
+        <PickFields personKey={key} name={s.displayName} groupSets={groupSets} values={picks} onChange={onPickChange} />
+      )}
+    </div>
+  );
+});
+
+/** One adult's row — the scout row plus driver-only status and the drive-out/
+ *  drive-back/seats fields. Same memoisation rationale as ScoutRow. */
+const AdultRow = memo(function AdultRow({
+  a,
+  choice,
+  tierId,
+  days,
+  activeTier,
+  tiers,
+  auto,
+  questions,
+  answers,
+  drivesValue,
+  rides,
+  driversNeeded,
+  groupSets,
+  picks,
+  onChoice,
+  onTierSelect,
+  onDaysChange,
+  onAnswerChange,
+  onRideChange,
+  onPickChange,
+  onDrivesChange,
+  renderProbe
+}: {
+  a: HouseholdAdult;
+  choice: AdultChoice;
+  tierId: number | null;
+  days: number;
+  activeTier: EventPrice | null;
+  tiers: EventPrice[];
+  auto: EventPrice | null;
+  questions: SignupQuestion[];
+  answers: Record<number, string> | undefined;
+  drivesValue: { out: boolean; back: boolean; seats: number } | undefined;
+  rides: Record<Leg, RideStatus> | undefined;
+  driversNeeded: boolean;
+  groupSets: PublicGroupSet[];
+  picks: Record<number, number | ''> | undefined;
+  onChoice: (key: string, choice: AdultChoice) => void;
+  onTierSelect: (key: string, priceId: number) => void;
+  onDaysChange: (key: string, value: number) => void;
+  onAnswerChange: (key: string, questionId: number, value: string) => void;
+  onRideChange: (key: string, leg: Leg, value: RideStatus) => void;
+  onPickChange: (key: string, setId: number, groupId: number | '') => void;
+  onDrivesChange: (key: string, patch: Partial<{ out: boolean; back: boolean; seats: number }>) => void;
+  renderProbe?: (key: string) => void;
+}) {
+  const key = `a:${a.key}`;
+  renderProbe?.(key);
+  return (
+    <div className={styles.personRow}>
+      <div className={styles.personMain}>
+        <span className={styles.personName}>
+          {a.name}
+          {/* A leader-roster adult has no relationship to a scout —
+              labelling the Scoutmaster "Parent" is just wrong. */}
+          <span className={styles.personSub}>{a.relationship || (a.leaderCode ? 'Adult' : 'Parent')}</span>
+        </span>
+        <span className={styles.seg}>
+          <button
+            type="button"
+            className={`${styles.segBtn} ${choice === 'full' ? styles.segYes : ''}`}
+            aria-pressed={choice === 'full'}
+            onClick={() => onChoice(a.key, 'full')}
+          >
+            Attending
+          </button>
+          {driversNeeded && (
+            <button
+              type="button"
+              className={`${styles.segBtn} ${choice === 'driver_only' ? styles.segDrv : ''}`}
+              aria-pressed={choice === 'driver_only'}
+              onClick={() => onChoice(a.key, 'driver_only')}
+            >
+              Driver only
+            </button>
+          )}
+          <button
+            type="button"
+            className={`${styles.segBtn} ${choice === 'no' ? styles.segNo : ''}`}
+            aria-pressed={choice === 'no'}
+            onClick={() => onChoice(a.key, 'no')}
+          >
+            Can’t make it
+          </button>
+        </span>
+      </div>
+
+      {choice === 'driver_only' && (
+        <p className={styles.drvNote}>
+          Not attending — transportation only. Excluded from the headcount and the two-deep
+          count, and <strong>never charged</strong>.
+        </p>
+      )}
+
+      {choice === 'full' && (
+        <TierPicker
+          personKey={key}
+          opts={tiers}
+          auto={auto}
+          active={activeTier}
+          tierId={tierId}
+          days={days}
+          onTierSelect={onTierSelect}
+          onDaysChange={onDaysChange}
+        />
+      )}
+      {choice === 'full' && <QuestionFields personKey={key} qs={questions} values={answers} onChange={onAnswerChange} />}
+
+      {driversNeeded && (choice === 'full' || choice === 'driver_only') && (
+        <div className={styles.personExtra}>
+          <span className={styles.miniLabel}>Can you drive? Each leg counts separately.</span>
+          <label className={styles.chk}>
+            <input
+              type="checkbox"
+              checked={drivesValue?.out ?? false}
+              onChange={(e) => onDrivesChange(a.key, { out: e.target.checked })}
+            />
+            Drive there
+          </label>
+          <label className={styles.chk}>
+            <input
+              type="checkbox"
+              checked={drivesValue?.back ?? false}
+              onChange={(e) => onDrivesChange(a.key, { back: e.target.checked })}
+            />
+            Drive back
+          </label>
+          {(drivesValue?.out || drivesValue?.back) && (
+            <label className={styles.daysRow}>
+              <span className={styles.miniLabel}>Seats in your vehicle, including you</span>
+              <input
+                type="number"
+                min={1}
+                max={15}
+                value={drivesValue?.seats ?? 4}
+                onChange={(e) => onDrivesChange(a.key, { seats: Math.max(1, Number(e.target.value) || 1) })}
+                className={styles.numInput}
+              />
+              <span className={styles.dayMath}>{Math.max(0, (drivesValue?.seats ?? 4) - 1)} for riders</span>
+            </label>
+          )}
+          {choice === 'full' && (
+            <RideFields
+              personKey={key}
+              name={a.name}
+              drivenLegs={{ out: drivesValue?.out ?? false, back: drivesValue?.back ?? false }}
+              driversNeeded={driversNeeded}
+              values={rides}
+              onChange={onRideChange}
+            />
+          )}
+        </div>
+      )}
+      {choice === 'full' && (
+        <PickFields personKey={key} name={a.name} groupSets={groupSets} values={picks} onChange={onPickChange} />
+      )}
+    </div>
+  );
+});
+
 export default function PersonFirstForm({
   eventId,
   signup,
@@ -58,11 +555,12 @@ export default function PersonFirstForm({
   slots,
   existingClaims,
   existing,
-  groupSets = [],
+  groupSets = NO_GROUP_SETS,
   existingMemberships = [],
   householdGuests = [],
   submitAction,
-  cancelAction
+  cancelAction,
+  renderProbe
 }: {
   eventId: number;
   signup: EventSignup;
@@ -81,6 +579,9 @@ export default function PersonFirstForm({
   householdGuests?: HouseholdGuest[];
   submitAction: (fd: FormData) => void;
   cancelAction: (fd: FormData) => void;
+  /** Test-only render-count probe (tests/person-first-form-row-memo.test.tsx)
+   *  — never passed in production, never touches markup. */
+  renderProbe?: (personKey: string) => void;
 }) {
   const slotsTitle = signup.slots_title ?? 'What can you bring?';
 
@@ -159,8 +660,11 @@ export default function PersonFirstForm({
     }
     return init;
   });
-  const setRide = (key: string, leg: Leg, value: RideStatus) =>
-    setRides((v) => ({ ...v, [key]: { ...(v[key] ?? { out: 'needs_ride', back: 'needs_ride' }), [leg]: value } }));
+  const setRide = useCallback(
+    (key: string, leg: Leg, value: RideStatus) =>
+      setRides((v) => ({ ...v, [key]: { ...(v[key] ?? { out: 'needs_ride', back: 'needs_ride' }), [leg]: value } })),
+    []
+  );
 
   // Self-select placements: picks[personKey][setId] = groupId | '' (leader decides).
   // Prefilled from the party's existing memberships so an edit shows the tent
@@ -181,44 +685,12 @@ export default function PersonFirstForm({
     }
     return init;
   });
-  const setPick = (key: string, setId: number, groupId: number | '') =>
-    setPicks((v) => ({ ...v, [key]: { ...(v[key] ?? {}), [setId]: groupId } }));
+  const setPick = useCallback(
+    (key: string, setId: number, groupId: number | '') =>
+      setPicks((v) => ({ ...v, [key]: { ...(v[key] ?? {}), [setId]: groupId } })),
+    []
+  );
 
-  /** "Tent preference" pickers — one select per self-select set, for an
-   *  attending person. A full group is offered only if it's the one they're
-   *  already in. Blank = the leader places them. */
-  const pickFields = (key: string, name: string) => {
-    if (groupSets.length === 0) return null;
-    return (
-      <div className={styles.rideRow}>
-        {groupSets.map((gs) => {
-          const current = picks[key]?.[gs.id] ?? '';
-          return (
-            <label key={gs.id} className={styles.rideField}>
-              <span className={styles.rideLeg}>{gs.label}</span>
-              <select
-                className={styles.rideSelect}
-                aria-label={`${name} — ${gs.label}`}
-                value={current}
-                onChange={(e) => setPick(key, gs.id, e.target.value === '' ? '' : Number(e.target.value))}
-              >
-                <option value="">No preference — leaders will place me</option>
-                {gs.groups.map((g) => {
-                  const full = g.capacity != null && g.filled >= g.capacity && g.id !== current;
-                  return (
-                    <option key={g.id} value={g.id} disabled={full}>
-                      {g.name}
-                      {g.capacity != null ? ` (${g.filled}/${g.capacity}${full ? ' full' : ''})` : ''}
-                    </option>
-                  );
-                })}
-              </select>
-            </label>
-          );
-        })}
-      </div>
-    );
-  };
   // Guests (Plans/Guests-As-People.md). Named mode: rows seeded from the
   // party's existing guest entries (a guest row is one with a host) so an
   // edit shows who's already listed — each carries its people id, so saving
@@ -273,58 +745,55 @@ export default function PersonFirstForm({
     return init;
   });
 
-  const questionsFor = (kind: 'scout' | 'adult') =>
-    questions.filter(
-      (q) => q.applies_to === 'both' || q.applies_to === (kind === 'scout' ? 'scouts' : 'adults')
-    );
+  // Kind-level slices, computed once per render (not per row): the same tier
+  // list and question set apply to every scout, and to every adult. Hoisting
+  // them keeps each row's props referentially stable across renders where
+  // `prices`/`questions` haven't changed, which is what lets React.memo below
+  // actually skip unrelated rows (Performance-Review-2026-08-27 #15).
+  const scoutTiers = useMemo(
+    () => prices.filter((p) => p.applies_to === 'both' || p.applies_to === 'scouts'),
+    [prices]
+  );
+  const adultTiers = useMemo(
+    () => prices.filter((p) => p.applies_to === 'both' || p.applies_to === 'adults'),
+    [prices]
+  );
+  const scoutAutoTier = useMemo(() => pickAutoTier(scoutTiers), [scoutTiers]);
+  const adultAutoTier = useMemo(() => pickAutoTier(adultTiers), [adultTiers]);
+  const scoutQuestions = useMemo(
+    () => questions.filter((q) => q.applies_to === 'both' || q.applies_to === 'scouts'),
+    [questions]
+  );
+  const adultQuestions = useMemo(
+    () => questions.filter((q) => q.applies_to === 'both' || q.applies_to === 'adults'),
+    [questions]
+  );
 
-  const answerArr = (key: string, kind: 'scout' | 'adult') =>
-    questionsFor(kind)
-      .map((q) => ({ question_id: q.id, value: answers[key]?.[q.id] ?? '' }))
-      .filter((a) => a.value !== '');
-
-  const questionFields = (key: string, kind: 'scout' | 'adult') => {
-    const qs = questionsFor(kind);
-    if (qs.length === 0) return null;
-    return (
-      <div className={styles.qaGrid}>
-        {qs.map((q) => (
-          <label key={q.id} className={styles.qaField}>
-            <span className={styles.miniLabel}>
-              {q.prompt}
-              {!q.required && <span className={styles.optional}> (optional)</span>}
-            </span>
-            {q.input_type === 'choice' ? (
-              <div className={styles.pillRow}>
-                {(q.choices ?? []).map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    className={`${styles.pill} ${answers[key]?.[q.id] === c ? styles.pillOn : ''}`}
-                    aria-pressed={answers[key]?.[q.id] === c}
-                    onClick={() =>
-                      setAnswers((v) => ({ ...v, [key]: { ...(v[key] ?? {}), [q.id]: c } }))
-                    }
-                  >
-                    {c}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <input
-                type={q.input_type === 'number' ? 'number' : 'text'}
-                className={styles.numInputWide}
-                value={answers[key]?.[q.id] ?? ''}
-                onChange={(e) =>
-                  setAnswers((v) => ({ ...v, [key]: { ...(v[key] ?? {}), [q.id]: e.target.value } }))
-                }
-              />
-            )}
-          </label>
-        ))}
-      </div>
-    );
-  };
+  // Stable per-row callbacks — one function identity for the form's whole
+  // life, keyed by the id/key each row passes back in. Functional setState
+  // means none of these need to close over anything that changes, so they
+  // never invalidate a memoised row's props.
+  const handleScoutChoice = useCallback((id: string, choice: ScoutChoice) => {
+    setScoutChoice((v) => ({ ...v, [id]: choice }));
+  }, []);
+  const handleAdultChoice = useCallback((key: string, choice: AdultChoice) => {
+    setAdultChoice((v) => ({ ...v, [key]: choice }));
+  }, []);
+  const handleTierSelect = useCallback((key: string, priceId: number) => {
+    setTier((v) => ({ ...v, [key]: priceId }));
+  }, []);
+  const handleDaysChange = useCallback((key: string, value: number) => {
+    setDays((v) => ({ ...v, [key]: Math.max(1, value || 1) }));
+  }, []);
+  const handleAnswerChange = useCallback((key: string, questionId: number, value: string) => {
+    setAnswers((v) => ({ ...v, [key]: { ...(v[key] ?? {}), [questionId]: value } }));
+  }, []);
+  const handleDrivesChange = useCallback(
+    (key: string, patch: Partial<{ out: boolean; back: boolean; seats: number }>) => {
+      setDrives((v) => ({ ...v, [key]: { ...v[key], ...patch } }));
+    },
+    []
+  );
 
   /** Only people marked as attending can take an item — you bring a dessert
    *  because you're coming. (The donate-without-attending case belongs to
@@ -352,26 +821,11 @@ export default function PersonFirstForm({
       };
     });
 
-  const tiersFor = (kind: 'scout' | 'adult') =>
-    prices.filter((p) => p.applies_to === 'both' || p.applies_to === (kind === 'scout' ? 'scouts' : 'adults'));
-
-  // A single eligible tier needs no picker — it's implied.
-  const autoTier = (kind: 'scout' | 'adult') => {
-    const t = tiersFor(kind);
-    return t.length === 1 ? t[0] : null;
-  };
-  const chosenTier = (key: string, kind: 'scout' | 'adult'): EventPrice | null => {
-    const auto = autoTier(kind);
-    if (auto) return auto;
-    const id = tier[key];
-    return id ? (prices.find((p) => p.id === id) ?? null) : null;
-  };
-
   const lines = useMemo(() => {
     const out: { name: string; label: string; amount: number; math: string | null }[] = [];
     for (const s of scouts) {
       if (scoutChoice[s.id] !== 'yes') continue;
-      const t = chosenTier(`s:${s.id}`, 'scout');
+      const t = resolveChosenTier(scoutAutoTier, prices, tier[`s:${s.id}`]);
       if (!t) continue;
       const d = t.per === 'day' ? days[`s:${s.id}`] : 1;
       out.push({
@@ -388,7 +842,7 @@ export default function PersonFirstForm({
         continue;
       }
       if (c !== 'full') continue;
-      const t = chosenTier(`a:${a.key}`, 'adult');
+      const t = resolveChosenTier(adultAutoTier, prices, tier[`a:${a.key}`]);
       if (!t) continue;
       const d = t.per === 'day' ? days[`a:${a.key}`] : 1;
       out.push({
@@ -399,7 +853,7 @@ export default function PersonFirstForm({
       });
     }
     return out;
-  }, [scoutChoice, adultChoice, tier, days, scouts, adults, prices]);
+  }, [scoutChoice, adultChoice, tier, days, scouts, adults, prices, scoutAutoTier, adultAutoTier]);
 
   const total = lines.reduce((n, l) => n + l.amount, 0);
 
@@ -408,7 +862,7 @@ export default function PersonFirstForm({
     for (const s of scouts) {
       const c = scoutChoice[s.id];
       if (!c) continue;
-      const t = c === 'yes' ? chosenTier(`s:${s.id}`, 'scout') : null;
+      const t = c === 'yes' ? resolveChosenTier(scoutAutoTier, prices, tier[`s:${s.id}`]) : null;
       out.push({
         key: `s:${s.id}`,
         person_kind: 'scout',
@@ -422,14 +876,19 @@ export default function PersonFirstForm({
         notes: notes || null,
         ride_out: signup.drivers_needed ? (rides[`s:${s.id}`]?.out ?? 'needs_ride') : null,
         ride_back: signup.drivers_needed ? (rides[`s:${s.id}`]?.back ?? 'needs_ride') : null,
-        answers: c === 'yes' ? answerArr(`s:${s.id}`, 'scout') : []
+        answers:
+          c === 'yes'
+            ? scoutQuestions
+                .map((q) => ({ question_id: q.id, value: answers[`s:${s.id}`]?.[q.id] ?? '' }))
+                .filter((x) => x.value !== '')
+            : []
       });
     }
     for (const a of adults) {
       const c = adultChoice[a.key];
       if (!c || c === 'no') continue;
       const attending = c === 'full';
-      const t = attending ? chosenTier(`a:${a.key}`, 'adult') : null;
+      const t = attending ? resolveChosenTier(adultAutoTier, prices, tier[`a:${a.key}`]) : null;
       const d = drives[a.key] ?? { out: false, back: false, seats: 3 };
       out.push({
         key: `a:${a.key}`,
@@ -455,7 +914,11 @@ export default function PersonFirstForm({
         guest_count: 0,
         guest_note: null,
         notes: notes || null,
-        answers: attending ? answerArr(`a:${a.key}`, 'adult') : []
+        answers: attending
+          ? adultQuestions
+              .map((q) => ({ question_id: q.id, value: answers[`a:${a.key}`]?.[q.id] ?? '' }))
+              .filter((x) => x.value !== '')
+          : []
       });
     }
     // Count mode: "+N guests" rides on the host entry — the first attending
@@ -470,7 +933,26 @@ export default function PersonFirstForm({
       }
     }
     return out;
-  }, [scoutChoice, adultChoice, tier, days, drives, rides, notes, scouts, adults, signup.drivers_needed, signup.guest_mode, guestCount]);
+  }, [
+    scoutChoice,
+    adultChoice,
+    tier,
+    days,
+    drives,
+    rides,
+    notes,
+    scouts,
+    adults,
+    signup.drivers_needed,
+    signup.guest_mode,
+    guestCount,
+    prices,
+    scoutAutoTier,
+    adultAutoTier,
+    scoutQuestions,
+    adultQuestions,
+    answers
+  ]);
 
   const anyChoice = entries.length > 0;
 
@@ -482,85 +964,6 @@ export default function PersonFirstForm({
   const [savedKey] = useState(() => draftKey); // captured once, on mount
   const hasExisting = existing.length > 0;
   const dirty = draftKey !== savedKey;
-
-  /** Per-leg ride status for an attending person, only for legs they don't
-   *  drive. Shown only when the event tracks transportation. */
-  const rideFields = (key: string, name: string, drivenLegs: { out: boolean; back: boolean }) => {
-    if (!signup.drivers_needed) return null;
-    const legs = (['out', 'back'] as Leg[]).filter((l) => !drivenLegs[l]);
-    if (legs.length === 0) return null;
-    return (
-      <div className={styles.rideRow}>
-        <span className={styles.miniLabel}>Getting there &amp; back</span>
-        {legs.map((leg) => (
-          <label key={leg} className={styles.rideField}>
-            <span className={styles.rideLeg}>{LEG_LABEL[leg]}</span>
-            <select
-              className={styles.rideSelect}
-              aria-label={`${name} — ${LEG_LABEL[leg].toLowerCase()}`}
-              value={rides[key]?.[leg] ?? 'needs_ride'}
-              onChange={(e) => setRide(key, leg, e.target.value as RideStatus)}
-            >
-              {RIDE_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {RIDE_STATUS_LABEL[s]}
-                </option>
-              ))}
-            </select>
-          </label>
-        ))}
-      </div>
-    );
-  };
-
-  const tierPicker = (key: string, kind: 'scout' | 'adult') => {
-    const opts = tiersFor(kind);
-    if (opts.length === 0) return null;
-    const auto = autoTier(kind);
-    const active = chosenTier(key, kind);
-    return (
-      <div className={styles.personExtra}>
-        {!auto && (
-          <div className={styles.tierPick}>
-            <span className={styles.miniLabel}>Price</span>
-            <div className={styles.pillRow}>
-              {opts.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  className={`${styles.pill} ${tier[key] === p.id ? styles.pillOn : ''}`}
-                  aria-pressed={tier[key] === p.id}
-                  onClick={() => setTier((v) => ({ ...v, [key]: p.id }))}
-                >
-                  {p.label} — {money(p.amount)}
-                  {p.per === 'day' && '/day'}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        {active?.per === 'day' && (
-          <label className={styles.daysRow}>
-            <span className={styles.miniLabel}>Days attending</span>
-            <input
-              type="number"
-              min={1}
-              max={14}
-              value={days[key] ?? 1}
-              onChange={(e) =>
-                setDays((v) => ({ ...v, [key]: Math.max(1, Number(e.target.value) || 1) }))
-              }
-              className={styles.numInput}
-            />
-            <span className={styles.dayMath}>
-              {money(active.amount)} × {days[key] ?? 1} ={' '}
-              <strong>{money(active.amount * (days[key] ?? 1))}</strong>
-            </span>
-          </label>
-        )}
-      </div>
-    );
-  };
 
   return (
     <form action={submitAction} className={styles.signupForm} onSubmit={(e) => setSaving(intentOf(e))}>
@@ -591,34 +994,29 @@ export default function PersonFirstForm({
         <>
           <p className={styles.dayHead}>Scouts</p>
           {scouts.map((s) => (
-            <div key={s.id} className={styles.personRow}>
-              <div className={styles.personMain}>
-                <span className={styles.personName}>{s.displayName}</span>
-                <span className={styles.seg}>
-                  <button
-                    type="button"
-                    className={`${styles.segBtn} ${scoutChoice[s.id] === 'yes' ? styles.segYes : ''}`}
-                    aria-pressed={scoutChoice[s.id] === 'yes'}
-                    onClick={() => setScoutChoice((v) => ({ ...v, [s.id]: 'yes' }))}
-                  >
-                    Attending
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.segBtn} ${scoutChoice[s.id] === 'no' ? styles.segNo : ''}`}
-                    aria-pressed={scoutChoice[s.id] === 'no'}
-                    onClick={() => setScoutChoice((v) => ({ ...v, [s.id]: 'no' }))}
-                  >
-                    Can’t make it
-                  </button>
-                </span>
-              </div>
-              {scoutChoice[s.id] === 'yes' && tierPicker(`s:${s.id}`, 'scout')}
-              {scoutChoice[s.id] === 'yes' && questionFields(`s:${s.id}`, 'scout')}
-              {scoutChoice[s.id] === 'yes' &&
-                rideFields(`s:${s.id}`, s.displayName, { out: false, back: false })}
-              {scoutChoice[s.id] === 'yes' && pickFields(`s:${s.id}`, s.displayName)}
-            </div>
+            <ScoutRow
+              key={s.id}
+              s={s}
+              choice={scoutChoice[s.id]}
+              tierId={tier[`s:${s.id}`]}
+              days={days[`s:${s.id}`] ?? 1}
+              activeTier={resolveChosenTier(scoutAutoTier, prices, tier[`s:${s.id}`])}
+              tiers={scoutTiers}
+              auto={scoutAutoTier}
+              questions={scoutQuestions}
+              answers={answers[`s:${s.id}`]}
+              rides={rides[`s:${s.id}`]}
+              driversNeeded={!!signup.drivers_needed}
+              groupSets={groupSets}
+              picks={picks[`s:${s.id}`]}
+              onChoice={handleScoutChoice}
+              onTierSelect={handleTierSelect}
+              onDaysChange={handleDaysChange}
+              onAnswerChange={handleAnswerChange}
+              onRideChange={setRide}
+              onPickChange={setPick}
+              renderProbe={renderProbe}
+            />
           ))}
         </>
       )}
@@ -627,110 +1025,31 @@ export default function PersonFirstForm({
         <>
           <p className={styles.dayHead}>Adults</p>
           {adults.map((a) => (
-            <div key={a.key} className={styles.personRow}>
-              <div className={styles.personMain}>
-                <span className={styles.personName}>
-                  {a.name}
-                  {/* A leader-roster adult has no relationship to a scout —
-                      labelling the Scoutmaster "Parent" is just wrong. */}
-                  <span className={styles.personSub}>
-                    {a.relationship || (a.leaderCode ? 'Adult' : 'Parent')}
-                  </span>
-                </span>
-                <span className={styles.seg}>
-                  <button
-                    type="button"
-                    className={`${styles.segBtn} ${adultChoice[a.key] === 'full' ? styles.segYes : ''}`}
-                    aria-pressed={adultChoice[a.key] === 'full'}
-                    onClick={() => setAdultChoice((v) => ({ ...v, [a.key]: 'full' }))}
-                  >
-                    Attending
-                  </button>
-                  {signup.drivers_needed && (
-                    <button
-                      type="button"
-                      className={`${styles.segBtn} ${adultChoice[a.key] === 'driver_only' ? styles.segDrv : ''}`}
-                      aria-pressed={adultChoice[a.key] === 'driver_only'}
-                      onClick={() => setAdultChoice((v) => ({ ...v, [a.key]: 'driver_only' }))}
-                    >
-                      Driver only
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className={`${styles.segBtn} ${adultChoice[a.key] === 'no' ? styles.segNo : ''}`}
-                    aria-pressed={adultChoice[a.key] === 'no'}
-                    onClick={() => setAdultChoice((v) => ({ ...v, [a.key]: 'no' }))}
-                  >
-                    Can’t make it
-                  </button>
-                </span>
-              </div>
-
-              {adultChoice[a.key] === 'driver_only' && (
-                <p className={styles.drvNote}>
-                  Not attending — transportation only. Excluded from the headcount and the two-deep
-                  count, and <strong>never charged</strong>.
-                </p>
-              )}
-
-              {adultChoice[a.key] === 'full' && tierPicker(`a:${a.key}`, 'adult')}
-              {adultChoice[a.key] === 'full' && questionFields(`a:${a.key}`, 'adult')}
-
-              {signup.drivers_needed &&
-                (adultChoice[a.key] === 'full' || adultChoice[a.key] === 'driver_only') && (
-                  <div className={styles.personExtra}>
-                    <span className={styles.miniLabel}>Can you drive? Each leg counts separately.</span>
-                    <label className={styles.chk}>
-                      <input
-                        type="checkbox"
-                        checked={drives[a.key]?.out ?? false}
-                        onChange={(e) =>
-                          setDrives((v) => ({ ...v, [a.key]: { ...v[a.key], out: e.target.checked } }))
-                        }
-                      />
-                      Drive there
-                    </label>
-                    <label className={styles.chk}>
-                      <input
-                        type="checkbox"
-                        checked={drives[a.key]?.back ?? false}
-                        onChange={(e) =>
-                          setDrives((v) => ({ ...v, [a.key]: { ...v[a.key], back: e.target.checked } }))
-                        }
-                      />
-                      Drive back
-                    </label>
-                    {(drives[a.key]?.out || drives[a.key]?.back) && (
-                      <label className={styles.daysRow}>
-                        <span className={styles.miniLabel}>Seats in your vehicle, including you</span>
-                        <input
-                          type="number"
-                          min={1}
-                          max={15}
-                          value={drives[a.key]?.seats ?? 4}
-                          onChange={(e) =>
-                            setDrives((v) => ({
-                              ...v,
-                              [a.key]: { ...v[a.key], seats: Math.max(1, Number(e.target.value) || 1) }
-                            }))
-                          }
-                          className={styles.numInput}
-                        />
-                        <span className={styles.dayMath}>
-                          {Math.max(0, (drives[a.key]?.seats ?? 4) - 1)} for riders
-                        </span>
-                      </label>
-                    )}
-                    {adultChoice[a.key] === 'full' &&
-                      rideFields(`a:${a.key}`, a.name, {
-                        out: drives[a.key]?.out ?? false,
-                        back: drives[a.key]?.back ?? false
-                      })}
-                  </div>
-                )}
-              {adultChoice[a.key] === 'full' && pickFields(`a:${a.key}`, a.name)}
-            </div>
+            <AdultRow
+              key={a.key}
+              a={a}
+              choice={adultChoice[a.key]}
+              tierId={tier[`a:${a.key}`]}
+              days={days[`a:${a.key}`] ?? 1}
+              activeTier={resolveChosenTier(adultAutoTier, prices, tier[`a:${a.key}`])}
+              tiers={adultTiers}
+              auto={adultAutoTier}
+              questions={adultQuestions}
+              answers={answers[`a:${a.key}`]}
+              drivesValue={drives[a.key]}
+              rides={rides[`a:${a.key}`]}
+              driversNeeded={!!signup.drivers_needed}
+              groupSets={groupSets}
+              picks={picks[`a:${a.key}`]}
+              onChoice={handleAdultChoice}
+              onTierSelect={handleTierSelect}
+              onDaysChange={handleDaysChange}
+              onAnswerChange={handleAnswerChange}
+              onRideChange={setRide}
+              onPickChange={setPick}
+              onDrivesChange={handleDrivesChange}
+              renderProbe={renderProbe}
+            />
           ))}
 
           {/* Parent contact info is hard to collect ahead of time; this is often

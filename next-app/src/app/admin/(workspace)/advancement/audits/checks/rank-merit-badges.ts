@@ -15,10 +15,9 @@
  * well ahead of formally starting work on the rank.
  */
 
-import type { createAdminClient } from '@/lib/supabase/server';
-import { fetchAllRows } from '@/lib/supabase/paginate';
 import { mbIdFromAwardCode } from '@/lib/scout-detail';
 import type { Finding } from '../types';
+import { activeScouts, ledgerOfKind, type AuditInput } from '../audit-input';
 
 const THRESHOLDS: { rankId: string; rankLabel: string; minTotal: number; minEagle: number }[] = [
   { rankId: 'star', rankLabel: 'Star', minTotal: 6, minEagle: 4 },
@@ -52,24 +51,13 @@ function qualifyingDateFor(
   return dates.length ? dates.sort().at(-1)! : (sorted.at(-1)?.date ?? '');
 }
 
-export async function run(supabase: ReturnType<typeof createAdminClient>): Promise<Finding[]> {
-  const [awardRows, mbCatalogRes, rankReqsRes, existingRows, scoutsRes] = await Promise.all([
-    fetchAllRows<MbAwardEvent>((from, to) =>
-      supabase.from('ledger_active').select('scout_id, code, date').eq('kind', 'merit_badge_award').range(from, to)
-    ),
-    supabase.from('merit_badges').select('id, name, eagle'),
-    supabase
-      .from('rank_requirements')
-      .select('rank_id, label')
-      .in('rank_id', THRESHOLDS.map((t) => t.rankId))
-      .eq('code', '3'),
-    supabase
-      .from('ledger_active')
-      .select('scout_id, code')
-      .eq('kind', 'rank_requirement')
-      .in('code', THRESHOLDS.map((t) => `${t.rankId}-3`)),
-    supabase.from('scouts').select('id, display_name').eq('active', true)
-  ]);
+export async function run(input: AuditInput): Promise<Finding[]> {
+  const mbCatalogRes = await input.supabase.from('merit_badges').select('id, name, eagle');
+  const rankIds = new Set(THRESHOLDS.map((t) => t.rankId));
+  const codes3 = new Set(THRESHOLDS.map((t) => `${t.rankId}-3`));
+  const awardRows: MbAwardEvent[] = ledgerOfKind(input.ledger, ['merit_badge_award']);
+  const existingRows = ledgerOfKind(input.ledger, ['rank_requirement']).filter((r) => codes3.has(r.code));
+  const scouts = activeScouts(input.scouts);
 
   const eagleById = new Map<string, boolean>();
   const nameByMbId = new Map<string, string>();
@@ -78,15 +66,15 @@ export async function run(supabase: ReturnType<typeof createAdminClient>): Promi
     nameByMbId.set(m.id, m.name);
   }
   const labelByRank = new Map<string, string>();
-  for (const r of (rankReqsRes.data ?? []) as { rank_id: string; label: string }[]) {
-    labelByRank.set(r.rank_id, r.label);
+  for (const r of input.rankRequirements) {
+    if (r.code === '3' && rankIds.has(r.rank_id)) labelByRank.set(r.rank_id, r.label);
   }
   const scoutNameById = new Map<string, string>();
-  for (const s of (scoutsRes.data ?? []) as { id: string; display_name: string }[]) {
+  for (const s of scouts) {
     scoutNameById.set(s.id, s.display_name);
   }
   const existing = new Set<string>();
-  for (const row of (existingRows.data ?? []) as { scout_id: string; code: string }[]) {
+  for (const row of existingRows) {
     existing.add(`${row.scout_id}|||${row.code}`);
   }
 
@@ -101,7 +89,6 @@ export async function run(supabase: ReturnType<typeof createAdminClient>): Promi
     mbByScout.set(row.scout_id, byMb);
   }
 
-  const scouts = (scoutsRes.data ?? []) as { id: string; display_name: string }[];
   const findings: Finding[] = [];
   for (const scout of scouts) {
     const byMb = mbByScout.get(scout.id) ?? new Map<string, string>();

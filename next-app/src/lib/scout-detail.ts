@@ -86,17 +86,6 @@ export async function loadScoutDetail(scoutId: string): Promise<ScoutDetail | nu
   if (scoutRes.error || !scoutRes.data) return null;
   const scout = scoutRes.data as unknown as Scout;
 
-  // bsa_member_id lives on people now (Plans/Retire-Roster-Contact-Columns.md).
-  let bsaMemberId: string | null = null;
-  if (scout.person_id != null) {
-    const { data: personRow } = await supabase
-      .from('people')
-      .select('bsa_member_id')
-      .eq('id', scout.person_id)
-      .maybeSingle();
-    bsaMemberId = (personRow as { bsa_member_id: string | null } | null)?.bsa_member_id ?? null;
-  }
-
   const ledger = {
     rankRequirements: [] as LedgerEntry[],
     rankAwards: [] as LedgerEntry[],
@@ -164,14 +153,29 @@ export async function loadScoutDetail(scoutId: string): Promise<ScoutDetail | nu
     )
   ].filter((id) => !awardedMbIds.has(id));
 
-  let mbReqCatalog: MeritBadgeRequirement[] = [];
-  if (inProgressMbIds.length > 0) {
-    const { data } = await supabase
-      .from('merit_badge_requirements')
-      .select('id, mb_id, parent_id, code, label, complete_rule, complete_n, sort_order')
-      .in('mb_id', inProgressMbIds);
-    mbReqCatalog = (data ?? []) as MeritBadgeRequirement[];
-  }
+  // Two more round trips, neither depending on the other's result — the
+  // in-progress requirement catalog needs only inProgressMbIds (derived
+  // above, sync), and the person lookup needs only scout.person_id (already
+  // in hand from scoutRes). They used to run one after the other; now they
+  // go out together (perf item 18, 2026-08-27).
+  const [mbReqCatalog, bsaMemberId] = await Promise.all([
+    inProgressMbIds.length > 0
+      ? supabase
+          .from('merit_badge_requirements')
+          .select('id, mb_id, parent_id, code, label, complete_rule, complete_n, sort_order')
+          .in('mb_id', inProgressMbIds)
+          .then(({ data }) => (data ?? []) as MeritBadgeRequirement[])
+      : Promise.resolve([] as MeritBadgeRequirement[]),
+    // bsa_member_id lives on people now (Plans/Retire-Roster-Contact-Columns.md).
+    scout.person_id != null
+      ? supabase
+          .from('people')
+          .select('bsa_member_id')
+          .eq('id', scout.person_id)
+          .maybeSingle()
+          .then(({ data }) => (data as { bsa_member_id: string | null } | null)?.bsa_member_id ?? null)
+      : Promise.resolve(null as string | null)
+  ]);
 
   return {
     scout,

@@ -433,6 +433,7 @@ export async function updateMeritBadge(formData: FormData): Promise<Result> {
     await insertReqTree(supabase, id, reqTree, null);
   }
 
+  updateTag('advancement-catalog');
   revalidateAll();
   return { ok: true };
 }
@@ -707,6 +708,7 @@ export async function createSkill(formData: FormData): Promise<Result> {
     }
     return { ok: false, error: error.message };
   }
+  updateTag('advancement-catalog');
   revalidateAll();
   revalidatePath('/admin/advancement/meeting-plan');
   return { ok: true };
@@ -729,6 +731,7 @@ export async function updateSkill(formData: FormData): Promise<Result> {
     .update({ name, youth_teachable: youthTeachable })
     .eq('id', id);
   if (error) return { ok: false, error: error.message };
+  updateTag('advancement-catalog');
   revalidateAll();
   revalidatePath('/admin/advancement/meeting-plan');
   return { ok: true };
@@ -753,6 +756,7 @@ export async function deleteSkill(formData: FormData): Promise<Result> {
   if (reqErr) return { ok: false, error: reqErr.message };
   const { error } = await supabase.from('skills').delete().eq('id', id);
   if (error) return { ok: false, error: error.message };
+  updateTag('advancement-catalog');
   revalidateAll();
   revalidatePath('/admin/advancement/meeting-plan');
   return { ok: true };
@@ -1033,6 +1037,7 @@ export async function updateReqCode(formData: FormData): Promise<Result> {
       .eq('code', code);
   }
 
+  updateTag('advancement-catalog');
   revalidateAll();
   return { ok: true };
 }

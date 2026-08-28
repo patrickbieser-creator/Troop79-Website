@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { adminClient } from './helpers/admin-client';
 import { run, type ReconciliationFinding } from '../src/app/admin/(workspace)/advancement/audits/checks/attendance-reconciliation';
+import { loadAuditInput } from '../src/app/admin/(workspace)/advancement/audits/audit-input';
 
 /**
  * The reconciliation audit itself is read-only, but its findings now carry
@@ -75,12 +76,19 @@ function find(findings: ReconciliationFinding[], kind: ReconciliationFinding['ki
   return findings.find((f) => f.entryId === entryId && f.kind === kind);
 }
 
+/** run() now takes a shared snapshot (item 10, perf review 2026-08-27)
+ *  instead of the raw client — reload it fresh each call so a test's write
+ *  right before is visible, the same as calling run(admin) used to be. */
+async function runCheck() {
+  return run(await loadAuditInput(admin));
+}
+
 describe('attendance-reconciliation run()', () => {
   it('CreditMissing_CarriesPersonIdAndRollCallQty_ForWritingTheCredit', async () => {
     entryId = await makeEntry('2027-12-13', `${FIXTURE} missing`);
     await admin.from('event_attendance').insert({ calendar_entry_id: entryId, person_id: scoutPersonId, qty: 2 });
 
-    const findings = await run(admin);
+    const findings = await runCheck();
     const f = find(findings, 'credit_missing');
     expect(f).toBeDefined();
     expect(f!.personId).toBe(scoutPersonId);
@@ -105,7 +113,7 @@ describe('attendance-reconciliation run()', () => {
       .select('id')
       .single();
 
-    const findings = await run(admin);
+    const findings = await runCheck();
     const f = find(findings, 'credit_orphaned');
     expect(f).toBeDefined();
     expect(f!.personId).toBe(scoutPersonId);
@@ -130,7 +138,7 @@ describe('attendance-reconciliation run()', () => {
       .select('id')
       .single();
 
-    const findings = await run(admin);
+    const findings = await runCheck();
     const f = find(findings, 'qty_mismatch');
     expect(f).toBeDefined();
     expect(f!.ledgerEntryId).toBe(led!.id);
@@ -155,7 +163,7 @@ describe('attendance-reconciliation run()', () => {
       .select('id')
       .single();
 
-    const findings = await run(admin);
+    const findings = await runCheck();
     const f = find(findings, 'date_drift');
     expect(f).toBeDefined();
     expect(f!.ledgerEntryId).toBe(led!.id);

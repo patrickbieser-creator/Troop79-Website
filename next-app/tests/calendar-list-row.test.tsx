@@ -45,6 +45,7 @@ function renderList(rows: CalendarEntryRow[]) {
       category=""
       tab="upcoming"
       newOpen={false}
+      windowActive={false}
       onCreate={vi.fn()}
       onUpdate={vi.fn()}
       onDelete={vi.fn()}

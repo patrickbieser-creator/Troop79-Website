@@ -638,3 +638,19 @@ export function staleClaims(
 ): { entryId: number; slotId: number }[] {
   return current.filter((c) => !wanted.has(`${c.entryId}:${c.slotId}`));
 }
+
+/** Groups stale claims by entry so the caller can delete each entry's stale
+ *  slots in one `.in('slot_id', …)` call instead of a round trip per claim
+ *  (Plans/Performance-Review-2026-08-27.md #12) — a family dropping five jobs
+ *  used to cost five deletes; now it costs one per person still on the party. */
+export function groupStaleClaimsByEntry(
+  stale: readonly { entryId: number; slotId: number }[]
+): { entryId: number; slotIds: number[] }[] {
+  const byEntry = new Map<number, number[]>();
+  for (const c of stale) {
+    const slotIds = byEntry.get(c.entryId);
+    if (slotIds) slotIds.push(c.slotId);
+    else byEntry.set(c.entryId, [c.slotId]);
+  }
+  return Array.from(byEntry.entries(), ([entryId, slotIds]) => ({ entryId, slotIds }));
+}

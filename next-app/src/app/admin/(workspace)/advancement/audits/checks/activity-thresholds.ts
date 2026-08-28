@@ -48,10 +48,9 @@
  * real problem, not a bug.
  */
 
-import type { createAdminClient } from '@/lib/supabase/server';
-import { fetchAllRows } from '@/lib/supabase/paginate';
 import { fmtDate } from '@/lib/format-date';
 import type { Finding } from '../types';
+import { activeScouts, ledgerOfKind, type AuditInput } from '../audit-input';
 
 const THRESHOLDS: { rankId: string; rankLabel: string; minActivities: number; minCampouts: number }[] = [
   { rankId: 'tenderfoot', rankLabel: 'Tenderfoot', minActivities: 0, minCampouts: 1 },
@@ -127,40 +126,23 @@ function qualifyingDateFor(
   return dates.length ? dates.sort().at(-1)! : sorted.at(-1)?.date ?? '';
 }
 
-export async function run(supabase: ReturnType<typeof createAdminClient>): Promise<Finding[]> {
-  const [activityRows, rankReqsRes, existing1aRows, scoutsRes] = await Promise.all([
-    // One query across every activity kind — they are deduped together below,
-    // so fetching them separately would only make that harder.
-    fetchAllRows<LedgerEvent>((from, to) =>
-      supabase
-        .from('ledger_active')
-        .select('scout_id, code, date, kind')
-        .in('kind', ACTIVITY_KINDS as unknown as string[])
-        .range(from, to)
-    ),
-    supabase
-      .from('rank_requirements')
-      .select('rank_id, label')
-      .in('rank_id', THRESHOLDS.map((t) => t.rankId))
-      .eq('code', '1a'),
-    supabase
-      .from('ledger_active')
-      .select('scout_id, code')
-      .eq('kind', 'rank_requirement')
-      .in('code', THRESHOLDS.map((t) => `${t.rankId}-1a`)),
-    supabase.from('scouts').select('id, display_name').eq('active', true)
-  ]);
+export async function run(input: AuditInput): Promise<Finding[]> {
+  const activityRows: LedgerEvent[] = ledgerOfKind(input.ledger, ACTIVITY_KINDS);
+  const rankIds = new Set(THRESHOLDS.map((t) => t.rankId));
+  const codes1a = new Set(THRESHOLDS.map((t) => `${t.rankId}-1a`));
+  const existing1aRows = ledgerOfKind(input.ledger, ['rank_requirement']).filter((r) => codes1a.has(r.code));
+  const scouts = activeScouts(input.scouts);
 
   const labelByRank = new Map<string, string>();
-  for (const r of (rankReqsRes.data ?? []) as { rank_id: string; label: string }[]) {
-    labelByRank.set(r.rank_id, r.label);
+  for (const r of input.rankRequirements) {
+    if (r.code === '1a' && rankIds.has(r.rank_id)) labelByRank.set(r.rank_id, r.label);
   }
   const scoutNameById = new Map<string, string>();
-  for (const s of (scoutsRes.data ?? []) as { id: string; display_name: string }[]) {
+  for (const s of scouts) {
     scoutNameById.set(s.id, s.display_name);
   }
   const existing1a = new Set<string>();
-  for (const row of (existing1aRows.data ?? []) as { scout_id: string; code: string }[]) {
+  for (const row of existing1aRows) {
     existing1a.add(`${row.scout_id}|||${row.code}`);
   }
 
@@ -190,7 +172,6 @@ export async function run(supabase: ReturnType<typeof createAdminClient>): Promi
     activitiesByScout.set(row.scout_id, byCode);
   }
 
-  const scouts = (scoutsRes.data ?? []) as { id: string; display_name: string }[];
   const findings: Finding[] = [];
   for (const scout of scouts) {
     const byCode = activitiesByScout.get(scout.id) ?? new Map<string, ScoutActivity>();

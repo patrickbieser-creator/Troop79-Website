@@ -10,6 +10,7 @@
 
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireCapability } from '@/lib/require-capability';
+import { loadAuditInput } from './audit-input';
 import { AuditCard } from './audit-card';
 import { DuplicateAuditCard } from './duplicate-audit-card';
 import { ReconciliationFindingRow } from './reconciliation-finding-row';
@@ -69,11 +70,14 @@ const CHECKS = [
 export default async function AuditsPage() {
   await requireCapability('advancement.write');
   const supabase = createAdminClient();
-  const [findingsByCheck, duplicateGroups, reconciliation, leadersRes] = await Promise.all([
-    Promise.all(CHECKS.map((c) => c.run(supabase))),
-    duplicateRecords.run(supabase),
-    attendanceReconciliation.run(supabase),
+  const [input, leadersRes] = await Promise.all([
+    loadAuditInput(supabase),
     supabase.from('leaders').select('code, name').order('code')
+  ]);
+  const [findingsByCheck, duplicateGroups, reconciliation] = await Promise.all([
+    Promise.all(CHECKS.map((c) => c.run(input))),
+    duplicateRecords.run(input),
+    attendanceReconciliation.run(input)
   ]);
   const leaders = (leadersRes.data ?? []) as { code: string; name: string }[];
 

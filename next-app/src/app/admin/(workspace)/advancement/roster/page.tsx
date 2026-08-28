@@ -24,13 +24,13 @@ import { resolveAdminActor } from "@/lib/admin-actor";
 import { centralToday } from "@/lib/dates";
 import type { Rank } from "@/lib/supabase/types";
 import { loadScoutRows } from "@/lib/scout-row";
+import { loadPersonDirectory, indexDirectory } from "@/lib/person-directory";
 import { RosterActions } from "./roster-actions";
 import { TabStrip } from "../../_components/tab-strip";
 import { PageTitle } from "../../_components/page-title";
 import { ScoutsTable } from "./scouts-table";
 import {
   PeopleTable,
-  type DirectoryPerson,
   type PersonRoleRow,
   type RelationshipRow,
   type HouseholdOption,
@@ -103,7 +103,7 @@ export default async function RosterPage({
 
   const supabase = createAdminClient();
   const [
-    directoryRes,
+    directory,
     allScouts,
     ranksRes,
     rolesRes,
@@ -112,7 +112,9 @@ export default async function RosterPage({
     membersRes,
     guestPeopleRes,
   ] = await Promise.all([
-    supabase.from("person_directory").select("*").order("display_name"),
+    // Shared cache()d loader (Plans/Performance-Review-2026-08-27.md #17) —
+    // the signup roster and Money tab read the same view.
+    loadPersonDirectory(),
     loadScoutRows(supabase),
     supabase
       .from("ranks")
@@ -174,7 +176,6 @@ export default async function RosterPage({
   }
 
   const today = centralToday();
-  const directory = (directoryRes.data ?? []) as unknown as DirectoryPerson[];
   const ranks = ((ranksRes.data ?? []) as Rank[]).map((r) => ({
     id: r.id,
     display_name: r.display_name,
@@ -190,14 +191,15 @@ export default async function RosterPage({
   // apart. A label alone is not an identifier: production already has two
   // Stollenwerk households, two Haslam, two Pasquesi.
   const householdMembers: Record<number, string[]> = {};
+  // Map, not `directory.find()` per membership — was O(memberships ×
+  // directory) over every household member in the troop (item 17).
+  const directoryByPersonId = indexDirectory(directory);
   for (const m of (membersRes.data ?? []) as {
     household_id: number;
     person_id: number;
   }[]) {
     householdByPerson[m.person_id] = m.household_id;
-    const name = directory.find(
-      (p) => p.person_id === m.person_id,
-    )?.display_name;
+    const name = directoryByPersonId.get(m.person_id)?.display_name;
     if (name) (householdMembers[m.household_id] ??= []).push(name);
   }
   const nameById = Object.fromEntries(

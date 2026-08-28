@@ -9,6 +9,7 @@ import {
 } from '@/lib/participant-class';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireCapability } from '@/lib/require-capability';
+import { loadPersonDirectory } from '@/lib/person-directory';
 import { isRideStatus, legTiles, type Leg, type RideStatus, type TransportCar } from '@/lib/transport';
 import type { LeaderQuestion } from '@/lib/leader-columns';
 import { RosterTable } from './roster-table';
@@ -136,11 +137,50 @@ export async function loadRoster(signupId: number) {
     supabase.from('people').select('id, display_name, health_form_date')
   ]);
 
-  // Money (Plans/Event-Logistics.md §C): the derived per-entry balance.
-  const { data: balanceRows } = await supabase
-    .from('signup_entry_balances')
-    .select('entry_id, owed, paid, balance, settled')
-    .eq('event_signup_id', sig.id);
+  // These five key off sig.id/sig.calendar_entry_id alone — none depends on
+  // another, so they were five serial round trips for no reason (item 17):
+  // money, group-set labels, the tab nav, the add-candidates directory, and
+  // the confirmation log.
+  const [
+    { data: balanceRows },
+    { data: allSets },
+    nav,
+    directory,
+    { data: logRows }
+  ] = await Promise.all([
+    // Money (Plans/Event-Logistics.md §C): the derived per-entry balance.
+    supabase
+      .from('signup_entry_balances')
+      .select('entry_id, owed, paid, balance, settled')
+      .eq('event_signup_id', sig.id),
+    // Group sets (Plans/Event-Logistics.md §A/§B): cars are the trigger-owned
+    // kind='car' sets (each entry's car per leg = the driver's name); every
+    // other set (patrols, tents, crews, teams) becomes a "Label: Group" tag.
+    supabase
+      .from('signup_group_sets')
+      .select('id, kind, label, leg, sort')
+      .eq('event_signup_id', sig.id)
+      .order('sort')
+      .order('id'),
+    // The event tab row: one tab per set, Money only when the event has money.
+    loadEventNav(supabase, sig.id, sig.calendar_entry_id),
+    // Who a leader could still add by hand — everyone active without a LIVE
+    // entry; people Removed earlier are offered too, flagged, and Add
+    // reinstates their original entry (lib/event-signup-admin addCandidatesFor).
+    // Shared cache()d loader (Plans/Performance-Review-2026-08-27.md #17) —
+    // the troop roster and Money tab read the same view.
+    loadPersonDirectory().then((rows) => rows.filter((p) => p.active)),
+    // Confirmation email status: the latest FAMILY log row per household —
+    // but only for households still ON the signup (Patrick, 2026-08-25: a
+    // family whose signup was cancelled and deleted was still listed, with a
+    // Resend, because its cancellation receipt was the latest row).
+    supabase
+      .from('signup_confirmation_log')
+      .select('household_id, status, detail, sent_at, change')
+      .eq('event_signup_id', sig.id)
+      .eq('audience', 'family')
+      .order('sent_at', { ascending: false })
+  ]);
   const balanceByEntry = new Map(
     ((balanceRows ?? []) as { entry_id: number; owed: number; paid: number; balance: number; settled: boolean }[]).map((b) => [
       b.entry_id,
@@ -148,26 +188,19 @@ export async function loadRoster(signupId: number) {
     ])
   );
 
-  // Group sets (Plans/Event-Logistics.md §A/§B): cars are the trigger-owned
-  // kind='car' sets (each entry's car per leg = the driver's name); every
-  // other set (patrols, tents, crews, teams) becomes a "Label: Group" tag.
-  const { data: allSets } = await supabase
-    .from('signup_group_sets')
-    .select('id, kind, label, leg, sort')
-    .eq('event_signup_id', sig.id)
-    .order('sort')
-    .order('id');
   const setRows = (allSets ?? []) as { id: number; kind: string; label: string; leg: Leg | null }[];
   const carSetIds = setRows.filter((s) => s.kind === 'car').map((s) => s.id);
   const legBySet = new Map(setRows.filter((s) => s.kind === 'car').map((s) => [s.id, s.leg as Leg]));
   const setById = new Map(setRows.map((s) => [s.id, s]));
   const allSetIds = setRows.map((s) => s.id);
-  const { data: allGroups } = allSetIds.length
-    ? await supabase.from('signup_groups').select('id, set_id, name, driver_entry_id, capacity').in('set_id', allSetIds)
-    : { data: [] as unknown[] };
-  const { data: allMembers } = allSetIds.length
-    ? await supabase.from('signup_group_members').select('group_id, entry_id, set_id').in('set_id', allSetIds)
-    : { data: [] as unknown[] };
+  // Depends on allSetIds above, so it can't join the batch — but the two
+  // reads it needs are independent of each other.
+  const [{ data: allGroups }, { data: allMembers }] = allSetIds.length
+    ? await Promise.all([
+        supabase.from('signup_groups').select('id, set_id, name, driver_entry_id, capacity').in('set_id', allSetIds),
+        supabase.from('signup_group_members').select('group_id, entry_id, set_id').in('set_id', allSetIds)
+      ])
+    : [{ data: [] as unknown[] }, { data: [] as unknown[] }];
   const groupRows = (allGroups ?? []) as {
     id: number;
     set_id: number;
@@ -188,9 +221,6 @@ export async function loadRoster(signupId: number) {
   }
   // One grid column per non-car set, in the builder's order (item 6).
   const groupSets = setRows.filter((s) => s.kind !== 'car').map((s) => ({ id: s.id, label: s.label }));
-  // The event tab row: one tab per set (sort order puts Patrols / Tents ahead of
-  // Cars there / Cars back), Money only when the event has money.
-  const nav = await loadEventNav(supabase, sig.id, sig.calendar_entry_id);
   const cars: TransportCar[] = groupRows
     .filter((g) => carSetIds.includes(g.set_id) && g.driver_entry_id != null)
     .map((g) => ({
@@ -366,15 +396,6 @@ export async function loadRoster(signupId: number) {
     }
   );
 
-  // Who a leader could still add by hand — everyone active without a LIVE
-  // entry; people Removed earlier are offered too, flagged, and Add
-  // reinstates their original entry (lib/event-signup-admin addCandidatesFor).
-  const { data: directory } = await supabase
-    .from('person_directory')
-    .select('person_id, display_name, scout_id, active')
-    .eq('active', true)
-    .order('display_name');
-
   const addCandidates: AddCandidate[] = addCandidatesFor(
     (directory ?? []) as { person_id: number; display_name: string; scout_id: string | null }[],
     (entries ?? []) as { person_id: number | null; status: string }[]
@@ -409,12 +430,6 @@ export async function loadRoster(signupId: number) {
       .filter((e) => e.status !== 'cancelled' && e.household_id != null)
       .map((e) => Number(e.household_id))
   );
-  const { data: logRows } = await supabase
-    .from('signup_confirmation_log')
-    .select('household_id, status, detail, sent_at, change')
-    .eq('event_signup_id', sig.id)
-    .eq('audience', 'family')
-    .order('sent_at', { ascending: false });
   const confirmations: { householdId: number; household: string; status: string; change: string; detail: string | null; sentAt: string }[] = [];
   for (const l of (logRows ?? []) as { household_id: number | null; status: string; change: string; detail: string | null; sent_at: string }[]) {
     if (l.household_id == null || !liveHouseholds.has(l.household_id)) continue;

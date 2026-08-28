@@ -12,12 +12,11 @@
  * only backfills the historical completeness record.
  */
 
-import type { createAdminClient } from '@/lib/supabase/server';
 import { buildReqTree, isGroupSatisfied, type ReqNode } from '@/lib/mb-helpers';
-import { fetchAllRows } from '@/lib/supabase/paginate';
 import { fmtDate } from '@/lib/format-date';
 import type { RankReqCatalogRow } from '@/lib/scout-detail';
 import type { Finding, MissingLeaf } from '../types';
+import { activeScouts, ledgerOfKind, type AuditInput } from '../audit-input';
 
 function isSatisfied(
   node: ReqNode<RankReqCatalogRow>,
@@ -55,36 +54,26 @@ function collectMissingLeaves(
   }
 }
 
-export async function run(supabase: ReturnType<typeof createAdminClient>): Promise<Finding[]> {
-  const [ranksRes, rankReqsRes, rankAwardsRes, rankReqLedgerRows, scoutsRes] = await Promise.all([
-    supabase.from('ranks').select('id, display_name').order('sort_order'),
-    supabase
-      .from('rank_requirements')
-      .select('id, rank_id, parent_id, code, label, complete_rule, complete_n, sort_order'),
-    supabase.from('ledger_active').select('scout_id, code, date, by').eq('kind', 'rank_award'),
-    fetchAllRows<{ scout_id: string; code: string }>((from, to) =>
-      supabase
-        .from('ledger_active')
-        .select('scout_id, code')
-        .eq('kind', 'rank_requirement')
-        .range(from, to)
-    ),
-    supabase.from('scouts').select('id, display_name').eq('active', true)
-  ]);
+export async function run(input: AuditInput): Promise<Finding[]> {
+  const { supabase, rankRequirements, ledger } = input;
+  const ranksRes = await supabase.from('ranks').select('id, display_name').order('sort_order');
+  const rankAwards = ledgerOfKind(ledger, ['rank_award']);
+  const rankReqLedgerRows = ledgerOfKind(ledger, ['rank_requirement']);
+  const scouts = activeScouts(input.scouts);
 
   const rankLabelById = new Map<string, string>();
   for (const r of (ranksRes.data ?? []) as { id: string; display_name: string }[]) {
     rankLabelById.set(r.id, r.display_name);
   }
   const scoutNameById = new Map<string, string>();
-  for (const s of (scoutsRes.data ?? []) as { id: string; display_name: string }[]) {
+  for (const s of scouts) {
     scoutNameById.set(s.id, s.display_name);
   }
 
   // Group the requirement catalog by rank, excluding the synthetic BoR row
   // (that's a display artifact for the award itself, not a real requirement).
   const rowsByRank = new Map<string, RankReqCatalogRow[]>();
-  for (const r of (rankReqsRes.data ?? []) as RankReqCatalogRow[]) {
+  for (const r of rankRequirements) {
     if (r.code.toLowerCase() === 'bor') continue;
     const list = rowsByRank.get(r.rank_id) ?? [];
     list.push(r);
@@ -103,7 +92,7 @@ export async function run(supabase: ReturnType<typeof createAdminClient>): Promi
   // Dedupe (scout, rank) in case of a duplicate rank_award entry.
   const seen = new Set<string>();
   const findings: Finding[] = [];
-  for (const award of (rankAwardsRes.data ?? []) as { scout_id: string; code: string; date: string | null; by: string | null }[]) {
+  for (const award of rankAwards) {
     if (award.code === 'scout') continue; // Scout rank has no BoR
     if (!scoutNameById.has(award.scout_id)) continue; // inactive or unknown scout
     const key = `${award.scout_id}|||${award.code}`;

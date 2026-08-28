@@ -30,6 +30,7 @@
  * highlighting the viewing scout's row is a separate decision Patrick parked.
  */
 import type { Metadata } from 'next';
+import { cache } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
@@ -63,6 +64,19 @@ import s from './mb-tracker.module.css';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * The one `merit_badges` row this route needs, `cache()`-wrapped (perf item
+ * 18, 2026-08-27) so generateMetadata and the page component — which used to
+ * each run their own `.eq('id', mbId).maybeSingle()` — share one query per
+ * request. React's request-scoped `cache()`, not `unstable_cache`: this stays
+ * force-dynamic on purpose (a fresh proof or a rank change must show without
+ * waiting on a tag), so nothing here survives past the one request.
+ */
+const loadMeritBadge = cache(async (mbId: string): Promise<MeritBadge | null> => {
+  const { data } = await createAdminClient().from('merit_badges').select('*').eq('id', mbId).maybeSingle();
+  return data as MeritBadge | null;
+});
+
 /** The badge name in the tab — this page had no metadata export at all before
  *  the merge, so every badge rendered as an untitled tab. Carries forward the
  *  retired tracker's title/description intent. */
@@ -72,13 +86,8 @@ export async function generateMetadata({
   params: Promise<{ mbId: string }>;
 }): Promise<Metadata> {
   const { mbId } = await params;
-  const { data } = await createAdminClient()
-    .from('merit_badges')
-    .select('name, eagle')
-    .eq('id', mbId)
-    .maybeSingle();
-  if (!data) return { title: 'Merit Badge — Scout Troop 79' };
-  const badge = data as Pick<MeritBadge, 'name' | 'eagle'>;
+  const badge = await loadMeritBadge(mbId);
+  if (!badge) return { title: 'Merit Badge — Scout Troop 79' };
   return {
     title: `${badge.name} — Merit Badge — Scout Troop 79`,
     description: `${badge.name}${badge.eagle ? ' (Eagle-required)' : ''} — requirements, troop progress, and the resources Troop 79 recommends.`
@@ -97,16 +106,15 @@ export default async function LibraryMbPage({
   const isLeader = await viewerIsLeader();
 
   const [
-    { data: mb },
+    mb,
     reqsRes,
     narrative,
     badgeResources,
     reqPlacementsRes,
     ledgerRows,
-    { data: scoutRows },
-    { count: totalActive }
+    { data: scoutRows }
   ] = await Promise.all([
-    supabase.from('merit_badges').select('*').eq('id', mbId).maybeSingle(),
+    loadMeritBadge(mbId),
     supabase.from('merit_badge_requirements').select('*').eq('mb_id', mbId),
     loadNarrative(createAdminClient(), 'mb', mbId),
     loadPublishedFor(createAdminClient(), 'mb', mbId, isLeader),
@@ -133,19 +141,22 @@ export default async function LibraryMbPage({
         .is('deleted_at', null)
         .range(from, to)
     ),
-    supabase.from('scouts').select(SCOUT_CORE_COLS).eq('active', true).order('display_name'),
-    supabase.from('scouts').select('id', { count: 'exact', head: true }).eq('active', true)
+    supabase.from('scouts').select(SCOUT_CORE_COLS).eq('active', true).order('display_name')
   ]);
   if (!mb) notFound();
 
-  const badge = mb as MeritBadge;
+  const badge = mb;
   const reqTree = buildReqTree((reqsRes.data ?? []) as MeritBadgeRequirement[]);
   const leaves = flattenLeaves(reqTree);
 
   // ── Tracker (all four decisions live in lib/mb-scout-progress.ts) ────────
   const byScout = foldLedger(ledgerRows, mbId);
-  const started = startedScouts((scoutRows ?? []) as unknown as Scout[], byScout);
-  const stats = mbStats(started, byScout, totalActive ?? 0);
+  const activeScouts = (scoutRows ?? []) as unknown as Scout[];
+  const started = startedScouts(activeScouts, byScout);
+  // totalActive used to be its own `count: exact, head: true` round trip on
+  // the same `scouts … eq('active', true)` filter as activeScouts above — its
+  // length IS that count, so the second query was dropped (perf item 18).
+  const stats = mbStats(started, byScout, activeScouts.length);
   const groups = gridGroups(reqTree, leaves);
 
   // Group requirement-level resources by their TOP-LEVEL requirement code so

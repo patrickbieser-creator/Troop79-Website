@@ -2,7 +2,7 @@
 
 import { GuestRowsEditor, GuestCountField, GuestsLocked, type GuestRowValue } from './guest-rows';
 import { SavingOverlay, intentOf, type SaveIntent } from './save-feedback';
-import { useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { SignupSlot, GuestMode, HouseholdGuest } from '@/lib/event-signup';
 import { guestHostKey } from '@/lib/guest-payload';
@@ -14,6 +14,12 @@ import { SignupStatusBar } from './signup-status-bar';
 import { Notice } from '@/app/_components/notice';
 
 import { fmtDay } from '@/lib/format-date';
+
+/** Stable "nobody's claimed this yet" fallback — `claims[slotId] ?? []` would
+ *  otherwise mint a new empty array every render, which would make every
+ *  unclaimed job's row look "changed" to React.memo and defeat the
+ *  memoisation below (Performance-Review-2026-08-27 #15). */
+const EMPTY_CLAIMS: string[] = [];
 /*
  * THE JOB BOARD — one list, not two.
  *
@@ -52,6 +58,337 @@ export interface ExistingClaim {
 
 export type GateState = 'anon' | 'no-household' | 'ready';
 
+interface Match {
+  household: Household;
+  rowKey: string;
+  name: string;
+  isScout: boolean;
+}
+
+/** Pure — who may take a job. Lives outside the component so SlotRow's memo
+ *  doesn't need a fresh closure every render (Performance-Review-2026-08-27 #15). */
+const isEligible = (p: Person, s: SignupSlot) =>
+  s.eligibility === 'both' || (s.eligibility === 'scouts' ? p.kind === 'scout' : p.kind === 'adult');
+
+/** Everything a slot row's expanded gate panel needs that ISN'T specific to
+ *  that one slot. Passed down as a single memoised object so a keystroke in
+ *  one row's note (or a claim toggle elsewhere) doesn't change this
+ *  reference and doesn't invalidate every other row's React.memo. */
+interface SlotRowShared {
+  gateState: GateState;
+  canSwitchHousehold: boolean;
+  gateConfigured: boolean;
+  gateError?: string;
+  gateAction: (fd: FormData) => void;
+  eventId: number;
+  household: Household | null;
+  people: Person[];
+  query: string;
+  matches: Match[];
+  onQueryChange: (value: string) => void;
+  onGoToHousehold: (householdKey: string) => void;
+}
+
+/** One job's row — trigger, fill bar, claimer chips, optional note, and (when
+ *  open) the gate/member-picker panel. Wrapped in React.memo so typing in
+ *  this row's note does not re-render the other 29 jobs on a rummage sale
+ *  board (Performance-Review-2026-08-27 #15). `renderProbe` is test-only
+ *  instrumentation — SlotFirstForm never passes it in production, and it
+ *  never reaches markup — see tests/slot-first-form-row-memo.test.tsx. */
+const SlotRow = memo(function SlotRow({
+  sl,
+  mine,
+  filled,
+  full,
+  lockedOut,
+  pct,
+  gateCue,
+  open,
+  fullNoteShown,
+  ready,
+  comment,
+  onNoteChange,
+  onSlotClick,
+  onToggleClaim,
+  shared,
+  renderProbe
+}: {
+  sl: SignupSlot;
+  mine: string[];
+  filled: number;
+  full: boolean;
+  lockedOut: boolean;
+  pct: number;
+  /** "Sign in to claim" / "Choose the family" / "Ask a leader" / "Sign up" —
+   *  depends only on gateState/canSwitchHousehold, same for every row, but
+   *  computed once at the parent alongside the other gate-state props. */
+  gateCue: string;
+  open: boolean;
+  fullNoteShown: boolean;
+  ready: boolean;
+  comment: string;
+  onNoteChange: (slotId: number, value: string) => void;
+  onSlotClick: (slotId: number, lockedOut: boolean) => void;
+  onToggleClaim: (slotId: number, personKey: string) => void;
+  shared: SlotRowShared;
+  renderProbe?: (key: string) => void;
+}) {
+  renderProbe?.(`slot:${sl.id}`);
+
+  /** What opens under this job row, depending on how far in the visitor is. */
+  const renderPanel = () => {
+    const {
+      gateState,
+      canSwitchHousehold,
+      gateConfigured,
+      gateError,
+      gateAction,
+      eventId,
+      household,
+      people,
+      query,
+      matches,
+      onQueryChange,
+      onGoToHousehold
+    } = shared;
+
+    if (gateState === 'anon') {
+      return (
+        <div className={styles.memberPick}>
+          <p className={styles.pickPrompt}>Sign in to claim “{sl.label}”</p>
+          {!gateConfigured ? (
+            <p className={styles.gateLede}>
+              The family signup gate isn’t configured on this server yet.
+            </p>
+          ) : (
+            <form action={gateAction} className={styles.inlineGate}>
+              <input type="hidden" name="next" value={`/events/${eventId}`} />
+              <p className={styles.gateLede}>
+                One shared password for the whole troop — it’s in the Bugle each week, or ask any
+                leader. You’ll only enter it once on this device.
+              </p>
+              <div className={styles.gateRow}>
+                <input
+                  name="password"
+                  type="password"
+                  autoComplete="off"
+                  className={styles.gateInput}
+                  placeholder="Troop password"
+                  aria-label="Troop password"
+                />
+                <button type="submit" className={styles.gateBtn}>
+                  Sign in
+                </button>
+              </div>
+              {gateError === 'bad-password' && (
+                <Notice tone="error" className={styles.noticeGapTop}>That password didn’t match. Try again.</Notice>
+              )}
+              {gateError === 'missing' && (
+                <Notice tone="error" className={styles.noticeGapTop}>Please enter the troop password.</Notice>
+              )}
+            </form>
+          )}
+        </div>
+      );
+    }
+
+    if (gateState === 'no-household' && !canSwitchHousehold) {
+      return (
+        <div className={styles.memberPick}>
+          <p className={styles.gateLede}>
+            There’s no household on record for you yet — ask a leader to add you to one, then come back
+            to claim “{sl.label}”.
+          </p>
+        </div>
+      );
+    }
+
+    if (gateState === 'no-household') {
+      return (
+        <div className={styles.memberPick}>
+          <p className={styles.pickPrompt}>Who’s signing up for “{sl.label}”?</p>
+          <input
+            type="search"
+            className={styles.gateInput}
+            placeholder="Your name, or your scout’s name…"
+            autoComplete="off"
+            value={query}
+            onChange={(e) => onQueryChange(e.target.value)}
+            aria-label="Your name, or your scout’s name"
+          />
+          {query.trim().length >= 2 && (
+            <ul className={styles.pickerResults}>
+              {matches.length === 0 && (
+                <li className={styles.pickerNone}>
+                  Nobody by that name — check the spelling, or ask a leader to add you.
+                </li>
+              )}
+              {matches.map((p) => (
+                <li key={p.rowKey}>
+                  <button
+                    type="button"
+                    className={styles.pickerBtn}
+                    onClick={() => onGoToHousehold(p.household.key)}
+                  >
+                    <span className={styles.pickerName}>{p.name}</span>
+                    <span className={styles.pickerMeta}>
+                      {/* A household of one has nothing useful to say about
+                          itself — "the Jane Smith household · 0 scouts" reads
+                          as a bug to the person it describes. */}
+                      {p.household.scouts.length === 0
+                        ? p.isScout
+                          ? 'Scout'
+                          : 'Adult — no scout in the troop'
+                        : p.household.scouts.length > 1
+                          ? `${p.household.label} household · ${p.household.scouts.length} scouts`
+                          : `${p.household.label} household`}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className={styles.memberPick}>
+        <p className={styles.pickPrompt}>Who from the {household!.label} family is doing this?</p>
+        <div className={styles.pickChips}>
+          {people.map((p) => {
+            const on = mine.includes(p.key);
+            const ok = isEligible(p, sl);
+            const blocked = !ok || (full && !on);
+            return (
+              <button
+                key={p.key}
+                type="button"
+                className={`${styles.pickChip} ${on ? styles.pickOn : ''} ${blocked ? styles.pickBlocked : ''}`}
+                disabled={blocked}
+                aria-pressed={on}
+                onClick={() => onToggleClaim(sl.id, p.key)}
+              >
+                <span className={styles.pickName}>{p.name}</span>
+                <span className={styles.pickSub}>
+                  {!ok
+                    ? sl.eligibility === 'adults'
+                      ? 'Adults only'
+                      : 'Scouts only'
+                    : full && !on
+                      ? 'This job is full'
+                      : p.sub}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <li className={lockedOut ? styles.slotFull : undefined}>
+      <button
+        type="button"
+        className={styles.slotTrigger}
+        aria-expanded={open}
+        onClick={() => onSlotClick(sl.id, lockedOut)}
+      >
+        <span className={styles.slotTop}>
+          <span>
+            <strong>{sl.label}</strong>
+            <span className={styles.slotWhen}>
+              {sl.starts_at
+                ? `${formatTimeOfDay(sl.starts_at)} – ${sl.ends_at ? formatTimeOfDay(sl.ends_at) : ''}`
+                : 'Untimed'}
+              {!sl.attendance_required && ' · no attendance needed'}
+            </span>
+          </span>
+          <span className={styles.slotMeta}>
+            <span className={styles.elig}>
+              {sl.eligibility === 'both'
+                ? 'Everyone'
+                : sl.eligibility === 'scouts'
+                  ? 'Scouts'
+                  : 'Adults'}
+            </span>
+            <span className={styles.count}>
+              {sl.needed == null
+                ? `${filled} signed up`
+                : full
+                  ? `Full (${sl.needed}/${sl.needed})`
+                  : `${filled} of ${sl.needed} — ${sl.needed - filled} more needed`}
+            </span>
+            <span className={styles.jobCue}>{gateCue}</span>
+          </span>
+        </span>
+        {/* Below the whole header row, not inside the title block:
+            nested in the title span it widened that flex child
+            enough to wrap the count/CTA onto its own line, so a job
+            WITH a description had a different shape from one
+            without and its text floated mid-card, reading as though
+            it belonged to the next job down. */}
+        {sl.description && <span className={styles.slotDesc}>{sl.description}</span>}
+        <span className={styles.bar}>
+          {/* dynamic: fill percentage */}
+          <span style={{ width: `${pct}%` }} />
+        </span>
+      </button>
+
+      {fullNoteShown && (
+        <p className={styles.fullNote} role="status">
+          <strong>This job is full.</strong> All {sl.needed} spots are taken — pick
+          another job, or ask a leader if you think there’s room.
+        </p>
+      )}
+
+      {/* Only once somebody actually holds the job — an empty note
+          box on all 40 jobs of a rummage sale would be noise. */}
+      {ready && mine.length > 0 && (
+        <div className={styles.noteRow}>
+          <label className={styles.noteLabel} htmlFor={`note-${sl.id}`}>
+            Anything the organizers should know? (optional)
+          </label>
+          <input
+            id={`note-${sl.id}`}
+            type="text"
+            maxLength={300}
+            className={styles.noteInput}
+            placeholder="e.g. I have a 6ft table · can only stay until noon"
+            value={comment}
+            onChange={(e) => onNoteChange(sl.id, e.target.value)}
+          />
+        </div>
+      )}
+
+      {mine.length > 0 && (
+        <div className={styles.claimerChips}>
+          {mine.map((k) => {
+            const p = shared.people.find((x) => x.key === k);
+            if (!p) return null;
+            return (
+              <span key={k} className={styles.claimerChip}>
+                {p.name.split(' ')[0]}
+                <button
+                  type="button"
+                  className={styles.claimerX}
+                  aria-label={`Remove ${p.name}`}
+                  onClick={() => onToggleClaim(sl.id, k)}
+                >
+                  ×
+                </button>
+              </span>
+            );
+          })}
+        </div>
+      )}
+
+      {open && renderPanel()}
+    </li>
+  );
+});
+
 export default function SlotFirstForm({
   eventId,
   signupId,
@@ -73,7 +410,8 @@ export default function SlotFirstForm({
   signedInAs,
   canSwitchHousehold,
   gateError,
-  gateConfigured
+  gateConfigured,
+  renderProbe
 }: {
   eventId: number;
   signupId: number;
@@ -105,8 +443,27 @@ export default function SlotFirstForm({
   canSwitchHousehold: boolean;
   gateError?: string;
   gateConfigured: boolean;
+  /** Test-only render-count probe (tests/slot-first-form-row-memo.test.tsx)
+   *  — never passed in production, never touches markup. */
+  renderProbe?: (slotKey: string) => void;
 }) {
   const router = useRouter();
+  // A ref, not a dependency: useRouter()'s return isn't guaranteed
+  // referentially stable across renders, and including it directly in
+  // rowSharedProps' deps below would recompute that object (and invalidate
+  // every SlotRow's memo) on every render regardless of what actually
+  // changed. Reading through the ref keeps navigation working off whatever
+  // router is current without router itself needing to be a stable value.
+  const routerRef = useRef(router);
+  useEffect(() => {
+    routerRef.current = router;
+  });
+  const goToHousehold = useCallback(
+    (householdKey: string) => {
+      routerRef.current.push(`/events/${eventId}/signup?household=${encodeURIComponent(householdKey)}`);
+    },
+    [eventId]
+  );
   const ready = gateState === 'ready' && household !== null;
 
   const people = useMemo<Person[]>(
@@ -157,19 +514,19 @@ export default function SlotFirstForm({
   const [saving, setSaving] = useState<SaveIntent | null>(null);
   const [query, setQuery] = useState('');
 
-  const claimersOf = (slotId: number) => claims[slotId] ?? [];
+  const claimersOf = (slotId: number) => claims[slotId] ?? EMPTY_CLAIMS;
   const filledOf = (s: SignupSlot) => {
     const mineExisting = existingClaims.filter((c) => c.slotId === s.id).length;
     return s.filled - mineExisting + claimersOf(s.id).length;
   };
   const isFull = (s: SignupSlot) => s.needed != null && filledOf(s) >= s.needed;
-  const eligible = (p: Person, s: SignupSlot) =>
-    s.eligibility === 'both' ||
-    (s.eligibility === 'scouts' ? p.kind === 'scout' : p.kind === 'adult');
 
-  const toggle = (slotId: number, personKey: string) =>
+  // Stable across renders (functional setState, no closure over anything that
+  // changes) so a SlotRow's props don't look "changed" just because some
+  // other row's note or claim moved — the point of memoising SlotRow at all.
+  const toggle = useCallback((slotId: number, personKey: string) => {
     setClaims((prev) => {
-      const cur = prev[slotId] ?? [];
+      const cur = prev[slotId] ?? EMPTY_CLAIMS;
       return {
         ...prev,
         [slotId]: cur.includes(personKey)
@@ -177,6 +534,19 @@ export default function SlotFirstForm({
           : [...cur, personKey]
       };
     });
+  }, []);
+  const handleNoteChange = useCallback((slotId: number, value: string) => {
+    setSlotComments((v) => ({ ...v, [slotId]: value }));
+  }, []);
+  const handleSlotClick = useCallback((slotId: number, lockedOut: boolean) => {
+    if (lockedOut) {
+      setFullNote(slotId);
+      window.setTimeout(() => setFullNote((v) => (v === slotId ? null : v)), 5000);
+      return;
+    }
+    setOpen((v) => (v === slotId ? null : slotId));
+  }, []);
+  const handleQueryChange = useCallback((value: string) => setQuery(value), []);
 
   const groups = useMemo(() => {
     const out: { day: string; items: SignupSlot[] }[] = [];
@@ -307,148 +677,35 @@ export default function SlotFirstForm({
       .slice(0, 8);
   }, [query, households]);
 
-  /** What opens under a job row, depending on how far in the visitor is. */
-  const rowPanel = (sl: SignupSlot) => {
-    if (gateState === 'anon') {
-      return (
-        <div className={styles.memberPick}>
-          <p className={styles.pickPrompt}>Sign in to claim “{sl.label}”</p>
-          {!gateConfigured ? (
-            <p className={styles.gateLede}>
-              The family signup gate isn’t configured on this server yet.
-            </p>
-          ) : (
-            <form action={gateAction} className={styles.inlineGate}>
-              <input type="hidden" name="next" value={`/events/${eventId}`} />
-              <p className={styles.gateLede}>
-                One shared password for the whole troop — it’s in the Bugle each week, or ask any
-                leader. You’ll only enter it once on this device.
-              </p>
-              <div className={styles.gateRow}>
-                <input
-                  name="password"
-                  type="password"
-                  autoComplete="off"
-                  className={styles.gateInput}
-                  placeholder="Troop password"
-                  aria-label="Troop password"
-                />
-                <button type="submit" className={styles.gateBtn}>
-                  Sign in
-                </button>
-              </div>
-              {gateError === 'bad-password' && (
-                <Notice tone="error" className={styles.noticeGapTop}>That password didn’t match. Try again.</Notice>
-              )}
-              {gateError === 'missing' && (
-                <Notice tone="error" className={styles.noticeGapTop}>Please enter the troop password.</Notice>
-              )}
-            </form>
-          )}
-        </div>
-      );
-    }
-
-    if (gateState === 'no-household' && !canSwitchHousehold) {
-      return (
-        <div className={styles.memberPick}>
-          <p className={styles.gateLede}>
-            There’s no household on record for you yet — ask a leader to add you to one, then come back
-            to claim “{sl.label}”.
-          </p>
-        </div>
-      );
-    }
-
-    if (gateState === 'no-household') {
-      return (
-        <div className={styles.memberPick}>
-          <p className={styles.pickPrompt}>Who’s signing up for “{sl.label}”?</p>
-          <input
-            type="search"
-            className={styles.gateInput}
-            placeholder="Your name, or your scout’s name…"
-            autoComplete="off"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            aria-label="Your name, or your scout’s name"
-          />
-          {query.trim().length >= 2 && (
-            <ul className={styles.pickerResults}>
-              {matches.length === 0 && (
-                <li className={styles.pickerNone}>
-                  Nobody by that name — check the spelling, or ask a leader to add you.
-                </li>
-              )}
-              {matches.map((p) => (
-                <li key={p.rowKey}>
-                  <button
-                    type="button"
-                    className={styles.pickerBtn}
-                    onClick={() =>
-                      router.push(
-                        `/events/${eventId}/signup?household=${encodeURIComponent(p.household.key)}`
-                      )
-                    }
-                  >
-                    <span className={styles.pickerName}>{p.name}</span>
-                    <span className={styles.pickerMeta}>
-                      {/* A household of one has nothing useful to say about
-                          itself — "the Jane Smith household · 0 scouts" reads
-                          as a bug to the person it describes. */}
-                      {p.household.scouts.length === 0
-                        ? p.isScout
-                          ? 'Scout'
-                          : 'Adult — no scout in the troop'
-                        : p.household.scouts.length > 1
-                          ? `${p.household.label} household · ${p.household.scouts.length} scouts`
-                          : `${p.household.label} household`}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      );
-    }
-
-    const full = isFull(sl);
-    const mine = claimersOf(sl.id);
-    return (
-      <div className={styles.memberPick}>
-        <p className={styles.pickPrompt}>Who from the {household!.label} family is doing this?</p>
-        <div className={styles.pickChips}>
-          {people.map((p) => {
-            const on = mine.includes(p.key);
-            const ok = eligible(p, sl);
-            const blocked = !ok || (full && !on);
-            return (
-              <button
-                key={p.key}
-                type="button"
-                className={`${styles.pickChip} ${on ? styles.pickOn : ''} ${blocked ? styles.pickBlocked : ''}`}
-                disabled={blocked}
-                aria-pressed={on}
-                onClick={() => toggle(sl.id, p.key)}
-              >
-                <span className={styles.pickName}>{p.name}</span>
-                <span className={styles.pickSub}>
-                  {!ok
-                    ? sl.eligibility === 'adults'
-                      ? 'Adults only'
-                      : 'Scouts only'
-                    : full && !on
-                      ? 'This job is full'
-                      : p.sub}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
+  // Everything a row's expanded panel needs that is the same for every slot
+  // — memoised so a keystroke in one row's note, or a claim toggled anywhere,
+  // doesn't hand every OTHER row a new object reference and defeat SlotRow's
+  // React.memo (Performance-Review-2026-08-27 #15).
+  const rowSharedProps: SlotRowShared = useMemo(
+    () => ({
+      gateState,
+      canSwitchHousehold,
+      gateConfigured,
+      gateError,
+      gateAction,
+      eventId,
+      household,
+      people,
+      query,
+      matches,
+      onQueryChange: handleQueryChange,
+      onGoToHousehold: goToHousehold
+    }),
+    [gateState, canSwitchHousehold, gateConfigured, gateError, gateAction, eventId, household, people, query, matches, handleQueryChange, goToHousehold]
+  );
+  const gateCue =
+    gateState === 'anon'
+      ? 'Sign in to claim'
+      : gateState === 'no-household'
+        ? canSwitchHousehold
+          ? 'Choose the family'
+          : 'Ask a leader'
+        : 'Sign up';
 
   const jobList = (
     <>
@@ -458,132 +715,30 @@ export default function SlotFirstForm({
           <ul className={styles.slotList}>
             {g.items.map((sl) => {
               const mine = claimersOf(sl.id);
+              const filled = filledOf(sl);
               const full = isFull(sl);
               const lockedOut = full && mine.length === 0 && ready;
-              const pct = sl.needed
-                ? Math.min(100, Math.round((filledOf(sl) / sl.needed) * 100))
-                : 0;
+              const pct = sl.needed ? Math.min(100, Math.round((filled / sl.needed) * 100)) : 0;
               return (
-                <li key={sl.id} className={lockedOut ? styles.slotFull : undefined}>
-                  <button
-                    type="button"
-                    className={styles.slotTrigger}
-                    aria-expanded={open === sl.id}
-                    onClick={() => {
-                      if (lockedOut) {
-                        setFullNote(sl.id);
-                        window.setTimeout(
-                          () => setFullNote((v) => (v === sl.id ? null : v)),
-                          5000
-                        );
-                        return;
-                      }
-                      setOpen((v) => (v === sl.id ? null : sl.id));
-                    }}
-                  >
-                    <span className={styles.slotTop}>
-                      <span>
-                        <strong>{sl.label}</strong>
-                        <span className={styles.slotWhen}>
-                          {sl.starts_at
-                            ? `${formatTimeOfDay(sl.starts_at)} – ${sl.ends_at ? formatTimeOfDay(sl.ends_at) : ''}`
-                            : 'Untimed'}
-                          {!sl.attendance_required && ' · no attendance needed'}
-                        </span>
-                      </span>
-                      <span className={styles.slotMeta}>
-                        <span className={styles.elig}>
-                          {sl.eligibility === 'both'
-                            ? 'Everyone'
-                            : sl.eligibility === 'scouts'
-                              ? 'Scouts'
-                              : 'Adults'}
-                        </span>
-                        <span className={styles.count}>
-                          {sl.needed == null
-                            ? `${filledOf(sl)} signed up`
-                            : full
-                              ? `Full (${sl.needed}/${sl.needed})`
-                              : `${filledOf(sl)} of ${sl.needed} — ${sl.needed - filledOf(sl)} more needed`}
-                        </span>
-                        <span className={styles.jobCue}>
-                          {gateState === 'anon'
-                            ? 'Sign in to claim'
-                            : gateState === 'no-household'
-                              ? canSwitchHousehold
-                                ? 'Choose the family'
-                                : 'Ask a leader'
-                              : 'Sign up'}
-                        </span>
-                      </span>
-                    </span>
-                    {/* Below the whole header row, not inside the title block:
-                        nested in the title span it widened that flex child
-                        enough to wrap the count/CTA onto its own line, so a job
-                        WITH a description had a different shape from one
-                        without and its text floated mid-card, reading as though
-                        it belonged to the next job down. */}
-                    {sl.description && (
-                      <span className={styles.slotDesc}>{sl.description}</span>
-                    )}
-                    <span className={styles.bar}>
-                      {/* dynamic: fill percentage */}
-                      <span style={{ width: `${pct}%` }} />
-                    </span>
-                  </button>
-
-                  {fullNote === sl.id && (
-                    <p className={styles.fullNote} role="status">
-                      <strong>This job is full.</strong> All {sl.needed} spots are taken — pick
-                      another job, or ask a leader if you think there’s room.
-                    </p>
-                  )}
-
-                  {/* Only once somebody actually holds the job — an empty note
-                      box on all 40 jobs of a rummage sale would be noise. */}
-                  {ready && mine.length > 0 && (
-                    <div className={styles.noteRow}>
-                      <label className={styles.noteLabel} htmlFor={`note-${sl.id}`}>
-                        Anything the organizers should know? (optional)
-                      </label>
-                      <input
-                        id={`note-${sl.id}`}
-                        type="text"
-                        maxLength={300}
-                        className={styles.noteInput}
-                        placeholder="e.g. I have a 6ft table · can only stay until noon"
-                        value={slotComments[sl.id] ?? ''}
-                        onChange={(e) =>
-                          setSlotComments((v) => ({ ...v, [sl.id]: e.target.value }))
-                        }
-                      />
-                    </div>
-                  )}
-
-                  {mine.length > 0 && (
-                    <div className={styles.claimerChips}>
-                      {mine.map((k) => {
-                        const p = people.find((x) => x.key === k);
-                        if (!p) return null;
-                        return (
-                          <span key={k} className={styles.claimerChip}>
-                            {p.name.split(' ')[0]}
-                            <button
-                              type="button"
-                              className={styles.claimerX}
-                              aria-label={`Remove ${p.name}`}
-                              onClick={() => toggle(sl.id, k)}
-                            >
-                              ×
-                            </button>
-                          </span>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {open === sl.id && rowPanel(sl)}
-                </li>
+                <SlotRow
+                  key={sl.id}
+                  sl={sl}
+                  mine={mine}
+                  filled={filled}
+                  full={full}
+                  lockedOut={lockedOut}
+                  pct={pct}
+                  gateCue={gateCue}
+                  open={open === sl.id}
+                  fullNoteShown={fullNote === sl.id}
+                  ready={ready}
+                  comment={slotComments[sl.id] ?? ''}
+                  onNoteChange={handleNoteChange}
+                  onSlotClick={handleSlotClick}
+                  onToggleClaim={toggle}
+                  shared={rowSharedProps}
+                  renderProbe={renderProbe}
+                />
               );
             })}
           </ul>

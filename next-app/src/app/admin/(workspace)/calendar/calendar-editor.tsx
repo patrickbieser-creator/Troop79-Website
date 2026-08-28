@@ -56,6 +56,10 @@ interface Props {
   category: string;
   tab: 'upcoming' | 'past';
   newOpen: boolean;
+  /** True while the server read is limited to the rolling one-year window
+   *  (perf item 14, 2026-08-27) — the Past tab links to `?past=all` to lift
+   *  it. Never trims Upcoming, so this only matters on the Past tab. */
+  windowActive: boolean;
   onCreate: (fd: FormData) => Promise<ActionResult>;
   onUpdate: (fd: FormData) => Promise<ActionResult>;
   onDelete: (
@@ -85,6 +89,7 @@ export function CalendarEditor({
   category,
   tab,
   newOpen,
+  windowActive,
   onCreate,
   onUpdate,
   onDelete,
@@ -525,6 +530,18 @@ export function CalendarEditor({
           )}
         </tbody>
       </table>
+
+      {tab === 'past' && windowActive && (
+        // Perf item 14 (2026-08-27): the server only reads the last year of
+        // past entries by default — this is the escape hatch, not a dead
+        // end. Only shown on Past; the window never trims Upcoming.
+        <p className={styles.mutedFootnote}>
+          Showing the last year of past entries.{' '}
+          <Button variant="quiet" size="sm" onClick={() => push({ past: 'all' })}>
+            Show all past entries
+          </Button>
+        </p>
+      )}
 
       <Dialog ref={dialogRef} onClose={closeDialog}>
         {newOpen && !cloneFor && (

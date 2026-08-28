@@ -25,7 +25,8 @@ import { loadSeoSettings } from '@/lib/seo';
 const cachedSettingPairs = unstable_cache(
   async (): Promise<[string, string][]> => [...(await loadSeoSettings(createAdminClient()))],
   ['site-settings'],
-  { tags: ['site-settings'] }
+  // Hourly fallback for edits made outside the app (prod psql).
+  { tags: ['site-settings'], revalidate: 3600 }
 );
 
 export const loadSiteSettings = cache(async (): Promise<Map<string, string>> => new Map(await cachedSettingPairs()));

@@ -1,6 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { loadCalendarCategories } from '@/lib/calendar';
-import type { CalendarEntry, Media } from '@/lib/supabase/types';
+import { centralToday } from '@/lib/dates';
+import { rollingWindowStart } from '@/lib/calendar-tabs';
+import type { CalendarEntry } from '@/lib/supabase/types';
 
 // The row type moved to entry-form.tsx with the form itself; re-exported so
 // existing importers keep working.
@@ -21,25 +23,38 @@ export const metadata = {
   title: 'Calendar — Troop 79'
 };
 
-/** Every column the list, the clone dialog and the promotion picker read —
- *  NOT details_md (the markdown story), which the workbench alone edits and
- *  which was riding along for every row (2026-08-25 perf pass). */
+/** Every column the list and the Add-Entry/Clone dialogs read — cut down
+ *  2026-08-27 (perf item 14) from the "every column but details_md" set the
+ *  2026-08-25 pass left behind: the workbench (`[id]/page.tsx`) is the only
+ *  place that reads a single entry's description, status, promotion window,
+ *  hero image or timestamps, and it does its own full-column fetch. The
+ *  list's own StatusPills/dateHover/matches logic (calendar-editor.tsx,
+ *  lib/calendar-list.ts) only ever touches the columns below — grepped, not
+ *  guessed, before trimming the `hero_media:hero_media_id(*)` join off. */
 const LIST_COLUMNS =
-  'id, entry_date, end_date, day_note, category, title, description, location, start_time, end_time, on_calendar, status, show_on_homepage, featured, featured_order, promo_start, promo_end, hero_media_id, auto_archive_at, author_name, created_at, hero_media:hero_media_id(*)';
+  'id, entry_date, end_date, day_note, category, title, location, start_time, end_time, on_calendar, show_on_homepage, featured, author_name';
 
-async function loadData() {
+async function loadData(windowStart: string | null) {
   const supabase = createAdminClient();
   // Oldest first: the tabs below split upcoming from past, and within each
   // an ascending run reads as a schedule rather than a reverse log.
-  // hero_media joined for the promotion section's picker preview.
   //
   // Per-entry counts (R pill scouts/adults, Going) come from ONE aggregate —
   // calendar_list_counts() — instead of paginated reads of the whole
   // event_attendance and signup_entries tables reduced in Node (Patrick,
   // 2026-08-25: "the calendar page … is getting much slower on prod").
+  //
+  // windowStart (perf item 14, 2026-08-27): the default read is a rolling
+  // year — `entry_date >= windowStart` — not every entry the troop has ever
+  // logged; `?past=all` (the page component) passes null to lift it. Every
+  // upcoming entry's date is always >= today >= windowStart, so this only
+  // ever trims OLD past entries, never the Upcoming tab.
+  let entriesQuery = supabase.from('calendar_entries').select(LIST_COLUMNS).order('entry_date', { ascending: true });
+  if (windowStart) entriesQuery = entriesQuery.gte('entry_date', windowStart);
+
   const [{ data, error }, { data: agendas, error: agendaError }, { data: signups, error: signupError }, { data: countRows, error: countError }] =
     await Promise.all([
-      supabase.from('calendar_entries').select(LIST_COLUMNS).order('entry_date', { ascending: true }),
+      entriesQuery,
       supabase.from('meetings').select('id, calendar_entry_id, status').is('archived_at', null),
       supabase.from('event_signups').select('id, calendar_entry_id, status'),
       supabase.rpc('calendar_list_counts')
@@ -75,24 +90,25 @@ async function loadData() {
     ])
   );
 
-  const entries = ((data ?? []) as unknown as (CalendarEntry & { hero_media: Media | null })[]).map(
-    (e) => {
-      const agenda = agendaByEntry.get(e.id);
-      const signup = signupByEntry.get(e.id);
-      const c = counts.get(e.id);
-      const present = (c?.scouts ?? 0) + (c?.adults ?? 0);
-      return {
-        ...e,
-        hasAgenda: agenda !== undefined,
-        agendaId: agenda?.id ?? null,
-        agendaStatus: agenda?.status ?? null,
-        signupId: signup?.id ?? null,
-        signupStatus: signup?.status ?? null,
-        attendance: present > 0 ? { scouts: c!.scouts, adults: c!.adults } : null,
-        going: signup ? (c?.going ?? 0) : null
-      };
-    }
-  );
+  const entries = ((data ?? []) as unknown as CalendarEntry[]).map((e) => {
+    const agenda = agendaByEntry.get(e.id);
+    const signup = signupByEntry.get(e.id);
+    const c = counts.get(e.id);
+    const present = (c?.scouts ?? 0) + (c?.adults ?? 0);
+    return {
+      ...e,
+      // Not selected above (the list never reads it) — kept null rather than
+      // absent so the shape still matches CalendarEntryRow's `Media | null`.
+      hero_media: null,
+      hasAgenda: agenda !== undefined,
+      agendaId: agenda?.id ?? null,
+      agendaStatus: agenda?.status ?? null,
+      signupId: signup?.id ?? null,
+      signupStatus: signup?.status ?? null,
+      attendance: present > 0 ? { scouts: c!.scouts, adults: c!.adults } : null,
+      going: signup ? (c?.going ?? 0) : null
+    };
+  });
   return { entries: entries as CalendarEntryRow[] };
 }
 
@@ -103,6 +119,9 @@ interface SearchParams {
   /** '1' opens the Add Entry dialog — set by the Actions ▾ "+ Add Entry"
    *  option inside CalendarEditor (2026-08-20; used to be a header link). */
   new?: string;
+  /** 'all' lifts the rolling one-year read window (perf item 14) — the Past
+   *  tab's "Show all past entries" link sets it. */
+  past?: string;
 }
 
 /**
@@ -118,10 +137,13 @@ export default async function CalendarAdminPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const [{ entries }, categories, sp] = await Promise.all([
-    loadData(),
-    loadCalendarCategories(),
-    searchParams
+  // Read first (no I/O — just the route's own params) so windowActive can
+  // decide loadData's filter before that query goes out.
+  const sp = await searchParams;
+  const windowActive = sp.past !== 'all';
+  const [{ entries }, categories] = await Promise.all([
+    loadData(windowActive ? rollingWindowStart(centralToday()) : null),
+    loadCalendarCategories()
   ]);
 
   return (
@@ -147,6 +169,7 @@ export default async function CalendarAdminPage({
         category={(sp.category ?? '').trim()}
         tab={sp.tab === 'past' ? 'past' : 'upcoming'}
         newOpen={sp.new === '1'}
+        windowActive={windowActive}
         onSetPromoted={setEntryPromoted}
         categories={categories}
         onCreate={createCalendarEntry}

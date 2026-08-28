@@ -62,4 +62,23 @@ describe('revalidation scope', () => {
     expect(body('saveSiteText')).toContain("updateTag('site-settings')");
     expect(body('saveSeoSettings')).toContain("updateTag('site-settings')");
   });
+
+  it('AdvancementCatalogIsTagCached_AndItsLookupsSavesExpireTheTag', () => {
+    // Plans/Performance-Review-2026-08-27.md #11/#16: ranks, rank_requirements,
+    // merit_badges and merit_badge_requirements only change via a Lookups save
+    // — every writer of those tables must expire the one shared tag or the
+    // Agenda tab / Ledger / Dashboard would keep serving a stale catalog.
+    const catalog = readFileSync(join(SRC, 'lib/advancement-catalog.ts'), 'utf8');
+    expect(catalog).toMatch(/unstable_cache\([\s\S]*tags: \['advancement-catalog'\]/);
+
+    const actions = readFileSync(join(SRC, 'app/admin/(workspace)/advancement/lookups/actions.ts'), 'utf8');
+    const body = (name: string) => {
+      const start = actions.indexOf(`export async function ${name}(`);
+      const end = actions.indexOf('\nexport async function', start + 1);
+      return actions.slice(start, end === -1 ? undefined : end);
+    };
+    for (const fn of ['updateMeritBadge', 'createSkill', 'updateSkill', 'deleteSkill', 'updateReqCode']) {
+      expect(body(fn)).toContain("updateTag('advancement-catalog')");
+    }
+  });
 });

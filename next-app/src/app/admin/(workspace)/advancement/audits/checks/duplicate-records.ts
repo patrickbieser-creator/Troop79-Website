@@ -21,9 +21,8 @@
  * force-fit into that interface.
  */
 
-import type { createAdminClient } from '@/lib/supabase/server';
-import { fetchAllRows } from '@/lib/supabase/paginate';
 import type { LedgerKind } from '@/lib/supabase/types';
+import type { AuditInput, AuditLedgerRow } from '../audit-input';
 
 const ONE_TIME_KINDS: ReadonlySet<LedgerKind> = new Set([
   'rank_award',
@@ -71,38 +70,15 @@ export interface DuplicateGroup {
   defaultKeepId: number;
 }
 
-interface LedgerRow {
-  id: number;
-  scout_id: string;
-  kind: LedgerKind;
-  code: string;
-  label: string | null;
-  date: string | null;
-  by: string | null;
-  qty: number;
-  unit: string;
-  notes: string | null;
-  entered_by: string | null;
-  entered_at: string;
-}
-
-export async function run(supabase: ReturnType<typeof createAdminClient>): Promise<DuplicateGroup[]> {
-  const [rows, scoutsRes] = await Promise.all([
-    fetchAllRows<LedgerRow>((from, to) =>
-      supabase
-        .from('ledger_active')
-        .select('id, scout_id, kind, code, label, date, by, qty, unit, notes, entered_by, entered_at')
-        .range(from, to)
-    ),
-    supabase.from('scouts').select('id, display_name')
-  ]);
+export async function run(input: AuditInput): Promise<DuplicateGroup[]> {
+  const rows = input.ledger;
 
   const scoutNameById = new Map<string, string>();
-  for (const s of (scoutsRes.data ?? []) as { id: string; display_name: string }[]) {
+  for (const s of input.scouts) {
     scoutNameById.set(s.id, s.display_name);
   }
 
-  const groups = new Map<string, LedgerRow[]>();
+  const groups = new Map<string, AuditLedgerRow[]>();
   for (const row of rows) {
     const key = ONE_TIME_KINDS.has(row.kind)
       ? `${row.scout_id}|||${row.kind}|||${row.code}`

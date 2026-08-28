@@ -15,11 +15,10 @@
  * backfills historical completeness for scouts who've already moved on.
  */
 
-import type { createAdminClient } from '@/lib/supabase/server';
-import { fetchAllRows } from '@/lib/supabase/paginate';
 import { centralToday } from '@/lib/dates';
 import { fmtDate } from '@/lib/format-date';
 import type { Finding } from '../types';
+import { activeScouts, ledgerOfKind, type AuditInput } from '../audit-input';
 
 const THRESHOLDS: { rankId: string; rankLabel: string; prereqRankId: string; prereqLabel: string; minMonths: number }[] = [
   { rankId: 'star', rankLabel: 'Star', prereqRankId: 'first-class', prereqLabel: 'First Class', minMonths: 4 },
@@ -40,40 +39,25 @@ function addMonths(iso: string, n: number): string {
   return new Date(Date.UTC(y, m - 1 + n, d)).toISOString().slice(0, 10);
 }
 
-export async function run(supabase: ReturnType<typeof createAdminClient>): Promise<Finding[]> {
+export async function run(input: AuditInput): Promise<Finding[]> {
   const today = centralToday();
-  const [awardRows, rankReqsRes, existingRows, scoutsRes] = await Promise.all([
-    fetchAllRows<{ scout_id: string; code: string; date: string }>((from, to) =>
-      supabase
-        .from('ledger_active')
-        .select('scout_id, code, date')
-        .eq('kind', 'rank_award')
-        .in('code', THRESHOLDS.map((t) => t.prereqRankId))
-        .range(from, to)
-    ),
-    supabase
-      .from('rank_requirements')
-      .select('rank_id, label')
-      .in('rank_id', THRESHOLDS.map((t) => t.rankId))
-      .eq('code', '1'),
-    supabase
-      .from('ledger_active')
-      .select('scout_id, code')
-      .eq('kind', 'rank_requirement')
-      .in('code', THRESHOLDS.map((t) => `${t.rankId}-1`)),
-    supabase.from('scouts').select('id, display_name').eq('active', true)
-  ]);
+  const rankIds = new Set(THRESHOLDS.map((t) => t.rankId));
+  const prereqRankIds = new Set(THRESHOLDS.map((t) => t.prereqRankId));
+  const codes1 = new Set(THRESHOLDS.map((t) => `${t.rankId}-1`));
+  const awardRows = ledgerOfKind(input.ledger, ['rank_award']).filter((r) => prereqRankIds.has(r.code));
+  const existingRows = ledgerOfKind(input.ledger, ['rank_requirement']).filter((r) => codes1.has(r.code));
+  const scouts = activeScouts(input.scouts);
 
   const labelByRank = new Map<string, string>();
-  for (const r of (rankReqsRes.data ?? []) as { rank_id: string; label: string }[]) {
-    labelByRank.set(r.rank_id, r.label);
+  for (const r of input.rankRequirements) {
+    if (r.code === '1' && rankIds.has(r.rank_id)) labelByRank.set(r.rank_id, r.label);
   }
   const scoutNameById = new Map<string, string>();
-  for (const s of (scoutsRes.data ?? []) as { id: string; display_name: string }[]) {
+  for (const s of scouts) {
     scoutNameById.set(s.id, s.display_name);
   }
   const existing = new Set<string>();
-  for (const row of (existingRows.data ?? []) as { scout_id: string; code: string }[]) {
+  for (const row of existingRows) {
     existing.add(`${row.scout_id}|||${row.code}`);
   }
 
@@ -86,7 +70,6 @@ export async function run(supabase: ReturnType<typeof createAdminClient>): Promi
     if (!prev || row.date < prev) awardDateByScoutRank.set(key, row.date);
   }
 
-  const scouts = (scoutsRes.data ?? []) as { id: string; display_name: string }[];
   const findings: Finding[] = [];
   for (const scout of scouts) {
     for (const t of THRESHOLDS) {

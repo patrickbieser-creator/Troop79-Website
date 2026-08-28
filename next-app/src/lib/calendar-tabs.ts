@@ -38,3 +38,17 @@ export function splitByTab<T extends DatedRow>(rows: T[], today: string): { upco
     past: rows.filter((r) => !isUpcoming(r, today)).slice().reverse()
   };
 }
+
+/**
+ * The admin Calendar list's default server-side read window (Patrick,
+ * 2026-08-27 perf pass, item 14): `entry_date >= rollingWindowStart(today)`
+ * loads a year of history instead of every entry ever, with `?past=all`
+ * (page.tsx) as the escape hatch. Noon-UTC arithmetic, same trick as
+ * nextSunday in lib/dates.ts, so a UTC-midnight `setUTCFullYear` never lands
+ * on the wrong side of a DST boundary.
+ */
+export function rollingWindowStart(today: string, yearsBack = 1): string {
+  const d = new Date(`${today}T12:00:00Z`);
+  d.setUTCFullYear(d.getUTCFullYear() - yearsBack);
+  return d.toISOString().slice(0, 10);
+}

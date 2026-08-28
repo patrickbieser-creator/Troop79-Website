@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import { requireCapability } from '@/lib/require-capability';
+import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
 import type { LedgerEntry, LedgerKind } from '@/lib/supabase/types';
 import { loadAttentionCategories } from './attention-items';
 import { loadRecentLogins, loadHouseholdsSignedInStats } from '@/lib/login-events';
@@ -80,22 +81,19 @@ export const metadata = {
 
 async function loadDashboard() {
   const supabase = createAdminClient();
+  // Ranks and top-level rank requirements only change when a leader saves
+  // Lookups — read from the shared `advancement-catalog` cache instead of
+  // this page's own query every navigation (Plans/Performance-Review-2026-08-27.md #16).
   const [
     scoutsRes,
-    ranksRes,
-    rankReqsRes,
+    catalog,
     rankReqLedger,
-    mbCatRes,
     recentRes,
     activeLedgerCountRes,
     cohRes
   ] = await Promise.all([
     supabase.from('scouts').select('id, display_name, current_rank, active, person_id'),
-    supabase.from('ranks').select('id, display_name, sort_order').order('sort_order'),
-    supabase
-      .from('rank_requirements')
-      .select('rank_id, code, label')
-      .is('parent_id', null),
+    loadAdvancementCatalog(),
     // Unbounded past the ~1000-row PostgREST cap once the ledger grows —
     // paginate rather than silently see a partial slice (see lib/supabase/paginate.ts).
     fetchAllRows<{ scout_id: string; code: string }>((from, to) =>
@@ -105,27 +103,25 @@ async function loadDashboard() {
         .eq('kind', 'rank_requirement')
         .range(from, to)
     ),
-    supabase.from('merit_badges').select('id, name'),
     supabase
       .from('ledger_active')
       .select('*')
       .order('entered_at', { ascending: false, nullsFirst: false })
       .order('date', { ascending: false })
       .limit(RECENT_LIMIT),
+    // `totalLedger` is displayed to the leader as a literal stat-card figure
+    // (not just a pager total), so this stays `count: 'exact'` rather than
+    // 'estimated' (Plans/Performance-Review-2026-08-27.md #16).
     supabase.from('ledger_active').select('id', { count: 'exact', head: true }),
     supabase.from('coh_history').select('date').order('date', { ascending: false }).limit(1)
   ]);
 
   const scouts = (scoutsRes.data ?? []) as ScoutLite[];
   const activeScouts = scouts.filter((s) => s.active);
-  const ranks = (ranksRes.data ?? []) as RankLite[];
-  const rankReqs = (rankReqsRes.data ?? []) as Array<{
-    rank_id: string;
-    code: string;
-    label: string;
-  }>;
+  const ranks = catalog.ranks as RankLite[];
+  const rankReqs = catalog.rankRequirements.filter((r) => r.parent_id === null);
   const mbMap = new Map<string, string>();
-  for (const m of (mbCatRes.data ?? []) as Array<{ id: string; name: string }>) {
+  for (const m of catalog.meritBadges) {
     mbMap.set(m.id, m.name);
   }
   const recent = (recentRes.data ?? []) as LedgerEntry[];
@@ -134,30 +130,31 @@ async function loadDashboard() {
 
   // ── Stats ──────────────────────────────────────────────────────────
   // bsa_member_id lives on people now — one extra lookup by the active
-  // scouts' person_ids (Plans/Retire-Roster-Contact-Columns.md).
+  // scouts' person_ids (Plans/Retire-Roster-Contact-Columns.md). Independent
+  // of the COH-candidates count below, so both run together instead of one
+  // waiting on the other (Plans/Performance-Review-2026-08-27.md #16).
   const activeScoutPersonIds = activeScouts.map((s) => s.person_id).filter((id): id is number => id != null);
-  const { data: bsaRows } = activeScoutPersonIds.length
-    ? await supabase.from('people').select('id, bsa_member_id').in('id', activeScoutPersonIds)
-    : { data: [] as { id: number; bsa_member_id: string | null }[] };
-  const bsaByPerson = new Map(((bsaRows ?? []) as { id: number; bsa_member_id: string | null }[]).map((p) => [p.id, p.bsa_member_id]));
+  const [bsaRes, cohCandidatesRes] = await Promise.all([
+    activeScoutPersonIds.length
+      ? supabase.from('people').select('id, bsa_member_id').in('id', activeScoutPersonIds)
+      : Promise.resolve({ data: [] as { id: number; bsa_member_id: string | null }[] }),
+    // COH Candidates: rank_award + merit_badge_award entries since the last
+    // COH (or all of them, if there's no COH history yet). Also a displayed
+    // stat-card figure — stays `count: 'exact'`.
+    lastCohDate
+      ? supabase
+          .from('ledger_active')
+          .select('id', { count: 'exact', head: true })
+          .gt('date', lastCohDate)
+          .in('kind', ['rank_award', 'merit_badge_award'])
+      : supabase
+          .from('ledger_active')
+          .select('id', { count: 'exact', head: true })
+          .in('kind', ['rank_award', 'merit_badge_award'])
+  ]);
+  const bsaByPerson = new Map(((bsaRes.data ?? []) as { id: number; bsa_member_id: string | null }[]).map((p) => [p.id, p.bsa_member_id]));
   const missingBsa = activeScouts.filter((s) => s.person_id == null || !bsaByPerson.get(s.person_id)).length;
-  // COH Candidates: rank_award + merit_badge_award entries since the last COH.
-  let cohCandidates = 0;
-  if (lastCohDate) {
-    const sinceRes = await supabase
-      .from('ledger_active')
-      .select('id', { count: 'exact', head: true })
-      .gt('date', lastCohDate)
-      .in('kind', ['rank_award', 'merit_badge_award']);
-    cohCandidates = sinceRes.count ?? 0;
-  } else {
-    // No COH history yet — count everything that would go in the first one.
-    const allRes = await supabase
-      .from('ledger_active')
-      .select('id', { count: 'exact', head: true })
-      .in('kind', ['rank_award', 'merit_badge_award']);
-    cohCandidates = allRes.count ?? 0;
-  }
+  const cohCandidates = cohCandidatesRes.count ?? 0;
 
   // ── Recent activity ────────────────────────────────────────────────
   const scoutMap = new Map<string, string>();

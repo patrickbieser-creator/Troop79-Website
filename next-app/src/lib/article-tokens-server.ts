@@ -35,7 +35,8 @@ const cachedTokens = unstable_cache(
     return out;
   },
   ['article-tokens'],
-  { tags: ['article-tokens'] }
+  // Hourly fallback for edits made outside the app (prod psql).
+  { tags: ['article-tokens'], revalidate: 3600 }
 );
 
 export const loadArticleTokens = cache((): Promise<TokenValues> => cachedTokens());

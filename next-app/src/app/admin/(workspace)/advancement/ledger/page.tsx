@@ -17,6 +17,7 @@
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireCapability } from '@/lib/require-capability';
+import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
 import type { LedgerEntry, LedgerKind, Scout } from '@/lib/supabase/types';
 import { LedgerToolbar } from './ledger-toolbar';
 import { LedgerTable } from './ledger-table';
@@ -73,34 +74,32 @@ function parseSearch(sp: SearchParams) {
 async function loadLedger(parsed: ReturnType<typeof parseSearch>) {
   const supabase = createAdminClient();
 
-  // Fetch reference catalogs once: scouts (for name + name-search), rank
-  // requirements (for the short-label lookup matching the Clipboard), ranks
-  // (for BoR rank-award labels), merit badges (for MB award labels), and
-  // leaders (for the Edit dialog's signoff dropdown).
-  const [scoutsRes, rankReqsRes, ranksRes, mbsRes, leadersRes] = await Promise.all([
+  // Reference catalogs: scouts (for name + name-search) and leaders (for the
+  // Edit dialog's signoff dropdown) are live per-navigation reads — roster
+  // data changes far more often than Lookups. Rank requirements (short-label
+  // lookup matching the Clipboard), ranks (BoR rank-award labels), and merit
+  // badges (MB award labels) only change when a leader saves Lookups, so
+  // those three come from the shared `advancement-catalog` cache instead of
+  // their own query each navigation (Plans/Performance-Review-2026-08-27.md #16).
+  const [scoutsRes, leadersRes, catalog] = await Promise.all([
     supabase.from('scouts').select('id, display_name').order('display_name'),
-    supabase
-      .from('rank_requirements')
-      .select('rank_id, code, label')
-      .is('parent_id', null),
-    supabase.from('ranks').select('id, display_name'),
-    supabase.from('merit_badges').select('id, name'),
-    supabase.from('leaders').select('code, name').order('code')
+    supabase.from('leaders').select('code, name').order('code'),
+    loadAdvancementCatalog()
   ]);
   const leaderList = (leadersRes.data ?? []) as { code: string; name: string }[];
   const scoutList = (scoutsRes.data ?? []) as Pick<Scout, 'id' | 'display_name'>[];
   const scoutMap = new Map<string, string>();
   for (const s of scoutList) scoutMap.set(s.id, s.display_name);
   const rankReqMap = new Map<string, string>(); // `${rank_id}-${code}` → short label
-  for (const r of (rankReqsRes.data ?? []) as Array<{ rank_id: string; code: string; label: string }>) {
-    rankReqMap.set(`${r.rank_id}-${r.code}`, r.label);
+  for (const r of catalog.rankRequirements) {
+    if (r.parent_id === null) rankReqMap.set(`${r.rank_id}-${r.code}`, r.label);
   }
   const rankNameMap = new Map<string, string>();
-  for (const r of (ranksRes.data ?? []) as Array<{ id: string; display_name: string }>) {
+  for (const r of catalog.ranks) {
     rankNameMap.set(r.id, r.display_name);
   }
   const mbNameMap = new Map<string, string>();
-  for (const m of (mbsRes.data ?? []) as Array<{ id: string; name: string }>) {
+  for (const m of catalog.meritBadges) {
     mbNameMap.set(m.id, m.name);
   }
 

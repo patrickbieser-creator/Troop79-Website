@@ -76,21 +76,20 @@ export default async function CalendarEntryPage({
   const view = VIEWS.find((v) => v === sp.view) ?? null;
 
   const supabase = createAdminClient();
-  // Everything, plus the promotion hero — the Entry panel is the full entry
-  // editor, not a summary.
-  const [{ data: entry }, categories] = await Promise.all([
+  // Entry+categories and meeting/signup/count used to be two serial
+  // Promise.all phases — nothing in the second phase reads anything from the
+  // first (all five key off entryId or nothing at all), so one round trip
+  // covers what the tab strip needs, always: the full entry (plus the
+  // promotion hero — the Entry panel is the full entry editor, not a
+  // summary), which layers exist, and how many were present (the Roll Call
+  // count pill) (Plans/Performance-Review-2026-08-27.md #7).
+  const [{ data: entry }, categories, { data: meeting }, { data: signup }, { count: attendanceCount }] = await Promise.all([
     supabase
       .from('calendar_entries')
       .select('*, hero_media:hero_media_id(*)')
       .eq('id', entryId)
       .maybeSingle(),
-    loadCalendarCategories()
-  ]);
-  if (!entry) notFound();
-
-  // What the tab strip needs, always: which layers exist and how many were
-  // present (the Roll Call count pill) — one row, one row, one count.
-  const [{ data: meeting }, { data: signup }, { count: attendanceCount }] = await Promise.all([
+    loadCalendarCategories(),
     supabase
       .from('meetings')
       .select('*')
@@ -100,6 +99,7 @@ export default async function CalendarEntryPage({
     supabase.from('event_signups').select('id').eq('calendar_entry_id', entryId).maybeSingle(),
     supabase.from('event_attendance').select('id', { count: 'exact', head: true }).eq('calendar_entry_id', entryId)
   ]);
+  if (!entry) notFound();
 
   const row = entry as unknown as CalendarEntryRow;
   const template = templateOf(categories, row.category);
@@ -123,14 +123,21 @@ export default async function CalendarEntryPage({
       builder = await loadBuilderData(signupId);
       signupNav = builder?.nav ?? null;
     } else {
-      signupNav = await loadEventNav(supabase, signupId, entryId);
       const base = `/admin/calendar/${entryId}?tab=signup`;
+      // loadRoster/loadAssignments already compute the same nav internally
+      // (loadEventNav) and return it — a separate await for signupNav before
+      // them was a wholly redundant extra round trip, serial with the load
+      // it duplicated. Money and Snapshot don't load nav-bearing data of
+      // their own, so they still fetch it directly (item 7).
       if (view === 'roster') {
         const data = await loadRoster(signupId);
+        signupNav = data?.nav ?? null;
         if (data && data.entry) signupView = { key: 'roster', node: <RosterView data={data as RosterData} signupId={signupId} /> };
       } else if (view === 'money') {
+        signupNav = await loadEventNav(supabase, signupId, entryId);
         signupView = { key: 'money', node: <MoneyView signupId={signupId} calendarEntryId={entryId} /> };
       } else if (view === 'snapshot') {
+        signupNav = await loadEventNav(supabase, signupId, entryId);
         const order = parseRosterOrder(sp.order);
         signupView = {
           key: 'snapshot',
@@ -144,6 +151,7 @@ export default async function CalendarEntryPage({
         };
       } else if (view === 'assignments') {
         const data = await loadAssignments(signupId);
+        signupNav = data?.nav ?? null;
         if (data && data.entry) {
           const activeSetId = activeSetFor(data, Number(sp.set));
           signupView = {
