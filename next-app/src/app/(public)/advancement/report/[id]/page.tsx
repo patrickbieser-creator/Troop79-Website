@@ -53,7 +53,7 @@ export default async function ArchivedReportPage({ params }: { params: Promise<{
         }
       />
 
-      <PageShell>
+      <PageShell width="narrow">
         {report.note && (
           <Notice tone="warning" className={reportStyles.noticeGap}>
             <strong>Editor&rsquo;s note:</strong> {report.note}

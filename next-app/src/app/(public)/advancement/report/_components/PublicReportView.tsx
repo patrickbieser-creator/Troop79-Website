@@ -9,7 +9,7 @@ import { useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArticleBody } from '@/lib/article-body/ArticleBody';
 import { ScoutAccordion } from '@/app/_components/ScoutAccordion';
-import { buildScoutView, toMarkdown } from '@/lib/advancement-report';
+import { buildScoutView, publicizeReportNames, toMarkdown } from '@/lib/advancement-report';
 import type { PublishedReport } from '@/lib/advancement-report-store';
 import { TabStrip } from '@/app/_components/tab-strip';
 import styles from '../report.module.css';
@@ -21,15 +21,18 @@ export function PublicReportView({ report, basePath }: { report: PublishedReport
   const [view, setView] = useState<'category' | 'scout'>(initialView);
   const expandScout = searchParams.get('scout');
 
-  const scoutView = useMemo(() => buildScoutView(report.contentJson), [report]);
   const range = { startDate: report.startDate, endDate: report.endDate };
-  // Body only — the page already renders its own title/dateline/note; see
+  // Public pages show "First L.", never a scout's full name — full names
+  // stay admin-only (the stored contentJson is untouched). Body markdown is
+  // body only — the page already renders its own title/dateline/note; see
   // the admin workspace's identical comment for why.
-  const bodyMd = useMemo(
-    () => toMarkdown(report.contentJson, range, null, { includeHeader: false }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [report]
-  );
+  const { scoutView, bodyMd } = useMemo(() => {
+    const pub = publicizeReportNames(report.contentJson);
+    return {
+      scoutView: buildScoutView(pub),
+      bodyMd: toMarkdown(pub, { startDate: report.startDate, endDate: report.endDate }, null, { includeHeader: false })
+    };
+  }, [report]);
 
   function switchView(next: 'category' | 'scout') {
     setView(next);
@@ -56,7 +59,9 @@ export function PublicReportView({ report, basePath }: { report: PublishedReport
       </div>
 
       {view === 'category' ? (
-        <ArticleBody body={bodyMd} />
+        <div className={styles.reportBody}>
+          <ArticleBody body={bodyMd} />
+        </div>
       ) : (
         <ScoutAccordion scoutView={scoutView} range={range} expandScout={expandScout} />
       )}

@@ -10,6 +10,8 @@ import {
   toMarkdown,
   tagKind,
   removeScoutFromReport,
+  toPublicScoutName,
+  publicizeReportNames,
   type AdvancementEntry,
   type AdvancementReport,
   type ScoutStanding
@@ -721,5 +723,67 @@ describe('toMarkdown', () => {
     const md = toMarkdown(buildReport(rows), range, null);
     expect(md).toMatch(/\n\n### Scout\n/);
     expect(md).toMatch(/\n\n### Tenderfoot\n/);
+  });
+});
+
+describe('toPublicScoutName', () => {
+  it('ShortensToFirstNameAndLastInitial_ForThePublicSite', () => {
+    expect(toPublicScoutName('Charlie Walters')).toBe('Charlie W.');
+  });
+
+  it('UsesFirstTokenAndLastTokenInitial_ForMultiPartNames', () => {
+    expect(toPublicScoutName('Mary Jo Van Camp')).toBe('Mary C.');
+  });
+
+  it('LeavesASingleWordNameUntouched', () => {
+    expect(toPublicScoutName('Cher')).toBe('Cher');
+  });
+
+  it('TrimsSurroundingWhitespaceBeforeShortening', () => {
+    expect(toPublicScoutName('  Alex Bell  ')).toBe('Alex B.');
+  });
+});
+
+describe('publicizeReportNames', () => {
+  function twoScoutReport(): AdvancementReport {
+    return buildReport([
+      tagKind(entry({ scoutId: 's1', scoutName: 'Alex Bell', code: 'star', group: 'star', label: 'Star' }), 'rank_award'),
+      tagKind(
+        entry({ scoutId: 's2', scoutName: 'Riley Quinn', code: '2a', group: 'Cooking', label: 'Plan menu' }),
+        'merit_badge_requirement'
+      )
+    ]);
+  }
+
+  it('RewritesEveryScoutNameFieldToFirstNameLastInitial_AcrossAllSections', () => {
+    const pub = publicizeReportNames(twoScoutReport());
+    const names = [
+      ...pub.ranksEarned.flatMap((g) => g.scoutNames),
+      ...pub.badgeReqs.flatMap((g) => g.lines.flatMap((l) => l.scoutNames))
+    ];
+    expect(names).toContain('Alex B.');
+    expect(names).toContain('Riley Q.');
+    expect(names.join(' ')).not.toMatch(/Bell|Quinn/);
+    const entryNames = [
+      ...pub.ranksEarned.flatMap((g) => g.entries.map((e) => e.scoutName)),
+      ...pub.badgeReqs.flatMap((g) => g.lines.flatMap((l) => l.entries.map((e) => e.scoutName)))
+    ];
+    expect(entryNames.join(' ')).not.toMatch(/Bell|Quinn/);
+  });
+
+  it('DoesNotMutateTheInputReport_TheAdminViewKeepsFullNames', () => {
+    const original = twoScoutReport();
+    publicizeReportNames(original);
+    expect(original.ranksEarned[0].scoutNames).toContain('Alex Bell');
+    expect(original.ranksEarned[0].entries[0].scoutName).toBe('Alex Bell');
+  });
+
+  it('FlowsThroughToScoutViewAndMarkdown_SoBothPublicViewsShowShortNames', () => {
+    const pub = publicizeReportNames(twoScoutReport());
+    const view = buildScoutView(pub);
+    expect(view.map((r) => r.scoutName)).toEqual(['Alex B.', 'Riley Q.']);
+    const md = toMarkdown(pub, { startDate: '2026-08-01', endDate: '2026-08-10' }, null, { includeHeader: false });
+    expect(md).toContain('Alex B.');
+    expect(md).not.toContain('Alex Bell');
   });
 });

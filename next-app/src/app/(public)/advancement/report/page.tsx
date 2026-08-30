@@ -45,7 +45,7 @@ export default async function LatestReportPage() {
         }
       />
 
-      <PageShell>
+      <PageShell width="narrow">
         {!report ? (
           <EmptyState>No report has been published yet — check back after the next one goes out.</EmptyState>
         ) : (

@@ -575,6 +575,45 @@ export function buildScoutView(report: AdvancementReport): ScoutViewRecord[] {
 // probing sections in order) so a Remove click can never hit the wrong
 // section for a same-named group — found via qa-lead review 2026-08-17
 // before this shipped: probing order silently deleted the wrong entry.
+// ── public-site name shortening (privacy, 2026-08-30) ─────────────────────
+
+/** "Charlie Walters" → "Charlie W." — the public report pages never show a
+ *  scout's full name (Patrick, 2026-08-30); the admin report keeps full
+ *  names. First token + last token's initial; a single-word name passes
+ *  through unchanged. */
+export function toPublicScoutName(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length < 2) return parts[0] ?? '';
+  return `${parts[0]} ${parts[parts.length - 1][0].toUpperCase()}.`;
+}
+
+/** A copy of the report with every scoutName/scoutNames rewritten via
+ *  toPublicScoutName — applied at render time by the public view only, so
+ *  the stored contentJson (and the admin surfaces reading it) keep full
+ *  names. Never mutates the input. */
+export function publicizeReportNames(report: AdvancementReport): AdvancementReport {
+  const mapEntry = (e: AdvancementEntry): AdvancementEntry => ({ ...e, scoutName: toPublicScoutName(e.scoutName) });
+  const mapAward = (g: AwardGroup): AwardGroup => ({
+    ...g,
+    scoutNames: g.scoutNames.map(toPublicScoutName),
+    entries: g.entries.map(mapEntry)
+  });
+  const mapLine = (l: ReqLine): ReqLine => ({
+    ...l,
+    scoutNames: l.scoutNames.map(toPublicScoutName),
+    entries: l.entries.map(mapEntry)
+  });
+  return {
+    ...report,
+    ranksEarned: report.ranksEarned.map(mapAward),
+    badgesEarned: report.badgesEarned.map(mapAward),
+    rankReqs: report.rankReqs.map((g) => ({ ...g, lines: g.lines.map(mapLine) })),
+    badgeReqs: report.badgeReqs.map((g) => ({ ...g, lines: g.lines.map(mapLine) })),
+    leadership: report.leadership.map(mapAward),
+    otherAwards: report.otherAwards.map(mapAward)
+  };
+}
+
 export type RemoveScoutSection = 'ranksEarned' | 'badgesEarned' | 'rankReqs' | 'badgeReqs' | 'leadership' | 'otherAwards';
 
 export interface RemoveScoutTarget {

@@ -24,3 +24,9 @@
 
 /* Phase B: archive back-link row (was inline marginTop 24) */
 .backRow { margin-top: var(--sp-6); }
+
+/* The category view's ArticleBody is a centered 760px column (article
+   pages); inside this page's shell that centering read as a weird left
+   margin against the flush-left tabs. Fill the column instead — the page
+   shell is narrow (800px), so the measure stays article-like. */
+.reportBody { --article-measure: 100%; }
