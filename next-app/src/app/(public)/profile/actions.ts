@@ -17,6 +17,7 @@ import {
 } from '@/lib/change-requests';
 import { sendEmail, renderEmail, troopEmail } from '@/lib/email';
 import { addPersonEmail, setPrimaryEmail, removePersonEmail, type PersonEmailLabel } from '@/lib/person-emails';
+import { loadScoutRows } from '@/lib/scout-row';
 
 const PROFILE_PATH = '/profile';
 
@@ -76,25 +77,34 @@ async function deletePendingRequest(
 async function queueChangeRequest(opts: {
   entityType: ChangeEntityType;
   entityId: string;
-  table: 'scouts' | 'people';
-  /** Column the entity id matches on — `scouts.id` is text, `people.id` int. */
-  idValue: string | number;
+  /**
+   * Read the entity's CURRENT values for exactly `fields`. A callback, not a
+   * table name: a scout's editable fields span TWO tables since the
+   * people-spine move (school/grade/swim on `scouts`, contact/demographics
+   * on the linked `people` row), and the old single-table
+   * `.select(fields.join(', '))` from `scouts` errored on the dropped
+   * columns — every scout edit bounced with "Could not load this record"
+   * (Patrick, 2026-08-30, Anjali). The scout path merges via lib/scout-row;
+   * the adult path still reads `people` directly.
+   */
+  loadCurrent: () => Promise<Record<string, FieldValue> | null>;
   fields: readonly string[];
   formData: FormData;
   party: Household;
   session: { personId: number | null; displayName: string };
   subjectLabel: string;
 }): Promise<never> {
-  const { entityType, entityId, table, idValue, fields, formData, party, session } = opts;
+  const { entityType, entityId, loadCurrent, fields, formData, party, session } = opts;
   const back = `${PROFILE_PATH}?member=${encodeURIComponent(memberParam(entityType, entityId))}`;
   const supabase = createAdminClient();
 
-  const { data: currentRow, error: readErr } = await supabase
-    .from(table)
-    .select(fields.join(', '))
-    .eq('id', idValue)
-    .single();
-  if (readErr || !currentRow) {
+  let currentRow: Record<string, FieldValue> | null = null;
+  try {
+    currentRow = await loadCurrent();
+  } catch {
+    currentRow = null;
+  }
+  if (!currentRow) {
     redirect(`${back}&err=${encodeURIComponent('Could not load this record. Please try again.')}`);
   }
 
@@ -103,11 +113,7 @@ async function queueChangeRequest(opts: {
     const raw = formData.get(field);
     if (raw !== null) proposed[field] = parseFieldValue(field, String(raw));
   }
-  const changed = diffFields(
-    currentRow as unknown as Record<string, FieldValue>,
-    proposed,
-    fields
-  );
+  const changed = diffFields(currentRow, proposed, fields);
   if (Object.keys(changed).length === 0) {
     // The form matches the live record exactly. That is ordinarily a no-op —
     // but if something was queued, the family has just edited its own proposal
@@ -216,8 +222,17 @@ export async function submitChangeRequestAction(formData: FormData): Promise<voi
   await queueChangeRequest({
     entityType: 'scout',
     entityId: scoutId,
-    table: 'scouts',
-    idValue: scoutId,
+    // The merged scouts+people row (lib/scout-row) — the same seam the
+    // /profile page loader reads, so the form and this diff can't disagree
+    // about what the current values are.
+    loadCurrent: async () => {
+      const [row] = await loadScoutRows(createAdminClient(), { ids: [scoutId] });
+      if (!row) return null;
+      const rec = row as unknown as Record<string, FieldValue>;
+      const current: Record<string, FieldValue> = {};
+      for (const field of EDITABLE_SCOUT_FIELDS) current[field] = rec[field] ?? null;
+      return current;
+    },
     fields: EDITABLE_SCOUT_FIELDS,
     formData,
     party,
@@ -246,8 +261,14 @@ export async function submitPersonChangeRequestAction(formData: FormData): Promi
   await queueChangeRequest({
     entityType: 'adult',
     entityId: String(personId),
-    table: 'people',
-    idValue: personId,
+    loadCurrent: async () => {
+      const { data } = await createAdminClient()
+        .from('people')
+        .select(EDITABLE_PERSON_FIELDS.join(', '))
+        .eq('id', personId)
+        .single();
+      return (data as unknown as Record<string, FieldValue> | null) ?? null;
+    },
     fields: EDITABLE_PERSON_FIELDS,
     formData,
     party,
