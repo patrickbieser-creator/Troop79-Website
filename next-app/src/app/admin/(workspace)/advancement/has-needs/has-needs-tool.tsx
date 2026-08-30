@@ -3,17 +3,28 @@
 /**
  * Client half of the Has/Needs Tool. Pure client-side computation — no
  * server round-trip on check/uncheck, since the whole active roster (~30
- * scouts) and the four lower rank trees are small enough to ship down
- * whole. Only LEAF requirements are checkable (per ux-lead review: letting
- * parent/group rows carry their own implicit all/any semantics would layer
- * a second completion rule on top of the all/any toggle — the "simplify,
- * don't layer" call already made elsewhere in this codebase).
+ * scouts) and the requirement trees are small enough to ship down whole
+ * (fast-entry ships the same catalog payload). Only LEAF requirements are
+ * checkable (per ux-lead review: letting parent/group rows carry their own
+ * implicit all/any semantics would layer a second completion rule on top of
+ * the tri-bucket split — the "simplify, don't layer" call already made
+ * elsewhere in this codebase).
+ *
+ * Merit badges (Jenna's review + Patrick's calls, 2026-08-30) get their own
+ * picker mode rather than 60+ more disclosure sections: a SearchField-
+ * filtered chip grid → click a badge → its tree inline with a back link,
+ * the same drill-in shape fast-entry's picker established. Checks persist
+ * across badge switches and across the rank sections, so the common case
+ * (one badge) is two clicks while a mixed rank+badge selection still works.
+ * The split/credit rules live in lib/has-needs (tested); this file renders.
  */
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { optionalityLabel } from '@/lib/mb-helpers';
+import { splitScouts, rankKey, mbKey, type HasNeedsScout, type PartialEntry } from '@/lib/has-needs';
 import { Button } from '../../../_components/button';
+import { SearchField, useTableSearch } from '../../_components/search-field';
 import styles from './has-needs.module.css';
 
 export interface PickerTreeNode {
@@ -30,14 +41,14 @@ export interface PickerRank {
   tree: PickerTreeNode[];
 }
 
-export interface ResultScout {
+export interface PickerBadge {
   id: string;
-  firstName: string;
-  displayName: string;
-  currentRank: string | null;
-  rankSortOrder: number;
-  heldCodes: string[];
+  name: string;
+  eagle: boolean;
+  tree: PickerTreeNode[];
 }
+
+export type ResultScout = HasNeedsScout;
 
 const RANK_LABEL: Record<string, string> = {
   scout: 'Scout',
@@ -58,12 +69,12 @@ interface FlatRow {
   optionality: string;
 }
 
-function flattenRank(rankId: string, tree: PickerTreeNode[]): FlatRow[] {
+function flattenTree(tree: PickerTreeNode[], keyFor: (code: string) => string): FlatRow[] {
   const out: FlatRow[] = [];
   const walk = (node: PickerTreeNode, depth: number) => {
     const isLeaf = node.children.length === 0;
     out.push({
-      key: `${rankId}-${node.code}`,
+      key: keyFor(node.code),
       code: node.code,
       label: node.label,
       depth,
@@ -76,14 +87,66 @@ function flattenRank(rankId: string, tree: PickerTreeNode[]): FlatRow[] {
   return out;
 }
 
-export function HasNeedsTool({ ranks, scouts }: { ranks: PickerRank[]; scouts: ResultScout[] }) {
-  const [checked, setChecked] = useState<Set<string>>(new Set());
+/** The checkbox/group rows for one requirement tree — shared by the rank
+ *  sections and the badge drill-in so the two can't drift. */
+function ReqRows({
+  rows,
+  checked,
+  onToggle
+}: {
+  rows: FlatRow[];
+  checked: Set<string>;
+  onToggle: (key: string) => void;
+}) {
+  return (
+    <div className={styles.rankRows}>
+      {rows.map((row) =>
+        row.isLeaf ? (
+          <div
+            key={row.key}
+            className={styles.reqRow}
+            // inline: dynamic — indent depth comes from the requirement tree
+            style={{ paddingLeft: row.depth * 14 }}
+          >
+            <input
+              type="checkbox"
+              id={row.key}
+              className={styles.checkbox}
+              checked={checked.has(row.key)}
+              onChange={() => onToggle(row.key)}
+            />
+            <label htmlFor={row.key} className={styles.reqLabelText}>
+              <span className={styles.reqCode}>{row.code}</span> {row.label}
+            </label>
+          </div>
+        ) : (
+          <div
+            key={row.key}
+            className={styles.groupRow}
+            // inline: dynamic — indent depth comes from the requirement tree
+            style={{ paddingLeft: row.depth * 14 }}
+          >
+            <span className={styles.reqCode}>{row.code}</span> {row.label}
+            {row.optionality && <span className={styles.optionality}>{row.optionality}</span>}
+          </div>
+        )
+      )}
+    </div>
+  );
+}
 
-  const codesByScout = useMemo(() => {
-    const map = new Map<string, Set<string>>();
-    for (const s of scouts) map.set(s.id, new Set(s.heldCodes));
-    return map;
-  }, [scouts]);
+export function HasNeedsTool({
+  ranks,
+  badges,
+  scouts
+}: {
+  ranks: PickerRank[];
+  badges: PickerBadge[];
+  scouts: ResultScout[];
+}) {
+  const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [activeMbId, setActiveMbId] = useState<string | null>(null);
+  const { q, setQ, visible: visibleBadges } = useTableSearch(badges, (b) => [b.name]);
 
   function toggleKey(key: string) {
     setChecked((prev) => {
@@ -94,30 +157,45 @@ export function HasNeedsTool({ ranks, scouts }: { ranks: PickerRank[]; scouts: R
     });
   }
 
-  // Has = completed every checked requirement. Needs = completed none of
-  // them. A scout with some-but-not-all checked requirements done (only
-  // possible with 2+ boxes checked) shows at the bottom of the Needs column,
-  // set apart as partial rather than folded into either bucket.
-  const { hasList, needsList, partialList } = useMemo(() => {
-    if (checked.size === 0) return { hasList: [], needsList: [], partialList: [] };
-    const has: ResultScout[] = [];
-    const needs: ResultScout[] = [];
-    const partial: ResultScout[] = [];
-    for (const s of scouts) {
-      const held = codesByScout.get(s.id) ?? new Set<string>();
-      let heldCount = 0;
-      for (const key of checked) if (held.has(key)) heldCount++;
-      if (heldCount === checked.size) has.push(s);
-      else if (heldCount === 0) needs.push(s);
-      else partial.push(s);
+  // "Cooking (2)" on a chip when that badge holds checked boxes — the mixed
+  // case's breadcrumb, so a selection spread over three badges stays
+  // findable after drilling back out.
+  const checkedCountByMb = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const key of checked) {
+      if (!key.startsWith('mb:')) continue;
+      for (const b of badges) {
+        if (key.startsWith(`mb:${b.id}-`)) {
+          map.set(b.id, (map.get(b.id) ?? 0) + 1);
+          break;
+        }
+      }
     }
-    const byRankThenName = (a: ResultScout, b: ResultScout) =>
-      a.rankSortOrder - b.rankSortOrder || a.firstName.localeCompare(b.firstName);
-    has.sort(byRankThenName);
-    needs.sort(byRankThenName);
-    partial.sort(byRankThenName);
-    return { hasList: has, needsList: needs, partialList: partial };
-  }, [checked, scouts, codesByScout]);
+    return map;
+  }, [checked, badges]);
+
+  /** key → "Tenderfoot 4a" / "Cooking 2" for the partial breakdown. */
+  const shortLabelByKey = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const rank of ranks) {
+      for (const row of flattenTree(rank.tree, (code) => rankKey(rank.id, code))) {
+        map.set(row.key, `${rank.displayName} ${row.code}`);
+      }
+    }
+    for (const mb of badges) {
+      for (const row of flattenTree(mb.tree, (code) => mbKey(mb.id, code))) {
+        map.set(row.key, `${mb.name} ${row.code}`);
+      }
+    }
+    return map;
+  }, [ranks, badges]);
+
+  const { has, needs, partial } = useMemo(
+    () => splitScouts(Array.from(checked), scouts),
+    [checked, scouts]
+  );
+
+  const activeBadge = activeMbId ? badges.find((b) => b.id === activeMbId) ?? null : null;
 
   return (
     <div className={styles.layout}>
@@ -133,47 +211,74 @@ export function HasNeedsTool({ ranks, scouts }: { ranks: PickerRank[]; scouts: R
             Clear all
           </Button>
         </div>
-        {ranks.map((rank) => {
-          const rows = flattenRank(rank.id, rank.tree);
-          return (
-            <details key={rank.id} className={styles.rankSection}>
-              <summary className={styles.rankSummary}>{rank.displayName}</summary>
-              <div className={styles.rankRows}>
-                {rows.map((row) =>
-                  row.isLeaf ? (
-                    <div
-                      key={row.key}
-                      className={styles.reqRow}
-                      // inline: dynamic — indent depth comes from the requirement tree
-                      style={{ paddingLeft: row.depth * 14 }}
-                    >
-                      <input
-                        type="checkbox"
-                        id={row.key}
-                        className={styles.checkbox}
-                        checked={checked.has(row.key)}
-                        onChange={() => toggleKey(row.key)}
-                      />
-                      <label htmlFor={row.key} className={styles.reqLabelText}>
-                        <span className={styles.reqCode}>{row.code}</span> {row.label}
-                      </label>
-                    </div>
-                  ) : (
-                    <div
-                      key={row.key}
-                      className={styles.groupRow}
-                      // inline: dynamic — indent depth comes from the requirement tree
-                      style={{ paddingLeft: row.depth * 14 }}
-                    >
-                      <span className={styles.reqCode}>{row.code}</span> {row.label}
-                      {row.optionality && <span className={styles.optionality}>{row.optionality}</span>}
-                    </div>
-                  )
+
+        {ranks.map((rank) => (
+          <details key={rank.id} className={styles.rankSection}>
+            <summary className={styles.rankSummary}>{rank.displayName}</summary>
+            <ReqRows
+              rows={flattenTree(rank.tree, (code) => rankKey(rank.id, code))}
+              checked={checked}
+              onToggle={toggleKey}
+            />
+          </details>
+        ))}
+
+        {badges.length > 0 && (
+          <div className={styles.mbSection}>
+            {activeBadge === null ? (
+              <>
+                <div className={styles.mbHeader}>Merit Badges</div>
+                <div className={styles.mbSearch}>
+                  <SearchField
+                    value={q}
+                    onChange={setQ}
+                    label="Filter merit badges"
+                    placeholder="Filter badges…"
+                    resultCount={visibleBadges.length}
+                    totalCount={badges.length}
+                  />
+                </div>
+                {visibleBadges.length === 0 ? (
+                  <p className={styles.resultEmpty}>No badge matches &ldquo;{q}&rdquo;.</p>
+                ) : (
+                  <div className={styles.mbGrid}>
+                    {visibleBadges.map((mb) => {
+                      const count = checkedCountByMb.get(mb.id) ?? 0;
+                      return (
+                        <button
+                          key={mb.id}
+                          type="button"
+                          className={styles.mbChip}
+                          onClick={() => setActiveMbId(mb.id)}
+                        >
+                          <span>{mb.name}</span>
+                          {count > 0 && <span className={styles.mbChipCount}>{count}</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
-              </div>
-            </details>
-          );
-        })}
+              </>
+            ) : (
+              <>
+                <div className={styles.mbDetailHead}>
+                  <Button variant="quiet" size="sm" onClick={() => setActiveMbId(null)}>
+                    ← All Merit Badges
+                  </Button>
+                </div>
+                <div className={styles.mbDetailName}>
+                  {activeBadge.name}
+                  {activeBadge.eagle && <span className={styles.optionality}>Eagle-required</span>}
+                </div>
+                <ReqRows
+                  rows={flattenTree(activeBadge.tree, (code) => mbKey(activeBadge.id, code))}
+                  checked={checked}
+                  onToggle={toggleKey}
+                />
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <div className={styles.results}>
@@ -185,19 +290,19 @@ export function HasNeedsTool({ ranks, scouts }: { ranks: PickerRank[]; scouts: R
           <div className={styles.resultCols}>
             <div className={styles.resultCol} aria-live="polite">
               <h2 className={styles.resultHeading}>
-                Has <span className={styles.resultCount}>({hasList.length})</span>
+                Has <span className={styles.resultCount}>({has.length})</span>
               </h2>
-              <ScoutList scouts={hasList} />
+              <ScoutList scouts={has} />
             </div>
             <div className={styles.resultCol} aria-live="polite">
               <h2 className={styles.resultHeading}>
-                Needs <span className={styles.resultCount}>({needsList.length})</span>
+                Needs <span className={styles.resultCount}>({needs.length})</span>
               </h2>
-              <ScoutList scouts={needsList} />
-              {partialList.length > 0 && (
+              <ScoutList scouts={needs} />
+              {partial.length > 0 && (
                 <>
                   <div className={styles.partialSpacer} aria-hidden="true" />
-                  <ScoutList scouts={partialList} partial />
+                  <PartialScoutList entries={partial} shortLabelByKey={shortLabelByKey} />
                 </>
               )}
             </div>
@@ -208,25 +313,56 @@ export function HasNeedsTool({ ranks, scouts }: { ranks: PickerRank[]; scouts: R
   );
 }
 
-function ScoutList({ scouts, partial }: { scouts: ResultScout[]; partial?: boolean }) {
+function ScoutRow({ scout, children }: { scout: ResultScout; children?: React.ReactNode }) {
+  return (
+    <li className={styles.resultItem}>
+      <div className={styles.resultMain}>
+        <Link href={`/scouts/${scout.id}`} className={styles.resultLink}>
+          {scout.displayName}
+        </Link>
+        {children}
+      </div>
+      {scout.currentRank && (
+        <span className={styles.resultRank}>
+          {RANK_LABEL[scout.currentRank] ?? scout.currentRank}
+        </span>
+      )}
+    </li>
+  );
+}
+
+function ScoutList({ scouts }: { scouts: ResultScout[] }) {
   if (scouts.length === 0) {
     return <p className={styles.resultEmpty}>None.</p>;
   }
   return (
     <ul className={styles.resultList}>
       {scouts.map((s) => (
-        <li
-          key={s.id}
-          className={`${styles.resultItem} ${partial ? styles.resultItemPartial : ''}`.trim()}
-        >
-          <Link href={`/scouts/${s.id}`} className={styles.resultLink}>
-            {s.displayName}
-            {partial && ' (Partially Complete)'}
-          </Link>
-          {s.currentRank && (
-            <span className={styles.resultRank}>{RANK_LABEL[s.currentRank] ?? s.currentRank}</span>
-          )}
-        </li>
+        <ScoutRow key={s.id} scout={s} />
+      ))}
+    </ul>
+  );
+}
+
+/** Partial rows name what's missing (Patrick, 2026-08-30: "do partial
+ *  now") — with a mixed rank+badge selection, "(Partially Complete)" alone
+ *  gave no clue which checked item a scout still lacked. */
+function PartialScoutList({
+  entries,
+  shortLabelByKey
+}: {
+  entries: PartialEntry<ResultScout>[];
+  shortLabelByKey: Map<string, string>;
+}) {
+  return (
+    <ul className={styles.resultList}>
+      {entries.map(({ scout, missingKeys }) => (
+        <ScoutRow key={scout.id} scout={scout}>
+          <span className={styles.missingNote}>
+            Partially complete — needs{' '}
+            {missingKeys.map((k) => shortLabelByKey.get(k) ?? k).join(', ')}
+          </span>
+        </ScoutRow>
       ))}
     </ul>
   );
