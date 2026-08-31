@@ -60,7 +60,7 @@ describe('meetings as a layer on calendar_entries', () => {
   it('Meeting_IsRejected_WhenCalendarEntryIdIsNull', async () => {
     const { error } = await admin
       .from('meetings')
-      .insert({ meeting_date: SHARED_DATE, title: `${FIXTURE} orphan` });
+      .insert({ title: `${FIXTURE} orphan` });
     expect(error).not.toBeNull();
     expect(error?.message).toMatch(/calendar_entry_id/i);
   });
@@ -69,8 +69,8 @@ describe('meetings as a layer on calendar_entries', () => {
     const { data, error } = await admin
       .from('meetings')
       .insert([
-        { calendar_entry_id: entryA, meeting_date: SHARED_DATE, title: `${FIXTURE} A` },
-        { calendar_entry_id: entryB, meeting_date: SHARED_DATE, title: `${FIXTURE} B` }
+        { calendar_entry_id: entryA, title: `${FIXTURE} A` },
+        { calendar_entry_id: entryB, title: `${FIXTURE} B` }
       ])
       .select('id');
     expect(error).toBeNull();
@@ -81,7 +81,7 @@ describe('meetings as a layer on calendar_entries', () => {
   it('SecondAgenda_IsRejected_WhenTheEntryAlreadyHasOne', async () => {
     const { error } = await admin
       .from('meetings')
-      .insert({ calendar_entry_id: entryA, meeting_date: SHARED_DATE, title: `${FIXTURE} dupe` });
+      .insert({ calendar_entry_id: entryA, title: `${FIXTURE} dupe` });
     expect(error).not.toBeNull();
     // 23505 — the meetings_calendar_entry_key unique index.
     expect(error?.code).toBe('23505');
@@ -97,7 +97,7 @@ describe('meetings as a layer on calendar_entries', () => {
 
     const { data: meeting } = await admin
       .from('meetings')
-      .insert({ calendar_entry_id: entryId, meeting_date: '2027-03-14', title: `${FIXTURE} doomed` })
+      .insert({ calendar_entry_id: entryId, title: `${FIXTURE} doomed` })
       .select('id')
       .single();
     const meetingId = meeting!.id as number;
@@ -108,68 +108,13 @@ describe('meetings as a layer on calendar_entries', () => {
     expect(after ?? []).toHaveLength(0);
   });
 
-  /**
-   * The invariant worth the most: 1,249 historical check-ins must not be
-   * reachable by the new cascade. `meeting_attendance_leaders` and the scout
-   * side of attendance are DATE-keyed with no FK to meetings.id, so they are
-   * structurally safe — but "safe because a foreign key happens not to exist"
-   * is exactly the kind of fact that quietly stops being true. This locks it.
-   */
-  it('AttendanceRecords_Survive_WhenTheCalendarEntryAndItsAgendaAreDeleted', async () => {
-    const attendanceDate = '2027-03-21';
-    const { data: entry } = await admin
-      .from('calendar_entries')
-      .insert({ entry_date: attendanceDate, category: categoryLabel, title: `${FIXTURE} attended` })
-      .select('id')
-      .single();
-    const entryId = entry!.id as number;
-
-    await admin
-      .from('meetings')
-      .insert({ calendar_entry_id: entryId, meeting_date: attendanceDate, title: `${FIXTURE} attended` });
-
-    // leader_code is an FK to leaders, so this needs a real one — but it makes
-    // its OWN rather than borrowing whatever row happens to be in the database.
-    // Borrowing passed only on a machine with troop data loaded and failed on
-    // any empty one (`supabase db reset`, a fresh clone, CI), which is the
-    // dependence Tests/CLAUDE.md rules out.
-    const leaderCode = `VT${Date.now().toString().slice(-6)}`;
-    const { error: leaderErr } = await admin
-      .from('leaders')
-      .insert({ code: leaderCode, name: `${FIXTURE} leader`, is_person: false });
-    expect(leaderErr).toBeNull();
-
-    const { error: attErr } = await admin
-      .from('meeting_attendance_leaders')
-      .insert({ meeting_date: attendanceDate, leader_code: leaderCode });
-    // If the shape of this table ever changes, fail loudly rather than passing
-    // a test that silently asserted nothing.
-    expect(attErr).toBeNull();
-
-    await admin.from('calendar_entries').delete().eq('id', entryId);
-
-    const { data: survivors } = await admin
-      .from('meeting_attendance_leaders')
-      .select('meeting_date')
-      .eq('meeting_date', attendanceDate);
-    expect(survivors ?? []).toHaveLength(1);
-
-    await admin.from('meeting_attendance_leaders').delete().eq('meeting_date', attendanceDate);
-    await admin.from('leaders').delete().eq('code', leaderCode);
-  });
-
-  it('EveryMeeting_PointsAtAnEntryOnItsOwnDate', async () => {
-    // The guard 20260814120000 enforces at deploy time, held as a standing
-    // regression: the backfill's lowest-id tie-break must never mislink.
-    const { data } = await admin
-      .from('meetings')
-      .select('id, meeting_date, calendar_entries!inner(entry_date)');
-    const mismatched = (data ?? []).filter((m) => {
-      const joined = Array.isArray(m.calendar_entries) ? m.calendar_entries[0] : m.calendar_entries;
-      return joined?.entry_date !== m.meeting_date;
-    });
-    expect(mismatched).toHaveLength(0);
-  });
+  // `AttendanceRecords_Survive_WhenTheCalendarEntryAndItsAgendaAreDeleted`
+  // and `EveryMeeting_PointsAtAnEntryOnItsOwnDate` were retired 2026-08-30
+  // with the columns they asserted about: `meeting_attendance_leaders` (the
+  // legacy date-keyed leader check-ins) and `meetings.meeting_date` were
+  // dropped after their soak (migration 20260830220000, Patrick's call) —
+  // the entry's own entry_date is the meeting's only date now, so a
+  // date-drift mislink is structurally impossible rather than guarded.
 
   it('EveryExistingMeeting_HasACalendarEntry_AfterTheBackfill', async () => {
     // The migration's own guard raises if any row is left unlinked, so this is

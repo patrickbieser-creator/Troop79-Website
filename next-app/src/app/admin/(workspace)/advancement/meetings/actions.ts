@@ -66,7 +66,6 @@ export async function createMeeting(fd: FormData): Promise<CreateResult> {
     .from('meetings')
     .insert({
       calendar_entry_id: entryId,
-      meeting_date: entry.entry_date,
       title: String(fd.get('title') ?? '').trim() || entry.title || 'Troop Meeting',
       time_range: '4:00 – 5:30 PM',
       location: entry.location ?? 'Northwoods',
