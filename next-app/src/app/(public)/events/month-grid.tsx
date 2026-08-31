@@ -234,26 +234,21 @@ export function MonthGrid({
   );
 
   /*
-   * Span lanes, resolved for the WHOLE MONTH before any row renders.
+   * Per-week span lanes — each week's own lane count offsets its chips
+   * below its own span bars (--lane-count).
    *
-   * Each week still gets its own lane count — that's what offsets its chips
-   * below its own span bars. But every row is sized by the month's MAXIMUM,
-   * so the grid keeps square rows instead of the week containing a campout
-   * standing 22px taller than the five around it (reported 2026-08-15 as the
-   * month view "breaking the symmetry of the boxes"; measured at 118px vs
-   * 96px in October 2026).
-   *
-   * The two numbers are deliberately separate: sizing with the max and
-   * offsetting with the max would push every week's chips down to clear span
-   * bars that week doesn't have.
+   * Lanes no longer add to CELL HEIGHT at all (Patrick, 2026-08-30, October
+   * screenshot: "no reason the cell heights cannot be the same across all
+   * three months"). Cells are a flat 72px minimum everywhere; a span bar
+   * plus a chip fits inside that, and on the rare week whose content
+   * genuinely exceeds it, the grid row grows from content — room made only
+   * where it's needed, uniform everywhere else. This retires both earlier
+   * schemes: the month-max sizing (every October cell 118px for one
+   * campout) and the 96px-vs-72px spanful/spanless month split.
    */
   const weekSpans = useMemo(
     () => weeks.map((week) => computeWeekSpans(week, multiDayVisible)),
     [weeks, multiDayVisible]
-  );
-  const monthLaneCount = useMemo(
-    () => weekSpans.reduce((max, w) => Math.max(max, w.laneCount), 0),
-    [weekSpans]
   );
 
   /*
@@ -395,16 +390,6 @@ export function MonthGrid({
         role="grid"
         aria-labelledby="monthHeaderTitle"
         ref={gridRef}
-        /* dynamic: lane count computed from event overlap — the sanctioned
-           custom-property pattern (audit 2026-08-21). --cell-base: a month
-           with no multi-day spans keeps mostly-one-chip cells, so it drops
-           to the compact height (polish pass, 2026-08-30). */
-        style={
-          {
-            '--month-lanes': monthLaneCount,
-            '--cell-base': monthLaneCount === 0 ? '72px' : '96px'
-          } as React.CSSProperties
-        }
       >
         {weeks.map((week, wi) => {
           const { placed, laneCount } = weekSpans[wi];
