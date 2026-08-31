@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Trail &amp; Has/Needs Merit Badges — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-gold: #8b6914;
+            --nw-pale-green: #e1e6d2;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #eef3ea; }
+        .callout-gold { border-color: var(--nw-gold); background: #f7f2e3; }
+        .callout-orange { border-color: #a95b28; background: #f8efe8; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        code, .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Audit Trail &amp; Has/Needs Merit Badges</h1>
+        <p class="subtitle">Content audit trail, merit badges in the planning tool, public-report privacy, and a nine-item backlog burn-down</p>
+        <div class="meta">
+            <span>&#128197; August 30, 2026</span>
+            <span>&#129302; Operator</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>v1.115.0 &rarr; v1.118.4</span>
+        </div>
+    </header>
+
+    <div class="container">
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">9</div><div class="label">Commits Shipped</div></div>
+            <div class="stat"><div class="number">+32</div><div class="label">Tests (1580&rarr;1612)</div></div>
+            <div class="stat"><div class="number">72</div><div class="label">Audit Call Sites</div></div>
+            <div class="stat"><div class="number">9</div><div class="label">Backlog Closed</div></div>
+            <div class="stat"><div class="number">4</div><div class="label">Decisions (D-256&ndash;259)</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <h3>Content Audit Trail (v1.118.0)</h3>
+        <div class="callout callout-green"><strong>Every CRUD change to News, Calendar, Roster, and the Resource Library now writes one audit row</strong> — date, acting person, area, action, and a one-line summary. App-level by design (only the session knows the person); auditing can never break a save (test-pinned). Viewer at <code>/admin/audit</code>; advancement and finance excluded — they have ledgers.</div>
+        <ul>
+            <li>~72 call sites across 12 action files, instrumented by three parallel subagents against one pattern brief</li>
+            <li>Coverage-guard test: a new content action file can't ship unaudited</li>
+            <li>Roster entries name people and changed <em>field names</em> only — never demographic values</li>
+            <li>Migration applied prod DB-first; signup workbench deliberately out of scope (backlogged as an option)</li>
+        </ul>
+
+        <h3>Has/Needs Tool Learns Merit Badges (v1.117.0, v1.118.1)</h3>
+        <p>Jenna reviewed the screen against Patrick's usage answers before a line was written. Shipped her shape: a searchable badge chip grid with per-badge drill-in below the rank sections (fast-entry's idiom, not 60+ disclosures), the shared advancement-catalog cache, namespaced <code>rank:</code>/<code>mb:</code> checkbox keys, and her correctness catch — <strong>a blue-card badge award now silently credits every leaf requirement</strong>, so summer-camp scouts stop showing as "Needs everything." Partial rows name exactly what's missing. A follow-up flipped the sticky column: the long requirement tree scrolls with the page; the short Has/Needs results stay pinned.</p>
+
+        <h3>Public Weekly Advancement Report (v1.116.0&ndash;.1)</h3>
+        <ul>
+            <li><strong>Privacy:</strong> public pages show "First L."; the admin report and stored data keep full names (render-time transform, D-256)</li>
+            <li><strong>Layout:</strong> the report body now sits flush with the page heading on the wide grid (a narrow-shell detour was corrected same-day from Patrick's screenshot)</li>
+        </ul>
+
+        <h3>Month-View Polish (v1.118.3&ndash;.4)</h3>
+        <p>The 2026-08-15 polish list, executed — then improved on Patrick's October screenshot: <strong>flat 72px cells in every month</strong> (span lanes reserve no height at all; an overfull week grows from content), trailing all-outside weeks trimmed, and week-crossing span bars read as one continuous bar sliced at the row break instead of two chevroned pieces.</p>
+
+        <h3>Housekeeping (v1.118.2 + data)</h3>
+        <ul>
+            <li>Dropped <code>meetings.meeting_date</code> (relax&rarr;deploy&rarr;drop sequence) and <code>meeting_attendance_leaders</code> + its counts view, after soak</li>
+            <li>Attributed the last 4 "Who" finance rows in prod (2086 &rarr; Summer Kimble per Patrick's correction) — the 11 ambiguous name pairs had all since been merged</li>
+            <li>Produced the 62-badge "last offered" list from the production ledger</li>
+        </ul>
+
+        <h2>Blockers Resolved</h2>
+        <table>
+            <thead><tr><th>Issue</th><th>Root Cause</th><th>Fix</th></tr></thead>
+            <tbody>
+                <tr><td>Family profile edits for scouts always failed ("Could not load this record")</td><td>The submit action still selected contact columns dropped from <code>scouts</code> by the Aug 26 people-spine migration; the runtime-built column list was invisible to the grep guard</td><td>v1.116.2 — <code>queueChangeRequest</code> takes a <code>loadCurrent</code> callback; the scout path reads the scouts+people merge the page already uses (+3 source-inspection tests)</td></tr>
+                <tr><td>Northwoods plugin failed to load (0 skills registered)</td><td>Plugin load error (still undiagnosed); cache + enable flag intact</td><td>Session ran on manual replicas — <code>D:\Projects\Start-Session-Prompt.md</code> / <code>End-Session-Prompt.md</code>, distilled from the cached SKILL.md files</td></tr>
+                <tr><td>Has/Needs picker clipped below the fold with long badge trees</td><td>The sticky column's own max-height scroll box overran the viewport at page top</td><td>v1.118.1 — inverted which column pins: page scrolls the tree, results stay in view</td></tr>
+            </tbody>
+        </table>
+
+        <h2>Decisions</h2>
+        <ul>
+            <li><strong>D-256</strong> — Public report privacy is a renderer property: "First L." at draw time, full names everywhere else</li>
+            <li><strong>D-257</strong> — Audit trail is app-level (actor lives in the session), never-throws, ledger-owning areas excluded</li>
+            <li><strong>D-258</strong> — Has/Needs MB design: chip-grid drill-in, silent award-implies-leaves, <code>merit_badges</code> IS the offered list</li>
+            <li><strong>D-259</strong> — Month grid: flat 72px cells; span lanes drive chip offset only, never cell height</li>
+        </ul>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Diagnose the northwoods plugin load error (<code>/plugin</code> UI or <code>claude --debug</code>)</li>
+            <li>Patrick eyeballs: month view across Sep/Oct/Nov, <code>/admin/audit</code> after a few days of edits, Has/Needs on a phone at a meeting</li>
+            <li>Performance follow-ups (ISR/tag-cache for public catalog pages; Roll Call debounce; first receipts-on signup watch)</li>
+            <li>Verified Signup Phase B after one real signup cycle</li>
+        </ul>
+
+        <h2>Backlog Burn-Down</h2>
+        <p><span class="badge badge-green">CLOSED 9</span> Verified Signup rollout &middot; household-epoch bump (won't-fix) &middot; both prod eyes-on walks &middot; CoH delete (not worth building; last 30 stay reachable) &middot; the Who backfill rows &middot; the meeting_date/attendance-leaders drops &middot; month-view polish. <span class="badge badge-gold">ADDED 3</span> signup-workbench audit (optional) &middot; <code>merit_badges.offered</code> flag (if ever needed) &middot; fast-entry shared-component migration.</p>
+    </div>
+
+    <footer>
+        <strong>Troop 79</strong> — Troop79-Website<br>
+        Session Summary — August 30, 2026 — Operator
+    </footer>
+</body>
+</html>

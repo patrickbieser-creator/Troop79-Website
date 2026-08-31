@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>August 28, 2026</strong> &nbsp;&middot;&nbsp; v1.115.0</p>
+      <p>Last updated: <strong>August 30, 2026</strong> &nbsp;&middot;&nbsp; v1.118.4</p>
     </div>
   </div>
 
@@ -494,6 +494,103 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.118.3-4 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.118.4</span>
+        <span class="release-date">August 30, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Polish</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">A tidier month view</p>
+        <ul class="change-list">
+          <li><span><strong>Calendar month view</strong> &mdash; every month now uses the same compact cell height, whether or not it holds a campout; a trailing week containing only next month&rsquo;s days is no longer shown; and a multi-day event crossing a week boundary now reads as one continuous bar sliced by the row break instead of two separate chevron-marked pieces.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.118.2 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.118.2</span>
+        <span class="release-date">August 30, 2026</span>
+        <span class="release-label"><span class="badge badge-polish">Housekeeping</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Old scaffolding removed</p>
+        <ul class="change-list">
+          <li><span>Two leftovers from before the calendar unification &mdash; a duplicate meeting-date column and the legacy leader check-in table &mdash; were retired after their soak. The calendar entry itself has been the single source of a meeting&rsquo;s date since mid-August.</span></li>
+          <li><span>The four remaining unattributed rows in the Financial Ledger&rsquo;s historical import were matched to their people, closing out the &ldquo;Who&rdquo; backfill.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.118.0-1 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.118.0</span>
+        <span class="release-date">August 30, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Content audit trail</p>
+        <ul class="change-list">
+          <li><span><strong>Every content change is now recorded</strong> &mdash; creating, editing, or deleting anything in News, the Calendar, the Roster, or the Resource Library writes one line to a new audit trail: who did it, when, and what changed. Advancement and finances aren&rsquo;t included because they already keep their own ledgers.</span></li>
+          <li><span><strong>Audit Trail screen</strong> &mdash; a new page under Setup shows the most recent changes with a filter by area. Roster entries name the person and which fields changed, never the values themselves.</span></li>
+          <li><span>Recording an audit line can never break the save it describes &mdash; if the trail write fails, the change still goes through.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.117.0 + v1.118.1 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.117.0</span>
+        <span class="release-date">August 30, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Has/Needs Tool learns merit badges</p>
+        <ul class="change-list">
+          <li><span><strong>Merit badges in the picker</strong> &mdash; below the four rank sections, a searchable grid of every badge the troop offers; pick one and check requirements from its own list, with a back link to the grid. Selections stick while you browse, so a campout plan can mix rank requirements and several badges.</span></li>
+          <li><span><strong>Blue-card awards count</strong> &mdash; a scout who earned a whole badge (say at summer camp) counts as having every one of its requirements, even when no individual sign-offs were ever logged.</span></li>
+          <li><span><strong>Partial results say what&rsquo;s missing</strong> &mdash; a scout who has some but not all of the checked items now lists exactly which ones they still need.</span></li>
+          <li><span>The requirement list scrolls naturally with the page while the Has/Needs results stay pinned alongside &mdash; no more inner scrollbar cut off at the bottom of the screen.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.116.2 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.116.2</span>
+        <span class="release-date">August 30, 2026</span>
+        <span class="release-label"><span class="badge badge-fix">Fix</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Family profile edits work again</p>
+        <ul class="change-list">
+          <li><span><strong>My Profile</strong> &mdash; submitting an update for a scout always bounced with &ldquo;Could not load this record&rdquo; after the August 26 people-records move. The form itself was fine; the save step was still reading contact fields from their old location. Edits now land in the leader review queue as designed.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.116.0-1 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.116.0</span>
+        <span class="release-date">August 30, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Privacy</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Weekly Advancement Report: first names only in public</p>
+        <ul class="change-list">
+          <li><span><strong>Public report pages</strong> &mdash; scouts now appear as &ldquo;First L.&rdquo; on the public Weekly Advancement Report and its archive. Leaders still see full names on the admin report, and nothing stored changed &mdash; the shortening happens only when the public page draws.</span></li>
+          <li><span>The report body now lines up flush with the page heading instead of floating in from the left.</span></li>
+        </ul>
       </div>
     </div>
 
