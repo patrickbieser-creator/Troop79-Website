@@ -249,6 +249,15 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         capability: 'roster.manage'
       },
       {
+        // Content changes only (news/calendar/roster/library) — advancement
+        // and finance have their own ledgers. roster.manage because the
+        // trail names people (Patrick, 2026-08-30).
+        label: 'Audit Trail',
+        href: '/admin/audit',
+        matchPath: '/admin/audit',
+        capability: 'roster.manage'
+      },
+      {
         label: 'Utilities',
         href: '/admin/utilities',
         matchPath: '/admin/utilities',

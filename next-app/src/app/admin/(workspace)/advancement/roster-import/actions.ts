@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
+import { recordAudit } from '@/lib/audit';
 
 /**
  * Roster Import review write paths.
@@ -79,6 +80,16 @@ export async function acceptSuggestion(
     p_note: note ?? null
   });
   if (error) return { ok: false, error: error.message };
+
+  await recordAudit({
+    area: 'roster',
+    action: 'accept',
+    entityType: 'merge_suggestion',
+    entityId: suggestionId,
+    summary: `Accepted suggestion #${suggestionId}, applied fields: ${
+      chosenFields.filter((f) => APPLIABLE.has(f)).join(', ') || 'none'
+    }`
+  });
 
   revalidatePath(PATH);
   return { ok: true };
@@ -207,6 +218,14 @@ export async function createPersonFromRow(importRowId: number): Promise<Result> 
     .single();
   if (insErr || !person) return { ok: false, error: `Creating person: ${insErr?.message}` };
 
+  await recordAudit({
+    area: 'roster',
+    action: 'create',
+    entityType: 'person',
+    entityId: person.id,
+    summary: `Created person ${row.display_name} from import row ${importRowId}`
+  });
+
   await supabase
     .from('merge_suggestions')
     .update({ status: 'superseded' })
@@ -289,6 +308,14 @@ export async function addRelationship(
   );
   if (error) return { ok: false, error: error.message };
 
+  await recordAudit({
+    area: 'roster',
+    action: 'create',
+    entityType: 'relationship',
+    entityId: personId,
+    summary: `Recorded ${type} relationship via import (person ${personId} ↔ ${relatedPersonId})`
+  });
+
   revalidatePath(PATH);
   return { ok: true };
 }
@@ -301,6 +328,14 @@ export async function removeRelationship(relationshipId: number): Promise<Result
   const supabase = createAdminClient();
   const { error } = await supabase.from('relationships').delete().eq('id', relationshipId);
   if (error) return { ok: false, error: error.message };
+
+  await recordAudit({
+    area: 'roster',
+    action: 'delete',
+    entityType: 'relationship',
+    entityId: relationshipId,
+    summary: `Removed relationship (id ${relationshipId})`
+  });
 
   revalidatePath(PATH);
   return { ok: true };
@@ -326,6 +361,14 @@ export async function mergePeople(survivorId: number, loserId: number): Promise<
   });
   if (error) return { ok: false, error: error.message };
 
+  await recordAudit({
+    area: 'roster',
+    action: 'merge',
+    entityType: 'person',
+    entityId: survivorId,
+    summary: `Merged person ${loserId} into ${survivorId} (import)`
+  });
+
   revalidatePath(PATH);
   return { ok: true };
 }
@@ -348,6 +391,15 @@ export async function acceptAllClean(batchId: number): Promise<Result & { count?
   });
   if (error) return { ok: false, error: error.message };
 
+  const count = typeof data === 'number' ? data : undefined;
+  await recordAudit({
+    area: 'roster',
+    action: 'accept',
+    entityType: 'merge_suggestion',
+    entityId: batchId,
+    summary: `Accepted ${count ?? 'all'} clean suggestions in batch ${batchId}`
+  });
+
   revalidatePath(PATH);
-  return { ok: true, count: typeof data === 'number' ? data : undefined };
+  return { ok: true, count };
 }

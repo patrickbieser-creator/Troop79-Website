@@ -1,6 +1,7 @@
 'use server';
 
 import { requireCapability } from '@/lib/require-capability';
+import { recordAudit } from '@/lib/audit';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { Media } from '@/lib/supabase/types';
 import { IMAGE_UPLOAD_TYPES, checkUpload } from '@/lib/upload-limits';
@@ -64,6 +65,13 @@ export async function uploadMedia(formData: FormData): Promise<UploadResult> {
     .single();
   if (error) return { ok: false, error: error.message };
 
+  await recordAudit({
+    area: 'news',
+    action: 'upload',
+    entityType: 'media',
+    entityId: data.id,
+    summary: `Uploaded "${altText}"`
+  });
   return { ok: true, media: data as Media };
 }
 
@@ -104,6 +112,13 @@ export async function setMediaAltText(
   const supabase = createAdminClient();
   const { error } = await supabase.from('media').update({ alt_text: trimmed }).eq('id', id);
   if (error) return { ok: false, error: error.message };
+  await recordAudit({
+    area: 'news',
+    action: 'update',
+    entityType: 'media',
+    entityId: id,
+    summary: `Set alt text on media #${id}`
+  });
   return { ok: true };
 }
 
@@ -173,6 +188,13 @@ export async function syncBunnyLibrary(): Promise<SyncResult> {
 
   const newPaths = imagePaths.filter((p) => !indexed.has(p));
   if (newPaths.length === 0) {
+    await recordAudit({
+      area: 'news',
+      action: 'sync',
+      entityType: 'media',
+      entityId: null,
+      summary: `Synced Bunny library — 0 new, ${imagePaths.length} already indexed`
+    });
     return { ok: true, added: 0, alreadyIndexed: imagePaths.length };
   }
 
@@ -187,5 +209,12 @@ export async function syncBunnyLibrary(): Promise<SyncResult> {
   );
   if (insertError) return { ok: false, error: insertError.message };
 
+  await recordAudit({
+    area: 'news',
+    action: 'sync',
+    entityType: 'media',
+    entityId: null,
+    summary: `Synced Bunny library — ${newPaths.length} new, ${imagePaths.length - newPaths.length} already indexed`
+  });
   return { ok: true, added: newPaths.length, alreadyIndexed: imagePaths.length - newPaths.length };
 }

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
+import { recordAudit } from '@/lib/audit';
 import { createAdminClient } from '@/lib/supabase/server';
 
 type ActionResult = { ok: boolean; error?: string };
@@ -42,8 +43,15 @@ export async function createPhotoAlbum(fd: FormData): Promise<ActionResult> {
   if (invalid) return { ok: false, error: invalid };
 
   const supabase = createAdminClient();
-  const { error } = await supabase.from('photo_albums').insert(fields);
+  const { data, error } = await supabase.from('photo_albums').insert(fields).select('id').single();
   if (error) return { ok: false, error: error.message };
+  await recordAudit({
+    area: 'news',
+    action: 'create',
+    entityType: 'photo_album',
+    entityId: data?.id ?? null,
+    summary: `Created photo album "${fields.title}"`
+  });
   revalidateAlbums();
   return { ok: true };
 }
@@ -58,6 +66,13 @@ export async function updatePhotoAlbum(fd: FormData): Promise<ActionResult> {
   const supabase = createAdminClient();
   const { error } = await supabase.from('photo_albums').update(fields).eq('id', id);
   if (error) return { ok: false, error: error.message };
+  await recordAudit({
+    area: 'news',
+    action: 'update',
+    entityType: 'photo_album',
+    entityId: id,
+    summary: `Updated photo album "${fields.title}"`
+  });
   revalidateAlbums();
   return { ok: true };
 }
@@ -68,6 +83,13 @@ export async function deletePhotoAlbum(id: number): Promise<ActionResult> {
   const supabase = createAdminClient();
   const { error } = await supabase.from('photo_albums').delete().eq('id', id);
   if (error) return { ok: false, error: error.message };
+  await recordAudit({
+    area: 'news',
+    action: 'delete',
+    entityType: 'photo_album',
+    entityId: id,
+    summary: `Deleted photo album #${id}`
+  });
   revalidateAlbums();
   return { ok: true };
 }

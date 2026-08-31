@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
+import { recordAudit } from '@/lib/audit';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { Media } from '@/lib/supabase/types';
 
@@ -105,6 +106,13 @@ export async function updateMediaMetadata(
     revalidateNews();
     for (const article of usage) revalidatePath(`/news/${article.slug}`);
   }
+  await recordAudit({
+    area: 'news',
+    action: 'update',
+    entityType: 'media',
+    entityId: id,
+    summary: `Updated metadata on media #${id}`
+  });
   return { ok: true, media: data as Media };
 }
 
@@ -135,5 +143,12 @@ export async function deleteMedia(id: number): Promise<DeleteResult> {
 
   const { error } = await supabase.from('media').delete().eq('id', id);
   if (error) return { ok: false, error: error.message };
+  await recordAudit({
+    area: 'news',
+    action: 'delete',
+    entityType: 'media',
+    entityId: id,
+    summary: `Deleted media #${id}`
+  });
   return { ok: true };
 }

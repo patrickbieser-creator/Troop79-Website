@@ -5,6 +5,7 @@ import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { mustList, mustMaybe } from '@/lib/db';
 import { loadCalendarCategories } from '@/lib/calendar';
+import { recordAudit } from '@/lib/audit';
 import {
   calendarEntryDependents,
   planCalendarEntryMerge,
@@ -294,6 +295,13 @@ export async function cloneCalendarEntry(
     }
   }
 
+  await recordAudit({
+    area: 'calendar',
+    action: 'clone',
+    entityType: 'calendar_entry',
+    entityId: newId,
+    summary: `Cloned "${source.title}" to ${newDate}`
+  });
   revalidateCalendar(newId);
   return problems.length
     ? { ok: true, id: newId, error: `Copied, but these did not come across: ${problems.join(', ')}.` }
@@ -310,10 +318,19 @@ export async function createCalendarEntry(fd: FormData): Promise<ActionResult> {
   const supabase = createAdminClient();
   // Attribution is stamped at creation and never touched again — an edit does
   // not reassign authorship, same as News.
-  const { error } = await supabase
+  const { data: created, error } = await supabase
     .from('calendar_entries')
-    .insert({ ...fields, author_name: session.label });
+    .insert({ ...fields, author_name: session.label })
+    .select('id')
+    .single();
   if (error) return { ok: false, error: error.message };
+  await recordAudit({
+    area: 'calendar',
+    action: 'create',
+    entityType: 'calendar_entry',
+    entityId: created?.id ?? null,
+    summary: `Created "${fields.title}"`
+  });
   revalidateCalendar();
   return { ok: true };
 }
@@ -338,6 +355,13 @@ export async function setEntryPromoted(id: number, on: boolean): Promise<ActionR
     .update({ show_on_homepage: on, ...(on ? {} : { featured: false }) })
     .eq('id', id);
   if (error) return { ok: false, error: error.message };
+  await recordAudit({
+    area: 'calendar',
+    action: 'update',
+    entityType: 'calendar_entry',
+    entityId: id,
+    summary: on ? `Promoted entry #${id} to the homepage` : `Removed entry #${id} from the homepage`
+  });
   revalidateCalendar(id);
   revalidatePath('/');
   return { ok: true };
@@ -354,6 +378,13 @@ export async function updateCalendarEntry(fd: FormData): Promise<ActionResult> {
   const supabase = createAdminClient();
   const { error } = await supabase.from('calendar_entries').update(fields).eq('id', id);
   if (error) return { ok: false, error: error.message };
+  await recordAudit({
+    area: 'calendar',
+    action: 'update',
+    entityType: 'calendar_entry',
+    entityId: id,
+    summary: `Updated "${fields.title}"`
+  });
   revalidateCalendar();
   return { ok: true };
 }
@@ -458,6 +489,15 @@ export async function importCalendarEntries(
     updated++;
   }
 
+  await recordAudit({
+    area: 'calendar',
+    action: 'import',
+    entityType: 'calendar_entry',
+    entityId: null,
+    summary: `Imported ${inserts.length} new and ${updated} updated calendar ${
+      inserts.length + updated === 1 ? 'entry' : 'entries'
+    }`
+  });
   revalidateCalendar();
   return { ok: true, inserted: inserts.length, updated };
 }
@@ -508,6 +548,13 @@ export async function deleteCalendarEntry(
 
   const { error } = await supabase.from('calendar_entries').delete().eq('id', id);
   if (error) return { ok: false, error: error.message };
+  await recordAudit({
+    area: 'calendar',
+    action: 'delete',
+    entityType: 'calendar_entry',
+    entityId: id,
+    summary: `Deleted calendar entry #${id}`
+  });
   revalidateCalendar();
   return { ok: true };
 }
@@ -544,6 +591,13 @@ export async function mergeCalendarEntries(
 
   const result = await executeCalendarEntryMerge(supabase, keepId, loseId, session.label);
   if (!result.ok) return { ok: false, error: result.error };
+  await recordAudit({
+    area: 'calendar',
+    action: 'merge',
+    entityType: 'calendar_entry',
+    entityId: keepId,
+    summary: `Merged entry #${loseId} into #${keepId}`
+  });
   revalidateCalendar(keepId);
   return { ok: true };
 }

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
+import { recordAudit } from '@/lib/audit';
 import { createAdminClient } from '@/lib/supabase/server';
 import { resolveArticleSlug, resolveByline } from '@/lib/article-slug';
 import { slugify } from '@/lib/slugify';
@@ -131,6 +132,13 @@ export async function createArticle(formData: FormData): Promise<ActionResult> {
   if (error || !data) return { ok: false, error: error?.message ?? 'Insert failed.' };
 
   await setCategories(supabase, data.id, fields.categories);
+  await recordAudit({
+    area: 'news',
+    action: 'create',
+    entityType: 'article',
+    entityId: data.id,
+    summary: `Created draft "${fields.title}"`
+  });
   revalidateNews();
   return { ok: true, id: data.id };
 }
@@ -197,6 +205,13 @@ export async function cloneArticle(id: number): Promise<ActionResult> {
     created.id,
     (src.article_categories ?? []).map((c) => c.category_label)
   );
+  await recordAudit({
+    area: 'news',
+    action: 'clone',
+    entityType: 'article',
+    entityId: created.id,
+    summary: `Cloned "${src.title}" as "${title}"`
+  });
   revalidateNews();
   return { ok: true, id: created.id };
 }
@@ -263,6 +278,13 @@ export async function updateArticle(id: number, formData: FormData): Promise<Act
   if (error) return { ok: false, error: error.message };
 
   await setCategories(supabase, id, fields.categories);
+  await recordAudit({
+    area: 'news',
+    action: 'update',
+    entityType: 'article',
+    entityId: id,
+    summary: `Updated article "${fields.title}"`
+  });
   revalidateNews();
   revalidatePath(`/news/${slug}`);
   // A deliberate slug change leaves the old path cached — flush it so the
@@ -285,6 +307,13 @@ export async function publishArticle(id: number): Promise<ActionResult> {
     })
     .eq('id', id);
   if (error) return { ok: false, error: error.message };
+  await recordAudit({
+    area: 'news',
+    action: 'publish',
+    entityType: 'article',
+    entityId: id,
+    summary: `Published article #${id}`
+  });
   revalidateNews();
   return { ok: true };
 }
@@ -302,12 +331,32 @@ async function setArchived(id: number, archivedBy: string | null): Promise<Actio
 
 export async function archiveArticle(id: number): Promise<ActionResult> {
   const session = await requireCapability('news.write');
-  return setArchived(id, session.label);
+  const result = await setArchived(id, session.label);
+  if (result.ok) {
+    await recordAudit({
+      area: 'news',
+      action: 'archive',
+      entityType: 'article',
+      entityId: id,
+      summary: `Archived article #${id}`
+    });
+  }
+  return result;
 }
 
 export async function unarchiveArticle(id: number): Promise<ActionResult> {
   await requireCapability('news.write');
-  return setArchived(id, null);
+  const result = await setArchived(id, null);
+  if (result.ok) {
+    await recordAudit({
+      area: 'news',
+      action: 'unarchive',
+      entityType: 'article',
+      entityId: id,
+      summary: `Unarchived article #${id}`
+    });
+  }
+  return result;
 }
 
 export async function deleteArticle(id: number): Promise<ActionResult> {
@@ -315,6 +364,13 @@ export async function deleteArticle(id: number): Promise<ActionResult> {
   const supabase = createAdminClient();
   const { error } = await supabase.from('articles').delete().eq('id', id);
   if (error) return { ok: false, error: error.message };
+  await recordAudit({
+    area: 'news',
+    action: 'delete',
+    entityType: 'article',
+    entityId: id,
+    summary: `Deleted article #${id}`
+  });
   revalidateNews();
   return { ok: true };
 }
@@ -328,6 +384,13 @@ export async function setFeatured(id: number, featured: boolean, order: number |
     .update({ featured, featured_order: featured ? order : null })
     .eq('id', id);
   if (error) return { ok: false, error: error.message };
+  await recordAudit({
+    area: 'news',
+    action: 'feature',
+    entityType: 'article',
+    entityId: id,
+    summary: featured ? `Featured article #${id}` : `Unfeatured article #${id}`
+  });
   revalidateNews();
   return { ok: true };
 }
@@ -380,6 +443,13 @@ export async function saveFrontPageOrder(
       .eq('id', it.id);
     if (error) return { ok: false, error: error.message };
   }
+  await recordAudit({
+    area: 'news',
+    action: 'reorder',
+    entityType: 'article',
+    entityId: null,
+    summary: `Reordered front page (${items.length} item${items.length === 1 ? '' : 's'})`
+  });
   revalidateNews();
   revalidatePath('/');
   return { ok: true };

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
+import { recordAudit } from '@/lib/audit';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import { diffAssignments, type PatrolDraft, type PatrolScout } from '@/lib/patrol-assign';
 
@@ -70,6 +71,14 @@ export async function savePatrolAssignments(draft: PatrolDraft): Promise<Result>
   revalidatePath('/advancement');
   // Scout pages are rendered per request — no site-wide purge needed
   // (Plans/Performance-Review-2026-08-27.md #9).
+
+  await recordAudit({
+    area: 'roster',
+    action: 'update',
+    entityType: 'patrol_assignments',
+    entityId: null,
+    summary: `Moved ${changes.length} scout${changes.length === 1 ? '' : 's'} between patrols`
+  });
 
   return { ok: true, changed: changes.length };
 }

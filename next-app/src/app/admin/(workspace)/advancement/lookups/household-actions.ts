@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
+import { recordAudit } from '@/lib/audit';
 
 /**
  * Household management.
@@ -35,8 +36,20 @@ export async function createHousehold(label: string): Promise<Result> {
   if (!trimmed) return { ok: false, error: 'Give the household a name.' };
 
   const supabase = createAdminClient();
-  const { error } = await supabase.from('households').insert({ label: trimmed });
+  const { data: created, error } = await supabase
+    .from('households')
+    .insert({ label: trimmed })
+    .select('id')
+    .single();
   if (error) return { ok: false, error: error.message };
+
+  await recordAudit({
+    area: 'roster',
+    action: 'create',
+    entityType: 'household',
+    entityId: created?.id ?? null,
+    summary: `Created household "${trimmed}"`
+  });
 
   revalidate();
   return { ok: true };
@@ -59,6 +72,14 @@ export async function renameHousehold(id: number, label: string): Promise<Result
     .update({ label: trimmed, updated_at: new Date().toISOString() })
     .eq('id', id);
   if (error) return { ok: false, error: error.message };
+
+  await recordAudit({
+    area: 'roster',
+    action: 'update',
+    entityType: 'household',
+    entityId: id,
+    summary: `Renamed household ${id} to "${trimmed}"`
+  });
 
   revalidate();
   return { ok: true };
@@ -98,6 +119,14 @@ export async function deleteHousehold(id: number): Promise<Result> {
 
   const { error } = await supabase.from('households').delete().eq('id', id);
   if (error) return { ok: false, error: error.message };
+
+  await recordAudit({
+    area: 'roster',
+    action: 'delete',
+    entityType: 'household',
+    entityId: id,
+    summary: `Deleted household ${id}`
+  });
 
   revalidate();
   return { ok: true };

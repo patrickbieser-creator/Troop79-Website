@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
+import { recordAudit } from '@/lib/audit';
 
 /**
  * People → Guests tab writes (Plans/Guests-As-People.md Phase 2).
@@ -48,16 +49,27 @@ export async function forgetGuest(personId: number): Promise<Result> {
     .select('id', { count: 'exact', head: true })
     .eq('person_id', personId);
 
+  let summary: string;
   if ((count ?? 0) === 0) {
     const { error } = await supabase.from('people').delete().eq('id', personId);
     if (error) return { ok: false, error: error.message };
+    summary = `Forgot guest ${personId} (deleted)`;
   } else {
     const { error } = await supabase
       .from('people')
       .update({ active: false, inactive_reason: 'guest-forgotten', updated_at: new Date().toISOString() })
       .eq('id', personId);
     if (error) return { ok: false, error: error.message };
+    summary = `Forgot guest ${personId} (deactivated — had signup history)`;
   }
+
+  await recordAudit({
+    area: 'roster',
+    action: 'delete',
+    entityType: 'guest',
+    entityId: personId,
+    summary
+  });
 
   revalidate();
   return { ok: true };
@@ -98,6 +110,14 @@ export async function promoteGuest(guestPersonId: number, survivorPersonId: numb
     }
     return { ok: false, error: error.message };
   }
+
+  await recordAudit({
+    area: 'roster',
+    action: 'promote',
+    entityType: 'guest',
+    entityId: guestPersonId,
+    summary: `Promoted guest ${guestPersonId} into person ${survivorPersonId}`
+  });
 
   revalidate();
   return { ok: true };

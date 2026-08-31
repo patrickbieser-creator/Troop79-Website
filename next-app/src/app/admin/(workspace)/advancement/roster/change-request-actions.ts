@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
+import { recordAudit } from '@/lib/audit';
 import {
   editableFieldsFor,
   SCOUT_FIELD_TABLE,
@@ -130,6 +131,16 @@ export async function approveChangeRequest(id: number): Promise<Result> {
     .eq('id', id);
   if (error) return { ok: false, error: error.message };
 
+  await recordAudit({
+    area: 'roster',
+    action: 'approve',
+    entityType: 'change_request',
+    entityId: id,
+    summary: `Approved ${entityType} change request #${id} (entity ${row.entity_id}): ${
+      Object.keys(allowed).join(', ') || 'no fields'
+    }`
+  });
+
   revalidatePath('/admin/advancement/roster');
   revalidatePath('/admin/advancement/lookups');
   revalidatePath('/advancement');
@@ -150,6 +161,14 @@ export async function rejectChangeRequest(id: number, reason: string): Promise<R
     .eq('id', id)
     .eq('status', 'pending');
   if (error) return { ok: false, error: error.message };
+
+  await recordAudit({
+    area: 'roster',
+    action: 'reject',
+    entityType: 'change_request',
+    entityId: id,
+    summary: `Rejected change request #${id}${reason.trim() ? `: ${reason.trim()}` : ''}`
+  });
 
   revalidatePath('/admin/advancement/roster');
   return { ok: true };

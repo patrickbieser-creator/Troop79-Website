@@ -13,6 +13,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
+import { recordAudit } from '@/lib/audit';
 import {
   approveResource,
   approveSubmission,
@@ -100,6 +101,9 @@ export async function saveResourceAction(formData: FormData): Promise<void> {
   const tab = String(formData.get('tab') ?? 'queue');
   const err = await saveResourceFields(formData);
   if (err) fail(tab, err);
+  const id = Number(formData.get('id'));
+  const title = String(formData.get('title') ?? '').trim();
+  await recordAudit({ area: 'library', action: 'update', entityType: 'resource', entityId: id, summary: `Updated "${title}"` });
   refresh(tab, groupOf(formData));
 }
 
@@ -110,6 +114,8 @@ export async function approveResourceAction(formData: FormData): Promise<void> {
   const id = Number(formData.get('id'));
   const approveErr = await approveResource(createAdminClient(), id, reviewer);
   if (approveErr) fail('queue', approveErr);
+  const title = String(formData.get('title') ?? '').trim();
+  await recordAudit({ area: 'library', action: 'approve', entityType: 'resource', entityId: id, summary: `Approved "${title}"` });
   refresh('queue');
 }
 
@@ -120,6 +126,13 @@ export async function declineResourceAction(formData: FormData): Promise<void> {
   const reason = String(formData.get('reason') ?? '').trim();
   const err = await declineResource(createAdminClient(), id, reviewer, reason);
   if (err) fail('queue', err);
+  await recordAudit({
+    area: 'library',
+    action: 'decline',
+    entityType: 'resource',
+    entityId: id,
+    summary: reason ? `Declined resource #${id}: ${reason}` : `Declined resource #${id}`
+  });
   refresh('queue');
 }
 
@@ -138,6 +151,7 @@ export async function archiveResourceAction(formData: FormData): Promise<void> {
     })
     .eq('id', id);
   if (error) fail('published', error.message);
+  await recordAudit({ area: 'library', action: 'archive', entityType: 'resource', entityId: id, summary: `Archived resource #${id}` });
   refresh('published', groupOf(formData));
 }
 
@@ -153,6 +167,7 @@ export async function restoreResourceAction(formData: FormData): Promise<void> {
     .update({ status: 'pending', decline_reason: null, updated_at: new Date().toISOString() })
     .eq('id', id);
   if (error) fail('archived', error.message);
+  await recordAudit({ area: 'library', action: 'restore', entityType: 'resource', entityId: id, summary: `Restored resource #${id} to the queue` });
   refresh('queue');
 }
 
@@ -168,6 +183,7 @@ export async function approveSubmissionAction(formData: FormData): Promise<void>
   if (!Number.isFinite(id) || id <= 0) fail('proof', 'Invalid submission id');
   const { error } = await approveSubmission(createAdminClient(), id, reviewer);
   if (error) fail('proof', error);
+  await recordAudit({ area: 'library', action: 'approve', entityType: 'submission', entityId: id, summary: `Approved submission #${id}` });
   revalidatePath(ADMIN_PATH);
   revalidatePath('/admin/advancement/fast-entry');
   revalidatePath('/admin/advancement/ledger');
@@ -184,6 +200,13 @@ export async function returnSubmissionAction(formData: FormData): Promise<void> 
   const feedback = String(formData.get('feedback_md') ?? '').trim();
   const err = await returnSubmission(createAdminClient(), id, reviewer, feedback);
   if (err) fail('proof', err);
+  await recordAudit({
+    area: 'library',
+    action: 'return',
+    entityType: 'submission',
+    entityId: id,
+    summary: feedback ? `Returned submission #${id} with feedback` : `Returned submission #${id}`
+  });
   refresh('proof');
 }
 
@@ -209,6 +232,13 @@ export async function addPlacementAction(formData: FormData): Promise<void> {
       { onConflict: 'resource_id,target_kind,target_key', ignoreDuplicates: true }
     );
   if (error) fail(tab, error.message);
+  await recordAudit({
+    area: 'library',
+    action: 'place',
+    entityType: 'placement',
+    entityId: resourceId,
+    summary: `Placed resource #${resourceId} on ${kind}:${key}`
+  });
   refresh(tab, groupOf(formData));
 }
 
@@ -220,6 +250,7 @@ export async function removePlacementAction(formData: FormData): Promise<void> {
   const supabase = createAdminClient();
   const { error } = await supabase.from('library_placements').delete().eq('id', id);
   if (error) fail(tab, error.message);
+  await recordAudit({ area: 'library', action: 'unplace', entityType: 'placement', entityId: id, summary: `Removed placement #${id}` });
   refresh(tab, groupOf(formData));
 }
 
@@ -235,6 +266,13 @@ export async function togglePinAction(formData: FormData): Promise<void> {
     .update({ pinned: !pinned })
     .eq('id', id);
   if (error) fail(tab, error.message);
+  await recordAudit({
+    area: 'library',
+    action: pinned ? 'unpin' : 'pin',
+    entityType: 'placement',
+    entityId: id,
+    summary: pinned ? `Unpinned placement #${id}` : `Pinned placement #${id}`
+  });
   refresh(tab, groupOf(formData));
 }
 
@@ -248,14 +286,25 @@ export async function createTopicAction(formData: FormData): Promise<void> {
   const blurb = String(formData.get('blurb') ?? '').trim() || null;
   const sortOrder = Number(formData.get('sort_order')) || 0;
   const supabase = createAdminClient();
-  const { error } = await supabase.from('library_topics').insert({
-    slug: slugify(title),
-    title,
-    icon,
-    blurb_md: blurb,
-    sort_order: sortOrder
-  });
+  const { data: created, error } = await supabase
+    .from('library_topics')
+    .insert({
+      slug: slugify(title),
+      title,
+      icon,
+      blurb_md: blurb,
+      sort_order: sortOrder
+    })
+    .select('id')
+    .single();
   if (error) fail('topics', error.message);
+  await recordAudit({
+    area: 'library',
+    action: 'create',
+    entityType: 'topic',
+    entityId: created?.id ?? null,
+    summary: `Created topic "${title}"`
+  });
   refresh('topics');
 }
 
@@ -275,6 +324,7 @@ export async function updateTopicAction(formData: FormData): Promise<void> {
     .update({ title, icon, blurb_md: blurb, sort_order: sortOrder })
     .eq('id', id);
   if (error) fail('topics', error.message);
+  await recordAudit({ area: 'library', action: 'update', entityType: 'topic', entityId: id, summary: `Updated topic "${title}"` });
   refresh('topics');
 }
 
@@ -289,6 +339,13 @@ export async function toggleTopicRetiredAction(formData: FormData): Promise<void
     .update({ retired_at: retired ? null : new Date().toISOString() })
     .eq('id', id);
   if (error) fail('topics', error.message);
+  await recordAudit({
+    area: 'library',
+    action: retired ? 'restore' : 'archive',
+    entityType: 'topic',
+    entityId: id,
+    summary: retired ? `Un-retired topic #${id}` : `Retired topic #${id}`
+  });
   refresh('topics');
 }
 
@@ -312,6 +369,7 @@ export async function saveNarrativeAction(formData: FormData): Promise<void> {
       .eq('target_kind', kind)
       .eq('target_key', key);
     if (error) fail('narratives', error.message);
+    await recordAudit({ area: 'library', action: 'delete', entityType: 'narrative', entityId: target, summary: `Removed narrative for ${target}` });
   } else {
     const { error } = await supabase.from('requirement_notes').upsert(
       {
@@ -324,6 +382,7 @@ export async function saveNarrativeAction(formData: FormData): Promise<void> {
       { onConflict: 'target_kind,target_key' }
     );
     if (error) fail('narratives', error.message);
+    await recordAudit({ area: 'library', action: 'update', entityType: 'narrative', entityId: target, summary: `Updated narrative for ${target}` });
   }
   revalidatePath(ADMIN_PATH);
   redirect(`${ADMIN_PATH}?tab=narratives&target=${encodeURIComponent(target)}&saved=1`);
@@ -370,10 +429,11 @@ export async function createResourceAction(formData: FormData): Promise<void> {
   const visibilityRaw = String(formData.get('visibility') ?? 'public');
   const visibility = visibilityRaw === 'leaders' ? 'leaders' : 'public';
 
-  const { error } = await createResource(
+  const title = String(formData.get('title') ?? '').trim();
+  const { error, id } = await createResource(
     createAdminClient(),
     {
-      title: String(formData.get('title') ?? ''),
+      title,
       kind,
       url: String(formData.get('url') ?? '') || null,
       bodyMd: String(formData.get('body_md') ?? '') || null,
@@ -387,6 +447,14 @@ export async function createResourceAction(formData: FormData): Promise<void> {
     reviewer
   );
   if (error) fail('add', error);
+
+  await recordAudit({
+    area: 'library',
+    action: 'create',
+    entityType: 'resource',
+    entityId: id ?? null,
+    summary: publish ? `Created and published "${title}"` : `Saved draft "${title}"`
+  });
 
   // Land on the tab where the new row now lives, so it's visible straight away.
   refresh(publish ? 'published' : 'queue');
@@ -411,5 +479,12 @@ export async function uploadResourceDocument(
 
   const uploaded = await uploadToBunny(file);
   if (!uploaded.ok) return { ok: false, error: uploaded.error };
+  await recordAudit({
+    area: 'library',
+    action: 'upload',
+    entityType: 'resource_document',
+    entityId: null,
+    summary: `Uploaded document "${file.name}"`
+  });
   return { ok: true, url: uploaded.cdnUrl, filename: file.name };
 }

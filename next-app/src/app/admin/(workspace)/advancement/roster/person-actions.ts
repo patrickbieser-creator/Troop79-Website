@@ -4,6 +4,7 @@ import { headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
+import { recordAudit } from '@/lib/audit';
 import { LEADER_PERSON_FIELDS, type FieldValue } from '@/lib/change-requests';
 import { requestChallengeForPerson, TOKEN_TTL_MINUTES } from '@/lib/identity-challenge';
 import {
@@ -159,6 +160,14 @@ export async function createPerson(formData: FormData): Promise<Result & { perso
     }
   }
 
+  await recordAudit({
+    area: 'roster',
+    action: 'create',
+    entityType: 'person',
+    entityId: personId,
+    summary: `Created person ${firstName} ${lastName}`
+  });
+
   revalidatePath('/admin/advancement/roster');
   revalidatePath('/admin/advancement/lookups');
   return { ok: true, personId };
@@ -185,6 +194,14 @@ export async function addRole(personId: number, role: GrantableRole): Promise<Re
     .insert({ person_id: personId, role, start_date: centralToday() });
   if (error) return { ok: false, error: error.message };
 
+  await recordAudit({
+    area: 'roster',
+    action: 'create',
+    entityType: 'role',
+    entityId: personId,
+    summary: `Granted role '${role}' to person ${personId}`
+  });
+
   revalidate();
   return { ok: true };
 }
@@ -202,6 +219,14 @@ export async function endRole(roleId: number): Promise<Result> {
     .is('end_date', null);
   if (error) return { ok: false, error: error.message };
 
+  await recordAudit({
+    area: 'roster',
+    action: 'update',
+    entityType: 'role',
+    entityId: roleId,
+    summary: `Ended role (id ${roleId})`
+  });
+
   revalidate();
   return { ok: true };
 }
@@ -213,6 +238,14 @@ export async function deleteRole(roleId: number): Promise<Result> {
   const supabase = createAdminClient();
   const { error } = await supabase.from('person_roles').delete().eq('id', roleId);
   if (error) return { ok: false, error: error.message };
+
+  await recordAudit({
+    area: 'roster',
+    action: 'delete',
+    entityType: 'role',
+    entityId: roleId,
+    summary: `Deleted role (id ${roleId})`
+  });
 
   revalidate();
   return { ok: true };
@@ -242,6 +275,17 @@ export async function setHousehold(personId: number, householdId: number | null)
       .insert({ household_id: householdId, person_id: personId });
     if (error) return { ok: false, error: error.message };
   }
+
+  await recordAudit({
+    area: 'roster',
+    action: 'update',
+    entityType: 'household_membership',
+    entityId: personId,
+    summary:
+      householdId !== null
+        ? `Set household for person ${personId} to household ${householdId}`
+        : `Removed person ${personId} from their household`
+  });
 
   revalidate();
   return { ok: true };
@@ -286,6 +330,14 @@ export async function addRelationship(
     );
   if (error) return { ok: false, error: error.message };
 
+  await recordAudit({
+    area: 'roster',
+    action: 'create',
+    entityType: 'relationship',
+    entityId: personId,
+    summary: `Recorded ${type} relationship (person ${personId} ↔ ${relatedPersonId})`
+  });
+
   revalidate();
   return { ok: true };
 }
@@ -296,6 +348,14 @@ export async function removeRelationship(relationshipId: number): Promise<Result
   const supabase = createAdminClient();
   const { error } = await supabase.from('relationships').delete().eq('id', relationshipId);
   if (error) return { ok: false, error: error.message };
+
+  await recordAudit({
+    area: 'roster',
+    action: 'delete',
+    entityType: 'relationship',
+    entityId: relationshipId,
+    summary: `Removed relationship (id ${relationshipId})`
+  });
 
   revalidate();
   return { ok: true };
@@ -478,6 +538,17 @@ export async function updatePersonDemographics(personId: number, formData: FormD
     .eq('id', personId);
   if (error) return { ok: false, error: error.message };
 
+  await recordAudit({
+    area: 'roster',
+    action: 'update',
+    entityType: 'person',
+    entityId: personId,
+    summary:
+      `Updated ${firstName} ${lastName}'s demographics (fields: first_name, last_name, birthdate, ` +
+      `primary_email, primary_phone, address_line1, address_line2, city, state, zip, bsa_member_id, ` +
+      `ypt_completed, health_form_date, things_we_should_know)`
+  });
+
   revalidate();
   return { ok: true };
 }
@@ -508,6 +579,14 @@ export async function setPersonActive(
     })
     .eq('id', personId);
   if (error) return { ok: false, error: error.message };
+
+  await recordAudit({
+    area: 'roster',
+    action: 'update',
+    entityType: 'person',
+    entityId: personId,
+    summary: `Set person ${personId} ${active ? 'active' : 'inactive'}`
+  });
 
   revalidate();
   return { ok: true };
@@ -582,6 +661,8 @@ export async function linkAdultToScout(
   type: 'parent_of' | 'guardian_of' | 'emergency_contact_for',
   isGuardian: boolean
 ): Promise<Result> {
+  // No recordAudit here on purpose: addRelationship audits the same
+  // relationship row itself — a second call would double-log one click.
   return addRelationship(adultPersonId, scoutPersonId, type, isGuardian);
 }
 
@@ -635,6 +716,14 @@ export async function createAdultForScout(
     .single();
   if (error || !created) return { ok: false, error: error?.message ?? 'Could not create the adult.' };
 
+  await recordAudit({
+    area: 'roster',
+    action: 'create',
+    entityType: 'person',
+    entityId: created.id,
+    summary: `Created adult ${trimmed} for scout ${scoutPersonId}`
+  });
+
   const res = await addRelationship(created.id, scoutPersonId, type, isGuardian);
   return res.ok ? { ok: true, personId: created.id } : res;
 }
@@ -665,6 +754,14 @@ export async function mergePersonInto(loserId: number, survivorId: number): Prom
     p_decided_by: session.label
   });
   if (error) return { ok: false, error: error.message };
+
+  await recordAudit({
+    area: 'roster',
+    action: 'merge',
+    entityType: 'person',
+    entityId: survivorId,
+    summary: `Merged person ${loserId} into ${survivorId}`
+  });
 
   revalidate();
   return { ok: true };
@@ -755,6 +852,14 @@ export async function deletePerson(personId: number): Promise<Result> {
   const { error } = await supabase.from('people').delete().eq('id', personId);
   if (error) return { ok: false, error: error.message };
 
+  await recordAudit({
+    area: 'roster',
+    action: 'delete',
+    entityType: 'person',
+    entityId: personId,
+    summary: `Deleted person ${personId}`
+  });
+
   revalidate();
   return { ok: true };
 }
@@ -785,6 +890,14 @@ export async function createHouseholdForPerson(
     .single();
   if (error || !created) return { ok: false, error: error?.message ?? 'Could not create it.' };
 
+  await recordAudit({
+    area: 'roster',
+    action: 'create',
+    entityType: 'household',
+    entityId: created.id,
+    summary: `Created household "${trimmed}" for person ${personId}`
+  });
+
   const res = await setHousehold(personId, created.id);
   return res.ok ? { ok: true, householdId: created.id } : res;
 }
@@ -809,6 +922,14 @@ export async function renameHousehold(householdId: number, label: string): Promi
     .update({ label: trimmed, updated_at: new Date().toISOString() })
     .eq('id', householdId);
   if (error) return { ok: false, error: error.message };
+
+  await recordAudit({
+    area: 'roster',
+    action: 'update',
+    entityType: 'household',
+    entityId: householdId,
+    summary: `Renamed household ${householdId} to "${trimmed}"`
+  });
 
   revalidate();
   return { ok: true };
@@ -885,6 +1006,13 @@ export async function addPersonEmailAction(
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Could not add that address.' };
   }
+  await recordAudit({
+    area: 'roster',
+    action: 'create',
+    entityType: 'person_email',
+    entityId: personId,
+    summary: `Added ${label} email for person ${personId}`
+  });
   revalidate();
   return { ok: true };
 }
@@ -896,6 +1024,13 @@ export async function setPersonPrimaryEmailAction(personId: number, emailId: num
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Could not update the primary address.' };
   }
+  await recordAudit({
+    area: 'roster',
+    action: 'update',
+    entityType: 'person_email',
+    entityId: personId,
+    summary: `Set primary email (id ${emailId}) for person ${personId}`
+  });
   revalidate();
   return { ok: true };
 }
@@ -907,6 +1042,13 @@ export async function removePersonEmailAction(personId: number, emailId: number)
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Could not remove that address.' };
   }
+  await recordAudit({
+    area: 'roster',
+    action: 'delete',
+    entityType: 'person_email',
+    entityId: personId,
+    summary: `Removed email (id ${emailId}) for person ${personId}`
+  });
   revalidate();
   return { ok: true };
 }
