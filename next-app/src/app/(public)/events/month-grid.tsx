@@ -90,7 +90,14 @@ interface DayCellData {
   inMonth: boolean;
 }
 
-/** Always-6-week (42-day) grid so navigating months never reflows page height. */
+/**
+ * Month grid, with trailing all-outside weeks trimmed. This used to be an
+ * always-6-week (42-day) grid so navigating months never reflowed page
+ * height; Patrick chose compactness over stable height on 2026-08-30 (the
+ * month-view polish pass) — a week holding only next month's days was
+ * dead space in most months. Only TRAILING weeks can be fully outside, so
+ * the trim never touches a week with a real day in it.
+ */
 function buildMonthGrid(year: number, month: number): DayCellData[][] {
   const first = new Date(year, month, 1);
   const gridStart = new Date(year, month, 1 - first.getDay());
@@ -104,6 +111,7 @@ function buildMonthGrid(year: number, month: number): DayCellData[][] {
     }
     weeks.push(week);
   }
+  while (weeks.length > 1 && weeks[weeks.length - 1].every((d) => !d.inMonth)) weeks.pop();
   return weeks;
 }
 
@@ -388,8 +396,15 @@ export function MonthGrid({
         aria-labelledby="monthHeaderTitle"
         ref={gridRef}
         /* dynamic: lane count computed from event overlap — the sanctioned
-           custom-property pattern (audit 2026-08-21) */
-        style={{ '--month-lanes': monthLaneCount } as React.CSSProperties}
+           custom-property pattern (audit 2026-08-21). --cell-base: a month
+           with no multi-day spans keeps mostly-one-chip cells, so it drops
+           to the compact height (polish pass, 2026-08-30). */
+        style={
+          {
+            '--month-lanes': monthLaneCount,
+            '--cell-base': monthLaneCount === 0 ? '72px' : '96px'
+          } as React.CSSProperties
+        }
       >
         {weeks.map((week, wi) => {
           const { placed, laneCount } = weekSpans[wi];
@@ -465,10 +480,13 @@ export function MonthGrid({
                  * class of event unreachable without a mouse.
                  *
                  * A bar that continues into the next week renders once per
-                 * week, so the same event can appear twice in a month. The
-                 * chevrons say which end is a continuation; the aria-label
-                 * carries the full date range so the repeat reads as one event
-                 * spanning weeks rather than two separate ones.
+                 * week, so the same event can appear twice in a month. A
+                 * squared-off, full-bleed edge marks the continuation side
+                 * (rounded caps mark the true start/end) — the standard
+                 * calendar idiom for "sliced by the row break", which reads
+                 * as one continuous event where the old ‹/› chevrons read as
+                 * two separate ones (Patrick's polish pass, 2026-08-30). The
+                 * aria-label carries the full date range either way.
                  */
                 <div className={styles.spansLayer}>
                   {placed.map((p) => {
@@ -489,9 +507,7 @@ export function MonthGrid({
                         }}
                         aria-label={`${p.entry.title}, ${formatDateRange(p.entry)} — ${p.entry.category}`}
                       >
-                        {!p.isTrueStart && <span className={styles.spanChevron} aria-hidden="true">‹</span>}
                         <span className={styles.spanTitle}>{p.entry.title}</span>
-                        {!p.isTrueEnd && <span className={styles.spanChevron} aria-hidden="true">›</span>}
                       </Link>
                     );
                   })}

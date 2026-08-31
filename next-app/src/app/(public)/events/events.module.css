@@ -295,7 +295,9 @@
      containing a campout 22px taller than its neighbours, which read as a
      broken grid rather than as a calendar making room. --lane-count still
      drives the chip offset below, where per-week IS what's wanted. */
-  width: 100%; height: 100%; min-height: calc(96px + var(--month-lanes, 0) * 22px);
+  /* --cell-base: 96px, or 72px in a month with no multi-day spans (set by
+     the grid — polish pass 2026-08-30, cells mostly hold one chip). */
+  width: 100%; height: 100%; min-height: calc(var(--cell-base, 96px) + var(--month-lanes, 0) * 22px);
   min-width: 0;
   text-align: left; display: block; padding: 6px 6px 4px; position: relative;
   transition: background var(--transition);
@@ -342,13 +344,15 @@
 }
 .spanBar.capStart { border-left: 1.5px solid; border-top-left-radius: 9px; border-bottom-left-radius: 9px; padding-left: 8px; }
 .spanBar.capEnd { border-right: 1.5px solid; border-top-right-radius: 9px; border-bottom-right-radius: 9px; }
-.spanBar:not(.capStart) { padding-left: 4px; margin-left: 0; }
-.spanBar:not(.capEnd) { margin-right: 0; }
-.spanChevron { flex-shrink: 0; font-size: 10px; opacity: .65; }
+/* A continuation edge is squared off and full-bleed — the bar reads as
+   sliced by the row break, i.e. ONE event continuing, where the retired
+   ‹/› chevrons read as two (polish pass, 2026-08-30). */
+.spanBar:not(.capStart) { padding-left: 4px; margin-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.spanBar:not(.capEnd) { margin-right: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .spanTitle { overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 900px) {
   .monthHeaderTitle { min-width: 0; font-size: 19px; }
-  .dayCell { min-height: calc(84px + var(--lane-count, 0) * 22px); }
+  .dayCell { min-height: calc(min(var(--cell-base, 96px), 84px) + var(--lane-count, 0) * 22px); }
 }
 
 @media (max-width: 640px) {
