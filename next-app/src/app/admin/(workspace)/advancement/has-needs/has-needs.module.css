@@ -12,9 +12,14 @@
   }
 }
 
+/* The PICKER is the long column since the merit-badge drill-ins (a badge
+   tree runs several screens), so it scrolls with the page — one natural
+   scrollbar, nothing nested. It used to be the sticky one with its own
+   max-height + overflow, which left its bottom (and inner scrollbar)
+   clipped below the fold whenever the page was at the top (Patrick,
+   2026-08-30, screenshot: Camping's tail was unreachable-looking). The
+   RESULTS column is the short thing worth pinning — see .results. */
 .picker {
-  position: sticky;
-  top: 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -23,14 +28,6 @@
   border-radius: var(--admin-radius);
   box-shadow: var(--admin-shadow-sm);
   padding: 10px;
-  max-height: calc(100vh - 24px);
-  overflow: auto;
-}
-@media (max-width: 900px) {
-  .picker {
-    position: static;
-    max-height: none;
-  }
 }
 
 .pickerHeader {
@@ -114,6 +111,19 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  position: sticky;
+  top: 12px;
+  /* Usually shorter than the viewport; the cap + scroll only guards a heavy
+     selection (many partial rows). */
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+}
+@media (max-width: 900px) {
+  .results {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
 }
 
 .emptyState {
