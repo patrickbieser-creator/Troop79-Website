@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signup Email Fix &amp; Supabase Port Move — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-gold: #8b6914;
+            --nw-pale-green: #e1e6d2;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #eef3ea; }
+        .callout-gold { border-color: var(--nw-gold); background: #f7f2e3; }
+        .callout-orange { border-color: #a95b28; background: #f8efe8; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        code, .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Signup Email Fix &amp; Supabase Port Move</h1>
+        <p class="subtitle">A production signup bug fixed and deployed inside the hour, and the local database moved out of Windows' ephemeral port range</p>
+        <div class="meta">
+            <span>&#128197; September 6, 2026</span>
+            <span>&#129302; Operator</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>v1.118.4 &rarr; v1.118.5</span>
+        </div>
+    </header>
+
+    <div class="container">
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">2</div><div class="label">Commits Shipped</div></div>
+            <div class="stat"><div class="number">+7</div><div class="label">Tests (1612&rarr;1619)</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">Prod Bug Fixed</div></div>
+            <div class="stat"><div class="number">2</div><div class="label">Decisions (D-260&ndash;261)</div></div>
+            <div class="stat"><div class="number">~45m</div><div class="label">Report &rarr; Live</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <h3>Signup form: a mistyped email no longer sinks the whole signup (v1.118.5)</h3>
+        <div class="callout callout-green"><strong>Reported by Patrick:</strong> an adult signing up for the Eagle Court of Honor on September 13 added a parent on the fly and got <code>new row for relation "person_emails" violates check constraint "person_emails_email_shape"</code>. The email box was a plain text input; whatever was typed went straight to <code>add_parent_to_household</code>, whose <code>people.primary_email</code> trigger writes <code>person_emails</code>, whose shape check rejects anything without an <code>@</code>. The RPC runs in one transaction, so nothing was half-saved &mdash; but nothing was explained either.</div>
+        <ul>
+            <li><strong>Server-side shape check before any write</strong> &mdash; new <code>lib/new-adults</code> (<code>parseNewAdults</code>, <code>newAdultEmailError</code>) validates every on-the-fly adult in the action and redirects with a sentence naming the adult and the value: <em>&ldquo;414-555-0100&rdquo; doesn&rsquo;t look like an email address for Jodi K. Fix it, or leave the email blank and add it later from your profile.</em></li>
+            <li><strong>Same guard on the profile page</strong> &mdash; <code>addHouseholdMemberAction</code> shares the RPC and had the same hole (its input was already <code>type="email"</code>, so only a pasted value could reach it).</li>
+            <li><strong>The signup input is now <code>type="email"</code></strong> with <code>inputMode="email"</code>, so the browser catches the typo first; the server check is the real gate.</li>
+            <li><strong>Test-first:</strong> 7 tests in <code>tests/new-adults.test.ts</code> written and seen failing before the helper existed. Lint 0, typecheck clean, 1619 tests, build clean. Vercel deploy confirmed <span class="badge badge-green">READY</span> in Production.</li>
+        </ul>
+
+        <h3>Local Supabase moved to ports 44320&ndash;44329</h3>
+        <div class="callout callout-orange"><strong>Found the hard way:</strong> the first full-suite run failed in all 185 files with <code>fetch failed</code>, and the build died exporting <code>/events</code>. Local Supabase reported &ldquo;running&rdquo;, but <code>supabase_kong_next-app</code> had come back from a Docker restart with <em>no host port binding at all</em> &mdash; the same Windows ephemeral-range reservation problem Pen-Vision hit on September 5 (Hyper-V/WSL reserve moving blocks inside 49152&ndash;65535).</div>
+        <ul>
+            <li><code>supabase/config.toml</code>: API 44321, Postgres 44322, shadow 44320, pooler 44329, Studio 44323, Inbucket 44324, analytics 44327 &mdash; a 1:1 digit shift from 5432x. Pen-Vision keeps 44331&ndash;44339.</li>
+            <li><code>.env.local</code>, the README (new &ldquo;Ports&rdquo; section with the why and the <code>netsh</code> diagnostic), and the 14 scripts&rsquo; URL fallbacks updated.</li>
+            <li><code>supabase stop</code> + <code>start</code> preserved the data volume; the full suite is green on the new ports. Any <code>next dev</code> started before the move needs a restart.</li>
+        </ul>
+
+        <h3>Housekeeping</h3>
+        <ul>
+            <li>Changelog entry for v1.118.5 (repo-root <code>changelog.html</code>).</li>
+            <li>The &ldquo;diagnose the northwoods plugin load error&rdquo; item closed &mdash; Patrick confirmed it was resolved on September 5 (stale marketplace <code>path</code> key); plugin 3.14.3 loaded normally.</li>
+            <li>Patrick ran this session from VS Code open on the Pen-Vision folder; no folder switch was needed &mdash; both commits went to GitHub from here and deployed automatically.</li>
+        </ul>
+
+        <h2>Blockers Resolved</h2>
+        <ul>
+            <li><strong>Local test/build gate unusable</strong> &mdash; kong container with no host port binding; fixed by the port move above (a stop/start alone restored 54321 for the moment, but the reservation blocks move between reboots, so the permanent fix was applied the same session).</li>
+        </ul>
+
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-260</td><td>Email shape is checked in the Server Action before any write &mdash; a database constraint message must never reach a family raw. Browser <code>type="email"</code> is the first line, the action is the gate.</td></tr>
+                <tr><td>D-261</td><td>Local Supabase runs on 44320&ndash;44329, below Windows&rsquo; ephemeral port range; Pen-Vision on 44331&ndash;44339.</td></tr>
+            </tbody>
+        </table>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li><strong>Hear back from the Eagle CoH signup</strong> &mdash; if the family retries and still fails, the new message names the value; any other failure is a new bug.</li>
+            <li><strong>Audit the other <code>people.primary_email</code> writers</strong> (admin roster person actions, <code>write-person-demographics</code>) for the same raw-constraint leak &mdash; added to BACKLOG.</li>
+            <li>Performance follow-ups; Verified Signup Phase B after one real signup cycle; B-004 password rotation.</li>
+            <li>Patrick eyeballs: month view across Sep/Oct/Nov, <code>/admin/audit</code> after real edits, Has/Needs on the phone.</li>
+        </ul>
+
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>File</th><th>Change</th></tr></thead>
+            <tbody>
+                <tr><td><span class="file-path">next-app/src/lib/new-adults.ts</span></td><td>New &mdash; parse + shape check for on-the-fly adults</td></tr>
+                <tr><td><span class="file-path">next-app/tests/new-adults.test.ts</span></td><td>New &mdash; 7 tests</td></tr>
+                <tr><td><span class="file-path">next-app/src/app/(public)/events/[id]/actions.ts</span></td><td>Uses <code>parseNewAdults</code>; friendly redirect on a bad email</td></tr>
+                <tr><td><span class="file-path">next-app/src/app/(public)/events/[id]/person-first-form.tsx</span></td><td>New-adult email input is <code>type="email"</code></td></tr>
+                <tr><td><span class="file-path">next-app/src/app/(public)/profile/actions.ts</span></td><td>Same guard on add-household-member</td></tr>
+                <tr><td><span class="file-path">next-app/supabase/config.toml</span>, <span class="file-path">README.md</span>, <span class="file-path">scripts/*.ts</span></td><td>Ports 5432x &rarr; 4432x; README &ldquo;Ports&rdquo; section</td></tr>
+                <tr><td><span class="file-path">changelog.html</span></td><td>v1.118.5 entry</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <footer>
+        <strong>Troop 79</strong> — Troop79-Website<br>
+        Session Summary — September 6, 2026 — Operator
+    </footer>
+</body>
+</html>
