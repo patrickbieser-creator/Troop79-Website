@@ -37,7 +37,7 @@ import { resolve } from 'node:path';
 // ── Config ────────────────────────────────────────────────────────────────
 
 const SUPABASE_URL =
-  process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://127.0.0.1:54321';
+  process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://127.0.0.1:44321';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!SERVICE_KEY) {

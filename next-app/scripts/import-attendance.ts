@@ -37,7 +37,7 @@ if (!CSV_PATH) {
 }
 const REPORTS_DIR = join(dirname(CSV_PATH), 'import-reports');
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://127.0.0.1:54321';
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://127.0.0.1:44321';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!SERVICE_KEY) {
   console.error('SUPABASE_SERVICE_ROLE_KEY required (put it in .env.local).');

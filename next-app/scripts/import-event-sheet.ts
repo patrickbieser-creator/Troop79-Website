@@ -73,7 +73,7 @@ if (APPLY && !/^\d{4}-\d{2}-\d{2}$/.test(eventDate ?? '')) {
   process.exit(2);
 }
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://127.0.0.1:54321';
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://127.0.0.1:44321';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!SERVICE_KEY) {
   console.error('SUPABASE_SERVICE_ROLE_KEY is required (run via npm script so .env.local loads).');

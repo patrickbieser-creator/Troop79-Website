@@ -54,7 +54,7 @@ Studio) and prints credentials. Copy the **API URL**, **anon key**, and
 **service_role key** into `.env.local` (see `.env.example`):
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:44321
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 SUPABASE_SERVICE_ROLE_KEY=eyJ...
 ```
@@ -64,7 +64,17 @@ The schema migration is applied automatically on `supabase:start` and on
 volumes.
 
 Supabase Studio (DB browser, table editor, auth users) is at
-<http://127.0.0.1:54323>.
+<http://127.0.0.1:44323>.
+
+### Ports
+
+The local Supabase stack uses 44320–44329: API 44321, Postgres 44322, Studio 44323, Inbucket
+44324, analytics 44327, pooler 44329 (Pen-Vision runs alongside on 44331–44339). The range sits
+below 49152, the start of Windows' ephemeral range: Hyper-V and WSL reserve blocks inside that
+range and the blocks move between reboots. On 2026-09-05 Windows held 54312–54411 and silently
+swallowed the original 5432x ports; on 2026-09-06 the kong container came back with no host
+binding at all. Ports below 49152 are never reserved that way. If a port ever refuses to bind,
+check `netsh int ipv4 show excludedportrange protocol=tcp`.
 
 ### 3. Seed from the prototype data
 
