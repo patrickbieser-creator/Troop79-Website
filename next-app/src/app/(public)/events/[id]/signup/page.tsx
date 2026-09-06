@@ -1,7 +1,13 @@
 import Link from 'next/link';
 import type { GuestRowValue } from '../guest-rows';
 import { SavedFlash } from '../save-feedback';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
+import { getSignInHintIfValid } from '@/lib/signin-hint-server';
+import { passkeysConfigured, passkeyPlacement, PASSKEY_HINT_COOKIE } from '@/lib/passkeys';
+import { HintedSignInPanel } from '../hinted-signin-panel';
+import { PasskeyButton } from '../../../signin/passkey-button';
+import { passkeyAuthOptionsAction, passkeyAuthVerifyAction, requestHintedCodeAction } from '../../../signin/actions';
 import type { Metadata } from 'next';
 import { familyGateConfigured } from '@/lib/family-access';
 import { formatCalendarDateParts, formatTimeOfDay } from '@/lib/calendar-shared';
@@ -96,6 +102,9 @@ export default async function EventSignupPage({
     m?: string;
     category?: string;
     q?: string;
+    /** A Bugle "Register Now" link addressed straight at this page — sent
+     *  through the intake so the address leaves the URL (B2). */
+    for?: string;
   }>;
 }) {
   const { id } = await params;
@@ -103,8 +112,32 @@ export default async function EventSignupPage({
   if (!numeric) notFound();
 
   const sp = await searchParams;
+  if (sp.for) {
+    redirect(`/signin/hint?for=${encodeURIComponent(sp.for)}&next=${encodeURIComponent(`/events/${numeric}/signup`)}`);
+  }
   const ctx = await loadSignupContext(numeric, sp.household);
   if (!ctx) notFound();
+
+  // Bugle "Register Now" (Plans/Bugle-Register-Now-Links.md): when the
+  // newsletter's address resolved to someone and nobody who can write is
+  // signed in, the landing panel offers "Continue as {name}? Email me a
+  // code" in place of the troop-password gate and the sign-in panels. A
+  // signed-in adult or leader (verdict 'ok') never sees it — B5.
+  const hint = ctx.verdict === 'ok' ? null : await getSignInHintIfValid();
+  const hintNext = `/events/${numeric}/signup`;
+  const passkeyDeviceSeen = (await cookies()).get(PASSKEY_HINT_COOKIE.name)?.value === '1';
+  const hintedPanel = hint ? (
+    <HintedSignInPanel
+      hint={hint}
+      next={hintNext}
+      sendAction={requestHintedCodeAction}
+      passkey={
+        passkeysConfigured() && passkeyPlacement(passkeyDeviceSeen) === 'primary' ? (
+          <PasskeyButton next={hintNext} getOptions={passkeyAuthOptionsAction} verify={passkeyAuthVerifyAction} />
+        ) : null
+      }
+    />
+  ) : null;
 
   const { detail, audience, gatedIn, households, household, existing, existingClaims, gateState, slotFirst, locked, verdict, signedInAs, canSwitchHousehold } = ctx;
   const { entry, signup, prices, slots, questions, headcount } = detail;
@@ -191,7 +224,9 @@ export default async function EventSignupPage({
           make a change.
         </p>
       ) : !gatedIn ? (
-        !familyGateConfigured() ? (
+        hintedPanel ? (
+          hintedPanel
+        ) : !familyGateConfigured() ? (
           <p className={styles.locked}>
             The family signup gate isn&rsquo;t configured on this server
             (<code>FAMILY_PASSWORD</code> is unset).
@@ -258,9 +293,9 @@ export default async function EventSignupPage({
               Writing a signup needs a verified adult (or a leader) — the
               Server Actions enforce it; these panels explain it. */}
           {verdict === 'sign-in' ? (
-            <SignInToSignUpPanel next={`${eventHref}/signup`} />
+            hintedPanel ?? <SignInToSignUpPanel next={`${eventHref}/signup`} />
           ) : verdict === 'parent' ? (
-            <AskAParentPanel signedInAs={signedInAs} next={`${eventHref}/signup`} />
+            hintedPanel ?? <AskAParentPanel signedInAs={signedInAs} next={`${eventHref}/signup`} />
           ) : !household ? (
             /* The slot-first board renders its own copy of the bar. */
             !slotFirst && (

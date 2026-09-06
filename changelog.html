@@ -497,6 +497,25 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.119.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.119.0</span>
+        <span class="release-date">September 6, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">One-tap sign-in from the Bugle</p>
+        <ul class="change-list">
+          <li><span><strong>&ldquo;Register Now&rdquo; buttons in the Bugle know who you are</strong> &mdash; the newsletter fills in each family&rsquo;s own email address, so a parent who taps the button lands on the event&rsquo;s signup page already at &ldquo;Continue as <em>your name</em>? Email me a code.&rdquo; No troop password, no searching for your name; one tap sends the code, six digits, and you&rsquo;re on the form with your household picked. Anyone already signed in (or holding a passkey) goes straight to the form as before.</span></li>
+          <li><span><strong>Nothing in the email is a password.</strong> The address is read once, turned into a short-lived cookie on your device, and dropped from the web address before the page shows &mdash; so it isn&rsquo;t left in browser history on a shared Chromebook. Only your own inbox ever receives a code.</span></li>
+          <li><span>An address shared by two parents lists both by name; an address that belongs to a scout offers the household&rsquo;s parents instead, since signing up still needs an adult. A quiet &ldquo;Not you?&rdquo; link always reaches the ordinary sign-in.</span></li>
+          <li><span><strong>For leaders</strong> &mdash; the signup builder&rsquo;s Settings tab now shows the ready-made Bugle link with a Copy button, so the merge tag is never typed by hand. Lookups for addresses that aren&rsquo;t on the roster are capped per network address and appear on the Recent Logins failed list as &ldquo;Bugle link&rdquo;.</span></li>
+          <li><span>The sign-in page no longer asks a signed-in parent to pick their name again &mdash; it sends them on to wherever they were headed.</span></li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.118.5 -->
     <div class="release">
       <div class="release-header">

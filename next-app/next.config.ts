@@ -11,6 +11,19 @@ const nextConfig: NextConfig = {
       ? [{ protocol: 'https', hostname: bunnyHostname }]
       : []
   },
+  async headers() {
+    return [
+      {
+        // Explicit rather than relying on the browser default of the same
+        // value: the Bugle "Register Now" intake carries a recipient's email
+        // address in its query string for one hop, and event pages load
+        // images from the CDN — the query must never ride along in a
+        // cross-origin Referer (Plans/Bugle-Register-Now-Links.md, B2).
+        source: '/:path*',
+        headers: [{ key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' }]
+      }
+    ];
+  },
   async redirects() {
     return [
       // The public plan page was superseded by /meetings (the curated

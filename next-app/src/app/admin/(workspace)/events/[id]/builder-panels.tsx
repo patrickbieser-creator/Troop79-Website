@@ -23,6 +23,7 @@ import { TabStrip } from '../../_components/tab-strip';
 import { Button } from '../../../_components/button';
 import { FormPanel } from '../../../_components/form-panel';
 import { ConfirmationPanel } from './confirmation-panel';
+import { BugleLinkField } from './bugle-link-field';
 import type { EmailTemplateRow } from '../../advancement/lookups/email-template-actions';
 import type { ConfirmationContext } from '@/lib/signup-confirmation';
 import styles from '../events-admin.module.css';
@@ -445,6 +446,7 @@ export function BuilderPanels({
             onBlur={(e) => save({ notes_prompt: e.target.value || null })}
           />
         </label>
+        <BugleLinkField calendarEntryId={calendarEntryId} />
       </FormPanel>
       )}
 

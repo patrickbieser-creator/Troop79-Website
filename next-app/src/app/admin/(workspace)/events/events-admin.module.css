@@ -248,3 +248,7 @@
 /* Confirmation email block (Plans/Signup-Confirmation-Email.md) */
 .confirmSubject { font-size: var(--admin-text-md); color: var(--admin-gray-900); margin-bottom: var(--admin-space-4); overflow-wrap: anywhere; }
 .confirmActions { display: flex; gap: var(--admin-space-5); align-items: center; flex-wrap: wrap; margin-bottom: var(--admin-space-6); }
+/* Settings → Bugle "Register Now" link (bugle-link-field.tsx): the read-only
+   URL and its Copy button on one line; the input yields, the button doesn't. */
+.bugleLinkRow { display: flex; gap: var(--admin-space-4); align-items: center; }
+.bugleLinkRow > input { flex: 1 1 auto; min-width: 0; }

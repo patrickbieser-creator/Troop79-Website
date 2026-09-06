@@ -7,7 +7,11 @@
  * only this screen's own layout.
  */
 import { emailConfigured } from '@/lib/email';
-import { hasFamilyAccess } from '@/lib/family-access';
+import { redirect } from 'next/navigation';
+import { hasFamilyAccess, getIdentitySessionIfValid } from '@/lib/family-access';
+import { safeInternalPath } from '@/lib/safe-redirect';
+import { hintAllowsPerson } from '@/lib/signin-hint';
+import { getSignInHintIfValid } from '@/lib/signin-hint-server';
 import { NameSearch } from './name-search';
 import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/server';
@@ -72,9 +76,11 @@ async function otherAddressesFor(
   personIdRaw: string,
   currentMasked?: string
 ): Promise<{ id: number; masked: string }[]> {
-  if (!(await hasFamilyAccess())) return [];
   const personId = Number(personIdRaw);
   if (!Number.isInteger(personId) || personId <= 0) return [];
+  // Same gate as requestForPersonAction: the troop password, or a Bugle-link
+  // hint that names this exact person (lib/signin-hint.ts).
+  if (!(await hasFamilyAccess()) && !hintAllowsPerson(await getSignInHintIfValid(), personId)) return [];
 
   const supabase = createAdminClient();
   const rows = await deliverableEmailsFor(supabase, personId);
@@ -95,9 +101,23 @@ export default async function SignInPage({
     // rosterUnlocked below.
     person?: string;
     masked?: string;
+    /** A Bugle "Register Now" link that was pointed here by hand rather than
+     *  at the intake — forwarded on so the address leaves the URL. */
+    for?: string;
   }>;
 }) {
-  const { sent, email, next, err, person, masked } = await searchParams;
+  const { sent, email, next, err, person, masked, for: hintedFor } = await searchParams;
+  if (hintedFor) {
+    redirect(`/signin/hint?for=${encodeURIComponent(hintedFor)}&next=${encodeURIComponent(next ?? '')}`);
+  }
+  // A signed-in adult has nothing to do here (Plans/Bugle-Register-Now-Links.md,
+  // B1): before this, a live session landed on the name picker and was asked to
+  // sign in again. A SCOUT session is deliberately not bounced — "Ask a parent
+  // to sign in" sends the parent here to take over the device.
+  if (sent !== '1') {
+    const identity = await getIdentitySessionIfValid();
+    if (identity?.subjectKind === 'adult') redirect(safeInternalPath(next, '/member'));
+  }
   const configured = emailConfigured();
   // The troop password gates the roster, nothing else (Phase D, decision 3).
   //

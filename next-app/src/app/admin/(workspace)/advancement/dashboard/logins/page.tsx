@@ -20,7 +20,10 @@ const PAGE_SIZE = 50;
 const METHOD_LABEL: Record<LoginMethod, string> = {
   link: 'Email link',
   code: 'Code',
-  passkey: 'Passkey'
+  passkey: 'Passkey',
+  // Never a successful login — a Bugle-link resolve that found nobody
+  // (lib/signin-hint.ts); only ever appears in the failed list.
+  hint: 'Bugle link'
 };
 
 const fullDateTime = (iso: string): string => fmtDateTime(iso);

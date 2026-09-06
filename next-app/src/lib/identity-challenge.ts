@@ -273,7 +273,7 @@ async function addressForPersonEmailId(
  *  resolveChallengeTarget(), minus the ambiguous email lookup. Keeps every one
  *  of that function's defence-in-depth checks (active, directory row,
  *  household) so the two paths cannot drift apart on who may sign in. */
-async function targetForPerson(
+export async function targetForPerson(
   supabase: SupabaseClient,
   personId: number
 ): Promise<ChallengeTarget | null> {

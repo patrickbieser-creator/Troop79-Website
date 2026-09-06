@@ -50,6 +50,8 @@ import { IDENTITY_COOKIE, signIdentitySession, sessionMaxAgeFor } from '@/lib/id
 import { safeInternalPath } from '@/lib/safe-redirect';
 import { WELCOME_COOKIE, welcomeCookieOptions, shouldOfferPasskey } from '@/lib/passkey-offer';
 import { recordLoginEvent, type LoginMethod } from '@/lib/login-events';
+import { HINT_COOKIE, hintAllowsPerson } from '@/lib/signin-hint';
+import { getSignInHintIfValid } from '@/lib/signin-hint-server';
 
 const SIGNIN_PATH = '/signin';
 
@@ -107,6 +109,10 @@ async function setIdentityCookie(
     path: '/',
     maxAge: sessionMaxAgeFor(identity.subjectKind)
   });
+  // A Bugle-link hint has done its job once a real session exists
+  // (lib/signin-hint.ts) — and it must not linger to name the newsletter's
+  // recipient to the next person on a shared device.
+  jar.delete(HINT_COOKIE.name);
   // The whole block (client construction, header reads, insert) is wrapped
   // here, not just recordLoginEvent()'s own body — qa-lead review 2026-08-17:
   // createAdminClient()/headers() are evaluated as call-site arguments and
@@ -287,9 +293,15 @@ export async function unlockRosterAction(formData: FormData): Promise<void> {
 export async function requestForPersonAction(formData: FormData): Promise<void> {
   const next = String(formData.get('next') ?? '');
   const keep = { next: next || undefined };
-  if (!(await hasFamilyAccess())) redirect(signinUrl(keep));
-
   const personId = Number(formData.get('personId'));
+  // The Bugle-link hint (lib/signin-hint.ts) stands in for the troop
+  // password, but only for the exact people it resolved to — so "Send
+  // another code" keeps working on the hinted path without opening the
+  // picker to anyone else.
+  if (!(await hasFamilyAccess()) && !hintAllowsPerson(await getSignInHintIfValid(), personId)) {
+    redirect(signinUrl(keep));
+  }
+
   if (!Number.isInteger(personId) || personId <= 0) {
     redirect(signinUrl({ ...keep, err: 'invalid' }));
   }
@@ -310,6 +322,38 @@ export async function requestForPersonAction(formData: FormData): Promise<void> 
     // Distinct reasons, distinct advice. Telling a rate-limited person "we
     // have no address for you" would send them to a leader for a problem that
     // fixes itself in a few minutes.
+    redirect(signinUrl({ ...keep, err: result.reason, person: String(personId) }));
+  }
+  redirect(signinUrl({ ...keep, sent: '1', person: String(personId), masked: result.masked }));
+}
+
+/**
+ * The Bugle "Register Now" tap (Plans/Bugle-Register-Now-Links.md): "Email
+ * me a code" for a person the hint cookie resolved the newsletter's address
+ * to. No troop password on this path (Patrick, 2026-09-05) — the hint IS the
+ * authorisation, and it is exactly as narrow as the people it names
+ * (hintAllowsPerson), so this can never send a code to anyone the
+ * newsletter's own address didn't already reach. A Server Action on purpose:
+ * it inherits the Origin-header CSRF check a route handler would not.
+ *
+ * Lands on the same "Code sent to d•••@…" screen as the picker path, whose
+ * resend and code entry already accept the hint (requestForPersonAction).
+ */
+export async function requestHintedCodeAction(formData: FormData): Promise<void> {
+  const next = String(formData.get('next') ?? '');
+  const keep = { next: next || undefined };
+  const personId = Number(formData.get('personId'));
+  if (!Number.isInteger(personId) || personId <= 0) redirect(signinUrl(keep));
+
+  const hint = await getSignInHintIfValid();
+  if (!hintAllowsPerson(hint, personId)) redirect(signinUrl(keep));
+
+  const supabase = createAdminClient();
+  const result = await requestChallengeForPerson(supabase, personId, {
+    nextPath: next || null,
+    ip: await callerIp()
+  });
+  if (!result.sent) {
     redirect(signinUrl({ ...keep, err: result.reason, person: String(personId) }));
   }
   redirect(signinUrl({ ...keep, sent: '1', person: String(personId), masked: result.masked }));

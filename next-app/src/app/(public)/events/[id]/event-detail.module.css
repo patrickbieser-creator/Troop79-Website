@@ -550,3 +550,8 @@
 @media (max-width: 640px) {
   .guestNameInput { width: 100%; }
 }
+
+/* Bugle "Register Now" landing panel (hinted-signin-panel.tsx): one form per
+   person when an address is shared, and the quiet "Not you?" beneath. */
+.hintChoices { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-2); margin-bottom: var(--sp-2); }
+.hintNotYou { margin: var(--sp-2) 0 0; }

@@ -15,7 +15,10 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-export type LoginMethod = 'link' | 'code' | 'passkey';
+/** 'hint' rows are never successful logins — they record a Bugle-link
+ *  resolve that found nobody (lib/signin-hint.ts), which is what the per-IP
+ *  peek limiter counts and what the failed-logins list shows as a probe. */
+export type LoginMethod = 'link' | 'code' | 'passkey' | 'hint';
 
 export interface LoginEvent {
   id: number;

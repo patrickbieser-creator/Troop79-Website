@@ -1,6 +1,9 @@
 # Bugle "Register Now" Links — identity-hinted sign-in from the weekly newsletter
 
-**Status:** Ready to activate (all decisions made 2026-09-05)
+**Status:** SHIPPED v1.119.0 (2026-09-06) — code + migration live. Remaining are Patrick's steps
+9–10 (one-time EmailOctopus export diff; paste the copied link into the Bugle template and send
+one test issue to yourself first). qa-lead implementation review: SHIP_WITH_FIXES 83/100, fixes
+applied (route-level tests, admin spacing token, cookie-lifetime reconciliation below).
 **Parked:** 2026-09-05
 **Priority:** Medium
 
@@ -98,7 +101,11 @@ Cold browsers — the hinted panel
 - [ ] After the send, the code screen shows "We emailed a code to **d\*\*\*\*@gmail.com**" and the
       existing code form; redemption is unchanged and lands on `next` with the household
       preselected and the passkey offer once, as today.
-- [ ] The hint cookie is cleared on send and on redemption.
+- [x] The hint cookie is cleared on redemption (`setIdentityCookie`). It is deliberately KEPT
+      through the send: it is what authorises "Send another code" and "send to a different
+      address" on the code screen for a visitor who never typed the troop password
+      (`requestForPersonAction`), and it expires on its own at 20 minutes — just past a code's
+      15. Reconciled with qa-lead's implementation review, 2026-09-06.
 
 Precautions (B7)
 - [ ] Hinted resolves are capped per IP (20/hour). Over the cap, the hint is ignored and today's

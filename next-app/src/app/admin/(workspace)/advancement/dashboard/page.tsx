@@ -14,7 +14,7 @@ import { requireCapability } from '@/lib/require-capability';
 import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
 import type { LedgerEntry, LedgerKind } from '@/lib/supabase/types';
 import { loadAttentionCategories } from './attention-items';
-import { loadRecentLogins, loadHouseholdsSignedInStats } from '@/lib/login-events';
+import { loadRecentLogins, loadHouseholdsSignedInStats, type LoginMethod } from '@/lib/login-events';
 import { fmtDate, fmtDateTime } from '@/lib/format-date';
 import styles from './dashboard.module.css';
 import { PageTitle } from '../../_components/page-title';
@@ -266,10 +266,13 @@ function shortLabelFor(
   }
 }
 
-const METHOD_LABEL: Record<'link' | 'code' | 'passkey', string> = {
+const METHOD_LABEL: Record<LoginMethod, string> = {
   link: 'Email link',
   code: 'Code',
-  passkey: 'Passkey'
+  passkey: 'Passkey',
+  // Never a successful login — a Bugle-link resolve that found nobody
+  // (lib/signin-hint.ts); appears only in the failed list.
+  hint: 'Bugle link'
 };
 
 export default async function DashboardPage() {
