@@ -1077,6 +1077,9 @@ export default function PersonFirstForm({
                 />
                 <input
                   className={styles.gateInput}
+                  type="email"
+                  inputMode="email"
+                  autoComplete="off"
                   placeholder="Email (optional)"
                   value={na.email}
                   onChange={(e) =>

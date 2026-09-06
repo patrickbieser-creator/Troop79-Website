@@ -12,6 +12,7 @@ import { FAMILY_COOKIE, signFamilySession } from '@/lib/family-session';
 import { secretMatches } from '@/lib/signed-cookie';
 import { safeInternalPath } from '@/lib/safe-redirect';
 import { loadHouseholdByKey, storedHouseholdId } from '@/lib/households';
+import { parseNewAdults } from '@/lib/new-adults';
 import { changeFor, loadHouseholdSnapshot, sendSignupConfirmations } from '@/lib/signup-confirmation-send';
 
 /**
@@ -146,20 +147,19 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
   // `leader:<code>`). The submit RPC already accepts a null household.
   const householdId = storedHouseholdId(householdKey);
   if (householdId) {
-    let newAdults: { name?: string; email?: string; relationship?: string }[] = [];
-    try {
-      newAdults = JSON.parse(String(formData.get('newAdults') ?? '[]'));
-    } catch {
-      newAdults = [];
+    // Email shape is checked here, before any write: the DB's own answer is
+    // the raw person_emails_email_shape constraint (see lib/new-adults).
+    const parsed = parseNewAdults(formData.get('newAdults'));
+    if (!parsed.ok) {
+      redirect(`${back}&err=${encodeURIComponent(parsed.error)}`);
     }
-    for (const na of newAdults) {
-      if (!na?.name?.trim()) continue;
+    for (const na of parsed.adults) {
       const { error: addErr } = await supabase.rpc('add_parent_to_household', {
         p_household_id: householdId,
-        p_name: na.name.trim(),
-        p_email: na.email?.trim() || null,
+        p_name: na.name,
+        p_email: na.email,
         p_phone: null,
-        p_relationship: na.relationship?.trim() || null
+        p_relationship: na.relationship
       });
       if (addErr) {
         redirect(`${back}&err=${encodeURIComponent('Could not save the new adult: ' + addErr.message)}`);

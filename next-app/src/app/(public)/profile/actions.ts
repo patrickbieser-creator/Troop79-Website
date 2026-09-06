@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireHouseholdIdentity } from '@/lib/family-access';
 import { loadHouseholdByKey, storedHouseholdId, type Household } from '@/lib/households';
+import { newAdultEmailError } from '@/lib/new-adults';
 import {
   diffFields,
   parseFieldValue,
@@ -358,6 +359,13 @@ export async function addHouseholdMemberAction(formData: FormData): Promise<void
 
   if (!name) {
     redirect(`${back}?err=${encodeURIComponent('A name is required to add someone.')}`);
+  }
+  // The input is type="email" so a browser normally stops this first; the
+  // server check is what stands between a pasted value and the raw
+  // person_emails_email_shape constraint (see lib/new-adults).
+  const emailProblem = newAdultEmailError(name, email);
+  if (emailProblem) {
+    redirect(`${back}?err=${encodeURIComponent(emailProblem)}`);
   }
 
   const householdId = storedHouseholdId(party.key);
