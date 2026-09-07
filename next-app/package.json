@@ -27,6 +27,7 @@
     "send-test-email": "tsx --env-file=.env.local scripts/send-test-email.ts",
     "import-event-sheet": "tsx --env-file=.env.local scripts/import-event-sheet.ts",
     "refresh-local-from-prod": "bash scripts/refresh-local-from-prod.sh",
+    "backup:prod": "node scripts/backup-prod.mts",
     "backfill-photo-thumbnails": "tsx --env-file=.env.local scripts/backfill-photo-thumbnails.ts"
   },
   "dependencies": {
