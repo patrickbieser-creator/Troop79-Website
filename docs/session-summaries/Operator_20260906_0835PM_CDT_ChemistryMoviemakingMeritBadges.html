@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Session Summary — Chemistry &amp; Moviemaking merit badges (2026-09-06)</title>
+<style>
+  :root {
+    --nw-teal: #1e3a4a;   /* Troop 79 navy (BRAND.md primary) */
+    --nw-green: #3d5a3e;  /* Troop 79 forest (BRAND.md accent) */
+    --paper: #faf6ef;
+    --ink: #2a2a2a;
+    --meta: #6d7580;
+    --line: #e2e4e8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 15px; color: var(--ink); background: var(--paper); line-height: 1.55; }
+  .header { background: var(--nw-teal); color: #fff; padding: 40px 64px; }
+  .header .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.6); margin-bottom: 8px; }
+  .header h1 { font-size: 30px; font-weight: 600; margin-bottom: 6px; }
+  .header .sub { font-size: 14px; color: rgba(255,255,255,.75); }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 36px 24px 64px; }
+  h2 { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--nw-green); border-bottom: 2px solid var(--nw-green); padding-bottom: 6px; margin: 36px 0 14px; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .metric { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+  .metric .num { font-size: 26px; font-weight: 700; color: var(--nw-teal); }
+  .metric .lbl { font-size: 12px; color: var(--meta); margin-top: 2px; }
+  ul { padding-left: 22px; }
+  li { margin-bottom: 9px; }
+  .card { background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--nw-green); border-radius: 4px; padding: 14px 18px; margin-bottom: 12px; }
+  .card.warn { border-left-color: #c0392b; }
+  .card .t { font-weight: 700; color: var(--nw-teal); }
+  .footer { text-align: center; font-size: 12px; color: var(--meta); padding: 24px; border-top: 1px solid var(--line); margin-top: 40px; }
+  code { background: #f0f1f3; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="eyebrow">Troop 79 &middot; Session Summary</div>
+  <h1>Chemistry &amp; Moviemaking join the merit badge catalog</h1>
+  <div class="sub">Sunday, 6 September 2026, evening &middot; two badges populated end to end &middot; v1.119.2</div>
+</div>
+
+<div class="wrap">
+
+  <h2>At a glance</h2>
+  <div class="metrics">
+    <div class="metric"><div class="num">2</div><div class="lbl">merit badges added</div></div>
+    <div class="metric"><div class="num">36</div><div class="lbl">requirement rows written (24 + 12)</div></div>
+    <div class="metric"><div class="num">2</div><div class="lbl">commits, pushed to main (v1.119.2)</div></div>
+    <div class="metric"><div class="num">3</div><div class="lbl">decisions (D-262&ndash;D-264)</div></div>
+    <div class="metric"><div class="num">1</div><div class="lbl">new blocker (B-005, unresolved)</div></div>
+  </div>
+
+  <h2>What shipped</h2>
+  <div class="card">
+    <div class="t">Chemistry &mdash; missing entirely, now fully populated</div>
+    Patrick pasted the current official requirement text; parsed and condensed into 8 top-level
+    requirements / 16 sub-requirements (24 rows) via the <code>populate-mb-requirements</code>
+    workflow &mdash; draft approved before anything was written. Since there was no existing catalog
+    row at all, the ID had to be inserted directly (the Lookups admin UI only edits, never creates,
+    a merit badge). Written to production and local dev, mirrored into <code>data/advancement.json</code>
+    so the next <code>npm run seed</code> won't wipe it. Its Scoutbook export number has no reliable
+    source &mdash; the original "verified" reference CSV's own claim (27) was independently disproven
+    months ago (27 is really Climbing) &mdash; so it's currently a live test value (<code>22</code>)
+    while Patrick uploads real earned badges to Scoutbook to observe the result.
+  </div>
+  <div class="card">
+    <div class="t">Moviemaking &mdash; same gap, same fix</div>
+    Also missing outright. Same procedure: 4 top-level / 8 sub-requirements (12 rows), both
+    environments, mirrored to the JSON file. Its Scoutbook ID (<code>23</code>) came directly from
+    the project's own <code>scoutbook_merit_badge_reference</code> table &mdash; a real, sourced value
+    this time, not a guess.
+  </div>
+  <div class="card">
+    <div class="t">Housekeeping: Botany retired from the reference table</div>
+    Surfaced while gap-hunting for the two IDs above &mdash; Botany's entry sat well outside its own
+    correct alphabetical slot in the table. Patrick confirmed it's a discontinued badge and asked to
+    drop it: "knowing the old number is not useful."
+  </div>
+
+  <h2>Found, not yet fixed</h2>
+  <div class="card warn">
+    <div class="t">B-005 &mdash; Fast Entry won't mark a badge "fully earned" in one pass</div>
+    While entering Chemistry for Henry Ellermann, checking the top award box didn't allow Save &mdash;
+    contradicting a fix Patrick remembers from before. Diagnosis was under way (the award gate in
+    <code>mb-focus-modal.tsx</code> + <code>satisfaction.ts</code>, and a second, uncompared copy of
+    the same node-satisfaction logic living inside <code>picker.tsx</code>) when the session was cut
+    short to close out. Top priority next session &mdash; full detail in BLOCKERS.md.
+  </div>
+
+  <h2>Deployed</h2>
+  <div class="card">
+    Full workflow on the one changed file (<code>data/advancement.json</code>): build clean, test
+    suite green after confirming four apparent failures were resource-contention timeouts under the
+    full 1658-test run (all four passed cleanly in isolation, none touching the changed file) &mdash;
+    committed, changelog entry added (v1.119.2), pushed to <code>origin/main</code>. All the actual
+    catalog/requirement writes went straight to production and local dev via SQL/script, independent
+    of this code push.
+  </div>
+
+  <h2>Next</h2>
+  <ul>
+    <li><strong>B-005</strong> &mdash; a real leader task is blocked on it.</li>
+    <li>Confirm or correct Chemistry's <code>scoutbook_id</code> once a real Scoutbook upload settles
+      it, and write the confirmed value into <code>scoutbook_merit_badge_reference</code> (it has no
+      Chemistry row today).</li>
+    <li>Carried over: the Eagle CoH signup retry, performance follow-ups, Verified Signup Phase B,
+      B-004 password rotation.</li>
+  </ul>
+
+</div>
+<div class="footer">Troop79-Website &middot; Operator session summary &middot; 6 Sep 2026 08:35 PM CDT</div>
+</body>
+</html>
