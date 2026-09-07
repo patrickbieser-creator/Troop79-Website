@@ -22,6 +22,19 @@ import { resolveAdminActor } from '@/lib/admin-actor';
 export const AUDIT_AREAS = ['news', 'calendar', 'roster', 'library'] as const;
 export type AuditArea = (typeof AUDIT_AREAS)[number];
 
+/**
+ * One field-level change (Plans/Person-Editor-Rethink.md, History). The
+ * summary line names people and FIELD NAMES only (D-257); the values — what
+ * it was, what it became — go here, so the record page's History section
+ * can show "Status: Active → Inactive" without the summary ever carrying a
+ * value. Display strings, not raw codes: '—' for blank.
+ */
+export interface AuditDetail {
+  field: string;
+  from: string;
+  to: string;
+}
+
 export interface AuditEntry {
   area: AuditArea;
   /** Verb, lowercase: 'create' | 'update' | 'delete' | 'publish' | 'approve' | … */
@@ -31,7 +44,7 @@ export interface AuditEntry {
   entityId?: string | number | null;
   /** One human-readable line — the "basic info". */
   summary: string;
-  details?: Record<string, unknown> | null;
+  details?: Record<string, unknown> | AuditDetail[] | null;
 }
 
 export interface AuditActor {

@@ -570,11 +570,22 @@ export async function setPersonActive(
   await requireCapability('roster.manage');
 
   const supabase = createAdminClient();
+  // Read before write: the audit row carries the field-level diff
+  // (Plans/Person-Editor-Rethink.md, History) — values in `details`, never
+  // in the summary (D-257).
+  const { data: before } = await supabase
+    .from('people')
+    .select('active, inactive_reason')
+    .eq('id', personId)
+    .maybeSingle();
+  const was = (before as { active: boolean; inactive_reason: string | null } | null) ?? null;
+  const nextReason = active ? null : (reason?.trim() || null);
+
   const { error } = await supabase
     .from('people')
     .update({
       active,
-      inactive_reason: active ? null : (reason?.trim() || null),
+      inactive_reason: nextReason,
       updated_at: new Date().toISOString()
     })
     .eq('id', personId);
@@ -585,7 +596,11 @@ export async function setPersonActive(
     action: 'update',
     entityType: 'person',
     entityId: personId,
-    summary: `Set person ${personId} ${active ? 'active' : 'inactive'}`
+    summary: `Set person ${personId} ${active ? 'active' : 'inactive'} — Status, Reason`,
+    details: [
+      { field: 'Status', from: was?.active === false ? 'Inactive' : 'Active', to: active ? 'Active' : 'Inactive' },
+      { field: 'Reason', from: was?.inactive_reason || '—', to: nextReason ?? '—' }
+    ]
   });
 
   revalidate();

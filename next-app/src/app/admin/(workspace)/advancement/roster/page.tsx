@@ -19,8 +19,10 @@
  * nothing else. Their household and relationships are untouched by it.
  */
 
+import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/server";
 import { resolveAdminActor } from "@/lib/admin-actor";
+import { resolveRosterOpenParam } from "./[personId]/load-person-record";
 import { centralToday } from "@/lib/dates";
 import type { Rank } from "@/lib/supabase/types";
 import { loadScoutRows } from "@/lib/scout-row";
@@ -100,6 +102,18 @@ export default async function RosterPage({
   const tab: TabKey = TABS.some((t) => t.key === tabParam)
     ? (tabParam as TabKey)
     : "active_scout";
+
+  // ?open=ID now lands on the person's record page
+  // (Plans/Person-Editor-Rethink.md Phase 1). Scout tabs and the dashboard's
+  // attention links carry a scout code; people tabs carry people.id — the
+  // resolver absorbs both. Guests keep their row editor; an id nothing
+  // matches falls through to the tables' old open-on-mount behaviour.
+  if (openScoutId && tab !== "guest") {
+    const personId = await resolveRosterOpenParam(openScoutId, tab);
+    if (personId != null) {
+      redirect(`/admin/advancement/roster/${personId}?from=${tab}`);
+    }
+  }
 
   const supabase = createAdminClient();
   const [
