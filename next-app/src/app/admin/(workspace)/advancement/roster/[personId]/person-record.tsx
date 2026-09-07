@@ -18,6 +18,11 @@
  * its action and hands the fresh rows up here, so the header, facts, side
  * cards and the "now appears under …" notice follow without a round trip;
  * router.refresh() then re-renders the server's view underneath.
+ * Phase 4 added History: a fact-strip card and a section above the Danger
+ * zone, rendered straight from the server's `record.history` (the
+ * audit_log filtered to this person), so that same router.refresh() after
+ * any action is what brings the new row in; the full-log / detail dialog is
+ * owned here because both the card and the section open it.
  */
 import { useState } from 'react';
 import Link from 'next/link';
@@ -37,11 +42,16 @@ import { ContactSection } from './contact-section';
 import { FamilySection } from './family-section';
 import { RolesBlock } from './roles-block';
 import { DangerZone } from './danger-zone';
+import { HistoryFact } from './history-card';
+import { HistorySection } from './history-section';
+import { HistoryDialog, type HistoryView } from './history-dialog';
 import { SendSignInLink, type SendLinkResult } from './send-sign-in-link';
 import {
   ROLE_LABEL,
   TAB_LABEL,
   isRosterTab,
+  type PersonHistoryEntry,
+  type PersonHistorySummary,
   type PersonRecord as PersonRecordData,
   type PersonStatus,
   type RosterTab
@@ -51,6 +61,8 @@ import styles from './person-record.module.css';
 const ROSTER = '/admin/advancement/roster';
 
 const KIND_LABEL = { scout: 'Scout', leader: 'Leader', adult: 'Adult' } as const;
+
+const NO_HISTORY: PersonHistorySummary = { latest: [], total: 0, withDetails: 0 };
 
 function str(v: unknown): string {
   return v == null ? '' : String(v);
@@ -65,6 +77,7 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
   const [adultTab, setAdultTab] = useState<RosterTab>(record.tab);
   const [linkResult, setLinkResult] = useState<SendLinkResult | null>(null);
   const [signinHelp, setSigninHelp] = useState(false);
+  const [historyView, setHistoryView] = useState<HistoryView | null>(null);
 
   const { detail, scout, kind } = record;
   const f = detail.fields;
@@ -99,6 +112,17 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
     setStatus({ active: false, reason: 'aged_out' });
   }
 
+  // A sent link is itself a History row — re-read so the card's count moves.
+  function onLinkResult(result: SendLinkResult) {
+    setLinkResult(result);
+    if (result.variant === 'success') router.refresh();
+  }
+
+  const history = record.history ?? NO_HISTORY;
+  const openLog = () => setHistoryView({ mode: 'log' });
+  const openDetail = (entry: PersonHistoryEntry) => setHistoryView({ mode: 'detail', entry, fromLog: false });
+  const historyFact: [string, React.ReactNode] = ['History', <HistoryFact key="history" history={history} onOpen={openLog} />];
+
   const facts: [string, React.ReactNode][] =
     kind === 'scout'
       ? [
@@ -106,7 +130,8 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
           ['Patrol', scout?.patrol || '—'],
           ['Grade', gradeLabel(gradeFromGradYear(scout?.graduation_year ?? null, record.today))],
           ['Age', age ?? '—'],
-          ['Health form', health ? fmtDate(health) : <Badge variant="warning">missing</Badge>]
+          ['Health form', health ? fmtDate(health) : <Badge variant="warning">missing</Badge>],
+          historyFact
         ]
       : [
           ['Household', record.household?.label ?? '—'],
@@ -124,7 +149,8 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
               <Badge variant="success">current</Badge>
             )
           ],
-          ['Health form', health ? fmtDate(health) : <Badge variant="warning">missing</Badge>]
+          ['Health form', health ? fmtDate(health) : <Badge variant="warning">missing</Badge>],
+          historyFact
         ];
 
   return (
@@ -165,7 +191,7 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
           </>
         }
       >
-        <SendSignInLink personId={record.personId} kind={kind} emails={emails} onResult={setLinkResult} />
+        <SendSignInLink personId={record.personId} kind={kind} emails={emails} onResult={onLinkResult} />
       </PageTitle>
 
       {(record.pendingUpdate || currentTab !== from || linkResult) && (
@@ -285,6 +311,8 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
               </div>
             </section>
           )}
+
+          <HistorySection history={history} onOpenLog={openLog} onOpenDetail={openDetail} />
 
           <DangerZone
             personId={record.personId}
@@ -410,6 +438,16 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
           </SideCard>
         </aside>
       </div>
+
+      {historyView && (
+        <HistoryDialog
+          personId={record.personId}
+          name={name}
+          view={historyView}
+          onView={setHistoryView}
+          onClose={() => setHistoryView(null)}
+        />
+      )}
     </SectionEditProvider>
   );
 }

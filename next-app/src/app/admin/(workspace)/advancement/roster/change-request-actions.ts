@@ -3,9 +3,11 @@
 import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
-import { recordAudit } from '@/lib/audit';
+import { recordAudit, type AuditDetail } from '@/lib/audit';
+import { fmtDate } from '@/lib/format-date';
 import {
   editableFieldsFor,
+  fieldLabel,
   SCOUT_FIELD_TABLE,
   SCOUT_FIELD_PEOPLE_COLUMN,
   type ChangeEntityType,
@@ -28,6 +30,26 @@ import {
 interface Result {
   ok: boolean;
   error?: string;
+}
+
+/** A field's value as the record page's History shows it (Phase 4). */
+function shown(value: unknown): string {
+  if (value == null || value === '') return '—';
+  const s = String(value);
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? fmtDate(s) : s;
+}
+
+/** Whose record this request edits — a people.id, so the person's History
+ *  finds the approve/reject rows (they are keyed on the request id). */
+async function subjectPersonId(
+  supabase: ReturnType<typeof createAdminClient>,
+  row: ChangeRequestRow
+): Promise<number | null> {
+  if (row.entity_type === 'scout') {
+    const { data } = await supabase.from('scouts').select('person_id').eq('id', row.entity_id).maybeSingle();
+    return (data as { person_id: number | null } | null)?.person_id ?? null;
+  }
+  return /^\d+$/.test(row.entity_id) ? Number(row.entity_id) : null;
 }
 
 export type ChangeRequestWithSubmitter = ChangeRequestRow & { submittedByName: string | null };
@@ -90,7 +112,17 @@ export async function approveChangeRequest(id: number): Promise<Result> {
     if (field in row.proposed_changes) allowed[field] = row.proposed_changes[field];
   }
 
+  // Read before write: the audit row's details carry each field's from→to
+  // (the summary names fields only, D-257).
+  const before: Record<string, unknown> = {};
+
   if (entityType === 'adult' && Object.keys(allowed).length > 0) {
+    const { data: was } = await supabase
+      .from('people')
+      .select(Object.keys(allowed).join(', '))
+      .eq('id', Number(row.entity_id))
+      .maybeSingle();
+    Object.assign(before, (was ?? {}) as Record<string, unknown>);
     // people.id is an int — cast so PostgREST filters on the column's real
     // type rather than a stringified id.
     const { error: updErr } = await supabase.from('people').update(allowed).eq('id', Number(row.entity_id));
@@ -106,6 +138,12 @@ export async function approveChangeRequest(id: number): Promise<Result> {
       else personPatch[SCOUT_FIELD_PEOPLE_COLUMN[f] ?? field] = value;
     }
     if (Object.keys(scoutPatch).length > 0) {
+      const { data: was } = await supabase
+        .from('scouts')
+        .select(Object.keys(scoutPatch).join(', '))
+        .eq('id', row.entity_id)
+        .maybeSingle();
+      Object.assign(before, (was ?? {}) as Record<string, unknown>);
       const { error: updErr } = await supabase.from('scouts').update(scoutPatch).eq('id', row.entity_id);
       if (updErr) return { ok: false, error: updErr.message };
     }
@@ -120,6 +158,20 @@ export async function approveChangeRequest(id: number): Promise<Result> {
       if (personId == null) {
         return { ok: false, error: 'This scout has no linked person record — cannot apply contact changes.' };
       }
+      const { data: was } = await supabase
+        .from('people')
+        .select(Object.keys(personPatch).join(', '))
+        .eq('id', personId)
+        .maybeSingle();
+      // Keyed back by the request's field name, so the diff below lines up.
+      for (const [field, column] of Object.entries(SCOUT_FIELD_PEOPLE_COLUMN)) {
+        if (column && !(field in personPatch) && column in personPatch) {
+          before[field] = ((was ?? {}) as Record<string, unknown>)[column];
+        }
+      }
+      for (const field of Object.keys(personPatch)) {
+        if (!(field in before)) before[field] = ((was ?? {}) as Record<string, unknown>)[field];
+      }
       const { error: updErr } = await supabase.from('people').update(personPatch).eq('id', personId);
       if (updErr) return { ok: false, error: updErr.message };
     }
@@ -131,14 +183,26 @@ export async function approveChangeRequest(id: number): Promise<Result> {
     .eq('id', id);
   if (error) return { ok: false, error: error.message };
 
+  const details: AuditDetail[] = Object.entries(allowed).map(([field, value]) => ({
+    field: fieldLabel(entityType, field),
+    from: shown(before[field]),
+    to: shown(value)
+  }));
+  if (details.length === 0) {
+    // A notice ('adult_added') applies nothing — acknowledging it is the change.
+    details.push({ field: 'Family notice', from: 'waiting for review', to: 'acknowledged' });
+  }
+  const subject = await subjectPersonId(supabase, row);
   await recordAudit({
     area: 'roster',
     action: 'approve',
     entityType: 'change_request',
     entityId: id,
+    subjects: subject == null ? undefined : [subject],
     summary: `Approved ${entityType} change request #${id} (entity ${row.entity_id}): ${
       Object.keys(allowed).join(', ') || 'no fields'
-    }`
+    }`,
+    details
   });
 
   revalidatePath('/admin/advancement/roster');
@@ -150,6 +214,8 @@ export async function approveChangeRequest(id: number): Promise<Result> {
 export async function rejectChangeRequest(id: number, reason: string): Promise<Result> {
   const session = await requireCapability('roster.manage');
   const supabase = createAdminClient();
+  const { data: request } = await supabase.from('change_requests').select('*').eq('id', id).maybeSingle();
+  const row = (request as ChangeRequestRow | null) ?? null;
   const { error } = await supabase
     .from('change_requests')
     .update({
@@ -162,12 +228,19 @@ export async function rejectChangeRequest(id: number, reason: string): Promise<R
     .eq('status', 'pending');
   if (error) return { ok: false, error: error.message };
 
+  const subject = row ? await subjectPersonId(supabase, row) : null;
+  const proposed = row ? Object.keys(row.proposed_changes).map((f) => fieldLabel(row.entity_type as ChangeEntityType, f)) : [];
   await recordAudit({
     area: 'roster',
     action: 'reject',
     entityType: 'change_request',
     entityId: id,
-    summary: `Rejected change request #${id}${reason.trim() ? `: ${reason.trim()}` : ''}`
+    subjects: subject == null ? undefined : [subject],
+    summary: `Rejected change request #${id}${reason.trim() ? `: ${reason.trim()}` : ''}`,
+    details: [
+      { field: `Request #${id}`, from: proposed.length ? `pending (${proposed.join(', ')})` : 'pending', to: 'rejected' },
+      { field: 'Reason', from: '—', to: reason.trim() || '—' }
+    ]
   });
 
   revalidatePath('/admin/advancement/roster');

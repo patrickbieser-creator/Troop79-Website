@@ -448,3 +448,103 @@
   .ctl { font-size: var(--admin-text-xl); }
   .list li .rowActions { align-self: flex-end; }
 }
+
+/* History (Phase 4): the fact-strip link, the one-line-per-change list,
+   the "N fields changed ▸" chip (a genuine chip control, not a Button
+   variant), the Field / Was / Now diff table in the dialog, and the wider
+   dialog the full log needs. Rows stack under 640px. */
+.linkBtn {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--admin-navy);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.linkBtn:hover,
+.linkBtn:focus-visible { color: var(--admin-gray-900); }
+.histMeta {
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-500);
+}
+.histList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.histRow {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: var(--admin-space-2) var(--admin-space-6);
+  padding: var(--admin-space-4) 0;
+  font-size: var(--admin-text-base);
+}
+.histRow + .histRow { border-top: 1px solid var(--admin-gray-100); }
+.histWhen {
+  color: var(--admin-gray-500);
+  white-space: nowrap;
+}
+.histWhat { min-width: 0; overflow-wrap: anywhere; }
+.histWho {
+  color: var(--admin-gray-600);
+  font-weight: var(--admin-weight-semibold);
+}
+.chip {
+  display: inline-block;
+  margin-left: var(--admin-space-3);
+  padding: var(--admin-space-1) var(--admin-space-4);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: 999px;
+  background: var(--admin-white);
+  font: inherit;
+  font-size: var(--admin-text-xs);
+  line-height: 1.6;
+  color: var(--admin-gray-700);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.chip:hover,
+.chip:focus-visible {
+  border-color: var(--admin-navy);
+  color: var(--admin-navy);
+}
+.chipMuted {
+  border-style: dashed;
+  color: var(--admin-gray-500);
+}
+.histIntro {
+  margin: 0 0 var(--admin-space-4);
+  color: var(--admin-gray-500);
+  font-size: var(--admin-text-base);
+}
+.histDialog { width: min(720px, calc(100% - var(--admin-space-13))); }
+.histBody { max-height: 70vh; overflow: auto; }
+.diff {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--admin-text-base);
+}
+.diff th,
+.diff td {
+  text-align: left;
+  vertical-align: top;
+  padding: var(--admin-space-3) var(--admin-space-4);
+  border-bottom: 1px solid var(--admin-gray-100);
+  overflow-wrap: anywhere;
+}
+.diff th {
+  font-size: var(--admin-text-xs);
+  font-weight: var(--admin-weight-bold);
+  letter-spacing: var(--admin-tracking-wide);
+  text-transform: uppercase;
+  color: var(--admin-gray-500);
+}
+
+@media (max-width: 640px) {
+  .histRow { grid-template-columns: 1fr; }
+  .histMeta { display: none; }
+}

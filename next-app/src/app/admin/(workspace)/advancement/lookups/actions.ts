@@ -1115,6 +1115,21 @@ export async function promoteScoutToAdult(formData: FormData): Promise<Result> {
     if (insErr) return { ok: false, error: insErr.message };
   }
 
+  // History (Person Editor Rethink, Phase 4): keyed on the scout row like
+  // the other scout actions; values in details, field names in the summary.
+  await recordAudit({
+    area: 'roster',
+    action: 'promote',
+    entityType: 'scout',
+    entityId: scoutId,
+    summary: `Promoted scout ${scoutId} to adult — Status, Reason, Leader code`,
+    details: [
+      { field: 'Status', from: scout.active ? 'Active' : 'Inactive', to: 'Inactive' },
+      { field: 'Reason', from: '—', to: 'Aged out' },
+      { field: 'Leader code', from: linked?.code ? String(linked.code) : '—', to: leaderCode ?? '—' }
+    ]
+  });
+
   revalidateAll();
   return { ok: true };
 }

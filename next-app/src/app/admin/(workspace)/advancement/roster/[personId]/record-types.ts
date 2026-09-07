@@ -6,6 +6,7 @@
  * server side.
  */
 
+import type { AuditDetail } from '@/lib/audit';
 import type { PersonEmailRow } from '@/lib/person-emails';
 import type { InactiveReason } from '@/lib/supabase/types';
 import type { PersonDetail } from '../person-actions';
@@ -87,6 +88,28 @@ export interface HouseholdChoice {
   label: string;
 }
 
+/** One audit_log row about this person (Phase 4, History). `details` is the
+ *  field-level old -> new diff; null for a row logged before the cutover, which
+ *  shows summary only. */
+export interface PersonHistoryEntry {
+  id: number;
+  /** timestamptz - an instant; render with fmtDateTime. */
+  occurredAt: string;
+  actorLabel: string;
+  actorPersonId: number | null;
+  action: string;
+  summary: string;
+  details: AuditDetail[] | null;
+}
+
+/** What the page loads up front: the latest few rows plus the counts the
+ *  fact-strip card shows; the Full log fetches the rest on demand. */
+export interface PersonHistorySummary {
+  latest: PersonHistoryEntry[];
+  total: number;
+  withDetails: number;
+}
+
 export interface PersonRecord {
   personId: number;
   displayName: string;
@@ -115,4 +138,8 @@ export interface PersonRecord {
   /** A family's change request is waiting for review (Phase 5 renders it). */
   pendingUpdate: boolean;
   today: string;
+  /** The audit_log filtered to this person (Phase 4). The loader always
+   *  fills it; optional only so a section rendered from an older fixture
+   *  still type-checks - the shell treats a missing value as empty. */
+  history?: PersonHistorySummary;
 }

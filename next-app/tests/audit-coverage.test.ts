@@ -31,6 +31,16 @@ const AUDITED_ACTION_FILES = [
   'src/app/admin/(workspace)/advancement/roster-import/actions.ts'
 ];
 
+/**
+ * Action files in an audited area that are READ-ONLY by design — they call
+ * requireCapability and return data, never write. Exempt from the rule
+ * above, and pinned to stay that way: the day one of them grows a write is
+ * the day it belongs in AUDITED_ACTION_FILES instead.
+ */
+const READ_ONLY_ACTION_FILES = [
+  'src/app/admin/(workspace)/advancement/roster/[personId]/history-actions.ts'
+];
+
 describe('content audit trail — every audited action file records to it', () => {
   for (const file of AUDITED_ACTION_FILES) {
     it(`${file.split('/').slice(-2).join('/')} imports and calls recordAudit`, () => {
@@ -39,6 +49,17 @@ describe('content audit trail — every audited action file records to it', () =
         /import \{[^}]*recordAudit[^}]*\} from '@\/lib\/audit'/
       );
       expect(src, `${file} must call recordAudit at least once`).toMatch(/await recordAudit\(/);
+    });
+  }
+});
+
+describe('content audit trail — read-only action files stay read-only', () => {
+  for (const file of READ_ONLY_ACTION_FILES) {
+    it(`${file.split('/').slice(-2).join('/')} performs no write`, () => {
+      const src = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
+      expect(src, `${file} is exempt from recordAudit only while it writes nothing`).not.toMatch(
+        /\.(insert|update|upsert|delete|rpc)\(/
+      );
     });
   }
 });

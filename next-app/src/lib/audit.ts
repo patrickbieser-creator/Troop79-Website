@@ -45,6 +45,37 @@ export interface AuditEntry {
   /** One human-readable line — the "basic info". */
   summary: string;
   details?: Record<string, unknown> | AuditDetail[] | null;
+  /**
+   * people.ids this row is ABOUT beyond `entityId` — a relationship is about
+   * two people, a change request about the person it edits. Stored inside
+   * `details` as `{ changes, people }` so the record page's History
+   * (roster/[personId]/get-person-history.ts) finds the row from every side
+   * with one jsonb containment filter; `auditDetailsOf` reads either shape.
+   */
+  subjects?: number[];
+}
+
+/** The two shapes `audit_log.details` takes: the plain diff, or the diff
+ *  wrapped with the people it concerns (see AuditEntry.subjects). */
+export type StoredAuditDetails = AuditDetail[] | { changes: AuditDetail[]; people: number[] };
+
+/** The field-level diff of a stored row, whichever shape it was written in;
+ *  null when the row predates the History cutover or carried none. */
+export function auditDetailsOf(raw: unknown): AuditDetail[] | null {
+  const list = Array.isArray(raw)
+    ? raw
+    : raw && typeof raw === 'object' && Array.isArray((raw as { changes?: unknown }).changes)
+      ? (raw as { changes: unknown[] }).changes
+      : null;
+  if (!list) return null;
+  const out: AuditDetail[] = [];
+  for (const d of list) {
+    if (!d || typeof d !== 'object') continue;
+    const { field, from, to } = d as Record<string, unknown>;
+    if (typeof field !== 'string') continue;
+    out.push({ field, from: from == null ? '—' : String(from), to: to == null ? '—' : String(to) });
+  }
+  return out;
 }
 
 export interface AuditActor {
@@ -69,7 +100,9 @@ export async function recordAuditAs(
       entity_type: entry.entityType,
       entity_id: entry.entityId == null ? null : String(entry.entityId),
       summary: entry.summary,
-      details: entry.details ?? null
+      details: entry.subjects?.length
+        ? { changes: Array.isArray(entry.details) ? entry.details : [], people: entry.subjects }
+        : (entry.details ?? null)
     });
     if (error) console.error('audit_log write failed:', error.message, entry);
   } catch (e) {

@@ -14,6 +14,7 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { centralToday } from '@/lib/dates';
 import { getPersonDetail, getPersonEmails } from '../person-actions';
+import { getPersonHistorySummary } from './get-person-history';
 
 export * from './record-types';
 import {
@@ -87,10 +88,11 @@ export async function loadPersonRecord(personId: number): Promise<LoadPersonReco
   const tab: RosterTab = isRosterTab(detail.tab) ? detail.tab : 'adult';
   const kind = kindOf(tab);
 
-  const [rankLabel, household, pendingUpdate] = await Promise.all([
+  const [rankLabel, household, pendingUpdate, history] = await Promise.all([
     loadRankLabel(supabase, scout?.current_rank ?? null),
     loadHousehold(supabase, detail.householdId),
-    loadPendingFlag(supabase, kind === 'scout' && scout ? { type: 'scout', id: scout.id } : { type: 'adult', id: String(personId) })
+    loadPendingFlag(supabase, kind === 'scout' && scout ? { type: 'scout', id: scout.id } : { type: 'adult', id: String(personId) }),
+    getPersonHistorySummary(personId)
   ]);
 
   const status: PersonStatus =
@@ -115,7 +117,8 @@ export async function loadPersonRecord(personId: number): Promise<LoadPersonReco
       households,
       status,
       pendingUpdate,
-      today: centralToday()
+      today: centralToday(),
+      history
     }
   };
 }

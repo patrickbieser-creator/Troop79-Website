@@ -19,6 +19,7 @@ import {
 } from '@/lib/person-emails';
 
 import { centralToday } from '@/lib/dates';
+import { ROLE_LABEL } from './[personId]/record-types';
 /**
  * Person-level edits behind the Roster's Leaders and Adults tabs.
  *
@@ -44,6 +45,50 @@ interface Result {
 
 function revalidate() {
   for (const p of PATHS) revalidatePath(p);
+}
+
+/* ── History plumbing (Plans/Person-Editor-Rethink.md, Phase 4) ──────────
+ *
+ * Every action here records a field-level from→to diff in the audit row's
+ * `details` — that is what the record page's History shows as "N fields
+ * changed ▸". The summary still names people and FIELD NAMES only (D-257).
+ * Rows about a related row (a role, a relationship) are keyed on the
+ * PERSON, not the row, so getPersonHistory finds them; a relationship also
+ * lists the other person in `subjects` so both records see it.
+ */
+
+type Db = ReturnType<typeof createAdminClient>;
+
+async function displayNames(supabase: Db, ids: number[]): Promise<Map<number, string>> {
+  const names = new Map<number, string>();
+  const wanted = [...new Set(ids)];
+  if (wanted.length === 0) return names;
+  const { data } = await supabase.from('people').select('id, display_name').in('id', wanted);
+  for (const r of (data ?? []) as { id: number; display_name: string }[]) names.set(r.id, r.display_name);
+  return names;
+}
+
+const roleLabel = (role: string) => ROLE_LABEL[role] ?? role;
+
+/** How a stored relationship row reads from its person_id side. */
+const RELATIONSHIP_PHRASE: Record<string, string> = {
+  parent_of: 'Parent of',
+  guardian_of: 'Guardian of',
+  sibling_of: 'Sibling of',
+  emergency_contact_for: 'Emergency contact for'
+};
+
+function relationshipField(type: string, otherName: string): string {
+  return `${RELATIONSHIP_PHRASE[type] ?? type} ${otherName}`;
+}
+
+function linkedState(isGuardian: boolean): string {
+  return isGuardian ? 'linked (guardian)' : 'linked';
+}
+
+/** 'home (primary)' / 'work' — an address's state for the History diff. */
+function emailState(row: PersonEmailRow): string {
+  return row.isPrimary ? `${row.label} (primary)` : row.label;
 }
 
 /** Roles a leader may grant. 'youth_member' is absent on purpose — that one is
@@ -201,7 +246,8 @@ export async function addRole(personId: number, role: GrantableRole): Promise<Re
     action: 'create',
     entityType: 'role',
     entityId: personId,
-    summary: `Granted role '${role}' to person ${personId}`
+    summary: `Granted role '${role}' to person ${personId}`,
+    details: [{ field: roleLabel(role), from: 'none', to: 'granted' }]
   });
 
   revalidate();
@@ -214,9 +260,20 @@ export async function endRole(roleId: number): Promise<Result> {
   await requireCapability('roster.manage');
 
   const supabase = createAdminClient();
+  // Read before write: the audit row is keyed on the PERSON (so their
+  // History finds it) and carries "since <start> → ended <today>".
+  const { data: row } = await supabase
+    .from('person_roles')
+    .select('person_id, role, start_date')
+    .eq('id', roleId)
+    .maybeSingle();
+  const held = row as { person_id: number; role: string; start_date: string | null } | null;
+  if (!held) return { ok: false, error: 'Role not found.' };
+
+  const today = centralToday();
   const { error } = await supabase
     .from('person_roles')
-    .update({ end_date: centralToday() })
+    .update({ end_date: today })
     .eq('id', roleId)
     .is('end_date', null);
   if (error) return { ok: false, error: error.message };
@@ -225,8 +282,9 @@ export async function endRole(roleId: number): Promise<Result> {
     area: 'roster',
     action: 'update',
     entityType: 'role',
-    entityId: roleId,
-    summary: `Ended role (id ${roleId})`
+    entityId: held.person_id,
+    summary: `Ended role '${held.role}' (id ${roleId}) for person ${held.person_id}`,
+    details: [{ field: roleLabel(held.role), from: `since ${fmtDate(held.start_date)}`, to: `ended ${fmtDate(today)}` }]
   });
 
   revalidate();
@@ -238,6 +296,14 @@ export async function deleteRole(roleId: number): Promise<Result> {
   await requireCapability('roster.manage');
 
   const supabase = createAdminClient();
+  const { data: row } = await supabase
+    .from('person_roles')
+    .select('person_id, role, start_date, end_date')
+    .eq('id', roleId)
+    .maybeSingle();
+  const held = row as { person_id: number; role: string; start_date: string | null; end_date: string | null } | null;
+  if (!held) return { ok: false, error: 'Role not found.' };
+
   const { error } = await supabase.from('person_roles').delete().eq('id', roleId);
   if (error) return { ok: false, error: error.message };
 
@@ -245,8 +311,15 @@ export async function deleteRole(roleId: number): Promise<Result> {
     area: 'roster',
     action: 'delete',
     entityType: 'role',
-    entityId: roleId,
-    summary: `Deleted role (id ${roleId})`
+    entityId: held.person_id,
+    summary: `Deleted role '${held.role}' record (id ${roleId}) for person ${held.person_id}`,
+    details: [
+      {
+        field: roleLabel(held.role),
+        from: held.end_date ? `${fmtDate(held.start_date)} – ${fmtDate(held.end_date)}` : `since ${fmtDate(held.start_date)}`,
+        to: 'deleted'
+      }
+    ]
   });
 
   revalidate();
@@ -349,12 +422,20 @@ export async function addRelationship(
     );
   if (error) return { ok: false, error: error.message };
 
+  // One row for one fact, findable from BOTH people: keyed on the stored
+  // person_id side, the other person listed as a subject.
+  const names = await displayNames(supabase, [stored.person_id, stored.related_person_id]);
+  const nameOf = (id: number) => names.get(id) ?? `person ${id}`;
   await recordAudit({
     area: 'roster',
     action: 'create',
     entityType: 'relationship',
-    entityId: personId,
-    summary: `Recorded ${type} relationship (person ${personId} ↔ ${relatedPersonId})`
+    entityId: stored.person_id,
+    subjects: [stored.related_person_id],
+    summary: `Recorded relationship: ${nameOf(stored.person_id)} ${RELATIONSHIP_PHRASE[stored.type] ?? stored.type} ${nameOf(stored.related_person_id)}`,
+    details: [
+      { field: relationshipField(stored.type, nameOf(stored.related_person_id)), from: 'not linked', to: linkedState(isGuardian) }
+    ]
   });
 
   revalidate();
@@ -365,15 +446,29 @@ export async function removeRelationship(relationshipId: number): Promise<Result
   await requireCapability('roster.manage');
 
   const supabase = createAdminClient();
+  const { data: row } = await supabase
+    .from('relationships')
+    .select('person_id, related_person_id, type, is_guardian')
+    .eq('id', relationshipId)
+    .maybeSingle();
+  const rel = row as { person_id: number; related_person_id: number; type: string; is_guardian: boolean } | null;
+  if (!rel) return { ok: false, error: 'Relationship not found.' };
+
   const { error } = await supabase.from('relationships').delete().eq('id', relationshipId);
   if (error) return { ok: false, error: error.message };
 
+  const names = await displayNames(supabase, [rel.person_id, rel.related_person_id]);
+  const nameOf = (id: number) => names.get(id) ?? `person ${id}`;
   await recordAudit({
     area: 'roster',
     action: 'delete',
     entityType: 'relationship',
-    entityId: relationshipId,
-    summary: `Removed relationship (id ${relationshipId})`
+    entityId: rel.person_id,
+    subjects: [rel.related_person_id],
+    summary: `Removed relationship (id ${relationshipId}): ${nameOf(rel.person_id)} ${RELATIONSHIP_PHRASE[rel.type] ?? rel.type} ${nameOf(rel.related_person_id)}`,
+    details: [
+      { field: relationshipField(rel.type, nameOf(rel.related_person_id)), from: linkedState(rel.is_guardian), to: 'not linked' }
+    ]
   });
 
   revalidate();
@@ -828,7 +923,12 @@ export async function createAdultForScout(
     action: 'create',
     entityType: 'person',
     entityId: created.id,
-    summary: `Created adult ${trimmed} for scout ${scoutPersonId}`
+    summary: `Created adult ${trimmed} for scout ${scoutPersonId}`,
+    details: [
+      { field: 'Name', from: '—', to: trimmed },
+      { field: 'Email', from: '—', to: email.trim() || '—' },
+      { field: 'Phone', from: '—', to: phone.trim() || '—' }
+    ]
   });
 
   const res = await addRelationship(created.id, scoutPersonId, type, isGuardian);
@@ -855,6 +955,7 @@ export async function mergePersonInto(loserId: number, survivorId: number): Prom
   if (loserId === survivorId) return { ok: false, error: 'Pick two different people.' };
 
   const supabase = createAdminClient();
+  const names = await displayNames(supabase, [loserId, survivorId]);
   const { error } = await supabase.rpc('merge_people', {
     p_survivor: survivorId,
     p_loser: loserId,
@@ -867,7 +968,11 @@ export async function mergePersonInto(loserId: number, survivorId: number): Prom
     action: 'merge',
     entityType: 'person',
     entityId: survivorId,
-    summary: `Merged person ${loserId} into ${survivorId}`
+    subjects: [loserId],
+    summary: `Merged person ${loserId} into ${survivorId}`,
+    details: [
+      { field: 'Merged into', from: names.get(loserId) ?? `person ${loserId}`, to: names.get(survivorId) ?? `person ${survivorId}` }
+    ]
   });
 
   revalidate();
@@ -956,6 +1061,7 @@ export async function deletePerson(personId: number): Promise<Result> {
 
   // Household membership, roles, relationships and import suggestions all
   // cascade; none of them mean anything without the person.
+  const names = await displayNames(supabase, [personId]);
   const { error } = await supabase.from('people').delete().eq('id', personId);
   if (error) return { ok: false, error: error.message };
 
@@ -964,7 +1070,8 @@ export async function deletePerson(personId: number): Promise<Result> {
     action: 'delete',
     entityType: 'person',
     entityId: personId,
-    summary: `Deleted person ${personId}`
+    summary: `Deleted person ${personId}`,
+    details: [{ field: 'Record', from: names.get(personId) ?? `person ${personId}`, to: 'deleted' }]
   });
 
   revalidate();
@@ -1083,6 +1190,14 @@ export async function sendSignInLink(personId: number, emailId?: number): Promis
     emailId
   });
   if (!result.sent) return { ok: false, reason: result.reason };
+  await recordAudit({
+    area: 'roster',
+    action: 'send_sign_in_link',
+    entityType: 'person',
+    entityId: personId,
+    summary: `Sent a sign-in link to person ${personId}`,
+    details: [{ field: 'Sign-in link', from: '—', to: `sent to ${result.masked}` }]
+  });
   return { ok: true, masked: result.masked, expiresMinutes: TOKEN_TTL_MINUTES };
 }
 
@@ -1108,17 +1223,22 @@ export async function addPersonEmailAction(
   label: PersonEmailLabel
 ): Promise<Result> {
   await requireCapability('roster.manage');
+  const supabase = createAdminClient();
   try {
-    await addPersonEmail(createAdminClient(), personId, email, label);
+    await addPersonEmail(supabase, personId, email, label);
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Could not add that address.' };
   }
+  // Re-read: the first address on file becomes primary inside the lib.
+  const after = await listPersonEmails(supabase, personId);
+  const added = after.find((r) => r.email.toLowerCase() === email.trim().toLowerCase());
   await recordAudit({
     area: 'roster',
     action: 'create',
     entityType: 'person_email',
     entityId: personId,
-    summary: `Added ${label} email for person ${personId}`
+    summary: `Added ${label} email for person ${personId}`,
+    details: [{ field: added?.email ?? email.trim().toLowerCase(), from: 'not on file', to: added ? emailState(added) : label }]
   });
   revalidate();
   return { ok: true };
@@ -1126,17 +1246,26 @@ export async function addPersonEmailAction(
 
 export async function setPersonPrimaryEmailAction(personId: number, emailId: number): Promise<Result> {
   await requireCapability('roster.manage');
+  const supabase = createAdminClient();
+  const before = await listPersonEmails(supabase, personId);
   try {
-    await setPrimaryEmail(createAdminClient(), personId, emailId);
+    await setPrimaryEmail(supabase, personId, emailId);
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Could not update the primary address.' };
+  }
+  const after = await listPersonEmails(supabase, personId);
+  const details: AuditDetail[] = [];
+  for (const was of before) {
+    const now = after.find((r) => r.id === was.id);
+    if (now && emailState(now) !== emailState(was)) details.push({ field: was.email, from: emailState(was), to: emailState(now) });
   }
   await recordAudit({
     area: 'roster',
     action: 'update',
     entityType: 'person_email',
     entityId: personId,
-    summary: `Set primary email (id ${emailId}) for person ${personId}`
+    summary: `Set primary email (id ${emailId}) for person ${personId}`,
+    details
   });
   revalidate();
   return { ok: true };
@@ -1144,8 +1273,11 @@ export async function setPersonPrimaryEmailAction(personId: number, emailId: num
 
 export async function removePersonEmailAction(personId: number, emailId: number): Promise<Result> {
   await requireCapability('roster.manage');
+  const supabase = createAdminClient();
+  const before = await listPersonEmails(supabase, personId);
+  const gone = before.find((r) => r.id === emailId);
   try {
-    await removePersonEmail(createAdminClient(), personId, emailId);
+    await removePersonEmail(supabase, personId, emailId);
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Could not remove that address.' };
   }
@@ -1154,7 +1286,8 @@ export async function removePersonEmailAction(personId: number, emailId: number)
     action: 'delete',
     entityType: 'person_email',
     entityId: personId,
-    summary: `Removed email (id ${emailId}) for person ${personId}`
+    summary: `Removed email (id ${emailId}) for person ${personId}`,
+    details: gone ? [{ field: gone.email, from: emailState(gone), to: 'removed' }] : []
   });
   revalidate();
   return { ok: true };
