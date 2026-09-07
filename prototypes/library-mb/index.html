@@ -7,9 +7,10 @@
 <style>
 /* ──────────────────────────────────────────────────────────────────────────
    PROTOTYPE: /library/mb/[mbId] with the three lower sections consolidated.
+   Rev 2 (Patrick's review): quieter rows, resources behind an accordion,
+   three icon-only actions (I did this · Resources · Add a resource), dated
+   Done pill, one-line legend.
    Tokens copied verbatim from next-app/src/app/globals.css (PUBLIC side).
-   Fonts: next/font isn't available here, so the stacks fall straight to the
-   named families + system fallbacks. No CDN, no network.
    ────────────────────────────────────────────────────────────────────────── */
 :root {
   --navy: #1e3a4a; --navy-mid: #2a4f63; --navy-light: #3a6478; --navy-hover: #163040;
@@ -49,11 +50,7 @@ button { font: inherit; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 
 /* ── Prototype-only control bar (NOT a product element) ── */
-.proto {
-  background: repeating-linear-gradient(135deg, #fff8dc 0 10px, #fff3c4 10px 20px);
-  border-bottom: 2px dashed var(--bark);
-  font-family: var(--font-ui); font-size: var(--fs-xs); color: var(--text-head);
-}
+.proto { background: repeating-linear-gradient(135deg, #fff8dc 0 10px, #fff3c4 10px 20px); border-bottom: 2px dashed var(--bark); font-family: var(--font-ui); font-size: var(--fs-xs); color: var(--text-head); }
 .protoInner { max-width: 1180px; margin: 0 auto; padding: 8px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
 .protoLabel { font-weight: 700; letter-spacing: .1em; text-transform: uppercase; font-size: 10px; color: var(--bark); }
 .protoSeg { display: inline-flex; border: 1px solid var(--bark); border-radius: var(--rad-sm); overflow: hidden; background: var(--warm-white); }
@@ -75,13 +72,11 @@ button { font: inherit; }
 .pageHeader { max-width: 1180px; margin: 0 auto; padding: 32px 24px 0; }
 .kicker { font-family: var(--font-ui); font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--text-meta); margin-bottom: 10px; }
 .kicker a { color: var(--navy); }
-.kicker a:hover { color: var(--forest); text-decoration: underline; text-underline-offset: 2px; }
 .kickerSep { margin: 0 6px; color: var(--border-mid); }
 .pageTitle { font-family: var(--font-display); font-weight: 900; color: var(--text-head); font-size: var(--fs-display); line-height: 1.08; margin: 0 0 10px; text-wrap: balance; }
 .pageLede { font-family: var(--font-body); font-size: var(--fs-lg); font-style: italic; color: var(--text-meta); line-height: 1.5; margin: 0; }
 .headRule { height: 2px; background: var(--border-mid); margin-top: 20px; }
 .main { max-width: 1180px; margin: 0 auto; padding: 24px 24px 80px; }
-.eagleTagLarge { font-family: var(--font-ui); font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--bark); background: var(--status-warning-bg); padding: var(--sp-1) 10px; border-radius: var(--rad-pill); margin-left: var(--sp-3); vertical-align: 6px; }
 .actionRow { display: flex; gap: var(--sp-4); flex-wrap: wrap; margin-top: 14px; font-style: normal; }
 .actionLink { display: inline-flex; align-items: center; font-family: var(--font-ui); font-size: var(--fs-xs); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--navy); padding: var(--sp-2) var(--sp-4); border: 1px solid var(--navy); border-radius: var(--rad-sm); transition: background var(--transition), color var(--transition); }
 .actionLink:hover { background: var(--navy); color: var(--warm-white); }
@@ -110,16 +105,20 @@ button { font: inherit; }
 .divLink button:hover { color: var(--forest); text-decoration: underline; text-underline-offset: 2px; }
 .divLink .sep { color: var(--border-mid); }
 
-/* ── Scout progress grid (verbatim from mb-tracker.module.css) ── */
+/* ── Scout progress grid (from mb-tracker.module.css) ──
+   REV 2 (item 3): the 2px navy header rule used to sit under ROW 1 for Award
+   and the Req groups but under ROW 2 for the rowSpan=2 Scout cell, so the two
+   lines never met. The rule now lives under ROW 2 everywhere (leaf heads +
+   award sub-head) and row 1 gets a hairline — one continuous line. */
 .gridScroller { overflow: auto; max-height: 70vh; border: 1px solid var(--border-light); background: var(--warm-white); box-shadow: var(--shadow-card); }
 .grid { border-collapse: separate; border-spacing: 0; font-family: var(--font-ui); font-size: var(--fs-xs); width: max-content; }
-.scoutHead { position: sticky; left: 0; top: 0; background: var(--cream); z-index: 4; min-width: 200px; padding: var(--sp-2) 10px; border-right: 2px solid var(--border-mid); border-bottom: 2px solid var(--navy); text-align: left; font-size: var(--fs-2xs); letter-spacing: .04em; text-transform: uppercase; color: var(--text-meta); }
-.groupHead { position: sticky; top: 0; z-index: 3; background: var(--cream); color: var(--navy); font-size: var(--fs-xs); font-weight: 700; letter-spacing: .02em; padding: 10px var(--sp-2); text-align: center; border-bottom: 2px solid var(--navy); border-right: 1px solid var(--border-light); }
+.scoutHead { position: sticky; left: 0; top: 0; background: var(--cream); z-index: 4; min-width: 200px; padding: var(--sp-2) 10px; border-right: 2px solid var(--border-mid); border-bottom: 2px solid var(--navy); text-align: left; font-size: var(--fs-2xs); letter-spacing: .04em; text-transform: uppercase; color: var(--text-meta); vertical-align: bottom; }
+.groupHead { position: sticky; top: 0; z-index: 3; background: var(--cream); color: var(--navy); font-size: var(--fs-xs); font-weight: 700; letter-spacing: .02em; padding: 10px var(--sp-2); text-align: center; border-bottom: 1px solid var(--border-light); border-right: 1px solid var(--border-light); }
 .groupRule { display: inline-block; margin-left: var(--sp-2); font-family: var(--font-ui); font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--bark); background: var(--status-warning-bg); padding: 2px var(--sp-2); border-radius: var(--rad-pill); vertical-align: 1px; }
-.leafHead { position: sticky; top: 0; z-index: 3; min-width: 46px; padding: var(--sp-2) var(--sp-1); text-align: center; font-family: var(--font-mono); font-size: var(--fs-xs); font-weight: 700; background: var(--newsprint); color: var(--navy); border-left: 1px solid var(--border-light); border-right: 1px solid var(--border-light); }
+.leafHead { position: sticky; top: 0; z-index: 3; min-width: 46px; padding: var(--sp-2) var(--sp-1); text-align: center; font-family: var(--font-mono); font-size: var(--fs-xs); font-weight: 700; background: var(--newsprint); color: var(--navy); border-left: 1px solid var(--border-light); border-right: 1px solid var(--border-light); border-bottom: 2px solid var(--navy); }
 .groupStart { border-left: 2px solid var(--navy) !important; }
-.awardHead { position: sticky; top: 0; left: 200px; z-index: 4; min-width: 60px; padding: 10px var(--sp-2); background: var(--status-warning-bg); color: var(--bark); text-align: center; font-size: var(--fs-xs); font-weight: 800; letter-spacing: .04em; border-right: 2px solid var(--bark); border-bottom: 2px solid var(--navy); }
-.awardSubHead { position: sticky; top: 0; left: 200px; z-index: 4; min-width: 60px; padding: var(--sp-2) var(--sp-1); background: var(--status-warning-bg); border-right: 2px solid var(--bark); }
+.awardHead { position: sticky; top: 0; left: 200px; z-index: 4; min-width: 60px; padding: 10px var(--sp-2); background: var(--status-warning-bg); color: var(--bark); text-align: center; font-size: var(--fs-xs); font-weight: 800; letter-spacing: .04em; border-right: 2px solid var(--bark); border-bottom: 1px solid var(--border-light); }
+.awardSubHead { position: sticky; top: 0; left: 200px; z-index: 4; min-width: 60px; padding: var(--sp-2) var(--sp-1); background: var(--status-warning-bg); border-right: 2px solid var(--bark); border-bottom: 2px solid var(--navy); }
 .scoutCell { position: sticky; left: 0; background: var(--warm-white); z-index: 2; padding: 6px 10px; min-width: 200px; border-right: 2px solid var(--border-mid); border-bottom: 1px solid var(--border-light); font-family: var(--font-body); font-size: var(--fs-sm); }
 .scoutCell a { color: var(--text-head); font-weight: 600; }
 .rankPill { font-family: var(--font-ui); font-size: 9px; letter-spacing: .04em; color: var(--text-meta); padding: 1px 6px; background: var(--newsprint); border-radius: var(--rad-pill); margin-left: var(--sp-2); font-weight: 700; text-transform: uppercase; }
@@ -130,12 +129,14 @@ button { font: inherit; }
 
 /* ── THE consolidated requirements list ── */
 .reqCard { background: var(--warm-white); border: 1px solid var(--border-light); box-shadow: var(--shadow-card); padding: var(--sp-5) 22px; }
-.reqDisclaimer { font-family: var(--font-body); font-size: var(--fs-xs); font-style: italic; color: var(--text-meta); padding-bottom: var(--sp-3); margin: 0 0 6px; border-bottom: 1px dashed var(--border-light); }
-.legend { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); font-family: var(--font-ui); font-size: var(--fs-2xs); color: var(--text-meta); margin: var(--sp-2) 0 var(--sp-3); }
-.legend span { display: inline-flex; align-items: center; gap: 4px; }
+.reqDisclaimer { font-family: var(--font-body); font-size: var(--fs-xs); font-style: italic; color: var(--text-meta); margin: 0 0 var(--sp-2); }
+/* One quiet line: the two icons and what they do. Nothing else. */
+.legend { display: flex; flex-wrap: wrap; gap: 4px var(--sp-5); font-family: var(--font-ui); font-size: var(--fs-2xs); color: var(--text-meta); padding-bottom: var(--sp-3); margin: 0 0 var(--sp-1); border-bottom: 1px dashed var(--border-light); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend svg { color: var(--navy); }
 
-/* Row grammar: [tag] [text + who] [actions] / [sub-row spans text+actions]. */
-.rq { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 10px; align-items: start; padding: 7px 0; }
+/* Row grammar at rest: [tag] [label · pill] [actions]. Sub-row hidden until opened. */
+.rq { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 10px; align-items: start; padding: 8px 0; }
 .rq + .rq, .rqKids > .rq { border-top: 1px solid var(--border-light); }
 .rqTop { padding: var(--sp-3) 0; }
 .rqTop + .rqTop, .rqKids + .rqTop { border-top: 1px solid var(--border-light); }
@@ -145,63 +146,50 @@ button { font: inherit; }
 .rqText { min-width: 0; font-family: var(--font-body); font-size: 14px; line-height: 1.5; color: var(--text-body); }
 .rqTop > .rqText, .rqGroup > .rqText { font-family: var(--font-display); font-size: var(--fs-md); font-weight: 700; color: var(--navy); line-height: 1.4; }
 .rqTop > .rqText .rqLabelPlain { font-family: var(--font-body); font-weight: 400; color: var(--text-body); font-size: 14px; }
-.rqToggle { display: inline; background: none; border: 0; padding: 0; margin: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: var(--rad-sm); }
-.rqToggle:hover { color: var(--forest); }
+.rqOpen, .rqToggle { display: inline; background: none; border: 0; padding: 0; margin: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: var(--rad-sm); }
+.rqOpen:hover, .rqToggle:hover { color: var(--forest); }
 .chev { display: inline-block; width: 14px; font-size: 11px; color: var(--text-meta); transition: transform .18s ease; margin-right: 2px; }
 .rqToggle[aria-expanded="false"] .chev { transform: rotate(-90deg); }
-.rqSummary { font-family: var(--font-ui); font-size: var(--fs-2xs); font-weight: 400; color: var(--text-meta); margin-left: var(--sp-2); }
-.rqRule { display: inline-block; font-family: var(--font-ui); font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--bark); background: var(--status-warning-bg); padding: 2px var(--sp-2); border-radius: var(--rad-pill); margin-left: var(--sp-2); vertical-align: 2px; }
+.rqRule { font-family: var(--font-ui); font-size: var(--fs-2xs); font-weight: 400; color: var(--bark); margin-left: var(--sp-2); }
 .rqKids { padding-left: 26px; }
-.rqActs { display: flex; gap: 4px; justify-content: flex-end; white-space: nowrap; margin-top: -2px; }
-.rqSub { grid-column: 2 / -1; display: grid; gap: 3px; margin-top: 4px; }
-.rqSub:empty { display: none; }
+.rqActs { display: flex; gap: 2px; align-items: center; justify-content: flex-end; white-space: nowrap; }
+.rqSub { grid-column: 2 / -1; display: grid; gap: 4px; margin-top: 6px; }
 
-/* Who chips — khaki/bark ACCENT = "your scout did this" (library convention;
-   forest stays reserved for "has resources"). */
-.who { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: var(--sp-2); vertical-align: 2px; }
-.chip { display: inline-flex; align-items: center; gap: 3px; font-family: var(--font-ui); font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 1px 7px; border-radius: var(--rad-pill); border: 1px solid var(--border-mid); color: var(--text-meta); background: var(--cream); white-space: nowrap; line-height: 1.5; }
-.chipDone { background: var(--khaki-light); color: var(--bark); border-color: var(--khaki); }
-.chipPending { background: var(--status-warning-bg); color: var(--bark); border-color: var(--khaki); border-style: dashed; }
-.chipFrac { text-transform: none; letter-spacing: .02em; }
+/* Done / Pending pill — small, dated. Khaki/bark = "your scout did this". */
+.pill { display: inline-flex; align-items: center; font-family: var(--font-ui); font-size: 10px; font-weight: 700; letter-spacing: .02em; padding: 0 6px; border-radius: var(--rad-pill); border: 1px solid var(--khaki); background: var(--khaki-light); color: var(--bark); white-space: nowrap; line-height: 16px; margin-left: 6px; vertical-align: 2px; }
+.pillPending { background: var(--status-warning-bg); border-style: dashed; }
+.frac { font-family: var(--font-ui); font-size: var(--fs-2xs); font-weight: 400; color: var(--text-meta); margin-left: var(--sp-2); white-space: nowrap; }
 
-/* Text-button actions at the row's right edge. */
-.act { display: inline-flex; align-items: center; gap: 5px; background: none; border: 1px solid transparent; border-radius: var(--rad-sm); padding: 3px 8px; font-family: var(--font-ui); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; color: var(--navy); line-height: 1.4; transition: background var(--transition), color var(--transition); }
+/* Actions — three icon-only buttons, tooltip bubble on hover/focus:
+   I did this (forest) · Resources + count (only when > 0) · Add a resource. */
+.act { position: relative; display: inline-flex; align-items: center; gap: 4px; background: none; border: 1px solid transparent; border-radius: var(--rad-sm); padding: 4px 7px; min-height: 28px; font-family: var(--font-ui); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; color: var(--navy); line-height: 1.2; transition: background var(--transition), color var(--transition); }
 .act:hover { background: var(--cream); border-color: var(--border-light); }
 .actProof { color: var(--forest); }
 .act:disabled { color: var(--text-meta); opacity: .6; cursor: default; background: none; border-color: transparent; }
-.actIco { font-size: 13px; width: 14px; text-align: center; }
-@media (max-width: 640px) {
-  /* Icon-only on phones. The label comes back on focus/hover as a small
-     bubble BELOW the button — never inline, because inline text widens the
-     actions column and squeezes the requirement text (caught at 375 px). */
-  .act { position: relative; padding: 5px 8px; }
-  .actLabel { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
-  .act:focus-visible .actLabel, .act:hover .actLabel { position: absolute; top: calc(100% + 2px); right: 0; width: auto; height: auto; clip: auto; overflow: visible; background: var(--navy); color: var(--warm-white); font-size: var(--fs-2xs); padding: 3px 8px; border-radius: var(--rad-sm); white-space: nowrap; z-index: 5; box-shadow: var(--shadow-card); }
-  .actIco { font-size: 15px; }
-}
+.act svg { display: block; }
+.actCount { font-size: var(--fs-2xs); font-weight: 700; color: var(--navy); }
+.act[aria-expanded="true"] { background: var(--cream); border-color: var(--border-light); }
+.tip { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+.act:focus-visible .tip, .act:hover .tip { position: absolute; top: calc(100% + 3px); right: 0; width: auto; height: auto; clip: auto; overflow: visible; background: var(--navy); color: var(--warm-white); font-size: var(--fs-2xs); font-weight: 600; padding: 3px 8px; border-radius: var(--rad-sm); white-space: nowrap; z-index: 5; box-shadow: var(--shadow-card); }
+.act:disabled:hover .tip { display: none; }
 
-/* One quiet line per resource. */
+/* One quiet line per resource: glyph · ★? title · host (muted). */
 .res { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; align-items: center; font-family: var(--font-ui); font-size: 12.5px; color: var(--text-body); min-height: 22px; }
 .resIco { width: 20px; height: 20px; border-radius: var(--rad-sm); display: grid; place-items: center; font-size: 11px; background: var(--newsprint); border: 1px solid var(--border-light); color: var(--navy); }
-.resThumb { width: 56px; height: 32px; border-radius: var(--rad-sm); border: 1px solid var(--border-light); object-fit: cover; background: var(--newsprint); }
-.resLine { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; min-width: 0; }
+.resThumb { width: 48px; height: 27px; border-radius: var(--rad-sm); border: 1px solid var(--border-light); object-fit: cover; background: var(--newsprint); }
+.resLine { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
 .resTitle { font-weight: 600; color: var(--text-head); }
-.resTitle:hover { color: var(--navy); text-decoration: underline; text-underline-offset: 2px; }
-.resHost { display: inline-flex; align-items: center; font-family: var(--font-ui); font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 1px 8px; border-radius: var(--rad-pill); background: var(--cream); color: var(--text-meta); border: 1px solid var(--border-mid); white-space: nowrap; }
-.resPin { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--bark); }
-.resCredit { font-size: 11px; color: var(--text-meta); }
-.resPending .resTitle { color: var(--text-meta); font-weight: 600; }
+a.resTitle:hover { color: var(--navy); text-decoration: underline; text-underline-offset: 2px; }
+.resHost { font-size: 11px; color: var(--text-meta); }
+.resStar { color: var(--bark); font-size: 11px; margin-right: 2px; }
+.resPending .resTitle { color: var(--text-meta); }
 .resPending .resIco { border-style: dashed; color: var(--bark); background: var(--status-warning-bg); }
-.pendingBadge { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 1px 8px; border-radius: var(--rad-pill); background: var(--status-warning-bg); color: var(--bark); border: 1px dashed var(--khaki); }
 .resNew { animation: rise .18s ease-out; }
 @keyframes rise { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
 
-/* Counselor note — the requirement_notes narrative for this one requirement. */
-.note { font-family: var(--font-body); font-style: italic; font-size: 13px; line-height: 1.5; color: var(--text-body); border-left: 3px solid var(--khaki); padding: 3px 12px; margin: 2px 0; }
+/* Counselor note — requirement_notes for this one requirement. */
+.note { font-family: var(--font-body); font-style: italic; font-size: 13px; line-height: 1.5; color: var(--text-body); border-left: 3px solid var(--khaki); padding: 2px 12px; margin: 2px 0; }
 .noteBy { font-family: var(--font-ui); font-style: normal; font-size: var(--fs-2xs); color: var(--text-meta); margin-left: 6px; white-space: nowrap; }
-/* Optionality callout (do any N of…) keeps production's warning treatment. */
-.optNote { font-family: var(--font-body); font-style: italic; font-weight: 600; color: var(--bark); background: var(--status-warning-bg); border-left: 3px solid var(--bark-light); padding: 5px 12px; font-size: 13px; line-height: 1.5; border-radius: 0 var(--rad-sm) var(--rad-sm) 0; }
-.optNoteLabel { font-family: var(--font-ui); font-style: normal; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; font-size: 10px; margin-right: 6px; }
 
 .visitorHint { font-family: var(--font-ui); font-size: var(--fs-xs); color: var(--text-meta); margin: 0 0 var(--sp-3); }
 .visitorHint a { color: var(--navy); font-weight: 700; }
@@ -213,6 +201,8 @@ button { font: inherit; }
   .rqKids { padding-left: 12px; }
   .rq { column-gap: 8px; }
   .rqText { font-size: 13.5px; }
+  .act { padding: 4px 5px; } /* three icons at 375 px: give the label the width back */
+  .rqActs { gap: 0; }
   .res { font-size: 12px; }
 }
 
@@ -234,8 +224,8 @@ dialog[open] { animation: fadeIn .15s ease-out; }
 .fieldRow { margin-bottom: var(--sp-4); }
 .fieldLabel { display: block; font-family: var(--font-ui); font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-meta); margin-bottom: 6px; }
 .labelQualifier { text-transform: none; letter-spacing: 0; font-weight: 400; }
-.textInput, .textArea, .selectInput { width: 100%; background: var(--warm-white); border: 1px solid var(--border-mid); border-radius: var(--rad-sm); font-family: var(--font-ui); font-size: 16px; padding: 11px 13px; color: var(--text-body); }
-.textInput:focus-visible, .textArea:focus-visible, .selectInput:focus-visible { border-color: var(--navy); outline: var(--focus-ring); outline-offset: 1px; }
+.textInput, .textArea { width: 100%; background: var(--warm-white); border: 1px solid var(--border-mid); border-radius: var(--rad-sm); font-family: var(--font-ui); font-size: 16px; padding: 11px 13px; color: var(--text-body); }
+.textInput:focus-visible, .textArea:focus-visible { border-color: var(--navy); outline: var(--focus-ring); outline-offset: 1px; }
 .textArea { min-height: 110px; resize: vertical; line-height: 1.55; }
 .fieldHint { font-family: var(--font-ui); font-size: var(--fs-xs); color: var(--text-meta); margin-top: 6px; line-height: 1.5; }
 .fieldError { font-family: var(--font-ui); font-size: var(--fs-sm); font-weight: 600; color: var(--status-danger); background: var(--status-danger-bg); border: 1px solid color-mix(in srgb, var(--status-danger) 35%, var(--border-mid)); border-radius: var(--rad-sm); padding: 10px 14px; margin-top: var(--sp-2); }
@@ -246,14 +236,12 @@ dialog[open] { animation: fadeIn .15s ease-out; }
 .seg label { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-ui); font-size: var(--fs-sm); font-weight: 600; padding: 9px 14px; border: 1px solid var(--border-mid); border-radius: var(--rad-sm); background: var(--warm-white); color: var(--text-body); cursor: pointer; min-height: 40px; }
 .seg input:checked + label { background: var(--navy); color: var(--warm-white); border-color: var(--navy); }
 .seg input:focus-visible + label { outline: var(--focus-ring); outline-offset: 2px; }
-.seg input:disabled + label { opacity: .55; cursor: default; }
 .radioRow { display: flex; align-items: flex-start; gap: 10px; padding: 7px 4px; margin: 2px 0; font-family: var(--font-body); font-size: 14px; line-height: 1.45; cursor: pointer; border-radius: var(--rad-sm); }
 .radioRow:hover { background: var(--cream); }
 .radioRow input { flex-shrink: 0; width: 16px; height: 16px; margin-top: 2px; }
 .radioRow .muted { color: var(--text-meta); font-family: var(--font-ui); font-size: var(--fs-xs); }
 .fileDrop { border: 1px dashed var(--border-mid); border-radius: var(--rad-sm); padding: 14px; font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); background: var(--cream); }
 .fileDrop input { display: block; margin-top: 8px; font-size: 14px; max-width: 100%; }
-
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); font-family: var(--font-ui); font-size: var(--fs-sm); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; border-radius: var(--rad-sm); padding: 12px 22px; min-height: 44px; cursor: pointer; }
 .btn:disabled { opacity: .55; cursor: default; }
 .btnPrimary { background: var(--forest); color: var(--warm-white); border: none; }
@@ -262,16 +250,10 @@ dialog[open] { animation: fadeIn .15s ease-out; }
 .btnSecondary:hover { border-color: var(--forest); color: var(--forest); background: var(--cream); }
 .btnNavy { background: var(--navy); color: var(--warm-white); border: none; }
 .btnNavy:hover:not(:disabled) { background: var(--navy-hover); }
-
-.notice { font-family: var(--font-ui); font-size: var(--fs-sm); font-weight: 600; border-radius: var(--rad-sm); padding: 10px 14px; line-height: 1.5; }
-.noticeSuccess { color: var(--status-success); background: var(--status-success-bg); border: 1px solid var(--forest-light); }
-.noticeInfo { color: var(--status-info); background: var(--status-info-bg); border: 1px solid var(--border-mid); }
-.noticeWarning { color: var(--text-head); background: var(--status-warning-bg); border: 1px solid var(--khaki); }
 .confirmDone { text-align: center; padding: 8px 0 4px; }
 .bigCheck { font-size: 44px; color: var(--forest); margin-bottom: 6px; line-height: 1; }
 .confirmTitle { font-family: var(--font-display); font-size: 24px; color: var(--text-head); margin: 0 0 10px; }
 .confirmText { font-family: var(--font-body); font-size: 15px; line-height: 1.6; color: var(--text-body); max-width: 46ch; margin: 0 auto 8px; }
-.previewRow { margin-top: 12px; }
 
 /* ── Handoff notes disclosure ── */
 .handoff { margin-top: 48px; border-top: 2px solid var(--border-mid); padding-top: 18px; }
@@ -280,7 +262,6 @@ dialog[open] { animation: fadeIn .15s ease-out; }
 .handoffBody { margin-top: 16px; background: var(--warm-white); border: 1px solid var(--border-light); border-radius: var(--rad-sm); padding: 20px 24px; font-family: var(--font-ui); font-size: var(--fs-sm); line-height: 1.6; color: var(--text-body); }
 .handoffBody h2 { font-family: var(--font-display); font-size: var(--fs-xl); margin: 22px 0 8px; color: var(--text-head); }
 .handoffBody h2:first-child { margin-top: 0; }
-.handoffBody h3 { font-family: var(--font-ui); font-size: var(--fs-2xs); letter-spacing: .12em; text-transform: uppercase; color: var(--text-meta); margin: 18px 0 6px; }
 .handoffBody table { border-collapse: collapse; width: 100%; font-size: var(--fs-xs); }
 .handoffBody th, .handoffBody td { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom: 1px solid var(--border-light); }
 .handoffBody th { color: var(--text-meta); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
@@ -318,7 +299,7 @@ dialog[open] { animation: fadeIn .15s ease-out; }
 <header class="pageHeader">
   <div class="kicker"><a href="#">Resource Library</a><span class="kickerSep">·</span>Merit Badge</div>
   <h1 class="pageTitle">Chemistry</h1>
-  <p class="pageLede">Elective merit badge &mdash; requirements, troop progress, and <span id="ledeCount">11 resources</span> the troop recommends.
+  <p class="pageLede">Elective merit badge &mdash; requirements, troop progress, and <span id="ledeCount">12 resources</span> the troop recommends.
     <span class="actionRow">
       <a class="actionLink" href="https://www.scouting.org/merit-badges/chemistry/" target="_blank" rel="noopener">Official BSA page ↗</a>
       <a class="actionLink" href="#" onclick="return false">Workbook (PDF) ↗</a>
@@ -345,8 +326,8 @@ dialog[open] { animation: fadeIn .15s ease-out; }
   </div>
   <div class="reqCard">
     <p class="reqDisclaimer">From the official BSA merit badge pamphlet &mdash; wording is paraphrased here. Confirm against the current pamphlet for sign-off.</p>
+    <p class="legend" id="legend"></p>
     <p class="visitorHint" id="visitorHint" hidden>Sign in with your <a href="#">family password</a> to see your scout&rsquo;s progress on each requirement and to send in proof when one is done.</p>
-    <div class="legend" id="legend" aria-hidden="true"></div>
     <div id="reqList"></div>
   </div>
 
@@ -354,73 +335,64 @@ dialog[open] { animation: fadeIn .15s ease-out; }
     <button type="button" class="handoffToggle" id="handoffToggle" aria-expanded="false" aria-controls="handoffBody">Handoff notes ▸</button>
     <div class="handoffBody" id="handoffBody" hidden>
       <h2>What this prototype replaces</h2>
-      <p>Today <code>/library/mb/[mbId]</code> renders four stacked sections after the header: Scout Progress grid → Requirements tree → Whole-badge resources (+ one SectionDivider per top-level requirement that has resources) → an &ldquo;I did this&rdquo; radio picker listing every leaf again. The last three all enumerate the same requirement codes. This prototype keeps the header, stats and grid unchanged and folds the other three into <strong>one list</strong> whose row grammar is: <em>code · label · who-chips · [resources] · [counselor note] · actions</em>. Whole-badge resources sit at the top of the same list as a &ldquo;For the whole badge&rdquo; row (ghost <code>MB</code> tag) &mdash; no separate divider.</p>
+      <p>Today <code>/library/mb/[mbId]</code> renders four stacked sections after the header: Scout Progress grid → Requirements tree → Whole-badge resources (+ one SectionDivider per top-level requirement with resources) → an &ldquo;I did this&rdquo; radio picker listing every leaf again. This prototype keeps the header, stats and grid, and folds the other three into <strong>one list</strong>. Whole-badge resources are the first row of that list (&ldquo;For the whole badge&rdquo;, ghost <code>MB</code> tag) &mdash; no separate divider.</p>
+
+      <h2>Row grammar (rev 2, after Patrick&rsquo;s review)</h2>
+      <p><strong>At rest:</strong> code · label · small <em>Done · Jun 12</em> / <em>Pending</em> pill per own scout · three icon-only actions in this order: <strong>I did this</strong> · <strong>Resources</strong> + count (only when &gt; 0) · <strong>Add a resource</strong>. Nothing else. Every icon has a <code>title</code>, an <code>aria-label</code> naming the requirement, and a tooltip bubble on hover/focus. <strong>Opened</strong> (click the label or the Resources icon): one quiet line per resource (glyph · ★ title · host in muted text; YouTube = static thumbnail, links out) and the counselor note. Group rows (1, 2, 3, 4, 8): the label toggles the child rows; the Resources icon opens the group&rsquo;s own resources. Rows with nothing attached have no Resources icon and a plain (non-clickable) label &mdash; my call to cut noise; a permanent icon with &ldquo;0&rdquo; is the alternative. Not-yet-done scouts show no pill at all.</p>
+      <p><strong>Legend:</strong> one line at the top of the list naming the three icons (the I did this entry drops out for visitors, who have no such button). <strong>Grid:</strong> the navy header rule now runs under the second header row everywhere, so the Scout column&rsquo;s rule meets Award&rsquo;s. Decided by Patrick 2026-09-07 after two rounds: the claim flow stays on the row as an icon; &ldquo;Add a resource&rdquo; replaces &ldquo;Suggest a resource&rdquo; in every label.</p>
 
       <h2>Row anatomy → schema</h2>
       <div class="tableWrap"><table>
         <thead><tr><th>Row element</th><th>Source</th><th>Notes</th></tr></thead>
         <tbody>
-          <tr><td>Code tag + label, group/leaf shape, &ldquo;Do any N of&rdquo; callout</td><td><code>merit_badge_requirements</code> (code, label, parent, complete_rule, complete_n) via <code>buildReqTree</code></td><td>Unchanged from <code>MbRequirementsTree</code>. Top-level leaves (5, 6, 7) render as a single leaf row with the large tag.</td></tr>
-          <tr><td>&ldquo;For the whole badge&rdquo; row</td><td><code>library_placements</code> target_kind=<code>mb</code>, target_key=<code>chemistry</code></td><td>Today&rsquo;s middle section. Same line grammar; no &ldquo;I did this&rdquo; (proof always names a leaf).</td></tr>
-          <tr><td>Resource line (glyph · title · host · ★ Pinned)</td><td><code>library_placements</code> target_kind=<code>mb_req</code>, target_key=<code>chemistry-4c</code> ⋈ <code>library_resources</code> (kind, title, host, url, thumbnail_url; status=published; visibility filter)</td><td>Ordered pinned desc, sort_order. A placement whose code is a top-level code (e.g. <code>chemistry-4</code>) renders on the group header row. YouTube = static thumbnail, links out (no embed). Empty state is nothing.</td></tr>
-          <tr><td>Counselor note</td><td><code>requirement_notes</code> target_kind=<code>mb_req</code>, target_key=<code>chemistry-2c</code>; narrative_md, updated_by</td><td>Short markdown, one per requirement. The badge-level narrative (<code>loadNarrative('mb', …)</code>) stays above the stats as today.</td></tr>
-          <tr><td>Who-chips (AD / LD)</td><td><code>ledger_entries</code> (scout_id, code=<code>chemistry-4c</code>) for the viewer&rsquo;s household scouts (<code>household_members</code> from the family session)</td><td>Khaki/bark accent = &ldquo;your scout did this&rdquo; (library convention; forest stays &ldquo;has resources&rdquo;). Group rows show a fraction per scout. Visitors see no chips.</td></tr>
-          <tr><td>⏳ on a chip</td><td><code>requirement_submissions</code> status=<code>pending</code> for (scout_id, target_key)</td><td>Shows the household that proof is already in the queue; the &ldquo;I did this&rdquo; dialog disables that scout with &ldquo;proof pending&rdquo;.</td></tr>
-          <tr><td>Pending suggestion line</td><td><code>library_resources</code> status=<code>pending</code>, submitted_person_id = viewer&rsquo;s person id, joined through its placement target</td><td>Visible to the submitter only. Everyone else sees nothing until the webmaster approves. Scout and parent are different submitters (switch viewers to see this).</td></tr>
-          <tr><td>&ldquo;I did this&rdquo;</td><td>opens the proof flow pre-targeted: <code>/library/submit-proof?target=mb_req:chemistry-4c</code></td><td>Prototyped as an in-page dialog; production may keep the route. Greyed (not hidden) when every own scout is already signed off.</td></tr>
-          <tr><td>&ldquo;Suggest a resource&rdquo;</td><td>opens the submit flow pre-targeted: <code>/library/submit?target=mb_req:chemistry-4c</code> (today only <code>mb:chemistry</code> exists)</td><td>Available to every viewer; a visitor supplies a name (see open questions).</td></tr>
+          <tr><td>Code tag + label, group/leaf shape, &ldquo;do any one&rdquo;</td><td><code>merit_badge_requirements</code> (code, label, parent, complete_rule, complete_n) via <code>buildReqTree</code></td><td>Unchanged from <code>MbRequirementsTree</code>; optionality is a muted suffix, not a pill.</td></tr>
+          <tr><td>&ldquo;For the whole badge&rdquo; row</td><td><code>library_placements</code> target_kind=<code>mb</code>, target_key=<code>chemistry</code></td><td>Today&rsquo;s middle section. No &ldquo;I did this&rdquo; (proof names a leaf).</td></tr>
+          <tr><td>Resources icon + count; resource lines</td><td><code>library_placements</code> target_kind=<code>mb_req</code>, target_key=<code>chemistry-4c</code> ⋈ <code>library_resources</code> (kind, title, host, url, thumbnail_url; status=published; visibility)</td><td>Count = published placements on that exact code (+ the viewer&rsquo;s own pending ones + 1 if a note exists). Ordered pinned desc, sort_order; pinned shows a ★. A placement on a top-level code renders on the group row.</td></tr>
+          <tr><td>Counselor note</td><td><code>requirement_notes</code> target_kind=<code>mb_req</code>; narrative_md, updated_by</td><td>Inside the opened row. Badge-level narrative stays above the stats.</td></tr>
+          <tr><td>Done · date pill</td><td><code>ledger_entries</code> (scout_id, code, entry date) for the viewer&rsquo;s household scouts</td><td><code>fmtDate</code> style: short month + day, year only when not the current year. Two scouts → initials prefix (&ldquo;AD · Jun 12&rdquo;). Group rows show a muted &ldquo;AD 3/4&rdquo;.</td></tr>
+          <tr><td>Pending pill</td><td><code>requirement_submissions</code> status=<code>pending</code> (scout_id, target_key)</td><td>Proof in the queue; the dialog disables that scout.</td></tr>
+          <tr><td>Pending suggestion line</td><td><code>library_resources</code> status=<code>pending</code>, submitted_person_id = viewer</td><td>Submitter only; everyone else sees nothing until approved. The row auto-opens after sending so the line is visible.</td></tr>
+          <tr><td>I did this icon</td><td><code>/library/submit-proof?target=mb_req:chemistry-4c</code></td><td>In-page dialog here. Greyed (not hidden) when every own scout is done or pending; the tooltip then says why.</td></tr>
+          <tr><td>Add a resource icon</td><td><code>/library/submit?target=mb_req:chemistry-4c</code> (today only <code>mb:chemistry</code>)</td><td>Icon-only, <code>title</code> + <code>aria-label</code> per row, tooltip bubble on hover/focus. Available to every viewer.</td></tr>
         </tbody>
       </table></div>
 
       <h2>Plan: attaching a video / link / doc to ONE requirement</h2>
-      <p>The schema already has the address (<code>mb_req</code> + <code>{mbId}-{code}</code>) and the page already fetches every <code>mb_req</code> placement for the badge with one <code>LIKE 'chemistry-%'</code> query. What is missing is the entry point and the display granularity.</p>
       <ol>
-        <li><strong>Entry point.</strong> The row&rsquo;s Suggest action passes <code>target=mb_req:{mbId}-{code}</code>. The submit flow validates the code exists in <code>merit_badge_requirements</code> for that badge (leaf or top-level), shows the target read-only at the top of the form (as the dialog here does) with a &ldquo;wrong requirement? go back&rdquo; link. No free-text target picking.</li>
-        <li><strong>Write.</strong> Submit inserts <code>library_resources</code> (status=pending, submitted_person_id from the session, submitted_by_label) and its <code>library_placements</code> row in the same transaction. The placement exists from the start so the review queue and the submitter&rsquo;s pending line both know where it belongs; public reads are already filtered on <code>library_resources.status</code>, so nothing leaks.</li>
-        <li><strong>Display.</strong> In <code>page.tsx</code>, replace the <code>byTopCode</code> grouping (<code>topLevelCodeOf</code>) with an exact-code map; a placement on a top-level code renders on the group header row. Delete the per-top-level SectionDivider blocks, the whole-badge <code>ResourceCard</code> list, and <code>MbProofPicker</code>; the tree component grows the sub-row and actions.</li>
-        <li><strong>Submitter&rsquo;s pending line.</strong> One extra query when a family/leader session is present: pending resources for this badge where <code>submitted_person_id</code> = the viewer. Visitors have no identity, so their &ldquo;sent for review&rdquo; is the dialog&rsquo;s success state only.</li>
-        <li><strong>Review queue.</strong> Show the target as &ldquo;Chemistry › 4c — Flame tests&rdquo;; allow the webmaster to re-target (edit the placement) and pin/sort before approving &mdash; both already exist at the placement level.</li>
-        <li><strong>Notes.</strong> The narrative editor in <code>/admin/library</code> gains a requirement picker so a counselor note can be saved on an <code>mb_req</code> target; this page loads them with the same <code>LIKE</code> pattern as placements.</li>
-        <li><strong>Rank page.</strong> <code>/library/rank/[rankId]</code> adopts the identical row grammar with <code>rank_req</code> + <code>{rankId}-{code}</code>; the per-leaf route can then link to the row anchor instead of a separate page. Not built here.</li>
+        <li><strong>Entry point.</strong> The Add a resource icon passes <code>target=mb_req:{mbId}-{code}</code>; the submit flow validates the code against <code>merit_badge_requirements</code>, shows it read-only with a go-back link.</li>
+        <li><strong>Write.</strong> Insert <code>library_resources</code> (status=pending, submitted_person_id) and its <code>library_placements</code> row together, so the queue and the submitter&rsquo;s pending line know the target from the start; public reads already filter on status.</li>
+        <li><strong>Display.</strong> In <code>page.tsx</code> replace the <code>byTopCode</code>/<code>topLevelCodeOf</code> grouping with an exact-code map; delete the per-top-level dividers, the whole-badge card list, and <code>MbProofPicker</code>; the tree component grows the accordion sub-row and the actions.</li>
+        <li><strong>Submitter&rsquo;s pending line.</strong> One extra query for a signed-in viewer: pending resources on this badge where <code>submitted_person_id</code> = viewer.</li>
+        <li><strong>Review queue.</strong> Show the target as &ldquo;Chemistry › 4c — Flame tests&rdquo;; re-target, pin, sort at the placement level (exists).</li>
+        <li><strong>Notes.</strong> Narrative editor gains a requirement picker for <code>mb_req</code> targets.</li>
+        <li><strong>Rank page.</strong> Same row grammar with <code>rank_req</code> + <code>{rankId}-{code}</code>. Not built here.</li>
       </ol>
-
-      <h2>States demonstrated</h2>
-      <ul>
-        <li><strong>Viewer:</strong> scout (own chips, I did this), parent with two scouts (two chips per row, scout picker in the proof dialog), visitor (no chips, no I did this, Suggest available, sign-in hint).</li>
-        <li><strong>Rows:</strong> 4c has three resources incl. a pinned YouTube thumbnail and (for the parent) a pending suggestion; 2c and 4d carry counselor notes; req 4 has a group-level document; req 8 is &ldquo;do any one of&rdquo;; 6 has nothing (renders nothing extra).</li>
-        <li><strong>Proof dialog:</strong> scout picker (done scouts disabled, pending scouts disabled), photo / written report / link, inline validation error, Sending… (700 ms mock), success with what-happens-next, row chip flips to ⏳.</li>
-        <li><strong>Suggest dialog:</strong> kind (video / link / document / image), URL or file (file only for document/image), title, note, submitter name for visitors, validation, Sending…, &ldquo;Sent for review&rdquo;, pending line appears in the row for this viewer only.</li>
-        <li><strong>Collapse/expand:</strong> per group and all-at-once; collapsed header shows &ldquo;4 parts · 3 resources · 1 note&rdquo;. Button + <code>hidden</code>, not <code>&lt;details&gt;</code> (D-070).</li>
-      </ul>
 
       <h2>Interaction spec</h2>
       <ul>
-        <li>Chevron rotate 180 ms ease; dialog fade/slide 150 ms ease-out; new pending line 180 ms rise. No other motion.</li>
-        <li>Actions: 12 px Open Sans 700 text buttons, forest for I did this, navy for Suggest; hover = cream fill. ≤ 640 px: icon only (✓ / +), label returns on focus-visible and hover, <code>aria-label</code> always present, 30 px min target.</li>
-        <li>Focus: <code>:focus-visible</code> ring on every control (navy-light 2 px, 2 px offset). Dialogs are native <code>showModal()</code> &mdash; focus trap, Esc, and focus return come free. Success is announced through a polite live region.</li>
-        <li>Rows are a CSS grid: tag / text / actions, with the sub-row spanning text + actions. Children indent 26 px (12 px on phones). The list is designed to hold 80+ leaves (First Aid) without a wall: one line per resource, notes one line, chips ≤ 2 per row for a family.</li>
+        <li>Accordion: button + <code>hidden</code> with <code>aria-expanded</code>/<code>aria-controls</code>, never <code>&lt;details&gt;</code> (D-070). Label button and Resources icon both control the same sub-row. Expand all / Collapse all drive both the group children and every sub-row.</li>
+        <li>Chevron 180 ms ease; dialog 150 ms ease-out; new pending line 180 ms rise.</li>
+        <li>Icons are inline SVG in navy, 28 px min hit area, tooltip bubble below the button on hover/focus-visible (never inline, so the row never reflows — verified at 375 px).</li>
+        <li>Dialogs are native <code>showModal()</code>; success announced through a polite live region.</li>
       </ul>
 
       <h2>What is mocked</h2>
       <ul>
-        <li>All data is in-page JS; nothing persists past a reload. Names, household, counselor and resources are invented. Requirement text is BSA&rsquo;s (paraphrased, as in production).</li>
-        <li>YouTube thumbnails are inline SVG placeholders; production uses <code>resourceThumbnail()</code>.</li>
-        <li>Photo upload accepts a file but never reads it. Proof and suggestions are appended to in-memory arrays; &ldquo;Reset demo data&rdquo; restores the seed.</li>
-        <li>The site nav and footer are stand-ins. The masthead&rsquo;s &ldquo;signed in as&rdquo; reflects the viewer toggle.</li>
+        <li>All data in-page; invented scouts, household, counselor, resources, dates. Requirement text is BSA&rsquo;s (paraphrased).</li>
+        <li>YouTube thumbnails are inline SVG placeholders. Uploads are never read. &ldquo;Reset demo data&rdquo; restores the seed.</li>
       </ul>
 
       <h2>Open questions</h2>
       <ol>
-        <li>Scout-login proof: Family-Identity-Auth Phase 0 refuses proof from a scout session. This prototype shows &ldquo;I did this&rdquo; enabled for the scout viewer (per the brief). Should production grey it with &ldquo;ask a parent&rdquo; instead?</li>
-        <li>Should the suggest form allow re-targeting within the badge (a requirement dropdown), or stay strictly pre-targeted with a go-back link?</li>
-        <li>Do group-level placements (<code>chemistry-4</code>) remain allowed, or must every resource attach to a leaf? Existing placements were grouped by top-level code; a leaf-only rule needs a migration pass.</li>
-        <li>Visitors can suggest today via <code>/library/submit</code>; does a visitor need to leave an email for follow-up, or is a name label enough?</li>
+        <li>Scout-login proof: Family-Identity-Auth Phase 0 refuses it. Shown enabled here per the brief; grey with &ldquo;ask a parent&rdquo; instead?</li>
+        <li>Add-a-resource form: allow re-targeting within the badge, or strictly pre-targeted?</li>
+        <li>Group-level placements (<code>chemistry-4</code>): keep, or leaf-only with a migration pass?</li>
+        <li>Rows with nothing attached: no icon (as here) or a permanent icon with 0?</li>
       </ol>
     </div>
   </div>
 </main>
 
-<!-- ── I did this ── -->
 <dialog id="proofDialog" aria-labelledby="proofTitle">
   <button type="button" class="dlgClose" data-close aria-label="Close">×</button>
   <div class="dlgHead">
@@ -430,36 +402,27 @@ dialog[open] { animation: fadeIn .15s ease-out; }
   </div>
   <form id="proofForm" novalidate>
     <div class="dlgBody" id="proofBody"></div>
-    <div class="dlgActs" id="proofActs">
-      <button type="button" class="btn btnSecondary" data-close>Cancel</button>
-      <button type="submit" class="btn btnPrimary" id="proofSubmit">Send to a leader</button>
-    </div>
+    <div class="dlgActs" id="proofActs"></div>
   </form>
 </dialog>
 
-<!-- ── Suggest a resource ── -->
 <dialog id="suggestDialog" aria-labelledby="suggestTitle">
   <button type="button" class="dlgClose" data-close aria-label="Close">×</button>
   <div class="dlgHead">
-    <p class="dlgKicker">Suggest a resource</p>
+    <p class="dlgKicker">Add a resource</p>
     <h2 class="dlgTitle" id="suggestTitle"></h2>
     <div class="dlgTarget" id="suggestTarget"></div>
   </div>
   <form id="suggestForm" novalidate>
     <div class="dlgBody" id="suggestBody"></div>
-    <div class="dlgActs" id="suggestActs">
-      <button type="button" class="btn btnSecondary" data-close>Cancel</button>
-      <button type="submit" class="btn btnNavy" id="suggestSubmit">Send for review</button>
-    </div>
+    <div class="dlgActs" id="suggestActs"></div>
   </form>
 </dialog>
 
 <div class="sr-only" aria-live="polite" id="live"></div>
 
 <script>
-/* ═══════════════════════════════════════════════════════════════════════════
-   DATA — invented. Shape mirrors the production tables named in the notes.
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══ DATA — invented. Shape mirrors the production tables named in the notes. ═══ */
 const MB = 'chemistry';
 const TREE = [
   { code: '1', label: 'Chemistry and safety', children: [
@@ -489,60 +452,60 @@ const TREE = [
 ];
 const LEAVES = TREE.flatMap(t => t.children.length ? t.children : [t]);
 const ALL = LEAVES.map(l => l.code);
-const S = (...c) => new Set(c);
+/* codes → ISO completion date (ledger entry date), spaced from a start date. */
+function done(codes, start, stepDays = 9) {
+  const m = new Map(); let d = new Date(start + 'T12:00:00');
+  for (const c of codes) { m.set(c, d.toISOString().slice(0, 10)); d = new Date(d.getTime() + stepDays * 864e5); }
+  return m;
+}
 const SEED_SCOUTS = [
-  { id: 'ari',   name: 'Ari D.',   initials: 'AD', rank: 'Star',         awarded: false, codes: S('1a','1b','1c','1d','2a','2b','2c','3a','3b','4a','4b','4c') },
-  { id: 'elise', name: 'Elise W.', initials: 'EW', rank: 'First Class',  awarded: false, codes: S(...ALL.filter(c => !['8a','8b'].includes(c))) },
-  { id: 'jonah', name: 'Jonah B.', initials: 'JB', rank: 'Tenderfoot',   awarded: false, codes: S('3a','3b') },
-  { id: 'leo',   name: 'Leo D.',   initials: 'LD', rank: 'Second Class', awarded: false, codes: S('1a','1b','3a') },
-  { id: 'maya',  name: 'Maya K.',  initials: 'MK', rank: 'Life',         awarded: true,  codes: S(...ALL) },
-  { id: 'nia',   name: 'Nia S.',   initials: 'NS', rank: 'Life',         awarded: true,  codes: S(...ALL.filter(c => c !== '8a' && c !== '8b')) },
-  { id: 'owen',  name: 'Owen P.',  initials: 'OP', rank: 'First Class',  awarded: false, codes: S('1a','1b','1c','1d','2a','2b') },
-  { id: 'theo',  name: 'Theo V.',  initials: 'TV', rank: 'Star',         awarded: false, codes: S('1a','1b','1c','1d','2a','2b','2c','3a','3b','4a','4b','4c','4d','5','6') }
+  { id: 'ari',   name: 'Ari D.',   initials: 'AD', rank: 'Star',         awarded: false, codes: done(['1a','1b','1c','1d','2a','2b','2c','3a','3b','4a','4b','4c'], '2026-03-08', 14) },
+  { id: 'elise', name: 'Elise W.', initials: 'EW', rank: 'First Class',  awarded: false, codes: done(ALL.filter(c => !['8a','8b'].includes(c)), '2026-01-11') },
+  { id: 'jonah', name: 'Jonah B.', initials: 'JB', rank: 'Tenderfoot',   awarded: false, codes: done(['3a','3b'], '2026-08-23', 7) },
+  { id: 'leo',   name: 'Leo D.',   initials: 'LD', rank: 'Second Class', awarded: false, codes: done(['1a','1b','3a'], '2025-11-16', 21) },
+  { id: 'maya',  name: 'Maya K.',  initials: 'MK', rank: 'Life',         awarded: true,  codes: done(ALL, '2025-09-14') },
+  { id: 'nia',   name: 'Nia S.',   initials: 'NS', rank: 'Life',         awarded: true,  codes: done(ALL.filter(c => c !== '8a' && c !== '8b'), '2025-10-05') },
+  { id: 'owen',  name: 'Owen P.',  initials: 'OP', rank: 'First Class',  awarded: false, codes: done(['1a','1b','1c','1d','2a','2b'], '2026-05-03', 10) },
+  { id: 'theo',  name: 'Theo V.',  initials: 'TV', rank: 'Star',         awarded: false, codes: done(['1a','1b','1c','1d','2a','2b','2c','3a','3b','4a','4b','4c','4d','5','6'], '2026-02-01', 12) }
 ];
 const YT = "data:image/svg+xml;utf8," + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 112 63'><rect width='112' height='63' fill='#2b2b2b'/><rect x='6' y='6' width='100' height='51' fill='#4a5a6a'/><rect x='6' y='40' width='100' height='17' fill='#1e3a4a'/><path d='M46 21l22 10.5L46 42z' fill='#fff'/></svg>");
 const KIND = { link: { ico: '🔗', label: 'Link' }, video: { ico: '▶', label: 'Video' }, document: { ico: '📄', label: 'Document' }, image: { ico: '🖼', label: 'Image' }, post: { ico: '📝', label: 'Troop post' } };
-/* library_placements ⋈ library_resources, status=published */
+const ICO_RES = '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.6 5.4 6.2 9.8a1.5 1.5 0 0 0 2.1 2.1l5-5a3 3 0 0 0-4.2-4.2L3.5 8.3a4.5 4.5 0 0 0 6.4 6.4l3.3-3.3"/></svg>';
+const ICO_PLUS = '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>';
+const ICO_CHECK = '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2"/><path d="m5.2 8.2 1.9 1.9 3.8-4"/></svg>';
 const SEED_RESOURCES = [
-  { id: 1,  target: 'mb', kind: 'document', title: 'Chemistry workbook — troop-annotated copy', host: 'Google Drive', url: '#', pinned: true,  credit: 'Shared by Mr. Halvorsen (counselor)' },
-  { id: 2,  target: 'mb', kind: 'post',     title: 'How to prepare for your counselor meeting',       host: 'Troop post',   url: '#', pinned: false, credit: 'Troop 79' },
-  { id: 3,  target: '1a', kind: 'link',     title: 'SDS search — find a safety data sheet by product name', host: 'chemicalsafety.com', url: '#', pinned: false, credit: 'Shared by Priya M.' },
-  { id: 4,  target: '1c', kind: 'image',    title: 'GHS hazard pictograms poster (print it)',          host: 'Image',        url: '#', pinned: false, credit: 'Shared by Mr. Halvorsen' },
-  { id: 5,  target: '3b', kind: 'video',    title: 'Red cabbage pH indicator — kitchen demo (6 min)', host: 'YouTube',   url: 'https://www.youtube.com/', pinned: false, credit: 'Shared by Theo V.', thumb: YT },
-  { id: 6,  target: '4',  kind: 'document', title: 'Camp chemistry safety checklist (PDF)',            host: 'Google Drive', url: '#', pinned: false, credit: 'Troop 79 quartermaster' },
-  { id: 7,  target: '4c', kind: 'video',    title: 'Flame test colors explained — five elements (4 min)', host: 'YouTube', url: 'https://www.youtube.com/', pinned: true, credit: 'Shared by Mr. Halvorsen', thumb: YT },
-  { id: 8,  target: '4c', kind: 'link',     title: 'Flame test color reference chart',                 host: 'webelements.com', url: '#', pinned: false, credit: 'Shared by Nia S.' },
-  { id: 9,  target: '4c', kind: 'document', title: 'Troop flame-test lab sheet (fill in and bring)',   host: 'Google Drive', url: '#', pinned: false, credit: 'Troop 79' },
-  { id: 10, target: '5',  kind: 'video',    title: 'Plastics, chemistry and single-use waste (9 min)', host: 'YouTube',      url: 'https://www.youtube.com/', pinned: false, credit: 'Shared by Elise W.', thumb: YT },
-  { id: 11, target: '7',  kind: 'link',     title: 'EPA, FDA, OSHA — who regulates what',           host: 'epa.gov',      url: '#', pinned: false, credit: 'Shared by Ms. Okafor' },
-  { id: 12, target: '8c', kind: 'link',     title: 'Chemistry careers overview',                        host: 'acs.org',      url: '#', pinned: false, credit: 'Shared by Maya K.' }
+  { id: 1,  target: 'mb', kind: 'document', title: 'Chemistry workbook — troop-annotated copy', host: 'Google Drive', url: '#', pinned: true },
+  { id: 2,  target: 'mb', kind: 'post',     title: 'How to prepare for your counselor meeting', host: 'Troop post', url: '#', pinned: false },
+  { id: 3,  target: '1a', kind: 'link',     title: 'SDS search — find a safety data sheet by product name', host: 'chemicalsafety.com', url: '#', pinned: false },
+  { id: 4,  target: '1c', kind: 'image',    title: 'GHS hazard pictograms poster (print it)', host: 'Image', url: '#', pinned: false },
+  { id: 5,  target: '3b', kind: 'video',    title: 'Red cabbage pH indicator — kitchen demo (6 min)', host: 'YouTube', url: 'https://www.youtube.com/', pinned: false, thumb: YT },
+  { id: 6,  target: '4',  kind: 'document', title: 'Camp chemistry safety checklist (PDF)', host: 'Google Drive', url: '#', pinned: false },
+  { id: 7,  target: '4c', kind: 'video',    title: 'Flame test colors explained — five elements (4 min)', host: 'YouTube', url: 'https://www.youtube.com/', pinned: true, thumb: YT },
+  { id: 8,  target: '4c', kind: 'link',     title: 'Flame test color reference chart', host: 'webelements.com', url: '#', pinned: false },
+  { id: 9,  target: '4c', kind: 'document', title: 'Troop flame-test lab sheet (fill in and bring)', host: 'Google Drive', url: '#', pinned: false },
+  { id: 10, target: '5',  kind: 'video',    title: 'Plastics, chemistry and single-use waste (9 min)', host: 'YouTube', url: 'https://www.youtube.com/', pinned: false, thumb: YT },
+  { id: 11, target: '7',  kind: 'link',     title: 'EPA, FDA, OSHA — who regulates what', host: 'epa.gov', url: '#', pinned: false },
+  { id: 12, target: '8c', kind: 'link',     title: 'Chemistry careers overview', host: 'acs.org', url: '#', pinned: false }
 ];
-/* requirement_notes on mb_req targets */
 const NOTES = {
   '2c': { text: 'Start the two yeast jars the night before — the alcohol jar should stay flat. Bring both jars and your notes to the meeting.', by: 'Mr. Halvorsen, counselor' },
   '4d': { text: 'The troop owns two nylon kits. Ask the quartermaster before buying one.', by: 'Ms. Okafor, quartermaster' }
 };
-/* library_resources status=pending, keyed to the submitter (viewer) */
 const SEED_PENDING = [ { id: 901, target: '4c', kind: 'video', title: 'Safe flame-test setup for scouts', host: 'YouTube', by: 'parent' } ];
-/* requirement_submissions status=pending */
 const SEED_PROOFS = [ { scoutId: 'ari', code: '4d' }, { scoutId: 'leo', code: '3b' } ];
-
 const VIEWERS = {
-  scout:   { label: 'Ari D.', who: 'Signed in as Ari D. (scout)', scouts: ['ari'] },
-  parent:  { label: 'the Dunmore household', who: 'Signed in as the Dunmore household', scouts: ['ari', 'leo'] },
-  visitor: { label: '', who: 'Not signed in', scouts: [] }
+  scout:   { who: 'Signed in as Ari D. (scout)', scouts: ['ari'] },
+  parent:  { who: 'Signed in as the Dunmore household', scouts: ['ari', 'leo'] },
+  visitor: { who: 'Not signed in', scouts: [] }
 };
 
 /* ═══ STATE ═══ */
 let viewer = 'parent';
-let scouts, resources, pending, proofs, collapsed, nextId;
+let scouts, resources, pending, proofs, collapsed, openSubs, nextId;
 function reset() {
-  scouts = SEED_SCOUTS.map(s => ({ ...s, codes: new Set(s.codes) }));
-  resources = SEED_RESOURCES.slice();
-  pending = SEED_PENDING.slice();
-  proofs = SEED_PROOFS.slice();
-  collapsed = new Set();
-  nextId = 1000;
+  scouts = SEED_SCOUTS.map(s => ({ ...s, codes: new Map(s.codes) }));
+  resources = SEED_RESOURCES.slice(); pending = SEED_PENDING.slice(); proofs = SEED_PROOFS.slice();
+  collapsed = new Set(); openSubs = new Set(); nextId = 1000;
 }
 reset();
 
@@ -553,17 +516,24 @@ const ownScouts = () => VIEWERS[viewer].scouts.map(id => scouts.find(s => s.id =
 const hasProof = (sid, code) => proofs.some(p => p.scoutId === sid && p.code === code);
 const resFor = code => resources.filter(r => r.target === code).sort((a, b) => (b.pinned - a.pinned) || (a.id - b.id));
 const pendFor = code => pending.filter(p => p.target === code && p.by === viewer);
+const subCount = code => resFor(code).length + pendFor(code).length + (NOTES[code] ? 1 : 0);
 const announce = msg => { const l = document.getElementById('live'); l.textContent = ''; setTimeout(() => { l.textContent = msg; }, 30); };
-const ruleNote = n => n.rule === 'any' ? 'Do any one of the following' : n.rule === 'n-of' ? `Do any ${n.n} of the following` : '';
-const ruleLabel = n => n.rule === 'any' ? 'Complete any one' : n.rule === 'n-of' ? `Complete any ${n.n}` : '';
+const ruleText = n => n.rule === 'any' ? 'do any one' : n.rule === 'n-of' ? `do any ${n.n}` : '';
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const THIS_YEAR = 2026; /* prototype "today" = 2026-09-07 */
+/* fmtDate for a date COLUMN: parse as a calendar day, never new Date(iso). */
+function fmtDate(iso, long) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return `${MONTHS[m - 1]} ${d}${(long || y !== THIS_YEAR) ? `, ${y}` : ''}`;
+}
 
-/* ═══ SCOUT PROGRESS GRID (verbatim structure from mb-scout-grid.tsx) ═══ */
+/* ═══ SCOUT PROGRESS GRID ═══ */
 function renderGrid() {
   const groupStart = new Set(TREE.map(t => (t.children[0] || t).code));
   let h = '<table class="grid"><thead><tr><th rowspan="2" class="scoutHead">Scout</th><th class="awardHead" title="Full merit badge earned">AWARD</th>';
   for (const t of TREE) {
-    const span = t.children.length || 1;
-    h += `<th colspan="${span}" class="groupHead" title="Req ${t.code} — ${esc(t.label)}">Req ${t.code}${ruleLabel(t) ? `<span class="groupRule">${ruleLabel(t)}</span>` : ''}</th>`;
+    const rl = t.rule === 'any' ? 'Complete any one' : t.rule === 'n-of' ? `Complete any ${t.n}` : '';
+    h += `<th colspan="${t.children.length || 1}" class="groupHead" title="Req ${t.code} — ${esc(t.label)}">Req ${t.code}${rl ? `<span class="groupRule">${rl}</span>` : ''}</th>`;
   }
   h += '</tr><tr><th class="awardSubHead" aria-hidden="true"></th>';
   for (const l of LEAVES) h += `<th class="leafHead${groupStart.has(l.code) ? ' groupStart' : ''}" title="${l.code} — ${esc(l.label)}">${l.code}</th>`;
@@ -572,8 +542,8 @@ function renderGrid() {
     h += `<tr><td class="scoutCell"><a href="#">${esc(sc.name)}</a><span class="rankPill">${esc(sc.rank)}</span></td>`;
     h += `<td class="awardCell${sc.awarded ? ' awardCellDone' : ''}" title="${esc(sc.name)} — ${sc.awarded ? 'badge earned' : 'not yet awarded'}">${sc.awarded ? '★' : '☆'}</td>`;
     for (const l of LEAVES) {
-      const done = sc.codes.has(l.code);
-      h += `<td class="cell${done ? ' cellDone' : ''}${groupStart.has(l.code) ? ' groupStart' : ''}" title="${esc(sc.name)} — ${l.code} — ${esc(l.label)}">${done ? '■' : '□'}</td>`;
+      const on = sc.codes.get(l.code);
+      h += `<td class="cell${on ? ' cellDone' : ''}${groupStart.has(l.code) ? ' groupStart' : ''}" title="${esc(sc.name)} — ${l.code} — ${on ? 'done ' + fmtDate(on, true) : 'not yet'}">${on ? '■' : '□'}</td>`;
     }
     h += '</tr>';
   }
@@ -581,40 +551,32 @@ function renderGrid() {
 }
 
 /* ═══ THE LIST ═══ */
-function chipsFor(code) {
+function pills(code) {
   const own = ownScouts();
   if (!own.length) return '';
-  const single = own.length === 1;
-  return '<span class="who">' + own.map(sc => {
-    const done = sc.codes.has(code), pend = !done && hasProof(sc.id, code);
-    const cls = done ? 'chip chipDone' : pend ? 'chip chipPending' : 'chip';
-    const state = done ? 'done' : pend ? 'proof pending review' : 'not yet';
-    const text = single ? (done ? '✓ Done' : pend ? '⏳ Pending review' : 'Not yet') : `${done ? '✓ ' : pend ? '⏳ ' : ''}${sc.initials}`;
-    return `<span class="${cls}" title="${esc(sc.name)} — ${state}">${text}<span class="sr-only"> ${esc(sc.name)}: ${state}</span></span>`;
-  }).join('') + '</span>';
+  const many = own.length > 1;
+  return own.map(sc => {
+    const on = sc.codes.get(code);
+    if (on) return `<span class="pill" title="${esc(sc.name)} — done ${fmtDate(on, true)}">${many ? sc.initials + ' · ' : 'Done · '}${fmtDate(on)}<span class="sr-only"> ${esc(sc.name)} done</span></span>`;
+    if (hasProof(sc.id, code)) return `<span class="pill pillPending" title="${esc(sc.name)} — proof waiting for a leader">${many ? sc.initials + ' · ' : ''}Pending<span class="sr-only"> ${esc(sc.name)} proof pending review</span></span>`;
+    return '';
+  }).join('');
 }
-function groupChips(node) {
+function groupFrac(node) {
   const own = ownScouts();
-  if (!own.length || !node.children.length) return '';
+  if (!own.length) return '';
   const n = node.children.length;
-  return '<span class="who">' + own.map(sc => {
+  return own.map(sc => {
     const k = node.children.filter(c => sc.codes.has(c.code)).length;
-    const need = node.rule === 'any' ? 1 : node.rule === 'n-of' ? node.n : n;
-    const full = k >= need;
-    return `<span class="chip${full ? ' chipDone' : ''}" title="${esc(sc.name)} — ${k} of ${n} parts">${sc.initials} <span class="chipFrac">${k}/${n}</span><span class="sr-only"> ${esc(sc.name)}: ${k} of ${n} parts</span></span>`;
-  }).join('') + '</span>';
+    return k ? `<span class="frac" title="${esc(sc.name)} — ${k} of ${n} parts done">${own.length > 1 ? sc.initials + ' ' : ''}${k}/${n}</span>` : '';
+  }).join('');
 }
 function resLine(r, isPending) {
-  const media = r.thumb && !isPending
-    ? `<img class="resThumb" src="${r.thumb}" alt="" aria-hidden="true">`
-    : `<span class="resIco" aria-hidden="true">${KIND[r.kind].ico}</span>`;
+  const media = r.thumb && !isPending ? `<img class="resThumb" src="${r.thumb}" alt="" aria-hidden="true">` : `<span class="resIco" aria-hidden="true">${KIND[r.kind].ico}</span>`;
   const title = isPending
-    ? `<span class="resTitle">${esc(r.title)}</span>`
-    : `<a class="resTitle" href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)} ↗</a>`;
-  const tail = isPending
-    ? `<span class="pendingBadge">⏳ Sent for review</span><span class="resCredit">Only you can see this until the webmaster approves it</span>`
-    : `<span class="resHost">${esc(r.host)}</span>${r.pinned ? '<span class="resPin">★ Pinned</span>' : ''}${r.credit ? `<span class="resCredit">${esc(r.credit)}</span>` : ''}`;
-  return `<div class="res${isPending ? ' resPending' : ''}${r.fresh ? ' resNew' : ''}">${media}<span class="resLine"><span class="sr-only">${KIND[r.kind].label}: </span>${title}${tail}</span></div>`;
+    ? `<span class="resTitle">${esc(r.title)}</span><span class="resHost">sent for review — only you can see this until it’s approved</span>`
+    : `<a class="resTitle" href="${esc(r.url)}" target="_blank" rel="noopener">${r.pinned ? '<span class="resStar" title="Pinned by the counselor">★</span>' : ''}${esc(r.title)} ↗</a><span class="resHost">${esc(r.host)}</span>`;
+  return `<div class="res${isPending ? ' resPending' : ''}${r.fresh ? ' resNew' : ''}">${media}<span class="resLine"><span class="sr-only">${KIND[r.kind].label}${r.pinned ? ', pinned' : ''}: </span>${title}</span></div>`;
 }
 function subRow(code) {
   let h = '';
@@ -624,56 +586,67 @@ function subRow(code) {
   if (n) h += `<div class="note">${esc(n.text)}<span class="noteBy">— ${esc(n.by)}</span></div>`;
   return h;
 }
-function actions(code, isLeaf, label) {
+function actions(code, isLeaf) {
   const own = ownScouts();
   let h = '';
   if (isLeaf && own.length) {
     const allDone = own.every(sc => sc.codes.has(code) || hasProof(sc.id, code));
     const why = own.every(sc => sc.codes.has(code)) ? 'Already signed off' : 'Proof already sent for review';
-    h += `<button type="button" class="act actProof" data-proof="${code}" aria-label="I did this — ${code}"${allDone ? ` disabled title="${why}"` : ''}><span class="actIco" aria-hidden="true">✓</span><span class="actLabel">I did this</span></button>`;
+    h += `<button type="button" class="act actProof" data-proof="${code}" title="${allDone ? why : `I did this — ${code}`}" aria-label="I did this — ${code}"${allDone ? ' disabled' : ''}>${ICO_CHECK}<span class="tip">I did this — ${code}</span></button>`;
   }
-  h += `<button type="button" class="act" data-suggest="${code}" aria-label="Suggest a resource for ${code === 'mb' ? 'the whole badge' : code}"><span class="actIco" aria-hidden="true">+</span><span class="actLabel">Suggest a resource</span></button>`;
+  const n = subCount(code);
+  if (n) {
+    const open = openSubs.has(code);
+    const what = code === 'mb' ? 'the whole badge' : code;
+    h += `<button type="button" class="act" data-open="${code}" aria-expanded="${open}" aria-controls="sub-${code}" title="${n} resource${n === 1 ? '' : 's'} for ${what}" aria-label="${open ? 'Hide' : 'Show'} ${n} resource${n === 1 ? '' : 's'} for ${what}">${ICO_RES}<span class="actCount">${n}</span><span class="tip">${open ? 'Hide' : 'Show'} resources</span></button>`;
+  }
+  const s = code === 'mb' ? 'the whole badge' : code;
+  h += `<button type="button" class="act" data-suggest="${code}" title="Add a resource for ${s}" aria-label="Add a resource for ${s}">${ICO_PLUS}<span class="tip">Add a resource for ${s}</span></button>`;
   return `<span class="rqActs">${h}</span>`;
 }
+/* Label: a button that opens the sub-row when there is one, plain text otherwise. */
+function labelFor(code, text) {
+  if (!subCount(code)) return text;
+  return `<button type="button" class="rqOpen" data-open="${code}" aria-expanded="${openSubs.has(code)}" aria-controls="sub-${code}">${text}</button>`;
+}
+function subBlock(code) {
+  const n = subCount(code);
+  return n ? `<div class="rqSub" id="sub-${code}"${openSubs.has(code) ? '' : ' hidden'}>${subRow(code)}</div>` : '';
+}
 function leafRow(node, top) {
+  const text = top ? `<span class="rqLabelPlain">${esc(node.label)}</span>` : esc(node.label);
   return `<div class="rq${top ? ' rqTop' : ''}" id="req-${node.code}">
     <span class="rqTag${top ? ' rqTagLarge' : ''}">${node.code}</span>
-    <div class="rqText">${top ? `<span class="rqLabelPlain">${esc(node.label)}</span>` : esc(node.label)}${chipsFor(node.code)}</div>
-    ${actions(node.code, true, node.label)}
-    <div class="rqSub">${subRow(node.code)}</div>
+    <div class="rqText">${labelFor(node.code, text)}${pills(node.code)}</div>
+    ${actions(node.code, true)}
+    ${subBlock(node.code)}
   </div>`;
 }
 function groupRow(node) {
   const open = !collapsed.has(node.code);
-  const nRes = node.children.reduce((s, c) => s + resFor(c.code).length + pendFor(c.code).length, 0);
-  const nNotes = node.children.filter(c => NOTES[c.code]).length;
-  const summary = open ? '' : `<span class="rqSummary">${node.children.length} parts · ${nRes} resource${nRes === 1 ? '' : 's'}${nNotes ? ` · ${nNotes} note${nNotes === 1 ? '' : 's'}` : ''}</span>`;
-  const rn = ruleNote(node);
+  const rt = ruleText(node);
   return `<div class="rq rqTop rqGroup" id="req-${node.code}">
     <span class="rqTag rqTagLarge">${node.code}</span>
-    <div class="rqText"><button type="button" class="rqToggle" data-toggle="${node.code}" aria-expanded="${open}" aria-controls="kids-${node.code}"><span class="chev" aria-hidden="true">▾</span>${esc(node.label)}</button>${ruleLabel(node) ? `<span class="rqRule">${ruleLabel(node)}</span>` : ''}${groupChips(node)}${summary}</div>
-    ${actions(node.code, false, node.label)}
-    <div class="rqSub">${rn ? `<div class="optNote"><span class="optNoteLabel">Note:</span>${rn}</div>` : ''}${subRow(node.code)}</div>
+    <div class="rqText"><button type="button" class="rqToggle" data-toggle="${node.code}" aria-expanded="${open}" aria-controls="kids-${node.code}"><span class="chev" aria-hidden="true">▾</span>${esc(node.label)}</button>${rt ? `<span class="rqRule">(${rt})</span>` : ''}${groupFrac(node)}</div>
+    ${actions(node.code, false)}
+    ${subBlock(node.code)}
   </div>
   <div class="rqKids" id="kids-${node.code}"${open ? '' : ' hidden'}>${node.children.map(c => leafRow(c, false)).join('')}</div>`;
 }
 function renderList() {
   let h = `<div class="rq rqTop" id="req-mb">
     <span class="rqTag rqTagLarge rqTagGhost">MB</span>
-    <div class="rqText">For the whole badge</div>
-    ${actions('mb', false, 'the whole badge')}
-    <div class="rqSub">${subRow('mb')}</div>
+    <div class="rqText">${labelFor('mb', 'For the whole badge')}</div>
+    ${actions('mb', false)}
+    ${subBlock('mb')}
   </div>`;
   for (const t of TREE) h += t.children.length ? groupRow(t) : leafRow(t, true);
   document.getElementById('reqList').innerHTML = h;
-  const total = resources.length;
-  document.getElementById('ledeCount').textContent = `${total} resource${total === 1 ? '' : 's'}`;
+  document.getElementById('ledeCount').textContent = `${resources.length} resource${resources.length === 1 ? '' : 's'}`;
   document.getElementById('visitorHint').hidden = viewer !== 'visitor';
   document.getElementById('jumpProof').hidden = viewer === 'visitor';
-  const own = ownScouts();
-  document.getElementById('legend').innerHTML = own.length
-    ? `<span><span class="chip chipDone">✓ ${own.length > 1 ? 'AD' : 'Done'}</span> your scout is signed off</span><span><span class="chip chipPending">⏳ ${own.length > 1 ? 'LD' : 'Pending'}</span> proof waiting for a leader</span><span><span class="chip">${own.length > 1 ? 'LD' : 'Not yet'}</span> not yet</span><span><span class="resPin">★ Pinned</span> the counselor&rsquo;s first pick</span>`
-    : `<span><span class="resPin">★ Pinned</span> the counselor&rsquo;s first pick</span>`;
+  const own = ownScouts().length;
+  document.getElementById('legend').innerHTML = `${own ? `<span>${ICO_CHECK} I did this</span>` : ''}<span>${ICO_RES} resources are available (the number) — click to see them</span><span>${ICO_PLUS} add a resource</span>`;
   document.getElementById('mastWho').textContent = VIEWERS[viewer].who;
 }
 function renderAll() { renderGrid(); renderList(); }
@@ -691,9 +664,8 @@ function openProof(code) {
   if (own.length > 1) {
     h += `<fieldset class="fieldRow" style="border:0;padding:0;margin:0 0 16px"><legend class="fieldLabel">Which scout?</legend>`;
     for (const sc of own) {
-      const done = sc.codes.has(code), pend = hasProof(sc.id, code);
-      const off = done || pend;
-      h += `<label class="radioRow"><input type="radio" name="scout" value="${sc.id}"${off ? ' disabled' : ''}${!off && eligible[0] === sc ? ' checked' : ''}><span>${esc(sc.name)}${off ? ` <span class="muted">— ${done ? 'already signed off' : 'proof already sent'}</span>` : ''}</span></label>`;
+      const done = sc.codes.has(code), pend = hasProof(sc.id, code), off = done || pend;
+      h += `<label class="radioRow"><input type="radio" name="scout" value="${sc.id}"${off ? ' disabled' : ''}${!off && eligible[0] === sc ? ' checked' : ''}><span>${esc(sc.name)}${off ? ` <span class="muted">— ${done ? 'signed off ' + fmtDate(sc.codes.get(code), true) : 'proof already sent'}</span>` : ''}</span></label>`;
     }
     h += '</fieldset>';
   } else {
@@ -701,9 +673,9 @@ function openProof(code) {
   }
   h += `<div class="fieldRow"><span class="fieldLabel" id="proofKindLabel">How do you want to show it?</span>
     <div class="segs" role="radiogroup" aria-labelledby="proofKindLabel">
-      <span class="seg"><input type="radio" name="ptype" id="pt-photo" value="photo" checked><label for="pt-photo">📷 Photo</label></span>
-      <span class="seg"><input type="radio" name="ptype" id="pt-report" value="report"><label for="pt-report">✍️ Written report</label></span>
-      <span class="seg"><input type="radio" name="ptype" id="pt-link" value="link"><label for="pt-link">🔗 Link</label></span>
+      <span class="seg"><input type="radio" name="ptype" id="pt-photo" value="photo" checked><label for="pt-photo">Photo</label></span>
+      <span class="seg"><input type="radio" name="ptype" id="pt-report" value="report"><label for="pt-report">Written report</label></span>
+      <span class="seg"><input type="radio" name="ptype" id="pt-link" value="link"><label for="pt-link">Link</label></span>
     </div></div>
     <div class="fieldRow" data-ptype="photo"><label class="fieldLabel" for="proofPhoto">Photo</label><div class="fileDrop">A picture of the work, the lab sheet, or you doing it. Photos stay private to leaders.<input type="file" id="proofPhoto" accept="image/*"></div></div>
     <div class="fieldRow" data-ptype="report" hidden><label class="fieldLabel" for="proofReport">What you did</label><textarea class="textArea" id="proofReport" placeholder="A few sentences in your own words — what you did, what you found."></textarea></div>
@@ -711,9 +683,7 @@ function openProof(code) {
     <div class="fieldRow"><label class="fieldLabel" for="proofNote">Anything the leader should know <span class="labelQualifier">(optional)</span></label><input class="textInput" type="text" id="proofNote" placeholder="e.g. did this at the March campout with Mr. Halvorsen"></div>
     <div id="proofErr" hidden></div>`;
   document.getElementById('proofBody').innerHTML = h;
-  document.getElementById('proofActs').hidden = false;
-  document.getElementById('proofSubmit').disabled = false;
-  document.getElementById('proofSubmit').textContent = 'Send to a leader';
+  document.getElementById('proofActs').innerHTML = '<button type="button" class="btn btnSecondary" data-close>Cancel</button><button type="submit" class="btn btnPrimary" id="proofSubmit">Send to a leader</button>';
   proofDlg.showModal();
 }
 document.getElementById('proofBody').addEventListener('change', e => {
@@ -736,7 +706,7 @@ document.getElementById('proofForm').addEventListener('submit', e => {
   setTimeout(() => {
     proofs.push({ scoutId, code: proofCode });
     const sc = scouts.find(s => s.id === scoutId);
-    document.getElementById('proofBody').innerHTML = `<div class="confirmDone"><div class="bigCheck" aria-hidden="true">✓</div><h3 class="confirmTitle">Sent to a leader</h3><p class="confirmText"><strong>${esc(sc.name)} — requirement ${proofCode}</strong> is in the review queue. A leader will approve it or send it back with a note; either way the household gets an email. Until then the row shows ⏳ next to ${esc(sc.name.split(' ')[0])}.</p><p class="confirmText" style="font-size:13px;color:var(--text-meta)">Proof usually gets looked at before the next meeting.</p></div>`;
+    document.getElementById('proofBody').innerHTML = `<div class="confirmDone"><div class="bigCheck" aria-hidden="true">✓</div><h3 class="confirmTitle">Sent to a leader</h3><p class="confirmText"><strong>${esc(sc.name)} — requirement ${proofCode}</strong> is in the review queue. A leader will approve it or send it back with a note; either way the household gets an email. Until then the row shows a Pending pill for ${esc(sc.name.split(' ')[0])}.</p></div>`;
     document.getElementById('proofActs').innerHTML = '<button type="button" class="btn btnSecondary" data-close>Close</button>';
     renderList();
     announce(`Proof for requirement ${proofCode} sent to a leader for review.`);
@@ -749,18 +719,17 @@ const sugDlg = document.getElementById('suggestDialog');
 let sugCode = null;
 function openSuggest(code) {
   sugCode = code;
-  const whole = code === 'mb';
-  const node = whole ? null : byCode(code);
+  const whole = code === 'mb', node = whole ? null : byCode(code);
   document.getElementById('suggestTitle').textContent = whole ? 'For the whole Chemistry badge' : `For requirement ${code}`;
   document.getElementById('suggestTarget').innerHTML = whole
     ? `<span class="rqTag rqTagGhost">MB</span><span>Something useful for the whole badge — not tied to one requirement. <a href="#requirements" data-close style="color:var(--navy);font-weight:700">Wrong place? Pick a requirement instead</a></span>`
     : `<span class="rqTag">${code}</span><span>${esc(node.label)} <a href="#requirements" data-close style="color:var(--navy);font-weight:700;white-space:nowrap">Wrong requirement?</a></span>`;
   let h = `<div class="fieldRow"><span class="fieldLabel" id="sugKindLabel">What is it?</span>
     <div class="segs" role="radiogroup" aria-labelledby="sugKindLabel">
-      <span class="seg"><input type="radio" name="skind" id="sk-video" value="video" checked><label for="sk-video">▶ Video</label></span>
-      <span class="seg"><input type="radio" name="skind" id="sk-link" value="link"><label for="sk-link">🔗 Link</label></span>
-      <span class="seg"><input type="radio" name="skind" id="sk-document" value="document"><label for="sk-document">📄 Document</label></span>
-      <span class="seg"><input type="radio" name="skind" id="sk-image" value="image"><label for="sk-image">🖼 Image</label></span>
+      <span class="seg"><input type="radio" name="skind" id="sk-video" value="video" checked><label for="sk-video">Video</label></span>
+      <span class="seg"><input type="radio" name="skind" id="sk-link" value="link"><label for="sk-link">Link</label></span>
+      <span class="seg"><input type="radio" name="skind" id="sk-document" value="document"><label for="sk-document">Document</label></span>
+      <span class="seg"><input type="radio" name="skind" id="sk-image" value="image"><label for="sk-image">Image</label></span>
     </div><p class="fieldHint">Videos and links open on their own site — nothing is embedded here. Documents and images can be a link or an upload.</p></div>
     <div class="fieldRow"><label class="fieldLabel" for="sugUrl">Link</label><input class="textInput" type="url" id="sugUrl" placeholder="https://…"></div>
     <div class="fieldRow" id="sugFileRow" hidden><label class="fieldLabel" for="sugFile">Or upload the file <span class="labelQualifier">(PDF, image)</span></label><div class="fileDrop">Goes to the troop&rsquo;s CDN after approval.<input type="file" id="sugFile" accept=".pdf,image/*"></div></div>
@@ -796,9 +765,9 @@ document.getElementById('suggestForm').addEventListener('submit', e => {
     let host = 'Upload';
     try { if (url) host = new URL(url).hostname.replace(/^www\./, ''); } catch (_) {}
     if (/youtube|youtu\.be/.test(host)) host = 'YouTube';
-    if (viewer !== 'visitor') pending.push({ id: nextId++, target: sugCode, kind, title, host, by: viewer, fresh: true });
+    if (viewer !== 'visitor') { pending.push({ id: nextId++, target: sugCode, kind, title, host, by: viewer, fresh: true }); openSubs.add(sugCode); }
     const where = sugCode === 'mb' ? 'the whole badge' : `requirement ${sugCode}`;
-    document.getElementById('suggestBody').innerHTML = `<div class="confirmDone"><div class="bigCheck" aria-hidden="true">✓</div><h3 class="confirmTitle">Sent for review</h3><p class="confirmText"><strong>${esc(title)}</strong> is in the webmaster&rsquo;s queue for ${where}. Nothing shows to other families until it&rsquo;s approved${viewer === 'visitor' ? '.' : ' — you’ll see a &ldquo;Sent for review&rdquo; line under the requirement in the meantime.'}</p></div>`;
+    document.getElementById('suggestBody').innerHTML = `<div class="confirmDone"><div class="bigCheck" aria-hidden="true">✓</div><h3 class="confirmTitle">Sent for review</h3><p class="confirmText"><strong>${esc(title)}</strong> is in the webmaster&rsquo;s queue for ${where}. Nothing shows to other families until it&rsquo;s approved${viewer === 'visitor' ? '.' : ' — you’ll see it marked “sent for review” under the requirement in the meantime.'}</p></div>`;
     document.getElementById('suggestActs').innerHTML = '<button type="button" class="btn btnSecondary" data-close>Close</button>';
     renderList();
     announce(`Suggestion sent for review for ${where}.`);
@@ -809,32 +778,39 @@ document.getElementById('suggestForm').addEventListener('submit', e => {
 
 /* ═══ WIRING ═══ */
 document.addEventListener('click', e => {
-  const t = e.target.closest('[data-toggle],[data-proof],[data-suggest],[data-close],[data-viewer]');
+  const t = e.target.closest('[data-toggle],[data-open],[data-proof],[data-suggest],[data-close],[data-viewer]');
   if (!t) return;
   if (t.dataset.toggle) {
     const code = t.dataset.toggle;
     collapsed.has(code) ? collapsed.delete(code) : collapsed.add(code);
-    renderList();
-    document.querySelector(`[data-toggle="${code}"]`).focus();
+    renderList(); document.querySelector(`[data-toggle="${code}"]`).focus();
+  } else if (t.dataset.open) {
+    const code = t.dataset.open, wasLabel = t.classList.contains('rqOpen');
+    openSubs.has(code) ? openSubs.delete(code) : openSubs.add(code);
+    renderList(); document.querySelector(`${wasLabel ? '.rqOpen' : '.act'}[data-open="${code}"]`).focus();
   } else if (t.dataset.proof) openProof(t.dataset.proof);
   else if (t.dataset.suggest) openSuggest(t.dataset.suggest);
   else if (t.hasAttribute('data-close')) { t.closest('dialog').close(); if (t.tagName === 'A') e.preventDefault(); }
   else if (t.dataset.viewer) {
     viewer = t.dataset.viewer;
     for (const b of document.querySelectorAll('[data-viewer]')) b.setAttribute('aria-pressed', String(b.dataset.viewer === viewer));
-    renderList();
-    announce(`Now viewing as ${VIEWERS[viewer].who}.`);
+    renderList(); announce(`Now viewing as ${VIEWERS[viewer].who}.`);
   }
 });
-document.getElementById('expandAll').addEventListener('click', () => { collapsed.clear(); renderList(); });
-document.getElementById('collapseAll').addEventListener('click', () => { TREE.filter(t => t.children.length).forEach(t => collapsed.add(t.code)); renderList(); });
+document.getElementById('expandAll').addEventListener('click', () => {
+  collapsed.clear();
+  for (const code of ['mb', ...TREE.map(t => t.code), ...ALL]) if (subCount(code)) openSubs.add(code);
+  renderList();
+});
+document.getElementById('collapseAll').addEventListener('click', () => {
+  TREE.filter(t => t.children.length).forEach(t => collapsed.add(t.code)); openSubs.clear(); renderList();
+});
 document.getElementById('resetDemo').addEventListener('click', () => { reset(); renderAll(); announce('Demo data reset.'); });
 document.getElementById('handoffToggle').addEventListener('click', e => {
   const body = document.getElementById('handoffBody'); body.hidden = !body.hidden;
   e.currentTarget.setAttribute('aria-expanded', String(!body.hidden));
   e.currentTarget.textContent = body.hidden ? 'Handoff notes ▸' : 'Handoff notes ▾';
 });
-/* Native <dialog> closes on Esc by itself; clicking the backdrop closes too. */
 for (const d of [proofDlg, sugDlg]) d.addEventListener('click', e => { if (e.target === d) d.close(); });
 
 renderAll();

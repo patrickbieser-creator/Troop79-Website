@@ -175,4 +175,13 @@ proof today); proof and suggest are in-page dialogs, mapped to the real routes i
 
 ## Decision
 
-_Pending Patrick._
+**Patrick, 2026-09-07 (prototype rev 2), "reduce the noise":** a requirement row at rest is code · label ·
+a small Done/Pending pill WITH the completion date · three icons at the right edge, in this order:
+1. **I did this** (opens the proof dialog), 2. **Resources are available** (with a count; shown only when
+> 0), 3. **Add a resource** (icon-only, hover state says what it does). Clicking the requirement text or
+the Resources icon accordions the row open to reveal its resources and note; nothing else is visible at
+rest. The old legend strip (Done / Pending / Not yet / Pinned) is gone; one quiet legend at the top names
+the three icons. Pinned is a ★ before the title. The Scout Progress grid's header rule is one continuous
+line under Scout and Award. Wording is "Add a resource", not "Suggest".
+
+_Next: Patrick approves rev 2 or redirects; then the tech-lead phases above become the build plan._
