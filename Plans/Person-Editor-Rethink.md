@@ -117,5 +117,68 @@ admin access is a separate `leaders.can_login` flag managed on Access & Permissi
 Sign-in card now carries a "How this works" disclosure saying exactly this and an Admin access line
 for leaders.
 
-_Next: Patrick approves or redirects; then a build plan (tech-lead) against people-table.tsx,
-scout-form.tsx, scout-relations.tsx, adult-form.tsx._
+**Patrick, 2026-09-07 (later): "Option A looks good now. Let's make the plan and start the build."**
+
+---
+
+# Build Plan (tech-lead, 2026-09-07)
+
+**Status:** Active — Phase 1 in progress 2026-09-07
+**Priority:** High
+**Spec:** `prototypes/person-editor/a-record-page.html`
+
+## Acceptance Criteria
+
+- [ ] `/admin/advancement/roster/[personId]` renders one record page for both scouts and adults/leaders, read-only by default, each section with exactly one Edit.
+- [ ] Status is a read row → Edit → reason → confirm dialog, identically for scouts and adults (retires #1, #2 — the Marita bug).
+- [ ] Every section Save is dirty-gated (`save-state.tsx`), shows Saving…→Done, Cancel restores last-saved values; no immediate action sits inside a form that also has a Save.
+- [ ] Emails, roles, relationships/parents are visually distinct "Takes effect immediately" lists outside any form (retires #3).
+- [ ] Merge and Delete both confirm naming consequences; Delete refused while anything is attached (retires #4).
+- [ ] Household reassignment is a draft field; Save toast "Household: A → B" with Undo (retires #5).
+- [ ] End role confirms and names the tab move; Promote-to-adult keeps its confirm (retires #6).
+- [ ] At most one "How this works" disclosure per section; no standing hint paragraphs (retires #7).
+- [ ] History: fact-strip card (last change · who · count) + History section (latest 4, chips with hover tooltip + click dialog, field-level old→new) fed by `audit_log`, plus a "Full log" modal.
+- [ ] `?tab=X&open=ID` still deep-links (redirects into the new page); Add Adult and Add Scout unaffected.
+- [ ] lint + typecheck + test + build pass at the end of every phase; browser check of the Marita scenario after Phase 1, full flow after Phase 6.
+
+## Test Plan
+
+`Leader_SeesNoContradictorySave_WhenStatusJustChanged`, `Leader_MarksScoutInactive_SameFlowAsAdult`, `Leader_ReactivatesPerson_ReasonCleared`, `Leader_CancelsSectionEdit_RestoresLastSavedValues_NotPageLoadValues`, `Leader_OpensSecondSectionWhileFirstIsDirty_IsPromptedToDiscard`, `Leader_BlanksRequiredName_SaveStaysDisabledWithReason`, `Leader_RemovesOnlyEmail_ButtonDisabledWithReason`, `Leader_EndsSoleLeaderRole_SeesTabMoveNotice`, `Leader_MergesPerson_SeesConfirmNamingWhatMoves`, `Leader_DeletesPersonWithAttachments_ButtonRefused`, `Leader_ChangesHousehold_ToastOffersUndo`, `Leader_OpensDeepLinkFromRoster_LandsOnRecordPage`, `Family_SubmitsChangeRequest_BannerAppearsInTouchedSection`, `Leader_ViewsHistory_SeesFieldLevelOldToNew_ForActionsLoggedAfterCutover`, `Leader_ViewsHistoryForPreCutoverAction_SeesSummaryOnly_NoDetailsCrash`; extend `tests/audit-coverage.test.ts` to the new action files.
+
+## Technical Approach
+
+**Route.** `next-app/src/app/admin/(workspace)/advancement/roster/[personId]/page.tsx` — one dynamic route for both kinds; `sectionsFor(kind)` picks the section list. Server loader: `getPersonDetail` + scout-only columns (via `loadScoutRows` filtered to one) + `getPersonEmails` + `getPendingChangeRequest` + new `getPersonHistory`. `roster/page.tsx`'s `?open=ID` becomes a redirect to `/admin/advancement/roster/${id}?from=${tab}` for every tab; the roster list itself is untouched.
+
+**Reused as-is:** addRole/endRole/deleteRole, setHousehold, add/removeRelationship, the four email actions, sendSignInLink, mergePersonInto, deletePerson, createHouseholdForPerson/renameHousehold, approve/rejectChangeRequest, createPerson (Add Adult), createScout (Add Scout).
+
+**Changed:** `setPersonActive` gains a `details` diff passed to `recordAudit`; new `setScoutActive(scoutId, active, reason)` mirrors it (today `updateScout` in `lookups/actions.ts` conflates active with every other field — extend, don't duplicate). `updateScout` splits by section: `updateScoutIdentity` (first/last/patrol/bsa) + `updateScoutFields` (school/grade/swim/jl/things-we-should-know); person-side fields reuse `updatePersonDemographics`. Every changed/new action's `recordAudit` gets `details: [{field, from, to}]` computed from the row read before the write.
+
+**Retirement (Phase 6):** `PersonEditor` deleted from `people-table.tsx`; `ScoutForm` keeps only `isNew`; `scout-relations.tsx` UI moves into the Family section's immediate block; `AdultForm` untouched; `PendingUpdatePanel` data reused, rendering inlined per section.
+
+**History data.** `recordAudit` today writes `summary` only; no roster call site populates `details`. D-257's rule (summaries name people and field NAMES, never values) governs `summary`; `details` carries the field-level diff. No backfill: entries with `details IS NULL` show summary only. History starts when this ships.
+
+**Reused UI:** save-state pieces, FormPanel/FormSection, Button, Dialog, PageTitle with `back: {label, href}` (depth-2, gets the dirty-nav guard for free), one "How this works" disclosure per section.
+
+## Phases
+
+| # | Scope | Size | Retires |
+|---|---|---|---|
+| 1 | Shell + Status parity. New `[personId]/page.tsx`, `person-record.tsx`, `status-card.tsx`, `load-person-record.ts`; `roster/page.tsx` redirect on `?open=`; `setPersonActive` details; new `setScoutActive`. Old editors stay live in parallel. Tests: MarksAdultInactive, MarksScoutInactive same flow, Reactivates, DeepLink. Gate + browser check of the Marita scenario. | L | #1 #2 |
+| 2 | Section forms: `identity-section.tsx` (scout), `details-section.tsx`, `contact-section.tsx`, `family-section.tsx` (household draft + relations immediate block); split `updateScout`; `setHousehold` details for Undo. Tests: EditsDetailsSection, CancelsSectionEdit, SecondSectionWhileDirty, BlanksRequiredName, ChangesHousehold Undo. | L | #1 #3 |
+| 3 | Immediate blocks + Danger zone: `emails-block.tsx`, `roles-block.tsx`, `relationships-block.tsx`, `danger-zone.tsx`; confirms for End role and Merge. Tests: EndsSoleLeaderRole, MergesPerson, DeletesWithAttachments refused, RemovesOnlyEmail disabled. | M | #4 #6 |
+| 4 | History: `get-person-history.ts`, `history-card.tsx`, `history-section.tsx`, `history-dialog.tsx`; backstop that every action from phases 1–3 passes `details`. Tests: FieldLevelDiff post-cutover, PreCutover summary only, FullLog newest first. | M | Direction C add |
+| 5 | Pending Update banners per section: split `pending-update-panel.tsx` into `pending-banner.tsx` mounted per section, filtering proposed keys to that section; approve/reject stay whole-request. Tests: BannerAppearsInTouchedSection, ApprovesFromOneSection applies whole request. | S | top-of-page pending |
+| 6 | Retirement + sweep: delete PersonEditor, ScoutForm edit branch, scout-relations.tsx, dead imports; AGENTS.md amendment; styleguide "Person Record Page" specimen + scoreboard row. Full gate + browser check of the complete flow on a scout and an adult/leader, deep link, Back-with-dirty prompt. | S | #7 |
+
+## AGENTS.md amendment (Phase 6, add to "Save buttons" after point 5)
+
+> **Per-section Edit is a valid alternative to one whole-form dirty gate (2026-09-07):** a record page may give each section its own Edit → dirty-gated Save/Cancel using the same `save-state.tsx` pieces, rather than one Save for the whole page — provided only one section is editable at a time (opening a second section's Edit while another is dirty prompts to discard) and one-click actions (emails, roles, relationships) are visually separated as a labelled "Takes effect immediately" block, never inside a draft form. Reference: `roster/[personId]/`.
+
+## Risks
+
+Concurrent Claude sessions share this repo and the local DB — stage explicit files, never `git add -A`. `people.primary_email` is a trigger cache — email writes go through `lib/person-emails` / `write-person-demographics`, never a raw `people` update. `PendingUpdatePanel` is shared with change requests. D-257 keeps values out of `summary`; `details` is where they go.
+
+## Open Questions
+
+- **Per-section approve (Brad's deviation):** `change_requests` is one row per entity approved/rejected whole (D-098/D-103); no field-level entry point. **Assumed for Phase 5:** banner per touched section, but Approve/Reject from any section acts on the whole request. True per-field approve is a follow-on if this proves confusing. Does not block Phases 1–4.
+- Nothing blocks Phase 1.
