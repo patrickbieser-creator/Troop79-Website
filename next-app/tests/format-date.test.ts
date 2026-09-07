@@ -26,6 +26,14 @@ describe('format-date — date columns are calendar days', () => {
     expect(fmtMonthYear('2026-07-01')).toBe('July 2026');
   });
 
+  it('YearCanBeShortened_ForPencilGridColumns', () => {
+    // Scout Clipboard (Patrick, 2026-09-06): two-digit year with a typographic
+    // apostrophe, so the date column stays narrow and "22" can't read as a day.
+    expect(fmtDate('2022-10-15', { year: 'short' })).toBe('Oct 15, ’22');
+    expect(fmtDate('2026-07-01', { year: 'short' })).toBe('Jul 1, ’26');
+    expect(fmtDate(null, { year: 'short' })).toBe('—');
+  });
+
   it('YearCanBeDropped_InsideAOneYearList', () => {
     expect(fmtDate('2026-07-12', { year: false })).toBe('Jul 12');
     expect(fmtDay('2026-07-12', { year: true })).toBe('Sun, Jul 12, 2026');

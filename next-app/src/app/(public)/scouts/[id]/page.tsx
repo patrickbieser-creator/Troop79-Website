@@ -569,7 +569,7 @@ function MbQuotaGroup({
       </div>
       {rows.map((r) => (
         <div key={r.id} className={styles.miniRow}>
-          <span>{fmtDate(r.date)}</span>
+          <span>{fmtDate(r.date, { year: 'short' })}</span>
           <span>{r.by ?? ''}</span>
           <span className={styles.miniRowLabel}>{r.name}</span>
         </div>
@@ -617,7 +617,7 @@ function RankReqRows({
           `${styles.miniRow} ${isBor ? styles.bor : ''} ${earned ? '' : styles.miniRowUnearned}`.trim()
         }
       >
-        <span>{earned ? fmtDate(ledger!.date) : ''}</span>
+        <span>{earned ? fmtDate(ledger!.date, { year: 'short' }) : ''}</span>
         <span>{earned ? (ledger!.by ?? '') : ''}</span>
         <span className={styles.miniRowLabel}>
           <span className={styles.reqCode}>{req.code}</span>
@@ -655,7 +655,7 @@ function RankReqRows({
         title={req.label}
         className={`${styles.miniRow} ${earned ? '' : styles.miniRowUnearned}`.trim()}
       >
-        <span>{earned && latest ? fmtDate(latest.date) : ''}</span>
+        <span>{earned && latest ? fmtDate(latest.date, { year: 'short' }) : ''}</span>
         <span>{earned && latest ? (latest.by ?? '') : ''}</span>
         <span className={styles.miniRowLabel}>
           <span className={styles.reqCode}>{req.code}</span>
@@ -676,7 +676,7 @@ function RankReqRows({
               `${styles.miniSubRow} ${childEarned ? '' : styles.miniRowUnearned}`.trim()
             }
           >
-            <span>{childEarned ? fmtDate(ledger!.date) : ''}</span>
+            <span>{childEarned ? fmtDate(ledger!.date, { year: 'short' }) : ''}</span>
             <span>{childEarned ? (ledger!.by ?? '') : ''}</span>
             <span className={styles.miniRowLabel}>{node.label}</span>
           </div>
@@ -750,7 +750,7 @@ function MeritBadgesPanel({ detail }: { detail: ScoutDetail }) {
 function MbRowEl({ row, eagle }: { row: MbDisplayRow; eagle: boolean }) {
   return (
     <div className={`${styles.mbRow} ${eagle ? styles.mbEagle : ''}`.trim()}>
-      <span>{fmtDate(row.date)}</span>
+      <span>{fmtDate(row.date, { year: 'short' })}</span>
       <span>{row.by ?? ''}</span>
       <span className={styles.mbName}>{row.name}</span>
     </div>
@@ -808,7 +808,7 @@ function ActivitiesPanel({ detail }: { detail: ScoutDetail }) {
       ) : (
         acts.map((a) => (
           <div key={`${a.type}-${a.id}`} className={styles.actRow}>
-            <span>{fmtDate(a.date)}</span>
+            <span>{fmtDate(a.date, { year: 'short' })}</span>
             <span>{a.type}</span>
             <span>
               {a.title}
@@ -846,7 +846,7 @@ function LeadershipPanel({ detail, compact }: { detail: ScoutDetail; compact?: b
         rows.map((e) => (
           <div key={e.id} className={styles.leadershipRow}>
             <span className={styles.dateRange}>
-              {fmtDate(e.date)}
+              {fmtDate(e.date, { year: 'short' })}
               {!compact && ' – present'}
             </span>
             <span>{e.label ?? e.code}</span>
@@ -875,7 +875,7 @@ function ServicePanel({ detail }: { detail: ScoutDetail }) {
       ) : (
         rows.map((e) => (
           <div key={e.id} className={styles.serviceRow}>
-            <span className={styles.dateCell}>{fmtDate(e.date)}</span>
+            <span className={styles.dateCell}>{fmtDate(e.date, { year: 'short' })}</span>
             <span>{e.label ?? e.code}</span>
             <span className={styles.hoursCell}>
               {e.qty} hr{e.qty === 1 ? '' : 's'}
@@ -982,7 +982,7 @@ function MbInProgressSection({ detail }: { detail: ScoutDetail }) {
                         <span className={styles.mbReqCode}>{e.code.split('-').slice(1).join('-')}</span>
                         <span className={styles.mbReqLabel}>{e.label ?? e.code}</span>
                         <span className={styles.mbReqMeta}>
-                          {fmtDate(e.date)}
+                          {fmtDate(e.date, { year: 'short' })}
                           {e.by ? ` · ${e.by}` : ''}
                           {e.notes && <em className={styles.mbReqNotes}> — {e.notes}</em>}
                         </span>
@@ -1033,7 +1033,7 @@ function MbReqTree({
               <span className={styles.mbReqLabel}>{node.label}</span>
               {entry && (
                 <span className={styles.mbReqMeta}>
-                  {fmtDate(entry.date)}
+                  {fmtDate(entry.date, { year: 'short' })}
                   {entry.by ? ` · ${entry.by}` : ''}
                   {entry.notes && <em className={styles.mbReqNotes}> — {entry.notes}</em>}
                 </span>

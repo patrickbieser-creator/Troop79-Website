@@ -293,9 +293,17 @@
 .rankBlockTitleBordered {
   border-top: 1px solid #aaa;
 }
+/* DATE COLUMNS ARE SIZED IN em, NOT px (Patrick, 2026-09-06). The default
+   date is "Nov 22, ’26" (lib/format-date fmtDate, year:"short") — ~5.2em of Open
+   Sans with tabular digits — and every fixed-px width below (60/64/44px) was
+   set for the old "10/20/23" and wrapped it onto a second line on screen,
+   in print and on phones. 5.6em tracks whatever font size a media query
+   sets, so one number holds at 10.5px desktop, 9px print and 13px mobile.
+   The initials column is 3em for the same reason ("Camp" overflowed 26px
+   on a phone). */
 .miniRow {
   display: grid;
-  grid-template-columns: 60px 32px 1fr;
+  grid-template-columns: 5.6em 3em 1fr;
   gap: 4px;
   padding: 3px 6px;
   border-bottom: 1px solid #efeae0;
@@ -333,7 +341,7 @@
    of the row above it. */
 .miniSubRow {
   display: grid;
-  grid-template-columns: 60px 32px 1fr;
+  grid-template-columns: 5.6em 3em 1fr;
   gap: 4px;
   padding: 2px 6px 2px 18px;
   border-bottom: 1px solid #efeae0;
@@ -446,12 +454,12 @@
 }
 /* MB rows: col 2 is the leader's initials (e.g. "MS", "PB") — narrow. */
 .mbRow {
-  grid-template-columns: 64px 32px 1fr;
+  grid-template-columns: 5.6em 3em 1fr;
 }
 /* Activity rows: col 2 is the activity TYPE (Campout/Fundraiser/Hike/...) —
    widened so longer words don't overflow into the title column. */
 .actRow {
-  grid-template-columns: 64px 70px 1fr;
+  grid-template-columns: 5.6em 70px 1fr;
 }
 .mbRow > span:first-child,
 .actRow > span:first-child {
@@ -472,17 +480,23 @@
 .leadershipRow,
 .serviceRow {
   display: grid;
-  grid-template-columns: 110px 1fr auto;
+  grid-template-columns: 5.6em 1fr auto;
   gap: 8px;
   padding: 5px 0;
   font-family: var(--font-ui);
   font-size: 12px;
   border-bottom: 1px dotted var(--border-light);
 }
+/* The screen Leadership panel appends " – present" to a current position's
+   date (page.tsx, non-compact) — room for the suffix, not just the date.
+   The print columns render the compact panel, whose print rule below
+   resets this to the plain date width. */
+.leadershipRow { grid-template-columns: 10em 1fr auto; }
 .dateRange,
 .dateCell {
   color: var(--text-meta);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .hoursCell {
   color: var(--forest);
@@ -765,9 +779,11 @@
   /* Date column was 90px — much wider than a date like "10/20/23" needs at
      this font size, leaving dead space that pushed labels/titles onto a
      second line. Narrowed so Leadership and Service Projects each fit one
-     line per row (confirmed with the user, 2026-07-13). */
+     line per row (confirmed with the user, 2026-07-13). Re-sized in em
+     2026-09-06 once dates became "Nov 22, 2026" — 46px wrapped them again;
+     5.6em at 9px is ~50px, the width that date actually needs. */
   .leadershipRow,
-  .serviceRow { font-size: 9px; padding: 2px 0; grid-template-columns: 46px 1fr auto; }
+  .serviceRow { font-size: 9px; padding: 2px 0; grid-template-columns: 5.6em 1fr auto; }
   .legend { margin-top: 2px; font-size: 8px; }
   /* Clipboard grid: the bulk of every page. */
   .clipboardHeader { padding-bottom: 4px; margin-bottom: 4px; }
@@ -781,7 +797,7 @@
      reason. Font bumped +0.5px — there was slack left at the bottom of
      both pages (confirmed with the user, 2026-07-13). */
   .miniRow,
-  .miniSubRow { font-size: 9px; line-height: 1.15; padding: 1px 5px; gap: 3px; grid-template-columns: 44px 28px 1fr; }
+  .miniSubRow { font-size: 9px; line-height: 1.15; padding: 1px 5px; gap: 3px; grid-template-columns: 5.6em 3em 1fr; }
   .miniSubRow { padding-left: 15px; font-size: 8px; }
   .miniSectionHeading { font-size: 8px; padding: 2px 5px; }
   .miniEmpty { padding: 4px 8px; font-size: 8.5px; }
@@ -835,14 +851,14 @@
     line-height: 1.4;
     padding: 6px 6px;
     gap: 5px;
-    grid-template-columns: 44px 26px 1fr;
+    grid-template-columns: 5.6em 3em 1fr;
   }
   .miniSubRow {
     font-size: 12px;
     line-height: 1.4;
     padding: 4px 6px 4px 14px;
     gap: 5px;
-    grid-template-columns: 44px 26px 1fr;
+    grid-template-columns: 5.6em 3em 1fr;
   }
   .miniSectionHeading { font-size: 11px; padding: 5px 6px; }
   /* The full requirement text lived only in a `title` tooltip, which

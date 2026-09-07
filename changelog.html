@@ -497,6 +497,23 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.119.1 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.119.1</span>
+        <span class="release-date">September 6, 2026</span>
+        <span class="release-label"><span class="badge badge-fix">Fix</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Clipboard dates on one line</p>
+        <ul class="change-list">
+          <li><span><strong>Dates no longer wrap on the Scout Clipboard</strong> &mdash; any date with a two-digit day (&ldquo;Oct 15, 2022&rdquo;) was breaking onto a second line in the rank requirement, merit badge, activity, leadership and service rows, on screen, in print and on phones. The date column is now sized to the text rather than a fixed pixel width, so it holds at every size.</span></li>
+          <li><span><strong>Two-digit years on the Clipboard</strong> &mdash; row dates read &ldquo;Oct 15, &rsquo;22&rdquo; instead of spelling out the century, which keeps the grid compact and gives the requirement text back some room. The header date keeps the full year.</span></li>
+          <li><span>On a phone the initials column is a little wider too, so &ldquo;Camp&rdquo; no longer runs into the requirement number.</span></li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.119.0 -->
     <div class="release">
       <div class="release-header">

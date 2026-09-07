@@ -14,6 +14,7 @@
  *
  * Which helper (see the plan / admin styleguide):
  *   fmtDate      'Jul 12, 2026'            the default — tables, lists, hints, dialogs
+ *                'Jul 12, ’26'             {year:'short'} — dense pencil-grid columns (Clipboard)
  *   fmtDateLong  'July 12, 2026'           public prose, bylines, print headers
  *   fmtDateFull  'Sunday, July 12, 2026'   headings where the weekday matters
  *   fmtDay       'Sun, Jul 12'             dense day headings, deadlines, job boards
@@ -45,8 +46,16 @@ function fmt(input: DateInput, opts: Intl.DateTimeFormatOptions): string {
   return new Intl.DateTimeFormat('en-US', { ...opts, timeZone: r.tz }).format(r.d);
 }
 
-/** 'Jul 12, 2026' — the default everywhere. `{year:false}` inside a list that is visibly one year. */
-export function fmtDate(input: DateInput, o: { year?: boolean } = {}): string {
+/** 'Jul 12, 2026' — the default everywhere. `{year:false}` inside a list that is visibly one year;
+ *  `{year:'short'}` → 'Jul 12, ’26' for dense pencil-grid columns (the Scout Clipboard, Patrick
+ *  2026-09-06) where the century is noise and the column is measured in em. */
+export function fmtDate(input: DateInput, o: { year?: boolean | 'short' } = {}): string {
+  if (o.year === 'short') {
+    const full = fmt(input, { month: 'short', day: 'numeric', year: 'numeric' });
+    // 'Jul 12, 2026' → 'Jul 12, ’26'. A typographic apostrophe marks the
+    // elision so "Oct 15, 22" can't read as a day number.
+    return full.replace(/, (\d{2})(\d{2})$/, ', ’$2');
+  }
   return fmt(input, { month: 'short', day: 'numeric', ...(o.year === false ? {} : { year: 'numeric' }) });
 }
 
