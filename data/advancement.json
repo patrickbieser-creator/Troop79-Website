@@ -1104,6 +1104,179 @@
   ],
   "meritBadgeRequirements": {
     "_note": "Illustrative requirement lists for prototype testing. Wording is paraphrased — replace with exact text from the current official BSA pamphlet before going live, and re-check on every BSA annual update. The 'complete' field encodes optionality: 'all' (must complete every child), 'any' (any one child counts), or 'n-of' with completeN.",
+    "moviemaking": [
+      {
+        "code": "1",
+        "label": "Discuss and demonstrate motion-picture elements: visual storytelling, rhythm, the 180° rule, camera movement, framing/composition, and lens selection"
+      },
+      {
+        "code": "2",
+        "label": "Plan and shoot a motion picture",
+        "complete": "all",
+        "children": [
+          {
+            "code": "2a",
+            "label": "Write a 3–4 paragraph treatment for your planned motion picture that conveys a visual picture"
+          },
+          {
+            "code": "2b",
+            "label": "Prepare a storyboard for your motion picture (rough sketches/stick figures OK)"
+          },
+          {
+            "code": "2c",
+            "label": "Demonstrate shooting techniques: tripod use, panning, framing a shot, selecting an angle, lighting, and handheld shooting"
+          },
+          {
+            "code": "2d",
+            "label": "Plan and present one motion-picture program to a group — a court of honor film, an original short, or a training vignette"
+          }
+        ]
+      },
+      {
+        "code": "3",
+        "label": "Explore film production",
+        "complete": "any",
+        "children": [
+          {
+            "code": "3a",
+            "label": "Visit a film set or TV production studio and observe production work"
+          },
+          {
+            "code": "3b",
+            "label": "Explain to your counselor the elements of a zoom lens and its three important parts"
+          }
+        ]
+      },
+      {
+        "code": "4",
+        "label": "Careers or hobby applications",
+        "complete": "any",
+        "children": [
+          {
+            "code": "4a",
+            "label": "Research a film/video-production career — training, costs, prospects, salary, duties, advancement; discuss findings and interest"
+          },
+          {
+            "code": "4b",
+            "label": "Explore how this badge's skills could support a hobby or healthy lifestyle — training, costs, supporting organizations, your goals"
+          }
+        ]
+      }
+    ],
+    "chemistry": [
+      {
+        "code": "1",
+        "label": "Chemistry and safety",
+        "complete": "all",
+        "children": [
+          {
+            "code": "1a",
+            "label": "Obtain SDS for sucrose, isopropyl alcohol, and a waterproofing spray; compare properties, hazards, handling/disposal, and toxicity"
+          },
+          {
+            "code": "1b",
+            "label": "Identify recommended PPE for each chemical and how PPE changes with toxicity and exposure route"
+          },
+          {
+            "code": "1c",
+            "label": "Review each SDS's Section 2 pictograms — what they mean and where you see them in your community"
+          },
+          {
+            "code": "1d",
+            "label": "Discuss safe chemical storage — at home, school, in the community, and for the environment"
+          }
+        ]
+      },
+      {
+        "code": "2",
+        "label": "Chemistry and first aid",
+        "complete": "all",
+        "children": [
+          {
+            "code": "2a",
+            "label": "Discuss why soap and alcohol are used on cuts and scrapes, and how to test the hypothesis"
+          },
+          {
+            "code": "2b",
+            "label": "Compare washing oil/powder-coated hands with water alone vs. soap and water"
+          },
+          {
+            "code": "2c",
+            "label": "Test how rubbing alcohol affects microbial growth using baker's yeast"
+          }
+        ]
+      },
+      {
+        "code": "3",
+        "label": "Chemistry and cooking",
+        "complete": "all",
+        "children": [
+          {
+            "code": "3a",
+            "label": "Perform a Maillard (browning) reaction; discuss whether it's a physical or chemical change"
+          },
+          {
+            "code": "3b",
+            "label": "Make red cabbage indicator and measure the pH of five household liquids, including water"
+          }
+        ]
+      },
+      {
+        "code": "4",
+        "label": "Chemistry and camping",
+        "complete": "n-of",
+        "completeN": 2,
+        "children": [
+          {
+            "code": "4a",
+            "label": "Compare at least two waterproofing methods for a tent vs. boots"
+          },
+          {
+            "code": "4b",
+            "label": "Describe the four classes of fires and extinguishers, and how sand/baking soda/extinguishers work"
+          },
+          {
+            "code": "4c",
+            "label": "Under supervision, conduct flame tests of at least five elements"
+          },
+          {
+            "code": "4d",
+            "label": "Under supervision, synthesize nylon (a kit is allowed)"
+          }
+        ]
+      },
+      {
+        "code": "5",
+        "label": "Describe how chemistry can reduce the environmental impact of single-use items (bottles, bags, straws, batteries)"
+      },
+      {
+        "code": "6",
+        "label": "Identify five fields of chemistry, how each applies to your life, and how they interact"
+      },
+      {
+        "code": "7",
+        "label": "Identify three government agencies overseeing chemical use, and discuss their history and responsibilities"
+      },
+      {
+        "code": "8",
+        "label": "Chemistry careers and exposure",
+        "complete": "any",
+        "children": [
+          {
+            "code": "8a",
+            "label": "Visit a research lab and discuss the work with a chemist or technician, including their training"
+          },
+          {
+            "code": "8b",
+            "label": "Visit a company using chemical processes and talk with an employee about their work and training"
+          },
+          {
+            "code": "8c",
+            "label": "Research three chemistry careers, pick one, and dig into training/education/costs and job prospects"
+          }
+        ]
+      }
+    ],
     "citizenship-world": [
       {
         "code": "1",
