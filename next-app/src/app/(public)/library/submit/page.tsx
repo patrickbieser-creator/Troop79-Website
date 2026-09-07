@@ -10,6 +10,7 @@ import { gateAudience, familyGateConfigured } from '@/lib/family-access';
 import { resolveAdminActor } from '@/lib/admin-actor';
 import type { LibraryTopic, MeritBadge, Rank } from '@/lib/supabase/types';
 import { rankReqKey } from '@/lib/library';
+import { resolveRequirementLabel } from '@/lib/library-data';
 import { libraryGateAction, submitLibraryResourceAction } from './actions';
 import { PageHeader, KickerSep } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
@@ -171,6 +172,18 @@ function GateCard({ target, gate }: { target?: string; gate?: string }) {
 async function SubmitForm({ target, err }: { target?: string; err?: string }) {
   const options = await loadTargetOptions();
 
+  // A per-requirement merit badge target (`mb_req:{mbId}-{code}`) arrives
+  // only from a badge page's row-level "Suggest a resource" icon
+  // (Plans/Library-MB-Consolidation.md Phase 2). The dropdown deliberately
+  // has no mb_req options — one per leaf across every badge is ~1,500 — so
+  // a prefill the select can't show would silently fall back to "Let the
+  // webmaster decide" and LOSE the target on submit. Instead it renders as
+  // a locked line with a way back to the badge to pick a different row.
+  const lockedMbReq = target?.startsWith('mb_req:')
+    ? await resolveRequirementLabel(createAdminClient(), 'mb_req', target.slice('mb_req:'.length))
+    : null;
+  const lockedBadge = lockedMbReq ? options.mbs.find((mb) => mb.id === lockedMbReq.parentId) : undefined;
+
   // Leaders/scouts get their login name prefilled as the "who are you" —
   // editable, since the label is display-only (sessions aren't identity).
   const adminActor = await resolveAdminActor();
@@ -204,6 +217,25 @@ async function SubmitForm({ target, err }: { target?: string; err?: string }) {
         />
       </Field>
 
+      {lockedMbReq && target ? (
+        <Field
+          label="Where does it belong?"
+          hint={
+            <>
+              Pre-targeted from the badge page.{' '}
+              <Link href={`/library/mb/${lockedMbReq.parentId}`}>Wrong requirement?</Link> Go back
+              and pick another row.
+            </>
+          }
+        >
+          <input type="hidden" name="target" value={target} />
+          <p className={styles.lockedTarget}>
+            <span className={styles.reqTag}>{lockedMbReq.code}</span>
+            For {lockedBadge?.name ?? lockedMbReq.parentId} — requirement {lockedMbReq.code}
+            {lockedMbReq.label ? `: ${lockedMbReq.label}` : ''}
+          </p>
+        </Field>
+      ) : (
       <Field
         label={
           <>
@@ -241,6 +273,7 @@ async function SubmitForm({ target, err }: { target?: string; err?: string }) {
           </optgroup>
         </SelectInput>
       </Field>
+      )}
 
       <Field
         label={

@@ -34,6 +34,8 @@ import { FormCard, Field, TextInput } from '@/app/_components/form';
 import { DateField } from '@/app/_components/date-field';
 import { SignInToSignUpPanel } from '@/app/(public)/events/[id]/signup-panels';
 import { SignupStatusBar } from '@/app/(public)/events/[id]/signup-status-bar';
+import { MbRequirementRows } from '@/app/(public)/library/mb/[mbId]/mb-requirement-rows';
+import { MbLegend } from '@/app/(public)/library/mb/[mbId]/mb-legend';
 
 export const metadata = {
   title: 'Public Styleguide — Troop 79'
@@ -169,7 +171,7 @@ const SCOREBOARD: ReadonlyArray<readonly [string, string, string]> = [
   [
     'Inline styles',
     '146 sites / 31 files (~140 convertible)',
-    'STRUCK (B) — 18 survivors in 7 files, every one genuinely dynamic and commented (category colors, --month-lanes/--lane-count, fill %, tree-depth indents; +5 in the four photo-library views, 2026-08-22 — DB category colour + proportional bar)'
+    'STRUCK (B) — 16 survivors in 6 files, every one genuinely dynamic and commented (category colors, --month-lanes/--lane-count, fill %; +5 in the four photo-library views, 2026-08-22 — DB category colour + proportional bar; the MB tree-depth indents left with the 2026-09-07 Requirements consolidation)'
   ],
   [
     'Second-lineage palette',
@@ -415,6 +417,54 @@ export default function PublicStyleguidePage() {
             </FormCard>
           </div>
 
+          {/* Library MB requirement row — icon-only actions with tooltip
+              bubbles (mb-tracker.module.css .act/.tip; Plans/Library-MB-
+              Consolidation.md Phase 2, 2026-09-07). Hover or Tab to an icon
+              for its bubble; the accessible name carries the code. Rendered
+              from the live client component, so it cannot drift. */}
+          <div className={sg.specimenBlock}>
+            <MbRequirementRows
+              anchorId="specimen-requirements"
+              intro={<MbLegend showClaim />}
+              rows={[
+                {
+                  key: 'specimen-4a',
+                  code: '4a',
+                  label: 'Compare at least two waterproofing methods for a tent vs. boots',
+                  top: false,
+                  pill: { state: 'done', text: 'Done · Apr 19', title: 'Specimen — done Apr 19' },
+                  what: '4a',
+                  count: 1,
+                  detail: (
+                    <span className={sg.specimenInlineNote}>
+                      (resource lines render here — see any badge page)
+                    </span>
+                  ),
+                  more: null,
+                  moreCount: 0,
+                  proofHref: null,
+                  suggestHref: '#specimen',
+                  children: []
+                },
+                {
+                  key: 'specimen-4b',
+                  code: '4b',
+                  label: 'Describe the four classes of fires and extinguishers',
+                  top: false,
+                  pill: null,
+                  what: '4b',
+                  count: 0,
+                  detail: null,
+                  more: null,
+                  moreCount: 0,
+                  proofHref: '#specimen',
+                  suggestHref: '#specimen',
+                  children: []
+                }
+              ]}
+            />
+          </div>
+
           {/* SectionDivider + EmptyState + reqTag */}
           <div className={sg.specimenBlock}>
             <SectionDivider label="This Week" link={<a href="#specimen">All news</a>} />
@@ -452,11 +502,14 @@ export default function PublicStyleguidePage() {
           controls); categorical tags (<code>.catTag</code>, <code>.tagChip</code>,{' '}
           <code>.tagEagle</code>&hellip;) by rule; photos&rsquo; rich empty block; the
           printed Clipboard&rsquo;s divider + pencil-grid greys (print fidelity); the
-          celebration-gold award pair (mint <code>--award-gold</code> on a 3rd use); 18
+          celebration-gold award pair (mint <code>--award-gold</code> on a 3rd use); 16
           dynamic inline sites (the photo library&rsquo;s four views added 5 on
           2026-08-22 &mdash; each paints a category colour that lives in{' '}
           <code>calendar_categories</code> and is editable in Lookups, which no class
-          can express).
+          can express; the MB tree&rsquo;s two depth indents left on 2026-09-07); the
+          Library MB page&rsquo;s icon-only row action with tooltip bubble
+          (<code>mb-tracker.module.css .act/.tip</code>, specimen above) &mdash; one
+          consumer so far; promote to <code>_components/</code> on a second.
         </div>
       </section>
 

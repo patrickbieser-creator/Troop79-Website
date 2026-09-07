@@ -71,7 +71,10 @@ describe('Design-system census (public)', () => {
   });
 
   it('PublicTsx_ContainsOnlySanctionedInlineStyles_PerPhaseDCloseout', () => {
-    // 18 genuinely-dynamic sites in 7 files, each /* dynamic */-commented.
+    // 16 genuinely-dynamic sites in 6 files, each /* dynamic */-commented.
+    // (Was 18 in 7: the Library MB requirements tree's two tree-depth
+    // indents went with the 2026-09-07 consolidation — the row grid nests
+    // children with a class now.)
     const SANCTIONED: Record<string, number> = {
       '(public)/events/month-grid.tsx': 5,
       // The four photo-library views (2026-08-22). Every site paints a
@@ -80,10 +83,6 @@ describe('Design-system census (public)', () => {
       // express, since the values are data.
       '(public)/photos/views.tsx': 5,
       '(public)/scouts/[id]/page.tsx': 2,
-      // Moved 2026-08-22 with the tracker: the two tree-depth indents came
-      // from the retired /merit-badges/[mbId] and now live in the Library's
-      // requirements tree. Same two sites, new home.
-      '(public)/library/mb/[mbId]/mb-requirements-tree.tsx': 2,
       '(public)/events/[id]/page.tsx': 2,
       '(public)/events/calendar-browser.tsx': 1,
       '(public)/events/[id]/slot-first-form.tsx': 1

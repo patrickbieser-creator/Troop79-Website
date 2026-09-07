@@ -278,7 +278,17 @@
   background: #f5d76a; /* deliberate: celebration gold, no token exists */
 }
 
-/* ── Requirements list ── */
+/* ── Scout switcher slot ──
+   The library ScoutSwitcher sits directly under the grid and above the
+   Requirements divider (Patrick, 2026-09-07). It carries its own bottom
+   margin; this only gives it breathing room off the grid. */
+.switcherSlot { margin-top: 14px; }
+.switcherSlot:empty { display: none; }
+
+/* ── THE consolidated Requirements list ──
+   Plans/Library-MB-Consolidation.md Phase 2 — spec is prototypes/library-mb
+   (rev 4). Row grammar at rest: [tag] [label · pill] [actions]; the
+   resource sub-row is hidden until opened. Public tokens only. */
 
 .reqCard {
   background: var(--warm-white);
@@ -292,69 +302,64 @@
   font-size: var(--fs-xs);
   font-style: italic;
   color: var(--text-meta);
+  margin: 0 0 var(--sp-2);
+}
+
+/* One quiet line: the icons and what they do. Nothing else. */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px var(--sp-5);
+  font-family: var(--font-ui);
+  font-size: var(--fs-2xs);
+  color: var(--text-meta);
   padding-bottom: var(--sp-3);
-  margin-bottom: 14px;
+  margin: 0 0 var(--sp-1);
   border-bottom: 1px dashed var(--border-light);
 }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend svg { color: var(--navy); }
 
-.reqLeaf {
-  padding: 3px 0 3px var(--sp-3);
-  font-family: var(--font-body);
-  font-size: 14px;
-  color: var(--text-body);
-  line-height: 1.5;
-}
-
-.reqParent {
-  padding: var(--sp-3) 0;
-}
-.reqParentTop { border-bottom: 1px solid var(--border-light); }
-
-.reqParentHead {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  font-family: var(--font-display);
-  font-size: var(--fs-md);
-  font-weight: 700;
-  color: var(--navy);
-  margin-bottom: 6px;
-}
-
-.reqNote {
-  font-family: var(--font-body);
-  font-style: italic;
-  font-weight: 600;
-  color: var(--bark);
-  background: var(--status-warning-bg);
-  border-left: 3px solid var(--bark-light);
-  padding: var(--sp-2) 14px;
-  margin: var(--sp-2) 0 var(--sp-1);
-  font-size: 14px;
-  line-height: 1.5;
-  border-radius: 0 var(--rad-sm) var(--rad-sm) 0;
-}
-.reqNoteLabel {
+/* The one note at the top of the list (scout login can't claim / sign in to see progress). */
+.reqHint {
   font-family: var(--font-ui);
-  font-style: normal;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  font-size: 10px;
-  margin-right: 6px;
-  vertical-align: 2px;
+  font-size: var(--fs-xs);
+  color: var(--text-meta);
+  margin: 0 0 var(--sp-3);
 }
+.reqHint a { color: var(--navy); font-weight: 700; }
 
-.reqChildren {
-  margin-top: 6px;
-  display: grid;
-  gap: var(--sp-1);
+/* Expand all · Collapse all in the divider's link slot. */
+.divActions { display: flex; gap: var(--sp-3); align-items: center; }
+.divBtn {
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  color: var(--navy);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  border-radius: var(--rad-sm);
 }
+.divBtn:hover { color: var(--forest); text-decoration: underline; text-underline-offset: 2px; }
+.divBtn:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.divSep { color: var(--border-mid); }
+
+/* Row: [tag] [label · pill] [actions]; the sub-row spans the last two columns. */
+.rq {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  column-gap: 10px;
+  align-items: start;
+  padding: 8px 0;
+  border-top: 1px solid var(--border-light);
+}
+.rqTop { padding: var(--sp-3) 0; }
+.rq:first-child { border-top: 0; }
 
 /* Mono requirement-code pill — same pattern as library's .reqTag (candidate
    for a future shared promotion; kept local per current scope rules). */
-.reqTag {
+.rqTag {
   font-family: var(--font-mono);
   background: var(--navy);
   color: var(--warm-white);
@@ -362,9 +367,245 @@
   border-radius: var(--rad-pill);
   font-size: var(--fs-2xs);
   font-weight: 700;
-  margin-right: var(--sp-2);
+  line-height: 1.4;
+  margin-top: 2px;
+  white-space: nowrap;
 }
-.reqTagLarge {
+.rqTagLarge { font-size: var(--fs-xs); padding: 3px 10px; margin-top: 3px; }
+/* The whole-badge row: outlined, not filled — it is not a requirement. */
+.rqTagGhost { background: var(--newsprint); color: var(--navy); border: 1px solid var(--border-mid); }
+
+.rqText {
+  min-width: 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-body);
+}
+.rqTop > .rqText {
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--navy);
+  line-height: 1.4;
+}
+/* The label as a button — reads as text, acts on click, focus ring on keyboard. */
+.rqOpen,
+.rqToggle {
+  display: inline;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--rad-sm);
+}
+.rqOpen:hover,
+.rqToggle:hover { color: var(--forest); }
+.rqOpen:focus-visible,
+.rqToggle:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.chev {
+  display: inline-block;
+  width: 14px;
+  font-size: 11px;
+  color: var(--text-meta);
+  transition: transform 0.18s ease;
+  margin-right: 2px;
+}
+.rqToggle[aria-expanded='false'] .chev { transform: rotate(-90deg); }
+/* Optionality on a parent row: muted suffix, not a callout. */
+.rqRule {
+  font-family: var(--font-ui);
+  font-size: var(--fs-2xs);
+  font-weight: 400;
+  color: var(--bark);
+  margin-left: var(--sp-2);
+}
+.frac {
+  font-family: var(--font-ui);
+  font-size: var(--fs-2xs);
+  font-weight: 400;
+  color: var(--text-meta);
+  margin-left: var(--sp-2);
+  white-space: nowrap;
+}
+.rqKids { padding-left: 26px; }
+.rqActs {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+.rqSub {
+  grid-column: 2 / -1;
+  display: grid;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+/* Done / Pending pill — small, dated. Khaki/bark = "your scout did this". */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-ui);
+  font-size: 10px; /* off-scale canon micro-label, same as .statLabel */
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0 6px;
+  border-radius: var(--rad-pill);
+  border: 1px solid var(--khaki);
+  background: var(--khaki-light);
+  color: var(--bark);
+  white-space: nowrap;
+  line-height: 16px;
+  margin-left: 6px;
+  vertical-align: 2px;
+}
+.pillPending { background: var(--status-warning-bg); border-style: dashed; }
+
+/* Icon-only action with a tooltip bubble on hover / focus-visible. The
+   bubble is absolutely positioned, so showing it never reflows the row.
+   Canonical rendering: /admin/styleguide/public. */
+.act {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--rad-sm);
+  padding: 4px 7px;
+  min-height: 28px;
+  font-family: var(--font-ui);
   font-size: var(--fs-xs);
-  padding: 3px 10px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--navy);
+  line-height: 1.2;
+  transition: background var(--transition), color var(--transition);
+}
+.act:hover,
+.act[aria-expanded='true'] { background: var(--cream); border-color: var(--border-light); }
+.act:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
+.actProof { color: var(--forest); }
+.act svg { display: block; }
+.actCount { font-size: var(--fs-2xs); font-weight: 700; color: var(--navy); }
+.tip {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+.act:hover .tip,
+.act:focus-visible .tip {
+  top: calc(100% + 3px);
+  right: 0;
+  width: auto;
+  height: auto;
+  clip: auto;
+  overflow: visible;
+  background: var(--navy);
+  color: var(--warm-white);
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--rad-sm);
+  z-index: 5;
+  box-shadow: var(--shadow-card);
+}
+
+/* One quiet line per resource: glyph (or YouTube still) · ★? title · host. */
+.res {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 8px;
+  align-items: center;
+  font-family: var(--font-ui);
+  font-size: 12.5px; /* matches library.module.css's .scoutSwitcher body size */
+  color: var(--text-body);
+  min-height: 22px;
+}
+.resIco {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--rad-sm);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  background: var(--newsprint);
+  border: 1px solid var(--border-light);
+  color: var(--navy);
+}
+.resThumb {
+  width: 48px;
+  height: 27px; /* 16:9 */
+  border-radius: var(--rad-sm);
+  border: 1px solid var(--border-light);
+  object-fit: cover;
+  background: var(--newsprint);
+}
+.resLine { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
+.resTitle { font-weight: 600; color: var(--text-head); }
+a.resTitle:hover { color: var(--navy); text-decoration: underline; text-underline-offset: 2px; }
+.resHost { font-size: 11px; color: var(--text-meta); }
+.resStar { color: var(--bark); font-size: 11px; margin-right: 2px; }
+.moreBtn {
+  justify-self: start;
+  background: none;
+  border: 0;
+  padding: 2px 0;
+  font-family: var(--font-ui);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  color: var(--navy);
+  cursor: pointer;
+}
+.moreBtn:hover { color: var(--forest); text-decoration: underline; text-underline-offset: 2px; }
+.moreBtn:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+
+/* Counselor note — requirement_notes for this one requirement. */
+.note {
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-body);
+  border-left: 3px solid var(--khaki);
+  padding: 2px 12px;
+  margin: 2px 0;
+}
+.note p { margin: 0 0 4px; }
+.noteBy {
+  font-family: var(--font-ui);
+  font-style: normal;
+  font-size: var(--fs-2xs);
+  color: var(--text-meta);
+  margin-left: 6px;
+  white-space: nowrap;
+}
+
+/* Screen-reader-only kind prefix ("Video, pinned:") ahead of a resource title. */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .reqCard { padding: var(--sp-4) 12px; }
+  .rqKids { padding-left: 12px; }
+  .rq { column-gap: 8px; }
+  .rqText { font-size: 13.5px; }
+  .act { padding: 4px 5px; } /* three icons at 375 px: give the label the width back */
+  .rqActs { gap: 0; }
+  .res { font-size: 12px; }
 }

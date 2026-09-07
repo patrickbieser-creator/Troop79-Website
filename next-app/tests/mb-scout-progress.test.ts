@@ -92,6 +92,22 @@ describe('mb scout progress — folding the ledger (pure)', () => {
     expect(foldLedger([], MB).size).toBe(0);
   });
 
+  it('FoldLedger_KeepsTheEarliestDate_PerRequirementCode', () => {
+    // Phase 2 of Plans/Library-MB-Consolidation.md: the requirement row's
+    // "Done · Apr 19" pill needs the completion date. A re-entered
+    // requirement keeps its FIRST sign-off date; a row without a date still
+    // counts as done (dates are optional so the admin fold is unaffected).
+    const rows: MbLedgerRow[] = [
+      { scout_id: 's1', kind: 'mb_requirement', code: `${MB}-1a`, date: '2026-05-03' },
+      { scout_id: 's1', kind: 'mb_requirement', code: `${MB}-1a`, date: '2026-04-19' },
+      { scout_id: 's1', kind: 'mb_requirement', code: `${MB}-1b` }
+    ];
+    const slot = foldLedger(rows, MB).get('s1')!;
+    expect(slot.dates.get('1a')).toBe('2026-04-19');
+    expect(slot.codes.has('1b')).toBe(true);
+    expect(slot.dates.has('1b')).toBe(false);
+  });
+
   it('FoldLedger_HandlesABadgeIdContainingAHyphen', () => {
     // "citizenship-in-society-1a" must slice to "1a", not "in-society-1a".
     const rows: MbLedgerRow[] = [

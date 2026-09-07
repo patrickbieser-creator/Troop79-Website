@@ -30,6 +30,11 @@ export interface MbLedgerRow {
   scout_id: string;
   kind: string;
   code: string;
+  /** The ledger's `date` column ('YYYY-MM-DD') — optional so callers that
+   *  only need the done/not-done grid (the admin drill-in) can keep their
+   *  three-column select. The Library's requirement rows read it for the
+   *  "Done · Apr 19" pill (Plans/Library-MB-Consolidation.md, Phase 2). */
+  date?: string | null;
 }
 
 /** The scout fields the grid needs — structural, so both a full `Scout` row
@@ -45,6 +50,9 @@ export interface MbScoutSlot {
   awarded: boolean;
   /** Leaf requirement codes, badge prefix already stripped ("1a", not "archery-1a"). */
   codes: Set<string>;
+  /** code → the EARLIEST ledger date for it ('YYYY-MM-DD'). Only present when
+   *  the rows carried a date; a code can be in `codes` and absent here. */
+  dates: Map<string, string>;
 }
 
 /**
@@ -60,11 +68,21 @@ export function foldLedger(rows: MbLedgerRow[], mbId: string): Map<string, MbSco
   const awardCode = `MB:${mbId}`;
   const reqPrefix = `${mbId}-`;
   for (const row of rows) {
-    const slot = byScout.get(row.scout_id) ?? { awarded: false, codes: new Set<string>() };
+    const slot = byScout.get(row.scout_id) ?? {
+      awarded: false,
+      codes: new Set<string>(),
+      dates: new Map<string, string>()
+    };
     if (row.kind === 'merit_badge_award' && row.code === awardCode) {
       slot.awarded = true;
     } else if (row.code.startsWith(reqPrefix)) {
-      slot.codes.add(row.code.slice(reqPrefix.length));
+      const code = row.code.slice(reqPrefix.length);
+      slot.codes.add(code);
+      // ISO 'YYYY-MM-DD' sorts as a string; keep the first sign-off.
+      if (row.date) {
+        const prior = slot.dates.get(code);
+        if (!prior || row.date < prior) slot.dates.set(code, row.date);
+      }
     }
     byScout.set(row.scout_id, slot);
   }

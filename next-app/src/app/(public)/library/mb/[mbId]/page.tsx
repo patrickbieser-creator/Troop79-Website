@@ -10,12 +10,17 @@
  * that the library is the one place where you go for merit badges, not two
  * different places." The tracker route is retired; this is the only one.
  *
- * SECTION ORDER, and why: stats → scout grid → requirements → resources →
- * "I did this". A parent or leader landing here gets the counts first, exactly
- * as the retired page led with. A scout gets study → do → claim: what the
- * badge asks, what helps, then the claim at the end, next to the requirement
- * labels it asks them to pick from. The picker is no longer the top of the
- * page, so the header carries an anchor jump to it.
+ * SECTION ORDER, and why: stats → scout grid → (scout switcher) → ONE
+ * Requirements list. A parent or leader landing here gets the counts first,
+ * exactly as the retired page led with. Every requirement row then carries
+ * its own resources, counselor note, the selected scout's Done/Pending pill
+ * and the per-row "I did this" / "Suggest a resource" actions
+ * (Plans/Library-MB-Consolidation.md Phase 2, prototype rev 4, 2026-09-07).
+ * The three sections that used to follow the tree — "Whole-badge resources",
+ * a divider per top-level requirement with resources, and the "I did this"
+ * radio picker (mb-proof-picker.tsx, retired) — are gone: study → do → claim
+ * now happens on the row, not three scroll positions apart. The header's
+ * jump link still lands on the list.
  *
  * SCOUT DATA NOW RENDERS HERE — this file previously promised it never would
  * (a 2026-08-07 note, when the page was resources-only and personalization was
@@ -29,10 +34,10 @@
  * `?viewScout=` IS honoured here since 2026-09-07 (Plans/Library-MB-Consolidation.md,
  * Phase 1) — resolved through the same lib/library-viewer.ts chain the rank
  * pages use, so the URL value only ever selects among scouts the session is
- * already authorized to see. Phase 1 resolves the viewer and loads their
- * pending proofs per requirement but renders NOTHING new with them; Phase 2
- * (the consolidated Requirements section, prototype rev 4) is the consumer.
- * The grid stays troop-wide, not personalized.
+ * already authorized to see. Phase 2 renders with it: a household with two
+ * or more scouts gets the library's ScoutSwitcher under the grid and the
+ * rows personalise to that one scout. The grid stays troop-wide, not
+ * personalized.
  *
  * QUERY COUNT per request (perf item 18's discipline), Phase 1 vs before:
  *   Visitor — before: merit_badges (1, shared with generateMetadata) +
@@ -56,7 +61,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import type { MeritBadge, MeritBadgeRequirement, Scout } from '@/lib/supabase/types';
 import { SCOUT_CORE_COLS } from '@/lib/scout-row';
-import { buildReqTree, flattenLeaves, topLevelCodeOf, bsaPageUrl, workbookUrl } from '@/lib/mb-helpers';
+import { buildReqTree, flattenLeaves, bsaPageUrl, workbookUrl } from '@/lib/mb-helpers';
 import {
   foldLedger,
   gridGroups,
@@ -69,14 +74,11 @@ import { gateAudience } from '@/lib/family-access';
 import {
   loadMbPageResources,
   loadMbPendingSubmissions,
-  loadMbRequirementNotes,
-  sortPlacedResources,
-  type PlacedResource
+  loadMbRequirementNotes
 } from '@/lib/library-data';
 import { resolveLibraryViewer, viewerIsLeader } from '@/lib/library-viewer';
 import { TrackedExternalLink } from '../../../_components/tracked-external-link';
-import { ResourceCard } from '../../_components/resource-card';
-import MbProofPicker from './mb-proof-picker';
+import { ScoutSwitcher } from '../../_components/scout-switcher';
 import { MbScoutGrid } from './mb-scout-grid';
 import { MbRequirementsTree } from './mb-requirements-tree';
 import { PageHeader, KickerSep } from '@/app/_components/page-header';
@@ -156,7 +158,7 @@ export default async function LibraryMbPage({
     fetchAllRows<MbLedgerRow>((from, to) =>
       supabase
         .from('ledger_entries')
-        .select('scout_id, kind, code')
+        .select('scout_id, kind, code, date')
         .or(`code.like.${mbId}-%,code.eq.MB:${mbId}`)
         .is('archived_at', null)
         .is('deleted_at', null)
@@ -175,7 +177,6 @@ export default async function LibraryMbPage({
 
   const badge = mb;
   const narrative = notes.wholeBadge;
-  const badgeResources = resources.wholeBadge;
   const reqTree = buildReqTree((reqsRes.data ?? []) as MeritBadgeRequirement[]);
   const leaves = flattenLeaves(reqTree);
 
@@ -189,45 +190,23 @@ export default async function LibraryMbPage({
   const stats = mbStats(started, byScout, activeScouts.length);
   const groups = gridGroups(reqTree, leaves);
 
-  // Group requirement-level resources by their TOP-LEVEL requirement code so
-  // a resource on 'robotics-4a' shows under "Requirement 4". The loader keys
-  // by LEAF ('4a') for Phase 2's per-row rendering; this roll-up reproduces
-  // today's sections unchanged, re-sorted with the one shared comparator so
-  // a merged group reads pinned → sort_order → newest like every other list.
-  const byTopCode = new Map<string, PlacedResource[]>();
-  for (const [leafCode, placed] of resources.byLeafCode) {
-    const topCode = topLevelCodeOf(reqTree, leafCode) ?? leafCode;
-    byTopCode.set(topCode, [...(byTopCode.get(topCode) ?? []), ...placed]);
-  }
-  for (const list of byTopCode.values()) sortPlacedResources(list);
-  const topGroups = reqTree
-    .map((top) => ({ top, resources: byTopCode.get(top.code) ?? [] }))
-    .filter((g) => g.resources.length > 0);
+  let totalCount = resources.wholeBadge.length;
+  for (const list of resources.byLeafCode.values()) totalCount += list.length;
 
-  // Phase 2 (Plans/Resource-Library.md) — proof groups are independent of
-  // which top-level requirements happen to have resources yet (topGroups
-  // above), so every leaf in the catalog is reachable here even on a badge
-  // page with nothing shelved.
-  const leavesByTop = new Map<string, { code: string; label: string }[]>();
-  for (const leaf of leaves) {
-    const top = topLevelCodeOf(reqTree, leaf.code) ?? leaf.code;
-    const list = leavesByTop.get(top) ?? [];
-    list.push({ code: leaf.code, label: leaf.label });
-    leavesByTop.set(top, list);
-  }
-  const proofGroups = reqTree.map((top) => ({
-    code: top.code,
-    label: top.label,
-    leaves: leavesByTop.get(top.code) ?? []
-  }));
-
-  const totalCount =
-    badgeResources.length + topGroups.reduce((sum, g) => sum + g.resources.length, 0);
-  const suggestHref = `/library/submit?target=${encodeURIComponent(`mb:${mbId}`)}`;
-  // A scout-login session can't submit proof at all (Plans/Family-Identity-Auth.md
-  // Phase 0) — MbProofPicker needs to know so it can explain that instead of
-  // walking a scout through a picker that will refuse them at the end.
+  // ── Whose rows ──────────────────────────────────────────────────────────
+  // The ONE scout the requirement rows personalise to — the same fold the
+  // grid draws from, so a pill and a grid cell can never disagree.
+  const selectedScoutId = viewer.kind === 'scout' ? viewer.scoutId : null;
+  const doneDates = selectedScoutId ? byScout.get(selectedScoutId)?.dates : undefined;
+  // "I did this" needs a verified identity (lib/library.ts
+  // proofSubmissionAllowedFor — the gate submit-proof/actions.ts enforces)
+  // AND an own scout in view: a superuser leader proxying as a scout can
+  // look but not claim, and the OLD shared scout login can't submit proof at
+  // all (Plans/Family-Identity-Auth.md Phase 0) — the list says so once at
+  // the top instead of walking a scout to a form that refuses them.
   const audience = await gateAudience();
+  const canClaim = viewer.kind === 'scout' && !viewer.isProxy && audience === 'household';
+  const scoutBlocked = audience === 'scout';
 
   return (
     <>
@@ -263,9 +242,10 @@ export default async function LibraryMbPage({
               <ExternLink href={workbookUrl(badge)} mbId={mbId} linkType="workbook">
                 Workbook (PDF) ↗
               </ExternLink>
-              {proofGroups.length > 0 && (
-                /* The proof picker moved to the bottom of the page, so the one
-                   action a scout comes here to take needs a way down to it. */
+              {leaves.length > 0 && canClaim && (
+                /* The claim lives on each requirement row now, below the
+                   grid — the one action a family comes here to take still
+                   needs a way down to the list. */
                 <a href={`#${PROOF_ANCHOR}`} className={`${s.actionLink} ${s.actionLinkForest}`}>
                   Done with a requirement? I did this ↓
                 </a>
@@ -302,58 +282,26 @@ export default async function LibraryMbPage({
           <MbScoutGrid scouts={started} byScout={byScout} leaves={leaves} groups={groups} />
         )}
 
-        <SectionDivider label="Requirements" />
-        <div className={s.reqCard}>
-          <p className={s.reqDisclaimer}>
-            From the official BSA merit badge pamphlet — wording is paraphrased here. Confirm
-            against the current pamphlet for sign-off.
-          </p>
-          {/* viewer + pendingByLeaf are carried, not rendered — Phase 2's
-              consolidated section (Plans/Library-MB-Consolidation.md) is the
-              first consumer; nothing on the page changes for them yet. */}
-          <MbRequirementsTree nodes={reqTree} depth={0} viewer={viewer} pendingByLeaf={pendingByLeaf} />
+        {/* Directly under the grid, above the Requirements divider (Patrick,
+            2026-09-07): a household with 2+ scouts gets the pull-down, one
+            scout or a scout session the plain "Showing progress for" line,
+            a visitor nothing. Navigates back to THIS page with ?viewScout=. */}
+        <div className={s.switcherSlot}>
+          <ScoutSwitcher viewer={viewer} basePath={`/library/mb/${mbId}`} />
         </div>
 
-        <SectionDivider
-          label="Whole-badge resources"
-          link={<Link href={suggestHref}>Suggest one →</Link>}
+        <MbRequirementsTree
+          mbId={mbId}
+          nodes={reqTree}
+          viewer={viewer}
+          pendingByLeaf={pendingByLeaf}
+          resources={resources}
+          notes={notes.byLeafCode}
+          doneDates={doneDates}
+          canClaim={canClaim}
+          scoutBlocked={scoutBlocked}
+          anchorId={PROOF_ANCHOR}
         />
-        {badgeResources.length === 0 ? (
-          <EmptyState>
-            Nothing shelved for the badge overall yet.{' '}
-            <Link href={suggestHref}>Suggest the first one →</Link>
-          </EmptyState>
-        ) : (
-          <ul className={styles.resourceList}>
-            {badgeResources.map((res) => (
-              <ResourceCard key={res.placement.id} resource={res} pinned={res.placement.pinned} />
-            ))}
-          </ul>
-        )}
-
-        {topGroups.map((group) => (
-          <div key={group.top.code}>
-            <SectionDivider
-              label={
-                <>
-                  Requirement {group.top.code} — {group.top.label.slice(0, 60)}
-                  {group.top.label.length > 60 ? '…' : ''}
-                </>
-              }
-            />
-            <ul className={styles.resourceList}>
-              {group.resources.map((res) => (
-                <ResourceCard key={res.placement.id} resource={res} pinned={res.placement.pinned} />
-              ))}
-            </ul>
-          </div>
-        ))}
-
-        {proofGroups.length > 0 && (
-          <div id={PROOF_ANCHOR}>
-            <MbProofPicker mbId={mbId} groups={proofGroups} scoutBlocked={audience === 'scout'} />
-          </div>
-        )}
       </PageShell>
     </>
   );

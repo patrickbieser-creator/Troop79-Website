@@ -21,17 +21,26 @@
  *     since the feature's original build, not a regression from any one
  *     change).
  *
- * Only ever renders on /library itself — a plain <select onChange> that
- * navigates, only a type import from the server-only viewer module (types
- * are erased at build time, so this stays a client component with no server
- * code bundled in).
+ * A plain <select onChange> that navigates, only a type import from the
+ * server-only viewer module (types are erased at build time, so this stays a
+ * client component with no server code bundled in). `basePath` is the page
+ * the choice navigates back to — /library by default (the catalog and the
+ * rank pages all read ?viewScout= from there); the merit badge page passes
+ * its own path so the switcher under its Scout Progress grid re-renders THAT
+ * page for the chosen scout (Plans/Library-MB-Consolidation.md Phase 2).
  */
 import { useRouter } from 'next/navigation';
 import type { LibraryViewer } from '@/lib/library-viewer';
 import { Button } from '@/app/_components/button';
 import styles from '../library.module.css';
 
-export function ScoutSwitcher({ viewer }: { viewer: LibraryViewer }) {
+export function ScoutSwitcher({
+  viewer,
+  basePath = '/library'
+}: {
+  viewer: LibraryViewer;
+  basePath?: string;
+}) {
   const router = useRouter();
 
   if (viewer.kind === 'proxy-available') {
@@ -44,7 +53,7 @@ export function ScoutSwitcher({ viewer }: { viewer: LibraryViewer }) {
           defaultValue=""
           aria-label="Choose a scout to view the library as"
           onChange={(e) => {
-            if (e.target.value) router.push(`/library?viewScout=${encodeURIComponent(e.target.value)}`);
+            if (e.target.value) router.push(`${basePath}?viewScout=${encodeURIComponent(e.target.value)}`);
           }}
         >
           <option value="" disabled>
@@ -70,7 +79,7 @@ export function ScoutSwitcher({ viewer }: { viewer: LibraryViewer }) {
           className={styles.scoutSwitcherSelect}
           defaultValue={viewer.scoutId}
           aria-label="Choose a different scout to view the library as"
-          onChange={(e) => router.push(`/library?viewScout=${encodeURIComponent(e.target.value)}`)}
+          onChange={(e) => router.push(`${basePath}?viewScout=${encodeURIComponent(e.target.value)}`)}
         >
           {viewer.switchOptions.map((o) => (
             <option key={o.id} value={o.id}>
@@ -78,7 +87,7 @@ export function ScoutSwitcher({ viewer }: { viewer: LibraryViewer }) {
             </option>
           ))}
         </select>
-        <Button variant="ghost" href="/library">
+        <Button variant="ghost" href={basePath}>
           Exit proxy view
         </Button>
       </div>
@@ -104,7 +113,7 @@ export function ScoutSwitcher({ viewer }: { viewer: LibraryViewer }) {
         className={styles.scoutSwitcherSelect}
         defaultValue={viewer.scoutId}
         aria-label="Choose which scout's progress to show"
-        onChange={(e) => router.push(`/library?viewScout=${encodeURIComponent(e.target.value)}`)}
+        onChange={(e) => router.push(`${basePath}?viewScout=${encodeURIComponent(e.target.value)}`)}
       >
         {viewer.switchOptions.map((o) => (
           <option key={o.id} value={o.id}>

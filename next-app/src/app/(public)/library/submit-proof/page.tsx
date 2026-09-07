@@ -79,9 +79,21 @@ async function loadRequirementContext(target: string): Promise<RequirementContex
 export default async function SubmitProofPage({
   searchParams
 }: {
-  searchParams: Promise<{ target?: string; sent?: string; gate?: string; err?: string }>;
+  searchParams: Promise<{
+    target?: string;
+    sent?: string;
+    gate?: string;
+    err?: string;
+    /** Pre-selects a household scout in the picker — the merit badge page's
+     *  per-row "I did this" passes the scout its rows were showing
+     *  (Plans/Library-MB-Consolidation.md Phase 2). Only ever a HINT: the
+     *  radio below lists the session's own scouts and the action re-checks
+     *  the posted id against the household, so a foreign id just falls back
+     *  to the first scout. */
+    scout?: string;
+  }>;
 }) {
-  const { target, sent, gate, err } = await searchParams;
+  const { target, sent, gate, err, scout } = await searchParams;
   if (!target) notFound();
 
   const context = await loadRequirementContext(target);
@@ -120,7 +132,7 @@ export default async function SubmitProofPage({
         ) : audience === 'scout' ? (
           <ScoutDisabledCard err={err} target={target} />
         ) : audience === 'household' ? (
-          <VerifiedSubmitForm target={target} err={err} />
+          <VerifiedSubmitForm target={target} err={err} preferScoutId={scout} />
         ) : (
           <SignInRequiredCard target={target} err={err} />
         )}
@@ -259,7 +271,15 @@ function GateCard({ target, gate }: { target: string; gate?: string }) {
  * exists; a scout session collapses straight to themselves with no picker at
  * all (Phase 0's closed path, reopened on a real identity basis).
  */
-async function VerifiedSubmitForm({ target, err }: { target: string; err?: string }) {
+async function VerifiedSubmitForm({
+  target,
+  err,
+  preferScoutId
+}: {
+  target: string;
+  err?: string;
+  preferScoutId?: string;
+}) {
   const session = await getIdentitySessionIfValid();
   if (!session) {
     // Shouldn't happen — gateAudience() already said 'household' — but a
@@ -306,6 +326,8 @@ async function VerifiedSubmitForm({ target, err }: { target: string; err?: strin
   }
 
   const scouts = party?.scouts ?? [];
+  // The hinted scout only wins when it IS one of this household's scouts.
+  const preferred = scouts.some((s) => s.id === preferScoutId) ? preferScoutId : scouts[0]?.id;
   return (
     <form action={submitProofAction}>
       <FormCard>
@@ -323,9 +345,9 @@ async function VerifiedSubmitForm({ target, err }: { target: string; err?: strin
           </FieldError>
         ) : (
           <Field label="Which scout is this for?">
-            {scouts.map((s, i) => (
+            {scouts.map((s) => (
               <label key={s.id} className={styles.scoutPickRow}>
-                <input type="radio" name="scoutId" value={s.id} defaultChecked={i === 0} required />
+                <input type="radio" name="scoutId" value={s.id} defaultChecked={s.id === preferred} required />
                 {s.displayName}
               </label>
             ))}
