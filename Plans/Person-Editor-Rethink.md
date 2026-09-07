@@ -102,4 +102,20 @@ Brad's deviations to rule on: A and B approve Pending Updates per section/field 
 
 ## Decision
 
-_Pending Patrick._
+**Patrick, 2026-09-07: Direction A, plus Direction C's History.** Prototype A updated the same day:
+a History card in the fact strip (last change · by whom · count; click scrolls to the log) and a
+History section above Danger zone, newest first, this session's actions highlighted, fed by every
+save / status change / approval / role / email / household action. In the build this is `audit_log`
+filtered to the person.
+
+**Sign-in status, as clarified for Patrick:** "Can sign in" is derived, not a switch — any address
+on file that has not bounced can request a code or link at /signin; a scout without an address signs
+in as a household parent. "Verified" is stamped automatically the first time a code or link sent to
+that address is redeemed (`markEmailVerified` in `lib/identity-challenge.ts`); there is no manual
+verify, and the Roster's "Send sign-in link" is how a leader gets an address verified. Leaders'
+admin access is a separate `leaders.can_login` flag managed on Access & Permissions. The prototype's
+Sign-in card now carries a "How this works" disclosure saying exactly this and an Admin access line
+for leaders.
+
+_Next: Patrick approves or redirects; then a build plan (tech-lead) against people-table.tsx,
+scout-form.tsx, scout-relations.tsx, adult-form.tsx._

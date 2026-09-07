@@ -97,6 +97,15 @@ table.roster{width:100%;border-collapse:collapse;background:#fff;border:1px soli
 .fact{background:#fff;border:1px solid var(--admin-gray-200);border-radius:var(--admin-radius);padding:8px 10px}
 .fact .k{font-size:var(--admin-text-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--admin-gray-500);font-weight:700}
 .fact .v{font-size:var(--admin-text-lg);margin-top:2px}
+.fact .v .btn-link{font-size:inherit;padding:0;text-align:left}
+.fact .v .sub{display:block;font-size:var(--admin-text-xs);color:var(--admin-gray-500);margin-top:2px}
+.history{list-style:none;margin:0;padding:0}
+.history li{display:grid;grid-template-columns:110px minmax(0,1fr);gap:4px 12px;padding:8px 0;border-bottom:1px solid var(--admin-gray-100);font-size:var(--admin-text-base)}
+.history li:last-child{border-bottom:0}
+.history .when{color:var(--admin-gray-500);white-space:nowrap}
+.history .who{color:var(--admin-gray-600);font-weight:600}
+.history li.session{background:var(--admin-status-success-bg);margin:0 -14px;padding:8px 14px}
+@media (max-width:640px){.history li{grid-template-columns:1fr}}
 .cols{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:14px;align-items:start}
 .main{min-width:0;display:flex;flex-direction:column;gap:12px}
 .side{display:flex;flex-direction:column;gap:12px;position:sticky;top:12px}
@@ -293,6 +302,27 @@ const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','
 function fmtDate(iso){ if(!iso) return ''; const [y,m,d] = iso.slice(0,10).split('-').map(Number); return `${MON[m-1]} ${d}, ${y}`; }
 function fmtDateTime(iso){ const t = iso.slice(11,16); let [h,mi] = t.split(':').map(Number); const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return `${fmtDate(iso)} ${h}:${String(mi).padStart(2,'0')} ${ap}`; }
 const TODAY = '2026-09-07';
+/* Change log per person (Direction C's History tab, folded into A as a card + section, Patrick 2026-09-07).
+   Seed is invented; every save / status change / approval / role / email action in this session appends. */
+const ME = 'Priya Raman';
+const HISTORY = {
+  101:[['2024-08-30','Import','Created from the roster spreadsheet'],['2025-02-12','Priya Raman','YPT completed set to Feb 11, 2025'],['2026-06-02','Dana Whitlock','Verified dana.whitlock@example.com by signing in'],['2026-09-04','Marcus Whitlock (family)','Proposed 3 changes from /profile (pending)']],
+  102:[['2024-08-30','Import','Created from the roster spreadsheet'],['2026-06-02','Marcus Whitlock','Verified marcus.w@example.com by signing in']],
+  103:[['2022-03-01','Import','Created; Merit badge counselor'],['2023-09-01','Committee','Granted Adult leader'],['2024-06-30','Committee','Ended Merit badge counselor'],['2025-01-15','Committee','Granted Committee member'],['2025-10-05','Priya Raman','YPT completed set to Oct 4, 2025']],
+  104:[['2021-09-01','Import','Created; Committee member'],['2026-08-15','Priya Raman','Ended Committee member'],['2026-08-16','Priya Raman','Marked inactive — "Moved to Madison, Aug 2026"'],['2026-08-20','System','g.tomasek@oldmail.example bounced']],
+  105:[['2026-09-01','Jamal Okafor (family)','Added to the Okafor household from /profile as "Grandmother"']],
+  106:[['2026-08-28','Priya Raman','Added as an adult (possible duplicate of a guest)']],
+  201:[['2024-08-30','Import','Created from the roster spreadsheet'],['2026-03-15','Ledger','Rank Star awarded (BoR)'],['2026-06-01','Dana Whitlock (family)','Health form date updated — approved by Priya Raman']],
+  202:[['2023-09-10','Import','Created'],['2025-11-02','Ledger','Rank First Class awarded (BoR)'],['2026-09-05','Priya Raman (family)','Proposed 2 changes from /profile (pending)']],
+  203:[['2026-08-25','Priya Raman','Created (new scout)']]
+};
+const histOf = p => (HISTORY[p.id] ||= []);
+function logHistory(text, p = byId(state.personId)){ if (!p || !text) return; histOf(p).push([TODAY, ME, text, true]); }
+function histFact(p){ const h = histOf(p); const last = h[h.length - 1]; return last ? `<button type="button" class="btn-link" data-act="history" title="Open the change log">${fmtDate(last[0])} · ${esc(last[1].replace(/ \(family\)$/, ''))}</button><div class="sub">${h.length} change${h.length === 1 ? '' : 's'}</div>` : '<span class="muted">—</span>'; }
+function renderHistory(p){
+  const rows = histOf(p).slice().reverse().map(([d, who, text, session]) => `<li${session ? ' class="session"' : ''}><span class="when">${fmtDate(d)}</span><span><span class="who">${esc(who)}</span> — ${esc(text)}</span></li>`).join('');
+  return `<section class="card" id="history" aria-labelledby="h-history"><div class="card-head"><h2 id="h-history">History</h2><span class="muted" style="font-size:var(--admin-text-base)">newest first · this session highlighted</span></div><div class="card-body"><ul class="history">${rows || '<li><span class="muted">No changes recorded.</span></li>'}</ul>${helpDisc('history', 'Every save, status change, approved or rejected family update, role grant/end, email change and household move is written here with who did it. Family proposals appear when submitted and again when reviewed. Ledger events (ranks, badges) show as "Ledger". In the real app this would be the audit_log filtered to this person.')}</div></section>`;
+}
 function ageOn(iso){ if(!iso) return null; const [y,m,d] = iso.split('-').map(Number); const [ty,tm,td] = TODAY.split('-').map(Number); let a = ty - y; if (tm < m || (tm === m && td < d)) a--; return a; }
 function ypt(iso){ if(!iso) return null; const [y,m,d] = iso.split('-').map(Number); const exp = `${y+2}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; return {expires: exp, current: exp >= TODAY}; }
 const delay = ms => new Promise(r => setTimeout(r, ms));
@@ -422,8 +452,8 @@ function renderPerson(){
   const status = p.active ? '<span class="pill pill-ok">Active</span>' : `<span class="pill pill-off">Inactive</span> <span class="muted">${esc(p.kind === 'scout' ? SCOUT_REASONS[p.inactiveReason] : p.inactiveReason)}</span>`;
   const kindPill = p.kind === 'scout' ? '<span class="pill pill-scout">Scout</span>' : isLeader(p) ? '<span class="pill pill-leader">Leader</span>' : '<span class="pill pill-kind">Adult</span>';
   const facts = p.kind === 'scout'
-    ? [['Rank', p.rank || '—'], ['Patrol', p.patrol || '—'], ['Grade', gradeLabel(p.grade)], ['Age', ageOn(p.birthdate) ?? '—'], ['Health form', p.health ? fmtDate(p.health) : '<span class="pill pill-warn">missing</span>']]
-    : [['Household', p.household ? HOUSEHOLDS[p.household] : '—'], ['Roles', p.roles.filter(r => !r.end).map(r => ROLE_LABEL[r.role]).join(', ') || 'none'], ['Age', ageOn(p.birthdate) ?? '—'], ['YPT', (() => { const y = ypt(p.ypt); return y ? (y.current ? `<span class="pill pill-ok">current</span>` : `<span class="pill pill-off">expired</span>`) : '<span class="pill pill-warn">none</span>'; })()], ['Health form', p.health ? fmtDate(p.health) : '<span class="pill pill-warn">missing</span>']];
+    ? [['Rank', p.rank || '—'], ['Patrol', p.patrol || '—'], ['Grade', gradeLabel(p.grade)], ['Age', ageOn(p.birthdate) ?? '—'], ['Health form', p.health ? fmtDate(p.health) : '<span class="pill pill-warn">missing</span>'], ['History', histFact(p)]]
+    : [['Household', p.household ? HOUSEHOLDS[p.household] : '—'], ['Roles', p.roles.filter(r => !r.end).map(r => ROLE_LABEL[r.role]).join(', ') || 'none'], ['Age', ageOn(p.birthdate) ?? '—'], ['YPT', (() => { const y = ypt(p.ypt); return y ? (y.current ? `<span class="pill pill-ok">current</span>` : `<span class="pill pill-off">expired</span>`) : '<span class="pill pill-warn">none</span>'; })()], ['Health form', p.health ? fmtDate(p.health) : '<span class="pill pill-warn">missing</span>'], ['History', histFact(p)]];
   const notices = [];
   if (state.banner) notices.push(`<div class="notice ${state.banner.cls}">${state.banner.html}</div>`);
   if (p.notice) notices.push(`<div class="notice n-warn"><strong>Added by a family — not yet acknowledged.</strong> ${esc(p.notice.by)} added ${esc(nameOf(p))} to their household on ${fmtDateTime(p.notice.at)} as "${esc(p.notice.fields.relationship)}" with phone ${esc(p.notice.fields.phone)}. They are already on the roster; acknowledging clears this from the dashboard and changes nothing. <div class="row" style="margin-top:6px"><button type="button" class="btn btn-sm btn-primary" data-act="ack">Acknowledge</button></div></div>`);
@@ -439,6 +469,7 @@ function renderPerson(){
   <div class="cols"><div class="main">
     ${renderStatus(p)}
     ${secs.map(s => renderSection(p, s)).join('')}
+    ${renderHistory(p)}
     ${renderDanger(p)}
   </div>${renderSide(p)}</div>`;
 }
@@ -560,7 +591,7 @@ function renderSide(p){
   const deliverable = p.emails.filter(e => !e.bounced);
   return `<aside class="side">
   <div class="card"><div class="card-head"><h2>Household</h2></div><div class="card-body">${p.household ? `<strong>${esc(HOUSEHOLDS[p.household])}</strong><ul style="margin-top:6px">${hh.map(q => `<li><span>${q.id === p.id ? `<strong>${esc(nameOf(q))}</strong>` : `<button type="button" class="btn-link" data-act="open" data-id="${q.id}">${esc(nameOf(q))}</button>`}</span><span class="muted">${kindLabel(q)}${q.active ? '' : ' · inactive'}</span></li>`).join('')}</ul>` : '<span class="empty">Not in a household</span>'}</div></div>
-  <div class="card"><div class="card-head"><h2>Sign-in</h2></div><div class="card-body"><ul><li><span>Can sign in</span><span>${deliverable.length ? 'Yes' : p.kind === 'scout' ? 'Via a parent' : '<span class="pill pill-warn">no email</span>'}</span></li><li><span>Verified addresses</span><span>${p.emails.filter(e => e.verified).length} of ${p.emails.length}</span></li><li><span>Last link sent</span><span>${state.linkSent[p.id] ? 'just now' : '—'}</span></li></ul></div></div>
+  <div class="card"><div class="card-head"><h2>Sign-in</h2></div><div class="card-body"><ul><li><span title="Derived from the addresses on file — not a switch">Can sign in</span><span>${deliverable.length ? 'Yes' : p.kind === 'scout' ? 'Via a parent' : '<span class="pill pill-warn">no email</span>'}</span></li><li><span>Verified addresses</span><span>${p.emails.filter(e => e.verified).length} of ${p.emails.length}</span></li><li><span>Last link sent</span><span>${state.linkSent[p.id] ? 'just now' : '—'}</span></li>${isLeader(p) ? `<li><span>Admin access</span><span>Yes <span class="muted">· Access &amp; Permissions</span></span></li>` : ''}</ul>${helpDisc('signin', '<p><strong>Can sign in</strong> is derived, not a setting: anyone with an address on file that has not bounced can ask for a sign-in code or link at /signin. A scout with no address of their own signs in as one of the household\'s parents. Add or remove addresses under Contact &amp; sign-in.</p><p><strong>Verified</strong> is stamped automatically the first time a code or link sent to that address is redeemed — proof someone reads that inbox. There is no manual verify; sending a sign-in link from here is how a leader gets an address verified.</p><p><strong>Admin access</strong> (leaders only) is a separate flag managed on the Access &amp; Permissions screen, not here.</p>')}</div></div>
   <div class="card"><div class="card-head"><h2>Where they appear</h2></div><div class="card-body"><ul><li><span>Roster tab</span><span>${TAB_LABEL[tabOf(p)]}</span></li><li><span>Signup picker</span><span>${p.active ? 'Offered' : 'Not offered'}</span></li>${p.kind === 'scout' ? `<li><span>Fast Entry</span><span>${p.active ? 'Listed' : 'Hidden'}</span></li>` : ''}<li><span>Record</span><span class="mono">people #${p.id}</span></li></ul></div></div>
   <div class="card"><div class="card-head"><h2>Prototype</h2></div><div class="card-body"><button type="button" class="btn-link" data-act="open" data-id="${p.kind === 'scout' ? 101 : 201}">Switch to a ${p.kind === 'scout' ? 'n adult' : ' scout'} record</button></div></div>
   </aside>`;
@@ -591,21 +622,22 @@ document.addEventListener('input', e => {
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const act = b.dataset.act; const p = state.personId ? byId(state.personId) : null;
-  const run = async (fn, okMsg, opts = {}) => { busy(true); state.phase = 'saving'; try { await fn(); if (okMsg) toast(okMsg, opts); } finally { busy(false); state.phase = null; } };
+  const run = async (fn, okMsg, opts = {}) => { busy(true); state.phase = 'saving'; try { await fn(); if (okMsg) { toast(okMsg, opts); logHistory(okMsg); } } finally { busy(false); state.phase = null; } };
   switch (act) {
     case 'tab': state.tab = b.dataset.tab; render(); break;
     case 'open': if (!(await guardDirty())) return; openPerson(Number(b.dataset.id), state.screen === 'roster' ? state.tab : null); break;
     case 'back': if (!(await guardDirty())) return; state.screen = 'roster'; state.tab = state.fromTab || tabOf(p); state.fromTab = null; render(); break;
     case 'help': state.help = state.help === b.dataset.key ? null : b.dataset.key; render(); break;
+    case 'history': { const h = document.getElementById('history'); if (h) { h.scrollIntoView({behavior:'smooth', block:'start'}); h.classList.add('flash'); setTimeout(() => h.classList.remove('flash'), 1200); } break; }
     case 'danger': state.danger = !state.danger; render(); break;
     case 'edit': if (state.editing && state.editing !== b.dataset.key && !(await guardDirty())) return; startEdit(b.dataset.key); break;
     case 'cancel': state.editing = null; state.draft = null; state.statusReason = ''; render(); break;
     case 'save': { const key = b.dataset.key; const s = sectionsFor(p).find(s => s.key === key); const before = {...p}; const fields = {...state.draft}; if ('household' in fields) fields.household = fields.household ? Number(fields.household) : null; if ('grade' in fields) fields.grade = fields.grade === '' ? '' : Number(fields.grade);
-      b.textContent = 'Saving…'; b.disabled = true; $('#saveStatus').textContent = 'Saving changes…'; busy(true); await api.save(p, fields); busy(false); $('#saveStatus').innerHTML = '<span class="done">Done</span>';
-      if (key === 'family' && before.household !== p.household) { const from = before.household ? HOUSEHOLDS[before.household] : 'no household', to = p.household ? HOUSEHOLDS[p.household] : 'no household'; toast(`Household: ${from} → ${to}`, {undo: async () => { await api.save(p, {household: before.household}); render(); toast('Household change undone.'); }}); }
+      b.textContent = 'Saving…'; b.disabled = true; $('#saveStatus').textContent = 'Saving changes…'; busy(true); await api.save(p, fields); busy(false); { const changed = Object.keys(fields).filter(k => String(before[k] ?? '') !== String(p[k] ?? '')).map(k => F[k]?.label || k); logHistory(`Edited ${s.title}: ${changed.join(', ') || 'no field changed'}`); } $('#saveStatus').innerHTML = '<span class="done">Done</span>';
+      if (key === 'family' && before.household !== p.household) { const from = before.household ? HOUSEHOLDS[before.household] : 'no household', to = p.household ? HOUSEHOLDS[p.household] : 'no household'; toast(`Household: ${from} → ${to}`, {undo: async () => { await api.save(p, {household: before.household}); logHistory(`Household change undone (back to ${from})`); render(); toast('Household change undone.'); }}); }
       await flashDone(key); break; }
-    case 'markInactive': { const scout = p.kind === 'scout'; const reason = state.statusReason; const ok = await confirmDialog({title:`Mark ${nameOf(p)} inactive?`, body:`<ul><li>${scout ? 'Leaves rosters, dashboards and the Fast Entry picker' : 'No longer offered in the family signup picker'}</li><li>Ledger history, relationships${scout ? '' : ', roles'} and past events are kept</li><li>Reason recorded: <strong>${esc(reason ? (scout ? SCOUT_REASONS[reason] : reason) : 'none')}</strong></li><li>Reversible — Status → Edit → Mark active</li></ul>`, ok:'Mark inactive'}); if (!ok) return; await run(() => api.setActive(p, false, reason)); stampNow('status'); state.editing = null; state.flash = 'status'; render(); toast(`${nameOf(p)} marked inactive.`); break; }
-    case 'reactivate': await run(() => api.setActive(p, true, '')); stampNow('status'); state.editing = null; state.flash = 'status'; render(); toast(`${nameOf(p)} is active again.`); break;
+    case 'markInactive': { const scout = p.kind === 'scout'; const reason = state.statusReason; const ok = await confirmDialog({title:`Mark ${nameOf(p)} inactive?`, body:`<ul><li>${scout ? 'Leaves rosters, dashboards and the Fast Entry picker' : 'No longer offered in the family signup picker'}</li><li>Ledger history, relationships${scout ? '' : ', roles'} and past events are kept</li><li>Reason recorded: <strong>${esc(reason ? (scout ? SCOUT_REASONS[reason] : reason) : 'none')}</strong></li><li>Reversible — Status → Edit → Mark active</li></ul>`, ok:'Mark inactive'}); if (!ok) return; await run(() => api.setActive(p, false, reason)); logHistory(`Marked inactive — "${reason ? (scout ? SCOUT_REASONS[reason] : reason) : 'no reason given'}"`); stampNow('status'); state.editing = null; state.flash = 'status'; render(); toast(`${nameOf(p)} marked inactive.`); break; }
+    case 'reactivate': await run(() => api.setActive(p, true, '')); logHistory('Marked active again'); stampNow('status'); state.editing = null; state.flash = 'status'; render(); toast(`${nameOf(p)} is active again.`); break;
     case 'sendlink': { const sel = $('#linkTo'); b.textContent = 'Sending…'; b.disabled = true; const r = await api.sendLink(p, sel ? Number(sel.value) : undefined); state.link = r.ok ? {ok:true, msg:`Link sent to ${r.masked} — good for ${r.minutes} minutes.`} : {ok:false, msg: r.reason === 'rate-limited' ? 'Already sent recently — try again in a few minutes.' : r.reason === 'unreachable' ? 'Add an email address first (Contact & sign-in).' : "Couldn't send the link — try again."}; render(); break; }
     case 'ack': await run(() => api.ack(p), 'Acknowledged — cleared from the dashboard.'); render(); break;
     case 'approve': { const s = sectionsFor(p).find(s => s.key === b.dataset.key); const keys = s.fields.filter(k => k in p.pending.changes); await run(() => api.applyPending(p, keys), `Applied ${keys.length} change${keys.length > 1 ? 's' : ''} from the family.`); stampNow(s.key); state.flash = s.key; render(); break; }
