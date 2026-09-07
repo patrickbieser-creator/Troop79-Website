@@ -9,7 +9,7 @@ import {
   computeMbSmartSelect,
   mbHasPending
 } from './picker';
-import { nodeSatisfied } from './satisfaction';
+import { mbCleanSlate, nodeSatisfied } from './satisfaction';
 import { DatePickerField } from '../../_components/date-picker-field';
 import { Dialog } from '../../_components/dialog';
 import {
@@ -208,7 +208,11 @@ export function MbFocusModal({
     ? mb.requirements.filter((t) => nodeSatisfied(t, keyFor, hasKey)).length
     : 0;
   const topTotal = mb?.requirements.length ?? 0;
-  const awardBlocked = topTotal > 0 && topSat < topTotal;
+  // Clean slate (no leaf completed or ticked for this badge) → the ★ row is
+  // enough on its own, matching the server's validateAwardRows (v1.50.2).
+  // Partial progress keeps the every-group gate (B-005, 2026-09-06).
+  const cleanSlate = mb ? mbCleanSlate(mb.id, completion, selectedKeys) : true;
+  const awardBlocked = topTotal > 0 && !cleanSlate && topSat < topTotal;
   const awardItem = mb ? mbAwardItem(mb.id, mb.name, mb.eagle) : null;
   const awardStatus = awardItem ? statusFor(awardItem) : 'empty';
   const hasPending = mb ? mbHasPending(mb, selected) : false;

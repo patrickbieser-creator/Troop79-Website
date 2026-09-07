@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>September 6, 2026</strong> &nbsp;&middot;&nbsp; v1.119.2</p>
+      <p>Last updated: <strong>September 6, 2026</strong> &nbsp;&middot;&nbsp; v1.119.3</p>
     </div>
   </div>
 
@@ -494,6 +494,22 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.119.3 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.119.3</span>
+        <span class="release-date">September 6, 2026</span>
+        <span class="release-label"><span class="badge badge-fix">Fix</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">&ldquo;Full merit badge earned&rdquo; works on its own in Scout-First again</p>
+        <ul class="change-list">
+          <li><span><strong>The &#9733; row in the merit badge window no longer refuses the click</strong> for a scout with no progress on that badge. Checking &ldquo;Full merit badge earned&rdquo; alone now selects the award and enables Save, the way the August 19 fix intended &mdash; that fix had only taught the server to accept a clean-slate award, and the Scout-First window was still stopping the click before it ever got there with a &ldquo;0 of N requirement groups met&rdquo; message.</span></li>
+          <li><span><strong>Partial progress is still checked.</strong> A scout who already has some (not all) requirements signed off individually still needs every requirement group satisfied before the badge can be marked earned, exactly as before. Rank awards are untouched.</span></li>
+        </ul>
       </div>
     </div>
 

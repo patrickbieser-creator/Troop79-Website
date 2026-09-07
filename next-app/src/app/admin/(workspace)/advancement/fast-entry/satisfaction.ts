@@ -35,6 +35,27 @@ export function nodeSatisfied(
   }
 }
 
+/**
+ * True iff this scout has NO individual requirement activity for the badge —
+ * zero completed leaf rows and zero pending leaf ticks. On a clean slate a
+ * merit badge award stands on its own (v1.50.2, Patrick 2026-08-19: a blue
+ * card signed by a counselor is one fact, not N requirement rows). Mirrors
+ * `hasAnyLeafActivity` in actions.ts's validateAwardRows — the server is the
+ * authority; this keeps the client from rejecting what the server accepts
+ * (B-005, 2026-09-06: the bypass shipped server-only and Scout-First still
+ * blocked the click).
+ */
+export function mbCleanSlate(
+  mbId: string,
+  completion: CompletionMap,
+  pendingKeys: ReadonlySet<string>
+): boolean {
+  const prefix = itemKey.mbReq(mbId, '');
+  for (const k of completion.keys()) if (k.startsWith(prefix)) return false;
+  for (const k of pendingKeys) if (k.startsWith(prefix)) return false;
+  return true;
+}
+
 export interface AwardGateError {
   awardKey: string;
   awardLabel: string;
@@ -61,6 +82,9 @@ export function validateAwards(
       const mbId = sel.code.startsWith('MB:') ? sel.code.slice(3) : sel.code;
       const mb = catalog.mbs.find((m) => m.id === mbId);
       if (!mb) continue;
+      // Clean slate — trust the explicit award check (see mbCleanSlate).
+      // Partial progress falls through to the full leaf gate, as before.
+      if (mbCleanSlate(mbId, completion, pendingKeys)) continue;
       const keyFor = (code: string) => itemKey.mbReq(mbId, code);
       for (const top of mb.requirements) {
         if (!nodeSatisfied(top, keyFor, hasKey)) {
