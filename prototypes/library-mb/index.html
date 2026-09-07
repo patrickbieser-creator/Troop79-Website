@@ -1,0 +1,843 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chemistry — Merit Badge — Scout Troop 79 (prototype)</title>
+<style>
+/* ──────────────────────────────────────────────────────────────────────────
+   PROTOTYPE: /library/mb/[mbId] with the three lower sections consolidated.
+   Tokens copied verbatim from next-app/src/app/globals.css (PUBLIC side).
+   Fonts: next/font isn't available here, so the stacks fall straight to the
+   named families + system fallbacks. No CDN, no network.
+   ────────────────────────────────────────────────────────────────────────── */
+:root {
+  --navy: #1e3a4a; --navy-mid: #2a4f63; --navy-light: #3a6478; --navy-hover: #163040;
+  --forest: #3d5a3e; --forest-light: #527554;
+  --khaki: #c4a882; --khaki-light: #ddd0bb;
+  --bark: #8b6914; --bark-light: #a98020;
+  --cream: #faf6ef; --newsprint: #f4efe6; --warm-white: #ffffff;
+  --text-head: #1a1a1a; --text-body: #363636; --text-meta: #787060;
+  --border-light: #e2d9cc; --border-mid: #c8bfaf;
+  --shadow-card: 0 1px 4px rgba(30,58,74,.08), 0 2px 12px rgba(30,58,74,.06);
+  --shadow-hover: 0 4px 20px rgba(30,58,74,.14);
+  --transition: .18s ease;
+  --fs-2xs: 11px; --fs-xs: 12px; --fs-sm: 13px; --fs-md: 15px; --fs-lg: 17px;
+  --fs-xl: 20px; --fs-2xl: 26px; --fs-3xl: 34px; --fs-display: clamp(30px, 6vw, 44px);
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px;
+  --sp-7: 28px; --sp-8: 32px; --sp-9: 40px; --sp-10: 48px;
+  --rad-sm: 2px; --rad-md: 4px; --rad-lg: 8px; --rad-pill: 999px;
+  --status-danger: #8c3b3b; --status-danger-bg: #fbf0ee;
+  --status-success: var(--forest); --status-success-bg: #eef2ee;
+  --status-warning: var(--bark); --status-warning-bg: #fdf6e3;
+  --status-info: var(--navy); --status-info-bg: #e8eef2;
+  --rule: #e4d9c4;
+  --font-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  --font-body: Lora, Georgia, 'Times New Roman', serif;
+  --font-ui: 'Open Sans', 'Segoe UI', Arial, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', Consolas, Menlo, monospace;
+  --focus-ring: 2px solid var(--navy-light);
+}
+* { box-sizing: border-box; }
+html { color-scheme: light; }
+body { margin: 0; background: var(--newsprint); color: var(--text-body); font-family: var(--font-body); min-height: 100vh; }
+a { text-decoration: none; color: inherit; }
+img { display: block; max-width: 100%; }
+[hidden] { display: none !important; }
+button { font: inherit; }
+:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+/* ── Prototype-only control bar (NOT a product element) ── */
+.proto {
+  background: repeating-linear-gradient(135deg, #fff8dc 0 10px, #fff3c4 10px 20px);
+  border-bottom: 2px dashed var(--bark);
+  font-family: var(--font-ui); font-size: var(--fs-xs); color: var(--text-head);
+}
+.protoInner { max-width: 1180px; margin: 0 auto; padding: 8px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
+.protoLabel { font-weight: 700; letter-spacing: .1em; text-transform: uppercase; font-size: 10px; color: var(--bark); }
+.protoSeg { display: inline-flex; border: 1px solid var(--bark); border-radius: var(--rad-sm); overflow: hidden; background: var(--warm-white); }
+.protoSeg button { border: 0; background: transparent; padding: 6px 10px; cursor: pointer; font-size: var(--fs-xs); color: var(--text-body); border-right: 1px solid var(--khaki); }
+.protoSeg button:last-child { border-right: 0; }
+.protoSeg button[aria-pressed="true"] { background: var(--bark); color: var(--warm-white); font-weight: 700; }
+.protoSeg button:focus-visible { outline-offset: -3px; }
+.protoReset { margin-left: auto; background: none; border: 0; color: var(--navy); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; font-size: var(--fs-xs); }
+
+/* ── Masthead (minimal stand-in for the site nav) ── */
+.masthead { background: var(--cream); border-bottom: 1px solid var(--border-mid); }
+.mastInner { max-width: 1180px; margin: 0 auto; padding: 12px 24px; display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; }
+.wordmark { font-family: var(--font-display); font-weight: 900; font-size: var(--fs-xl); color: var(--navy); letter-spacing: -.01em; }
+.mastNav { display: flex; flex-wrap: wrap; gap: 6px 14px; font-family: var(--font-ui); font-size: var(--fs-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-meta); }
+.mastNav a[aria-current] { color: var(--navy); border-bottom: 2px solid var(--navy); }
+.mastWho { margin-left: auto; font-family: var(--font-ui); font-size: var(--fs-xs); color: var(--text-meta); }
+
+/* ── PageHeader / PageShell (mirrors _components) ── */
+.pageHeader { max-width: 1180px; margin: 0 auto; padding: 32px 24px 0; }
+.kicker { font-family: var(--font-ui); font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--text-meta); margin-bottom: 10px; }
+.kicker a { color: var(--navy); }
+.kicker a:hover { color: var(--forest); text-decoration: underline; text-underline-offset: 2px; }
+.kickerSep { margin: 0 6px; color: var(--border-mid); }
+.pageTitle { font-family: var(--font-display); font-weight: 900; color: var(--text-head); font-size: var(--fs-display); line-height: 1.08; margin: 0 0 10px; text-wrap: balance; }
+.pageLede { font-family: var(--font-body); font-size: var(--fs-lg); font-style: italic; color: var(--text-meta); line-height: 1.5; margin: 0; }
+.headRule { height: 2px; background: var(--border-mid); margin-top: 20px; }
+.main { max-width: 1180px; margin: 0 auto; padding: 24px 24px 80px; }
+.eagleTagLarge { font-family: var(--font-ui); font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--bark); background: var(--status-warning-bg); padding: var(--sp-1) 10px; border-radius: var(--rad-pill); margin-left: var(--sp-3); vertical-align: 6px; }
+.actionRow { display: flex; gap: var(--sp-4); flex-wrap: wrap; margin-top: 14px; font-style: normal; }
+.actionLink { display: inline-flex; align-items: center; font-family: var(--font-ui); font-size: var(--fs-xs); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--navy); padding: var(--sp-2) var(--sp-4); border: 1px solid var(--navy); border-radius: var(--rad-sm); transition: background var(--transition), color var(--transition); }
+.actionLink:hover { background: var(--navy); color: var(--warm-white); }
+.actionLinkForest { color: var(--forest); border-color: var(--forest); }
+.actionLinkForest:hover { background: var(--forest); color: var(--warm-white); }
+
+/* ── Stats strip ── */
+.statStrip { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--warm-white); border: 1px solid var(--border-light); box-shadow: var(--shadow-card); margin-bottom: 22px; }
+.stat { padding: 18px var(--sp-5); text-align: center; border-right: 1px solid var(--border-light); }
+.stat:last-child { border-right: 0; }
+.statNum { font-family: var(--font-display); font-size: 32px; font-weight: 700; line-height: 1; }
+.statForest { color: var(--forest); } .statNavy { color: var(--navy); } .statMeta { color: var(--text-meta); }
+.statLabel { font-family: var(--font-ui); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-meta); margin-top: 6px; }
+@media (max-width: 480px) {
+  .statStrip { grid-template-columns: repeat(2, 1fr); }
+  .stat:nth-child(-n+2) { border-bottom: 1px solid var(--border-light); }
+  .stat:nth-child(2) { border-right: 0; }
+}
+
+/* ── SectionDivider ── */
+.divider { display: flex; align-items: center; gap: var(--sp-3); margin: 34px 0 14px; }
+.divLabel { font-family: var(--font-ui); font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--text-meta); white-space: nowrap; }
+.divRule { flex: 1; height: 1px; background: var(--border-mid); }
+.divLink { font-family: var(--font-ui); font-size: 11.5px; font-weight: 700; white-space: nowrap; display: flex; gap: var(--sp-3); align-items: center; }
+.divLink button { background: none; border: 0; padding: 4px 0; color: var(--navy); cursor: pointer; font: inherit; font-weight: 700; }
+.divLink button:hover { color: var(--forest); text-decoration: underline; text-underline-offset: 2px; }
+.divLink .sep { color: var(--border-mid); }
+
+/* ── Scout progress grid (verbatim from mb-tracker.module.css) ── */
+.gridScroller { overflow: auto; max-height: 70vh; border: 1px solid var(--border-light); background: var(--warm-white); box-shadow: var(--shadow-card); }
+.grid { border-collapse: separate; border-spacing: 0; font-family: var(--font-ui); font-size: var(--fs-xs); width: max-content; }
+.scoutHead { position: sticky; left: 0; top: 0; background: var(--cream); z-index: 4; min-width: 200px; padding: var(--sp-2) 10px; border-right: 2px solid var(--border-mid); border-bottom: 2px solid var(--navy); text-align: left; font-size: var(--fs-2xs); letter-spacing: .04em; text-transform: uppercase; color: var(--text-meta); }
+.groupHead { position: sticky; top: 0; z-index: 3; background: var(--cream); color: var(--navy); font-size: var(--fs-xs); font-weight: 700; letter-spacing: .02em; padding: 10px var(--sp-2); text-align: center; border-bottom: 2px solid var(--navy); border-right: 1px solid var(--border-light); }
+.groupRule { display: inline-block; margin-left: var(--sp-2); font-family: var(--font-ui); font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--bark); background: var(--status-warning-bg); padding: 2px var(--sp-2); border-radius: var(--rad-pill); vertical-align: 1px; }
+.leafHead { position: sticky; top: 0; z-index: 3; min-width: 46px; padding: var(--sp-2) var(--sp-1); text-align: center; font-family: var(--font-mono); font-size: var(--fs-xs); font-weight: 700; background: var(--newsprint); color: var(--navy); border-left: 1px solid var(--border-light); border-right: 1px solid var(--border-light); }
+.groupStart { border-left: 2px solid var(--navy) !important; }
+.awardHead { position: sticky; top: 0; left: 200px; z-index: 4; min-width: 60px; padding: 10px var(--sp-2); background: var(--status-warning-bg); color: var(--bark); text-align: center; font-size: var(--fs-xs); font-weight: 800; letter-spacing: .04em; border-right: 2px solid var(--bark); border-bottom: 2px solid var(--navy); }
+.awardSubHead { position: sticky; top: 0; left: 200px; z-index: 4; min-width: 60px; padding: var(--sp-2) var(--sp-1); background: var(--status-warning-bg); border-right: 2px solid var(--bark); }
+.scoutCell { position: sticky; left: 0; background: var(--warm-white); z-index: 2; padding: 6px 10px; min-width: 200px; border-right: 2px solid var(--border-mid); border-bottom: 1px solid var(--border-light); font-family: var(--font-body); font-size: var(--fs-sm); }
+.scoutCell a { color: var(--text-head); font-weight: 600; }
+.rankPill { font-family: var(--font-ui); font-size: 9px; letter-spacing: .04em; color: var(--text-meta); padding: 1px 6px; background: var(--newsprint); border-radius: var(--rad-pill); margin-left: var(--sp-2); font-weight: 700; text-transform: uppercase; }
+.cell { width: 46px; text-align: center; font-size: 18px; line-height: 1; font-weight: 700; padding: 6px var(--sp-2); color: var(--border-mid); background: transparent; border-left: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light); }
+.cellDone { color: var(--forest); background: var(--status-success-bg); }
+.awardCell { position: sticky; left: 200px; z-index: 2; width: 60px; text-align: center; font-size: 18px; line-height: 1; font-weight: 700; padding: 6px var(--sp-2); color: var(--bark); background: var(--warm-white); border-right: 2px solid var(--bark); border-bottom: 1px solid var(--border-light); }
+.awardCellDone { color: #5a3a00; background: #f5d76a; } /* deliberate: production's two celebration-gold hexes */
+
+/* ── THE consolidated requirements list ── */
+.reqCard { background: var(--warm-white); border: 1px solid var(--border-light); box-shadow: var(--shadow-card); padding: var(--sp-5) 22px; }
+.reqDisclaimer { font-family: var(--font-body); font-size: var(--fs-xs); font-style: italic; color: var(--text-meta); padding-bottom: var(--sp-3); margin: 0 0 6px; border-bottom: 1px dashed var(--border-light); }
+.legend { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); font-family: var(--font-ui); font-size: var(--fs-2xs); color: var(--text-meta); margin: var(--sp-2) 0 var(--sp-3); }
+.legend span { display: inline-flex; align-items: center; gap: 4px; }
+
+/* Row grammar: [tag] [text + who] [actions] / [sub-row spans text+actions]. */
+.rq { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 10px; align-items: start; padding: 7px 0; }
+.rq + .rq, .rqKids > .rq { border-top: 1px solid var(--border-light); }
+.rqTop { padding: var(--sp-3) 0; }
+.rqTop + .rqTop, .rqKids + .rqTop { border-top: 1px solid var(--border-light); }
+.rqTag { font-family: var(--font-mono); background: var(--navy); color: var(--warm-white); padding: 2px var(--sp-2); border-radius: var(--rad-pill); font-size: var(--fs-2xs); font-weight: 700; line-height: 1.4; margin-top: 2px; white-space: nowrap; }
+.rqTagLarge { font-size: var(--fs-xs); padding: 3px 10px; margin-top: 3px; }
+.rqTagGhost { background: var(--newsprint); color: var(--navy); border: 1px solid var(--border-mid); }
+.rqText { min-width: 0; font-family: var(--font-body); font-size: 14px; line-height: 1.5; color: var(--text-body); }
+.rqTop > .rqText, .rqGroup > .rqText { font-family: var(--font-display); font-size: var(--fs-md); font-weight: 700; color: var(--navy); line-height: 1.4; }
+.rqTop > .rqText .rqLabelPlain { font-family: var(--font-body); font-weight: 400; color: var(--text-body); font-size: 14px; }
+.rqToggle { display: inline; background: none; border: 0; padding: 0; margin: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: var(--rad-sm); }
+.rqToggle:hover { color: var(--forest); }
+.chev { display: inline-block; width: 14px; font-size: 11px; color: var(--text-meta); transition: transform .18s ease; margin-right: 2px; }
+.rqToggle[aria-expanded="false"] .chev { transform: rotate(-90deg); }
+.rqSummary { font-family: var(--font-ui); font-size: var(--fs-2xs); font-weight: 400; color: var(--text-meta); margin-left: var(--sp-2); }
+.rqRule { display: inline-block; font-family: var(--font-ui); font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--bark); background: var(--status-warning-bg); padding: 2px var(--sp-2); border-radius: var(--rad-pill); margin-left: var(--sp-2); vertical-align: 2px; }
+.rqKids { padding-left: 26px; }
+.rqActs { display: flex; gap: 4px; justify-content: flex-end; white-space: nowrap; margin-top: -2px; }
+.rqSub { grid-column: 2 / -1; display: grid; gap: 3px; margin-top: 4px; }
+.rqSub:empty { display: none; }
+
+/* Who chips — khaki/bark ACCENT = "your scout did this" (library convention;
+   forest stays reserved for "has resources"). */
+.who { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: var(--sp-2); vertical-align: 2px; }
+.chip { display: inline-flex; align-items: center; gap: 3px; font-family: var(--font-ui); font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 1px 7px; border-radius: var(--rad-pill); border: 1px solid var(--border-mid); color: var(--text-meta); background: var(--cream); white-space: nowrap; line-height: 1.5; }
+.chipDone { background: var(--khaki-light); color: var(--bark); border-color: var(--khaki); }
+.chipPending { background: var(--status-warning-bg); color: var(--bark); border-color: var(--khaki); border-style: dashed; }
+.chipFrac { text-transform: none; letter-spacing: .02em; }
+
+/* Text-button actions at the row's right edge. */
+.act { display: inline-flex; align-items: center; gap: 5px; background: none; border: 1px solid transparent; border-radius: var(--rad-sm); padding: 3px 8px; font-family: var(--font-ui); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; color: var(--navy); line-height: 1.4; transition: background var(--transition), color var(--transition); }
+.act:hover { background: var(--cream); border-color: var(--border-light); }
+.actProof { color: var(--forest); }
+.act:disabled { color: var(--text-meta); opacity: .6; cursor: default; background: none; border-color: transparent; }
+.actIco { font-size: 13px; width: 14px; text-align: center; }
+@media (max-width: 640px) {
+  /* Icon-only on phones. The label comes back on focus/hover as a small
+     bubble BELOW the button — never inline, because inline text widens the
+     actions column and squeezes the requirement text (caught at 375 px). */
+  .act { position: relative; padding: 5px 8px; }
+  .actLabel { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+  .act:focus-visible .actLabel, .act:hover .actLabel { position: absolute; top: calc(100% + 2px); right: 0; width: auto; height: auto; clip: auto; overflow: visible; background: var(--navy); color: var(--warm-white); font-size: var(--fs-2xs); padding: 3px 8px; border-radius: var(--rad-sm); white-space: nowrap; z-index: 5; box-shadow: var(--shadow-card); }
+  .actIco { font-size: 15px; }
+}
+
+/* One quiet line per resource. */
+.res { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; align-items: center; font-family: var(--font-ui); font-size: 12.5px; color: var(--text-body); min-height: 22px; }
+.resIco { width: 20px; height: 20px; border-radius: var(--rad-sm); display: grid; place-items: center; font-size: 11px; background: var(--newsprint); border: 1px solid var(--border-light); color: var(--navy); }
+.resThumb { width: 56px; height: 32px; border-radius: var(--rad-sm); border: 1px solid var(--border-light); object-fit: cover; background: var(--newsprint); }
+.resLine { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; min-width: 0; }
+.resTitle { font-weight: 600; color: var(--text-head); }
+.resTitle:hover { color: var(--navy); text-decoration: underline; text-underline-offset: 2px; }
+.resHost { display: inline-flex; align-items: center; font-family: var(--font-ui); font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 1px 8px; border-radius: var(--rad-pill); background: var(--cream); color: var(--text-meta); border: 1px solid var(--border-mid); white-space: nowrap; }
+.resPin { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--bark); }
+.resCredit { font-size: 11px; color: var(--text-meta); }
+.resPending .resTitle { color: var(--text-meta); font-weight: 600; }
+.resPending .resIco { border-style: dashed; color: var(--bark); background: var(--status-warning-bg); }
+.pendingBadge { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 1px 8px; border-radius: var(--rad-pill); background: var(--status-warning-bg); color: var(--bark); border: 1px dashed var(--khaki); }
+.resNew { animation: rise .18s ease-out; }
+@keyframes rise { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+
+/* Counselor note — the requirement_notes narrative for this one requirement. */
+.note { font-family: var(--font-body); font-style: italic; font-size: 13px; line-height: 1.5; color: var(--text-body); border-left: 3px solid var(--khaki); padding: 3px 12px; margin: 2px 0; }
+.noteBy { font-family: var(--font-ui); font-style: normal; font-size: var(--fs-2xs); color: var(--text-meta); margin-left: 6px; white-space: nowrap; }
+/* Optionality callout (do any N of…) keeps production's warning treatment. */
+.optNote { font-family: var(--font-body); font-style: italic; font-weight: 600; color: var(--bark); background: var(--status-warning-bg); border-left: 3px solid var(--bark-light); padding: 5px 12px; font-size: 13px; line-height: 1.5; border-radius: 0 var(--rad-sm) var(--rad-sm) 0; }
+.optNoteLabel { font-family: var(--font-ui); font-style: normal; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; font-size: 10px; margin-right: 6px; }
+
+.visitorHint { font-family: var(--font-ui); font-size: var(--fs-xs); color: var(--text-meta); margin: 0 0 var(--sp-3); }
+.visitorHint a { color: var(--navy); font-weight: 700; }
+
+@media (max-width: 640px) {
+  .pageHeader { padding: 24px 16px 0; } .main { padding: 18px 16px 60px; }
+  .mastInner, .protoInner { padding-left: 16px; padding-right: 16px; }
+  .reqCard { padding: var(--sp-4) 12px; }
+  .rqKids { padding-left: 12px; }
+  .rq { column-gap: 8px; }
+  .rqText { font-size: 13.5px; }
+  .res { font-size: 12px; }
+}
+
+/* ── Dialogs (native <dialog>, styled on the form kit) ── */
+dialog { border: 1px solid var(--border-light); border-radius: var(--rad-sm); box-shadow: var(--shadow-hover); padding: 0; width: min(560px, calc(100vw - 24px)); max-height: calc(100vh - 24px); background: var(--warm-white); color: var(--text-body); }
+dialog::backdrop { background: rgba(30,58,74,.35); }
+dialog[open] { animation: fadeIn .15s ease-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.dlgHead { padding: 20px 24px 0; }
+.dlgKicker { font-family: var(--font-ui); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--text-meta); margin: 0 0 6px; }
+.dlgTitle { font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 700; color: var(--text-head); margin: 0; line-height: 1.25; }
+.dlgTarget { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 8px; align-items: start; background: var(--cream); border: 1px solid var(--border-light); border-radius: var(--rad-sm); padding: 8px 12px; margin: 12px 0 0; font-family: var(--font-body); font-size: 13px; line-height: 1.45; }
+.dlgBody { padding: 16px 24px 20px; }
+.dlgActs { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; padding: 0 24px 22px; }
+.dlgClose { position: absolute; top: 10px; right: 10px; background: none; border: 0; font-size: 20px; line-height: 1; color: var(--text-meta); cursor: pointer; padding: 6px; border-radius: var(--rad-sm); }
+.dlgClose:hover { color: var(--text-head); background: var(--cream); }
+@media (max-width: 640px) { .dlgHead { padding: 18px 16px 0; } .dlgBody { padding: 14px 16px 16px; } .dlgActs { padding: 0 16px 18px; } }
+
+.fieldRow { margin-bottom: var(--sp-4); }
+.fieldLabel { display: block; font-family: var(--font-ui); font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-meta); margin-bottom: 6px; }
+.labelQualifier { text-transform: none; letter-spacing: 0; font-weight: 400; }
+.textInput, .textArea, .selectInput { width: 100%; background: var(--warm-white); border: 1px solid var(--border-mid); border-radius: var(--rad-sm); font-family: var(--font-ui); font-size: 16px; padding: 11px 13px; color: var(--text-body); }
+.textInput:focus-visible, .textArea:focus-visible, .selectInput:focus-visible { border-color: var(--navy); outline: var(--focus-ring); outline-offset: 1px; }
+.textArea { min-height: 110px; resize: vertical; line-height: 1.55; }
+.fieldHint { font-family: var(--font-ui); font-size: var(--fs-xs); color: var(--text-meta); margin-top: 6px; line-height: 1.5; }
+.fieldError { font-family: var(--font-ui); font-size: var(--fs-sm); font-weight: 600; color: var(--status-danger); background: var(--status-danger-bg); border: 1px solid color-mix(in srgb, var(--status-danger) 35%, var(--border-mid)); border-radius: var(--rad-sm); padding: 10px 14px; margin-top: var(--sp-2); }
+.textInput[aria-invalid="true"], .textArea[aria-invalid="true"] { border-color: var(--status-danger); }
+.segs { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg { position: relative; }
+.seg input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.seg label { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-ui); font-size: var(--fs-sm); font-weight: 600; padding: 9px 14px; border: 1px solid var(--border-mid); border-radius: var(--rad-sm); background: var(--warm-white); color: var(--text-body); cursor: pointer; min-height: 40px; }
+.seg input:checked + label { background: var(--navy); color: var(--warm-white); border-color: var(--navy); }
+.seg input:focus-visible + label { outline: var(--focus-ring); outline-offset: 2px; }
+.seg input:disabled + label { opacity: .55; cursor: default; }
+.radioRow { display: flex; align-items: flex-start; gap: 10px; padding: 7px 4px; margin: 2px 0; font-family: var(--font-body); font-size: 14px; line-height: 1.45; cursor: pointer; border-radius: var(--rad-sm); }
+.radioRow:hover { background: var(--cream); }
+.radioRow input { flex-shrink: 0; width: 16px; height: 16px; margin-top: 2px; }
+.radioRow .muted { color: var(--text-meta); font-family: var(--font-ui); font-size: var(--fs-xs); }
+.fileDrop { border: 1px dashed var(--border-mid); border-radius: var(--rad-sm); padding: 14px; font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); background: var(--cream); }
+.fileDrop input { display: block; margin-top: 8px; font-size: 14px; max-width: 100%; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); font-family: var(--font-ui); font-size: var(--fs-sm); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; border-radius: var(--rad-sm); padding: 12px 22px; min-height: 44px; cursor: pointer; }
+.btn:disabled { opacity: .55; cursor: default; }
+.btnPrimary { background: var(--forest); color: var(--warm-white); border: none; }
+.btnPrimary:hover:not(:disabled) { background: var(--forest-light); box-shadow: var(--shadow-hover); }
+.btnSecondary { background: var(--warm-white); color: var(--navy); border: 1px solid var(--border-mid); }
+.btnSecondary:hover { border-color: var(--forest); color: var(--forest); background: var(--cream); }
+.btnNavy { background: var(--navy); color: var(--warm-white); border: none; }
+.btnNavy:hover:not(:disabled) { background: var(--navy-hover); }
+
+.notice { font-family: var(--font-ui); font-size: var(--fs-sm); font-weight: 600; border-radius: var(--rad-sm); padding: 10px 14px; line-height: 1.5; }
+.noticeSuccess { color: var(--status-success); background: var(--status-success-bg); border: 1px solid var(--forest-light); }
+.noticeInfo { color: var(--status-info); background: var(--status-info-bg); border: 1px solid var(--border-mid); }
+.noticeWarning { color: var(--text-head); background: var(--status-warning-bg); border: 1px solid var(--khaki); }
+.confirmDone { text-align: center; padding: 8px 0 4px; }
+.bigCheck { font-size: 44px; color: var(--forest); margin-bottom: 6px; line-height: 1; }
+.confirmTitle { font-family: var(--font-display); font-size: 24px; color: var(--text-head); margin: 0 0 10px; }
+.confirmText { font-family: var(--font-body); font-size: 15px; line-height: 1.6; color: var(--text-body); max-width: 46ch; margin: 0 auto 8px; }
+.previewRow { margin-top: 12px; }
+
+/* ── Handoff notes disclosure ── */
+.handoff { margin-top: 48px; border-top: 2px solid var(--border-mid); padding-top: 18px; }
+.handoffToggle { background: none; border: 1px solid var(--border-mid); border-radius: var(--rad-sm); padding: 8px 14px; font-family: var(--font-ui); font-size: var(--fs-xs); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-meta); cursor: pointer; }
+.handoffToggle:hover { color: var(--navy); border-color: var(--navy); }
+.handoffBody { margin-top: 16px; background: var(--warm-white); border: 1px solid var(--border-light); border-radius: var(--rad-sm); padding: 20px 24px; font-family: var(--font-ui); font-size: var(--fs-sm); line-height: 1.6; color: var(--text-body); }
+.handoffBody h2 { font-family: var(--font-display); font-size: var(--fs-xl); margin: 22px 0 8px; color: var(--text-head); }
+.handoffBody h2:first-child { margin-top: 0; }
+.handoffBody h3 { font-family: var(--font-ui); font-size: var(--fs-2xs); letter-spacing: .12em; text-transform: uppercase; color: var(--text-meta); margin: 18px 0 6px; }
+.handoffBody table { border-collapse: collapse; width: 100%; font-size: var(--fs-xs); }
+.handoffBody th, .handoffBody td { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom: 1px solid var(--border-light); }
+.handoffBody th { color: var(--text-meta); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+.handoffBody code { font-family: var(--font-mono); font-size: 11.5px; background: var(--newsprint); padding: 1px 5px; border-radius: var(--rad-sm); }
+.handoffBody ol, .handoffBody ul { padding-left: 20px; margin: 6px 0; }
+.handoffBody li { margin: 3px 0; }
+.tableWrap { overflow-x: auto; }
+</style>
+</head>
+<body>
+
+<!-- PROTOTYPE CONTROLS — not part of the product. -->
+<div class="proto" role="region" aria-label="Prototype controls">
+  <div class="protoInner">
+    <span class="protoLabel">Prototype · view as</span>
+    <div class="protoSeg" role="group" aria-label="Viewer">
+      <button type="button" data-viewer="scout" aria-pressed="false">Ari D. (scout login)</button>
+      <button type="button" data-viewer="parent" aria-pressed="true">Dunmore household (parent of Ari &amp; Leo)</button>
+      <button type="button" data-viewer="visitor" aria-pressed="false">Visitor (not signed in)</button>
+    </div>
+    <button type="button" class="protoReset" id="resetDemo">Reset demo data</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="mastInner">
+    <a class="wordmark" href="#">Scout Troop 79</a>
+    <nav class="mastNav" aria-label="Site">
+      <a href="#">News</a><a href="#">Calendar</a><a href="#">Advancement</a><a href="#" aria-current="page">Library</a><a href="#">About</a>
+    </nav>
+    <span class="mastWho" id="mastWho"></span>
+  </div>
+</header>
+
+<header class="pageHeader">
+  <div class="kicker"><a href="#">Resource Library</a><span class="kickerSep">·</span>Merit Badge</div>
+  <h1 class="pageTitle">Chemistry</h1>
+  <p class="pageLede">Elective merit badge &mdash; requirements, troop progress, and <span id="ledeCount">11 resources</span> the troop recommends.
+    <span class="actionRow">
+      <a class="actionLink" href="https://www.scouting.org/merit-badges/chemistry/" target="_blank" rel="noopener">Official BSA page ↗</a>
+      <a class="actionLink" href="#" onclick="return false">Workbook (PDF) ↗</a>
+      <a class="actionLink actionLinkForest" href="#requirements" id="jumpProof">Done with a requirement? Find it below ↓</a>
+    </span>
+  </p>
+  <div class="headRule"></div>
+</header>
+
+<main class="main">
+  <div class="statStrip" aria-label="Troop totals">
+    <div class="stat"><div class="statNum statForest">2</div><div class="statLabel">Earned</div></div>
+    <div class="stat"><div class="statNum statNavy">6</div><div class="statLabel">In Progress</div></div>
+    <div class="stat"><div class="statNum statMeta">23</div><div class="statLabel">Not Started</div></div>
+    <div class="stat"><div class="statNum statNavy">31</div><div class="statLabel">Active Scouts</div></div>
+  </div>
+
+  <div class="divider"><span class="divLabel">Scout Progress</span><div class="divRule"></div></div>
+  <div class="gridScroller" id="gridScroller"></div>
+
+  <div class="divider" id="requirements">
+    <span class="divLabel">Requirements</span><div class="divRule"></div>
+    <span class="divLink"><button type="button" id="expandAll">Expand all</button><span class="sep">·</span><button type="button" id="collapseAll">Collapse all</button></span>
+  </div>
+  <div class="reqCard">
+    <p class="reqDisclaimer">From the official BSA merit badge pamphlet &mdash; wording is paraphrased here. Confirm against the current pamphlet for sign-off.</p>
+    <p class="visitorHint" id="visitorHint" hidden>Sign in with your <a href="#">family password</a> to see your scout&rsquo;s progress on each requirement and to send in proof when one is done.</p>
+    <div class="legend" id="legend" aria-hidden="true"></div>
+    <div id="reqList"></div>
+  </div>
+
+  <div class="handoff">
+    <button type="button" class="handoffToggle" id="handoffToggle" aria-expanded="false" aria-controls="handoffBody">Handoff notes ▸</button>
+    <div class="handoffBody" id="handoffBody" hidden>
+      <h2>What this prototype replaces</h2>
+      <p>Today <code>/library/mb/[mbId]</code> renders four stacked sections after the header: Scout Progress grid → Requirements tree → Whole-badge resources (+ one SectionDivider per top-level requirement that has resources) → an &ldquo;I did this&rdquo; radio picker listing every leaf again. The last three all enumerate the same requirement codes. This prototype keeps the header, stats and grid unchanged and folds the other three into <strong>one list</strong> whose row grammar is: <em>code · label · who-chips · [resources] · [counselor note] · actions</em>. Whole-badge resources sit at the top of the same list as a &ldquo;For the whole badge&rdquo; row (ghost <code>MB</code> tag) &mdash; no separate divider.</p>
+
+      <h2>Row anatomy → schema</h2>
+      <div class="tableWrap"><table>
+        <thead><tr><th>Row element</th><th>Source</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Code tag + label, group/leaf shape, &ldquo;Do any N of&rdquo; callout</td><td><code>merit_badge_requirements</code> (code, label, parent, complete_rule, complete_n) via <code>buildReqTree</code></td><td>Unchanged from <code>MbRequirementsTree</code>. Top-level leaves (5, 6, 7) render as a single leaf row with the large tag.</td></tr>
+          <tr><td>&ldquo;For the whole badge&rdquo; row</td><td><code>library_placements</code> target_kind=<code>mb</code>, target_key=<code>chemistry</code></td><td>Today&rsquo;s middle section. Same line grammar; no &ldquo;I did this&rdquo; (proof always names a leaf).</td></tr>
+          <tr><td>Resource line (glyph · title · host · ★ Pinned)</td><td><code>library_placements</code> target_kind=<code>mb_req</code>, target_key=<code>chemistry-4c</code> ⋈ <code>library_resources</code> (kind, title, host, url, thumbnail_url; status=published; visibility filter)</td><td>Ordered pinned desc, sort_order. A placement whose code is a top-level code (e.g. <code>chemistry-4</code>) renders on the group header row. YouTube = static thumbnail, links out (no embed). Empty state is nothing.</td></tr>
+          <tr><td>Counselor note</td><td><code>requirement_notes</code> target_kind=<code>mb_req</code>, target_key=<code>chemistry-2c</code>; narrative_md, updated_by</td><td>Short markdown, one per requirement. The badge-level narrative (<code>loadNarrative('mb', …)</code>) stays above the stats as today.</td></tr>
+          <tr><td>Who-chips (AD / LD)</td><td><code>ledger_entries</code> (scout_id, code=<code>chemistry-4c</code>) for the viewer&rsquo;s household scouts (<code>household_members</code> from the family session)</td><td>Khaki/bark accent = &ldquo;your scout did this&rdquo; (library convention; forest stays &ldquo;has resources&rdquo;). Group rows show a fraction per scout. Visitors see no chips.</td></tr>
+          <tr><td>⏳ on a chip</td><td><code>requirement_submissions</code> status=<code>pending</code> for (scout_id, target_key)</td><td>Shows the household that proof is already in the queue; the &ldquo;I did this&rdquo; dialog disables that scout with &ldquo;proof pending&rdquo;.</td></tr>
+          <tr><td>Pending suggestion line</td><td><code>library_resources</code> status=<code>pending</code>, submitted_person_id = viewer&rsquo;s person id, joined through its placement target</td><td>Visible to the submitter only. Everyone else sees nothing until the webmaster approves. Scout and parent are different submitters (switch viewers to see this).</td></tr>
+          <tr><td>&ldquo;I did this&rdquo;</td><td>opens the proof flow pre-targeted: <code>/library/submit-proof?target=mb_req:chemistry-4c</code></td><td>Prototyped as an in-page dialog; production may keep the route. Greyed (not hidden) when every own scout is already signed off.</td></tr>
+          <tr><td>&ldquo;Suggest a resource&rdquo;</td><td>opens the submit flow pre-targeted: <code>/library/submit?target=mb_req:chemistry-4c</code> (today only <code>mb:chemistry</code> exists)</td><td>Available to every viewer; a visitor supplies a name (see open questions).</td></tr>
+        </tbody>
+      </table></div>
+
+      <h2>Plan: attaching a video / link / doc to ONE requirement</h2>
+      <p>The schema already has the address (<code>mb_req</code> + <code>{mbId}-{code}</code>) and the page already fetches every <code>mb_req</code> placement for the badge with one <code>LIKE 'chemistry-%'</code> query. What is missing is the entry point and the display granularity.</p>
+      <ol>
+        <li><strong>Entry point.</strong> The row&rsquo;s Suggest action passes <code>target=mb_req:{mbId}-{code}</code>. The submit flow validates the code exists in <code>merit_badge_requirements</code> for that badge (leaf or top-level), shows the target read-only at the top of the form (as the dialog here does) with a &ldquo;wrong requirement? go back&rdquo; link. No free-text target picking.</li>
+        <li><strong>Write.</strong> Submit inserts <code>library_resources</code> (status=pending, submitted_person_id from the session, submitted_by_label) and its <code>library_placements</code> row in the same transaction. The placement exists from the start so the review queue and the submitter&rsquo;s pending line both know where it belongs; public reads are already filtered on <code>library_resources.status</code>, so nothing leaks.</li>
+        <li><strong>Display.</strong> In <code>page.tsx</code>, replace the <code>byTopCode</code> grouping (<code>topLevelCodeOf</code>) with an exact-code map; a placement on a top-level code renders on the group header row. Delete the per-top-level SectionDivider blocks, the whole-badge <code>ResourceCard</code> list, and <code>MbProofPicker</code>; the tree component grows the sub-row and actions.</li>
+        <li><strong>Submitter&rsquo;s pending line.</strong> One extra query when a family/leader session is present: pending resources for this badge where <code>submitted_person_id</code> = the viewer. Visitors have no identity, so their &ldquo;sent for review&rdquo; is the dialog&rsquo;s success state only.</li>
+        <li><strong>Review queue.</strong> Show the target as &ldquo;Chemistry › 4c — Flame tests&rdquo;; allow the webmaster to re-target (edit the placement) and pin/sort before approving &mdash; both already exist at the placement level.</li>
+        <li><strong>Notes.</strong> The narrative editor in <code>/admin/library</code> gains a requirement picker so a counselor note can be saved on an <code>mb_req</code> target; this page loads them with the same <code>LIKE</code> pattern as placements.</li>
+        <li><strong>Rank page.</strong> <code>/library/rank/[rankId]</code> adopts the identical row grammar with <code>rank_req</code> + <code>{rankId}-{code}</code>; the per-leaf route can then link to the row anchor instead of a separate page. Not built here.</li>
+      </ol>
+
+      <h2>States demonstrated</h2>
+      <ul>
+        <li><strong>Viewer:</strong> scout (own chips, I did this), parent with two scouts (two chips per row, scout picker in the proof dialog), visitor (no chips, no I did this, Suggest available, sign-in hint).</li>
+        <li><strong>Rows:</strong> 4c has three resources incl. a pinned YouTube thumbnail and (for the parent) a pending suggestion; 2c and 4d carry counselor notes; req 4 has a group-level document; req 8 is &ldquo;do any one of&rdquo;; 6 has nothing (renders nothing extra).</li>
+        <li><strong>Proof dialog:</strong> scout picker (done scouts disabled, pending scouts disabled), photo / written report / link, inline validation error, Sending… (700 ms mock), success with what-happens-next, row chip flips to ⏳.</li>
+        <li><strong>Suggest dialog:</strong> kind (video / link / document / image), URL or file (file only for document/image), title, note, submitter name for visitors, validation, Sending…, &ldquo;Sent for review&rdquo;, pending line appears in the row for this viewer only.</li>
+        <li><strong>Collapse/expand:</strong> per group and all-at-once; collapsed header shows &ldquo;4 parts · 3 resources · 1 note&rdquo;. Button + <code>hidden</code>, not <code>&lt;details&gt;</code> (D-070).</li>
+      </ul>
+
+      <h2>Interaction spec</h2>
+      <ul>
+        <li>Chevron rotate 180 ms ease; dialog fade/slide 150 ms ease-out; new pending line 180 ms rise. No other motion.</li>
+        <li>Actions: 12 px Open Sans 700 text buttons, forest for I did this, navy for Suggest; hover = cream fill. ≤ 640 px: icon only (✓ / +), label returns on focus-visible and hover, <code>aria-label</code> always present, 30 px min target.</li>
+        <li>Focus: <code>:focus-visible</code> ring on every control (navy-light 2 px, 2 px offset). Dialogs are native <code>showModal()</code> &mdash; focus trap, Esc, and focus return come free. Success is announced through a polite live region.</li>
+        <li>Rows are a CSS grid: tag / text / actions, with the sub-row spanning text + actions. Children indent 26 px (12 px on phones). The list is designed to hold 80+ leaves (First Aid) without a wall: one line per resource, notes one line, chips ≤ 2 per row for a family.</li>
+      </ul>
+
+      <h2>What is mocked</h2>
+      <ul>
+        <li>All data is in-page JS; nothing persists past a reload. Names, household, counselor and resources are invented. Requirement text is BSA&rsquo;s (paraphrased, as in production).</li>
+        <li>YouTube thumbnails are inline SVG placeholders; production uses <code>resourceThumbnail()</code>.</li>
+        <li>Photo upload accepts a file but never reads it. Proof and suggestions are appended to in-memory arrays; &ldquo;Reset demo data&rdquo; restores the seed.</li>
+        <li>The site nav and footer are stand-ins. The masthead&rsquo;s &ldquo;signed in as&rdquo; reflects the viewer toggle.</li>
+      </ul>
+
+      <h2>Open questions</h2>
+      <ol>
+        <li>Scout-login proof: Family-Identity-Auth Phase 0 refuses proof from a scout session. This prototype shows &ldquo;I did this&rdquo; enabled for the scout viewer (per the brief). Should production grey it with &ldquo;ask a parent&rdquo; instead?</li>
+        <li>Should the suggest form allow re-targeting within the badge (a requirement dropdown), or stay strictly pre-targeted with a go-back link?</li>
+        <li>Do group-level placements (<code>chemistry-4</code>) remain allowed, or must every resource attach to a leaf? Existing placements were grouped by top-level code; a leaf-only rule needs a migration pass.</li>
+        <li>Visitors can suggest today via <code>/library/submit</code>; does a visitor need to leave an email for follow-up, or is a name label enough?</li>
+      </ol>
+    </div>
+  </div>
+</main>
+
+<!-- ── I did this ── -->
+<dialog id="proofDialog" aria-labelledby="proofTitle">
+  <button type="button" class="dlgClose" data-close aria-label="Close">×</button>
+  <div class="dlgHead">
+    <p class="dlgKicker">I did this</p>
+    <h2 class="dlgTitle" id="proofTitle"></h2>
+    <div class="dlgTarget" id="proofTarget"></div>
+  </div>
+  <form id="proofForm" novalidate>
+    <div class="dlgBody" id="proofBody"></div>
+    <div class="dlgActs" id="proofActs">
+      <button type="button" class="btn btnSecondary" data-close>Cancel</button>
+      <button type="submit" class="btn btnPrimary" id="proofSubmit">Send to a leader</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ── Suggest a resource ── -->
+<dialog id="suggestDialog" aria-labelledby="suggestTitle">
+  <button type="button" class="dlgClose" data-close aria-label="Close">×</button>
+  <div class="dlgHead">
+    <p class="dlgKicker">Suggest a resource</p>
+    <h2 class="dlgTitle" id="suggestTitle"></h2>
+    <div class="dlgTarget" id="suggestTarget"></div>
+  </div>
+  <form id="suggestForm" novalidate>
+    <div class="dlgBody" id="suggestBody"></div>
+    <div class="dlgActs" id="suggestActs">
+      <button type="button" class="btn btnSecondary" data-close>Cancel</button>
+      <button type="submit" class="btn btnNavy" id="suggestSubmit">Send for review</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="sr-only" aria-live="polite" id="live"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   DATA — invented. Shape mirrors the production tables named in the notes.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const MB = 'chemistry';
+const TREE = [
+  { code: '1', label: 'Chemistry and safety', children: [
+    { code: '1a', label: 'Obtain SDS for sucrose, isopropyl alcohol, and a waterproofing spray; compare properties, hazards, handling/disposal, and toxicity' },
+    { code: '1b', label: 'Identify recommended PPE for each chemical and how PPE changes with toxicity and exposure route' },
+    { code: '1c', label: 'Review each SDS’s Section 2 pictograms — what they mean and where you see them in your community' },
+    { code: '1d', label: 'Discuss safe chemical storage — at home, school, in the community, and for the environment' } ] },
+  { code: '2', label: 'Chemistry and first aid', children: [
+    { code: '2a', label: 'Discuss why soap and alcohol are used on cuts and scrapes, and how to test the hypothesis' },
+    { code: '2b', label: 'Compare washing oil/powder-coated hands with water alone vs. soap and water' },
+    { code: '2c', label: 'Test how rubbing alcohol affects microbial growth using baker’s yeast' } ] },
+  { code: '3', label: 'Chemistry and cooking', children: [
+    { code: '3a', label: 'Perform a Maillard (browning) reaction; discuss whether it’s a physical or chemical change' },
+    { code: '3b', label: 'Make red cabbage indicator and measure the pH of five household liquids, including water' } ] },
+  { code: '4', label: 'Chemistry and camping', children: [
+    { code: '4a', label: 'Compare at least two waterproofing methods for a tent vs. boots' },
+    { code: '4b', label: 'Describe the four classes of fires and extinguishers, and how sand/baking soda/extinguishers work' },
+    { code: '4c', label: 'Under supervision, conduct flame tests of at least five elements' },
+    { code: '4d', label: 'Under supervision, synthesize nylon (a kit is allowed)' } ] },
+  { code: '5', label: 'Describe how chemistry can reduce the environmental impact of single-use items (bottles, bags, straws, batteries)', children: [] },
+  { code: '6', label: 'Identify five fields of chemistry, how each applies to your life, and how they interact', children: [] },
+  { code: '7', label: 'Identify three government agencies overseeing chemical use, and discuss their history and responsibilities', children: [] },
+  { code: '8', label: 'Chemistry careers and exposure', rule: 'any', children: [
+    { code: '8a', label: 'Visit a research lab and discuss the work with a chemist or technician, including their training' },
+    { code: '8b', label: 'Visit a company using chemical processes and talk with an employee about their work and training' },
+    { code: '8c', label: 'Research three chemistry careers, pick one, and dig into training/education/costs and job prospects' } ] }
+];
+const LEAVES = TREE.flatMap(t => t.children.length ? t.children : [t]);
+const ALL = LEAVES.map(l => l.code);
+const S = (...c) => new Set(c);
+const SEED_SCOUTS = [
+  { id: 'ari',   name: 'Ari D.',   initials: 'AD', rank: 'Star',         awarded: false, codes: S('1a','1b','1c','1d','2a','2b','2c','3a','3b','4a','4b','4c') },
+  { id: 'elise', name: 'Elise W.', initials: 'EW', rank: 'First Class',  awarded: false, codes: S(...ALL.filter(c => !['8a','8b'].includes(c))) },
+  { id: 'jonah', name: 'Jonah B.', initials: 'JB', rank: 'Tenderfoot',   awarded: false, codes: S('3a','3b') },
+  { id: 'leo',   name: 'Leo D.',   initials: 'LD', rank: 'Second Class', awarded: false, codes: S('1a','1b','3a') },
+  { id: 'maya',  name: 'Maya K.',  initials: 'MK', rank: 'Life',         awarded: true,  codes: S(...ALL) },
+  { id: 'nia',   name: 'Nia S.',   initials: 'NS', rank: 'Life',         awarded: true,  codes: S(...ALL.filter(c => c !== '8a' && c !== '8b')) },
+  { id: 'owen',  name: 'Owen P.',  initials: 'OP', rank: 'First Class',  awarded: false, codes: S('1a','1b','1c','1d','2a','2b') },
+  { id: 'theo',  name: 'Theo V.',  initials: 'TV', rank: 'Star',         awarded: false, codes: S('1a','1b','1c','1d','2a','2b','2c','3a','3b','4a','4b','4c','4d','5','6') }
+];
+const YT = "data:image/svg+xml;utf8," + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 112 63'><rect width='112' height='63' fill='#2b2b2b'/><rect x='6' y='6' width='100' height='51' fill='#4a5a6a'/><rect x='6' y='40' width='100' height='17' fill='#1e3a4a'/><path d='M46 21l22 10.5L46 42z' fill='#fff'/></svg>");
+const KIND = { link: { ico: '🔗', label: 'Link' }, video: { ico: '▶', label: 'Video' }, document: { ico: '📄', label: 'Document' }, image: { ico: '🖼', label: 'Image' }, post: { ico: '📝', label: 'Troop post' } };
+/* library_placements ⋈ library_resources, status=published */
+const SEED_RESOURCES = [
+  { id: 1,  target: 'mb', kind: 'document', title: 'Chemistry workbook — troop-annotated copy', host: 'Google Drive', url: '#', pinned: true,  credit: 'Shared by Mr. Halvorsen (counselor)' },
+  { id: 2,  target: 'mb', kind: 'post',     title: 'How to prepare for your counselor meeting',       host: 'Troop post',   url: '#', pinned: false, credit: 'Troop 79' },
+  { id: 3,  target: '1a', kind: 'link',     title: 'SDS search — find a safety data sheet by product name', host: 'chemicalsafety.com', url: '#', pinned: false, credit: 'Shared by Priya M.' },
+  { id: 4,  target: '1c', kind: 'image',    title: 'GHS hazard pictograms poster (print it)',          host: 'Image',        url: '#', pinned: false, credit: 'Shared by Mr. Halvorsen' },
+  { id: 5,  target: '3b', kind: 'video',    title: 'Red cabbage pH indicator — kitchen demo (6 min)', host: 'YouTube',   url: 'https://www.youtube.com/', pinned: false, credit: 'Shared by Theo V.', thumb: YT },
+  { id: 6,  target: '4',  kind: 'document', title: 'Camp chemistry safety checklist (PDF)',            host: 'Google Drive', url: '#', pinned: false, credit: 'Troop 79 quartermaster' },
+  { id: 7,  target: '4c', kind: 'video',    title: 'Flame test colors explained — five elements (4 min)', host: 'YouTube', url: 'https://www.youtube.com/', pinned: true, credit: 'Shared by Mr. Halvorsen', thumb: YT },
+  { id: 8,  target: '4c', kind: 'link',     title: 'Flame test color reference chart',                 host: 'webelements.com', url: '#', pinned: false, credit: 'Shared by Nia S.' },
+  { id: 9,  target: '4c', kind: 'document', title: 'Troop flame-test lab sheet (fill in and bring)',   host: 'Google Drive', url: '#', pinned: false, credit: 'Troop 79' },
+  { id: 10, target: '5',  kind: 'video',    title: 'Plastics, chemistry and single-use waste (9 min)', host: 'YouTube',      url: 'https://www.youtube.com/', pinned: false, credit: 'Shared by Elise W.', thumb: YT },
+  { id: 11, target: '7',  kind: 'link',     title: 'EPA, FDA, OSHA — who regulates what',           host: 'epa.gov',      url: '#', pinned: false, credit: 'Shared by Ms. Okafor' },
+  { id: 12, target: '8c', kind: 'link',     title: 'Chemistry careers overview',                        host: 'acs.org',      url: '#', pinned: false, credit: 'Shared by Maya K.' }
+];
+/* requirement_notes on mb_req targets */
+const NOTES = {
+  '2c': { text: 'Start the two yeast jars the night before — the alcohol jar should stay flat. Bring both jars and your notes to the meeting.', by: 'Mr. Halvorsen, counselor' },
+  '4d': { text: 'The troop owns two nylon kits. Ask the quartermaster before buying one.', by: 'Ms. Okafor, quartermaster' }
+};
+/* library_resources status=pending, keyed to the submitter (viewer) */
+const SEED_PENDING = [ { id: 901, target: '4c', kind: 'video', title: 'Safe flame-test setup for scouts', host: 'YouTube', by: 'parent' } ];
+/* requirement_submissions status=pending */
+const SEED_PROOFS = [ { scoutId: 'ari', code: '4d' }, { scoutId: 'leo', code: '3b' } ];
+
+const VIEWERS = {
+  scout:   { label: 'Ari D.', who: 'Signed in as Ari D. (scout)', scouts: ['ari'] },
+  parent:  { label: 'the Dunmore household', who: 'Signed in as the Dunmore household', scouts: ['ari', 'leo'] },
+  visitor: { label: '', who: 'Not signed in', scouts: [] }
+};
+
+/* ═══ STATE ═══ */
+let viewer = 'parent';
+let scouts, resources, pending, proofs, collapsed, nextId;
+function reset() {
+  scouts = SEED_SCOUTS.map(s => ({ ...s, codes: new Set(s.codes) }));
+  resources = SEED_RESOURCES.slice();
+  pending = SEED_PENDING.slice();
+  proofs = SEED_PROOFS.slice();
+  collapsed = new Set();
+  nextId = 1000;
+}
+reset();
+
+/* ═══ HELPERS ═══ */
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const byCode = code => LEAVES.find(l => l.code === code) || TREE.find(t => t.code === code);
+const ownScouts = () => VIEWERS[viewer].scouts.map(id => scouts.find(s => s.id === id));
+const hasProof = (sid, code) => proofs.some(p => p.scoutId === sid && p.code === code);
+const resFor = code => resources.filter(r => r.target === code).sort((a, b) => (b.pinned - a.pinned) || (a.id - b.id));
+const pendFor = code => pending.filter(p => p.target === code && p.by === viewer);
+const announce = msg => { const l = document.getElementById('live'); l.textContent = ''; setTimeout(() => { l.textContent = msg; }, 30); };
+const ruleNote = n => n.rule === 'any' ? 'Do any one of the following' : n.rule === 'n-of' ? `Do any ${n.n} of the following` : '';
+const ruleLabel = n => n.rule === 'any' ? 'Complete any one' : n.rule === 'n-of' ? `Complete any ${n.n}` : '';
+
+/* ═══ SCOUT PROGRESS GRID (verbatim structure from mb-scout-grid.tsx) ═══ */
+function renderGrid() {
+  const groupStart = new Set(TREE.map(t => (t.children[0] || t).code));
+  let h = '<table class="grid"><thead><tr><th rowspan="2" class="scoutHead">Scout</th><th class="awardHead" title="Full merit badge earned">AWARD</th>';
+  for (const t of TREE) {
+    const span = t.children.length || 1;
+    h += `<th colspan="${span}" class="groupHead" title="Req ${t.code} — ${esc(t.label)}">Req ${t.code}${ruleLabel(t) ? `<span class="groupRule">${ruleLabel(t)}</span>` : ''}</th>`;
+  }
+  h += '</tr><tr><th class="awardSubHead" aria-hidden="true"></th>';
+  for (const l of LEAVES) h += `<th class="leafHead${groupStart.has(l.code) ? ' groupStart' : ''}" title="${l.code} — ${esc(l.label)}">${l.code}</th>`;
+  h += '</tr></thead><tbody>';
+  for (const sc of scouts) {
+    h += `<tr><td class="scoutCell"><a href="#">${esc(sc.name)}</a><span class="rankPill">${esc(sc.rank)}</span></td>`;
+    h += `<td class="awardCell${sc.awarded ? ' awardCellDone' : ''}" title="${esc(sc.name)} — ${sc.awarded ? 'badge earned' : 'not yet awarded'}">${sc.awarded ? '★' : '☆'}</td>`;
+    for (const l of LEAVES) {
+      const done = sc.codes.has(l.code);
+      h += `<td class="cell${done ? ' cellDone' : ''}${groupStart.has(l.code) ? ' groupStart' : ''}" title="${esc(sc.name)} — ${l.code} — ${esc(l.label)}">${done ? '■' : '□'}</td>`;
+    }
+    h += '</tr>';
+  }
+  document.getElementById('gridScroller').innerHTML = h + '</tbody></table>';
+}
+
+/* ═══ THE LIST ═══ */
+function chipsFor(code) {
+  const own = ownScouts();
+  if (!own.length) return '';
+  const single = own.length === 1;
+  return '<span class="who">' + own.map(sc => {
+    const done = sc.codes.has(code), pend = !done && hasProof(sc.id, code);
+    const cls = done ? 'chip chipDone' : pend ? 'chip chipPending' : 'chip';
+    const state = done ? 'done' : pend ? 'proof pending review' : 'not yet';
+    const text = single ? (done ? '✓ Done' : pend ? '⏳ Pending review' : 'Not yet') : `${done ? '✓ ' : pend ? '⏳ ' : ''}${sc.initials}`;
+    return `<span class="${cls}" title="${esc(sc.name)} — ${state}">${text}<span class="sr-only"> ${esc(sc.name)}: ${state}</span></span>`;
+  }).join('') + '</span>';
+}
+function groupChips(node) {
+  const own = ownScouts();
+  if (!own.length || !node.children.length) return '';
+  const n = node.children.length;
+  return '<span class="who">' + own.map(sc => {
+    const k = node.children.filter(c => sc.codes.has(c.code)).length;
+    const need = node.rule === 'any' ? 1 : node.rule === 'n-of' ? node.n : n;
+    const full = k >= need;
+    return `<span class="chip${full ? ' chipDone' : ''}" title="${esc(sc.name)} — ${k} of ${n} parts">${sc.initials} <span class="chipFrac">${k}/${n}</span><span class="sr-only"> ${esc(sc.name)}: ${k} of ${n} parts</span></span>`;
+  }).join('') + '</span>';
+}
+function resLine(r, isPending) {
+  const media = r.thumb && !isPending
+    ? `<img class="resThumb" src="${r.thumb}" alt="" aria-hidden="true">`
+    : `<span class="resIco" aria-hidden="true">${KIND[r.kind].ico}</span>`;
+  const title = isPending
+    ? `<span class="resTitle">${esc(r.title)}</span>`
+    : `<a class="resTitle" href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)} ↗</a>`;
+  const tail = isPending
+    ? `<span class="pendingBadge">⏳ Sent for review</span><span class="resCredit">Only you can see this until the webmaster approves it</span>`
+    : `<span class="resHost">${esc(r.host)}</span>${r.pinned ? '<span class="resPin">★ Pinned</span>' : ''}${r.credit ? `<span class="resCredit">${esc(r.credit)}</span>` : ''}`;
+  return `<div class="res${isPending ? ' resPending' : ''}${r.fresh ? ' resNew' : ''}">${media}<span class="resLine"><span class="sr-only">${KIND[r.kind].label}: </span>${title}${tail}</span></div>`;
+}
+function subRow(code) {
+  let h = '';
+  for (const r of resFor(code)) h += resLine(r, false);
+  for (const p of pendFor(code)) h += resLine(p, true);
+  const n = NOTES[code];
+  if (n) h += `<div class="note">${esc(n.text)}<span class="noteBy">— ${esc(n.by)}</span></div>`;
+  return h;
+}
+function actions(code, isLeaf, label) {
+  const own = ownScouts();
+  let h = '';
+  if (isLeaf && own.length) {
+    const allDone = own.every(sc => sc.codes.has(code) || hasProof(sc.id, code));
+    const why = own.every(sc => sc.codes.has(code)) ? 'Already signed off' : 'Proof already sent for review';
+    h += `<button type="button" class="act actProof" data-proof="${code}" aria-label="I did this — ${code}"${allDone ? ` disabled title="${why}"` : ''}><span class="actIco" aria-hidden="true">✓</span><span class="actLabel">I did this</span></button>`;
+  }
+  h += `<button type="button" class="act" data-suggest="${code}" aria-label="Suggest a resource for ${code === 'mb' ? 'the whole badge' : code}"><span class="actIco" aria-hidden="true">+</span><span class="actLabel">Suggest a resource</span></button>`;
+  return `<span class="rqActs">${h}</span>`;
+}
+function leafRow(node, top) {
+  return `<div class="rq${top ? ' rqTop' : ''}" id="req-${node.code}">
+    <span class="rqTag${top ? ' rqTagLarge' : ''}">${node.code}</span>
+    <div class="rqText">${top ? `<span class="rqLabelPlain">${esc(node.label)}</span>` : esc(node.label)}${chipsFor(node.code)}</div>
+    ${actions(node.code, true, node.label)}
+    <div class="rqSub">${subRow(node.code)}</div>
+  </div>`;
+}
+function groupRow(node) {
+  const open = !collapsed.has(node.code);
+  const nRes = node.children.reduce((s, c) => s + resFor(c.code).length + pendFor(c.code).length, 0);
+  const nNotes = node.children.filter(c => NOTES[c.code]).length;
+  const summary = open ? '' : `<span class="rqSummary">${node.children.length} parts · ${nRes} resource${nRes === 1 ? '' : 's'}${nNotes ? ` · ${nNotes} note${nNotes === 1 ? '' : 's'}` : ''}</span>`;
+  const rn = ruleNote(node);
+  return `<div class="rq rqTop rqGroup" id="req-${node.code}">
+    <span class="rqTag rqTagLarge">${node.code}</span>
+    <div class="rqText"><button type="button" class="rqToggle" data-toggle="${node.code}" aria-expanded="${open}" aria-controls="kids-${node.code}"><span class="chev" aria-hidden="true">▾</span>${esc(node.label)}</button>${ruleLabel(node) ? `<span class="rqRule">${ruleLabel(node)}</span>` : ''}${groupChips(node)}${summary}</div>
+    ${actions(node.code, false, node.label)}
+    <div class="rqSub">${rn ? `<div class="optNote"><span class="optNoteLabel">Note:</span>${rn}</div>` : ''}${subRow(node.code)}</div>
+  </div>
+  <div class="rqKids" id="kids-${node.code}"${open ? '' : ' hidden'}>${node.children.map(c => leafRow(c, false)).join('')}</div>`;
+}
+function renderList() {
+  let h = `<div class="rq rqTop" id="req-mb">
+    <span class="rqTag rqTagLarge rqTagGhost">MB</span>
+    <div class="rqText">For the whole badge</div>
+    ${actions('mb', false, 'the whole badge')}
+    <div class="rqSub">${subRow('mb')}</div>
+  </div>`;
+  for (const t of TREE) h += t.children.length ? groupRow(t) : leafRow(t, true);
+  document.getElementById('reqList').innerHTML = h;
+  const total = resources.length;
+  document.getElementById('ledeCount').textContent = `${total} resource${total === 1 ? '' : 's'}`;
+  document.getElementById('visitorHint').hidden = viewer !== 'visitor';
+  document.getElementById('jumpProof').hidden = viewer === 'visitor';
+  const own = ownScouts();
+  document.getElementById('legend').innerHTML = own.length
+    ? `<span><span class="chip chipDone">✓ ${own.length > 1 ? 'AD' : 'Done'}</span> your scout is signed off</span><span><span class="chip chipPending">⏳ ${own.length > 1 ? 'LD' : 'Pending'}</span> proof waiting for a leader</span><span><span class="chip">${own.length > 1 ? 'LD' : 'Not yet'}</span> not yet</span><span><span class="resPin">★ Pinned</span> the counselor&rsquo;s first pick</span>`
+    : `<span><span class="resPin">★ Pinned</span> the counselor&rsquo;s first pick</span>`;
+  document.getElementById('mastWho').textContent = VIEWERS[viewer].who;
+}
+function renderAll() { renderGrid(); renderList(); }
+
+/* ═══ PROOF DIALOG ═══ */
+const proofDlg = document.getElementById('proofDialog');
+let proofCode = null;
+function openProof(code) {
+  proofCode = code;
+  const node = byCode(code), own = ownScouts();
+  document.getElementById('proofTitle').textContent = `Requirement ${code}`;
+  document.getElementById('proofTarget').innerHTML = `<span class="rqTag">${code}</span><span>${esc(node.label)}</span>`;
+  const eligible = own.filter(sc => !sc.codes.has(code) && !hasProof(sc.id, code));
+  let h = '';
+  if (own.length > 1) {
+    h += `<fieldset class="fieldRow" style="border:0;padding:0;margin:0 0 16px"><legend class="fieldLabel">Which scout?</legend>`;
+    for (const sc of own) {
+      const done = sc.codes.has(code), pend = hasProof(sc.id, code);
+      const off = done || pend;
+      h += `<label class="radioRow"><input type="radio" name="scout" value="${sc.id}"${off ? ' disabled' : ''}${!off && eligible[0] === sc ? ' checked' : ''}><span>${esc(sc.name)}${off ? ` <span class="muted">— ${done ? 'already signed off' : 'proof already sent'}</span>` : ''}</span></label>`;
+    }
+    h += '</fieldset>';
+  } else {
+    h += `<p class="fieldHint" style="margin:0 0 14px">For <strong>${esc(own[0].name)}</strong>. A leader reviews what you send before it counts in the ledger.</p>`;
+  }
+  h += `<div class="fieldRow"><span class="fieldLabel" id="proofKindLabel">How do you want to show it?</span>
+    <div class="segs" role="radiogroup" aria-labelledby="proofKindLabel">
+      <span class="seg"><input type="radio" name="ptype" id="pt-photo" value="photo" checked><label for="pt-photo">📷 Photo</label></span>
+      <span class="seg"><input type="radio" name="ptype" id="pt-report" value="report"><label for="pt-report">✍️ Written report</label></span>
+      <span class="seg"><input type="radio" name="ptype" id="pt-link" value="link"><label for="pt-link">🔗 Link</label></span>
+    </div></div>
+    <div class="fieldRow" data-ptype="photo"><label class="fieldLabel" for="proofPhoto">Photo</label><div class="fileDrop">A picture of the work, the lab sheet, or you doing it. Photos stay private to leaders.<input type="file" id="proofPhoto" accept="image/*"></div></div>
+    <div class="fieldRow" data-ptype="report" hidden><label class="fieldLabel" for="proofReport">What you did</label><textarea class="textArea" id="proofReport" placeholder="A few sentences in your own words — what you did, what you found."></textarea></div>
+    <div class="fieldRow" data-ptype="link" hidden><label class="fieldLabel" for="proofLink">Link</label><input class="textInput" type="url" id="proofLink" placeholder="https://…"><p class="fieldHint">A Google Doc, a shared photo album, a video you made.</p></div>
+    <div class="fieldRow"><label class="fieldLabel" for="proofNote">Anything the leader should know <span class="labelQualifier">(optional)</span></label><input class="textInput" type="text" id="proofNote" placeholder="e.g. did this at the March campout with Mr. Halvorsen"></div>
+    <div id="proofErr" hidden></div>`;
+  document.getElementById('proofBody').innerHTML = h;
+  document.getElementById('proofActs').hidden = false;
+  document.getElementById('proofSubmit').disabled = false;
+  document.getElementById('proofSubmit').textContent = 'Send to a leader';
+  proofDlg.showModal();
+}
+document.getElementById('proofBody').addEventListener('change', e => {
+  if (e.target.name === 'ptype') for (const el of document.querySelectorAll('#proofBody [data-ptype]')) el.hidden = el.dataset.ptype !== e.target.value;
+});
+document.getElementById('proofForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const own = ownScouts();
+  const scoutId = own.length > 1 ? (document.querySelector('#proofBody input[name=scout]:checked') || {}).value : own[0].id;
+  const type = document.querySelector('#proofBody input[name=ptype]:checked').value;
+  const err = document.getElementById('proofErr');
+  let msg = '';
+  if (!scoutId) msg = 'Pick which scout did this.';
+  else if (type === 'photo' && !document.getElementById('proofPhoto').files.length) msg = 'Choose a photo, or switch to a written report or a link.';
+  else if (type === 'report' && document.getElementById('proofReport').value.trim().length < 20) msg = 'Write at least a sentence or two about what you did.';
+  else if (type === 'link' && !/^https?:\/\//i.test(document.getElementById('proofLink').value.trim())) msg = 'Enter a full link starting with https://.';
+  if (msg) { err.hidden = false; err.innerHTML = `<div class="fieldError" role="alert">${msg}</div>`; const f = { photo: 'proofPhoto', report: 'proofReport', link: 'proofLink' }[type]; document.getElementById(f).setAttribute('aria-invalid', 'true'); document.getElementById(f).focus(); return; }
+  err.hidden = true;
+  const btn = document.getElementById('proofSubmit'); btn.disabled = true; btn.textContent = 'Sending…';
+  setTimeout(() => {
+    proofs.push({ scoutId, code: proofCode });
+    const sc = scouts.find(s => s.id === scoutId);
+    document.getElementById('proofBody').innerHTML = `<div class="confirmDone"><div class="bigCheck" aria-hidden="true">✓</div><h3 class="confirmTitle">Sent to a leader</h3><p class="confirmText"><strong>${esc(sc.name)} — requirement ${proofCode}</strong> is in the review queue. A leader will approve it or send it back with a note; either way the household gets an email. Until then the row shows ⏳ next to ${esc(sc.name.split(' ')[0])}.</p><p class="confirmText" style="font-size:13px;color:var(--text-meta)">Proof usually gets looked at before the next meeting.</p></div>`;
+    document.getElementById('proofActs').innerHTML = '<button type="button" class="btn btnSecondary" data-close>Close</button>';
+    renderList();
+    announce(`Proof for requirement ${proofCode} sent to a leader for review.`);
+    document.querySelector('#proofActs [data-close]').focus();
+  }, 700);
+});
+
+/* ═══ SUGGEST DIALOG ═══ */
+const sugDlg = document.getElementById('suggestDialog');
+let sugCode = null;
+function openSuggest(code) {
+  sugCode = code;
+  const whole = code === 'mb';
+  const node = whole ? null : byCode(code);
+  document.getElementById('suggestTitle').textContent = whole ? 'For the whole Chemistry badge' : `For requirement ${code}`;
+  document.getElementById('suggestTarget').innerHTML = whole
+    ? `<span class="rqTag rqTagGhost">MB</span><span>Something useful for the whole badge — not tied to one requirement. <a href="#requirements" data-close style="color:var(--navy);font-weight:700">Wrong place? Pick a requirement instead</a></span>`
+    : `<span class="rqTag">${code}</span><span>${esc(node.label)} <a href="#requirements" data-close style="color:var(--navy);font-weight:700;white-space:nowrap">Wrong requirement?</a></span>`;
+  let h = `<div class="fieldRow"><span class="fieldLabel" id="sugKindLabel">What is it?</span>
+    <div class="segs" role="radiogroup" aria-labelledby="sugKindLabel">
+      <span class="seg"><input type="radio" name="skind" id="sk-video" value="video" checked><label for="sk-video">▶ Video</label></span>
+      <span class="seg"><input type="radio" name="skind" id="sk-link" value="link"><label for="sk-link">🔗 Link</label></span>
+      <span class="seg"><input type="radio" name="skind" id="sk-document" value="document"><label for="sk-document">📄 Document</label></span>
+      <span class="seg"><input type="radio" name="skind" id="sk-image" value="image"><label for="sk-image">🖼 Image</label></span>
+    </div><p class="fieldHint">Videos and links open on their own site — nothing is embedded here. Documents and images can be a link or an upload.</p></div>
+    <div class="fieldRow"><label class="fieldLabel" for="sugUrl">Link</label><input class="textInput" type="url" id="sugUrl" placeholder="https://…"></div>
+    <div class="fieldRow" id="sugFileRow" hidden><label class="fieldLabel" for="sugFile">Or upload the file <span class="labelQualifier">(PDF, image)</span></label><div class="fileDrop">Goes to the troop&rsquo;s CDN after approval.<input type="file" id="sugFile" accept=".pdf,image/*"></div></div>
+    <div class="fieldRow"><label class="fieldLabel" for="sugTitle">Title</label><input class="textInput" type="text" id="sugTitle" placeholder="What a scout should expect when they open it"></div>
+    <div class="fieldRow"><label class="fieldLabel" for="sugNote">Note for the webmaster <span class="labelQualifier">(optional)</span></label><textarea class="textArea" id="sugNote" style="min-height:70px" placeholder="Why it helps, or where in the video to look."></textarea></div>`;
+  if (viewer === 'visitor') h += `<div class="fieldRow"><label class="fieldLabel" for="sugName">Your name</label><input class="textInput" type="text" id="sugName" placeholder="So the credit line can say who shared it"><p class="fieldHint">You&rsquo;re not signed in, so we can&rsquo;t show you the pending state after you send it — you&rsquo;ll see the resource here once it&rsquo;s approved.</p></div>`;
+  else h += `<p class="fieldHint" style="margin-top:-6px">Credited as &ldquo;Shared by ${esc(viewer === 'scout' ? 'Ari D.' : 'the Dunmore family')}&rdquo; — the webmaster can change it.</p>`;
+  h += '<div id="sugErr" hidden></div>';
+  document.getElementById('suggestBody').innerHTML = h;
+  document.getElementById('suggestActs').innerHTML = '<button type="button" class="btn btnSecondary" data-close>Cancel</button><button type="submit" class="btn btnNavy" id="suggestSubmit">Send for review</button>';
+  sugDlg.showModal();
+}
+document.getElementById('suggestBody').addEventListener('change', e => {
+  if (e.target.name === 'skind') document.getElementById('sugFileRow').hidden = !(e.target.value === 'document' || e.target.value === 'image');
+});
+document.getElementById('suggestForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const kind = document.querySelector('#suggestBody input[name=skind]:checked').value;
+  const url = document.getElementById('sugUrl').value.trim();
+  const file = document.getElementById('sugFile') && document.getElementById('sugFile').files.length;
+  const title = document.getElementById('sugTitle').value.trim();
+  const nameEl = document.getElementById('sugName');
+  const err = document.getElementById('sugErr');
+  let msg = '', focus = null;
+  if (!url && !file) { msg = (kind === 'document' || kind === 'image') ? 'Add a link or upload the file.' : 'Paste the link.'; focus = 'sugUrl'; }
+  else if (url && !/^https?:\/\//i.test(url)) { msg = 'Enter a full link starting with https://.'; focus = 'sugUrl'; }
+  else if (!title) { msg = 'Give it a title — that’s what scouts will see in the list.'; focus = 'sugTitle'; }
+  else if (nameEl && !nameEl.value.trim()) { msg = 'Add your name so the credit line can say who shared it.'; focus = 'sugName'; }
+  if (msg) { err.hidden = false; err.innerHTML = `<div class="fieldError" role="alert">${msg}</div>`; document.getElementById(focus).setAttribute('aria-invalid', 'true'); document.getElementById(focus).focus(); return; }
+  err.hidden = true;
+  const btn = document.getElementById('suggestSubmit'); btn.disabled = true; btn.textContent = 'Sending…';
+  setTimeout(() => {
+    let host = 'Upload';
+    try { if (url) host = new URL(url).hostname.replace(/^www\./, ''); } catch (_) {}
+    if (/youtube|youtu\.be/.test(host)) host = 'YouTube';
+    if (viewer !== 'visitor') pending.push({ id: nextId++, target: sugCode, kind, title, host, by: viewer, fresh: true });
+    const where = sugCode === 'mb' ? 'the whole badge' : `requirement ${sugCode}`;
+    document.getElementById('suggestBody').innerHTML = `<div class="confirmDone"><div class="bigCheck" aria-hidden="true">✓</div><h3 class="confirmTitle">Sent for review</h3><p class="confirmText"><strong>${esc(title)}</strong> is in the webmaster&rsquo;s queue for ${where}. Nothing shows to other families until it&rsquo;s approved${viewer === 'visitor' ? '.' : ' — you’ll see a &ldquo;Sent for review&rdquo; line under the requirement in the meantime.'}</p></div>`;
+    document.getElementById('suggestActs').innerHTML = '<button type="button" class="btn btnSecondary" data-close>Close</button>';
+    renderList();
+    announce(`Suggestion sent for review for ${where}.`);
+    document.querySelector('#suggestActs [data-close]').focus();
+    setTimeout(() => { pending.forEach(p => delete p.fresh); }, 400);
+  }, 700);
+});
+
+/* ═══ WIRING ═══ */
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-toggle],[data-proof],[data-suggest],[data-close],[data-viewer]');
+  if (!t) return;
+  if (t.dataset.toggle) {
+    const code = t.dataset.toggle;
+    collapsed.has(code) ? collapsed.delete(code) : collapsed.add(code);
+    renderList();
+    document.querySelector(`[data-toggle="${code}"]`).focus();
+  } else if (t.dataset.proof) openProof(t.dataset.proof);
+  else if (t.dataset.suggest) openSuggest(t.dataset.suggest);
+  else if (t.hasAttribute('data-close')) { t.closest('dialog').close(); if (t.tagName === 'A') e.preventDefault(); }
+  else if (t.dataset.viewer) {
+    viewer = t.dataset.viewer;
+    for (const b of document.querySelectorAll('[data-viewer]')) b.setAttribute('aria-pressed', String(b.dataset.viewer === viewer));
+    renderList();
+    announce(`Now viewing as ${VIEWERS[viewer].who}.`);
+  }
+});
+document.getElementById('expandAll').addEventListener('click', () => { collapsed.clear(); renderList(); });
+document.getElementById('collapseAll').addEventListener('click', () => { TREE.filter(t => t.children.length).forEach(t => collapsed.add(t.code)); renderList(); });
+document.getElementById('resetDemo').addEventListener('click', () => { reset(); renderAll(); announce('Demo data reset.'); });
+document.getElementById('handoffToggle').addEventListener('click', e => {
+  const body = document.getElementById('handoffBody'); body.hidden = !body.hidden;
+  e.currentTarget.setAttribute('aria-expanded', String(!body.hidden));
+  e.currentTarget.textContent = body.hidden ? 'Handoff notes ▸' : 'Handoff notes ▾';
+});
+/* Native <dialog> closes on Esc by itself; clicking the backdrop closes too. */
+for (const d of [proofDlg, sugDlg]) d.addEventListener('click', e => { if (e.target === d) d.close(); });
+
+renderAll();
+</script>
+</body>
+</html>
