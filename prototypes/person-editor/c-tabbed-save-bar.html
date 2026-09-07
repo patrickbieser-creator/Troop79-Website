@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Direction C — Tabbed record with one sticky save bar — Person editor prototype</title>
+<style>
+:root{
+  --admin-navy:#1e3a4a;--admin-navy-light:#2a5068;--admin-navy-hover:#163040;
+  --admin-forest:#3d7a4a;--admin-forest-dark:#2e6038;
+  --admin-danger:#c0392b;--admin-danger-hover:#a93226;--admin-danger-dark:#8c2f2f;
+  --admin-warning:#d4a017;--admin-accent-gold:#8b6914;
+  --admin-bg:#f5f6f8;--admin-white:#fff;--admin-field-bg:#fff;--admin-form-bg:#eef1f5;
+  --admin-gray-50:#fafbfc;--admin-gray-100:#f0f1f3;--admin-gray-200:#e2e4e8;--admin-gray-300:#cdd1d6;
+  --admin-gray-400:#9ba1aa;--admin-gray-500:#6d7580;--admin-gray-600:#666;--admin-gray-700:#3a3f47;
+  --admin-gray-800:#2a2e34;--admin-gray-900:#1a1d21;
+  --admin-status-error-bg:#fdf0ef;--admin-status-warning-bg:#fdf3d6;--admin-status-success-bg:#f0f6f1;--admin-status-info-bg:#eef3f8;
+  --admin-radius:4px;--admin-radius-sm:3px;--admin-radius-lg:8px;--admin-radius-pill:999px;
+  --admin-shadow-sm:0 1px 3px rgba(0,0,0,.08);--admin-shadow-md:0 2px 8px rgba(0,0,0,.1);--admin-shadow-lg:0 8px 24px rgba(0,0,0,.18);
+  --admin-transition:.15s ease;
+  --admin-text-xs:10px;--admin-text-sm:11px;--admin-text-base:12px;--admin-text-md:13px;--admin-text-lg:14px;--admin-text-xl:16px;--admin-text-2xl:20px;--admin-text-3xl:24px;
+  --admin-font-ui:'Open Sans',Arial,sans-serif;--admin-font-display:'Playfair Display',Georgia,serif;--admin-font-mono:Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{color-scheme:light}
+body{margin:0;font-family:var(--admin-font-ui);font-size:var(--admin-text-md);color:var(--admin-gray-900);background:var(--admin-bg);line-height:1.45;padding-bottom:80px}
+a{color:var(--admin-navy)}
+:focus-visible{outline:2px solid var(--admin-navy);outline-offset:2px;border-radius:2px}
+button{font:inherit}
+h1,h2,h3{margin:0;font-weight:600}
+.mono{font-family:var(--admin-font-mono);font-size:var(--admin-text-base)}
+.muted{color:var(--admin-gray-500)}
+.topbar{background:var(--admin-navy);color:#fff;padding:8px 16px;display:flex;align-items:center;gap:14px;font-size:var(--admin-text-base)}
+.topbar strong{font-family:var(--admin-font-display);font-weight:400;font-size:var(--admin-text-lg)}
+.topbar .proto{margin-left:auto;background:var(--admin-warning);color:var(--admin-gray-900);padding:2px 8px;border-radius:var(--admin-radius-pill);font-weight:700;font-size:var(--admin-text-xs);letter-spacing:.06em}
+.topbar a{color:#fff}
+.wrap{max-width:1000px;margin:0 auto;padding:16px}
+.back{display:inline-block;margin-bottom:8px;font-size:var(--admin-text-base);background:none;border:0;color:var(--admin-navy);cursor:pointer;padding:2px 0}
+.back:hover{text-decoration:underline}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--admin-gray-300);background:#fff;color:var(--admin-gray-900);padding:6px 12px;border-radius:var(--admin-radius);cursor:pointer;font-size:var(--admin-text-md);line-height:1.2;transition:background var(--admin-transition);white-space:nowrap}
+.btn:hover:not(:disabled){background:var(--admin-gray-100)}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.btn-primary{background:var(--admin-navy);border-color:var(--admin-navy);color:#fff}
+.btn-primary:hover:not(:disabled){background:var(--admin-navy-hover)}
+.btn-danger{color:var(--admin-danger);border-color:var(--admin-danger)}
+.btn-danger:hover:not(:disabled){background:var(--admin-status-error-bg)}
+.btn-dangerSolid{background:var(--admin-danger);border-color:var(--admin-danger);color:#fff}
+.btn-quiet{border-color:transparent;background:transparent}
+.btn-sm{padding:3px 8px;font-size:var(--admin-text-base)}
+.btn-link{border:0;background:none;color:var(--admin-navy);text-decoration:underline;cursor:pointer;padding:0;font-size:inherit}
+.pill{display:inline-block;padding:2px 8px;border-radius:var(--admin-radius-pill);font-size:var(--admin-text-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;line-height:1.5;vertical-align:middle;white-space:nowrap}
+.pill-kind{background:var(--admin-gray-100);color:var(--admin-gray-700)}
+.pill-leader{background:#e0e7ef;color:var(--admin-navy)}
+.pill-scout{background:#e3eee5;color:var(--admin-forest-dark)}
+.pill-ok{background:var(--admin-status-success-bg);color:var(--admin-forest-dark)}
+.pill-off{background:var(--admin-status-error-bg);color:var(--admin-danger-dark)}
+.pill-warn{background:var(--admin-status-warning-bg);color:var(--admin-accent-gold)}
+.tag{display:inline-block;font-size:var(--admin-text-xs);font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:1px 6px;border-radius:var(--admin-radius-sm);background:var(--admin-gray-100);color:var(--admin-gray-600);margin-left:4px}
+.tag-primary{background:#e0e7ef;color:var(--admin-navy)}
+.tag-ok{background:var(--admin-status-success-bg);color:var(--admin-forest-dark)}
+.tag-bad{background:var(--admin-status-error-bg);color:var(--admin-danger-dark)}
+.tag-guardian{background:var(--admin-status-warning-bg);color:var(--admin-accent-gold)}
+.tabs{display:flex;gap:2px;border-bottom:2px solid var(--admin-gray-200);margin:12px 0;overflow-x:auto;scrollbar-width:thin}
+.tab{background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-2px;padding:8px 12px;cursor:pointer;color:var(--admin-gray-600);font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.tab[aria-selected=true]{color:var(--admin-navy);border-bottom-color:var(--admin-navy)}
+.tab .n{background:var(--admin-gray-100);border-radius:var(--admin-radius-pill);padding:0 6px;font-size:var(--admin-text-xs)}
+.tab .dot{width:8px;height:8px;border-radius:50%;background:var(--admin-warning);display:inline-block}
+.tab .dot.err{background:var(--admin-danger)}
+table.roster{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--admin-gray-200);border-radius:var(--admin-radius-lg);overflow:hidden;box-shadow:var(--admin-shadow-sm)}
+.roster th{text-align:left;font-size:var(--admin-text-sm);letter-spacing:.06em;text-transform:uppercase;color:var(--admin-gray-500);padding:8px 10px;border-bottom:1px solid var(--admin-gray-200);background:var(--admin-gray-50)}
+.roster td{padding:8px 10px;border-bottom:1px solid var(--admin-gray-100);overflow-wrap:anywhere}
+.roster .name{background:none;border:0;padding:0;color:var(--admin-navy);font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.toolbar{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.toolbar .sp{flex:1}
+.lede{color:var(--admin-gray-600);margin:4px 0 0;font-size:var(--admin-text-base)}
+.rec-head{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-start;justify-content:space-between;margin-bottom:4px}
+.rec-head h1{font-family:var(--admin-font-display);font-weight:400;font-size:var(--admin-text-3xl);line-height:1.15}
+.rec-head .pills{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:4px}
+.rec-head .contact{margin-top:6px;font-size:var(--admin-text-base);color:var(--admin-gray-700)}
+.rec-head .acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.card{background:#fff;border:1px solid var(--admin-gray-200);border-radius:var(--admin-radius-lg);box-shadow:var(--admin-shadow-sm);margin-bottom:12px}
+.card-head{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--admin-gray-100)}
+.card-head h2{font-size:var(--admin-text-lg);flex:1}
+.card-head .num{width:22px;height:22px;border-radius:50%;background:var(--admin-navy);color:#fff;font-size:var(--admin-text-sm);font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.card-body{padding:12px 14px}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px}
+.fact{background:#fff;border:1px solid var(--admin-gray-200);border-radius:var(--admin-radius);padding:8px 10px}
+.fact .k{font-size:var(--admin-text-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--admin-gray-500);font-weight:700}
+.fact .v{font-size:var(--admin-text-lg);margin-top:2px}
+.form-panel{background:var(--admin-form-bg);border-radius:var(--admin-radius);padding:12px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.grid .full{grid-column:1/-1}
+.field{display:flex;flex-direction:column;gap:3px;min-width:0}
+.field>span{font-size:var(--admin-text-sm);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--admin-gray-500)}
+.field.changed>span::after{content:' · edited';color:var(--admin-accent-gold);text-transform:none;letter-spacing:0}
+.field.changed input,.field.changed select,.field.changed textarea{border-color:var(--admin-warning);box-shadow:inset 3px 0 0 var(--admin-warning)}
+.field .ro{padding:6px 0;color:var(--admin-gray-700)}
+.field .was{font-size:var(--admin-text-sm);color:var(--admin-gray-500);text-transform:none;letter-spacing:0;font-weight:400}
+input,select,textarea{font:inherit;font-size:var(--admin-text-lg);padding:6px 8px;border:1px solid var(--admin-gray-300);border-radius:var(--admin-radius);background:var(--admin-field-bg);color:var(--admin-gray-900);width:100%;min-width:0}
+input:focus,select:focus,textarea:focus{border-color:var(--admin-navy);outline:2px solid var(--admin-navy);outline-offset:0}
+input[aria-invalid=true],select[aria-invalid=true]{border-color:var(--admin-danger)}
+input[type=radio]{width:auto}
+.err{color:var(--admin-danger-dark);font-size:var(--admin-text-base)}
+.radios{display:flex;gap:16px;flex-wrap:wrap}
+.radios label{display:inline-flex;gap:6px;align-items:center}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.hint{font-size:var(--admin-text-base);color:var(--admin-gray-600);margin:6px 0 0}
+.disc{border:0;background:none;color:var(--admin-navy);cursor:pointer;padding:0;font-size:var(--admin-text-base);text-decoration:underline;text-underline-offset:2px}
+.disc-body{margin-top:8px;font-size:var(--admin-text-base);color:var(--admin-gray-700);border-left:3px solid var(--admin-gray-200);padding-left:10px}
+.imm{border:1px dashed var(--admin-gray-300);border-radius:var(--admin-radius);padding:10px 12px;background:var(--admin-gray-50);margin-top:12px}
+.imm-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.imm-head h3{font-size:var(--admin-text-md);flex:1}
+.imm-tag{font-size:var(--admin-text-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--admin-accent-gold);background:var(--admin-status-warning-bg);padding:2px 6px;border-radius:var(--admin-radius-sm)}
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.list li{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 8px;background:#fff;border:1px solid var(--admin-gray-200);border-radius:var(--admin-radius)}
+.list li .grow{flex:1;min-width:120px;overflow-wrap:anywhere}
+.addrow{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.addrow input,.addrow select{flex:1;min-width:120px;width:auto}
+.results{list-style:none;margin:6px 0 0;padding:0;border:1px solid var(--admin-gray-200);border-radius:var(--admin-radius);background:#fff;max-height:160px;overflow:auto}
+.results li button{width:100%;text-align:left;border:0;background:none;padding:6px 10px;cursor:pointer}
+.results li button:hover{background:var(--admin-gray-100)}
+.notice{padding:10px 12px;border-radius:var(--admin-radius);border-left:4px solid;margin-bottom:12px;font-size:var(--admin-text-base)}
+.n-info{background:var(--admin-status-info-bg);border-color:var(--admin-navy)}
+.n-warn{background:var(--admin-status-warning-bg);border-color:var(--admin-warning)}
+.n-ok{background:var(--admin-status-success-bg);border-color:var(--admin-forest)}
+.n-err{background:var(--admin-status-error-bg);border-color:var(--admin-danger)}
+.pending{background:var(--admin-status-warning-bg);border:1px solid var(--admin-warning);border-radius:var(--admin-radius);padding:10px 12px;margin-bottom:12px}
+.pending h3{font-size:var(--admin-text-md);margin-bottom:4px}
+.pending table{width:100%;border-collapse:collapse;margin:8px 0;background:#fff;font-size:var(--admin-text-base)}
+.pending th,.pending td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--admin-gray-100);overflow-wrap:anywhere}
+.pending th{font-size:var(--admin-text-xs);letter-spacing:.06em;text-transform:uppercase;color:var(--admin-gray-500)}
+.actions{display:flex;gap:8px;justify-content:flex-end;align-items:center;margin-top:10px;flex-wrap:wrap}
+.history{list-style:none;margin:0;padding:0}
+.history li{display:grid;grid-template-columns:150px minmax(0,1fr);gap:4px 12px;padding:8px 0;border-bottom:1px solid var(--admin-gray-100);font-size:var(--admin-text-base)}
+.history .when{color:var(--admin-gray-500)}
+.history .who{color:var(--admin-gray-600)}
+.history li.session{background:var(--admin-status-success-bg);margin:0 -14px;padding:8px 14px}
+
+/* sticky save bar */
+.savebar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:2px solid var(--admin-warning);box-shadow:0 -4px 16px rgba(0,0,0,.12);z-index:40;transform:translateY(110%);transition:transform .2s ease}
+.savebar.on{transform:none}
+.savebar .in{max-width:1000px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.savebar .msg{flex:1;min-width:160px;font-size:var(--admin-text-md)}
+.savebar .msg .sub{display:block;color:var(--admin-gray-600);font-size:var(--admin-text-base)}
+.savebar.done{border-top-color:var(--admin-forest)}
+.savebar.errs{border-top-color:var(--admin-danger)}
+.side ul{margin:0;padding:0;list-style:none}
+.side li{padding:4px 0;display:flex;justify-content:space-between;gap:8px}
+.toast{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);background:var(--admin-gray-900);color:#fff;padding:10px 14px;border-radius:var(--admin-radius);box-shadow:var(--admin-shadow-lg);display:flex;gap:12px;align-items:center;max-width:calc(100% - 32px);z-index:50;font-size:var(--admin-text-base)}
+.toast[hidden]{display:none}
+.toast button{background:none;border:1px solid rgba(255,255,255,.5);color:#fff;border-radius:var(--admin-radius);padding:2px 8px;cursor:pointer}
+dialog{border:0;border-radius:var(--admin-radius-lg);box-shadow:var(--admin-shadow-lg);padding:0;width:min(480px,calc(100% - 32px))}
+dialog::backdrop{background:rgba(26,29,33,.45)}
+dialog .d-head{padding:14px 16px 6px}
+dialog .d-head h2{font-size:var(--admin-text-xl)}
+dialog .d-body{padding:0 16px 8px}
+dialog .d-body ul{margin:6px 0;padding-left:18px}
+dialog .d-foot{display:flex;gap:8px;justify-content:flex-end;padding:10px 16px 14px;border-top:1px solid var(--admin-gray-100)}
+.handoff{margin:32px auto 40px;max-width:1000px;padding:0 16px}
+.handoff .disc-body{background:#fff;border:1px solid var(--admin-gray-200);border-left:3px solid var(--admin-accent-gold);border-radius:var(--admin-radius);padding:14px 16px}
+.handoff h3{font-size:var(--admin-text-md);margin:12px 0 4px}
+.handoff ul{margin:0;padding-left:18px}
+@media (max-width:760px){
+  .grid{grid-template-columns:1fr}
+  input,select,textarea{font-size:16px}
+  .roster .hide-m{display:none}
+  .wrap{padding:12px}
+  .rec-head h1{font-size:var(--admin-text-2xl)}
+  .history li{grid-template-columns:1fr}
+  .savebar .in{padding:8px 12px}
+}
+</style>
+</head>
+<body>
+<div class="topbar"><strong>Troop 79 · Leader Workspace</strong><span>Roster</span><span class="proto">Prototype C · Tabs + save bar</span><a href="index.html">All directions</a></div>
+<main id="app" class="wrap"></main>
+<div class="savebar" id="savebar" role="region" aria-label="Unsaved changes"><div class="in" id="savebarIn"></div></div>
+<div class="toast" id="toast" role="status" hidden><span id="toastMsg"></span><button type="button" id="toastUndo" hidden>Undo</button><button type="button" id="toastClose" aria-label="Dismiss">×</button></div>
+<dialog id="confirm" aria-labelledby="dTitle"><form method="dialog"><div class="d-head"><h2 id="dTitle"></h2></div><div class="d-body" id="dBody"></div><div class="d-foot"><button type="button" class="btn" id="dCancel">Cancel</button><button type="button" class="btn btn-dangerSolid" id="dOk">Confirm</button></div></form></dialog>
+
+<section class="handoff">
+  <button type="button" class="disc" id="handoffBtn" aria-expanded="false">Handoff notes (Direction C)</button>
+  <div class="disc-body" id="handoffBody" hidden>
+    <h3>Concept</h3>
+    <p>A persistent header, tabs (Overview / Details / Contact &amp; sign-in / Household &amp; family / Roles / History) and one always-editable form spread across them. Any draft edit anywhere lights <strong>one</strong> sticky footer — "Save 3 changes · Discard" — and marks the tabs that hold edits with a dot. Status and household are ordinary draft fields. Lists that commit on click (emails, family, roles) keep the dashed "Takes effect immediately" treatment so the two models are never confused. History is a real change log. This is Jenna's Direction 2 flavour with Direction 3's tabs and log.</p>
+    <h3>What it fixes (Jenna's numbering)</h3>
+    <ul>
+      <li><strong>#1</strong> One Save on the page, always in the same place, and it only appears when there is something to save. It follows the house standard exactly: label says the state, Saving → Done.</li>
+      <li><strong>#2</strong> Status is a draft field for scouts and adults alike, saved by the same bar, with the same reason rule (scout: required list; adult: optional text).</li>
+      <li><strong>#3</strong> Parents/guardians are outside the draft and say so; Discard never claims to undo them.</li>
+      <li><strong>#4</strong> Merge and Delete both confirm with consequences (Overview → Danger zone).</li>
+      <li><strong>#5</strong> Household is a draft field; the edited field shows "was: Whitlock (Dana &amp; Marcus)" and the change is listed by name in the save bar before it lands. After saving it is in History.</li>
+      <li><strong>#6</strong> End role confirms; Grant role announces the tab move.</li>
+      <li><strong>#7</strong> No standing hints; one "How this works" disclosure per tab.</li>
+    </ul>
+    <h3>States and transitions</h3>
+    <ul>
+      <li>Save bar: <em>hidden</em> (draft = saved) → <em>dirty</em> ("Save N changes" + "Discard", lists the changed fields by name and tab) → <em>invalid</em> (red top border, "Fix 1 problem on Details" jumps to the field, Save disabled with a title) → <em>saving</em> ("Saving changes…", controls disabled) → <em>done</em> (green, "Done — saved 3 changes", 1.5 s) → <em>hidden</em>.</li>
+      <li>Fields with an unsaved edit get a gold left rule and "· edited" in the label, plus "was: …" under it. Tab labels get a gold dot with the count; a red dot when a field on that tab is invalid.</li>
+      <li>Discard reverts everything to the last save at once and toasts "Discarded 3 changes · Undo" (8 s), so a mis-click cannot lose work.</li>
+      <li>Back to roster or opening another person while dirty → confirm "Save, discard, or stay?" (three-way, since the edit may span tabs the user has forgotten).</li>
+      <li>Pending update: whole request reviewed on Overview (Current / Proposed table, Approve / Reject with reason); the tabs whose fields it touches show a "1 pending" chip that jumps to Overview. Approving writes straight to the record (it is the family's proposal, not the leader's draft) and appears in History.</li>
+      <li>History: seeded entries (created, import, YPT, past status changes) plus every save, approval, role and email change made in this session, highlighted green.</li>
+      <li>Send sign-in link / emails / family / roles / merge / delete / promote: as in A.</li>
+    </ul>
+    <h3>Timings</h3>
+    <ul><li>Round-trip 600 ms mocked. Save bar slides 200 ms ease. Done state 1.5 s. Undo window 8 s.</li></ul>
+    <h3>Responsive</h3>
+    <ul><li>Single column throughout; tabs scroll horizontally on narrow screens; the save bar is full-width and the toast sits above it. Body has bottom padding so the bar never covers the last field. No horizontal scroll at 375 px.</li></ul>
+    <h3>Accessibility</h3>
+    <ul><li>Tabs are role=tab with aria-selected; the save bar is a labelled region and its text changes are announced via the toast's role=status; changed fields are marked in text ("· edited", "was: …"), not only colour. Native dialog for confirms. Visible focus everywhere.</li></ul>
+    <h3>What is mocked</h3>
+    <ul><li>All server actions (600 ms, succeed). History seed is invented. The three-way leave dialog's "Save" path validates first and stays if invalid. No cross-leader conflict detection.</li></ul>
+    <h3>Deviations / open questions</h3>
+    <ul>
+      <li>Roles are an immediate list here, not a draft — a role grant moves someone between tabs and the roster needs to know at once; batching it into the save bar felt dishonest. Could be revisited.</li>
+      <li>This direction needs a real change-log table and one atomic "save person" server action that touches people + scouts + household_members in one transaction — the highest build cost of the three.</li>
+      <li>Pending updates stay whole-request (today's model) — the one direction where no server change to change requests is implied.</li>
+    </ul>
+  </div>
+</section>
+
+<script>
+const HOUSEHOLDS = {1:'Whitlock (Dana & Marcus)',2:'Raman',3:'Tomasek',4:'Okafor'};
+const ROLE_LABEL = {adult_leader:'Adult leader',committee_member:'Committee member',chartered_org_rep:'Chartered org rep',merit_badge_counselor:'Merit badge counselor',external_contact:'External contact'};
+const LEADER_ROLES = ['adult_leader','committee_member','chartered_org_rep'];
+const REL_WORD = {parent_of:'parent of',guardian_of:'guardian of',sibling_of:'sibling of',emergency_contact_for:'emergency contact for'};
+const SCOUT_REASONS = {dropped_out:'Dropped out',transferred:'Transferred to another troop',moved_away:'Moved away',aged_out:'Aged out',other:'Other'};
+let seq = 900;
+const PEOPLE = [
+  {id:101,kind:'adult',first:'Dana',last:'Whitlock',birthdate:'1981-03-14',phone:'(414) 555-0142',addr1:'2210 N Prospect Ave',addr2:'',city:'Milwaukee',state:'WI',zip:'53202',bsa:'137204418',ypt:'2025-02-11',health:'2026-05-30',notes:'',active:true,inactiveReason:'',household:1,
+   emails:[{id:1,email:'dana.whitlock@example.com',label:'home',primary:true,verified:'2026-06-02',bounced:null},{id:2,email:'d.whitlock@northmail.example',label:'work',primary:false,verified:null,bounced:null}],
+   roles:[],relationships:[{id:1,type:'parent_of',other:201,guardian:true,outgoing:true}],
+   pending:{by:'Marcus Whitlock',at:'2026-09-04T19:22:00',changes:{phone:'(414) 555-0199',addr1:'1735 E Kenilworth Pl',birthdate:'1981-03-15'}},notice:null,
+   history:[['2024-08-30','Import','Created from the roster spreadsheet'],['2025-02-12','Priya Raman','YPT completed set to Feb 11, 2025'],['2026-06-02','Dana Whitlock','Verified dana.whitlock@example.com by signing in'],['2026-09-04','Marcus Whitlock','Proposed 3 changes from /profile (pending)']]},
+  {id:102,kind:'adult',first:'Marcus',last:'Whitlock',birthdate:'1979-11-02',phone:'(414) 555-0177',addr1:'2210 N Prospect Ave',addr2:'',city:'Milwaukee',state:'WI',zip:'53202',bsa:'',ypt:'',health:'',notes:'',active:true,inactiveReason:'',household:1,
+   emails:[{id:3,email:'marcus.w@example.com',label:'home',primary:true,verified:'2026-06-02',bounced:null}],roles:[],relationships:[{id:2,type:'parent_of',other:201,guardian:true,outgoing:true}],pending:null,notice:null,history:[['2024-08-30','Import','Created from the roster spreadsheet']]},
+  {id:103,kind:'adult',first:'Priya',last:'Raman',birthdate:'1984-07-22',phone:'(414) 555-0163',addr1:'4418 W Hadley St',addr2:'',city:'Milwaukee',state:'WI',zip:'53210',bsa:'128873305',ypt:'2025-10-04',health:'2026-03-12',notes:'',active:true,inactiveReason:'',household:2,
+   emails:[{id:4,email:'priya.raman@example.com',label:'home',primary:true,verified:'2026-01-20',bounced:null}],
+   roles:[{id:11,role:'adult_leader',start:'2023-09-01',end:null},{id:12,role:'committee_member',start:'2025-01-15',end:null},{id:13,role:'merit_badge_counselor',start:'2022-03-01',end:'2024-06-30'}],
+   relationships:[{id:3,type:'parent_of',other:202,guardian:true,outgoing:true}],pending:null,notice:null,history:[['2022-03-01','Import','Created; Merit badge counselor'],['2023-09-01','Committee','Granted Adult leader'],['2024-06-30','Committee','Ended Merit badge counselor'],['2025-01-15','Committee','Granted Committee member'],['2025-10-05','Priya Raman','YPT completed set to Oct 4, 2025']]},
+  {id:104,kind:'adult',first:'Glenn',last:'Tomasek',birthdate:'1976-01-30',phone:'(414) 555-0118',addr1:'812 S 3rd St',addr2:'',city:'Milwaukee',state:'WI',zip:'53204',bsa:'',ypt:'2023-08-19',health:'',notes:'',active:false,inactiveReason:'Moved to Madison, Aug 2026',household:3,
+   emails:[{id:5,email:'g.tomasek@oldmail.example',label:'home',primary:true,verified:'2024-02-01',bounced:'2026-08-20'}],roles:[{id:14,role:'committee_member',start:'2021-09-01',end:'2026-08-15'}],relationships:[],pending:null,notice:null,history:[['2021-09-01','Import','Created; Committee member'],['2026-08-15','Priya Raman','Ended Committee member'],['2026-08-16','Priya Raman','Marked inactive — "Moved to Madison, Aug 2026"'],['2026-08-20','System','g.tomasek@oldmail.example bounced']]},
+  {id:105,kind:'adult',first:'Rosalind',last:'Achebe',birthdate:'',phone:'(414) 555-0131',addr1:'',addr2:'',city:'',state:'',zip:'',bsa:'',ypt:'',health:'',notes:'',active:true,inactiveReason:'',household:4,
+   emails:[],roles:[],relationships:[{id:4,type:'guardian_of',other:203,guardian:true,outgoing:true}],pending:null,notice:{by:'Jamal Okafor',at:'2026-09-01T08:10:00',fields:{relationship:'Grandmother',phone:'(414) 555-0131'}},history:[['2026-09-01','Jamal Okafor (family)','Added to the Okafor household from /profile as "Grandmother"']]},
+  {id:106,kind:'adult',first:'Corey',last:'Lindqvist',birthdate:'',phone:'',addr1:'',addr2:'',city:'',state:'',zip:'',bsa:'',ypt:'',health:'',notes:'',active:true,inactiveReason:'',household:null,
+   emails:[{id:6,email:'corey.l@example.com',label:'home',primary:true,verified:null,bounced:null}],roles:[],relationships:[],pending:null,notice:null,history:[['2026-08-28','Priya Raman','Added as an adult (possible duplicate of a guest)']]},
+  {id:201,kind:'scout',first:'Theo',last:'Whitlock',scoutId:'F07',patrol:'Hawk',rank:'Star',gender:'M',school:'Lakeshore Middle School',grade:8,swim:'swimmer',jl:'',birthdate:'2012-05-19',phone:'',addr1:'2210 N Prospect Ave',addr2:'',city:'Milwaukee',state:'WI',zip:'53202',bsa:'140110221',health:'2026-06-01',notes:'Peanut allergy (EpiPen in backpack)',active:true,inactiveReason:'',household:1,emails:[],roles:[],relationships:[],pending:null,notice:null,history:[['2024-08-30','Import','Created from the roster spreadsheet'],['2026-03-15','Ledger','Rank Star awarded (BoR)'],['2026-06-01','Dana Whitlock (family)','Health form date updated — approved by Priya Raman']]},
+  {id:202,kind:'scout',first:'Nikhil',last:'Raman',scoutId:'F11',patrol:'Fox',rank:'First Class',gender:'M',school:'Riverbend Academy',grade:10,swim:'beginner',jl:'',birthdate:'2010-09-03',phone:'(414) 555-0190',addr1:'4418 W Hadley St',addr2:'',city:'Milwaukee',state:'WI',zip:'53210',bsa:'140110388',health:'2025-12-14',notes:'',active:true,inactiveReason:'',household:2,emails:[{id:7,email:'nikhil.r@example.com',label:'home',primary:true,verified:null,bounced:null}],roles:[],relationships:[],
+   pending:{by:'Priya Raman',at:'2026-09-05T21:03:00',changes:{swim:'swimmer',phone:'(414) 555-0191'}},notice:null,history:[['2023-09-10','Import','Created'],['2025-11-02','Ledger','Rank First Class awarded (BoR)'],['2026-09-05','Priya Raman (family)','Proposed 2 changes from /profile (pending)']]},
+  {id:203,kind:'scout',first:'Jamal',last:'Okafor',scoutId:'F14',patrol:'Hawk',rank:'Tenderfoot',gender:'M',school:'Lakeshore Middle School',grade:7,swim:'',jl:'',birthdate:'2013-02-11',phone:'',addr1:'901 E Locust St',addr2:'',city:'Milwaukee',state:'WI',zip:'53212',bsa:'',health:'',notes:'',active:true,inactiveReason:'',household:4,emails:[],roles:[],relationships:[],pending:null,notice:null,history:[['2026-08-25','Priya Raman','Created (new scout)']]},
+  {id:204,kind:'scout',first:'Ivy',last:'Castellano',scoutId:'F03',patrol:'Fox',rank:'Life',gender:'F',school:'Riverbend Academy',grade:12,swim:'swimmer',jl:'',birthdate:'2008-10-27',phone:'',addr1:'',addr2:'',city:'Milwaukee',state:'WI',zip:'',bsa:'',health:'',notes:'',active:false,inactiveReason:'transferred',household:null,emails:[],roles:[],relationships:[],pending:null,notice:null,history:[['2021-09-01','Import','Created'],['2026-07-02','Priya Raman','Marked inactive — Transferred to another troop']]}
+];
+const byId = id => PEOPLE.find(p => p.id === id);
+const nameOf = p => p.first + ' ' + p.last;
+const isLeader = p => p.kind === 'adult' && p.roles.some(r => !r.end && LEADER_ROLES.includes(r.role));
+const tabOf = p => p.kind === 'scout' ? (p.active ? 'active_scout' : 'inactive_scout') : (isLeader(p) ? 'leader' : 'adult');
+const TAB_LABEL = {active_scout:'Active Scouts',inactive_scout:'Inactive Scouts',leader:'Leaders',adult:'Adults',guest:'Guests'};
+const kindLabel = p => p.kind === 'scout' ? 'Scout' : (isLeader(p) ? 'Leader' : 'Adult');
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function fmtDate(iso){ if(!iso) return ''; const [y,m,d] = iso.slice(0,10).split('-').map(Number); return `${MON[m-1]} ${d}, ${y}`; }
+function fmtDateTime(iso){ const t = iso.slice(11,16); let [h,mi] = t.split(':').map(Number); const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return `${fmtDate(iso)} ${h}:${String(mi).padStart(2,'0')} ${ap}`; }
+const TODAY = '2026-09-07';
+function ageOn(iso){ if(!iso) return null; const [y,m,d] = iso.split('-').map(Number); const [ty,tm,td] = TODAY.split('-').map(Number); let a = ty - y; if (tm < m || (tm === m && td < d)) a--; return a; }
+function ypt(iso){ if(!iso) return null; const [y,m,d] = iso.split('-').map(Number); const exp = `${y+2}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; return {expires: exp, current: exp >= TODAY}; }
+const delay = ms => new Promise(r => setTimeout(r, ms));
+const gradeLabel = g => g === 0 ? 'K' : g === 1 ? '1st' : g === 2 ? '2nd' : g === 3 ? '3rd' : g === 12 ? '12th (senior)' : `${g}th`;
+const maskEmail = e => e.replace(/^(.)[^@]*(@.*)$/, '$1•••$2');
+let toastTimer = null, toastUndoFn = null;
+function toast(msg, {undo} = {}) { const t = $('#toast'); $('#toastMsg').textContent = msg; const u = $('#toastUndo'); u.hidden = !undo; toastUndoFn = undo || null; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; toastUndoFn = null; }, undo ? 8000 : 5000); }
+$('#toastClose').addEventListener('click', () => { $('#toast').hidden = true; });
+$('#toastUndo').addEventListener('click', () => { const f = toastUndoFn; $('#toast').hidden = true; toastUndoFn = null; if (f) f(); });
+function confirmDialog({title, body, ok = 'Confirm', danger = true, okDisabledReason = null, third = null}) {
+  return new Promise(resolve => {
+    const d = $('#confirm'); $('#dTitle').textContent = title; $('#dBody').innerHTML = body;
+    const okBtn = $('#dOk'); okBtn.textContent = ok; okBtn.className = 'btn ' + (danger ? 'btn-dangerSolid' : 'btn-primary'); okBtn.disabled = !!okDisabledReason; okBtn.title = okDisabledReason || '';
+    let tb = $('#dThird'); if (tb) tb.remove(); if (third) { tb = document.createElement('button'); tb.type = 'button'; tb.id = 'dThird'; tb.className = 'btn btn-danger'; tb.textContent = third; okBtn.before(tb); tb.onclick = () => done('third'); }
+    const done = v => { d.close(); okBtn.onclick = null; $('#dCancel').onclick = null; d.onclose = null; resolve(v); };
+    okBtn.onclick = () => done(true); $('#dCancel').onclick = () => done(false); d.onclose = () => resolve(false);
+    d.showModal(); $('#dCancel').focus();
+  });
+}
+
+const state = { screen:'roster', tab:'adult', personId:null, fromTab:null, ptab:'overview', draft:null, phase:null, danger:false, linkSent:{}, mergeQ:'', relMode:null, relQ:'', relType:'parent_of', relGuardian:true, banner:null, link:null, newEmail:'', help:null, rejecting:false };
+const api = {
+  async save(p, fields){ await delay(600); Object.assign(p, fields); },
+  async addEmail(p, email, label){ await delay(600); p.emails.push({id:++seq, email, label, primary: p.emails.length === 0, verified:null, bounced:null}); },
+  async setPrimary(p, id){ await delay(600); p.emails.forEach(e => e.primary = e.id === id); },
+  async removeEmail(p, id){ await delay(600); p.emails = p.emails.filter(e => e.id !== id); },
+  async addRole(p, role){ await delay(600); p.roles.push({id:++seq, role, start:TODAY, end:null}); },
+  async endRole(p, id){ await delay(600); p.roles.find(r => r.id === id).end = TODAY; },
+  async deleteRole(p, id){ await delay(600); p.roles = p.roles.filter(r => r.id !== id); },
+  async addRel(p, otherId, type, guardian){ await delay(600); p.relationships.push({id:++seq, type, other:otherId, guardian, outgoing:true}); },
+  async removeRel(p, id){ await delay(600); for (const q of PEOPLE) q.relationships = q.relationships.filter(r => r.id !== id); },
+  async applyPending(p){ await delay(600); Object.assign(p, p.pending.changes); p.pending = null; },
+  async rejectPending(p){ await delay(600); p.pending = null; },
+  async ack(p){ await delay(600); p.notice = null; },
+  async sendLink(p, emailId){ await delay(600); const deliverable = p.emails.filter(e => !e.bounced); if (!deliverable.length) return {ok:false, reason:'unreachable'}; const last = state.linkSent[p.id]; if (last && Date.now() - last < 5*60*1000) return {ok:false, reason:'rate-limited'}; state.linkSent[p.id] = Date.now(); const e = deliverable.find(e => e.id === emailId) || deliverable.find(e => e.primary) || deliverable[0]; return {ok:true, masked:maskEmail(e.email), minutes:15}; },
+  async merge(loser, survivor){ await delay(800); for (const e of loser.emails) if (!survivor.emails.some(x => x.email === e.email)) survivor.emails.push({...e, primary:false}); for (const r of loser.relationships) survivor.relationships.push(r); for (const r of loser.roles) survivor.roles.push(r); for (const k of ['phone','addr1','city','state','zip','bsa','ypt','health','birthdate']) if (!survivor[k] && loser[k]) survivor[k] = loser[k]; if (!survivor.household) survivor.household = loser.household; loser.merged = survivor.id; },
+  async remove(p){ await delay(600); p.deleted = true; },
+  async promote(p){ await delay(800); p.active = false; p.inactiveReason = 'aged_out'; p.promoted = true; }
+};
+function relsOf(p){ const out = []; for (const q of PEOPLE) for (const r of q.relationships) { if (q.id === p.id) out.push({id:r.id, type:r.type, other:byId(r.other), guardian:r.guardian, outgoing:true}); else if (r.other === p.id) out.push({id:r.id, type:r.type, other:q, guardian:r.guardian, outgoing:false}); } return out; }
+const attachments = p => relsOf(p).length + p.roles.length + (p.kind === 'scout' ? 1 : 0);
+function hist(p, text, who = 'You (this session)'){ p.history.push([TODAY, who, text, true]); }
+
+/* fields */
+const F = {
+  first:{label:'First name',type:'text',required:true}, last:{label:'Last name',type:'text',required:true},
+  birthdate:{label:'Birthdate',type:'date',read:p => p.birthdate ? `${fmtDate(p.birthdate)} · age ${ageOn(p.birthdate)}` : ''},
+  bsa:{label:'BSA member ID',type:'text',mono:true},
+  ypt:{label:'YPT completed',type:'date',read:p => { const y = ypt(p.ypt); return y ? `${fmtDate(p.ypt)} · ${y.current ? 'current' : 'EXPIRED'}` : ''; }},
+  health:{label:'Health form',type:'date',read:p => fmtDate(p.health)},
+  notes:{label:'Things we should know',type:'textarea',full:true,placeholder:'e.g. Peanut allergy (EpiPen in backpack)'},
+  phone:{label:'Phone',type:'tel',placeholder:'(414) 555-1234'},
+  addr1:{label:'Address line 1',type:'text',full:true}, addr2:{label:'Address line 2',type:'text',full:true,placeholder:'Apt / unit (optional)'},
+  city:{label:'City',type:'text'}, state:{label:'State',type:'text',max:2,placeholder:'WI'}, zip:{label:'ZIP',type:'text',placeholder:'53202'},
+  household:{label:'Household',type:'household',read:p => p.household ? HOUSEHOLDS[p.household] : 'no household'},
+  scoutId:{label:'Internal ID',type:'readonly',mono:true}, patrol:{label:'Patrol',type:'text',placeholder:'e.g. Hawk'},
+  rank:{label:'Current rank · derived',type:'readonly',read:p => p.rank || 'no rank earned yet'},
+  gender:{label:'Gender',type:'select',options:[['','—'],['M','Male'],['F','Female']]},
+  school:{label:'School',type:'text'},
+  grade:{label:'Grade',type:'select',options:[['','—'],...[...Array(13).keys()].map(g => [String(g), gradeLabel(g)])],read:p => p.grade === '' || p.grade == null ? '' : gradeLabel(Number(p.grade))},
+  swim:{label:'Swim classification',type:'select',options:[['','—'],['swimmer','Swimmer'],['beginner','Beginner'],['nonswimmer','Non-swimmer']]},
+  jl:{label:'Junior leader (sign-ups)',type:'select',options:[['','Auto — grades 9–12'],['yes','Yes — always'],['no','No — always a Scout']]},
+  active:{label:'Status',type:'status'}, inactiveReason:{label:'Inactive reason',type:'reason'}
+};
+function tabsFor(p){
+  if (p.kind === 'scout') return [
+    {key:'overview',title:'Overview'},
+    {key:'details',title:'Identity & details',fields:['active','inactiveReason','scoutId','first','last','bsa','patrol','rank','birthdate','gender','school','grade','swim','jl','health','notes'],help:'Internal ID is permanent. Rank is derived from the ledger. Age and grade are derived — the stored value is the graduation class year. Inactive scouts leave rosters, dashboards and Fast Entry; ledger history is kept.'},
+    {key:'contact',title:'Contact & sign-in',fields:['phone','addr1','addr2','city','state','zip'],emails:true,help:'A scout with no email signs in through a parent in their household.'},
+    {key:'family',title:'Household & family',fields:['household'],relations:true,help:'Parents and guardians are people in their own right — their contact details are edited on their own record.'},
+    {key:'history',title:'History'}
+  ];
+  return [
+    {key:'overview',title:'Overview'},
+    {key:'details',title:'Details',fields:['active','inactiveReason','first','last','birthdate','bsa','ypt','health','notes'],help:'Inactive people stay on record with history, relationships and roles; they are just not offered at signup. YPT is good for two years.'},
+    {key:'contact',title:'Contact & sign-in',fields:['phone','addr1','addr2','city','state','zip'],emails:true,help:'The primary address is where sign-in links and the Bugle go.'},
+    {key:'family',title:'Household & family',fields:['household'],relations:true,help:'Household membership is independent of roles.'},
+    {key:'roles',title:'Roles',roles:true,help:'Adult leader, Committee member or Chartered org rep puts someone on the Leaders tab. A merit badge counselor with no other role stays an Adult.'},
+    {key:'history',title:'History'}
+  ];
+}
+const DRAFT_KEYS = p => tabsFor(p).flatMap(t => t.fields || []).filter(k => F[k].type !== 'readonly');
+function newDraft(p){ return Object.fromEntries(DRAFT_KEYS(p).map(k => [k, p[k] ?? ''])); }
+function norm(v){ return v === null || v === undefined ? '' : String(v); }
+function changedKeys(p){ return state.draft ? Object.keys(state.draft).filter(k => norm(state.draft[k]) !== norm(p[k])) : []; }
+function problems(p){ const out = []; if (!state.draft) return out; if (!String(state.draft.first).trim()) out.push({key:'first', msg:'First name is required'}); if (!String(state.draft.last).trim()) out.push({key:'last', msg:'Last name is required'}); if (p.kind === 'scout' && state.draft.active === false && !state.draft.inactiveReason) out.push({key:'inactiveReason', msg:'Pick a reason when a scout is inactive'}); return out; }
+function tabOfKey(p, k){ return tabsFor(p).find(t => (t.fields || []).includes(k)); }
+function displayVal(p, k, v){ const f = F[k]; if (k === 'active') return v ? 'Active' : 'Inactive'; if (k === 'inactiveReason') return p.kind === 'scout' ? (SCOUT_REASONS[v] || '(none)') : (v || '(none)'); if (k === 'household') return v ? HOUSEHOLDS[v] : 'no household'; if (f.type === 'select') { const o = f.options.find(o => o[0] === norm(v)); return o ? o[1] : ''; } if (f.type === 'date') return fmtDate(v) || '(empty)'; return norm(v) || '(empty)'; }
+
+/* rendering */
+function render(){ const app = $('#app'); app.innerHTML = state.screen === 'roster' ? renderRoster() : renderPerson(); renderSaveBar(); if (state.focus) { const el = app.querySelector(state.focus); if (el) el.focus(); state.focus = null; } }
+function renderRoster(){
+  const rows = PEOPLE.filter(p => !p.merged && !p.deleted && tabOf(p) === state.tab);
+  const counts = {}; for (const p of PEOPLE) if (!p.merged && !p.deleted) counts[tabOf(p)] = (counts[tabOf(p)] || 0) + 1;
+  const tabs = Object.keys(TAB_LABEL).map(t => `<button type="button" role="tab" class="tab" aria-selected="${t === state.tab}" data-act="tab" data-tab="${t}">${TAB_LABEL[t]}<span class="n">${counts[t] || 0}</span></button>`).join('');
+  const scout = state.tab.endsWith('scout');
+  const head = scout ? '<th>Name</th><th>ID</th><th class="hide-m">Patrol</th><th class="hide-m">Rank</th><th class="hide-m">Grade</th><th>Status</th>' : '<th>Name</th><th>Email</th><th class="hide-m">Phone</th><th class="hide-m">Roles</th><th class="hide-m">Household</th><th>Status</th>';
+  const body = rows.map(p => { const status = p.active ? '<span class="pill pill-ok">Active</span>' : '<span class="pill pill-off">Inactive</span>'; const name = `<button type="button" class="name" data-act="open" data-id="${p.id}">${esc(nameOf(p))}</button>${p.pending ? ' <span class="tag tag-guardian">pending update</span>' : ''}${p.notice ? ' <span class="tag tag-guardian">added by family</span>' : ''}`; if (scout) return `<tr><td>${name}</td><td class="mono">${p.scoutId}</td><td class="hide-m">${esc(p.patrol)}</td><td class="hide-m">${esc(p.rank)}</td><td class="hide-m">${gradeLabel(p.grade)}</td><td>${status}</td></tr>`; const prim = p.emails.find(e => e.primary); return `<tr><td>${name}</td><td>${prim ? esc(prim.email) : '<span class="muted">—</span>'}</td><td class="hide-m">${esc(p.phone) || '<span class="muted">—</span>'}</td><td class="hide-m">${p.roles.filter(r => !r.end).map(r => ROLE_LABEL[r.role]).join(', ') || '<span class="muted">none</span>'}</td><td class="hide-m">${p.household ? esc(HOUSEHOLDS[p.household]) : '<span class="muted">—</span>'}</td><td>${status}</td></tr>`; }).join('') || '<tr><td colspan="6" class="muted">Nobody on this tab.</td></tr>';
+  return `<h1 style="font-family:var(--admin-font-display);font-weight:400;font-size:var(--admin-text-3xl)">Roster</h1><p class="lede">Everyone on record. Open a name to see or change their record.</p><div class="tabs" role="tablist">${tabs}</div><div class="toolbar"><span class="sp"></span><button type="button" class="btn btn-sm" disabled title="Not in this prototype">+ Add ${scout ? 'Scout' : 'Adult'}</button></div><table class="roster"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+}
+function renderPerson(){
+  const p = byId(state.personId); const tabs = tabsFor(p); const changed = changedKeys(p); const probs = problems(p);
+  const prim = p.emails.find(e => e.primary); const deliverable = p.emails.filter(e => !e.bounced);
+  const parents = p.kind === 'scout' ? relsOf(p).filter(r => !r.outgoing && ['parent_of','guardian_of'].includes(r.type)).map(r => r.other) : [];
+  const kindPill = p.kind === 'scout' ? '<span class="pill pill-scout">Scout</span>' : isLeader(p) ? '<span class="pill pill-leader">Leader</span>' : '<span class="pill pill-kind">Adult</span>';
+  const status = p.active ? '<span class="pill pill-ok">Active</span>' : '<span class="pill pill-off">Inactive</span>';
+  const linkBtn = p.kind === 'scout' && !deliverable.length ? `<button type="button" class="btn btn-sm" disabled title="No email on file — signs in through a parent">Send sign-in link</button>` : `${deliverable.length > 1 ? `<select aria-label="Send to" id="linkTo" style="width:auto;font-size:var(--admin-text-base);padding:3px 6px">${deliverable.map(e => `<option value="${e.id}">${esc(e.email)}${e.primary ? ' (primary)' : ''}</option>`).join('')}</select>` : ''}<button type="button" class="btn btn-sm" data-act="sendlink" ${deliverable.length ? '' : 'disabled title="Add an email address first"'}>Send sign-in link</button>`;
+  const tabBar = tabs.map(t => { const n = (t.fields || []).filter(k => changed.includes(k)).length; const bad = probs.some(x => (t.fields || []).includes(x.key)); const pend = p.pending && t.key !== 'overview' && (t.fields || []).some(k => k in p.pending.changes); return `<button type="button" role="tab" class="tab" aria-selected="${state.ptab === t.key}" data-act="ptab" data-tab="${t.key}">${t.title}${n ? `<span class="dot ${bad ? 'err' : ''}" title="${n} unsaved change${n > 1 ? 's' : ''}"></span><span class="n">${n}</span>` : bad ? '<span class="dot err"></span>' : ''}${pend ? '<span class="tag tag-guardian" style="margin:0">pending</span>' : ''}</button>`; }).join('');
+  const t = tabs.find(t => t.key === state.ptab);
+  let body = '';
+  if (t.key === 'overview') body = renderOverview(p);
+  else if (t.key === 'history') body = renderHistory(p);
+  else body = renderTab(p, t);
+  const notices = []; if (state.link) notices.push(`<div class="notice ${state.link.ok ? 'n-ok' : 'n-err'}">${state.link.msg}</div>`); if (state.banner) notices.push(`<div class="notice ${state.banner.cls}">${state.banner.html}</div>`);
+  return `<button type="button" class="back" data-act="back">← Back to ${TAB_LABEL[state.fromTab || tabOf(p)]}</button>
+  <header class="rec-head"><div><h1>${esc(nameOf(p))}</h1><div class="pills">${kindPill} ${status}${changed.includes('active') ? ' <span class="tag tag-guardian">status edited, not saved</span>' : ''}${p.kind === 'scout' ? ` <span class="mono muted">${p.scoutId}</span>` : ''}${p.bsa ? ` <span class="mono muted">BSA ${esc(p.bsa)}</span>` : ''}</div><div class="contact">${prim ? `<a href="mailto:${esc(prim.email)}">${esc(prim.email)}</a>` : (p.kind === 'scout' ? `signs in through ${parents.length ? parents.map(q => esc(nameOf(q))).join(' or ') : 'a parent (none linked)'}` : '<span class="muted">no email on file</span>')}${p.phone ? ` · <a href="tel:${esc(p.phone)}">${esc(p.phone)}</a>` : ''}</div></div><div class="acts">${linkBtn}</div></header>
+  <div class="tabs" role="tablist" aria-label="Record sections">${tabBar}</div>${notices.join('')}${body}`;
+}
+function helpDisc(key, text){ if (!text) return ''; const open = state.help === key; return `<div style="margin:4px 0 12px"><button type="button" class="disc" data-act="help" data-key="${key}" aria-expanded="${open}">How this tab works</button>${open ? `<div class="disc-body">${text}</div>` : ''}</div>`; }
+function renderOverview(p){
+  const y = ypt(p.ypt);
+  const facts = p.kind === 'scout' ? [['Rank', p.rank || '—'], ['Patrol', p.patrol || '—'], ['Grade', gradeLabel(p.grade)], ['Age', ageOn(p.birthdate) ?? '—'], ['Health form', p.health ? fmtDate(p.health) : '<span class="pill pill-warn">missing</span>'], ['Household', p.household ? HOUSEHOLDS[p.household] : '—']] : [['Household', p.household ? HOUSEHOLDS[p.household] : '—'], ['Roles', p.roles.filter(r => !r.end).map(r => ROLE_LABEL[r.role]).join(', ') || 'none'], ['Age', ageOn(p.birthdate) ?? '—'], ['YPT', y ? (y.current ? '<span class="pill pill-ok">current</span>' : '<span class="pill pill-off">expired</span>') : '<span class="pill pill-warn">none</span>'], ['Health form', p.health ? fmtDate(p.health) : '<span class="pill pill-warn">missing</span>'], ['Sign-in', p.emails.some(e => e.verified) ? 'Verified' : p.emails.length ? 'Unverified' : '<span class="pill pill-warn">no email</span>']];
+  let notice = ''; if (p.notice) notice = `<div class="notice n-warn"><strong>Added by a family — not yet acknowledged.</strong> ${esc(p.notice.by)} added ${esc(nameOf(p))} to their household on ${fmtDateTime(p.notice.at)} as "${esc(p.notice.fields.relationship)}". Acknowledging clears this from the dashboard and changes nothing. <div class="row" style="margin-top:6px"><button type="button" class="btn btn-sm btn-primary" data-act="ack">Acknowledge</button></div></div>`;
+  let pend = ''; if (p.pending) { const keys = Object.keys(p.pending.changes); pend = `<div class="pending" role="region" aria-label="Pending update"><h3>Pending update from the family — awaiting your review</h3><div class="muted" style="font-size:var(--admin-text-base)">Submitted ${fmtDateTime(p.pending.at)} by <strong>${esc(p.pending.by)}</strong> (verified sign-in). Approving writes these straight to the record — they are the family's proposal, not part of your draft.</div><table><thead><tr><th>Field</th><th>Tab</th><th>Current</th><th>Proposed</th></tr></thead><tbody>${keys.map(k => `<tr><td>${F[k].label}</td><td class="muted">${tabOfKey(p, k)?.title || ''}</td><td class="muted">${esc(displayVal(p, k, p[k]))}</td><td><strong>${esc(displayVal(p, k, p.pending.changes[k]))}</strong></td></tr>`).join('')}</tbody></table>${state.rejecting ? `<label class="field"><span>Reason (optional — the family sees it)</span><input id="rejectReason"></label>` : ''}<div class="actions">${state.rejecting ? `<button type="button" class="btn btn-sm" data-act="rejectCancel">Cancel</button><button type="button" class="btn btn-sm btn-danger" data-act="rejectConfirm">Confirm reject</button>` : `<button type="button" class="btn btn-sm btn-danger" data-act="reject">Reject…</button><button type="button" class="btn btn-sm btn-primary" data-act="approve">Approve all ${keys.length}</button>`}</div></div>`; }
+  const hh = p.household ? PEOPLE.filter(q => q.household === p.household && !q.merged && !q.deleted && q.id !== p.id) : [];
+  return `${notice}${pend}<div class="facts">${facts.map(([k, v]) => `<div class="fact"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('')}</div>
+  <div class="card"><div class="card-head"><h2>Status</h2></div><div class="card-body">${p.active ? `<span class="pill pill-ok">Active</span> ${p.kind === 'scout' ? 'on rosters, dashboards and the Fast Entry picker' : 'offered in the family signup picker'}` : `<span class="pill pill-off">Inactive</span> — ${esc(displayVal(p, 'inactiveReason', p.inactiveReason))}; still on record with history, relationships and past events`}. <button type="button" class="btn-link" data-act="ptab" data-tab="details">Change on the Details tab</button></div></div>
+  <div class="card"><div class="card-head"><h2>Household</h2></div><div class="card-body">${p.household ? `<strong>${esc(HOUSEHOLDS[p.household])}</strong> — ${hh.length ? hh.map(q => `<button type="button" class="btn-link" data-act="open" data-id="${q.id}">${esc(nameOf(q))}</button> (${kindLabel(q)}${q.active ? '' : ', inactive'})`).join(', ') : 'nobody else'}` : '<span class="muted">Not in a household</span>'}</div></div>
+  ${renderDanger(p)}
+  <p class="hint"><button type="button" class="btn-link" data-act="open" data-id="${p.kind === 'scout' ? 101 : 201}">Switch to a${p.kind === 'scout' ? 'n adult' : ' scout'} record</button> (prototype)</p>`;
+}
+function renderTab(p, t){
+  const d = state.draft; const changed = changedKeys(p); const probs = problems(p);
+  let form = '';
+  if (t.fields) {
+    const statusBlock = t.fields.includes('active') ? (() => { const scout = p.kind === 'scout'; const ch = changed.includes('active') || changed.includes('inactiveReason'); const prob = probs.find(x => x.key === 'inactiveReason'); return `<div class="card"><div class="card-head"><span class="num">1</span><h2>Status</h2></div><div class="card-body"><div class="form-panel"><div class="field ${ch ? 'changed' : ''}"><span>Status${ch ? ` <span class="was">was: ${displayVal(p, 'active', p.active)}${p.active ? '' : ' — ' + esc(displayVal(p, 'inactiveReason', p.inactiveReason))}</span>` : ''}</span><div class="radios" style="margin-top:4px"><label><input type="radio" name="active" value="1" ${d.active ? 'checked' : ''} data-draft="active"> Active <span class="muted">— ${scout ? 'on rosters and in Fast Entry' : 'offered at signup'}</span></label><label><input type="radio" name="active" value="0" ${d.active ? '' : 'checked'} data-draft="active"> Inactive</label></div></div>${d.active ? '' : `<label class="field ${changed.includes('inactiveReason') ? 'changed' : ''}" style="margin-top:8px"><span>Reason${scout ? ' <span style="color:var(--admin-danger)">*</span>' : ' (optional)'}</span>${scout ? `<select data-draft="inactiveReason" ${prob ? 'aria-invalid="true"' : ''}>${['',...Object.keys(SCOUT_REASONS)].map(k => `<option value="${k}" ${d.inactiveReason === k ? 'selected' : ''}>${k ? SCOUT_REASONS[k] : '— Pick a reason —'}</option>`).join('')}</select>` : `<input data-draft="inactiveReason" value="${esc(d.inactiveReason)}" placeholder="Moved away, aged out of the troop…">`}${prob ? `<span class="err">${prob.msg}</span>` : ''}</label><p class="hint">Saved with everything else by the bar below. Inactive keeps ledger history, relationships${scout ? '' : ', roles'} and past events.</p>`}</div></div></div>`; })() : '';
+    const rest = t.fields.filter(k => k !== 'active' && k !== 'inactiveReason');
+    form = statusBlock + `<div class="card"><div class="card-head">${statusBlock ? '<span class="num">2</span>' : ''}<h2>${t.title}</h2></div><div class="card-body"><div class="form-panel"><div class="grid">${rest.map(k => {
+      const f = F[k]; const ch = changed.includes(k); const prob = probs.find(x => x.key === k); const cls = 'field' + (f.full ? ' full' : '') + (ch ? ' changed' : '');
+      const lbl = `<span>${f.label}${f.required ? ' <span style="color:var(--admin-danger)">*</span>' : ''}${ch ? ` <span class="was">was: ${esc(displayVal(p, k, p[k]))}</span>` : ''}</span>`;
+      if (f.type === 'readonly') return `<div class="field"><span>${f.label}</span><div class="ro ${f.mono ? 'mono' : ''}">${f.read ? f.read(p) : esc(p[k])}</div></div>`;
+      if (f.type === 'household') return `<label class="${cls}">${lbl}<select data-draft="household"><option value="">— no household —</option>${Object.entries(HOUSEHOLDS).map(([id, l]) => `<option value="${id}" ${norm(d.household) === id ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>${ch ? '<span class="hint" style="margin:2px 0 0">Everyone in the new household comes up together at signup once saved.</span>' : ''}</label>`;
+      if (f.type === 'select') return `<label class="${cls}">${lbl}<select data-draft="${k}">${f.options.map(o => `<option value="${o[0]}" ${norm(d[k]) === o[0] ? 'selected' : ''}>${esc(o[1])}</option>`).join('')}</select></label>`;
+      if (f.type === 'textarea') return `<label class="${cls}">${lbl}<textarea data-draft="${k}" rows="3" placeholder="${esc(f.placeholder || '')}">${esc(d[k])}</textarea></label>`;
+      return `<label class="${cls}">${lbl}<input type="${f.type}" data-draft="${k}" value="${esc(d[k])}" ${f.max ? `maxlength="${f.max}"` : ''} placeholder="${esc(f.placeholder || '')}" ${prob ? 'aria-invalid="true"' : ''} class="${f.mono ? 'mono' : ''}">${prob ? `<span class="err">${prob.msg}</span>` : ''}</label>`;
+    }).join('')}</div></div></div></div>`;
+  }
+  const extra = (t.emails ? `<div class="card"><div class="card-body">${renderEmails(p)}</div></div>` : '') + (t.relations ? `<div class="card"><div class="card-body">${renderRelations(p)}</div></div>` : '') + (t.roles ? `<div class="card"><div class="card-body">${renderRoles(p)}</div></div>` : '');
+  const pendChip = p.pending && (t.fields || []).some(k => k in p.pending.changes) ? `<div class="notice n-warn">A family proposal touches ${(t.fields || []).filter(k => k in p.pending.changes).map(k => F[k].label).join(', ')} — <button type="button" class="btn-link" data-act="ptab" data-tab="overview">review it on Overview</button>. Your own edits here stay separate.</div>` : '';
+  return `${helpDisc(t.key, t.help)}${pendChip}${form}${extra}`;
+}
+function renderHistory(p){
+  return `<div class="card"><div class="card-head"><h2>History</h2><span class="muted" style="font-size:var(--admin-text-sm)">newest first</span></div><div class="card-body"><ul class="history">${[...p.history].reverse().map(h => `<li class="${h[3] ? 'session' : ''}"><span class="when">${fmtDate(h[0])} <span class="who">· ${esc(h[1])}</span></span><span>${esc(h[2])}</span></li>`).join('')}</ul><p class="hint">Every save, approval, role and email change lands here with who did it. Mocked — the app has no change log today; this tab is what Direction 3 would add.</p></div></div>`;
+}
+function renderEmails(p){
+  const items = p.emails.map(e => `<li><span class="grow">${esc(e.email)} <span class="muted">${e.label}</span>${e.primary ? '<span class="tag tag-primary">primary</span>' : ''}${e.verified ? '<span class="tag tag-ok">verified</span>' : '<span class="tag">unverified</span>'}${e.bounced ? '<span class="tag tag-bad">bounced</span>' : ''}</span>${e.primary ? '' : `<button type="button" class="btn btn-sm" data-act="primary" data-id="${e.id}" ${e.bounced ? 'disabled title="A bounced address cannot be primary"' : ''}>Make primary</button>`}<button type="button" class="btn btn-sm btn-quiet" data-act="rmEmail" data-id="${e.id}" ${p.emails.length <= 1 ? 'disabled title="The only address on file — add another before removing this one"' : e.primary ? 'disabled title="Set another address as primary first"' : ''}>Remove</button></li>`).join('');
+  return `<div class="imm" style="margin-top:0"><div class="imm-head"><h3>Email addresses</h3><span class="imm-tag">Takes effect immediately — not part of the save bar</span></div>${p.emails.length ? `<ul class="list">${items}</ul>` : `<p class="muted" style="margin:0">No addresses on file${p.kind === 'scout' ? ' — signs in through a parent' : ''}.</p>`}<div class="addrow"><input type="email" id="newEmail" placeholder="name@example.com" aria-label="New email address" value="${esc(state.newEmail || '')}"><select id="newLabel" aria-label="Label"><option>home</option><option>work</option><option>other</option></select><button type="button" class="btn btn-sm" data-act="addEmail" ${state.newEmail ? '' : 'disabled title="Type an address first"'}>Add address</button></div></div>`;
+}
+function renderResults(q, filter, act){ if (!q || q.trim().length < 2) return ''; const hits = PEOPLE.filter(p => !p.merged && !p.deleted && filter(p) && nameOf(p).toLowerCase().includes(q.trim().toLowerCase())); return hits.length ? `<ul class="results">${hits.map(p => `<li><button type="button" data-act="${act}" data-id="${p.id}">${esc(nameOf(p))} <span class="muted">${kindLabel(p)}</span></button></li>`).join('')}</ul>` : '<p class="hint">No one matches.</p>'; }
+function renderRelations(p){
+  const rels = relsOf(p); const scout = p.kind === 'scout';
+  const items = rels.map(r => { const q = r.other; const line = r.outgoing ? `<strong>${esc(nameOf(p))}</strong> is ${REL_WORD[r.type]} <strong><button type="button" class="btn-link" data-act="open" data-id="${q.id}">${esc(nameOf(q))}</button></strong>` : `<strong><button type="button" class="btn-link" data-act="open" data-id="${q.id}">${esc(nameOf(q))}</button></strong> is ${REL_WORD[r.type]} <strong>${esc(nameOf(p))}</strong>`; const contact = scout && !r.outgoing ? `<span style="display:block;color:var(--admin-gray-500);font-size:var(--admin-text-base)">${q.phone ? esc(q.phone) : 'no phone'} · ${(q.emails.find(e => e.primary) || {}).email ? esc(q.emails.find(e => e.primary).email) : 'no email'}</span>` : ''; return `<li><span class="grow">${line}${r.guardian ? '<span class="tag tag-guardian">guardian</span>' : ''}${contact}</span><button type="button" class="btn btn-sm btn-quiet" data-act="rmRel" data-id="${r.id}">${scout ? 'Unlink' : 'Remove'}</button></li>`; }).join('');
+  const add = state.relMode === null ? `<div class="addrow"><button type="button" class="btn btn-sm" data-act="relStart">+ ${scout ? 'Add parent / guardian' : 'Add relationship'}</button></div>` : `<div class="form-panel" style="margin-top:8px"><div class="row"><label>${scout ? 'Add as' : 'This person is'} <select data-rel="type" style="width:auto">${(scout ? [['parent_of','Parent'],['guardian_of','Guardian'],['emergency_contact_for','Emergency contact']] : Object.entries(REL_WORD)).map(t => `<option value="${t[0]}" ${state.relType === t[0] ? 'selected' : ''}>${t[1]}</option>`).join('')}</select></label><label><input type="checkbox" data-rel="guardian" ${state.relGuardian ? 'checked' : ''} style="width:auto"> has guardianship</label><button type="button" class="btn btn-sm" data-act="relCancel" style="margin-left:auto">Cancel</button></div><div class="row" style="margin-top:8px"><input id="relQ" placeholder="Search everyone on record (2+ letters)" value="${esc(state.relQ || '')}" aria-label="Search people" style="flex:1">${scout ? `<button type="button" class="btn btn-sm" data-act="relNew">+ New adult</button>` : ''}</div>${state.relMode === 'new' ? `<div class="grid" style="margin-top:8px"><label class="field"><span>Name *</span><input id="naName"></label><label class="field"><span>Phone</span><input id="naPhone"></label><label class="field full"><span>Email</span><input id="naEmail" type="email"></label></div><p class="hint">An email already on record links that person instead of creating a duplicate.</p><div class="actions"><button type="button" class="btn btn-sm btn-primary" data-act="relCreate">Add and link</button></div>` : ''}${renderResults(state.relQ, q => q.id !== p.id && (!scout || q.kind === 'adult'), 'relPick')}</div>`;
+  return `<div class="imm" style="margin-top:0"><div class="imm-head"><h3>${scout ? 'Parents & guardians' : 'Relationships'}</h3><span class="imm-tag">Takes effect immediately — not part of the save bar</span></div>${rels.length ? `<ul class="list">${items}</ul>` : `<p class="muted" style="margin:0">${scout ? 'No parents linked — this scout cannot sign in until one is.' : 'None recorded.'}</p>`}${add}</div>`;
+}
+function renderRoles(p){
+  const cur = p.roles.filter(r => !r.end), ended = p.roles.filter(r => r.end);
+  return `<div class="imm" style="margin-top:0"><div class="imm-head"><h3>Roles</h3><span class="imm-tag">Takes effect immediately — not part of the save bar</span></div>${cur.length ? `<ul class="list">${cur.map(r => `<li><span class="grow">${ROLE_LABEL[r.role]} <span class="muted">since ${fmtDate(r.start)}</span>${LEADER_ROLES.includes(r.role) ? '<span class="tag tag-primary">leader tab</span>' : ''}</span><button type="button" class="btn btn-sm btn-quiet" data-act="endRole" data-id="${r.id}">End…</button></li>`).join('')}</ul>` : '<p class="muted" style="margin:0">No current role — listed under Adults.</p>'}${ended.length ? `<p class="hint">Previously held</p><ul class="list">${ended.map(r => `<li><span class="grow muted">${ROLE_LABEL[r.role]} · ${fmtDate(r.start)} – ${fmtDate(r.end)}</span><button type="button" class="btn btn-sm btn-quiet" data-act="delRole" data-id="${r.id}">Delete</button></li>`).join('')}</ul>` : ''}<div class="addrow"><select id="newRole" aria-label="Role to grant">${Object.entries(ROLE_LABEL).map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select><button type="button" class="btn btn-sm" data-act="addRole">Grant role</button></div></div>`;
+}
+function renderDanger(p){
+  const open = state.danger; const scout = p.kind === 'scout'; const n = attachments(p);
+  return `<section class="card" style="border-color:var(--admin-gray-300)"><div class="card-head"><h2>Danger zone</h2><span class="muted" style="font-size:var(--admin-text-base)">${scout ? 'promote · ' : ''}merge · delete</span><button type="button" class="btn btn-sm" data-act="danger" aria-expanded="${open}">${open ? 'Hide' : 'Show'}</button></div>${open ? `<div class="card-body" style="font-size:var(--admin-text-base)">${scout && p.active ? `<div class="row" style="margin-bottom:12px"><button type="button" class="btn" data-act="promote">Promote to adult (18+)…</button></div>` : ''}<strong>Merge into another person</strong> <span class="muted">— for duplicates; everything moves to the person you keep</span><input id="mergeQ" placeholder="Search for the person to keep (2+ letters)" value="${esc(state.mergeQ)}" aria-label="Merge into" style="margin-top:4px">${renderResults(state.mergeQ, q => q.id !== p.id, 'mergePick')}<div class="row" style="margin-top:14px"><button type="button" class="btn btn-danger" data-act="delete">Delete this person…</button><span class="hint" style="margin:0">${n ? `Refused while ${n} thing${n > 1 ? 's are' : ' is'} attached.` : 'Nothing attached; cannot be undone.'}</span></div></div>` : ''}</section>`;
+}
+function renderSaveBar(){
+  const bar = $('#savebar'); const inner = $('#savebarIn');
+  if (state.screen !== 'person' || !state.draft) { bar.className = 'savebar'; return; }
+  const p = byId(state.personId); const changed = changedKeys(p); const probs = problems(p);
+  if (state.phase === 'done') { bar.className = 'savebar on done'; inner.innerHTML = `<span class="msg"><strong style="color:var(--admin-forest-dark)">Done</strong> — saved ${state.doneCount} change${state.doneCount === 1 ? '' : 's'}.</span>`; return; }
+  if (!changed.length) { bar.className = 'savebar'; return; }
+  const byTab = {}; for (const k of changed) { const t = tabOfKey(p, k); (byTab[t.title] = byTab[t.title] || []).push(F[k].label); }
+  const list = Object.entries(byTab).map(([t, ks]) => `${t}: ${ks.join(', ')}`).join(' · ');
+  if (state.phase === 'saving') { bar.className = 'savebar on'; inner.innerHTML = `<span class="msg">Saving ${changed.length} change${changed.length === 1 ? '' : 's'}…</span><button type="button" class="btn btn-primary" disabled>Saving…</button>`; return; }
+  bar.className = 'savebar on' + (probs.length ? ' errs' : '');
+  inner.innerHTML = `<span class="msg"><strong>${changed.length} unsaved change${changed.length === 1 ? '' : 's'}</strong><span class="sub">${esc(list)}</span></span>${probs.length ? `<button type="button" class="btn btn-danger btn-sm" data-act="jump" data-key="${probs[0].key}">Fix ${probs.length} problem${probs.length > 1 ? 's' : ''} on ${tabOfKey(p, probs[0].key).title}</button>` : ''}<button type="button" class="btn" data-act="discard">Discard</button><button type="button" class="btn btn-primary" data-act="saveAll" ${probs.length ? `disabled title="${esc(probs[0].msg)}"` : ''}>Save ${changed.length} change${changed.length === 1 ? '' : 's'}</button>`;
+}
+
+/* behaviour */
+function openPerson(id, fromTab){ const p = byId(id); if (p.merged) return openPerson(p.merged, fromTab); Object.assign(state, {screen:'person', personId:id, fromTab: fromTab || state.fromTab || tabOf(p), ptab:'overview', draft:newDraft(p), phase:null, danger:false, mergeQ:'', relMode:null, relQ:'', banner:null, link:null, newEmail:'', help:null, rejecting:false}); window.scrollTo(0,0); render(); }
+async function leaveGuard(){ const p = byId(state.personId); const changed = changedKeys(p); if (!changed.length) return true; const r = await confirmDialog({title:`${changed.length} unsaved change${changed.length === 1 ? '' : 's'}`, body:`<p>${changed.map(k => F[k].label).join(', ')} — not yet saved.</p>`, ok:'Save and leave', danger:false, third:'Discard and leave', okDisabledReason: problems(p).length ? problems(p)[0].msg : null}); if (r === true) { await saveAll(); return true; } if (r === 'third') { state.draft = newDraft(p); return true; } return false; }
+async function saveAll(){ const p = byId(state.personId); const changed = changedKeys(p); if (!changed.length || problems(p).length) return; state.phase = 'saving'; renderSaveBar(); busy(true); const fields = {}; for (const k of changed) { let v = state.draft[k]; if (k === 'household') v = v ? Number(v) : null; if (k === 'grade') v = v === '' ? '' : Number(v); if (k === 'active') v = v === true || v === 'true' || v === '1'; fields[k] = v; } const before = Object.fromEntries(changed.map(k => [k, p[k]])); await api.save(p, fields); if (fields.active === true) p.inactiveReason = ''; for (const k of changed) hist(p, `${F[k].label}: ${displayVal(p, k, before[k])} → ${displayVal(p, k, p[k])}`); busy(false); state.draft = newDraft(p); state.phase = 'done'; state.doneCount = changed.length; render(); toast(`Saved ${changed.length} change${changed.length === 1 ? '' : 's'}.`); setTimeout(() => { if (state.phase === 'done') { state.phase = null; renderSaveBar(); } }, 1500); }
+function busy(on){ document.querySelectorAll('#app button, #app input, #app select, #app textarea, #savebar button').forEach(el => { if (on) { if (!el.disabled) { el.dataset.wasOn = '1'; el.disabled = true; } } else if (el.dataset.wasOn) { el.disabled = false; delete el.dataset.wasOn; } }); }
+
+document.addEventListener('input', e => {
+  const t = e.target; const p = state.personId ? byId(state.personId) : null;
+  if (t.dataset.draft) { const k = t.dataset.draft; if (k === 'active') { state.draft.active = t.value === '1'; if (state.draft.active) state.draft.inactiveReason = ''; state.focus = state.draft.active ? 'input[name=active][value="1"]' : '[data-draft=inactiveReason]'; render(); return; } state.draft[k] = t.value; if (k === 'household' || k === 'inactiveReason' || t.tagName === 'SELECT') { state.focus = `[data-draft=${k}]`; render(); return; }
+    // text inputs: patch in place so focus and caret survive
+    const lbl = t.closest('.field'); const ch = norm(state.draft[k]) !== norm(p[k]); lbl.classList.toggle('changed', ch); const was = lbl.querySelector('.was'); if (ch && !was) lbl.querySelector('span').insertAdjacentHTML('beforeend', ` <span class="was">was: ${esc(displayVal(p, k, p[k]))}</span>`); if (!ch && was) was.remove();
+    const prob = problems(p).find(x => x.key === k); t.setAttribute('aria-invalid', prob ? 'true' : 'false'); const err = lbl.querySelector('.err'); if (prob && !err) t.insertAdjacentHTML('afterend', `<span class="err">${prob.msg}</span>`); if (!prob && err) err.remove();
+    // tab dots
+    document.querySelectorAll('[data-act=ptab]').forEach(b => { const tb = tabsFor(p).find(x => x.key === b.dataset.tab); const n = (tb.fields || []).filter(x => changedKeys(p).includes(x)).length; const bad = problems(p).some(x => (tb.fields || []).includes(x.key)); const old = b.querySelector('.dot'); const oldN = b.querySelector('.n'); if (old) old.remove(); if (oldN) oldN.remove(); if (n) b.insertAdjacentHTML('beforeend', `<span class="dot ${bad ? 'err' : ''}"></span><span class="n">${n}</span>`); else if (bad) b.insertAdjacentHTML('beforeend', '<span class="dot err"></span>'); });
+    renderSaveBar(); return; }
+  if (t.dataset.rel === 'type') { state.relType = t.value; return; }
+  if (t.dataset.rel === 'guardian') { state.relGuardian = t.checked; return; }
+  if (t.id === 'newEmail') { state.newEmail = t.value; const b = $('[data-act=addEmail]'); b.disabled = !t.value.trim(); return; }
+  if (t.id === 'mergeQ' || t.id === 'relQ') { state[t.id] = t.value; const pos = t.selectionStart; state.focus = '#' + t.id; render(); const el = $('#' + t.id); if (el) el.setSelectionRange(pos, pos); }
+});
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const act = b.dataset.act; const p = state.personId ? byId(state.personId) : null;
+  const run = async (fn, okMsg, opts) => { busy(true); try { await fn(); if (okMsg) toast(okMsg, opts); } finally { busy(false); } };
+  switch (act) {
+    case 'tab': state.tab = b.dataset.tab; render(); break;
+    case 'open': if (state.screen === 'person' && !(await leaveGuard())) return; openPerson(Number(b.dataset.id), state.screen === 'roster' ? state.tab : null); break;
+    case 'back': if (!(await leaveGuard())) return; state.screen = 'roster'; state.tab = state.fromTab || tabOf(p); state.fromTab = null; state.draft = null; render(); break;
+    case 'ptab': state.ptab = b.dataset.tab; state.help = null; window.scrollTo(0,0); render(); break;
+    case 'jump': { const k = b.dataset.key; state.ptab = tabOfKey(p, k).key; state.focus = `[data-draft=${k}]`; render(); break; }
+    case 'help': state.help = state.help === b.dataset.key ? null : b.dataset.key; render(); break;
+    case 'danger': state.danger = !state.danger; render(); break;
+    case 'saveAll': await saveAll(); break;
+    case 'discard': { const old = {...state.draft}; const n = changedKeys(p).length; state.draft = newDraft(p); render(); toast(`Discarded ${n} change${n === 1 ? '' : 's'}.`, {undo: () => { state.draft = old; render(); toast('Restored your unsaved edits.'); }}); break; }
+    case 'sendlink': { const sel = $('#linkTo'); b.textContent = 'Sending…'; b.disabled = true; const r = await api.sendLink(p, sel ? Number(sel.value) : undefined); state.link = r.ok ? {ok:true, msg:`Link sent to ${r.masked} — good for ${r.minutes} minutes.`} : {ok:false, msg: r.reason === 'rate-limited' ? 'Already sent recently — try again in a few minutes.' : 'Add an email address first (Contact & sign-in).'}; if (r.ok) hist(p, `Sign-in link sent to ${r.masked}`); render(); break; }
+    case 'ack': await run(() => api.ack(p), 'Acknowledged — cleared from the dashboard.'); hist(p, 'Acknowledged family addition'); render(); break;
+    case 'approve': { const keys = Object.keys(p.pending.changes); const by = p.pending.by; const before = Object.fromEntries(keys.map(k => [k, p[k]])); await run(() => api.applyPending(p), `Applied ${keys.length} change${keys.length > 1 ? 's' : ''} from the family.`); for (const k of keys) hist(p, `${F[k].label}: ${displayVal(p, k, before[k])} → ${displayVal(p, k, p[k])} — proposed by ${by}, approved by you`); for (const k of keys) if (!changedKeys(p).includes(k)) state.draft[k] = p[k] ?? ''; render(); break; }
+    case 'reject': state.rejecting = true; state.focus = '#rejectReason'; render(); break;
+    case 'rejectCancel': state.rejecting = false; render(); break;
+    case 'rejectConfirm': { const by = p.pending.by; await run(() => api.rejectPending(p), 'Rejected — the family will see it was declined.'); hist(p, `Rejected ${by}'s proposed changes`); state.rejecting = false; render(); break; }
+    case 'addEmail': { const v = $('#newEmail').value.trim(), l = $('#newLabel').value; if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) { toast('That does not look like an email address.'); return; } if (p.emails.some(e => e.email.toLowerCase() === v.toLowerCase())) { toast('That address is already on file.'); return; } await run(() => api.addEmail(p, v, l), `Added ${v}. Unverified until they sign in with it.`); hist(p, `Added email ${v}`); state.newEmail = ''; render(); break; }
+    case 'primary': { const em = p.emails.find(e => e.id === Number(b.dataset.id)); await run(() => api.setPrimary(p, em.id), `${em.email} is now primary.`); hist(p, `Primary email → ${em.email}`); render(); break; }
+    case 'rmEmail': { const em = p.emails.find(e => e.id === Number(b.dataset.id)); const ok = await confirmDialog({title:`Remove ${em.email}?`, body:`<p>${em.verified ? 'Verified; removing it means it cannot be used to sign in until added and verified again.' : 'Never verified.'}</p>`, ok:'Remove address'}); if (!ok) return; await run(() => api.removeEmail(p, em.id), 'Address removed.'); hist(p, `Removed email ${em.email}`); render(); break; }
+    case 'relStart': state.relMode = 'search'; state.relQ = ''; state.focus = '#relQ'; render(); break;
+    case 'relCancel': state.relMode = null; render(); break;
+    case 'relNew': state.relMode = state.relMode === 'new' ? 'search' : 'new'; state.focus = '#naName'; render(); break;
+    case 'relPick': { const q = byId(Number(b.dataset.id)); await run(async () => { if (p.kind === 'scout') await api.addRel(q, p.id, state.relType, state.relGuardian); else await api.addRel(p, q.id, state.relType, state.relGuardian); }, `Linked ${nameOf(q)}.`); hist(p, `Linked ${nameOf(q)} (${REL_WORD[state.relType]})`); state.relMode = null; render(); break; }
+    case 'relCreate': { const name = $('#naName').value.trim(); if (!name) { $('#naName').focus(); return; } const email = $('#naEmail').value.trim(); let q = email ? PEOPLE.find(x => x.emails.some(e => e.email.toLowerCase() === email.toLowerCase())) : null; const linked = !!q; if (!q) { const [first, ...rest] = name.split(' '); q = {id:++seq, kind:'adult', first, last: rest.join(' '), birthdate:'', phone:$('#naPhone').value.trim(), addr1:'', addr2:'', city:'', state:'', zip:'', bsa:'', ypt:'', health:'', notes:'', active:true, inactiveReason:'', household:p.household, emails: email ? [{id:++seq, email, label:'home', primary:true, verified:null, bounced:null}] : [], roles:[], relationships:[], pending:null, notice:null, history:[[TODAY,'You (this session)',`Created while linking to ${nameOf(p)}`,true]]}; PEOPLE.push(q); } await run(() => api.addRel(q, p.id, state.relType, state.relGuardian), linked ? `${email} already belonged to ${nameOf(q)} — linked instead of duplicating.` : `Added and linked ${nameOf(q)}.`); hist(p, `Linked ${nameOf(q)}`); state.relMode = null; render(); break; }
+    case 'rmRel': { const r = relsOf(p).find(r => r.id === Number(b.dataset.id)); const ok = await confirmDialog({title:`${p.kind === 'scout' ? 'Unlink' : 'Remove'} ${nameOf(r.other)}?`, body:`<ul><li>${nameOf(r.other)} stays on record</li>${p.kind === 'scout' && r.guardian ? `<li>They can no longer sign in for ${nameOf(p)}</li>` : ''}<li>Reversible by linking again</li></ul>`, ok:'Remove'}); if (!ok) return; await run(() => api.removeRel(p, r.id), `Unlinked ${nameOf(r.other)}.`); hist(p, `Unlinked ${nameOf(r.other)}`); render(); break; }
+    case 'addRole': { const role = $('#newRole').value; const wasLeader = isLeader(p); await run(() => api.addRole(p, role), `Granted ${ROLE_LABEL[role]}.`); hist(p, `Granted ${ROLE_LABEL[role]}`); if (!wasLeader && isLeader(p)) state.banner = {cls:'n-info', html:`${esc(nameOf(p))} is now a <strong>Leader</strong> and appears on the Leaders tab.`}; render(); break; }
+    case 'endRole': { const r = p.roles.find(r => r.id === Number(b.dataset.id)); const moves = LEADER_ROLES.includes(r.role) && !p.roles.some(x => !x.end && x.id !== r.id && LEADER_ROLES.includes(x.role)); const ok = await confirmDialog({title:`End ${ROLE_LABEL[r.role]} for ${nameOf(p)}?`, body:`<ul><li>Kept in history as ${fmtDate(r.start)} – ${fmtDate(TODAY)}</li>${moves ? '<li><strong>They move from Leaders to Adults</strong> — household and relationships unchanged</li>' : '<li>They stay on the Leaders tab</li>'}</ul>`, ok:'End role', danger:false}); if (!ok) return; await run(() => api.endRole(p, r.id), `Ended ${ROLE_LABEL[r.role]}.`); hist(p, `Ended ${ROLE_LABEL[r.role]}`); if (moves) state.banner = {cls:'n-info', html:`${esc(nameOf(p))} now appears under <strong>Adults</strong>.`}; render(); break; }
+    case 'delRole': { const r = p.roles.find(r => r.id === Number(b.dataset.id)); const ok = await confirmDialog({title:`Delete the ended ${ROLE_LABEL[r.role]} record?`, body:'<p>Erases it from history. Only for a role entered by mistake.</p>', ok:'Delete record'}); if (!ok) return; await run(() => api.deleteRole(p, r.id), 'Role record deleted.'); render(); break; }
+    case 'mergePick': { const s = byId(Number(b.dataset.id)); const ok = await confirmDialog({title:`Merge ${nameOf(p)} into ${nameOf(s)}?`, body:`<p><strong>${esc(nameOf(s))}</strong> is kept.</p><ul><li>${p.emails.length} email address(es), ${relsOf(p).length} relationship(s), ${p.roles.length} role record(s) move over</li><li>Blank fields on ${esc(nameOf(s))} are filled from ${esc(nameOf(p))}</li><li>${esc(nameOf(p))} is flagged as merged, not destroyed — but <strong>undoing a merge is a manual job</strong></li></ul>`, ok:`Merge into ${nameOf(s)}`}); if (!ok) return; await run(() => api.merge(p, s)); hist(s, `Merged ${nameOf(p)} into this record`); openPerson(s.id); state.banner = {cls:'n-ok', html:`Merged. Everything from ${esc(nameOf(p))} moved onto ${esc(nameOf(s))}.`}; render(); break; }
+    case 'delete': { const n = attachments(p); const ok = await confirmDialog({title:`Delete ${nameOf(p)} permanently?`, body:`<ul><li>Record, email addresses and household membership are erased</li><li>Cannot be undone</li>${n ? `<li><strong>Refused:</strong> ${n} thing(s) still attached. Remove them first, or merge.</li>` : ''}</ul>`, ok:'Delete permanently', okDisabledReason: n ? 'Still has attachments' : null}); if (!ok) return; await run(() => api.remove(p)); state.screen = 'roster'; state.draft = null; state.tab = state.fromTab || 'adult'; render(); toast(`Deleted ${nameOf(p)}.`); break; }
+    case 'promote': { const ok = await confirmDialog({title:`Promote ${nameOf(p)} to adult (turned 18)?`, body:`<ul><li>Scout record becomes Inactive (Aged out); ledger and clipboard kept</li><li>Sign-off initials become an adult leader</li><li>Leaves scout rosters, Fast Entry and Meeting Plan</li><li>Record outstanding sign-offs <strong>before</strong> promoting</li></ul>`, ok:'Promote', danger:false}); if (!ok) return; await run(() => api.promote(p)); hist(p, 'Promoted to adult (Aged out)'); state.draft = newDraft(p); state.banner = {cls:'n-ok', html:`Promoted. ${esc(nameOf(p))} is now an inactive scout (Aged out) and an adult on the roster.`}; render(); break; }
+  }
+});
+window.addEventListener('beforeunload', e => { if (state.screen === 'person' && state.draft && changedKeys(byId(state.personId)).length) { e.preventDefault(); e.returnValue = ''; } });
+$('#handoffBtn').addEventListener('click', () => { const b = $('#handoffBody'); b.hidden = !b.hidden; $('#handoffBtn').setAttribute('aria-expanded', String(!b.hidden)); });
+render();
+</script>
+</body>
+</html>

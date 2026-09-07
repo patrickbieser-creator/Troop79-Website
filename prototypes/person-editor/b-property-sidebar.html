@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Direction B — Property panel, click-to-edit — Person editor prototype</title>
+<style>
+:root{
+  --admin-navy:#1e3a4a;--admin-navy-light:#2a5068;--admin-navy-hover:#163040;
+  --admin-forest:#3d7a4a;--admin-forest-dark:#2e6038;
+  --admin-danger:#c0392b;--admin-danger-hover:#a93226;--admin-danger-dark:#8c2f2f;
+  --admin-warning:#d4a017;--admin-accent-gold:#8b6914;
+  --admin-bg:#f5f6f8;--admin-white:#fff;--admin-field-bg:#fff;--admin-form-bg:#eef1f5;
+  --admin-gray-50:#fafbfc;--admin-gray-100:#f0f1f3;--admin-gray-200:#e2e4e8;--admin-gray-300:#cdd1d6;
+  --admin-gray-400:#9ba1aa;--admin-gray-500:#6d7580;--admin-gray-600:#666;--admin-gray-700:#3a3f47;
+  --admin-gray-800:#2a2e34;--admin-gray-900:#1a1d21;
+  --admin-status-error-bg:#fdf0ef;--admin-status-warning-bg:#fdf3d6;--admin-status-success-bg:#f0f6f1;--admin-status-info-bg:#eef3f8;
+  --admin-radius:4px;--admin-radius-sm:3px;--admin-radius-lg:8px;--admin-radius-pill:999px;
+  --admin-shadow-sm:0 1px 3px rgba(0,0,0,.08);--admin-shadow-md:0 2px 8px rgba(0,0,0,.1);--admin-shadow-lg:0 8px 24px rgba(0,0,0,.18);
+  --admin-transition:.15s ease;
+  --admin-text-xs:10px;--admin-text-sm:11px;--admin-text-base:12px;--admin-text-md:13px;--admin-text-lg:14px;--admin-text-xl:16px;--admin-text-2xl:20px;--admin-text-3xl:24px;
+  --admin-font-ui:'Open Sans',Arial,sans-serif;--admin-font-display:'Playfair Display',Georgia,serif;--admin-font-mono:Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{color-scheme:light}
+body{margin:0;font-family:var(--admin-font-ui);font-size:var(--admin-text-md);color:var(--admin-gray-900);background:var(--admin-bg);line-height:1.45}
+a{color:var(--admin-navy)}
+:focus-visible{outline:2px solid var(--admin-navy);outline-offset:2px;border-radius:2px}
+button{font:inherit}
+h1,h2,h3{margin:0;font-weight:600}
+.mono{font-family:var(--admin-font-mono);font-size:var(--admin-text-base)}
+.muted{color:var(--admin-gray-500)}
+.topbar{background:var(--admin-navy);color:#fff;padding:8px 16px;display:flex;align-items:center;gap:14px;font-size:var(--admin-text-base)}
+.topbar strong{font-family:var(--admin-font-display);font-weight:400;font-size:var(--admin-text-lg)}
+.topbar .proto{margin-left:auto;background:var(--admin-warning);color:var(--admin-gray-900);padding:2px 8px;border-radius:var(--admin-radius-pill);font-weight:700;font-size:var(--admin-text-xs);letter-spacing:.06em}
+.topbar a{color:#fff}
+.wrap{max-width:1100px;margin:0 auto;padding:16px}
+.back{display:inline-block;margin-bottom:8px;font-size:var(--admin-text-base);background:none;border:0;color:var(--admin-navy);cursor:pointer;padding:2px 0}
+.back:hover{text-decoration:underline}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--admin-gray-300);background:#fff;color:var(--admin-gray-900);padding:6px 12px;border-radius:var(--admin-radius);cursor:pointer;font-size:var(--admin-text-md);line-height:1.2;transition:background var(--admin-transition);white-space:nowrap}
+.btn:hover:not(:disabled){background:var(--admin-gray-100)}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.btn-primary{background:var(--admin-navy);border-color:var(--admin-navy);color:#fff}
+.btn-primary:hover:not(:disabled){background:var(--admin-navy-hover)}
+.btn-danger{color:var(--admin-danger);border-color:var(--admin-danger)}
+.btn-danger:hover:not(:disabled){background:var(--admin-status-error-bg)}
+.btn-dangerSolid{background:var(--admin-danger);border-color:var(--admin-danger);color:#fff}
+.btn-quiet{border-color:transparent;background:transparent}
+.btn-sm{padding:3px 8px;font-size:var(--admin-text-base)}
+.btn-link{border:0;background:none;color:var(--admin-navy);text-decoration:underline;cursor:pointer;padding:0;font-size:inherit}
+.pill{display:inline-block;padding:2px 8px;border-radius:var(--admin-radius-pill);font-size:var(--admin-text-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;line-height:1.5;vertical-align:middle;white-space:nowrap}
+.pill-kind{background:var(--admin-gray-100);color:var(--admin-gray-700)}
+.pill-leader{background:#e0e7ef;color:var(--admin-navy)}
+.pill-scout{background:#e3eee5;color:var(--admin-forest-dark)}
+.pill-ok{background:var(--admin-status-success-bg);color:var(--admin-forest-dark)}
+.pill-off{background:var(--admin-status-error-bg);color:var(--admin-danger-dark)}
+.pill-warn{background:var(--admin-status-warning-bg);color:var(--admin-accent-gold)}
+.tag{display:inline-block;font-size:var(--admin-text-xs);font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:1px 6px;border-radius:var(--admin-radius-sm);background:var(--admin-gray-100);color:var(--admin-gray-600);margin-left:4px}
+.tag-primary{background:#e0e7ef;color:var(--admin-navy)}
+.tag-ok{background:var(--admin-status-success-bg);color:var(--admin-forest-dark)}
+.tag-bad{background:var(--admin-status-error-bg);color:var(--admin-danger-dark)}
+.tag-guardian{background:var(--admin-status-warning-bg);color:var(--admin-accent-gold)}
+.tabs{display:flex;gap:2px;border-bottom:2px solid var(--admin-gray-200);margin:12px 0;overflow-x:auto}
+.tab{background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-2px;padding:8px 12px;cursor:pointer;color:var(--admin-gray-600);font-weight:600;white-space:nowrap}
+.tab[aria-selected=true]{color:var(--admin-navy);border-bottom-color:var(--admin-navy)}
+.tab .n{background:var(--admin-gray-100);border-radius:var(--admin-radius-pill);padding:0 6px;margin-left:4px;font-size:var(--admin-text-xs)}
+table.roster{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--admin-gray-200);border-radius:var(--admin-radius-lg);overflow:hidden;box-shadow:var(--admin-shadow-sm)}
+.roster th{text-align:left;font-size:var(--admin-text-sm);letter-spacing:.06em;text-transform:uppercase;color:var(--admin-gray-500);padding:8px 10px;border-bottom:1px solid var(--admin-gray-200);background:var(--admin-gray-50)}
+.roster td{padding:8px 10px;border-bottom:1px solid var(--admin-gray-100);overflow-wrap:anywhere}
+.roster .name{background:none;border:0;padding:0;color:var(--admin-navy);font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.toolbar{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.toolbar .sp{flex:1}
+.lede{color:var(--admin-gray-600);margin:4px 0 0;font-size:var(--admin-text-base)}
+.rec-head{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-start;justify-content:space-between;margin-bottom:12px}
+.rec-head h1{font-family:var(--admin-font-display);font-weight:400;font-size:var(--admin-text-3xl);line-height:1.15}
+.rec-head .pills{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:4px}
+.rec-head .contact{margin-top:6px;font-size:var(--admin-text-base);color:var(--admin-gray-700)}
+.rec-head .acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px;align-items:start}
+.main{min-width:0}
+.side{display:flex;flex-direction:column;gap:12px}
+.card{background:#fff;border:1px solid var(--admin-gray-200);border-radius:var(--admin-radius-lg);box-shadow:var(--admin-shadow-sm)}
+.card-head{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--admin-gray-100)}
+.card-head h2{font-size:var(--admin-text-lg);flex:1}
+.card-body{padding:12px 14px}
+
+/* property panel */
+.group{padding:6px 0}
+.group+.group{border-top:1px solid var(--admin-gray-100)}
+.group-h{display:flex;align-items:center;gap:8px;padding:8px 14px 2px;font-size:var(--admin-text-sm);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--admin-gray-500)}
+.prop{display:grid;grid-template-columns:160px minmax(0,1fr);gap:4px 12px;padding:4px 14px;align-items:start}
+.prop:hover{background:var(--admin-gray-50)}
+.pk{font-size:var(--admin-text-base);color:var(--admin-gray-600);padding-top:5px}
+.pv{min-width:0}
+.pv-btn{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:1px solid transparent;border-radius:var(--admin-radius);padding:4px 6px;cursor:text;color:inherit;font:inherit;min-height:30px}
+.pv-btn:hover{border-color:var(--admin-gray-300);background:#fff}
+.pv-btn .pen{margin-left:auto;color:var(--admin-gray-400);opacity:0;font-size:var(--admin-text-base);white-space:nowrap}
+.pv-btn:hover .pen,.pv-btn:focus-visible .pen{opacity:1}
+.pv-btn .empty{color:var(--admin-gray-400);font-style:italic}
+.pv-btn .sub{color:var(--admin-gray-500);font-size:var(--admin-text-base)}
+.pv-ro{padding:4px 6px;color:var(--admin-gray-700);display:flex;gap:8px;align-items:center}
+.pv-ro .lock{margin-left:auto;font-size:var(--admin-text-xs);color:var(--admin-gray-400);text-transform:uppercase;letter-spacing:.06em}
+.inline{display:flex;gap:6px;align-items:flex-start;flex-wrap:wrap}
+.inline input,.inline select,.inline textarea{flex:1;min-width:140px;width:auto}
+.inline .ok{background:var(--admin-navy);color:#fff;border-color:var(--admin-navy)}
+.inline .keys{width:100%;font-size:var(--admin-text-xs);color:var(--admin-gray-500)}
+.saved{display:inline-flex;align-items:center;gap:4px;color:var(--admin-forest-dark);font-size:var(--admin-text-base);font-weight:700}
+.saving{color:var(--admin-gray-500);font-size:var(--admin-text-base)}
+.err{color:var(--admin-danger-dark);font-size:var(--admin-text-base);width:100%}
+input,select,textarea{font:inherit;font-size:var(--admin-text-lg);padding:6px 8px;border:1px solid var(--admin-gray-300);border-radius:var(--admin-radius);background:var(--admin-field-bg);color:var(--admin-gray-900);width:100%;min-width:0}
+input:focus,select:focus,textarea:focus{border-color:var(--admin-navy);outline:2px solid var(--admin-navy);outline-offset:0}
+input[aria-invalid=true]{border-color:var(--admin-danger)}
+.prop-pending{grid-column:2;background:var(--admin-status-warning-bg);border:1px solid var(--admin-warning);border-radius:var(--admin-radius);padding:6px 8px;font-size:var(--admin-text-base);display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:2px}
+.prop-pending .grow{flex:1;min-width:120px}
+.popover{background:var(--admin-form-bg);border:1px solid var(--admin-gray-300);border-radius:var(--admin-radius);padding:10px;box-shadow:var(--admin-shadow-md)}
+.popover .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.popover label{display:inline-flex;gap:6px;align-items:center}
+.popover input[type=radio]{width:auto}
+.actions{display:flex;gap:8px;justify-content:flex-end;align-items:center;margin-top:10px;flex-wrap:wrap}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.hint{font-size:var(--admin-text-base);color:var(--admin-gray-600);margin:6px 0 0}
+.disc{border:0;background:none;color:var(--admin-navy);cursor:pointer;padding:0;font-size:var(--admin-text-base);text-decoration:underline;text-underline-offset:2px}
+.disc-body{margin-top:8px;font-size:var(--admin-text-base);color:var(--admin-gray-700);border-left:3px solid var(--admin-gray-200);padding-left:10px}
+.form-panel{background:var(--admin-form-bg);border-radius:var(--admin-radius);padding:10px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.grid .full{grid-column:1/-1}
+.field{display:flex;flex-direction:column;gap:3px;min-width:0}
+.field>span{font-size:var(--admin-text-sm);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--admin-gray-500)}
+.imm{border:1px dashed var(--admin-gray-300);border-radius:var(--admin-radius);padding:10px 12px;background:var(--admin-gray-50)}
+.imm-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.imm-head h3{font-size:var(--admin-text-md);flex:1}
+.imm-tag{font-size:var(--admin-text-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--admin-accent-gold);background:var(--admin-status-warning-bg);padding:2px 6px;border-radius:var(--admin-radius-sm)}
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.list li{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 8px;background:#fff;border:1px solid var(--admin-gray-200);border-radius:var(--admin-radius)}
+.list li .grow{flex:1;min-width:120px;overflow-wrap:anywhere}
+.addrow{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.addrow input,.addrow select{flex:1;min-width:120px;width:auto}
+.results{list-style:none;margin:6px 0 0;padding:0;border:1px solid var(--admin-gray-200);border-radius:var(--admin-radius);background:#fff;max-height:160px;overflow:auto}
+.results li button{width:100%;text-align:left;border:0;background:none;padding:6px 10px;cursor:pointer}
+.results li button:hover{background:var(--admin-gray-100)}
+.notice{padding:10px 12px;border-radius:var(--admin-radius);border-left:4px solid;margin-bottom:12px;font-size:var(--admin-text-base)}
+.n-info{background:var(--admin-status-info-bg);border-color:var(--admin-navy)}
+.n-warn{background:var(--admin-status-warning-bg);border-color:var(--admin-warning)}
+.n-ok{background:var(--admin-status-success-bg);border-color:var(--admin-forest)}
+.n-err{background:var(--admin-status-error-bg);border-color:var(--admin-danger)}
+.log{list-style:none;margin:0;padding:0;font-size:var(--admin-text-base)}
+.log li{display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--admin-gray-100)}
+.log li .grow{flex:1;min-width:0}
+.log li.undone{color:var(--admin-gray-400);text-decoration:line-through}
+.danger{border-color:var(--admin-gray-300)}
+.side ul{margin:0;padding:0;list-style:none}
+.side li{padding:4px 0;display:flex;justify-content:space-between;gap:8px}
+.toast{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:var(--admin-gray-900);color:#fff;padding:10px 14px;border-radius:var(--admin-radius);box-shadow:var(--admin-shadow-lg);display:flex;gap:12px;align-items:center;max-width:calc(100% - 32px);z-index:50;font-size:var(--admin-text-base)}
+.toast[hidden]{display:none}
+.toast button{background:none;border:1px solid rgba(255,255,255,.5);color:#fff;border-radius:var(--admin-radius);padding:2px 8px;cursor:pointer}
+.toast .bar{position:absolute;left:0;bottom:0;height:3px;background:var(--admin-warning);animation:shrink 8s linear forwards;border-radius:0 0 0 4px}
+@keyframes shrink{from{width:100%}to{width:0}}
+dialog{border:0;border-radius:var(--admin-radius-lg);box-shadow:var(--admin-shadow-lg);padding:0;width:min(480px,calc(100% - 32px))}
+dialog::backdrop{background:rgba(26,29,33,.45)}
+dialog .d-head{padding:14px 16px 6px}
+dialog .d-head h2{font-size:var(--admin-text-xl)}
+dialog .d-body{padding:0 16px 8px}
+dialog .d-body ul{margin:6px 0;padding-left:18px}
+dialog .d-foot{display:flex;gap:8px;justify-content:flex-end;padding:10px 16px 14px;border-top:1px solid var(--admin-gray-100)}
+.handoff{margin:32px auto 40px;max-width:1100px;padding:0 16px}
+.handoff .disc-body{background:#fff;border:1px solid var(--admin-gray-200);border-left:3px solid var(--admin-accent-gold);border-radius:var(--admin-radius);padding:14px 16px}
+.handoff h3{font-size:var(--admin-text-md);margin:12px 0 4px}
+.handoff ul{margin:0;padding-left:18px}
+@media (max-width:760px){
+  .cols{grid-template-columns:1fr}
+  .prop{grid-template-columns:1fr}
+  .pk{padding-top:4px}
+  .prop-pending{grid-column:1}
+  .grid{grid-template-columns:1fr}
+  input,select,textarea{font-size:16px}
+  .roster .hide-m{display:none}
+  .wrap{padding:12px}
+  .rec-head h1{font-size:var(--admin-text-2xl)}
+  .pv-btn .pen{opacity:1}
+}
+</style>
+</head>
+<body>
+<div class="topbar"><strong>Troop 79 · Leader Workspace</strong><span>Roster</span><span class="proto">Prototype B · Property panel</span><a href="index.html">All directions</a></div>
+<main id="app" class="wrap"></main>
+<div class="toast" id="toast" role="status" hidden><span id="toastMsg"></span><button type="button" id="toastUndo" hidden>Undo</button><button type="button" id="toastClose" aria-label="Dismiss">×</button><span class="bar" id="toastBar" hidden></span></div>
+<dialog id="confirm" aria-labelledby="dTitle"><form method="dialog"><div class="d-head"><h2 id="dTitle"></h2></div><div class="d-body" id="dBody"></div><div class="d-foot"><button type="button" class="btn" id="dCancel">Cancel</button><button type="button" class="btn btn-dangerSolid" id="dOk">Confirm</button></div></form></dialog>
+
+<section class="handoff">
+  <button type="button" class="disc" id="handoffBtn" aria-expanded="false">Handoff notes (Direction B)</button>
+  <div class="disc-body" id="handoffBody" hidden>
+    <h3>Concept</h3>
+    <p>The record is a property panel (Linear / Notion / HubSpot "About this contact"). Every property is a single click-to-edit control that commits on its own: click the value, change it, press Enter or the check — it saves, the row shows a green "Saved" tick, and a toast offers Undo for 8 seconds. There is no Save button anywhere on the page. Status is a property whose popover asks for the reason before it commits. Lists that already commit on click (emails, family, roles) sit in the right column with the same dashed "Takes effect immediately" treatment as A, so the whole page has exactly one save model: immediately.</p>
+    <h3>What it fixes (Jenna's numbering)</h3>
+    <ul>
+      <li><strong>#1, #2, #3</strong> — dissolved rather than fixed: there is one model everywhere, for scouts and adults, and nothing can be "half saved" because nothing waits.</li>
+      <li><strong>#4</strong> Merge and Delete keep a real confirm dialog; they are the only dialogs on the page, which makes them feel as heavy as they are.</li>
+      <li><strong>#5</strong> Household is a property; committing it toasts "Household: A → B · Undo" and lands in Recent changes with its own Undo.</li>
+      <li><strong>#6</strong> End role confirms with the tab-move consequence; Grant role commits and announces the move.</li>
+      <li><strong>#7</strong> No hint paragraphs; each group has a "How this works" disclosure; consequences are said in the status popover and the dialogs.</li>
+    </ul>
+    <h3>Accidental-edit guard (the risk of this direction)</h3>
+    <ul>
+      <li>Values are buttons with a hover/focus pencil — a click opens the editor, it never types straight into the value.</li>
+      <li>Nothing commits on blur. Only Enter or the check commits; Esc or the cross reverts. Clicking elsewhere leaves the editor open.</li>
+      <li>Every commit gets an 8-second Undo toast with a visible countdown bar, and is written to <strong>Recent changes</strong> in the sidebar with a per-entry Undo that survives the toast.</li>
+      <li>Required fields (first/last name) refuse an empty commit inline.</li>
+      <li>Consequential properties (Status, Household) use a popover with an explicit Apply instead of a bare input.</li>
+    </ul>
+    <h3>States and transitions</h3>
+    <ul>
+      <li>Property: <em>read</em> → click → <em>editing</em> (input focused, text selected) → Enter/check → <em>saving</em> (600 ms, "Saving…") → <em>saved</em> (tick 2 s) → <em>read</em>. Esc/cross → <em>read</em> with no change. Undo → <em>saving</em> → <em>read</em> with the old value.</li>
+      <li>Status popover: Active/Inactive radios; Inactive reveals the reason (adult free text, scout required select); Apply commits; undo restores the previous status and reason.</li>
+      <li>Pending update: a summary banner at the top ("3 proposed changes from Marcus Whitlock" with Approve all / Reject all) plus a yellow row under each affected property with the proposed value and per-field Approve / Reject.</li>
+      <li>Send sign-in link, emails, family, roles, merge, delete, promote: same as Direction A.</li>
+    </ul>
+    <h3>Timings</h3>
+    <ul><li>Round-trip mocked at 600 ms. Saved tick 2 s. Undo window 8 s with a linear countdown bar. Hover pencil 150 ms.</li></ul>
+    <h3>Responsive</h3>
+    <ul><li>Two columns (properties + 340 px lists) above 760 px; stacked below. Property rows go label-over-value. Pencils are always visible on touch widths since there is no hover. Inputs 16 px on small screens. No horizontal scroll at 375 px.</li></ul>
+    <h3>Accessibility</h3>
+    <ul><li>Each value is a real button labelled "Edit {property}"; the editor is a labelled input with Enter/Esc documented in a visible key hint. Saved/Saving announced via the toast's role=status. Focus returns to the value button after commit or cancel.</li></ul>
+    <h3>What is mocked</h3>
+    <ul><li>All server actions (600 ms, always succeed). The Recent changes log is session-only. No conflict handling if two leaders edit at once — a real build needs it more here than in A, since edits are many and small.</li></ul>
+    <h3>Deviations / open questions</h3>
+    <ul>
+      <li>Fourteen tiny saves instead of one is a real trade-off for a post-recharter clean-up. If leaders bulk-edit, A or C fits better.</li>
+      <li>Pending updates are approved per field here (natural for this model) — needs per-field approval on the server or a rule that "Approve all" is the only real option.</li>
+      <li>The house Save standard (labelled state, Saving → Done) has no home in this direction because there is no Save. The standard would need an amendment blessing the tick + undo toast as the equivalent.</li>
+    </ul>
+  </div>
+</section>
+
+<script>
+/* ── sample data (invented) ── */
+const HOUSEHOLDS = {1:'Whitlock (Dana & Marcus)',2:'Raman',3:'Tomasek',4:'Okafor'};
+const ROLE_LABEL = {adult_leader:'Adult leader',committee_member:'Committee member',chartered_org_rep:'Chartered org rep',merit_badge_counselor:'Merit badge counselor',external_contact:'External contact'};
+const LEADER_ROLES = ['adult_leader','committee_member','chartered_org_rep'];
+const REL_WORD = {parent_of:'parent of',guardian_of:'guardian of',sibling_of:'sibling of',emergency_contact_for:'emergency contact for'};
+const SCOUT_REASONS = {dropped_out:'Dropped out',transferred:'Transferred to another troop',moved_away:'Moved away',aged_out:'Aged out',other:'Other'};
+let seq = 900;
+const PEOPLE = [
+  {id:101,kind:'adult',first:'Dana',last:'Whitlock',birthdate:'1981-03-14',phone:'(414) 555-0142',addr1:'2210 N Prospect Ave',addr2:'',city:'Milwaukee',state:'WI',zip:'53202',bsa:'137204418',ypt:'2025-02-11',health:'2026-05-30',notes:'',active:true,inactiveReason:'',household:1,
+   emails:[{id:1,email:'dana.whitlock@example.com',label:'home',primary:true,verified:'2026-06-02',bounced:null},{id:2,email:'d.whitlock@northmail.example',label:'work',primary:false,verified:null,bounced:null}],
+   roles:[],relationships:[{id:1,type:'parent_of',other:201,guardian:true,outgoing:true}],
+   pending:{by:'Marcus Whitlock',at:'2026-09-04T19:22:00',changes:{phone:'(414) 555-0199',addr1:'1735 E Kenilworth Pl',birthdate:'1981-03-15'}},notice:null},
+  {id:102,kind:'adult',first:'Marcus',last:'Whitlock',birthdate:'1979-11-02',phone:'(414) 555-0177',addr1:'2210 N Prospect Ave',addr2:'',city:'Milwaukee',state:'WI',zip:'53202',bsa:'',ypt:'',health:'',notes:'',active:true,inactiveReason:'',household:1,
+   emails:[{id:3,email:'marcus.w@example.com',label:'home',primary:true,verified:'2026-06-02',bounced:null}],roles:[],relationships:[{id:2,type:'parent_of',other:201,guardian:true,outgoing:true}],pending:null,notice:null},
+  {id:103,kind:'adult',first:'Priya',last:'Raman',birthdate:'1984-07-22',phone:'(414) 555-0163',addr1:'4418 W Hadley St',addr2:'',city:'Milwaukee',state:'WI',zip:'53210',bsa:'128873305',ypt:'2025-10-04',health:'2026-03-12',notes:'',active:true,inactiveReason:'',household:2,
+   emails:[{id:4,email:'priya.raman@example.com',label:'home',primary:true,verified:'2026-01-20',bounced:null}],
+   roles:[{id:11,role:'adult_leader',start:'2023-09-01',end:null},{id:12,role:'committee_member',start:'2025-01-15',end:null},{id:13,role:'merit_badge_counselor',start:'2022-03-01',end:'2024-06-30'}],
+   relationships:[{id:3,type:'parent_of',other:202,guardian:true,outgoing:true}],pending:null,notice:null},
+  {id:104,kind:'adult',first:'Glenn',last:'Tomasek',birthdate:'1976-01-30',phone:'(414) 555-0118',addr1:'812 S 3rd St',addr2:'',city:'Milwaukee',state:'WI',zip:'53204',bsa:'',ypt:'2023-08-19',health:'',notes:'',active:false,inactiveReason:'Moved to Madison, Aug 2026',household:3,
+   emails:[{id:5,email:'g.tomasek@oldmail.example',label:'home',primary:true,verified:'2024-02-01',bounced:'2026-08-20'}],roles:[{id:14,role:'committee_member',start:'2021-09-01',end:'2026-08-15'}],relationships:[],pending:null,notice:null},
+  {id:105,kind:'adult',first:'Rosalind',last:'Achebe',birthdate:'',phone:'(414) 555-0131',addr1:'',addr2:'',city:'',state:'',zip:'',bsa:'',ypt:'',health:'',notes:'',active:true,inactiveReason:'',household:4,
+   emails:[],roles:[],relationships:[{id:4,type:'guardian_of',other:203,guardian:true,outgoing:true}],pending:null,notice:{by:'Jamal Okafor',at:'2026-09-01T08:10:00',fields:{relationship:'Grandmother',phone:'(414) 555-0131'}}},
+  {id:106,kind:'adult',first:'Corey',last:'Lindqvist',birthdate:'',phone:'',addr1:'',addr2:'',city:'',state:'',zip:'',bsa:'',ypt:'',health:'',notes:'',active:true,inactiveReason:'',household:null,
+   emails:[{id:6,email:'corey.l@example.com',label:'home',primary:true,verified:null,bounced:null}],roles:[],relationships:[],pending:null,notice:null},
+  {id:201,kind:'scout',first:'Theo',last:'Whitlock',scoutId:'F07',patrol:'Hawk',rank:'Star',gender:'M',school:'Lakeshore Middle School',grade:8,swim:'swimmer',jl:'',birthdate:'2012-05-19',phone:'',addr1:'2210 N Prospect Ave',addr2:'',city:'Milwaukee',state:'WI',zip:'53202',bsa:'140110221',health:'2026-06-01',notes:'Peanut allergy (EpiPen in backpack)',active:true,inactiveReason:'',household:1,emails:[],roles:[],relationships:[],pending:null,notice:null},
+  {id:202,kind:'scout',first:'Nikhil',last:'Raman',scoutId:'F11',patrol:'Fox',rank:'First Class',gender:'M',school:'Riverbend Academy',grade:10,swim:'beginner',jl:'',birthdate:'2010-09-03',phone:'(414) 555-0190',addr1:'4418 W Hadley St',addr2:'',city:'Milwaukee',state:'WI',zip:'53210',bsa:'140110388',health:'2025-12-14',notes:'',active:true,inactiveReason:'',household:2,emails:[{id:7,email:'nikhil.r@example.com',label:'home',primary:true,verified:null,bounced:null}],roles:[],relationships:[],
+   pending:{by:'Priya Raman',at:'2026-09-05T21:03:00',changes:{swim:'swimmer',phone:'(414) 555-0191'}},notice:null},
+  {id:203,kind:'scout',first:'Jamal',last:'Okafor',scoutId:'F14',patrol:'Hawk',rank:'Tenderfoot',gender:'M',school:'Lakeshore Middle School',grade:7,swim:'',jl:'',birthdate:'2013-02-11',phone:'',addr1:'901 E Locust St',addr2:'',city:'Milwaukee',state:'WI',zip:'53212',bsa:'',health:'',notes:'',active:true,inactiveReason:'',household:4,emails:[],roles:[],relationships:[],pending:null,notice:null},
+  {id:204,kind:'scout',first:'Ivy',last:'Castellano',scoutId:'F03',patrol:'Fox',rank:'Life',gender:'F',school:'Riverbend Academy',grade:12,swim:'swimmer',jl:'',birthdate:'2008-10-27',phone:'',addr1:'',addr2:'',city:'Milwaukee',state:'WI',zip:'',bsa:'',health:'',notes:'',active:false,inactiveReason:'transferred',household:null,emails:[],roles:[],relationships:[],pending:null,notice:null}
+];
+const byId = id => PEOPLE.find(p => p.id === id);
+const nameOf = p => p.first + ' ' + p.last;
+const isLeader = p => p.kind === 'adult' && p.roles.some(r => !r.end && LEADER_ROLES.includes(r.role));
+const tabOf = p => p.kind === 'scout' ? (p.active ? 'active_scout' : 'inactive_scout') : (isLeader(p) ? 'leader' : 'adult');
+const TAB_LABEL = {active_scout:'Active Scouts',inactive_scout:'Inactive Scouts',leader:'Leaders',adult:'Adults',guest:'Guests'};
+const kindLabel = p => p.kind === 'scout' ? 'Scout' : (isLeader(p) ? 'Leader' : 'Adult');
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function fmtDate(iso){ if(!iso) return ''; const [y,m,d] = iso.slice(0,10).split('-').map(Number); return `${MON[m-1]} ${d}, ${y}`; }
+function fmtDateTime(iso){ const t = iso.slice(11,16); let [h,mi] = t.split(':').map(Number); const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return `${fmtDate(iso)} ${h}:${String(mi).padStart(2,'0')} ${ap}`; }
+const TODAY = '2026-09-07';
+function ageOn(iso){ if(!iso) return null; const [y,m,d] = iso.split('-').map(Number); const [ty,tm,td] = TODAY.split('-').map(Number); let a = ty - y; if (tm < m || (tm === m && td < d)) a--; return a; }
+function ypt(iso){ if(!iso) return null; const [y,m,d] = iso.split('-').map(Number); const exp = `${y+2}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; return {expires: exp, current: exp >= TODAY}; }
+const delay = ms => new Promise(r => setTimeout(r, ms));
+const gradeLabel = g => g === 0 ? 'K' : g === 1 ? '1st' : g === 2 ? '2nd' : g === 3 ? '3rd' : g === 12 ? '12th (senior)' : `${g}th`;
+const maskEmail = e => e.replace(/^(.)[^@]*(@.*)$/, '$1•••$2');
+
+let toastTimer = null, toastUndoFn = null;
+function toast(msg, {undo} = {}) {
+  const t = $('#toast'); $('#toastMsg').textContent = msg;
+  const u = $('#toastUndo'); u.hidden = !undo; toastUndoFn = undo || null;
+  const bar = $('#toastBar'); bar.hidden = !undo; if (undo) { bar.style.animation = 'none'; void bar.offsetWidth; bar.style.animation = ''; }
+  t.hidden = false; clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; toastUndoFn = null; }, undo ? 8000 : 5000);
+}
+$('#toastClose').addEventListener('click', () => { $('#toast').hidden = true; });
+$('#toastUndo').addEventListener('click', () => { const f = toastUndoFn; $('#toast').hidden = true; toastUndoFn = null; if (f) f(); });
+function confirmDialog({title, body, ok = 'Confirm', danger = true, okDisabledReason = null}) {
+  return new Promise(resolve => {
+    const d = $('#confirm'); $('#dTitle').textContent = title; $('#dBody').innerHTML = body;
+    const okBtn = $('#dOk'); okBtn.textContent = ok; okBtn.className = 'btn ' + (danger ? 'btn-dangerSolid' : 'btn-primary');
+    okBtn.disabled = !!okDisabledReason; okBtn.title = okDisabledReason || '';
+    const done = v => { d.close(); okBtn.onclick = null; $('#dCancel').onclick = null; d.onclose = null; resolve(v); };
+    okBtn.onclick = () => done(true); $('#dCancel').onclick = () => done(false); d.onclose = () => resolve(false);
+    d.showModal(); $('#dCancel').focus();
+  });
+}
+
+const state = { screen:'roster', tab:'adult', personId:null, fromTab:null, editKey:null, editVal:'', savingKey:null, savedKey:null, statusDraft:null, danger:false, linkSent:{}, mergeQ:'', relMode:null, relQ:'', relType:'parent_of', relGuardian:true, banner:null, link:null, newEmail:'', help:null, log:[] };
+
+const api = {
+  async save(p, fields){ await delay(600); Object.assign(p, fields); },
+  async setActive(p, active, reason){ await delay(600); p.active = active; p.inactiveReason = active ? '' : reason; },
+  async addEmail(p, email, label){ await delay(600); p.emails.push({id:++seq, email, label, primary: p.emails.length === 0, verified:null, bounced:null}); },
+  async setPrimary(p, id){ await delay(600); p.emails.forEach(e => e.primary = e.id === id); },
+  async removeEmail(p, id){ await delay(600); p.emails = p.emails.filter(e => e.id !== id); },
+  async addRole(p, role){ await delay(600); p.roles.push({id:++seq, role, start:TODAY, end:null}); },
+  async endRole(p, id){ await delay(600); p.roles.find(r => r.id === id).end = TODAY; },
+  async deleteRole(p, id){ await delay(600); p.roles = p.roles.filter(r => r.id !== id); },
+  async addRel(p, otherId, type, guardian){ await delay(600); p.relationships.push({id:++seq, type, other:otherId, guardian, outgoing:true}); },
+  async removeRel(p, id){ await delay(600); for (const q of PEOPLE) q.relationships = q.relationships.filter(r => r.id !== id); },
+  async applyPending(p, keys){ await delay(600); for (const k of keys) { p[k] = p.pending.changes[k]; delete p.pending.changes[k]; } if (!Object.keys(p.pending.changes).length) p.pending = null; },
+  async rejectPending(p, keys){ await delay(600); for (const k of keys) delete p.pending.changes[k]; if (!Object.keys(p.pending.changes).length) p.pending = null; },
+  async ack(p){ await delay(600); p.notice = null; },
+  async sendLink(p, emailId){ await delay(600); const deliverable = p.emails.filter(e => !e.bounced); if (!deliverable.length) return {ok:false, reason:'unreachable'}; const last = state.linkSent[p.id]; if (last && Date.now() - last < 5*60*1000) return {ok:false, reason:'rate-limited'}; state.linkSent[p.id] = Date.now(); const e = deliverable.find(e => e.id === emailId) || deliverable.find(e => e.primary) || deliverable[0]; return {ok:true, masked:maskEmail(e.email), minutes:15}; },
+  async merge(loser, survivor){ await delay(800); for (const e of loser.emails) if (!survivor.emails.some(x => x.email === e.email)) survivor.emails.push({...e, primary:false}); for (const r of loser.relationships) survivor.relationships.push(r); for (const r of loser.roles) survivor.roles.push(r); for (const k of ['phone','addr1','city','state','zip','bsa','ypt','health','birthdate']) if (!survivor[k] && loser[k]) survivor[k] = loser[k]; if (!survivor.household) survivor.household = loser.household; loser.merged = survivor.id; },
+  async remove(p){ await delay(600); p.deleted = true; },
+  async promote(p){ await delay(800); p.active = false; p.inactiveReason = 'aged_out'; p.promoted = true; }
+};
+function relsOf(p){ const out = []; for (const q of PEOPLE) for (const r of q.relationships) { if (q.id === p.id) out.push({id:r.id, type:r.type, other:byId(r.other), guardian:r.guardian, outgoing:true}); else if (r.other === p.id) out.push({id:r.id, type:r.type, other:q, guardian:r.guardian, outgoing:false}); } return out; }
+const attachments = p => relsOf(p).length + p.roles.length + (p.kind === 'scout' ? 1 : 0);
+
+/* ── property definitions ── */
+const F = {
+  first:{label:'First name',type:'text',required:true}, last:{label:'Last name',type:'text',required:true},
+  birthdate:{label:'Birthdate',type:'date',read:p => p.birthdate ? `${fmtDate(p.birthdate)} <span class="sub">age ${ageOn(p.birthdate)}</span>` : ''},
+  bsa:{label:'BSA member ID',type:'text',mono:true},
+  ypt:{label:'YPT completed',type:'date',read:p => { const y = ypt(p.ypt); return y ? `${fmtDate(p.ypt)} <span class="sub">${y.current ? 'current' : 'EXPIRED'} · expires ${fmtDate(y.expires)}</span>` : ''; }},
+  health:{label:'Health form',type:'date',read:p => fmtDate(p.health)},
+  notes:{label:'Things we should know',type:'textarea',placeholder:'e.g. Peanut allergy (EpiPen in backpack)'},
+  phone:{label:'Phone',type:'tel',placeholder:'(414) 555-1234'},
+  addr1:{label:'Address line 1',type:'text'}, addr2:{label:'Address line 2',type:'text',placeholder:'Apt / unit (optional)'},
+  city:{label:'City',type:'text'}, state:{label:'State',type:'text',max:2,placeholder:'WI'}, zip:{label:'ZIP',type:'text',placeholder:'53202'},
+  household:{label:'Household',type:'household',read:p => p.household ? esc(HOUSEHOLDS[p.household]) : ''},
+  scoutId:{label:'Internal ID',type:'readonly',mono:true,lock:'permanent'}, patrol:{label:'Patrol',type:'text',placeholder:'e.g. Hawk'},
+  rank:{label:'Current rank',type:'readonly',lock:'derived from the ledger',read:p => p.rank || '<span class="empty">no rank earned yet</span>'},
+  gender:{label:'Gender',type:'select',options:[['','—'],['M','Male'],['F','Female']]},
+  school:{label:'School',type:'text'},
+  grade:{label:'Grade',type:'select',options:[['','—'],...[...Array(13).keys()].map(g => [String(g), gradeLabel(g)])],read:p => p.grade === '' || p.grade == null ? '' : `${gradeLabel(Number(p.grade))} <span class="sub">class of ${2026 + (12 - Number(p.grade)) + 1}</span>`},
+  swim:{label:'Swim classification',type:'select',options:[['','—'],['swimmer','Swimmer'],['beginner','Beginner'],['nonswimmer','Non-swimmer']]},
+  jl:{label:'Junior leader (sign-ups)',type:'select',options:[['','Auto — grades 9–12'],['yes','Yes — always'],['no','No — always a Scout']],read:p => p.jl === 'yes' ? 'Yes — always' : p.jl === 'no' ? 'No — always a Scout' : `Auto <span class="sub">${Number(p.grade) >= 9 ? 'currently a Junior Leader' : 'currently a Scout'}</span>`}
+};
+function groupsFor(p){
+  if (p.kind === 'scout') return [
+    {key:'status',title:'Status',status:true},
+    {key:'identity',title:'Identity',fields:['scoutId','first','last','bsa','patrol','rank']},
+    {key:'details',title:'Details',fields:['birthdate','gender','school','grade','swim','jl','health','notes'],help:'Age and grade are derived — the stored value is the graduation class year. Junior Leader follows grade 9–12 unless pinned. "Things we should know" is visible to leaders only.'},
+    {key:'contact',title:'Contact',fields:['phone','addr1','addr2','city','state','zip','household'],help:'A scout with no email of their own signs in through a parent in their household. Household membership is independent of anything else on this record.'}
+  ];
+  return [
+    {key:'status',title:'Status',status:true},
+    {key:'details',title:'Details',fields:['first','last','birthdate','bsa','ypt','health','notes'],help:'YPT is good for two years. "Things we should know" is visible to leaders only.'},
+    {key:'contact',title:'Contact',fields:['phone','addr1','addr2','city','state','zip','household'],help:'Household membership is independent of roles — it never changes when someone starts or stops helping out.'}
+  ];
+}
+function readValue(p, k){ const f = F[k]; if (f.read) return f.read(p); const v = p[k]; if (f.type === 'select') { const o = f.options.find(o => o[0] === String(v ?? '')); return o && o[0] !== '' ? esc(o[1]) : ''; } return esc(v); }
+function proposedLabel(k, v){ if (k === 'swim') return F.swim.options.find(o => o[0] === v)[1]; if (k === 'birthdate') return fmtDate(v); return v; }
+
+/* ── rendering ── */
+function render(){ const app = $('#app'); app.innerHTML = state.screen === 'roster' ? renderRoster() : renderPerson(); if (state.focus) { const el = app.querySelector(state.focus); if (el) { el.focus(); if (el.select && el.type !== 'date') el.select(); } state.focus = null; } }
+function renderRoster(){
+  const rows = PEOPLE.filter(p => !p.merged && !p.deleted && tabOf(p) === state.tab);
+  const counts = {}; for (const p of PEOPLE) if (!p.merged && !p.deleted) counts[tabOf(p)] = (counts[tabOf(p)] || 0) + 1;
+  const tabs = Object.keys(TAB_LABEL).map(t => `<button type="button" role="tab" class="tab" aria-selected="${t === state.tab}" data-act="tab" data-tab="${t}">${TAB_LABEL[t]}<span class="n">${counts[t] || 0}</span></button>`).join('');
+  const scout = state.tab.endsWith('scout');
+  const head = scout ? '<th>Name</th><th>ID</th><th class="hide-m">Patrol</th><th class="hide-m">Rank</th><th class="hide-m">Grade</th><th>Status</th>' : '<th>Name</th><th>Email</th><th class="hide-m">Phone</th><th class="hide-m">Roles</th><th class="hide-m">Household</th><th>Status</th>';
+  const body = rows.map(p => {
+    const status = p.active ? '<span class="pill pill-ok">Active</span>' : `<span class="pill pill-off">Inactive</span>`;
+    const name = `<button type="button" class="name" data-act="open" data-id="${p.id}">${esc(nameOf(p))}</button>${p.pending ? ' <span class="tag tag-guardian">pending update</span>' : ''}${p.notice ? ' <span class="tag tag-guardian">added by family</span>' : ''}`;
+    if (scout) return `<tr><td>${name}</td><td class="mono">${p.scoutId}</td><td class="hide-m">${esc(p.patrol)}</td><td class="hide-m">${esc(p.rank)}</td><td class="hide-m">${gradeLabel(p.grade)}</td><td>${status}</td></tr>`;
+    const prim = p.emails.find(e => e.primary);
+    return `<tr><td>${name}</td><td>${prim ? esc(prim.email) : '<span class="muted">—</span>'}</td><td class="hide-m">${esc(p.phone) || '<span class="muted">—</span>'}</td><td class="hide-m">${p.roles.filter(r => !r.end).map(r => ROLE_LABEL[r.role]).join(', ') || '<span class="muted">none</span>'}</td><td class="hide-m">${p.household ? esc(HOUSEHOLDS[p.household]) : '<span class="muted">—</span>'}</td><td>${status}</td></tr>`;
+  }).join('') || `<tr><td colspan="6" class="muted">Nobody on this tab.</td></tr>`;
+  return `<h1 style="font-family:var(--admin-font-display);font-weight:400;font-size:var(--admin-text-3xl)">Roster</h1><p class="lede">Everyone on record. Open a name to see or change their record.</p><div class="tabs" role="tablist">${tabs}</div><div class="toolbar"><span class="sp"></span><button type="button" class="btn btn-sm" disabled title="Not in this prototype">+ Add ${scout ? 'Scout' : 'Adult'}</button></div><table class="roster"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+}
+
+function renderPerson(){
+  const p = byId(state.personId);
+  const prim = p.emails.find(e => e.primary);
+  const deliverable = p.emails.filter(e => !e.bounced);
+  const parents = p.kind === 'scout' ? relsOf(p).filter(r => !r.outgoing && ['parent_of','guardian_of'].includes(r.type)).map(r => r.other) : [];
+  const linkBtn = p.kind === 'scout' && !deliverable.length ? `<button type="button" class="btn btn-sm" disabled title="No email on file — signs in through a parent">Send sign-in link</button>` : `${deliverable.length > 1 ? `<select aria-label="Send to" id="linkTo" style="width:auto;font-size:var(--admin-text-base);padding:3px 6px">${deliverable.map(e => `<option value="${e.id}">${esc(e.email)}${e.primary ? ' (primary)' : ''}</option>`).join('')}</select>` : ''}<button type="button" class="btn btn-sm" data-act="sendlink" ${deliverable.length ? '' : 'disabled title="Add an email address first"'}>Send sign-in link</button>`;
+  const kindPill = p.kind === 'scout' ? '<span class="pill pill-scout">Scout</span>' : isLeader(p) ? '<span class="pill pill-leader">Leader</span>' : '<span class="pill pill-kind">Adult</span>';
+  const status = p.active ? '<span class="pill pill-ok">Active</span>' : `<span class="pill pill-off">Inactive</span>`;
+  const notices = [];
+  if (state.link) notices.push(`<div class="notice ${state.link.ok ? 'n-ok' : 'n-err'}">${state.link.msg}</div>`);
+  if (state.banner) notices.push(`<div class="notice ${state.banner.cls}">${state.banner.html}</div>`);
+  if (p.notice) notices.push(`<div class="notice n-warn"><strong>Added by a family — not yet acknowledged.</strong> ${esc(p.notice.by)} added ${esc(nameOf(p))} to their household on ${fmtDateTime(p.notice.at)} as "${esc(p.notice.fields.relationship)}". Acknowledging clears this from the dashboard and changes nothing. <div class="row" style="margin-top:6px"><button type="button" class="btn btn-sm btn-primary" data-act="ack">Acknowledge</button></div></div>`);
+  if (p.pending) { const n = Object.keys(p.pending.changes).length; notices.push(`<div class="notice n-warn"><strong>${n} proposed change${n > 1 ? 's' : ''} from the family</strong> — submitted ${fmtDateTime(p.pending.at)} by ${esc(p.pending.by)} (verified sign-in). Each is shown in yellow under its property; approve or reject them one at a time or all at once. Nothing changes until you do. <div class="row" style="margin-top:6px"><button type="button" class="btn btn-sm btn-danger" data-act="rejectAll">Reject all</button><button type="button" class="btn btn-sm btn-primary" data-act="approveAll">Approve all ${n}</button></div></div>`); }
+  if (state.fromTab && tabOf(p) !== state.fromTab) notices.push(`<div class="notice n-info">${esc(nameOf(p))} now appears under <strong>${TAB_LABEL[tabOf(p)]}</strong>, not ${TAB_LABEL[state.fromTab]}.</div>`);
+  return `<button type="button" class="back" data-act="back">← Back to ${TAB_LABEL[state.fromTab || tabOf(p)]}</button>
+  <header class="rec-head"><div><h1>${esc(nameOf(p))}</h1><div class="pills">${kindPill} ${status}${p.kind === 'scout' ? ` <span class="mono muted">${p.scoutId}</span>` : ''}${p.bsa ? ` <span class="mono muted">BSA ${esc(p.bsa)}</span>` : ''}</div>
+  <div class="contact">${prim ? `<a href="mailto:${esc(prim.email)}">${esc(prim.email)}</a>` : (p.kind === 'scout' ? `signs in through ${parents.length ? parents.map(q => esc(nameOf(q))).join(' or ') : 'a parent (none linked)'}` : '<span class="muted">no email on file</span>')}${p.phone ? ` · <a href="tel:${esc(p.phone)}">${esc(p.phone)}</a>` : ''}</div></div><div class="acts">${linkBtn}</div></header>
+  ${notices.join('')}
+  <div class="cols"><div class="main card">${groupsFor(p).map(g => renderGroup(p, g)).join('')}</div>
+  <aside class="side">
+    <div class="card"><div class="card-body">${renderEmails(p)}</div></div>
+    <div class="card"><div class="card-body">${renderRelations(p)}</div></div>
+    ${p.kind === 'scout' ? '' : `<div class="card"><div class="card-body">${renderRoles(p)}</div></div>`}
+    ${renderLog()}
+    ${renderDanger(p)}
+    <div class="card"><div class="card-body" style="font-size:var(--admin-text-base)"><button type="button" class="btn-link" data-act="open" data-id="${p.kind === 'scout' ? 101 : 201}">Switch to a${p.kind === 'scout' ? 'n adult' : ' scout'} record</button></div></div>
+  </aside></div>`;
+}
+function helpDisc(key, text){ if (!text) return ''; const open = state.help === key; return `<div style="padding:4px 14px 8px"><button type="button" class="disc" data-act="help" data-key="${key}" aria-expanded="${open}">How this works</button>${open ? `<div class="disc-body">${text}</div>` : ''}</div>`; }
+function renderGroup(p, g){
+  const rows = g.status ? renderStatusProp(p) : g.fields.map(k => renderProp(p, k)).join('');
+  return `<section class="group" aria-labelledby="g-${g.key}"><div class="group-h" id="g-${g.key}">${g.title}</div>${rows}${helpDisc(g.key, g.help)}</section>`;
+}
+function renderProp(p, k){
+  const f = F[k];
+  let val;
+  if (f.type === 'readonly') val = `<div class="pv-ro ${f.mono ? 'mono' : ''}">${f.read ? f.read(p) : esc(p[k])}<span class="lock">${f.lock}</span></div>`;
+  else if (state.editKey === k) val = renderInline(p, k);
+  else if (state.savingKey === k) val = `<div class="pv-ro"><span class="saving">Saving…</span></div>`;
+  else val = `<button type="button" class="pv-btn" data-act="editProp" data-key="${k}" aria-label="Edit ${f.label}"><span class="${f.mono ? 'mono' : ''}">${readValue(p, k) || '<span class="empty">Empty</span>'}</span>${state.savedKey === k ? '<span class="saved" aria-live="polite">✓ Saved</span>' : ''}<span class="pen">✎ Edit</span></button>`;
+  let pend = '';
+  if (p.pending && k in p.pending.changes) pend = `<div class="prop-pending"><span class="grow">Family proposes: <strong>${esc(proposedLabel(k, p.pending.changes[k]))}</strong></span><button type="button" class="btn btn-sm btn-quiet" data-act="rejectOne" data-key="${k}">Reject</button><button type="button" class="btn btn-sm btn-primary" data-act="approveOne" data-key="${k}">Approve</button></div>`;
+  return `<div class="prop" data-prop="${k}"><div class="pk">${f.label}</div><div class="pv">${val}</div>${pend}</div>`;
+}
+function renderInline(p, k){
+  const f = F[k]; const v = state.editVal;
+  let ctl;
+  if (f.type === 'household') ctl = `<select data-inline aria-label="${f.label}"><option value="">— no household —</option>${Object.entries(HOUSEHOLDS).map(([id, l]) => `<option value="${id}" ${String(v) === id ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+  else if (f.type === 'select') ctl = `<select data-inline aria-label="${f.label}">${f.options.map(o => `<option value="${o[0]}" ${String(v ?? '') === o[0] ? 'selected' : ''}>${esc(o[1])}</option>`).join('')}</select>`;
+  else if (f.type === 'textarea') ctl = `<textarea data-inline rows="3" aria-label="${f.label}" placeholder="${esc(f.placeholder || '')}">${esc(v)}</textarea>`;
+  else ctl = `<input data-inline type="${f.type}" value="${esc(v)}" aria-label="${f.label}" ${f.max ? `maxlength="${f.max}"` : ''} placeholder="${esc(f.placeholder || '')}" class="${f.mono ? 'mono' : ''}">`;
+  const invalid = f.required && !String(v).trim();
+  return `<div class="inline">${ctl}<button type="button" class="btn btn-sm ok" data-act="commit" ${invalid ? 'disabled title="Required"' : ''} aria-label="Save ${f.label}">✓</button><button type="button" class="btn btn-sm" data-act="revert" aria-label="Cancel">✕</button>${invalid ? `<span class="err">${f.label} is required</span>` : ''}<span class="keys">${f.type === 'textarea' ? 'Ctrl+Enter' : 'Enter'} saves · Esc reverts · nothing saves on its own</span>${k === 'household' && String(v) !== String(p.household ?? '') ? `<span class="err" style="color:var(--admin-gray-700)">Moves ${esc(nameOf(p))} from ${p.household ? esc(HOUSEHOLDS[p.household]) : 'no household'} — the whole family comes up together at signup.</span>` : ''}</div>`;
+}
+function renderStatusProp(p){
+  const scout = p.kind === 'scout';
+  const reasonText = p.active ? '' : (scout ? SCOUT_REASONS[p.inactiveReason] : p.inactiveReason || 'no reason recorded');
+  let val;
+  if (state.editKey === 'status') {
+    const d = state.statusDraft;
+    val = `<div class="popover" role="group" aria-label="Change status"><div class="row"><label><input type="radio" name="st" value="1" ${d.active ? 'checked' : ''} data-status> Active</label><label><input type="radio" name="st" value="0" ${d.active ? '' : 'checked'} data-status> Inactive</label></div>
+    ${d.active ? `<p class="hint">${scout ? 'On rosters, dashboards and the Fast Entry picker.' : 'Offered in the family signup picker.'}</p>` : `<div class="field" style="margin-top:8px"><span>Reason${scout ? ' *' : ' (optional)'}</span>${scout ? `<select data-reason>${['',...Object.keys(SCOUT_REASONS)].map(k => `<option value="${k}" ${d.reason === k ? 'selected' : ''}>${k ? SCOUT_REASONS[k] : '— Pick a reason —'}</option>`).join('')}</select>` : `<input data-reason value="${esc(d.reason)}" placeholder="Moved away, aged out of the troop…">`}</div><p class="hint">Keeps ledger history, relationships${scout ? '' : ', roles'} and past events. ${scout ? 'Leaves rosters and the Fast Entry picker.' : 'No longer offered at signup.'} Reversible.</p>`}
+    <div class="actions"><button type="button" class="btn btn-sm" data-act="revert">Cancel</button><button type="button" class="btn btn-sm btn-primary" data-act="commitStatus" ${(!d.active && scout && !d.reason) ? 'disabled title="Pick a reason first"' : (d.active === p.active && (d.active || d.reason === p.inactiveReason)) ? 'disabled title="No change"' : ''}>Apply</button></div></div>`;
+  } else if (state.savingKey === 'status') val = `<div class="pv-ro"><span class="saving">Saving…</span></div>`;
+  else val = `<button type="button" class="pv-btn" data-act="editStatus" aria-label="Edit status">${p.active ? '<span class="pill pill-ok">Active</span>' : `<span class="pill pill-off">Inactive</span> <span class="sub">${esc(reasonText)}</span>`}${state.savedKey === 'status' ? '<span class="saved">✓ Saved</span>' : ''}<span class="pen">✎ Change</span></button>`;
+  return `<div class="prop"><div class="pk">Status</div><div class="pv">${val}</div></div>`;
+}
+function renderEmails(p){
+  const items = p.emails.map(e => `<li><span class="grow">${esc(e.email)} <span class="muted">${e.label}</span>${e.primary ? '<span class="tag tag-primary">primary</span>' : ''}${e.verified ? '<span class="tag tag-ok">verified</span>' : '<span class="tag">unverified</span>'}${e.bounced ? '<span class="tag tag-bad">bounced</span>' : ''}</span>${e.primary ? '' : `<button type="button" class="btn btn-sm" data-act="primary" data-id="${e.id}" ${e.bounced ? 'disabled title="A bounced address cannot be primary"' : ''}>Make primary</button>`}<button type="button" class="btn btn-sm btn-quiet" data-act="rmEmail" data-id="${e.id}" ${p.emails.length <= 1 ? 'disabled title="The only address on file — add another before removing this one"' : e.primary ? 'disabled title="Set another address as primary first"' : ''}>Remove</button></li>`).join('');
+  return `<div class="imm"><div class="imm-head"><h3>Email addresses</h3><span class="imm-tag">Immediate</span></div>${p.emails.length ? `<ul class="list">${items}</ul>` : `<p class="muted" style="margin:0">No addresses on file${p.kind === 'scout' ? ' — signs in through a parent' : ''}.</p>`}<div class="addrow"><input type="email" id="newEmail" placeholder="name@example.com" aria-label="New email address" value="${esc(state.newEmail || '')}"><select id="newLabel" aria-label="Label"><option>home</option><option>work</option><option>other</option></select><button type="button" class="btn btn-sm" data-act="addEmail" ${state.newEmail ? '' : 'disabled title="Type an address first"'}>Add</button></div></div>`;
+}
+function renderResults(q, filter, act){ if (!q || q.trim().length < 2) return ''; const hits = PEOPLE.filter(p => !p.merged && !p.deleted && filter(p) && nameOf(p).toLowerCase().includes(q.trim().toLowerCase())); return hits.length ? `<ul class="results">${hits.map(p => `<li><button type="button" data-act="${act}" data-id="${p.id}">${esc(nameOf(p))} <span class="muted">${kindLabel(p)}</span></button></li>`).join('')}</ul>` : '<p class="hint">No one matches.</p>'; }
+function renderRelations(p){
+  const rels = relsOf(p); const scout = p.kind === 'scout';
+  const items = rels.map(r => { const q = r.other; const line = r.outgoing ? `${REL_WORD[r.type]} <strong><button type="button" class="btn-link" data-act="open" data-id="${q.id}">${esc(nameOf(q))}</button></strong>` : `<strong><button type="button" class="btn-link" data-act="open" data-id="${q.id}">${esc(nameOf(q))}</button></strong> is ${REL_WORD[r.type]} ${esc(p.first)}`; const contact = scout && !r.outgoing ? `<span style="display:block;color:var(--admin-gray-500);font-size:var(--admin-text-base)">${q.phone ? esc(q.phone) : 'no phone'} · ${(q.emails.find(e => e.primary) || {}).email ? esc(q.emails.find(e => e.primary).email) : 'no email'}</span>` : ''; return `<li><span class="grow">${line}${r.guardian ? '<span class="tag tag-guardian">guardian</span>' : ''}${contact}</span><button type="button" class="btn btn-sm btn-quiet" data-act="rmRel" data-id="${r.id}">${scout ? 'Unlink' : 'Remove'}</button></li>`; }).join('');
+  let add = state.relMode === null ? `<div class="addrow"><button type="button" class="btn btn-sm" data-act="relStart">+ ${scout ? 'Add parent / guardian' : 'Add relationship'}</button></div>` : `<div class="form-panel" style="margin-top:8px"><div class="row"><label>${scout ? 'Add as' : `${esc(p.first)} is`} <select data-rel="type" style="width:auto">${(scout ? [['parent_of','Parent'],['guardian_of','Guardian'],['emergency_contact_for','Emergency contact']] : Object.entries(REL_WORD)).map(t => `<option value="${t[0]}" ${state.relType === t[0] ? 'selected' : ''}>${t[1]}</option>`).join('')}</select></label><label><input type="checkbox" data-rel="guardian" ${state.relGuardian ? 'checked' : ''} style="width:auto"> guardianship</label><button type="button" class="btn btn-sm" data-act="relCancel" style="margin-left:auto">Cancel</button></div><div class="row" style="margin-top:8px"><input id="relQ" placeholder="Search on record (2+ letters)" value="${esc(state.relQ || '')}" aria-label="Search people" style="flex:1">${scout ? `<button type="button" class="btn btn-sm" data-act="relNew">+ New adult</button>` : ''}</div>${state.relMode === 'new' ? `<div class="grid" style="margin-top:8px"><label class="field"><span>Name *</span><input id="naName"></label><label class="field"><span>Phone</span><input id="naPhone"></label><label class="field full"><span>Email</span><input id="naEmail" type="email"></label></div><p class="hint">An email already on record links that person instead of creating a duplicate.</p><div class="actions"><button type="button" class="btn btn-sm btn-primary" data-act="relCreate">Add and link</button></div>` : ''}${renderResults(state.relQ, q => q.id !== p.id && (!scout || q.kind === 'adult'), 'relPick')}</div>`;
+  return `<div class="imm"><div class="imm-head"><h3>${scout ? 'Parents & guardians' : 'Family & relationships'}</h3><span class="imm-tag">Immediate</span></div>${rels.length ? `<ul class="list">${items}</ul>` : `<p class="muted" style="margin:0">${scout ? 'No parents linked — this scout cannot sign in until one is.' : 'None recorded.'}</p>`}${add}</div>`;
+}
+function renderRoles(p){
+  const cur = p.roles.filter(r => !r.end), ended = p.roles.filter(r => r.end);
+  return `<div class="imm"><div class="imm-head"><h3>Roles</h3><span class="imm-tag">Immediate</span></div>${cur.length ? `<ul class="list">${cur.map(r => `<li><span class="grow">${ROLE_LABEL[r.role]} <span class="muted">since ${fmtDate(r.start)}</span></span><button type="button" class="btn btn-sm btn-quiet" data-act="endRole" data-id="${r.id}">End…</button></li>`).join('')}</ul>` : '<p class="muted" style="margin:0">No current role — listed under Adults.</p>'}${ended.length ? `<p class="hint">Previously held</p><ul class="list">${ended.map(r => `<li><span class="grow muted">${ROLE_LABEL[r.role]} · ${fmtDate(r.start)} – ${fmtDate(r.end)}</span><button type="button" class="btn btn-sm btn-quiet" data-act="delRole" data-id="${r.id}">Delete</button></li>`).join('')}</ul>` : ''}<div class="addrow"><select id="newRole" aria-label="Role to grant">${Object.entries(ROLE_LABEL).map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select><button type="button" class="btn btn-sm" data-act="addRole">Grant</button></div></div>`;
+}
+function renderLog(){
+  const items = state.log.slice(-6).reverse();
+  return `<div class="card"><div class="card-head"><h2>Recent changes</h2><span class="muted" style="font-size:var(--admin-text-sm)">this session</span></div><div class="card-body">${items.length ? `<ul class="log">${items.map(l => `<li class="${l.undone ? 'undone' : ''}"><span class="grow">${esc(l.text)}</span>${l.undo && !l.undone ? `<button type="button" class="btn btn-sm btn-quiet" data-act="undoLog" data-id="${l.id}">Undo</button>` : ''}</li>`).join('')}</ul>` : '<p class="muted" style="margin:0;font-size:var(--admin-text-base)">Every edit you make lands here with its own Undo — the safety net for a page that saves on every click.</p>'}</div></div>`;
+}
+function renderDanger(p){
+  const open = state.danger; const scout = p.kind === 'scout'; const n = attachments(p);
+  return `<section class="card danger"><div class="card-head"><h2>Danger zone</h2><button type="button" class="btn btn-sm" data-act="danger" aria-expanded="${open}">${open ? 'Hide' : 'Show'}</button></div>${open ? `<div class="card-body" style="font-size:var(--admin-text-base)">${scout && p.active ? `<button type="button" class="btn btn-sm" data-act="promote" style="margin-bottom:10px">Promote to adult (18+)…</button>` : ''}<strong>Merge into another person</strong><input id="mergeQ" placeholder="Search for the person to keep" value="${esc(state.mergeQ)}" aria-label="Merge into" style="margin-top:4px">${renderResults(state.mergeQ, q => q.id !== p.id, 'mergePick')}<div style="margin-top:12px"><button type="button" class="btn btn-sm btn-danger" data-act="delete">Delete this person…</button><p class="hint">${n ? `Refused while ${n} thing${n > 1 ? 's are' : ' is'} attached (relationships, roles, scout record).` : 'Nothing attached — deletion is possible and cannot be undone.'}</p></div></div>` : ''}</section>`;
+}
+
+/* ── behaviour ── */
+function openPerson(id, fromTab){ const p = byId(id); if (p.merged) return openPerson(p.merged, fromTab); Object.assign(state, {screen:'person', personId:id, fromTab: fromTab || state.fromTab || tabOf(p), editKey:null, savingKey:null, savedKey:null, danger:false, mergeQ:'', relMode:null, relQ:'', banner:null, link:null, newEmail:'', help:null}); window.scrollTo(0,0); render(); }
+function logChange(text, undo){ const id = ++seq; state.log.push({id, text, undo, undone:false}); return id; }
+async function commitProp(p, k){
+  const f = F[k]; let v = state.editVal; if (f.required && !String(v).trim()) return;
+  if (k === 'household') v = v ? Number(v) : null; if (k === 'grade') v = v === '' ? '' : Number(v);
+  const before = p[k]; if (String(before ?? '') === String(v ?? '')) { state.editKey = null; state.focus = `[data-act=editProp][data-key=${k}]`; render(); return; }
+  state.editKey = null; state.savingKey = k; render();
+  await api.save(p, {[k]: v});
+  state.savingKey = null; state.savedKey = k; state.focus = `[data-act=editProp][data-key=${k}]`;
+  const text = k === 'household' ? `Household: ${before ? HOUSEHOLDS[before] : 'none'} → ${v ? HOUSEHOLDS[v] : 'none'}` : `${f.label}: ${String(before ?? '') || '(empty)'} → ${String(v ?? '') || '(empty)'}`;
+  const undo = async () => { state.savingKey = k; render(); await api.save(p, {[k]: before}); state.savingKey = null; state.savedKey = k; render(); toast(`Undone — ${f.label} restored.`); };
+  const id = logChange(text, undo); render(); toast(`Saved ${f.label}.`, {undo: () => { const l = state.log.find(l => l.id === id); l.undone = true; undo(); }});
+  setTimeout(() => { if (state.savedKey === k) { state.savedKey = null; const s = $(`[data-prop=${k}] .saved`); if (s) s.remove(); } }, 2000);
+}
+function busy(on){ document.querySelectorAll('#app button, #app input, #app select, #app textarea').forEach(el => { if (on) { if (!el.disabled) { el.dataset.wasOn = '1'; el.disabled = true; } } else if (el.dataset.wasOn) { el.disabled = false; delete el.dataset.wasOn; } }); }
+
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.hasAttribute('data-inline')) { state.editVal = t.value; const f = F[state.editKey]; if (f.required) { const inv = !t.value.trim(); t.setAttribute('aria-invalid', inv ? 'true' : 'false'); const ok = $('[data-act=commit]'); ok.disabled = inv; } if (state.editKey === 'household') { state.focus = '[data-inline]'; render(); } return; }
+  if (t.hasAttribute('data-status')) { state.statusDraft.active = t.value === '1'; state.focus = t.value === '1' ? '[data-status][value="1"]' : '[data-reason]'; render(); return; }
+  if (t.hasAttribute('data-reason')) { state.statusDraft.reason = t.value; const b = $('[data-act=commitStatus]'); const scout = byId(state.personId).kind === 'scout'; b.disabled = scout && !t.value; b.title = b.disabled ? 'Pick a reason first' : ''; return; }
+  if (t.dataset.rel === 'type') { state.relType = t.value; return; }
+  if (t.dataset.rel === 'guardian') { state.relGuardian = t.checked; return; }
+  if (t.id === 'newEmail') { state.newEmail = t.value; const b = $('[data-act=addEmail]'); b.disabled = !t.value.trim(); return; }
+  if (t.id === 'mergeQ' || t.id === 'relQ') { state[t.id] = t.value; const pos = t.selectionStart; state.focus = '#' + t.id; render(); const el = $('#' + t.id); if (el) el.setSelectionRange(pos, pos); }
+});
+document.addEventListener('keydown', e => {
+  const t = e.target;
+  if (t.hasAttribute && t.hasAttribute('data-inline')) {
+    if (e.key === 'Enter' && (t.tagName !== 'TEXTAREA' || e.ctrlKey)) { e.preventDefault(); commitProp(byId(state.personId), state.editKey); }
+    if (e.key === 'Escape') { e.preventDefault(); const k = state.editKey; state.editKey = null; state.focus = `[data-act=editProp][data-key=${k}]`; render(); toast('Reverted — nothing saved.'); }
+    return;
+  }
+  if (e.key === 'Escape' && state.editKey === 'status' && !$('#confirm').open) { state.editKey = null; state.focus = '[data-act=editStatus]'; render(); }
+});
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const act = b.dataset.act; const p = state.personId ? byId(state.personId) : null;
+  const run = async (fn, okMsg, opts) => { busy(true); try { await fn(); if (okMsg) toast(okMsg, opts); } finally { busy(false); } };
+  switch (act) {
+    case 'tab': state.tab = b.dataset.tab; render(); break;
+    case 'open': openPerson(Number(b.dataset.id), state.screen === 'roster' ? state.tab : null); break;
+    case 'back': state.screen = 'roster'; state.tab = state.fromTab || tabOf(p); state.fromTab = null; render(); break;
+    case 'help': state.help = state.help === b.dataset.key ? null : b.dataset.key; render(); break;
+    case 'danger': state.danger = !state.danger; render(); break;
+    case 'editProp': { const k = b.dataset.key; state.editKey = k; state.editVal = p[k] ?? ''; state.focus = '[data-inline]'; render(); break; }
+    case 'commit': await commitProp(p, state.editKey); break;
+    case 'revert': { const k = state.editKey; state.editKey = null; state.focus = k === 'status' ? '[data-act=editStatus]' : `[data-act=editProp][data-key=${k}]`; render(); break; }
+    case 'editStatus': state.editKey = 'status'; state.statusDraft = {active: p.active, reason: p.inactiveReason}; state.focus = '[data-status]:checked'; render(); break;
+    case 'commitStatus': { const d = state.statusDraft; const before = {active: p.active, reason: p.inactiveReason}; state.editKey = null; state.savingKey = 'status'; render(); await api.setActive(p, d.active, d.reason); state.savingKey = null; state.savedKey = 'status'; state.focus = '[data-act=editStatus]'; const undo = async () => { await api.setActive(p, before.active, before.reason); render(); toast('Status restored.'); }; const id = logChange(`Status: ${before.active ? 'Active' : 'Inactive'} → ${d.active ? 'Active' : 'Inactive'}${!d.active && d.reason ? ` (${p.kind === 'scout' ? SCOUT_REASONS[d.reason] : d.reason})` : ''}`, undo); render(); toast(`${nameOf(p)} is now ${d.active ? 'active' : 'inactive'}.`, {undo: () => { state.log.find(l => l.id === id).undone = true; undo(); }}); setTimeout(() => { state.savedKey = null; }, 2000); break; }
+    case 'undoLog': { const l = state.log.find(l => l.id === Number(b.dataset.id)); l.undone = true; await l.undo(); render(); break; }
+    case 'sendlink': { const sel = $('#linkTo'); b.textContent = 'Sending…'; b.disabled = true; const r = await api.sendLink(p, sel ? Number(sel.value) : undefined); state.link = r.ok ? {ok:true, msg:`Link sent to ${r.masked} — good for ${r.minutes} minutes.`} : {ok:false, msg: r.reason === 'rate-limited' ? 'Already sent recently — try again in a few minutes.' : 'Add an email address first.'}; render(); break; }
+    case 'ack': await run(() => api.ack(p), 'Acknowledged — cleared from the dashboard.'); render(); break;
+    case 'approveOne': { const k = b.dataset.key; const before = p[k]; await run(() => api.applyPending(p, [k]), `Applied ${F[k].label} from the family.`); logChange(`${F[k].label}: ${String(before ?? '') || '(empty)'} → ${p[k]} (family)`, null); render(); break; }
+    case 'rejectOne': { const k = b.dataset.key; await run(() => api.rejectPending(p, [k]), `Rejected the proposed ${F[k].label} — the family will see it was declined.`); render(); break; }
+    case 'approveAll': { const keys = Object.keys(p.pending.changes); await run(() => api.applyPending(p, keys), `Applied ${keys.length} changes from the family.`); logChange(`Applied ${keys.length} family changes`, null); render(); break; }
+    case 'rejectAll': { const keys = Object.keys(p.pending.changes); const ok = await confirmDialog({title:`Reject all ${keys.length} proposed changes?`, body:'<p>The family will see their update was declined. They can submit again from /profile.</p>', ok:'Reject all'}); if (!ok) return; await run(() => api.rejectPending(p, keys), 'Rejected.'); render(); break; }
+    case 'addEmail': { const v = $('#newEmail').value.trim(), l = $('#newLabel').value; if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) { toast('That does not look like an email address.'); return; } if (p.emails.some(e => e.email.toLowerCase() === v.toLowerCase())) { toast('That address is already on file.'); return; } await run(() => api.addEmail(p, v, l), `Added ${v}. Unverified until they sign in with it.`); logChange(`Added email ${v}`, null); state.newEmail = ''; render(); break; }
+    case 'primary': { const em = p.emails.find(e => e.id === Number(b.dataset.id)); const before = p.emails.find(e => e.primary); await run(() => api.setPrimary(p, em.id), `${em.email} is now primary.`, {undo: async () => { await api.setPrimary(p, before.id); render(); toast('Primary restored.'); }}); logChange(`Primary email → ${em.email}`, async () => { await api.setPrimary(p, before.id); render(); }); render(); break; }
+    case 'rmEmail': { const em = p.emails.find(e => e.id === Number(b.dataset.id)); const ok = await confirmDialog({title:`Remove ${em.email}?`, body:`<p>${em.verified ? 'This address is verified; removing it means it cannot be used to sign in until added and verified again.' : 'This address was never verified.'}</p>`, ok:'Remove address'}); if (!ok) return; await run(() => api.removeEmail(p, em.id), 'Address removed.'); logChange(`Removed email ${em.email}`, null); render(); break; }
+    case 'relStart': state.relMode = 'search'; state.relQ = ''; state.focus = '#relQ'; render(); break;
+    case 'relCancel': state.relMode = null; render(); break;
+    case 'relNew': state.relMode = state.relMode === 'new' ? 'search' : 'new'; state.focus = '#naName'; render(); break;
+    case 'relPick': { const q = byId(Number(b.dataset.id)); await run(async () => { if (p.kind === 'scout') await api.addRel(q, p.id, state.relType, state.relGuardian); else await api.addRel(p, q.id, state.relType, state.relGuardian); }, `Linked ${nameOf(q)}.`); logChange(`Linked ${nameOf(q)}`, null); state.relMode = null; render(); break; }
+    case 'relCreate': { const name = $('#naName').value.trim(); if (!name) { $('#naName').focus(); return; } const email = $('#naEmail').value.trim(); let q = email ? PEOPLE.find(x => x.emails.some(e => e.email.toLowerCase() === email.toLowerCase())) : null; const linked = !!q; if (!q) { const [first, ...rest] = name.split(' '); q = {id:++seq, kind:'adult', first, last: rest.join(' '), birthdate:'', phone:$('#naPhone').value.trim(), addr1:'', addr2:'', city:'', state:'', zip:'', bsa:'', ypt:'', health:'', notes:'', active:true, inactiveReason:'', household:p.household, emails: email ? [{id:++seq, email, label:'home', primary:true, verified:null, bounced:null}] : [], roles:[], relationships:[], pending:null, notice:null}; PEOPLE.push(q); } await run(() => api.addRel(q, p.id, state.relType, state.relGuardian), linked ? `${email} already belonged to ${nameOf(q)} — linked instead of duplicating.` : `Added and linked ${nameOf(q)}.`); state.relMode = null; render(); break; }
+    case 'rmRel': { const r = relsOf(p).find(r => r.id === Number(b.dataset.id)); const ok = await confirmDialog({title:`${p.kind === 'scout' ? 'Unlink' : 'Remove'} ${nameOf(r.other)}?`, body:`<ul><li>${nameOf(r.other)} stays on record</li>${p.kind === 'scout' && r.guardian ? `<li>They can no longer sign in for ${nameOf(p)}</li>` : ''}<li>Reversible by linking again</li></ul>`, ok:'Remove'}); if (!ok) return; await run(() => api.removeRel(p, r.id), `Unlinked ${nameOf(r.other)}.`); logChange(`Unlinked ${nameOf(r.other)}`, null); render(); break; }
+    case 'addRole': { const role = $('#newRole').value; const wasLeader = isLeader(p); await run(() => api.addRole(p, role), `Granted ${ROLE_LABEL[role]}.`); logChange(`Granted ${ROLE_LABEL[role]}`, null); if (!wasLeader && isLeader(p)) state.banner = {cls:'n-info', html:`${esc(nameOf(p))} is now a <strong>Leader</strong> and appears on the Leaders tab.`}; render(); break; }
+    case 'endRole': { const r = p.roles.find(r => r.id === Number(b.dataset.id)); const moves = LEADER_ROLES.includes(r.role) && !p.roles.some(x => !x.end && x.id !== r.id && LEADER_ROLES.includes(x.role)); const ok = await confirmDialog({title:`End ${ROLE_LABEL[r.role]} for ${nameOf(p)}?`, body:`<ul><li>Kept in history as ${fmtDate(r.start)} – ${fmtDate(TODAY)}</li>${moves ? '<li><strong>They move from Leaders to Adults</strong> — household and relationships unchanged</li>' : '<li>They stay on the Leaders tab</li>'}</ul>`, ok:'End role', danger:false}); if (!ok) return; await run(() => api.endRole(p, r.id), `Ended ${ROLE_LABEL[r.role]}.`); logChange(`Ended ${ROLE_LABEL[r.role]}`, null); if (moves) state.banner = {cls:'n-info', html:`${esc(nameOf(p))} now appears under <strong>Adults</strong>.`}; render(); break; }
+    case 'delRole': { const r = p.roles.find(r => r.id === Number(b.dataset.id)); const ok = await confirmDialog({title:`Delete the ended ${ROLE_LABEL[r.role]} record?`, body:'<p>Erases it from history. Only for a role entered by mistake.</p>', ok:'Delete record'}); if (!ok) return; await run(() => api.deleteRole(p, r.id), 'Role record deleted.'); render(); break; }
+    case 'mergePick': { const s = byId(Number(b.dataset.id)); const ok = await confirmDialog({title:`Merge ${nameOf(p)} into ${nameOf(s)}?`, body:`<p><strong>${esc(nameOf(s))}</strong> is kept.</p><ul><li>${p.emails.length} email address(es), ${relsOf(p).length} relationship(s), ${p.roles.length} role record(s) move over</li><li>Blank fields on ${esc(nameOf(s))} are filled from ${esc(nameOf(p))}</li><li>${esc(nameOf(p))} is flagged as merged, not destroyed — but <strong>undoing a merge is a manual job</strong></li></ul>`, ok:`Merge into ${nameOf(s)}`}); if (!ok) return; await run(() => api.merge(p, s)); openPerson(s.id); state.banner = {cls:'n-ok', html:`Merged. Everything from ${esc(nameOf(p))} moved onto ${esc(nameOf(s))}.`}; render(); break; }
+    case 'delete': { const n = attachments(p); const ok = await confirmDialog({title:`Delete ${nameOf(p)} permanently?`, body:`<ul><li>Record, email addresses and household membership are erased</li><li>Cannot be undone</li>${n ? `<li><strong>Refused:</strong> ${n} thing(s) still attached. Remove them first, or merge.</li>` : ''}</ul>`, ok:'Delete permanently', okDisabledReason: n ? 'Still has attachments' : null}); if (!ok) return; await run(() => api.remove(p)); state.screen = 'roster'; state.tab = state.fromTab || 'adult'; render(); toast(`Deleted ${nameOf(p)}.`); break; }
+    case 'promote': { const ok = await confirmDialog({title:`Promote ${nameOf(p)} to adult (turned 18)?`, body:`<ul><li>Scout record becomes Inactive (Aged out); ledger and clipboard kept</li><li>Sign-off initials become an adult leader</li><li>Leaves scout rosters, Fast Entry and Meeting Plan</li><li>Record outstanding sign-offs <strong>before</strong> promoting</li></ul>`, ok:'Promote', danger:false}); if (!ok) return; await run(() => api.promote(p)); state.banner = {cls:'n-ok', html:`Promoted. ${esc(nameOf(p))} is now an inactive scout (Aged out) and an adult on the roster.`}; render(); break; }
+  }
+});
+$('#handoffBtn').addEventListener('click', () => { const b = $('#handoffBody'); b.hidden = !b.hidden; $('#handoffBtn').setAttribute('aria-expanded', String(!b.hidden)); });
+render();
+</script>
+</body>
+</html>
