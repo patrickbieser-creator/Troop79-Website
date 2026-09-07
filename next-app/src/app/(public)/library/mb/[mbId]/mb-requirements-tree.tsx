@@ -1,4 +1,5 @@
 import { optionalityNote, type ReqNode } from '@/lib/mb-helpers';
+import type { LibraryViewer } from '@/lib/library-viewer';
 import s from './mb-tracker.module.css';
 
 /**
@@ -10,8 +11,25 @@ import s from './mb-tracker.module.css';
  * cannot, and it is part of "everything on the individual merit badge display"
  * that Patrick asked to relocate. The picker is for claiming; this is for
  * reading.
+ *
+ * `viewer` and `pendingByLeaf` (Plans/Library-MB-Consolidation.md, Phase 1)
+ * arrive from the page and are threaded through the recursion but NOT yet
+ * rendered — Phase 2 turns each row into the consolidated requirement row
+ * (resources, note, pending pill, per-row actions). Server component, so a
+ * Map/Set prop is fine; keep it that way or these need serialising.
  */
-export function MbRequirementsTree({ nodes, depth }: { nodes: ReqNode[]; depth: number }) {
+export function MbRequirementsTree({
+  nodes,
+  depth,
+  viewer,
+  pendingByLeaf
+}: {
+  nodes: ReqNode[];
+  depth: number;
+  viewer?: LibraryViewer;
+  /** leaf code → scout ids with a proof still pending (the viewer's own scouts only). */
+  pendingByLeaf?: Map<string, Set<string>>;
+}) {
   return (
     <>
       {nodes.map((node) => {
@@ -47,7 +65,12 @@ export function MbRequirementsTree({ nodes, depth }: { nodes: ReqNode[]; depth: 
             )}
             {hasChildren && (
               <div className={s.reqChildren}>
-                <MbRequirementsTree nodes={node.children} depth={depth + 1} />
+                <MbRequirementsTree
+                  nodes={node.children}
+                  depth={depth + 1}
+                  viewer={viewer}
+                  pendingByLeaf={pendingByLeaf}
+                />
               </div>
             )}
           </div>

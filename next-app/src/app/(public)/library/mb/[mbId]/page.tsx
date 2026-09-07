@@ -26,8 +26,27 @@
  * tracker were both fully public — but the promise did, so it is recorded
  * here instead of discovered later.
  *
- * `?viewScout=` is still dropped. The grid is troop-wide, not personalized;
- * highlighting the viewing scout's row is a separate decision Patrick parked.
+ * `?viewScout=` IS honoured here since 2026-09-07 (Plans/Library-MB-Consolidation.md,
+ * Phase 1) — resolved through the same lib/library-viewer.ts chain the rank
+ * pages use, so the URL value only ever selects among scouts the session is
+ * already authorized to see. Phase 1 resolves the viewer and loads their
+ * pending proofs per requirement but renders NOTHING new with them; Phase 2
+ * (the consolidated Requirements section, prototype rev 4) is the consumer.
+ * The grid stays troop-wide, not personalized.
+ *
+ * QUERY COUNT per request (perf item 18's discipline), Phase 1 vs before:
+ *   Visitor — before: merit_badges (1, shared with generateMetadata) +
+ *   merit_badge_requirements (1) + requirement_notes (1) + library_placements
+ *   ×2 (whole badge, hand-rolled mb_req) + ledger_entries (1 per 1000 rows)
+ *   + scouts (1) = 7. After: the same 7 — loadMbRequirementNotes replaces
+ *   loadNarrative (one read now carries the badge narrative AND every
+ *   per-requirement note), loadMbPageResources replaces loadPublishedFor +
+ *   the hand-rolled query. With no session cookie resolveLibraryViewer and
+ *   gateAudience issue nothing, and loadMbPendingSubmissions([]) returns
+ *   without a query.
+ *   Signed-in household — the 7 above + resolveLibraryViewer's own cost
+ *   (the request-cached epoch check + household load the rank page already
+ *   pays) + 1 requirement_submissions read scoped to the viewed scout.
  */
 import type { Metadata } from 'next';
 import { cache } from 'react';
@@ -47,8 +66,14 @@ import {
 } from '@/lib/mb-scout-progress';
 import { ArticleBody } from '@/lib/article-body/ArticleBody';
 import { gateAudience } from '@/lib/family-access';
-import { loadNarrative, loadPublishedFor, type PlacedResource } from '@/lib/library-data';
-import { viewerIsLeader } from '@/lib/library-viewer';
+import {
+  loadMbPageResources,
+  loadMbPendingSubmissions,
+  loadMbRequirementNotes,
+  sortPlacedResources,
+  type PlacedResource
+} from '@/lib/library-data';
+import { resolveLibraryViewer, viewerIsLeader } from '@/lib/library-viewer';
 import { TrackedExternalLink } from '../../../_components/tracked-external-link';
 import { ResourceCard } from '../../_components/resource-card';
 import MbProofPicker from './mb-proof-picker';
@@ -97,39 +122,35 @@ export async function generateMetadata({
 const PROOF_ANCHOR = 'i-did-this';
 
 export default async function LibraryMbPage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ mbId: string }>;
+  searchParams: Promise<{ viewScout?: string }>;
 }) {
   const { mbId } = await params;
+  const { viewScout } = await searchParams;
   const supabase = createAdminClient();
   const isLeader = await viewerIsLeader();
+  // Started here, awaited inside the Promise.all: the pending-proof read
+  // depends on WHICH scout the viewer resolves to, so it chains off this
+  // promise rather than serialising the whole page behind it.
+  const viewerP = resolveLibraryViewer(supabase, viewScout);
 
   const [
     mb,
     reqsRes,
-    narrative,
-    badgeResources,
-    reqPlacementsRes,
+    notes,
+    resources,
     ledgerRows,
-    { data: scoutRows }
+    { data: scoutRows },
+    viewer,
+    pendingByLeaf
   ] = await Promise.all([
     loadMeritBadge(mbId),
     supabase.from('merit_badge_requirements').select('*').eq('mb_id', mbId),
-    loadNarrative(createAdminClient(), 'mb', mbId),
-    loadPublishedFor(createAdminClient(), 'mb', mbId, isLeader),
-    // All published resources placed on any of this badge's requirements.
-    // Hand-rolled rather than loadPublishedFor (one query for every
-    // requirement at once) — so it carries the visibility filter itself.
-    supabase
-      .from('library_placements')
-      .select('id, pinned, sort_order, target_kind, target_key, library_resources!inner(*)')
-      .eq('target_kind', 'mb_req')
-      .like('target_key', `${mbId}-%`)
-      .eq('library_resources.status', 'published')
-      .in('library_resources.visibility', isLeader ? ['public', 'leaders'] : ['public'])
-      .order('pinned', { ascending: false })
-      .order('sort_order'),
+    loadMbRequirementNotes(createAdminClient(), mbId),
+    loadMbPageResources(createAdminClient(), mbId, isLeader),
     // Unbounded past the ~1000-row PostgREST cap once a badge accumulates
     // enough history across every scout — paginate (lib/supabase/paginate.ts).
     fetchAllRows<MbLedgerRow>((from, to) =>
@@ -141,11 +162,20 @@ export default async function LibraryMbPage({
         .is('deleted_at', null)
         .range(from, to)
     ),
-    supabase.from('scouts').select(SCOUT_CORE_COLS).eq('active', true).order('display_name')
+    supabase.from('scouts').select(SCOUT_CORE_COLS).eq('active', true).order('display_name'),
+    viewerP,
+    // Only the resolved viewer's OWN scout — never a guessed `?viewScout=`
+    // (resolveLibraryViewer already refused anything outside the session's
+    // household). A 'none' / 'proxy-available' viewer has no scout → no query.
+    viewerP.then((v) =>
+      loadMbPendingSubmissions(createAdminClient(), mbId, v.kind === 'scout' ? [v.scoutId] : [])
+    )
   ]);
   if (!mb) notFound();
 
   const badge = mb;
+  const narrative = notes.wholeBadge;
+  const badgeResources = resources.wholeBadge;
   const reqTree = buildReqTree((reqsRes.data ?? []) as MeritBadgeRequirement[]);
   const leaves = flattenLeaves(reqTree);
 
@@ -160,32 +190,16 @@ export default async function LibraryMbPage({
   const groups = gridGroups(reqTree, leaves);
 
   // Group requirement-level resources by their TOP-LEVEL requirement code so
-  // a resource on 'robotics-4a' shows under "Requirement 4".
-  type PlacementRow = {
-    id: number;
-    pinned: boolean;
-    sort_order: number;
-    target_kind: 'mb_req';
-    target_key: string;
-    library_resources: PlacedResource;
-  };
+  // a resource on 'robotics-4a' shows under "Requirement 4". The loader keys
+  // by LEAF ('4a') for Phase 2's per-row rendering; this roll-up reproduces
+  // today's sections unchanged, re-sorted with the one shared comparator so
+  // a merged group reads pinned → sort_order → newest like every other list.
   const byTopCode = new Map<string, PlacedResource[]>();
-  for (const row of (reqPlacementsRes.data ?? []) as unknown as PlacementRow[]) {
-    const reqCode = row.target_key.slice(mbId.length + 1);
-    const topCode = topLevelCodeOf(reqTree, reqCode) ?? reqCode;
-    const list = byTopCode.get(topCode) ?? [];
-    list.push({
-      ...row.library_resources,
-      placement: {
-        id: row.id,
-        pinned: row.pinned,
-        sort_order: row.sort_order,
-        target_kind: row.target_kind,
-        target_key: row.target_key
-      }
-    });
-    byTopCode.set(topCode, list);
+  for (const [leafCode, placed] of resources.byLeafCode) {
+    const topCode = topLevelCodeOf(reqTree, leafCode) ?? leafCode;
+    byTopCode.set(topCode, [...(byTopCode.get(topCode) ?? []), ...placed]);
   }
+  for (const list of byTopCode.values()) sortPlacedResources(list);
   const topGroups = reqTree
     .map((top) => ({ top, resources: byTopCode.get(top.code) ?? [] }))
     .filter((g) => g.resources.length > 0);
@@ -294,7 +308,10 @@ export default async function LibraryMbPage({
             From the official BSA merit badge pamphlet — wording is paraphrased here. Confirm
             against the current pamphlet for sign-off.
           </p>
-          <MbRequirementsTree nodes={reqTree} depth={0} />
+          {/* viewer + pendingByLeaf are carried, not rendered — Phase 2's
+              consolidated section (Plans/Library-MB-Consolidation.md) is the
+              first consumer; nothing on the page changes for them yet. */}
+          <MbRequirementsTree nodes={reqTree} depth={0} viewer={viewer} pendingByLeaf={pendingByLeaf} />
         </div>
 
         <SectionDivider

@@ -1,6 +1,6 @@
 # Library Merit Badge Page — one Requirements section, per-requirement suggestions
 
-**Status:** Prototype ready for Patrick's review (2026-09-07). Plan parked until a direction is picked.
+**Status:** Active — prototype rev 4 approved as the spec; Phase 1 (loader) started 2026-09-07.
 **Priority:** High
 **Trigger:** Patrick, 2026-09-07: "consolidate the 'Requirements', 'Whole-Badge Resources' and 'I Did This'
 sections into one section using the display of Requirements. There's no reason for the redundancy. Draw a

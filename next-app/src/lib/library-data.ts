@@ -51,6 +51,42 @@ export async function loadTopics(supabase: SupabaseClient): Promise<LibraryTopic
   return (data ?? []) as LibraryTopic[];
 }
 
+/** The placement ⋈ resource row every published-placement read selects. */
+const PLACED_SELECT = 'id, pinned, sort_order, target_kind, target_key, library_resources!inner(*)';
+type PlacedRow = LibraryPlacement & { library_resources: LibraryResource };
+
+function toPlaced(row: PlacedRow): PlacedResource {
+  return {
+    ...row.library_resources,
+    placement: {
+      id: row.id,
+      pinned: row.pinned,
+      sort_order: row.sort_order,
+      target_kind: row.target_kind,
+      target_key: row.target_key
+    }
+  };
+}
+
+/**
+ * Pinned first, then webmaster order; ties (default sort_order 0) read
+ * newest-first BY THE RESOURCE's date — a weekly shelf like the Sparkler
+ * stays current without hand-numbering. Sorted here, not in PostgREST: the
+ * date lives on the joined resource (a backfilled post carries its real
+ * issue date), and ordering by the placement's own created_at put the
+ * whole archive oldest-first (caught live 2026-07-21). One comparator for
+ * every list on a page, so a per-requirement group can never order
+ * differently from the whole-badge shelf beside it.
+ */
+export function sortPlacedResources(list: PlacedResource[]): PlacedResource[] {
+  return list.sort(
+    (a, b) =>
+      Number(b.placement.pinned) - Number(a.placement.pinned) ||
+      a.placement.sort_order - b.placement.sort_order ||
+      b.created_at.localeCompare(a.created_at)
+  );
+}
+
 /** Published resources placed on one page, pinned first then webmaster order. */
 export async function loadPublishedFor(
   supabase: SupabaseClient,
@@ -60,34 +96,140 @@ export async function loadPublishedFor(
 ): Promise<PlacedResource[]> {
   const { data } = await supabase
     .from('library_placements')
-    .select('id, pinned, sort_order, target_kind, target_key, library_resources!inner(*)')
+    .select(PLACED_SELECT)
     .eq('target_kind', targetKind)
     .eq('target_key', targetKey)
     .eq('library_resources.status', 'published')
     .in('library_resources.visibility', visibleTo(viewerIsLeader));
-  type Row = LibraryPlacement & { library_resources: LibraryResource };
-  const placed = ((data ?? []) as unknown as Row[]).map((row) => ({
-    ...row.library_resources,
-    placement: {
-      id: row.id,
-      pinned: row.pinned,
-      sort_order: row.sort_order,
-      target_kind: row.target_kind,
-      target_key: row.target_key
+  return sortPlacedResources(((data ?? []) as unknown as PlacedRow[]).map(toPlaced));
+}
+
+// ── /library/mb/[mbId] — one badge's resources, notes and pending proofs ────
+// (Plans/Library-MB-Consolidation.md, Phase 1.) Everything below is keyed by
+// the LEAF code — the part of `{mbId}-{code}` after the badge id — because
+// Phase 2 renders each requirement row with its own resources, note and the
+// viewer's pending proof. A group-level key (`chemistry-4`) is a legitimate
+// placement target and comes back under '4'; rolling leaves up to their
+// top-level code is the page's job (topLevelCodeOf), not the loader's.
+//
+// All three reads are scoped to one badge, so they are provably small (D-028:
+// First Aid, the largest, is ~83 leaves) and never need fetchAllRows.
+
+/** `{mbId}-{code}` → `code`. Assumes the caller already filtered on the prefix. */
+function leafCodeOf(mbId: string, targetKey: string): string {
+  return targetKey.slice(mbId.length + 1);
+}
+
+export interface MbPageResources {
+  /** Placed on the badge itself (`target_kind='mb'`) — exactly loadPublishedFor('mb', mbId). */
+  wholeBadge: PlacedResource[];
+  /** Placed on one requirement (`target_kind='mb_req'`), by leaf code, each list in shelf order. */
+  byLeafCode: Map<string, PlacedResource[]>;
+}
+
+/**
+ * Every published resource on a badge page in two queries — the badge's own
+ * shelf and ONE `LIKE '{mbId}-%'` read for all of its requirements (the page
+ * used to hand-roll the latter; it moved here so the visibility gate and the
+ * ordering live in one place). Same `%` prefix match the ledger fold uses:
+ * badge ids are hyphenated slugs, never containing `_` or `%`.
+ */
+export async function loadMbPageResources(
+  supabase: SupabaseClient,
+  mbId: string,
+  viewerIsLeader = false
+): Promise<MbPageResources> {
+  const [wholeBadge, reqRes] = await Promise.all([
+    loadPublishedFor(supabase, 'mb', mbId, viewerIsLeader),
+    supabase
+      .from('library_placements')
+      .select(PLACED_SELECT)
+      .eq('target_kind', 'mb_req')
+      .like('target_key', `${mbId}-%`)
+      .eq('library_resources.status', 'published')
+      .in('library_resources.visibility', visibleTo(viewerIsLeader))
+  ]);
+  const byLeafCode = new Map<string, PlacedResource[]>();
+  for (const row of (reqRes.data ?? []) as unknown as PlacedRow[]) {
+    const code = leafCodeOf(mbId, row.target_key);
+    const list = byLeafCode.get(code) ?? [];
+    list.push(toPlaced(row));
+    byLeafCode.set(code, list);
+  }
+  for (const list of byLeafCode.values()) sortPlacedResources(list);
+  return { wholeBadge, byLeafCode };
+}
+
+export type MbRequirementNote = Pick<RequirementNote, 'narrative_md' | 'updated_by' | 'updated_at'>;
+
+export interface MbPageNotes {
+  /** The badge's own narrative (`target_kind='mb'`) — exactly loadNarrative('mb', mbId). */
+  wholeBadge: RequirementNote | null;
+  /** Per-requirement narratives (`target_kind='mb_req'`), by leaf code. */
+  byLeafCode: Map<string, MbRequirementNote>;
+}
+
+/**
+ * The badge narrative AND every per-requirement note in ONE query, so
+ * surfacing requirement notes costs the page nothing over the single
+ * loadNarrative('mb') read it made before. `LIKE '{mbId}%'` (no hyphen)
+ * catches both key shapes; the kind/key pairing is re-checked in JS so a
+ * badge whose id is a prefix of another's (`first-aid` / `first-aid-x`)
+ * can't pick up the other's rows.
+ */
+export async function loadMbRequirementNotes(
+  supabase: SupabaseClient,
+  mbId: string
+): Promise<MbPageNotes> {
+  const { data } = await supabase
+    .from('requirement_notes')
+    .select('*')
+    .in('target_kind', ['mb', 'mb_req'])
+    .like('target_key', `${mbId}%`);
+  let wholeBadge: RequirementNote | null = null;
+  const byLeafCode = new Map<string, MbRequirementNote>();
+  for (const note of (data ?? []) as RequirementNote[]) {
+    if (note.target_kind === 'mb' && note.target_key === mbId) {
+      wholeBadge = note;
+    } else if (note.target_kind === 'mb_req' && note.target_key.startsWith(`${mbId}-`)) {
+      byLeafCode.set(leafCodeOf(mbId, note.target_key), {
+        narrative_md: note.narrative_md,
+        updated_by: note.updated_by,
+        updated_at: note.updated_at
+      });
     }
-  }));
-  // Pinned first, then webmaster order; ties (default sort_order 0) read
-  // newest-first BY THE RESOURCE's date — a weekly shelf like the Sparkler
-  // stays current without hand-numbering. Sorted here, not in PostgREST: the
-  // date lives on the joined resource (a backfilled post carries its real
-  // issue date), and ordering by the placement's own created_at put the
-  // whole archive oldest-first (caught live 2026-07-21).
-  return placed.sort(
-    (a, b) =>
-      Number(b.placement.pinned) - Number(a.placement.pinned) ||
-      a.placement.sort_order - b.placement.sort_order ||
-      b.created_at.localeCompare(a.created_at)
-  );
+  }
+  return { wholeBadge, byLeafCode };
+}
+
+/**
+ * Which of THESE scouts have a proof still pending on which requirement of
+ * this badge — leaf code → scout ids. Scoped strictly to the ids passed in:
+ * the page hands it the resolved viewer's own scout(s) (lib/library-viewer.ts
+ * has already authorized them), so another family's pending work can never
+ * come back, and no scouts means no query at all.
+ */
+export async function loadMbPendingSubmissions(
+  supabase: SupabaseClient,
+  mbId: string,
+  scoutIds: string[]
+): Promise<Map<string, Set<string>>> {
+  const byLeafCode = new Map<string, Set<string>>();
+  if (scoutIds.length === 0) return byLeafCode;
+  const { data } = await supabase
+    .from('requirement_submissions')
+    .select('scout_id, target_key')
+    .eq('target_kind', 'mb_req')
+    .eq('status', 'pending')
+    .in('scout_id', scoutIds)
+    .like('target_key', `${mbId}-%`);
+  for (const row of (data ?? []) as { scout_id: string; target_key: string }[]) {
+    const code = leafCodeOf(mbId, row.target_key);
+    const set = byLeafCode.get(code) ?? new Set<string>();
+    set.add(row.scout_id);
+    byLeafCode.set(code, set);
+  }
+  return byLeafCode;
 }
 
 /**
