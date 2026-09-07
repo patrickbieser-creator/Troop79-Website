@@ -188,4 +188,10 @@ Nothing else is visible at rest. The old legend strip (Done / Pending / Not yet 
 quiet legend at the top names the three icons. Pinned is a ★ before the title. The Scout Progress grid's
 header rule is one continuous line under Scout and Award.
 
+**Scout selector (Patrick, same day):** when a household with two or more scouts is signed in, a
+pull-down like the library superuser's scout picker sits directly under the Scout Progress grid and
+above the Requirements header. The rows personalise to the selected scout only (Done pill without
+initials, "I did this" only where that scout still needs it, proof dialog pre-selects that scout). One
+scout in the household → no pull-down. Maps to the existing `?viewScout=` mechanism in the build.
+
 _Next: Patrick approves rev 2 or redirects; then the tech-lead phases above become the build plan._

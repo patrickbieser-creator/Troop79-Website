@@ -127,6 +127,16 @@ button { font: inherit; }
 .awardCell { position: sticky; left: 200px; z-index: 2; width: 60px; text-align: center; font-size: 18px; line-height: 1; font-weight: 700; padding: 6px var(--sp-2); color: var(--bark); background: var(--warm-white); border-right: 2px solid var(--bark); border-bottom: 1px solid var(--border-light); }
 .awardCellDone { color: #5a3a00; background: #f5d76a; } /* deliberate: production's two celebration-gold hexes */
 
+/* ── Scout switcher — copied from library.module.css .scoutSwitcher /
+   .scoutSwitcherSelect (the /library and rank-page control, Patrick
+   2026-08-07). Khaki accent = "your scout" personalization, deliberately
+   distinct from forest. Production navigates with ?viewScout=; here it is a
+   plain select that re-renders. ── */
+.scoutSwitcher { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: var(--khaki-light); border: 1px solid var(--khaki); border-radius: var(--rad-sm); padding: 8px 14px; margin: 14px 0 0; font-family: var(--font-ui); font-size: 12.5px; }
+.scoutSwitcherLabel { font-weight: 700; color: var(--text-head); }
+.scoutSwitcherSelect { font-family: var(--font-ui); font-size: 12.5px; border: 1px solid var(--border-mid); border-radius: var(--rad-sm); padding: 4px 8px; background: var(--warm-white); color: var(--text-body); }
+.scoutSwitcherSelect:focus-visible { border-color: var(--navy); outline: var(--focus-ring); outline-offset: 1px; }
+
 /* ── THE consolidated requirements list ── */
 .reqCard { background: var(--warm-white); border: 1px solid var(--border-light); box-shadow: var(--shadow-card); padding: var(--sp-5) 22px; }
 .reqDisclaimer { font-family: var(--font-body); font-size: var(--fs-xs); font-style: italic; color: var(--text-meta); margin: 0 0 var(--sp-2); }
@@ -320,6 +330,7 @@ dialog[open] { animation: fadeIn .15s ease-out; }
 
   <div class="divider"><span class="divLabel">Scout Progress</span><div class="divRule"></div></div>
   <div class="gridScroller" id="gridScroller"></div>
+  <div id="switcher"></div>
 
   <div class="divider" id="requirements">
     <span class="divLabel">Requirements</span><div class="divRule"></div>
@@ -341,6 +352,7 @@ dialog[open] { animation: fadeIn .15s ease-out; }
       <h2>Row grammar (rev 2, after Patrick&rsquo;s review)</h2>
       <p><strong>At rest:</strong> code · label · small <em>Done · Jun 12</em> / <em>Pending</em> pill per own scout · up to three icon-only actions, in this order and with these rules (Patrick, 2026-09-07): <strong>1. View resources (count)</strong> &mdash; only when the requirement has any; name &ldquo;View resources — 4a (3)&rdquo;; it and the requirement text open the row. <strong>2. I did this</strong> &mdash; only while at least one own scout is not done or pending; hidden (not greyed) once every own scout is; never for visitors. <strong>3. Suggest a resource</strong> &mdash; always, every viewer. Nothing else. Every icon has a <code>title</code>, an <code>aria-label</code> naming the requirement, and a tooltip bubble on hover/focus. <strong>Opened:</strong> one quiet line per resource (glyph · ★ title · host in muted text; YouTube = static thumbnail, links out) and the counselor note. Group rows (1, 2, 3, 4, 8): the label toggles the child rows; the View resources icon opens the group&rsquo;s own resources. Not-yet-done scouts show no pill at all.</p>
       <p><strong>Legend:</strong> one line at the top of the list naming the three icons with their conditions (the I did this entry drops out for visitors). <strong>Grid:</strong> the navy header rule runs under the second header row everywhere, so the Scout column&rsquo;s rule meets Award&rsquo;s.</p>
+      <p><strong>Whose progress (Patrick, 2026-09-07):</strong> a household with two or more scouts gets the production <code>ScoutSwitcher</code> (<code>library/_components/scout-switcher.tsx</code>, its &ldquo;Showing progress for&rdquo; select) directly under the Scout Progress grid and above the Requirements divider. The rows then personalise to <em>that one scout</em>: pill &ldquo;Done · Apr 19&rdquo; with no initials, I did this only where that scout still needs it, and the proof dialog pre-selects them (siblings stay pickable, done/pending ones disabled). Default = first scout; the choice is remembered for the session, exactly like <code>?viewScout=</code> on <code>/library</code>, which is the mechanism to reuse here: this page today drops <code>viewScout</code> (see its header comment) and would start honouring it through <code>resolveLibraryViewer(supabase, viewScout)</code> like the rank page does. A one-scout household gets the switcher&rsquo;s plain-text mode (&ldquo;Showing progress for Ari D.&rdquo;), as production always names whose progress is showing; the scout viewer gets the same line; visitors get nothing. The grid keeps showing every household scout.</p>
 
       <h2>Row anatomy → schema</h2>
       <div class="tableWrap"><table>
@@ -350,7 +362,8 @@ dialog[open] { animation: fadeIn .15s ease-out; }
           <tr><td>&ldquo;For the whole badge&rdquo; row</td><td><code>library_placements</code> target_kind=<code>mb</code>, target_key=<code>chemistry</code></td><td>Today&rsquo;s middle section. No &ldquo;I did this&rdquo; (proof names a leaf).</td></tr>
           <tr><td>View resources icon + count; resource lines</td><td><code>library_placements</code> target_kind=<code>mb_req</code>, target_key=<code>chemistry-4c</code> ⋈ <code>library_resources</code> (kind, title, host, url, thumbnail_url; status=published; visibility)</td><td>Count = published placements on that exact code (+ the viewer&rsquo;s own pending ones + 1 if a note exists). Ordered pinned desc, sort_order; pinned shows a ★. A placement on a top-level code renders on the group row.</td></tr>
           <tr><td>Counselor note</td><td><code>requirement_notes</code> target_kind=<code>mb_req</code>; narrative_md, updated_by</td><td>Inside the opened row. Badge-level narrative stays above the stats.</td></tr>
-          <tr><td>Done · date pill</td><td><code>ledger_entries</code> (scout_id, code, entry date) for the viewer&rsquo;s household scouts</td><td><code>fmtDate</code> style: short month + day, year only when not the current year. Two scouts → initials prefix (&ldquo;AD · Jun 12&rdquo;). Group rows show a muted &ldquo;AD 3/4&rdquo;.</td></tr>
+          <tr><td>Done · date pill</td><td><code>ledger_entries</code> (scout_id, code, entry date) for the ONE viewed scout (<code>resolveLibraryViewer</code> + <code>?viewScout=</code>)</td><td><code>fmtDate</code> style: short month + day, year only when not the current year. Group rows show a muted &ldquo;3/4&rdquo;.</td></tr>
+          <tr><td>&ldquo;Showing progress for&rdquo; switcher</td><td><code>LibraryViewer.switchOptions</code> (household scouts via <code>household_members</code>); selection = <code>?viewScout=</code></td><td>Existing <code>ScoutSwitcher</code> component, placed under the grid. Select for 2+ scouts, text for one, nothing for visitors.</td></tr>
           <tr><td>Pending pill</td><td><code>requirement_submissions</code> status=<code>pending</code> (scout_id, target_key)</td><td>Proof in the queue; the dialog disables that scout.</td></tr>
           <tr><td>Pending suggestion line</td><td><code>library_resources</code> status=<code>pending</code>, submitted_person_id = viewer</td><td>Submitter only; everyone else sees nothing until approved. The row auto-opens after sending so the line is visible.</td></tr>
           <tr><td>I did this icon</td><td><code>/library/submit-proof?target=mb_req:chemistry-4c</code></td><td>In-page dialog here. Rendered only while an own scout still needs the requirement (not done, no pending proof); otherwise absent.</td></tr>
@@ -501,6 +514,9 @@ const VIEWERS = {
 
 /* ═══ STATE ═══ */
 let viewer = 'parent';
+/* The ONE scout whose progress the rows show (production: resolveLibraryViewer
+   + ?viewScout=). Remembered for the session per viewer, like the URL param. */
+let viewScoutId = null;
 let scouts, resources, pending, proofs, collapsed, openSubs, nextId;
 function reset() {
   scouts = SEED_SCOUTS.map(s => ({ ...s, codes: new Map(s.codes) }));
@@ -513,6 +529,19 @@ reset();
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const byCode = code => LEAVES.find(l => l.code === code) || TREE.find(t => t.code === code);
 const ownScouts = () => VIEWERS[viewer].scouts.map(id => scouts.find(s => s.id === id));
+/* The household's chosen scout (or the only one); null for a visitor. */
+function viewedScout() {
+  const own = ownScouts();
+  if (!own.length) return null;
+  let remembered = null;
+  try { remembered = sessionStorage.getItem('viewScout:' + viewer); } catch (_) {}
+  const id = viewScoutId || remembered;
+  return own.find(s => s.id === id) || own[0];
+}
+function setViewScout(id) {
+  viewScoutId = id;
+  try { sessionStorage.setItem('viewScout:' + viewer, id); } catch (_) {}
+}
 const hasProof = (sid, code) => proofs.some(p => p.scoutId === sid && p.code === code);
 const resFor = code => resources.filter(r => r.target === code).sort((a, b) => (b.pinned - a.pinned) || (a.id - b.id));
 const pendFor = code => pending.filter(p => p.target === code && p.by === viewer);
@@ -551,25 +580,29 @@ function renderGrid() {
 }
 
 /* ═══ THE LIST ═══ */
+/* One scout is always in view, so the pill never needs initials. */
 function pills(code) {
-  const own = ownScouts();
-  if (!own.length) return '';
-  const many = own.length > 1;
-  return own.map(sc => {
-    const on = sc.codes.get(code);
-    if (on) return `<span class="pill" title="${esc(sc.name)} — done ${fmtDate(on, true)}">${many ? sc.initials + ' · ' : 'Done · '}${fmtDate(on)}<span class="sr-only"> ${esc(sc.name)} done</span></span>`;
-    if (hasProof(sc.id, code)) return `<span class="pill pillPending" title="${esc(sc.name)} — proof waiting for a leader">${many ? sc.initials + ' · ' : ''}Pending<span class="sr-only"> ${esc(sc.name)} proof pending review</span></span>`;
-    return '';
-  }).join('');
+  const sc = viewedScout();
+  if (!sc) return '';
+  const on = sc.codes.get(code);
+  if (on) return `<span class="pill" title="${esc(sc.name)} — done ${fmtDate(on, true)}">Done · ${fmtDate(on)}<span class="sr-only"> ${esc(sc.name)} done</span></span>`;
+  if (hasProof(sc.id, code)) return `<span class="pill pillPending" title="${esc(sc.name)} — proof waiting for a leader">Pending<span class="sr-only"> ${esc(sc.name)} proof pending review</span></span>`;
+  return '';
 }
 function groupFrac(node) {
-  const own = ownScouts();
-  if (!own.length) return '';
-  const n = node.children.length;
-  return own.map(sc => {
-    const k = node.children.filter(c => sc.codes.has(c.code)).length;
-    return k ? `<span class="frac" title="${esc(sc.name)} — ${k} of ${n} parts done">${own.length > 1 ? sc.initials + ' ' : ''}${k}/${n}</span>` : '';
-  }).join('');
+  const sc = viewedScout();
+  if (!sc) return '';
+  const n = node.children.length, k = node.children.filter(c => sc.codes.has(c.code)).length;
+  return k ? `<span class="frac" title="${esc(sc.name)} — ${k} of ${n} parts done">${k}/${n}</span>` : '';
+}
+/* Under the grid, above Requirements: the production ScoutSwitcher's two
+   household modes — a select for 2+ scouts, plain text for exactly one. */
+function renderSwitcher() {
+  const own = ownScouts(), el = document.getElementById('switcher');
+  if (!own.length) { el.innerHTML = ''; return; }
+  const sc = viewedScout();
+  if (own.length === 1) { el.innerHTML = `<div class="scoutSwitcher"><span class="scoutSwitcherLabel">Showing progress for</span><strong>${esc(sc.name)}</strong></div>`; return; }
+  el.innerHTML = `<div class="scoutSwitcher"><label class="scoutSwitcherLabel" for="viewScout">Showing progress for</label><select class="scoutSwitcherSelect" id="viewScout" aria-label="Choose which scout's progress to show">${own.map(o => `<option value="${o.id}"${o.id === sc.id ? ' selected' : ''}>${esc(o.name)}</option>`).join('')}</select></div>`;
 }
 function resLine(r, isPending) {
   const media = r.thumb && !isPending ? `<img class="resThumb" src="${r.thumb}" alt="" aria-hidden="true">` : `<span class="resIco" aria-hidden="true">${KIND[r.kind].ico}</span>`;
@@ -601,7 +634,8 @@ function actions(code, isLeaf) {
     const name = `View resources — ${what} (${n})`;
     h += `<button type="button" class="act" data-open="${code}" aria-expanded="${open}" aria-controls="sub-${code}" title="${name}" aria-label="${name}">${ICO_RES}<span class="actCount">${n}</span><span class="tip">${name}</span></button>`;
   }
-  if (isLeaf && own.length && own.some(sc => !sc.codes.has(code) && !hasProof(sc.id, code))) {
+  const sc = viewedScout();
+  if (isLeaf && sc && !sc.codes.has(code) && !hasProof(sc.id, code)) {
     h += `<button type="button" class="act actProof" data-proof="${code}" title="I did this — ${code}" aria-label="I did this — ${code}">${ICO_CHECK}<span class="tip">I did this — ${code}</span></button>`;
   }
   h += `<button type="button" class="act" data-suggest="${code}" title="Suggest a resource — ${what}" aria-label="Suggest a resource — ${what}">${ICO_PLUS}<span class="tip">Suggest a resource — ${what}</span></button>`;
@@ -649,7 +683,8 @@ function renderList() {
   document.getElementById('visitorHint').hidden = viewer !== 'visitor';
   document.getElementById('jumpProof').hidden = viewer === 'visitor';
   const own = ownScouts().length;
-  document.getElementById('legend').innerHTML = `<span>${ICO_RES} View resources · shown when a requirement has any</span>${own ? `<span>${ICO_CHECK} I did this · shown until your scout is done</span>` : ''}<span>${ICO_PLUS} Suggest a resource · always</span>`;
+  document.getElementById('legend').innerHTML = `<span>${ICO_RES} View resources · shown when a requirement has any</span>${own ? `<span>${ICO_CHECK} I did this · shown until this scout is done</span>` : ''}<span>${ICO_PLUS} Suggest a resource · always</span>`;
+  renderSwitcher();
   document.getElementById('mastWho').textContent = VIEWERS[viewer].who;
 }
 function renderAll() { renderGrid(); renderList(); }
@@ -662,13 +697,15 @@ function openProof(code) {
   const node = byCode(code), own = ownScouts();
   document.getElementById('proofTitle').textContent = `Requirement ${code}`;
   document.getElementById('proofTarget').innerHTML = `<span class="rqTag">${code}</span><span>${esc(node.label)}</span>`;
-  const eligible = own.filter(sc => !sc.codes.has(code) && !hasProof(sc.id, code));
+  const viewed = viewedScout();
   let h = '';
   if (own.length > 1) {
+    /* The viewed scout is pre-selected; siblings stay pickable (a parent may
+       be claiming for the other child), done/pending ones disabled. */
     h += `<fieldset class="fieldRow" style="border:0;padding:0;margin:0 0 16px"><legend class="fieldLabel">Which scout?</legend>`;
     for (const sc of own) {
       const done = sc.codes.has(code), pend = hasProof(sc.id, code), off = done || pend;
-      h += `<label class="radioRow"><input type="radio" name="scout" value="${sc.id}"${off ? ' disabled' : ''}${!off && eligible[0] === sc ? ' checked' : ''}><span>${esc(sc.name)}${off ? ` <span class="muted">— ${done ? 'signed off ' + fmtDate(sc.codes.get(code), true) : 'proof already sent'}</span>` : ''}</span></label>`;
+      h += `<label class="radioRow"><input type="radio" name="scout" value="${sc.id}"${off ? ' disabled' : ''}${!off && sc === viewed ? ' checked' : ''}><span>${esc(sc.name)}${off ? ` <span class="muted">— ${done ? 'signed off ' + fmtDate(sc.codes.get(code), true) : 'proof already sent'}</span>` : ''}</span></label>`;
     }
     h += '</fieldset>';
   } else {
@@ -795,10 +832,16 @@ document.addEventListener('click', e => {
   else if (t.dataset.suggest) openSuggest(t.dataset.suggest);
   else if (t.hasAttribute('data-close')) { t.closest('dialog').close(); if (t.tagName === 'A') e.preventDefault(); }
   else if (t.dataset.viewer) {
-    viewer = t.dataset.viewer;
+    viewer = t.dataset.viewer; viewScoutId = null;
     for (const b of document.querySelectorAll('[data-viewer]')) b.setAttribute('aria-pressed', String(b.dataset.viewer === viewer));
     renderList(); announce(`Now viewing as ${VIEWERS[viewer].who}.`);
   }
+});
+document.getElementById('switcher').addEventListener('change', e => {
+  if (e.target.id !== 'viewScout') return;
+  setViewScout(e.target.value); renderList();
+  announce(`Showing progress for ${viewedScout().name.replace(/\.$/, '')}.`);
+  document.getElementById('viewScout').focus();
 });
 document.getElementById('expandAll').addEventListener('click', () => {
   collapsed.clear();
