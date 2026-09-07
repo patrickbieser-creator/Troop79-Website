@@ -57,6 +57,12 @@ export interface PersonStatus {
   reason: string | null;
 }
 
+/** One row of the Family section's household picker. */
+export interface HouseholdChoice {
+  id: number;
+  label: string;
+}
+
 export interface PersonRecord {
   personId: number;
   displayName: string;
@@ -67,8 +73,13 @@ export interface PersonRecord {
   /** Present when a scouts row is linked — even for an aged-out scout now
    *  listed as an adult; the page reads it only when `kind === 'scout'`. */
   scout: ScoutRecordRow | null;
+  /** people.gender ('M' | 'F' | null) — outside LEADER_PERSON_FIELDS, so it
+   *  rides here rather than in detail.fields. Edited on a scout's Details. */
+  gender: string | null;
   rankLabel: string | null;
   household: { id: number; label: string; members: HouseholdMember[] } | null;
+  /** Every household, for the Family section's draft picker. */
+  households: HouseholdChoice[];
   /** Which row the Status card acts on: the scout's for a scout tab, the
    *  person's otherwise. */
   status: PersonStatus;

@@ -6,21 +6,29 @@
  * then two columns — the Status card and the sections in the main column,
  * the Household / Sign-in / Where-they-appear cards at the side.
  *
- * Phase 1: every section other than Status is READ-ONLY — its Edit button is
- * greyed with "Coming in the next phase". The read renderers are the ones
- * later phases keep; only the forms are missing.
+ * Phase 2: the sections are real. Identity (scouts), Details, Contact &
+ * sign-in and Household & family each own a per-section Edit → Save/Cancel
+ * form (section-card.tsx), one editable at a time under SectionEditProvider.
+ * Emails and relationships are still read-only lists inside their sections
+ * and Roles keeps its greyed Edit — Phase 3 makes those the "Takes effect
+ * immediately" blocks. Every successful save calls router.refresh() so the
+ * header, fact strip and side cards re-render from the server's data.
  */
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ageOn, gradeFromGradYear, gradeLabel, SWIM_CLASS_LABEL, yptStatus } from '@/lib/demographics';
+import { ageOn, gradeFromGradYear, gradeLabel, yptStatus } from '@/lib/demographics';
 import { fmtDate } from '@/lib/format-date';
-import type { PersonEmailRow } from '@/lib/person-emails';
 import { PageTitle } from '../../../_components/page-title';
 import { Badge } from '../../../_components/badge';
 import { Notice } from '../../../_components/notice';
 import { Button } from '../../../../_components/button';
 import { StatusCard, reasonLabel } from './status-card';
+import { SectionEditProvider } from './section-card';
+import { IdentitySection } from './identity-section';
+import { AdultDetailsSection, ScoutDetailsSection, gradeFor } from './details-section';
+import { ContactSection } from './contact-section';
+import { FamilySection } from './family-section';
 import { TAB_LABEL, type PersonRecord as PersonRecordData, type PersonStatus, type RosterTab } from './record-types';
 import styles from './person-record.module.css';
 
@@ -36,13 +44,6 @@ const ROLE_LABEL: Record<string, string> = {
   youth_member: 'Youth member'
 };
 const LEADER_ROLES = new Set(['adult_leader', 'committee_member', 'chartered_org_rep']);
-
-const REL_WORD: Record<string, string> = {
-  parent_of: 'parent of',
-  guardian_of: 'guardian of',
-  sibling_of: 'sibling of',
-  emergency_contact_for: 'emergency contact for'
-};
 
 const KIND_LABEL = { scout: 'Scout', leader: 'Leader', adult: 'Adult' } as const;
 
@@ -106,7 +107,7 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
         ];
 
   return (
-    <>
+    <SectionEditProvider>
       <PageTitle
         back={{ label: TAB_LABEL[from], href: `${ROSTER}?tab=${from}` }}
         title={name}
@@ -181,106 +182,72 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
             onChanged={onStatusChanged}
           />
 
-          <ReadSection title="Details">
-            <dl className={styles.dl}>
-              <Row label="First name">{str(f.first_name)}</Row>
-              <Row label="Last name">{str(f.last_name)}</Row>
-              <Row label="Birthdate">
-                {birthdate ? (
-                  <>
-                    {fmtDate(birthdate)} <span className={styles.sub}>age {age}</span>
-                  </>
-                ) : null}
-              </Row>
-              <Row label="BSA member ID">
-                {str(f.bsa_member_id) ? <span className={styles.mono}>{str(f.bsa_member_id)}</span> : null}
-              </Row>
-              {kind === 'scout' ? (
-                <>
-                  <Row label="Patrol">{scout?.patrol ?? ''}</Row>
-                  <Row label="Rank" derived>
-                    {record.rankLabel ?? ''}
-                  </Row>
-                  <Row label="School">{scout?.school ?? ''}</Row>
-                  <Row label="Grade" derived>
-                    {scout?.graduation_year
-                      ? `${gradeLabel(gradeFromGradYear(scout.graduation_year, record.today))} · class of ${scout.graduation_year}`
-                      : ''}
-                  </Row>
-                  <Row label="Swim class">{scout?.swim_class ? SWIM_CLASS_LABEL[scout.swim_class] : ''}</Row>
-                  <Row label="Junior leader">
-                    {scout?.junior_leader_override === 'yes'
-                      ? 'Yes (override)'
-                      : scout?.junior_leader_override === 'no'
-                        ? 'No (override)'
-                        : 'Derived from grade'}
-                  </Row>
-                </>
-              ) : (
-                <Row label="YPT completed">
-                  {str(f.ypt_completed) ? (
-                    <>
-                      {fmtDate(str(f.ypt_completed))}{' '}
-                      <span className={styles.sub}>
-                        {ypt.status === 'expired' ? 'EXPIRED' : ypt.status} · expires {fmtDate(ypt.expires)}
-                      </span>
-                    </>
-                  ) : null}
-                </Row>
-              )}
-              <Row label="Health form">{health ? fmtDate(health) : null}</Row>
-              <Row label="Things we should know">{str(f.things_we_should_know)}</Row>
-            </dl>
-          </ReadSection>
+          {kind === 'scout' && scout ? (
+            <>
+              <IdentitySection
+                scoutId={scout.id}
+                saved={{
+                  first_name: str(f.first_name),
+                  last_name: str(f.last_name),
+                  bsa_member_id: str(f.bsa_member_id),
+                  patrol: scout.patrol ?? ''
+                }}
+                rankLabel={record.rankLabel}
+              />
+              <ScoutDetailsSection
+                personId={record.personId}
+                scoutId={scout.id}
+                today={record.today}
+                saved={{
+                  birthdate: str(f.birthdate),
+                  gender: record.gender ?? '',
+                  school: scout.school ?? '',
+                  grade: gradeFor(scout.graduation_year, record.today),
+                  swim_class: scout.swim_class ?? '',
+                  junior_leader_override: scout.junior_leader_override ?? '',
+                  health_form_date: str(f.health_form_date),
+                  things_we_should_know: str(f.things_we_should_know)
+                }}
+              />
+            </>
+          ) : (
+            <AdultDetailsSection
+              personId={record.personId}
+              today={record.today}
+              saved={{
+                first_name: str(f.first_name),
+                last_name: str(f.last_name),
+                birthdate: str(f.birthdate),
+                bsa_member_id: str(f.bsa_member_id),
+                ypt_completed: str(f.ypt_completed),
+                health_form_date: str(f.health_form_date),
+                things_we_should_know: str(f.things_we_should_know)
+              }}
+            />
+          )}
 
-          <ReadSection title="Contact & sign-in">
-            <dl className={styles.dl}>
-              <Row label="Phone">{phone ? <a href={`tel:${phone}`}>{phone}</a> : null}</Row>
-              <Row label="Address">
-                {[str(f.address_line1), str(f.address_line2), [str(f.city), str(f.state)].filter(Boolean).join(', ') + (str(f.zip) ? ` ${str(f.zip)}` : '')]
-                  .filter((line) => line.trim())
-                  .map((line, i) => (
-                    <span key={i} className={i === 0 ? undefined : styles.sub}>
-                      {line}
-                    </span>
-                  ))}
-              </Row>
-            </dl>
-            <EmailList emails={emails} kind={kind} />
-          </ReadSection>
+          <ContactSection
+            personId={record.personId}
+            kind={kind}
+            emails={emails}
+            saved={{
+              primary_phone: str(f.primary_phone),
+              address_line1: str(f.address_line1),
+              address_line2: str(f.address_line2),
+              city: str(f.city),
+              state: str(f.state),
+              zip: str(f.zip)
+            }}
+          />
 
-          <ReadSection title="Household & family">
-            <dl className={styles.dl}>
-              <Row label="Household">{record.household?.label ?? ''}</Row>
-            </dl>
-            <div>
-              <p className={styles.listHead}>{kind === 'scout' ? 'Parents & guardians' : 'Relationships'}</p>
-              {detail.relationships.length ? (
-                <ul className={styles.list}>
-                  {detail.relationships.map((r) => (
-                    <li key={r.id}>
-                      <span className={styles.grow}>
-                        {r.outgoing ? (
-                          <>
-                            <strong>{name}</strong> is {REL_WORD[r.type] ?? r.type} <strong>{r.otherName}</strong>
-                          </>
-                        ) : (
-                          <>
-                            <strong>{r.otherName}</strong> is {REL_WORD[r.type] ?? r.type} <strong>{name}</strong>
-                          </>
-                        )}
-                      </span>
-                      {r.isGuardian ? <Badge variant="info">guardian</Badge> : null}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className={styles.empty}>
-                  {kind === 'scout' ? 'No parents or guardians linked yet — this scout cannot sign in until one is.' : 'None recorded.'}
-                </p>
-              )}
-            </div>
-          </ReadSection>
+          <FamilySection
+            personId={record.personId}
+            name={name}
+            kind={kind}
+            saved={{ household: record.household ? String(record.household.id) : '' }}
+            households={record.households}
+            relationships={detail.relationships}
+          />
 
           {kind !== 'scout' && (
             <ReadSection title="Roles">
@@ -417,10 +384,11 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
           </SideCard>
         </aside>
       </div>
-    </>
+    </SectionEditProvider>
   );
 }
 
+/** Roles stays read-only until Phase 3's immediate block. */
 function ReadSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className={styles.card} aria-label={title}>
@@ -435,19 +403,6 @@ function ReadSection({ title, children }: { title: string; children: React.React
   );
 }
 
-function Row({ label, derived = false, children }: { label: string; derived?: boolean; children: React.ReactNode }) {
-  const empty = children == null || children === '' || (Array.isArray(children) && children.length === 0);
-  return (
-    <>
-      <dt>
-        {label}
-        {derived ? <span className={styles.derived}> · derived</span> : null}
-      </dt>
-      <dd>{empty ? <span className={styles.empty}>—</span> : children}</dd>
-    </>
-  );
-}
-
 function SideCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className={styles.card} aria-label={title}>
@@ -456,41 +411,5 @@ function SideCard({ title, children }: { title: string; children: React.ReactNod
       </div>
       <div className={styles.cardBody}>{children}</div>
     </section>
-  );
-}
-
-function EmailList({ emails, kind }: { emails: PersonEmailRow[]; kind: string }) {
-  return (
-    <div>
-      <p className={styles.listHead}>Email addresses</p>
-      {emails.length ? (
-        <ul className={styles.list}>
-          {emails.map((e) => (
-            <li key={e.id}>
-              <span className={styles.grow}>
-                {e.email} <span className={styles.muted}>{e.label}</span>
-              </span>
-              <span className={styles.pills}>
-                {e.isPrimary ? <Badge variant="info">primary</Badge> : null}
-                {e.verifiedAt ? (
-                  <Badge variant="success" title={`Verified ${fmtDate(e.verifiedAt)}`}>
-                    verified
-                  </Badge>
-                ) : (
-                  <Badge variant="neutral">unverified</Badge>
-                )}
-                {e.bouncedAt ? (
-                  <Badge variant="danger" title={`Bounced ${fmtDate(e.bouncedAt)}`}>
-                    bounced
-                  </Badge>
-                ) : null}
-              </span>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className={styles.empty}>No addresses on file{kind === 'scout' ? ' — signs in through a parent' : ''}.</p>
-      )}
-    </div>
   );
 }

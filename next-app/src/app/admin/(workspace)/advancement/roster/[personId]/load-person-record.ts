@@ -68,12 +68,19 @@ export async function loadPersonRecord(personId: number): Promise<LoadPersonReco
   // no record page yet — the Guests tab keeps its own row editor.
   if (row.guest_host_household_id != null) return { kind: 'missing' };
 
-  const [detail, emails, scoutRes] = await Promise.all([
+  const [detail, emails, scoutRes, genderRes, householdsRes] = await Promise.all([
     getPersonDetail(personId),
     getPersonEmails(personId),
-    supabase.from('scouts').select(SCOUT_RECORD_COLS).eq('person_id', personId).maybeSingle()
+    supabase.from('scouts').select(SCOUT_RECORD_COLS).eq('person_id', personId).maybeSingle(),
+    supabase.from('people').select('gender').eq('id', personId).maybeSingle(),
+    supabase.from('households').select('id, label').order('label')
   ]);
   const scout = (scoutRes.data as ScoutRecordRow | null) ?? null;
+  const gender = (genderRes.data as { gender: string | null } | null)?.gender ?? null;
+  const households = ((householdsRes.data ?? []) as { id: number; label: string }[]).map((h) => ({
+    id: h.id,
+    label: h.label
+  }));
   const tab: RosterTab = isRosterTab(detail.tab) ? detail.tab : 'adult';
   const kind = kindOf(tab);
 
@@ -98,8 +105,10 @@ export async function loadPersonRecord(personId: number): Promise<LoadPersonReco
       detail,
       emails,
       scout,
+      gender,
       rankLabel,
       household,
+      households,
       status,
       pendingUpdate,
       today: centralToday()

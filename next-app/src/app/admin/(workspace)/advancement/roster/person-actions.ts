@@ -4,7 +4,9 @@ import { headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
-import { recordAudit } from '@/lib/audit';
+import { recordAudit, type AuditDetail } from '@/lib/audit';
+import { fmtDate } from '@/lib/format-date';
+import { writePersonDemographics, type PersonDemographicsFields } from '@/lib/write-person-demographics';
 import { LEADER_PERSON_FIELDS, type FieldValue } from '@/lib/change-requests';
 import { requestChallengeForPerson, TOKEN_TTL_MINUTES } from '@/lib/identity-challenge';
 import {
@@ -263,6 +265,22 @@ export async function setHousehold(personId: number, householdId: number | null)
   await requireCapability('roster.manage');
 
   const supabase = createAdminClient();
+  // Read before write: the audit row's details carry "Household: A → B"
+  // by label — what the record page's toast and History show.
+  const { data: current } = await supabase
+    .from('household_members')
+    .select('household_id')
+    .eq('person_id', personId)
+    .maybeSingle();
+  const fromId = (current as { household_id: number } | null)?.household_id ?? null;
+  const labelIds = [fromId, householdId].filter((id): id is number => id != null);
+  const labels = new Map<number, string>();
+  if (labelIds.length > 0) {
+    const { data: rows } = await supabase.from('households').select('id, label').in('id', labelIds);
+    for (const r of (rows ?? []) as { id: number; label: string }[]) labels.set(r.id, r.label);
+  }
+  const labelOf = (id: number | null) => (id == null ? '—' : (labels.get(id) ?? `household ${id}`));
+
   const { error: delErr } = await supabase
     .from('household_members')
     .delete()
@@ -284,7 +302,8 @@ export async function setHousehold(personId: number, householdId: number | null)
     summary:
       householdId !== null
         ? `Set household for person ${personId} to household ${householdId}`
-        : `Removed person ${personId} from their household`
+        : `Removed person ${personId} from their household`,
+    details: [{ field: 'Household', from: labelOf(fromId), to: labelOf(householdId) }]
   });
 
   revalidate();
@@ -485,68 +504,139 @@ export async function getPersonDetail(personId: number): Promise<PersonDetail> {
  * collision check is the one difference — the person's own email must not
  * collide with itself.
  */
+/**
+ * PARTIAL by design (Person Editor Rethink Phase 2): only the keys present
+ * in `formData` are written, so a section's Save sends its own fields and
+ * can never overwrite another section's values with stale ones. A blank
+ * value for a present key clears it. The names travel as a pair: when
+ * either is sent, both must be non-blank (display_name follows them).
+ *
+ * The audit row carries a field-level from→to diff in `details` — the row
+ * is read before the write — while the summary names the person and the
+ * FIELD NAMES only (D-257).
+ */
+const PERSON_TEXT_KEYS = [
+  'birthdate',
+  'primary_phone',
+  'address_line1',
+  'address_line2',
+  'city',
+  'state',
+  'zip',
+  'bsa_member_id',
+  'ypt_completed',
+  'health_form_date',
+  'things_we_should_know'
+] as const;
+
+const PERSON_DETAIL_LABEL: Record<string, string> = {
+  first_name: 'First name',
+  last_name: 'Last name',
+  birthdate: 'Birthdate',
+  gender: 'Gender',
+  primary_email: 'Email',
+  primary_phone: 'Phone',
+  address_line1: 'Address line 1',
+  address_line2: 'Address line 2',
+  city: 'City',
+  state: 'State',
+  zip: 'ZIP',
+  bsa_member_id: 'BSA member ID',
+  ypt_completed: 'YPT completed',
+  health_form_date: 'Health form',
+  things_we_should_know: 'Things we should know'
+};
+
+const PERSON_DATE_KEYS = new Set(['birthdate', 'ypt_completed', 'health_form_date']);
+
+function personDetailValue(key: string, value: unknown): string {
+  if (value == null || value === '') return '—';
+  const s = String(value);
+  if (PERSON_DATE_KEYS.has(key)) return fmtDate(s);
+  if (key === 'gender') return s === 'M' ? 'Male' : s === 'F' ? 'Female' : s;
+  return s;
+}
+
 export async function updatePersonDemographics(personId: number, formData: FormData): Promise<Result> {
   await requireCapability('roster.manage');
 
-  const firstName = String(formData.get('first_name') ?? '').trim();
-  const lastName = String(formData.get('last_name') ?? '').trim();
-  if (!firstName || !lastName) {
-    return { ok: false, error: 'First name and last name are required.' };
+  const text = (key: string) => String(formData.get(key) ?? '').trim() || null;
+  const patch: PersonDemographicsFields = {};
+
+  if (formData.has('first_name') || formData.has('last_name')) {
+    const firstName = text('first_name');
+    const lastName = text('last_name');
+    if (!firstName || !lastName) {
+      return { ok: false, error: 'First and last name are required.' };
+    }
+    patch.first_name = firstName;
+    patch.last_name = lastName;
+    patch.display_name = `${firstName} ${lastName}`;
+  }
+  if (formData.has('gender')) {
+    const gender = text('gender');
+    if (gender && gender !== 'M' && gender !== 'F') return { ok: false, error: `Invalid gender: ${gender}` };
+    patch.gender = gender;
+  }
+  for (const key of PERSON_TEXT_KEYS) {
+    if (formData.has(key)) patch[key] = text(key);
   }
 
   const supabase = createAdminClient();
-  const email = String(formData.get('primary_email') ?? '').trim().toLowerCase() || null;
 
-  if (email) {
-    const { data: clash } = await supabase
-      .from('people')
-      .select('id, display_name')
-      .is('merged_into_person_id', null)
-      .neq('id', personId)
-      .ilike('primary_email', email)
-      .maybeSingle();
-    if (clash) {
-      const found = clash as { id: number; display_name: string };
-      return {
-        ok: false,
-        error: `${found.display_name} already uses ${email}. Merge these records instead of duplicating the address.`
-      };
+  if (formData.has('primary_email')) {
+    const email = String(formData.get('primary_email') ?? '').trim().toLowerCase() || null;
+    if (email) {
+      const { data: clash } = await supabase
+        .from('people')
+        .select('id, display_name')
+        .is('merged_into_person_id', null)
+        .neq('id', personId)
+        .ilike('primary_email', email)
+        .maybeSingle();
+      if (clash) {
+        const found = clash as { id: number; display_name: string };
+        return {
+          ok: false,
+          error: `${found.display_name} already uses ${email}. Merge these records instead of duplicating the address.`
+        };
+      }
     }
+    patch.primary_email = email;
   }
 
-  const text = (key: string) => String(formData.get(key) ?? '').trim() || null;
+  const keys = (Object.keys(patch) as (keyof PersonDemographicsFields)[]).filter((k) => k !== 'display_name');
+  if (keys.length === 0) return { ok: true };
 
-  const { error } = await supabase
+  // Read before write: the audit row's details are the from→to per field.
+  const { data: beforeRow, error: readErr } = await supabase
     .from('people')
-    .update({
-      first_name: firstName,
-      last_name: lastName,
-      display_name: `${firstName} ${lastName}`,
-      birthdate: text('birthdate'),
-      primary_email: email,
-      primary_phone: text('primary_phone'),
-      address_line1: text('address_line1'),
-      address_line2: text('address_line2'),
-      city: text('city'),
-      state: text('state'),
-      zip: text('zip'),
-      bsa_member_id: text('bsa_member_id'),
-      ypt_completed: text('ypt_completed'),
-      health_form_date: text('health_form_date'),
-      things_we_should_know: text('things_we_should_know')
-    })
-    .eq('id', personId);
-  if (error) return { ok: false, error: error.message };
+    .select(['display_name', ...keys].join(', '))
+    .eq('id', personId)
+    .maybeSingle();
+  if (readErr) return { ok: false, error: readErr.message };
+  if (!beforeRow) return { ok: false, error: 'Person not found.' };
+  const before = beforeRow as unknown as Record<string, unknown>;
+
+  const write = await writePersonDemographics(supabase, personId, patch);
+  if (write.error) return { ok: false, error: write.error };
+
+  const details: AuditDetail[] = keys
+    .filter((k) => (before[k] ?? null) !== (patch[k] ?? null))
+    .map((k) => ({
+      field: PERSON_DETAIL_LABEL[k] ?? k,
+      from: personDetailValue(k, before[k]),
+      to: personDetailValue(k, patch[k])
+    }));
+  const name = patch.display_name ?? String(before.display_name ?? `person ${personId}`);
 
   await recordAudit({
     area: 'roster',
     action: 'update',
     entityType: 'person',
     entityId: personId,
-    summary:
-      `Updated ${firstName} ${lastName}'s demographics (fields: first_name, last_name, birthdate, ` +
-      `primary_email, primary_phone, address_line1, address_line2, city, state, zip, bsa_member_id, ` +
-      `ypt_completed, health_form_date, things_we_should_know)`
+    summary: `Updated ${name}'s demographics (fields: ${keys.join(', ')})`,
+    details
   });
 
   revalidate();

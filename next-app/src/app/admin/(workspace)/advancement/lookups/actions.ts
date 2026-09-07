@@ -4,6 +4,8 @@ import { revalidatePath, updateTag } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { writePersonDemographics } from '@/lib/write-person-demographics';
+import { recordAudit, type AuditDetail } from '@/lib/audit';
+import { gradeFromGradYear, gradeLabel, SWIM_CLASS_LABEL } from '@/lib/demographics';
 import type { LedgerKind } from '@/lib/supabase/types';
 
 import { cascadeLibraryReqRename } from '@/lib/library-data';
@@ -93,6 +95,36 @@ function readScoutExtras(formData: FormData) {
     // Classification.md): 'yes' | 'no' | null (auto, grades 9–12).
     junior_leader_override: jl === 'yes' || jl === 'no' ? jl : null
   };
+}
+
+/** The record page's per-section scout inputs (Person Editor Rethink,
+ *  Phase 2) — see updateScoutIdentity / updateScoutFields below. Declared up
+ *  here, away from updateScout, because tests/scout-people-demographics
+ *  .test.ts scans updateScout's source up to the next exported function for
+ *  demographic keys written outside writePersonDemographics(). */
+export interface ScoutIdentityInput {
+  first_name: string;
+  last_name: string;
+  patrol: string;
+  bsa_member_id: string;
+}
+
+export interface ScoutFieldsInput {
+  school?: string | null;
+  graduation_year?: number | null;
+  swim_class?: string | null;
+  junior_leader_override?: 'yes' | 'no' | null;
+}
+
+const SWIM_CLASSES = new Set(['swimmer', 'beginner', 'nonswimmer']);
+
+function gradeValue(gradYear: number | null): string {
+  if (gradYear == null) return '—';
+  return `${gradeLabel(gradeFromGradYear(gradYear))} · class of ${gradYear}`;
+}
+
+function jlValue(v: string | null): string {
+  return v === 'yes' ? 'Yes (override)' : v === 'no' ? 'No (override)' : 'Derived from grade';
 }
 
 function readCounselors(formData: FormData): CounselorInput[] {
@@ -356,6 +388,165 @@ export async function updateScout(formData: FormData): Promise<Result> {
   if (demoWrite.error) {
     return { ok: false, error: `Scout saved, but demographics failed to save: ${demoWrite.error}` };
   }
+
+  revalidateAll();
+  return { ok: true };
+}
+
+// ── Scout record page: per-section writes (Person Editor Rethink, Phase 2) ─
+//
+// updateScout above saves the whole dialog at once. The record page
+// (roster/[personId]) edits one section at a time, and a section's Save must
+// send ONLY its own fields, so the whole-form action is split by section:
+//
+//   updateScoutIdentity  Identity — name, patrol (scouts) + name, BSA id (people)
+//   updateScoutFields    Details  — school, grade, swim class, JL override (scouts only;
+//                        birthdate/gender/health/notes go through updatePersonDemographics)
+//
+// Same capability gate and revalidation fan-out as updateScout; each reads
+// the row before writing so its audit row carries the field-level from→to
+// in `details` (values never reach the summary — D-257). updateScout itself
+// stays until the old dialog editor retires (Phase 6).
+
+export async function updateScoutIdentity(scoutId: string, input: ScoutIdentityInput): Promise<Result> {
+  try {
+    await requireCapability('roster.manage');
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  const id = scoutId.trim();
+  if (!id) return { ok: false, error: 'Scout ID is required' };
+  const firstName = input.first_name.trim();
+  const lastName = input.last_name.trim();
+  if (!firstName || !lastName) {
+    return { ok: false, error: 'First and last name are required.' };
+  }
+  const patrol = input.patrol.trim() || null;
+  const bsaMemberId = input.bsa_member_id.trim() || null;
+
+  const supabase = createAdminClient();
+  const { data: existing, error: fetchErr } = await supabase
+    .from('scouts')
+    .select('first_name, last_name, patrol, person_id')
+    .eq('id', id)
+    .maybeSingle();
+  if (fetchErr) return { ok: false, error: fetchErr.message };
+  if (!existing) return { ok: false, error: 'Scout not found' };
+  const was = existing as { first_name: string; last_name: string; patrol: string | null; person_id: number | null };
+  if (was.person_id == null) {
+    return { ok: false, error: 'This scout has no linked person record — save them from the roster dialog once first.' };
+  }
+  const { data: personRow } = await supabase
+    .from('people')
+    .select('bsa_member_id')
+    .eq('id', was.person_id)
+    .maybeSingle();
+  const wasBsa = (personRow as { bsa_member_id: string | null } | null)?.bsa_member_id ?? null;
+
+  const displayName = `${firstName} ${lastName}`;
+  const { error } = await supabase
+    .from('scouts')
+    .update({ first_name: firstName, last_name: lastName, display_name: displayName, patrol })
+    .eq('id', id);
+  if (error) return { ok: false, error: error.message };
+
+  const demoWrite = await writePersonDemographics(supabase, was.person_id, {
+    first_name: firstName,
+    last_name: lastName,
+    display_name: displayName,
+    bsa_member_id: bsaMemberId
+  });
+  if (demoWrite.error) {
+    return { ok: false, error: `Scout saved, but the person record failed to save: ${demoWrite.error}` };
+  }
+
+  const blank = (v: string | null) => v ?? '—';
+  const details: AuditDetail[] = [];
+  if (was.first_name !== firstName) details.push({ field: 'First name', from: was.first_name, to: firstName });
+  if (was.last_name !== lastName) details.push({ field: 'Last name', from: was.last_name, to: lastName });
+  if ((was.patrol ?? null) !== patrol) details.push({ field: 'Patrol', from: blank(was.patrol), to: blank(patrol) });
+  if (wasBsa !== bsaMemberId) details.push({ field: 'BSA member ID', from: blank(wasBsa), to: blank(bsaMemberId) });
+
+  await recordAudit({
+    area: 'roster',
+    action: 'update',
+    entityType: 'scout',
+    entityId: id,
+    summary: `Updated scout ${id}'s identity — ${details.map((d) => d.field).join(', ') || 'no field changed'}`,
+    details
+  });
+
+  revalidateAll();
+  return { ok: true };
+}
+
+export async function updateScoutFields(scoutId: string, input: ScoutFieldsInput): Promise<Result> {
+  try {
+    await requireCapability('roster.manage');
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  const id = scoutId.trim();
+  if (!id) return { ok: false, error: 'Scout ID is required' };
+
+  // Only the keys present are written — an absent key leaves the column alone.
+  const patch: Record<string, unknown> = {};
+  if ('school' in input) patch.school = input.school?.trim() || null;
+  if ('graduation_year' in input) {
+    const y = input.graduation_year;
+    if (y != null && (!Number.isInteger(y) || y < 1900 || y > 2200)) {
+      return { ok: false, error: `Invalid graduation year: ${y}` };
+    }
+    patch.graduation_year = y ?? null;
+  }
+  if ('swim_class' in input) {
+    const s = input.swim_class?.trim() || null;
+    if (s && !SWIM_CLASSES.has(s)) return { ok: false, error: `Invalid swim class: ${s}` };
+    patch.swim_class = s;
+  }
+  if ('junior_leader_override' in input) {
+    const jl = input.junior_leader_override;
+    patch.junior_leader_override = jl === 'yes' || jl === 'no' ? jl : null;
+  }
+  const keys = Object.keys(patch);
+  if (keys.length === 0) return { ok: true };
+
+  const supabase = createAdminClient();
+  const { data: existing, error: fetchErr } = await supabase
+    .from('scouts')
+    .select(keys.join(', '))
+    .eq('id', id)
+    .maybeSingle();
+  if (fetchErr) return { ok: false, error: fetchErr.message };
+  if (!existing) return { ok: false, error: 'Scout not found' };
+  const was = existing as unknown as Record<string, unknown>;
+
+  const { error } = await supabase.from('scouts').update(patch).eq('id', id);
+  if (error) return { ok: false, error: error.message };
+
+  const details: AuditDetail[] = [];
+  for (const k of keys) {
+    if ((was[k] ?? null) === (patch[k] ?? null)) continue;
+    if (k === 'school') {
+      details.push({ field: 'School', from: (was[k] as string | null) ?? '—', to: (patch[k] as string | null) ?? '—' });
+    } else if (k === 'graduation_year') {
+      details.push({ field: 'Grade', from: gradeValue(was[k] as number | null), to: gradeValue(patch[k] as number | null) });
+    } else if (k === 'swim_class') {
+      const label = (v: unknown) => (v ? (SWIM_CLASS_LABEL[String(v)] ?? String(v)) : '—');
+      details.push({ field: 'Swim class', from: label(was[k]), to: label(patch[k]) });
+    } else if (k === 'junior_leader_override') {
+      details.push({ field: 'Junior leader', from: jlValue(was[k] as string | null), to: jlValue(patch[k] as string | null) });
+    }
+  }
+
+  await recordAudit({
+    area: 'roster',
+    action: 'update',
+    entityType: 'scout',
+    entityId: id,
+    summary: `Updated scout ${id}'s details — ${details.map((d) => d.field).join(', ') || 'no field changed'}`,
+    details
+  });
 
   revalidateAll();
   return { ok: true };

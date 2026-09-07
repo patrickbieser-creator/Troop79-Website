@@ -26,6 +26,7 @@ const AUDITED_ACTION_FILES = [
   'src/app/admin/(workspace)/advancement/roster/guest-actions.ts',
   'src/app/admin/(workspace)/advancement/roster/patrols/actions.ts',
   'src/app/admin/(workspace)/advancement/roster/[personId]/scout-status-actions.ts',
+  'src/app/admin/(workspace)/advancement/lookups/actions.ts',
   'src/app/admin/(workspace)/advancement/lookups/household-actions.ts',
   'src/app/admin/(workspace)/advancement/roster-import/actions.ts'
 ];
