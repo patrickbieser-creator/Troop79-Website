@@ -23,6 +23,11 @@
  * audit_log filtered to this person), so that same router.refresh() after
  * any action is what brings the new row in; the full-log / detail dialog is
  * owned here because both the card and the section open it.
+ * Phase 5 put the family's pending update INSIDE the sections it touches
+ * (pending-banner.tsx): the shell hands each section the banner for its own
+ * fields; Approve / Reject from any one of them decides the whole request,
+ * after which the shell drops it everywhere at once. The "Added by a family"
+ * notice sits at the top of the main column with its single Acknowledge.
  */
 import { useState } from 'react';
 import Link from 'next/link';
@@ -46,6 +51,8 @@ import { HistoryFact } from './history-card';
 import { HistorySection } from './history-section';
 import { HistoryDialog, type HistoryView } from './history-dialog';
 import { SendSignInLink, type SendLinkResult } from './send-sign-in-link';
+import { FamilyAddedNotice, PendingBanner } from './pending-banner';
+import { currentValuesFor, type SectionKey } from './pending-map';
 import {
   ROLE_LABEL,
   TAB_LABEL,
@@ -78,6 +85,13 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
   const [linkResult, setLinkResult] = useState<SendLinkResult | null>(null);
   const [signinHelp, setSigninHelp] = useState(false);
   const [historyView, setHistoryView] = useState<HistoryView | null>(null);
+  // The family's request / notice come from the server; once decided here
+  // they are gone from every section at once, and a later router.refresh()
+  // (a new request while the page is open) shows the next one.
+  const [resolvedRequestId, setResolvedRequestId] = useState<number | null>(null);
+  const [resolvedNoticeId, setResolvedNoticeId] = useState<number | null>(null);
+  const pending = record.pending && record.pending.id !== resolvedRequestId ? record.pending : null;
+  const familyNotice = record.familyNotice && record.familyNotice.id !== resolvedNoticeId ? record.familyNotice : null;
 
   const { detail, scout, kind } = record;
   const f = detail.fields;
@@ -110,6 +124,31 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
 
   function onPromoted() {
     setStatus({ active: false, reason: 'aged_out' });
+  }
+
+  // One request, one decision: whichever section's button was clicked, the
+  // whole request is now reviewed — drop it from every section and re-read
+  // so the applied values and the History row come in.
+  const pendingCurrent = pending ? currentValuesFor(record, pending.entityType) : null;
+  function bannerFor(section: SectionKey) {
+    if (!pending || !pendingCurrent) return null;
+    return (
+      <PendingBanner
+        request={pending}
+        section={section}
+        current={pendingCurrent}
+        today={record.today}
+        onResolved={() => {
+          setResolvedRequestId(pending.id);
+          router.refresh();
+        }}
+      />
+    );
+  }
+
+  function onAcknowledged() {
+    if (familyNotice) setResolvedNoticeId(familyNotice.id);
+    router.refresh();
   }
 
   // A sent link is itself a History row — re-read so the card's count moves.
@@ -194,15 +233,9 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
         <SendSignInLink personId={record.personId} kind={kind} emails={emails} onResult={onLinkResult} />
       </PageTitle>
 
-      {(record.pendingUpdate || currentTab !== from || linkResult) && (
+      {(currentTab !== from || linkResult) && (
         <div className={styles.noticeStack}>
           {linkResult && <Notice variant={linkResult.variant}>{linkResult.message}</Notice>}
-          {record.pendingUpdate && (
-            <Notice variant="info">
-              A pending update from the family is waiting for review. Until the next phase, open {name} from the{' '}
-              <Link href={`${ROSTER}?tab=${record.tab}`}>roster list</Link> to approve or reject it.
-            </Notice>
-          )}
           {currentTab !== from && (
             <Notice variant="info">
               {name} now appears under <strong>{TAB_LABEL[currentTab]}</strong>, not {TAB_LABEL[from]}.
@@ -222,6 +255,8 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
 
       <div className={styles.cols}>
         <div className={styles.main}>
+          {familyNotice && <FamilyAddedNotice notice={familyNotice} name={name} onAcknowledged={onAcknowledged} />}
+
           <StatusCard
             personId={record.personId}
             scoutId={kind === 'scout' ? (scout?.id ?? null) : null}
@@ -236,6 +271,7 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
             <>
               <IdentitySection
                 scoutId={scout.id}
+                banner={bannerFor('identity')}
                 saved={{
                   first_name: str(f.first_name),
                   last_name: str(f.last_name),
@@ -246,6 +282,7 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
               />
               <ScoutDetailsSection
                 personId={record.personId}
+                banner={bannerFor('details')}
                 scoutId={scout.id}
                 today={record.today}
                 saved={{
@@ -263,6 +300,7 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
           ) : (
             <AdultDetailsSection
               personId={record.personId}
+              banner={bannerFor('details')}
               today={record.today}
               saved={{
                 first_name: str(f.first_name),
@@ -278,6 +316,7 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
 
           <ContactSection
             personId={record.personId}
+            banner={bannerFor('contact')}
             kind={kind}
             emails={emails}
             onEmailsChanged={setEmails}
@@ -293,6 +332,7 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
 
           <FamilySection
             personId={record.personId}
+            banner={bannerFor('family')}
             name={name}
             kind={kind}
             saved={{ household: record.household ? String(record.household.id) : '' }}

@@ -7,6 +7,7 @@
  * immediately" block (Phase 3, emails-block.tsx): add / make primary /
  * remove commit on click and never share a Save with the form.
  */
+import type { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import type { PersonEmailRow } from '@/lib/person-emails';
 import { updatePersonDemographics } from '../person-actions';
@@ -39,12 +40,15 @@ export function ContactSection({
   saved,
   emails,
   onEmailsChanged,
+  banner,
   onSaved
 }: {
   personId: number;
   kind: PersonKind;
   saved: ContactDraft;
   emails: PersonEmailRow[];
+  /** Pending-update banner for this section (Phase 5), if any. */
+  banner?: ReactNode;
   /** The refetched list after an add / make primary / remove, for the
    *  header and Sign-in card. */
   onEmailsChanged: (next: PersonEmailRow[]) => void;
@@ -77,6 +81,7 @@ export function ContactSection({
     <SectionCard
       title="Contact & sign-in"
       form={form}
+      banner={banner}
       help={
         kind === 'scout' ? (
           <>

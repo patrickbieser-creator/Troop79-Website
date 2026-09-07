@@ -314,11 +314,15 @@ export function SectionCard({
   title,
   form,
   help,
+  banner,
   children
 }: {
   title: string;
   form: Pick<SectionForm<Record<string, string>>, 'editing' | 'stamped' | 'flash' | 'startEdit' | 'error'>;
   help?: ReactNode;
+  /** The family's pending-update banner (Phase 5) — inside the body, above
+   *  the read rows / form, so the proposal sits next to what it changes. */
+  banner?: ReactNode;
   children: ReactNode;
 }) {
   const headingId = useId();
@@ -339,6 +343,7 @@ export function SectionCard({
       </div>
       <div className={styles.cardBody}>
         {form.error && <Notice>{form.error}</Notice>}
+        {banner}
         {children}
         {help && (
           <div>

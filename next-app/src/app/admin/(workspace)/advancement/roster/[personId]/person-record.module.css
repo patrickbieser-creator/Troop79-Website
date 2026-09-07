@@ -176,6 +176,27 @@
   gap: var(--admin-space-4);
 }
 
+/* Pending update from the family (Phase 5) — the shared warning Notice is
+   the box; these only lay out what sits inside it. The diff is a
+   DataTable·Compact. */
+.pending { margin: 0 0 var(--admin-space-5); }
+.pendingHead {
+  margin: 0 0 var(--admin-space-1);
+  font-family: var(--admin-font-ui);
+  font-size: var(--admin-text-md);
+  font-weight: var(--admin-weight-bold);
+}
+.pendingCopy { margin: 0 0 var(--admin-space-3); }
+.pendingTable {
+  composes: compact from '../../../_components/data-table.module.css';
+  margin: var(--admin-space-3) 0 var(--admin-space-4);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius-sm);
+}
+.pendingTable tbody th { font-weight: var(--admin-weight-semibold); }
+.pendingError { margin: var(--admin-space-3) 0; }
+.pendingAck { margin-top: var(--admin-space-3); }
+
 /* One "How this works" disclosure per section, D-070 — the only place a
    "how this behaves" paragraph may live. */
 .disc {

@@ -13,6 +13,7 @@
  *           draft actually changed, so a Save never writes (or audits) a row
  *           it did not touch. Name and patrol are the Identity section's.
  */
+import type { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { ageOn, gradeFromGradYear, gradeLabel, gradYearFromGrade, SWIM_CLASS_LABEL, yptStatus } from '@/lib/demographics';
 import { fmtDate } from '@/lib/format-date';
@@ -89,11 +90,14 @@ export function AdultDetailsSection({
   personId,
   saved,
   today,
+  banner,
   onSaved
 }: {
   personId: number;
   saved: AdultDetailsDraft;
   today: string;
+  /** Pending-update banner for this section (Phase 5), if any. */
+  banner?: ReactNode;
   onSaved?: () => void;
 }) {
   const router = useRouter();
@@ -116,6 +120,7 @@ export function AdultDetailsSection({
     <SectionCard
       title="Details"
       form={form}
+      banner={banner}
       help={
         <>
           YPT is good for two years. &ldquo;Things we should know&rdquo; is visible to leaders only and feeds the
@@ -216,12 +221,15 @@ export function ScoutDetailsSection({
   scoutId,
   saved,
   today,
+  banner,
   onSaved
 }: {
   personId: number;
   scoutId: string;
   saved: ScoutDetailsDraft;
   today: string;
+  /** Pending-update banner for this section (Phase 5), if any. */
+  banner?: ReactNode;
   onSaved?: () => void;
 }) {
   const router = useRouter();
@@ -258,6 +266,7 @@ export function ScoutDetailsSection({
     <SectionCard
       title="Details"
       form={form}
+      banner={banner}
       help={
         <>
           Age and grade are derived — the stored value is the graduation class year; grade advances each June 15.

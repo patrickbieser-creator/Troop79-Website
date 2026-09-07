@@ -10,7 +10,7 @@
  * guardians sit BELOW the form as the "Takes effect immediately" block
  * (Phase 3, relationships-block.tsx), outside any Save.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '../../../../_components/button';
 import { setHousehold, type PersonDetail } from '../person-actions';
@@ -42,6 +42,7 @@ export function FamilySection({
   households,
   relationships,
   onRelationshipsChanged,
+  banner,
   onSaved
 }: {
   personId: number;
@@ -50,6 +51,8 @@ export function FamilySection({
   saved: FamilyDraft;
   households: HouseholdChoice[];
   relationships: RelationshipRow[];
+  /** Pending-update banner for this section (Phase 5), if any. */
+  banner?: ReactNode;
   /** The refetched detail after a link / unlink, for the header's
    *  "signs in through …" line and the roles list. */
   onRelationshipsChanged: (detail: PersonDetail) => void;
@@ -104,6 +107,7 @@ export function FamilySection({
     <SectionCard
       title="Household & family"
       form={form}
+      banner={banner}
       help={
         kind === 'scout' ? (
           <>

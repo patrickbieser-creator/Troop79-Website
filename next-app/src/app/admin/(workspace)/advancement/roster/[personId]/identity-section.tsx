@@ -6,6 +6,7 @@
  * Save → updateScoutIdentity, which writes the scouts row AND the linked
  * person's name/BSA id — one action, only this section's fields.
  */
+import type { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { updateScoutIdentity } from '../../lookups/actions';
 import {
@@ -37,11 +38,14 @@ export function IdentitySection({
   scoutId,
   saved,
   rankLabel,
+  banner,
   onSaved
 }: {
   scoutId: string;
   saved: IdentityDraft;
   rankLabel: string | null;
+  /** Pending-update banner for this section (Phase 5), if any. */
+  banner?: ReactNode;
   onSaved?: () => void;
 }) {
   const router = useRouter();
@@ -60,7 +64,7 @@ export function IdentitySection({
   const v = form.saved;
 
   return (
-    <SectionCard title="Identity" form={form}>
+    <SectionCard title="Identity" form={form} banner={banner}>
       {!form.editing ? (
         <ReadRows>
           <ReadRow label="Internal ID">

@@ -7,6 +7,7 @@
  */
 
 import type { AuditDetail } from '@/lib/audit';
+import type { FieldValue } from '@/lib/change-requests';
 import type { PersonEmailRow } from '@/lib/person-emails';
 import type { InactiveReason } from '@/lib/supabase/types';
 import type { PersonDetail } from '../person-actions';
@@ -110,6 +111,33 @@ export interface PersonHistorySummary {
   withDetails: number;
 }
 
+/** A family's open change request for this person (Phase 5) — one row per
+ *  entity (D-098/D-103), approved or rejected WHOLE; the record page shows
+ *  it in every section its keys touch. `proposed` is keyed by the entity
+ *  type's field set (lib/change-requests): an 'adult' request uses people
+ *  column names, a 'scout' request the scout field names (phone / email,
+ *  school, graduation_year, swim_class …). */
+export interface PendingChangeRequest {
+  id: number;
+  entityType: 'scout' | 'adult';
+  /** timestamptz — an instant; render with fmtDateTime. */
+  submittedAt: string;
+  /** Null when the submitter signed in with the shared troop password. */
+  submittedByName: string | null;
+  proposed: Record<string, FieldValue>;
+}
+
+/** "Added by a family — not yet acknowledged": a family put this person on
+ *  the roster from /profile ('adult_added'). Nothing to apply or reject —
+ *  Acknowledge clears it from the dashboard and changes nothing. */
+export interface FamilyNotice {
+  id: number;
+  submittedAt: string;
+  submittedByName: string | null;
+  /** name / relationship / primary_email / primary_phone as submitted. */
+  fields: Record<string, FieldValue>;
+}
+
 export interface PersonRecord {
   personId: number;
   displayName: string;
@@ -135,8 +163,16 @@ export interface PersonRecord {
   /** Which row the Status card acts on: the scout's for a scout tab, the
    *  person's otherwise. */
   status: PersonStatus;
-  /** A family's change request is waiting for review (Phase 5 renders it). */
+  /** `pending != null` — kept as a flag for the callers and fixtures that
+   *  only need to know something is waiting. */
   pendingUpdate: boolean;
+  /** The family's open change request, rendered as a banner inside each
+   *  section it touches (Phase 5). Optional only so an older fixture still
+   *  type-checks; the loader always fills it. */
+  pending?: PendingChangeRequest | null;
+  /** An unacknowledged "added by a family" notice, at the top of the main
+   *  column (Phase 5). */
+  familyNotice?: FamilyNotice | null;
   today: string;
   /** The audit_log filtered to this person (Phase 4). The loader always
    *  fills it; optional only so a section rendered from an older fixture

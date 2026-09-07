@@ -17,9 +17,12 @@ import { getPersonDetail, getPersonEmails } from '../person-actions';
 import { getPersonHistorySummary } from './get-person-history';
 
 export * from './record-types';
+import type { FieldValue } from '@/lib/change-requests';
 import {
   isRosterTab,
   kindOfTab as kindOf,
+  type FamilyNotice,
+  type PendingChangeRequest,
   type PersonRecord,
   type PersonStatus,
   type RosterTab,
@@ -88,10 +91,10 @@ export async function loadPersonRecord(personId: number): Promise<LoadPersonReco
   const tab: RosterTab = isRosterTab(detail.tab) ? detail.tab : 'adult';
   const kind = kindOf(tab);
 
-  const [rankLabel, household, pendingUpdate, history] = await Promise.all([
+  const [rankLabel, household, { pending, familyNotice }, history] = await Promise.all([
     loadRankLabel(supabase, scout?.current_rank ?? null),
     loadHousehold(supabase, detail.householdId),
-    loadPendingFlag(supabase, kind === 'scout' && scout ? { type: 'scout', id: scout.id } : { type: 'adult', id: String(personId) }),
+    loadPending(supabase, personId, kind === 'scout' && scout ? { type: 'scout', id: scout.id } : { type: 'adult', id: String(personId) }),
     getPersonHistorySummary(personId)
   ]);
 
@@ -116,7 +119,9 @@ export async function loadPersonRecord(personId: number): Promise<LoadPersonReco
       household,
       households,
       status,
-      pendingUpdate,
+      pendingUpdate: pending != null,
+      pending,
+      familyNotice,
       today: centralToday(),
       history
     }
@@ -164,14 +169,73 @@ async function loadHousehold(
   };
 }
 
-async function loadPendingFlag(supabase: Db, entity: { type: 'scout' | 'adult'; id: string }): Promise<boolean> {
-  const { count } = await supabase
-    .from('change_requests')
-    .select('id', { count: 'exact', head: true })
-    .eq('entity_type', entity.type)
-    .eq('entity_id', entity.id)
-    .eq('status', 'pending');
-  return (count ?? 0) > 0;
+/**
+ * The family's open change request for this person and any unacknowledged
+ * "added by a family" notice (Phase 5). A request is keyed on the ENTITY —
+ * scouts.id for a scout, people.id for an adult — while the 'adult_added'
+ * notice is always keyed on people.id (lib/change-requests). One pending
+ * row per (entity_type, entity_id) is the rule, so maybeSingle() on each.
+ * Same read as change-request-actions' getPendingChangeRequest, minus its
+ * capability gate — page.tsx already held it before calling the loader.
+ */
+async function loadPending(
+  supabase: Db,
+  personId: number,
+  entity: { type: 'scout' | 'adult'; id: string }
+): Promise<{ pending: PendingChangeRequest | null; familyNotice: FamilyNotice | null }> {
+  const [{ data: reqRow }, { data: noticeRow }] = await Promise.all([
+    supabase
+      .from('change_requests')
+      .select('id, submitted_by_person_id, submitted_at, proposed_changes')
+      .eq('entity_type', entity.type)
+      .eq('entity_id', entity.id)
+      .eq('status', 'pending')
+      .order('submitted_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('change_requests')
+      .select('id, submitted_by_person_id, submitted_at, proposed_changes')
+      .eq('entity_type', 'adult_added')
+      .eq('entity_id', String(personId))
+      .eq('status', 'pending')
+      .order('submitted_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+  ]);
+  type Row = { id: number; submitted_by_person_id: number | null; submitted_at: string; proposed_changes: Record<string, FieldValue> };
+  const req = (reqRow as Row | null) ?? null;
+  const notice = (noticeRow as Row | null) ?? null;
+
+  // submitted_by_person_id is only set for a verified submitter (Plans/
+  // Family-Identity-Auth.md Phase 2) — null means the shared troop password.
+  const submitterIds = [req?.submitted_by_person_id, notice?.submitted_by_person_id].filter((id): id is number => id != null);
+  const names = new Map<number, string>();
+  if (submitterIds.length > 0) {
+    const { data } = await supabase.from('people').select('id, display_name').in('id', submitterIds);
+    for (const p of (data ?? []) as { id: number; display_name: string }[]) names.set(p.id, p.display_name);
+  }
+  const nameOf = (id: number | null) => (id == null ? null : (names.get(id) ?? null));
+
+  return {
+    pending: req
+      ? {
+          id: req.id,
+          entityType: entity.type,
+          submittedAt: req.submitted_at,
+          submittedByName: nameOf(req.submitted_by_person_id),
+          proposed: req.proposed_changes ?? {}
+        }
+      : null,
+    familyNotice: notice
+      ? {
+          id: notice.id,
+          submittedAt: notice.submitted_at,
+          submittedByName: nameOf(notice.submitted_by_person_id),
+          fields: notice.proposed_changes ?? {}
+        }
+      : null
+  };
 }
 
 /**
