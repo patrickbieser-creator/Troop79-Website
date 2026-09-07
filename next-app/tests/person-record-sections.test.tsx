@@ -229,4 +229,44 @@ describe('Person record sections — read → Edit → Save/Cancel, one at a tim
     await waitFor(() => expect(within(family).getByText('Whitlock')).toBeTruthy());
     expect(within(family).queryByText('Raman')).toBeNull();
   });
+
+  // Patrick, 2026-09-07: on an adult's or leader's record, the Household &
+  // family section must list the OTHER people in the household — adults too —
+  // not only the scouts that appear through relationships.
+  it('Leader_SeesOtherHouseholdMembers_InFamilySection', () => {
+    const record = adultRecord();
+    record.household = {
+      id: 1,
+      label: 'Whitlock',
+      members: [
+        { personId: 401, name: 'Dana Whitlock', kind: 'adult', active: true },
+        { personId: 402, name: 'Marcus Whitlock', kind: 'adult', active: true },
+        { personId: 501, name: 'Theo Whitlock', kind: 'scout', active: true },
+        { personId: 403, name: 'Nana Whitlock', kind: 'adult', active: false }
+      ]
+    };
+    render(<PersonRecord record={record} from="adult" />);
+    const family = section('Household & family');
+    const members = within(family).getByRole('list', { name: 'Household members' });
+    const links = within(members).getAllByRole('link');
+    expect(links.map((l) => l.textContent)).toEqual(['Marcus Whitlock', 'Theo Whitlock', 'Nana Whitlock']);
+    expect(links[0].getAttribute('href')).toContain('/admin/advancement/roster/402');
+    // The person whose record this is does not list themself.
+    expect(within(members).queryByText('Dana Whitlock')).toBeNull();
+    // Kind and inactive status ride along.
+    expect(within(members).getByText(/Scout/)).toBeTruthy();
+    expect(within(members).getByText(/inactive/)).toBeTruthy();
+  });
+
+  it('Leader_SeesNoOtherMembersNote_WhenAloneInHousehold', () => {
+    const record = adultRecord();
+    record.household = {
+      id: 1,
+      label: 'Whitlock',
+      members: [{ personId: 401, name: 'Dana Whitlock', kind: 'adult', active: true }]
+    };
+    render(<PersonRecord record={record} from="adult" />);
+    const family = section('Household & family');
+    expect(within(family).getByText('No one else in this household yet.')).toBeTruthy();
+  });
 });

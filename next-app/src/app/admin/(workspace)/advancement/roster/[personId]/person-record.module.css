@@ -234,6 +234,10 @@
 .list li + li { border-top: 1px solid var(--admin-gray-100); }
 .grow { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .list a { color: var(--admin-navy); }
+/* Household members inside the Family section's read row — one per line, no rules. */
+.memberList { list-style: none; margin: 0; padding: 0; }
+.memberList li + li { margin-top: 2px; }
+.memberList a { color: var(--admin-navy); }
 .listHead {
   font-size: var(--admin-text-sm);
   font-weight: var(--admin-weight-bold);

@@ -11,11 +11,14 @@
  * (Phase 3, relationships-block.tsx), outside any Save.
  */
 import { useEffect, useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '../../../../_components/button';
 import { setHousehold, type PersonDetail } from '../person-actions';
 import { RelationshipsBlock, type RelationshipRow } from './relationships-block';
-import type { HouseholdChoice, PersonKind } from './record-types';
+import type { HouseholdChoice, HouseholdMember, PersonKind } from './record-types';
+
+const KIND_LABEL: Record<PersonKind, string> = { scout: 'Scout', leader: 'Leader', adult: 'Adult' };
 import { Field, FieldGrid, ReadRow, ReadRows, SectionCard, SectionFormActions, useSectionForm } from './section-card';
 import styles from './person-record.module.css';
 
@@ -41,6 +44,8 @@ export function FamilySection({
   saved,
   households,
   relationships,
+  members = [],
+  memberHref,
   onRelationshipsChanged,
   banner,
   onSaved
@@ -51,6 +56,13 @@ export function FamilySection({
   saved: FamilyDraft;
   households: HouseholdChoice[];
   relationships: RelationshipRow[];
+  /** Everyone in the current household (the person themself included — they
+   *  are filtered out here). Patrick, 2026-09-07: an adult's or leader's
+   *  record must show the other adults in the household, not only the
+   *  scouts that surface through relationships. */
+  members?: HouseholdMember[];
+  /** Builds the record-page link for a household member. */
+  memberHref?: (personId: number) => string;
   /** Pending-update banner for this section (Phase 5), if any. */
   banner?: ReactNode;
   /** The refetched detail after a link / unlink, for the header's
@@ -102,6 +114,7 @@ export function FamilySection({
 
   const v = form.saved;
   const d = form.draft;
+  const others = members.filter((m) => m.personId !== personId);
 
   return (
     <SectionCard
@@ -139,6 +152,26 @@ export function FamilySection({
       {!form.editing ? (
         <ReadRows>
           <ReadRow label="Household">{v.household ? labelOf(v.household) : null}</ReadRow>
+          {v.household ? (
+            <ReadRow label="Members">
+              {others.length === 0 ? (
+                <span className={styles.muted}>No one else in this household yet.</span>
+              ) : (
+                <ul className={styles.memberList} aria-label="Household members">
+                  {others.map((m) => (
+                    <li key={m.personId}>
+                      {memberHref ? <Link href={memberHref(m.personId)}>{m.name}</Link> : m.name}
+                      <span className={styles.muted}>
+                        {' '}
+                        · {KIND_LABEL[m.kind]}
+                        {m.active ? '' : ' · inactive'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </ReadRow>
+          ) : null}
         </ReadRows>
       ) : (
         <>

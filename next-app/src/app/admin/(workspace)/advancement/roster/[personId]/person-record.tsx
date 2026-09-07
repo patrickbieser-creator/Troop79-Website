@@ -338,6 +338,8 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
             saved={{ household: record.household ? String(record.household.id) : '' }}
             households={record.households}
             relationships={relationships}
+            members={record.household?.members ?? []}
+            memberHref={(id) => `${ROSTER}/${id}?from=${from}`}
             onRelationshipsChanged={onDetail}
           />
 
