@@ -26,6 +26,15 @@ import { DialogDemo } from './dialog-demo';
 import { SaveDemo } from './save-demo';
 import { fmtDate, fmtDateLong, fmtDateFull, fmtDay, fmtDateTime, fmtMonthYear, fmtRange } from '@/lib/format-date';
 import { ActionsMenuSpecimen, SearchFieldSpecimen, SortHeaderSpecimen } from './specimens';
+import {
+  DangerZoneSpecimen,
+  HistoryChipSpecimen,
+  ImmediateBlockSpecimen,
+  PendingBannerSpecimen,
+  SectionEditingSpecimen,
+  SectionReadSpecimen,
+  StatusRowSpecimen
+} from './person-record-specimen';
 import { TabStrip } from '../../_components/tab-strip';
 import { AddButton } from '../../_components/add-button';
 import { Button } from '../../../_components/button';
@@ -263,6 +272,15 @@ const SCOREBOARD: {
     phase: 'C',
     notes:
       'deliberate survivors: date-picker-field keeps its var(--admin-x, var(--public-x, #hex)) fallback chains (it also serves the public /profile editors, where admin tokens are undefined); the ledger ACTIVITY-kind palette (camping/hiking/outing/fundraiser/service/leadership — categorical by design); one on-dark warning amber in media-manager. The MB/rank tints got real tokens 2026-08-21 (Patrick: normalize the drift) — --admin-cat-rank-bg/--admin-cat-mb-bg, one meaning per color on all four screens'
+  },
+  {
+    pattern: 'Person editors (roster)',
+    copies: '✓ DONE — 1 record page, 0 dialogs (Phase 6, 2026-09-07)',
+    canonical:
+      '✓ SHIPPED: advancement/roster/[personId] — per-section Edit → dirty-gated Save/Cancel (SectionCard), immediate blocks, Status read row, pending banners per section, History, Danger zone; roster rows link to it',
+    phase: 'D',
+    notes:
+      'Retired the same day: people-table’s PersonEditor dialog (status / demographics / emails / household / roles / relationships / merge / delete), ScoutForm’s edit branch (create-once “+ Add Scout” stays), scout-relations.tsx, pending-update-panel.tsx. Save-model rule amended in AGENTS.md: per-section Edit is a valid alternative to one whole-form dirty gate'
   },
   {
     pattern: 'Eyebrow labels (11px/700/uppercase)',
@@ -1292,6 +1310,69 @@ export default function StyleguidePage() {
             note="Patrick's rule (2026-08-23, rolled out across the workstation 2026-08-24): every Save on an already-saved thing is DISABLED until the draft differs from what is saved, reads “Saved” when clean and “Save changes” when dirty (a first-ever save keeps its own verb, e.g. Add Entry), shows “Saving changes…” the moment it submits and a brief “Done” when it lands, is greyed — never hidden — when it would do nothing, and (2026-08-24, Patrick) has a Discard changes beside it that returns the form to the LAST SAVED state; dialogs and inline row editors satisfy that with Cancel. Import from _components/save-state; pass the screen's own primary class so behaviour is shared and paint stays local. Public twin: events/[id]/save-feedback.tsx (no cross-firewall import)."
           >
             <SaveDemo />
+          </Specimen>
+        </div>
+      </section>
+
+      {/* ════ PERSON RECORD PAGE ════ */}
+      <section className={sg.section}>
+        <h2 className={sg.sectionHead}>Person Record Page</h2>
+        <p className={sg.sectionNote}>
+          The roster&rsquo;s record page (<code>advancement/roster/[personId]/</code>, Plans/Person-Editor-Rethink.md,
+          2026-09-07): read-only by default, each section with exactly ONE Edit that turns just that section into a
+          form with its own dirty-gated Save and a Cancel that restores the last-saved values; one section editable at
+          a time. One-click actions sit outside every form in a labelled &ldquo;Takes effect immediately&rdquo; block.
+          Every specimen below paints from the page&rsquo;s own <code>person-record.module.css</code>.
+        </p>
+        <div className={sg.specimenGrid}>
+          <Specimen
+            label="Section card — read mode (SectionCard + ReadRows / ReadRow)"
+            canonical
+            note="Heading, the one Edit, definition-list rows (· derived for computed values, — for empty), and at most one “How this works” disclosure (D-070). No standing hint paragraphs anywhere on the page."
+          >
+            <SectionReadSpecimen />
+          </Specimen>
+          <Specimen
+            label="Section card — editing (FieldGrid / Field + SectionFormActions)"
+            canonical
+            note="Edit is hidden while editing; Cancel is the way out and restores the LAST SAVED values. Save is the shared SaveButton: disabled with “No changes to save yet” until the draft differs, “Save changes” when dirty, greyed with the reason when a required name is blank, Saving… → Done via SaveFeedback. Opening a second section’s Edit while this one is dirty prompts to discard (SectionEditProvider)."
+          >
+            <SectionEditingSpecimen />
+          </Specimen>
+          <Specimen
+            label="Takes effect immediately (ImmediateBlock)"
+            canonical
+            note="Emails, roles and relationships commit on click, so they never sit inside a draft form: a dashed block with a TEXT tag (never colour-only), its own error / success line, and a list whose row actions are Buttons. A control that would do nothing is greyed with a title saying why."
+          >
+            <ImmediateBlockSpecimen />
+          </Specimen>
+          <Specimen
+            label="Status read row (status-card)"
+            canonical
+            note="Badge + the one-line consequence, ONE Edit. Edit opens the reason panel; “Mark inactive…” confirms in the danger Dialog. No Save / Saved button exists here by design — a grey “Saved” under an immediate status change was the bug that started the rethink. Identical for scouts and adults."
+          >
+            <StatusRowSpecimen />
+          </Specimen>
+          <Specimen
+            label="Pending update banner (pending-banner)"
+            canonical
+            note="The family’s change request, INSIDE the section it touches, in the shared warning Notice (no new pending class family) with a Field / Current / Proposed table. One request, one decision: Approve / Reject from any section act on the whole request, and the buttons say so when it also touches other sections."
+          >
+            <PendingBannerSpecimen />
+          </Specimen>
+          <Specimen
+            label="History row + chip (history-section)"
+            canonical
+            note="Date · actor — summary, then a chip: hover shows “Field: old → new” per line, click opens the Field / Was / Now dialog. A row logged before the audit log kept field detail shows the muted “summary only” chip. Values live in details, never in the summary (D-257)."
+          >
+            <HistoryChipSpecimen />
+          </Specimen>
+          <Specimen
+            label="Danger zone (collapsed disclosure)"
+            canonical
+            note="Promote / merge / delete behind one Show — no standing prose; the consequences live in the confirm dialogs, which Merge and Delete BOTH open (outlined danger Buttons in place, solid danger only on the Dialog’s confirm). Delete is greyed with the reason while a scout or leader record is attached."
+          >
+            <DangerZoneSpecimen />
           </Specimen>
         </div>
       </section>

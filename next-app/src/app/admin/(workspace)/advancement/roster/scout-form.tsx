@@ -1,12 +1,22 @@
 'use client';
 
+/**
+ * "+ Add Scout" — the create-once dialog on the Scouts tabs.
+ *
+ * Since Phase 6 of Plans/Person-Editor-Rethink.md (2026-09-07) this form
+ * CREATES only. Editing an existing scout — identity, details, contact,
+ * parents / guardians, status, promote-to-adult — happens on the scout's
+ * record page (`roster/[personId]/`), section by section. The edit branch
+ * that used to share this component (`row !== null`, updateScout, the
+ * Pending Update panel, ScoutRelations) is retired.
+ *
+ * `ScoutRow` stays exported from here: it is the flat scout + person shape
+ * the Scouts grid renders and lib/scout-row.ts builds.
+ */
 import { useEffect, useRef, useState, useTransition } from 'react';
-import { createScout, promoteScoutToAdult, updateScout } from '../lookups/actions';
+import { createScout } from '../lookups/actions';
 import { INACTIVE_REASON_LABEL, type InactiveReason } from '@/lib/supabase/types';
-import { ScoutRelations } from './scout-relations';
-import { PendingUpdatePanel } from './pending-update-panel';
-import { ageOn, gradeFromGradYear, gradeLabel, gradYearFromGrade } from '@/lib/demographics';
-import type { EditableScoutField } from '@/lib/change-requests';
+import { ageOn, gradeLabel, gradYearFromGrade } from '@/lib/demographics';
 import { DatePickerField } from '../../_components/date-picker-field';
 import { Notice } from '../../_components/notice';
 import { SaveButton, SaveFeedback, useSavedSnapshot, useSavePhase } from '../../_components/save-state';
@@ -45,22 +55,6 @@ export interface ScoutRow {
   things_we_should_know: string | null;
 }
 
-export interface ParentRow {
-  id?: number;
-  scout_id: string;
-  name: string;
-  relationship: string | null;
-  phone: string | null;
-  email: string | null;
-  same_address_as_scout: boolean;
-  address_line1: string | null;
-  address_line2: string | null;
-  city: string | null;
-  state: string | null;
-  zip: string | null;
-  sort_order: number;
-}
-
 /** Order the inactive reasons are offered in when a scout is marked inactive.
  *  Server-side validation of the same set lives in lookups/actions.ts. */
 const REASON_ORDER: InactiveReason[] = [
@@ -83,42 +77,36 @@ const SECTION_TITLES = [
 ];
 
 export function ScoutForm({
-  row,
-  ranks,
   onClose
 }: {
-  row: ScoutRow | null;
+  /** Kept on the props so the Scouts tab's call is unchanged; a new scout
+   *  has no rank (Current Rank is derived from the ledger), so nothing here
+   *  reads the list. */
   ranks: { id: string; display_name: string }[];
   onClose: () => void;
 }) {
-  const isNew = row === null;
-  const [id, setId] = useState(row?.id ?? '');
-  const [firstName, setFirstName] = useState(row?.first_name ?? '');
-  const [lastName, setLastName] = useState(row?.last_name ?? '');
-  const [patrol, setPatrol] = useState(row?.patrol ?? '');
-  const [bsaMemberId, setBsaMemberId] = useState(row?.bsa_member_id ?? '');
-  const [active, setActive] = useState(row?.active ?? true);
-  const [inactiveReason, setInactiveReason] = useState<InactiveReason | ''>(
-    row?.inactive_reason ?? ''
-  );
-  const [addr1, setAddr1] = useState(row?.address_line1 ?? '');
-  const [addr2, setAddr2] = useState(row?.address_line2 ?? '');
-  const [city, setCity] = useState(row?.city ?? '');
-  const [stateAbbr, setStateAbbr] = useState(row?.state ?? '');
-  const [zip, setZip] = useState(row?.zip ?? '');
-  const [phone, setPhone] = useState(row?.phone ?? '');
-  const [email, setEmail] = useState(row?.email ?? '');
-  const [healthFormDate, setHealthFormDate] = useState(row?.health_form_date ?? '');
-  const [thingsWeShouldKnow, setThingsWeShouldKnow] = useState(row?.things_we_should_know ?? '');
-  const [birthdate, setBirthdate] = useState(row?.birthdate ?? '');
-  const [gender, setGender] = useState<string>(row?.gender ?? '');
-  const [school, setSchool] = useState(row?.school ?? '');
-  const [grade, setGrade] = useState<string>(() => {
-    const g = gradeFromGradYear(row?.graduation_year ?? null);
-    return g === null ? '' : String(g);
-  });
-  const [swimClass, setSwimClass] = useState<string>(row?.swim_class ?? '');
-  const [jlOverride, setJlOverride] = useState<string>(row?.junior_leader_override ?? '');
+  const [id, setId] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [patrol, setPatrol] = useState('');
+  const [bsaMemberId, setBsaMemberId] = useState('');
+  const [active, setActive] = useState(true);
+  const [inactiveReason, setInactiveReason] = useState<InactiveReason | ''>('');
+  const [addr1, setAddr1] = useState('');
+  const [addr2, setAddr2] = useState('');
+  const [city, setCity] = useState('');
+  const [stateAbbr, setStateAbbr] = useState('');
+  const [zip, setZip] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [healthFormDate, setHealthFormDate] = useState('');
+  const [thingsWeShouldKnow, setThingsWeShouldKnow] = useState('');
+  const [birthdate, setBirthdate] = useState('');
+  const [gender, setGender] = useState<string>('');
+  const [school, setSchool] = useState('');
+  const [grade, setGrade] = useState<string>('');
+  const [swimClass, setSwimClass] = useState<string>('');
+  const [jlOverride, setJlOverride] = useState<string>('');
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   // Save standard (2026-08-24): every field the form sends, against what it opened with.
@@ -159,27 +147,6 @@ export function ScoutForm({
     sectionRefs.current[i]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  const currentRankLabel = row?.current_rank
-    ? ranks.find((r) => r.id === row.current_rank)?.display_name ?? row.current_rank
-    : null;
-
-  const currentValues: Partial<Record<EditableScoutField, string | number | null>> = row
-    ? {
-        address_line1: row.address_line1,
-        address_line2: row.address_line2,
-        city: row.city,
-        state: row.state,
-        zip: row.zip,
-        phone: row.phone,
-        email: row.email,
-        school: row.school,
-        graduation_year: row.graduation_year,
-        swim_class: row.swim_class,
-        birthdate: row.birthdate,
-        things_we_should_know: row.things_we_should_know
-      }
-    : {};
-
   function submit() {
     setErr(null);
     if (!active && !inactiveReason) {
@@ -209,12 +176,12 @@ export function ScoutForm({
     fd.set('graduation_year', grade === '' ? '' : String(gradYearFromGrade(Number(grade))));
     fd.set('swim_class', swimClass);
     fd.set('junior_leader_override', jlOverride);
-    // `parents` is deliberately NOT sent — createScout/updateScout no longer
-    // read or handle it at all. Parents are relationships now, saved as they
-    // are edited (see scout-relations.tsx / person-actions.ts).
+    // `parents` is deliberately NOT sent — createScout does not read it.
+    // Parents are relationships, added on the record page once the scout
+    // exists (see [personId]/relationships-block.tsx / person-actions.ts).
     feedback.start();
     startTransition(async () => {
-      const res = isNew ? await createScout(fd) : await updateScout(fd);
+      const res = await createScout(fd);
       if (!res.ok) {
         feedback.fail();
         setErr(res.error ?? 'Save failed');
@@ -224,23 +191,16 @@ export function ScoutForm({
     });
   }
 
-
   return (
     <div className={styles.editDialogRosterInner}>
       <div className={styles.editDialogHeader}>
-        <h3>{isNew ? 'Add Scout' : `Edit ${row?.display_name}`}</h3>
+        <h3>Add Scout</h3>
         <p>
           Internal ID is permanent once created. Current Rank is derived from
           the ledger&rsquo;s rank-award entries and updates automatically when
           a BoR is recorded.
         </p>
       </div>
-
-      {!isNew && row && (
-        <div className={styles.editDialogBanner}>
-          <PendingUpdatePanel scoutId={row.id} currentValues={currentValues} onApplied={onClose} />
-        </div>
-      )}
 
       <div className={styles.editRailBody}>
         <nav className={styles.editRail} aria-label="Jump to section">
@@ -277,7 +237,6 @@ export function ScoutForm({
               onChange={(e) => setId(e.target.value)}
               className={`${styles.editInput} ${styles.editInputMono}`}
               placeholder="e.g. F01"
-              disabled={!isNew}
               required
             />
           </label>
@@ -324,7 +283,7 @@ export function ScoutForm({
           <div className={styles.editField}>
             <span className={styles.editLabel}>Current Rank · derived</span>
             <div className={styles.readOnlyValue}>
-              {currentRankLabel ?? <span className={styles.muted}>— (no rank earned yet)</span>}
+              <span className={styles.muted}>— (no rank earned yet)</span>
             </div>
           </div>
         </div>
@@ -518,7 +477,11 @@ export function ScoutForm({
           sectionRefs.current[4] = el;
         }}
       >
-        <ScoutRelations scoutPersonId={row?.person_id ?? null} />
+        <p className={styles.helpText}>
+          Create the scout first — parents and guardians attach to their person record, which
+          exists once the scout is saved. Add them on the scout&rsquo;s record page under
+          Household &amp; family.
+        </p>
       </FormSection>
 
       <FormSection
@@ -532,7 +495,7 @@ export function ScoutForm({
           <label className={styles.statusRadio}>
             <input
               type="radio"
-              name={`status-${row?.id ?? 'new'}`}
+              name="status-new"
               checked={active}
               onChange={() => {
                 setActive(true);
@@ -544,7 +507,7 @@ export function ScoutForm({
           <label className={styles.statusRadio}>
             <input
               type="radio"
-              name={`status-${row?.id ?? 'new'}`}
+              name="status-new"
               checked={!active}
               onChange={() => setActive(false)}
             />
@@ -578,45 +541,6 @@ export function ScoutForm({
       {err && <Notice className={styles.noticeGutter}>{err}</Notice>}
 
       <div className={styles.editActionsRow}>
-        {!isNew && row?.active && (
-          <button
-            type="button"
-            className={`${styles.promoteBtn} ${styles.pushLeft}`}
-            disabled={isPending}
-            onClick={() => {
-              if (
-                !window.confirm(
-                  `Promote ${row.display_name} to adult (turned 18)?
-
-` +
-                    `• Scout record becomes Inactive (Aged out) — ledger history and clipboard are preserved
-` +
-                    `• Their sign-off initials become an ADULT leader (created if they don't have initials yet)
-` +
-                    `• They leave scout rosters, Fast Entry, and Meeting Plan suggestions
-
-` +
-                    `Record any outstanding requirement sign-offs (e.g. Eagle BoR) BEFORE promoting.`
-                )
-              ) {
-                return;
-              }
-              setErr(null);
-              const fd = new FormData();
-              fd.set('scout_id', row.id);
-              startTransition(async () => {
-                const res = await promoteScoutToAdult(fd);
-                if (!res.ok) {
-                  setErr(res.error ?? 'Promotion failed');
-                  return;
-                }
-                onClose();
-              });
-            }}
-          >
-            Promote to adult (18+)
-          </button>
-        )}
         <Button
           type="button"
           variant="secondary"
@@ -628,10 +552,10 @@ export function ScoutForm({
         <SaveButton
           dirty={dirty}
           pending={isPending}
-          isNew={isNew}
+          isNew
           newLabel="Create Scout"
-          blocked={!firstName.trim() || !lastName.trim() || (isNew && !id.trim()) || (!active && !inactiveReason)}
-          blockedReason="First and last name are required (and a reason when inactive)"
+          blocked={!firstName.trim() || !lastName.trim() || !id.trim() || (!active && !inactiveReason)}
+          blockedReason="Internal ID, first and last name are required (and a reason when inactive)"
           onClick={submit}
         />
         <SaveFeedback phase={feedback.phase} />
@@ -641,4 +565,3 @@ export function ScoutForm({
 }
 
 // FormSection promoted to the shared admin/_components/form-panel (2026-08-24).
-

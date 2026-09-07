@@ -93,9 +93,9 @@ async function loadPendingProfileUpdates(): Promise<AttentionCategory> {
     }
 
     const scout = scoutById.get(r.entity_id);
-    // Deep-links into the Roster's scout editor (Active or Inactive tab,
-    // whichever the scout is actually on) — see scouts-table.tsx's
-    // openScoutId prop.
+    // Deep-links via the Roster's ?open= redirect to the scout's record page
+    // (Active or Inactive tab, whichever the scout is actually on, becomes
+    // its Back link) — see roster/page.tsx.
     const tab = scout?.active === false ? 'inactive_scout' : 'active_scout';
     return {
       label: scout?.display_name ?? r.entity_id,

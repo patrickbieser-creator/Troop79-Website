@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { ageOn, gradeFromGradYear, gradeLabel, SWIM_CLASS_LABEL } from '@/lib/demographics';
 import { INACTIVE_REASON_LABEL } from '@/lib/supabase/types';
 import { ScoutForm, type ScoutRow } from './scout-form';
@@ -21,6 +22,10 @@ import styles from './roster.module.css';
  * different jobs: the active tab is the working roster you print and take to
  * a campout, the inactive tab is the archive you consult when someone comes
  * back or you need history.
+ *
+ * Since Phase 6 of Plans/Person-Editor-Rethink.md (2026-09-07) a scout's name
+ * links to their record page (`roster/[personId]?from=<tab>`) — the edit
+ * dialog is retired; only "+ Add Scout" (ScoutForm, create-once) stays here.
  */
 
 type ColKey =
@@ -98,14 +103,17 @@ interface Props {
    *  which the page classifies, not this component — cannot be contradicted
    *  here by a bare `scouts.active` test. */
   only?: 'active' | 'inactive';
-  /** Deep-link support for the Dashboard's "Needs Attention" panel
-   *  (?open=<scoutId>) — auto-opens that scout's editor on load, so a leader
-   *  clicking a pending-update link lands directly on the right record
-   *  instead of having to find it in a 29-row table. */
-  openScoutId?: string;
 }
 
-export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId }: Props) {
+/** Where a scout's name goes: the record page, remembering the tab it came
+ *  from so the page's Back link returns here. Null for a scout with no
+ *  linked person (defensive — createScout always links one). */
+export function scoutRecordHref(s: Pick<ScoutRow, 'person_id'>, tab: 'active' | 'inactive'): string | null {
+  if (s.person_id == null) return null;
+  return `/admin/advancement/roster/${s.person_id}?from=${tab === 'inactive' ? 'inactive_scout' : 'active_scout'}`;
+}
+
+export function ScoutsTable({ scouts, ranks, rankLabel, today, only }: Props) {
   // `only` must NOT seed state. A state initialiser runs once on mount, and
   // React keeps this component mounted when the page navigates between the
   // Active and Inactive roster tabs — so the internal tab stayed 'active'
@@ -114,24 +122,16 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId
   const [ownTab, setOwnTab] = useState<'active' | 'inactive'>('active');
   const tab = only ?? ownTab;
   const setTab = setOwnTab;
-  const [openFor, setOpenFor] = useState<ScoutRow | 'new' | null>(null);
+  // The only dialog left here is "+ Add Scout".
+  const [adding, setAdding] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
     const dlg = dialogRef.current;
     if (!dlg) return;
-    if (openFor && !dlg.open) dlg.showModal();
-    if (!openFor && dlg.open) dlg.close();
-  }, [openFor]);
-
-  useEffect(() => {
-    if (!openScoutId) return;
-    const match = scouts.find((s) => s.id === openScoutId);
-    // Prefilling from the URL's ?open= param (external to render) on mount —
-    // same pattern as scout-first-card.tsx / calendar-browser.tsx.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (match) setOpenFor(match);
-  }, [openScoutId, scouts]);
+    if (adding && !dlg.open) dlg.showModal();
+    if (!adding && dlg.open) dlg.close();
+  }, [adding]);
 
   const activeCount = useMemo(() => scouts.filter((s) => s.active).length, [scouts]);
   const inactiveCount = scouts.length - activeCount;
@@ -179,7 +179,7 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId
           />
         )}
         <span className={styles.toolbarSpacer} />
-        <AddButton onClick={() => setOpenFor('new')}>+ Add Scout</AddButton>
+        <AddButton onClick={() => setAdding(true)}>+ Add Scout</AddButton>
       </div>
 
       <table className={styles.table}>
@@ -216,6 +216,7 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId
             const age = ageOn(s.birthdate, today);
             const grade = gradeFromGradYear(s.graduation_year, today);
             const dash = <span className={styles.muted}>—</span>;
+            const href = scoutRecordHref(s, tab);
             return (
               <tr key={s.id}>
                 {/* The internal scout id (A02, …). It is the key every other
@@ -224,14 +225,13 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId
                     it off, not only in a URL. */}
                 <td className={styles.scoutId}>{s.id}</td>
                 <td>
-                  <button
-                    type="button"
-                    className={styles.nameBtn}
-                    onClick={() => setOpenFor(s)}
-                    title="Edit this scout"
-                  >
-                    {s.display_name}
-                  </button>
+                  {href ? (
+                    <Link href={href} className={styles.nameBtn} title="Open this scout's record">
+                      {s.display_name}
+                    </Link>
+                  ) : (
+                    <span title="No person record linked">{s.display_name}</span>
+                  )}
                 </td>
                 <td>{age ?? dash}</td>
                 <td>{s.birthdate ? fmtDate(s.birthdate) : dash}</td>
@@ -252,21 +252,15 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, openScoutId
                 )}
                 {/* The trailing duplicate Edit button is gone (Section 2
                     stretched-link sweep, 2026-08-21) — the scout's name is
-                    the single way into the editor, as on Calendar/News. */}
+                    the single way into the record, as on Calendar/News. */}
               </tr>
             );
           })}
         </tbody>
       </table>
 
-      <Dialog ref={dialogRef} className={styles.editDialogWide} onClose={() => setOpenFor(null)}>
-        {openFor && (
-          <ScoutForm
-            row={openFor === 'new' ? null : openFor}
-            ranks={ranks}
-            onClose={() => setOpenFor(null)}
-          />
-        )}
+      <Dialog ref={dialogRef} className={styles.editDialogWide} onClose={() => setAdding(false)}>
+        {adding && <ScoutForm ranks={ranks} onClose={() => setAdding(false)} />}
       </Dialog>
     </>
   );

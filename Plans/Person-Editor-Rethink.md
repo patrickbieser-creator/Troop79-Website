@@ -1,6 +1,6 @@
 # Person Editor Rethink — adult, leader, and scout editing screens
 
-**Status:** research + prototypes in progress (2026-09-07). Patrick to approve a direction.
+**Status:** Built — all 6 phases (2026-09-07). Direction A + History shipped; see the Build Plan below.
 **Trigger:** Patrick, 2026-09-07: "There is too much going on and it's confusing to end users. We need a
 thorough rethink of how this is displayed. I am open to different patterns than what we have done
 before." Same day, editing Marita Stollenwerk Active → Inactive: "there's no way to save" — Status acts
@@ -123,23 +123,23 @@ for leaders.
 
 # Build Plan (tech-lead, 2026-09-07)
 
-**Status:** Active — Phase 1 in progress 2026-09-07
+**Status:** Built — all 6 phases (2026-09-07)
 **Priority:** High
 **Spec:** `prototypes/person-editor/a-record-page.html`
 
 ## Acceptance Criteria
 
-- [ ] `/admin/advancement/roster/[personId]` renders one record page for both scouts and adults/leaders, read-only by default, each section with exactly one Edit.
-- [ ] Status is a read row → Edit → reason → confirm dialog, identically for scouts and adults (retires #1, #2 — the Marita bug).
-- [ ] Every section Save is dirty-gated (`save-state.tsx`), shows Saving…→Done, Cancel restores last-saved values; no immediate action sits inside a form that also has a Save.
-- [ ] Emails, roles, relationships/parents are visually distinct "Takes effect immediately" lists outside any form (retires #3).
-- [ ] Merge and Delete both confirm naming consequences; Delete refused while anything is attached (retires #4).
-- [ ] Household reassignment is a draft field; Save toast "Household: A → B" with Undo (retires #5).
-- [ ] End role confirms and names the tab move; Promote-to-adult keeps its confirm (retires #6).
-- [ ] At most one "How this works" disclosure per section; no standing hint paragraphs (retires #7).
-- [ ] History: fact-strip card (last change · who · count) + History section (latest 4, chips with hover tooltip + click dialog, field-level old→new) fed by `audit_log`, plus a "Full log" modal.
-- [ ] `?tab=X&open=ID` still deep-links (redirects into the new page); Add Adult and Add Scout unaffected.
-- [ ] lint + typecheck + test + build pass at the end of every phase; browser check of the Marita scenario after Phase 1, full flow after Phase 6.
+- [x] `/admin/advancement/roster/[personId]` renders one record page for both scouts and adults/leaders, read-only by default, each section with exactly one Edit.
+- [x] Status is a read row → Edit → reason → confirm dialog, identically for scouts and adults (retires #1, #2 — the Marita bug).
+- [x] Every section Save is dirty-gated (`save-state.tsx`), shows Saving…→Done, Cancel restores last-saved values; no immediate action sits inside a form that also has a Save.
+- [x] Emails, roles, relationships/parents are visually distinct "Takes effect immediately" lists outside any form (retires #3).
+- [x] Merge and Delete both confirm naming consequences; Delete refused while anything is attached (retires #4).
+- [x] Household reassignment is a draft field; Save toast "Household: A → B" with Undo (retires #5).
+- [x] End role confirms and names the tab move; Promote-to-adult keeps its confirm (retires #6).
+- [x] At most one "How this works" disclosure per section; no standing hint paragraphs (retires #7). Phase 6 retired the old editors (PersonEditor, ScoutForm's edit branch, scout-relations, pending-update-panel) — the seven `.editorHint` paragraphs went with them.
+- [x] History: fact-strip card (last change · who · count) + History section (latest 4, chips with hover tooltip + click dialog, field-level old→new) fed by `audit_log`, plus a "Full log" modal.
+- [x] `?tab=X&open=ID` still deep-links (redirects into the new page); Add Adult and Add Scout unaffected. Phase 6: roster row names are now `<Link>`s to `/roster/<personId>?from=<tab>` (tests/roster-row-to-record-page.test.tsx).
+- [ ] lint + typecheck + test + build pass at the end of every phase; browser check of the Marita scenario after Phase 1, full flow after Phase 6. **Gate passed for every phase incl. 6; the Phase 6 browser check of the complete flow (scout + adult/leader, deep link, Back-with-dirty prompt) is still owed — the phase was built headless.**
 
 ## Test Plan
 
@@ -168,7 +168,7 @@ for leaders.
 | 3 | Immediate blocks + Danger zone: `emails-block.tsx`, `roles-block.tsx`, `relationships-block.tsx`, `danger-zone.tsx`; confirms for End role and Merge. Tests: EndsSoleLeaderRole, MergesPerson, DeletesWithAttachments refused, RemovesOnlyEmail disabled. | M | #4 #6 |
 | 4 | History: `get-person-history.ts`, `history-card.tsx`, `history-section.tsx`, `history-dialog.tsx`; backstop that every action from phases 1–3 passes `details`. Tests: FieldLevelDiff post-cutover, PreCutover summary only, FullLog newest first. | M | Direction C add |
 | 5 | Pending Update banners per section: split `pending-update-panel.tsx` into `pending-banner.tsx` mounted per section, filtering proposed keys to that section; approve/reject stay whole-request. Tests: BannerAppearsInTouchedSection, ApprovesFromOneSection applies whole request. | S | top-of-page pending |
-| 6 | Retirement + sweep: delete PersonEditor, ScoutForm edit branch, scout-relations.tsx, dead imports; AGENTS.md amendment; styleguide "Person Record Page" specimen + scoreboard row. Full gate + browser check of the complete flow on a scout and an adult/leader, deep link, Back-with-dirty prompt. | S | #7 |
+| 6 | Retirement + sweep: delete PersonEditor, ScoutForm edit branch, scout-relations.tsx, dead imports; AGENTS.md amendment; styleguide "Person Record Page" specimen + scoreboard row. Full gate + browser check of the complete flow on a scout and an adult/leader, deep link, Back-with-dirty prompt. **Shipped 2026-09-07** — roster rows link to the record page; `pending-update-panel.tsx` also deleted (no other importer); `updateScout` in lookups/actions.ts left in place (tests/scout-people-demographics.test.ts scans its source; no UI caller remains). | S | #7 |
 
 ## AGENTS.md amendment (Phase 6, add to "Save buttons" after point 5)
 

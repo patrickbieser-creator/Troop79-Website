@@ -51,8 +51,9 @@ page (it then remembers its URL for children), `{ label, href }` on a depth-2 sc
 News"), `{ crumbs: [root, parent], current }` at depth 3+ (breadcrumbs). It renders `BackNav` above
 the h1; screens without `PageTitle` (the calendar workbench head) render `BackNav` themselves in the
 same spot. Never put a back link in `children`, `sub`, a toolbar, or a page footer. Forms get the
-Discard-changes prompt for free through the save-state hooks (`useRegisterDirty`). Specimen:
-`/admin/styleguide/admin` → Back Navigation.
+Discard-changes prompt for free through the save-state hooks (`useRegisterDirty`). The person record
+page (`roster/[personId]/`) is a depth-2 screen: `back: { label, href }` pointing at the roster tab it
+was opened from (`?from=<tab>`). Specimen: `/admin/styleguide/admin` → Back Navigation.
 
 **Admin → public links are one component (2026-08-25):** `PublicPageLink` from
 `admin/_components/public-page-link` — secondary / sm, same tab, "View public page" or "Preview
@@ -184,6 +185,8 @@ already saved follows one standard** — no exceptions, public or admin:
    state (not what the page loaded with). Dialogs and inline row editors satisfy this with their
    Cancel: closing is discarding. Admin: `DiscardButton` + `useDraftSnapshot(draft).saved` for
    controlled forms, `useFormDirty(ref).reset()` for uncontrolled ones.
+
+**Per-section Edit is a valid alternative to one whole-form dirty gate (2026-09-07):** a record page may give each section its own Edit → dirty-gated Save/Cancel using the same `save-state.tsx` pieces, rather than one Save for the whole page — provided only one section is editable at a time (opening a second section's Edit while another is dirty prompts to discard) and one-click actions (emails, roles, relationships) are visually separated as a labelled "Takes effect immediately" block, never inside a draft form. Reference: `roster/[personId]/`.
 
 Reference implementations: `src/app/(public)/events/[id]/person-first-form.tsx` (draftKey snapshot)
 and `slot-first-form.tsx` (claims/comments/guests keys). The Guests section's "locked until someone

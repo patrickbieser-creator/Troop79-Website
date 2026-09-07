@@ -31,12 +31,7 @@ import { RosterActions } from "./roster-actions";
 import { TabStrip } from "../../_components/tab-strip";
 import { PageTitle } from "../../_components/page-title";
 import { ScoutsTable } from "./scouts-table";
-import {
-  PeopleTable,
-  type PersonRoleRow,
-  type RelationshipRow,
-  type HouseholdOption,
-} from "./people-table";
+import { PeopleTable, type HouseholdOption } from "./people-table";
 import { GuestsTable } from "./guests-table";
 import { RosterSearch } from "./roster-search";
 import { buildRosterSearchRows } from "./roster-search-rows";
@@ -103,11 +98,11 @@ export default async function RosterPage({
     ? (tabParam as TabKey)
     : "active_scout";
 
-  // ?open=ID now lands on the person's record page
-  // (Plans/Person-Editor-Rethink.md Phase 1). Scout tabs and the dashboard's
-  // attention links carry a scout code; people tabs carry people.id — the
-  // resolver absorbs both. Guests keep their row editor; an id nothing
-  // matches falls through to the tables' old open-on-mount behaviour.
+  // ?open=ID lands on the person's record page (Plans/Person-Editor-
+  // Rethink.md Phase 1; the tables' own dialogs retired in Phase 6). Scout
+  // tabs and the dashboard's attention links carry a scout code; people tabs
+  // carry people.id — the resolver absorbs both. Guests keep their row
+  // editor; an id nothing matches simply shows the tab.
   if (openScoutId && tab !== "guest") {
     const personId = await resolveRosterOpenParam(openScoutId, tab);
     if (personId != null) {
@@ -116,12 +111,12 @@ export default async function RosterPage({
   }
 
   const supabase = createAdminClient();
+  // person_roles / relationships are no longer read here (Phase 6) — they
+  // only seeded the retired PersonEditor; the record page loads its own.
   const [
     directory,
     allScouts,
     ranksRes,
-    rolesRes,
-    relsRes,
     householdsRes,
     membersRes,
     guestPeopleRes,
@@ -134,12 +129,6 @@ export default async function RosterPage({
       .from("ranks")
       .select("id, display_name, sort_order")
       .order("sort_order"),
-    supabase
-      .from("person_roles")
-      .select("id, person_id, role, start_date, end_date"),
-    supabase
-      .from("relationships")
-      .select("id, person_id, related_person_id, type, is_guardian"),
     supabase.from("households").select("id, label").order("label"),
     supabase.from("household_members").select("household_id, person_id"),
     // Forgotten guests (active=false) are history, not roster — not listed.
@@ -197,8 +186,6 @@ export default async function RosterPage({
   const rankLabel = Object.fromEntries(
     ranks.map((r) => [r.id, r.display_name]),
   );
-  const roles = (rolesRes.data ?? []) as unknown as PersonRoleRow[];
-  const relationships = (relsRes.data ?? []) as unknown as RelationshipRow[];
   const households = (householdsRes.data ?? []) as unknown as HouseholdOption[];
   const householdByPerson: Record<number, number> = {};
   // Who is in each household, so two families sharing a surname can be told
@@ -216,9 +203,6 @@ export default async function RosterPage({
     const name = directoryByPersonId.get(m.person_id)?.display_name;
     if (name) (householdMembers[m.household_id] ??= []).push(name);
   }
-  const nameById = Object.fromEntries(
-    directory.map((p) => [p.person_id, p.display_name]),
-  );
 
   const householdLabel = new Map(households.map((h) => [h.id, h.label]));
   const guestRows = buildGuestTabRows({
@@ -289,7 +273,7 @@ export default async function RosterPage({
 
       {/* Keyed on the URL: a result row soft-navigates to ?tab=X&open=ID, and
           without a remount the query (client state) would survive it — the
-          result table would stay up and the editor never open (found live,
+          result table would stay up and the redirect never seen (found live,
           v1.108.0). */}
       <RosterSearch
         key={`${tab}:${openScoutId ?? ''}`}
@@ -340,18 +324,13 @@ export default async function RosterPage({
             rankLabel={rankLabel}
             today={today}
             only={tab === "active_scout" ? "active" : "inactive"}
-            openScoutId={openScoutId}
           />
         ) : (
           <PeopleTable
             people={directory.filter((p) => p.tab === tab)}
-            roles={roles}
-            relationships={relationships}
             households={households}
             householdByPerson={householdByPerson}
             householdMembers={householdMembers}
-            nameById={nameById}
-            openPersonId={openScoutId}
           />
         )}
       </RosterSearch>

@@ -104,12 +104,9 @@ describe('Leaders / Adults grid', () => {
     render(
       <PeopleTable
         people={[p]}
-        roles={[]}
-        relationships={[]}
         households={[{ id: 3, label: 'Vest' }]}
         householdByPerson={{ 5: 3 }}
         householdMembers={{ 3: ['Becky Vest', 'Nate Vest', 'A', 'B'] }}
-        nameById={{}}
       />
     );
     const table = screen.getByRole('table');

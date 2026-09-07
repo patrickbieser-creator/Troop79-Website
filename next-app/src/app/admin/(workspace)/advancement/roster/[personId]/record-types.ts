@@ -33,8 +33,8 @@ export function kindOfTab(tab: RosterTab): PersonKind {
   return tab;
 }
 
-/** Display names for person_roles.role. The roster editor keeps a private
- *  copy until Phase 6 retires it. */
+/** Display names for person_roles.role — the one copy (the roster grid and
+ *  person-actions read it from here since Phase 6). */
 export const ROLE_LABEL: Record<string, string> = {
   adult_leader: 'Adult leader',
   committee_member: 'Committee member',
