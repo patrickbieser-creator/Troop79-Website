@@ -105,6 +105,13 @@ table.roster{width:100%;border-collapse:collapse;background:#fff;border:1px soli
 .history .when{color:var(--admin-gray-500);white-space:nowrap}
 .history .who{color:var(--admin-gray-600);font-weight:600}
 .history li.session{background:var(--admin-status-success-bg);margin:0 -14px;padding:8px 14px}
+.history .chg{display:inline-block;margin-left:6px;padding:1px 8px;border:1px solid var(--admin-gray-300);border-radius:999px;background:#fff;font-size:var(--admin-text-xs);color:var(--admin-gray-700);cursor:pointer;line-height:1.6}
+.history .chg:hover,.history .chg:focus-visible{border-color:var(--admin-navy);color:var(--admin-navy)}
+#histDlg{width:min(720px,calc(100% - 32px))}
+#histDlg .d-body{max-height:70vh;overflow:auto}
+table.diff{width:100%;border-collapse:collapse;font-size:var(--admin-text-base)}
+table.diff th{text-align:left;font-size:var(--admin-text-xs);letter-spacing:.06em;text-transform:uppercase;color:var(--admin-gray-500);padding:6px 8px;border-bottom:1px solid var(--admin-gray-200)}
+table.diff td{padding:6px 8px;border-bottom:1px solid var(--admin-gray-100);vertical-align:top;overflow-wrap:anywhere}
 @media (max-width:640px){.history li{grid-template-columns:1fr}}
 .cols{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:14px;align-items:start}
 .main{min-width:0;display:flex;flex-direction:column;gap:12px}
@@ -212,6 +219,7 @@ dialog .d-foot{display:flex;gap:8px;justify-content:flex-end;padding:10px 16px 1
 
 <div class="toast" id="toast" role="status" hidden><span id="toastMsg"></span><button type="button" id="toastUndo" hidden>Undo</button><button type="button" id="toastClose" aria-label="Dismiss">×</button></div>
 <dialog id="confirm" aria-labelledby="dTitle"><form method="dialog"><div class="d-head"><h2 id="dTitle"></h2></div><div class="d-body" id="dBody"></div><div class="d-foot"><button type="button" class="btn" id="dCancel">Cancel</button><button type="button" class="btn btn-dangerSolid" id="dOk">Confirm</button></div></form></dialog>
+<dialog id="histDlg" aria-labelledby="hdTitle"><form method="dialog"><div class="d-head"><h2 id="hdTitle"></h2></div><div class="d-body" id="hdBody"></div><div class="d-foot"><button type="button" class="btn" id="hdClose">Close</button></div></form></dialog>
 
 <section class="handoff">
   <button type="button" class="disc" id="handoffBtn" aria-expanded="false">Handoff notes (Direction A)</button>
@@ -306,22 +314,40 @@ const TODAY = '2026-09-07';
    Seed is invented; every save / status change / approval / role / email action in this session appends. */
 const ME = 'Priya Raman';
 const HISTORY = {
-  101:[['2024-08-30','Import','Created from the roster spreadsheet'],['2025-02-12','Priya Raman','YPT completed set to Feb 11, 2025'],['2026-06-02','Dana Whitlock','Verified dana.whitlock@example.com by signing in'],['2026-09-04','Marcus Whitlock (family)','Proposed 3 changes from /profile (pending)']],
+  101:[['2024-08-30','Import','Created from the roster spreadsheet'],['2025-02-12','Priya Raman','YPT completed set to Feb 11, 2025',false,[{f:'YPT completed',from:'—',to:'Feb 11, 2025'}]],['2026-06-02','Dana Whitlock','Verified dana.whitlock@example.com by signing in'],['2026-09-04','Marcus Whitlock (family)','Proposed 3 changes from /profile (pending)',false,[{f:'Birthdate',from:'Mar 14, 1981',to:'Mar 15, 1981'},{f:'Phone',from:'(414) 555-0142',to:'(414) 555-0199'},{f:'Address line 1',from:'2210 N Prospect Ave',to:'1735 E Kenilworth Pl'}]]],
   102:[['2024-08-30','Import','Created from the roster spreadsheet'],['2026-06-02','Marcus Whitlock','Verified marcus.w@example.com by signing in']],
   103:[['2022-03-01','Import','Created; Merit badge counselor'],['2023-09-01','Committee','Granted Adult leader'],['2024-06-30','Committee','Ended Merit badge counselor'],['2025-01-15','Committee','Granted Committee member'],['2025-10-05','Priya Raman','YPT completed set to Oct 4, 2025']],
-  104:[['2021-09-01','Import','Created; Committee member'],['2026-08-15','Priya Raman','Ended Committee member'],['2026-08-16','Priya Raman','Marked inactive — "Moved to Madison, Aug 2026"'],['2026-08-20','System','g.tomasek@oldmail.example bounced']],
+  104:[['2021-09-01','Import','Created; Committee member'],['2026-08-15','Priya Raman','Ended Committee member',false,[{f:'Committee member',from:'since Sep 1, 2021',to:'ended Aug 15, 2026'}]],['2026-08-16','Priya Raman','Marked inactive — "Moved to Madison, Aug 2026"',false,[{f:'Status',from:'Active',to:'Inactive'},{f:'Reason',from:'—',to:'Moved to Madison, Aug 2026'}]],['2026-08-20','System','g.tomasek@oldmail.example bounced',false,[{f:'g.tomasek@oldmail.example',from:'deliverable',to:'bounced Aug 20, 2026'}]]],
   105:[['2026-09-01','Jamal Okafor (family)','Added to the Okafor household from /profile as "Grandmother"']],
   106:[['2026-08-28','Priya Raman','Added as an adult (possible duplicate of a guest)']],
   201:[['2024-08-30','Import','Created from the roster spreadsheet'],['2026-03-15','Ledger','Rank Star awarded (BoR)'],['2026-06-01','Dana Whitlock (family)','Health form date updated — approved by Priya Raman']],
-  202:[['2023-09-10','Import','Created'],['2025-11-02','Ledger','Rank First Class awarded (BoR)'],['2026-09-05','Priya Raman (family)','Proposed 2 changes from /profile (pending)']],
+  202:[['2023-09-10','Import','Created'],['2025-11-02','Ledger','Rank First Class awarded (BoR)',false,[{f:'Rank',from:'Second Class',to:'First Class'}]],['2026-09-05','Priya Raman (family)','Proposed 2 changes from /profile (pending)',false,[{f:'Swim class',from:'—',to:'Swimmer'},{f:'Phone',from:'(414) 555-0190',to:'(414) 555-0191'}]]],
   203:[['2026-08-25','Priya Raman','Created (new scout)']]
 };
+/* Entry shape: [date, who, summary, thisSession?, details?] where details = [{f: field label, from, to}].
+   Summary stays one line on screen; the field-level old → new detail is a hover tooltip and a click-to-open
+   dialog (Patrick 2026-09-07: "what was the old phone number vs. the new phone number" matters, but don't bury it). */
 const histOf = p => (HISTORY[p.id] ||= []);
-function logHistory(text, p = byId(state.personId)){ if (!p || !text) return; histOf(p).push([TODAY, ME, text, true]); }
-function histFact(p){ const h = histOf(p); const last = h[h.length - 1]; return last ? `<button type="button" class="btn-link" data-act="history" title="Open the change log">${fmtDate(last[0])} · ${esc(last[1].replace(/ \(family\)$/, ''))}</button><div class="sub">${h.length} change${h.length === 1 ? '' : 's'}</div>` : '<span class="muted">—</span>'; }
+const plain = s => String(s ?? '').replace(/<span class="sub">[\s\S]*?<\/span>/g, '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim() || '—';
+function logHistory(text, details = null, p = byId(state.personId)){ if (!p || !text) return; histOf(p).push([TODAY, ME, text, true, details && details.length ? details : null]); }
+function diffOf(before, after, keys){ return keys.filter(k => String(before[k] ?? '') !== String(after[k] ?? '')).map(k => ({f: F[k]?.label || k, from: plain(readValue(before, k)), to: plain(readValue(after, k))})); }
+function histFact(p){ const h = histOf(p); const last = h[h.length - 1]; return last ? `<button type="button" class="btn-link" data-act="history" title="Open the change log">${fmtDate(last[0])} · ${esc(last[1].replace(/ \(family\)$/, ''))}</button><div class="sub">${h.length} change${h.length === 1 ? '' : 's'} · ${h.filter(e => e[4]).length} with field detail</div>` : '<span class="muted">—</span>'; }
+function histRow([d, who, text, session, details], idx){
+  const chip = details ? `<button type="button" class="chg" data-act="histDetail" data-idx="${idx}" title="${esc(details.map(x => `${x.f}: ${x.from} → ${x.to}`).join('\n'))}">${details.length} field${details.length === 1 ? '' : 's'} changed ▸</button>` : '';
+  return `<li${session ? ' class="session"' : ''}><span class="when">${fmtDate(d)}</span><span><span class="who">${esc(who)}</span> — ${esc(text)} ${chip}</span></li>`;
+}
+function histRows(p, limit){ const h = histOf(p); const items = h.map((e, i) => [e, i]).reverse(); return (limit ? items.slice(0, limit) : items).map(([e, i]) => histRow(e, i)).join(''); }
 function renderHistory(p){
-  const rows = histOf(p).slice().reverse().map(([d, who, text, session]) => `<li${session ? ' class="session"' : ''}><span class="when">${fmtDate(d)}</span><span><span class="who">${esc(who)}</span> — ${esc(text)}</span></li>`).join('');
-  return `<section class="card" id="history" aria-labelledby="h-history"><div class="card-head"><h2 id="h-history">History</h2><span class="muted" style="font-size:var(--admin-text-base)">newest first · this session highlighted</span></div><div class="card-body"><ul class="history">${rows || '<li><span class="muted">No changes recorded.</span></li>'}</ul>${helpDisc('history', 'Every save, status change, approved or rejected family update, role grant/end, email change and household move is written here with who did it. Family proposals appear when submitted and again when reviewed. Ledger events (ranks, badges) show as "Ledger". In the real app this would be the audit_log filtered to this person.')}</div></section>`;
+  const h = histOf(p), LIMIT = 4;
+  return `<section class="card" id="history" aria-labelledby="h-history"><div class="card-head"><h2 id="h-history">History</h2><span class="muted" style="font-size:var(--admin-text-base)">latest ${Math.min(LIMIT, h.length)} of ${h.length} · hover or click a chip for old → new</span><button type="button" class="btn btn-sm" data-act="history">Full log</button></div><div class="card-body"><ul class="history">${histRows(p, LIMIT) || '<li><span class="muted">No changes recorded.</span></li>'}</ul>${helpDisc('history', 'One line per change with who did it; the chip carries the field-level detail (old → new) as a tooltip and opens it in a dialog. Family proposals appear when submitted and again when reviewed. Ledger events (ranks, badges) show as "Ledger". In the real app this is the audit_log filtered to this person, with the row diff stored per entry.')}</div></section>`;
+}
+function openHistoryDialog(p){ const d = $('#histDlg'); $('#hdTitle').textContent = `History — ${nameOf(p)}`; $('#hdBody').innerHTML = `<p class="muted" style="margin:0 0 6px">${histOf(p).length} entries, newest first. Hover a chip for the old → new values, or click it.</p><ul class="history">${histRows(p) || '<li><span class="muted">No changes recorded.</span></li>'}</ul>`; d.showModal(); $('#hdClose').focus(); }
+function openDetailDialog(p, idx){
+  const [d, who, text, session, details] = histOf(p)[idx];
+  const rows = (details || []).map(x => `<tr><td>${esc(x.f)}</td><td class="muted">${esc(x.from)}</td><td><strong>${esc(x.to)}</strong></td></tr>`).join('');
+  $('#hdTitle').textContent = text;
+  $('#hdBody').innerHTML = `<p class="muted" style="margin:0 0 8px">${fmtDate(d)} · ${esc(who)}${session ? ' · this session' : ''}</p><table class="diff"><thead><tr><th>Field</th><th>Was</th><th>Now</th></tr></thead><tbody>${rows || '<tr><td colspan="3" class="muted">No field-level detail recorded for this entry.</td></tr>'}</tbody></table>`;
+  const dlg = $('#histDlg'); if (!dlg.open) dlg.showModal(); $('#hdClose').focus();
 }
 function ageOn(iso){ if(!iso) return null; const [y,m,d] = iso.split('-').map(Number); const [ty,tm,td] = TODAY.split('-').map(Number); let a = ty - y; if (tm < m || (tm === m && td < d)) a--; return a; }
 function ypt(iso){ if(!iso) return null; const [y,m,d] = iso.split('-').map(Number); const exp = `${y+2}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; return {expires: exp, current: exp >= TODAY}; }
@@ -337,6 +363,7 @@ function toast(msg, {undo} = {}) {
   toastTimer = setTimeout(() => { t.hidden = true; toastUndoFn = null; }, undo ? 8000 : 5000);
 }
 $('#toastClose').addEventListener('click', () => { $('#toast').hidden = true; });
+$('#hdClose').addEventListener('click', () => $('#histDlg').close());
 $('#toastUndo').addEventListener('click', () => { const f = toastUndoFn; $('#toast').hidden = true; toastUndoFn = null; if (f) f(); });
 
 function confirmDialog({title, body, ok = 'Confirm', danger = true, okDisabledReason = null}) {
@@ -628,19 +655,20 @@ document.addEventListener('click', async e => {
     case 'open': if (!(await guardDirty())) return; openPerson(Number(b.dataset.id), state.screen === 'roster' ? state.tab : null); break;
     case 'back': if (!(await guardDirty())) return; state.screen = 'roster'; state.tab = state.fromTab || tabOf(p); state.fromTab = null; render(); break;
     case 'help': state.help = state.help === b.dataset.key ? null : b.dataset.key; render(); break;
-    case 'history': { const h = document.getElementById('history'); if (h) { h.scrollIntoView({behavior:'smooth', block:'start'}); h.classList.add('flash'); setTimeout(() => h.classList.remove('flash'), 1200); } break; }
+    case 'history': openHistoryDialog(p); break;
+    case 'histDetail': openDetailDialog(p, Number(b.dataset.idx)); break;
     case 'danger': state.danger = !state.danger; render(); break;
     case 'edit': if (state.editing && state.editing !== b.dataset.key && !(await guardDirty())) return; startEdit(b.dataset.key); break;
     case 'cancel': state.editing = null; state.draft = null; state.statusReason = ''; render(); break;
     case 'save': { const key = b.dataset.key; const s = sectionsFor(p).find(s => s.key === key); const before = {...p}; const fields = {...state.draft}; if ('household' in fields) fields.household = fields.household ? Number(fields.household) : null; if ('grade' in fields) fields.grade = fields.grade === '' ? '' : Number(fields.grade);
-      b.textContent = 'Saving…'; b.disabled = true; $('#saveStatus').textContent = 'Saving changes…'; busy(true); await api.save(p, fields); busy(false); { const changed = Object.keys(fields).filter(k => String(before[k] ?? '') !== String(p[k] ?? '')).map(k => F[k]?.label || k); logHistory(`Edited ${s.title}: ${changed.join(', ') || 'no field changed'}`); } $('#saveStatus').innerHTML = '<span class="done">Done</span>';
+      b.textContent = 'Saving…'; b.disabled = true; $('#saveStatus').textContent = 'Saving changes…'; busy(true); await api.save(p, fields); busy(false); { const details = diffOf(before, p, Object.keys(fields)); logHistory(`Edited ${s.title}: ${details.map(x => x.f).join(', ') || 'no field changed'}`, details); } $('#saveStatus').innerHTML = '<span class="done">Done</span>';
       if (key === 'family' && before.household !== p.household) { const from = before.household ? HOUSEHOLDS[before.household] : 'no household', to = p.household ? HOUSEHOLDS[p.household] : 'no household'; toast(`Household: ${from} → ${to}`, {undo: async () => { await api.save(p, {household: before.household}); logHistory(`Household change undone (back to ${from})`); render(); toast('Household change undone.'); }}); }
       await flashDone(key); break; }
-    case 'markInactive': { const scout = p.kind === 'scout'; const reason = state.statusReason; const ok = await confirmDialog({title:`Mark ${nameOf(p)} inactive?`, body:`<ul><li>${scout ? 'Leaves rosters, dashboards and the Fast Entry picker' : 'No longer offered in the family signup picker'}</li><li>Ledger history, relationships${scout ? '' : ', roles'} and past events are kept</li><li>Reason recorded: <strong>${esc(reason ? (scout ? SCOUT_REASONS[reason] : reason) : 'none')}</strong></li><li>Reversible — Status → Edit → Mark active</li></ul>`, ok:'Mark inactive'}); if (!ok) return; await run(() => api.setActive(p, false, reason)); logHistory(`Marked inactive — "${reason ? (scout ? SCOUT_REASONS[reason] : reason) : 'no reason given'}"`); stampNow('status'); state.editing = null; state.flash = 'status'; render(); toast(`${nameOf(p)} marked inactive.`); break; }
-    case 'reactivate': await run(() => api.setActive(p, true, '')); logHistory('Marked active again'); stampNow('status'); state.editing = null; state.flash = 'status'; render(); toast(`${nameOf(p)} is active again.`); break;
+    case 'markInactive': { const scout = p.kind === 'scout'; const reason = state.statusReason; const ok = await confirmDialog({title:`Mark ${nameOf(p)} inactive?`, body:`<ul><li>${scout ? 'Leaves rosters, dashboards and the Fast Entry picker' : 'No longer offered in the family signup picker'}</li><li>Ledger history, relationships${scout ? '' : ', roles'} and past events are kept</li><li>Reason recorded: <strong>${esc(reason ? (scout ? SCOUT_REASONS[reason] : reason) : 'none')}</strong></li><li>Reversible — Status → Edit → Mark active</li></ul>`, ok:'Mark inactive'}); if (!ok) return; await run(() => api.setActive(p, false, reason)); { const r = reason ? (scout ? SCOUT_REASONS[reason] : reason) : '—'; logHistory(`Marked inactive — "${r === '—' ? 'no reason given' : r}"`, [{f:'Status', from:'Active', to:'Inactive'}, {f:'Reason', from:'—', to:r}]); } stampNow('status'); state.editing = null; state.flash = 'status'; render(); toast(`${nameOf(p)} marked inactive.`); break; }
+    case 'reactivate': { const oldReason = (p.kind === 'scout' ? SCOUT_REASONS[p.inactiveReason] : p.inactiveReason) || '—'; await run(() => api.setActive(p, true, '')); logHistory('Marked active again', [{f:'Status', from:'Inactive', to:'Active'}, {f:'Reason', from:oldReason, to:'—'}]); } stampNow('status'); state.editing = null; state.flash = 'status'; render(); toast(`${nameOf(p)} is active again.`); break;
     case 'sendlink': { const sel = $('#linkTo'); b.textContent = 'Sending…'; b.disabled = true; const r = await api.sendLink(p, sel ? Number(sel.value) : undefined); state.link = r.ok ? {ok:true, msg:`Link sent to ${r.masked} — good for ${r.minutes} minutes.`} : {ok:false, msg: r.reason === 'rate-limited' ? 'Already sent recently — try again in a few minutes.' : r.reason === 'unreachable' ? 'Add an email address first (Contact & sign-in).' : "Couldn't send the link — try again."}; render(); break; }
     case 'ack': await run(() => api.ack(p), 'Acknowledged — cleared from the dashboard.'); render(); break;
-    case 'approve': { const s = sectionsFor(p).find(s => s.key === b.dataset.key); const keys = s.fields.filter(k => k in p.pending.changes); await run(() => api.applyPending(p, keys), `Applied ${keys.length} change${keys.length > 1 ? 's' : ''} from the family.`); stampNow(s.key); state.flash = s.key; render(); break; }
+    case 'approve': { const s = sectionsFor(p).find(s => s.key === b.dataset.key); const keys = s.fields.filter(k => k in p.pending.changes); const proposed = k => k === 'swim' ? F.swim.options.find(o => o[0] === p.pending.changes[k])[1] : k === 'birthdate' ? fmtDate(p.pending.changes[k]) : p.pending.changes[k]; const details = keys.map(k => ({f: F[k].label, from: plain(readValue(p, k)), to: plain(proposed(k))})); const by = p.pending.by; await run(() => api.applyPending(p, keys)); { const msg = `Applied ${keys.length} change${keys.length > 1 ? 's' : ''} from the family (${by})`; toast(msg + '.'); logHistory(msg, details); } stampNow(s.key); state.flash = s.key; render(); break; }
     case 'reject': state.rejecting = b.dataset.key; state.rejectReason = ''; state.focus = '[data-draft=rejectReason]'; render(); break;
     case 'rejectCancel': state.rejecting = null; render(); break;
     case 'rejectConfirm': { const s = sectionsFor(p).find(s => s.key === b.dataset.key); const keys = s.fields.filter(k => k in p.pending.changes); await run(() => api.rejectPending(p, keys), `Rejected — the family will see${state.rejectReason ? ' your reason' : ' it was declined'}.`); state.rejecting = null; render(); break; }
