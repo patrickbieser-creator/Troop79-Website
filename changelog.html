@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>September 6, 2026</strong> &nbsp;&middot;&nbsp; v1.119.3</p>
+      <p>Last updated: <strong>September 7, 2026</strong> &nbsp;&middot;&nbsp; v1.120.0</p>
     </div>
   </div>
 
@@ -494,6 +494,26 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.120.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.120.0</span>
+        <span class="release-date">September 7, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">A new person record page for scouts, leaders and adults</p>
+        <ul class="change-list">
+          <li><span><strong>One page per person, read-only until you choose to edit.</strong> Searching the roster or following a dashboard link now opens a full record page instead of a pop-up: name and status at the top, a strip of key facts (household, roles, age, YPT, health form &mdash; or rank, patrol and grade for a scout), then one card per topic: Status, Identity, Details, Contact &amp; sign-in, Household &amp; family, Roles. Each card has its own <strong>Edit</strong> button; only that card becomes a form, with its own Save and Cancel. Cancel puts back what was last saved. Clicking Edit on a second card while the first has unsaved changes asks before discarding them.</span></li>
+          <li><span><strong>Marking someone active or inactive is the same everywhere now.</strong> Status is a read-only row with an Edit button; choosing Inactive asks for a reason (a required pick-list for scouts, free text for adults) and confirms what happens before anything changes. No more looking for a Save button that never lights up.</span></li>
+          <li><span><strong>Things that take effect immediately are labelled that way.</strong> Email addresses, parents and guardians, relationships and roles sit in dashed &ldquo;Takes effect immediately&rdquo; blocks, never inside a form with a Save button. Removing a verified address, ending a role, or unlinking a parent asks first and says what will happen, including when ending a role moves someone from the Leaders tab to Adults.</span></li>
+          <li><span><strong>Merge and delete live in a Danger zone</strong> at the bottom of the page, collapsed until you open it. Merge shows exactly what moves to the person you keep; Delete stays disabled with the reason while a scout or leader record is attached.</span></li>
+          <li><span>Changing a household says &ldquo;Household: old &rarr; new&rdquo; with an Undo for a few seconds. The Sign-in card explains how &ldquo;can sign in&rdquo; and &ldquo;verified&rdquo; are decided and, for leaders, whether they have admin access. Every change on the page is now recorded with the old and new value, ready for the History view coming next.</span></li>
+          <li><span>Clicking a name on the roster tables still opens the familiar editor for now; it retires once the new page has the family-update banners and history.</span></li>
+        </ul>
       </div>
     </div>
 

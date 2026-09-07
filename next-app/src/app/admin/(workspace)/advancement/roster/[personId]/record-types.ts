@@ -31,6 +31,30 @@ export function kindOfTab(tab: RosterTab): PersonKind {
   return tab;
 }
 
+/** Display names for person_roles.role. The roster editor keeps a private
+ *  copy until Phase 6 retires it. */
+export const ROLE_LABEL: Record<string, string> = {
+  adult_leader: 'Adult leader',
+  committee_member: 'Committee member',
+  chartered_org_rep: 'Chartered org rep',
+  merit_badge_counselor: 'Merit badge counselor',
+  external_contact: 'External contact',
+  youth_member: 'Youth member'
+};
+
+/** The roles that put an adult on the Leaders tab (person_directory's
+ *  holds_troop_role). Ending the last of them moves them to Adults. */
+export const LEADER_ROLES: ReadonlySet<string> = new Set(['adult_leader', 'committee_member', 'chartered_org_rep']);
+
+/** Roles a leader may grant, in the order the Grant row lists them. */
+export const GRANTABLE_ROLES = [
+  'adult_leader',
+  'committee_member',
+  'chartered_org_rep',
+  'merit_badge_counselor',
+  'external_contact'
+] as const;
+
 /** The scout's own record — what stays on `scouts` (never contact details). */
 export interface ScoutRecordRow {
   id: string;
@@ -76,6 +100,11 @@ export interface PersonRecord {
   /** people.gender ('M' | 'F' | null) — outside LEADER_PERSON_FIELDS, so it
    *  rides here rather than in detail.fields. Edited on a scout's Details. */
   gender: string | null;
+  /** The linked leaders row, when one exists: sign-off code and the
+   *  Access & Permissions flag (leaders.can_login — a separate switch from
+   *  "can sign in", which is derived from the addresses). Also one of the
+   *  records deletePerson refuses to orphan. */
+  leader: { code: string; canLogin: boolean } | null;
   rankLabel: string | null;
   household: { id: number; label: string; members: HouseholdMember[] } | null;
   /** Every household, for the Family section's draft picker. */

@@ -68,15 +68,18 @@ export async function loadPersonRecord(personId: number): Promise<LoadPersonReco
   // no record page yet — the Guests tab keeps its own row editor.
   if (row.guest_host_household_id != null) return { kind: 'missing' };
 
-  const [detail, emails, scoutRes, genderRes, householdsRes] = await Promise.all([
+  const [detail, emails, scoutRes, genderRes, householdsRes, leaderRes] = await Promise.all([
     getPersonDetail(personId),
     getPersonEmails(personId),
     supabase.from('scouts').select(SCOUT_RECORD_COLS).eq('person_id', personId).maybeSingle(),
     supabase.from('people').select('gender').eq('id', personId).maybeSingle(),
-    supabase.from('households').select('id, label').order('label')
+    supabase.from('households').select('id, label').order('label'),
+    supabase.from('leaders').select('code, can_login').eq('person_id', personId).limit(1).maybeSingle()
   ]);
   const scout = (scoutRes.data as ScoutRecordRow | null) ?? null;
   const gender = (genderRes.data as { gender: string | null } | null)?.gender ?? null;
+  const leaderRow = leaderRes.data as { code: string; can_login: boolean } | null;
+  const leader = leaderRow ? { code: leaderRow.code, canLogin: leaderRow.can_login } : null;
   const households = ((householdsRes.data ?? []) as { id: number; label: string }[]).map((h) => ({
     id: h.id,
     label: h.label
@@ -106,6 +109,7 @@ export async function loadPersonRecord(personId: number): Promise<LoadPersonReco
       emails,
       scout,
       gender,
+      leader,
       rankLabel,
       household,
       households,

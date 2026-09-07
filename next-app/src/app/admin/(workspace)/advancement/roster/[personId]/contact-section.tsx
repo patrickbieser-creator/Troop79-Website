@@ -3,15 +3,14 @@
 /**
  * Contact & sign-in section (Phase 2): phone and postal address as the
  * draft form — one action, updatePersonDemographics, sent ONLY these six
- * keys — with the email-address list READ-ONLY beneath it. Phase 3 turns the
- * list into the "Takes effect immediately" block (add / make primary /
- * remove); until then addresses are edited from the roster list.
+ * keys — with the email addresses BELOW the form as the "Takes effect
+ * immediately" block (Phase 3, emails-block.tsx): add / make primary /
+ * remove commit on click and never share a Save with the form.
  */
 import { useRouter } from 'next/navigation';
-import { fmtDate } from '@/lib/format-date';
 import type { PersonEmailRow } from '@/lib/person-emails';
-import { Badge } from '../../../_components/badge';
 import { updatePersonDemographics } from '../person-actions';
+import { EmailsBlock } from './emails-block';
 import type { PersonKind } from './record-types';
 import { Field, FieldGrid, ReadRow, ReadRows, SectionCard, SectionFormActions, useSectionForm } from './section-card';
 import styles from './person-record.module.css';
@@ -39,12 +38,16 @@ export function ContactSection({
   kind,
   saved,
   emails,
+  onEmailsChanged,
   onSaved
 }: {
   personId: number;
   kind: PersonKind;
   saved: ContactDraft;
   emails: PersonEmailRow[];
+  /** The refetched list after an add / make primary / remove, for the
+   *  header and Sign-in card. */
+  onEmailsChanged: (next: PersonEmailRow[]) => void;
   onSaved?: () => void;
 }) {
   const router = useRouter();
@@ -77,13 +80,14 @@ export function ContactSection({
       help={
         kind === 'scout' ? (
           <>
-            A scout with no email of their own signs in through a parent in their household. Until the next phase,
-            addresses are added, promoted or removed from the roster list.
+            A scout with no email of their own signs in through a parent in their household. Addresses are
+            one-click: add, promote or remove takes effect right away, which is why that list sits outside the
+            form.
           </>
         ) : (
           <>
-            The primary address is where sign-in links and the Bugle go. Until the next phase, addresses are
-            added, promoted or removed from the roster list; the list is separate from the form on purpose.
+            The primary address is where sign-in links and the Bugle go. Addresses are one-click: add, promote or
+            remove takes effect right away, which is why that list sits outside the form and has no Save.
           </>
         )
       }
@@ -154,43 +158,7 @@ export function ContactSection({
           <SectionFormActions form={form} doneLabel="Contact details saved." />
         </>
       )}
-      <EmailList emails={emails} kind={kind} />
+      <EmailsBlock personId={personId} kind={kind} emails={emails} onChanged={onEmailsChanged} />
     </SectionCard>
-  );
-}
-
-function EmailList({ emails, kind }: { emails: PersonEmailRow[]; kind: PersonKind }) {
-  return (
-    <div>
-      <p className={styles.listHead}>Email addresses</p>
-      {emails.length ? (
-        <ul className={styles.list}>
-          {emails.map((e) => (
-            <li key={e.id}>
-              <span className={styles.grow}>
-                {e.email} <span className={styles.muted}>{e.label}</span>
-              </span>
-              <span className={styles.pills}>
-                {e.isPrimary ? <Badge variant="info">primary</Badge> : null}
-                {e.verifiedAt ? (
-                  <Badge variant="success" title={`Verified ${fmtDate(e.verifiedAt)}`}>
-                    verified
-                  </Badge>
-                ) : (
-                  <Badge variant="neutral">unverified</Badge>
-                )}
-                {e.bouncedAt ? (
-                  <Badge variant="danger" title={`Bounced ${fmtDate(e.bouncedAt)}`}>
-                    bounced
-                  </Badge>
-                ) : null}
-              </span>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className={styles.empty}>No addresses on file{kind === 'scout' ? ' — signs in through a parent' : ''}.</p>
-      )}
-    </div>
   );
 }

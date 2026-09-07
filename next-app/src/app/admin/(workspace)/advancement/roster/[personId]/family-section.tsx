@@ -6,37 +6,25 @@
  * setHousehold, and because moving someone between households is the
  * change a leader most often wants back (Jenna's #5: a live-firing select
  * with no undo), a successful change shows "Household: A → B" with an Undo
- * that calls setHousehold with the previous id. The relationships list is
- * READ-ONLY here; Phase 3 makes it the "Takes effect immediately" block.
+ * that calls setHousehold with the previous id. Relationships / parents &
+ * guardians sit BELOW the form as the "Takes effect immediately" block
+ * (Phase 3, relationships-block.tsx), outside any Save.
  */
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '../../../../_components/button';
-import { Badge } from '../../../_components/badge';
-import { setHousehold } from '../person-actions';
+import { setHousehold, type PersonDetail } from '../person-actions';
+import { RelationshipsBlock, type RelationshipRow } from './relationships-block';
 import type { HouseholdChoice, PersonKind } from './record-types';
 import { Field, FieldGrid, ReadRow, ReadRows, SectionCard, SectionFormActions, useSectionForm } from './section-card';
 import styles from './person-record.module.css';
+
+export type { RelationshipRow } from './relationships-block';
 
 export interface FamilyDraft extends Record<string, string> {
   /** households.id as a string, or '' for no household. */
   household: string;
 }
-
-export interface RelationshipRow {
-  id: number;
-  outgoing: boolean;
-  type: string;
-  isGuardian: boolean;
-  otherName: string;
-}
-
-const REL_WORD: Record<string, string> = {
-  parent_of: 'parent of',
-  guardian_of: 'guardian of',
-  sibling_of: 'sibling of',
-  emergency_contact_for: 'emergency contact for'
-};
 
 const TOAST_MS = 5000;
 const TOAST_UNDO_MS = 8000;
@@ -53,6 +41,7 @@ export function FamilySection({
   saved,
   households,
   relationships,
+  onRelationshipsChanged,
   onSaved
 }: {
   personId: number;
@@ -61,6 +50,9 @@ export function FamilySection({
   saved: FamilyDraft;
   households: HouseholdChoice[];
   relationships: RelationshipRow[];
+  /** The refetched detail after a link / unlink, for the header's
+   *  "signs in through …" line and the roles list. */
+  onRelationshipsChanged: (detail: PersonDetail) => void;
   onSaved?: () => void;
 }) {
   const router = useRouter();
@@ -117,12 +109,12 @@ export function FamilySection({
           <>
             Picking anyone in a household brings up the whole family at signup. Parents and guardians are people in
             their own right — their phone and email are edited on their own record so two scouts can never disagree
-            about one parent.
+            about one parent. Linking and unlinking takes effect right away.
           </>
         ) : (
           <>
             Household membership is independent of roles — it never changes when someone starts or stops helping
-            out. Relationships persist through every change of role or status.
+            out. Relationships persist through every change of role or status, and take effect right away.
           </>
         )
       }
@@ -161,33 +153,13 @@ export function FamilySection({
           <SectionFormActions form={form} doneLabel="Household saved." />
         </>
       )}
-      <div>
-        <p className={styles.listHead}>{kind === 'scout' ? 'Parents & guardians' : 'Relationships'}</p>
-        {relationships.length ? (
-          <ul className={styles.list}>
-            {relationships.map((r) => (
-              <li key={r.id}>
-                <span className={styles.grow}>
-                  {r.outgoing ? (
-                    <>
-                      <strong>{name}</strong> is {REL_WORD[r.type] ?? r.type} <strong>{r.otherName}</strong>
-                    </>
-                  ) : (
-                    <>
-                      <strong>{r.otherName}</strong> is {REL_WORD[r.type] ?? r.type} <strong>{name}</strong>
-                    </>
-                  )}
-                </span>
-                {r.isGuardian ? <Badge variant="info">guardian</Badge> : null}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className={styles.empty}>
-            {kind === 'scout' ? 'No parents or guardians linked yet — this scout cannot sign in until one is.' : 'None recorded.'}
-          </p>
-        )}
-      </div>
+      <RelationshipsBlock
+        personId={personId}
+        name={name}
+        kind={kind}
+        relationships={relationships}
+        onChanged={onRelationshipsChanged}
+      />
     </SectionCard>
   );
 }

@@ -2,48 +2,53 @@
 
 /**
  * The person record shell (Plans/Person-Editor-Rethink.md, Direction A):
- * header (name, kind + status pills, ids, primary contact), the fact strip,
- * then two columns — the Status card and the sections in the main column,
- * the Household / Sign-in / Where-they-appear cards at the side.
+ * header (name, kind + status pills, ids, primary contact, Send sign-in
+ * link), the fact strip, then two columns — the Status card and the
+ * sections in the main column, the Household / Sign-in / Where-they-appear
+ * cards at the side.
  *
- * Phase 2: the sections are real. Identity (scouts), Details, Contact &
+ * Phase 2 made the sections real: Identity (scouts), Details, Contact &
  * sign-in and Household & family each own a per-section Edit → Save/Cancel
  * form (section-card.tsx), one editable at a time under SectionEditProvider.
- * Emails and relationships are still read-only lists inside their sections
- * and Roles keeps its greyed Edit — Phase 3 makes those the "Takes effect
- * immediately" blocks. Every successful save calls router.refresh() so the
- * header, fact strip and side cards re-render from the server's data.
+ * Phase 3 added what commits on click: the "Takes effect immediately" blocks
+ * (emails inside Contact, relationships inside Family, Roles as its own
+ * section), the collapsed Danger zone (merge / delete / promote) and the
+ * header's Send sign-in link. The shell keeps the LIVE copies of emails,
+ * roles, relationships and the adult's roster tab: a block refetches after
+ * its action and hands the fresh rows up here, so the header, facts, side
+ * cards and the "now appears under …" notice follow without a round trip;
+ * router.refresh() then re-renders the server's view underneath.
  */
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ageOn, gradeFromGradYear, gradeLabel, yptStatus } from '@/lib/demographics';
 import { fmtDate } from '@/lib/format-date';
+import type { PersonEmailRow } from '@/lib/person-emails';
 import { PageTitle } from '../../../_components/page-title';
 import { Badge } from '../../../_components/badge';
 import { Notice } from '../../../_components/notice';
-import { Button } from '../../../../_components/button';
+import type { PersonDetail } from '../person-actions';
 import { StatusCard, reasonLabel } from './status-card';
 import { SectionEditProvider } from './section-card';
 import { IdentitySection } from './identity-section';
 import { AdultDetailsSection, ScoutDetailsSection, gradeFor } from './details-section';
 import { ContactSection } from './contact-section';
 import { FamilySection } from './family-section';
-import { TAB_LABEL, type PersonRecord as PersonRecordData, type PersonStatus, type RosterTab } from './record-types';
+import { RolesBlock } from './roles-block';
+import { DangerZone } from './danger-zone';
+import { SendSignInLink, type SendLinkResult } from './send-sign-in-link';
+import {
+  ROLE_LABEL,
+  TAB_LABEL,
+  isRosterTab,
+  type PersonRecord as PersonRecordData,
+  type PersonStatus,
+  type RosterTab
+} from './record-types';
 import styles from './person-record.module.css';
 
 const ROSTER = '/admin/advancement/roster';
-
-// The roster editor's private map — consolidated in Phase 6 when it retires.
-const ROLE_LABEL: Record<string, string> = {
-  adult_leader: 'Adult leader',
-  committee_member: 'Committee member',
-  chartered_org_rep: 'Chartered org rep',
-  merit_badge_counselor: 'Merit badge counselor',
-  external_contact: 'External contact',
-  youth_member: 'Youth member'
-};
-const LEADER_ROLES = new Set(['adult_leader', 'committee_member', 'chartered_org_rep']);
 
 const KIND_LABEL = { scout: 'Scout', leader: 'Leader', adult: 'Adult' } as const;
 
@@ -54,9 +59,14 @@ function str(v: unknown): string {
 export function PersonRecord({ record, from }: { record: PersonRecordData; from: RosterTab }) {
   const router = useRouter();
   const [status, setStatus] = useState<PersonStatus>(record.status);
+  const [emails, setEmails] = useState<PersonEmailRow[]>(record.emails);
+  const [roles, setRoles] = useState<PersonDetail['roles']>(record.detail.roles);
+  const [relationships, setRelationships] = useState<PersonDetail['relationships']>(record.detail.relationships);
+  const [adultTab, setAdultTab] = useState<RosterTab>(record.tab);
+  const [linkResult, setLinkResult] = useState<SendLinkResult | null>(null);
   const [signinHelp, setSigninHelp] = useState(false);
 
-  const { detail, emails, scout, kind } = record;
+  const { detail, scout, kind } = record;
   const f = detail.fields;
   const name = record.displayName;
   const primary = emails.find((e) => e.isPrimary) ?? null;
@@ -66,16 +76,27 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
   const age = ageOn(birthdate, record.today);
   const health = str(f.health_form_date) || null;
   const ypt = yptStatus(str(f.ypt_completed) || null, record.today);
-  const currentRoles = detail.roles.filter((r) => !r.end_date);
-  const endedRoles = detail.roles.filter((r) => r.end_date);
-  const parents = detail.relationships.filter((r) => !r.outgoing && (r.type === 'parent_of' || r.type === 'guardian_of'));
+  const currentRoles = roles.filter((r) => !r.end_date);
+  const parents = relationships.filter((r) => !r.outgoing && (r.type === 'parent_of' || r.type === 'guardian_of'));
 
-  // A scout's tab follows the status it just changed; an adult's follows roles.
-  const currentTab: RosterTab = kind === 'scout' ? (status.active ? 'active_scout' : 'inactive_scout') : record.tab;
+  // A scout's tab follows the status it just changed; an adult's follows the
+  // roles, refetched after every grant / end.
+  const currentTab: RosterTab = kind === 'scout' ? (status.active ? 'active_scout' : 'inactive_scout') : adultTab;
 
   function onStatusChanged(next: PersonStatus) {
     setStatus(next);
     router.refresh();
+  }
+
+  /** A block refetched getPersonDetail after its action. */
+  function onDetail(next: PersonDetail) {
+    setRoles(next.roles);
+    setRelationships(next.relationships);
+    if (kind !== 'scout') setAdultTab(isRosterTab(next.tab) ? next.tab : 'adult');
+  }
+
+  function onPromoted() {
+    setStatus({ active: false, reason: 'aged_out' });
   }
 
   const facts: [string, React.ReactNode][] =
@@ -143,10 +164,13 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
             </span>
           </>
         }
-      />
+      >
+        <SendSignInLink personId={record.personId} kind={kind} emails={emails} onResult={setLinkResult} />
+      </PageTitle>
 
-      {(record.pendingUpdate || currentTab !== from) && (
+      {(record.pendingUpdate || currentTab !== from || linkResult) && (
         <div className={styles.noticeStack}>
+          {linkResult && <Notice variant={linkResult.variant}>{linkResult.message}</Notice>}
           {record.pendingUpdate && (
             <Notice variant="info">
               A pending update from the family is waiting for review. Until the next phase, open {name} from the{' '}
@@ -230,6 +254,7 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
             personId={record.personId}
             kind={kind}
             emails={emails}
+            onEmailsChanged={setEmails}
             saved={{
               primary_phone: str(f.primary_phone),
               address_line1: str(f.address_line1),
@@ -246,45 +271,35 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
             kind={kind}
             saved={{ household: record.household ? String(record.household.id) : '' }}
             households={record.households}
-            relationships={detail.relationships}
+            relationships={relationships}
+            onRelationshipsChanged={onDetail}
           />
 
           {kind !== 'scout' && (
-            <ReadSection title="Roles">
-              <div>
-                <p className={styles.listHead}>Current roles</p>
-                {currentRoles.length ? (
-                  <ul className={styles.list}>
-                    {currentRoles.map((r) => (
-                      <li key={r.id}>
-                        <span className={styles.grow}>
-                          {ROLE_LABEL[r.role] ?? r.role}{' '}
-                          <span className={styles.muted}>since {fmtDate(r.start_date)}</span>
-                        </span>
-                        {LEADER_ROLES.has(r.role) ? <Badge variant="info">leader tab</Badge> : null}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className={styles.empty}>No current role — listed under Adults.</p>
-                )}
+            <section className={styles.card} aria-label="Roles">
+              <div className={styles.cardHead}>
+                <h2>Roles</h2>
               </div>
-              {endedRoles.length > 0 && (
-                <div>
-                  <p className={styles.listHead}>Previously held</p>
-                  <ul className={styles.list}>
-                    {endedRoles.map((r) => (
-                      <li key={r.id}>
-                        <span className={`${styles.grow} ${styles.muted}`}>
-                          {ROLE_LABEL[r.role] ?? r.role} · {fmtDate(r.start_date)} – {fmtDate(r.end_date)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </ReadSection>
+              <div className={styles.cardBody}>
+                <RolesBlock personId={record.personId} name={name} roles={roles} today={record.today} onChanged={onDetail} />
+              </div>
+            </section>
           )}
+
+          <DangerZone
+            personId={record.personId}
+            name={name}
+            kind={kind}
+            from={from}
+            active={status.active}
+            scout={scout}
+            leader={record.leader}
+            emailCount={emails.length}
+            relationshipCount={relationships.length}
+            roleCount={roles.length}
+            householdLabel={record.household?.label ?? null}
+            onPromoted={onPromoted}
+          />
         </div>
 
         <aside className={styles.side}>
@@ -329,6 +344,17 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
                   {emails.filter((e) => e.verifiedAt).length} of {emails.length}
                 </span>
               </li>
+              {kind === 'leader' && (
+                <li>
+                  <span>Admin access</span>
+                  <span>
+                    {record.leader?.canLogin ? 'Yes' : 'No'}{' '}
+                    <span className={styles.muted}>
+                      · <Link href="/admin/access">Access &amp; Permissions</Link>
+                    </span>
+                  </span>
+                </li>
+              )}
             </ul>
             <div>
               <button
@@ -344,12 +370,12 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
                   <p>
                     <strong>Can sign in</strong> is derived, not a setting: anyone with an address on file that has not
                     bounced can ask for a sign-in code or link at /signin. A scout with no address of their own signs in
-                    as one of the household&rsquo;s parents.
+                    as one of the household&rsquo;s parents. Add or remove addresses under Contact &amp; sign-in.
                   </p>
                   <p>
                     <strong>Verified</strong> is stamped automatically the first time a code or link sent to that
-                    address is redeemed. There is no manual verify; sending a sign-in link from the roster is how a
-                    leader gets an address verified.
+                    address is redeemed — proof someone reads that inbox. There is no manual verify; sending a sign-in
+                    link from here is how a leader gets an address verified.
                   </p>
                   <p>
                     <strong>Admin access</strong> (leaders only) is a separate flag managed on the Access &amp;
@@ -385,21 +411,6 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
         </aside>
       </div>
     </SectionEditProvider>
-  );
-}
-
-/** Roles stays read-only until Phase 3's immediate block. */
-function ReadSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className={styles.card} aria-label={title}>
-      <div className={styles.cardHead}>
-        <h2>{title}</h2>
-        <Button size="sm" disabled title="Coming in the next phase" aria-disabled="true">
-          Edit
-        </Button>
-      </div>
-      <div className={styles.cardBody}>{children}</div>
-    </section>
   );
 }
 

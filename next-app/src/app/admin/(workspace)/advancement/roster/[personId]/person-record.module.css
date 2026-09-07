@@ -306,3 +306,145 @@
   .grid { grid-template-columns: 1fr; }
   .field :is(input, select, textarea) { font-size: var(--admin-text-xl); }
 }
+
+/* "Takes effect immediately" blocks (Phase 3): emails, relationships and
+   roles commit on click, so they sit OUTSIDE any draft form in a dashed
+   block that carries a text label as well as the border (spec: never
+   colour-only). The add row and the search results share the form
+   controls' look; the Danger zone is a collapsed card whose header is
+   greyed until opened. */
+.imm {
+  border: 1px dashed var(--admin-gray-300);
+  border-radius: var(--admin-radius);
+  padding: var(--admin-space-5) var(--admin-space-6);
+  background: var(--admin-gray-50);
+}
+.imm > * + * { margin-top: var(--admin-space-4); }
+.immHead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--admin-space-3);
+}
+.immHead h3 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--admin-font-ui);
+  font-size: var(--admin-text-md);
+  font-weight: var(--admin-weight-bold);
+  color: var(--admin-gray-900);
+}
+.immTag {
+  font-size: var(--admin-text-xs);
+  font-weight: var(--admin-weight-bold);
+  letter-spacing: var(--admin-tracking-wide);
+  text-transform: uppercase;
+  color: var(--admin-accent-gold);
+  background: var(--admin-status-warning-bg);
+  padding: var(--admin-space-1) var(--admin-space-3);
+  border-radius: var(--admin-radius-sm);
+  white-space: nowrap;
+}
+.rowActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--admin-space-2);
+  align-items: center;
+}
+.addRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--admin-space-3);
+}
+.addRow :is(input, select),
+.ctl {
+  flex: 1;
+  min-width: 140px;
+  box-sizing: border-box;
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius);
+  padding: var(--admin-space-3) var(--admin-space-4);
+  font: inherit;
+  font-size: var(--admin-text-md);
+  color: var(--admin-gray-900);
+  background: var(--admin-white);
+}
+.addRow select { flex: 0 1 auto; }
+.addRow :is(input, select):focus,
+.ctl:focus {
+  outline: none;
+  border-color: var(--admin-navy);
+}
+.ctl { width: 100%; }
+.inlineLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--admin-space-2);
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-700);
+}
+.inlineLabel select { flex: 0 1 auto; min-width: 0; }
+.hint {
+  margin: 0;
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-600);
+}
+.results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-space-2);
+}
+.resultBtn {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+}
+.panel {
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  background: var(--admin-white);
+  padding: var(--admin-space-5) var(--admin-space-6);
+}
+.panel > * + * { margin-top: var(--admin-space-4); }
+
+.dangerCard .cardHead { background: var(--admin-gray-50); }
+.dangerMeta {
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-500);
+  white-space: nowrap;
+}
+.dangerRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--admin-space-4);
+}
+.dangerRow .hint { flex: 1; min-width: 200px; }
+
+.headerActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--admin-space-3);
+}
+.headerActions select {
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius);
+  padding: var(--admin-space-2) var(--admin-space-3);
+  font: inherit;
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-900);
+  background: var(--admin-white);
+  max-width: 240px;
+}
+
+@media (max-width: 640px) {
+  .addRow :is(input, select),
+  .ctl { font-size: var(--admin-text-xl); }
+  .list li .rowActions { align-self: flex-end; }
+}

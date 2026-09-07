@@ -72,6 +72,7 @@ function adultRecord(): PersonRecordData {
     emails: [],
     scout: null,
     gender: null,
+    leader: null,
     rankLabel: null,
     household: { id: 1, label: 'Whitlock', members: [] },
     households: [

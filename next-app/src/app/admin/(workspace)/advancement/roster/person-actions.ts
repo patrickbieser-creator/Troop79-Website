@@ -784,7 +784,7 @@ export async function createAdultForScout(
   phone: string,
   type: 'parent_of' | 'guardian_of' | 'emergency_contact_for',
   isGuardian: boolean
-): Promise<Result & { personId?: number }> {
+): Promise<Result & { personId?: number; linked?: boolean }> {
   await requireCapability('roster.manage');
   const trimmed = name.trim();
   if (!trimmed) return { ok: false, error: 'A name is required.' };
@@ -792,7 +792,9 @@ export async function createAdultForScout(
   const supabase = createAdminClient();
 
   // An exact email match almost certainly means this person is already on
-  // record — linking beats creating a second copy of them.
+  // record — linking beats creating a second copy of them. `linked: true`
+  // tells the caller which happened, so the record page can say "already
+  // belonged to someone — linked them" rather than "Added".
   if (email.trim()) {
     const { data: existing } = await supabase
       .from('people')
@@ -803,7 +805,7 @@ export async function createAdultForScout(
       .maybeSingle();
     if (existing) {
       const res = await addRelationship(existing.id, scoutPersonId, type, isGuardian);
-      return res.ok ? { ok: true, personId: existing.id } : res;
+      return res.ok ? { ok: true, personId: existing.id, linked: true } : res;
     }
   }
 
