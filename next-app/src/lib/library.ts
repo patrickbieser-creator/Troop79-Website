@@ -12,6 +12,9 @@
  * `mb` is the badge id alone, `topic` is the shelf slug.
  */
 
+// Type-only — erased at build, so this file stays free of next/headers.
+import type { LibraryViewer } from '@/lib/library-viewer';
+
 export type LibraryTargetKind = 'rank_req' | 'mb' | 'mb_req' | 'topic';
 
 export type ResourceKind = 'link' | 'video' | 'document' | 'image' | 'post';
@@ -230,11 +233,112 @@ export const RESOURCE_KIND_ICON: Record<ResourceKind, string> = {
  * claim). That path is closed permanently, superseded by verified Tier 2-S
  * rather than reopened itself — see tests/proof-submission-gate.test.ts, the
  * regression guard for this exact behavior.
+ *
+ * WIDENED ONCE, 2026-09-07 (Patrick: "restore 'I did this' … when I proxy
+ * for a scout"): a leader whose resolved library viewer is a PROXY for the
+ * very scout the proof is for — holder of `library.proxy_view` who chose
+ * `?viewScout=` (lib/library-viewer.ts → `{ kind: 'scout', isProxy: true }`)
+ * and posted THAT scout — may file the claim on the scout's behalf. It is
+ * not a Fast Entry sign-off: the submission still goes through the review
+ * queue like any household claim, and the queue labels it as leader-filed
+ * (filedByLeaderLine below). `ctx` carries the two ids; a plain leader
+ * session with no proxied scout, or a proxied scout that differs from the
+ * posted one, is refused exactly as before. The context never opens
+ * 'family', the OLD 'scout' audience, or null.
  */
-export function proofSubmissionAllowedFor(audience: 'family' | 'leader' | 'scout' | 'household' | null): boolean {
+export type ProofAudience = 'family' | 'leader' | 'scout' | 'household' | null;
+
+export interface ProofProxyContext {
+  /** The scout the session's library viewer is a PROXY for (null = not proxying). */
+  proxyScoutId?: string | null;
+  /** The scout the proof is being filed for (the posted id). */
+  forScoutId?: string | null;
+}
+
+export function proofSubmissionAllowedFor(audience: ProofAudience, ctx: ProofProxyContext = {}): boolean {
   // 'household' covers BOTH a verified adult (Tier 2) and a verified scout
   // (Tier 2-S, reopened Phase 0's closed scout path on a real identity basis
-  // — see Plans/Family-Identity-Auth.md Phase 2). Everything else — 'family',
-  // 'leader', the OLD unverified 'scout', and null — is refused.
+  // — see Plans/Family-Identity-Auth.md Phase 2).
+  if (audience === 'household') return true;
+  // 'leader' only with a matching proxy (see the header). Everything else —
+  // 'family', the OLD unverified 'scout', and null — is refused.
+  if (audience === 'leader') {
+    return !!ctx.proxyScoutId && !!ctx.forScoutId && ctx.proxyScoutId === ctx.forScoutId;
+  }
+  return false;
+}
+
+/**
+ * The scout a proof may be filed for ON BEHALF OF, or null. The posted id is
+ * never trusted by itself: it must equal the scout the resolver already
+ * authorized as the session's proxied scout (`isProxy: true` — a verified
+ * parent viewing their own scout is NOT a proxy and takes the household
+ * path instead). submit-proof/actions.ts resolves the viewer with the posted
+ * id as `?viewScout=` and then applies this.
+ */
+export function proxyScoutIdFor(viewer: LibraryViewer, postedScoutId: string | null | undefined): string | null {
+  if (!postedScoutId) return null;
+  if (viewer.kind !== 'scout' || !viewer.isProxy) return null;
+  return viewer.scoutId === postedScoutId ? viewer.scoutId : null;
+}
+
+/**
+ * Whether a requirement row shows "I did this" at all — the page-side twin
+ * of proofSubmissionAllowedFor(), so a viewer is never walked to a form that
+ * refuses them (mb/[mbId]/page.tsx, rank/[rankId]/[code]/page.tsx). A scout
+ * must be in view, and either the session is a verified household
+ * ('household' — adult or scout) or the viewer is a leader's proxy for that
+ * scout (the identity-cookie leader is audience 'household'; the legacy
+ * leader cookie is 'leader' — both count once isProxy is true). The OLD
+ * shared scout login ('scout'), the troop password alone ('family') and
+ * anonymous never see it.
+ */
+export function canClaimProof(viewer: LibraryViewer, audience: ProofAudience): boolean {
+  if (viewer.kind !== 'scout') return false;
+  if (viewer.isProxy) return audience === 'household' || audience === 'leader';
   return audience === 'household';
+}
+
+/**
+ * How a leader-filed claim is attributed on the record. `requirement_submissions`
+ * has no from-label column and `submitted_via` is CHECK-constrained to
+ * ('family','scout') — no migration for one line of provenance — so the
+ * attribution is the FIRST LINE of body_md, written by the action and split
+ * back out by the Proof Queue (splitFiledByLine) so the reviewer sees
+ * "Filed by <Leader> (leader, on behalf of <Scout>)" as its own line rather
+ * than inside the quoted write-up. Guarded by tests/proof-proxy-submit.test.ts.
+ */
+export function filedByLeaderLine(leaderName: string, scoutName: string): string {
+  return `Filed by ${leaderName} (leader, on behalf of ${scoutName})`;
+}
+
+const FILED_BY_RE = /^Filed by (.+ \(leader, on behalf of .+\))(?:\n\n([\s\S]*))?$/;
+
+/** A leading "Filed by … (leader, on behalf of …)" line, with any blank lines after it. */
+const LEADING_FILED_BY_RE = /^\s*Filed by .+ \(leader, on behalf of .+\)[ \t]*(?:\r?\n\s*)*/;
+
+/**
+ * Removes any leading "Filed by …" attribution line(s) from USER-SUPPLIED
+ * proof text before it is stored (qa-lead, 2026-09-07): the leader-filed
+ * marker is a body_md prefix, so a family typing the same sentence into
+ * their write-up would otherwise read as leader-filed in the Proof Queue.
+ * Only the server (submitProofAction's proxy branch) may prepend it, after
+ * this strip. Repeats are stripped too; the rest of the text is untouched.
+ */
+export function stripFiledByLine(userText: string | null): string | null {
+  if (!userText) return null;
+  let text = userText;
+  for (let i = 0; i < 10 && LEADING_FILED_BY_RE.test(text); i++) {
+    text = text.replace(LEADING_FILED_BY_RE, '');
+  }
+  const trimmed = text.trim();
+  return trimmed || null;
+}
+
+export function splitFiledByLine(bodyMd: string | null): { filedBy: string | null; body: string | null } {
+  if (!bodyMd) return { filedBy: null, body: null };
+  const m = FILED_BY_RE.exec(bodyMd);
+  if (!m) return { filedBy: null, body: bodyMd };
+  const body = m[2]?.trim() ?? '';
+  return { filedBy: m[1], body: body || null };
 }

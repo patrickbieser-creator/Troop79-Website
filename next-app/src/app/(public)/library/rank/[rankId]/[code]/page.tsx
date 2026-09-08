@@ -108,7 +108,14 @@ export default async function LibraryRequirementPage({
   // Phase 2 (Plans/Resource-Library.md) — proof only makes sense on a leaf
   // requirement; a parent code (e.g. "9") has no direct ledger row of its
   // own to sign off.
-  const proofHref = `/library/submit-proof?target=${encodeURIComponent(`rank_req:${targetKey}`)}`;
+  // Carries the scout in view (`&scout=`) exactly as the badge rows do, so a
+  // leader proxying as a scout lands on the on-behalf form for THAT scout
+  // (Patrick 2026-09-07; the action re-verifies the id through the resolver
+  // — it selects, never authorizes) and a multi-scout household gets the
+  // right radio pre-checked.
+  const proofHref = `/library/submit-proof?target=${encodeURIComponent(`rank_req:${targetKey}`)}${
+    viewScoutId ? `&scout=${encodeURIComponent(viewScoutId)}` : ''
+  }`;
   // A scout-login session can't submit proof at all (Plans/Family-Identity-Auth.md
   // Phase 0) — say so at the button rather than sending a scout through the
   // whole form only to be refused on submit.

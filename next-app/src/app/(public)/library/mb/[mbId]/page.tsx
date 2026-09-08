@@ -71,6 +71,7 @@ import {
 } from '@/lib/mb-scout-progress';
 import { ArticleBody } from '@/lib/article-body/ArticleBody';
 import { gateAudience } from '@/lib/family-access';
+import { canClaimProof } from '@/lib/library';
 import {
   loadMbPageResources,
   loadMbPendingSubmissions,
@@ -198,14 +199,16 @@ export default async function LibraryMbPage({
   // grid draws from, so a pill and a grid cell can never disagree.
   const selectedScoutId = viewer.kind === 'scout' ? viewer.scoutId : null;
   const doneDates = selectedScoutId ? byScout.get(selectedScoutId)?.dates : undefined;
-  // "I did this" needs a verified identity (lib/library.ts
-  // proofSubmissionAllowedFor — the gate submit-proof/actions.ts enforces)
-  // AND an own scout in view: a superuser leader proxying as a scout can
-  // look but not claim, and the OLD shared scout login can't submit proof at
-  // all (Plans/Family-Identity-Auth.md Phase 0) — the list says so once at
-  // the top instead of walking a scout to a form that refuses them.
+  // "I did this" needs a scout in view AND either a verified identity or a
+  // leader proxying as that scout (lib/library.ts canClaimProof — the page
+  // twin of the proofSubmissionAllowedFor gate submit-proof/actions.ts
+  // enforces; Patrick 2026-09-07 restored the proxy case, the claim is filed
+  // on the scout's behalf and still reviewed). The OLD shared scout login
+  // can't submit proof at all (Plans/Family-Identity-Auth.md Phase 0) — the
+  // list says so once at the top instead of walking a scout to a form that
+  // refuses them.
   const audience = await gateAudience();
-  const canClaim = viewer.kind === 'scout' && !viewer.isProxy && audience === 'household';
+  const canClaim = canClaimProof(viewer, audience);
   const scoutBlocked = audience === 'scout';
 
   return (

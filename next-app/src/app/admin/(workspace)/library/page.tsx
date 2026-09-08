@@ -25,6 +25,7 @@ import type {
 import {
   rankReqKey,
   resourceThumbnail,
+  splitFiledByLine,
   splitRankReqKey,
   RESOURCE_KIND_ICON,
   type ResourceKind
@@ -521,6 +522,10 @@ const PROOF_TYPE_LABEL: Record<RequirementSubmission['proof_type'], string> = {
 
 function ProofQueueRow({ item }: { item: ProofQueueItem }) {
   const { submission: s, scoutName, requirementLabel, requirementHref, alreadyHasIt, photoUrls } = item;
+  // A leader-filed claim (proxy "I did this", 2026-09-07) carries its
+  // attribution as body_md's first line — shown as its own line so the
+  // reviewer sees who filed it, not buried in the quote.
+  const { filedBy, body } = splitFiledByLine(s.body_md);
   return (
     <div className={styles.queueRow}>
       <div className={styles.rowHead}>
@@ -540,7 +545,12 @@ function ProofQueueRow({ item }: { item: ProofQueueItem }) {
         </p>
       )}
 
-      {s.body_md && <p className={styles.rowMeta}>&ldquo;{s.body_md}&rdquo;</p>}
+      {filedBy && (
+        <p className={styles.rowMeta}>
+          <strong>{filedBy}</strong>
+        </p>
+      )}
+      {body && <p className={styles.rowMeta}>&ldquo;{body}&rdquo;</p>}
       {s.link_url && (
         <p className={styles.rowMeta}>
           <a href={s.link_url} target="_blank" rel="noopener noreferrer">

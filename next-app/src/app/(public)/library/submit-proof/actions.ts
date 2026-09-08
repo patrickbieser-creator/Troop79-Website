@@ -17,10 +17,22 @@
  *     still validates the posted scoutId against their own household —
  *     multi-scout households still need to say which scout.
  *
- * Leader sessions are refused — a leader who personally witnesses a
- * requirement being met signs it off directly through Fast Entry (immediate
- * ledger write, no review queue needed) rather than filing a submission for
- * their own later approval. 'family' (the retired Tier 1 audience) and the
+ *   - PROXY (Patrick, 2026-09-07) — a leader holding `library.proxy_view`
+ *     who is viewing a scout's page AS that scout's proxy (`?viewScout=`)
+ *     files the claim on the scout's behalf. The posted scoutId is never
+ *     trusted on its own: it is fed to resolveLibraryViewer() as the
+ *     viewScout and the branch only opens when the resolver comes back
+ *     `{ kind: 'scout', isProxy: true }` for THAT id (lib/library.ts
+ *     proxyScoutIdFor). The claim lands in the review queue like any other
+ *     — this is not a Fast Entry sign-off — and is labelled leader-filed
+ *     (filedByLeaderLine; submitted_via stays 'family', the CHECK constraint
+ *     has no 'leader' and there is no from-label column).
+ *
+ * Plain leader sessions (no proxied scout) are refused — a leader who
+ * personally witnesses a requirement being met signs it off directly
+ * through Fast Entry (immediate ledger write, no review queue needed) rather
+ * than filing a submission for their own later approval. 'family' (the
+ * retired Tier 1 audience) and the
  * OLD unverified 'scout' audience (shared SCOUT_PASSWORD login, no
  * per-scout identity) are ALSO refused — the former permanently as of this
  * retirement, the latter permanently since Plans/Family-Identity-Auth.md
@@ -39,7 +51,9 @@ import { gateAudience, getIdentitySessionIfValid } from '@/lib/family-access';
 import { isEpochCurrent } from '@/lib/identity-session';
 import { secretMatches } from '@/lib/signed-cookie';
 import { loadHouseholdByKey } from '@/lib/households';
-import { proofSubmissionAllowedFor } from '@/lib/library';
+import { filedByLeaderLine, proofSubmissionAllowedFor, proxyScoutIdFor, stripFiledByLine } from '@/lib/library';
+import { actorCanProxyLibrary, resolveLibraryViewer, type LibraryViewer } from '@/lib/library-viewer';
+import { resolveAdminActor } from '@/lib/admin-actor';
 import { resolveRequirementLabel } from '@/lib/library-data';
 import { uploadProofMedia } from '@/lib/proof-media';
 import { sendEmail, renderEmail, troopEmail } from '@/lib/email';
@@ -94,11 +108,27 @@ export async function submitProofAction(formData: FormData): Promise<void> {
   const target = String(formData.get('target') ?? '').trim();
   const keep = { target: target || undefined };
   if (!audience) redirect(proofUrl({ ...keep, gate: 'missing' }));
-  // Leaders and the OLD unverified scout audience are both refused — see the
-  // module comment and proofSubmissionAllowedFor() (lib/library.ts). A
-  // direct POST from either session is treated as a shape error, same as any
-  // other guard clause here, rather than silently accepted or crashing.
-  if (!proofSubmissionAllowedFor(audience)) {
+
+  const supabase = createAdminClient();
+  const postedScoutId = String(formData.get('scoutId') ?? '').trim() || null;
+
+  // PROXY check first (module comment): only an admin actor holding
+  // `library.proxy_view` can ever resolve to `isProxy: true`, and only for a
+  // posted id the resolver itself picked from the active roster — so the
+  // posted id selects, it never authorizes. Anyone else skips the resolver
+  // entirely (resolveAdminActor is request-cached; no extra cost).
+  const actor = await resolveAdminActor();
+  const viewer: LibraryViewer =
+    actorCanProxyLibrary(actor) && postedScoutId
+      ? await resolveLibraryViewer(supabase, postedScoutId)
+      : { kind: 'none' };
+  const proxyScoutId = proxyScoutIdFor(viewer, postedScoutId);
+
+  // Plain leaders and the OLD unverified scout audience are both refused —
+  // see the module comment and proofSubmissionAllowedFor() (lib/library.ts).
+  // A direct POST from either session is treated as a shape error, same as
+  // any other guard clause here, rather than silently accepted or crashing.
+  if (!proofSubmissionAllowedFor(audience, { proxyScoutId, forScoutId: postedScoutId })) {
     redirect(
       proofUrl({
         ...keep,
@@ -110,51 +140,67 @@ export async function submitProofAction(formData: FormData): Promise<void> {
   const parsedTarget = parseTarget(target);
   if (!parsedTarget) redirect(proofUrl({ ...keep, err: 'target' }));
 
-  const supabase = createAdminClient();
-
   // Resolve + validate the scout server-side — never trust a posted id alone
   // (same reasoning as cancelSignupAction in events/[id]/actions.ts and
   // submitChangeRequestAction in profile/actions.ts). proofSubmissionAllowedFor()
-  // above already guarantees audience === 'household' here — Tier 1 (the
-  // `else` shape this used to have) was retired 2026-08-21.
+  // above already guarantees audience === 'household' OR a matching proxy
+  // here — Tier 1 (the `else` shape this used to have) was retired 2026-08-21.
   let scoutId: string;
   let scoutName: string;
   let fromLabel: string;
   let submittedVia: 'family' | 'scout';
+  /** Leader-filed claims carry their attribution as body_md's first line. */
+  let filedByLine: string | null = null;
 
-  const session = await getIdentitySessionIfValid();
-  if (!session) redirect(proofUrl({ ...keep, err: 'household' }));
-  if (!(await isEpochCurrent(supabase, session))) {
-    redirect(proofUrl({ ...keep, err: 'revoked' }));
-  }
-  const party = await loadHouseholdByKey(session.householdKey);
-  if (!party) redirect(proofUrl({ ...keep, err: 'household' }));
-
-  if (session.subjectKind === 'scout') {
-    // Tier 2-S: the picker collapses to the verified scout alone — no
-    // form field consulted for who this is, by design (Plans/Family-Identity-Auth.md
-    // decision 6: "a scout may only ever claim their own work").
-    const self = party.scouts.find((s) => s.personId === session.personId);
-    if (!self) redirect(proofUrl({ ...keep, err: 'scout' }));
-    scoutId = self.id;
-    scoutName = self.displayName;
-    fromLabel = 'a verified scout sign-in';
-    submittedVia = 'scout';
-  } else {
-    const postedScoutId = String(formData.get('scoutId') ?? '').trim();
-    const scout = party.scouts.find((s) => s.id === postedScoutId);
-    if (!postedScoutId || !scout) redirect(proofUrl({ ...keep, err: 'scout' }));
-    scoutId = scout.id;
-    scoutName = scout.displayName;
-    fromLabel = `the ${party.label} household (verified sign-in)`;
+  if (proxyScoutId && viewer.kind === 'scout') {
+    // Leader on behalf of the proxied scout. Applies whether the leader's
+    // session is the legacy leader cookie (audience 'leader') or a verified
+    // identity that holds the grant (audience 'household' — the common case,
+    // Patrick proxying for a scout who may not even be in his household).
+    const leaderName = actor?.label ?? 'A leader';
+    scoutId = proxyScoutId;
+    scoutName = viewer.scoutName;
+    fromLabel = `${leaderName} (leader, on behalf of ${scoutName})`;
     submittedVia = 'family';
+    filedByLine = filedByLeaderLine(leaderName, scoutName);
+  } else {
+    const session = await getIdentitySessionIfValid();
+    if (!session) redirect(proofUrl({ ...keep, err: 'household' }));
+    if (!(await isEpochCurrent(supabase, session))) {
+      redirect(proofUrl({ ...keep, err: 'revoked' }));
+    }
+    const party = await loadHouseholdByKey(session.householdKey);
+    if (!party) redirect(proofUrl({ ...keep, err: 'household' }));
+
+    if (session.subjectKind === 'scout') {
+      // Tier 2-S: the picker collapses to the verified scout alone — no
+      // form field consulted for who this is, by design (Plans/Family-Identity-Auth.md
+      // decision 6: "a scout may only ever claim their own work").
+      const self = party.scouts.find((s) => s.personId === session.personId);
+      if (!self) redirect(proofUrl({ ...keep, err: 'scout' }));
+      scoutId = self.id;
+      scoutName = self.displayName;
+      fromLabel = 'a verified scout sign-in';
+      submittedVia = 'scout';
+    } else {
+      const scout = party.scouts.find((s) => s.id === postedScoutId);
+      if (!postedScoutId || !scout) redirect(proofUrl({ ...keep, err: 'scout' }));
+      scoutId = scout.id;
+      scoutName = scout.displayName;
+      fromLabel = `the ${party.label} household (verified sign-in)`;
+      submittedVia = 'family';
+    }
   }
 
   // proof_type is inferred from what was actually filled in — priority
   // photo > link > write-up — rather than a separate radio the family also
   // has to get right. body_md doubles as the required write-up for 'report'
-  // and an optional caption for 'photo'/'link'.
-  const bodyMd = String(formData.get('body_md') ?? '').trim() || null;
+  // and an optional caption for 'photo'/'link'. The written text alone
+  // decides the type; a leader-filed attribution line is prepended after.
+  // stripFiledByLine: a typed "Filed by …" line can never masquerade as the
+  // server-written leader attribution (qa-lead, 2026-09-07).
+  const writtenMd = stripFiledByLine(String(formData.get('body_md') ?? '').trim() || null);
+  const bodyMd = filedByLine ? (writtenMd ? `${filedByLine}\n\n${writtenMd}` : filedByLine) : writtenMd;
   const linkUrlRaw = String(formData.get('link_url') ?? '').trim();
   const file = formData.get('photo');
 
@@ -176,7 +222,7 @@ export async function submitProofAction(formData: FormData): Promise<void> {
     }
     proofType = 'link';
     linkUrl = linkUrlRaw;
-  } else if (bodyMd) {
+  } else if (writtenMd) {
     proofType = 'report';
   } else {
     redirect(proofUrl({ ...keep, err: 'empty' }));
@@ -222,5 +268,7 @@ export async function submitProofAction(formData: FormData): Promise<void> {
     confirm: true
   });
 
-  redirect(proofUrl({ ...keep, sent: '1' }));
+  // A leader-filed claim keeps `scout` so the confirmation can say whose
+  // behalf it was filed on (page.tsx re-resolves the proxy from it).
+  redirect(proofUrl({ ...keep, sent: '1', scout: filedByLine ? scoutId : undefined }));
 }

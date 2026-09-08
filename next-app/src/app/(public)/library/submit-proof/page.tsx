@@ -3,9 +3,11 @@
  * extended by Plans/Family-Identity-Auth.md Phase 2). Reached only from a
  * requirement/badge page's CTA, which always supplies
  * ?target=rank_req:{key} or ?target=mb_req:{key} — see actions.ts's module
- * comment for the two paths that actually submit (verified scout, verified
- * adult) and the ones that don't (leader, the OLD unverified scout login,
- * and 'family' — the Tier 1 troop-password fallback, retired 2026-08-21).
+ * comment for the three paths that actually submit (verified scout, verified
+ * adult, and — since 2026-09-07 — a leader proxying as the scout named by
+ * ?scout=, filing on that scout's behalf) and the ones that don't (a plain
+ * leader with no proxied scout, the OLD unverified scout login, and 'family'
+ * — the Tier 1 troop-password fallback, retired 2026-08-21).
  */
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -14,6 +16,8 @@ import { gateAudience, familyGateConfigured, getIdentitySessionIfValid } from '@
 import { isEpochCurrent } from '@/lib/identity-session';
 import { loadHouseholdByKey } from '@/lib/households';
 import { resolveRequirementLabel } from '@/lib/library-data';
+import { actorCanProxyLibrary, resolveLibraryViewer } from '@/lib/library-viewer';
+import { resolveAdminActor } from '@/lib/admin-actor';
 import { proofGateAction, submitProofAction } from './actions';
 import { TrackOnMount } from '../../_components/track-on-mount';
 import { PageHeader, KickerSep } from '@/app/_components/page-header';
@@ -89,7 +93,9 @@ export default async function SubmitProofPage({
      *  (Plans/Library-MB-Consolidation.md Phase 2). Only ever a HINT: the
      *  radio below lists the session's own scouts and the action re-checks
      *  the posted id against the household, so a foreign id just falls back
-     *  to the first scout. */
+     *  to the first scout. For a leader holding `library.proxy_view` it
+     *  names the scout to file ON BEHALF OF — still only a selector: the
+     *  resolver decides whether this session may proxy for it. */
     scout?: string;
   }>;
 }) {
@@ -98,6 +104,17 @@ export default async function SubmitProofPage({
 
   const context = await loadRequirementContext(target);
   const audience = await gateAudience();
+  // Proxy (Patrick 2026-09-07): resolved only for an admin actor with the
+  // grant — everyone else never touches the resolver here. Same check the
+  // action repeats on POST; this one only chooses which form to draw.
+  const proxyViewer =
+    scout && actorCanProxyLibrary(await resolveAdminActor())
+      ? await resolveLibraryViewer(createAdminClient(), scout)
+      : null;
+  const proxyScout =
+    proxyViewer?.kind === 'scout' && proxyViewer.isProxy
+      ? { id: proxyViewer.scoutId, name: proxyViewer.scoutName }
+      : null;
 
   return (
     <>
@@ -124,9 +141,12 @@ export default async function SubmitProofPage({
           <SentConfirmation
             backHref={context?.backHref ?? '/library'}
             targetKind={target.startsWith('mb_req:') ? 'mb_req' : 'rank_req'}
+            onBehalfOf={proxyScout?.name ?? null}
           />
         ) : audience === null ? (
           <GateCard target={target} gate={gate} />
+        ) : proxyScout ? (
+          <ProxySubmitForm target={target} err={err} scout={proxyScout} />
         ) : audience === 'leader' ? (
           <LeaderRedirectCard />
         ) : audience === 'scout' ? (
@@ -143,10 +163,13 @@ export default async function SubmitProofPage({
 
 function SentConfirmation({
   backHref,
-  targetKind
+  targetKind,
+  onBehalfOf
 }: {
   backHref: string;
   targetKind: 'rank_req' | 'mb_req';
+  /** Set when a leader filed this on a scout's behalf — the copy says so. */
+  onBehalfOf: string | null;
 }) {
   return (
     <FormCard>
@@ -157,8 +180,18 @@ function SentConfirmation({
         </div>
         <h2 className={styles.confirmTitle}>Sent for review</h2>
         <p className={styles.confirmText}>
-          A leader will look this over and either sign it off or send back a note if
-          anything&rsquo;s missing.
+          {onBehalfOf ? (
+            <>
+              Filed on <strong>{onBehalfOf}</strong>&rsquo;s behalf. It&rsquo;s queued for review
+              like any other submission &mdash; a leader signs it off from the Proof Queue, or
+              sends back a note if anything&rsquo;s missing.
+            </>
+          ) : (
+            <>
+              A leader will look this over and either sign it off or send back a note if
+              anything&rsquo;s missing.
+            </>
+          )}
         </p>
         <p className={`${styles.flowActions} ${styles.flowActionsCenter}`}>
           <Button variant="secondary" href={backHref}>
@@ -170,6 +203,40 @@ function SentConfirmation({
         </p>
       </div>
     </FormCard>
+  );
+}
+
+/**
+ * A leader proxying as a scout (Patrick 2026-09-07): the picker is the ONE
+ * proxied scout, read-only — `?scout=` selected it and the resolver already
+ * confirmed this session may proxy for it; the action re-runs that check on
+ * the posted id before anything is written. The claim is a normal review-
+ * queue submission, labelled leader-filed — not a Fast Entry sign-off.
+ */
+function ProxySubmitForm({
+  target,
+  err,
+  scout
+}: {
+  target: string;
+  err?: string;
+  scout: { id: string; name: string };
+}) {
+  return (
+    <form action={submitProofAction}>
+      <FormCard>
+        <input type="hidden" name="target" value={target} />
+        <input type="hidden" name="scoutId" value={scout.id} />
+        {err && ERR_MESSAGES[err] && <FieldError>{ERR_MESSAGES[err]}</FieldError>}
+        <FieldHint>
+          Filing on behalf of <strong>{scout.name}</strong> as their leader. This goes into the
+          Proof Queue for review like any family submission &mdash; to sign a requirement off
+          directly, use{' '}
+          <Link href="/admin/advancement/fast-entry">Fast Entry</Link> instead.
+        </FieldHint>
+        <ProofFields />
+      </FormCard>
+    </form>
   );
 }
 

@@ -66,7 +66,7 @@ export function MbRequirementsTree({
   notes: ReadonlyMap<string, MbRequirementNote>;
   /** The selected scout's code → completion date ('YYYY-MM-DD'). */
   doneDates?: ReadonlyMap<string, string>;
-  /** The viewer may submit proof (verified adult or verified scout, not a proxying leader). */
+  /** The viewer may submit proof (verified adult or verified scout, or a leader proxying as this scout — lib/library.ts canClaimProof). */
   canClaim: boolean;
   /** The OLD shared scout login — can never submit proof; say so once at the top. */
   scoutBlocked?: boolean;

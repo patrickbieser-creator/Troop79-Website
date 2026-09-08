@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { proofSubmissionAllowedFor } from '../src/lib/library';
+import { proofSubmissionAllowedFor, canClaimProof } from '../src/lib/library';
+import type { LibraryViewer } from '../src/lib/library-viewer';
 
 /**
  * Regression guard for Plans/Family-Identity-Auth.md Phase 0 (2026-08-06):
@@ -47,5 +48,64 @@ describe('proof submission audience gate', () => {
 
   it('VerifiedHousehold_IsAllowed_WhenSubmittingProof', () => {
     expect(proofSubmissionAllowedFor('household')).toBe(true);
+  });
+
+  // UPDATED 2026-09-07 (Patrick): the ONE sanctioned widening of this gate —
+  // a leader whose resolved library viewer is a PROXY for the very scout the
+  // proof is for (holder of `library.proxy_view`, `?viewScout=` / the posted
+  // scout equals the proxied scout) may file the claim on that scout's
+  // behalf. It still goes through the review queue, labelled as leader-filed.
+  // A plain leader session with no proxied scout stays refused; 'family',
+  // the OLD 'scout' audience and null are untouched by the context argument.
+  it('Leader_WithMatchingProxy_IsAllowed_WhenSubmittingProof', () => {
+    expect(proofSubmissionAllowedFor('leader', { proxyScoutId: 'A01', forScoutId: 'A01' })).toBe(true);
+  });
+
+  it('Leader_WithMismatchedProxy_IsRefused_WhenSubmittingProof', () => {
+    expect(proofSubmissionAllowedFor('leader', { proxyScoutId: 'A01', forScoutId: 'B02' })).toBe(false);
+    expect(proofSubmissionAllowedFor('leader', { proxyScoutId: 'A01', forScoutId: null })).toBe(false);
+  });
+
+  it('Leader_WithoutProxy_StaysRefused_WhenSubmittingProof', () => {
+    expect(proofSubmissionAllowedFor('leader', { proxyScoutId: null, forScoutId: 'A01' })).toBe(false);
+    expect(proofSubmissionAllowedFor('leader', {})).toBe(false);
+  });
+
+  it('ProxyContext_NeverOpens_FamilyScoutOrAnonymous', () => {
+    const ctx = { proxyScoutId: 'A01', forScoutId: 'A01' };
+    expect(proofSubmissionAllowedFor('family', ctx)).toBe(false);
+    expect(proofSubmissionAllowedFor('scout', ctx)).toBe(false);
+    expect(proofSubmissionAllowedFor(null, ctx)).toBe(false);
+  });
+});
+
+/**
+ * The page-side twin: whether a requirement row shows "I did this" at all
+ * (mb/[mbId]/page.tsx, rank/[rankId]/[code]/page.tsx). Same rule as the
+ * action's gate so a viewer is never walked to a form that refuses them.
+ */
+describe('proof claim visibility (canClaimProof)', () => {
+  const own: LibraryViewer = { kind: 'scout', scoutId: 'A01', scoutName: 'A', switchOptions: [], isProxy: false };
+  const proxy: LibraryViewer = { ...own, isProxy: true };
+
+  it('VerifiedHousehold_SeesClaim_ForOwnScout', () => {
+    expect(canClaimProof(own, 'household')).toBe(true);
+  });
+
+  it('ProxyLeader_SeesClaim_ForProxiedScout', () => {
+    // Identity-cookie leader (audience 'household') and legacy leader cookie alike.
+    expect(canClaimProof(proxy, 'household')).toBe(true);
+    expect(canClaimProof(proxy, 'leader')).toBe(true);
+  });
+
+  it('NoScoutInView_NeverSeesClaim', () => {
+    expect(canClaimProof({ kind: 'none' }, 'household')).toBe(false);
+    expect(canClaimProof({ kind: 'proxy-available', options: [] }, 'leader')).toBe(false);
+  });
+
+  it('OldScoutLogin_AndFamilyPassword_NeverSeeClaim', () => {
+    expect(canClaimProof(own, 'scout')).toBe(false);
+    expect(canClaimProof(own, 'family')).toBe(false);
+    expect(canClaimProof(own, null)).toBe(false);
   });
 });
