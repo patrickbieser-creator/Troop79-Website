@@ -248,7 +248,8 @@ export function recipeIssues(draft: RecipeDraft, catalog: Catalog): RecipeIssue[
     if (!raw) err(`Line ${n}: type an amount per person.`, idx);
     else {
       const q = parseQty(raw);
-      if (!Number.isFinite(q) || q <= 0) err(`Line ${n}: '${raw}' isn't a number. Type something like ½, 1/2 or 0.5.`, idx);
+      if (!Number.isFinite(q)) err(`Line ${n}: '${raw}' isn't a number. Type something like ½, 1/2 or 0.5.`, idx);
+      else if (q <= 0) err(`Line ${n}: the amount per person must be more than zero.`, idx);
     }
     if (conv(l.unitKey, ing, catalog.conversions) == null) {
       const supported = supportedUnits(ing, catalog.conversions).map((k) => lineUnit(k, ing).many);

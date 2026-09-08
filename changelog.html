@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>September 8, 2026</strong> &nbsp;&middot;&nbsp; v1.123.2</p>
+      <p>Last updated: <strong>September 8, 2026</strong> &nbsp;&middot;&nbsp; v1.124.0</p>
     </div>
   </div>
 
@@ -494,6 +494,25 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.124.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.124.0</span>
+        <span class="release-date">September 8, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Menu Monster leader tools: the Price book and the Recipe builder</p>
+        <ul class="change-list">
+          <li><span><strong>A new admin screen, Menu Monster, under News &amp; Events beside the Resource Library.</strong> Leaders with the Librarian&rsquo;s access keep the meal planner&rsquo;s shared catalog here; until now every price or recipe correction was a database change. The public planner picks up a published change on its next load.</span></li>
+          <li><span><strong>Price book.</strong> Every ingredient in one table with its recipe unit, store section, flags, package count, cheapest price per unit, newest price date and a plain-text status: Unpriced, Stale, OK or Retired. Pick one to see its packages &mdash; price, price date, yield, store, name and note edit in place with the usual Save changes / Discard pair &mdash; plus an <strong>Add a package</strong> form that suggests the yield from the label (&ldquo;Suggested: &asymp; 16 cups from 1 gallon&rdquo;) using the ingredient&rsquo;s unit conversions, which are listed and edited right below. A price that moves more than 25% shows &ldquo;Big change &mdash; flagged for a second look&rdquo;; a price older than 90 days shows how old it is. Neither blocks anything.</span></li>
+          <li><span><strong>Change unit.</strong> Switching an ingredient from cups to tablespoons (or any unit) previews exactly what happens &mdash; which package yields convert, which become unusable until retyped, which recipe lines keep their old unit &mdash; and then applies it all at once.</span></li>
+          <li><span><strong>Recipe builder.</strong> Menu items grouped by meal with a status pill worked out live &mdash; a published item whose only package lost its price reads &ldquo;Needs fixes&rdquo;. The editor has Basics (name, cooking method, meal fit, MyPlate groups, camp or trail), Ingredient lines (amount per person as &frac12;, 1/2 or 0.5; a unit list limited to what can be converted; &ldquo;Who gets it&rdquo; for gluten-free and other swaps instead of a second recipe), and Steps. Problems are listed in words &mdash; &ldquo;Line 2: Eggs already has a line for everyone &mdash; combine them&rdquo; &mdash; and Publish stays off until they are gone. A preview shows what one person gets and the cost per person at any headcount. Duplicate, Retire and Restore as draft round it out.</span></li>
+          <li><span>Everything a leader changes here is written to the content audit trail with the old and new values. Scout suggestions still arrive through the Library Queue.</span></li>
+        </ul>
       </div>
     </div>
 

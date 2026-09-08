@@ -30,7 +30,7 @@ import {
   type RecipeDraft
 } from '@/lib/menu-monster/authoring';
 import { UNITS, parseQty } from '@/lib/menu-monster/units';
-import type { Recipe, RecipeStatus, RestrictionKey, Section, Unit, UnitKind } from '@/lib/menu-monster/types';
+import type { Recipe, RecipeStatus, RestrictionKey, Section, Unit } from '@/lib/menu-monster/types';
 
 export interface Result {
   ok: boolean;
@@ -79,8 +79,12 @@ function validUnit(u: Unit): string | null {
   return null;
 }
 
+/** Free-text caps (qa-lead, 2026-09-08) — the editors enforce the same maxLength. */
+const MAX = { name: 80, product: 120, store: 40, note: 200, steps: 600, method: 40, label: 120 } as const;
+const cap = (s: string, n: number) => s.trim().slice(0, n);
+
 function cleanIngredient(input: Partial<IngredientInput>): { value: Omit<IngredientInput, 'unit'>; error?: string } {
-  const name = String(input.name ?? '').trim();
+  const name = cap(String(input.name ?? ''), MAX.name);
   const section = input.section as Section;
   const avoid = (input.avoid ?? []).filter((k): k is RestrictionKey => RESTRICTION_KEYS.includes(k));
   const value = { name, section, staple: !!input.staple, avoid };
@@ -281,7 +285,7 @@ export async function addConversion(
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('mm_conversions')
-    .insert({ ingredient_id: ingredientId, from_unit: from, to_unit: to, factor: input.factor, label: input.label?.trim() || null })
+    .insert({ ingredient_id: ingredientId, from_unit: cap(from, MAX.store), to_unit: cap(to, MAX.store), factor: input.factor, label: input.label ? cap(input.label, MAX.label) || null : null })
     .select('id')
     .single();
   if (error) return { ok: false, error: error.message };
@@ -343,8 +347,8 @@ export interface PackageInput {
 function cleanPackage(input: Partial<PackageInput>): { value: PackageInput; error?: string } {
   const value: PackageInput = {
     ingredientId: String(input.ingredientId ?? ''),
-    name: String(input.name ?? '').trim(),
-    store: input.store?.trim() || null,
+    name: cap(String(input.name ?? ''), MAX.product),
+    store: input.store ? cap(input.store, MAX.store) || null : null,
     price: Number(input.price),
     soldSize: input.soldSize == null || input.soldSize === ('' as unknown) ? null : Number(input.soldSize),
     soldUnit: input.soldUnit?.trim() || null,
@@ -352,7 +356,7 @@ function cleanPackage(input: Partial<PackageInput>): { value: PackageInput; erro
     yieldUnitLabel: input.yieldUnitLabel?.trim() || null,
     noun: String(input.noun ?? '').trim() || 'pack',
     asOf: input.asOf?.trim() || null,
-    note: input.note?.trim() || null
+    note: input.note ? cap(input.note, MAX.note) || null : null
   };
   if (!value.ingredientId) return { value, error: 'Pick an ingredient.' };
   if (!value.name) return { value, error: 'Type the product name as it reads on the label.' };
@@ -523,7 +527,7 @@ function draftOf(r: Recipe): RecipeDraft {
 export async function saveRecipe(draft: RecipeDraft): Promise<Result> {
   const denied = await guard();
   if (denied) return denied;
-  const name = draft.name.trim();
+  const name = cap(draft.name, MAX.name);
   if (!name) return { ok: false, error: 'Give the menu item a name.' };
 
   const lines: { ingredient_id: string; qty_per_person: number; unit_key: string | null; serves_rule: string; serves_restriction: string | null }[] = [];
@@ -560,8 +564,8 @@ export async function saveRecipe(draft: RecipeDraft): Promise<Result> {
       food_groups: draft.foodGroups,
       camp: draft.camp,
       trail: draft.trail,
-      method: draft.method,
-      steps_md: draft.stepsMd,
+      method: draft.method ? cap(draft.method, MAX.method) : null,
+      steps_md: cap(draft.stepsMd ?? '', MAX.steps),
       sort_order: sortOrder
     },
     p_lines: lines
@@ -656,5 +660,3 @@ export async function duplicateRecipe(id: string): Promise<Result> {
   revalidate();
   return { ok: true, id: newId };
 }
-
-export type { UnitKind };

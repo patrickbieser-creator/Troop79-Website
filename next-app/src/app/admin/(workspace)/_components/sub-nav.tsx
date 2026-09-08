@@ -180,6 +180,14 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         capability: 'library.moderate'
       },
       {
+        // The Cooking MB planner's catalog (Plans/Menu-Monster-Leader-Tools.md):
+        // a Library shelf's content, so the Librarian's capability.
+        label: 'Menu Monster',
+        href: '/admin/library/menu-monster',
+        matchPath: '/admin/library/menu-monster',
+        capability: 'library.moderate'
+      },
+      {
         label: 'Media Manager',
         href: '/admin/news/media-manager',
         matchPath: '/admin/news/media-manager',

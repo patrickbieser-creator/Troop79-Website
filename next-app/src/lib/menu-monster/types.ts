@@ -49,6 +49,8 @@ export interface Ingredient {
 
 /** "1 {from} = {factor} {to}" for one ingredient — bridges unit families. */
 export interface Conversion {
+  /** mm_conversions.id — carried so the leader tools can delete a row; absent on fixtures. */
+  id?: number;
   ingredientId: string;
   from: string;
   to: string;

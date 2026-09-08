@@ -1,0 +1,118 @@
+/* Menu Monster leader tools (Plans/Menu-Monster-Leader-Tools.md).
+   Tables adopt the shared DataTable·Card pattern; fields reuse the admin
+   Library workstation's field classes (same admin area, admin tokens).
+   Only genuine extras live here. */
+
+.wrap { max-width: 1100px; }
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+.spacer { flex: 1; }
+
+.tableWrap { composes: cardWrap from '../../_components/data-table.module.css'; }
+.table { composes: card from '../../_components/data-table.module.css'; }
+.numCell { composes: numCell from '../../_components/data-table.module.css'; }
+.rowSelected td { background: var(--admin-status-info-bg); }
+
+/* The ingredient name is the row's one control: a link-styled button. */
+.rowBtn {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  color: var(--admin-navy);
+  cursor: pointer;
+  text-align: left;
+}
+.rowBtn:hover,
+.rowBtn:focus-visible { text-decoration: underline; text-underline-offset: 2px; }
+
+.flags { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.muted { color: var(--admin-gray-500); }
+.hint { font-size: var(--admin-text-sm); color: var(--admin-gray-500); line-height: 1.5; margin: 6px 0 0; }
+
+.detail { margin-top: 16px; display: grid; gap: 14px; min-width: 0; }
+.detail > * { min-width: 0; }
+.detailHead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.detailTitle { font-size: var(--admin-text-lg); font-weight: 700; color: var(--admin-gray-900); margin: 0; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; min-width: 0; }
+.card {
+  min-width: 0;
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  background: var(--admin-white);
+  padding: 12px 14px;
+  display: grid;
+  gap: 8px;
+}
+.cardRetired { opacity: .7; }
+.cardHead { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.cardName { font-weight: 700; color: var(--admin-gray-900); margin: 0; font-size: var(--admin-text-md); }
+.cardMeta { font-size: var(--admin-text-sm); color: var(--admin-gray-500); }
+.readout { font-size: var(--admin-text-sm); color: var(--admin-gray-700); margin: 0; }
+.readoutWarn { font-weight: 700; }
+.perUnit { font-size: var(--admin-text-sm); color: var(--admin-gray-700); }
+
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.listRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: var(--admin-text-base); }
+.grow { flex: 1; min-width: 0; }
+
+.inlineForm { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.inlineForm > div { min-width: 120px; }
+.narrow { max-width: 140px; }
+
+.consequences { margin: 8px 0 0; padding-left: 18px; line-height: 1.5; }
+
+/* Recipe builder: list on the left, editor + preview on the right. */
+.builder { display: grid; grid-template-columns: 260px 1fr; gap: 16px; align-items: start; margin-top: 12px; }
+@media (max-width: 900px) { .builder { grid-template-columns: 1fr; } }
+.itemList { display: grid; gap: 10px; }
+.itemGroup { display: grid; gap: 2px; }
+.itemGroupTitle { margin: 6px 0 2px; }
+.itemBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  text-align: left;
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  background: var(--admin-white);
+  padding: 6px 10px;
+  font: inherit;
+  color: var(--admin-gray-900);
+  cursor: pointer;
+}
+.itemBtn:hover { border-color: var(--admin-navy); }
+.itemBtnOn { border-color: var(--admin-navy); background: var(--admin-status-info-bg); }
+.editor { display: grid; gap: 14px; min-width: 0; }
+.fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.lineList { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.lineRow {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--admin-gray-200);
+}
+.issues { margin-top: 10px; }
+.issuesTitle { margin: 0 0 4px; }
+.issueList { margin: 0; padding-left: 18px; line-height: 1.5; }
+.preview {
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  background: var(--admin-white);
+  padding: 12px 14px;
+  display: grid;
+  gap: 8px;
+}
+.previewCost { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }

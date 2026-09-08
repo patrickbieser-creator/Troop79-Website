@@ -95,6 +95,7 @@ export function mapCatalog(rows: CatalogRows): Catalog {
   const conversions: Conversion[] = rows.conversions
     .filter((c) => known.has(c.ingredient_id))
     .map((c) => ({
+      id: c.id,
       ingredientId: c.ingredient_id,
       from: c.from_unit,
       to: c.to_unit,
