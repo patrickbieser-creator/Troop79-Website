@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Session Summary — Person record page, Library merit badge consolidation, nightly backup (2026-09-07)</title>
+<style>
+  :root {
+    --nw-teal: #1e3a4a;   /* Troop 79 navy (BRAND.md primary) */
+    --nw-green: #3d5a3e;  /* Troop 79 forest (BRAND.md accent) */
+    --paper: #faf6ef;
+    --ink: #2a2a2a;
+    --meta: #6d7580;
+    --line: #e2e4e8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 15px; color: var(--ink); background: var(--paper); line-height: 1.55; }
+  .header { background: var(--nw-teal); color: #fff; padding: 40px 64px; }
+  .header .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.6); margin-bottom: 8px; }
+  .header h1 { font-size: 30px; font-weight: 600; margin-bottom: 6px; }
+  .header .sub { font-size: 14px; color: rgba(255,255,255,.75); }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 36px 24px 64px; }
+  h2 { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--nw-green); border-bottom: 2px solid var(--nw-green); padding-bottom: 6px; margin: 36px 0 14px; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .metric { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+  .metric .num { font-size: 26px; font-weight: 700; color: var(--nw-teal); }
+  .metric .lbl { font-size: 12px; color: var(--meta); margin-top: 2px; }
+  ul { padding-left: 22px; }
+  li { margin-bottom: 9px; }
+  .card { background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--nw-green); border-radius: 4px; padding: 14px 18px; margin-bottom: 12px; }
+  .card.warn { border-left-color: #c0392b; }
+  .card .t { font-weight: 700; color: var(--nw-teal); }
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--meta); }
+  .footer { text-align: center; font-size: 12px; color: var(--meta); padding: 24px; border-top: 1px solid var(--line); margin-top: 40px; }
+  code { background: #f0f1f3; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="eyebrow">Troop 79 &middot; Session Summary</div>
+  <h1>Person record page, Library merit badge consolidation, nightly backup</h1>
+  <div class="sub">Monday, 7 September 2026, 10 AM &ndash; 10:35 PM CDT &middot; thirty-sixth session, in parallel with the Menu Monster session &middot; v1.119.3 &rarr; v1.123.1</div>
+</div>
+
+<div class="wrap">
+  <h2>At a glance</h2>
+  <div class="metrics">
+    <div class="metric"><div class="num">14</div><div class="lbl">releases pushed to production (v1.119.3 &ndash; v1.123.1)</div></div>
+    <div class="metric"><div class="num">167</div><div class="lbl">tests added (1619 &rarr; 1786), every phase falsified</div></div>
+    <div class="metric"><div class="num">4</div><div class="lbl">decisions (D-267 &ndash; D-270)</div></div>
+    <div class="metric"><div class="num">1</div><div class="lbl">blocker resolved (B-005)</div></div>
+    <div class="metric"><div class="num">9</div><div class="lbl">build phases delivered by agents under the full gate</div></div>
+    <div class="metric"><div class="num">&#8722;1,365</div><div class="lbl">lines retired: people-table.tsx 1,291 &rarr; 179, plus 253 lines of dead editor CSS</div></div>
+  </div>
+
+  <h2>What shipped</h2>
+  <div class="card"><div class="t">B-005 fixed &mdash; v1.119.3</div>
+    Checking &ldquo;Full merit badge earned&rdquo; alone in Scout-First now works for a scout with no progress on the badge. The August 19 fix had reached only the server; the two client gates never learned the clean-slate rule. Browser-verified on the dev server.</div>
+  <div class="card"><div class="t">Nightly production backup + gated local sync &mdash; D-267</div>
+    <code>next-app/scripts/backup-prod.mts</code> is the second action of the Pen-Vision Task Scheduler job (07:00). It dumps production to <code>D:\Projects\Backups\troop79</code> and mirrors it into the local Docker DB unless a migration is pending, local and production differ, the migrations folder is dirty, or a dev server or test run is active. Verified through <code>schtasks /run</code>.</div>
+  <div class="card"><div class="t">EmailOctopus reconciliation</div>
+    The Bugle list (88) compared to production (84 addresses): three active families unreachable, several crossed-wire addresses, seven scout records carrying a parent&rsquo;s email. Approved fixes applied in one transaction after a backup; the manual EmailOctopus edits and twelve unknown contacts are Patrick&rsquo;s list in BACKLOG.</div>
+  <div class="card"><div class="t">Person record page &mdash; D-268, v1.120.0 &rarr; v1.121.1</div>
+    Jenna&rsquo;s audit (three save models on one screen), Brad&rsquo;s three prototypes, Patrick&rsquo;s pick of Direction A plus History, tech-lead&rsquo;s six-phase plan, then six agent-built phases: one read-only page per person with per-section Edit, Status as Edit &rarr; reason &rarr; confirm, &ldquo;Takes effect immediately&rdquo; blocks, Danger zone with confirms, History with field-level old &rarr; new from the audit log, pending family updates inside the section they touch, roster rows linking to the page, old editor modals deleted, house Save rule amended, styleguide specimen, Household &amp; family listing every member.</div>
+  <div class="card"><div class="t">Library merit badge page &mdash; D-269, v1.122.0 &rarr; v1.122.1</div>
+    Requirements, Whole-badge resources and I did this became one list: rows with a dated Done/Pending pill and up to three icons (View resources with a count, I did this while the scout still needs it, Suggest a resource), accordion rows, a whole-badge group first, the library&rsquo;s scout switcher for multi-scout households. The admin picker gained a badge &rarr; requirement two-step. No schema or write-path change was needed.</div>
+  <div class="card"><div class="t">Proxy-leader &ldquo;I did this&rdquo; &mdash; D-270, v1.123.1</div>
+    A leader viewing as a scout can file proof for that scout only, labelled as leader-filed in the queue. qa-lead reviewed the access-control chain (8/10, no critical issues) and its one warning &mdash; a spoofable text prefix &mdash; was fixed before commit.</div>
+
+  <h2>Decisions</h2>
+  <ul>
+    <li><strong>D-267</strong> &mdash; Nightly production backup + gated production &rarr; local sync ride the Pen-Vision Task Scheduler job.</li>
+    <li><strong>D-268</strong> &mdash; Person record page (Direction A) replaces the roster&rsquo;s editor modals; History from <code>audit_log.details</code>; per-section Edit is a sanctioned save model.</li>
+    <li><strong>D-269</strong> &mdash; One Requirements list on the public merit badge page; per-requirement resources via the existing <code>mb_req</code> keying; the row deep link is the only way to target one requirement.</li>
+    <li><strong>D-270</strong> &mdash; A leader proxying a scout may file proof for that scout only &mdash; the one sanctioned widening of the 2026-08-06 rule.</li>
+  </ul>
+
+  <h2>Blockers resolved</h2>
+  <div class="card"><div class="t">B-005 &mdash; Fast Entry could not mark a badge fully earned in one pass</div>
+    Root cause: the clean-slate bypass was server-only. Fixed in both client gates with a dom test that clicks the &#9733; row; the second satisfaction implementation was identical and not the cause.</div>
+
+  <h2>Multi-session note</h2>
+  <div class="card warn"><div class="t">The other session&rsquo;s <code>git add -A</code> swept an in-flight test into its commit</div>
+    Origin main&rsquo;s suite was red for a while until this session&rsquo;s source landed with v1.123.1. Shared files (changelog, plans) were staged at hunk level so neither session&rsquo;s uncommitted text shipped in the other&rsquo;s commit. Rules recorded in memory. Also seen: Git Bash startup crashes and Chrome-extension timeouts under the overlap; memory pressure killed the prototype servers twice.</div>
+
+  <h2>Deployed</h2>
+  <table>
+    <tr><th>Version</th><th>Commit</th><th>What</th></tr>
+    <tr><td>v1.119.3</td><td>22d82fc</td><td>B-005 fix</td></tr>
+    <tr><td>&mdash;</td><td>a31d691</td><td>backup-prod.mts + Task Scheduler action 2</td></tr>
+    <tr><td>v1.120.0</td><td>f7f5624</td><td>Person record page phases 1&ndash;3</td></tr>
+    <tr><td>v1.121.0 / .1</td><td>a9c2511 / 1a41eb8</td><td>History, pending banners, retirement, household members, CSS sweep</td></tr>
+    <tr><td>v1.122.0 / .1</td><td>e8cb104 / 0dfb2d7</td><td>Library MB consolidation phases 1&ndash;3</td></tr>
+    <tr><td>v1.123.1</td><td>7da7fa5</td><td>Proxy-leader proof (after the other session&rsquo;s v1.123.0)</td></tr>
+  </table>
+
+  <h2>Next</h2>
+  <ul>
+    <li>Patrick&rsquo;s manual EmailOctopus edits and the twelve unknown contacts.</li>
+    <li>Eyes-on production: a roster row click, a History chip, a pending banner; the merit badge page on a phone; Anjali&rsquo;s Astronomy page while proxying.</li>
+    <li>Follow-ups: per-field approval of change requests if needed; the Add Resource entry form&rsquo;s picker; duplicate-URL detection; a proxy-proof integration test.</li>
+    <li>Chemistry&rsquo;s Scoutbook id; Menu Monster eyes-on walk and phase 2.</li>
+  </ul>
+</div>
+
+<div class="footer">Troop 79 &middot; Operator session summary &middot; generated 2026-09-07 10:35 PM CDT</div>
+</body>
+</html>
