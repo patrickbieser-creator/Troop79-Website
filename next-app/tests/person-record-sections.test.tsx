@@ -258,6 +258,41 @@ describe('Person record sections — read → Edit → Save/Cancel, one at a tim
     expect(within(members).getByText(/inactive/)).toBeTruthy();
   });
 
+  // Patrick, 2026-09-08: "there is no way that I can find to remove a person
+  // from a household". The only path was the other person's own record and a
+  // "— no household —" option in a select. Each listed member now carries a
+  // Remove that writes right away, with the same Undo toast as a household
+  // change.
+  it('Leader_RemovesMemberFromHousehold_FromMembersList_WithUndo', async () => {
+    const user = userEvent.setup();
+    const record = adultRecord();
+    record.household = {
+      id: 1,
+      label: 'Whitlock',
+      members: [
+        { personId: 401, name: 'Dana Whitlock', kind: 'adult', active: true },
+        { personId: 402, name: 'Marcus Whitlock', kind: 'adult', active: true }
+      ]
+    };
+    render(<PersonRecord record={record} from="adult" />);
+    const family = section('Household & family');
+
+    await user.click(within(family).getByRole('button', { name: 'Remove Marcus Whitlock from household' }));
+    await waitFor(() => expect(setHousehold).toHaveBeenCalledWith(402, null));
+    // The person whose record this is never gets a Remove — that is the select.
+    expect(within(family).queryByRole('button', { name: /Remove Dana Whitlock/ })).toBeNull();
+
+    // Gone from the list right away, and the toast names it and offers Undo.
+    expect(within(family).queryByText('Marcus Whitlock')).toBeNull();
+    const toast = await within(family).findByRole('status', { name: /Household changed/ });
+    expect(toast.textContent).toMatch(/Removed Marcus Whitlock from Whitlock/);
+    await user.click(within(toast).getByRole('button', { name: 'Undo' }));
+
+    await waitFor(() => expect(setHousehold).toHaveBeenLastCalledWith(402, 1));
+    expect(setHousehold).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(within(family).getByText('Marcus Whitlock')).toBeTruthy());
+  });
+
   it('Leader_SeesNoOtherMembersNote_WhenAloneInHousehold', () => {
     const record = adultRecord();
     record.household = {

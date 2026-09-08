@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>September 7, 2026</strong> &nbsp;&middot;&nbsp; v1.123.1</p>
+      <p>Last updated: <strong>September 8, 2026</strong> &nbsp;&middot;&nbsp; v1.123.2</p>
     </div>
   </div>
 
@@ -494,6 +494,23 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.123.2 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.123.2</span>
+        <span class="release-date">September 8, 2026</span>
+        <span class="release-label"><span class="badge badge-fix">Fix</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Removing someone from a household, from the household&rsquo;s side</p>
+        <ul class="change-list">
+          <li><span><strong>Each person listed under Household &amp; family on a record page now has a Remove.</strong> Until now the only way out of a household was on that person&rsquo;s own record, hidden as a &ldquo;&mdash; no household &mdash;&rdquo; choice in the Household drop-down &mdash; so taking a former partner or a grown sibling out of a family meant leaving the page you were on and hunting for it. Remove takes effect right away, they stay on the roster, and the message that follows offers Undo.</span></li>
+          <li><span><strong>The Households table under Lookups &amp; Admin does the same.</strong> Every member is shown as a small chip with an &times;; removing one shows the same Undo. Adding someone to a household still happens on their own record, where you can see which Johnson you mean.</span></li>
+          <li><span>Both go through the same household change a leader already makes on a record page, so the audit trail and each person&rsquo;s History show it the same way.</span></li>
+        </ul>
       </div>
     </div>
 

@@ -238,6 +238,13 @@
 .memberList { list-style: none; margin: 0; padding: 0; }
 .memberList li + li { margin-top: 2px; }
 .memberList a { color: var(--admin-navy); }
+/* Name on the left, its Remove on the right — the same shape as a
+   relationship row so the two lists in this section read alike. */
+.memberRow {
+  display: flex;
+  align-items: center;
+  gap: var(--admin-space-3);
+}
 .listHead {
   font-size: var(--admin-text-sm);
   font-weight: var(--admin-weight-bold);

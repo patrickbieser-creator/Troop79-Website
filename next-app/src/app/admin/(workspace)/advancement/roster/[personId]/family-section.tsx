@@ -9,6 +9,14 @@
  * that calls setHousehold with the previous id. Relationships / parents &
  * guardians sit BELOW the form as the "Takes effect immediately" block
  * (Phase 3, relationships-block.tsx), outside any Save.
+ *
+ * REMOVING SOMEONE ELSE (Patrick, 2026-09-08: "there is no way that I can
+ * find to remove a person from a household"). Membership lived only in the
+ * select on each person's OWN record, so taking Sara out of Dan's household
+ * meant leaving Dan's page, opening Sara's, and picking "— no household —".
+ * Each member in the read-mode list now carries a Remove that writes at once
+ * through the same setHousehold(member, null), hides them optimistically, and
+ * offers the same Undo toast (setHousehold(member, this household)).
  */
 import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
@@ -73,6 +81,10 @@ export function FamilySection({
   const router = useRouter();
   const [toast, setToast] = useState<Toast | null>(null);
   const [undoBusy, setUndoBusy] = useState(false);
+  /** Members removed here and not yet confirmed gone by a refresh — hidden
+   *  from the list at once so the click visibly did something. */
+  const [removedIds, setRemovedIds] = useState<Set<number>>(() => new Set());
+  const [removingId, setRemovingId] = useState<number | null>(null);
   const labelOf = (value: string) => (value ? (households.find((h) => String(h.id) === value)?.label ?? `household ${value}`) : 'no household');
   const idOf = (value: string) => (value ? Number(value) : null);
 
@@ -114,7 +126,47 @@ export function FamilySection({
 
   const v = form.saved;
   const d = form.draft;
-  const others = members.filter((m) => m.personId !== personId);
+  const others = members.filter((m) => m.personId !== personId && !removedIds.has(m.personId));
+
+  function removeMember(m: HouseholdMember) {
+    const householdId = idOf(v.household);
+    if (householdId == null) return;
+    const householdLabel = labelOf(v.household);
+    setRemovingId(m.personId);
+    void setHousehold(m.personId, null)
+      .then((res) => {
+        if (!res.ok) {
+          setToast({ message: res.error ?? `Could not remove ${m.name}.` });
+          return;
+        }
+        setRemovedIds((prev) => new Set(prev).add(m.personId));
+        router.refresh();
+        onSaved?.();
+        setToast({
+          message: `Removed ${m.name} from ${householdLabel}`,
+          undo: () => {
+            setUndoBusy(true);
+            void setHousehold(m.personId, householdId)
+              .then((back) => {
+                if (!back.ok) {
+                  setToast({ message: back.error ?? `Could not put ${m.name} back.` });
+                  return;
+                }
+                setRemovedIds((prev) => {
+                  const next = new Set(prev);
+                  next.delete(m.personId);
+                  return next;
+                });
+                setToast({ message: `${m.name} is back in ${householdLabel}.` });
+                router.refresh();
+                onSaved?.();
+              })
+              .finally(() => setUndoBusy(false));
+          }
+        });
+      })
+      .finally(() => setRemovingId(null));
+  }
 
   return (
     <SectionCard
@@ -159,13 +211,25 @@ export function FamilySection({
               ) : (
                 <ul className={styles.memberList} aria-label="Household members">
                   {others.map((m) => (
-                    <li key={m.personId}>
-                      {memberHref ? <Link href={memberHref(m.personId)}>{m.name}</Link> : m.name}
-                      <span className={styles.muted}>
-                        {' '}
-                        · {KIND_LABEL[m.kind]}
-                        {m.active ? '' : ' · inactive'}
+                    <li key={m.personId} className={styles.memberRow}>
+                      <span className={styles.grow}>
+                        {memberHref ? <Link href={memberHref(m.personId)}>{m.name}</Link> : m.name}
+                        <span className={styles.muted}>
+                          {' '}
+                          · {KIND_LABEL[m.kind]}
+                          {m.active ? '' : ' · inactive'}
+                        </span>
                       </span>
+                      <Button
+                        size="sm"
+                        variant="quiet"
+                        disabled={removingId != null || undoBusy}
+                        aria-label={`Remove ${m.name} from household`}
+                        title={`Take ${m.name} out of this household — they stay on the roster`}
+                        onClick={() => removeMember(m)}
+                      >
+                        {removingId === m.personId ? 'Removing…' : 'Remove'}
+                      </Button>
                     </li>
                   ))}
                 </ul>

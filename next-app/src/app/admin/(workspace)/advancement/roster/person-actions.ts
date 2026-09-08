@@ -36,7 +36,8 @@ import { ROLE_LABEL } from './[personId]/record-types';
  * entire reason role and relationship are separate tables.
  */
 
-const PATHS = ['/admin/advancement/roster', '/admin/advancement/roster-import'];
+// Lookups lists each household's members, and removes them since 2026-09-08.
+const PATHS = ['/admin/advancement/roster', '/admin/advancement/roster-import', '/admin/advancement/lookups'];
 
 interface Result {
   ok: boolean;

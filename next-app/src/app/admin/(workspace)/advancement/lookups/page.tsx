@@ -47,7 +47,7 @@ import { NameLookupEditor, type NameRow } from './name-lookup-editor';
 import { EventEditor, type EventRow } from './event-editor';
 import { ReqCodesTable, type ReqRow } from './req-codes-table';
 import { LookupCard } from './lookup-card';
-import { HouseholdsManager, type HouseholdRow } from './households-manager';
+import { HouseholdsManager, type HouseholdMemberRow, type HouseholdRow } from './households-manager';
 import { SkillsEditor, type SkillRow } from './skills-editor';
 import { SkillAssignEditor, type AssignPerson } from './skill-assign-editor';
 import { CategoriesEditor } from './categories-editor';
@@ -221,25 +221,26 @@ async function loadLookups() {
     // Stollenwerk households — and the label alone cannot distinguish them.
     supabase
       .from('household_members')
-      .select('household_id, people!inner(display_name, merged_into_person_id)')
+      .select('household_id, person_id, people!inner(display_name, merged_into_person_id)')
   ]);
 
-  const memberNames = new Map<number, string[]>();
+  const memberRows = new Map<number, HouseholdMemberRow[]>();
   for (const m of (hhMembersRes.data ?? []) as unknown as {
     household_id: number;
+    person_id: number;
     people: { display_name: string; merged_into_person_id: number | null } | null;
   }[]) {
     if (!m.people || m.people.merged_into_person_id !== null) continue;
-    memberNames.set(m.household_id, [
-      ...(memberNames.get(m.household_id) ?? []),
-      m.people.display_name
+    memberRows.set(m.household_id, [
+      ...(memberRows.get(m.household_id) ?? []),
+      { personId: m.person_id, name: m.people.display_name }
     ]);
   }
   const householdRows: HouseholdRow[] = ((householdsRes.data ?? []) as { id: number; label: string }[])
     .map((h) => ({
       id: h.id,
       label: h.label,
-      members: (memberNames.get(h.id) ?? []).sort((a, b) => a.localeCompare(b))
+      members: (memberRows.get(h.id) ?? []).sort((a, b) => a.name.localeCompare(b.name))
     }));
 
   // Group counselors by MB

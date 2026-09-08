@@ -4,18 +4,37 @@ import { useState, useTransition } from 'react';
 import { SaveButton, SaveFeedback, useSavePhase } from '../../_components/save-state';
 import { useRouter } from 'next/navigation';
 import { createHousehold, renameHousehold, deleteHousehold } from './household-actions';
+import { setHousehold } from '../roster/person-actions';
 import styles from './lookups.module.css';
 import { Button } from '../../../_components/button';
+
+export interface HouseholdMemberRow {
+  personId: number;
+  name: string;
+}
 
 export interface HouseholdRow {
   id: number;
   label: string;
-  members: string[];
+  members: HouseholdMemberRow[];
+}
+
+/** The last removal, so the notice can offer to put them back. */
+interface Removed {
+  personId: number;
+  name: string;
+  householdId: number;
+  label: string;
 }
 
 /**
  * The households themselves — not who is in them, which is edited on each
- * person.
+ * person. The one membership edit offered here is REMOVAL (Patrick,
+ * 2026-09-08: "there is no way that I can find to remove a person from a
+ * household") — each listed member carries a × that writes at once through
+ * the same setHousehold(member, null) the person record uses, with an Undo.
+ * Adding someone stays on the person: their record is where you confirm
+ * which Johnson you mean.
  *
  * Every row lists its members, because the label alone does not identify a
  * household: the troop has two Stollenwerk families, and had two Haslam and two
@@ -30,6 +49,24 @@ export function HouseholdsManager({ households }: { households: HouseholdRow[] }
   const [editing, setEditing] = useState<number | null>(null);
   const [draft, setDraft] = useState('');
   const [newLabel, setNewLabel] = useState('');
+  const [removed, setRemoved] = useState<Removed | null>(null);
+
+  function removeMember(h: HouseholdRow, m: HouseholdMemberRow) {
+    setRemoved(null);
+    run(
+      () => setHousehold(m.personId, null),
+      () => setRemoved({ personId: m.personId, name: m.name, householdId: h.id, label: h.label })
+    );
+  }
+
+  function undoRemove() {
+    if (!removed) return;
+    const r = removed;
+    run(
+      () => setHousehold(r.personId, r.householdId),
+      () => setRemoved(null)
+    );
+  }
 
   const labelCounts = households.reduce<Record<string, number>>((acc, h) => {
     const k = h.label.trim().toLowerCase();
@@ -39,7 +76,7 @@ export function HouseholdsManager({ households }: { households: HouseholdRow[] }
 
   const feedback = useSavePhase();
 
-  function run(fn: () => Promise<{ ok: boolean; error?: string }>) {
+  function run(fn: () => Promise<{ ok: boolean; error?: string }>, onOk?: () => void) {
     setError(null);
     startTransition(async () => {
       const res = await fn();
@@ -49,6 +86,7 @@ export function HouseholdsManager({ households }: { households: HouseholdRow[] }
       } else {
         setEditing(null);
         feedback.done();
+        onOk?.();
         router.refresh();
       }
     });
@@ -58,6 +96,19 @@ export function HouseholdsManager({ households }: { households: HouseholdRow[] }
     <div>
       <SaveFeedback phase={feedback.phase} />
       {error && <div className={styles.rowError}>{error}</div>}
+      {removed && (
+        <div className={styles.notice} role="status" aria-label="Household changed">
+          <span className={styles.noticeText}>
+            Removed {removed.name} from {removed.label} — they stay on the roster.
+          </span>
+          <Button variant="secondary" size="sm" disabled={pending} onClick={undoRemove}>
+            Undo
+          </Button>
+          <button type="button" className={styles.noticeClose} aria-label="Dismiss" onClick={() => setRemoved(null)}>
+            ×
+          </button>
+        </div>
+      )}
 
       <div className={styles.addRow}>
         <input
@@ -130,10 +181,24 @@ export function HouseholdsManager({ households }: { households: HouseholdRow[] }
                   {h.members.length === 0 ? (
                     <em className={styles.muted}>empty</em>
                   ) : (
-                    <>
-                      {h.members.join(', ')}
-                      <span className={styles.muted}> ({h.members.length})</span>
-                    </>
+                    <ul className={styles.memberChips} aria-label={`${h.label} members`}>
+                      {h.members.map((m) => (
+                        <li key={m.personId} className={styles.memberChip}>
+                          <span>{m.name}</span>
+                          <button
+                            type="button"
+                            className={styles.memberChipRemove}
+                            disabled={pending}
+                            aria-label={`Remove ${m.name} from ${h.label}`}
+                            title={`Take ${m.name} out of this household — they stay on the roster`}
+                            onClick={() => removeMember(h, m)}
+                          >
+                            ×
+                          </button>
+                        </li>
+                      ))}
+                      <li className={styles.muted}>({h.members.length})</li>
+                    </ul>
                   )}
                 </td>
                 <td className={styles.actionsCell}>
@@ -196,8 +261,8 @@ export function HouseholdsManager({ households }: { households: HouseholdRow[] }
       </table>
 
       <p className={styles.hint}>
-        Who belongs to a household is set on each person, under Roster. Only households with nobody
-        in them can be deleted.
+        Someone joins a household on their own record, under Roster; the × here takes them out of one
+        (they stay on the roster). Only households with nobody in them can be deleted.
       </p>
     </div>
   );
