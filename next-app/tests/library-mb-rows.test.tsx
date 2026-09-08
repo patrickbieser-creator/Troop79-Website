@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MbRequirementsTree } from '../src/app/(public)/library/mb/[mbId]/mb-requirements-tree';
 import { buildReqTree } from '../src/lib/mb-helpers';
+import { canClaimProof } from '../src/lib/library';
 import type { PlacedResource } from '../src/lib/library-data';
 import type { LibraryViewer } from '../src/lib/library-viewer';
 import type { MeritBadgeRequirement } from '../src/lib/supabase/types';
@@ -125,6 +126,27 @@ describe('Library MB consolidated requirement rows', () => {
     expect(screen.getByRole('link', { name: 'I did this — 6' })).toBeTruthy();
     // A parent row has no ledger row of its own — never a claim.
     expect(screen.queryByRole('link', { name: 'I did this — 4' })).toBeNull();
+  });
+
+  it('ProxyLeader_SeesIDidThis_ForProxiedScout', () => {
+    // Patrick 2026-09-07: a leader proxying as a scout (`?viewScout=`) files
+    // the claim on that scout's behalf — the page passes canClaim for a proxy
+    // viewer now (lib/library.ts canClaimProof), and the rows carry the
+    // proxied scout's id so submit-proof can verify the match server-side.
+    const PROXY: LibraryViewer = { ...FAMILY, scoutId: 's-anj', scoutName: 'Anjali S.', isProxy: true };
+    renderTree({
+      viewer: PROXY,
+      canClaim: canClaimProof(PROXY, 'household'),
+      doneDates: new Map([['4a', '2026-04-19']]),
+      pendingByLeaf: new Map([['4b', new Set(['s-anj'])]])
+    });
+    expect(screen.queryByRole('link', { name: 'I did this — 4a' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'I did this — 4b' })).toBeNull();
+    const claim = screen.getByRole('link', { name: 'I did this — 4c' });
+    expect(claim.getAttribute('href')).toBe(
+      `/library/submit-proof?target=${encodeURIComponent('mb_req:chem-4c')}&scout=s-anj`
+    );
+    expect(screen.getByText(/I did this · /)).toBeTruthy();
   });
 
   it('Family_SeesDonePillWithDate_ForSelectedScout', () => {

@@ -10,6 +10,7 @@ import type { LibraryTopic } from '@/lib/supabase/types';
 import { loadPublishedFor } from '@/lib/library-data';
 import { viewerIsLeader } from '@/lib/library-viewer';
 import { ResourceCard } from '../../_components/resource-card';
+import { TOPIC_TOOLS } from '../../_tools/registry';
 import { PageHeader, KickerSep } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
 import { EmptyState } from '@/app/_components/empty-state';
@@ -33,6 +34,9 @@ export default async function LibraryTopicPage({
   ]);
   if (!topic) notFound();
   const shelf = topic as LibraryTopic;
+  // A shelf with a tool (Menu Monster) renders it above its resources; the
+  // tool IS the shelf's first item, so an empty list isn't "waiting".
+  const Tool = TOPIC_TOOLS[slug];
 
   const suggestHref = `/library/submit?target=${encodeURIComponent(`topic:${slug}`)}`;
 
@@ -60,12 +64,14 @@ export default async function LibraryTopicPage({
       />
 
       <PageShell>
-        {resources.length === 0 ? (
+        {Tool && <Tool />}
+        {resources.length === 0 && !Tool && (
           <EmptyState>
             This shelf is waiting for its first item.{' '}
             <Link href={suggestHref}>Suggest something for it →</Link>
           </EmptyState>
-        ) : (
+        )}
+        {resources.length > 0 && (
           <ul className={styles.resourceList}>
             {resources.map((res) => (
               <ResourceCard key={res.placement.id} resource={res} pinned={res.placement.pinned} />

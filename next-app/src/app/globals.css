@@ -145,3 +145,16 @@ img { display: block; max-width: 100%; }
     display: none !important;
   }
 }
+
+/* Menu Monster (library/_tools/menu-monster) prints ONLY its store sheet +
+   counselor summary (D-017 fixed print template): same opt-out as the
+   Clipboard for the nav/footer, plus the shelf page's own header, resource
+   list and CTA band, which live outside the tool's component and so can't be
+   hidden from its CSS module (Next's CSS modules reject pure-global
+   selectors). The planner's on-screen half hides itself in its own module. */
+@media print {
+  body:has(#mm-print-sheet) > :not(main),
+  body:has(#mm-print-sheet) main > :not(#menu-monster-planner) {
+    display: none !important;
+  }
+}

@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>September 7, 2026</strong> &nbsp;&middot;&nbsp; v1.122.1</p>
+      <p>Last updated: <strong>September 7, 2026</strong> &nbsp;&middot;&nbsp; v1.123.0</p>
     </div>
   </div>
 
@@ -494,6 +494,27 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.123.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.123.0</span>
+        <span class="release-date">September 7, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Menu Monster: a meal planner for the Cooking merit badge, on its own Library shelf</p>
+        <ul class="change-list">
+          <li><span><strong>New Topic Shelf: Menu Monster.</strong> Open it from the Resource Library. No sign-in needed. A patrol picks a meal (breakfast, lunch, dinner, snack or dessert), checks the menu items it wants, sets how many people are eating and how many are gluten-free, nut-free, dairy-free or vegetarian, and gets a shopping list that rebuilds as it goes.</span></li>
+          <li><span><strong>Cost per person, three ways.</strong> <strong>Spent</strong> is what the packages cost at the register, divided by everyone eating. <strong>Used</strong> is what the recipes actually consume. <strong>Leftover</strong> is the difference, the food that goes home or into the patrol box. Each shopping line shows the math (&ldquo;30 slices &divide; 16 per pack = 2 packs&rdquo;), the cheapest package that covers the need, and the other package choices one click away.</span></li>
+          <li><span><strong>Restrictions done right.</strong> Recipes carry per-line rules such as &ldquo;everyone except gluten-free&rdquo; and &ldquo;only gluten-free&rdquo;, so a gluten-free scout gets almond-flour pancakes and is no longer counted twice. Items with a gluten or nut ingredient and no swap show a warning. Counts only &mdash; the tool never stores who has which restriction.</span></li>
+          <li><span><strong>Bringing, not buying.</strong> Any line can be marked as coming from the troop pantry or from home, with a note. It comes off the store list and out of Spent, but still counts in Used so the true cost of the meal stays honest.</span></li>
+          <li><span><strong>Print the store sheet.</strong> One button prints the list grouped by store section with blank boxes for what was bought and what it cost, a &ldquo;Bringing, not buying&rdquo; table, estimated and actual totals, and a counselor summary for Cooking 5b with a cross-contamination checklist and signature lines. A budget target per person shows under, close or over as you plan.</span></li>
+          <li><span><strong>Seeded with the troop&rsquo;s catalog:</strong> 29 menu items across all five meal slots, 60 ingredients, 88 packages with Costco and Kroger prices, and the unit conversions that turn a 10 lb bag into cups. Drafts save on your computer and survive a reload; &ldquo;Start over&rdquo; needs two clicks.</span></li>
+          <li><span>Behind the scenes: a shelf can now carry a tool above its resources (a code-side registry, not a database column), and the catalog lives in new <code>mm_*</code> tables with row-level security on and no public policies &mdash; the site reads them on the server only. Leader tools for editing recipes and prices come in a later release; until then the catalog is edited by migration.</span></li>
+        </ul>
       </div>
     </div>
 

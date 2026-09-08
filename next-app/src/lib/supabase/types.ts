@@ -486,6 +486,86 @@ export interface RequirementNote {
   updated_at: string;
 }
 
+// ── Menu Monster (Plans/Menu-Monster.md) ────────────────────────────────────
+// Catalog tables for the Cooking-MB meal planner. Hand-maintained like the
+// Library* rows above; the domain shapes live in lib/menu-monster/types.ts.
+
+export interface MmIngredientRow {
+  /** Slug primary key ('pancake-mix'). */
+  id: string;
+  name: string;
+  unit_kind: 'volume' | 'weight' | 'count';
+  /** Unit key the recipe counts in ('cup', 'slice', 'gram', or 'count' for a per-ingredient noun). */
+  unit_key: string;
+  unit_one: string;
+  unit_many: string;
+  section: 'produce' | 'dairy' | 'meat' | 'bakery' | 'dry';
+  /** Patrol-box item: counts toward Used, never toward Spent. */
+  staple: boolean;
+  /** Restriction keys this ingredient conflicts with (warn only). */
+  avoid: string[];
+  created_at: string;
+  retired_at: string | null;
+}
+
+export interface MmConversionRow {
+  id: number;
+  ingredient_id: string;
+  from_unit: string;
+  to_unit: string;
+  /** 1 from_unit = factor to_unit. */
+  factor: number;
+  label: string | null;
+}
+
+export interface MmPackageRow {
+  id: string;
+  ingredient_id: string;
+  name: string;
+  store: string | null;
+  price: number;
+  /** In the ingredient's recipe unit; null = unusable until someone types it. */
+  yield: number | null;
+  /** Why it's unusable — the unit the label is in ('gallon'). */
+  yield_unit_label: string | null;
+  /** What one purchased unit is called: 'bag', 'box', 'dozen', 'each'... */
+  noun: string;
+  sold_size: number | null;
+  sold_unit: string | null;
+  note: string | null;
+  /** Date the price was last confirmed (date column, 'YYYY-MM-DD'). */
+  as_of: string | null;
+  created_at: string;
+  retired_at: string | null;
+}
+
+export interface MmRecipeRow {
+  id: string;
+  name: string;
+  status: 'draft' | 'published' | 'retired';
+  meal_fit: string[];
+  food_groups: string[];
+  camp: boolean;
+  trail: boolean;
+  method: string | null;
+  steps_md: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MmRecipeLineRow {
+  id: number;
+  recipe_id: string;
+  position: number;
+  ingredient_id: string;
+  qty_per_person: number;
+  /** null = the ingredient's recipe unit. */
+  unit_key: string | null;
+  serves_rule: 'everyone' | 'except' | 'only';
+  serves_restriction: 'gf' | 'nut' | 'dairy' | 'veg' | null;
+}
+
 export interface RequirementSubmission {
   id: number;
   scout_id: string;
