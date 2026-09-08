@@ -16,12 +16,14 @@ import type {
   LibraryPlacement,
   LibraryResource,
   LibraryTopic,
+  MeritBadgeRequirement,
   RequirementNote,
   RequirementSubmission
 } from '@/lib/supabase/types';
 import type { LibraryTargetKind, ResourceKind } from '@/lib/library';
 import { detectHost, splitRankReqKey, validateNewResource } from '@/lib/library';
 import { isDuplicateLedgerEntry } from '@/lib/ledger-dedup';
+import { buildReqTree, type ReqNode } from '@/lib/mb-helpers';
 
 export interface PlacedResource extends LibraryResource {
   placement: Pick<LibraryPlacement, 'id' | 'pinned' | 'sort_order' | 'target_kind' | 'target_key'>;
@@ -501,15 +503,23 @@ export async function loadPendingSubmissions(
  * Returns null only if the composite key doesn't match any known rank/badge
  * (never for an unknown leaf code — the label is just null in that case).
  */
+export interface ResolvedRequirement {
+  parentId: string;
+  /** The rank's display name or the badge's name — what a human calls the parent. */
+  parentName: string;
+  code: string;
+  label: string | null;
+}
+
 export async function resolveRequirementLabel(
   supabase: SupabaseClient,
   targetKind: 'rank_req' | 'mb_req',
   targetKey: string
-): Promise<{ parentId: string; code: string; label: string | null } | null> {
+): Promise<ResolvedRequirement | null> {
   if (targetKind === 'rank_req') {
-    const { data: ranks } = await supabase.from('ranks').select('id');
-    const rankIds = ((ranks ?? []) as { id: string }[]).map((r) => r.id);
-    const split = splitRankReqKey(targetKey, rankIds);
+    const { data: ranks } = await supabase.from('ranks').select('id, display_name');
+    const rankRows = (ranks ?? []) as { id: string; display_name: string }[];
+    const split = splitRankReqKey(targetKey, rankRows.map((r) => r.id));
     if (!split) return null;
     const { data: req } = await supabase
       .from('rank_requirements')
@@ -517,19 +527,74 @@ export async function resolveRequirementLabel(
       .eq('rank_id', split.rankId)
       .eq('code', split.code)
       .maybeSingle();
-    return { parentId: split.rankId, code: split.code, label: (req as { label: string } | null)?.label ?? null };
+    return {
+      parentId: split.rankId,
+      parentName: rankRows.find((r) => r.id === split.rankId)?.display_name ?? split.rankId,
+      code: split.code,
+      label: (req as { label: string } | null)?.label ?? null
+    };
   }
-  const { data: mbs } = await supabase.from('merit_badges').select('id');
-  const mbId = ((mbs ?? []) as { id: string }[]).map((m) => m.id).find((id) => targetKey.startsWith(`${id}-`));
-  if (!mbId) return null;
-  const code = targetKey.slice(mbId.length + 1);
+  const { data: mbs } = await supabase.from('merit_badges').select('id, name');
+  const mb = ((mbs ?? []) as { id: string; name: string }[]).find((m) => targetKey.startsWith(`${m.id}-`));
+  if (!mb) return null;
+  const code = targetKey.slice(mb.id.length + 1);
   const { data: req } = await supabase
     .from('merit_badge_requirements')
     .select('label')
-    .eq('mb_id', mbId)
+    .eq('mb_id', mb.id)
     .eq('code', code)
     .maybeSingle();
-  return { parentId: mbId, code, label: (req as { label: string } | null)?.label ?? null };
+  return { parentId: mb.id, parentName: mb.name, code, label: (req as { label: string } | null)?.label ?? null };
+}
+
+/**
+ * The one way a requirement target reads in the admin queues (Jenna's spec,
+ * Plans/Library-MB-Consolidation.md §C): "Chemistry — Requirement 4a: Compare
+ * two waterproofing methods". Drops the ": label" when the code names no
+ * catalog row (a renamed or retired leaf) rather than printing "null".
+ */
+export function requirementTargetLabel(resolved: ResolvedRequirement): string {
+  const head = `${resolved.parentName} — Requirement ${resolved.code}`;
+  return resolved.label ? `${head}: ${resolved.label}` : head;
+}
+
+/** One option in the admin picker's badge → requirement second step. */
+export interface MbRequirementOption {
+  /** The composed target the write paths already accept: `mb_req:{mbId}-{code}`. */
+  value: string;
+  code: string;
+  label: string;
+  /** 0 = top-level requirement, 1 = its sub-requirement (the tree is two levels deep). */
+  depth: number;
+}
+
+/**
+ * ONE badge's requirement tree, flattened in display order for the admin
+ * target picker (Phase 3): each top-level row followed by its leaves. Loaded
+ * on demand for the badge just picked — never every badge's leaves at once,
+ * which is the ~1,500-option select the tech-lead ruled out and would also
+ * cross the PostgREST 1,000-row cap (D-028). One badge is provably small
+ * (First Aid, the largest, is ~83 rows).
+ */
+export async function loadMbRequirementOptions(
+  supabase: SupabaseClient,
+  mbId: string
+): Promise<MbRequirementOption[]> {
+  const { data } = await supabase
+    .from('merit_badge_requirements')
+    .select('id, parent_id, code, label, sort_order')
+    .eq('mb_id', mbId)
+    .order('sort_order');
+  const rows = (data ?? []) as Pick<MeritBadgeRequirement, 'id' | 'parent_id' | 'code' | 'label' | 'sort_order'>[];
+  const out: MbRequirementOption[] = [];
+  const walk = (nodes: ReqNode<(typeof rows)[number]>[], depth: number) => {
+    for (const node of nodes) {
+      out.push({ value: `mb_req:${mbId}-${node.code}`, code: node.code, label: node.label, depth });
+      walk(node.children, depth + 1);
+    }
+  };
+  walk(buildReqTree(rows), 0);
+  return out;
 }
 
 /** True if the scout already has this requirement on the active ledger —

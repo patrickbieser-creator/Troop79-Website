@@ -19,7 +19,9 @@ import {
   approveSubmission,
   createResource,
   declineResource,
-  returnSubmission
+  loadMbRequirementOptions,
+  returnSubmission,
+  type MbRequirementOption
 } from '@/lib/library-data';
 import { detectHost, type LibraryTargetKind, type ResourceKind } from '@/lib/library';
 import { DOCUMENT_UPLOAD_TYPES, checkUpload } from '@/lib/upload-limits';
@@ -240,6 +242,19 @@ export async function addPlacementAction(formData: FormData): Promise<void> {
     summary: `Placed resource #${resourceId} on ${kind}:${key}`
   });
   refresh(tab, groupOf(formData));
+}
+
+/**
+ * ONE badge's requirement tree for the target picker's second step
+ * (Plans/Library-MB-Consolidation.md, Phase 3). Read-only — the picker calls
+ * it when a badge is chosen, so the page never preloads every badge's
+ * leaves. Same session gate as every other action here.
+ */
+export async function loadMbRequirementOptionsAction(mbId: string): Promise<MbRequirementOption[]> {
+  await guard();
+  // Badge ids are hyphenated slugs; anything else can't match a row.
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(mbId)) return [];
+  return loadMbRequirementOptions(createAdminClient(), mbId);
 }
 
 export async function removePlacementAction(formData: FormData): Promise<void> {

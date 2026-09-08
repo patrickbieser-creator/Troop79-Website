@@ -31,6 +31,7 @@ import {
 } from '@/lib/library';
 import {
   loadPendingSubmissions,
+  requirementTargetLabel,
   resolveRequirementLabel,
   scoutAlreadyHasRequirement
 } from '@/lib/library-data';
@@ -43,6 +44,7 @@ import {
   createResourceAction,
   createTopicAction,
   declineResourceAction,
+  loadMbRequirementOptionsAction,
   removePlacementAction,
   restoreResourceAction,
   returnSubmissionAction,
@@ -56,6 +58,7 @@ import {
 import { ResourceEntryForm, type TargetOptionGroup } from './resource-entry-form';
 import { QuickAddResource } from './quick-add-resource';
 import { NarrativeForm } from './narrative-form';
+import { TargetSelect } from './target-select';
 import { fmtDate } from '@/lib/format-date';
 import { TabStrip } from '../_components/tab-strip';
 import { Button } from '../../_components/button';
@@ -78,20 +81,30 @@ const TABS: { key: Tab; label: string }[] = [
 ];
 
 /**
- * The placement picker's options, flattened for the client entry form
- * (Plans/Library-Admin-Resource-Entry.md). Built from the same catalog
- * TargetSelect renders from, so the two can't offer different targets or
- * disagree about composite key shape ('{rankId}-{code}', never a bare code).
+ * The placement picker's options, flattened for the client pickers — the
+ * Add Resource entry form (Plans/Library-Admin-Resource-Entry.md) and the
+ * shared TargetSelect behind "+ Place" and the narrative editor. ONE builder
+ * so the pickers can't offer different targets or disagree about composite
+ * key shape ('{rankId}-{code}', never a bare code).
+ *
+ * `mbReqStep`: the TargetSelect adds a badge → requirement second step
+ * (Phase 3), so its badge group is plainly "Merit badges"; the entry form
+ * has no second step and keeps saying "(whole badge)".
  */
-function targetOptionGroups(catalog: Catalog): TargetOptionGroup[] {
-  const groups: TargetOptionGroup[] = [
-    {
+function targetOptionGroups(
+  catalog: Catalog,
+  opts: { topics?: boolean; mbReqStep?: boolean } = {}
+): TargetOptionGroup[] {
+  const { topics = true, mbReqStep = false } = opts;
+  const groups: TargetOptionGroup[] = [];
+  if (topics) {
+    groups.push({
       group: 'Topic shelves',
       options: catalog.topics
         .filter((t) => !t.retired_at)
         .map((t) => ({ value: `topic:${t.slug}`, label: t.title }))
-    }
-  ];
+    });
+  }
   for (const rank of catalog.ranks) {
     groups.push({
       group: `${rank.display_name} requirements`,
@@ -102,7 +115,7 @@ function targetOptionGroups(catalog: Catalog): TargetOptionGroup[] {
     });
   }
   groups.push({
-    group: 'Merit badges (whole badge)',
+    group: mbReqStep ? 'Merit badges' : 'Merit badges (whole badge)',
     options: catalog.mbs.map((mb) => ({ value: `mb:${mb.id}`, label: mb.name }))
   });
   return groups.filter((g) => g.options.length > 0);
@@ -145,8 +158,10 @@ async function loadProofQueue(): Promise<ProofQueueItem[]> {
   return Promise.all(
     pending.map(async (submission) => {
       const resolved = await resolveRequirementLabel(supabase, submission.target_kind, submission.target_key);
-      const requirementLabel = resolved?.label
-        ? `${resolved.code} — ${resolved.label}`
+      // "Chemistry — Requirement 4a: <label>" — the specific requirement, never
+      // just the badge (Plans/Library-MB-Consolidation.md §C).
+      const requirementLabel = resolved
+        ? requirementTargetLabel(resolved)
         : `${submission.target_kind === 'rank_req' ? 'Rank req' : 'MB req'} ${submission.target_key}`;
       const requirementHref = resolved
         ? submission.target_kind === 'rank_req'
@@ -243,8 +258,11 @@ function targetLabel(catalog: Catalog, kind: string, key: string): string {
     return catalog.mbs.find((m) => m.id === key)?.name ?? `MB: ${key}`;
   }
   if (kind === 'mb_req') {
-    const mb = catalog.mbs.find((m) => key.startsWith(`${m.id}-`));
-    return mb ? `${mb.name} ${key.slice(mb.id.length + 1)}` : `MB req: ${key}`;
+    // Longest id wins so `first-aid` never claims a `first-aid-x` key.
+    const mb = catalog.mbs
+      .filter((m) => key.startsWith(`${m.id}-`))
+      .sort((a, b) => b.id.length - a.id.length)[0];
+    return mb ? `${mb.name} — ${key.slice(mb.id.length + 1)}` : `MB req: ${key}`;
   }
   const split = splitRankReqKey(key, catalog.ranks.map((r) => r.id));
   if (split) {
@@ -258,7 +276,9 @@ function targetHref(catalog: Catalog, kind: string, key: string): string | null 
   if (kind === 'topic') return `/library/topic/${key}`;
   if (kind === 'mb') return `/library/mb/${key}`;
   if (kind === 'mb_req') {
-    const mb = catalog.mbs.find((m) => key.startsWith(`${m.id}-`));
+    const mb = catalog.mbs
+      .filter((m) => key.startsWith(`${m.id}-`))
+      .sort((a, b) => b.id.length - a.id.length)[0];
     return mb ? `/library/mb/${mb.id}` : null;
   }
   const split = splitRankReqKey(key, catalog.ranks.map((r) => r.id));
@@ -771,7 +791,12 @@ function ResourceRow({
             <input type="hidden" name="resource_id" value={res.id} />
             <input type="hidden" name="tab" value={tab} />
             {group && <input type="hidden" name="group" value={group} />}
-            <TargetSelect catalog={data.catalog} name="target" includeMbReq={false} />
+            <TargetSelect
+              groups={targetOptionGroups(data.catalog, { mbReqStep: true })}
+              name="target"
+              includeMbReq
+              loadMbRequirementOptions={loadMbRequirementOptionsAction}
+            />
             <Button variant="secondary" type="submit">
               + Place
             </Button>
@@ -793,62 +818,6 @@ function ResourceRow({
         </form>
       )}
     </div>
-  );
-}
-
-// ── Target select (shared: placements + narratives) ────────────────────────
-
-function TargetSelect({
-  catalog,
-  name,
-  defaultValue,
-  includeMbReq,
-  topicsAllowed = true
-}: {
-  catalog: Catalog;
-  name: string;
-  defaultValue?: string;
-  includeMbReq: boolean;
-  topicsAllowed?: boolean;
-}) {
-  return (
-    <select className={styles.selectInput} name={name} defaultValue={defaultValue ?? ''}>
-      <option value="">— pick a shelf or requirement —</option>
-      {topicsAllowed && (
-        <optgroup label="Topic shelves">
-          {catalog.topics
-            .filter((t) => !t.retired_at)
-            .map((t) => (
-              <option key={t.slug} value={`topic:${t.slug}`}>
-                {t.title}
-              </option>
-            ))}
-        </optgroup>
-      )}
-      {catalog.ranks.map((rank) => (
-        <optgroup key={rank.id} label={`${rank.display_name} requirements`}>
-          {(catalog.rankReqs.get(rank.id) ?? []).map((req) => (
-            <option key={req.code} value={`rank_req:${rankReqKey(rank.id, req.code)}`}>
-              {rank.display_name} {req.code} — {req.label.slice(0, 50)}
-            </option>
-          ))}
-        </optgroup>
-      ))}
-      <optgroup label="Merit badges (whole badge)">
-        {catalog.mbs.map((mb) => (
-          <option key={mb.id} value={`mb:${mb.id}`}>
-            {mb.name}
-          </option>
-        ))}
-      </optgroup>
-      {includeMbReq && (
-        <optgroup label="Merit badge requirement (type the code)">
-          <option value="" disabled>
-            Use “mb_req:{'{badge}'}-{'{code}'}” via placements on the badge page
-          </option>
-        </optgroup>
-      )}
-    </select>
   );
 }
 
@@ -967,11 +936,11 @@ function NarrativesTab({
       <form method="get" action="/admin/library" className={styles.actionsRow}>
         <input type="hidden" name="tab" value="narratives" />
         <TargetSelect
-          catalog={data.catalog}
+          groups={targetOptionGroups(data.catalog, { topics: false, mbReqStep: true })}
           name="target"
           defaultValue={target}
-          includeMbReq={false}
-          topicsAllowed={false}
+          includeMbReq
+          loadMbRequirementOptions={loadMbRequirementOptionsAction}
         />
         <Button variant="secondary" type="submit">
           Load

@@ -1,6 +1,8 @@
 # Library Merit Badge Page — one Requirements section, per-requirement suggestions
 
-**Status:** Active — prototype rev 4 approved as the spec; Phase 1 (loader) started 2026-09-07.
+**Status:** Built — all 3 phases shipped 2026-09-07 (v1.122.0 phases 1–2, v1.122.1 phase 3). Deferred: the
+Add Resource entry form's own placement picker still offers whole-badge only (not one of the two admin
+call sites named in the plan); duplicate-URL detection remains a pre-existing gap.
 **Priority:** High
 **Trigger:** Patrick, 2026-09-07: "consolidate the 'Requirements', 'Whole-Badge Resources' and 'I Did This'
 sections into one section using the display of Requirements. There's no reason for the redundancy. Draw a
