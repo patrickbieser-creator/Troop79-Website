@@ -1,6 +1,6 @@
 # Menu Monster — Cooking MB Meal Planner as a Library Topic Shelf
 
-**Status:** Built 2026-09-07 — in the working tree, awaiting commit + deploy (v1.123.0)
+**Status:** LIVE 2026-09-07 — v1.123.0 deployed (migration pushed to prod, commits a0a8ed3 + 258461a)
 **Started:** 2026-09-07
 **Priority:** High
 **Origin:** D:\Projects\Troop Menu Monster (discovery docs in `Plans/Discovery/`, prototypes in `prototypes/`, seed in `data/menu-monster-seed.json`)

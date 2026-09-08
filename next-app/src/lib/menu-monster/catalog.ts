@@ -116,7 +116,8 @@ export function mapCatalog(rows: CatalogRows): Catalog {
       soldSize: p.sold_size == null ? null : Number(p.sold_size),
       soldUnit: p.sold_unit,
       note: p.note,
-      asOf: p.as_of
+      asOf: p.as_of,
+      retiredAt: p.retired_at
     }));
 
   // A line whose ingredient was retired is dropped rather than crashing the
@@ -136,8 +137,10 @@ export function mapCatalog(rows: CatalogRows): Catalog {
     linesByRecipe.set(l.recipe_id, list);
   }
 
+  // No status filter here: the PUBLIC query asks for published only, and the
+  // leader tools' query asks for everything. Which statuses arrive is the
+  // caller's decision, made once, in its query (tech-lead, 2026-09-08).
   const recipes: Recipe[] = rows.recipes
-    .filter((r) => r.status === 'published')
     .map((r) => ({
       id: r.id,
       name: r.name,
@@ -162,6 +165,58 @@ function toIngredient(row: MmIngredientRow): Ingredient {
     unit: { key: row.unit_key, one: row.unit_one, many: row.unit_many, kind: row.unit_kind },
     section: row.section,
     staple: row.staple,
-    avoid: row.avoid as RestrictionKey[]
+    avoid: row.avoid as RestrictionKey[],
+    retiredAt: row.retired_at
   };
+}
+
+/**
+ * The leader tools' load: every recipe whatever its status, and retired
+ * ingredients/packages included (flagged by retiredAt) so a retired package
+ * still shows under its ingredient and a retired recipe can be restored.
+ * Same mapper as the public load — one row → domain rule (D-049).
+ */
+export async function loadAuthoringCatalogWith(supabase: SupabaseClient): Promise<Catalog> {
+  const [ingredients, conversions, packages, recipes, lines] = await Promise.all([
+    fetchAllRows<MmIngredientRow>((from, to) =>
+      supabase
+        .from('mm_ingredients')
+        .select('id, name, unit_kind, unit_key, unit_one, unit_many, section, staple, avoid, created_at, retired_at')
+        .order('name')
+        .range(from, to)
+    ),
+    fetchAllRows<MmConversionRow>((from, to) =>
+      supabase
+        .from('mm_conversions')
+        .select('id, ingredient_id, from_unit, to_unit, factor, label')
+        .order('id')
+        .range(from, to)
+    ),
+    fetchAllRows<MmPackageRow>((from, to) =>
+      supabase
+        .from('mm_packages')
+        .select(
+          'id, ingredient_id, name, store, price, yield, yield_unit_label, noun, sold_size, sold_unit, note, as_of, created_at, retired_at'
+        )
+        .order('name')
+        .range(from, to)
+    ),
+    fetchAllRows<MmRecipeRow>((from, to) =>
+      supabase
+        .from('mm_recipes')
+        .select('id, name, status, meal_fit, food_groups, camp, trail, method, steps_md, sort_order, created_at, updated_at')
+        .order('sort_order')
+        .order('name')
+        .range(from, to)
+    ),
+    fetchAllRows<MmRecipeLineRow>((from, to) =>
+      supabase
+        .from('mm_recipe_lines')
+        .select('id, recipe_id, position, ingredient_id, qty_per_person, unit_key, serves_rule, serves_restriction')
+        .order('recipe_id')
+        .order('position')
+        .range(from, to)
+    )
+  ]);
+  return mapCatalog({ ingredients, conversions, packages, recipes, lines });
 }

@@ -21,6 +21,7 @@ const AUDITED_ACTION_FILES = [
   'src/app/admin/(workspace)/news/photo-albums/actions.ts',
   'src/app/admin/(workspace)/calendar/actions.ts',
   'src/app/admin/(workspace)/library/actions.ts',
+  'src/app/admin/(workspace)/library/menu-monster/actions.ts',
   'src/app/admin/(workspace)/advancement/roster/person-actions.ts',
   'src/app/admin/(workspace)/advancement/roster/change-request-actions.ts',
   'src/app/admin/(workspace)/advancement/roster/guest-actions.ts',

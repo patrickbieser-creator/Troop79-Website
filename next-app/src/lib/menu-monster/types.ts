@@ -43,6 +43,8 @@ export interface Ingredient {
   staple: boolean;
   /** Restriction keys this ingredient conflicts with. Used only to WARN. */
   avoid: RestrictionKey[];
+  /** Set on the leader tools' authoring load only; the public load excludes retired rows. */
+  retiredAt?: string | null;
 }
 
 /** "1 {from} = {factor} {to}" for one ingredient — bridges unit families. */
@@ -71,6 +73,8 @@ export interface Package {
   note: string | null;
   /** 'YYYY-MM-DD' the price was last confirmed. */
   asOf: string | null;
+  /** Set on the leader tools' authoring load only; the public load excludes retired rows. */
+  retiredAt?: string | null;
 }
 
 export type ServesRule = 'everyone' | 'except' | 'only';
