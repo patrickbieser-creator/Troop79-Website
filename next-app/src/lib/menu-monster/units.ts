@@ -40,6 +40,10 @@ export const RESTRICTION_BY_KEY: Record<RestrictionKey, Restriction> = {
   veg: RESTRICTIONS[3]
 };
 
+/** Two-letter pill codes for the menu-item lines (Patrick, 2026-09-08: the
+ *  "everyone except gluten-free" pills were too big and noisy). */
+export const RESTRICTION_CODE: Record<RestrictionKey, string> = { gf: 'GF', nut: 'NF', dairy: 'DF', veg: 'VG' };
+
 /** Only gluten and nuts raise allergen warnings — vegetarian and dairy are obvious at the table. */
 export const WARN_ALLERGENS: readonly RestrictionKey[] = ['gf', 'nut'];
 

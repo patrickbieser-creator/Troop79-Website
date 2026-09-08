@@ -24,6 +24,25 @@
   margin: 0 0 var(--sp-3);
 }
 .muted { color: var(--text-meta); font-weight: 400; }
+
+/* Step 2 legend for the two-letter diet pills (2026-09-08). */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-4);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  color: var(--text-meta);
+  line-height: 1.5;
+  margin: 0 0 var(--sp-2);
+}
+.legendItem { display: inline-flex; align-items: center; gap: var(--sp-1); }
+.legend strong { color: var(--text-body); }
+/* The two-letter code inside a pill: no abbr underline; "except" strikes the
+   letters so it never differs from "only" by colour alone. */
+.ruleOnly { text-decoration: none; letter-spacing: 0.04em; }
+.ruleExcept { text-decoration: line-through; text-decoration-thickness: 1.5px; letter-spacing: 0.04em; }
 .strong { color: var(--text-head); }
 .linkBtn {
   font-family: var(--font-ui);

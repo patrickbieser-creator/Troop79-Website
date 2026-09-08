@@ -369,12 +369,16 @@ export function sourcesText(l: ShoppingLine): string {
 /** First-paint plan so the page is never empty: the prototype's breakfast for
  *  ten with one gluten-free scout. Recipes missing from the catalog are dropped. */
 export function seedPlan(catalog: Catalog): Plan {
-  const have = new Set(catalog.recipes.map((r) => r.id));
+  // Patrick, 2026-09-08: the planner starts AGNOSTIC — no menu items ticked,
+  // a six-person patrol, every restriction at zero. (It used to open on a
+  // sample breakfast for ten with one gluten-free scout, which read as a
+  // real plan someone had started.) The meal is the first slot that has
+  // anything to pick — breakfast whenever the recipe book has one.
   return {
-    meal: 'breakfast',
-    headcount: 10,
-    restrictions: { gf: 1, nut: 0, dairy: 0, veg: 0 },
-    recipeIds: ['B001', 'B003', 'B014'].filter((id) => have.has(id)),
+    meal: MEALS.find((m) => recipesForMeal(catalog, m.key).length > 0)?.key ?? 'breakfast',
+    headcount: 6,
+    restrictions: { gf: 0, nut: 0, dairy: 0, veg: 0 },
+    recipeIds: [],
     packageChoice: {},
     qtyOverride: {},
     lineSource: {},

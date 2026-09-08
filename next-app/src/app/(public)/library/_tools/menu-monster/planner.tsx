@@ -44,7 +44,7 @@ import type {
   ShoppingLine,
   Totals
 } from '@/lib/menu-monster/types';
-import { MEALS, RESTRICTIONS, SECTIONS, SOURCE_LABELS, lineUnit, perPersonText, qtyText } from '@/lib/menu-monster/units';
+import { MEALS, RESTRICTIONS, RESTRICTION_CODE, SECTIONS, SOURCE_LABELS, lineUnit, perPersonText, qtyText } from '@/lib/menu-monster/units';
 import {
   MAX_HEADCOUNT,
   MAX_QTY,
@@ -70,7 +70,7 @@ import s from './planner.module.css';
 
 export const PLAN_STORAGE_KEY = 'troop79.menuMonster.plan.v1';
 const SUGGEST_HREF = '/library/submit?target=topic%3Amenu-monster';
-const RESET_LABEL = 'Start over with the sample plan';
+const RESET_LABEL = 'Start over with a blank plan';
 const RESET_ARMED_LABEL = 'Click again to throw away this draft';
 const RESET_DISARM_MS = 4000;
 const EPS = 1e-9;
@@ -216,6 +216,25 @@ function Stepper({
 }
 
 /** Status pill: an icon AND words, so colour never carries the meaning alone. */
+/**
+ * The diet rule on a menu-item line as a two-letter pill (Patrick,
+ * 2026-09-08: the full "everyone except gluten-free" pills were too big and
+ * noisy). Same tones as before — amber for "everyone except", blue for
+ * "only" — plus a strike through the letters on "except" so the two never
+ * differ by colour alone; the full rule stays as the title and the
+ * accessible name.
+ */
+function RulePill({ rule, restriction }: { rule: 'except' | 'only'; restriction: RestrictionKey }) {
+  const full = ruleText({ servesRule: rule, servesRestriction: restriction });
+  return (
+    <Badge tone={rule === 'only' ? 'info' : 'warning'} caps={false}>
+      <abbr className={rule === 'except' ? s.ruleExcept : s.ruleOnly} title={full} aria-label={full}>
+        {RESTRICTION_CODE[restriction]}
+      </abbr>
+    </Badge>
+  );
+}
+
 function StatusPill({ tone, icon, children }: { tone: 'ok' | 'short' | 'staple' | 'unpriced'; icon: string; children: ReactNode }) {
   return (
     <span className={`${s.status} ${s[`status_${tone}`]}`}>
@@ -453,6 +472,22 @@ export function MenuMonsterPlanner({ catalog }: { catalog: Catalog }) {
 
             <section aria-labelledby={`${uid}-menu-h`}>
               <SectionDivider label={<span id={`${uid}-menu-h`}>Step 2 · Menu items</span>} />
+              <p className={s.legend} aria-label="Legend for the diet pills">
+                <span className={s.legendItem}>
+                  <RulePill rule="except" restriction="gf" /> everyone <em>except</em> these people
+                </span>
+                <span className={s.legendItem}>
+                  <RulePill rule="only" restriction="gf" /> <em>only</em> these people
+                </span>
+                <span className={s.legendItem}>
+                  {RESTRICTIONS.map((r, i) => (
+                    <span key={r.key}>
+                      {i > 0 ? ' · ' : ''}
+                      <strong>{RESTRICTION_CODE[r.key]}</strong> {r.label.toLowerCase()}
+                    </span>
+                  ))}
+                </span>
+              </p>
               <p className={s.help}>
                 Check what the patrol is cooking. Each item lists what one person gets. The shopping list rebuilds as you
                 go.
@@ -487,10 +522,8 @@ export function MenuMonsterPlanner({ catalog }: { catalog: Catalog }) {
                                   {perPersonText(ln.qtyPerPerson, ing, lineUnit(ln.unitKey, ing))}
                                   {ing.staple && <span className={s.muted}> (patrol box)</span>}
                                 </span>
-                                {ln.servesRule !== 'everyone' && (
-                                  <Badge tone={ln.servesRule === 'only' ? 'info' : 'warning'} caps={false}>
-                                    {ruleText(ln)}
-                                  </Badge>
+                                {ln.servesRule !== 'everyone' && ln.servesRestriction && (
+                                  <RulePill rule={ln.servesRule} restriction={ln.servesRestriction} />
                                 )}
                               </li>
                             );

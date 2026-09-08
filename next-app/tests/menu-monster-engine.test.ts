@@ -332,16 +332,15 @@ describe('menu monster engine', () => {
     expect(perPersonText(0.5, ING.cinnamon, UNITS.tsp)).toBe('½ tsp cinnamon');
   });
 
-  it('Engine_SeedsBreakfastForTen_WithOneGlutenFree', () => {
+  // Patrick, 2026-09-08: the planner starts agnostic — nothing ticked, six people, no restrictions.
+  it('Engine_SeedsBlankBreakfastForSix_NothingPreselected', () => {
     const p = seedPlan(CATALOG);
     expect(p.meal).toBe('breakfast');
-    expect(p.headcount).toBe(10);
-    expect(p.restrictions).toEqual({ gf: 1, nut: 0, dairy: 0, veg: 0 });
-    expect(p.recipeIds).toEqual(['B001', 'B003', 'B014']);
+    expect(p.headcount).toBe(6);
+    expect(p.restrictions).toEqual({ gf: 0, nut: 0, dairy: 0, veg: 0 });
+    expect(p.recipeIds).toEqual([]);
     expect(p.budgetPerPerson).toBe(4);
     expect(p.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    // Recipes the catalog doesn't have are dropped, not left dangling.
-    expect(seedPlan({ ...CATALOG, recipes: RECIPES.filter((r) => r.id !== 'B014') }).recipeIds).toEqual(['B001', 'B003']);
   });
 
   it('Engine_SwitchingMeal_KeepsPeopleDropsRecipesThatDontFit', () => {
@@ -358,7 +357,7 @@ describe('menu monster engine', () => {
   it('Engine_RestoresStoredDraft_ClampingAndDroppingUnknowns', () => {
     // Garbage in → the seed out, never a throw.
     expect(restorePlan(null, CATALOG)).toEqual(seedPlan(CATALOG));
-    expect(restorePlan('nope', CATALOG).headcount).toBe(10);
+    expect(restorePlan('nope', CATALOG).headcount).toBe(6);
     const r = restorePlan(
       {
         meal: 'breakfast',

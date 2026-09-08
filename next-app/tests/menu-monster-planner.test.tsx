@@ -156,14 +156,21 @@ describe('MenuMonsterPlanner', () => {
     window.localStorage.clear();
   });
 
-  it('Planner_RendersSeedPlanAndUpdatesTotals_OnHeadcountChange', async () => {
+  it('Planner_StartsBlank_AndUpdatesTotals_OnHeadcountChange', async () => {
     const user = userEvent.setup();
     const { container } = render(<MenuMonsterPlanner catalog={CATALOG} />);
 
-    // Seed plan on first paint: breakfast for ten, one gluten-free, the headline tile.
+    // Agnostic start (Patrick, 2026-09-08): breakfast, nothing ticked, six people, no restrictions.
+    expect(screen.getByRole('checkbox', { name: 'Pancakes' })).toHaveProperty('checked', false);
+    expect(screen.getByRole('checkbox', { name: 'Bacon' })).toHaveProperty('checked', false);
+    expect((screen.getByRole('spinbutton', { name: /People eating/ }) as HTMLInputElement).value).toBe('6');
+    expect((screen.getByRole('spinbutton', { name: /^Gluten-free/ }) as HTMLInputElement).value).toBe('0');
+    expect(screen.getByText('Pick at least one menu item to build a shopping list.')).toBeTruthy();
+
+    await user.click(screen.getByRole('checkbox', { name: 'Bacon' }));
     expect(screen.getByText('Spent — per person')).toBeTruthy();
-    expect(screen.getByRole('checkbox', { name: 'Pancakes' })).toHaveProperty('checked', true);
-    expect(screen.getByRole('checkbox', { name: 'Bacon' })).toHaveProperty('checked', true);
+    const plus = screen.getByRole('button', { name: 'One more person' });
+    for (let i = 0; i < 4; i++) await user.click(plus);
     expect((screen.getByRole('spinbutton', { name: /People eating/ }) as HTMLInputElement).value).toBe('10');
 
     // 30 slices: two Oscar Mayer packs ($14.98) beat one Kirkland ($18.15).
@@ -172,7 +179,6 @@ describe('MenuMonsterPlanner', () => {
     expect(live(container).textContent).toContain('10 people.');
 
     // 10 → 16 on the + button: 48 slices, and Kirkland wins.
-    const plus = screen.getByRole('button', { name: 'One more person' });
     for (let i = 0; i < 6; i++) await user.click(plus);
     expect((screen.getByRole('spinbutton', { name: /People eating/ }) as HTMLInputElement).value).toBe('16');
     expect(bacon()).toBe('1 pack · Kirkland Hickory Smoked Bacon, 4 x 1 lb');
@@ -193,11 +199,14 @@ describe('MenuMonsterPlanner', () => {
     expect(stored?.headcount).toBe(16);
   });
 
-  it('Planner_SplitsGlutenFree_AndFlagsUnpriced', () => {
+  it('Planner_SplitsGlutenFree_AndFlagsUnpriced', async () => {
+    const user = userEvent.setup();
     render(<MenuMonsterPlanner catalog={CATALOG} />);
-    // GF = 1 of 10: pancake mix for 9 (4½ cups), almond flour for 1 — no double count.
+    await user.click(screen.getByRole('checkbox', { name: 'Pancakes' }));
+    await user.click(screen.getByRole('button', { name: 'One more gluten-free person' }));
+    // GF = 1 of 6: pancake mix for 5 (2½ cups), almond flour for 1 — no double count.
     // (Both appear twice: once on screen, once on the print sheet that is always in the DOM.)
-    expect(screen.getAllByText(/for Pancakes \(everyone except gluten-free, 9\)/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/for Pancakes \(everyone except gluten-free, 5\)/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/for Pancakes \(only gluten-free, 1\)/).length).toBeGreaterThan(0);
     // The unpriced package is listed, not silently dropped — once orange juice is on the menu.
     expect(screen.queryByText(/Not priced/)).toBeNull();
@@ -209,23 +218,41 @@ describe('MenuMonsterPlanner', () => {
     await user.click(screen.getByRole('radio', { name: 'Lunch' }));
     expect(screen.queryByRole('checkbox', { name: 'Pancakes' })).toBeNull();
     expect(screen.getByRole('checkbox', { name: 'Sandwiches' })).toHaveProperty('checked', false);
-    expect((screen.getByRole('spinbutton', { name: /People eating/ }) as HTMLInputElement).value).toBe('10');
-    expect((screen.getByRole('spinbutton', { name: /^Gluten-free/ }) as HTMLInputElement).value).toBe('1');
+    expect((screen.getByRole('spinbutton', { name: /People eating/ }) as HTMLInputElement).value).toBe('6');
+    expect((screen.getByRole('spinbutton', { name: /^Gluten-free/ }) as HTMLInputElement).value).toBe('0');
     expect(screen.getByText('Pick at least one menu item to build a shopping list.')).toBeTruthy();
   });
 
-  it('Planner_StartOver_TakesTwoClicks_AndRestoresTheSeed', async () => {
+  it('Planner_StartOver_TakesTwoClicks_AndRestoresTheBlankPlan', async () => {
     const user = userEvent.setup();
     render(<MenuMonsterPlanner catalog={CATALOG} />);
     await user.click(screen.getByRole('checkbox', { name: 'Orange juice' }));
     expect(screen.getByText(/Not priced — ask a leader/)).toBeTruthy();
-    const reset = screen.getByRole('button', { name: 'Start over with the sample plan' });
+    const reset = screen.getByRole('button', { name: 'Start over with a blank plan' });
     await user.click(reset);
     expect(screen.getByRole('button', { name: 'Click again to throw away this draft' })).toBeTruthy();
     expect(screen.getByRole('checkbox', { name: 'Orange juice' })).toHaveProperty('checked', true);
     await user.click(screen.getByRole('button', { name: 'Click again to throw away this draft' }));
     expect(screen.getByRole('checkbox', { name: 'Orange juice' })).toHaveProperty('checked', false);
-    expect(screen.getByRole('button', { name: 'Start over with the sample plan' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Start over with a blank plan' })).toBeTruthy();
+  });
+
+  // Patrick, 2026-09-08: the "everyone except gluten-free" / "only gluten-free"
+  // pills were too big and noisy — two letters, same colours, a legend under
+  // the Step 2 header, and the full rule still there as the pill's title.
+  it('Planner_ShowsTwoLetterDietPills_WithALegendUnderStep2', () => {
+    render(<MenuMonsterPlanner catalog={CATALOG} />);
+    const list = screen.getByRole('list', { name: /What one person gets for Pancakes/ });
+    const pills = within(list).getAllByText('GF');
+    expect(pills.length).toBe(3);
+    expect(pills[0].getAttribute('title')).toBe('everyone except gluten-free');
+    expect(pills[1].getAttribute('title')).toBe('only gluten-free');
+    expect(within(list).queryByText('everyone except gluten-free')).toBeNull();
+
+    const legend = screen.getByLabelText('Legend for the diet pills');
+    expect(legend.textContent).toMatch(/everyone except these people/);
+    expect(legend.textContent).toMatch(/only these people/);
+    expect(legend.textContent).toMatch(/GF gluten-free · NF nut-free · DF dairy-free · VG vegetarian/);
   });
 
   it('Planner_HydratesStoredDraft_OnMount', () => {
