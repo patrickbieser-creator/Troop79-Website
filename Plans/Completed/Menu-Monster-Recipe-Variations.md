@@ -1,6 +1,6 @@
 # Menu Monster — Recipe Variations (base recipe + per-restriction diffs)
 
-**Status:** LIVE 2026-09-08 — v1.125.0 (df38d1d + 6272291; Migration A on prod, 16 variations / 32 lines backfilled). Migration B (drop `serves_restriction`) still to do in a later release.
+**Status:** COMPLETE. LIVE 2026-09-08 — v1.125.0 (df38d1d + 6272291; Migration A on prod, 16 variations / 32 lines backfilled). Migration B shipped 2026-09-09 in v1.125.1 (5910a47): `serves_restriction` dropped, `mm_save_recipe` writes the array only, C001's placeholder flour line fixed (0 → 0.5 cup). Verified on prod — the old column 404s, a two-restriction line round-trips through the RPC.
 **Started:** 2026-09-08
 **Priority:** High
 **Origin:** Patrick, 2026-09-08: "all of this information is merged into one giant recipe, which could be confusing for 11 year olds". Jenna MICRO review + Brad prototype `D:\Projects\Troop Menu Monster\prototypes\concept-d-recipe-variations\{admin,public}.html` (README there has the treatment-by-treatment rationale).
