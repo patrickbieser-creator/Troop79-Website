@@ -564,8 +564,8 @@ export interface MmRecipeLineRow {
   unit_key: string | null;
   serves_rule: 'everyone' | 'except' | 'only';
   /** The restrictions the rule names (Plans/Menu-Monster-Recipe-Variations.md
-   *  decision 2). Empty for 'everyone'. Replaces the single serves_restriction,
-   *  which stays populated (first element) until Migration B drops it. */
+   *  decision 2). Empty for 'everyone'. The single serves_restriction it
+   *  replaced was dropped by Migration B. */
   serves_restrictions: ('gf' | 'nut' | 'dairy' | 'veg')[];
 }
 

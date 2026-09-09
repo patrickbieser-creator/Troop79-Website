@@ -162,7 +162,7 @@ describe('publish gate', () => {
       .toBe("Line 1: 'two' isn't a number. Type something like ½, 1/2 or 0.5.");
     expect(one(draft({ lines: [{ ingredientId: 'eggs', amount: '', unitKey: null, servesRule: 'everyone', servesRestrictions: [] }] })))
       .toBe('Line 1: type an amount per person.');
-    // The seed's placeholder draft (C001) carries a 0 — a number, just not a usable one.
+    // A 0 is a number, just not a usable one (the seed's C001 draft carried one until Migration B).
     expect(one(draft({ lines: [{ ingredientId: 'eggs', amount: '0', unitKey: null, servesRule: 'everyone', servesRestrictions: [] }] })))
       .toBe('Line 1: the amount per person must be more than zero.');
     expect(one(draft({ lines: [{ ingredientId: 'eggs', amount: '1', unitKey: 'slice', servesRule: 'everyone', servesRestrictions: [] }] })))

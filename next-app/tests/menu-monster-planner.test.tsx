@@ -90,7 +90,7 @@ const line = (
   ingredient_id: string,
   qty_per_person: number,
   serves_rule: MmRecipeLineRow['serves_rule'] = 'everyone',
-  serves_restriction: 'gf' | 'nut' | 'dairy' | 'veg' | null = null
+  restriction: 'gf' | 'nut' | 'dairy' | 'veg' | null = null
 ): MmRecipeLineRow => ({
   id: lineId++,
   recipe_id,
@@ -99,7 +99,7 @@ const line = (
   qty_per_person,
   unit_key: null,
   serves_rule,
-  serves_restrictions: serves_restriction ? [serves_restriction] : []
+  serves_restrictions: restriction ? [restriction] : []
 });
 
 const ROWS = {

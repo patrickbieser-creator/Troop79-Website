@@ -630,8 +630,7 @@ export async function saveRecipe(a: RecipeAuthoring): Promise<Result> {
       qty_per_person: l.qtyPerPerson,
       unit_key: l.unitKey,
       serves_rule: l.servesRule,
-      serves_restrictions: l.servesRestrictions,
-      serves_restriction: l.servesRestrictions[0] ?? null
+      serves_restrictions: l.servesRestrictions
     })),
     p_variations: variations.map((v) => ({
       restriction: v.restriction,
@@ -725,8 +724,7 @@ export async function duplicateRecipe(id: string): Promise<Result> {
       qty_per_person: l.qtyPerPerson,
       unit_key: l.unitKey,
       serves_rule: l.servesRule,
-      serves_restrictions: l.servesRestrictions,
-      serves_restriction: l.servesRestrictions[0] ?? null
+      serves_restrictions: l.servesRestrictions
     })),
     p_variations: (recipe.variations ?? []).map((v) => ({
       restriction: v.restriction,

@@ -29,6 +29,7 @@ vi.mock('next/headers', () => ({ headers: async () => new Headers() }));
 import { loadAuthoringCatalogWith, loadCatalogWith } from '../src/lib/menu-monster/catalog';
 import {
   changeIngredientUnit,
+  duplicateRecipe,
   retireIngredient,
   saveRecipe,
   setRecipeStatus
@@ -45,10 +46,13 @@ const PKG_OLD = 'p-zz-mm-flour-old';
 const PKG_EGGS = 'p-zz-mm-eggs-dozen';
 
 async function cleanup() {
-  await admin.from('mm_variation_lines').delete().like('recipe_id', 'zz-mm-%');
-  await admin.from('mm_recipe_variations').delete().like('recipe_id', 'zz-mm-%');
-  await admin.from('mm_recipe_lines').delete().like('recipe_id', 'zz-mm-%');
-  await admin.from('mm_recipes').delete().like('id', 'zz-mm-%');
+  // 'zz-test-%' catches the duplicate, whose id is slugged from the NAME.
+  for (const like of ['zz-mm-%', 'zz-test-%']) {
+    await admin.from('mm_variation_lines').delete().like('recipe_id', like);
+    await admin.from('mm_recipe_variations').delete().like('recipe_id', like);
+    await admin.from('mm_recipe_lines').delete().like('recipe_id', like);
+    await admin.from('mm_recipes').delete().like('id', like);
+  }
   await admin.from('mm_packages').delete().like('id', 'p-zz-mm-%');
   await admin.from('mm_conversions').delete().like('ingredient_id', 'zz-mm-%');
   await admin.from('mm_ingredients').delete().like('id', 'zz-mm-%');
@@ -73,7 +77,7 @@ beforeAll(async () => {
 afterAll(cleanup);
 
 const line = (ingredient_id: string, qty: number | string, unit_key: string | null = null) => ({
-  ingredient_id, qty_per_person: qty, unit_key, serves_rule: 'everyone', serves_restriction: null
+  ingredient_id, qty_per_person: qty, unit_key, serves_rule: 'everyone', serves_restrictions: [] as string[]
 });
 const recipeJson = (over: Record<string, unknown> = {}) => ({
   id: RECIPE, name: 'ZZ Test Pancakes', status: 'draft', meal_fit: ['breakfast'], food_groups: ['grain'],
@@ -94,7 +98,7 @@ describe('menu monster leader tools — RPCs', () => {
     const first = await admin.rpc('mm_save_recipe', {
       p_recipe: recipeJson(),
       // One base line per ingredient (the unique index); the third line is a GF-only extra.
-      p_lines: [line(FLOUR, 0.5), line(EGGS, 1), { ...line(MILK, 0.25, 'tbsp'), serves_rule: 'only', serves_restriction: 'gf' }]
+      p_lines: [line(FLOUR, 0.5), line(EGGS, 1), { ...line(MILK, 0.25, 'tbsp'), serves_rule: 'only', serves_restrictions: ['gf'] }]
     });
     expect(first.error).toBeNull();
     expect((await linesOf(RECIPE)).map((l) => l.position)).toEqual([1, 2, 3]);
@@ -116,6 +120,28 @@ describe('menu monster leader tools — RPCs', () => {
     expect((await linesOf(RECIPE)).length).toBe(2);
     const { data: saved3 } = await admin.from('mm_recipes').select('name').eq('id', RECIPE).single();
     expect((saved3 as { name: string }).name).toBe('ZZ Test Pancakes v2');
+  });
+
+  it('Rpc_SaveRecipe_CarriesOnlyTheRestrictionArray', async () => {
+    // Migration B dropped serves_restriction: the array is the only channel,
+    // and it is the only way a line can name two restrictions at once.
+    const legacy = await admin.from('mm_recipe_lines').select('serves_restriction').limit(1);
+    expect(legacy.error?.message ?? '').toMatch(/serves_restriction/);
+
+    const saved = await admin.rpc('mm_save_recipe', {
+      p_recipe: recipeJson(),
+      p_lines: [line(FLOUR, 0.5), { ...line(EGGS, 1), serves_rule: 'except', serves_restrictions: ['dairy', 'veg'] }]
+    });
+    expect(saved.error).toBeNull();
+    const { data } = await admin
+      .from('mm_recipe_lines')
+      .select('position, serves_rule, serves_restrictions')
+      .eq('recipe_id', RECIPE)
+      .order('position');
+    expect(data).toEqual([
+      { position: 1, serves_rule: 'everyone', serves_restrictions: [] },
+      { position: 2, serves_rule: 'except', serves_restrictions: ['dairy', 'veg'] }
+    ]);
   });
 
   it('Rpc_BothFunctions_RefuseAnonExecute', async () => {
@@ -236,13 +262,13 @@ describe('menu monster leader tools — actions', () => {
 
     const { data: lines } = await admin
       .from('mm_recipe_lines')
-      .select('position, ingredient_id, serves_rule, serves_restrictions, serves_restriction')
+      .select('position, ingredient_id, serves_rule, serves_restrictions')
       .eq('recipe_id', RECIPE)
       .order('position');
     expect(lines).toEqual([
-      { position: 1, ingredient_id: FLOUR, serves_rule: 'except', serves_restrictions: ['gf'], serves_restriction: 'gf' },
-      { position: 2, ingredient_id: EGGS, serves_rule: 'everyone', serves_restrictions: [], serves_restriction: null },
-      { position: 3, ingredient_id: MILK, serves_rule: 'only', serves_restrictions: ['gf'], serves_restriction: 'gf' }
+      { position: 1, ingredient_id: FLOUR, serves_rule: 'except', serves_restrictions: ['gf'] },
+      { position: 2, ingredient_id: EGGS, serves_rule: 'everyone', serves_restrictions: [] },
+      { position: 3, ingredient_id: MILK, serves_rule: 'only', serves_restrictions: ['gf'] }
     ]);
     const { data: vars } = await admin.from('mm_recipe_variations').select('restriction, state, note').eq('recipe_id', RECIPE).order('restriction');
     expect(vars).toEqual([
@@ -263,5 +289,34 @@ describe('menu monster leader tools — actions', () => {
     });
     expect(dup.ok).toBe(false);
     expect(dup.error).toMatch(/already has a line/);
+  });
+
+  it('Action_DuplicateRecipe_CopiesLinesAndVariations_AsADraft', async () => {
+    // Same RPC payload as saveRecipe, so it is the second place the restriction
+    // array had to lose its old single-value twin (qa-lead, 2026-09-09).
+    const copy = await duplicateRecipe(RECIPE);
+    expect(copy.ok).toBe(true);
+    const newId = (copy as { ok: true; id: string }).id;
+    expect(newId).not.toBe(RECIPE);
+
+    const { data: row } = await admin.from('mm_recipes').select('name, status').eq('id', newId).single();
+    expect(row).toEqual({ name: 'ZZ Test Pancakes (copy)', status: 'draft' });
+
+    const { data: lines } = await admin
+      .from('mm_recipe_lines')
+      .select('position, ingredient_id, serves_rule, serves_restrictions')
+      .eq('recipe_id', newId)
+      .order('position');
+    expect(lines).toEqual([
+      { position: 1, ingredient_id: FLOUR, serves_rule: 'except', serves_restrictions: ['gf'] },
+      { position: 2, ingredient_id: EGGS, serves_rule: 'everyone', serves_restrictions: [] },
+      { position: 3, ingredient_id: MILK, serves_rule: 'only', serves_restrictions: ['gf'] }
+    ]);
+    const { data: vars } = await admin
+      .from('mm_recipe_variations')
+      .select('restriction, state')
+      .eq('recipe_id', newId)
+      .order('restriction');
+    expect(vars).toEqual([{ restriction: 'gf', state: 'substituted' }, { restriction: 'veg', state: 'unsuitable' }]);
   });
 });

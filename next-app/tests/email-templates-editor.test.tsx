@@ -46,5 +46,7 @@ describe('EmailTemplatesEditor', () => {
     const fd = (onCreate.mock.calls[0] as unknown as [FormData])[0];
     expect(fd.get('kind')).toBe('signup.family');
     expect(fd.get('name')).toBe('Meeting RSVP');
-  });
+    // Typing a whole template through userEvent overruns the 5 s default when the
+    // full suite runs in parallel, the same way the planner's ten-click test does.
+  }, 15000);
 });
