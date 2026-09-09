@@ -17,7 +17,9 @@ import type {
   MmIngredientRow,
   MmPackageRow,
   MmRecipeLineRow,
-  MmRecipeRow
+  MmRecipeRow,
+  MmRecipeVariationRow,
+  MmVariationLineRow
 } from '@/lib/supabase/types';
 import type {
   Catalog,
@@ -28,7 +30,9 @@ import type {
   Package,
   Recipe,
   RecipeLine,
-  RestrictionKey
+  RestrictionKey,
+  Variation,
+  VariationLine
 } from './types';
 
 export interface CatalogRows {
@@ -37,6 +41,8 @@ export interface CatalogRows {
   packages: MmPackageRow[];
   recipes: MmRecipeRow[];
   lines: MmRecipeLineRow[];
+  variations?: MmRecipeVariationRow[];
+  variationLines?: MmVariationLineRow[];
 }
 
 export async function loadCatalogWith(supabase: SupabaseClient): Promise<Catalog> {
@@ -78,13 +84,14 @@ export async function loadCatalogWith(supabase: SupabaseClient): Promise<Catalog
     fetchAllRows<MmRecipeLineRow>((from, to) =>
       supabase
         .from('mm_recipe_lines')
-        .select('id, recipe_id, position, ingredient_id, qty_per_person, unit_key, serves_rule, serves_restriction')
+        .select('id, recipe_id, position, ingredient_id, qty_per_person, unit_key, serves_rule, serves_restrictions')
         .order('recipe_id')
         .order('position')
         .range(from, to)
     )
   ]);
-  return mapCatalog({ ingredients, conversions, packages, recipes, lines });
+  const v = await loadVariationRows(supabase);
+  return mapCatalog({ ingredients, conversions, packages, recipes, lines, ...v });
 }
 
 /** Pure row → domain mapping; exported so fixtures can build a Catalog from rows. */
@@ -133,9 +140,37 @@ export function mapCatalog(rows: CatalogRows): Catalog {
       qtyPerPerson: Number(l.qty_per_person),
       unitKey: l.unit_key,
       servesRule: l.serves_rule,
-      servesRestriction: l.serves_rule === 'everyone' ? null : l.serves_restriction
+      servesRestrictions: l.serves_rule === 'everyone' ? [] : ((l.serves_restrictions ?? []) as RestrictionKey[])
     });
     linesByRecipe.set(l.recipe_id, list);
+  }
+
+  // The authoring diffs (Plans/Menu-Monster-Recipe-Variations.md). A
+  // variation line whose ingredient was retired is dropped like a recipe line.
+  const vLinesByKey = new Map<string, VariationLine[]>();
+  for (const vl of rows.variationLines ?? []) {
+    if (vl.ingredient_id && !known.has(vl.ingredient_id)) continue;
+    const key = `${vl.recipe_id}|${vl.restriction}`;
+    const list = vLinesByKey.get(key) ?? [];
+    list.push({
+      op: vl.op,
+      baseIngredientId: vl.base_ingredient_id,
+      ingredientId: vl.ingredient_id,
+      qtyPerPerson: vl.qty_per_person == null ? null : Number(vl.qty_per_person),
+      unitKey: vl.unit_key
+    });
+    vLinesByKey.set(key, list);
+  }
+  const variationsByRecipe = new Map<string, Variation[]>();
+  for (const v of rows.variations ?? []) {
+    const list = variationsByRecipe.get(v.recipe_id) ?? [];
+    list.push({
+      restriction: v.restriction as RestrictionKey,
+      state: v.state,
+      note: v.note,
+      lines: vLinesByKey.get(`${v.recipe_id}|${v.restriction}`) ?? []
+    });
+    variationsByRecipe.set(v.recipe_id, list);
   }
 
   // No status filter here: the PUBLIC query asks for published only, and the
@@ -153,10 +188,35 @@ export function mapCatalog(rows: CatalogRows): Catalog {
       method: r.method,
       stepsMd: r.steps_md,
       sortOrder: r.sort_order,
-      lines: linesByRecipe.get(r.id) ?? []
+      lines: linesByRecipe.get(r.id) ?? [],
+      variations: variationsByRecipe.get(r.id) ?? []
     }));
 
   return { ingredients, packages, conversions, recipes };
+}
+
+/** The two variation tables, for both loaders. Paginated like the rest. */
+async function loadVariationRows(supabase: SupabaseClient): Promise<{ variations: MmRecipeVariationRow[]; variationLines: MmVariationLineRow[] }> {
+  const [variations, variationLines] = await Promise.all([
+    fetchAllRows<MmRecipeVariationRow>((from, to) =>
+      supabase
+        .from('mm_recipe_variations')
+        .select('recipe_id, restriction, state, note, updated_at')
+        .order('recipe_id')
+        .order('restriction')
+        .range(from, to)
+    ),
+    fetchAllRows<MmVariationLineRow>((from, to) =>
+      supabase
+        .from('mm_variation_lines')
+        .select('id, recipe_id, restriction, position, op, base_ingredient_id, ingredient_id, qty_per_person, unit_key')
+        .order('recipe_id')
+        .order('restriction')
+        .order('position')
+        .range(from, to)
+    )
+  ]);
+  return { variations, variationLines };
 }
 
 function toIngredient(row: MmIngredientRow): Ingredient {
@@ -213,11 +273,12 @@ export async function loadAuthoringCatalogWith(supabase: SupabaseClient): Promis
     fetchAllRows<MmRecipeLineRow>((from, to) =>
       supabase
         .from('mm_recipe_lines')
-        .select('id, recipe_id, position, ingredient_id, qty_per_person, unit_key, serves_rule, serves_restriction')
+        .select('id, recipe_id, position, ingredient_id, qty_per_person, unit_key, serves_rule, serves_restrictions')
         .order('recipe_id')
         .order('position')
         .range(from, to)
     )
   ]);
-  return mapCatalog({ ingredients, conversions, packages, recipes, lines });
+  const v = await loadVariationRows(supabase);
+  return mapCatalog({ ingredients, conversions, packages, recipes, lines, ...v });
 }

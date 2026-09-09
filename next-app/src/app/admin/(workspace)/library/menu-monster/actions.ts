@@ -512,7 +512,7 @@ function draftOf(r: Recipe): RecipeDraft {
       amount: String(l.qtyPerPerson),
       unitKey: l.unitKey,
       servesRule: l.servesRule,
-      servesRestriction: l.servesRestriction
+      servesRestrictions: l.servesRestrictions
     }))
   };
 }
@@ -530,7 +530,7 @@ export async function saveRecipe(draft: RecipeDraft): Promise<Result> {
   const name = cap(draft.name, MAX.name);
   if (!name) return { ok: false, error: 'Give the menu item a name.' };
 
-  const lines: { ingredient_id: string; qty_per_person: number; unit_key: string | null; serves_rule: string; serves_restriction: string | null }[] = [];
+  const lines: { ingredient_id: string; qty_per_person: number; unit_key: string | null; serves_rule: string; serves_restrictions: string[]; serves_restriction: string | null }[] = [];
   for (const [i, l] of draft.lines.entries()) {
     if (!l.ingredientId) return { ok: false, error: `Line ${i + 1}: pick an ingredient.` };
     const raw = l.amount.trim();
@@ -542,7 +542,8 @@ export async function saveRecipe(draft: RecipeDraft): Promise<Result> {
       qty_per_person: q,
       unit_key: l.unitKey,
       serves_rule: l.servesRule,
-      serves_restriction: l.servesRule === 'everyone' ? null : l.servesRestriction
+      serves_restrictions: l.servesRule === 'everyone' ? [] : l.servesRestrictions,
+      serves_restriction: l.servesRule === 'everyone' ? null : (l.servesRestrictions[0] ?? null)
     });
   }
 
@@ -646,7 +647,8 @@ export async function duplicateRecipe(id: string): Promise<Result> {
       qty_per_person: l.qtyPerPerson,
       unit_key: l.unitKey,
       serves_rule: l.servesRule,
-      serves_restriction: l.servesRestriction
+      serves_restrictions: l.servesRestrictions,
+      serves_restriction: l.servesRestrictions[0] ?? null
     }))
   });
   if (error) return { ok: false, error: error.message };

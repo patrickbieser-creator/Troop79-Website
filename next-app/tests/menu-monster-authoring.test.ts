@@ -67,8 +67,8 @@ const draft = (over: Partial<RecipeDraft> = {}): RecipeDraft => ({
   method: 'stove',
   stepsMd: '',
   lines: [
-    { ingredientId: 'pancake-mix', amount: '½', unitKey: null, servesRule: 'except', servesRestriction: 'gf' },
-    { ingredientId: 'almond-flour', amount: '0.5', unitKey: null, servesRule: 'only', servesRestriction: 'gf' }
+    { ingredientId: 'pancake-mix', amount: '½', unitKey: null, servesRule: 'except', servesRestrictions: ['gf'] },
+    { ingredientId: 'almond-flour', amount: '0.5', unitKey: null, servesRule: 'only', servesRestrictions: ['gf'] }
   ],
   ...over
 });
@@ -154,25 +154,25 @@ describe('publish gate', () => {
     expect(one(draft({ name: '  ' }))).toBe('Give the menu item a name.');
     expect(one(draft({ lines: [] }))).toBe('Add at least one ingredient line.');
     expect(one(draft({ mealFit: [] }))).toBe('Pick at least one meal it fits.');
-    expect(one(draft({ lines: [{ ingredientId: '', amount: '1', unitKey: null, servesRule: 'everyone', servesRestriction: null }] })))
+    expect(one(draft({ lines: [{ ingredientId: '', amount: '1', unitKey: null, servesRule: 'everyone', servesRestrictions: [] }] })))
       .toBe('Line 1: pick an ingredient.');
-    expect(one(draft({ lines: [{ ingredientId: 'oj', amount: '1', unitKey: null, servesRule: 'everyone', servesRestriction: null }] })))
+    expect(one(draft({ lines: [{ ingredientId: 'oj', amount: '1', unitKey: null, servesRule: 'everyone', servesRestrictions: [] }] })))
       .toBe('Line 1: Orange juice has no priced package yet — add one in the Price book.');
-    expect(one(draft({ lines: [{ ingredientId: 'eggs', amount: 'two', unitKey: null, servesRule: 'everyone', servesRestriction: null }] })))
+    expect(one(draft({ lines: [{ ingredientId: 'eggs', amount: 'two', unitKey: null, servesRule: 'everyone', servesRestrictions: [] }] })))
       .toBe("Line 1: 'two' isn't a number. Type something like ½, 1/2 or 0.5.");
-    expect(one(draft({ lines: [{ ingredientId: 'eggs', amount: '', unitKey: null, servesRule: 'everyone', servesRestriction: null }] })))
+    expect(one(draft({ lines: [{ ingredientId: 'eggs', amount: '', unitKey: null, servesRule: 'everyone', servesRestrictions: [] }] })))
       .toBe('Line 1: type an amount per person.');
     // The seed's placeholder draft (C001) carries a 0 — a number, just not a usable one.
-    expect(one(draft({ lines: [{ ingredientId: 'eggs', amount: '0', unitKey: null, servesRule: 'everyone', servesRestriction: null }] })))
+    expect(one(draft({ lines: [{ ingredientId: 'eggs', amount: '0', unitKey: null, servesRule: 'everyone', servesRestrictions: [] }] })))
       .toBe('Line 1: the amount per person must be more than zero.');
-    expect(one(draft({ lines: [{ ingredientId: 'eggs', amount: '1', unitKey: 'slice', servesRule: 'everyone', servesRestriction: null }] })))
+    expect(one(draft({ lines: [{ ingredientId: 'eggs', amount: '1', unitKey: 'slice', servesRule: 'everyone', servesRestrictions: [] }] })))
       .toBe("Line 1: Eggs can't be measured in slices — use eggs, or ask a leader to add a conversion in the Price book.");
     expect(
       one(
         draft({
           lines: [
-            { ingredientId: 'eggs', amount: '1', unitKey: null, servesRule: 'everyone', servesRestriction: null },
-            { ingredientId: 'eggs', amount: '2', unitKey: null, servesRule: 'everyone', servesRestriction: null }
+            { ingredientId: 'eggs', amount: '1', unitKey: null, servesRule: 'everyone', servesRestrictions: [] },
+            { ingredientId: 'eggs', amount: '2', unitKey: null, servesRule: 'everyone', servesRestrictions: [] }
           ]
         })
       )
@@ -182,8 +182,8 @@ describe('publish gate', () => {
   it('Authoring_RecipeIssues_WarnsOnLonelySwapLine', () => {
     const lonely = draft({
       lines: [
-        { ingredientId: 'eggs', amount: '2', unitKey: null, servesRule: 'everyone', servesRestriction: null },
-        { ingredientId: 'almond-flour', amount: '0.5', unitKey: null, servesRule: 'only', servesRestriction: 'gf' }
+        { ingredientId: 'eggs', amount: '2', unitKey: null, servesRule: 'everyone', servesRestrictions: [] },
+        { ingredientId: 'almond-flour', amount: '0.5', unitKey: null, servesRule: 'only', servesRestrictions: ['gf'] }
       ]
     });
     const issues = recipeIssues(lonely, CATALOG);
@@ -195,7 +195,7 @@ describe('publish gate', () => {
 
   it('Authoring_RecipeIssues_WarnsWhenAllergenReachesEveryone', () => {
     const risky = draft({
-      lines: [{ ingredientId: 'pancake-mix', amount: '½', unitKey: null, servesRule: 'everyone', servesRestriction: null }]
+      lines: [{ ingredientId: 'pancake-mix', amount: '½', unitKey: null, servesRule: 'everyone', servesRestrictions: [] }]
     });
     const issues = recipeIssues(risky, CATALOG);
     expect(blockingIssues(issues)).toEqual([]);
@@ -204,7 +204,7 @@ describe('publish gate', () => {
       "Line 1: Pancake mix isn't gluten-free and everyone gets it — a gluten-free scout will be warned. Add an 'everyone except gluten-free' line and an 'only gluten-free' swap if you want one."
     );
     // Dairy and vegetarian never warn (obvious at the table).
-    const milk = draft({ lines: [{ ingredientId: 'milk', amount: '1', unitKey: null, servesRule: 'everyone', servesRestriction: null }] });
+    const milk = draft({ lines: [{ ingredientId: 'milk', amount: '1', unitKey: null, servesRule: 'everyone', servesRestrictions: [] }] });
     expect(recipeIssues(milk, CATALOG)).toEqual([]);
   });
 });

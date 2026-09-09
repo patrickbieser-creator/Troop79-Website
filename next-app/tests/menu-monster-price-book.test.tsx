@@ -64,7 +64,7 @@ const CATALOG: Catalog = {
   conversions: [{ ingredientId: 'pancake-mix', from: 'ozw', to: 'cup', factor: 1 / 4.5, label: 'pancake mix ≈ 4.5 oz per cup' }],
   recipes: [
     { id: 'pancakes', name: 'Pancakes', status: 'published', mealFit: ['breakfast'], foodGroups: ['grain'], camp: true, trail: false, method: 'stove', stepsMd: null, sortOrder: 10,
-      lines: [{ ingredientId: 'pancake-mix', qtyPerPerson: 0.5, unitKey: null, servesRule: 'everyone', servesRestriction: null }] }
+      lines: [{ ingredientId: 'pancake-mix', qtyPerPerson: 0.5, unitKey: null, servesRule: 'everyone', servesRestrictions: [] }] }
   ]
 };
 

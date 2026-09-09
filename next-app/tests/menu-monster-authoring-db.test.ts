@@ -38,6 +38,7 @@ import { UNITS } from '../src/lib/menu-monster/units';
 const admin = adminClient();
 const FLOUR = 'zz-mm-flour';
 const EGGS = 'zz-mm-eggs';
+const MILK = 'zz-mm-milk';
 const RECIPE = 'zz-mm-pancakes';
 const PKG_BAG = 'p-zz-mm-flour-bag';
 const PKG_OLD = 'p-zz-mm-flour-old';
@@ -55,7 +56,8 @@ beforeAll(async () => {
   await cleanup();
   const { error: e1 } = await admin.from('mm_ingredients').insert([
     { id: FLOUR, name: 'ZZ Flour', unit_kind: 'volume', unit_key: 'cup', unit_one: 'cup', unit_many: 'cups', section: 'dry', staple: false, avoid: ['gf'] },
-    { id: EGGS, name: 'ZZ Eggs', unit_kind: 'count', unit_key: 'egg', unit_one: 'egg', unit_many: 'eggs', section: 'dairy', staple: false, avoid: [] }
+    { id: EGGS, name: 'ZZ Eggs', unit_kind: 'count', unit_key: 'egg', unit_one: 'egg', unit_many: 'eggs', section: 'dairy', staple: false, avoid: [] },
+    { id: MILK, name: 'ZZ Milk', unit_kind: 'volume', unit_key: 'cup', unit_one: 'cup', unit_many: 'cups', section: 'dairy', staple: false, avoid: ['dairy'] }
   ]);
   if (e1) throw new Error(`fixture ingredients: ${e1.message}`);
   const { error: e2 } = await admin.from('mm_packages').insert([
@@ -89,7 +91,8 @@ describe('menu monster leader tools — RPCs', () => {
   it('Rpc_SaveRecipe_ReplacesLinesAtomically', async () => {
     const first = await admin.rpc('mm_save_recipe', {
       p_recipe: recipeJson(),
-      p_lines: [line(FLOUR, 0.5), line(EGGS, 1), line(FLOUR, 0.25, 'tbsp')]
+      // One base line per ingredient (the unique index); the third line is a GF-only extra.
+      p_lines: [line(FLOUR, 0.5), line(EGGS, 1), { ...line(MILK, 0.25, 'tbsp'), serves_rule: 'only', serves_restriction: 'gf' }]
     });
     expect(first.error).toBeNull();
     expect((await linesOf(RECIPE)).map((l) => l.position)).toEqual([1, 2, 3]);
@@ -162,7 +165,7 @@ describe('menu monster leader tools — actions', () => {
     const bad = await saveRecipe({
       id: RECIPE, name: 'ZZ Test Pancakes', status: 'draft', mealFit: ['breakfast'], foodGroups: [],
       camp: true, trail: false, method: null, stepsMd: '',
-      lines: [{ ingredientId: FLOUR, amount: 'two', unitKey: null, servesRule: 'everyone', servesRestriction: null }]
+      lines: [{ ingredientId: FLOUR, amount: 'two', unitKey: null, servesRule: 'everyone', servesRestrictions: [] }]
     });
     expect(bad.ok).toBe(false);
     expect(bad.error).toMatch(/isn't a number/);
@@ -171,7 +174,7 @@ describe('menu monster leader tools — actions', () => {
     const good = await saveRecipe({
       id: RECIPE, name: 'ZZ Test Pancakes', status: 'draft', mealFit: ['breakfast'], foodGroups: ['grain'],
       camp: true, trail: false, method: 'stove', stepsMd: '',
-      lines: [{ ingredientId: FLOUR, amount: '½', unitKey: null, servesRule: 'everyone', servesRestriction: null }]
+      lines: [{ ingredientId: FLOUR, amount: '½', unitKey: null, servesRule: 'everyone', servesRestrictions: [] }]
     });
     expect(good.ok).toBe(true);
     expect((await linesOf(RECIPE)).map((l) => Number(l.qty_per_person))).toEqual([0.5]);
@@ -194,7 +197,7 @@ describe('menu monster leader tools — actions', () => {
 
   it('Rpc_ChangeIngredientUnit_UpdatesYieldsAndPinsLines_InOneTransaction', async () => {
     // Put the recipe back as a draft with an implicit-unit line and an explicit one.
-    await admin.rpc('mm_save_recipe', { p_recipe: recipeJson(), p_lines: [line(FLOUR, 0.5), line(FLOUR, 2, 'tbsp')] });
+    await admin.rpc('mm_save_recipe', { p_recipe: recipeJson(), p_lines: [line(FLOUR, 0.5), { ...line(FLOUR, 2, 'tbsp'), serves_rule: 'only', serves_restrictions: ['gf'] }] });
 
     const res = await changeIngredientUnit(FLOUR, UNITS.tbsp);
     expect(res.ok).toBe(true);

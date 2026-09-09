@@ -21,7 +21,7 @@ import { MEALS } from '../src/lib/menu-monster/units';
  * Read-only: the seed is migration-owned data, nothing is inserted here.
  */
 
-const MM_TABLES = ['mm_ingredients', 'mm_conversions', 'mm_packages', 'mm_recipes', 'mm_recipe_lines'];
+const MM_TABLES = ['mm_ingredients', 'mm_conversions', 'mm_packages', 'mm_recipes', 'mm_recipe_lines', 'mm_recipe_variations', 'mm_variation_lines'];
 
 /** psql inside the local Supabase container — the db project already needs Docker up. */
 function localSql(sql: string): string {
@@ -34,7 +34,7 @@ function localSql(sql: string): string {
 }
 
 async function countOf(table: string): Promise<number> {
-  const { count, error } = await adminClient().from(table).select('id', { count: 'exact', head: true });
+  const { count, error } = await adminClient().from(table).select('*', { count: 'exact', head: true });
   if (error) throw new Error(`count ${table}: ${error.message}`);
   return count ?? 0;
 }
@@ -80,7 +80,7 @@ describe('menu monster catalog', () => {
       qtyPerPerson: 0.5,
       unitKey: null,
       servesRule: 'except',
-      servesRestriction: 'gf'
+      servesRestrictions: ['gf']
     });
     const cinnamon = catalog.conversions.find((c) => c.ingredientId === 'cinnamon');
     expect(cinnamon?.factor).toBeCloseTo(2.6, 9);

@@ -225,7 +225,7 @@ function Stepper({
  * accessible name.
  */
 function RulePill({ rule, restriction }: { rule: 'except' | 'only'; restriction: RestrictionKey }) {
-  const full = ruleText({ servesRule: rule, servesRestriction: restriction });
+  const full = ruleText({ servesRule: rule, servesRestrictions: [restriction] });
   return (
     <Badge tone={rule === 'only' ? 'info' : 'warning'} caps={false}>
       <abbr className={rule === 'except' ? s.ruleExcept : s.ruleOnly} title={full} aria-label={full}>
@@ -522,9 +522,8 @@ export function MenuMonsterPlanner({ catalog }: { catalog: Catalog }) {
                                   {perPersonText(ln.qtyPerPerson, ing, lineUnit(ln.unitKey, ing))}
                                   {ing.staple && <span className={s.muted}> (patrol box)</span>}
                                 </span>
-                                {ln.servesRule !== 'everyone' && ln.servesRestriction && (
-                                  <RulePill rule={ln.servesRule} restriction={ln.servesRestriction} />
-                                )}
+                                {ln.servesRule !== 'everyone' &&
+                                  ln.servesRestrictions.map((r) => <RulePill key={r} rule={ln.servesRule as 'except' | 'only'} restriction={r} />)}
                               </li>
                             );
                           })}

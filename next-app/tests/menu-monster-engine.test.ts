@@ -79,13 +79,13 @@ const CONVERSIONS: Conversion[] = [
 ];
 
 const everyone = (ingredientId: string, qtyPerPerson: number, unitKey: string | null = null): RecipeLine => ({
-  ingredientId, qtyPerPerson, unitKey, servesRule: 'everyone', servesRestriction: null
+  ingredientId, qtyPerPerson, unitKey, servesRule: 'everyone', servesRestrictions: []
 });
 const except = (ingredientId: string, qtyPerPerson: number, r: 'gf' | 'nut' | 'veg' | 'dairy'): RecipeLine => ({
-  ingredientId, qtyPerPerson, unitKey: null, servesRule: 'except', servesRestriction: r
+  ingredientId, qtyPerPerson, unitKey: null, servesRule: 'except', servesRestrictions: [r]
 });
 const only = (ingredientId: string, qtyPerPerson: number, r: 'gf' | 'nut' | 'veg' | 'dairy'): RecipeLine => ({
-  ingredientId, qtyPerPerson, unitKey: null, servesRule: 'only', servesRestriction: r
+  ingredientId, qtyPerPerson, unitKey: null, servesRule: 'only', servesRestrictions: [r]
 });
 
 const recipe = (id: string, name: string, lines: RecipeLine[], mealFit: Recipe['mealFit'] = ['breakfast']): Recipe => ({

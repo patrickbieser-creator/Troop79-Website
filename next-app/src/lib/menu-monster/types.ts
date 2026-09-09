@@ -87,13 +87,43 @@ export interface RecipeLine {
   /** null = the ingredient's recipe unit; otherwise any key conv() can bridge. */
   unitKey: string | null;
   servesRule: ServesRule;
-  /** Named for 'except' / 'only'; null for 'everyone'. */
-  servesRestriction: RestrictionKey | null;
+  /** The restrictions the rule names, in RESTRICTIONS order; empty for
+   *  'everyone'. A list (2026-09-08, Plans/Menu-Monster-Recipe-Variations.md
+   *  decision 2): a base line left out for dairy-free AND swapped for
+   *  vegetarians is ONE line "everyone except dairy-free or vegetarian". */
+  servesRestrictions: RestrictionKey[];
 }
 
 export type RecipeStatus = 'draft' | 'published' | 'retired';
 
-/** A recipe is a menu item. Diet variants are per-line serves rules, not duplicate recipes. */
+/** What a leader records per (recipe, restriction). "Not reviewed" and
+ *  "nothing needed because no ingredient is flagged" are the ABSENCE of a
+ *  row — see variations.ts variationView(). */
+export type VariationState = 'nothing' | 'substituted' | 'unsuitable';
+
+export type VariationOp = 'swap' | 'leave_out' | 'add';
+
+/** One change to the base recipe for one restriction. */
+export interface VariationLine {
+  op: VariationOp;
+  /** swap / leave_out: which base line, by its ingredient (base lines are unique per ingredient). */
+  baseIngredientId: string | null;
+  /** swap / add: what goes in. */
+  ingredientId: string | null;
+  qtyPerPerson: number | null;
+  unitKey: string | null;
+}
+
+export interface Variation {
+  restriction: RestrictionKey;
+  state: VariationState;
+  note: string | null;
+  lines: VariationLine[];
+}
+
+/** A recipe is a menu item: a base line list (`lines` holds the COMPILED
+ *  serves-rule lines the engine reads) plus the per-restriction diffs that
+ *  produced them (`variations`, the authoring source). */
 export interface Recipe {
   id: string;
   name: string;
@@ -106,6 +136,8 @@ export interface Recipe {
   stepsMd: string | null;
   sortOrder: number;
   lines: RecipeLine[];
+  /** Absent on fixtures that predate variations; treated as none. */
+  variations?: Variation[];
 }
 
 export interface Catalog {
@@ -197,8 +229,11 @@ export interface Totals {
   perLeft: number;
 }
 
-/** A selected recipe feeds a restricted person something they avoid, with no swap line. */
+/** 'allergen': a selected recipe feeds a restricted person something they
+ *  avoid, with no swap line (gluten and nuts only). 'unsuitable': a leader
+ *  marked the recipe Not suitable for a restriction that has a count. */
 export interface RestrictionWarning {
+  kind: 'allergen' | 'unsuitable';
   recipe: Recipe;
   restriction: Restriction;
   count: number;

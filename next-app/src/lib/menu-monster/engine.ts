@@ -62,13 +62,16 @@ export function effectiveRestrictions(plan: Plan): Record<RestrictionKey, number
 
 /** How many of H people a line feeds under its serves rule. */
 export function servingsFor(
-  line: Pick<RecipeLine, 'servesRule' | 'servesRestriction'>,
+  line: Pick<RecipeLine, 'servesRule' | 'servesRestrictions'>,
   headcount: number,
   restrictions: Record<RestrictionKey, number>
 ): number {
-  if (line.servesRule === 'everyone' || !line.servesRestriction) return headcount;
-  if (line.servesRule === 'except') return Math.max(0, headcount - restrictions[line.servesRestriction]);
-  return restrictions[line.servesRestriction];
+  if (line.servesRule === 'everyone' || line.servesRestrictions.length === 0) return headcount;
+  // Counts are per restriction, not per person: "except A or B" assumes the
+  // A people and the B people are different people (decision 2).
+  const named = line.servesRestrictions.reduce((n, k) => n + (restrictions[k] || 0), 0);
+  if (line.servesRule === 'except') return Math.max(0, headcount - named);
+  return Math.min(headcount, named);
 }
 
 export interface PackagePick {
@@ -269,15 +272,23 @@ export function restrictionWarnings(plan: Plan, catalog: Catalog): RestrictionWa
     const r = RCP.get(rid);
     if (!r) continue;
     for (const rs of RESTRICTIONS) {
-      if (!WARN_ALLERGENS.includes(rs.key) || !R[rs.key]) continue;
-      const hasOnly = r.lines.some((l) => l.servesRule === 'only' && l.servesRestriction === rs.key);
+      if (!R[rs.key]) continue;
+      // A leader said so: Not suitable warns for every restriction (decision 6).
+      const unsuitable = (r.variations ?? []).some((v) => v.restriction === rs.key && v.state === 'unsuitable');
+      if (unsuitable) {
+        out.push({ kind: 'unsuitable', recipe: r, restriction: rs, count: R[rs.key], ingredients: [] });
+        continue;
+      }
+      if (!WARN_ALLERGENS.includes(rs.key)) continue;
+      const hasOnly = r.lines.some((l) => l.servesRule === 'only' && l.servesRestrictions.includes(rs.key));
       const bad = r.lines.filter((l) => {
         const ing = ING.get(l.ingredientId);
         if (!ing || !ing.avoid.includes(rs.key)) return false;
-        return l.servesRule === 'everyone' || (l.servesRule === 'except' && l.servesRestriction !== rs.key);
+        return l.servesRule === 'everyone' || (l.servesRule === 'except' && !l.servesRestrictions.includes(rs.key));
       });
       if (bad.length && !hasOnly) {
         out.push({
+          kind: 'allergen',
           recipe: r,
           restriction: rs,
           count: R[rs.key],
@@ -311,10 +322,11 @@ export function packCount(n: number, pkg: Package): string {
   return noun === 'each' ? `${n}` : `${n} ${plural(n, noun)}`;
 }
 
-/** "everyone", "everyone except gluten-free", "only gluten-free". */
-export function ruleText(line: Pick<RecipeLine, 'servesRule' | 'servesRestriction'>): string {
-  if (line.servesRule === 'everyone' || !line.servesRestriction) return 'everyone';
-  const label = RESTRICTION_BY_KEY[line.servesRestriction].label.toLowerCase();
+/** "everyone", "everyone except gluten-free", "only gluten-free",
+ *  "everyone except dairy-free or vegetarian". */
+export function ruleText(line: Pick<RecipeLine, 'servesRule' | 'servesRestrictions'>): string {
+  if (line.servesRule === 'everyone' || line.servesRestrictions.length === 0) return 'everyone';
+  const label = line.servesRestrictions.map((k) => RESTRICTION_BY_KEY[k].label.toLowerCase()).join(' or ');
   return line.servesRule === 'except' ? `everyone except ${label}` : `only ${label}`;
 }
 

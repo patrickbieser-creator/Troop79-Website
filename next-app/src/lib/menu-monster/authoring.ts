@@ -190,7 +190,7 @@ export interface DraftLine {
   amount: string;
   unitKey: string | null;
   servesRule: ServesRule;
-  servesRestriction: RestrictionKey | null;
+  servesRestrictions: RestrictionKey[];
 }
 
 export interface RecipeDraft {
@@ -267,13 +267,14 @@ export function recipeIssues(draft: RecipeDraft, catalog: Catalog): RecipeIssue[
 
   // Warnings — never block.
   const hasRule = (rule: ServesRule, r: RestrictionKey) =>
-    draft.lines.some((l) => l.servesRule === rule && l.servesRestriction === r);
+    draft.lines.some((l) => l.servesRule === rule && l.servesRestrictions.includes(r));
   draft.lines.forEach((l, idx) => {
     const n = idx + 1;
     const ing = l.ingredientId ? byId.get(l.ingredientId) : undefined;
     if (!ing) return;
-    if (l.servesRule === 'only' && l.servesRestriction && !hasRule('except', l.servesRestriction)) {
-      const label = RESTRICTION_BY_KEY[l.servesRestriction].label.toLowerCase();
+    const lonely = l.servesRule === 'only' ? l.servesRestrictions.find((r) => !hasRule('except', r)) : undefined;
+    if (lonely) {
+      const label = RESTRICTION_BY_KEY[lonely].label.toLowerCase();
       warn(
         `Line ${n}: only ${label} people get ${ing.name}, but nothing is marked 'everyone except ${label}' — is this a swap? Add the line it replaces.`,
         idx
@@ -282,7 +283,7 @@ export function recipeIssues(draft: RecipeDraft, catalog: Catalog): RecipeIssue[
     if (l.servesRule === 'only') return;
     for (const r of WARN_ALLERGENS) {
       if (!ing.avoid.includes(r)) continue;
-      if (l.servesRule === 'except' && l.servesRestriction === r) continue;
+      if (l.servesRule === 'except' && l.servesRestrictions.includes(r)) continue;
       if (hasRule('except', r)) continue;
       const label = RESTRICTION_BY_KEY[r].label.toLowerCase();
       warn(

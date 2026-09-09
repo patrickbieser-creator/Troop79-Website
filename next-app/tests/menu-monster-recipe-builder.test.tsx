@@ -41,8 +41,8 @@ const CATALOG: Catalog = {
   recipes: [
     { id: 'pancakes', name: 'Pancakes', status: 'published', mealFit: ['breakfast'], foodGroups: ['grain'], camp: true, trail: false, method: 'stove', stepsMd: null, sortOrder: 10,
       lines: [
-        { ingredientId: 'pancake-mix', qtyPerPerson: 0.5, unitKey: null, servesRule: 'everyone', servesRestriction: null },
-        { ingredientId: 'eggs', qtyPerPerson: 1, unitKey: null, servesRule: 'everyone', servesRestriction: null }
+        { ingredientId: 'pancake-mix', qtyPerPerson: 0.5, unitKey: null, servesRule: 'everyone', servesRestrictions: [] },
+        { ingredientId: 'eggs', qtyPerPerson: 1, unitKey: null, servesRule: 'everyone', servesRestrictions: [] }
       ] },
     { id: 'toast', name: 'Toast', status: 'draft', mealFit: ['breakfast'], foodGroups: ['grain'], camp: true, trail: true, method: 'stove', stepsMd: null, sortOrder: 20, lines: [] }
   ]
@@ -83,7 +83,7 @@ describe('Recipe builder', () => {
     expect(vi.mocked(saveRecipe).mock.calls[0][0]).toMatchObject({
       id: 'toast',
       name: 'Toast',
-      lines: [{ ingredientId: 'bread', amount: '2', unitKey: null, servesRule: 'everyone', servesRestriction: null }]
+      lines: [{ ingredientId: 'bread', amount: '2', unitKey: null, servesRule: 'everyone', servesRestrictions: [] }]
     });
 
     await waitFor(() => expect((within(editor).getByRole('button', { name: 'Publish' }) as HTMLButtonElement).disabled).toBe(false));

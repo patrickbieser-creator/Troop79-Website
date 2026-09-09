@@ -563,7 +563,32 @@ export interface MmRecipeLineRow {
   /** null = the ingredient's recipe unit. */
   unit_key: string | null;
   serves_rule: 'everyone' | 'except' | 'only';
-  serves_restriction: 'gf' | 'nut' | 'dairy' | 'veg' | null;
+  /** The restrictions the rule names (Plans/Menu-Monster-Recipe-Variations.md
+   *  decision 2). Empty for 'everyone'. Replaces the single serves_restriction,
+   *  which stays populated (first element) until Migration B drops it. */
+  serves_restrictions: ('gf' | 'nut' | 'dairy' | 'veg')[];
+}
+
+/** A leader's decision for one (recipe, restriction). */
+export interface MmRecipeVariationRow {
+  recipe_id: string;
+  restriction: 'gf' | 'nut' | 'dairy' | 'veg';
+  state: 'nothing' | 'substituted' | 'unsuitable';
+  note: string | null;
+  updated_at: string;
+}
+
+/** One change to the base recipe for one restriction. */
+export interface MmVariationLineRow {
+  id: number;
+  recipe_id: string;
+  restriction: 'gf' | 'nut' | 'dairy' | 'veg';
+  position: number;
+  op: 'swap' | 'leave_out' | 'add';
+  base_ingredient_id: string | null;
+  ingredient_id: string | null;
+  qty_per_person: number | null;
+  unit_key: string | null;
 }
 
 export interface RequirementSubmission {

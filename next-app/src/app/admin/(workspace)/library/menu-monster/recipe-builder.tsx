@@ -56,7 +56,7 @@ function draftOf(r: Recipe): RecipeDraft {
       amount: String(l.qtyPerPerson),
       unitKey: l.unitKey,
       servesRule: l.servesRule,
-      servesRestriction: l.servesRestriction
+      servesRestrictions: l.servesRestrictions
     }))
   };
 }
@@ -110,7 +110,7 @@ function previewRecipe(draft: RecipeDraft): Recipe {
         qtyPerPerson: parseQty(l.amount),
         unitKey: l.unitKey,
         servesRule: l.servesRule,
-        servesRestriction: l.servesRule === 'everyone' ? null : l.servesRestriction
+        servesRestrictions: l.servesRule === 'everyone' ? [] : l.servesRestrictions
       }))
   };
 }
@@ -369,7 +369,7 @@ function RecipeEditor({
               onClick={() =>
                 setDraft((d) => ({
                   ...d,
-                  lines: [...d.lines, { ingredientId: '', amount: '', unitKey: null, servesRule: 'everyone', servesRestriction: null }]
+                  lines: [...d.lines, { ingredientId: '', amount: '', unitKey: null, servesRule: 'everyone', servesRestrictions: [] }]
                 }))
               }
             >
@@ -490,7 +490,7 @@ function LineRow({
   const n = idx + 1;
   const units = ingredient ? supportedUnits(ingredient, catalog.conversions) : [];
   const unitValue = line.unitKey ?? ingredient?.unit.key ?? '';
-  const who = line.servesRule === 'everyone' ? 'everyone' : `${line.servesRule}:${line.servesRestriction ?? ''}`;
+  const who = line.servesRule === 'everyone' ? 'everyone' : `${line.servesRule}:${line.servesRestrictions[0] ?? ''}`;
 
   return (
     <li className={styles.lineRow}>
@@ -558,10 +558,10 @@ function LineRow({
           value={who}
           onChange={(e) => {
             const v = e.target.value;
-            if (v === 'everyone') onChange({ servesRule: 'everyone', servesRestriction: null });
+            if (v === 'everyone') onChange({ servesRule: 'everyone', servesRestrictions: [] });
             else {
               const [rule, r] = v.split(':');
-              onChange({ servesRule: rule as ServesRule, servesRestriction: r as RestrictionKey });
+              onChange({ servesRule: rule as ServesRule, servesRestrictions: [r as RestrictionKey] });
             }
           }}
         >

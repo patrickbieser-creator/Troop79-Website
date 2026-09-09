@@ -53,7 +53,7 @@ export function PrintSheet({
     for (const rid of plan.recipeIds) {
       const rc = RCP.get(rid);
       if (!rc) continue;
-      const only = rc.lines.filter((l) => l.servesRule === 'only' && l.servesRestriction === r.key);
+      const only = rc.lines.filter((l) => l.servesRule === 'only' && l.servesRestrictions.includes(r.key));
       if (only.length) {
         swaps.push(`${rc.name}: ${only.map((l) => (ING.get(l.ingredientId)?.name ?? l.ingredientId).toLowerCase()).join(', ')}`);
       }
