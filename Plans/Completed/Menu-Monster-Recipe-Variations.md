@@ -1,6 +1,6 @@
 # Menu Monster — Recipe Variations (base recipe + per-restriction diffs)
 
-**Status:** Active — decisions taken 2026-09-08, building
+**Status:** LIVE 2026-09-08 — v1.125.0 (df38d1d + 6272291; Migration A on prod, 16 variations / 32 lines backfilled). Migration B (drop `serves_restriction`) still to do in a later release.
 **Started:** 2026-09-08
 **Priority:** High
 **Origin:** Patrick, 2026-09-08: "all of this information is merged into one giant recipe, which could be confusing for 11 year olds". Jenna MICRO review + Brad prototype `D:\Projects\Troop Menu Monster\prototypes\concept-d-recipe-variations\{admin,public}.html` (README there has the treatment-by-treatment rationale).

@@ -1,6 +1,6 @@
 # Menu Monster Phase 2 — Leader Tools (Price Book + Recipe Builder)
 
-**Status:** Active
+**Status:** LIVE 2026-09-08 — v1.124.0 (cb961ce + 92ed8e2); phase 3 (suggestions) parked in BACKLOG
 **Started:** 2026-09-08
 **Priority:** High
 **Parent:** `Plans/Menu-Monster.md` (phase 1, LIVE v1.123.0). Prototype: `D:\Projects\Troop Menu Monster\prototypes\concept-c-recipe-builder\index.html`. Discovery decisions: `D:\Projects\Troop Menu Monster\Plans\Discovery\00-Questions-and-Ideas.md` (A2, A4, C2–C5, E1, E4, G1–G4).

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Session Summary — Menu Monster leader tools and recipe variations, household removal (2026-09-08)</title>
+<style>
+  :root {
+    --nw-teal: #1e3a4a;   /* Troop 79 navy (BRAND.md primary) */
+    --nw-green: #3d5a3e;  /* Troop 79 forest (BRAND.md accent) */
+    --paper: #faf6ef;
+    --ink: #2a2a2a;
+    --meta: #6d7580;
+    --line: #e2e4e8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 15px; color: var(--ink); background: var(--paper); line-height: 1.55; }
+  .header { background: var(--nw-teal); color: #fff; padding: 40px 64px; }
+  .header .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.6); margin-bottom: 8px; }
+  .header h1 { font-size: 30px; font-weight: 600; margin-bottom: 6px; }
+  .header .sub { font-size: 14px; color: rgba(255,255,255,.75); }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 36px 24px 64px; }
+  h2 { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--nw-green); border-bottom: 2px solid var(--nw-green); padding-bottom: 6px; margin: 32px 0 14px; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .metric { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+  .metric .num { font-size: 26px; font-weight: 700; color: var(--nw-teal); }
+  .metric .lbl { font-size: 12px; color: var(--meta); margin-top: 2px; }
+  ul { padding-left: 22px; }
+  li { margin-bottom: 9px; }
+  .card { background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--nw-green); border-radius: 4px; padding: 14px 18px; margin-bottom: 12px; }
+  .card.warn { border-left-color: #c0392b; }
+  .card .t { font-weight: 700; color: var(--nw-teal); }
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--meta); }
+  .footer { text-align: center; font-size: 12px; color: var(--meta); padding: 24px; border-top: 1px solid var(--line); margin-top: 40px; }
+  code { background: #f0f1f3; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="eyebrow">Troop 79 Website · Session summary</div>
+  <h1>Menu Monster leader tools and recipe variations; household removal</h1>
+  <div class="sub">Session 37 · 2026-09-08 · 3:29 PM – 10:58 PM CDT · Operator (Fable) · v1.123.1 → v1.125.0</div>
+</div>
+<div class="wrap">
+
+<h2>Key metrics</h2>
+<div class="metrics">
+  <div class="metric"><div class="num">5</div><div class="lbl">releases live (v1.123.2 → v1.125.0)</div></div>
+  <div class="metric"><div class="num">6</div><div class="lbl">code commits pushed</div></div>
+  <div class="metric"><div class="num">2</div><div class="lbl">migrations on production</div></div>
+  <div class="metric"><div class="num">1,840</div><div class="lbl">tests (was 1,786)</div></div>
+  <div class="metric"><div class="num">4</div><div class="lbl">decisions recorded (D-271–D-274)</div></div>
+  <div class="metric"><div class="num">4</div><div class="lbl">expert reviews (tech-lead ×2, qa-lead ×3, Jenna, Brad)</div></div>
+</div>
+
+<h2>What was accomplished</h2>
+<div class="card">
+  <div class="t">Household removal from the household's side — v1.123.2</div>
+  <p>Patrick reported no way to remove a person from a household. The path existed only on the other person's own record, inside a select. Each member in the record page's Household &amp; family list now has a Remove with the usual Undo toast, and the Households table under Lookups shows members as chips with an × Remove. One existing action, one audit entry, verified on production with the test scout.</p>
+</div>
+<div class="card">
+  <div class="t">Menu Monster leader tools — v1.124.0</div>
+  <p>A new admin screen under the Library (Librarian's capability): a <strong>Price book</strong> (ingredient table with computed status, per-package dirty-gated edits with the &gt;25% and 90-day advisory flags, Add a package with the Option C yield helper, unit conversions, Change unit with a consequence preview, New ingredient) and a <strong>Recipe builder</strong>. Two transactional Postgres functions, service-role only; every write audited; publish re-validated on the server. Tech-lead reviewed the plan (five changes folded in); qa-lead 9/10. A stray type re-export in a <code>'use server'</code> file broke every action at runtime and was caught in browser verification.</p>
+</div>
+<div class="card">
+  <div class="t">Planner starts blank; two-letter pills — v1.124.1</div>
+  <p>The public planner now opens on breakfast with six people, every restriction at zero and nothing ticked. The diet pills shrank to GF/NF/DF/VG with a legend — superseded the same evening by the variations work.</p>
+</div>
+<div class="card">
+  <div class="t">Recipe variations — v1.125.0</div>
+  <p>Patrick: one merged recipe is confusing for 11-year-olds. Jenna's review and Brad's concept-d prototypes converged; Patrick answered six questions; tech-lead required five changes. Built in four steps: a pure compiler (base recipe + per-restriction diffs → the engine's lines), an additive migration with backfill (16 variations / 32 change rows on production), an Everyone tab plus variation tabs with computed state chips in admin, and toggle strips on the public card ("For gluten-free scouts: 3 changes ▸", never an accordion) plus the print sheet. One of Patrick's choices — splitting a line changed by two diets into duplicates — cannot be computed from restriction counts; the rule was widened to a list of restrictions instead and the deviation flagged. qa-lead 8/10, two warnings fixed. Deployed migration-first, then code; the open strip was verified on the live card.</p>
+</div>
+<div class="card">
+  <div class="t">Confirmed by Patrick</div>
+  <p>The EmailOctopus reconciliation is done and the eyes-on production items from session 36 are confirmed working; Menu Monster planning now lives in this project (the other session is closed).</p>
+</div>
+
+<h2>Decisions</h2>
+<table>
+  <tr><th>ID</th><th>Decision</th></tr>
+  <tr><td>D-271</td><td>Household membership is removed from the household's side — Members list Remove + Lookups chips, one existing action.</td></tr>
+  <tr><td>D-272</td><td>Menu Monster leader tools: one admin screen under the Library gated by <code>library.moderate</code>, two transactional RPCs, compile-on-save, suggestions stay in the Library Queue.</td></tr>
+  <tr><td>D-273</td><td>The public planner starts agnostic: six people, nothing ticked, restrictions at zero.</td></tr>
+  <tr><td>D-274</td><td>Recipe variations: base recipe + per-restriction diffs compiled on save into the engine's lines; <code>serves_restrictions</code> is a list; "nothing to change" derived from avoid flags; public treatment (ii) strips; additive-first deploy, Migration B owed.</td></tr>
+</table>
+
+<h2>Next steps</h2>
+<ul>
+  <li><strong>Migration B</strong> — drop <code>mm_recipe_lines.serves_restriction</code> and the RPC's dual write once v1.125.0 has been live a while; fix the seed's zero-amount Cinnamon rolls line; leaders walk the "N to look at" (Dairy-free) list.</li>
+  <li><strong>Menu Monster phase 3</strong> (Patrick's call after leaders use the editors): structured suggestions queue, stale-price batch review, saveable plans, actuals capture, phone and trail modes.</li>
+  <li>Record page: hide edit controls for leaders without <code>roster.manage</code> (qa-lead, pre-existing).</li>
+  <li>Person Record Page and Library follow-ups; Chemistry's Scoutbook id; performance follow-ups; Verified Signup Phase B.</li>
+</ul>
+
+<h2>Files changed</h2>
+<table>
+  <tr><th>Area</th><th>Files</th></tr>
+  <tr><td>Model</td><td><code>lib/menu-monster/{variations,authoring,engine,catalog,types}.ts</code>, <code>lib/supabase/types.ts</code></td></tr>
+  <tr><td>Database</td><td><code>20260908120000_menu_monster_leader_tools.sql</code>, <code>20260909100000_menu_monster_variations.sql</code></td></tr>
+  <tr><td>Admin</td><td><code>admin/library/menu-monster/{page,price-book,recipe-builder,actions,menu-monster.module.css}</code>, <code>_components/sub-nav.tsx</code>, roster <code>family-section.tsx</code>, lookups <code>households-manager.tsx</code></td></tr>
+  <tr><td>Public</td><td><code>library/_tools/menu-monster/{planner,print-sheet,planner.module.css}</code></td></tr>
+  <tr><td>Tests</td><td>11 test files touched; new: variations, authoring, authoring-db, price-book, recipe-builder, households-manager</td></tr>
+  <tr><td>Docs</td><td><code>changelog.html</code> v1.123.2 – v1.125.0; three Menu Monster plans in <code>Plans/Completed/</code>; concept-d prototypes in the Menu Monster repo</td></tr>
+</table>
+
+</div>
+<div class="footer">Troop 79 Website · Operator session summary · generated by /northwoods:end-session · 2026-09-08 10:58 PM CDT</div>
+</body>
+</html>
