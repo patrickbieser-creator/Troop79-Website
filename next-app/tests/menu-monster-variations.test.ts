@@ -5,6 +5,7 @@ import { restrictionWarnings, ruleText, servingsFor } from '../src/lib/menu-mons
 import {
   compileRecipe,
   crossRestrictionWarnings,
+  diffText,
   variationView,
   variationsFromLines,
   type BaseLine,
@@ -152,6 +153,18 @@ describe('variationsFromLines — the backfill and its round trip', () => {
     const split = variationsFromLines(chicken);
     expect(split.variations).toEqual([substituted('veg', [leaveOut('chicken')])]);
     expect(compileRecipe(split.base, split.variations)).toEqual(chicken);
+  });
+});
+
+describe('diffText — the strip and the print sheet', () => {
+  it('Variations_DiffText_ReadsAsChanges', () => {
+    const v = substituted('gf', [swap('pancake-mix', 'almond-flour', 1), leaveOut('butter'), add('eggs', 1)]);
+    expect(diffText(v, [base('pancake-mix', 0.5), base('butter', 0.5)], CATALOG)).toEqual([
+      '½ cup pancake mix → 1 cup almond flour',
+      '− butter',
+      '+ 1 egg'
+    ]);
+    expect(diffText({ restriction: 'veg', state: 'unsuitable', note: null, lines: [] }, [], CATALOG)).toEqual([]);
   });
 });
 

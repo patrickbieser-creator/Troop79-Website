@@ -40,11 +40,13 @@ import type {
   MealSlot,
   Package,
   Plan,
+  Recipe,
   RestrictionKey,
   ShoppingLine,
   Totals
 } from '@/lib/menu-monster/types';
-import { MEALS, RESTRICTIONS, RESTRICTION_CODE, SECTIONS, SOURCE_LABELS, lineUnit, perPersonText, qtyText } from '@/lib/menu-monster/units';
+import { MEALS, RESTRICTIONS, RESTRICTION_BY_KEY, SECTIONS, SOURCE_LABELS, lineUnit, perPersonText, qtyText } from '@/lib/menu-monster/units';
+import { baseOf, diffText, variationsOf } from '@/lib/menu-monster/variations';
 import {
   MAX_HEADCOUNT,
   MAX_QTY,
@@ -59,7 +61,6 @@ import {
   recipesForMeal,
   restorePlan,
   restrictionWarnings,
-  ruleText,
   seedPlan,
   sourcesText,
   totalsOf,
@@ -215,23 +216,58 @@ function Stepper({
   );
 }
 
-/** Status pill: an icon AND words, so colour never carries the meaning alone. */
 /**
- * The diet rule on a menu-item line as a two-letter pill (Patrick,
- * 2026-09-08: the full "everyone except gluten-free" pills were too big and
- * noisy). Same tones as before — amber for "everyone except", blue for
- * "only" — plus a strike through the letters on "except" so the two never
- * differ by colour alone; the full rule stays as the title and the
- * accessible name.
+ * A recipe's versions under its base list (Brad's concept-d treatment ii,
+ * Patrick 2026-09-08): one strip per variation. A substitution is a toggle
+ * button — "For gluten-free scouts: 3 changes" — that reveals only the diff
+ * inline (a toggle, never <details>, D-070). Not suitable is a static line.
+ * "Nothing to change" needs no strip: the base recipe IS their recipe.
  */
-function RulePill({ rule, restriction }: { rule: 'except' | 'only'; restriction: RestrictionKey }) {
-  const full = ruleText({ servesRule: rule, servesRestrictions: [restriction] });
+function VariationStrips({ recipe, catalog, uid }: { recipe: Recipe; catalog: Catalog; uid: string }) {
+  const [open, setOpen] = useState<RestrictionKey | null>(null);
+  const variations = variationsOf(recipe);
+  const base = baseOf(recipe);
+  const shown = variations.filter((v) => v.state === 'unsuitable' || (v.state === 'substituted' && v.lines.length > 0));
+  if (shown.length === 0) return null;
   return (
-    <Badge tone={rule === 'only' ? 'info' : 'warning'} caps={false}>
-      <abbr className={rule === 'except' ? s.ruleExcept : s.ruleOnly} title={full} aria-label={full}>
-        {RESTRICTION_CODE[restriction]}
-      </abbr>
-    </Badge>
+    <ul className={s.strips} aria-label={`Other versions of ${recipe.name}`}>
+      {shown.map((v) => {
+        const label = RESTRICTION_BY_KEY[v.restriction].label.toLowerCase();
+        if (v.state === 'unsuitable') {
+          return (
+            <li key={v.restriction} className={s.strip}>
+              <span className={s.stripStatic}>
+                <span aria-hidden="true">✕ </span>Not for {label} scouts
+              </span>
+            </li>
+          );
+        }
+        const n = v.lines.length;
+        const isOpen = open === v.restriction;
+        const panelId = `${uid}-var-${v.restriction}`;
+        return (
+          <li key={v.restriction} className={s.strip}>
+            <button
+              type="button"
+              className={s.stripBtn}
+              aria-expanded={isOpen}
+              aria-controls={panelId}
+              onClick={() => setOpen(isOpen ? null : v.restriction)}
+            >
+              For {label} scouts: {n} change{n === 1 ? '' : 's'} <span aria-hidden="true">{isOpen ? '▾' : '▸'}</span>
+            </button>
+            {isOpen && (
+              <ul id={panelId} className={s.stripDiff} aria-label={`Changes for ${label} scouts`}>
+                {diffText(v, base, catalog).map((t, i) => (
+                  <li key={i}>{t}</li>
+                ))}
+                <li className={s.muted}>Everything else is the same.</li>
+              </ul>
+            )}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -472,25 +508,9 @@ export function MenuMonsterPlanner({ catalog }: { catalog: Catalog }) {
 
             <section aria-labelledby={`${uid}-menu-h`}>
               <SectionDivider label={<span id={`${uid}-menu-h`}>Step 2 · Menu items</span>} />
-              <p className={s.legend} aria-label="Legend for the diet pills">
-                <span className={s.legendItem}>
-                  <RulePill rule="except" restriction="gf" /> everyone <em>except</em> these people
-                </span>
-                <span className={s.legendItem}>
-                  <RulePill rule="only" restriction="gf" /> <em>only</em> these people
-                </span>
-                <span className={s.legendItem}>
-                  {RESTRICTIONS.map((r, i) => (
-                    <span key={r.key}>
-                      {i > 0 ? ' · ' : ''}
-                      <strong>{RESTRICTION_CODE[r.key]}</strong> {r.label.toLowerCase()}
-                    </span>
-                  ))}
-                </span>
-              </p>
               <p className={s.help}>
-                Check what the patrol is cooking. Each item lists what one person gets. The shopping list rebuilds as you
-                go.
+                Check what the patrol is cooking. Each item lists what one person gets; a gluten-free or other version, when
+                there is one, sits underneath. The shopping list rebuilds as you go.
               </p>
               {recipes.length === 0 ? (
                 <EmptyState>No {mealLabel(plan.meal).toLowerCase()} items in the troop recipe book yet.</EmptyState>
@@ -513,31 +533,44 @@ export function MenuMonsterPlanner({ catalog }: { catalog: Catalog }) {
                           <span className={s.pickName}>{r.name}</span>
                         </label>
                         <ul className={s.lines} aria-label={`What one person gets for ${r.name}`}>
-                          {r.lines.map((ln, i) => {
-                            const ing = ING.get(ln.ingredientId);
-                            if (!ing) return null;
-                            return (
-                              <li key={`${ln.ingredientId}-${i}`} className={s.lineRow}>
-                                <span>
-                                  {perPersonText(ln.qtyPerPerson, ing, lineUnit(ln.unitKey, ing))}
-                                  {ing.staple && <span className={s.muted}> (patrol box)</span>}
-                                </span>
-                                {ln.servesRule !== 'everyone' &&
-                                  ln.servesRestrictions.map((r) => <RulePill key={r} rule={ln.servesRule as 'except' | 'only'} restriction={r} />)}
-                              </li>
-                            );
-                          })}
+                          {r.lines
+                            .filter((ln) => ln.servesRule !== 'only')
+                            .map((ln, i) => {
+                              const ing = ING.get(ln.ingredientId);
+                              if (!ing) return null;
+                              return (
+                                <li key={`${ln.ingredientId}-${i}`} className={s.lineRow}>
+                                  <span>
+                                    {perPersonText(ln.qtyPerPerson, ing, lineUnit(ln.unitKey, ing))}
+                                    {ing.staple && <span className={s.muted}> (patrol box)</span>}
+                                  </span>
+                                </li>
+                              );
+                            })}
                         </ul>
+                        <VariationStrips recipe={r} catalog={catalog} uid={`${uid}-${r.id}`} />
                         {w.map((x) => (
                           <Notice key={x.restriction.key} tone="warning" className={s.warnInline}>
                             <span aria-hidden="true">⚠ </span>
-                            {x.count === 1 ? '1 person is' : `${x.count} people are`} {x.restriction.label.toLowerCase()} and
-                            this has {x.ingredients.join(', ').toLowerCase()}. Plan something else for them.
+                            {x.kind === 'unsuitable' ? (
+                              <>
+                                {x.count === 1 ? '1 person is' : `${x.count} people are`} {x.restriction.label.toLowerCase()} and this
+                                isn&rsquo;t for them. Plan something else for them.
+                              </>
+                            ) : (
+                              <>
+                                {x.count === 1 ? '1 person is' : `${x.count} people are`} {x.restriction.label.toLowerCase()} and this
+                                has {x.ingredients.join(', ').toLowerCase()}. Plan something else for them.
+                              </>
+                            )}
                           </Notice>
                         ))}
                         <div className={s.menuFoot}>
                           <span className={s.help}>
-                            {r.lines.length} ingredient{r.lines.length === 1 ? '' : 's'} per person
+                            {(() => {
+                              const n = r.lines.filter((ln) => ln.servesRule !== 'only').length;
+                              return `${n} ingredient${n === 1 ? '' : 's'} per person`;
+                            })()}
                           </span>
                           <Link href={SUGGEST_HREF} className={s.linkBtn}>
                             Suggest a change

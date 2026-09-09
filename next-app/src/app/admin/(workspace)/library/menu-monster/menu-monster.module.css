@@ -104,6 +104,11 @@
   padding: 8px 0;
   border-bottom: 1px dashed var(--admin-gray-200);
 }
+/* Variation tabs: the add menu, the state row, the compile box. */
+.addMenu { display: grid; gap: 4px; margin: 6px 0 10px; max-width: 520px; }
+.variation { display: grid; gap: 10px; margin-top: 8px; }
+.stateRow { display: flex; gap: 6px; flex-wrap: wrap; }
+.compileList { margin: 0; padding-left: 18px; line-height: 1.6; font-family: var(--admin-font-mono, inherit); font-size: var(--admin-text-sm); }
 .issues { margin-top: 10px; }
 .issuesTitle { margin: 0 0 4px; }
 .issueList { margin: 0; padding-left: 18px; line-height: 1.5; }

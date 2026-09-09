@@ -1,17 +1,24 @@
 'use client';
 
 /**
- * Menu Monster leader tools — Recipe builder (Plans/Menu-Monster-Leader-Tools.md).
+ * Menu Monster leader tools — Recipe builder (Plans/Menu-Monster-Leader-Tools.md,
+ * Plans/Menu-Monster-Recipe-Variations.md).
  *
  * Menu items grouped by meal on the left; the selected one's editor on the
- * right — Basics, Ingredient lines (one line per ingredient with a "who gets
- * it" rule instead of a second recipe), Steps — with a live preview of what
- * one person gets and the cost per person at a chosen headcount. The status
- * pill is COMPUTED from recipeIssues(), never only a stored flag, so a
- * published item that lost its priced package reads "Needs fixes".
+ * right. A recipe is an EVERYONE tab (the base lines) plus a tab per
+ * restriction a leader has added — each a small DIFF on the base (swap this
+ * line for that, leave this out, add this) with a computed state chip:
+ * Needs a look / Nothing to change / Substituted / Not suitable. "+ Add a
+ * variation" lists the restrictions not yet added, flagged where a base
+ * ingredient carries that restriction's avoid flag (Brad's concept-d
+ * treatment ii; Jenna's four states; Patrick 2026-09-08).
  *
- * Save is dirty-gated (the save-button standard); Publish waits for a save
- * and for zero blocking issues — and the action enforces the same gate.
+ * The diff compiles to the engine's serves-rule lines (lib/menu-monster/
+ * variations.ts); the status pill, the issues list, the preview and the
+ * "what the planner will compute" box all read the compiled lines, so a
+ * leader sees exactly what a patrol will get. Save is dirty-gated over the
+ * whole draft, variations included; Publish waits for a save and for zero
+ * blocking issues — and the action enforces the same gate.
  */
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
@@ -20,12 +27,25 @@ import { Button } from '../../../_components/button';
 import { FormPanel, FormSection } from '../../../_components/form-panel';
 import { Badge } from '../../_components/badge';
 import { Notice } from '../../_components/notice';
+import { TabStrip } from '../../_components/tab-strip';
 import { DiscardButton, SaveButton, SaveFeedback, useDraftSnapshot, useSavePhase } from '../../_components/save-state';
 import { money } from '@/lib/event-money';
-import { METHODS, blockingIssues, recipeIssues, type DraftLine, type RecipeDraft, type RecipeIssue } from '@/lib/menu-monster/authoring';
+import {
+  METHODS,
+  authoringIssues,
+  authoringOf,
+  blockingIssues,
+  compileAuthoring,
+  type DraftBaseLine,
+  type DraftVariation,
+  type DraftVariationLine,
+  type RecipeAuthoring,
+  type RecipeIssue
+} from '@/lib/menu-monster/authoring';
+import { VIEW_LABEL, flaggedIngredients, variationView, type BaseLine, type VariationView } from '@/lib/menu-monster/variations';
 import { buildLines, ruleText, totalsOf, MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
-import { FOOD_GROUPS, MEALS, RESTRICTIONS, SECTIONS, SECTION_ORDER, lineUnit, parseQty, perPersonText, supportedUnits } from '@/lib/menu-monster/units';
-import type { Catalog, Ingredient, MealSlot, Plan, Recipe, RestrictionKey, ServesRule } from '@/lib/menu-monster/types';
+import { FOOD_GROUPS, MEALS, RESTRICTIONS, RESTRICTION_BY_KEY, SECTIONS, SECTION_ORDER, lineUnit, parseQty, perPersonText, supportedUnits } from '@/lib/menu-monster/units';
+import type { Catalog, Ingredient, MealSlot, Plan, Recipe, RecipeLine, RestrictionKey, VariationState } from '@/lib/menu-monster/types';
 import { duplicateRecipe, saveRecipe, setRecipeStatus } from './actions';
 import lib from '../library.module.css';
 import styles from './menu-monster.module.css';
@@ -37,31 +57,18 @@ const PILL_VARIANT: Record<Pill, 'danger' | 'warning' | 'success' | 'muted'> = {
   Published: 'success',
   Retired: 'muted'
 };
+const VIEW_VARIANT: Record<VariationView, 'danger' | 'warning' | 'success' | 'muted' | 'info'> = {
+  not_needed: 'muted',
+  needs_look: 'warning',
+  nothing: 'success',
+  substituted: 'info',
+  unsuitable: 'danger'
+};
 const NEW_ID = '__new__';
 const ARM_MS = 4000;
+type Tab = 'everyone' | RestrictionKey;
 
-function draftOf(r: Recipe): RecipeDraft {
-  return {
-    id: r.id,
-    name: r.name,
-    status: r.status,
-    mealFit: r.mealFit,
-    foodGroups: r.foodGroups,
-    camp: r.camp,
-    trail: r.trail,
-    method: r.method,
-    stepsMd: r.stepsMd ?? '',
-    lines: r.lines.map((l) => ({
-      ingredientId: l.ingredientId,
-      amount: String(l.qtyPerPerson),
-      unitKey: l.unitKey,
-      servesRule: l.servesRule,
-      servesRestrictions: l.servesRestrictions
-    }))
-  };
-}
-
-const blankDraft = (): RecipeDraft => ({
+const blankDraft = (): RecipeAuthoring => ({
   id: NEW_ID,
   name: '',
   status: 'draft',
@@ -71,47 +78,58 @@ const blankDraft = (): RecipeDraft => ({
   trail: false,
   method: null,
   stepsMd: '',
-  lines: []
+  base: [],
+  variations: []
 });
 
-function pillOf(draft: RecipeDraft, catalog: Catalog): Pill {
-  if (draft.status === 'retired') return 'Retired';
-  if (blockingIssues(recipeIssues(draft, catalog)).length > 0) return 'Needs fixes';
-  return draft.status === 'published' ? 'Published' : 'Draft';
+/** The base as numbers, for the state rules (unparseable amounts count as 0). */
+const numericBase = (a: RecipeAuthoring): BaseLine[] =>
+  a.base.map((b) => ({ ingredientId: b.ingredientId, qtyPerPerson: parseQty(b.amount) || 0, unitKey: b.unitKey }));
+
+function viewFor(a: RecipeAuthoring, r: RestrictionKey, catalog: Catalog): VariationView {
+  return variationView(numericBase(a), a.variations.find((v) => v.restriction === r), r, catalog);
 }
 
-/** Issues the TABLE cannot hold — these block Save, not only Publish. */
-function saveBlocker(draft: RecipeDraft, issues: RecipeIssue[]): string | null {
-  if (!draft.name.trim()) return 'Give the menu item a name.';
+function pillOf(a: RecipeAuthoring, catalog: Catalog): Pill {
+  if (a.status === 'retired') return 'Retired';
+  if (blockingIssues(authoringIssues(a, catalog)).length > 0) return 'Needs fixes';
+  return a.status === 'published' ? 'Published' : 'Draft';
+}
+
+/** Issues the TABLES cannot hold — these block Save, not only Publish. */
+function saveBlocker(a: RecipeAuthoring, issues: RecipeIssue[]): string | null {
+  if (!a.name.trim()) return 'Give the menu item a name.';
   for (const i of issues) {
-    if (i.level !== 'error' || i.line == null) continue;
-    if (/pick an ingredient|isn't a number|type an amount|combine them/.test(i.text)) return i.text;
+    if (i.level !== 'error') continue;
+    if (/pick an ingredient|isn't a number|type an amount|combine them|pick what replaces|pick the ingredient|is gone/.test(i.text)) return i.text;
   }
   return null;
 }
 
-/** A Recipe the engine can cost, from whatever parses in the draft. */
-function previewRecipe(draft: RecipeDraft): Recipe {
+/** The compiled lines a person on the selected tab actually gets, as a Recipe the engine can cost. */
+function previewRecipe(a: RecipeAuthoring, tab: Tab): Recipe {
+  const compiled = compileAuthoring(a).lines;
+  const mine = compiled.filter((l) => {
+    if (l.servesRule === 'everyone') return true;
+    if (tab === 'everyone') return l.servesRule === 'except';
+    return l.servesRule === 'except' ? !l.servesRestrictions.includes(tab) : l.servesRestrictions.includes(tab);
+  });
+  const lines: RecipeLine[] = mine
+    .filter((l) => l.ingredientId && Number.isFinite(parseQty(l.amount)) && parseQty(l.amount) > 0)
+    .map((l) => ({ ingredientId: l.ingredientId, qtyPerPerson: parseQty(l.amount), unitKey: l.unitKey, servesRule: l.servesRule, servesRestrictions: l.servesRestrictions }));
   return {
-    id: draft.id || NEW_ID,
-    name: draft.name || 'Untitled',
+    id: a.id || NEW_ID,
+    name: a.name || 'Untitled',
     status: 'published',
-    mealFit: draft.mealFit,
-    foodGroups: draft.foodGroups,
-    camp: draft.camp,
-    trail: draft.trail,
-    method: draft.method,
-    stepsMd: draft.stepsMd,
+    mealFit: a.mealFit,
+    foodGroups: a.foodGroups,
+    camp: a.camp,
+    trail: a.trail,
+    method: a.method,
+    stepsMd: a.stepsMd,
     sortOrder: 0,
-    lines: draft.lines
-      .filter((l) => l.ingredientId && Number.isFinite(parseQty(l.amount)) && parseQty(l.amount) > 0)
-      .map((l) => ({
-        ingredientId: l.ingredientId,
-        qtyPerPerson: parseQty(l.amount),
-        unitKey: l.unitKey,
-        servesRule: l.servesRule,
-        servesRestrictions: l.servesRule === 'everyone' ? [] : l.servesRestrictions
-      }))
+    lines,
+    variations: []
   };
 }
 
@@ -169,7 +187,9 @@ export function RecipeBuilder({ catalog, initialRecipeId }: { catalog: Catalog; 
           <div key={g.key} className={styles.itemGroup}>
             <p className={`adminLabel ${styles.itemGroupTitle}`}>{g.label}</p>
             {g.recipes.map((r) => {
-              const pill = pillOf(draftOf(r), catalog);
+              const a = authoringOf(r);
+              const pill = pillOf(a, catalog);
+              const toLook = RESTRICTIONS.filter((x) => viewFor(a, x.key, catalog) === 'needs_look').length;
               return (
                 <button
                   key={r.id}
@@ -178,7 +198,10 @@ export function RecipeBuilder({ catalog, initialRecipeId }: { catalog: Catalog; 
                   aria-current={r.id === selectedId ? 'true' : undefined}
                   onClick={() => setSelectedId(r.id)}
                 >
-                  <span className={styles.grow}>{r.name}</span>
+                  <span className={styles.grow}>
+                    {r.name}
+                    {toLook > 0 && <span className={styles.muted}> · {toLook} to look at</span>}
+                  </span>
                   <Badge variant={PILL_VARIANT[pill]}>{pill}</Badge>
                 </button>
               );
@@ -189,21 +212,9 @@ export function RecipeBuilder({ catalog, initialRecipeId }: { catalog: Catalog; 
       </nav>
 
       {selectedId === NEW_ID ? (
-        <RecipeEditor
-          key={NEW_ID}
-          initial={blankDraft()}
-          catalog={catalog}
-          onSelect={setSelectedId}
-          onChanged={() => router.refresh()}
-        />
+        <RecipeEditor key={NEW_ID} initial={blankDraft()} catalog={catalog} onSelect={setSelectedId} onChanged={() => router.refresh()} />
       ) : selected ? (
-        <RecipeEditor
-          key={selected.id}
-          initial={draftOf(selected)}
-          catalog={catalog}
-          onSelect={setSelectedId}
-          onChanged={() => router.refresh()}
-        />
+        <RecipeEditor key={selected.id} initial={authoringOf(selected)} catalog={catalog} onSelect={setSelectedId} onChanged={() => router.refresh()} />
       ) : (
         <p className={styles.muted}>{selectedId ? 'Refreshing…' : 'Pick a menu item, or add one.'}</p>
       )}
@@ -219,12 +230,14 @@ function RecipeEditor({
   onSelect,
   onChanged
 }: {
-  initial: RecipeDraft;
+  initial: RecipeAuthoring;
   catalog: Catalog;
   onSelect: (id: string) => void;
   onChanged: () => void;
 }) {
-  const [draft, setDraft] = useState<RecipeDraft>(initial);
+  const [draft, setDraft] = useState<RecipeAuthoring>(initial);
+  const [tab, setTab] = useState<Tab>('everyone');
+  const [adding, setAdding] = useState(false);
   const snap = useDraftSnapshot(draft);
   const feedback = useSavePhase();
   const [pending, start] = useTransition();
@@ -232,7 +245,7 @@ function RecipeEditor({
   const retire = useArmed();
   const isNew = draft.id === NEW_ID;
 
-  const issues = recipeIssues(draft, catalog);
+  const issues = authoringIssues(draft, catalog);
   const errors = issues.filter((i) => i.level === 'error');
   const warnings = issues.filter((i) => i.level === 'warning');
   const blocker = saveBlocker(draft, issues);
@@ -240,6 +253,9 @@ function RecipeEditor({
   const pill = pillOf(snap.saved, catalog);
   const ingredients = catalog.ingredients.filter((i) => !i.retiredAt);
   const ingById = new Map(catalog.ingredients.map((i) => [i.id, i]));
+  const compiled = compileAuthoring(draft).lines;
+  const missing = RESTRICTIONS.filter((r) => !draft.variations.some((v) => v.restriction === r.key));
+  const activeTab: Tab = tab === 'everyone' || draft.variations.some((v) => v.restriction === tab) ? tab : 'everyone';
 
   function run(fn: () => Promise<{ ok: boolean; error?: string; id?: string }>, after?: (id?: string) => void) {
     setError(null);
@@ -270,8 +286,18 @@ function RecipeEditor({
     );
   }
 
-  const setLine = (idx: number, patch: Partial<DraftLine>) =>
-    setDraft((d) => ({ ...d, lines: d.lines.map((l, i) => (i === idx ? { ...l, ...patch } : l)) }));
+  const setBase = (idx: number, patch: Partial<DraftBaseLine>) =>
+    setDraft((d) => ({ ...d, base: d.base.map((l, i) => (i === idx ? { ...l, ...patch } : l)) }));
+  const setVariation = (r: RestrictionKey, fn: (v: DraftVariation) => DraftVariation) =>
+    setDraft((d) => ({ ...d, variations: d.variations.map((v) => (v.restriction === r ? fn(v) : v)) }));
+
+  function addVariation(r: RestrictionKey) {
+    const view = viewFor(draft, r, catalog);
+    const state: VariationState = view === 'needs_look' ? 'substituted' : 'nothing';
+    setDraft((d) => ({ ...d, variations: [...d.variations, { restriction: r, state, note: '', lines: [] }] }));
+    setTab(r);
+    setAdding(false);
+  }
 
   return (
     <section className={styles.editor} aria-label={isNew ? 'New menu item' : `Edit ${snap.saved.name}`}>
@@ -289,7 +315,7 @@ function RecipeEditor({
               <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-r-name">
                 Name
               </label>
-              <input id="mm-r-name" className={lib.textInput} value={draft.name} maxLength={60} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} placeholder="Required" />
+              <input id="mm-r-name" className={lib.textInput} value={draft.name} maxLength={80} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} placeholder="Required" />
             </div>
             <div>
               <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-r-method">
@@ -317,12 +343,7 @@ function RecipeEditor({
               <legend className={`adminLabel ${lib.fieldLabel}`}>Meal fit</legend>
               {MEALS.map((m) => (
                 <label key={m.key} className={styles.listRow}>
-                  <input
-                    type="checkbox"
-                    checked={draft.mealFit.includes(m.key)}
-                    onChange={(e) => setDraft((d) => ({ ...d, mealFit: toggle(d.mealFit, m.key, e.target.checked) }))}
-                  />{' '}
-                  {m.label}
+                  <input type="checkbox" checked={draft.mealFit.includes(m.key)} onChange={(e) => setDraft((d) => ({ ...d, mealFit: toggle(d.mealFit, m.key, e.target.checked) }))} /> {m.label}
                 </label>
               ))}
             </fieldset>
@@ -330,52 +351,89 @@ function RecipeEditor({
               <legend className={`adminLabel ${lib.fieldLabel}`}>Food groups (MyPlate)</legend>
               {FOOD_GROUPS.map((g) => (
                 <label key={g.key} className={styles.listRow}>
-                  <input
-                    type="checkbox"
-                    checked={draft.foodGroups.includes(g.key)}
-                    onChange={(e) => setDraft((d) => ({ ...d, foodGroups: toggle(d.foodGroups, g.key, e.target.checked) }))}
-                  />{' '}
-                  {g.label}
+                  <input type="checkbox" checked={draft.foodGroups.includes(g.key)} onChange={(e) => setDraft((d) => ({ ...d, foodGroups: toggle(d.foodGroups, g.key, e.target.checked) }))} /> {g.label}
                 </label>
               ))}
             </fieldset>
           </div>
         </FormSection>
 
-        <FormSection num={2} title="Ingredient lines — what one person gets">
-          <p className={styles.hint}>
-            One line per ingredient. Use &ldquo;Who gets it&rdquo; for swaps instead of a second recipe: set the regular line to
-            &ldquo;everyone except gluten-free&rdquo; and add an &ldquo;only gluten-free&rdquo; line.
-          </p>
-          {draft.lines.length === 0 && <p className={styles.muted}>No lines yet.</p>}
-          <ul className={styles.lineList} aria-label="Ingredient lines">
-            {draft.lines.map((l, idx) => (
-              <LineRow
-                key={idx}
-                idx={idx}
-                line={l}
-                ingredients={ingredients}
-                ingredient={ingById.get(l.ingredientId) ?? null}
-                catalog={catalog}
-                onChange={(patch) => setLine(idx, patch)}
-                onRemove={() => setDraft((d) => ({ ...d, lines: d.lines.filter((_, i) => i !== idx) }))}
-              />
-            ))}
-          </ul>
-          <div className={lib.actionsRow}>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() =>
-                setDraft((d) => ({
-                  ...d,
-                  lines: [...d.lines, { ingredientId: '', amount: '', unitKey: null, servesRule: 'everyone', servesRestrictions: [] }]
-                }))
-              }
-            >
-              + Add a line
-            </Button>
+        <FormSection num={2} title="Ingredients — what one person gets">
+          <div className={styles.toolbar}>
+            <TabStrip
+              ariaLabel="Recipe versions"
+              activeKey={activeTab}
+              items={[
+                { key: 'everyone', label: 'Everyone', onSelect: () => setTab('everyone') },
+                ...draft.variations.map((v) => ({ key: v.restriction, label: RESTRICTION_BY_KEY[v.restriction].label, onSelect: () => setTab(v.restriction) }))
+              ]}
+            />
+            <span className={styles.spacer} />
+            {missing.length > 0 && (
+              <Button variant="secondary" size="sm" onClick={() => setAdding((v) => !v)} aria-expanded={adding}>
+                + Add a variation
+                {missing.some((r) => viewFor(draft, r.key, catalog) === 'needs_look') ? ` (${missing.filter((r) => viewFor(draft, r.key, catalog) === 'needs_look').length} need a look)` : ''}
+              </Button>
+            )}
           </div>
+          {adding && missing.length > 0 && (
+            <div className={styles.addMenu} role="group" aria-label="Variations to add">
+              {missing.map((r) => {
+                const view = viewFor(draft, r.key, catalog);
+                const flagged = flaggedIngredients(numericBase(draft), r.key, catalog);
+                return (
+                  <button key={r.key} type="button" className={styles.itemBtn} onClick={() => addVariation(r.key)}>
+                    <span className={styles.grow}>
+                      {r.label}
+                      {flagged.length > 0 && <span className={styles.muted}> · flagged: {flagged.map((i) => i.name).join(', ')}</span>}
+                    </span>
+                    <Badge variant={VIEW_VARIANT[view]}>{VIEW_LABEL[view]}</Badge>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {activeTab === 'everyone' ? (
+            <div role="region" aria-label="Everyone version">
+              <p className={styles.hint}>
+                One line per ingredient — what an unrestricted person gets. Gluten-free, nut-free, dairy-free and vegetarian swaps go on their own
+                tab, so this list stays the plain recipe.
+              </p>
+              {draft.base.length === 0 && <p className={styles.muted}>No lines yet.</p>}
+              <ul className={styles.lineList} aria-label="Ingredient lines">
+                {draft.base.map((l, idx) => (
+                  <BaseLineRow
+                    key={idx}
+                    idx={idx}
+                    line={l}
+                    ingredients={ingredients}
+                    ingredient={ingById.get(l.ingredientId) ?? null}
+                    catalog={catalog}
+                    onChange={(patch) => setBase(idx, patch)}
+                    onRemove={() => setDraft((d) => ({ ...d, base: d.base.filter((_, i) => i !== idx) }))}
+                  />
+                ))}
+              </ul>
+              <div className={lib.actionsRow}>
+                <Button variant="secondary" size="sm" onClick={() => setDraft((d) => ({ ...d, base: [...d.base, { ingredientId: '', amount: '', unitKey: null }] }))}>
+                  + Add a line
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <VariationPanel
+              restriction={activeTab}
+              draft={draft}
+              catalog={catalog}
+              ingredients={ingredients}
+              onChange={(fn) => setVariation(activeTab, fn)}
+              onRemove={() => {
+                setDraft((d) => ({ ...d, variations: d.variations.filter((v) => v.restriction !== activeTab) }));
+                setTab('everyone');
+              }}
+            />
+          )}
         </FormSection>
 
         <FormSection num={3} title="Steps">
@@ -414,16 +472,26 @@ function RecipeEditor({
           </div>
         )}
 
+        {compiled.length > 0 && (
+          <div className={styles.issues}>
+            <p className={`adminLabel ${styles.issuesTitle}`}>What the planner will compute</p>
+            <ul className={styles.compileList} aria-label="What the planner will compute">
+              {compiled.map((l, n) => {
+                const ing = ingById.get(l.ingredientId);
+                const q = parseQty(l.amount);
+                const what = ing ? (Number.isFinite(q) ? perPersonText(q, ing, lineUnit(l.unitKey, ing)) : `${l.amount || '?'} ${ing.name.toLowerCase()}`) : l.ingredientId || '(no ingredient)';
+                return (
+                  <li key={n}>
+                    {what} <span className={styles.muted}>· {ruleText(l)}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+
         <div className={lib.actionsRow}>
-          <SaveButton
-            dirty={snap.dirty}
-            pending={pending}
-            isNew={isNew}
-            newLabel="Save draft"
-            blocked={blocker != null}
-            blockedReason={blocker ?? undefined}
-            onClick={save}
-          />
+          <SaveButton dirty={snap.dirty} pending={pending} isNew={isNew} newLabel="Save draft" blocked={blocker != null} blockedReason={blocker ?? undefined} onClick={save} />
           <DiscardButton dirty={snap.dirty} pending={pending} onClick={() => setDraft(snap.saved)} />
           <SaveFeedback phase={feedback.phase} />
           <span className={styles.spacer} />
@@ -459,7 +527,7 @@ function RecipeEditor({
         )}
       </FormPanel>
 
-      <Preview draft={draft} catalog={catalog} />
+      <Preview draft={draft} tab={activeTab} catalog={catalog} />
     </section>
   );
 }
@@ -468,9 +536,53 @@ function toggle<T>(list: T[], key: T, on: boolean): T[] {
   return on ? (list.includes(key) ? list : [...list, key]) : list.filter((k) => k !== key);
 }
 
-/* ── One ingredient line ──────────────────────────────────────────────── */
+/* ── Ingredient picker + unit select, shared by base and variation rows ─── */
 
-function LineRow({
+function IngredientSelect({ id, label, value, ingredients, onChange }: { id: string; label: string; value: string; ingredients: Ingredient[]; onChange: (id: string) => void }) {
+  return (
+    <select id={id} aria-label={label} className={lib.selectInput} value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="">— pick —</option>
+      {SECTION_ORDER.map((s) => (
+        <optgroup key={s} label={SECTIONS[s]}>
+          {ingredients
+            .filter((i) => i.section === s)
+            .map((i) => (
+              <option key={i.id} value={i.id}>
+                {i.name}
+              </option>
+            ))}
+        </optgroup>
+      ))}
+    </select>
+  );
+}
+
+function UnitSelect({ id, label, ingredient, unitKey, catalog, onChange }: { id: string; label: string; ingredient: Ingredient | null; unitKey: string | null; catalog: Catalog; onChange: (k: string | null) => void }) {
+  const units = ingredient ? supportedUnits(ingredient, catalog.conversions) : [];
+  return (
+    <select
+      id={id}
+      aria-label={label}
+      className={lib.selectInput}
+      value={unitKey ?? ingredient?.unit.key ?? ''}
+      disabled={!ingredient || units.length <= 1}
+      title={ingredient && units.length <= 1 ? `${ingredient.name} is only measured in ${ingredient.unit.many} — add a conversion in the Price book for more` : undefined}
+      onChange={(e) => onChange(ingredient && e.target.value === ingredient.unit.key ? null : e.target.value)}
+    >
+      {!ingredient && <option value="">—</option>}
+      {ingredient &&
+        units.map((k) => (
+          <option key={k} value={k}>
+            {lineUnit(k, ingredient).many}
+          </option>
+        ))}
+    </select>
+  );
+}
+
+/* ── One base line (the Everyone tab) ──────────────────────────────────── */
+
+function BaseLineRow({
   idx,
   line,
   ingredients,
@@ -480,44 +592,21 @@ function LineRow({
   onRemove
 }: {
   idx: number;
-  line: DraftLine;
+  line: DraftBaseLine;
   ingredients: Ingredient[];
   ingredient: Ingredient | null;
   catalog: Catalog;
-  onChange: (patch: Partial<DraftLine>) => void;
+  onChange: (patch: Partial<DraftBaseLine>) => void;
   onRemove: () => void;
 }) {
   const n = idx + 1;
-  const units = ingredient ? supportedUnits(ingredient, catalog.conversions) : [];
-  const unitValue = line.unitKey ?? ingredient?.unit.key ?? '';
-  const who = line.servesRule === 'everyone' ? 'everyone' : `${line.servesRule}:${line.servesRestrictions[0] ?? ''}`;
-
   return (
     <li className={styles.lineRow}>
       <div className={styles.grow}>
         <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`mm-l-${idx}-ing`}>
           Ingredient
         </label>
-        <select
-          id={`mm-l-${idx}-ing`}
-          aria-label={`Line ${n} ingredient`}
-          className={lib.selectInput}
-          value={line.ingredientId}
-          onChange={(e) => onChange({ ingredientId: e.target.value, unitKey: null })}
-        >
-          <option value="">— pick —</option>
-          {SECTION_ORDER.map((s) => (
-            <optgroup key={s} label={SECTIONS[s]}>
-              {ingredients
-                .filter((i) => i.section === s)
-                .map((i) => (
-                  <option key={i.id} value={i.id}>
-                    {i.name}
-                  </option>
-                ))}
-            </optgroup>
-          ))}
-        </select>
+        <IngredientSelect id={`mm-l-${idx}-ing`} label={`Line ${n} ingredient`} value={line.ingredientId} ingredients={ingredients} onChange={(id) => onChange({ ingredientId: id, unitKey: null })} />
       </div>
       <div className={styles.narrow}>
         <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`mm-l-${idx}-amt`}>
@@ -529,54 +618,7 @@ function LineRow({
         <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`mm-l-${idx}-unit`}>
           Unit
         </label>
-        <select
-          id={`mm-l-${idx}-unit`}
-          aria-label={`Line ${n} unit`}
-          className={lib.selectInput}
-          value={unitValue}
-          disabled={!ingredient || units.length <= 1}
-          title={ingredient && units.length <= 1 ? `${ingredient.name} is only measured in ${ingredient.unit.many} — add a conversion in the Price book for more` : undefined}
-          onChange={(e) => onChange({ unitKey: ingredient && e.target.value === ingredient.unit.key ? null : e.target.value })}
-        >
-          {!ingredient && <option value="">—</option>}
-          {ingredient &&
-            units.map((k) => (
-              <option key={k} value={k}>
-                {lineUnit(k, ingredient).many}
-              </option>
-            ))}
-        </select>
-      </div>
-      <div>
-        <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`mm-l-${idx}-who`}>
-          Who gets it
-        </label>
-        <select
-          id={`mm-l-${idx}-who`}
-          aria-label={`Line ${n} who gets it`}
-          className={lib.selectInput}
-          value={who}
-          onChange={(e) => {
-            const v = e.target.value;
-            if (v === 'everyone') onChange({ servesRule: 'everyone', servesRestrictions: [] });
-            else {
-              const [rule, r] = v.split(':');
-              onChange({ servesRule: rule as ServesRule, servesRestrictions: [r as RestrictionKey] });
-            }
-          }}
-        >
-          <option value="everyone">Everyone</option>
-          {RESTRICTIONS.map((r) => (
-            <option key={`except:${r.key}`} value={`except:${r.key}`}>
-              Everyone except {r.label.toLowerCase()}
-            </option>
-          ))}
-          {RESTRICTIONS.map((r) => (
-            <option key={`only:${r.key}`} value={`only:${r.key}`}>
-              Only {r.label.toLowerCase()}
-            </option>
-          ))}
-        </select>
+        <UnitSelect id={`mm-l-${idx}-unit`} label={`Line ${n} unit`} ingredient={ingredient} unitKey={line.unitKey} catalog={catalog} onChange={(k) => onChange({ unitKey: k })} />
       </div>
       <Button variant="quiet" size="sm" aria-label={`Remove line ${n}`} onClick={onRemove}>
         Remove
@@ -585,16 +627,225 @@ function LineRow({
   );
 }
 
-/* ── Preview ──────────────────────────────────────────────────────────── */
+/* ── One variation tab: state + the diff on the base ──────────────────── */
 
-function Preview({ draft, catalog }: { draft: RecipeDraft; catalog: Catalog }) {
-  const [headcount, setHeadcount] = useState(10);
-  const recipe = previewRecipe(draft);
+function VariationPanel({
+  restriction,
+  draft,
+  catalog,
+  ingredients,
+  onChange,
+  onRemove
+}: {
+  restriction: RestrictionKey;
+  draft: RecipeAuthoring;
+  catalog: Catalog;
+  ingredients: Ingredient[];
+  onChange: (fn: (v: DraftVariation) => DraftVariation) => void;
+  onRemove: () => void;
+}) {
+  const v = draft.variations.find((x) => x.restriction === restriction) as DraftVariation;
+  const label = RESTRICTION_BY_KEY[restriction].label;
+  const lower = label.toLowerCase();
+  const view = viewFor(draft, restriction, catalog);
+  const flagged = flaggedIngredients(numericBase(draft), restriction, catalog);
   const ingById = new Map(catalog.ingredients.map((i) => [i.id, i]));
+  const setState = (state: VariationState) => onChange((x) => ({ ...x, state, lines: state === 'substituted' ? x.lines : [] }));
+
+  /** The change recorded against one base ingredient, if any. */
+  const opFor = (baseId: string) => v.lines.find((l) => (l.op === 'swap' || l.op === 'leave_out') && l.baseIngredientId === baseId);
+  const setOp = (baseId: string, op: 'same' | 'swap' | 'leave_out') =>
+    onChange((x) => {
+      const rest = x.lines.filter((l) => !((l.op === 'swap' || l.op === 'leave_out') && l.baseIngredientId === baseId));
+      if (op === 'same') return { ...x, lines: rest };
+      const line: DraftVariationLine = { op, baseIngredientId: baseId, ingredientId: null, amount: '', unitKey: null };
+      return { ...x, lines: [...rest, line] };
+    });
+  const patchOp = (baseId: string, patch: Partial<DraftVariationLine>) =>
+    onChange((x) => ({ ...x, lines: x.lines.map((l) => (l.op === 'swap' && l.baseIngredientId === baseId ? { ...l, ...patch } : l)) }));
+  const adds = v.lines.map((l, i) => ({ l, i })).filter(({ l }) => l.op === 'add');
+  const patchAdd = (i: number, patch: Partial<DraftVariationLine>) => onChange((x) => ({ ...x, lines: x.lines.map((l, j) => (j === i ? { ...l, ...patch } : l)) }));
+  const removeAt = (i: number) => onChange((x) => ({ ...x, lines: x.lines.filter((_, j) => j !== i) }));
+
+  return (
+    <div role="region" aria-label={`${label} version`} className={styles.variation}>
+      <div className={styles.detailHead}>
+        <Badge variant={VIEW_VARIANT[view]}>{VIEW_LABEL[view]}</Badge>
+        {flagged.length > 0 ? (
+          <span className={styles.muted}>Flagged: {flagged.map((i) => i.name).join(', ')}</span>
+        ) : (
+          <span className={styles.muted}>No ingredient in the Everyone list is flagged for {lower}.</span>
+        )}
+        <span className={styles.spacer} />
+        <Button variant="quiet" size="sm" onClick={onRemove}>
+          Remove this variation
+        </Button>
+      </div>
+      <div className={styles.stateRow} role="group" aria-label={`What ${lower} scouts get`}>
+        <Button variant={v.state === 'substituted' ? 'primary' : 'secondary'} size="sm" aria-pressed={v.state === 'substituted'} onClick={() => setState('substituted')}>
+          Substitute
+        </Button>
+        <Button variant={v.state === 'nothing' ? 'primary' : 'secondary'} size="sm" aria-pressed={v.state === 'nothing'} onClick={() => setState('nothing')}>
+          Nothing to change
+        </Button>
+        <Button variant={v.state === 'unsuitable' ? 'primary' : 'secondary'} size="sm" aria-pressed={v.state === 'unsuitable'} onClick={() => setState('unsuitable')}>
+          Not suitable
+        </Button>
+      </div>
+
+      {v.state === 'nothing' && <p className={styles.hint}>{label} scouts get the Everyone recipe as it is. The planner counts them with everyone else.</p>}
+      {v.state === 'unsuitable' && (
+        <p className={styles.hint}>
+          No {lower} version of this. When a patrol enters {lower} scouts, the planner says so and asks them to plan something else for those scouts.
+        </p>
+      )}
+
+      {v.state === 'substituted' && (
+        <>
+          <p className={styles.hint}>
+            Changes from the Everyone recipe. A swap takes the base line away from {lower} scouts and gives them the new line instead; the planner sizes
+            each by how many {lower} scouts are eating.
+          </p>
+          {draft.base.length === 0 ? (
+            <p className={styles.muted}>Add the Everyone lines first.</p>
+          ) : (
+            <ul className={styles.lineList} aria-label={`Changes for ${lower} scouts`}>
+              {draft.base.map((b) => {
+                const ing = ingById.get(b.ingredientId);
+                if (!ing) return null;
+                const op = opFor(b.ingredientId);
+                const q = parseQty(b.amount);
+                const swapIng = op?.op === 'swap' && op.ingredientId ? (ingById.get(op.ingredientId) ?? null) : null;
+                return (
+                  <li key={b.ingredientId} className={styles.lineRow}>
+                    <div className={styles.grow}>
+                      <span className={`adminLabel ${lib.fieldLabel}`}>{ing.name}</span>
+                      <span className={styles.muted}>{Number.isFinite(q) ? perPersonText(q, ing, lineUnit(b.unitKey, ing)) : b.amount}</span>
+                    </div>
+                    <div>
+                      <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`mm-v-${restriction}-${b.ingredientId}`}>
+                        For {lower} scouts
+                      </label>
+                      <select
+                        id={`mm-v-${restriction}-${b.ingredientId}`}
+                        aria-label={`${ing.name} for ${lower} scouts`}
+                        className={lib.selectInput}
+                        value={op?.op ?? 'same'}
+                        onChange={(e) => setOp(b.ingredientId, e.target.value as 'same' | 'swap' | 'leave_out')}
+                      >
+                        <option value="same">Same</option>
+                        <option value="swap">Swap for…</option>
+                        <option value="leave_out">Leave out</option>
+                      </select>
+                    </div>
+                    {op?.op === 'swap' && (
+                      <>
+                        <div className={styles.grow}>
+                          <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`mm-v-${restriction}-${b.ingredientId}-in`}>
+                            Swap for
+                          </label>
+                          <IngredientSelect
+                            id={`mm-v-${restriction}-${b.ingredientId}-in`}
+                            label={`Swap ${ing.name} for`}
+                            value={op.ingredientId ?? ''}
+                            ingredients={ingredients}
+                            onChange={(id) => patchOp(b.ingredientId, { ingredientId: id || null, unitKey: null })}
+                          />
+                        </div>
+                        <div className={styles.narrow}>
+                          <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`mm-v-${restriction}-${b.ingredientId}-amt`}>
+                            Amount per person
+                          </label>
+                          <input
+                            id={`mm-v-${restriction}-${b.ingredientId}-amt`}
+                            aria-label={`Amount of ${swapIng?.name ?? 'the swap'} per person`}
+                            className={lib.textInput}
+                            value={op.amount}
+                            placeholder="½"
+                            onChange={(e) => patchOp(b.ingredientId, { amount: e.target.value })}
+                          />
+                        </div>
+                        <div className={styles.narrow}>
+                          <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`mm-v-${restriction}-${b.ingredientId}-unit`}>
+                            Unit
+                          </label>
+                          <UnitSelect id={`mm-v-${restriction}-${b.ingredientId}-unit`} label={`Unit for the swap of ${ing.name}`} ingredient={swapIng} unitKey={op.unitKey} catalog={catalog} onChange={(k) => patchOp(b.ingredientId, { unitKey: k })} />
+                        </div>
+                      </>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          {adds.length > 0 && (
+            <ul className={styles.lineList} aria-label={`Extra lines for ${lower} scouts`}>
+              {adds.map(({ l, i }, n) => {
+                const ing = l.ingredientId ? (ingById.get(l.ingredientId) ?? null) : null;
+                return (
+                  <li key={i} className={styles.lineRow}>
+                    <div className={styles.grow}>
+                      <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`mm-va-${restriction}-${i}-ing`}>
+                        Extra ingredient
+                      </label>
+                      <IngredientSelect id={`mm-va-${restriction}-${i}-ing`} label={`Extra line ${n + 1} ingredient`} value={l.ingredientId ?? ''} ingredients={ingredients} onChange={(id) => patchAdd(i, { ingredientId: id || null, unitKey: null })} />
+                    </div>
+                    <div className={styles.narrow}>
+                      <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`mm-va-${restriction}-${i}-amt`}>
+                        Amount per person
+                      </label>
+                      <input id={`mm-va-${restriction}-${i}-amt`} aria-label={`Extra line ${n + 1} amount`} className={lib.textInput} value={l.amount} placeholder="½" onChange={(e) => patchAdd(i, { amount: e.target.value })} />
+                    </div>
+                    <div className={styles.narrow}>
+                      <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`mm-va-${restriction}-${i}-unit`}>
+                        Unit
+                      </label>
+                      <UnitSelect id={`mm-va-${restriction}-${i}-unit`} label={`Extra line ${n + 1} unit`} ingredient={ing} unitKey={l.unitKey} catalog={catalog} onChange={(k) => patchAdd(i, { unitKey: k })} />
+                    </div>
+                    <Button variant="quiet" size="sm" aria-label={`Remove extra line ${n + 1}`} onClick={() => removeAt(i)}>
+                      Remove
+                    </Button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <div className={lib.actionsRow}>
+            <Button variant="secondary" size="sm" onClick={() => onChange((x) => ({ ...x, lines: [...x.lines, { op: 'add', baseIngredientId: null, ingredientId: null, amount: '', unitKey: null }] }))}>
+              + Add a line just for {lower} scouts
+            </Button>
+          </div>
+        </>
+      )}
+
+      <div className={lib.fieldGrid}>
+        <div className={lib.fieldFull}>
+          <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`mm-v-${restriction}-note`}>
+            Note for leaders (optional)
+          </label>
+          <input id={`mm-v-${restriction}-note`} className={lib.textInput} value={v.note} maxLength={200} onChange={(e) => onChange((x) => ({ ...x, note: e.target.value }))} placeholder="Why, or what to watch for" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Preview: what one person on the selected tab gets, and the cost ─── */
+
+function Preview({ draft, tab, catalog }: { draft: RecipeAuthoring; tab: Tab; catalog: Catalog }) {
+  const [headcount, setHeadcount] = useState(10);
+  const recipe = previewRecipe(draft, tab);
+  const ingById = new Map(catalog.ingredients.map((i) => [i.id, i]));
+  const who = tab === 'everyone' ? 'person' : `${RESTRICTION_BY_KEY[tab].label.toLowerCase()} scout`;
+  // Cost it as if everyone eating were on this tab: "only" lines size to the
+  // full headcount, "except" lines to zero — the per-person cost of THIS version.
+  const restrictions = { gf: 0, nut: 0, dairy: 0, veg: 0 };
+  if (tab !== 'everyone') restrictions[tab] = headcount;
   const plan: Plan = {
     meal: (draft.mealFit[0] as MealSlot) ?? 'breakfast',
     headcount,
-    restrictions: { gf: 0, nut: 0, dairy: 0, veg: 0 },
+    restrictions,
     recipeIds: [recipe.id],
     packageChoice: {},
     qtyOverride: {},
@@ -608,7 +859,7 @@ function Preview({ draft, catalog }: { draft: RecipeDraft; catalog: Catalog }) {
 
   return (
     <section className={styles.preview} aria-label="Preview">
-      <p className={`adminLabel ${styles.issuesTitle}`}>What one person gets</p>
+      <p className={`adminLabel ${styles.issuesTitle}`}>What one {who} gets</p>
       {recipe.lines.length === 0 ? (
         <p className={styles.muted}>Nothing yet — add an ingredient line.</p>
       ) : (
@@ -616,12 +867,7 @@ function Preview({ draft, catalog }: { draft: RecipeDraft; catalog: Catalog }) {
           {recipe.lines.map((l, i) => {
             const ing = ingById.get(l.ingredientId);
             if (!ing) return null;
-            return (
-              <li key={i}>
-                {perPersonText(l.qtyPerPerson, ing, lineUnit(l.unitKey, ing))}
-                {l.servesRule !== 'everyone' ? <span className={styles.muted}> · {ruleText(l)}</span> : null}
-              </li>
-            );
+            return <li key={i}>{perPersonText(l.qtyPerPerson, ing, lineUnit(l.unitKey, ing))}</li>;
           })}
         </ul>
       )}

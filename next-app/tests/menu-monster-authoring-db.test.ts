@@ -45,6 +45,8 @@ const PKG_OLD = 'p-zz-mm-flour-old';
 const PKG_EGGS = 'p-zz-mm-eggs-dozen';
 
 async function cleanup() {
+  await admin.from('mm_variation_lines').delete().like('recipe_id', 'zz-mm-%');
+  await admin.from('mm_recipe_variations').delete().like('recipe_id', 'zz-mm-%');
   await admin.from('mm_recipe_lines').delete().like('recipe_id', 'zz-mm-%');
   await admin.from('mm_recipes').delete().like('id', 'zz-mm-%');
   await admin.from('mm_packages').delete().like('id', 'p-zz-mm-%');
@@ -153,7 +155,7 @@ describe('menu monster leader tools — actions', () => {
     // Empty the lines through the action itself (a draft may be saved with none).
     const saved = await saveRecipe({
       id: RECIPE, name: 'ZZ Test Pancakes', status: 'draft', mealFit: ['breakfast'], foodGroups: ['grain'],
-      camp: true, trail: false, method: 'stove', stepsMd: '', lines: []
+      camp: true, trail: false, method: 'stove', stepsMd: '', base: [], variations: []
     });
     expect(saved.ok).toBe(true);
     const refused = await setRecipeStatus(RECIPE, 'published');
@@ -165,7 +167,8 @@ describe('menu monster leader tools — actions', () => {
     const bad = await saveRecipe({
       id: RECIPE, name: 'ZZ Test Pancakes', status: 'draft', mealFit: ['breakfast'], foodGroups: [],
       camp: true, trail: false, method: null, stepsMd: '',
-      lines: [{ ingredientId: FLOUR, amount: 'two', unitKey: null, servesRule: 'everyone', servesRestrictions: [] }]
+      base: [{ ingredientId: FLOUR, amount: 'two', unitKey: null }],
+      variations: []
     });
     expect(bad.ok).toBe(false);
     expect(bad.error).toMatch(/isn't a number/);
@@ -174,7 +177,8 @@ describe('menu monster leader tools — actions', () => {
     const good = await saveRecipe({
       id: RECIPE, name: 'ZZ Test Pancakes', status: 'draft', mealFit: ['breakfast'], foodGroups: ['grain'],
       camp: true, trail: false, method: 'stove', stepsMd: '',
-      lines: [{ ingredientId: FLOUR, amount: '½', unitKey: null, servesRule: 'everyone', servesRestrictions: [] }]
+      base: [{ ingredientId: FLOUR, amount: '½', unitKey: null }],
+      variations: []
     });
     expect(good.ok).toBe(true);
     expect((await linesOf(RECIPE)).map((l) => Number(l.qty_per_person))).toEqual([0.5]);
@@ -213,5 +217,51 @@ describe('menu monster leader tools — actions', () => {
     expect(Number((old as { yield: number }).yield)).toBe(12);
     // The implicit line is pinned to the OLD unit; the explicit one is untouched.
     expect((await linesOf(RECIPE)).map((l) => l.unit_key)).toEqual(['cup', 'tbsp']);
+  });
+
+  it('Action_SaveRecipe_CompilesVariations_IntoLinesAndRows', async () => {
+    const saved = await saveRecipe({
+      id: RECIPE, name: 'ZZ Test Pancakes', status: 'draft', mealFit: ['breakfast'], foodGroups: ['grain'],
+      camp: true, trail: false, method: 'stove', stepsMd: '',
+      base: [
+        { ingredientId: FLOUR, amount: '½', unitKey: null },
+        { ingredientId: EGGS, amount: '1', unitKey: null }
+      ],
+      variations: [
+        { restriction: 'gf', state: 'substituted', note: '', lines: [{ op: 'swap', baseIngredientId: FLOUR, ingredientId: MILK, amount: '1', unitKey: null }] },
+        { restriction: 'veg', state: 'unsuitable', note: 'No meat-free version', lines: [] }
+      ]
+    });
+    expect(saved).toEqual({ ok: true, id: RECIPE });
+
+    const { data: lines } = await admin
+      .from('mm_recipe_lines')
+      .select('position, ingredient_id, serves_rule, serves_restrictions, serves_restriction')
+      .eq('recipe_id', RECIPE)
+      .order('position');
+    expect(lines).toEqual([
+      { position: 1, ingredient_id: FLOUR, serves_rule: 'except', serves_restrictions: ['gf'], serves_restriction: 'gf' },
+      { position: 2, ingredient_id: EGGS, serves_rule: 'everyone', serves_restrictions: [], serves_restriction: null },
+      { position: 3, ingredient_id: MILK, serves_rule: 'only', serves_restrictions: ['gf'], serves_restriction: 'gf' }
+    ]);
+    const { data: vars } = await admin.from('mm_recipe_variations').select('restriction, state, note').eq('recipe_id', RECIPE).order('restriction');
+    expect(vars).toEqual([
+      { restriction: 'gf', state: 'substituted', note: null },
+      { restriction: 'veg', state: 'unsuitable', note: 'No meat-free version' }
+    ]);
+    const { data: vlines } = await admin.from('mm_variation_lines').select('restriction, position, op, base_ingredient_id, ingredient_id, qty_per_person').eq('recipe_id', RECIPE);
+    expect(vlines).toEqual([{ restriction: 'gf', position: 1, op: 'swap', base_ingredient_id: FLOUR, ingredient_id: MILK, qty_per_person: 1 }]);
+
+    // The authoring loader hands the diff back; a duplicate base ingredient is refused.
+    const authoring = await loadAuthoringCatalogWith(admin);
+    const r = authoring.recipes.find((x) => x.id === RECIPE);
+    expect(r?.variations?.map((v) => [v.restriction, v.state, v.lines.length])).toEqual([['gf', 'substituted', 1], ['veg', 'unsuitable', 0]]);
+    const dup = await saveRecipe({
+      id: RECIPE, name: 'ZZ Test Pancakes', status: 'draft', mealFit: ['breakfast'], foodGroups: [], camp: true, trail: false, method: null, stepsMd: '',
+      base: [{ ingredientId: FLOUR, amount: '1', unitKey: null }, { ingredientId: FLOUR, amount: '2', unitKey: 'tbsp' }],
+      variations: []
+    });
+    expect(dup.ok).toBe(false);
+    expect(dup.error).toMatch(/already has a line/);
   });
 });

@@ -17,6 +17,7 @@ import type { Catalog, Plan, RestrictionWarning, ShoppingLine, Totals } from '@/
 import { RESTRICTIONS, SECTIONS, SECTION_ORDER, qtyText } from '@/lib/menu-monster/units';
 import { effectiveRestrictions, isUsable, packCount, packNoun, sourcesText } from '@/lib/menu-monster/engine';
 import { MEALS } from '@/lib/menu-monster/units';
+import { baseOf, diffText, variationsOf } from '@/lib/menu-monster/variations';
 import s from './planner.module.css';
 
 const REQUIREMENT = 'Cooking 5b';
@@ -43,20 +44,22 @@ export function PrintSheet({
   const staples = lines.filter((l) => l.status === 'staple');
   const sections = SECTION_ORDER.filter((sec) => buyable.some((l) => l.ing.section === sec));
   const RCP = new Map(catalog.recipes.map((r) => [r.id, r]));
-  const ING = new Map(catalog.ingredients.map((i) => [i.id, i]));
   const menuNames = plan.recipeIds.map((id) => RCP.get(id)?.name ?? id).join(', ') || 'No menu items chosen';
   const mealLabel = MEALS.find((m) => m.key === plan.meal)?.label ?? plan.meal;
   const H = plan.headcount;
 
+  // One phrase per menu item that has a version for this restriction —
+  // the same diff the card strip shows — or "not suitable" where a leader
+  // said so (Plans/Menu-Monster-Recipe-Variations.md).
   const accommodated = active.map((r) => {
     const swaps: string[] = [];
     for (const rid of plan.recipeIds) {
       const rc = RCP.get(rid);
       if (!rc) continue;
-      const only = rc.lines.filter((l) => l.servesRule === 'only' && l.servesRestrictions.includes(r.key));
-      if (only.length) {
-        swaps.push(`${rc.name}: ${only.map((l) => (ING.get(l.ingredientId)?.name ?? l.ingredientId).toLowerCase()).join(', ')}`);
-      }
+      const v = variationsOf(rc).find((x) => x.restriction === r.key);
+      if (!v) continue;
+      if (v.state === 'unsuitable') swaps.push(`${rc.name}: not suitable — plan something else`);
+      else if (v.state === 'substituted' && v.lines.length) swaps.push(`${rc.name}: ${diffText(v, baseOf(rc), catalog).join(', ')}`);
     }
     return { r, text: swaps.length ? swaps.join('; ') : 'no substitutions in this menu' };
   });

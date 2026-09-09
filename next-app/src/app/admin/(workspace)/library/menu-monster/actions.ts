@@ -26,11 +26,14 @@ import {
   changeUnitPlan,
   recipeIssues,
   slugId,
+  variationsSummary,
   type ChangeUnitPlan,
+  type RecipeAuthoring,
   type RecipeDraft
 } from '@/lib/menu-monster/authoring';
-import { UNITS, parseQty } from '@/lib/menu-monster/units';
-import type { Recipe, RecipeStatus, RestrictionKey, Section, Unit } from '@/lib/menu-monster/types';
+import { compileRecipe, type BaseLine } from '@/lib/menu-monster/variations';
+import { RESTRICTION_BY_KEY, UNITS, parseQty } from '@/lib/menu-monster/units';
+import type { Recipe, RecipeStatus, RestrictionKey, Section, Unit, Variation, VariationLine } from '@/lib/menu-monster/types';
 
 export interface Result {
   ok: boolean;
@@ -518,58 +521,130 @@ function draftOf(r: Recipe): RecipeDraft {
 }
 
 /**
- * Save a recipe's row and lines (one transaction). A DRAFT may carry issues
- * — that is what drafts are for — except the ones the table cannot hold: a
- * line with no ingredient, or an amount that is not a number. Status is not
- * changed here (setRecipeStatus is the only status writer); a new recipe
- * starts as a draft.
+ * Save a recipe: its row, its COMPILED lines, and the authoring diffs, in one
+ * transaction (mm_save_recipe v2). A DRAFT may carry issues — that is what
+ * drafts are for — except the ones the tables cannot hold: a line with no
+ * ingredient, an amount that is not a number, a base ingredient listed twice
+ * (the unique index), a change that points at nothing. Status is not changed
+ * here (setRecipeStatus is the only status writer); a new recipe starts as a
+ * draft.
  */
-export async function saveRecipe(draft: RecipeDraft): Promise<Result> {
+export async function saveRecipe(a: RecipeAuthoring): Promise<Result> {
   const denied = await guard();
   if (denied) return denied;
-  const name = cap(draft.name, MAX.name);
+  const name = cap(a.name, MAX.name);
   if (!name) return { ok: false, error: 'Give the menu item a name.' };
 
-  const lines: { ingredient_id: string; qty_per_person: number; unit_key: string | null; serves_rule: string; serves_restrictions: string[]; serves_restriction: string | null }[] = [];
-  for (const [i, l] of draft.lines.entries()) {
+  const amountOf = (raw: string, where: string): { q?: number; error?: string } => {
+    const t = raw.trim();
+    if (!t) return { error: `${where}: type an amount per person.` };
+    const q = parseQty(t);
+    if (!Number.isFinite(q) || q < 0) return { error: `${where}: '${t}' isn't a number. Type something like ½, 1/2 or 0.5.` };
+    return { q };
+  };
+
+  const base: BaseLine[] = [];
+  const seen = new Set<string>();
+  for (const [i, l] of a.base.entries()) {
     if (!l.ingredientId) return { ok: false, error: `Line ${i + 1}: pick an ingredient.` };
-    const raw = l.amount.trim();
-    const q = parseQty(raw);
-    if (!raw) return { ok: false, error: `Line ${i + 1}: type an amount per person.` };
-    if (!Number.isFinite(q) || q < 0) return { ok: false, error: `Line ${i + 1}: '${raw}' isn't a number. Type something like ½, 1/2 or 0.5.` };
-    lines.push({
-      ingredient_id: l.ingredientId,
-      qty_per_person: q,
-      unit_key: l.unitKey,
-      serves_rule: l.servesRule,
-      serves_restrictions: l.servesRule === 'everyone' ? [] : l.servesRestrictions,
-      serves_restriction: l.servesRule === 'everyone' ? null : (l.servesRestrictions[0] ?? null)
-    });
+    if (seen.has(l.ingredientId)) return { ok: false, error: `Line ${i + 1}: that ingredient already has a line — combine them.` };
+    seen.add(l.ingredientId);
+    const { q, error } = amountOf(l.amount, `Line ${i + 1}`);
+    if (error) return { ok: false, error };
+    base.push({ ingredientId: l.ingredientId, qtyPerPerson: q as number, unitKey: l.unitKey || null });
   }
+
+  const variations: Variation[] = [];
+  const seenR = new Set<string>();
+  for (const v of a.variations) {
+    if (!RESTRICTION_KEYS.includes(v.restriction)) return { ok: false, error: 'Unknown restriction.' };
+    if (seenR.has(v.restriction)) return { ok: false, error: `Two ${v.restriction} variations — keep one.` };
+    seenR.add(v.restriction);
+    if (!['nothing', 'substituted', 'unsuitable'].includes(v.state)) return { ok: false, error: 'Unknown variation state.' };
+    const label = RESTRICTION_BY_KEY[v.restriction].label;
+    const lines: VariationLine[] = [];
+    if (v.state === 'substituted') {
+      for (const [i, l] of v.lines.entries()) {
+        const where = `${label}, change ${i + 1}`;
+        if (!['swap', 'leave_out', 'add'].includes(l.op)) return { ok: false, error: `${where}: unknown change.` };
+        const needsBase = l.op === 'swap' || l.op === 'leave_out';
+        const needsIn = l.op === 'swap' || l.op === 'add';
+        if (needsBase && (!l.baseIngredientId || !seen.has(l.baseIngredientId))) return { ok: false, error: `${where}: the base line it changes is gone.` };
+        let q: number | null = null;
+        if (needsIn) {
+          if (!l.ingredientId) return { ok: false, error: `${where}: pick the ingredient.` };
+          const r = amountOf(l.amount, where);
+          if (r.error) return { ok: false, error: r.error };
+          q = r.q as number;
+        }
+        lines.push({
+          op: l.op,
+          baseIngredientId: needsBase ? l.baseIngredientId : null,
+          ingredientId: needsIn ? l.ingredientId : null,
+          qtyPerPerson: q,
+          unitKey: needsIn ? l.unitKey || null : null
+        });
+      }
+    }
+    variations.push({ restriction: v.restriction, state: v.state, note: cap(v.note ?? '', MAX.note) || null, lines });
+  }
+
+  const compiled = compileRecipe<number>(base, variations);
 
   const supabase = createAdminClient();
   const { data: rows } = await supabase.from('mm_recipes').select('id, status, sort_order');
   const existing = ((rows ?? []) as { id: string; status: RecipeStatus; sort_order: number }[]);
   const taken = new Set(existing.map((r) => r.id));
-  const current = existing.find((r) => r.id === draft.id);
-  const id = current ? draft.id : draft.id && !taken.has(draft.id) ? draft.id : slugId(name, taken);
+  const current = existing.find((r) => r.id === a.id);
+  const id = current ? a.id : a.id && !taken.has(a.id) ? a.id : slugId(name, taken);
   const status: RecipeStatus = current ? current.status : 'draft';
   const sortOrder = current ? current.sort_order : Math.max(0, ...existing.map((r) => r.sort_order)) + 10;
+
+  // qa-lead, 2026-09-08: a clean message beats a foreign-key error from a
+  // stale page, and a PUBLISHED recipe must not quietly take a zero line
+  // (the publish gate only runs at publish time).
+  const { data: ingRows } = await supabase.from('mm_ingredients').select('id');
+  const known = new Set(((ingRows ?? []) as { id: string }[]).map((r) => r.id));
+  const unknown = compiled.find((l) => !known.has(l.ingredientId));
+  if (unknown) return { ok: false, error: `Unknown ingredient "${unknown.ingredientId}" — reload the page and try again.` };
+  if (status === 'published') {
+    const zero = compiled.findIndex((l) => !(l.qtyPerPerson > 0));
+    if (zero >= 0) return { ok: false, error: `Line ${zero + 1}: the amount per person must be more than zero on a published item.` };
+  }
 
   const { error } = await supabase.rpc('mm_save_recipe', {
     p_recipe: {
       id,
       name,
       status,
-      meal_fit: draft.mealFit,
-      food_groups: draft.foodGroups,
-      camp: draft.camp,
-      trail: draft.trail,
-      method: draft.method ? cap(draft.method, MAX.method) : null,
-      steps_md: cap(draft.stepsMd ?? '', MAX.steps),
+      meal_fit: a.mealFit,
+      food_groups: a.foodGroups,
+      camp: a.camp,
+      trail: a.trail,
+      method: a.method ? cap(a.method, MAX.method) : null,
+      steps_md: cap(a.stepsMd ?? '', MAX.steps),
       sort_order: sortOrder
     },
-    p_lines: lines
+    p_lines: compiled.map((l) => ({
+      ingredient_id: l.ingredientId,
+      qty_per_person: l.qtyPerPerson,
+      unit_key: l.unitKey,
+      serves_rule: l.servesRule,
+      serves_restrictions: l.servesRestrictions,
+      serves_restriction: l.servesRestrictions[0] ?? null
+    })),
+    p_variations: variations.map((v) => ({
+      restriction: v.restriction,
+      state: v.state,
+      note: v.note,
+      lines: v.lines.map((l) => ({
+        op: l.op,
+        base_ingredient_id: l.baseIngredientId,
+        ingredient_id: l.ingredientId,
+        qty_per_person: l.qtyPerPerson,
+        unit_key: l.unitKey
+      }))
+    }))
   });
   if (error) return { ok: false, error: error.message };
 
@@ -579,7 +654,10 @@ export async function saveRecipe(draft: RecipeDraft): Promise<Result> {
     entityType: 'mm_recipe',
     entityId: id,
     summary: `${current ? 'Saved' : 'Created'} Menu Monster menu item "${name}"`,
-    details: [{ field: 'Ingredient lines', from: '—', to: String(lines.length) }]
+    details: [
+      { field: 'Ingredient lines', from: '—', to: String(compiled.length) },
+      { field: 'Variations', from: '—', to: variationsSummary(a.variations) }
+    ]
   });
   revalidate();
   return { ok: true, id };
@@ -649,6 +727,18 @@ export async function duplicateRecipe(id: string): Promise<Result> {
       serves_rule: l.servesRule,
       serves_restrictions: l.servesRestrictions,
       serves_restriction: l.servesRestrictions[0] ?? null
+    })),
+    p_variations: (recipe.variations ?? []).map((v) => ({
+      restriction: v.restriction,
+      state: v.state,
+      note: v.note,
+      lines: v.lines.map((l) => ({
+        op: l.op,
+        base_ingredient_id: l.baseIngredientId,
+        ingredient_id: l.ingredientId,
+        qty_per_person: l.qtyPerPerson,
+        unit_key: l.unitKey
+      }))
     }))
   });
   if (error) return { ok: false, error: error.message };

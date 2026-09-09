@@ -25,24 +25,35 @@
 }
 .muted { color: var(--text-meta); font-weight: 400; }
 
-/* Step 2 legend for the two-letter diet pills (2026-09-08). */
-.legend {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sp-2) var(--sp-4);
+/* Step 2: a recipe's other versions as strips under its base list (2026-09-08). */
+.strips { list-style: none; margin: var(--sp-2) 0 0 34px; padding: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
+.strip { border-top: 1px dashed var(--border-light); padding-top: var(--sp-1); }
+.stripBtn {
   font-family: var(--font-ui);
-  font-size: var(--fs-xs);
-  color: var(--text-meta);
-  line-height: 1.5;
-  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--navy);
+  background: none;
+  border: none;
+  padding: var(--sp-2) 0;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  cursor: pointer;
 }
-.legendItem { display: inline-flex; align-items: center; gap: var(--sp-1); }
-.legend strong { color: var(--text-body); }
-/* The two-letter code inside a pill: no abbr underline; "except" strikes the
-   letters so it never differs from "only" by colour alone. */
-.ruleOnly { text-decoration: none; letter-spacing: 0.04em; }
-.ruleExcept { text-decoration: line-through; text-decoration-thickness: 1.5px; letter-spacing: 0.04em; }
+.stripBtn:hover { color: var(--forest); text-decoration: underline; text-underline-offset: 2px; }
+.stripBtn:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.stripStatic {
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--status-danger);
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+.stripDiff { list-style: none; margin: 0 0 var(--sp-2) var(--sp-3); padding: 0; font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-body); line-height: 1.6; }
 .strong { color: var(--text-head); }
 .linkBtn {
   font-family: var(--font-ui);

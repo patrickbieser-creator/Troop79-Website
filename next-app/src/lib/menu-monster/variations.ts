@@ -17,16 +17,12 @@
  *   crossRestrictionWarnings  decision 3: a swap that carries another flag
  */
 
-import type { Catalog, Ingredient, RecipeLine, RestrictionKey, Variation, VariationLine } from './types';
-import { RESTRICTIONS, RESTRICTION_BY_KEY } from './units';
+import type { Catalog, Ingredient, RecipeLine, RestrictionKey, ServesRule, Variation, VariationLine, VariationOp, VariationState } from './types';
+import { RESTRICTIONS, RESTRICTION_BY_KEY, lineUnit, perPersonText } from './units';
 
 export type { Variation, VariationLine } from './types';
 
-export interface BaseLine {
-  ingredientId: string;
-  qtyPerPerson: number;
-  unitKey: string | null;
-}
+export type BaseLine = QtyLine<number>;
 
 /** What a tab (or the item list's dots) shows for one restriction. */
 export type VariationView = 'not_needed' | 'needs_look' | 'nothing' | 'substituted' | 'unsuitable';
@@ -44,25 +40,54 @@ const sortKeys = (keys: Iterable<RestrictionKey>): RestrictionKey[] => [...new S
 
 const changes = (v: Variation): VariationLine[] => (v.state === 'substituted' ? v.lines : []);
 
+/** A line with any quantity type: numbers for the engine, the raw text a
+ *  leader typed for the editor (so "½" survives compilation and its error
+ *  message can quote it). */
+export interface QtyLine<Q> {
+  ingredientId: string;
+  qtyPerPerson: Q;
+  unitKey: string | null;
+}
+export interface QtyVariationLine<Q> {
+  op: VariationOp;
+  baseIngredientId: string | null;
+  ingredientId: string | null;
+  qtyPerPerson: Q | null;
+  unitKey: string | null;
+}
+export interface QtyVariation<Q> {
+  restriction: RestrictionKey;
+  state: VariationState;
+  note: string | null;
+  lines: QtyVariationLine<Q>[];
+}
+export interface CompiledLine<Q> extends QtyLine<Q> {
+  servesRule: ServesRule;
+  servesRestrictions: RestrictionKey[];
+}
+
+const qtyChanges = <Q,>(v: QtyVariation<Q>): QtyVariationLine<Q>[] => (v.state === 'substituted' ? v.lines : []);
+
 /** Diff → the engine's lines: base lines in order (each "everyone", or
  *  "everyone except" the restrictions that leave it out or swap it), then the
  *  swapped-in and added lines as "only" lines, merged when two restrictions
- *  add the identical line. */
-export function compileRecipe(base: readonly BaseLine[], variations: readonly Variation[]): RecipeLine[] {
-  const out: RecipeLine[] = [];
+ *  add the identical line. Generic over the quantity so the editor compiles
+ *  raw text and the server compiles numbers with one function. */
+export function compileRecipe<Q>(base: readonly QtyLine<Q>[], variations: readonly QtyVariation<Q>[]): CompiledLine<Q>[] {
+  const out: CompiledLine<Q>[] = [];
   const outFor = new Map<string, Set<RestrictionKey>>();
-  const adds = new Map<string, { line: BaseLine; keys: Set<RestrictionKey> }>();
+  const adds = new Map<string, { line: QtyLine<Q>; keys: Set<RestrictionKey> }>();
   const addOrder: string[] = [];
 
   for (const v of variations) {
-    for (const l of changes(v)) {
+    for (const l of qtyChanges(v)) {
       if ((l.op === 'swap' || l.op === 'leave_out') && l.baseIngredientId) {
         const set = outFor.get(l.baseIngredientId) ?? new Set<RestrictionKey>();
         set.add(v.restriction);
         outFor.set(l.baseIngredientId, set);
       }
       if ((l.op === 'swap' || l.op === 'add') && l.ingredientId && l.qtyPerPerson != null) {
-        const key = `${l.ingredientId}|${l.qtyPerPerson}|${l.unitKey ?? ''}`;
+        const key = `${l.ingredientId}|${String(l.qtyPerPerson)}|${l.unitKey ?? ''}`;
         const entry = adds.get(key) ?? { line: { ingredientId: l.ingredientId, qtyPerPerson: l.qtyPerPerson, unitKey: l.unitKey }, keys: new Set<RestrictionKey>() };
         if (!adds.has(key)) addOrder.push(key);
         entry.keys.add(v.restriction);
@@ -82,7 +107,7 @@ export function compileRecipe(base: readonly BaseLine[], variations: readonly Va
     });
   }
   // Adds in restriction order, then in the order they were written.
-  const addEntries = addOrder.map((k) => adds.get(k) as { line: BaseLine; keys: Set<RestrictionKey> });
+  const addEntries = addOrder.map((k) => adds.get(k) as { line: QtyLine<Q>; keys: Set<RestrictionKey> });
   addEntries.sort((a, b) => Math.min(...[...a.keys].map((k) => ORDER[k])) - Math.min(...[...b.keys].map((k) => ORDER[k])));
   for (const e of addEntries) {
     out.push({ ...e.line, servesRule: 'only', servesRestrictions: sortKeys(e.keys) });
@@ -135,7 +160,8 @@ export function flaggedIngredients(base: readonly BaseLine[], restriction: Restr
 
 export function variationView(
   base: readonly BaseLine[],
-  variation: Variation | undefined,
+  /** The stored or drafted variation — only its state and whether it has any changes matter. */
+  variation: { state: VariationState; lines: readonly unknown[]; restriction?: RestrictionKey; note?: string | null } | undefined,
   restriction: RestrictionKey,
   catalog: Catalog
 ): VariationView {
@@ -173,4 +199,38 @@ export function crossRestrictionWarnings(variations: readonly Variation[], catal
 /** "For gluten-free scouts: 3 changes" — the strip label on the public card. */
 export function changeCount(v: Variation): number {
   return changes(v).length;
+}
+
+/** The diff as short phrases for the card strip and the print sheet:
+ *  "½ cup pancake mix → 1 cup almond flour", "− butter", "+ 1 egg". */
+export function diffText(v: Variation, base: readonly BaseLine[], catalog: Catalog): string[] {
+  const byId = new Map(catalog.ingredients.map((i) => [i.id, i]));
+  const baseById = new Map(base.map((b) => [b.ingredientId, b]));
+  const what = (ingredientId: string, qty: number | null, unitKey: string | null) => {
+    const ing = byId.get(ingredientId);
+    if (!ing) return ingredientId;
+    return qty == null ? ing.name.toLowerCase() : perPersonText(qty, ing, lineUnit(unitKey, ing));
+  };
+  const out: string[] = [];
+  for (const l of changes(v)) {
+    if (l.op === 'leave_out' && l.baseIngredientId) {
+      out.push(`− ${byId.get(l.baseIngredientId)?.name.toLowerCase() ?? l.baseIngredientId}`);
+    } else if (l.op === 'swap' && l.baseIngredientId && l.ingredientId) {
+      const b = baseById.get(l.baseIngredientId);
+      out.push(`${what(l.baseIngredientId, b?.qtyPerPerson ?? null, b?.unitKey ?? null)} → ${what(l.ingredientId, l.qtyPerPerson, l.unitKey)}`);
+    } else if (l.op === 'add' && l.ingredientId) {
+      out.push(`+ ${what(l.ingredientId, l.qtyPerPerson, l.unitKey)}`);
+    }
+  }
+  return out;
+}
+
+/** A recipe's variations, or — for one that predates them — the diffs its lines imply. */
+export function variationsOf(recipe: { lines: readonly RecipeLine[]; variations?: Variation[] }): Variation[] {
+  return recipe.variations && recipe.variations.length > 0 ? recipe.variations : variationsFromLines(recipe.lines).variations;
+}
+
+/** The base lines of a recipe: what an unrestricted person gets. */
+export function baseOf(recipe: { lines: readonly RecipeLine[] }): BaseLine[] {
+  return variationsFromLines(recipe.lines).base;
 }

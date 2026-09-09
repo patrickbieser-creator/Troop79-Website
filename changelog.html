@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>September 8, 2026</strong> &nbsp;&middot;&nbsp; v1.124.1</p>
+      <p>Last updated: <strong>September 8, 2026</strong> &nbsp;&middot;&nbsp; v1.125.0</p>
     </div>
   </div>
 
@@ -494,6 +494,23 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.125.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.125.0</span>
+        <span class="release-date">September 8, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Menu Monster recipes: one plain recipe, plus a version per diet when one is needed</p>
+        <ul class="change-list">
+          <li><span><strong>For scouts: each menu item now shows the plain recipe</strong> &mdash; what an unrestricted person gets &mdash; and, underneath, a strip for each other version: &ldquo;For gluten-free scouts: 3 changes&rdquo;. Tap it and only the changes open inline (&ldquo;&frac12; cup pancake mix &rarr; 1 cup almond flour&rdquo;, &ldquo;+ 1 egg&rdquo;); everything else is the same. A menu item a leader has marked not suitable for a diet says so in words, and when a patrol enters scouts on that diet the card warns them to plan something else. The two-letter pills and the legend from earlier today are gone: there is no merged list left to decode.</span></li>
+          <li><span><strong>For leaders: recipes are edited as an Everyone tab plus a tab per diet</strong>, added only when needed. Each tab carries a state worked out from the ingredients &mdash; Nothing to change, Needs a look (an ingredient is flagged for that diet and nobody has decided), Substituted, or Not suitable &mdash; and the &ldquo;Add a variation&rdquo; menu counts the ones that need a look. A variation is a list of changes to the plain recipe: keep a line, swap it for something, leave it out, or add a line just for those scouts. The preview follows the tab, a box shows exactly what the planner will compute, and a swap that carries another flag (almond flour is a nut) is called out for a scout who has both.</span></li>
+          <li><span><strong>Behind the scenes:</strong> a line can now serve &ldquo;everyone except dairy-free or vegetarian&rdquo; when two diets change the same ingredient; the changes are stored as their own rows and compiled into the lines the planner has always read, so the shopping math is unchanged. Existing recipes were converted automatically; a recipe that only left an ingredient out for a diet stays that way until a leader says otherwise.</span></li>
+        </ul>
       </div>
     </div>
 

@@ -22,13 +22,17 @@ import type {
   Ingredient,
   MealSlot,
   Package,
+  Recipe,
   RecipeStatus,
   RestrictionKey,
   ServesRule,
-  Unit
+  Unit,
+  VariationOp,
+  VariationState
 } from './types';
 import { RESTRICTION_BY_KEY, UNITS, WARN_ALLERGENS, conv, lineUnit, parseQty, stepFactor, supportedUnits } from './units';
 import { ruleText } from './engine';
+import { compileRecipe, crossRestrictionWarnings, variationsFromLines } from './variations';
 
 export const STALE_DAYS = 90;
 export const BIG_CHANGE = 0.25;
@@ -206,6 +210,131 @@ export interface RecipeDraft {
   lines: DraftLine[];
 }
 
+/* ---- Authoring shape: base + variations (Plans/Menu-Monster-Recipe-Variations.md) ---- */
+
+export interface DraftBaseLine {
+  ingredientId: string;
+  /** Raw text as typed. */
+  amount: string;
+  unitKey: string | null;
+}
+
+export interface DraftVariationLine {
+  op: VariationOp;
+  baseIngredientId: string | null;
+  ingredientId: string | null;
+  amount: string;
+  unitKey: string | null;
+}
+
+export interface DraftVariation {
+  restriction: RestrictionKey;
+  state: VariationState;
+  note: string;
+  lines: DraftVariationLine[];
+}
+
+/** What the editor holds and the save action receives: the Everyone list
+ *  plus the per-restriction diffs. `compileAuthoring` turns it into the
+ *  compiled-line RecipeDraft that recipeIssues() judges. */
+export interface RecipeAuthoring {
+  id: string;
+  name: string;
+  status: RecipeStatus;
+  mealFit: MealSlot[];
+  foodGroups: FoodGroup[];
+  camp: boolean;
+  trail: boolean;
+  method: string | null;
+  stepsMd: string;
+  base: DraftBaseLine[];
+  variations: DraftVariation[];
+}
+
+const blank = (a: RecipeAuthoring) => ({
+  id: a.id,
+  name: a.name,
+  status: a.status,
+  mealFit: a.mealFit,
+  foodGroups: a.foodGroups,
+  camp: a.camp,
+  trail: a.trail,
+  method: a.method,
+  stepsMd: a.stepsMd
+});
+
+/** Diff → compiled draft lines, with the raw amounts intact so an error can quote them. */
+export function compileAuthoring(a: RecipeAuthoring): RecipeDraft {
+  const compiled = compileRecipe<string>(
+    a.base.map((b) => ({ ingredientId: b.ingredientId, qtyPerPerson: b.amount, unitKey: b.unitKey })),
+    a.variations.map((v) => ({
+      restriction: v.restriction,
+      state: v.state,
+      note: v.note || null,
+      lines: v.lines.map((l) => ({
+        op: l.op,
+        baseIngredientId: l.baseIngredientId,
+        ingredientId: l.ingredientId,
+        qtyPerPerson: l.op === 'leave_out' ? null : l.amount,
+        unitKey: l.unitKey
+      }))
+    }))
+  );
+  return {
+    ...blank(a),
+    lines: compiled.map((c) => ({
+      ingredientId: c.ingredientId,
+      amount: c.qtyPerPerson,
+      unitKey: c.unitKey,
+      servesRule: c.servesRule,
+      servesRestrictions: c.servesRestrictions
+    }))
+  };
+}
+
+/** A saved recipe as authoring: base = its everyone/except lines; the diffs
+ *  from its variation rows, or re-derived from the lines for a recipe that
+ *  predates variations (fixtures, or a catalog before the backfill). */
+export function authoringOf(r: Recipe): RecipeAuthoring {
+  const derived = variationsFromLines(r.lines);
+  const source = r.variations && r.variations.length > 0 ? r.variations : derived.variations;
+  return {
+    id: r.id,
+    name: r.name,
+    status: r.status,
+    mealFit: r.mealFit,
+    foodGroups: r.foodGroups,
+    camp: r.camp,
+    trail: r.trail,
+    method: r.method,
+    stepsMd: r.stepsMd ?? '',
+    base: derived.base.map((b) => ({ ingredientId: b.ingredientId, amount: String(b.qtyPerPerson), unitKey: b.unitKey })),
+    variations: source.map((v) => ({
+      restriction: v.restriction,
+      state: v.state,
+      note: v.note ?? '',
+      lines: v.lines.map((l) => ({
+        op: l.op,
+        baseIngredientId: l.baseIngredientId,
+        ingredientId: l.ingredientId,
+        amount: l.qtyPerPerson == null ? '' : String(l.qtyPerPerson),
+        unitKey: l.unitKey
+      }))
+    }))
+  };
+}
+
+/** "gf: substituted (3 changes) · veg: not suitable" for the audit trail. */
+export function variationsSummary(variations: readonly DraftVariation[]): string {
+  if (variations.length === 0) return '—';
+  return variations
+    .map((v) => {
+      const state = v.state === 'substituted' ? `substituted (${v.lines.length} change${v.lines.length === 1 ? '' : 's'})` : v.state === 'nothing' ? 'nothing to change' : 'not suitable';
+      return `${v.restriction}: ${state}`;
+    })
+    .join(' · ');
+}
+
 export type IssueLevel = 'error' | 'warning';
 
 export interface RecipeIssue {
@@ -218,6 +347,37 @@ export interface RecipeIssue {
 }
 
 export const blockingIssues = (issues: readonly RecipeIssue[]): RecipeIssue[] => issues.filter((i) => i.level === 'error');
+
+/** Everything wrong with an authoring draft: the compiled lines' issues, the
+ *  diff's own holes (a swap with nothing picked), and the cross-restriction
+ *  warnings (decision 3). */
+export function authoringIssues(a: RecipeAuthoring, catalog: Catalog): RecipeIssue[] {
+  const issues = recipeIssues(compileAuthoring(a), catalog);
+  const byId = new Map(catalog.ingredients.map((i) => [i.id, i]));
+  const baseIds = new Set(a.base.map((b) => b.ingredientId));
+  for (const v of a.variations) {
+    if (v.state !== 'substituted') continue;
+    const label = RESTRICTION_BY_KEY[v.restriction].label;
+    v.lines.forEach((l, i) => {
+      const n = i + 1;
+      if ((l.op === 'swap' || l.op === 'leave_out') && (!l.baseIngredientId || !baseIds.has(l.baseIngredientId))) {
+        issues.push({ level: 'error', text: `${label}, change ${n}: the base line it changes is gone — remove this change.` });
+      }
+      if ((l.op === 'swap' || l.op === 'add') && !l.ingredientId) {
+        const what = l.op === 'swap' ? `pick what replaces ${byId.get(l.baseIngredientId ?? '')?.name ?? 'the base line'}` : 'pick the ingredient to add';
+        issues.push({ level: 'error', text: `${label}, change ${n}: ${what}.` });
+      }
+    });
+  }
+  const numeric = a.variations.map((v) => ({
+    restriction: v.restriction,
+    state: v.state,
+    note: v.note || null,
+    lines: v.lines.map((l) => ({ op: l.op, baseIngredientId: l.baseIngredientId, ingredientId: l.ingredientId, qtyPerPerson: parseQty(l.amount) || 0, unitKey: l.unitKey }))
+  }));
+  for (const text of crossRestrictionWarnings(numeric, catalog)) issues.push({ level: 'warning', text });
+  return issues;
+}
 
 function hasUsablePackage(ingredientId: string, catalog: Catalog): boolean {
   return catalog.packages.some((p) => p.ingredientId === ingredientId && p.yield != null && !p.retiredAt);

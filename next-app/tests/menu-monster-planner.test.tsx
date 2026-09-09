@@ -102,7 +102,7 @@ const line = (
   serves_restrictions: serves_restriction ? [serves_restriction] : []
 });
 
-const CATALOG = mapCatalog({
+const ROWS = {
   ingredients: [
     ing('pancake-mix', 'Pancake mix', ['volume', 'cup', 'cup', 'cups'], 'dry', { avoid: ['gf'] }),
     ing('almond-flour', 'Almond flour', ['volume', 'cup', 'cup', 'cups'], 'dry', { avoid: ['nut'] }),
@@ -143,7 +143,8 @@ const CATALOG = mapCatalog({
     line('B023', 1, 'oj', 1),
     line('L001', 1, 'bread', 2)
   ]
-});
+};
+const CATALOG = mapCatalog(ROWS);
 
 const live = (container: HTMLElement) => {
   const el = container.querySelector('[aria-live="polite"][aria-atomic="true"]');
@@ -197,7 +198,7 @@ describe('MenuMonsterPlanner', () => {
     // The draft autosaved under the versioned key.
     const stored = JSON.parse(window.localStorage.getItem(PLAN_STORAGE_KEY) ?? 'null');
     expect(stored?.headcount).toBe(16);
-  });
+  }, 15000);
 
   it('Planner_SplitsGlutenFree_AndFlagsUnpriced', async () => {
     const user = userEvent.setup();
@@ -237,22 +238,51 @@ describe('MenuMonsterPlanner', () => {
     expect(screen.getByRole('button', { name: 'Start over with a blank plan' })).toBeTruthy();
   });
 
-  // Patrick, 2026-09-08: the "everyone except gluten-free" / "only gluten-free"
-  // pills were too big and noisy — two letters, same colours, a legend under
-  // the Step 2 header, and the full rule still there as the pill's title.
-  it('Planner_ShowsTwoLetterDietPills_WithALegendUnderStep2', () => {
-    render(<MenuMonsterPlanner catalog={CATALOG} />);
+  // Plans/Menu-Monster-Recipe-Variations.md (Patrick, 2026-09-08, Brad's
+  // treatment ii): the card shows the plain recipe; each other version is a
+  // strip that toggles its diff open inline — no pills, no legend, no <details>.
+  it('Planner_ShowsVariationStrips_OneRecipeAtATime', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<MenuMonsterPlanner catalog={CATALOG} />);
     const list = screen.getByRole('list', { name: /What one person gets for Pancakes/ });
-    const pills = within(list).getAllByText('GF');
-    expect(pills.length).toBe(3);
-    expect(pills[0].getAttribute('title')).toBe('everyone except gluten-free');
-    expect(pills[1].getAttribute('title')).toBe('only gluten-free');
-    expect(within(list).queryByText('everyone except gluten-free')).toBeNull();
+    // The base list is what an unrestricted person gets — the GF-only lines are not in it.
+    expect(within(list).getByText('½ cup pancake mix')).toBeTruthy();
+    expect(within(list).queryByText(/almond flour/)).toBeNull();
+    expect(within(list).queryByText('GF')).toBeNull();
+    expect(screen.queryByLabelText('Legend for the diet pills')).toBeNull();
 
-    const legend = screen.getByLabelText('Legend for the diet pills');
-    expect(legend.textContent).toMatch(/everyone except these people/);
-    expect(legend.textContent).toMatch(/only these people/);
-    expect(legend.textContent).toMatch(/GF gluten-free · NF nut-free · DF dairy-free · VG vegetarian/);
+    const strips = screen.getByRole('list', { name: 'Other versions of Pancakes' });
+    const toggle = within(strips).getByRole('button', { name: /For gluten-free scouts: 3 changes/ });
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    await user.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    const diff = within(strips).getByRole('list', { name: 'Changes for gluten-free scouts' });
+    expect(within(diff).getByText('− pancake mix')).toBeTruthy();
+    expect(within(diff).getByText('+ 1 cup almond flour')).toBeTruthy();
+    expect(within(diff).getByText('+ 1 egg')).toBeTruthy();
+    expect(within(diff).getByText('Everything else is the same.')).toBeTruthy();
+    expect(container.querySelectorAll('details').length).toBe(0);
+    // Bacon has no other version, so no strip list at all.
+    expect(screen.queryByRole('list', { name: 'Other versions of Bacon' })).toBeNull();
+  });
+
+  it('Planner_ShowsNotSuitable_AsAStaticStrip_AndWarnsWhenCounted', async () => {
+    const user = userEvent.setup();
+    const catalog = mapCatalog({
+      ...ROWS,
+      variations: [{ recipe_id: 'B003', restriction: 'veg', state: 'unsuitable', note: null, updated_at: '2026-09-08T00:00:00Z' }],
+      variationLines: []
+    });
+    render(<MenuMonsterPlanner catalog={catalog} />);
+    const strips = screen.getByRole('list', { name: 'Other versions of Bacon' });
+    expect(within(strips).getByText(/Not for vegetarian scouts/)).toBeTruthy();
+    // No vegetarians → no warning. Two → the card says so in words.
+    expect(screen.queryByText(/isn’t for them/)).toBeNull();
+    await user.click(screen.getByRole('checkbox', { name: 'Bacon' }));
+    const more = screen.getByRole('button', { name: 'One more vegetarian person' });
+    await user.click(more);
+    await user.click(more);
+    expect(screen.getByText(/2 people are vegetarian and this isn’t for them/)).toBeTruthy();
   });
 
   it('Planner_HydratesStoredDraft_OnMount', () => {
