@@ -59,6 +59,7 @@ import {
 import { ResourceEntryForm, type TargetOptionGroup } from './resource-entry-form';
 import { QuickAddResource } from './quick-add-resource';
 import { NarrativeForm } from './narrative-form';
+import { TopicRow } from './topic-row';
 import { TargetSelect } from './target-select';
 import { fmtDate } from '@/lib/format-date';
 import { TabStrip } from '../_components/tab-strip';
@@ -846,9 +847,13 @@ function TopicsTab({ topics }: { topics: LibraryTopic[] }) {
   return (
     <>
       {topics.map((t) => (
-        <form
+        <TopicRow
           key={t.id}
+          updateAction={updateTopicAction}
+          toggleRetiredAction={toggleTopicRetiredAction}
           className={`${styles.topicRow} ${t.retired_at ? styles.topicRetired : ''}`}
+          actionsClassName={`${styles.actionsRow} ${styles.actionsRowTight}`}
+          retired={!!t.retired_at}
         >
           <input type="hidden" name="id" value={t.id} />
           <input type="hidden" name="retired" value={String(!!t.retired_at)} />
@@ -879,15 +884,7 @@ function TopicsTab({ topics }: { topics: LibraryTopic[] }) {
             defaultValue={t.sort_order}
             aria-label="Sort order"
           />
-          <span className={`${styles.actionsRow} ${styles.actionsRowTight}`}>
-            <Button variant="secondary" type="submit" formAction={updateTopicAction}>
-              Save
-            </Button>
-            <Button variant="danger" type="submit" formAction={toggleTopicRetiredAction}>
-              {t.retired_at ? 'Restore' : 'Retire'}
-            </Button>
-          </span>
-        </form>
+        </TopicRow>
       ))}
 
       <form className={`${styles.topicRow} ${styles.topicRowNew}`} action={createTopicAction}>

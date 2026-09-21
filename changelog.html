@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>September 20, 2026</strong> &nbsp;&middot;&nbsp; v1.126.1</p>
+      <p>Last updated: <strong>September 20, 2026</strong> &nbsp;&middot;&nbsp; v1.127.0</p>
     </div>
   </div>
 
@@ -494,6 +494,24 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.127.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.127.0</span>
+        <span class="release-date">September 20, 2026</span>
+        <span class="release-label"><span class="badge badge-fix">Fix</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Library shelves save like every other form, and publishing needs a shelf</p>
+        <ul class="change-list">
+          <li><span><strong>Shelf rows now say whether there is anything to save</strong> &mdash; Save is greyed and reads &ldquo;Saved&rdquo; until you actually change something, then becomes &ldquo;Save changes&rdquo;, with a &ldquo;Saving changes&hellip;&rdquo; overlay and a &ldquo;Done&rdquo; flash. This is the standard every other edit form on the site has followed since August; the shelves tab was the one that never got it.</span></li>
+          <li><span><strong>Discard changes</strong> &mdash; every shelf row now has one, greyed until there is something to discard, and it puts the row back to the last saved version.</span></li>
+          <li><span><strong>Publishing a resource with nowhere to put it is refused</strong> &mdash; it used to be allowed, and produced a resource that was live but appeared on no page. If you chose a shelf but did not press &ldquo;+ Place&rdquo;, it now tells you that specifically rather than just refusing. Saving as a draft is still allowed with no shelf.</span></li>
+          <li><span><strong>Behind the scenes:</strong> Retire and Restore stay clickable at all times &mdash; they are one-click actions, not edits. The shelf picker also gained a proper label for screen readers, which it never had.</span></li>
+        </ul>
       </div>
     </div>
 

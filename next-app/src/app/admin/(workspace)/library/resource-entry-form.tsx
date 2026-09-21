@@ -55,6 +55,15 @@ export function ResourceEntryForm({ targetGroups, onCreate, onUploadDocument, em
   const [placements, setPlacements] = useState<{ value: string; label: string }[]>([]);
   const [picker, setPicker] = useState<null | 'image' | 'body'>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  /**
+   * Set when Publish is pressed with nothing placed (Patrick, 2026-09-20).
+   * Publishing an unplaced resource produces something that is live but
+   * appears on no page — a silent no-op the leader only discovers by going
+   * to look for it. Draft is deliberately still allowed to be unplaced:
+   * parking a resource before deciding where it goes is the point of a
+   * draft.
+   */
+  const [placementError, setPlacementError] = useState<string | null>(null);
   const [uploadedName, setUploadedName] = useState<string | null>(null);
   const [isUploading, startUpload] = useTransition();
   const targetRef = useRef<HTMLSelectElement>(null);
@@ -70,6 +79,7 @@ export function ResourceEntryForm({ targetGroups, onCreate, onUploadDocument, em
     const label = select.options[select.selectedIndex]?.text ?? value;
     setPlacements((prev) => [...prev, { value, label }]);
     select.value = '';
+    setPlacementError(null);
   }
 
   function uploadDocument(file: File) {
@@ -221,7 +231,15 @@ export function ResourceEntryForm({ targetGroups, onCreate, onUploadDocument, em
       <div className={styles.fieldFull}>
         <span className={`adminLabel ${styles.fieldLabel}`}>Where it shows up</span>
         <div className={styles.entryPlacementRow}>
-          <select className={styles.selectInput} ref={targetRef} defaultValue="">
+          {/* The visible "Where it shows up" label is a <span> on the group,
+              not a <label> bound to this control, so the select reached a
+              screen reader unnamed. */}
+          <select
+            className={styles.selectInput}
+            ref={targetRef}
+            defaultValue=""
+            aria-label="Where it shows up"
+          >
             <option value="">— pick a shelf or requirement —</option>
             {targetGroups.map((g) => (
               <optgroup key={g.group} label={g.group}>
@@ -237,9 +255,15 @@ export function ResourceEntryForm({ targetGroups, onCreate, onUploadDocument, em
             + Place
           </Button>
         </div>
+        {placementError && (
+          <span className={styles.entryError} role="alert">
+            {placementError}
+          </span>
+        )}
         {placements.length === 0 ? (
           <span className={styles.fieldHint}>
-            Not placed anywhere yet — it will be searchable but won’t appear on a page until you place it.
+            Not placed anywhere yet — it will be searchable but won’t appear on a page until you
+            place it. A draft can stay unplaced; publishing needs at least one.
           </span>
         ) : (
           <div className={styles.entryChips}>
@@ -262,7 +286,26 @@ export function ResourceEntryForm({ targetGroups, onCreate, onUploadDocument, em
       </div>
 
       <div className={styles.actionsRow}>
-        <Button variant="primary" type="submit" name="intent" value="publish">
+        <Button
+          variant="primary"
+          type="submit"
+          name="intent"
+          value="publish"
+          onClick={(e) => {
+            if (placements.length > 0) return;
+            e.preventDefault();
+            // The likelier mistake of the two: a shelf IS chosen in the
+            // dropdown, but "+ Place" was never pressed, so the form holds
+            // nothing. Say which one it is rather than a generic refusal.
+            const chosenNotAdded = targetRef.current?.value;
+            setPlacementError(
+              chosenNotAdded
+                ? 'Press “+ Place” to add that shelf — it isn’t attached yet.'
+                : 'Pick a shelf or requirement before publishing. A published resource with no placement never appears on a page.'
+            );
+            targetRef.current?.focus();
+          }}
+        >
           Publish
         </Button>
         <Button variant="secondary" type="submit" name="intent" value="draft">
