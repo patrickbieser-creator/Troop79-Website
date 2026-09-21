@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Article Image Flexibility — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Article Image Flexibility</h1>
+        <p class="subtitle">One plan, planned first, then shipped in three releases: uncropped body images, a hero you can hide, and pictures that link.</p>
+        <div class="meta">
+            <span>&#128197; September 21, 2026</span>
+            <span>&#129302; Operator (Fable 5.1)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.128.0 &rarr; v1.131.0 LIVE</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">3</div><div class="label">Releases Deployed</div></div>
+            <div class="stat"><div class="number">31</div><div class="label">Tests Added (1885 &rarr; 1916)</div></div>
+            <div class="stat"><div class="number">4</div><div class="label">Decisions (D-279&ndash;282)</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">Migration (DB-first)</div></div>
+            <div class="stat"><div class="number">3</div><div class="label">Reviews (Jenna, qa-lead &times;2)</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <div class="callout callout-teal">
+            <strong>The bug report:</strong> &ldquo;the rummage sale news article. The image is cropped.&rdquo; The live page carried the flyer twice &mdash; as the hero (un-cropped since August) and as an inline body image that the renderer still forced into a 16:9.5 letterbox. Patrick asked for a plan before any code; Jenna reviewed the three asks; Patrick said &ldquo;Go!&rdquo;.
+        </div>
+
+        <h3>v1.129.0 &mdash; Body images show the whole picture; the hero can be hidden or removed</h3>
+        <ul>
+            <li><strong>Body figures follow the hero&rsquo;s rule</strong> &mdash; width fixed, height free, a plain <code>&lt;img&gt;</code> instead of <code>next/image fill</code> in a fixed-aspect box. No max-height guard, by decision. Verified on production: the flyer renders 760&times;826 for a 1247&times;1355 source, whole poster visible.</li>
+            <li><strong>&ldquo;Show hero image at top of article&rdquo;</strong> &mdash; a new <code>articles.show_hero</code> column and editor checkbox (default on) with the hint &ldquo;Still used as the card thumbnail and social preview image even when hidden here.&rdquo; Plus a Remove button, parity with the calendar form.</li>
+            <li><strong>Migration re-created the two <code>select *</code> views</strong> (<code>articles_public</code>, <code>articles_archived</code>) &mdash; Postgres freezes <code>*</code> at creation &mdash; restating <code>security_invoker</code>. Pushed DB-first, then code.</li>
+            <li>First tests the <code>ArticleBody</code> renderer has ever had.</li>
+        </ul>
+
+        <h3>v1.130.0 &mdash; A picture in a story can be a link</h3>
+        <ul>
+            <li><code>[![alt](src "caption")](href)</code> &mdash; native markdown, no new token &mdash; used to break the page (<code>&lt;p&gt;&lt;a&gt;&lt;figure&gt;</code>, a hydration error). An <code>a</code> override now folds the href into the figure.</li>
+            <li>Three link kinds: the image&rsquo;s own file (full size, new tab), a site path (same tab), anything else (new tab + noopener).</li>
+            <li>The caption is the link text &mdash; hover does not exist on the troop&rsquo;s phones. No caption &rarr; &ldquo;View full size &#8599;&rdquo; / &ldquo;Open link &#8599;&rdquo; / &ldquo;Open &rarr;&rdquo; so the target is never invisible.</li>
+        </ul>
+
+        <h3>v1.131.0 &mdash; Insert Image form; images edit in place</h3>
+        <ul>
+            <li>Picking a photo opens an inline form under the toolbar (caption + Link to: None / Full-size / A web address) &mdash; the same pattern the Gallery Link and Video buttons use &mdash; replacing a bare <code>window.prompt</code>.</li>
+            <li>Images in the live preview get the Edit button galleries and videos have had since D-088; the remark pass annotates the <em>outer link span</em>, so an edit replaces the whole linked image and nothing around it. Builder and parser round-trip exactly.</li>
+            <li><code>ArticleBody</code>&rsquo;s component overrides are now built once per edit handler and cached &mdash; the live preview no longer remounts every image on every keystroke.</li>
+        </ul>
+
+        <div class="callout callout-green">
+            <strong>Quality gate on every release:</strong> lint 0 &middot; typecheck clean &middot; full suite &middot; production build &middot; browser-verified on localhost (test edits reverted, local DB untouched) and on production. qa-lead: SHIP on steps 1 and 3.
+        </div>
+
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th><th>Why</th></tr></thead>
+            <tbody>
+                <tr><td>D-279</td><td>Body figures take the hero&rsquo;s width-fixed / height-free rule; plain <code>&lt;img&gt;</code>; no max-height</td><td>Same author-uploaded flyers as the hero; a tall poster is most readable on the phone, where the crop hurt most. Layout shift accepted, as the hero already did.</td></tr>
+                <tr><td>D-280</td><td><code>show_hero</code> is a flag beside <code>hero_media_id</code>; any <code>articles</code> column change must re-create the two <code>select *</code> views</td><td>Remove alone would silently kill the share thumbnail for a volunteer author. The views are the public read path and freeze their column list.</td></tr>
+                <tr><td>D-281</td><td>Linked images are native markdown, never a token; the caption is the affordance</td><td>Tokens only for what markdown cannot express; phones have no hover.</td></tr>
+                <tr><td>D-282</td><td><code>ArticleBody</code> overrides are a WeakMap-cached closure set per edit handler</td><td>No hooks/context in a file that also renders as a Server Component; identity checks between overrides; avoids remounting every image per keystroke.</td></tr>
+            </tbody>
+        </table>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li><strong>Patrick:</strong> open Rummage Sale in the news editor, uncheck &ldquo;Show hero image at top of article&rdquo;, save.</li>
+            <li>Styleguide specimens for the editor&rsquo;s inline-prompt family (gallery link, video, image + radios) &mdash; qa-lead: the AGENTS.md &ldquo;same commit&rdquo; rule has now been missed three times.</li>
+            <li>Body-image URLs no longer pass <code>next/image</code>&rsquo;s Bunny allowlist &mdash; acceptable for known families; revisit if public submissions widen.</li>
+            <li>Latent: an image mid-sentence still renders <code>&lt;figure&gt;</code> inside <code>&lt;p&gt;</code>; alt text on informative uploads; broken-src affordance (Jenna flags).</li>
+            <li>Carried: first real review notice, orphaned proof media sweep, Menu Monster phase 3, record-page control gating, Chemistry <code>scoutbook_id</code>.</li>
+        </ul>
+
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>File</th><th>Change</th></tr></thead>
+            <tbody>
+                <tr><td class="file-path">next-app/src/lib/article-body/ArticleBody.tsx</td><td><span class="badge badge-blue">REWRITTEN</span> plain img, linked figures, cached override set, Edit on images</td></tr>
+                <tr><td class="file-path">next-app/src/lib/article-body/tokens.ts</td><td><span class="badge badge-gold">MODIFIED</span> classifyImageLink, imageLinkLabel, build/parseImageMarkdown</td></tr>
+                <tr><td class="file-path">next-app/src/lib/article-body/remark-article-blocks.ts</td><td><span class="badge badge-gold">MODIFIED</span> standalone-image span annotation</td></tr>
+                <tr><td class="file-path">next-app/src/lib/article-body/article-body.module.css</td><td><span class="badge badge-gold">MODIFIED</span> figure rule, caption link, focus ring</td></tr>
+                <tr><td class="file-path">next-app/src/app/admin/(workspace)/_components/markdown-block-tools.tsx</td><td><span class="badge badge-gold">MODIFIED</span> image form, stable onEditBlock, edit-in-place for images</td></tr>
+                <tr><td class="file-path">next-app/src/app/admin/(workspace)/news/articles/[id]/article-editor.tsx</td><td><span class="badge badge-gold">MODIFIED</span> Remove hero, Show hero checkbox</td></tr>
+                <tr><td class="file-path">next-app/src/app/admin/(workspace)/news/articles/actions.ts</td><td><span class="badge badge-gold">MODIFIED</span> showHero on create / update / clone</td></tr>
+                <tr><td class="file-path">next-app/src/app/(public)/news/[slug]/page.tsx</td><td><span class="badge badge-gold">MODIFIED</span> hero gated on show_hero</td></tr>
+                <tr><td class="file-path">next-app/supabase/migrations/20260921160000_article_show_hero.sql</td><td><span class="badge badge-green">NEW</span> column + view re-creation</td></tr>
+                <tr><td class="file-path">next-app/tests/article-body.test.tsx · article-show-hero.test.ts · image-markdown.test.ts · markdown-image-form.test.tsx</td><td><span class="badge badge-green">NEW</span> 31 tests</td></tr>
+                <tr><td class="file-path">Plans/Completed/Article-Image-Flexibility.md · changelog.html</td><td><span class="badge badge-green">NEW</span> / <span class="badge badge-gold">MODIFIED</span></td></tr>
+            </tbody>
+        </table>
+
+    </div>
+
+    <footer>
+        <strong>Troop 79</strong> — Troop79-Website<br>
+        Session Summary — September 21, 2026 — Operator
+    </footer>
+</body>
+</html>
