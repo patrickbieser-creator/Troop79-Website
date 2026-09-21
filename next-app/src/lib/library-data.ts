@@ -23,6 +23,8 @@ import type {
 import type { LibraryTargetKind, ResourceKind } from '@/lib/library';
 import { detectHost, splitRankReqKey, validateNewResource } from '@/lib/library';
 import { isDuplicateLedgerEntry } from '@/lib/ledger-dedup';
+import { notifyReviewOutcome } from '@/lib/review-notifications';
+import { fmtDate } from '@/lib/format-date';
 import { buildReqTree, type ReqNode } from '@/lib/mb-helpers';
 
 export interface PlacedResource extends LibraryResource {
@@ -804,6 +806,8 @@ export async function approveSubmission(
     return { error: 'This submission was just reviewed by someone else — refresh the Proof Queue.' };
   }
 
+  await notifyProofOutcome(supabase, submission, 'approved', resolved);
+
   return { error: null, ledgerEntryId: ledgerRow.id };
 }
 
@@ -814,7 +818,18 @@ export async function returnSubmission(
   reviewer: string,
   feedback: string
 ): Promise<string | null> {
-  const { error } = await supabase
+  const { data: sub } = await supabase
+    .from('requirement_submissions')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+
+  // `.eq('status','pending')` mirrors approveSubmission's guard. It was
+  // missing here, and before this function sent mail the cost of losing that
+  // race was a quietly overwritten status. Now it would email a family "needs
+  // another look" about a claim another leader had just APPROVED, with the
+  // ledger entry already written (qa-lead, 2026-09-20).
+  const { data: updated, error } = await supabase
     .from('requirement_submissions')
     .update({
       status: 'returned',
@@ -822,9 +837,72 @@ export async function returnSubmission(
       reviewed_by: reviewer,
       reviewed_at: new Date().toISOString()
     })
-    .eq('id', id);
-  return error ? error.message : null;
+    .eq('id', id)
+    .eq('status', 'pending')
+    .select('id')
+    .maybeSingle();
+  if (error) return error.message;
+  if (!updated) {
+    return 'This submission was just reviewed by someone else — refresh the Proof Queue.';
+  }
+
+  if (sub) {
+    const submission = sub as RequirementSubmission;
+    const resolved = await resolveRequirementLabel(
+      supabase,
+      submission.target_kind,
+      submission.target_key
+    );
+    await notifyProofOutcome(supabase, submission, 'returned', resolved, feedback);
+  }
+  return null;
 }
+
+/**
+ * The submitter's copy of a proof decision (Plans/Review-Notifications.md).
+ *
+ * Names the requirement and the proof TYPE, both of which today's
+ * submit-time email already carries — but never the write-up body, and never
+ * the photo. A null `submitted_by_person_id` (every claim filed before
+ * migration 20260920210000) simply means no notice.
+ *
+ * Deliberately swallows its own failures: a bounced address must not undo a
+ * leader's approval. The review is the thing that has to land.
+ */
+async function notifyProofOutcome(
+  supabase: SupabaseClient,
+  submission: RequirementSubmission,
+  outcome: 'approved' | 'returned',
+  resolved: { code: string; label: string | null } | null,
+  feedback?: string
+): Promise<void> {
+  try {
+    const reqLabel = resolved?.label
+      ? `${resolved.code} — ${resolved.label.slice(0, 80)}`
+      : submission.target_key;
+    await notifyReviewOutcome(supabase, {
+      outcome,
+      recipientPersonId: submission.submitted_by_person_id ?? null,
+      subject: `your “I did this” for ${reqLabel}`,
+      bullets: [
+        `Requirement: ${reqLabel}`,
+        `What you sent: ${PROOF_TYPE_WORD[submission.proof_type] ?? submission.proof_type}`,
+        `Sent in: ${fmtDate(submission.created_at)}`
+      ],
+      feedback: outcome === 'returned' ? (feedback ?? submission.feedback_md) : null,
+      path: '/advancement',
+      actionLabel: 'See the advancement record'
+    });
+  } catch {
+    // Notification is best-effort; the decision above already committed.
+  }
+}
+
+const PROOF_TYPE_WORD: Record<string, string> = {
+  photo: 'a photo',
+  report: 'a write-up',
+  link: 'a link'
+};
 
 export async function cascadeLibraryReqRename(
   supabase: SupabaseClient,

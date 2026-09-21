@@ -81,6 +81,50 @@ export async function listPersonEmails(
 }
 
 /**
+ * The ONE address to write to for a person, or null if there isn't one.
+ *
+ * Everything that mails a single human wants this and, until now, each
+ * caller reimplemented it: `email-recipients.ts` inline, and several
+ * ad-hoc `people.primary_email` selects elsewhere. The rules it centralises:
+ *
+ *  - prefer `person_emails`, which `listPersonEmails` already returns
+ *    primary-first, so the primary wins without re-sorting here;
+ *  - skip anything bounced or unsubscribed — an address we know is dead is
+ *    not a recipient;
+ *  - fall back to `people.primary_email` for a person who has no
+ *    `person_emails` rows yet (a relationship-only parent, or a row created
+ *    before the spine). `primary_email` is a trigger-maintained cache of the
+ *    `is_primary` row, so when both exist they agree.
+ *
+ * Null is a normal answer, not an error — a scout with no address of their
+ * own is the common case. Callers skip, they do not substitute somebody else.
+ */
+export async function emailForPerson(
+  supabase: SupabaseClient,
+  personId: number
+): Promise<string | null> {
+  const rows = await listPersonEmails(supabase, personId);
+  const deliverable = rows.find((e) => !e.bouncedAt && !e.unsubscribedAt);
+  if (deliverable) return deliverable.email;
+
+  // Rows exist but every one is bounced or unsubscribed: that is a decided
+  // answer, so stop. Falling through here would resurrect the dead address —
+  // `people.primary_email` is a trigger-maintained cache of the `is_primary`
+  // row and knows nothing about deliverability, so the cache happily still
+  // holds the address we just rejected. The fallback below is only for a
+  // person with NO person_emails rows at all.
+  if (rows.length > 0) return null;
+
+  const { data } = await supabase
+    .from('people')
+    .select('primary_email')
+    .eq('id', personId)
+    .maybeSingle();
+  const cached = (data as { primary_email: string | null } | null)?.primary_email;
+  return cached ? cached.trim().toLowerCase() : null;
+}
+
+/**
  * Add an address for a person. The FIRST address a person gets is made
  * primary automatically — there is nothing to choose between yet, and
  * without this a brand-new person would have zero deliverable addresses

@@ -602,6 +602,10 @@ export interface RequirementSubmission {
   /** Private-bucket storage paths (never public CDN) — see Plans/Resource-Library.md. */
   media: unknown[];
   submitted_via: 'family' | 'scout';
+  /** Who pressed submit (migration 20260920210000). Null on claims filed
+   *  before it, and on any whose submitter couldn't be resolved — a null
+   *  means the review notice is skipped, never redirected to someone else. */
+  submitted_by_person_id: number | null;
   status: 'pending' | 'approved' | 'returned';
   feedback_md: string | null;
   reviewed_by: string | null;

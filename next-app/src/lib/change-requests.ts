@@ -203,6 +203,27 @@ export function editableFieldsFor(entityType: ChangeEntityType): readonly string
   return [];
 }
 
+/**
+ * The field names a review notice may say out loud
+ * (Plans/Review-Notifications.md).
+ *
+ * Re-filters through `editableFieldsFor` before labelling, for the same
+ * reason the privileged apply step does (the 2026-07-21 qa-lead note above):
+ * `proposed_changes` is JSONB, and `fieldLabel` returns an unmapped key
+ * VERBATIM. Without this filter an unexpected key would ride out of the
+ * database and into an email body unchanged. Approve already filtered;
+ * reject was reading the raw keys (qa-lead, 2026-09-20).
+ *
+ * Labels only, never values — the whole point of the notice's PII rule.
+ */
+export function reviewNoticeFieldLabels(
+  entityType: ChangeEntityType,
+  fields: readonly string[]
+): string[] {
+  const allowed = new Set(editableFieldsFor(entityType));
+  return fields.filter((f) => allowed.has(f)).map((f) => fieldLabel(entityType, f));
+}
+
 export function fieldLabel(entityType: ChangeEntityType, field: string): string {
   const map: Record<string, string> =
     entityType === 'adult'

@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>September 20, 2026</strong> &nbsp;&middot;&nbsp; v1.127.0</p>
+      <p>Last updated: <strong>September 20, 2026</strong> &nbsp;&middot;&nbsp; v1.128.0</p>
     </div>
   </div>
 
@@ -494,6 +494,25 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.128.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.128.0</span>
+        <span class="release-date">September 20, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">New</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">You now hear back when a leader reviews what you sent in</p>
+        <ul class="change-list">
+          <li><span><strong>An approved &ldquo;I did this&rdquo; sends you an email</strong> &mdash; it names the requirement, says whether you sent a photo, a link or a write-up, and when you sent it, so you do not have to remember which one it was. Until now a submission went into the review queue and nothing ever came back.</span></li>
+          <li><span><strong>A submission sent back for more tells you that too</strong>, along with whatever the leader asked for &mdash; the case where hearing nothing did the most harm.</span></li>
+          <li><span><strong>The same goes for updates to your family&rsquo;s details</strong> &mdash; approved or declined, the person who sent it hears back. It names which details you changed and never repeats what you put in them; medical notes and the like stay out of email, exactly as they already do when a change is first submitted.</span></li>
+          <li><span><strong>When a leader files a requirement on a scout&rsquo;s behalf, the leader is the one told</strong> &mdash; they are the person who sent it, and a leader who filed a dozen at a meeting is the one most likely to have lost track.</span></li>
+          <li><span><strong>Behind the scenes:</strong> emails only ever go to the person who submitted, at an address already on the roster, and only when a leader clicks a review button &mdash; nothing is sent on a schedule. If there is no address to write to, the review still goes through and no mail is sent; nothing is ever redirected to somebody else.</span></li>
+        </ul>
       </div>
     </div>
 

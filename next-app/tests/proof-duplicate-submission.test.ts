@@ -189,6 +189,12 @@ describe('proofSubmissionUnchanged', () => {
     ).toBe(false);
   });
 
+  it('is false when the proof changed from a write-up to a photo caption', () => {
+    expect(proofSubmissionUnchanged(pending, { ...same, proofType: 'photo', newMediaCount: 1 })).toBe(
+      false
+    );
+  });
+
   it('treats a missing body on either side as the same empty value', () => {
     expect(
       proofSubmissionUnchanged(

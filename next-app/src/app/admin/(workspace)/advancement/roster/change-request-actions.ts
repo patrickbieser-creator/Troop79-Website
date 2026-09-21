@@ -3,11 +3,15 @@
 import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { recordAudit, type AuditDetail } from '@/lib/audit';
+import { notifyReviewOutcome } from '@/lib/review-notifications';
 import { fmtDate } from '@/lib/format-date';
 import {
   editableFieldsFor,
   fieldLabel,
+  isNoticeOnly,
+  reviewNoticeFieldLabels,
   SCOUT_FIELD_TABLE,
   SCOUT_FIELD_PEOPLE_COLUMN,
   type ChangeEntityType,
@@ -205,10 +209,64 @@ export async function approveChangeRequest(id: number): Promise<Result> {
     details
   });
 
+  await notifyChangeRequestOutcome(supabase, row, 'approved', Object.keys(allowed));
+
   revalidatePath('/admin/advancement/roster');
   revalidatePath('/admin/advancement/lookups');
   revalidatePath('/advancement');
   return { ok: true };
+}
+
+/**
+ * The submitter's copy of a change-request decision
+ * (Plans/Review-Notifications.md).
+ *
+ * FIELD NAMES ONLY — never the values (Patrick, 2026-09-20). This is the
+ * same rule the submit-time email in (public)/profile/actions.ts already
+ * follows, and for the same reason: `things_we_should_know`, birthdates and
+ * the rest of the demographic set live in these requests, and email is a
+ * weaker boundary than the database. The rejection reason is a leader's own
+ * free text and travels with a rejection because it is the whole point of
+ * one, but nothing is echoed back from `proposed_changes`.
+ *
+ * Swallows its own failures: a bounced address must not undo an approval
+ * that already wrote to the roster.
+ */
+async function notifyChangeRequestOutcome(
+  supabase: SupabaseClient,
+  row: ChangeRequestRow | null,
+  outcome: 'approved' | 'rejected',
+  fields: string[],
+  reason?: string
+): Promise<void> {
+  if (!row) return;
+  try {
+    const entityType = row.entity_type as ChangeEntityType;
+    const labels = reviewNoticeFieldLabels(entityType, fields);
+    await notifyReviewOutcome(supabase, {
+      outcome,
+      // A notice-only type applies no fields at all, so "what you changed"
+      // would be an empty list — say what actually happened instead of
+      // calling a household addition "a note" (qa-lead, 2026-09-20).
+      subject: isNoticeOnly(entityType)
+        ? 'the household member you added'
+        : 'your update to the troop roster',
+      recipientPersonId: row.submitted_by_person_id ?? null,
+      bullets: [
+        isNoticeOnly(entityType)
+          ? 'What you sent: a new member for your household'
+          : labels.length > 0
+            ? `What you changed: ${labels.join(', ')}`
+            : 'What you sent: an update to your family’s details',
+        `Sent in: ${fmtDate(row.submitted_at)}`
+      ],
+      feedback: outcome === 'rejected' ? (reason ?? row.rejection_reason) : null,
+      path: '/profile',
+      actionLabel: 'See your family’s details'
+    });
+  } catch {
+    // Best-effort — the decision above already committed.
+  }
 }
 
 export async function rejectChangeRequest(id: number, reason: string): Promise<Result> {
@@ -242,6 +300,14 @@ export async function rejectChangeRequest(id: number, reason: string): Promise<R
       { field: 'Reason', from: '—', to: reason.trim() || '—' }
     ]
   });
+
+  await notifyChangeRequestOutcome(
+    supabase,
+    row,
+    'rejected',
+    row ? Object.keys(row.proposed_changes) : [],
+    reason
+  );
 
   revalidatePath('/admin/advancement/roster');
   return { ok: true };

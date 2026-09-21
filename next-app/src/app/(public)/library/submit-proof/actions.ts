@@ -157,6 +157,16 @@ export async function submitProofAction(formData: FormData): Promise<void> {
   let submittedVia: 'family' | 'scout';
   /** Leader-filed claims carry their attribution as body_md's first line. */
   let filedByLine: string | null = null;
+  /**
+   * WHO pressed submit, as a real person — the one thing this row never
+   * recorded (20260920210000). `scout_id` says whose requirement it is and
+   * `submitted_via` says roughly how it arrived; neither can be written to
+   * when the claim is reviewed. The body_md attribution line is prose, not
+   * an identity, and must never be parsed back into one.
+   * Null stays possible (a session without a person) and means the review
+   * notice is skipped, never redirected to somebody else.
+   */
+  let submittedByPersonId: number | null = null;
 
   if (proxyScoutId && viewer.kind === 'scout') {
     // Leader on behalf of the proxied scout. Applies whether the leader's
@@ -169,6 +179,11 @@ export async function submitProofAction(formData: FormData): Promise<void> {
     fromLabel = `${leaderName} (leader, on behalf of ${scoutName})`;
     submittedVia = 'family';
     filedByLine = filedByLeaderLine(leaderName, scoutName);
+    // The LEADER, not the scout's parents: the notice confirms what you
+    // submitted, and a leader who filed a dozen claims at a meeting is
+    // exactly who won't remember which one an approval refers to
+    // (Patrick, 2026-09-20).
+    submittedByPersonId = actor?.personId ?? null;
   } else {
     const session = await getIdentitySessionIfValid();
     if (!session) redirect(proofUrl({ ...keep, err: 'household' }));
@@ -177,6 +192,12 @@ export async function submitProofAction(formData: FormData): Promise<void> {
     }
     const party = await loadHouseholdByKey(session.householdKey);
     if (!party) redirect(proofUrl({ ...keep, err: 'household' }));
+
+    // Both remaining shapes are a verified session, so the signed-in person
+    // IS the submitter — the scout claiming their own work, or the parent
+    // who filed it for them. Not the scout in the latter case: a parent who
+    // submits should be the one told what became of it.
+    submittedByPersonId = session.personId;
 
     if (session.subjectKind === 'scout') {
       // Tier 2-S: the picker collapses to the verified scout alone — no
@@ -279,7 +300,11 @@ export async function submitProofAction(formData: FormData): Promise<void> {
         // A redo that attaches nothing keeps the media already sent in —
         // "I rewrote my answer" should not silently drop the photo.
         ...(media.length > 0 ? { media } : {}),
-        submitted_via: submittedVia
+        submitted_via: submittedVia,
+        // A redo re-attributes the claim: whoever sent this version is the
+        // one who gets told what happened to it, even if someone else in the
+        // household filed the first attempt.
+        submitted_by_person_id: submittedByPersonId
         // created_at is deliberately NOT touched: it orders the oldest-first
         // queue, and a scout who improves a weak answer before anyone has
         // looked at it should not lose their place for doing the right thing
@@ -309,6 +334,7 @@ export async function submitProofAction(formData: FormData): Promise<void> {
       link_url: linkUrl,
       media,
       submitted_via: submittedVia,
+      submitted_by_person_id: submittedByPersonId,
       status: 'pending'
     });
     // 23505 = the pending-unique index fired, so a claim landed between the
