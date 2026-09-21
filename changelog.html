@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>September 20, 2026</strong> &nbsp;&middot;&nbsp; v1.128.0</p>
+      <p>Last updated: <strong>September 21, 2026</strong> &nbsp;&middot;&nbsp; v1.129.0</p>
     </div>
   </div>
 
@@ -494,6 +494,24 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.129.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.129.0</span>
+        <span class="release-date">September 21, 2026</span>
+        <span class="release-label"><span class="badge badge-fix">Fix</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Pictures inside a story show the whole picture</p>
+        <ul class="change-list">
+          <li><span><strong>A photo or flyer placed in the body of a news story or event is no longer cropped</strong> &mdash; it shows at its full height, as wide as the column. The rummage-sale flyer was losing its top and bottom to a letterbox-shaped frame; the big picture at the top of a story stopped doing that in August, and the pictures inside the story now follow the same rule. This applies everywhere a story is shown, on the phone included, where a tall poster was hardest to read.</span></li>
+          <li><span><strong>&ldquo;Show hero image at top of article&rdquo;</strong> &mdash; a new checkbox in the news editor, on by default. Turn it off when the same picture is already in the story and you do not want it twice. The picture still stands in as the story&rsquo;s thumbnail on the home page and in the preview that Facebook and text messages show when a link is shared &mdash; the checkbox only decides whether it is printed at the top of the story itself.</span></li>
+          <li><span><strong>A hero image can be removed</strong> &mdash; the editor had Choose and Change but no way to take one off. The calendar editor already had Remove; the news editor now matches.</span></li>
+          <li><span><strong>Behind the scenes:</strong> the story renderer gained its first tests (it had none). Next up, from the same plan: a picture in a story can be a link &mdash; to the full-size original, or to another page.</span></li>
+        </ul>
       </div>
     </div>
 

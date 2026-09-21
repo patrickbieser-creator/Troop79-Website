@@ -417,6 +417,9 @@ export interface Article {
   type: ArticleType;
   excerpt: string | null;
   hero_media_id: number | null;
+  /** Display the hero at the top of the article page. Off keeps the hero for
+   *  the card thumbnail / og:image only (20260921160000). */
+  show_hero: boolean;
   body: string;
   status: ArticleStatus;
   author_name: string;

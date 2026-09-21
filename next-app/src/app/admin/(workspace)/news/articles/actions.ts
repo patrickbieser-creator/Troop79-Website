@@ -23,6 +23,8 @@ interface ArticleFields {
   featured: boolean;
   body: string;
   heroMediaId: number | null;
+  /** Show the hero on the article page; off keeps it for card/og only. */
+  showHero: boolean;
   autoArchiveAt: string | null;
   /** Explicit URL slug; blank means "derive it" (lib/article-slug rules). */
   slug: string;
@@ -50,6 +52,8 @@ function parseFields(formData: FormData): ArticleFields {
     excerpt: String(formData.get('excerpt') ?? '').trim(),
     body: String(formData.get('body') ?? ''),
     heroMediaId: heroMediaIdRaw ? Number(heroMediaIdRaw) : null,
+    // Sent as '1'/'' like `featured`; absent (an older form) means shown.
+    showHero: formData.has('showHero') ? String(formData.get('showHero')) === '1' : true,
     autoArchiveAt: String(formData.get('autoArchiveAt') ?? '').trim() || null,
     featured: String(formData.get('featured') ?? '') === '1',
     slug: String(formData.get('slug') ?? '').trim(),
@@ -118,6 +122,7 @@ export async function createArticle(formData: FormData): Promise<ActionResult> {
       excerpt: fields.excerpt || null,
       body: fields.body,
       hero_media_id: fields.heroMediaId,
+      show_hero: fields.showHero,
       featured: fields.featured,
       status: 'draft',
       author_name: resolveByline(fields.authorName, session.label),
@@ -190,6 +195,7 @@ export async function cloneArticle(id: number): Promise<ActionResult> {
       excerpt: src.excerpt,
       body: src.body,
       hero_media_id: src.hero_media_id,
+      show_hero: src.show_hero,
       auto_archive_at: src.auto_archive_at,
       status: 'draft',
       featured: false,
@@ -263,6 +269,7 @@ export async function updateArticle(id: number, formData: FormData): Promise<Act
       excerpt: fields.excerpt || null,
       body: fields.body,
       hero_media_id: fields.heroMediaId,
+      show_hero: fields.showHero,
       auto_archive_at: fields.autoArchiveAt,
       featured: fields.featured,
       // Editable byline: a post written by a scout or another leader gets

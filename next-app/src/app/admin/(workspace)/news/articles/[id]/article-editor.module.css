@@ -60,6 +60,7 @@
   margin-bottom: 8px;
 }
 .heroImg { width: 100%; height: 100%; object-fit: cover; }
+.heroActions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
 /* .chooseBtn retired 2026-08-25 → shared Button (secondary, default size). */
 
 .tagPicker { display: flex; gap: 8px; flex-wrap: wrap; }

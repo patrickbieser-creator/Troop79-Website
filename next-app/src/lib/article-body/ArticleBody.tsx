@@ -53,12 +53,20 @@ export function ArticleBody({
   );
 }
 
+/**
+ * A plain <img>, not next/image — deliberately, like the article hero.
+ * `fill` needs a box with a fixed aspect ratio to size against, and that box
+ * is what cropped a portrait flyer to a letterbox; markdown carries no
+ * width/height to size a non-fill Image with. The layout shift on load is
+ * the same tradeoff the hero has lived with since 2026-08-14.
+ */
 function FigureImage({ src, alt, title }: ComponentPropsWithoutRef<'img'>) {
   if (!src || typeof src !== 'string') return null;
   return (
     <figure className={styles.contentFigure}>
       <div className={styles.figImg}>
-        <Image src={src} alt={alt ?? ''} fill sizes="760px" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={src} alt={alt ?? ''} />
       </div>
       {title && <figcaption>{title}</figcaption>}
     </figure>

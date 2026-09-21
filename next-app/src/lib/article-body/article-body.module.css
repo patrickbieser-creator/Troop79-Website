@@ -37,10 +37,18 @@
   border-left: 3px solid var(--forest); padding-left: 18px; font-style: italic; color: var(--text-meta); font-size: 18px;
 }
 
-/* Single embedded image + caption — native markdown `![alt](url "caption")` */
+/* Single embedded image + caption — native markdown `![alt](url "caption")`.
+   Width fixed, HEIGHT FREE — the same rule as .articleHero img in
+   news/[slug]/article-detail.module.css (Patrick, 2026-08-14 for the hero;
+   2026-09-21 for body figures, Plans/Article-Image-Flexibility.md). This used
+   to force `aspect-ratio: 16/9.5` + `object-fit: cover`, which cropped the
+   rummage-sale flyer to a letterbox in the body while the hero above it showed
+   the whole poster. No max-height guard, by decision: same author-uploaded
+   photos and flyers as the hero, and a tall poster is most readable on the
+   phone where the crop hurt most. */
 .contentFigure { }
-.figImg { width: 100%; aspect-ratio: 16/9.5; border-radius: 2px; overflow: hidden; position: relative; }
-.figImg img { object-fit: cover; }
+.figImg { width: 100%; border-radius: var(--rad-sm); overflow: hidden; background: var(--border-light); }
+.figImg img { width: 100%; height: auto; display: block; }
 .contentFigure figcaption {
   font-family: var(--font-ui); font-size: 12px; color: var(--text-meta);
   padding-top: 8px; line-height: 1.5;

@@ -106,7 +106,10 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           /events/[id] with the live signup — an article never carries event
           fields anymore. */}
 
-      {article.heroMedia && (
+      {/* show_hero (2026-09-21): an author can keep the hero for the card and
+          social preview (generateMetadata + JSON-LD above still read it) but
+          leave it off the page — e.g. when the same flyer is in the body. */}
+      {article.heroMedia && article.show_hero && (
         <div className={styles.articleHero}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={article.heroMedia.cdn_url} alt={article.heroMedia.alt_text ?? ''} />

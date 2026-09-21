@@ -55,6 +55,9 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
   const [body, setBody] = useState(article?.body ?? '');
   const [categories, setCategories] = useState<Set<string>>(new Set(selectedCategories));
   const [hero, setHero] = useState<Media | null>(heroMedia);
+  // Show the hero on the page, or keep it for the card/social preview only
+  // (Plans/Article-Image-Flexibility.md, 2026-09-21).
+  const [showHero, setShowHero] = useState(article?.show_hero ?? true);
 
   // Event fields are gone (Event→News promotion): an event is a calendar
   // entry promoted from the Calendar editor, never an article.
@@ -76,13 +79,13 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
   // success, so the Saving… overlay covers until the navigation lands.
   const { dirty, saved } = useDraftSnapshot({
     title, excerpt, authorName, slug, featured, body, categories: [...categories].sort(),
-    hero, autoArchiveAt, publishedOn, authorRole
+    hero, showHero, autoArchiveAt, publishedOn, authorRole
   });
   /** Discard: every field back to what the editor opened with (Patrick, 2026-08-24). */
   function discard() {
     setTitle(saved.title); setExcerpt(saved.excerpt); setAuthorName(saved.authorName); setSlug(saved.slug);
     setFeatured(saved.featured); setBody(saved.body); setCategories(new Set(saved.categories)); setHero(saved.hero);
-    setAutoArchiveAt(saved.autoArchiveAt); setPublishedOn(saved.publishedOn); setAuthorRole(saved.authorRole);
+    setShowHero(saved.showHero); setAutoArchiveAt(saved.autoArchiveAt); setPublishedOn(saved.publishedOn); setAuthorRole(saved.authorRole);
     setError(null);
   }
   const feedback = useSavePhase();
@@ -107,6 +110,7 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
     fd.set('featured', featured ? '1' : '');
     fd.set('body', body);
     if (hero) fd.set('heroMediaId', String(hero.id));
+    fd.set('showHero', showHero ? '1' : '');
     fd.set('categories', JSON.stringify(Array.from(categories)));
     fd.set('autoArchiveAt', autoArchiveAt);
     fd.set('publishedOn', publishedOn);
@@ -207,9 +211,36 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
                 <img src={hero.cdn_url} alt="" className={styles.heroImg} />
               )}
             </div>
-            <Button onClick={() => setHeroPicking(true)}>
-              {hero ? 'Change Hero Image' : 'Choose Hero Image'}
-            </Button>
+            <div className={styles.heroActions}>
+              <Button onClick={() => setHeroPicking(true)}>
+                {hero ? 'Change Hero Image' : 'Choose Hero Image'}
+              </Button>
+              {/* Remove: parity with the calendar entry form. The checkbox is
+                  the other job — keep the hero for the card and social
+                  preview, just not on the page (Jenna, 2026-09-21: Remove
+                  alone silently kills the share thumbnail). */}
+              {hero && (
+                <Button size="sm" onClick={() => setHero(null)}>
+                  Remove
+                </Button>
+              )}
+            </div>
+            {hero && (
+              <>
+                <label className="adminLabel" htmlFor="showHero">
+                  <input
+                    id="showHero"
+                    type="checkbox"
+                    checked={showHero}
+                    onChange={(e) => setShowHero(e.target.checked)}
+                  />{' '}
+                  Show hero image at top of article
+                </label>
+                <div className={styles.hint}>
+                  Still used as the card thumbnail and social preview image even when hidden here.
+                </div>
+              </>
+            )}
           </div>
 
           <div className={styles.field}>
