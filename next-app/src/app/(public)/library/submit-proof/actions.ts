@@ -51,10 +51,16 @@ import { gateAudience, getIdentitySessionIfValid } from '@/lib/family-access';
 import { isEpochCurrent } from '@/lib/identity-session';
 import { secretMatches } from '@/lib/signed-cookie';
 import { loadHouseholdByKey } from '@/lib/households';
-import { filedByLeaderLine, proofSubmissionAllowedFor, proxyScoutIdFor, stripFiledByLine } from '@/lib/library';
+import {
+  filedByLeaderLine,
+  proofSubmissionAllowedFor,
+  proofSubmissionUnchanged,
+  proxyScoutIdFor,
+  stripFiledByLine
+} from '@/lib/library';
 import { actorCanProxyLibrary, resolveLibraryViewer, type LibraryViewer } from '@/lib/library-viewer';
 import { resolveAdminActor } from '@/lib/admin-actor';
-import { resolveRequirementLabel } from '@/lib/library-data';
+import { loadPendingSubmission, resolveRequirementLabel } from '@/lib/library-data';
 import { uploadProofMedia } from '@/lib/proof-media';
 import { sendEmail, renderEmail, troopEmail } from '@/lib/email';
 
@@ -192,6 +198,7 @@ export async function submitProofAction(formData: FormData): Promise<void> {
     }
   }
 
+  // Already in the queue? Stop before the upload. A scout who taps "Send for
   // proof_type is inferred from what was actually filled in — priority
   // photo > link > write-up — rather than a separate radio the family also
   // has to get right. body_md doubles as the required write-up for 'report'
@@ -228,18 +235,94 @@ export async function submitProofAction(formData: FormData): Promise<void> {
     redirect(proofUrl({ ...keep, err: 'empty' }));
   }
 
-  const { error: insertErr } = await supabase.from('requirement_submissions').insert({
-    scout_id: scoutId,
-    target_kind: parsedTarget.kind,
-    target_key: parsedTarget.key,
-    proof_type: proofType!,
-    body_md: bodyMd,
-    link_url: linkUrl,
-    media,
-    submitted_via: submittedVia,
-    status: 'pending'
-  });
-  if (insertErr) redirect(proofUrl({ ...keep, err: 'save' }));
+  // Already have a claim waiting on this requirement? There can only be one
+  // (requirement_submissions_pending_unique, 20260920190000), so this
+  // submission REPLACES it rather than being dropped or erroring.
+  //
+  // The two cases this has to tell apart look identical at the database and
+  // very different to the scout:
+  //
+  //  - A double-tap. Sending uploads media and emails a leader before the
+  //    page moves on, so the button used to sit there looking dead and
+  //    scouts tapped again — one requirement reached the queue fifteen
+  //    times. Nothing about the submission changed, so: same confirmation,
+  //    no write, and no second email to the leaders.
+  //  - A genuine redo. The scout wrote a better answer, or added the photo
+  //    they forgot, while the first claim was still untriaged. That content
+  //    must NOT be silently discarded (qa-lead, 2026-09-20 — dropping it
+  //    would be a worse bug than the duplicates). The pending row is updated
+  //    in place and the leaders are emailed again, because what they will be
+  //    reviewing has changed.
+  const pending = await loadPendingSubmission(
+    supabase,
+    scoutId,
+    parsedTarget.kind,
+    parsedTarget.key
+  );
+  let replaced = false;
+  if (pending) {
+    const unchanged = proofSubmissionUnchanged(pending, {
+      proofType: proofType!,
+      bodyMd,
+      linkUrl,
+      newMediaCount: media.length
+    });
+    if (unchanged) {
+      redirect(proofUrl({ ...keep, sent: '1', scout: filedByLine ? scoutId : undefined }));
+    }
+    const { data: updatedRows, error: updateErr } = await supabase
+      .from('requirement_submissions')
+      .update({
+        proof_type: proofType!,
+        body_md: bodyMd,
+        link_url: linkUrl,
+        // A redo that attaches nothing keeps the media already sent in —
+        // "I rewrote my answer" should not silently drop the photo.
+        ...(media.length > 0 ? { media } : {}),
+        submitted_via: submittedVia
+        // created_at is deliberately NOT touched: it orders the oldest-first
+        // queue, and a scout who improves a weak answer before anyone has
+        // looked at it should not lose their place for doing the right thing
+        // (qa-lead, 2026-09-20). If leaders ever need to see that a claim was
+        // edited, that wants its own `updated_at`, not a redefined created_at.
+      })
+      .eq('id', pending.id)
+      // A leader deciding this row in the same instant wins — the update then
+      // matches nothing rather than reviving a decided claim (same race guard
+      // as approveSubmission). `.select()` is what makes that detectable:
+      // without it a zero-row update is indistinguishable from a successful
+      // one, and the scout would be told "Sent" over content that was never
+      // written. No rows back means the old claim is decided, so the unique
+      // index no longer blocks a fresh one — fall through and insert.
+      .eq('status', 'pending')
+      .select('id');
+    if (updateErr) redirect(proofUrl({ ...keep, err: 'save' }));
+    replaced = (updatedRows?.length ?? 0) > 0;
+  }
+  if (!replaced) {
+    const { error: insertErr } = await supabase.from('requirement_submissions').insert({
+      scout_id: scoutId,
+      target_kind: parsedTarget.kind,
+      target_key: parsedTarget.key,
+      proof_type: proofType!,
+      body_md: bodyMd,
+      link_url: linkUrl,
+      media,
+      submitted_via: submittedVia,
+      status: 'pending'
+    });
+    // 23505 = the pending-unique index fired, so a claim landed between the
+    // check above and this insert — a true millisecond race, which only a
+    // double-submit produces, so the two are the same submission. The
+    // scout's work IS in the queue: show the confirmation, not an error they
+    // can do nothing about. Any media this request uploaded is orphaned in
+    // the private bucket — the retention sweep that would collect it is
+    // still Backlog (lib/proof-media.ts), so it sits there until that lands.
+    if (insertErr?.code === '23505') {
+      redirect(proofUrl({ ...keep, sent: '1', scout: filedByLine ? scoutId : undefined }));
+    }
+    if (insertErr) redirect(proofUrl({ ...keep, err: 'save' }));
+  }
 
   const resolved = await resolveRequirementLabel(supabase, parsedTarget.kind, parsedTarget.key);
   const reqLabel = resolved?.label

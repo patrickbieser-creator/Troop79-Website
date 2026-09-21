@@ -12,7 +12,12 @@ import { createAdminClient } from '@/lib/supabase/server';
 import type { Rank } from '@/lib/supabase/types';
 import { ArticleBody } from '@/lib/article-body/ArticleBody';
 import { gateAudience } from '@/lib/family-access';
-import { loadNarrative, loadPublishedFor, loadScoutRankProgress } from '@/lib/library-data';
+import {
+  hasPendingSubmission,
+  loadNarrative,
+  loadPublishedFor,
+  loadScoutRankProgress
+} from '@/lib/library-data';
 import { rankReqKey, withViewScout } from '@/lib/library';
 import { resolveLibraryViewer, viewerIsLeader } from '@/lib/library-viewer';
 import { fetchAllRows } from '@/lib/supabase/paginate';
@@ -81,8 +86,12 @@ export default async function LibraryRequirementPage({
   // counts only, this is a public page.
   let haveCount: number | null = null;
   let activeCount: number | null = null;
+  // Has the scout in view already claimed this one and not heard back? Rides
+  // along with the counts rather than adding a third sequential round trip —
+  // iad1↔us-east-2 latency is paid per await on this public path.
+  let proofPending = false;
   if (isLeaf) {
-    const [ledgerRows, activeRes] = await Promise.all([
+    const [ledgerRows, activeRes, pending] = await Promise.all([
       fetchAllRows<{ scout_id: string }>((from, to) =>
         supabase
           .from('ledger_active')
@@ -91,8 +100,12 @@ export default async function LibraryRequirementPage({
           .eq('code', targetKey)
           .range(from, to)
       ),
-      supabase.from('scouts').select('id').eq('active', true)
+      supabase.from('scouts').select('id').eq('active', true),
+      viewScoutId != null
+        ? hasPendingSubmission(supabase, viewScoutId, 'rank_req', targetKey)
+        : Promise.resolve(false)
     ]);
+    proofPending = pending;
     const activeIds = new Set(((activeRes.data ?? []) as { id: string }[]).map((s) => s.id));
     haveCount = new Set(ledgerRows.map((r) => r.scout_id).filter((id) => activeIds.has(id))).size;
     activeCount = activeIds.size;
@@ -193,7 +206,20 @@ export default async function LibraryRequirementPage({
             </FieldHint>
           </div>
         )}
-        {isLeaf && audience !== 'scout' && (
+        {/* Already claimed and waiting on a leader? Say so instead of
+            offering the button again. The badge drill has always done this
+            (mb-requirements-tree suppresses the claim icon via pendingByLeaf);
+            rank pages never checked, which is why every duplicate in the
+            queue was a rank requirement (Patrick, 2026-09-20). */}
+        {isLeaf && audience !== 'scout' && proofPending && (
+          <div className={styles.centerBlock}>
+            <FieldHint>
+              Already sent — a leader is reviewing this one. You&rsquo;ll be able to send it
+              again if they ask for anything more.
+            </FieldHint>
+          </div>
+        )}
+        {isLeaf && audience !== 'scout' && !proofPending && (
           <p className={styles.centerBlock}>
             <Button variant="primary" href={proofHref}>
               I did this →

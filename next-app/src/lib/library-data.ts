@@ -235,6 +235,56 @@ export async function loadMbPendingSubmissions(
 }
 
 /**
+ * Does this scout already have a proof claim waiting on this one
+ * requirement? The MB drill answers the same question in bulk with
+ * `loadMbPendingSubmissions` (badge-scoped, many scouts, many leaves); a
+ * rank requirement page has exactly one target and one resolved scout, so
+ * it asks directly rather than building a map to read one cell out of.
+ *
+ * Callers must pass a scout the viewer is already authorized for
+ * (lib/library-viewer.ts collapses proxy, verified scout, and verified
+ * adult to a single `viewer.scoutId`) — this function does no gating of its
+ * own.
+ */
+export async function loadPendingSubmission(
+  supabase: SupabaseClient,
+  scoutId: string,
+  targetKind: 'rank_req' | 'mb_req',
+  targetKey: string
+): Promise<PendingSubmission | null> {
+  const { data } = await supabase
+    .from('requirement_submissions')
+    .select('id, proof_type, body_md, link_url, media, created_at')
+    .eq('scout_id', scoutId)
+    .eq('target_kind', targetKind)
+    .eq('target_key', targetKey)
+    .eq('status', 'pending')
+    .limit(1)
+    .maybeSingle();
+  return (data as PendingSubmission | null) ?? null;
+}
+
+/** The claim itself, for the submit action's replace-or-ignore decision. */
+export type PendingSubmission = {
+  id: number;
+  proof_type: 'photo' | 'report' | 'link';
+  body_md: string | null;
+  link_url: string | null;
+  media: { path: string; contentType: string }[];
+  created_at: string;
+};
+
+/** Boolean form, for pages that only need to hide a claim button. */
+export async function hasPendingSubmission(
+  supabase: SupabaseClient,
+  scoutId: string,
+  targetKind: 'rank_req' | 'mb_req',
+  targetKey: string
+): Promise<boolean> {
+  return (await loadPendingSubmission(supabase, scoutId, targetKind, targetKey)) != null;
+}
+
+/**
  * Published-resource counts per target, one query for the whole drill —
  * `${target_kind}:${target_key}` → count. Placement volume is small (troop
  * scale); grouping happens here, not in PostgREST.

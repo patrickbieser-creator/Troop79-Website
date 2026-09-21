@@ -19,6 +19,7 @@ import { resolveRequirementLabel } from '@/lib/library-data';
 import { actorCanProxyLibrary, resolveLibraryViewer } from '@/lib/library-viewer';
 import { resolveAdminActor } from '@/lib/admin-actor';
 import { proofGateAction, submitProofAction } from './actions';
+import { SubmitProofButton } from './submit-button';
 import { TrackOnMount } from '../../_components/track-on-mount';
 import { PageHeader, KickerSep } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
@@ -506,9 +507,7 @@ function ProofFields() {
         <TextArea name="body_md" placeholder="What did you do?" />
       </Field>
 
-      <Button variant="primary" type="submit">
-        Send for Review
-      </Button>
+      <SubmitProofButton>Send for Review</SubmitProofButton>
     </>
   );
 }

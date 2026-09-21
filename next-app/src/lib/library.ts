@@ -342,3 +342,35 @@ export function splitFiledByLine(bodyMd: string | null): { filedBy: string | nul
   const body = m[2]?.trim() ?? '';
   return { filedBy: m[1], body: body || null };
 }
+
+/**
+ * Is a second submission against an already-pending claim the SAME
+ * submission arriving twice, or a genuine redo?
+ *
+ * Only one pending claim per scout per requirement exists
+ * (requirement_submissions_pending_unique), so submitProofAction has to
+ * choose between ignoring the new one and replacing the old one. Getting
+ * this backwards is the expensive direction: treating a redo as a duplicate
+ * silently throws away a scout's better answer and still shows them "Sent"
+ * (qa-lead, 2026-09-20).
+ *
+ * Unchanged means every field a leader would read is identical AND the
+ * request attached no new media — a fresh upload is always a real redo, even
+ * when the caption happens to match, because the file itself may differ.
+ */
+export function proofSubmissionUnchanged(
+  pending: { proof_type: string; body_md: string | null; link_url: string | null },
+  next: {
+    proofType: string;
+    bodyMd: string | null;
+    linkUrl: string | null;
+    newMediaCount: number;
+  }
+): boolean {
+  if (next.newMediaCount > 0) return false;
+  return (
+    pending.proof_type === next.proofType &&
+    (pending.body_md ?? null) === next.bodyMd &&
+    (pending.link_url ?? null) === next.linkUrl
+  );
+}
