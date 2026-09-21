@@ -132,6 +132,41 @@ export function classifyImageLink(href: string, src: string): ImageLinkKind {
   return 'external';
 }
 
+/**
+ * What the editor's image form reads and writes: plain markdown, `![alt](src
+ * "caption")` wrapped in `[...](href)` when linked. Build and parse must
+ * round-trip exactly — Edit → Save changes with nothing touched must not
+ * rewrite the author's text.
+ */
+export interface ImageMarkdown {
+  src: string;
+  alt: string;
+  caption: string | null;
+  href: string | null;
+}
+
+const escapeAlt = (s: string) => s.replace(/([[\]\\])/g, '\\$1');
+const escapeCaption = (s: string) => s.replace(/(["\\])/g, '\\$1');
+const unescape = (s: string) => s.replace(/\\(.)/g, '$1');
+
+export function buildImageMarkdown({ src, alt, caption, href }: ImageMarkdown): string {
+  const img = `![${escapeAlt(alt)}](${src}${caption ? ` "${escapeCaption(caption)}"` : ''})`;
+  return href ? `[${img}](${href})` : img;
+}
+
+/** The whole string must be exactly one (optionally linked) image, or null. */
+export function parseImageMarkdown(raw: string): ImageMarkdown | null {
+  const m =
+    /^(\[)?!\[((?:\\.|[^[\]\\])*)\]\(\s*(\S+?)(?:\s+"((?:\\.|[^"\\])*)")?\s*\)(?:\]\(\s*(\S+?)\s*\))?$/.exec(
+      raw.trim()
+    );
+  if (!m) return null;
+  const [, open, alt, src, caption, href] = m;
+  // An opening `[` needs its `](href)` and vice versa.
+  if (!!open !== (href !== undefined)) return null;
+  return { src, alt: unescape(alt), caption: caption ? unescape(caption) : null, href: href ?? null };
+}
+
 /** The label rendered in the caption slot when a linked image has no caption. */
 export function imageLinkLabel(kind: ImageLinkKind): string {
   switch (kind) {

@@ -52,6 +52,23 @@
 }
 .field input:focus { border-color: var(--admin-navy); background: var(--admin-white); }
 
+/* Single-image form (2026-09-21): thumbnail beside caption + "Link to". The
+   radio markup mirrors the roster's status radios; the fieldset keeps the
+   three choices under one accessible name. */
+.imageRow { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 10px; }
+.imageThumb {
+  flex: 0 0 96px; width: 96px; height: 96px; object-fit: cover; border-radius: 2px;
+  border: 1px solid var(--admin-gray-300); background: var(--admin-gray-100);
+}
+.imageFields { flex: 1; min-width: 0; }
+.radioGroup { border: 0; padding: 0; margin: 0 0 10px; }
+.radioGroup legend { display: block; font-family: var(--admin-font-ui); margin-bottom: 6px; padding: 0; }
+.radio {
+  display: flex; align-items: center; gap: 8px; font-family: var(--admin-font-ui); font-size: 13px;
+  color: var(--admin-gray-700); padding: 3px 0; cursor: pointer;
+}
+.radio input { margin: 0; }
+
 .hint {
   font-family: var(--admin-font-ui);
   font-size: 11px;

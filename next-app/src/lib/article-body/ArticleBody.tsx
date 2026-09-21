@@ -1,4 +1,4 @@
-import Markdown from 'react-markdown';
+import Markdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Children, isValidElement, type ComponentPropsWithoutRef } from 'react';
 import Image from 'next/image';
@@ -13,9 +13,11 @@ import {
 } from './tokens';
 import styles from './article-body.module.css';
 
-/** Identifies the exact `{{type: ...}}` source span an edit-in-place click came from. */
+/** Identifies the exact source span an edit-in-place click came from: a
+ *  `{{type: ...}}` token, or (since step 3 of Plans/Article-Image-
+ *  Flexibility.md) a standalone `![…](…)` / `[![…](…)](…)` image. */
 export interface EditableBlockInfo {
-  type: BlockType;
+  type: BlockType | 'image';
   raw: string;
   start: number;
   end: number;
@@ -45,112 +47,156 @@ export function ArticleBody({
 }) {
   return (
     <div className={styles.articleBody}>
-      <Markdown
-        remarkPlugins={[remarkGfm, remarkArticleBlocks]}
-        components={{
-          img: FigureImage,
-          a: LinkOrLinkedFigure,
-          div: (props) => <ArticleBlockDiv {...props} onEditBlock={onEditBlock} />,
-          table: TableWrap,
-          p: ParagraphOrFigure
-        }}
-      >
+      <Markdown remarkPlugins={[remarkGfm, remarkArticleBlocks]} components={componentsFor(onEditBlock)}>
         {body}
       </Markdown>
     </div>
   );
 }
 
+type EditBlockHandler = (info: EditableBlockInfo) => void;
+
 /**
- * A plain <img>, not next/image — deliberately, like the article hero.
- * `fill` needs a box with a fixed aspect ratio to size against, and that box
- * is what cropped a portrait flyer to a letterbox; markdown carries no
- * width/height to size a non-fill Image with. The layout shift on load is
- * the same tradeoff the hero has lived with since 2026-08-14.
+ * The component overrides need `onEditBlock` (a function — it cannot travel
+ * through the markdown AST like the data-* offsets do), and three of them
+ * must recognise EACH OTHER by identity (ParagraphOrFigure asks "is my only
+ * child the figure?"). No hooks or context here: this file also renders as
+ * a Server Component. So the set is built as closures over the handler and
+ * cached per handler — rebuilding it on every render would give React new
+ * component types each time and remount every image in the live preview on
+ * every keystroke. The editor keeps its handler stable (useCallback) for
+ * exactly this reason; the public pages pass none and share one set.
  */
+const componentSets = new WeakMap<EditBlockHandler, Components>();
+let publicComponents: Components | undefined;
+
+function componentsFor(onEditBlock?: EditBlockHandler): Components {
+  if (!onEditBlock) return (publicComponents ??= buildComponents(undefined));
+  let set = componentSets.get(onEditBlock);
+  if (!set) {
+    set = buildComponents(onEditBlock);
+    componentSets.set(onEditBlock, set);
+  }
+  return set;
+}
+
 type FigureImageProps = ComponentPropsWithoutRef<'img'> & {
   /** Set by LinkOrLinkedFigure when the markdown wraps the image in a link. */
   href?: string;
+  /** Source span + slice, set by remark-article-blocks on a standalone image. */
+  'data-raw'?: string;
+  'data-start'?: string | number;
+  'data-end'?: string | number;
 };
 
-function FigureImage({ src, alt, title, href }: FigureImageProps) {
-  if (!src || typeof src !== 'string') return null;
-  const kind = href ? classifyImageLink(href, src) : null;
-  // Full-size and external links leave the site (or the page) — new tab, so
-  // the reader keeps their place; an internal path is ordinary navigation.
-  const linkAttrs =
-    kind && kind !== 'internal' ? { target: '_blank', rel: 'noopener noreferrer' } : {};
-  /* eslint-disable-next-line @next/next/no-img-element */
-  const img = <img src={src} alt={alt ?? ''} />;
-  return (
-    <figure className={styles.contentFigure}>
-      <div className={styles.figImg}>
-        {href ? (
-          <a href={href} {...linkAttrs}>
-            {img}
-          </a>
+function buildComponents(onEditBlock: EditBlockHandler | undefined): Components {
+  /**
+   * A plain <img>, not next/image — deliberately, like the article hero.
+   * `fill` needs a box with a fixed aspect ratio to size against, and that
+   * box is what cropped a portrait flyer to a letterbox; markdown carries no
+   * width/height to size a non-fill Image with. The layout shift on load is
+   * the same tradeoff the hero has lived with since 2026-08-14.
+   */
+  function FigureImage({
+    src,
+    alt,
+    title,
+    href,
+    'data-raw': raw,
+    'data-start': start,
+    'data-end': end
+  }: FigureImageProps) {
+    if (!src || typeof src !== 'string') return null;
+    const kind = href ? classifyImageLink(href, src) : null;
+    // Full-size and external links leave the site (or the page) — new tab, so
+    // the reader keeps their place; an internal path is ordinary navigation.
+    const linkAttrs =
+      kind && kind !== 'internal' ? { target: '_blank', rel: 'noopener noreferrer' } : {};
+    const onEdit =
+      onEditBlock && raw !== undefined && start !== undefined && end !== undefined
+        ? () => onEditBlock({ type: 'image', raw, start: Number(start), end: Number(end) })
+        : undefined;
+    /* eslint-disable-next-line @next/next/no-img-element */
+    const img = <img src={src} alt={alt ?? ''} />;
+    return (
+      <figure className={styles.contentFigure}>
+        <div className={`${styles.figImg} ${onEdit ? styles.blockEditable : ''}`}>
+          {onEdit && <EditBlockButton onClick={onEdit} />}
+          {href ? (
+            <a href={href} {...linkAttrs}>
+              {img}
+            </a>
+          ) : (
+            img
+          )}
+        </div>
+        {/* The caption is the visible affordance: hover does not exist on a
+            phone, so a linked figure's caption IS the link text, and a linked
+            figure with no caption gets a label rather than an invisible
+            target (Jenna, 2026-09-21). */}
+        {href && kind ? (
+          <figcaption>
+            <a href={href} {...linkAttrs} className={title ? undefined : styles.figLinkLabel}>
+              {title || imageLinkLabel(kind)}
+            </a>
+          </figcaption>
         ) : (
-          img
+          title && <figcaption>{title}</figcaption>
         )}
-      </div>
-      {/* The caption is the visible affordance: hover does not exist on a
-          phone, so a linked figure's caption IS the link text, and a linked
-          figure with no caption gets a label rather than an invisible target
-          (Jenna, 2026-09-21). */}
-      {href && kind ? (
-        <figcaption>
-          <a href={href} {...linkAttrs} className={title ? undefined : styles.figLinkLabel}>
-            {title || imageLinkLabel(kind)}
-          </a>
-        </figcaption>
-      ) : (
-        title && <figcaption>{title}</figcaption>
-      )}
-    </figure>
-  );
-}
-
-/**
- * `[![alt](src "caption")](href)` is native markdown for a linked image, and
- * react-markdown hands us <a> wrapping <img>. Wrapping the block-level figure
- * in an inline <a> (inside a <p>, see ParagraphOrFigure) is invalid nesting,
- * so when a link's sole content is our figure, the figure takes the href and
- * renders the link itself — around the image and again as the caption.
- * Every other link is an ordinary <a>.
- */
-function LinkOrLinkedFigure({ href, children, ...rest }: ComponentPropsWithoutRef<'a'>) {
-  const kids = Children.toArray(children);
-  const onlyChild = kids.length === 1 ? kids[0] : null;
-  if (isValidElement<FigureImageProps>(onlyChild) && onlyChild.type === FigureImage && typeof href === 'string') {
-    return <FigureImage {...onlyChild.props} href={href} />;
+      </figure>
+    );
   }
-  return (
-    <a href={href} {...rest}>
-      {children}
-    </a>
-  );
-}
 
-/**
- * A markdown image is inline content — CommonMark always wraps a
- * paragraph-that-is-just-an-image in a `<p>`. FigureImage renders a
- * block-level `<figure>`, and `<figure>`/`<figcaption>`/`<div>` can't
- * legally nest inside a `<p>` (real hydration error, caught via browser
- * verification). When the sole child is our figure — bare, or the link
- * override carrying one — render it unwrapped.
- */
-function ParagraphOrFigure({ children }: ComponentPropsWithoutRef<'p'>) {
-  const kids = Children.toArray(children);
-  const onlyChild = kids.length === 1 ? kids[0] : null;
-  if (!isValidElement(onlyChild)) return <p>{children}</p>;
-  if (onlyChild.type === FigureImage) return <>{children}</>;
-  if (onlyChild.type === LinkOrLinkedFigure) {
-    const inner = Children.toArray((onlyChild.props as ComponentPropsWithoutRef<'a'>).children);
-    if (inner.length === 1 && isValidElement(inner[0]) && inner[0].type === FigureImage) {
-      return <>{children}</>;
+  /**
+   * `[![alt](src "caption")](href)` is native markdown for a linked image,
+   * and react-markdown hands us <a> wrapping <img>. Wrapping the block-level
+   * figure in an inline <a> (inside a <p>, see ParagraphOrFigure) is invalid
+   * nesting, so when a link's sole content is our figure, the figure takes
+   * the href and renders the link itself — around the image and again as
+   * the caption. Every other link is an ordinary <a>.
+   */
+  function LinkOrLinkedFigure({ href, children, ...rest }: ComponentPropsWithoutRef<'a'>) {
+    const kids = Children.toArray(children);
+    const onlyChild = kids.length === 1 ? kids[0] : null;
+    if (isValidElement<FigureImageProps>(onlyChild) && onlyChild.type === FigureImage && typeof href === 'string') {
+      return <FigureImage {...onlyChild.props} href={href} />;
     }
+    return (
+      <a href={href} {...rest}>
+        {children}
+      </a>
+    );
   }
-  return <p>{children}</p>;
+
+  /**
+   * A markdown image is inline content — CommonMark always wraps a
+   * paragraph-that-is-just-an-image in a `<p>`. FigureImage renders a
+   * block-level `<figure>`, and `<figure>`/`<figcaption>`/`<div>` can't
+   * legally nest inside a `<p>` (real hydration error, caught via browser
+   * verification). When the sole child is our figure — bare, or the link
+   * override carrying one — render it unwrapped.
+   */
+  function ParagraphOrFigure({ children }: ComponentPropsWithoutRef<'p'>) {
+    const kids = Children.toArray(children);
+    const onlyChild = kids.length === 1 ? kids[0] : null;
+    if (!isValidElement(onlyChild)) return <p>{children}</p>;
+    if (onlyChild.type === FigureImage) return <>{children}</>;
+    if (onlyChild.type === LinkOrLinkedFigure) {
+      const inner = Children.toArray((onlyChild.props as ComponentPropsWithoutRef<'a'>).children);
+      if (inner.length === 1 && isValidElement(inner[0]) && inner[0].type === FigureImage) {
+        return <>{children}</>;
+      }
+    }
+    return <p>{children}</p>;
+  }
+
+  return {
+    img: FigureImage,
+    a: LinkOrLinkedFigure,
+    div: (props) => <ArticleBlockDiv {...props} onEditBlock={onEditBlock} />,
+    table: TableWrap,
+    p: ParagraphOrFigure
+  };
 }
 
 function TableWrap({ children }: ComponentPropsWithoutRef<'table'>) {

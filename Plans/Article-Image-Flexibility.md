@@ -1,8 +1,8 @@
 # Article Image Flexibility
 
-**Status:** Ready to activate (plan approved pending Patrick's read)
-**Parked:** 2026-09-21
-**Priority:** High — a live article (`/news/rummage-sale`) is showing a cropped flyer today
+**Status:** Complete — v1.129.0 (A+B), v1.130.0 (C renderer), v1.131.0 (C authoring), all 2026-09-21
+**Parked:** 2026-09-21 · **Activated:** 2026-09-21 (Patrick: "Go!", show_hero OK, no-caption labels OK)
+**Priority:** High — a live article (`/news/rummage-sale`) was showing a cropped flyer
 
 ## Overview
 
@@ -40,37 +40,37 @@ not markdown). This plan adds the first one.
 ## Acceptance Criteria
 
 **A — Hero control (articles only; `/events/[id]` renders no hero)**
-- [ ] Article editor hero field has **Remove** (clears `hero_media_id`, parity with calendar).
-- [ ] Article editor has a checkbox **"Show hero image at top of article"**, default checked,
+- [x] Article editor hero field has **Remove** (clears `hero_media_id`, parity with calendar).
+- [x] Article editor has a checkbox **"Show hero image at top of article"**, default checked,
       placed directly under the Choose/Change/Remove buttons, with the hint
       *"Still used as the card thumbnail and social preview image even when hidden here."*
-- [ ] Unchecked → `/news/[slug]` renders no `.articleHero`; `og:image`, JSON-LD `image`, and the
+- [x] Unchecked → `/news/[slug]` renders no `.articleHero`; `og:image`, JSON-LD `image`, and the
       homepage/category card thumbnail still use the hero. Existing articles unchanged.
-- [ ] Checkbox is part of the dirty-gated Save / Discard standard (the editor's `draftKey`).
+- [x] Checkbox is part of the dirty-gated Save / Discard standard (the editor's `draftKey`).
 
 **B — Body figures show the whole image**
-- [ ] `.figImg` matches `.articleHero img`: `width: 100%; height: auto`, no `aspect-ratio`, no
+- [x] `.figImg` matches `.articleHero img`: `width: 100%; height: auto`, no `aspect-ratio`, no
       `object-fit: cover`, no max-height guard. Radius `var(--rad-sm)`, placeholder background
       `var(--border-light)` (both currently hardcoded/absent on `.figImg`).
-- [ ] `FigureImage` renders a plain `<img>` (same `eslint-disable no-img-element` as the hero).
+- [x] `FigureImage` renders a plain `<img>` (same `eslint-disable no-img-element` as the hero).
       Design-system census test stays green (no new raw hex, no inline style).
-- [ ] `/news/rummage-sale` body flyer shows full height on desktop and phone (browser-verified).
+- [x] `/news/rummage-sale` body flyer shows full height on desktop and phone (browser-verified).
 
 **C — Linked images**
-- [ ] `[![alt](src "cap")](href)` renders `<figure><a href><img></a><figcaption>…</figcaption></figure>`
+- [x] `[![alt](src "cap")](href)` renders `<figure><a href><img></a><figcaption>…</figcaption></figure>`
       — never `<p><a><figure>`. An image alone in a paragraph, linked or not, is unwrapped from `<p>`.
-- [ ] Link kinds: `href === src` → **full-size**, new tab; `href` starts with `/` → **internal**,
+- [x] Link kinds: `href === src` → **full-size**, new tab; `href` starts with `/` → **internal**,
       same tab; anything else → **external**, new tab. New-tab links carry `rel="noopener noreferrer"`.
-- [ ] Affordance: when a caption exists it is rendered as the link text (standard `.articleBody a`
+- [x] Affordance: when a caption exists it is rendered as the link text (standard `.articleBody a`
       styling — underline + `--forest`, visible `--focus-ring`); when there is no caption a small
       auto line is rendered: "View full size ↗" for full-size, "Open link ↗" for external, "Open →"
       for internal. The image itself is also inside the link (large tap target).
-- [ ] Insert Image no longer uses `window.prompt`: a small dialog with **Caption** and
+- [x] Insert Image no longer uses `window.prompt`: a small dialog with **Caption** and
       **Link to: None / Full-size image / A URL** (URL field revealed only for "A URL"), default None.
-- [ ] Body images get **edit-in-place** in the editor preview (Edit button, same as gallery/video),
+- [x] Body images get **edit-in-place** in the editor preview (Edit button, same as gallery/video),
       reopening the dialog prefilled and splicing the updated markdown over the original span —
       the *outer link span* when the image is linked.
-- [ ] Rendering is identical on `/news/[slug]`, `/events/[id]`, and the editor preview (shared
+- [x] Rendering is identical on `/news/[slug]`, `/events/[id]`, and the editor preview (shared
       `ArticleBody`; the public pages pass no `onEditBlock`, so no Edit button leaks).
 
 ## Test Plan
@@ -79,34 +79,38 @@ New `tests/article-body.test.tsx` (dom project — renders `ArticleBody` to stat
 additions to `tests/article-publish.test.ts` (db project). Stubs first, throw until filled.
 
 Renderer (B + C):
-- [ ] `Reader_SeesPlainImg_WhenBodyHasAnImage` — no `data-nimg="fill"`, `<img src alt>` inside `<figure>`.
-- [ ] `Reader_SeesNoParagraphWrapper_WhenImageIsAlone` — regression guard for the existing unwrap.
-- [ ] `Reader_SeesNoParagraphWrapper_WhenLinkedImageIsAlone` — `<p>` never contains `<figure>` or `<a><figure>`.
-- [ ] `Reader_SeesImageInsideLink_WhenMarkdownLinksIt`
-- [ ] `Reader_OpensNewTab_WhenHrefEqualsSrc` — `target="_blank"` + `rel="noopener noreferrer"`.
-- [ ] `Reader_StaysInTab_WhenHrefIsInternal` — no `target`.
-- [ ] `Reader_OpensNewTab_WhenHrefIsExternal`
-- [ ] `Reader_SeesCaptionAsLinkText_WhenCaptionPresent`
-- [ ] `Reader_SeesViewFullSizeLabel_WhenLinkedWithoutCaption`
-- [ ] `Reader_SeesOpenLinkLabel_WhenExternalWithoutCaption`
+- [x] `Reader_SeesPlainImg_WhenBodyHasAnImage` — no `data-nimg="fill"`, `<img src alt>` inside `<figure>`.
+- [x] `Reader_SeesNoParagraphWrapper_WhenImageIsAlone` — regression guard for the existing unwrap.
+- [x] `Reader_SeesNoParagraphWrapper_WhenLinkedImageIsAlone` — `<p>` never contains `<figure>` or `<a><figure>`.
+- [x] `Reader_SeesImageInsideLink_WhenMarkdownLinksIt`
+- [x] `Reader_OpensNewTab_WhenHrefEqualsSrc` — `target="_blank"` + `rel="noopener noreferrer"`.
+- [x] `Reader_StaysInTab_WhenHrefIsInternal` — no `target`.
+- [x] `Reader_OpensNewTab_WhenHrefIsExternal`
+- [x] `Reader_SeesCaptionAsLinkText_WhenCaptionPresent`
+- [x] `Reader_SeesViewFullSizeLabel_WhenLinkedWithoutCaption`
+- [x] `Reader_SeesOpenLinkLabel_WhenExternalWithoutCaption`
 
 Remark offsets (C edit-in-place):
-- [ ] `Remark_AnnotatesImageSpan_WhenImageStandsAlone` — `data-start`/`data-end` cover `![…](…)`.
-- [ ] `Remark_AnnotatesOuterLinkSpan_WhenImageIsLinked` — span covers `[![…](…)](…)`, not the inner image.
-- [ ] `Remark_LeavesTokenBlocksUntouched_WhenImagesAreAnnotated` — gallery/video still dispatch.
+- [x] `Remark_AnnotatesImageSpan_WhenImageStandsAlone` — `data-start`/`data-end` cover `![…](…)`.
+- [x] `Remark_AnnotatesOuterLinkSpan_WhenImageIsLinked` — span covers `[![…](…)](…)`, not the inner image.
+- [x] `Remark_LeavesTokenBlocksUntouched_WhenImagesAreAnnotated` — gallery/video still dispatch.
 
 Markdown builders (C authoring, pure functions in `tokens.ts`):
-- [ ] `Author_GetsPlainImageMarkdown_WhenLinkIsNone`
-- [ ] `Author_GetsSelfLinkedMarkdown_WhenFullSizeChosen` — href === src.
-- [ ] `Author_GetsUrlLinkedMarkdown_WhenUrlChosen`
-- [ ] `Author_GetsCaptionQuoted_WhenCaptionContainsQuotes` — escaping round-trip.
-- [ ] `Parser_RoundTripsBuilderOutput_ForAllThreeLinkKinds` — `parseImageMarkdown(build(x)) ≡ x`.
+- [x] `Author_GetsPlainImageMarkdown_WhenLinkIsNone`
+- [x] `Author_GetsSelfLinkedMarkdown_WhenFullSizeChosen` — href === src.
+- [x] `Author_GetsUrlLinkedMarkdown_WhenUrlChosen`
+- [x] `Author_GetsCaptionQuoted_WhenCaptionContainsQuotes` — escaping round-trip.
+- [x] `Parser_RoundTripsBuilderOutput_ForAllThreeLinkKinds` — `parseImageMarkdown(build(x)) ≡ x`.
 
 Hero (A):
-- [ ] `Leader_SavesShowHeroFalse_WhenUncheckedOnSave` — action persists `show_hero`.
-- [ ] `Leader_ClearsHero_WhenRemovePressed` — `hero_media_id` null after save.
-- [ ] `Loader_ReturnsShowHero_ThroughArticlesPublicView` — the recreated view exposes the column.
-- [ ] Browser-verified (not unit): hidden hero → no `.articleHero`, `og:image` still present.
+- [ ] ~~`Leader_SavesShowHeroFalse_WhenUncheckedOnSave`~~ — NOT written: the Server Action needs a
+      session cookie this suite cannot mock (D-049). Browser-verified instead (uncheck → save →
+      public page has no hero, `og:image` intact).
+- [ ] ~~`Leader_ClearsHero_WhenRemovePressed`~~ — NOT written, same boundary; qa-lead confirmed the
+      Remove path reuses the pre-existing absent-`heroMediaId` → null mapping unchanged.
+- [x] `Loader_ReturnsShowHeroFalse_ThroughArticlesPublicView` + `Loader_DefaultsShowHeroTrue_…` —
+      the recreated view exposes the column; default covers older inserts.
+- [x] Browser-verified (not unit): hidden hero → no `.articleHero`, `og:image` still present.
 
 ## Technical Approach
 
@@ -160,12 +164,12 @@ before deploy (step 1 touches a migration + view recreation; step 3 touches shar
 
 ## Open Questions
 
-- [ ] Column name `show_hero` (checkbox reads "Show hero image at top of article") — OK, or prefer
+- [x] Column name `show_hero` (checkbox reads "Show hero image at top of article") — OK, or prefer
       `hero_on_page`?
-- [ ] Rummage sale specifically: once A ships, Patrick unchecks the hero on that article himself
+- [x] Rummage sale specifically: once A ships, Patrick unchecks the hero on that article himself
       (content decision, not a migration) — confirm that's the intent rather than deleting the
       duplicate body image.
-- [ ] "Open →" for an internal link with no caption — keep, or require a caption for internal links?
+- [x] "Open →" for an internal link with no caption — keep, or require a caption for internal links?
 
 ## Notes
 
@@ -179,6 +183,10 @@ before deploy (step 1 touches a migration + view recreation; step 3 touches shar
   typed, and the leader review preview renders it before any accept/reject. Not XSS (no
   `rehypeRaw`); worst case an external tracking pixel, blunted by `Referrer-Policy`. Acceptable
   for known families — revisit (server-side proxy/allowlist) if public submissions ever open wider.
+- qa-lead 2026-09-21 (step 3, SHIP): the editor's inline-prompt family (`markdown-block-tools`:
+  gallery link, video, and now the image form with its `.radio`/`.radioGroup`) has NO specimen on
+  `/admin/styleguide/admin` — pre-existing debt, missed for the third time. Backfill the whole
+  family in one pass (BACKLOG).
 - Latent, not in scope: an image mid-sentence (not alone in its paragraph) still renders a
   `<figure>` inside `<p>` — same invalid nesting. Nobody has authored one yet. Fix if it bites.
 - Jenna has no project memory yet (`Agents/Jenna/Memory/` empty); seed SURFACES/PATTERNS from this

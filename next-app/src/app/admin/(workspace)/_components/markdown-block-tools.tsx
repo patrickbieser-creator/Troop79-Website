@@ -19,14 +19,16 @@
  * same everywhere.
  */
 
-import { useState, type ReactNode, type RefObject } from 'react';
+import { useCallback, useState, type ReactNode, type RefObject } from 'react';
 import type { EditableBlockInfo } from '@/lib/article-body/ArticleBody';
 import {
   buildGalleryLinkToken,
   buildGalleryToken,
+  buildImageMarkdown,
   buildVideoToken,
   parseGalleryToken,
   parseGalleryLinkToken,
+  parseImageMarkdown,
   parseVideoToken
 } from '@/lib/article-body/tokens';
 import type { Media } from '@/lib/supabase/types';
@@ -82,6 +84,15 @@ export function useMarkdownBlockTools(
     coverMedia: Media | null;
   } | null>(null);
   const [videoForm, setVideoForm] = useState<{ url: string; caption: string } | null>(null);
+  // Single image (Plans/Article-Image-Flexibility.md step 3): caption plus
+  // "Link to" none / the full-size file / a URL. Replaces the window.prompt
+  // the Insert Image button used to fire after the picker.
+  const [imageForm, setImageForm] = useState<{
+    media: Media;
+    caption: string;
+    link: 'none' | 'full' | 'url';
+    url: string;
+  } | null>(null);
   const [gallerySeed, setGallerySeed] = useState<Media[] | null>(null);
   // Set only when a form/picker was opened by clicking "Edit" on an existing
   // block — Insert/onInsert then splices the rebuilt token back into this
@@ -97,11 +108,16 @@ export function useMarkdownBlockTools(
     }
   }
 
-  function onEditBlock(info: EditableBlockInfo) {
+  // Stable on purpose: ArticleBody caches its component overrides per
+  // handler so the live preview does not remount every image on each
+  // keystroke. Only state setters are used here, so no deps.
+  const onEditBlock = useCallback((info: EditableBlockInfo) => {
     setEditingRange({ start: info.start, end: info.end });
+    setGalleryLinkForm(null);
+    setVideoForm(null);
+    setImageForm(null);
     if (info.type === 'gallerylink') {
       const parsed = parseGalleryLinkToken(info.raw);
-      setVideoForm(null);
       setGalleryLinkForm({
         url: parsed.url,
         caption: parsed.caption ?? '',
@@ -109,19 +125,35 @@ export function useMarkdownBlockTools(
       });
     } else if (info.type === 'video') {
       const parsed = parseVideoToken(info.raw);
-      setGalleryLinkForm(null);
       setVideoForm({ url: parsed.url, caption: parsed.caption ?? '' });
     } else if (info.type === 'gallery') {
-      setGalleryLinkForm(null);
-      setVideoForm(null);
       setGallerySeed(parseGalleryToken(info.raw).map((img) => stubMedia(img.url, img.alt || null)));
       setPickerMode('gallery');
+    } else if (info.type === 'image') {
+      const parsed = parseImageMarkdown(info.raw);
+      if (!parsed) {
+        setEditingRange(null);
+        return;
+      }
+      setImageForm({
+        media: stubMedia(parsed.src, parsed.alt || null),
+        caption: parsed.caption ?? '',
+        link: parsed.href === null ? 'none' : parsed.href === parsed.src ? 'full' : 'url',
+        url: parsed.href && parsed.href !== parsed.src ? parsed.href : ''
+      });
     }
-  }
+  }, []);
 
   const toolbar = (
     <>
-      <button type="button" className={styles.insertBtn} onClick={() => setPickerMode('image')}>
+      <button
+        type="button"
+        className={styles.insertBtn}
+        onClick={() => {
+          setEditingRange(null);
+          setPickerMode('image');
+        }}
+      >
         Insert Image
       </button>
       <button
@@ -167,6 +199,106 @@ export function useMarkdownBlockTools(
 
   const prompts = (
     <>
+      {imageForm && (
+        <div className={styles.inlinePrompt}>
+          {editingRange && <div className={styles.hint}>Editing existing image</div>}
+          <div className={styles.imageRow}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={imageForm.media.cdn_url} alt="" className={styles.imageThumb} />
+            <div className={styles.imageFields}>
+              <div className={styles.field}>
+                <label className="adminLabel" htmlFor="imageCaption">Caption (optional)</label>
+                <input
+                  id="imageCaption"
+                  type="text"
+                  value={imageForm.caption}
+                  onChange={(e) => setImageForm({ ...imageForm, caption: e.target.value })}
+                />
+              </div>
+              <fieldset className={styles.radioGroup}>
+                <legend className="adminLabel">Link to</legend>
+                <label className={styles.radio}>
+                  <input
+                    type="radio"
+                    name="imageLink"
+                    checked={imageForm.link === 'none'}
+                    onChange={() => setImageForm({ ...imageForm, link: 'none' })}
+                  />
+                  <span>None</span>
+                </label>
+                <label className={styles.radio}>
+                  <input
+                    type="radio"
+                    name="imageLink"
+                    checked={imageForm.link === 'full'}
+                    onChange={() => setImageForm({ ...imageForm, link: 'full' })}
+                  />
+                  <span>Full-size image (opens in a new tab)</span>
+                </label>
+                <label className={styles.radio}>
+                  <input
+                    type="radio"
+                    name="imageLink"
+                    checked={imageForm.link === 'url'}
+                    onChange={() => setImageForm({ ...imageForm, link: 'url' })}
+                  />
+                  <span>A web address</span>
+                </label>
+              </fieldset>
+              {imageForm.link === 'url' && (
+                <div className={styles.field}>
+                  <label className="adminLabel" htmlFor="imageLinkUrl">Link URL</label>
+                  <input
+                    id="imageLinkUrl"
+                    type="text"
+                    value={imageForm.url}
+                    onChange={(e) => setImageForm({ ...imageForm, url: e.target.value })}
+                    placeholder="/events/23 or https://…"
+                  />
+                  <div className={styles.hint}>A page on this site opens in the same tab; anywhere else opens in a new one.</div>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className={styles.inlinePromptActions}>
+            <button
+              type="button"
+              className={styles.btnSecondary}
+              onClick={() => {
+                setImageForm(null);
+                setEditingRange(null);
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className={styles.btnPrimary}
+              disabled={imageForm.link === 'url' && !imageForm.url.trim()}
+              onClick={() => {
+                const href =
+                  imageForm.link === 'full'
+                    ? imageForm.media.cdn_url
+                    : imageForm.link === 'url'
+                      ? imageForm.url.trim()
+                      : null;
+                replaceOrInsert(
+                  buildImageMarkdown({
+                    src: imageForm.media.cdn_url,
+                    alt: imageForm.media.alt_text ?? '',
+                    caption: imageForm.caption.trim() || null,
+                    href
+                  })
+                );
+                setImageForm(null);
+              }}
+            >
+              {editingRange ? 'Save changes' : 'Insert'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {galleryLinkForm && (
         <div className={styles.inlinePrompt}>
           {editingRange && <div className={styles.hint}>Editing existing gallery link</div>}
@@ -285,11 +417,9 @@ export function useMarkdownBlockTools(
           onInsert={(media) => {
             const m = media[0];
             if (m) {
-              const caption = window.prompt('Optional caption for this image:') ?? '';
-              const md = caption.trim()
-                ? `![${m.alt_text ?? ''}](${m.cdn_url} "${caption.trim()}")`
-                : `![${m.alt_text ?? ''}](${m.cdn_url})`;
-              editorRef.current?.insertAtCursor(md);
+              setGalleryLinkForm(null);
+              setVideoForm(null);
+              setImageForm({ media: m, caption: '', link: 'none', url: '' });
             }
             setPickerMode(null);
           }}

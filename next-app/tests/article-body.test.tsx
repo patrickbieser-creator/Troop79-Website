@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { ArticleBody } from '../src/lib/article-body/ArticleBody';
 
 /**
@@ -113,5 +114,46 @@ describe('ArticleBody — a linked image', () => {
     const link = screen.getByRole('link', { name: 'sale page' });
     expect(link.closest('p')).not.toBeNull();
     expect(link.closest('figure')).toBeNull();
+  });
+});
+
+/**
+ * Edit-in-place for images (step 3). Gallery/gallerylink/video blocks have
+ * had an Edit button in the editor's live preview since D-088; images were
+ * the only block without one. The remark pass annotates a standalone image
+ * with its SOURCE span — the outer link's span when the image is linked, so
+ * the editor's splice replaces `[![…](…)](…)` whole, never just the inside.
+ */
+describe('ArticleBody — editing an image in place', () => {
+  const body = `Intro.\n\n![Flyer](${CDN} "Cap")\n\n[![Flyer](${CDN})](/events/23)\n\nOutro.`;
+
+  it('Reader_SeesNoEditButton_WhenNotEditing', () => {
+    render(<ArticleBody body={body} />);
+    expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull();
+  });
+
+  it('Author_GetsTheImageSpan_WhenEditingABareImage', async () => {
+    const onEditBlock = vi.fn();
+    render(<ArticleBody body={body} onEditBlock={onEditBlock} />);
+    await userEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]);
+    const raw = `![Flyer](${CDN} "Cap")`;
+    const start = body.indexOf(raw);
+    expect(onEditBlock).toHaveBeenCalledWith({ type: 'image', raw, start, end: start + raw.length });
+  });
+
+  it('Author_GetsTheOuterLinkSpan_WhenEditingALinkedImage', async () => {
+    const onEditBlock = vi.fn();
+    render(<ArticleBody body={body} onEditBlock={onEditBlock} />);
+    await userEvent.click(screen.getAllByRole('button', { name: 'Edit' })[1]);
+    const raw = `[![Flyer](${CDN})](/events/23)`;
+    const start = body.indexOf(raw);
+    expect(onEditBlock).toHaveBeenCalledWith({ type: 'image', raw, start, end: start + raw.length });
+  });
+
+  it('Author_StillEditsTokenBlocks_WhenImagesAreAnnotated', async () => {
+    const onEditBlock = vi.fn();
+    render(<ArticleBody body={`![Flyer](${CDN})\n\n{{video: https://youtu.be/abc | Clip}}`} onEditBlock={onEditBlock} />);
+    await userEvent.click(screen.getAllByRole('button', { name: 'Edit' })[1]);
+    expect(onEditBlock.mock.calls[0][0].type).toBe('video');
   });
 });
