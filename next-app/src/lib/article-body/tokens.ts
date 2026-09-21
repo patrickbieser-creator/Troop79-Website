@@ -114,3 +114,32 @@ export function parseVideoToken(raw: string): VideoData {
 export function buildVideoToken(url: string, caption?: string): string {
   return `{{video: ${url}${caption ? ` | ${caption}` : ''}}}`;
 }
+
+/**
+ * Linked images (Plans/Article-Image-Flexibility.md, 2026-09-21) are native
+ * markdown — `[![alt](src "caption")](href)` — never a token. What the link
+ * MEANS decides how it opens and what the caption-less label says:
+ *   full     — href is the image's own file: "View full size", new tab
+ *              (the v1.126.1 proof-photo pattern)
+ *   internal — a site path: ordinary navigation, same tab
+ *   external — anywhere else: new tab + noopener
+ */
+export type ImageLinkKind = 'full' | 'internal' | 'external';
+
+export function classifyImageLink(href: string, src: string): ImageLinkKind {
+  if (href === src) return 'full';
+  if (href.startsWith('/') && !href.startsWith('//')) return 'internal';
+  return 'external';
+}
+
+/** The label rendered in the caption slot when a linked image has no caption. */
+export function imageLinkLabel(kind: ImageLinkKind): string {
+  switch (kind) {
+    case 'full':
+      return 'View full size ↗';
+    case 'external':
+      return 'Open link ↗';
+    case 'internal':
+      return 'Open →';
+  }
+}

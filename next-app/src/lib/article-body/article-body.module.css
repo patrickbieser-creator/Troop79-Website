@@ -53,6 +53,14 @@
   font-family: var(--font-ui); font-size: 12px; color: var(--text-meta);
   padding-top: 8px; line-height: 1.5;
 }
+/* Linked figure (`[![alt](src "caption")](href)`, 2026-09-21): the image is
+   the big tap target, the caption is the visible affordance — it inherits the
+   article's standard link treatment (.articleBody a: forest, underlined). The
+   image link itself gets no underline box. A caption-less link shows a label
+   ("View full size ↗") so the target is never invisible. */
+.figImg a { display: block; border-bottom: 0; }
+.figImg a:focus-visible, .contentFigure figcaption a:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.figLinkLabel { font-weight: 700; letter-spacing: .04em; text-transform: uppercase; font-size: 11px; }
 
 /* Embedded gallery block ({{gallery: ...}}) */
 .contentGalleryLabel {

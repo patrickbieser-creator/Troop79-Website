@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>September 21, 2026</strong> &nbsp;&middot;&nbsp; v1.129.0</p>
+      <p>Last updated: <strong>September 21, 2026</strong> &nbsp;&middot;&nbsp; v1.130.0</p>
     </div>
   </div>
 
@@ -494,6 +494,23 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.130.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.130.0</span>
+        <span class="release-date">September 21, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">New</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">A picture in a story can be a link</p>
+        <ul class="change-list">
+          <li><span><strong>Link a picture to its full-size original, to another page on the site, or to any web address</strong> &mdash; the ordinary markdown for a linked image, <code>[![alt](picture "caption")](link)</code>, now works in a story. Before today that combination broke the page. The full-size original and outside links open in a new tab so you keep your place; a page on this site opens in the same tab.</span></li>
+          <li><span><strong>You can tell a picture is a link without hovering</strong> &mdash; which matters on a phone, where there is no hover. The caption becomes the link, underlined like any other link in the story. A linked picture with no caption gets a small label instead (&ldquo;View full size&rdquo;, &ldquo;Open link&rdquo;, or &ldquo;Open&rdquo;) so the link is never invisible.</span></li>
+          <li><span><strong>Behind the scenes:</strong> for now the link is typed by hand in the markdown; the next release adds it to the news editor&rsquo;s Insert Image dialog, with an Edit button on pictures already in a story.</span></li>
+        </ul>
       </div>
     </div>
 

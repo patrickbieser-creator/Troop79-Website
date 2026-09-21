@@ -3,7 +3,14 @@ import remarkGfm from 'remark-gfm';
 import { Children, isValidElement, type ComponentPropsWithoutRef } from 'react';
 import Image from 'next/image';
 import { remarkArticleBlocks } from './remark-article-blocks';
-import { parseGalleryToken, parseGalleryLinkToken, parseVideoToken, type BlockType } from './tokens';
+import {
+  parseGalleryToken,
+  parseGalleryLinkToken,
+  parseVideoToken,
+  classifyImageLink,
+  imageLinkLabel,
+  type BlockType
+} from './tokens';
 import styles from './article-body.module.css';
 
 /** Identifies the exact `{{type: ...}}` source span an edit-in-place click came from. */
@@ -42,6 +49,7 @@ export function ArticleBody({
         remarkPlugins={[remarkGfm, remarkArticleBlocks]}
         components={{
           img: FigureImage,
+          a: LinkOrLinkedFigure,
           div: (props) => <ArticleBlockDiv {...props} onEditBlock={onEditBlock} />,
           table: TableWrap,
           p: ParagraphOrFigure
@@ -60,16 +68,66 @@ export function ArticleBody({
  * width/height to size a non-fill Image with. The layout shift on load is
  * the same tradeoff the hero has lived with since 2026-08-14.
  */
-function FigureImage({ src, alt, title }: ComponentPropsWithoutRef<'img'>) {
+type FigureImageProps = ComponentPropsWithoutRef<'img'> & {
+  /** Set by LinkOrLinkedFigure when the markdown wraps the image in a link. */
+  href?: string;
+};
+
+function FigureImage({ src, alt, title, href }: FigureImageProps) {
   if (!src || typeof src !== 'string') return null;
+  const kind = href ? classifyImageLink(href, src) : null;
+  // Full-size and external links leave the site (or the page) — new tab, so
+  // the reader keeps their place; an internal path is ordinary navigation.
+  const linkAttrs =
+    kind && kind !== 'internal' ? { target: '_blank', rel: 'noopener noreferrer' } : {};
+  /* eslint-disable-next-line @next/next/no-img-element */
+  const img = <img src={src} alt={alt ?? ''} />;
   return (
     <figure className={styles.contentFigure}>
       <div className={styles.figImg}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} alt={alt ?? ''} />
+        {href ? (
+          <a href={href} {...linkAttrs}>
+            {img}
+          </a>
+        ) : (
+          img
+        )}
       </div>
-      {title && <figcaption>{title}</figcaption>}
+      {/* The caption is the visible affordance: hover does not exist on a
+          phone, so a linked figure's caption IS the link text, and a linked
+          figure with no caption gets a label rather than an invisible target
+          (Jenna, 2026-09-21). */}
+      {href && kind ? (
+        <figcaption>
+          <a href={href} {...linkAttrs} className={title ? undefined : styles.figLinkLabel}>
+            {title || imageLinkLabel(kind)}
+          </a>
+        </figcaption>
+      ) : (
+        title && <figcaption>{title}</figcaption>
+      )}
     </figure>
+  );
+}
+
+/**
+ * `[![alt](src "caption")](href)` is native markdown for a linked image, and
+ * react-markdown hands us <a> wrapping <img>. Wrapping the block-level figure
+ * in an inline <a> (inside a <p>, see ParagraphOrFigure) is invalid nesting,
+ * so when a link's sole content is our figure, the figure takes the href and
+ * renders the link itself — around the image and again as the caption.
+ * Every other link is an ordinary <a>.
+ */
+function LinkOrLinkedFigure({ href, children, ...rest }: ComponentPropsWithoutRef<'a'>) {
+  const kids = Children.toArray(children);
+  const onlyChild = kids.length === 1 ? kids[0] : null;
+  if (isValidElement<FigureImageProps>(onlyChild) && onlyChild.type === FigureImage && typeof href === 'string') {
+    return <FigureImage {...onlyChild.props} href={href} />;
+  }
+  return (
+    <a href={href} {...rest}>
+      {children}
+    </a>
   );
 }
 
@@ -78,13 +136,19 @@ function FigureImage({ src, alt, title }: ComponentPropsWithoutRef<'img'>) {
  * paragraph-that-is-just-an-image in a `<p>`. FigureImage renders a
  * block-level `<figure>`, and `<figure>`/`<figcaption>`/`<div>` can't
  * legally nest inside a `<p>` (real hydration error, caught via browser
- * verification). When the sole child is our figure, render it unwrapped.
+ * verification). When the sole child is our figure — bare, or the link
+ * override carrying one — render it unwrapped.
  */
 function ParagraphOrFigure({ children }: ComponentPropsWithoutRef<'p'>) {
   const kids = Children.toArray(children);
   const onlyChild = kids.length === 1 ? kids[0] : null;
-  if (isValidElement(onlyChild) && onlyChild.type === FigureImage) {
-    return <>{children}</>;
+  if (!isValidElement(onlyChild)) return <p>{children}</p>;
+  if (onlyChild.type === FigureImage) return <>{children}</>;
+  if (onlyChild.type === LinkOrLinkedFigure) {
+    const inner = Children.toArray((onlyChild.props as ComponentPropsWithoutRef<'a'>).children);
+    if (inner.length === 1 && isValidElement(inner[0]) && inner[0].type === FigureImage) {
+      return <>{children}</>;
+    }
   }
   return <p>{children}</p>;
 }
