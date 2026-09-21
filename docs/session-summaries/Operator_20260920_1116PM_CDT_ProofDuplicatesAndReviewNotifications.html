@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session Summary — Proof Duplicates &amp; Review Notifications</title>
+<style>
+  :root{
+    --nw-teal:#1e3a4a; --nw-green:#3d5a3e; --cream:#faf6ef; --bark:#8b6914;
+    --ink:#2b2b2b; --muted:#6b6b6b; --rule:#e2ddd3; --card:#fff;
+    --danger:#8c2f27;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--cream);color:var(--ink);
+    font:16px/1.6 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;}
+  .wrap{max-width:860px;margin:0 auto;padding:0 20px 64px}
+  header{background:var(--nw-teal);color:#fff;padding:36px 0 30px;margin-bottom:32px}
+  header .wrap{padding-bottom:0}
+  h1{margin:0 0 6px;font-size:26px;line-height:1.25}
+  .sub{opacity:.85;font-size:14px;margin:0}
+  .date{opacity:.7;font-size:13px;margin:10px 0 0}
+  h2{font-size:19px;color:var(--nw-teal);margin:36px 0 12px;
+    padding-bottom:7px;border-bottom:2px solid var(--nw-green)}
+  h3{font-size:16px;margin:22px 0 6px;color:var(--nw-teal)}
+  p{margin:0 0 12px}
+  ul{margin:0 0 14px;padding-left:22px}
+  li{margin:0 0 7px}
+  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
+    gap:12px;margin:0 0 8px}
+  .metric{background:var(--card);border:1px solid var(--rule);border-radius:5px;
+    padding:14px 16px}
+  .metric .n{display:block;font-size:25px;font-weight:600;color:var(--nw-teal);
+    line-height:1.15}
+  .metric .l{display:block;font-size:12px;color:var(--muted);margin-top:3px;
+    text-transform:uppercase;letter-spacing:.04em}
+  .card{background:var(--card);border:1px solid var(--rule);border-radius:5px;
+    padding:16px 18px;margin:0 0 14px}
+  .card h3{margin-top:0}
+  .tag{display:inline-block;font-size:11px;letter-spacing:.05em;text-transform:uppercase;
+    background:var(--nw-green);color:#fff;border-radius:3px;padding:2px 8px;
+    vertical-align:middle;margin-left:8px}
+  .tag.fix{background:var(--bark)}
+  .tag.caught{background:var(--danger)}
+  table{border-collapse:collapse;width:100%;margin:0 0 16px;font-size:14px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--rule);
+    vertical-align:top}
+  th{color:var(--nw-teal);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  code{background:#f2ede3;border-radius:3px;padding:1px 5px;font-size:13px;
+    font-family:ui-monospace,Menlo,Consolas,monospace}
+  .callout{border-left:3px solid var(--bark);background:#fdf9f0;padding:12px 16px;
+    margin:0 0 16px;border-radius:0 4px 4px 0}
+  .callout strong{color:var(--bark)}
+  footer{margin-top:44px;padding-top:16px;border-top:1px solid var(--rule);
+    color:var(--muted);font-size:13px}
+  @media (max-width:600px){ header{padding:26px 0 22px} h1{font-size:21px} }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>Proof duplicates, and hearing back about them</h1>
+    <p class="sub">Scout Troop 79 — Milwaukee, WI · v1.125.1 → v1.128.0</p>
+    <p class="date">Session 38 · Saturday, September 20, 2026 · ended 11:16 PM CDT</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <h2>At a glance</h2>
+  <div class="metrics">
+    <div class="metric"><span class="n">4</span><span class="l">Releases shipped</span></div>
+    <div class="metric"><span class="n">1885</span><span class="l">Tests (+43)</span></div>
+    <div class="metric"><span class="n">4</span><span class="l">Decisions recorded</span></div>
+    <div class="metric"><span class="n">16</span><span class="l">Duplicate rows cleared</span></div>
+    <div class="metric"><span class="n">2</span><span class="l">Migrations to prod</span></div>
+  </div>
+  <p>Started as a one-line bug report from the live Proof Queue. Ended with a feature that
+  closes the loop the bug exposed: families never heard back about anything they submitted.</p>
+
+  <h2>What was accomplished</h2>
+
+  <div class="card">
+    <h3>Duplicate &ldquo;I did this&rdquo; submissions <span class="tag fix">v1.126.0</span></h3>
+    <p>Scouts&rsquo; proof submissions were appearing many times over. The production data
+    settled what kind of bug it was — genuinely duplicated <em>rows</em>, not a display
+    fan-out — and showed two different human behaviours behind it:</p>
+    <table>
+      <tr><th>Scout</th><th>Requirement</th><th>Rows</th><th>Spacing</th><th>What it was</th></tr>
+      <tr><td>Anjali</td><td>First Class 9a</td><td>3</td><td>0.6–1.0s</td><td>A double-tap</td></tr>
+      <tr><td>Henry</td><td>First Class 7d</td><td>15</td><td>3–5s over 65s</td><td>Clicking, waiting, clicking again</td></tr>
+    </table>
+    <p>Three gaps let it through: no disable on the submit button (the action uploads media
+    and emails a leader <em>before</em> redirecting, so it looked dead), a bare insert with no
+    idempotency check, and an index on the right three columns that was not unique. Every
+    duplicate was a rank requirement, because merit badge pages already hid the claim icon
+    once a proof was pending while rank pages never checked at all.</p>
+    <p>Fixed in four layers: a pending-aware submit button, a partial unique index
+    (<code>WHERE status = 'pending'</code>, so returned and approved claims stay
+    re-submittable), replace-in-place on a genuine redo, and &ldquo;Already sent&rdquo; on the
+    rank page.</p>
+  </div>
+
+  <div class="card">
+    <h3>Full-size proof photos <span class="tag fix">v1.126.1</span></h3>
+    <p>Asked mid-review how to see a submitted photo full size. The answer was that you
+    couldn&rsquo;t — the thumbnail was a bare 160px image with no link, no lightbox, nothing to
+    click. Now opens the original in a new tab. The signed-URL lifetime went from 10 minutes
+    to an hour at the same time: at 10 minutes, clicking a photo after reading a few
+    submissions would have failed and the fix would have looked broken.</p>
+  </div>
+
+  <div class="card">
+    <h3>Library admin: shelves and publishing <span class="tag">v1.127.0</span></h3>
+    <p>The Topics/shelves tab was the one admin edit form the August save standard never
+    reached — a permanently-live Save that looked identical whether or not anything had been
+    typed, and no way back from a half-made edit. It now behaves like every other form, with
+    Retire/Restore deliberately left outside the dirty gate as a one-click action.</p>
+    <p>Publishing a resource with no shelf placed is now refused rather than silently
+    producing something live that appears on no page — and it names the likelier mistake
+    (choosing a shelf but never pressing &ldquo;+ Place&rdquo;) separately from the generic one.</p>
+  </div>
+
+  <div class="card">
+    <h3>Review notifications <span class="tag">v1.128.0</span></h3>
+    <p>New feature. A leader approving, returning or rejecting something now emails the person
+    who submitted it: what you sent, what happened, and a link. Until now a submission went
+    into a queue and nothing ever came back.</p>
+    <ul>
+      <li><strong>Proof claims</strong> name the requirement and whether you sent a photo, a
+      link or a write-up — never the write-up body or the photo itself.</li>
+      <li><strong>Profile updates</strong> name <em>which details</em> changed and never what
+      you put in them, so medical notes stay out of email exactly as they already do on the
+      way in.</li>
+      <li><strong>Leader-filed claims notify the leader</strong> — they are who submitted, and
+      a leader who filed a dozen at a meeting is who most needs the reminder.</li>
+    </ul>
+    <p>Sending is allowed here because a leader clicking a review control <em>is</em> the
+    explicit trigger the email rules require — one recipient, an address already on the
+    roster, nothing batched or scheduled.</p>
+  </div>
+
+  <h2>Caught in review</h2>
+  <p>Four defects were found by QA review or by a test rather than in production. Two of them
+  were mine, in work I had already called finished.</p>
+
+  <div class="callout">
+    <strong>Silent data loss, blocked before shipping.</strong> The first duplicate fix
+    short-circuited on <em>any</em> pending submission with no time limit and showed the
+    success screen. A scout who rewrote a weak answer days later, while a leader hadn&rsquo;t
+    yet looked at the first one, would have had that work thrown away and still been told
+    &ldquo;Sent&rdquo; — a worse bug than the duplicates it was fixing. Now the newer
+    submission replaces the older one and nothing is discarded.
+  </div>
+
+  <div class="callout">
+    <strong>The deploy order was backwards.</strong> I had planned to ship the notification
+    code before its migration. Because that code <em>writes</em> the new column, code-first
+    would have failed every &ldquo;I did this&rdquo; submission against a column that
+    didn&rsquo;t exist yet — breaking the whole flow, not just notifications. The rule that
+    holds: code-first for a tightening, database-first for an additive column the code writes.
+  </div>
+
+  <table>
+    <tr><th>Also caught</th><th>Why it mattered</th></tr>
+    <tr>
+      <td>Rejection notices labelled raw database keys</td>
+      <td>Approvals filtered through the allowlist; rejections didn&rsquo;t, and the labeller
+      passes an unrecognised key through verbatim — one bypass from an arbitrary string
+      reaching an inbox.</td>
+    </tr>
+    <tr>
+      <td>Returning a proof had no race guard</td>
+      <td>Harmless while it only overwrote a status. Once it sends mail, losing that race
+      emails a family &ldquo;needs another look&rdquo; about a claim another leader just
+      approved.</td>
+    </tr>
+    <tr>
+      <td>Dead email addresses came back to life</td>
+      <td>The new single-address resolver fell back to a cached column that knows nothing
+      about deliverability, handing back an address that had already bounced. Caught by its
+      own test.</td>
+    </tr>
+    <tr>
+      <td>A form control with no accessible name</td>
+      <td>The shelf picker reached screen readers unnamed. Surfaced because a test
+      couldn&rsquo;t find the control by name — the test failure was the real bug.</td>
+    </tr>
+  </table>
+
+  <h2>Decisions recorded</h2>
+  <table>
+    <tr><th>ID</th><th>Decision</th></tr>
+    <tr><td>D-275</td><td>One pending proof claim per scout per requirement; a genuine redo replaces it in place, keeping its queue position</td></tr>
+    <tr><td>D-276</td><td>Review notices go to the submitter; field names without values for profile updates; leader-proxy notifies the leader</td></tr>
+    <tr><td>D-277</td><td><code>submitted_by_person_id</code> is captured going forward, never backfilled and never inferred from prose</td></tr>
+    <tr><td>D-278</td><td><code>emailForPerson</code> will not resurrect an address the roster already knows is dead</td></tr>
+  </table>
+
+  <h2>Next steps</h2>
+  <ul>
+    <li><strong>Watch the first real notice land.</strong> Nothing has sent yet — the queue
+    emptied before the feature went live, so the next approval is the first live test.</li>
+    <li><strong>Orphaned proof media.</strong> Photos from the 16 deleted duplicate rows sit in
+    the private bucket with nothing pointing at them; the retention sweep that would collect
+    them is still unbuilt. A storage cost, not a leak.</li>
+    <li><strong>Deferred notification questions.</strong> Whether parents should also hear about
+    leader-filed claims; whether reimbursements (the readiest of the remaining flows) should get
+    notices; call-site tests for the change-request half.</li>
+    <li><strong>Carried forward:</strong> Menu Monster phase 3, record-page control gating,
+    Chemistry&rsquo;s Scoutbook ID.</li>
+  </ul>
+
+  <footer>
+    Scout Troop 79 · Milwaukee, WI — session summary generated 2026-09-20 11:16 PM CDT ·
+    origin/main <code>da00ead</code>
+  </footer>
+
+</div>
+</body>
+</html>
