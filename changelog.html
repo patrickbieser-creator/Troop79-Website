@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>September 20, 2026</strong> &nbsp;&middot;&nbsp; v1.126.0</p>
+      <p>Last updated: <strong>September 20, 2026</strong> &nbsp;&middot;&nbsp; v1.126.1</p>
     </div>
   </div>
 
@@ -494,6 +494,22 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.126.1 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.126.1</span>
+        <span class="release-date">September 20, 2026</span>
+        <span class="release-label"><span class="badge badge-fix">Fix</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Proof photos open full size</p>
+        <ul class="change-list">
+          <li><span><strong>Click a photo in the Proof Queue to see the original</strong> &mdash; the thumbnail is capped at 160 pixels, which is too small to judge a scout&rsquo;s proof by, and there was no way to open it any larger. It now opens in a new tab so you keep your place in the queue.</span></li>
+          <li><span><strong>Behind the scenes:</strong> the private links behind those photos used to go stale after ten minutes, so clicking one after reading a few submissions failed. They now last an hour &mdash; long enough for a whole review sitting.</span></li>
+        </ul>
       </div>
     </div>
 

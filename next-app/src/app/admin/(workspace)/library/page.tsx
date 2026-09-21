@@ -560,14 +560,23 @@ function ProofQueueRow({ item }: { item: ProofQueueItem }) {
       )}
       {photoUrls.length > 0 && (
         <div className={styles.thumbRow}>
+          {/* The thumbnail caps at 160px, which is too small to actually
+              judge a proof by — a leader needs the original. Opening in a
+              new tab keeps their place in the queue (Patrick, 2026-09-20,
+              reviewing Henry's First Class 7d photo: "How do I view the
+              full size photo?" — there was no way). */}
           {photoUrls.map((url) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <a
               key={url}
-              src={url}
-              alt="Proof submitted by the scout/family"
-              className={styles.proofThumb}
-            />
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.proofThumbLink}
+              title="Open the full-size photo in a new tab"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt="Proof submitted by the scout/family" className={styles.proofThumb} />
+            </a>
           ))}
         </div>
       )}

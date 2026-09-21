@@ -14,8 +14,18 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 export const PROOF_MEDIA_BUCKET = 'proof-media';
 
 /** Long enough to load an admin review page and view every photo on it;
- *  short enough that a copied/forwarded link goes stale quickly. */
-const SIGNED_URL_TTL_SECONDS = 60 * 10;
+ *  short enough that a copied/forwarded link goes stale quickly.
+ *
+ *  Raised from 10 to 60 minutes 2026-09-20, when the Proof Queue thumbnails
+ *  became links to the full-size original: a leader works down the queue
+ *  with the page open, so the useful lifetime of these URLs is now "one
+ *  review sitting", not "one glance". Ten minutes meant clicking a photo
+ *  after reading a few submissions gave a storage error. Still a private
+ *  bucket reachable only from a leader-authenticated page — the TTL bounds
+ *  a leaked URL, it is not what keeps the bucket closed. If a sitting ever
+ *  outlasts an hour, re-sign on demand behind an auth check rather than
+ *  raising this again. */
+const SIGNED_URL_TTL_SECONDS = 60 * 60;
 
 const ALLOWED_TYPES: ReadonlySet<string> = new Set([
   'image/jpeg',

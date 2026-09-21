@@ -301,6 +301,9 @@
 
 /* Review-queue helpers (were inline styles on page.tsx). */
 .thumbRow { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+.proofThumbLink { display: inline-flex; border-radius: var(--admin-radius); }
+.proofThumbLink:focus-visible .proofThumb { border-color: var(--admin-navy); outline: 2px solid var(--admin-navy); outline-offset: 2px; }
 .proofThumb { max-width: 160px; max-height: 160px; border-radius: var(--admin-radius); border: 1px solid var(--admin-gray-300); }
+.proofThumbLink:hover .proofThumb { border-color: var(--admin-navy); }
 .inlineForm { display: inline; }
 .inlineFlexForm { display: inline-flex; gap: 4px; }
