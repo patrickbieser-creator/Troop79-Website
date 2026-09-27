@@ -60,7 +60,7 @@ Troop79-Website/
 <constraints>
   <!-- Inherit global constraints (security, TDD, quality gates) from ~/.claude/CLAUDE.md -->
   <!-- Add only project-specific rules below -->
-  <constraint>Personal/family project, not a client engagement — client-id "personal" in the shared Project-Agents repo.</constraint>
+  <constraint>Personal/family project, not a client engagement — local-only, never synced to Northwoods.</constraint>
   <constraint>next-app/ has a Vitest suite (650 tests, `db` + `dom` projects — see Tests/CLAUDE.md). Quality gate is `npm run lint` + `npm run typecheck` + `npm run test` + `npm run build` — `next build`'s typecheck is scoped to the app and does NOT catch type errors in tests/, so `npm run typecheck` (full-project `tsc --noEmit`) is required separately, not implied by a clean build (found the hard way 2026-08-17: a clean build shipped 2 real test failures + 4 test-file type errors).</constraint>
   <constraint>next-app/CLAUDE.md and next-app/AGENTS.md carry additional Next.js-16-specific API/convention warnings — read them before touching next-app/ code.</constraint>
 </constraints>
@@ -141,25 +141,10 @@ Project/client brand guidelines: colors, typography, voice, component patterns.
 
 ## Session Protocol
 
-**At the start of every new context window — before responding to the first user message — automatically invoke `/northwoods:start-session` unless it has already been invoked in this context window.**
-
-Skip auto-invoke only if:
-- You are mid-task and the user explicitly asked you not to interrupt
-- `.claude-project` does not exist in this directory or any ancestor (project not yet initialized)
-
-**Before closing the session, run `/northwoods:end-session`** to write memory updates, sync agent files, and generate a session summary.
-
-**Project switching detection:**
-When a `FILE_OUTSIDE_PROJECT_ROOT` message arrives from the PreToolUse hook:
-1. Walk up from the target file's directory looking for `.claude-project`
-2. If found and it belongs to a different project, prompt:
-   ```
-   You appear to be working in a different project ({found-project}).
-   Recommend running end-session before switching. Run end-session now? (yes/no)
-   ```
-   - Yes → run `/northwoods:end-session` (current project), then `/northwoods:start-session` in the new location
-   - No → continue in current session context
-3. If no `.claude-project` found → allow the file op silently
+**Local-only project.** Troop79-Website is personal and does not sync with Northwoods. Do NOT run
+`/northwoods:start-session` or `/northwoods:end-session` here, and never copy, commit, or push
+anything about this project to `Northwoods-Software-Development/Project-Agents` or any other
+Northwoods repository. Agent memory lives only in this directory's `Agents/`.
 
 1. **Read `Agents/Tracker/Memory/STATE.md`** — understand current sprint position and test baseline
 2. **Read `Agents/Tracker/Memory/BLOCKERS.md`** — know what's blocked before planning work
@@ -173,8 +158,6 @@ When a `FILE_OUTSIDE_PROJECT_ROOT` message arrives from the PreToolUse hook:
 The following files must NOT be committed to source control:
 - `PROJECT.user.md` — individual developer preferences (created per-user, not shared)
 - `.claude/settings.local.json` — Claude Code local settings override
-- `.claude/agents/` — project subagent definitions (stored in shared `Project-Agents` repo)
-- `.claude-project` — project agent marker (per-machine)
-- `Agents/` — agent memory files (stored in shared `Project-Agents` repo, synced by `start-session`)
+- `.claude/agents/` — project subagent definitions (local only)
+- `Agents/` — agent memory files (local only)
 
-These are added to `.gitignore` by `start-session`. Agent files live in `Northwoods-Software-Development/Project-Agents` under `personal/troop79/` and are synced to this directory by `/northwoods:start-session`.

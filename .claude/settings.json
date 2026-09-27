@@ -2,6 +2,9 @@
   "permissions": {
     "allow": [
       "Read(~/.claude/agents/disciplines/**)"
+    ],
+    "deny": [
+      "Agent(northwoods:nws-brand-manager)"
     ]
   },
   "ignorePatterns": [
