@@ -510,6 +510,7 @@ py -m http.server 8000</pre>
           <li><span><strong>Bank Match</strong> &mdash; export checking or savings from Landmark as CSV and upload it under Utilities &rarr; Ledger Audit (also in the Finance menu). Every bank row is matched to a ledger row, including batched Venmo cash-outs and mobile deposits made of several payments. What&rsquo;s left over is listed on both sides, with the dates where each lasting gap opened and the likely typos (swapped digits, flipped sign, off by cents). The file is read once and never saved.</span></li>
           <li><span><strong>Ledger Checks</strong> &mdash; no bank file needed: an independent re-sum by the database itself, every reconciliation re-checked, rows changed after a month was reconciled, balancing adjustments, one-sided checking&harr;savings transfers, likely duplicates, reimbursement payouts, and rows booked in the wrong direction.</span></li>
           <li><span><strong>Fixed: reconciliation &ldquo;drift&rdquo; on the Financial Ledger</strong> is now measured as of the statement&rsquo;s own date. It used to compare today&rsquo;s balance with the last statement, so every transaction entered since showed up as drift.</span></li>
+          <li><span><strong>Behind the scenes:</strong> work sessions on this site now open with the project&rsquo;s own health checks (local database up, last night&rsquo;s backup succeeded) and close with a required changelog entry, replacing the Northwoods session routine.</span></li>
         </ul>
       </div>
     </div>
