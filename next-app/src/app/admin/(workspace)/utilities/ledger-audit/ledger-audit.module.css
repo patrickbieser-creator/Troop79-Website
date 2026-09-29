@@ -1,0 +1,121 @@
+/* Ledger Audit + Bank Match (Plans/Ledger-Audit.md). Tables compose the
+   shared DataTable·Compact pattern; everything else is layout only. */
+
+.table { composes: compact from '../../_components/data-table.module.css'; }
+.num { composes: numCell from '../../_components/data-table.module.css'; }
+.empty { composes: empty from '../../_components/data-table.module.css'; }
+
+.section + .section { margin-top: var(--admin-space-8); }
+
+.lede {
+  font-size: var(--admin-text-md);
+  color: var(--admin-gray-600);
+  line-height: 1.5;
+  margin-bottom: var(--admin-space-6);
+  max-width: 760px;
+}
+
+.uploadRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--admin-space-6);
+}
+.radioGroup {
+  display: flex;
+  gap: var(--admin-space-6);
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-size: var(--admin-text-md);
+}
+.radioGroup legend {
+  font-weight: 600;
+  margin-right: var(--admin-space-4);
+  float: left;
+}
+.fileInput { font-size: var(--admin-text-md); }
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: var(--admin-space-6);
+  margin: var(--admin-space-8) 0;
+}
+.stat {
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  padding: var(--admin-space-5) var(--admin-space-6);
+  background: var(--admin-white);
+}
+.statLabel {
+  font-size: var(--admin-text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--admin-gray-500);
+}
+.statValue {
+  font-size: var(--admin-text-lg);
+  font-weight: 700;
+  color: var(--admin-navy);
+  font-variant-numeric: tabular-nums;
+}
+
+.block { margin-top: var(--admin-space-8); }
+.block h3 {
+  font-size: var(--admin-text-lg);
+  font-weight: 700;
+  color: var(--admin-navy);
+  margin-bottom: var(--admin-space-2);
+}
+.blockSub {
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-500);
+  margin-bottom: var(--admin-space-4);
+  line-height: 1.5;
+}
+
+.findings {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--admin-space-6);
+}
+.finding {
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  padding: var(--admin-space-6);
+  background: var(--admin-white);
+}
+.findingHead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--admin-space-4);
+  font-size: var(--admin-text-lg);
+  font-weight: 600;
+  color: var(--admin-navy);
+}
+.findingDetail {
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-600);
+  line-height: 1.5;
+  margin: var(--admin-space-3) 0 var(--admin-space-4);
+}
+.memo {
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.voided { text-decoration: line-through; color: var(--admin-gray-400); }
+
+.toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--admin-navy);
+  font-size: var(--admin-text-base);
+  text-decoration: underline;
+  cursor: pointer;
+}

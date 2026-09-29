@@ -22,6 +22,7 @@ import {
   FINANCE_PAGE_SIZE,
   computeBalance,
   computeScoutAccountBalances,
+  reconciliationDrift,
   ledgerToCsv,
   editTransactionGuard,
   validateActivityRename,
@@ -971,7 +972,7 @@ export interface ReconciliationSummaryRow {
   computedBalance: number;
   lastReconciledAt: string | null;
   lastStatementBalance: number | null;
-  drift: number | null; // computed - lastStatementBalance, null if never reconciled
+  drift: number | null; // ledger through the statement date - lastStatementBalance, null if never reconciled
 }
 
 /** Per-account computed balance vs. the most recent reconciliation snapshot.
@@ -982,11 +983,12 @@ export async function getReconciliationSummaryAction(): Promise<ReconciliationSu
   await requireAnyOf(['finance.manage', 'finance.view']);
   const supabase = createAdminClient();
 
-  const rows = await fetchAllRows<FinancialTransactionRow>((from, to) =>
+  const rows = await fetchAllRows<FinancialTransactionRow & { occurred_on: string }>((from, to) =>
     supabase
       .from('financial_transactions')
-      .select('account, amount, person_id, voided_at')
+      .select('id, occurred_on, account, amount, person_id, voided_at')
       .in('account', ['checking', 'savings'])
+      .order('id')
       .range(from, to)
   );
 
@@ -1006,7 +1008,8 @@ export async function getReconciliationSummaryAction(): Promise<ReconciliationSu
       computedBalance,
       lastReconciledAt: last?.as_of ?? null,
       lastStatementBalance,
-      drift: lastStatementBalance == null ? null : Math.round((computedBalance - lastStatementBalance) * 100) / 100
+      // As of the statement's own date — rows entered since aren't drift.
+      drift: last && lastStatementBalance != null ? reconciliationDrift(rows, account, last.as_of, lastStatementBalance) : null
     });
   }
   return out;

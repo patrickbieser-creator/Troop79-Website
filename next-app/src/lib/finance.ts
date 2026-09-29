@@ -115,6 +115,26 @@ export function computeBalance(
 }
 
 /**
+ * Ledger balance through a statement date minus that statement's balance —
+ * the reconciliation drift. AS OF THE STATEMENT DATE, not all-time: fixed
+ * 2026-09-29 (Plans/Ledger-Audit.md) after the Finance page showed
+ * "drift $-644.58" on checking that was really just a month of
+ * transactions entered after the 8/19 statement.
+ */
+export function reconciliationDrift(
+  transactions: readonly (FinancialTransactionRow & { occurred_on: string })[],
+  account: Account,
+  asOf: string,
+  statementBalance: number
+): number {
+  const through = computeBalance(
+    transactions.filter((t) => t.occurred_on <= asOf),
+    { account }
+  );
+  return (Math.round(through * 100) - Math.round(statementBalance * 100)) / 100;
+}
+
+/**
  * Every scout with at least one `scout_account` transaction, and their
  * derived balance — the family/treasurer roster view. Excludes voided rows
  * the same way computeBalance does.

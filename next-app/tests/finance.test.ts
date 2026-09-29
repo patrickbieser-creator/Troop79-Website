@@ -27,6 +27,7 @@ import {
   TRANSACTION_METHODS,
   isAccount,
   computeBalance,
+  reconciliationDrift,
   computeScoutAccountBalances,
   ledgerToCsv,
   summarizeByActivity,
@@ -177,6 +178,25 @@ describe('finance — computeBalance (pure)', () => {
     expect(balances.get(10)).toBe(35);
     expect(balances.get(20)).toBe(40);
     expect(balances.size).toBe(2);
+  });
+});
+
+describe('finance — reconciliationDrift (pure)', () => {
+  // Real shape, 2026-08-19 checking: statement $2,288.22; a $100 row dated
+  // the next day. The Finance page used to compare the ALL-TIME balance, so
+  // every row entered after a statement read as drift.
+  const rows = [
+    { occurred_on: '2026-08-01', account: 'checking' as const, amount: 2288.22, person_id: null, voided_at: null },
+    { occurred_on: '2026-08-20', account: 'checking' as const, amount: 100, person_id: null, voided_at: null },
+    { occurred_on: '2026-09-19', account: 'checking' as const, amount: -569.64, person_id: null, voided_at: null }
+  ];
+
+  it('ReconciliationDrift_IsZero_WhenRowsDatedAfterTheStatementWouldChangeTheAllTimeBalance', () => {
+    expect(reconciliationDrift(rows, 'checking', '2026-08-19', 2288.22)).toBe(0);
+  });
+
+  it('ReconciliationDrift_ReportsTheGap_AsOfTheStatementDate', () => {
+    expect(reconciliationDrift(rows.slice(1), 'checking', '2026-08-19', 2288.22)).toBe(-2288.22);
   });
 });
 

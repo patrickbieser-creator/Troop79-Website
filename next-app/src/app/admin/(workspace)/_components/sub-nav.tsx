@@ -232,6 +232,17 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         href: '/admin/finance/report',
         matchPath: '/admin/finance/report',
         capability: 'finance.manage'
+      },
+      {
+        // Plans/Ledger-Audit.md (2026-09-29). The page lives under Utilities
+        // (Patrick asked for it there, and it has a card on that page), but
+        // treasurers work from this section and Utilities is news.write —
+        // so it is offered here too. Read-only; finance.view reaches it as
+        // well, nav keys off finance.manage like the rest of this section.
+        label: 'Ledger Audit',
+        href: '/admin/utilities/ledger-audit',
+        matchPath: '/admin/utilities/ledger-audit',
+        capability: 'finance.manage'
       }
     ]
   },
